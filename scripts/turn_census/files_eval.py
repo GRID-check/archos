@@ -12,9 +12,13 @@ pairs on the one config, by today's tool names and by the ones ADR-0133 brings (
 ``grep``, ``read_file``):
 
 - ``semantic``: ranked search only. Every listing, reading and literal tool is unbound and
-  ``knowledge_search`` accepts ``match=meaning`` alone.
-- ``grep``: no round-0 prefetch and no ranked search: ``knowledge_search`` accepts the literal
-  modes only or, once ``grep`` is a tool of its own, is unbound.
+  ``knowledge_search`` accepts ``match=meaning`` alone. One confound: with ``filesystem`` null the
+  chat rebinding does not run (``register._chat_bound``), so this arm's ``knowledge_search`` carries
+  the full shared description and schema while the other two carry the chat contract. A gap
+  between arms is partly a gap between descriptions.
+- ``grep``: no round-0 prefetch and no ranked search: ``knowledge_search`` is unbound, and the
+  filesystem verbs (``ls``, ``glob``, ``grep``, ``read_file``) are what finds and reads. Piloti's
+  ``knowledge_search`` has no literal mode since ADR-0133 slice 6, so ``match_modes`` no longer narrows it.
 - ``hybrid``: production's configuration.
 
 ``--arm all`` runs the three in turn. The names before ADR-0133 (``search``, ``navigate``, ``both``)
@@ -145,9 +149,9 @@ def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
             [_FILESYSTEM_KEY, "null"],
         ]
         return [*pairs, [_MODES_KEY, "meaning"]] if "knowledge_search" in tools else pairs
-    if "grep" in tools:
-        return [[_TOOLS_KEY, ",".join(name for name in tools if name != "knowledge_search")], [_PREFETCH_KEY, "false"]]
-    return [[_PREFETCH_KEY, "false"], [_MODES_KEY, "exact,regex"]]
+    # `grep` is a tool of its own (built per turn beside the configured list, ADR-0133), and Piloti's
+    # `knowledge_search` is ranked search only since slice 6: the grep arm unbinds the ranked search.
+    return [[_TOOLS_KEY, ",".join(name for name in tools if name != "knowledge_search")], [_PREFETCH_KEY, "false"]]
 
 
 def configured_tools(config: Path | None = None) -> list[str]:

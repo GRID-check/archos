@@ -16,7 +16,7 @@
  * product's atoms.
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Catalog, MessageProcessor, type SurfaceModel } from '@a2ui/web_core/v0_9'
 import { createComponentImplementation, type ReactComponentImplementation } from '@a2ui/react/v0_9'
 
@@ -38,6 +38,7 @@ import {
   useReportDrawn,
   type CardSchema,
 } from './catalog'
+import { dataModelStore, ReaderInputsProvider } from './reader-inputs'
 import { cardToSurfaceMessages } from './surface-messages'
 
 export { A2uiSurface } from '@a2ui/react/v0_9'
@@ -48,12 +49,16 @@ function cardComponent(schema: CardSchema): ReactComponentImplementation {
   return createComponentImplementation(api, function A2uiCardComponent({ props, context }) {
     const render = useCardRenderer()
     useReportDrawn()
+    // The leaf's reader inputs are bound into this surface's data model
+    // (`reader-inputs.ts`, ADR-0143); a card without inputs never reads them.
+    const leafId = context.componentModel.id
+    const store = useMemo(() => dataModelStore(context.dataContext, leafId), [context.dataContext, leafId])
     if (!render) return null
     // `display: contents`: no box of its own. The attribute is how the host
     // knows A2UI has drawn a real component rather than its placeholder.
     return (
       <div className="contents" data-a2ui-node={type}>
-        {render({ ...(props as object), type } as GridCard, context.componentModel.id)}
+        <ReaderInputsProvider store={store}>{render({ ...(props as object), type } as GridCard, leafId)}</ReaderInputsProvider>
       </div>
     )
   })

@@ -72,6 +72,10 @@ export type ActionStatus = (typeof ACTION_STATUSES)[number]
 export const ACTION_MODES = ['meaning', 'exact', 'regex'] as const
 export type ActionMode = (typeof ACTION_MODES)[number]
 
+/** The places of Piloti's filesystem a path-based call reaches (ADR-0133); `estate` is every one of them. */
+export const ACTION_MOUNTS = ['project', 'office', 'chat', 'law', 'estate'] as const
+export type ActionMount = (typeof ACTION_MOUNTS)[number]
+
 /** What one call found; each count is absent when the call does not count it. */
 export interface StoredActionCounts {
   hits?: number
@@ -100,6 +104,12 @@ export interface StoredAction {
   pages?: string
   /** Which shelf: project, office, base, web. */
   shelf?: string
+  /** The place a path-based call reached; `target` is then the folder inside it, absent at its root. */
+  mount?: ActionMount
+  /** A literal search that could not search everything: its count is a floor, and no hit is no no. */
+  incomplete?: boolean
+  /** The folder or document the call named is not there; a restricted one answers the same (ADR-0088). */
+  missing?: boolean
   counts?: StoredActionCounts
   elapsedMs?: number
 }
@@ -502,6 +512,57 @@ function sanitizeActionCounts(input: unknown): StoredActionCounts | undefined {
   return Object.keys(counts).length > 0 ? counts : undefined
 }
 
+/** Where each place of the filesystem is rooted (ADR-0133), for a row stored before `mount`. */
+const LEGACY_PLACE_ROOTS: ReadonlyArray<readonly [string, ActionMount]> = [
+  ['/project/', 'project'],
+  ['/office/', 'office'],
+  ['/chat/', 'chat'],
+  ['/law/oib/', 'law'],
+  ['/law/', 'law'],
+]
+
+/** An estate folder path as its place and the folder inside it; null for a path that names no place. */
+const placeOfPath = (path: string): Pick<StoredAction, 'mount' | 'target'> | null => {
+  if (path === '/') return { mount: 'estate' }
+  const root = LEGACY_PLACE_ROOTS.find(([prefix]) => `${path}/`.startsWith(prefix))
+  if (!root) return null
+  const [prefix, mount] = root
+  const folder = mount === 'law' ? '' : `${path}/`.slice(prefix.length).replace(/\/+$/, '')
+  return { mount, ...(folder ? { target: folder } : {}) }
+}
+
+/**
+ * A filesystem row stored before the wire carried `mount` (ADR-0132, amendment
+ * of 2026-10-27) held its estate path in `target`: a listing or literal search
+ * its folder (a name search its pattern after „ · “), a read its file path, a
+ * folder card `…/README.md`. Read back, it is the same row the wire sends now:
+ * the place and the folder inside it, the pattern as the query, a read its
+ * file's name, a folder card the listing of its folder. Anything else stays as
+ * it was stored. Deleted with the condition ADR-0132 names for it.
+ */
+export function legacyPlace(
+  action: StoredAction
+): Partial<Pick<StoredAction, 'verb' | 'mount' | 'target' | 'query'>> | null {
+  if (action.mount) return null
+  const target = action.target?.trim() ?? ''
+  if (!target.startsWith('/')) return null
+  if (action.verb === 'read') {
+    const slash = target.lastIndexOf('/')
+    const leaf = target.slice(slash + 1)
+    if (/^readme\.md$/i.test(leaf)) {
+      const folder = placeOfPath(target.slice(0, slash) || '/')
+      return folder ? { verb: 'list', ...folder } : null
+    }
+    // `Plan.pdf.md` is how the estate serves `Plan.pdf` as text; the row names the file.
+    return leaf ? { target: leaf.replace(/(\.[a-z0-9]{1,5})\.md$/i, '$1') } : null
+  }
+  if (action.verb !== 'list' && action.verb !== 'search') return null
+  const [path, pattern] = target.split(' · ', 2)
+  const query = action.query ?? (pattern?.trim() || undefined)
+  const place = placeOfPath(path)
+  return place ? { ...place, ...(query ? { query } : {}) } : null
+}
+
 /** An `action` step's typed payload, bounded like the wire bounds it; null without a known verb. */
 function sanitizeAction(input: unknown): StoredAction | null {
   if (!isRecord(input)) return null
@@ -520,11 +581,20 @@ function sanitizeAction(input: unknown): StoredAction | null {
   if (pages) action.pages = pages
   const shelf = cap(input.shelf, MAX_ACTION_PAGES_CHARS)
   if (shelf) action.shelf = shelf
+  const mount = oneOf(input.mount, ACTION_MOUNTS)
+  if (mount) action.mount = mount
+  if (input.incomplete === true) action.incomplete = true
+  // Only an empty call can have missed: on any other status the flag would contradict the row.
+  if (input.missing === true && action.status === 'empty') action.missing = true
   const counts = sanitizeActionCounts(input.counts)
   if (counts) action.counts = counts
   const elapsedMs = nonNegativeInt(input.elapsedMs)
   if (elapsedMs !== undefined) action.elapsedMs = elapsedMs
-  return action
+  const legacy = legacyPlace(action)
+  if (!legacy) return action
+  const placed: StoredAction = { ...action, ...legacy }
+  if (!legacy.target) delete placed.target
+  return placed
 }
 
 /** A lane with the fields every reader dereferences; its hits are bounded by the lane cap above. */

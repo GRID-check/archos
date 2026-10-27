@@ -154,8 +154,8 @@ class TestTheExclusion:
 
         out = await _ranked_search(query="Bewehrung der Decke")
 
-        assert "Ältere Fassungen ausgeblendet: Statik_Index_B.pdf" in out
-        assert "file_name=" in out.split("Ältere Fassungen ausgeblendet", 1)[1].splitlines()[0]
+        assert "Older Fassungen left out: Statik_Index_B.pdf" in out
+        assert "readable when it is named" in out.split("Older Fassungen left out", 1)[1].splitlines()[0]
 
     async def test_naming_the_file_reads_it_and_hides_nothing(self, search):
         store = search(POOLS, REPLACED)
@@ -164,7 +164,7 @@ class TestTheExclusion:
 
         assert not any("$nin" in repr(call["filters"]) for call in store.calls)
         assert "Statik_Index_B.pdf, p.1" in _cited(out)
-        assert "Ältere Fassungen ausgeblendet" not in out
+        assert "Older Fassungen left out" not in out
 
     async def test_naming_an_older_revision_says_which_one_is_current(self, search):
         # Read on purpose, but not presented as the document's current state: the same line
@@ -175,8 +175,8 @@ class TestTheExclusion:
 
         assert store.asked == [PROJECT]
         assert (
-            "Ältere Fassung: Statik_Index_A.pdf ist durch Statik_Index_C.pdf ersetzt (bestätigt), "
-            "aktuell ist Statik_Index_C.pdf." in out
+            "Older Fassung: Statik_Index_A.pdf is replaced by Statik_Index_C.pdf (confirmed); "
+            "Statik_Index_C.pdf is current." in out
         )
 
     async def test_naming_the_current_revision_says_nothing_about_older_ones(self, search):
@@ -184,7 +184,7 @@ class TestTheExclusion:
 
         out = await _ranked_search(query="Bewehrung der Decke", file_name="Statik_Index_C.pdf")
 
-        assert "Ältere Fassung" not in out
+        assert "Older Fassung" not in out
 
     async def test_the_base_corpus_is_never_asked_about_and_never_filtered(self, search):
         store = search(POOLS, REPLACED)
@@ -209,7 +209,7 @@ class TestTheExclusion:
         by_collection = {call["collection"]: call["filters"] for call in store.calls}
         assert by_collection[OFFICE_SHELF] == {"superseded": {"$ne": True}}
         assert by_collection[PROJECT] == {"superseded": {"$ne": True}}
-        assert "Altbau.pdf" in out.split("Ältere Fassungen ausgeblendet", 1)[1].splitlines()[0]
+        assert "Altbau.pdf" in out.split("Older Fassungen left out", 1)[1].splitlines()[0]
 
     async def test_a_folder_narrowing_and_the_exclusion_hold_together(self, search):
         store = search(POOLS, REPLACED)
@@ -227,7 +227,7 @@ class TestTheExclusion:
 
         # The condition keeps every point that is not marked replaced, so it costs nothing here.
         assert _project_filters(store) == [{"superseded": {"$ne": True}}]
-        assert "Ältere Fassungen ausgeblendet" not in out
+        assert "Older Fassungen left out" not in out
         assert "Statik_Index_B.pdf, p.1" in _cited(out)
 
     async def test_a_store_that_cannot_be_read_hides_nothing(self, search):
@@ -244,10 +244,10 @@ class TestTheExclusion:
 
         out = await _ranked_search(query="Bewehrung der Decke")
 
-        line = next(line for line in out.splitlines() if "Ältere Fassungen ausgeblendet" in line)
+        line = next(line for line in out.splitlines() if "Older Fassungen left out" in line)
         assert "alt_00.pdf" in line and "alt_04.pdf" in line
         assert "alt_05.pdf" not in line
-        assert "und 4 weitere" in line
+        assert "and 4 more" in line
 
     async def test_a_search_that_finds_only_replaced_files_still_tells_the_model_where_they_went(self, search):
         search({PROJECT: [_chunk("Statik_Index_B.pdf")], BASE: []}, REPLACED)
@@ -255,4 +255,4 @@ class TestTheExclusion:
         out = await _ranked_search(query="Bewehrung der Decke")
 
         assert _cited(out) == []
-        assert "Ältere Fassungen ausgeblendet: Statik_Index_B.pdf" in out
+        assert "Older Fassungen left out: Statik_Index_B.pdf" in out

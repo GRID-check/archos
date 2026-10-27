@@ -122,6 +122,6 @@ def render_document_groups(groups: Sequence[DocumentGroup], pool_size: int) -> s
         lines.append(f"| {number} | {name} | {group.passages} | {_pages_cell(group.pages)} |")
     lines.append(
         "Each document's passage above is its best one. The counts are lower bounds over the ranked pool; "
-        'for every mention use `match="exact"`, and to read a document use `read_passage`.'
+        "a literal search counts every mention, and reading a document gives its text."
     )
     return "\n".join(lines)

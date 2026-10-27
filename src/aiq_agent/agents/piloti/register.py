@@ -194,7 +194,7 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
         default=True,
         description=(
             "EVAL KNOB, not a product setting: false turns round 0's prefetched fetches off, so the "
-            "answer suite can measure the navigation tools (`list_files`, `read_passage`, exact search) "
+            "answer suite can measure the navigation tools (`ls`, `glob`, `grep`, `read_file`) "
             "without a ranked search already in the model's first request (`suite.py --set files "
             "--arm grep`, ADR-0127, ADR-0133). Production keeps the default."
         ),
@@ -625,6 +625,7 @@ def _turn_prefetch(
             decisions,
             facts.question,
             focus_file_name=state.focus_file_name,
+            focus_shelf=state.focus_shelf,
             previous_message=facts.previous_message,
             reference_projects=facts.reference_projects,
         )
@@ -676,11 +677,31 @@ def _estate_backend(config: ResearchAgentConfig, builder: Builder) -> Any:
     return EstateBackend(builder.get_function_config(config.filesystem))
 
 
+def _chat_bound(tools: list[Any], config: ResearchAgentConfig, builder: Builder) -> list[Any]:
+    """The shared knowledge-layer tools on the contract of a binding that reads the estate (slice 6).
+
+    Only when the turns will bind the estate's verbs (``filesystem`` set): ``knowledge_search`` is
+    then ranked search with ``path`` and ``list_files`` loses its tree view, because ``grep`` and
+    ``ls`` do those. A config without the estate (an eval, a benchmark) keeps the full contracts,
+    the literal modes included. The budget the description states is the search's own configuration.
+    """
+    if config.filesystem is None:
+        return tools
+    from knowledge_layer.chat_binding import chat_tools
+
+    search = builder.get_function_config(config.filesystem)
+    return chat_tools(
+        tools,
+        top_k=int(getattr(search, "top_k", 5)),
+        max_per_document=int(getattr(search, "max_chunks_per_document", 0)),
+    )
+
+
 @register_function(config_type=ResearchAgentConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def research_agent(config: ResearchAgentConfig, builder: Builder):
     """Research agent with tool-calling capabilities."""
     llm = await get_langchain_llm(builder, config.llm)
-    tools = await _load_tools(config, builder)
+    tools = _chat_bound(await _load_tools(config, builder), config, builder)
 
     provider = LLMProvider()
     provider.set_default(llm, group=AgentGroup.RESEARCH)

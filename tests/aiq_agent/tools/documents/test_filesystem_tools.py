@@ -91,7 +91,7 @@ class TestWhatIsBound:
     def test_read_file_is_ours_and_takes_pages_and_clause(self, drafts: DraftBackend) -> None:
         read = _tools(drafts)["read_file"]
         assert set(read.args) >= {"file_path", "offset", "limit", "pages", "clause"}
-        assert "/law/oib/" in read.description and "/drafts/" in read.description
+        assert ".pdf.md" in read.description and "/drafts/" in read.description
 
     def test_the_subclass_keeps_the_stock_name(self, drafts: DraftBackend) -> None:
         """A subclass with another name is appended beside the stock instance (prototype p5)."""

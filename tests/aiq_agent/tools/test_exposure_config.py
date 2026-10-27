@@ -44,7 +44,13 @@ def piloti_tool_names() -> set[str]:
     config = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     groups = config.get("function_groups") or {}
     names: set[str] = set()
-    for tool in config["functions"][PILOTI_AGENT]["tools"]:
+    agent = config["functions"][PILOTI_AGENT]
+    if agent.get("filesystem"):
+        # Built per turn, not listed: the estate's readers (ADR-0133).
+        from aiq_agent.tools.documents.tools import ESTATE_TOOL_NAMES
+
+        names.update(ESTATE_TOOL_NAMES)
+    for tool in agent["tools"]:
         group = groups.get(tool)
         if group is None:
             names.add(tool)

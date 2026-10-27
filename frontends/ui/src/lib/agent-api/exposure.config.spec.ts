@@ -25,7 +25,7 @@ vi.mock('server-only', () => ({}))
 
 import { PILOTI_ASK_OPERATIONS } from '@/lib/piloti-asks/ask-wire'
 import { PROPOSAL_DECISION_OPERATIONS } from '@/lib/proposals/operation-applier'
-import { BACKEND_OPERATIONS } from './backend-operations'
+import { BACKEND_OPERATIONS, PILOTI_TOOL_FOR } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
 import { EXPOSURE, type Exposure, WITHHELD_CATEGORIES } from './exposure.config'
 import { APP_TOOLS } from './catalog/app-views'
@@ -104,7 +104,9 @@ describe('the exposure config', () => {
     for (const [name, exposure] of Object.entries(entries)) {
       if (typeof exposure.piloti === 'string') expect(exposure.piloti, name).toMatch(NATIVE)
     }
-    for (const op of BACKEND_OPERATIONS) expect(entry(op.name).piloti, op.name).toBe(`native:${op.tool}`)
+    for (const op of BACKEND_OPERATIONS) {
+      expect(entry(op.name).piloti, op.name).toBe(`native:${PILOTI_TOOL_FOR[op.tool] ?? op.tool}`)
+    }
   })
 
   it('is what tests/fixtures/exposure.json says (UPDATE_FIXTURES=1 rewrites it)', () => {

@@ -77,3 +77,40 @@ async def test_parallel_calls_keep_their_own_call_id_for_their_sources(monkeypat
     assert turn_status.current_action_call() is None
     finished = [b.step for b in bodies if b.type == "STEP_FINISHED"]
     assert {s.call_id for s in finished} == {own for own, _ in results}
+
+
+def test_an_incomplete_search_says_so_on_its_row(monkeypatch):
+    """A literal search that could not search everything is never drawn as a complete count (ADR-0133)."""
+    from aiq_agent.common import turn_status
+
+    steps: list = []
+    monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: steps.append(step))
+    row = ActionRow("search", query="Brandabschnitt", mode="exact")
+    outcome = ActionOutcome(searched=9)
+    outcome.record(0, documents=0)
+    outcome.incomplete = True
+    outcome.settle(row)
+
+    finished = steps[-1]
+    assert (finished.status, finished.incomplete, finished.counts.searched) == ("empty", True, 9)
+
+
+def test_a_complete_search_carries_no_incomplete_flag(monkeypatch):
+    from aiq_agent.common import turn_status
+
+    steps: list = []
+    monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: steps.append(step))
+    row = ActionRow("search", query="Brandabschnitt", mode="exact")
+    ActionOutcome(hits=3, documents=1).settle(row)
+    assert steps[-1].incomplete is None
+
+
+def test_a_settled_place_replaces_the_running_one(monkeypatch):
+    """A row that settles at a place's root drops the name it showed while running (ADR-0132)."""
+    from aiq_agent.common import turn_status
+
+    steps: list = []
+    monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: steps.append(step))
+    row = ActionRow("read", target="README")
+    row.finish("ok", verb="list", mount="project")
+    assert (steps[-1].verb, steps[-1].mount, steps[-1].target) == ("list", "project", None)

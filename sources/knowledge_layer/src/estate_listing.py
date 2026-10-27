@@ -48,7 +48,7 @@ MOUNT_LABELS: dict[Mount, str] = {
     "law": "the OIB-Richtlinien",
 }
 
-INDEX_NOTE = "An index, not a source: read_file to read, grep for wording, knowledge_search for meaning."
+INDEX_NOTE = "An index, not a source: `read_file` to read, `grep` for wording, `knowledge_search` for meaning."
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ class Listing:
     text: str
     files: int | None = None
     folders: int | None = None
-    #: The call could not list (a path that is no folder, a refusal): an error row.
+    #: No such folder (a restricted one answers the same): an error for the model, „nicht gefunden“ on the row.
     error: bool = False
 
 
@@ -158,11 +158,14 @@ def render_root(files: Sequence[EstateFile], *, drafts: bool) -> Listing:
         shown += 1
         lines.append(f"{MOUNT_ROOTS[mount]:<12} {_count(count, 'document')} · {MOUNT_LABELS[mount]}")
     if drafts:
-        lines.append(f"{MOUNT_ROOTS['drafts']:<12} this conversation's drafts: written with write_file, never evidence")
+        lines.append(
+            f"{MOUNT_ROOTS['drafts']:<12} this conversation's drafts: written with `write_file`, never evidence"
+        )
     if not shown:
         lines.append("No document of the office is readable in this conversation.")
-    lines.append("Next: ls a mount, glob by name, grep for wording, read_file to read.")
-    return Listing(text="\n".join(lines), files=0, folders=shown)
+    lines.append("Next: `ls` a mount, `glob` by name, `grep` for wording, `read_file` to read.")
+    # The row counts what the places hold (every document, every place), as a folder's row does.
+    return Listing(text="\n".join(lines), files=len(files), folders=shown)
 
 
 def render_folder(
@@ -176,11 +179,11 @@ def render_folder(
     """``ls(path, depth)``: one folder's subfolders and files, or (``depth`` > 1) its tree as folder cards."""
     mount = parsed.mount
     if mount is None:
-        return Listing(text=f'No folder "{parsed.path}". ls("/") lists the places there are.', error=True)
+        return Listing(text=f'No folder "{parsed.path}". `ls("/")` lists the places there are.', error=True)
     asked = "" if mount == "law" else parsed.folder
     folder = stored_folder(files, mount, asked)
     if folder is None:
-        return Listing(text=f'No folder "{parsed.path}". ls("{MOUNT_ROOTS[mount]}") lists what is there.', error=True)
+        return Listing(text=f'No folder "{parsed.path}". `ls("{MOUNT_ROOTS[mount]}")` lists what is there.', error=True)
     selected = in_folder(files, mount, folder)
     root = MOUNT_ROOTS[mount] + (f"{folder}/" if folder else "")
     if depth > 1:
@@ -203,12 +206,14 @@ def render_folder(
         lines.append(_file_line(file))
     left = len(here) - MAX_LS_FILES
     if left > 0:
-        lines.append(f"… {_count(left, 'more file')} here, not listed: glob by name or ls a subfolder.")
+        lines.append(f"… {_count(left, 'more file')} here, not listed: `glob` by name or `ls` a subfolder.")
     if in_flight:
         lines.append(f"Not listed here: files still being read ({len(in_flight)}).")
     lines.append("Restricted folders are not listed.")
-    lines.append("Next: ls a folder, glob by name, grep for wording, read_file to read.")
-    return Listing(text="\n".join(lines), files=min(len(here), MAX_LS_FILES), folders=len(subfolders))
+    lines.append("Next: `ls` a folder, `glob` by name, `grep` for wording, `read_file` to read.")
+    # Everything the folder holds, its subfolders' documents too, as its head line, the tree and the folder card
+    # count it; not what the text had room for.
+    return Listing(text="\n".join(lines), files=len(selected), folders=len(subfolders))
 
 
 def _render_tree(
@@ -227,7 +232,9 @@ def _render_tree(
     if in_flight:
         lines.append(f"Not listed here: files still being read ({len(in_flight)}).")
     lines.append("Restricted folders are not listed. " + INDEX_NOTE)
-    return Listing(text="\n".join(lines), files=len(rows), folders=len(cards))
+    # The folder's own subfolders, as `ls` at depth 1 and its README.md count them: not every card in the tree.
+    own = next((card for card in cards if card.path == (folder or "")), None)
+    return Listing(text="\n".join(lines), files=len(rows), folders=len(own.subfolders) if own else 0)
 
 
 def render_readme(
@@ -262,7 +269,7 @@ def render_glob(files: Sequence[EstateFile], pattern: str, path: str | None) -> 
     if not matched:
         return Listing(
             text=f'No file matches "{pattern}" in {where} ({_count(searched, "file")} searched). '
-            "A name says nothing of the content: grep for wording, knowledge_search for meaning.",
+            "A name says nothing of the content: `grep` for wording, `knowledge_search` for meaning.",
             files=0,
         )
     lines = [f'{_count(len(matched), "file")} match "{pattern}" in {where} ({searched} searched):']
@@ -274,7 +281,7 @@ def render_glob(files: Sequence[EstateFile], pattern: str, path: str | None) -> 
     if len(matched) > MAX_GLOB_FILES:
         lines.append(f"… {len(matched) - MAX_GLOB_FILES} more not shown: narrow the pattern or the path.")
     lines.append(INDEX_NOTE)
-    return Listing(text="\n".join(lines), files=min(len(matched), MAX_GLOB_FILES))
+    return Listing(text="\n".join(lines), files=len(matched))
 
 
 def collections_of(files: Sequence[EstateFile]) -> list[str]:

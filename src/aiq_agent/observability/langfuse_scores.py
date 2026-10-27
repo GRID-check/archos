@@ -222,8 +222,19 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "card-validity",
         "CATEGORICAL",
-        "Each envelope card that missed its schema: repaired, or dropped.",
-        categories=("repaired", "dropped"),
+        "Each envelope card that missed its schema: repaired, or dropped. Also `stripped`: a computing "
+        "card (calculation, formula) that arrived with a field stating what the card computes (a result, "
+        "a formula's limits), which validation removed; the comment counts the fields.",
+        categories=("repaired", "dropped", "stripped"),
+    ),
+    ScoreDefinition(
+        "formula-input-provenance",
+        "NUMERIC",
+        "Per formula card the answer carries (ADR-0143): the share of its inputs with a value that say where "
+        "the value is written (a `source`, or a norm `reference`). Below 1 is a default the reader cannot "
+        "trace before changing it. Metadata names the formula and counts inputs, sourced and unknown.",
+        min_value=0,
+        max_value=1,
     ),
     ScoreDefinition(
         "work-report-matches",
@@ -546,9 +557,45 @@ def steer_scores(inbox: Any) -> list[RuntimeScore]:
     return [RuntimeScore("steer-count", float(received), comment=f"applied {applied}")]
 
 
-def card_validity_score(*, outcome: str, card_type: str, index: int) -> RuntimeScore:
-    """One envelope card's schema miss, repaired or dropped."""
-    return RuntimeScore("card-validity", outcome, comment=card_type, item=str(index), metadata={"card_type": card_type})
+def formula_provenance_score(card: dict[str, Any], *, index: int) -> RuntimeScore | None:
+    """How many of a formula card's given defaults say where they are written; ``None`` for any other card.
+
+    An input with no value is not counted against the card: it is shown as
+    unknown, which is the honest outcome, and counted in the metadata instead.
+    A card whose inputs are all unknown scores 1 — nothing on it is untraced.
+    """
+    if card.get("type") != "formula":
+        return None
+    from aiq_agent.cards.models import formula_inputs
+
+    inputs = formula_inputs(card)
+    given = [item for item in inputs if item.get("value") is not None]
+    sourced = [item for item in given if (item.get("source") or "").strip() or item.get("reference")]
+    share = round(len(sourced) / len(given), 4) if given else 1.0
+    name = str((card.get("formula") or {}).get("name"))
+    return RuntimeScore(
+        "formula-input-provenance",
+        share,
+        comment=f"{len(sourced)} of {len(given)} given inputs sourced",
+        item=str(index),
+        metadata={
+            "formula": name,
+            "inputs": len(inputs),
+            "given": len(given),
+            "sourced": len(sourced),
+            "unknown": len(inputs) - len(given),
+        },
+    )
+
+
+def card_validity_score(*, outcome: str, card_type: str, index: int, fields: int | None = None) -> RuntimeScore:
+    """One envelope card's schema miss: repaired, dropped, or `stripped` of ``fields`` it may not state."""
+    metadata: dict[str, Any] = {"card_type": card_type}
+    comment = card_type
+    if fields is not None:
+        metadata["fields"] = fields
+        comment = f"{card_type}: {fields} stated field(s) removed"
+    return RuntimeScore("card-validity", outcome, comment=comment, item=str(index), metadata=metadata)
 
 
 def thread_reply_scores(verdict: str) -> list[RuntimeScore]:

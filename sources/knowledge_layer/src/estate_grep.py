@@ -187,10 +187,11 @@ async def search(
 ) -> ToolOutput:
     """``grep`` on the estate, with its Herleitung row (verb ``search``, mode ``exact`` or ``regex``)."""
     from aiq_agent.common.action_outcome import ActionOutcome
+    from aiq_agent.common.estate_paths import action_place
     from aiq_agent.common.turn_status import ActionRow
     from aiq_agent.common.turn_status import lane_tool_scope
 
-    row = ActionRow("search", query=pattern, mode=(mode or "exact").strip().lower(), target=(path or "/").strip())
+    row = ActionRow("search", query=pattern, mode=(mode or "exact").strip().lower(), **action_place(path))
     outcome = ActionOutcome()
     try:
         with lane_tool_scope("grep"):
@@ -229,7 +230,7 @@ async def _search(
     except (TypeError, ValueError):
         return ToolOutput(f"`context` is a number of lines from 0 to {MAX_CONTEXT_LINES}.", status="error")
     if parsed is not None and parsed.mount is None:
-        return ToolOutput(f'No place "{parsed.path}". ls("/") lists the places there are.', status="error")
+        return ToolOutput(f'No place "{parsed.path}". `ls("/")` lists the places there are.', status="error")
     listable = await backend.listable_files()
     searchable = listable + [file for file in await _restricted_files(backend) if file not in listable]
     narrowed, refusal = _narrowing(searchable, listable, parsed, glob)
@@ -250,6 +251,8 @@ async def _search(
     unsearched = {gap.mount for gap in gaps if gap.reason in ("failed", "unavailable")}
     searched_files = [file for file in searched_files if MOUNT_ROOTS[file.mount].rstrip("/") not in unsearched]
     outcome.searched = len(searched_files)
+    # Whatever could not be served (a place, the deadline, the cap) leaves the row a floor, never a full count.
+    outcome.incomplete = bool(gaps)
     matches = await _verify(chunks, query, searchable, backend)
     outcome.record(
         sum(doc.occurrences for doc in matches),
@@ -257,7 +260,7 @@ async def _search(
         collections=[doc.collection for doc in matches],
     )
     if not matches:
-        outcome.failed = bool(gaps) and not any(gap.reason == "capped" for gap in gaps)
+        # Most of the scope WAS searched: the row is "no hit, incomplete", not a failure (the text says the same).
         return ToolOutput(_no_match(query, where, len(searched_files), gaps), status="ok")
     from aiq_agent.knowledge.restricted_use import note_collections_read
 
@@ -309,7 +312,7 @@ def _narrowing(
         ]
         if not any(not file.restricted for file in files):
             # A folder nothing listable is filed in is a folder that does not exist, restricted or not.
-            return None, f'No folder "{parsed.path}". ls("{MOUNT_ROOTS[parsed.mount]}") lists what is there.'
+            return None, f'No folder "{parsed.path}". `ls("{MOUNT_ROOTS[parsed.mount]}")` lists what is there.'
     elif parsed is not None and parsed.mount is not None:
         if parsed.mount and not glob:
             return None, ""
@@ -403,7 +406,7 @@ async def _candidates(
     if not answered and gaps and all(gap.reason in ("failed", "unavailable") for gap in gaps):
         return ToolOutput(
             "The full-text search could not be read just now. This is NOT a no: nothing was searched. "
-            "Try again, or use knowledge_search.",
+            "Try again, or use `knowledge_search`.",
             status="error",
         ), []
     return chunks, _merged(gaps)
@@ -545,7 +548,7 @@ def _gap_lines(gaps: Sequence[Gap]) -> list[str]:
 
 def _next() -> str:
     return (
-        'An index, not a source: read_file the pages to cite them, or grep with output_mode="content" for '
+        'An index, not a source: `read_file` the pages to cite them, or `grep` with output_mode="content" for '
         "citable passages."
     )
 
@@ -560,7 +563,7 @@ def _no_match(query: Query, where: str, searched: int, gaps: Sequence[Gap]) -> s
         )
     return (
         f'No match for "{query.pattern}" in {searched} files of {where}. A solid no for the WORDING, not the '
-        "topic: knowledge_search finds it by meaning."
+        "topic: `knowledge_search` finds it by meaning."
     )
 
 

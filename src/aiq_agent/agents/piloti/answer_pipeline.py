@@ -89,6 +89,7 @@ from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import claim_scores
 from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
+from aiq_agent.observability.langfuse_scores import formula_provenance_score
 from aiq_agent.observability.langfuse_scores import look_scores
 from aiq_agent.observability.langfuse_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import work_unfiled_scores
@@ -434,6 +435,9 @@ async def _register_envelope_cards(
             continue
         await register_envelope_card(registry, validated)
         positions[index + 1] = len(registry)
+        provenance = formula_provenance_score(validated, index=len(registry))
+        if provenance is not None:
+            emit_scores([provenance], writer="piloti")
         logger.info("answer envelope registered a '%s' card as card %d", validated["type"], len(registry))
     return _renumber_envelope_markers(content, handed=handed, positions=positions, count=len(raw), fallbacks=fallbacks)
 
@@ -444,6 +448,7 @@ async def _checked_envelope_card(
     """One envelope card validated, repaired once on a shape miss, or ``None`` (recorded)."""
     from aiq_agent.cards.envelope import REFUSED_SHAPE
     from aiq_agent.cards.envelope import validate_model_card
+    from aiq_agent.cards.models import stated_result_fields
     from aiq_agent.common.turn_status import CARD_INVALID_DROPPED
     from aiq_agent.common.turn_status import CARD_INVALID_REPAIRED
     from aiq_agent.common.turn_status import emit_card_invalid
@@ -463,6 +468,17 @@ async def _checked_envelope_card(
     if validated is None:
         emit_card_invalid(card_type=card_type, index=index, outcome=CARD_INVALID_DROPPED)
         emit_scores([card_validity_score(outcome="dropped", card_type=card_type, index=index)], writer="piloti")
+        return None
+    # A computing card that stated what it computes (a `result`, a formula's
+    # `limits`) validates, because validation drops unknown fields. Counted, so
+    # a model that keeps stating results is seen rather than silently corrected.
+    stated = stated_result_fields(payload)
+    if stated:
+        logger.info("envelope card %d (%s): %d stated result field(s) removed", index, card_type, stated)
+        emit_scores(
+            [card_validity_score(outcome="stripped", card_type=card_type, index=index, fields=stated)],
+            writer="piloti",
+        )
     return validated
 
 

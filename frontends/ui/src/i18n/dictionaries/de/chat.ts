@@ -521,6 +521,139 @@ export const chat: typeof en.chat = {
       computedNote:
         'Das Ergebnis wird von dieser Karte aus den obigen Werten berechnet, nicht aus der Antwort übernommen.',
     },
+    // Eine benannte Rechenregel, deren Eingangswerte die Lesenden ändern
+    // können (ADR-0143). Gerechnet wird im Browser; eine geänderte Zahl ist
+    // „Ihre Annahme", nicht die der Quelle, und wird nirgends gespeichert.
+    formula: {
+      eyebrow: 'Was wäre, wenn',
+      hint: 'Ändern Sie einen Wert: Das Ergebnis wird sofort neu berechnet. Gespeichert wird nichts.',
+      inputsLabel: 'Eingangswerte',
+      derivationLabel: 'Rechenweg',
+      checksLabel: 'Beurteilung',
+      notesLabel: 'Hinweise',
+      // Neben einem Wert, den die Lesenden geändert haben, und neben jeder
+      // Beurteilung, die auf ihm beruht. Er ist ihre Annahme, nicht die Angabe
+      // der Quelle, und das muss man sehen, bevor man ihn weitergibt.
+      yourAssumption: 'Ihre Annahme',
+      // Neben der Beurteilung im Kopf der Karte, wenn sie auf einer Annahme beruht.
+      withYourAssumptions: 'mit Ihren Annahmen',
+      sourceValue: 'Quelle: {value}',
+      sourceMissing: 'Quelle: kein Wert',
+      // Steht in einem leeren Feld, dessen Wert die Quelle nicht nennt.
+      missingPlaceholder: 'fehlt',
+      fixed: 'vorgegeben',
+      reset: 'Zurücksetzen',
+      resetLabel: 'Alle Werte auf die Angaben der Quelle zurücksetzen',
+      withAssumptions: 'Gerechnet mit Ihren Annahmen, nicht mit den Werten der Quelle.',
+      cannotJudge: 'Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.',
+      measureUnknown: 'Neubau oder Renovierung ist nicht angegeben: Ohne das kann die Karte nicht beurteilen.',
+      majorRenovationUndecided:
+        'Eine größere Renovierung wird an Energiekennzahlen gemessen (Pkt. 4.3), nicht am U-Wert eines Bauteils: Die Karte beurteilt das nicht.',
+      inputRejected: 'Ein eingegebener Wert ist nicht zulässig: Mit ihm kann die Karte nicht beurteilen.',
+      undefinedResult: 'Durch null geteilt: Das Ergebnis ist nicht definiert.',
+      zeroNotPossible: '{quantity} = 0 ist nicht möglich.',
+      invalidNumber: 'Keine Zahl.',
+      outOfRange: 'Zulässig sind {min} bis {max} {unit}.',
+      // Für Screenreader, nachdem das Ergebnis neu berechnet ist: jede
+      // Beurteilung mit Größe, Wert, Grenzwert und Ergebnis.
+      recomputed: 'Neu berechnet. {checks}',
+      checkSpoken: '{name}: {value}, Grenzwert {bound}, {verdict}.',
+      component: {
+        external_wall: 'Außenwand gegen Außenluft',
+        roof_or_ceiling_to_outside_air: 'Decke oder Dachschräge gegen Außenluft',
+        floor_over_outside_air: 'Decke über Außenluft',
+      },
+      measure: {
+        new_build: 'Neubau',
+        renovation: 'Renovierung',
+        major_renovation: 'Größere Renovierung',
+      },
+      stairType: {
+        main: 'Haupttreppe',
+        dwelling: 'Wohnungstreppe',
+        secondary: 'Nebentreppe',
+      },
+      input: {
+        riser: 'Stufenhöhe s',
+        going: 'Stufenauftritt a',
+        thickness: 'Dicke d',
+        conductivity: 'Wärmeleitfähigkeit λ',
+        length: 'Länge',
+        openingArea: 'Lichteintrittsfläche',
+        floorArea: 'Bodenfläche',
+        roomDepth: 'Raumtiefe',
+        overhangDepth: 'Auskragung',
+      },
+      // Wofür „{quantity} = 0 ist nicht möglich." steht.
+      zeroQuantity: {
+        conductivity: 'λ',
+        floorArea: 'Bodenfläche',
+      },
+      term: {
+        riser: 'Stufenhöhe s',
+        going: 'Stufenauftritt a',
+        thickness: 'd {layer}',
+        conductivity: 'λ {layer}',
+        length: '{layer}',
+        openingArea: 'Lichteintrittsfläche',
+        floorArea: 'Bodenfläche',
+        roomDepth: 'Raumtiefe',
+        overhangDepth: 'Auskragung',
+        surfaceInside: 'R_si',
+        surfaceOutside: 'R_se',
+        layerResistance: 'R {layer}',
+        totalResistance: 'R_T',
+        baseShare: 'Grundanforderung (Pkt. 9.1.1)',
+        raisedShare: 'Auskragung über 1,50 m (Pkt. 9.1.3)',
+        overhangIncrement: 'Auskragung über 3,00 m (Pkt. 9.1.3)',
+        overhangIncrementMetres: 'Auskragung über 3,00 m: {metres} angefangene m (Pkt. 9.1.3)',
+        depthIncrement: 'Raumtiefe über 5,00 m (Pkt. 9.1.4)',
+        depthIncrementMetres: 'Raumtiefe über 5,00 m: {metres} angefangene m (Pkt. 9.1.4)',
+      },
+      line: {
+        layerResistance: 'Wärmedurchlasswiderstand {layer}',
+        totalResistance: 'Wärmedurchgangswiderstand R_T',
+        uValue: 'U-Wert',
+        stepMeasure: 'Schrittmaß 2s + a',
+        routeLength: 'Gehweglänge',
+        daylightShare: 'Lichteintrittsfläche je Bodenfläche',
+        requiredShare: 'Erforderlicher Anteil',
+      },
+      check: {
+        stepRule: 'Schrittmaßregel 62 ± 3 cm',
+        riserMax: 'Stufenhöhe',
+        goingMin: 'Stufenauftritt',
+        uMax: 'U-Wert',
+      uMaxRenovation: 'U-Wert, ohne Sanierungskonzept',
+        routeMax: 'Gehweglänge',
+        daylightMin: 'Lichteintrittsfläche',
+      },
+      caveat: {
+        uValueNewBuild:
+          'Höchstwert für den Neubau (OIB-Richtlinie 6, Pkt. 4.4.1, Zeile {row}). Bei der Renovierung mittels Einzelmaßnahmen gilt Pkt. 4.5.',
+        uValueRenovation:
+          'Renovierung mittels Einzelmaßnahmen ohne Sanierungskonzept (Pkt. 4.5 b): der Höchstwert der Zeile {row} um mindestens 24 % unterschritten. Mit einem Sanierungskonzept nach Pkt. 4.5 a) bestimmt dieses den Wert; eine größere Renovierung fällt nicht unter Pkt. 4.5.',
+        uValueMeasureUnknown:
+          'Ob Neubau (Pkt. 4.4.1) oder Renovierung (Pkt. 4.5), ist nicht angegeben; davon hängt der Höchstwert ab.',
+        uValueMajorRenovation:
+          'Größere Renovierung: Es gelten die Anforderungen an Energiekennzahlen nach Pkt. 4.3, nicht die Höchstwerte einzelner Bauteile; die Karte rechnet den U-Wert, beurteilt ihn aber nicht.',
+        uValueScope:
+          'Homogene Schichten nach ÖNORM EN ISO 6946; Luftschichten, inhomogene Schichten und Korrekturen sind nicht berücksichtigt.',
+        routeFromRoom: 'Gemessen von der entferntesten Stelle des Raumes (Pkt. 5.1.1).',
+        routeFromDwelling:
+          'Gemessen ab der Wohnungseingangstüre (Pkt. 5.1.2): für eine Wohnung über höchstens zwei Geschoße, deren Fluchtweg zu einem Treppenhaus oder einer Außentreppe führt.',
+        routeOnlyGuideline2:
+          'Abgebildet ist nur OIB-Richtlinie 2. Für Betriebsbauten (2.1), Garagen und Parkdecks (2.2) und Gebäude mit einem Fluchtniveau über 22 m (2.3) gelten deren eigene Bestimmungen.',
+        daylightRoomsOnly:
+          'Gilt für Aufenthaltsräume (Pkt. 9.1.1), nicht für Räume, deren Nutzung eine geringere oder keine natürliche Belichtung erfordert (Pkt. 9.1.6).',
+        daylightAngle:
+          'Vorausgesetzt ist ein freier Lichteinfall unter 45° zur Horizontalen, seitlich höchstens 30° verschwenkt (Pkt. 9.1.2); die Karte prüft ihn nicht.',
+        daylightOtherLaw:
+          'Der Zuschlag für die Raumtiefe gilt, sofern andere Rechtsmaterien (z. B. die Arbeitsstättenverordnung) nichts Abweichendes bestimmen.',
+        daylightWinterGarden:
+          'Ist dem Fenster ein Wintergarten oder eine verglaste Loggia vorgelagert, gilt die Anforderung für die äußere und die innere Lichteintrittsfläche (Pkt. 9.1.5); die Karte prüft nur eine davon.',
+      },
+    },
     // Ein Dokument, das Piloti in den Arbeitsordner dieser Unterhaltung
     // geschrieben hat. Keine Projektunterlage: nichts davon ist abgelegt,
     // indexiert oder zitierfähig, bis eine Person es ins Projekt übernimmt —
@@ -1108,8 +1241,23 @@ export const chat: typeof en.chat = {
       // Ein Aufruf, unter dem der Zug endete (Stopp, Fehler, Verbindung weg): kein Ergebnis.
       interrupted: 'abgebrochen',
       noHit: 'kein Treffer',
+      // Eine wörtliche Suche ohne Treffer, mit dem, was sie durchsucht hat.
+      noHitIn: 'kein Treffer in {count, plural, one {#\u00A0Dokument} other {#\u00A0Dokumenten}}',
+      // Dasselbe im Dateisystem, wo jede Zahl Dateien zählt: „kein Treffer in 41 Dateien“.
+      noHitInFiles: 'kein Treffer in {count, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}',
       nothingFound: 'nichts gefunden',
+      // Ein Ordner oder Dokument, das es nicht gibt (ein gesperrter Ordner antwortet genauso).
+      notFound: 'nicht gefunden',
+      // Eine Suche nach Dateinamen, auf die keine Datei passt.
+      noFile: 'keine Datei',
       failed: 'fehlgeschlagen',
+      // Eine wörtliche Suche, die nicht alles durchsuchen konnte: ihre Zahl ist eine Untergrenze.
+      // Nur ohne Zahl; mit einer Zahl sagen die gestrichelte Form und die Notiz darunter, dass sie eine Untergrenze ist.
+      incomplete: 'unvollständig',
+      incompleteNote: {
+        hits: 'nicht alles durchsucht – es kann weitere Treffer geben',
+        noHit: 'nicht alles durchsucht – das ist kein Nein',
+      },
       // Hinter „fehlgeschlagen“: was daraus für die Antwort folgt.
       failedNote: 'die Antwort stützt sich nicht darauf',
       // Mehr als fünf Aufrufe in einem Schritt: die schwersten zuerst, der Rest gefaltet.
@@ -1138,6 +1286,38 @@ export const chat: typeof en.chat = {
         web: 'im Web',
         session: 'in diesem Chat',
       },
+      // Die Ablagen des Dateisystems (ADR-0133), wie eine Zeile sie nennt: als Gegenstand eines Verbs …
+      place: {
+        project: 'das Projekt',
+        office: 'die Büroablage',
+        chat: 'die Dateien dieses Chats',
+        law: 'die OIB-Richtlinien',
+        estate: 'alle Ablagen',
+        // … ein Ordner einer anderen Ablage unter ihrem Namen: als Gegenstand „die Büroablage › Vorlagen“,
+        // nach „in“ „in der Büroablage › Vorlagen“, in Anführungszeichen ohne Artikel „Büroablage › Vorlagen“.
+        folderIn: '{place} ›\u00A0{folder}',
+        crumb: {
+          office: 'Büroablage',
+          chat: 'Chat',
+          law: 'OIB-Richtlinien',
+        },
+        // Der Artikel vor dem Namen, wenn ein Ordner folgt: „den Chat › Pläne“, „im Chat › Pläne“.
+        article: {
+          office: { object: 'die', in: 'in der' },
+          chat: { object: 'den', in: 'im' },
+          law: { object: 'die', in: 'in den' },
+        },
+      },
+      // … und nach „in“: „Sucht Dateien „*.pdf“ im Projekt“.
+      placeIn: {
+        project: 'im Projekt',
+        office: 'in der Büroablage',
+        chat: 'in den Dateien dieses Chats',
+        law: 'in den OIB-Richtlinien',
+        estate: 'in allen Ablagen',
+        // Ein Ordner des Projekts: „in 03 Einreichung“.
+        folder: 'in {folder}',
+      },
       // Das Verb steht gedämpft vor seinem Gegenstand: „Sucht wörtlich“ „„Brandabschnitt“ im Projekt“.
       verb: {
         search: 'Sucht',
@@ -1146,7 +1326,12 @@ export const chat: typeof en.chat = {
         searchIn: 'Sucht in',
         searchExactIn: 'Sucht wörtlich in',
         searchRegexIn: 'Sucht nach Muster in',
+        // Ein Ordner, den Piloti aufmacht, um zu sehen, was darin liegt: „Öffnet 03 Einreichung“.
         list: 'Öffnet',
+        // Die wörtliche Suche im Dateisystem: „Durchsucht 03 Einreichung wörtlich nach „Brandabschnitt““.
+        grep: 'Durchsucht',
+        // Die Suche nach Dateinamen: „Sucht im Projekt nach PDF-Dateien“.
+        glob: 'Sucht',
         read: 'Liest',
         look: 'Betrachtet',
         lookup: 'Sucht in anderen Projekten:',
@@ -1159,6 +1344,8 @@ export const chat: typeof en.chat = {
       done: {
         search: 'Gesucht: {name}',
         list: 'Geöffnet: {name}',
+        grep: 'Durchsucht: {name}',
+        glob: 'Gesucht: {name}',
         read: 'Gelesen: {name}',
         look: 'Betrachtet: {name}',
         lookup: 'In anderen Projekten gesucht: {name}',
@@ -1182,6 +1369,21 @@ export const chat: typeof en.chat = {
         query: '„{query}“',
         queryShelf: '„{query}“ {shelf}',
         queryIn: '{target}: „{query}“',
+        grepExact: '{place} wörtlich nach „{query}“',
+        grepRegex: '{place} nach dem Muster „{query}“',
+        // Ein Muster, das nur Wörter verodert: „das Projekt wörtlich nach „EI 90“ oder „REI 90““.
+        // Dieselben Wörter mit Umlaut: die Mustersuche faltet „ü“ nicht wie die wörtliche Suche.
+        grepWords: '{place} nach {words}',
+        grepAny: '{place} wörtlich nach {words}',
+        or: 'oder',
+        names: '{place} nach {what}',
+        // Was eine Suche nach Dateinamen sucht, in Worten, wo das Muster einfach ist.
+        namesWhat: {
+          ext: '{ext}-Dateien',
+          word: 'Dateien mit „{word}“ im Namen',
+          extWord: '{ext}-Dateien mit „{word}“ im Namen',
+          pattern: 'Dateien „{query}“',
+        },
         pages: '{target}, S.\u00A0{pages}',
         clause: '{target}, {pages}',
         where: '{target}, S.\u00A0{pages}, {where}',
@@ -1191,6 +1393,8 @@ export const chat: typeof en.chat = {
         documents: '{count, plural, one {#\u00A0Dokument} other {#\u00A0Dokumente}}',
         folders: '{count, plural, one {#\u00A0Ordner} other {#\u00A0Ordner}}',
         searches: '{count, plural, one {#\u00A0Suche} other {#\u00A0Suchen}}',
+        nameSearches:
+          '{count, plural, one {#\u00A0Suche nach Dateinamen} other {#\u00A0Suchen nach Dateinamen}}',
         lawSearches: '{count, plural, one {#\u00A0Suche im RIS} other {#\u00A0Suchen im RIS}}',
         webSearches: '{count, plural, one {#\u00A0Suche im Web} other {#\u00A0Suchen im Web}}',
         lookupSearches:
@@ -1214,9 +1418,17 @@ export const chat: typeof en.chat = {
       found: {
         hits: '{count, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}}',
         hitsDocuments:
-          '{hits, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}}\u00A0· {documents, plural, one {#\u00A0Dokument} other {#\u00A0Dokumente}}',
+          '{hits, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}} in {documents, plural, one {#\u00A0Dokument} other {#\u00A0Dokumenten}}',
+        // Im Dateisystem zählt jede Zahl Dateien, wie die Ablage sie zählt.
+        hitsFiles:
+          '{hits, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}} in {documents, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}',
         documents: '{count, plural, one {#\u00A0Dokument} other {#\u00A0Dokumente}}',
-        places: '{count, plural, one {#\u00A0Stelle} other {#\u00A0Stellen}}',
+        // Ein Ordner, den es gibt und der nichts enthält: ein neues Projekt, ein Chat ohne Upload.
+        emptyFolder: 'leer',
+        passages: '{count, plural, one {#\u00A0Stelle} other {#\u00A0Stellen}}',
+        // Die Ablagen selbst (`ls /`): wie viele es gibt und was sie halten.
+        places:
+          '{folders, plural, one {#\u00A0Ablage} other {#\u00A0Ablagen}}, {files, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}',
         listing:
           '{files, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}, {folders, plural, one {#\u00A0Ordner} other {#\u00A0Ordner}}',
         files: '{count, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}',
@@ -1506,12 +1718,28 @@ export const chat: typeof en.chat = {
         openEmpty: 'Nicht beurteilbar, weil ein Aufruf nichts ergab: {what}.',
         // Aus einem fehlgeschlagenen oder abgebrochenen Aufruf: der Aufruf als Hauptwort.
         openFailed: 'Nicht beurteilbar, weil {call} fehlgeschlagen ist.',
+        // Eine wörtliche Suche ohne Treffer, die nicht alles durchsuchen konnte: kein Nein.
+        openIncomplete: 'Nicht beurteilbar, weil {call} nicht alles durchsuchen konnte.',
+        // Ein Ordner oder Dokument, das es nicht gibt.
+        openNotFoundFolder: 'Nicht beurteilbar, weil der Ordner „{name}“ nicht gefunden wurde.',
+        openNotFoundDocument: 'Nicht beurteilbar, weil die Datei „{name}“ nicht gefunden wurde.',
+        // Eine Suche nach Dateinamen ohne Treffer: `{place}` mit Präposition, `{what}` wie in der Zeile.
+        openNoFile: 'Nicht beurteilbar, weil {place} keine {what} gefunden wurden.',
+        // Eine Suche im Dateisystem ohne Treffer: `{call}` sagt wie, wo und wonach.
+        openNoHitPlace: 'Nicht beurteilbar, weil {call} keine Fundstelle ergab.',
         openInterrupted: 'Nicht beurteilbar, weil {call} abgebrochen wurde.',
         callQuery: '{call} nach „{query}“',
         callTarget: '{call} „{target}“',
+        callPlace: '{call} {place}',
+        callPlaceQuery: '{call} {place} nach „{query}“',
+        // Eine Mustersuche: „die Suche in der Büroablage › Vorlagen nach dem Muster „EI\s?90““.
+        callPlacePattern: 'die Suche {place} nach dem Muster „{query}“',
         call: {
           search: 'die Suche',
           list: 'das Öffnen des Ordners',
+          grep: 'die wörtliche Suche',
+          grepRegex: 'die Suche nach einem Muster',
+          glob: 'die Suche nach Dateinamen',
           read: 'das Lesen des Dokuments',
           look: 'das Betrachten des Dokuments',
           lookup: 'die Suche in anderen Projekten',

@@ -105,7 +105,7 @@ class TestTheGrouping:
         assert trailer.startswith("## Documents (2, grouped from 3 ranked passages)")
         assert "| 1 | A.pdf | 2 | 3, 5 |" in trailer
         assert "| 2 | B/C.pdf | 1 | 1 |" in trailer
-        assert 'match="exact"' in trailer
+        assert "a literal search counts every mention" in trailer
 
     def test_many_pages_are_counted_not_listed(self):
         group = SimpleNamespace(best=SimpleNamespace(file_name="A.pdf"), passages=12, pages=tuple(range(1, 13)))

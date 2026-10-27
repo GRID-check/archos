@@ -170,7 +170,7 @@ def test_the_stock_read_file_coroutine_takes_what_the_estate_wrapper_passes() ->
     stock = next(t for t in FilesystemMiddleware(backend=StateBackend(), tools=["read_file"]).tools)
     assert set(inspect.signature(stock.coroutine).parameters) >= {"file_path", "runtime", "offset", "limit"}
     assert set(ReadFileSchema.model_fields) == {"file_path", "offset", "limit"}, (
-        "ReadFileSchema changed: EstateReadFileSchema (tools/documents/filesystem.py) extends it"
+        "ReadFileSchema changed: EstateReadFileSchema (tools/documents/filesystem.py) restates its three fields bare"
     )
 
 

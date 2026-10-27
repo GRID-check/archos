@@ -37,6 +37,8 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import replace
+from typing import TYPE_CHECKING
 from typing import Any
 
 from deepagents.backends.protocol import BackendProtocol
@@ -56,6 +58,8 @@ from aiq_agent.common.estate_paths import TEXT_EXTENSIONS
 from aiq_agent.common.estate_paths import EstatePath
 from aiq_agent.common.estate_paths import Mount
 from aiq_agent.common.estate_paths import PathRefused
+from aiq_agent.common.estate_paths import action_place
+from aiq_agent.common.estate_paths import asked_document
 from aiq_agent.common.estate_paths import estate_path
 from aiq_agent.common.estate_paths import file_name_candidates
 from aiq_agent.common.estate_paths import parse_estate_path
@@ -64,6 +68,9 @@ from . import stored_pages
 from .browse import FileRow
 from .browse import file_rows
 from .browse import fold
+
+if TYPE_CHECKING:
+    from .estate_listing import Listing
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +169,9 @@ def no_such_file(path: str, suggestions: Sequence[str] = ()) -> str:
     text = f'No file "{path}".'
     if suggestions:
         text += " Did you mean:\n" + "\n".join(f"- {name}" for name in suggestions[:MAX_SUGGESTIONS])
-    return text + "\nls a folder or glob by name to see what exists; grep or knowledge_search find wording."
+    return (
+        text + "\n`ls` a folder or `glob` by name to see what exists; `grep` finds wording, `knowledge_search` meaning."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -362,49 +371,52 @@ class EstateBackend(BackendProtocol):
         from aiq_agent.common.turn_status import ActionRow
         from aiq_agent.common.turn_status import lane_tool_scope
 
-        row = ActionRow("read", pages=_pages_field(pages, clause))
+        # Running, the row says what the model asked to read, in its own words; settled, what it may name.
+        row = ActionRow("read", target=asked_document(file_path))
         try:
             with lane_tool_scope(READ_FILE_TOOL):
-                output, target, shelf = await self._read_body(file_path, pages, clause, offset, limit)
+                output, facts = await self._read_body(file_path, pages, clause, offset, limit)
         except BaseException:
             row.finish("error")
             raise
-        counts = {"hits": len(output.hits), "documents": 1 if output.hits else None} if output.hits else None
-        row.finish(output.status, counts=counts, target=target, shelf=shelf)
+        _settle_read(row, output, facts, asked=_pages_field(pages, clause))
         return output
 
     async def _read_body(
         self, file_path: str, pages: Any, clause: Any, offset: int, limit: int
-    ) -> tuple[ToolOutput, str | None, str | None]:
+    ) -> tuple[ToolOutput, ReadRowFacts]:
+        """The read, and what its row may say: the resolved document only when ``may_name`` (ADR-0088)."""
         from aiq_agent.knowledge.restricted_use import may_name
 
         try:
             parsed = parse_estate_path(file_path)
         except PathRefused as refusal:
-            return ToolOutput(str(refusal), status="error"), None, None
+            return ToolOutput(str(refusal), status="error"), ReadRowFacts()
         if parsed.mount is None or parsed.leaf is None:
-            return ToolOutput(_directory_message(parsed.path), status="error"), None, None
+            return ToolOutput(_directory_message(parsed.path), status="error"), ReadRowFacts()
         if fold(parsed.leaf) == "readme.md":
             card = await self._folder_card(parsed)
             if card is not None:
-                return card, parsed.path, None
+                folder = parsed.path[: -len(parsed.leaf)]
+                return ToolOutput(card.text), ReadRowFacts(card_folder=folder, card=card)
         resolution = await self.resolve(parsed)
         file = resolution.file
         if file is None:
-            return ToolOutput(no_such_file(parsed.path, resolution.suggestions), status="error"), None, None
-        target = file.row.file_name if may_name(file.row.collection) else None
-        shelf = file.row.shelf
+            # A miss and a guessed restricted path alike: the name the model asked for, and nothing it did not.
+            miss = ToolOutput(no_such_file(parsed.path, resolution.suggestions), status="error")
+            return miss, ReadRowFacts(target=asked_document(parsed.path), missing=True)
+        facts = ReadRowFacts(target=file.row.file_name if may_name(file.row.collection) else None, shelf=file.row.shelf)
         if file.row.file_name.lower().endswith(MODEL_EXTENSIONS):
-            return ToolOutput(_model_message(file)), target, shelf
+            return ToolOutput(_model_message(file)), facts
         clause_text = str(clause).strip().strip(".") if clause is not None else ""
         if clause_text:
-            return await self._read_clause(file, clause_text, resolution.note), target, shelf
+            return await self._read_clause(file, clause_text, resolution.note), facts
         try:
             wanted = parse_pages(pages)
         except PagesRefused as refusal:
-            return ToolOutput(str(refusal), status="error"), target, shelf
+            return ToolOutput(str(refusal), status="error"), replace(facts, refused_pages=True)
         output = await self._read_pages(file, wanted, offset, limit, resolution.note)
-        return output, target, shelf
+        return output, facts
 
     async def _page_text(self, file: EstateFile, wanted: set[int] | None) -> stored_pages.PageText | None:
         return await self._page_reader(file.row.collection, file.row.file_name, wanted=wanted)
@@ -524,7 +536,7 @@ class EstateBackend(BackendProtocol):
             return ToolOutput(_store_down(file), status="error")
         if not chunks:
             return ToolOutput(
-                f'{file.path} has no Punkt "{clause}". read_file without clause returns its Gliederung.',
+                f'{file.path} has no Punkt "{clause}". `read_file` without `clause` returns its Gliederung.',
                 status="empty",
             )
         hits = tuple(_chunk_hit(file, chunk) for chunk in chunks[:12])
@@ -548,7 +560,7 @@ class EstateBackend(BackendProtocol):
             logger.info("estate: no folder abstracts", exc_info=True)
             return {}
 
-    async def _folder_card(self, parsed: EstatePath) -> ToolOutput | None:
+    async def _folder_card(self, parsed: EstatePath) -> Listing | None:
         """``<folder>/README.md`` as the folder's card, unless a real document holds that name there."""
         from .estate_listing import has_real_readme
         from .estate_listing import render_readme
@@ -560,8 +572,7 @@ class EstateBackend(BackendProtocol):
         folder = stored_folder(files, parsed.mount, "" if parsed.mount == "law" else parsed.folder)
         if folder is None or has_real_readme(files, parsed.mount, folder):
             return None
-        card = render_readme(files, parsed, abstracts=await self._abstracts(files, parsed.mount))
-        return ToolOutput(card.text) if card is not None else None
+        return render_readme(files, parsed, abstracts=await self._abstracts(files, parsed.mount))
 
     async def ls(self, path: str | None, *, depth: int = 1, drafts: bool = False) -> ToolOutput:
         """``ls`` on the estate (agent-filesystem.md §3): a folder, or the tree as folder cards. An index."""
@@ -570,7 +581,7 @@ class EstateBackend(BackendProtocol):
         from .estate_listing import render_folder
         from .estate_listing import render_root
 
-        row = ActionRow("list", target=(path or "/").strip())
+        row = ActionRow("list", **action_place(path))
         try:
             try:
                 parsed = parse_estate_path(path, directory=True)
@@ -601,8 +612,8 @@ class EstateBackend(BackendProtocol):
 
         from .estate_listing import render_glob
 
-        target = " · ".join(part for part in ((path or "").strip(), (pattern or "").strip()) if part)
-        row = ActionRow("list", target=target)
+        # A name pattern is what was looked for: the row's query, beside the place it was looked in.
+        row = ActionRow("list", query=(pattern or "").strip(), **action_place(path))
         try:
             if path:
                 try:
@@ -614,7 +625,7 @@ class EstateBackend(BackendProtocol):
         except BaseException:
             row.finish("error")
             raise
-        _settle_listing(row, listing)
+        row.finish("ok" if listing.files else "empty", counts={"files": listing.files})
         return ToolOutput(listing.text, status="ok")
 
     async def grep(
@@ -828,14 +839,62 @@ async def _in_flight(files: Sequence[EstateFile]) -> list[str]:
         return []
 
 
-def _settle_listing(row: Any, listing: Any) -> None:
-    """A listing's Herleitung row: ``list`` with its file and folder counts (ADR-0132)."""
+def _settle_listing(row: Any, listing: Listing) -> None:
+    """A listing's Herleitung row: ``list`` with its file and folder counts (ADR-0132).
+
+    A folder that is not there is ``empty`` and ``missing`` („nicht gefunden“), not
+    a failure; a restricted folder answers exactly so (listing is not use,
+    ADR-0088). A folder that is there and holds nothing (a new project, a chat
+    without uploads) is ``ok`` with its zeros: it was found, and it is empty.
+    """
     if listing.error:
-        row.finish("error")
+        row.finish("empty", missing=True)
         return
-    counts = {"files": listing.files, "folders": listing.folders}
-    empty = not listing.files and not listing.folders
-    row.finish("empty" if empty else "ok", counts=counts)
+    row.finish("ok", counts={"files": listing.files, "folders": listing.folders})
+
+
+@dataclass(frozen=True)
+class ReadRowFacts:
+    """What a ``read_file`` row may say about the read, beside the blocks it served (ADR-0132, ADR-0088)."""
+
+    #: The document by name: the resolved one only when ``may_name``; on a miss, the leaf the model asked for.
+    target: str | None = None
+    shelf: str | None = None
+    #: The path resolved to nothing (or to a restricted file, which answers the same).
+    missing: bool = False
+    #: The ``pages`` value was refused: the model's mistake, never printed on the row.
+    refused_pages: bool = False
+    #: A folder card (``<folder>/README.md``): the folder, and the listing it answered with.
+    card_folder: str | None = None
+    card: Listing | None = None
+
+
+def _settle_read(row: Any, output: ToolOutput, facts: ReadRowFacts, *, asked: str | None) -> None:
+    """A read's Herleitung row (ADR-0132): the document it may name, the pages it SERVED, what it found.
+
+    The pages are the ones the blocks hold, not the ones asked for: a read without
+    ``pages`` serves the opening page, and one cut at the character budget serves
+    fewer than it was asked. A Punkt stays a Punkt; a refused ``pages`` value is
+    the model's mistake, never printed. A miss is ``empty`` („nicht gefunden“).
+    """
+    if facts.card is not None:
+        # A folder card is the folder's listing, and its row says so.
+        counts = {"files": facts.card.files, "folders": facts.card.folders}
+        row.finish("ok", counts=counts, verb="list", **action_place(facts.card_folder))
+        return
+    if facts.missing:
+        row.finish("empty", missing=True, target=facts.target)
+        return
+    fields: dict[str, Any] = {key: value for key, value in (("target", facts.target), ("shelf", facts.shelf)) if value}
+    served = sorted({hit.page for hit in output.hits if getattr(hit, "page", None)})
+    if asked and asked.startswith("Pkt."):
+        fields["pages"] = asked
+    elif served:
+        fields["pages"] = pages_label(served)
+    elif asked and not facts.refused_pages:
+        fields["pages"] = asked
+    counts = {"hits": len(output.hits), "documents": 1} if output.hits else None
+    row.finish(output.status, counts=counts, **fields)
 
 
 def _store_down(file: EstateFile) -> str:
@@ -875,13 +934,13 @@ def _pages_field(pages: Any, clause: Any) -> str | None:
 
 
 def _directory_message(path: str) -> str:
-    return f'"{path}" is a folder, not a file: ls("{path}") lists it, glob finds files by name.'
+    return f'"{path}" is a folder, not a file: `ls("{path}")` lists it, `glob` finds files by name.'
 
 
 def _model_message(file: EstateFile) -> str:
     return (
         f"{file.path} is a building model (IFC), not a text: its numbers are measured, not read. "
-        f'ifc_query and ifc_measure answer from it (document="{file.row.file_name}").'
+        f'`ifc_query` and `ifc_measure` answer from it (document="{file.row.file_name}").'
     )
 
 
@@ -913,7 +972,7 @@ def _read_preamble(file: EstateFile, text: stored_pages.PageText, served: Sequen
         lines.append(
             f"Page(s) {pages_label(drawings)} are a drawing: the text is a vision model's reading of the sheet, "
             "not its printed text. Read off, not measured; "
-            f'look(document="{file.row.file_name}", page={drawings[0]}) shows it.'
+            f'`look(document="{file.row.file_name}", page={drawings[0]})` shows it.'
         )
     return "\n".join(lines)
 

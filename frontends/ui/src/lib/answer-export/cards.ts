@@ -216,6 +216,9 @@ export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
 
   // Findings. Walked field by field.
   calculation: 'content',
+  // Exported as the rule, its case and the SOURCE's inputs: a reader's what-if never
+  // reaches a document, because it was never stored (ADR-0143).
+  formula: 'content',
   building_section: 'content',
   stair_diagram: 'content',
   dimension_diagram: 'content',
@@ -490,6 +493,17 @@ const checkRow = (
 }
 
 /**
+ * A nested field that is no finding, by its path. `type` is the discriminator.
+ * `step` inside a formula card is an input's arrow-key increment, which the
+ * reader's field moves by; printed, it would read as „Aus Schritt 0,5“. A
+ * calculation operand's `step` names the earlier step its value comes from,
+ * and stays. Exported, like {@link SKIPPED_FIELDS}, so the spec that checks
+ * every stated value reaches the document subtracts exactly this.
+ */
+export const skippedNested = (path: string, key: string): boolean =>
+  key === 'type' || (key === 'step' && path.startsWith('formula.'))
+
+/**
  * Anything nested inside a table cell, flattened to text.
  *
  * `path` and `name` travel with the value so a leaf three levels down is
@@ -524,7 +538,7 @@ const nestedText = (path: string, name: string, value: unknown, t: Translator): 
   if (isReference(value)) return referenceText(value)
   if (isRecord(value)) {
     return Object.entries(value)
-      .filter(([key]) => key !== 'type')
+      .filter(([key]) => !skippedNested(path, key))
       .map(
         ([key, entry]) =>
           `${fieldLabel(`${path}.${key}`, key, t, value)}: ${nestedText(`${path}.${key}`, key, entry, t)}`
@@ -548,7 +562,7 @@ const objectTable = (path: string, rows: CardRecord[], t: Translator): DocBlock 
   const keys: string[] = []
   for (const row of rows) {
     for (const key of Object.keys(row)) {
-      if (key !== 'type' && !keys.includes(key)) keys.push(key)
+      if (!skippedNested(path, key) && !keys.includes(key)) keys.push(key)
     }
   }
   return {
