@@ -1,4 +1,4 @@
-# Grid documentation
+# Piloti documentation
 
 Piloti is the workspace for architects: a planning office runs its work in it,
 and Piloti, the agent, is a colleague in that office. [`VISION.md`](../VISION.md)
