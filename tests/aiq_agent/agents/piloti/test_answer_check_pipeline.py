@@ -14,7 +14,9 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 
+from aiq_agent.agents.piloti import answer_check
 from aiq_agent.agents.piloti import answer_pipeline
+from aiq_agent.agents.piloti.answer_check import TurnCheck
 from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
 from aiq_agent.agents.piloti.ledger import assemble_result
 from aiq_agent.common.citation_verification import SourceEntry
@@ -48,10 +50,13 @@ def _workspace_read(call_id: str = "w1") -> list:
     ]
 
 
-async def _finalize(messages: list, registry: SourceRegistry | None = None, judge=None, **kwargs):
+async def _finalize(
+    messages: list, registry: SourceRegistry | None = None, judge=None, context: tuple[str, ...] = (), **kwargs
+):
     registry = registry if registry is not None else SourceRegistry()
+    check = TurnCheck(judge or stub_judge(), context)
     final = await finalize_answer(
-        messages, registry=registry, tools=[], repair=None, turn_sources=[], judge=judge or stub_judge(), **kwargs
+        messages, registry=registry, tools=[], repair=None, turn_sources=[], check=check, **kwargs
     )
     return final, assemble_result({"messages": messages}, final, turn_sources=[], turn_measurements=[])
 
@@ -85,7 +90,7 @@ async def test_the_check_reads_the_question_the_answer_and_this_turns_records():
     prose = "Anna Berger hat 3 Freigaben, davon 2 offen."
     messages = [HumanMessage("Was liegt bei Anna?"), *_workspace_read(), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
 
-    evidence = await _evidence(messages, project_context="PROJECT_CONTEXT v1\nconfirmed:\n- address: Lacknergasse 98")
+    evidence = await _evidence(messages, context=("PROJECT_CONTEXT v1\nconfirmed:\n- address: Lacknergasse 98",))
 
     assert evidence.question == "Was liegt bei Anna?" and evidence.answer == prose
     assert any(r.startswith("project-approvals-list (read):") and "Anna Berger" in r for r in evidence.records)
@@ -156,6 +161,7 @@ async def test_a_quote_no_passage_holds_caps_a_high_check_at_medium():
 async def test_an_unavailable_check_surfaces_no_level_and_is_scored(monkeypatch):
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    monkeypatch.setattr(answer_check, "emit_scores", lambda scores, **_: written.extend(scores))
     messages = [HumanMessage("Was liegt bei Anna?"), *_workspace_read(), AIMessage(ANSWER_ENVELOPE.format(prose="3."))]
 
     final, state = await _finalize(messages, judge=failing_judge())
@@ -176,6 +182,7 @@ async def test_no_judge_at_all_is_the_same_unavailable_turn():
 async def test_a_judged_level_and_the_dropped_labels_are_scored(monkeypatch):
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    monkeypatch.setattr(answer_check, "emit_scores", lambda scores, **_: written.extend(scores))
     prose = "Anna Berger hat 3 Freigaben. Laut OIB gilt das immer [4]."
     messages = [HumanMessage("Was liegt bei Anna?"), *_workspace_read(), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
 
@@ -287,6 +294,7 @@ FILED_ID = "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c"
 async def test_a_reported_proposal_no_write_filed_is_dropped_and_scored(monkeypatch):
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    monkeypatch.setattr(answer_check, "emit_scores", lambda scores, **_: written.extend(scores))
     envelope = (
         '```answer_json\n{"kind": "work", "confidence": {"level": "high"}, '
         '"answer": "Den Ordner Brandschutz habe ich vorgeschlagen.", "work": {"proposed": ['
@@ -372,6 +380,7 @@ async def test_the_look_scores_count_looks_and_say_whether_a_region_look_came_fi
 
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    monkeypatch.setattr(answer_check, "emit_scores", lambda scores, **_: written.extend(scores))
     registry = SourceRegistry()
     registry.add(_look_place_entry())
     token = set_card_registry(CardRegistry())
@@ -397,6 +406,7 @@ async def test_an_overview_only_turn_that_states_a_drawing_value_scores_zero(mon
 
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    monkeypatch.setattr(answer_check, "emit_scores", lambda scores, **_: written.extend(scores))
     registry = SourceRegistry()
     registry.add(_look_place_entry(region=None))
     token = set_card_registry(CardRegistry())
@@ -416,6 +426,7 @@ async def test_an_overview_only_turn_that_states_a_drawing_value_scores_zero(mon
 async def test_a_turn_with_no_drawing_value_writes_no_looked_before_measurement(monkeypatch):
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    monkeypatch.setattr(answer_check, "emit_scores", lambda scores, **_: written.extend(scores))
     messages = [HumanMessage("Hallo"), AIMessage(ANSWER_ENVELOPE.format(prose="Guten Tag."))]
 
     await _finalize(messages)

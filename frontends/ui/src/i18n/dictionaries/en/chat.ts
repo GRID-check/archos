@@ -2110,15 +2110,6 @@ export const chat = {
           'Medium: a statement the answer rests on is an inference or general knowledge, or a record read does not cover a figure.',
         low: 'Low: a statement about the law, a figure or a deadline is not backed, or a citation did not hold up.',
       },
-      // What the answer's sentences rest on, in reading order: what holds first.
-      mix: {
-        supported: '{count, plural, one {# statement backed} other {# statements backed}}',
-        observed: '{count, plural, one {# statement read off the drawing} other {# statements read off the drawing}}',
-        reasoning: '{count, plural, one {# inference} other {# inferences}}',
-        modelKnowledge: '{count, plural, one {# from general knowledge} other {# from general knowledge}}',
-        normativeUncited: '{count, plural, one {# legal statement without a source} other {# legal statements without a source}}',
-        dropped: '{count, plural, one {# citation not verified} other {# citations not verified}}',
-      },
       cappedReasons: {
         ungrounded: 'Capped by a statement the answer rests on that nothing backs.',
         quoteUnverified:

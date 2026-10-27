@@ -2135,15 +2135,6 @@ export const chat: typeof en.chat = {
           'Mittel: eine tragende Aussage ist eine Einschätzung oder allgemeines Wissen, oder ein gelesener Eintrag deckt eine Zahl nicht.',
         low: 'Niedrig: eine Aussage zu Recht, Zahl oder Frist ist nicht belegt, oder eine Quellenangabe hielt der Prüfung nicht stand.',
       },
-      // Woraus die Sätze der Antwort bestehen, in Lesereihenfolge: was hält zuerst.
-      mix: {
-        supported: '{count, plural, one {# Aussage belegt} other {# Aussagen belegt}}',
-        observed: '{count, plural, one {# Aussage von der Zeichnung abgelesen} other {# Aussagen von der Zeichnung abgelesen}}',
-        reasoning: '{count, plural, one {# Einschätzung} other {# Einschätzungen}}',
-        modelKnowledge: '{count, plural, one {# Aussage aus allgemeinem Wissen} other {# Aussagen aus allgemeinem Wissen}}',
-        normativeUncited: '{count, plural, one {# Rechtsaussage ohne Beleg} other {# Rechtsaussagen ohne Beleg}}',
-        dropped: '{count, plural, one {# Beleg nicht verifiziert} other {# Belege nicht verifiziert}}',
-      },
       cappedReasons: {
         ungrounded: 'Begrenzt durch eine tragende Aussage, hinter der kein Beleg steht.',
         quoteUnverified:

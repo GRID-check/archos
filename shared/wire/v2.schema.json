@@ -754,7 +754,7 @@
     },
     "ConfidenceCheck": {
       "additionalProperties": false,
-      "description": "What the answer check found (``common/claim_judge.py``, ADR-0139).\n\n``judged``: ``answer_confidence`` is its level (under the quote gate), and\n``findings`` names what holds it down. ``unavailable``: the check could not\nrun, and the turn surfaces no level.",
+      "description": "What the answer check found (ADR-0139): ``judged``, a level and what holds it down; or ``unavailable``.",
       "properties": {
         "findings": {
           "items": {

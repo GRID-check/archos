@@ -268,16 +268,8 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "claims-by-class",
         "CATEGORICAL",
         "Retired with the per-sentence provenance classes (ADR-0139); no longer written. Kept so older traces chart.",
-        categories=(
-            "quoted",
-            "cited",
-            "cited_dropped",
-            "record",
-            "action",
-            "measured",
-            "observed",
-            "reasoning",
-            "model_knowledge",
+        categories=tuple(  # noqa: SIM905 - one line for a retired list
+            "quoted cited cited_dropped record action measured observed reasoning model_knowledge".split()
         ),
     ),
     ScoreDefinition(

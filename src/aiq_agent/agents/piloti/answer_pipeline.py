@@ -58,24 +58,16 @@ from aiq_agent.common.citation_verification import expand_grouped_citations
 from aiq_agent.common.citation_verification import get_turn_captures
 from aiq_agent.common.citation_verification import is_look_place
 from aiq_agent.common.citation_verification import merged_citations
-from aiq_agent.common.citation_verification import quoted_spans
-from aiq_agent.common.citation_verification import resolve_unlisted_numbers
 from aiq_agent.common.citation_verification import sanitize_report
-from aiq_agent.common.citation_verification import turn_passages
 from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.citation_verification import verify_quoted_spans
-from aiq_agent.common.claim_judge import Check
-from aiq_agent.common.claim_judge import Evidence
-from aiq_agent.common.claim_judge import JudgeFn
-from aiq_agent.common.claim_judge import Passage
 from aiq_agent.common.quote_stamps import stamp_quote_lines
 from aiq_agent.common.tool_validation import validate_tool_availability
 from aiq_agent.common.turn_status import emit_anatomy_dropped
 from aiq_agent.common.turn_status import emit_answer_repair
 from aiq_agent.common.turn_status import emit_citation_check
+from aiq_agent.common.unlisted_citations import writer_numbering
 from aiq_agent.common.workspace_records import filed_proposal_ids
-from aiq_agent.common.workspace_records import records_from_messages
-from aiq_agent.observability.langfuse_scores import answer_check_scores
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import dropped_citation_scores
@@ -86,6 +78,9 @@ from aiq_agent.observability.langfuse_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import work_unfiled_scores
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
 
+from .answer_check import Answered
+from .answer_check import TurnCheck
+from .answer_check import check_answer
 from .answer_shape import drop_restated_mindmaps
 from .dsml import strip_and_salvage_dsml_tool_calls
 from .markers import detect_and_strip_confidence_marker
@@ -528,17 +523,6 @@ class _Verified:
     unverified_quotes: tuple[UnverifiedQuote, ...]
 
 
-def _turn_numbered(turn: Sequence[Any]) -> dict[int, list[SourceEntry]]:
-    """This turn's passages by the „Result N" each block printed them under (``turn_passages``)."""
-    return turn_passages(
-        [
-            (getattr(msg, "name", "") or "", msg.content, getattr(msg, "artifact", None))
-            for msg in turn
-            if isinstance(msg, ToolMessage)
-        ]
-    )
-
-
 def _verify(
     content: str,
     registry: SourceRegistry,
@@ -556,11 +540,8 @@ def _verify(
     """
     # Labelled, not stripped: a claim whose pointer did not hold must not read
     # like every other unmarked sentence (ADR-0125). The locus beside a marker
-    # is held to the passage it resolves to. The writer-facing list is THIS
-    # turn's passages, by content (``_writer_numbering``): Piloti's model never sees
-    # the registry numbered, and reading [N] as a registry position (the
-    # registry is cumulative across the conversation) cited project drawings
-    # to OIB passages of the turn before (ADR-0139).
+    # is held to the passage it resolves to, and a source list the answer did
+    # not write is THIS turn's passages by content (``unlisted_citations``).
     verification = verify_citations(
         content, registry, reference_sources=numbering, label_dropped=True, check_locus=True
     )
@@ -1139,23 +1120,15 @@ async def finalize_answer(
     turn_sources: Sequence[SourceEntry] | None = None,
     card_repair: CardRepairFn | None = None,
     measured_values: Sequence[str] = (),
-    project_context: str | None = None,
-    inventory: str | None = None,
-    judge: JudgeFn | None = None,
+    check: TurnCheck | None = None,
 ) -> FinalAnswer:
     """Run every post-answer stage and return the answer as the reader gets it.
-
-    ``judge`` grades the final answer against everything the turn registered
-    (``common/claim_judge.py``), the turn context's ``project_context`` and
-    ``inventory`` among it; without one an answer that graded itself surfaces
-    no level, only that the check was unavailable.
 
     ``turn_sources`` is this turn's capture, which the caller must pass when it
     finalises AFTER ``end_turn_capture``: the ContextVar is back to its prior
     value by then, so the trailer-grounding veto would read an empty list and
     abstain on every turn. ``None`` falls back to the ambient log for direct
-    callers. ``measured_values`` are this turn's measurements' value texts:
-    a sentence stating one is stamped ``measured``.
+    callers. ``measured_values`` and ``check`` are the answer check's (``answer_check``).
 
     Raises :class:`EmptySourceRegistryError` when a data-source lookup ran,
     nothing came back, and the answer is a ``ruling``: a ruling without a
@@ -1181,14 +1154,10 @@ async def finalize_answer(
     if not any(not is_look_place(source) for source in sources):
         ruling = extracted.meta is not None and extracted.meta.kind == "ruling"
         found_nothing = _require_retrieval(_passage_lookup_attempted(turn), tools, ruling=ruling)
-    # An answer with no source list: each [N] names the passage of this turn
-    # that carries its sentences (ADR-0139), never a registry position.
-    numbered = _turn_numbered(turn) if sources else {}
     if sources:
         emit_citation_check(source_count=len(sources))
-        verified = await _verify_with_quote_patch(
-            extracted.content, registry, repair, resolve_unlisted_numbers(extracted.content, numbered) or None
-        )
+        numbering = writer_numbering(extracted.content, turn)
+        verified = await _verify_with_quote_patch(extracted.content, registry, repair, numbering)
     else:
         # Nothing to resolve against: every [N] the model wrote is labelled.
         verified = _verify(extracted.content, registry)
@@ -1221,24 +1190,10 @@ async def finalize_answer(
     # like the quote check it repeats: each line reads the registry's passages.
     pairs = [(source.entry, source.number) for source in cited if not is_look_place(source.entry)]
     stamps = await asyncio.to_thread(stamp_quote_lines, content, pairs, registry.all_sources())
-    readings = relied_readings(looks, cited)
-    _emit_look_scores(looks, looks_made, content, cited, readings)
-    emit_scores(dropped_citation_scores(content.count(DROPPED_CITATION_MARKER)), writer="piloti")
-    check = None
-    if extracted.confidence is not None:
-        evidence = _evidence(
-            messages,
-            content,
-            cited,
-            [*_trailer_captures(turn_sources), *sources],
-            stamps,
-            grounding,
-            turn=turn,
-            measured_values=measured_values,
-            readings=readings,
-            context=[part for part in (project_context, inventory) if part],
-        )
-        check = await _check_answer(evidence, judge)
+    _emit_answer_scores(looks, looks_made, content, cited, readings := relied_readings(looks, cited))
+    seen, quotes = [*_trailer_captures(turn_sources), *sources], grounding.unverified_quotes
+    answered = Answered(messages, content, cited, seen, stamps, quotes, turn, measured_values, readings)
+    checked = await check_answer(answered, check) if extracted.confidence is not None else None
     final_messages = list(messages)
     final_messages[index] = messages[index].model_copy(update={"content": content})
     return FinalAnswer(
@@ -1260,86 +1215,26 @@ async def finalize_answer(
         removed_citations=grounding.removed_citations,
         quote_stamps=tuple(stamps),
         dialect_repairs=tuple(dialect.repairs),
-        confidence_check=check,
+        confidence_check=checked,
         lookup_found_nothing=found_nothing,
     )
 
 
-def _emit_look_scores(
+def _emit_answer_scores(
     looks: Sequence[dict[str, Any]],
     looks_made: int,
     content: str,
     cited: Sequence[CitedSource],
     readings: Sequence[str],
 ) -> None:
-    """``look-count`` and ``looked-before-measurement`` at the turn's end (ADR-0128, docs/observability/langfuse.md)."""
+    """``look-count``, ``looked-before-measurement`` (ADR-0128) and ``citations-dropped-labelled`` at the turn's end."""
     from aiq_agent.tools.look.cards import drawing_value_status
 
     drawing_value, region_look_first = drawing_value_status(looks, content, cited, readings)
     emit_scores(
-        look_scores(looks=looks_made, drawing_value=drawing_value, region_look_first=region_look_first),
+        [
+            *look_scores(looks=looks_made, drawing_value=drawing_value, region_look_first=region_look_first),
+            *dropped_citation_scores(content.count(DROPPED_CITATION_MARKER)),
+        ],
         writer="piloti",
     )
-
-
-def _question(messages: Sequence[Any]) -> str:
-    """The newest question: the last ``HumanMessage``'s text."""
-    human = next((msg for msg in reversed(messages) if isinstance(msg, HumanMessage)), None)
-    return content_to_text(human.content) if human is not None else ""
-
-
-def _evidence(
-    messages: Sequence[Any],
-    content: str,
-    cited: Sequence[CitedSource],
-    registered: Sequence[SourceEntry],
-    quote_stamps: Sequence[dict[str, Any]],
-    grounding: _Grounding,
-    *,
-    turn: Sequence[Any],
-    measured_values: Sequence[str],
-    readings: Sequence[str],
-    context: Sequence[str],
-) -> Evidence:
-    """Everything the turn registered that the answer could rest on, for the answer check.
-
-    The answer's cited passages under the ``[N]`` it shows, then every other
-    passage the turn retrieved; this turn's workspace records and the turn
-    context (profile, inventory), never Piloti's own earlier words
-    (``workspace_records``); the measurements and readings; and which
-    quotations the server's quote check found in their passage.
-    """
-    passages: list[Passage] = []
-    seen: set[tuple[str, str]] = set()
-    labelled = [(f"[{s.number}] {s.entry.citation_key}", s.entry, True) for s in cited if s.number is not None]
-    for label, entry, is_cited in [*labelled, *((e.citation_key, e, False) for e in registered)]:
-        key = (entry.citation_key, entry.chunk_text or "")
-        if not entry.chunk_text or key in seen or is_look_place(entry):
-            continue
-        seen.add(key)
-        passages.append(Passage(label, entry.chunk_text, is_cited))
-    not_found = [quote.quote for quote in grounding.unverified_quotes]
-    not_found += [stamp["text"] for stamp in quote_stamps if stamp.get("status") == "not_found"]
-    found = [stamp["text"] for stamp in quote_stamps if stamp.get("status") == "verbatim"]
-    if passages:
-        found += [quote for quote in quoted_spans(content) if quote not in not_found]
-    records = [f"{record.operation} ({record.outcome}): {record.text}" for record in records_from_messages(turn)]
-    return Evidence(
-        question=_question(messages),
-        answer=prose_without_references(content),
-        passages=passages,
-        records=[*records, *context],
-        measurements=[value for value in measured_values if value],
-        readings=[*readings, *(f"[{s.number}] {s.entry.read}" for s in cited if s.entry.read)],
-        quotes_found=found,
-        quotes_not_found=not_found,
-    )
-
-
-async def _check_answer(evidence: Evidence, judge: JudgeFn | None) -> dict[str, Any]:
-    """One judge call; the check wire-ready, ``unavailable`` without a judge or a usable reply. Scored."""
-    check: Check | None = await judge(evidence) if judge is not None else None
-    emit_scores(answer_check_scores(check.level if check is not None else None), writer="piloti")
-    if check is None:
-        return {"status": "unavailable"}
-    return {"status": "judged", "level": check.level, "findings": [f.to_wire() for f in check.findings]}

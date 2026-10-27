@@ -131,13 +131,9 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
     max_calls_per_round: int = Field(
         default=12,
         description=(
-            "How many tool calls of ONE round are actually run. A runaway guard, not a doctrine: "
-            "a round costs one whatever it fans out into, and a model that opens all five members "
-            "of a Richtlinien-Familie at once is using its round well — so this sits far above any "
-            "batch the prompt asks for. What it bounds is the shape nothing else sees, a round of "
-            "sixty parallel calls into the stores, which `max_input_tokens_per_turn` only notices "
-            "at the START of the next round. The calls past it are answered with a notice saying "
-            "they may be issued again next round, never removed from the message. 0 disables it."
+            "How many tool calls of ONE round are run: a runaway guard far above any batch the prompt "
+            "asks for, bounding a round of sixty parallel calls `max_input_tokens_per_turn` only sees at "
+            "the next round. The calls past it are told to ask again next round, never removed. 0 disables it."
         ),
     )
     repair_pass: bool = Field(
@@ -152,21 +148,13 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
     card_repair_llm: LLMRef | None = Field(
         default=None,
         description=(
-            "The small model that fixes ONE card the answer envelope carried and the validator "
-            "refused (`cards/repair.py`): the failed object, the refusal and the type's shape in a "
-            "message of a few thousand tokens, instead of the full-context round the `emit_card` "
-            "retry cost. Unset drops a card that fails validation, and records that it did; it also "
-            "turns off the quote repair (`repair_pass`), which runs on this model."
+            "The small model that fixes ONE envelope card the validator refused (`cards/repair.py`) in a "
+            "few thousand tokens. Unset drops such a card, and records it, and turns off `repair_pass`."
         ),
     )
     claim_judge_llm: LLMRef | None = Field(
         default=None,
-        description=(
-            "The model that grades the final answer against everything the turn registered (passages, "
-            "records, measurements, readings, the quote check), in one structured call at temperature 0 "
-            "after the answer streamed (ADR-0139). Resolved per turn like the follow-ups stage's model "
-            "(the org's override and BYOK for that group). Unset surfaces no confidence level."
-        ),
+        description="Grades each answer on its turn's evidence, per turn on the follow-ups group (ADR-0139).",
     )
     verbose: bool = Field(default=False, description="Whether to enable verbose logging")
     skills_enabled: bool = Field(

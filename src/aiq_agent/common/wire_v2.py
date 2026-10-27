@@ -417,12 +417,7 @@ class ConfidenceFinding(_Model):
 
 
 class ConfidenceCheck(_Model):
-    """What the answer check found (``common/claim_judge.py``, ADR-0139).
-
-    ``judged``: ``answer_confidence`` is its level (under the quote gate), and
-    ``findings`` names what holds it down. ``unavailable``: the check could not
-    run, and the turn surfaces no level.
-    """
+    """What the answer check found (ADR-0139): ``judged``, a level and what holds it down; or ``unavailable``."""
 
     status: Literal["judged", "unavailable"]
     level: Literal["low", "medium", "high"] | None = None

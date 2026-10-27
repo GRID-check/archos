@@ -1377,9 +1377,6 @@ export const createSessionsSlice: StateCreator<
       if (assistantMessage.quoteStamps && assistantMessage.quoteStamps.length > 0) {
         provenance.quoteStamps = assistantMessage.quoteStamps
       }
-      if (assistantMessage.claimStamps && assistantMessage.claimStamps.length > 0) {
-        provenance.claimStamps = assistantMessage.claimStamps
-      }
       if (assistantMessage.confidenceCheck) provenance.confidenceCheck = assistantMessage.confidenceCheck
       if (assistantMessage.answerConfidenceVersion) {
         provenance.answerConfidenceVersion = assistantMessage.answerConfidenceVersion

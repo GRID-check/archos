@@ -6,7 +6,6 @@ import { Chip } from '@/components/ui/chip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
 import type { ConfidenceCheck } from '@/lib/conversations/confidence-check'
-import { claimMix, type ClaimMix, type ClaimStamp } from '@/lib/conversations/message-claim-stamps'
 import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
 
 /** The three self-assessment levels the model can report. */
@@ -24,16 +23,6 @@ const CAPPED_REASON_KEYS: Record<AnswerConfidenceCappedReason, string> = {
   measurement_only: 'measurementOnly',
   citation_fallback: 'citationFallback',
 }
-
-/** The mix line's parts, in the order they are read: what holds first, what does not last. */
-const MIX_PARTS: readonly (keyof ClaimMix)[] = [
-  'supported',
-  'observed',
-  'reasoning',
-  'modelKnowledge',
-  'normativeUncited',
-  'dropped',
-]
 
 interface ConfidenceChipProps {
   /** The model's guarded self-assessment; undefined/null renders nothing. */
@@ -59,8 +48,6 @@ interface ConfidenceChipProps {
    * it, which keeps the copy of the answer-level floors it was computed with.
    */
   version?: 1 | 2
-  /** Where each sentence comes from; read only under rule 2. */
-  claimStamps?: readonly ClaimStamp[]
   /**
    * What the answer check found (ADR-0139). Judged: the level is the check's,
    * and the tooltip names the statements it found unbacked or contradicted.
@@ -79,15 +66,13 @@ interface ConfidenceChipProps {
  *
  * The tooltip explains the chip in full: what the level means, the model's own
  * reason (when given), the self-assessment caveat, any deterministic cap, and
- * under rule 2 the mix of what the sentences rest on
- * („5 Aussagen belegt · 1 Einschätzung · 1 Rechtsaussage ohne Beleg").
+ * for a checked answer (ADR-0139) the statements the check found unbacked.
  */
 export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   confidence,
   cappedReason,
   reason,
   version,
-  claimStamps,
   check,
 }) => {
   const t = useTranslations('chat')
@@ -130,12 +115,6 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   // Trim only to DETECT an empty/whitespace-only reason; the reason itself is
   // rendered verbatim, as the wire contract promises.
   const displayReason = reason?.trim() ? reason : undefined
-  const mix = byClaim && claimStamps && claimStamps.length > 0 ? claimMix(claimStamps) : null
-  const mixText = mix
-    ? MIX_PARTS.filter((part) => mix[part] > 0)
-        .map((part) => t(`confidence.byClaim.mix.${part}`, { count: mix[part] }))
-        .join(' · ')
-    : ''
 
   return (
     <Tooltip>
@@ -159,11 +138,6 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
             `${byClaim ? 'confidence.byClaim.levelMeanings' : 'confidence.levelMeanings'}.${confidence}`
           )}
         </span>
-        {mixText ? (
-          <span className="mt-1 block" data-testid="confidence-claim-mix">
-            {mixText}
-          </span>
-        ) : null}
         {displayReason ? (
           <span className="mt-1 block">
             <span className="font-medium">

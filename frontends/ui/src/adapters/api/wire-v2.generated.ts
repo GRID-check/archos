@@ -50,7 +50,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [userMessageSche
 
 export const confidenceFindingSchema = z.object({ "problem": z.enum(["unbacked","contradicted"]), "reason": z.string().max(300), "source": z.string().max(200), "statement": z.string().max(300) }).describe("A statement the answer relies on that its evidence does not back, or contradicts.")
 
-export const confidenceCheckSchema = z.object({ "findings": z.array(confidenceFindingSchema).optional(), "level": z.union([z.enum(["low","medium","high"]), z.null()]).default(null), "status": z.enum(["judged","unavailable"]) }).describe("What the answer check found (``common/claim_judge.py``, ADR-0139).\n\n``judged``: ``answer_confidence`` is its level (under the quote gate), and\n``findings`` names what holds it down. ``unavailable``: the check could not\nrun, and the turn surfaces no level.")
+export const confidenceCheckSchema = z.object({ "findings": z.array(confidenceFindingSchema).optional(), "level": z.union([z.enum(["low","medium","high"]), z.null()]).default(null), "status": z.enum(["judged","unavailable"]) }).describe("What the answer check found (ADR-0139): ``judged``, a level and what holds it down; or ``unavailable``.")
 
 export const heartbeatValueSchema = z.object({ "every_ms": z.number().int().gt(0) })
 

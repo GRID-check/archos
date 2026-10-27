@@ -101,7 +101,6 @@ import { CardSlot, CardSlotLiveProvider, forgetArrivals } from './CardSlotArriva
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import type { QuoteStamp } from '@/lib/conversations/message-quote-stamps'
 import type { ConfidenceCheck } from '@/lib/conversations/confidence-check'
-import type { ClaimStamp } from '@/lib/conversations/message-claim-stamps'
 import { projectKeysIn } from '@/lib/text/answer-directives'
 import { AnswerDataProvider, type AnswerData } from '@/shared/components/MarkdownRenderer/answer-block-context'
 import { AnswerProjectStrip } from '@/shared/components/MarkdownRenderer/project-binding'
@@ -262,8 +261,6 @@ export interface AgentResponseProps {
    * verbatim in the ConfidenceChip tooltip.
    */
   answerConfidenceReason?: string
-  /** Where each sentence comes from (`TurnResult.claim_stamps`); the chip explains its level with them. */
-  claimStamps?: ClaimStamp[]
   /** What the answer check found (`TurnResult.confidence_check`, ADR-0139); the chip names its findings. */
   confidenceCheck?: ConfidenceCheck
   /** Which rule computed the confidence: 2 the per-sentence formula; absent on older answers. */
@@ -792,7 +789,6 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidence,
   answerConfidenceCappedReason,
   answerConfidenceReason,
-  claimStamps,
   confidenceCheck,
   answerConfidenceVersion,
   skillsActivated,
@@ -816,7 +812,6 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidence?: AnswerConfidence
   answerConfidenceCappedReason?: AnswerConfidenceCappedReason
   answerConfidenceReason?: string
-  claimStamps?: ClaimStamp[]
   confidenceCheck?: ConfidenceCheck
   answerConfidenceVersion?: 1 | 2
   skillsActivated?: string[]
@@ -907,7 +902,6 @@ const AnswerDetails = memo(function AnswerDetails({
               confidence={answerConfidence}
               cappedReason={answerConfidenceCappedReason}
               reason={answerConfidenceReason}
-              claimStamps={claimStamps}
               check={confidenceCheck}
               version={answerConfidenceVersion}
             />
@@ -963,7 +957,6 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   answerConfidence,
   answerConfidenceCappedReason,
   answerConfidenceReason,
-  claimStamps,
   confidenceCheck,
   answerConfidenceVersion,
   lookupFoundNothing,
@@ -1371,12 +1364,8 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // nothing without a level, and the feedback row needs a `messageId` — gating
   // the row on anything less let it mount as an empty band (bare spacer + its
   // own gap) on a meta turn that has neither.
-  // An unavailable answer check has no level and still says so.
   const hasConfidence =
-    answerConfidence === 'low' ||
-    answerConfidence === 'medium' ||
-    answerConfidence === 'high' ||
-    confidenceCheck?.status === 'unavailable'
+    ['low', 'medium', 'high'].includes(answerConfidence ?? '') || confidenceCheck?.status === 'unavailable'
   // Rating somebody else's answer is not the reader's to do (readOnly).
   const hasFeedback = !readOnly && Boolean(messageId)
   // The copy actions. A still-arriving answer cannot be copied — half a
@@ -1838,7 +1827,6 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                       answerConfidence={answerConfidence}
                       answerConfidenceCappedReason={answerConfidenceCappedReason}
                       answerConfidenceReason={answerConfidenceReason}
-                      claimStamps={claimStamps}
                       confidenceCheck={confidenceCheck}
                       answerConfidenceVersion={answerConfidenceVersion}
                       skillsActivated={skillsActivated}
@@ -2041,7 +2029,6 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                           answerConfidence={answerConfidence}
                           answerConfidenceCappedReason={answerConfidenceCappedReason}
                           answerConfidenceReason={answerConfidenceReason}
-                          claimStamps={claimStamps}
                           confidenceCheck={confidenceCheck}
                           answerConfidenceVersion={answerConfidenceVersion}
                           skillsActivated={skillsActivated}

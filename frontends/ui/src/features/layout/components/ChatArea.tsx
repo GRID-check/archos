@@ -2190,7 +2190,6 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
             answerConfidence={message.answerConfidence}
             answerConfidenceCappedReason={message.answerConfidenceCappedReason}
             answerConfidenceReason={message.answerConfidenceReason}
-            claimStamps={message.claimStamps}
             confidenceCheck={message.confidenceCheck}
             answerConfidenceVersion={message.answerConfidenceVersion}
             lookupFoundNothing={message.lookupFoundNothing}

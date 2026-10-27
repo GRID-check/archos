@@ -14,7 +14,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
+from aiq_agent.agents.piloti.answer_check import turn_check
+from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.common import claim_judge
 from aiq_agent.common.claim_judge import Evidence
 from aiq_agent.common.claim_judge import Passage
@@ -177,9 +178,12 @@ class TestTheCall:
         monkeypatch.setattr(runner, "resolve_group_llm", lambda llm, group, label: resolved.append((llm, group)) or llm)
         base = _Model()
 
-        assert PilotiAgent(llm_provider=MagicMock(), tools=[], claim_judge_llm=base)._claim_judge() is not None
-        assert resolved == [(base, AgentGroup.FOLLOW_UPS)]
-        assert PilotiAgent(llm_provider=MagicMock(), tools=[])._claim_judge() is None
+        state = ResearchAgentState(messages=[], project_context="PROJECT_CONTEXT v1\nconfirmed:\n- address: X")
+
+        check = turn_check(state, base)
+        assert check.judge is not None and resolved == [(base, AgentGroup.FOLLOW_UPS)]
+        assert any("PROJECT_CONTEXT v1" in part for part in check.context)
+        assert turn_check(state, None).judge is None
 
 
 @pytest.mark.parametrize("answer", stored_answers(), ids=lambda answer: answer["id"])

@@ -63,7 +63,6 @@ from aiq_agent.common.citation_verification import is_look_tool
 from aiq_agent.common.citation_verification import record_turn_capture
 from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
-from aiq_agent.common.claim_judge import JudgeFn
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var
 from aiq_agent.common.data_sources import disabled_source_notice
 from aiq_agent.common.data_sources import source_id_for_call
@@ -121,6 +120,7 @@ from aiq_agent.tools.bim.measurement_sources import end_measurement_capture
 from aiq_agent.tools.bim.measurement_sources import get_measurement_captures
 from aiq_agent.turn.answer_stream import streaming_call
 
+from .answer_check import turn_check
 from .answer_pipeline import CardRepairFn
 from .answer_pipeline import FinalAnswer
 from .answer_pipeline import LiveAnswer
@@ -926,15 +926,6 @@ def _fetch_results(
     return results
 
 
-def _turn_inventory(state: Any) -> str:
-    """The document inventory the turn context showed the model, for the answer check (ADR-0139)."""
-    from aiq_agent.knowledge.inventory import in_scope_shelves_from_context
-    from aiq_agent.knowledge.inventory import render_inventory_block
-
-    documents = [doc.model_dump() for doc in (getattr(state, "available_documents", None) or [])]
-    return render_inventory_block(documents, in_scope_shelves=in_scope_shelves_from_context() or None)
-
-
 def _capture_sources(
     tool_name: str,
     content: str,
@@ -1049,20 +1040,14 @@ class PilotiAgent:
                 spend before synthesis is forced, read off the cost tracker
                 that already meters them. The bound that protects the person
                 paying, now that rounds do not: 0 disables it.
-            max_calls_per_round: How many tool calls of ONE round are run. A
-                runaway guard and not a doctrine — a round costs one however
-                wide it fans out, and a wide round is usually the model using
-                it well — so it sits far above any batch the prompt asks for.
-                The calls past it are answered with a notice saying they may be
-                issued again next round, never deleted from the AIMessage. 0
-                disables it.
+            max_calls_per_round: How many tool calls of ONE round are run: a
+                runaway guard far above any batch the prompt asks for. The calls
+                past it are told to ask again next round, never deleted. 0 disables it.
             callbacks: Optional LangGraph callbacks.
             envelope_json_mode_with_tools: Whether provider JSON mode is ALSO
                 bound on tool-bound research iterations, not only on the
-                tool-free forced-synthesis call. Default False: some
-                OpenRouter-routed providers accept the parameter and then stop
-                emitting tool calls, a silent degradation the per-call
-                fallback cannot see.
+                tool-free forced-synthesis call. Default False: some providers
+                accept it and then stop emitting tool calls, unseen.
             repair_pass: Correct a misremembered quotation in place, on
                 ``card_repair_llm`` (``quote_patch.py``, ADR-0067). Off, or
                 without that model, ships the marker.
@@ -1071,10 +1056,8 @@ class PilotiAgent:
                 thousand tokens instead of the full-context round the
                 ``emit_card`` retry used to cost. ``None`` drops a card that
                 fails validation, and records that it did.
-            claim_judge_llm: The model that grades the final answer against
-                everything the turn registered (``common/claim_judge.py``,
-                ADR-0139), resolved per turn like the follow-ups stage's model.
-                ``None`` leaves the check unavailable and the turn with no level.
+            claim_judge_llm: Grades each answer on its turn's evidence (``answer_check``,
+                ADR-0139). ``None`` leaves the check unavailable and no level.
         """
         self.card_repair_llm = card_repair_llm
         self.claim_judge_llm = claim_judge_llm
@@ -1456,15 +1439,6 @@ class PilotiAgent:
             return None
         return quote_patcher(self.card_repair_llm)
 
-    def _claim_judge(self) -> JudgeFn | None:
-        """The turn's answer check on the org's follow-ups model (override, BYOK); ``None`` when none is configured."""
-        from aiq_agent.common.claim_judge import llm_judge
-        from aiq_agent.common.model_overrides import AgentGroup
-        from aiq_agent.stages.runner import resolve_group_llm
-
-        llm = resolve_group_llm(self.claim_judge_llm, AgentGroup.FOLLOW_UPS, label="claim judge")
-        return llm_judge(llm) if llm is not None else None
-
     def _card_repairer(self) -> CardRepairFn | None:
         """The turn's card repair on the small model; ``None`` when none is configured."""
         llm = self.card_repair_llm
@@ -1551,12 +1525,9 @@ class PilotiAgent:
         """Execute one research turn: the tool loop, then the post-answer pipeline.
 
         What THIS turn's tools returned and MEASURED are captured on two
-        separate ledgers beside the cumulative registry. That separation is
-        the safety property: ``citation_grounded`` derives from the registry
-        and is the only route to a surfaced "high", while the normative brake
-        is gated on its ABSENCE; a measurement in the registry would hand an
-        uncited legal verdict the evidence of the basement measurement standing
-        next to it (see ``bim.measurement_sources``).
+        separate ledgers beside the cumulative registry: a measurement in the
+        registry would be a passage an uncited legal verdict could rest on
+        (see ``bim.measurement_sources``).
         """
         binding = self._resolve_turn(turn)
         # Which static half THIS turn renders, when it is the bundled fallback:
@@ -1609,9 +1580,7 @@ class PilotiAgent:
             turn_sources=turn_sources,
             card_repair=self._card_repairer(),
             measured_values=[measurement.value_text for measurement in turn_measurements],
-            project_context=state.project_context,
-            inventory=_turn_inventory(state),
-            judge=self._claim_judge(),
+            check=turn_check(state, self.claim_judge_llm),
         )
         self._emit_final_report(final)
         # The "already read" digest, appended at turn end: this turn's captures
