@@ -491,7 +491,7 @@ describe('GridCards hands a card its proposal_id', () => {
     ],
     [
       'project_profile_patch',
-      { type: 'project_profile_patch', title: 'Update', rationale: 'Because.', patch: PATCH, proposal_id: PROPOSAL_ID },
+      { type: 'project_profile_patch', title: 'Update', rationale: 'Because.', patch: PATCH.map((op) => ({ ...op, value: op.value })), proposal_id: PROPOSAL_ID },
     ],
     [
       'file_operation_proposal',

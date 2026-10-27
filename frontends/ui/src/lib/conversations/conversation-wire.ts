@@ -113,7 +113,7 @@ const createMessageSchema = z.object({
   // UI display type (user, agent_response, …); stored in metadata so past
   // chats rehydrate with the right renderer. Length-capped like `id`.
   messageType: z.string().min(1).max(64).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   // Kept as a plain string: the chat store sends both ISO strings and
   // `String(Date)` output, which `.datetime()` would reject.
   createdAt: z.string().optional(),

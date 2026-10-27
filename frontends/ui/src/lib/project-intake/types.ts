@@ -635,7 +635,7 @@ export const INTERNAL_INTAKE_RESPONSE_SCHEMAS = {
   withdraw: internalIntakeWithdrawResponseSchema,
   progress: internalIntakeProgressResponseSchema,
   finish: internalIntakeFinishResponseSchema,
-} as const satisfies Record<InternalIntakeOp, z.ZodTypeAny>
+} as const satisfies Record<InternalIntakeOp, z.ZodType>
 
 export type InternalIntakeResponse<Op extends InternalIntakeOp = InternalIntakeOp> = z.infer<
   (typeof INTERNAL_INTAKE_RESPONSE_SCHEMAS)[Op]

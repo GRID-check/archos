@@ -9,6 +9,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "list"
             },
             "answerMessageId": {
@@ -29,6 +30,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "propose"
             },
             "answerMessageId": {
@@ -40,12 +42,16 @@
               "format": "uuid"
             },
             "proposals": {
+              "minItems": 1,
+              "maxItems": 20,
               "type": "array",
               "items": {
                 "type": "object",
                 "properties": {
                   "page": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000
                   },
                   "shape": {
                     "type": "string",
@@ -55,15 +61,21 @@
                     ]
                   },
                   "x": {
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
                   },
                   "y": {
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
                   },
                   "w": {
                     "anyOf": [
                       {
-                        "type": "number"
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
                       },
                       {
                         "type": "null"
@@ -73,7 +85,9 @@
                   "h": {
                     "anyOf": [
                       {
-                        "type": "number"
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
                       },
                       {
                         "type": "null"
@@ -115,8 +129,7 @@
                   "body"
                 ],
                 "additionalProperties": false
-              },
-              "maxItems": 20
+              }
             }
           },
           "required": [
@@ -129,6 +142,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "create"
             },
             "answerMessageId": {
@@ -140,12 +154,16 @@
               "format": "uuid"
             },
             "marks": {
+              "minItems": 1,
+              "maxItems": 20,
               "type": "array",
               "items": {
                 "type": "object",
                 "properties": {
                   "page": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000
                   },
                   "shape": {
                     "type": "string",
@@ -155,15 +173,21 @@
                     ]
                   },
                   "x": {
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
                   },
                   "y": {
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
                   },
                   "w": {
                     "anyOf": [
                       {
-                        "type": "number"
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
                       },
                       {
                         "type": "null"
@@ -173,7 +197,9 @@
                   "h": {
                     "anyOf": [
                       {
-                        "type": "number"
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
                       },
                       {
                         "type": "null"
@@ -215,8 +241,7 @@
                   "body"
                 ],
                 "additionalProperties": false
-              },
-              "maxItems": 20
+              }
             }
           },
           "required": [
@@ -229,6 +254,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "update"
             },
             "answerMessageId": {
@@ -266,7 +292,8 @@
             "dueOn": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                 },
                 {
                   "type": "null"
@@ -312,6 +339,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "delete"
             },
             "answerMessageId": {
@@ -337,6 +365,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "reply"
             },
             "answerMessageId": {
@@ -368,6 +397,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "room"
             },
             "answerMessageId": {
@@ -388,6 +418,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "point"
             },
             "answerMessageId": {
@@ -399,13 +430,18 @@
               "format": "uuid"
             },
             "page": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1
             },
             "x": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             },
             "y": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             },
             "label": {
               "type": "string",
@@ -425,6 +461,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "highlight"
             },
             "answerMessageId": {
@@ -436,19 +473,28 @@
               "format": "uuid"
             },
             "page": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1
             },
             "x": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             },
             "y": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             },
             "w": {
-              "type": "number"
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
             },
             "h": {
-              "type": "number"
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
             },
             "label": {
               "type": "string",
@@ -471,6 +517,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "look"
             },
             "answerMessageId": {
@@ -482,19 +529,28 @@
               "format": "uuid"
             },
             "page": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1
             },
             "x": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             },
             "y": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             },
             "w": {
-              "type": "number"
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
             },
             "h": {
-              "type": "number"
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
             }
           },
           "required": [
@@ -507,6 +563,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "leave"
             },
             "answerMessageId": {
@@ -574,6 +631,7 @@
                     "type": "number"
                   }
                 ],
+                "items": false,
                 "minItems": 4,
                 "maxItems": 4
               },
@@ -605,46 +663,30 @@
                 "type": "string"
               },
               "basis": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "assigneeName": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "dueOn": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "onCurrentRevision": {
                 "type": "boolean"
               },
               "createdByName": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "createdAt": {
@@ -666,13 +708,9 @@
                       "type": "string"
                     },
                     "createdByName": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
                   },
@@ -680,8 +718,7 @@
                     "authorKind",
                     "body",
                     "createdByName"
-                  ],
-                  "additionalProperties": true
+                  ]
                 }
               }
             },
@@ -702,8 +739,7 @@
               "createdByName",
               "createdAt",
               "replies"
-            ],
-            "additionalProperties": true
+            ]
           }
         }
       },
@@ -711,8 +747,7 @@
         "documentId",
         "documentName",
         "annotations"
-      ],
-      "additionalProperties": true
+      ]
     },
     "InternalAnnotationProposeResponse": {
       "type": "object",
@@ -751,23 +786,15 @@
                 "type": "number"
               },
               "w": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "number",
+                  "null"
                 ]
               },
               "h": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "number",
+                  "null"
                 ]
               },
               "kind": {
@@ -793,8 +820,7 @@
               "h",
               "kind",
               "body"
-            ],
-            "additionalProperties": true
+            ]
           }
         }
       },
@@ -802,8 +828,7 @@
         "documentId",
         "documentName",
         "proposed"
-      ],
-      "additionalProperties": true
+      ]
     },
     "InternalAnnotationCreateResponse": {
       "type": "object",
@@ -842,23 +867,15 @@
                 "type": "number"
               },
               "w": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "number",
+                  "null"
                 ]
               },
               "h": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "number",
+                  "null"
                 ]
               },
               "kind": {
@@ -884,8 +901,7 @@
               "h",
               "kind",
               "body"
-            ],
-            "additionalProperties": true
+            ]
           }
         }
       },
@@ -893,8 +909,7 @@
         "documentId",
         "documentName",
         "created"
-      ],
-      "additionalProperties": true
+      ]
     },
     "InternalAnnotationUpdateResponse": {
       "type": "object",
@@ -933,33 +948,21 @@
               ]
             },
             "assigneeUserId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "assigneeName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "dueOn": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "kind": {
@@ -973,8 +976,7 @@
             "body": {
               "type": "string"
             }
-          },
-          "additionalProperties": true
+          }
         },
         "after": {
           "type": "object",
@@ -989,33 +991,21 @@
               ]
             },
             "assigneeUserId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "assigneeName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "dueOn": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "kind": {
@@ -1029,8 +1019,7 @@
             "body": {
               "type": "string"
             }
-          },
-          "additionalProperties": true
+          }
         },
         "noted": {
           "type": "boolean"
@@ -1045,8 +1034,7 @@
         "before",
         "after",
         "noted"
-      ],
-      "additionalProperties": true
+      ]
     },
     "InternalAnnotationDeleteResponse": {
       "type": "object",
@@ -1073,8 +1061,7 @@
         "annotationId",
         "number",
         "body"
-      ],
-      "additionalProperties": true
+      ]
     },
     "InternalAnnotationReplyResponse": {
       "type": "object",
@@ -1101,8 +1088,7 @@
         "annotationId",
         "number",
         "replies"
-      ],
-      "additionalProperties": true
+      ]
     },
     "InternalRoomResponse": {
       "type": "object",
@@ -1129,13 +1115,9 @@
                 ]
               },
               "page": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "integer",
+                  "null"
                 ]
               },
               "viewport": {
@@ -1153,8 +1135,7 @@
                     "required": [
                       "page",
                       "y"
-                    ],
-                    "additionalProperties": true
+                    ]
                   },
                   {
                     "type": "null"
@@ -1162,13 +1143,9 @@
                 ]
               },
               "selectedMarkNumber": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "integer",
+                  "null"
                 ]
               },
               "draft": {
@@ -1198,8 +1175,7 @@
                       "y",
                       "w",
                       "h"
-                    ],
-                    "additionalProperties": true
+                    ]
                   },
                   {
                     "type": "null"
@@ -1214,8 +1190,7 @@
               "viewport",
               "selectedMarkNumber",
               "draft"
-            ],
-            "additionalProperties": true
+            ]
           }
         },
         "marks": {
@@ -1231,8 +1206,7 @@
           "required": [
             "open",
             "proposed"
-          ],
-          "additionalProperties": true
+          ]
         }
       },
       "required": [
@@ -1240,8 +1214,7 @@
         "documentName",
         "peers",
         "marks"
-      ],
-      "additionalProperties": true
+      ]
     },
     "InternalRoomGestureResponse": {
       "type": "object",
@@ -1253,6 +1226,7 @@
           "type": "string"
         },
         "ok": {
+          "type": "boolean",
           "const": true
         }
       },
@@ -1260,8 +1234,7 @@
         "documentId",
         "documentName",
         "ok"
-      ],
-      "additionalProperties": true
+      ]
     }
   }
 }

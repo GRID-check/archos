@@ -169,8 +169,8 @@ export const MAX_OPERATION_SUMMARY_LENGTH = 300
  */
 export const operationInputSchema = z
   .object({
-    params: z.record(z.string()).optional(),
-    query: z.record(z.unknown()).optional(),
+    params: z.record(z.string(), z.string()).optional(),
+    query: z.record(z.string(), z.unknown()).optional(),
     body: z.unknown().optional(),
     /** The version the agent read, sent as If-Match when the proposal is applied: a newer one refuses it. */
     ifMatch: z.string().min(1).max(256).optional(),

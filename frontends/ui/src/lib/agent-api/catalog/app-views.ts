@@ -56,7 +56,7 @@ export interface AppTool {
   readonly title: string
   readonly description: string
   /** Flat arguments, as a view's `callServerTool` sends them: `id` is the operation's path id. */
-  readonly input: z.ZodObject<z.ZodRawShape>
+  readonly input: z.ZodObject
   /** Whether the arguments besides `id` are the operation's body; otherwise it is called with no body. */
   readonly sendsBody: boolean
 }

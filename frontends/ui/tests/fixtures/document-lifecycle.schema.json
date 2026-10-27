@@ -9,6 +9,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "create"
             },
             "projectId": {
@@ -43,6 +44,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "update"
             },
             "documentId": {
@@ -75,6 +77,7 @@
           "type": "object",
           "properties": {
             "op": {
+              "type": "string",
               "const": "submit"
             },
             "documentId": {
@@ -86,12 +89,13 @@
               "format": "uuid"
             },
             "reviewerUserIds": {
+              "default": [],
+              "maxItems": 20,
               "type": "array",
               "items": {
                 "type": "string",
                 "minLength": 1
-              },
-              "maxItems": 20
+              }
             },
             "reviewer": {
               "type": "string",
@@ -133,12 +137,13 @@
       "type": "object",
       "properties": {
         "reviewerUserIds": {
+          "default": [],
+          "maxItems": 20,
           "type": "array",
           "items": {
             "type": "string",
             "minLength": 1
-          },
-          "maxItems": 20
+          }
         },
         "orderMessage": {
           "type": "string",
@@ -177,123 +182,75 @@
           ]
         },
         "contentType": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "fileSize": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "integer",
+            "null"
           ]
         },
         "contentHash": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "submittedBy": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "submittedAt": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "reviewedBy": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "reviewedAt": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "approvedBy": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "approvedAt": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "publishedBy": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "publishedAt": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "reviewComment": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "createdBy": {
@@ -329,8 +286,7 @@
         "createdBy",
         "createdAt",
         "updatedAt"
-      ],
-      "additionalProperties": true
+      ]
     },
     "documentVersionListResponse": {
       "type": "object",
@@ -346,13 +302,9 @@
           ]
         },
         "publishedVersionId": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "versions": {
@@ -382,123 +334,75 @@
                 ]
               },
               "contentType": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "fileSize": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "integer",
+                  "null"
                 ]
               },
               "contentHash": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "submittedBy": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "submittedAt": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "reviewedBy": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "reviewedAt": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "approvedBy": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "approvedAt": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "publishedBy": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "publishedAt": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "reviewComment": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "createdBy": {
@@ -534,8 +438,7 @@
               "createdBy",
               "createdAt",
               "updatedAt"
-            ],
-            "additionalProperties": true
+            ]
           }
         },
         "reviewerUserIds": {
@@ -559,8 +462,7 @@
             "required": [
               "userId",
               "name"
-            ],
-            "additionalProperties": true
+            ]
           }
         }
       },
@@ -569,8 +471,7 @@
         "lifecycle",
         "publishedVersionId",
         "versions"
-      ],
-      "additionalProperties": true
+      ]
     },
     "documentVersionResponse": {
       "type": "object",
@@ -600,123 +501,75 @@
               ]
             },
             "contentType": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "fileSize": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "integer",
+                "null"
               ]
             },
             "contentHash": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "submittedBy": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "submittedAt": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "reviewedBy": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "reviewedAt": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "approvedBy": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "approvedAt": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "publishedBy": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "publishedAt": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "reviewComment": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "createdBy": {
@@ -752,14 +605,12 @@
             "createdBy",
             "createdAt",
             "updatedAt"
-          ],
-          "additionalProperties": true
+          ]
         }
       },
       "required": [
         "version"
-      ],
-      "additionalProperties": true
+      ]
     }
   }
 }
