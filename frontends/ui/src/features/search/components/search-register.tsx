@@ -117,11 +117,14 @@ function useColumnFits(columns: readonly RegisterColumn[], hits: readonly Docume
         return documentReadFamily(hit.status) === 'readable' ? null : labels.readState(documentReadFamily(hit.status))
     }
   }
+  // A name that runs on into empty cells after it (`titleSpan`) has their room
+  // too, so only the names kept to their own column say what it should be.
+  const ownColumn = hits.filter((hit) => titleSpan(columns, hit) === 1)
   return columns.map((column) => {
     const min = headerRem(t(`register.columns.${column}`))
-    const want = valuesRem(hits.map((hit) => text(column, hit)), SETTING[column])
-    if (column !== 'title') return { min, want }
-    return { min, want: want + (hits.some((hit) => hit.superseded) ? SUPERSEDED_REM : 0), rest: true }
+    if (column !== 'title') return { min, want: valuesRem(hits.map((hit) => text(column, hit)), SETTING[column]) }
+    const want = valuesRem(ownColumn.map((hit) => text(column, hit)), SETTING[column])
+    return { min, want: want + (ownColumn.some((hit) => hit.superseded) ? SUPERSEDED_REM : 0), rest: true }
   })
 }
 
