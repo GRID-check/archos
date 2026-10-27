@@ -324,7 +324,7 @@ def passages_in(tool_name: str, text: str) -> list[tuple[str, int | None, str, s
     (``extract_sources_from_tool_result``), which recovers the file and page from
     the citation key.
     """
-    from aiq_agent.common.citation_verification import extract_sources_from_tool_result
+    from aiq_agent.citations.extraction import extract_sources_from_tool_result
     from aiq_agent.common.grounding_block import get_grounding_block
 
     block = get_grounding_block(text)

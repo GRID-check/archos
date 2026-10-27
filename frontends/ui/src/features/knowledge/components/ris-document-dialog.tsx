@@ -33,6 +33,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
+import { ApiRequestError } from '@/adapters/api/api-error'
+import { getRisDocument, type LoadedDocument } from '@/adapters/api/knowledge-client'
 import { useTranslations } from '@/i18n'
 import { locatePassageInText } from '../lib/passage-highlight'
 
@@ -51,13 +53,6 @@ export interface RisDocumentDialogProps {
   headerChip?: ReactNode
   /** Copy actions, which wrap to their own line on a narrow header. */
   headerActions?: ReactNode
-}
-
-interface LoadedDocument {
-  url: string
-  title: string
-  text: string
-  truncated: boolean
 }
 
 type LoadState =
@@ -95,22 +90,17 @@ export function RisDocumentDialog({
     // The passage travels WITH the request, not only into the match afterwards:
     // a Gesamtfassung can be millions of characters, and which window comes back
     // has to be decided by where the citation points.
-    const query = new URLSearchParams({ reference: url })
-    if (highlight) query.set('passage', highlight.slice(0, 2000))
-    fetch(`/api/ris/document?${query.toString()}`)
-      .then(async (response) => {
-        if (response.status === 429) return 'busy' as const
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        return (await response.json()) as LoadedDocument
-      })
+    getRisDocument(url, highlight?.slice(0, 2000))
       .then((document) => {
         if (cancelled) return
-        setState(document === 'busy' ? { status: 'busy' } : { status: 'ready', document })
+        setState({ status: 'ready', document })
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        if (cancelled) return
         // The outbound link is still in the header, so a failure here costs the
         // reader the reading copy and nothing else. Saying so beats a spinner.
-        if (!cancelled) setState({ status: 'failed' })
+        const rateLimited = error instanceof ApiRequestError && error.status === 429
+        setState(rateLimited ? { status: 'busy' } : { status: 'failed' })
       })
     return () => {
       cancelled = true

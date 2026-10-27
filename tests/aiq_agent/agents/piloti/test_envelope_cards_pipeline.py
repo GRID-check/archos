@@ -21,8 +21,8 @@ from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 
 BASIS = {"type": "ifc_model_picker", "title": "Welches Modell möchten Sie öffnen?"}
 _CHECK = {"label": "Steigung", "value": 17, "required": 18, "unit": "cm", "comparator": "<=", "status": "pass"}

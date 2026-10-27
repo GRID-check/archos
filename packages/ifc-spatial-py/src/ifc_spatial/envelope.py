@@ -43,11 +43,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-from typing import Generic
 from typing import Literal
-from typing import TypeVar
-
-T = TypeVar("T")
 
 #: How a value came to be known. The caller must render these differently.
 #:
@@ -73,7 +69,7 @@ class MissingFact:
 
 
 @dataclass
-class Answer(Generic[T]):
+class Answer[T]:
     """One answer, with everything needed to audit it."""
 
     value: T | None
@@ -133,7 +129,7 @@ class Answer(Generic[T]):
         return out
 
 
-def declared(
+def declared[T](
     value: T,
     *,
     from_: list[str],
@@ -154,7 +150,7 @@ def declared(
     )
 
 
-def computed(
+def computed[T](
     value: T,
     *,
     from_: list[str],
@@ -176,7 +172,7 @@ def computed(
     )
 
 
-def inferred(
+def inferred[T](
     value: T,
     *,
     from_: list[str],
@@ -328,7 +324,7 @@ def triangulate(
     return out
 
 
-def _copy(answer: Answer[T]) -> Answer[T]:
+def _copy[T](answer: Answer[T]) -> Answer[T]:
     return Answer(
         value=answer.value,
         unit=answer.unit,

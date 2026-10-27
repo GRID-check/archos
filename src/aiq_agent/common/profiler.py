@@ -326,7 +326,7 @@ def profiled_node(name: str, fn: Any) -> Any:
         token = current_span_var.set(span_id)
         try:
             result = await fn(*args, **kwargs)
-        except (asyncio.CancelledError, GeneratorExit):
+        except asyncio.CancelledError, GeneratorExit:
             # Abandoned, not failed: a cancelled turn must not read as an error.
             profiler.end_span(span_id, status="cancelled")
             raise
@@ -364,7 +364,7 @@ def profiled_span(name: str, kind: SpanKind = "node"):
     token = current_span_var.set(span_id)
     try:
         yield
-    except (asyncio.CancelledError, GeneratorExit):
+    except asyncio.CancelledError, GeneratorExit:
         # Abandoned, not failed: a cancelled turn, or a consumer that closed
         # the generator driving this block, must not read as an error.
         profiler.end_span(span_id, status="cancelled")

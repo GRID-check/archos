@@ -237,7 +237,7 @@ def _chunks_from_documents(documents: list[Any], file_name: str, arm: str) -> li
         page_label = metadata.get("page_label")
         try:
             page = int(str(page_label))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             # A node with no usable page cannot be cited, so it cannot be scored either.
             # Skipping it is the honest choice: counting it would let an arm pad its
             # ranking with results the product could never show.
