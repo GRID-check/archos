@@ -1,5 +1,5 @@
 /**
- * The search's one contract (ADR-0133, docs/design/document-search.md): what a
+ * The search's one contract (ADR-0136, docs/design/document-search.md): what a
  * person, Piloti and an outside agent ask, and what comes back. The route
  * (`POST /api/search`), the agent operation `search` and the browser parse
  * against these schemas, so the three cannot ask different questions.

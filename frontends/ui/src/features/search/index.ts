@@ -1,5 +1,5 @@
 /**
- * The workspace search (ADR-0133, `docs/design/document-search.md`): one
+ * The workspace search (ADR-0136, `docs/design/document-search.md`): one
  * organism at every scope. Routes import from here.
  */
 

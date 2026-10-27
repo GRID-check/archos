@@ -7,7 +7,7 @@ import type { FileItem } from '../components/project-file-workspace'
 /**
  * A file browser result carrying its match evidence: the base {@link FileItem}
  * plus WHY it matched (the passage and its page) and its place in the ranking.
- * The search (`POST /api/search`, ADR-0133) ranks and never shows a score, so
+ * The search (`POST /api/search`, ADR-0136) ranks and never shows a score, so
  * the rank is the order the answer came in.
  */
 export interface SemanticHit extends FileItem {

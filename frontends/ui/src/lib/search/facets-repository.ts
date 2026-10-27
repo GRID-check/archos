@@ -1,5 +1,5 @@
 /**
- * The SQL the search projection writes and its staleness reads (ADR-0133). No
+ * The SQL the search projection writes and its staleness reads (ADR-0136). No
  * authorization here: the projection is derived and nobody reads it except
  * through the search's own query, which joins `documents` under the reader's
  * predicate (`./document-repository.ts`). The two reads of `documents` below

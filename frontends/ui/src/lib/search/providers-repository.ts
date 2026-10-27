@@ -1,5 +1,5 @@
 /**
- * The SQL of the search's other kinds (ADR-0133, docs/design/document-search.md
+ * The SQL of the search's other kinds (ADR-0136, docs/design/document-search.md
  * "What everything covers"): annotations, folders and conversations, each under
  * the reach the documents are searched with.
  *

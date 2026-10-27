@@ -1,6 +1,6 @@
 # Search: find anything the office has, from anywhere
 
-Status: designed, 2026-10-27; slices below are built in order. Decision record: [ADR-0133](../adr/0133-search-is-one-query-over-a-projection-beside-the-index.md).
+Status: designed, 2026-10-27; slices below are built in order. Decision record: [ADR-0136](../adr/0136-search-is-one-query-over-a-projection-beside-the-index.md).
 What a document knows about itself: [`document-dossier.md`](../architecture/document-dossier.md).
 
 ## What Planfred is trying to be
@@ -154,7 +154,7 @@ with, so the search and the grid cannot disagree.
 The dossier itself stays where ingestion writes it (`document_metadata` in the
 agent database). Filtering it there would mean the agent database deciding
 visibility it cannot see, or the BFF shipping every readable document id to it;
-counting there would count what the reader may not open. ADR-0133 records this.
+counting there would count what the reader may not open. ADR-0136 records this.
 
 Postgres decides which documents are in a result; Qdrant only ranks their
 passages. With text, the content search is pre-filtered for recall: by

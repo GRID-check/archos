@@ -1,5 +1,5 @@
 /**
- * One saved search (ADR-0133 slice 5).
+ * One saved search (ADR-0136 slice 5).
  *
  * PATCH  — rename or share the caller's own.
  * DELETE — delete the caller's own, permanently.

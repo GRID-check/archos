@@ -1,5 +1,5 @@
 /**
- * Search everything the person may read (ADR-0133): documents by name, by what
+ * Search everything the person may read (ADR-0136): documents by name, by what
  * they are and by what they say, their annotations, folders, projects and
  * conversations. Where to look is the query (`scope`, `projectId`, `folderId`;
  * absent is the whole office), the question is the body. Thin handler; the

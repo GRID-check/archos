@@ -6,7 +6,7 @@ import { useTranslations } from '@/i18n'
 /**
  * Match-evidence block for a search result card — the transparent "why it
  * matched" cue the product requires: the passage that matched and the page it
- * came from. The search ranks and shows no score (ADR-0133): the order of the
+ * came from. The search ranks and shows no score (ADR-0136): the order of the
  * cards is the ranking. A document found by its name or by what it is carries
  * no passage, and then nothing is drawn. Rendered inside both the project and
  * Archiv file cards, so its labels live in the shared `files` namespace.

@@ -1,6 +1,6 @@
 /**
  * The documents a search finds, in one statement with their authorization
- * (ADR-0133): `documents` under the reach's predicate, the search projection
+ * (ADR-0136): `documents` under the reach's predicate, the search projection
  * (`document_search_facets`) for what each document is, the project and the
  * folder for where it lives. The page, the total and every facet count use the
  * same WHERE, so a count never includes a document the page would not show.
@@ -503,7 +503,7 @@ export async function readReferenceSubject(
 
 /**
  * The ids of the documents a query's filters admit, without its text, at most
- * `max` (the content search's pre-filter: ADR-0133 item 5). A list one longer
+ * `max` (the content search's pre-filter: ADR-0136 item 5). A list one longer
  * than `max` means "too many to name", and the caller narrows by payload instead.
  */
 export async function listCandidateDocumentIds(reach: SearchReach, query: DocumentQuery, max: number): Promise<string[]> {

@@ -142,7 +142,7 @@ export interface CardExtras {
   footerLead?: ReactNode
 }
 
-/** A shelf's search asks the one search (ADR-0133) for documents only, without the counts it does not show. */
+/** A shelf's search asks the one search (ADR-0136) for documents only, without the counts it does not show. */
 const SHELF_SEARCH_BODY = { kinds: ['document'], facets: false } as const
 
 /** The semantic search scope of a project's shelf. */

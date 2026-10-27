@@ -1,5 +1,5 @@
 /**
- * The search (ADR-0133): one question, every kind, any scope. The route
+ * The search (ADR-0136): one question, every kind, any scope. The route
  * `POST /api/search`, the agent operation `search` and the export are thin over
  * {@link runSearch}; nothing else evaluates a query.
  *
@@ -264,7 +264,7 @@ async function searchDocuments(
   const structured: DocumentQuery = { filters, text: null, citedBy, citing }
   const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : { hits: [], partial: false }
   const found = content?.hits ?? []
-  // A hit names its document by id when it can; only a hit without one is joined by name (ADR-0133 item 5).
+  // A hit names its document by id when it can; only a hit without one is joined by name (ADR-0136 item 5).
   const passagesById = new Map(found.flatMap((hit) => (hit.grid_document_id ? [[hit.grid_document_id, hit] as const] : [])))
   const passagesByKey = new Map(
     found.flatMap((hit) => (hit.grid_document_id ? [] : [[contentKey(hit.collection, hit.file_name), hit] as const]))

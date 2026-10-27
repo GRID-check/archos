@@ -722,7 +722,7 @@ old name that stood for a scope maps to `{ to, input }`: the input is a default
 under what the caller sends (`withInputDefaults`, `operation.ts`). A rename that
 also renamed fields adds `rewrite`: `document-search` and
 `office-shelf-document-search` (one shelf, by meaning) are `workspace-search`
-over that shelf (ADR-0133), their `q`, `topK` and shelf rewritten to `text`,
+over that shelf (ADR-0136), their `q`, `topK` and shelf rewritten to `text`,
 `limit` and the query's `projectId` or `scope`. PostHog's
 `agent_operation_called` carries the new names from then on: an insight over the
 history needs both.

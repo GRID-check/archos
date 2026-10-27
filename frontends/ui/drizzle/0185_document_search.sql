@@ -1,5 +1,5 @@
 -- 0185: what a document is, made filterable where its authorization lives
--- (ADR-0133, docs/design/document-search.md).
+-- (ADR-0136, docs/design/document-search.md).
 --
 -- ## Why
 --

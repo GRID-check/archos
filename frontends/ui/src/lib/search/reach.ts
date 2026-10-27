@@ -1,5 +1,5 @@
 /**
- * What one person may read, for one search (ADR-0133): computed once, from the
+ * What one person may read, for one search (ADR-0136): computed once, from the
  * gates the listing already uses, and handed to every provider. No provider
  * asks a gate of its own, so the kinds cannot disagree about a project.
  *

@@ -1,4 +1,4 @@
--- 0186: a person's saved searches, shareable within the office (ADR-0133,
+-- 0186: a person's saved searches, shareable within the office (ADR-0136,
 -- docs/design/document-search.md, slice 5).
 --
 -- ## What was missing

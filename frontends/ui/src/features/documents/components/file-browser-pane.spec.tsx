@@ -451,7 +451,7 @@ describe('FileBrowserPane — semantic search (explicit run)', () => {
     // over a list that shows both.
     expect(screen.queryByText(/semantic search:/i)).not.toBeInTheDocument()
 
-    // The match evidence: the passage and its page. The search ranks and shows no score (ADR-0133).
+    // The match evidence: the passage and its page. The search ranks and shows no score (ADR-0136).
     const match = await screen.findByTestId('semantic-match')
     expect(within(match).getByText(/second escape route/i)).toBeInTheDocument()
     expect(within(match).getByTestId('semantic-page')).toHaveTextContent(/page 4/i)

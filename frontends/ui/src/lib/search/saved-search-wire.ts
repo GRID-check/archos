@@ -1,5 +1,5 @@
 /**
- * Saved searches (ADR-0133 slice 5, migration 0186): what the routes under
+ * Saved searches (ADR-0136 slice 5, migration 0186): what the routes under
  * `/api/search/saved`, the agent operations `saved-search-*` and the browser
  * parse against.
  *

@@ -1,5 +1,5 @@
 /**
- * A document's reading as its search row (`document_search_facets`, ADR-0133).
+ * A document's reading as its search row (`document_search_facets`, ADR-0136).
  * Pure: the projector and the specs call it with what the listing parsed.
  *
  * The tokens are the Qdrant payload's own (`knowledge_layer/qdrant/payload.py`,
@@ -83,7 +83,7 @@ function capturedAtOf(raw: string | undefined): Date | null {
 /**
  * Whether the listing said anything about this document's reading. A listing
  * read while the agent's metadata store failed answers 200 with none of it, and
- * must not blank a row (ADR-0133, the projector fails closed).
+ * must not blank a row (ADR-0136, the projector fails closed).
  */
 export function hasReading(metadata: DocumentMetadata | null | undefined): metadata is DocumentMetadata {
   if (!metadata) return false

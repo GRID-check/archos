@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Dev preview for the workspace search (ADR-0133): the REAL organism
+ * Dev preview for the workspace search (ADR-0136): the REAL organism
  * (`SearchWorkspaceView`) over a fixture answer, the scene of
  * `docs/design/document-search.md` — 08:55, „Fluchtweg GK 4“ across two
  * projects and the Büroablage, and 09:10, the register sorted by Plannummer.

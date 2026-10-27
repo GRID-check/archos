@@ -99,7 +99,7 @@ const OFFICE_BODY = { body: { scope: 'office_shelf' } } as const
 const DOCUMENTS_ONLY = { kinds: ['document'], facets: false } as const
 
 /**
- * `document-search` (one shelf, by meaning) is `workspace-search` scoped to that shelf (ADR-0133):
+ * `document-search` (one shelf, by meaning) is `workspace-search` scoped to that shelf (ADR-0136):
  * the shelf moves from the body to the query, `q` is `text`, `topK` is `limit`.
  */
 function documentSearchInput(given: OperationExample): OperationExample {
@@ -138,7 +138,7 @@ export const RENAMED_OPERATIONS: Readonly<Record<string, string | RenamedWithInp
     input: { query: { scope: 'office_shelf' }, body: DOCUMENTS_ONLY },
     rewrite: documentSearchInput,
   },
-  // The one-shelf search moved onto the one search (ADR-0133); its answer is the search's.
+  // The one-shelf search moved onto the one search (ADR-0136); its answer is the search's.
   'document-search': { to: 'workspace-search', input: { body: DOCUMENTS_ONLY }, rewrite: documentSearchInput },
   'office-shelf-document-upload': { to: 'document-upload', input: { body: { fields: { scope: 'office_shelf' } } } },
   'office-shelf-document-delete': 'document-delete',

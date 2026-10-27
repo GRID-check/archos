@@ -196,10 +196,10 @@ const BOUNDARY_MIGRATIONS = [
   '0182_office_convention_decisions.sql',
   // Adds document_search_facets and document_search_shelves — the filterable
   // projection of each document's reading and each shelf's sync state
-  // (ADR-0133). Both keyed by their organization.
+  // (ADR-0136). Both keyed by their organization.
   '0185_document_search.sql',
   // Adds saved_searches — a person's saved search questions, shareable within
-  // the office (ADR-0133, slice 5). Keyed by its organization.
+  // the office (ADR-0136, slice 5). Keyed by its organization.
   '0186_saved_searches.sql',
 ]
 

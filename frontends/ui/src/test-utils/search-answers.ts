@@ -1,5 +1,5 @@
 /**
- * A shelf's search answer as `POST /api/search` gives it (ADR-0133), built from
+ * A shelf's search answer as `POST /api/search` gives it (ADR-0136), built from
  * the file browser's own rows, for the Files pane's specs and `/dev` previews.
  */
 

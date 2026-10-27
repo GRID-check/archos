@@ -1,5 +1,5 @@
 /**
- * What a document is, made filterable beside `documents` (ADR-0133, migration
+ * What a document is, made filterable beside `documents` (ADR-0136, migration
  * 0185): one derived row per document, and the sync state of each shelf.
  *
  * Derived, never authored. `lib/search/facets-projector.ts` replaces a row

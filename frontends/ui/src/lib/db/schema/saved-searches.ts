@@ -1,5 +1,5 @@
 /**
- * `saved_searches` (migration 0186, ADR-0133 slice 5): a person's saved search
+ * `saved_searches` (migration 0186, ADR-0136 slice 5): a person's saved search
  * question, shareable within the office.
  *
  * A row holds the question only: `scope` is the search's query parameters and

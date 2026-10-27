@@ -1,5 +1,5 @@
 /**
- * Saved searches (ADR-0133 slice 5): a person keeps a search question and may
+ * Saved searches (ADR-0136 slice 5): a person keeps a search question and may
  * share it with the office. See `projects.ts` for the shape and
  * `docs/architecture/agent-surface.md` for the rules.
  *

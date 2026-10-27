@@ -1,5 +1,5 @@
 /**
- * The search's providers beside the documents (ADR-0133, docs/design/
+ * The search's providers beside the documents (ADR-0136, docs/design/
  * document-search.md "What everything covers"): annotations, folders, projects
  * and conversations. Each takes the reach the search computed once and asks no
  * gate of its own, so the kinds cannot disagree about what a person may read.

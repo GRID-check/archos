@@ -2,7 +2,7 @@
  * @vitest-environment node
  *
  * How long the documents SQL of the workspace search takes over a realistic
- * office (ADR-0133). A measurement, not a gate: it runs only when asked, and it
+ * office (ADR-0136). A measurement, not a gate: it runs only when asked, and it
  * calls the repository functions themselves, through the runtime role under
  * row-level security, so every per-statement `SET LOCAL` batch and the pool are
  * in the number as in production. A script beside it would have to restate the

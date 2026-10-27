@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * The documents SQL of the workspace search (ADR-0133) against a REAL Postgres,
+ * The documents SQL of the workspace search (ADR-0136) against a REAL Postgres,
  * through the restricted runtime role, so row-level security applies as in
  * production. The claims are about SQL: the reach is one predicate, every
  * filter means what `search-wire.ts` says, the text ranks content first, every
