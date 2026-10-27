@@ -35,8 +35,8 @@ from typing import Any
 from typing import Literal
 
 from aiq_agent import project_context
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.tools.documents.filing import SignedEnvelope
 from aiq_agent.tools.tasks.client import DelegationError
 from aiq_agent.tools.tasks.client import post_task
 

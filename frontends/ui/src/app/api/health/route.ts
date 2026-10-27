@@ -11,12 +11,7 @@
 
 import { NextResponse } from 'next/server'
 import { publicApiRoute } from '@/lib/api/handler'
-
-const getBackendUrl = (): string => {
-  const url =
-    process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-  return url.replace(/\/$/, '')
-}
+import { getBackendUrl } from '@/lib/backend-url'
 
 export const GET = publicApiRoute(
   async () => {

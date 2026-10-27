@@ -26,13 +26,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from ..documents.filing import SignedEnvelope
+from aiq_agent.common import bff_http
+from aiq_agent.common.bff_http import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 
@@ -74,39 +72,20 @@ class ToolResult:
     structured: dict[str, Any] | None = None
 
 
-class WorkspaceError(RuntimeError):
+class WorkspaceError(bff_http.BffError):
     """The server refused, or could not be reached. Carries what the model may be told."""
 
     def __init__(self, message: str, *, status: int | None = None) -> None:
-        super().__init__(message)
-        self.status = status
+        super().__init__(message, status=status)
 
 
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """A 3xx is an auth middleware, not a move; following it would drop the envelope."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        raise urllib.error.HTTPError(req.full_url, code, f"unexpected redirect to {newurl}", headers, fp)
-
-
-_opener = urllib.request.build_opener(_NoRedirectHandler)
-
-
-def _base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
-
-
-def request_headers(token: str, envelope: SignedEnvelope, answer_message_id: str | None = None) -> dict[str, str]:
+def request_headers(envelope: SignedEnvelope, answer_message_id: str | None = None) -> dict[str, str]:
+    """The MCP headers beside the token: protocol, mode, the echoed envelope and the answer being written."""
     headers = {
-        "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
         "MCP-Protocol-Version": PROTOCOL_VERSION,
         MODE_HEADER: SEARCH_MODE,
-        "X-Grid-Internal-Token": token,
-        # The two that decide WHO this is. Forwarded exactly as they arrived.
-        "X-Grid-Request-Context": envelope.header,
-        "X-Grid-Request-Context-Sig": envelope.signature,
+        **envelope.headers(),
     }
     if answer_message_id:
         headers[ANSWER_MESSAGE_HEADER] = answer_message_id
@@ -124,19 +103,13 @@ def _jsonrpc_from(raw: str, content_type: str) -> dict[str, Any]:
     return message
 
 
-def _http_refusal(exc: urllib.error.HTTPError) -> WorkspaceError:
+def _http_refusal(exc: bff_http.BffRefusedError) -> WorkspaceError:
     """The server's own sentence when it sent one (a JSON-RPC error or ``{"error"}``), else the status."""
-    try:
-        payload = json.loads(exc.read().decode("utf-8"))
-    except Exception:  # noqa: BLE001 - empty, unreadable or not JSON
-        payload = None
-    detail = None
-    if isinstance(payload, dict):
-        error = payload.get("error")
-        detail = error.get("message") if isinstance(error, dict) else error
-    base = f"the workspace server refused the call ({exc.code})"
+    error = exc.body.get("error")
+    detail = error.get("message") if isinstance(error, dict) else error
+    base = f"the workspace server refused the call ({exc.status})"
     text = f"{base}: {detail}" if isinstance(detail, str) and detail.strip() else base
-    return WorkspaceError(text, status=exc.code)
+    return WorkspaceError(text, status=exc.status)
 
 
 def _structured_content(message: dict[str, Any]) -> dict[str, Any] | None:
@@ -182,25 +155,21 @@ def call_tool_result(
     it is the server teaching the model what to fix, and is returned as text.
     ``answer_message_id`` names the answer the turn writes (:data:`ANSWER_MESSAGE_HEADER`); None sends none.
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise WorkspaceError("GRID_INTERNAL_API_TOKEN is not configured")
-
     body = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}}
-    request = urllib.request.Request(
-        f"{_base_url()}{MCP_PATH}",
-        data=json.dumps(body).encode("utf-8"),
-        headers=request_headers(token, envelope, answer_message_id),
-        method="POST",
-    )
     try:
-        with _opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            raw = response.read().decode("utf-8")
-            content_type = response.headers.get("Content-Type", "")
-        message = _jsonrpc_from(raw, content_type)
+        response = bff_http.send(
+            "POST",
+            MCP_PATH,
+            timeout=REQUEST_TIMEOUT_SECONDS,
+            body=body,
+            headers=request_headers(envelope, answer_message_id),
+        )
+        message = _jsonrpc_from(response.body.decode("utf-8"), response.content_type)
         return ToolResult(text=_result_text(message), structured=_structured_content(message))
-    except urllib.error.HTTPError as exc:
-        logger.warning("Workspace MCP refused the call (status=%s)", exc.code)
+    except bff_http.BffNotConfiguredError as exc:
+        raise WorkspaceError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
+        logger.warning("Workspace MCP refused the call (status=%s)", exc.status)
         raise _http_refusal(exc) from exc
     except WorkspaceError:
         raise

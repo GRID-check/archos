@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    The file list no longer flashes a browser error when it opens: dates in
+    the list read in Vienna time on the first paint, whatever time zone your
+    computer is set to. Sign-in redirects are also no longer reported to us as
+    errors.
