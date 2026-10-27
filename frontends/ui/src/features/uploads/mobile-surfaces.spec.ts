@@ -1,3 +1,4 @@
+// @disk-inputs: src/features/documents/components/mail-import-dialog.tsx, src/features/documents/components/office-shelf-workspace.tsx, src/features/documents/components/upload-tray.tsx, src/features/uploads/components/upload-history.tsx
 /**
  * Source ratchets for the upload surfaces on a 393px phone.
  *

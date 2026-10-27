@@ -233,6 +233,10 @@
               "de": "Wenn Sie Piloti um ein Excalidraw-Diagramm oder eine Skizze bitten, erstellt es diese jetzt. Sie können die Zeichnung als Skizze öffnen und weiterbearbeiten, statt die Meldung zu erhalten, dass dies nicht möglich ist. Fragen Sie Piloti nach sich selbst, etwa ob es in Ihrem eigenen Assistenten funktioniert, antwortet es jetzt, statt Ihre Dateien zu durchsuchen."
             },
             {
+              "en": "In some projects Piloti treated its saved notes as confirmed project facts. It no longer does, so the facts it works from are the ones confirmed in the project profile.",
+              "de": "In manchen Projekten behandelt Piloti gespeicherte Notizen als bestätigte Projektfakten. Das ist nicht mehr der Fall: Piloti arbeitet nun mit den im Projektprofil bestätigten Fakten."
+            },
+            {
               "en": "The file list no longer flashes a browser error when it opens: dates in the list read in Vienna time on the first paint, whatever time zone your computer is set to. Sign-in redirects are also no longer reported to us as errors.",
               "de": "Beim Öffnen der Dateiliste wird kein Browserfehler mehr kurz angezeigt: Die Datumsangaben erscheinen bereits beim ersten Laden in Wiener Zeit – unabhängig von der Zeitzone Ihres Computers. Auch Anmelde-Weiterleitungen werden uns nicht mehr als Fehler gemeldet."
             },

@@ -1,3 +1,4 @@
+// @disk-inputs: src/features/layout/components/ChatArea.tsx
 /**
  * The cause reaches the answer, not just the schema.
  *

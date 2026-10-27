@@ -1,3 +1,4 @@
+// @disk-inputs: drizzle/**, src/**
 /**
  * @vitest-environment node
  */

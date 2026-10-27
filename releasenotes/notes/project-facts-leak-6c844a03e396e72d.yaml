@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    In some projects Piloti treated its saved notes as confirmed project facts.
+    It no longer does, so the facts it works from are the ones confirmed in the
+    project profile.

@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/citation_pipeline/wire_sources.json
 /**
  * @vitest-environment node
  */

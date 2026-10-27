@@ -1,3 +1,4 @@
+// @disk-inputs: src/**, tests/fixtures/backend-tools.schema.json.ts, tests/fixtures/backend-tools.schema.json.tsx, tests/fixtures/backend-tools.schema.json/index.ts, tests/fixtures/backend-tools.schema.json/index.tsx, workers/database-unavailable.js.ts, workers/database-unavailable.js.tsx, workers/database-unavailable.js/index.ts, workers/database-unavailable.js/index.tsx
 /**
  * @vitest-environment node
  */

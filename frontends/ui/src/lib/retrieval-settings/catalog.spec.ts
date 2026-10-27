@@ -53,9 +53,8 @@ describe('retrieval settings catalog', () => {
   })
 
   it('matches the cross-language contract fixture byte-for-byte', () => {
-    // The fixture twin lives at `frontends/ui/tests/fixtures/` and is
-    // byte-identical to repo-root `tests/fixtures/retrieval_settings_catalog.json`,
-    // which the Python parity test asserts against `_BOUNDS`/`_ALLOWED_VALUES`.
+    // The Python parity test reads the same file and asserts it against
+    // `_BOUNDS`/`_ALLOWED_VALUES`.
     expect(
       RETRIEVAL_SETTINGS.map(({ key, defaultValue, min, max, allowedValues, label, description }) => ({
         key,
