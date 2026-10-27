@@ -23,6 +23,7 @@ import aiq_agent.knowledge.project_memory as pm
 import aiq_agent.project_context as pc
 from aiq_agent.cards.envelope import REFUSED_CONFINED
 from aiq_agent.cards.envelope import validate_model_card
+from aiq_agent.common import bff_http
 from aiq_agent.common.platform_lessons import LessonsResolution
 from aiq_agent.knowledge import scoping
 from aiq_agent.knowledge.restricted_use import CrossProjectTurn
@@ -153,7 +154,7 @@ class TestTheDoorsStayShut:
             {},
             io.BytesIO(json.dumps({"error": "…", "code": "CROSS_PROJECT_MEMORY"}).encode()),
         )
-        monkeypatch.setattr(pm._opener, "open", MagicMock(side_effect=refusal))
+        monkeypatch.setattr(bff_http._opener, "open", MagicMock(side_effect=refusal))
 
         with pytest.raises(pm.CrossProjectMemoryRefusedError):
             pm.insert_memory_item(

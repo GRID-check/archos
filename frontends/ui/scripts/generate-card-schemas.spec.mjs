@@ -24,6 +24,7 @@ import {
   refParserOverride,
   schemaPath,
   topologicallyOrderedDefNames,
+  unknownValueOverride,
 } from './generate-card-schemas.mjs'
 
 /** A card def with the discriminator the union needs. */
@@ -57,9 +58,10 @@ describe('$ref resolution', () => {
         Shared: { type: 'object', properties: { document: { type: 'string' } } },
       },
     })
-    // One declaration, three references — inlining would ship the object thrice.
+    // One declaration, three references and its type — inlining would ship the object thrice.
     expect(generatedModule.match(/export const sharedSchema = /g)).toHaveLength(1)
-    expect(generatedModule.match(/\bsharedSchema\b/g)).toHaveLength(4)
+    expect(generatedModule.match(/\bsharedSchema\b/g)).toHaveLength(5)
+    expect(generatedModule).toContain('export type SharedData = z.input<typeof sharedSchema>')
   })
 
   it('declares a def before the def that references it', () => {
@@ -150,6 +152,41 @@ describe('$ref resolution', () => {
 
   it('names a def the way the module exports it', () => {
     expect(exportName('NormReference')).toBe('normReferenceSchema')
+  })
+})
+
+describe('values the model types as Any', () => {
+  it('emits `Any` as z.unknown(), keeping its description and default', () => {
+    expect(unknownValueOverride({ description: 'The plain value', default: null })).toBe(
+      'z.unknown().describe("The plain value").default(null)'
+    )
+  })
+
+  it('emits `dict[str, Any]` as a record of unknown values', () => {
+    expect(unknownValueOverride({ type: 'object', additionalProperties: true })).toBe(
+      'z.record(z.string(), z.unknown())'
+    )
+  })
+
+  it('leaves a typed node to the library', () => {
+    expect(unknownValueOverride({ type: 'string' })).toBeUndefined()
+    expect(unknownValueOverride({ type: 'object', properties: {}, additionalProperties: true })).toBeUndefined()
+  })
+
+  it('emits no z.any() for a card carrying both shapes', () => {
+    const root = {
+      oneOf: [{ $ref: '#/$defs/Open' }],
+      $defs: {
+        Open: card('open', {
+          value: { default: null },
+          input: { type: 'object', additionalProperties: true },
+          items: { type: 'array', items: { type: 'object', additionalProperties: true } },
+        }),
+      },
+    }
+    const generatedModule = buildCardSchemaModule(root)
+    expect(generatedModule).not.toContain('z.any()')
+    expect(generatedModule).toContain('export type OpenData = z.input<typeof openSchema>')
   })
 })
 

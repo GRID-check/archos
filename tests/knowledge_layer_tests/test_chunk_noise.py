@@ -13,6 +13,15 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer import chunk_noise
+from knowledge_layer.chunk_noise import MIN_DEBRIS_SHARE
+from knowledge_layer.chunk_noise import is_noise_chunk
+from knowledge_layer.chunk_noise import judge_text
+from knowledge_layer.chunk_noise import noise_filter_enabled
+from knowledge_layer.chunk_noise import without_noise
+from knowledge_layer.register import KnowledgeRetrievalConfig
+from knowledge_layer.register import _without_noise
+from knowledge_layer.register import knowledge_retrieval
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.inventory import set_turn_documents
@@ -20,15 +29,6 @@ from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src import chunk_noise
-from sources.knowledge_layer.src.chunk_noise import MIN_DEBRIS_SHARE
-from sources.knowledge_layer.src.chunk_noise import is_noise_chunk
-from sources.knowledge_layer.src.chunk_noise import judge_text
-from sources.knowledge_layer.src.chunk_noise import noise_filter_enabled
-from sources.knowledge_layer.src.chunk_noise import without_noise
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
-from sources.knowledge_layer.src.register import _without_noise
-from sources.knowledge_layer.src.register import knowledge_retrieval
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "ocr_noise"
 
@@ -229,7 +229,7 @@ def _pool() -> list[Chunk]:
 def harness(monkeypatch):
     monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
     monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-    monkeypatch.setattr("sources.knowledge_layer.src.register._initialize_ingestor", lambda config, llm: None)
+    monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
     monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", lambda collection: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
         monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
@@ -245,7 +245,7 @@ def harness(monkeypatch):
 
     monkeypatch.setattr("aiq_agent.observability.retrieval_trace.emit_retrieval_span", _capture)
     retriever = _Retriever(_pool())
-    monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: retriever)
+    monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
     set_turn_documents([])
     yield SimpleNamespace(spans=spans, retriever=retriever)
     set_turn_documents(None)
@@ -289,7 +289,7 @@ class TestThroughTheTool:
 
     async def test_on_with_nothing_to_drop_the_span_says_zero(self, harness, monkeypatch):
         clean = [chunk for chunk in _pool() if not chunk.chunk_id.startswith("noise")]
-        monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: _Retriever(clean))
+        monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: _Retriever(clean))
 
         out = await _search(True, query="Brandabschnitt")
 

@@ -256,7 +256,7 @@ const bimQueryObjectSchema = z.discriminatedUnion('op', [
     /** The same catalog over two revisions, reporting only what MOVED. */
     op: z.literal('compliance-diff'),
     /** The OLDER revision; this model is the newer one. */
-    baseModelId: z.string().uuid().optional(),
+    baseModelId: z.guid().optional(),
     buildingClass: z.number().int().min(1).max(5).nullish(),
     mainUse: z.preprocess(canonicalBimMainUse, z.enum(BIM_MAIN_USE).nullish()),
   }).strict(),
@@ -277,7 +277,7 @@ const bimQueryObjectSchema = z.discriminatedUnion('op', [
      * request that still lacks it, so the field is optional to PARSE and
      * required to RUN.
      */
-    baseModelId: z.string().uuid().optional(),
+    baseModelId: z.guid().optional(),
     /** Ceiling on elements read per side. */
     limit: z.number().int().min(100).max(50_000).default(20_000),
   }).strict(),

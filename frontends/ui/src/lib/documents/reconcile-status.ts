@@ -12,6 +12,7 @@
  * wiped the in-memory job registry) and terminal states are written back.
  */
 
+import { getBackendUrl } from '@/lib/backend-url'
 import { announceIngestsFinished } from '@/lib/analytics/ingest-events'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import {
@@ -98,11 +99,6 @@ const INTERRUPTED_REASON_PREFIX = 'interrupted:'
 const INTERRUPTED_RECHECK_WINDOW_MS = 30 * 60 * 1000
 
 const FETCH_TIMEOUT_MS = 5000
-
-const getBackendUrl = (): string => {
-  const url = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-  return url.replace(/\/$/, '')
-}
 
 export interface ReconcilableDocument {
   id: string

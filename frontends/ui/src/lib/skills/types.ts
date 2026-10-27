@@ -297,7 +297,7 @@ const metadataSchema = z
  * category is taken away. Omitted means "don't touch" — which is why PATCH takes
  * the nullable form and CREATE the plain optional one.
  */
-export const categoryIdSchema = z.string().trim().uuid('A skill category id must be a UUID.')
+export const categoryIdSchema = z.string().trim().guid('A skill category id must be a UUID.')
 
 export const createSkillSchema = z.object({
   name: skillNameSchema,

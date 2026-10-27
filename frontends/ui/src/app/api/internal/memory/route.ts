@@ -39,7 +39,7 @@ function agentOrgMemoryAllowed(): boolean {
 const internalMemorySchema = z
   .object({
     scope: z.enum(['project', 'organization']).default('project'),
-    projectId: z.string().uuid().optional(),
+    projectId: z.guid().optional(),
     organizationId: z.string().min(1).optional(),
     kind: z.enum(PROJECT_MEMORY_KINDS),
     content: z.string().trim().min(1).max(2000),

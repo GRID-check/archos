@@ -8,7 +8,7 @@ import type { Document } from '@/lib/db/schema/documents'
 import type { RevisionLinks } from './revision-links'
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend.test' }))
+vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend:8000' }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('./access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('./revision-links-loader', () => ({ loadRevisionLinks: vi.fn() }))
@@ -61,6 +61,7 @@ function documentsById(...docs: Document[]) {
 
 describe('setRevisionLink', () => {
   beforeEach(() => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     mockFetch.mockResolvedValue(new Response(JSON.stringify({ superseded_by: 'Grundriss_B.pdf' }), { status: 200 }))
@@ -76,6 +77,7 @@ describe('setRevisionLink', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('links: asks for write access to both documents, tells the backend their file names, audits, and reads the facts back fresh', async () => {
@@ -98,7 +100,7 @@ describe('setRevisionLink', () => {
     expect(getAccessibleDocument).toHaveBeenCalledWith(session, 'doc-b', 'write')
     expect(getAccessibleDocument).toHaveBeenCalledWith(session, 'doc-a', 'write')
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://backend.test/v1/collections/proj_abc/revision',
+      'http://backend:8000/v1/collections/proj_abc/revision',
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ newer: 'Grundriss_B.pdf', older: 'Grundriss_A.pdf', linked: true }),

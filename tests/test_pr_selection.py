@@ -18,6 +18,13 @@ TESTS = {
     "tests/aiq_agent/test_prompt.py": "PROMPT = 'agents/piloti/prompts/piloti_static.md'",
     "tests/test_grounding.py": "FIXTURE = ROOT / 'tests/fixtures/citation_pipeline/grounding_block.txt'",
     "tests/test_decisions_eval.py": "CASES = sorted((ROOT / 'tests' / 'fixtures' / 'decisions').rglob('*.json'))",
+    "tests/test_visual_eval.py": "SHAPES = list((ROOT / 'tests' / 'fixtures' / 'visual').iterdir())",
+    "tests/test_project_yaml.py": "load('project.yaml')",
+    # A helper, not a test file: its docstring cites a document, and it reads a fixture.
+    "tests/aiq_agent/judge_stub.py": (
+        '"""Imported by path, as ``sources/AGENTS.md`` asks."""\n'
+        "STORED = ROOT / 'fixtures' / 'answers' / 'stored.json'"
+    ),
     "tests/test_config.py": "load('configs/config_oib_openrouter.yml')",
     "sources/knowledge_layer/tests/test_schema.py": "read('schemas.json')",
 }
@@ -105,6 +112,25 @@ def test_a_fixture_read_through_its_directory_selects_that_test(mod):
     assert mod.decide_python(changed, TESTS, recorded=True)[:2] == ("select", ["tests/test_decisions_eval.py"])
 
 
+def test_a_fixture_selects_the_directory_reader_even_when_its_name_matches_another_test(mod):
+    # `project.yaml` is a common name; the test that reads the whole `visual`
+    # directory must still run.
+    selected = mod.decide_python(["tests/fixtures/visual/project.yaml"], TESTS, recorded=True)[1]
+
+    assert {"tests/test_visual_eval.py", "tests/test_project_yaml.py"} <= set(selected)
+
+
+def test_a_file_only_a_helper_reads_forces_the_full_suite(mod):
+    # Nothing says which tests load the helper.
+    changed = ["tests/fixtures/answers/stored.json"]
+
+    assert mod.decide_python(changed, TESTS, recorded=True)[0] == "full"
+
+
+def test_a_document_a_helper_only_cites_selects_nothing_extra(mod):
+    assert mod.decide_python(["sources/AGENTS.md"], TESTS, recorded=True)[:2] == ("select", [])
+
+
 def test_a_fixture_no_test_names_forces_the_full_suite(mod):
     assert mod.decide_python(["tests/fixtures/orphan/data.json"], TESTS, recorded=True)[0] == "full"
 
@@ -153,6 +179,13 @@ def test_a_config_the_bff_reads_still_runs_the_disk_readers(mod):
     assert (mode, files) == ("select", READERS)
 
 
+def test_a_backend_fixture_runs_the_ui_specs_that_read_it(mod):
+    # `skills/resolve-payload-contract.spec.ts` reads one from disk.
+    changed = ["tests/fixtures/skills_resolve/resolve_payload.json"]
+
+    assert mod.decide_ui(changed, READERS)[:2] == ("select", READERS)
+
+
 def test_a_change_no_ui_spec_reads_runs_no_ui_spec(mod):
     assert mod.decide_ui(["src/aiq_agent/common/llm_factory.py"], READERS)[0] == "none"
 
@@ -188,8 +221,8 @@ def test_no_green_run_means_the_whole_pull_request(mod):
 
 
 def test_the_reference_that_forces_fewer_full_suites_wins(mod):
-    whole = (["src/aiq_agent/a.py", "src/aiq_agent/b.py", "src/aiq_agent/c.py"], "the base")
-    since_green = (["src/aiq_agent/a.py", "pyproject.toml"], "the last green run")  # develop moved
+    whole = (["src/aiq_agent/a.py", "src/aiq_agent/b.py", "src/aiq_agent/c.py"], "the base", "base")
+    since_green = (["src/aiq_agent/a.py", "pyproject.toml"], "the last green run", "green")  # develop moved
 
     def full_suites(paths):
         return mod.decide_python(paths, TESTS, recorded=True)[0] == "full"
@@ -198,7 +231,7 @@ def test_the_reference_that_forces_fewer_full_suites_wins(mod):
 
 
 def test_with_equal_cost_the_smaller_reference_wins(mod):
-    whole = (["src/aiq_agent/a.py", "src/aiq_agent/b.py"], "the base")
-    since_green = (["src/aiq_agent/b.py"], "the last green run")  # a push that answered a review
+    whole = (["src/aiq_agent/a.py", "src/aiq_agent/b.py"], "the base", "base")
+    since_green = (["src/aiq_agent/b.py"], "the last green run", "green")  # a push that answered a review
 
     assert mod.cheaper([whole, since_green], lambda _paths: 0) == since_green

@@ -315,9 +315,9 @@ const READS_WITHOUT_PROJECT_CONTENT: Readonly<Record<string, string>> = {
 describe('every read of no named place either spans projects or carries no project’s content', () => {
   const namesSomething = (op: AgentOperation): boolean => {
     if (/\[[^\]]+\]/.test(op.path)) return true
-    const shapes = [op.query, op.body].filter((schema): schema is z.ZodObject<z.ZodRawShape> => schema instanceof z.ZodObject)
+    const shapes = [op.query, op.body].filter((schema): schema is z.ZodObject => schema instanceof z.ZodObject)
     return shapes.some((schema) =>
-      Object.entries(schema.shape).some(([key, field]) => (key in KEY_TARGETS || key === 'resourceId' || key === 'entityId') && !(field as z.ZodTypeAny).isOptional()),
+      Object.entries(schema.shape).some(([key, field]) => (key in KEY_TARGETS || key === 'resourceId' || key === 'entityId') && !(field as z.ZodType).isOptional()),
     )
   }
   const unscoped = visibleOperations(piloti()).filter(

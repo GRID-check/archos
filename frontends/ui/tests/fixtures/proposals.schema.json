@@ -16,7 +16,8 @@
               "format": "uuid"
             },
             "originCardIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 0
             },
             "kind": {
               "const": "file_operation"
@@ -34,6 +35,8 @@
                   ]
                 },
                 "operations": {
+                  "minItems": 1,
+                  "maxItems": 8,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -146,8 +149,7 @@
                       }
                     },
                     "additionalProperties": false
-                  },
-                  "maxItems": 8
+                  }
                 },
                 "note": {
                   "anyOf": [
@@ -232,7 +234,8 @@
               "format": "uuid"
             },
             "originCardIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 0
             },
             "kind": {
               "const": "memory"
@@ -309,7 +312,8 @@
               "format": "uuid"
             },
             "originCardIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 0
             },
             "kind": {
               "const": "project_profile"
@@ -334,6 +338,8 @@
                   ]
                 },
                 "patch": {
+                  "minItems": 1,
+                  "maxItems": 20,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -354,10 +360,8 @@
                     "required": [
                       "op",
                       "path"
-                    ],
-                    "additionalProperties": true
-                  },
-                  "maxItems": 20
+                    ]
+                  }
                 }
               },
               "required": [
@@ -400,8 +404,7 @@
       "required": [
         "id",
         "status"
-      ],
-      "additionalProperties": true
+      ]
     },
     "FileOperationPayload": {
       "type": "object",
@@ -416,6 +419,8 @@
           ]
         },
         "operations": {
+          "minItems": 1,
+          "maxItems": 8,
           "type": "array",
           "items": {
             "type": "object",
@@ -528,8 +533,7 @@
               }
             },
             "additionalProperties": false
-          },
-          "maxItems": 8
+          }
         },
         "note": {
           "anyOf": [
@@ -668,6 +672,8 @@
           ]
         },
         "patch": {
+          "minItems": 1,
+          "maxItems": 20,
           "type": "array",
           "items": {
             "type": "object",
@@ -688,10 +694,8 @@
             "required": [
               "op",
               "path"
-            ],
-            "additionalProperties": true
-          },
-          "maxItems": 20
+            ]
+          }
         }
       },
       "required": [
@@ -719,13 +723,9 @@
               "format": "uuid"
             },
             "projectId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "status": {
@@ -749,66 +749,42 @@
               "type": "string"
             },
             "onBehalfOfName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "originConversationId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "originMessageId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "createdAt": {
               "type": "string"
             },
             "decidedBy": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "decidedByName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "decidedAt": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "results": {
@@ -841,8 +817,7 @@
                     "required": [
                       "label",
                       "ok"
-                    ],
-                    "additionalProperties": true
+                    ]
                   }
                 },
                 {
@@ -869,6 +844,8 @@
                   ]
                 },
                 "operations": {
+                  "minItems": 1,
+                  "maxItems": 8,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -981,8 +958,7 @@
                       }
                     },
                     "additionalProperties": false
-                  },
-                  "maxItems": 8
+                  }
                 },
                 "note": {
                   "anyOf": [
@@ -1066,8 +1042,7 @@
             "canDecide",
             "kind",
             "payload"
-          ],
-          "additionalProperties": true
+          ]
         },
         {
           "type": "object",
@@ -1077,13 +1052,9 @@
               "format": "uuid"
             },
             "projectId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "status": {
@@ -1107,66 +1078,42 @@
               "type": "string"
             },
             "onBehalfOfName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "originConversationId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "originMessageId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "createdAt": {
               "type": "string"
             },
             "decidedBy": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "decidedByName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "decidedAt": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "results": {
@@ -1199,8 +1146,7 @@
                     "required": [
                       "label",
                       "ok"
-                    ],
-                    "additionalProperties": true
+                    ]
                   }
                 },
                 {
@@ -1285,8 +1231,7 @@
             "canDecide",
             "kind",
             "payload"
-          ],
-          "additionalProperties": true
+          ]
         },
         {
           "type": "object",
@@ -1296,13 +1241,9 @@
               "format": "uuid"
             },
             "projectId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "status": {
@@ -1326,66 +1267,42 @@
               "type": "string"
             },
             "onBehalfOfName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "originConversationId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "originMessageId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "createdAt": {
               "type": "string"
             },
             "decidedBy": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "decidedByName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "decidedAt": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "results": {
@@ -1418,8 +1335,7 @@
                     "required": [
                       "label",
                       "ok"
-                    ],
-                    "additionalProperties": true
+                    ]
                   }
                 },
                 {
@@ -1453,6 +1369,8 @@
                   ]
                 },
                 "patch": {
+                  "minItems": 1,
+                  "maxItems": 20,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -1473,10 +1391,8 @@
                     "required": [
                       "op",
                       "path"
-                    ],
-                    "additionalProperties": true
-                  },
-                  "maxItems": 20
+                    ]
+                  }
                 }
               },
               "required": [
@@ -1503,8 +1419,7 @@
             "canDecide",
             "kind",
             "payload"
-          ],
-          "additionalProperties": true
+          ]
         },
         {
           "type": "object",
@@ -1514,13 +1429,9 @@
               "format": "uuid"
             },
             "projectId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "status": {
@@ -1544,66 +1455,42 @@
               "type": "string"
             },
             "onBehalfOfName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "originConversationId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "originMessageId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "createdAt": {
               "type": "string"
             },
             "decidedBy": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "decidedByName": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "decidedAt": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "results": {
@@ -1636,8 +1523,7 @@
                     "required": [
                       "label",
                       "ok"
-                    ],
-                    "additionalProperties": true
+                    ]
                   }
                 },
                 {
@@ -1716,13 +1602,9 @@
                     "type": "string"
                   },
                   "name": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   }
                 },
@@ -1730,8 +1612,7 @@
                   "type",
                   "id",
                   "name"
-                ],
-                "additionalProperties": true
+                ]
               }
             }
           },
@@ -1752,8 +1633,7 @@
             "canDecide",
             "kind",
             "payload"
-          ],
-          "additionalProperties": true
+          ]
         }
       ],
       "discriminator": {
@@ -1773,13 +1653,9 @@
                   "format": "uuid"
                 },
                 "projectId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "status": {
@@ -1803,66 +1679,42 @@
                   "type": "string"
                 },
                 "onBehalfOfName": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "originConversationId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "originMessageId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "createdAt": {
                   "type": "string"
                 },
                 "decidedBy": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "decidedByName": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "decidedAt": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "results": {
@@ -1895,8 +1747,7 @@
                         "required": [
                           "label",
                           "ok"
-                        ],
-                        "additionalProperties": true
+                        ]
                       }
                     },
                     {
@@ -1923,6 +1774,8 @@
                       ]
                     },
                     "operations": {
+                      "minItems": 1,
+                      "maxItems": 8,
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -2035,8 +1888,7 @@
                           }
                         },
                         "additionalProperties": false
-                      },
-                      "maxItems": 8
+                      }
                     },
                     "note": {
                       "anyOf": [
@@ -2120,8 +1972,7 @@
                 "canDecide",
                 "kind",
                 "payload"
-              ],
-              "additionalProperties": true
+              ]
             },
             {
               "type": "object",
@@ -2131,13 +1982,9 @@
                   "format": "uuid"
                 },
                 "projectId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "status": {
@@ -2161,66 +2008,42 @@
                   "type": "string"
                 },
                 "onBehalfOfName": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "originConversationId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "originMessageId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "createdAt": {
                   "type": "string"
                 },
                 "decidedBy": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "decidedByName": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "decidedAt": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "results": {
@@ -2253,8 +2076,7 @@
                         "required": [
                           "label",
                           "ok"
-                        ],
-                        "additionalProperties": true
+                        ]
                       }
                     },
                     {
@@ -2339,8 +2161,7 @@
                 "canDecide",
                 "kind",
                 "payload"
-              ],
-              "additionalProperties": true
+              ]
             },
             {
               "type": "object",
@@ -2350,13 +2171,9 @@
                   "format": "uuid"
                 },
                 "projectId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "status": {
@@ -2380,66 +2197,42 @@
                   "type": "string"
                 },
                 "onBehalfOfName": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "originConversationId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "originMessageId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "createdAt": {
                   "type": "string"
                 },
                 "decidedBy": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "decidedByName": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "decidedAt": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "results": {
@@ -2472,8 +2265,7 @@
                         "required": [
                           "label",
                           "ok"
-                        ],
-                        "additionalProperties": true
+                        ]
                       }
                     },
                     {
@@ -2507,6 +2299,8 @@
                       ]
                     },
                     "patch": {
+                      "minItems": 1,
+                      "maxItems": 20,
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -2527,10 +2321,8 @@
                         "required": [
                           "op",
                           "path"
-                        ],
-                        "additionalProperties": true
-                      },
-                      "maxItems": 20
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -2557,8 +2349,7 @@
                 "canDecide",
                 "kind",
                 "payload"
-              ],
-              "additionalProperties": true
+              ]
             },
             {
               "type": "object",
@@ -2568,13 +2359,9 @@
                   "format": "uuid"
                 },
                 "projectId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "status": {
@@ -2598,66 +2385,42 @@
                   "type": "string"
                 },
                 "onBehalfOfName": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "originConversationId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "originMessageId": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "createdAt": {
                   "type": "string"
                 },
                 "decidedBy": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "decidedByName": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "decidedAt": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 },
                 "results": {
@@ -2690,8 +2453,7 @@
                         "required": [
                           "label",
                           "ok"
-                        ],
-                        "additionalProperties": true
+                        ]
                       }
                     },
                     {
@@ -2770,13 +2532,9 @@
                         "type": "string"
                       },
                       "name": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
+                        "type": [
+                          "string",
+                          "null"
                         ]
                       }
                     },
@@ -2784,8 +2542,7 @@
                       "type",
                       "id",
                       "name"
-                    ],
-                    "additionalProperties": true
+                    ]
                   }
                 }
               },
@@ -2806,8 +2563,7 @@
                 "canDecide",
                 "kind",
                 "payload"
-              ],
-              "additionalProperties": true
+              ]
             }
           ],
           "discriminator": {
@@ -2817,8 +2573,7 @@
       },
       "required": [
         "proposal"
-      ],
-      "additionalProperties": true
+      ]
     }
   }
 }

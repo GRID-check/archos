@@ -16,9 +16,9 @@ import pytest
 from knowledge_layer.llamaindex import adapter
 from knowledge_layer.llamaindex import image_store
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
+from knowledge_layer.register import _format_results
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.src.register import _format_results
 from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
 from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 

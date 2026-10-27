@@ -27,11 +27,11 @@ import turn_input  # noqa: E402
 from jsonschema import Draft202012Validator  # noqa: E402
 
 from aiq_agent.agents.piloti.prompt import focus_region_block  # noqa: E402
+from aiq_agent.common.bff_http import SignedEnvelope  # noqa: E402
 from aiq_agent.common.wire_v2 import FocusRegion  # noqa: E402
 from aiq_agent.tools import proposals_client  # noqa: E402
 from aiq_agent.tools.canvas import client as canvas_client  # noqa: E402
 from aiq_agent.tools.canvas.marks import propose_payload  # noqa: E402
-from aiq_agent.tools.documents.filing import SignedEnvelope  # noqa: E402
 from aiq_agent.turn import payload  # noqa: E402
 
 ROW = {row["id"]: row for row in north_star_eval.load_questions()}["ns-drawn-box"]

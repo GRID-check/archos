@@ -18,7 +18,7 @@ import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import type { Document } from '@/lib/db/schema/documents'
-import { INTERNAL_TOKEN_HEADER } from '@/lib/internal-auth'
+import { internalServiceHeaders } from '@/lib/internal-auth'
 import { refreshSearchRows } from '@/lib/search/refresh-rows'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { getAccessibleDocument } from './access'
@@ -68,7 +68,7 @@ async function putLink(session: AuthorizedSession, newer: Document, older: Docum
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        [INTERNAL_TOKEN_HEADER]: process.env.GRID_INTERNAL_API_TOKEN ?? '',
+        ...internalServiceHeaders(getBackendUrl()),
         // A confirmation writes the change summary on the summary model: whose
         // credential, data policy (BYOK, ZDR) and spend ledger it runs under.
         // Without it the backend falls back to the deployment's key and default

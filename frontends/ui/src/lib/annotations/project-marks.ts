@@ -73,7 +73,7 @@ export function dueRangeOf(due: ProjectMarkDue | undefined, today: string): DueR
 const cursorSchema = z.object({
   u: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   n: z.string().max(PROJECT_MARKS_CURSOR_MAX_LENGTH),
-  d: z.string().uuid(),
+  d: z.guid(),
   k: z.number().int().min(0),
 })
 

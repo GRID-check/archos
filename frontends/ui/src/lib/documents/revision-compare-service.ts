@@ -34,7 +34,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { restrictedCollectionBase } from '@/lib/authz/folder-access-rule'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import type { Document } from '@/lib/db/schema/documents'
-import { INTERNAL_TOKEN_HEADER } from '@/lib/internal-auth'
+import { internalServiceHeaders } from '@/lib/internal-auth'
 import { getAccessibleDocument } from './access'
 import { collectionFileRef } from './collection-file-ref'
 import { hasPassedScreening } from './document-reader'
@@ -66,7 +66,7 @@ async function postToBackend(session: AuthorizedSession, url: string, body: obje
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        [INTERNAL_TOKEN_HEADER]: process.env.GRID_INTERNAL_API_TOKEN ?? '',
+        ...internalServiceHeaders(getBackendUrl()),
         // Whose vision credential and data policy the comparison runs under.
         'x-grid-organization-id': session.organizationId,
         'x-grid-user-id': session.userId,

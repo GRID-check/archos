@@ -412,7 +412,7 @@ checkout at one commit, so they stand.
   in its own process from the working tree. Measure a committed, clean tree:
   the report's header names the commit, `-dirty` when it was not clean. One
   baseline in this series was corrupted by editing code mid-run.
-* **Run it where the document inventory is.** `AIQ_SUMMARY_DB` defaults to
+* **Run it where the document inventory is.** `GRID_SUMMARY_DB` defaults to
   the relative `./summaries.db`, so a `git worktree` read an empty inventory:
   no document list, no family overviews, 7 s more per turn. The ADR-0067
   before/after numbers (42 s) carry that handicap on both sides. The suite now

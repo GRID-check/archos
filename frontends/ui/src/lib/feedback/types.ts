@@ -28,7 +28,7 @@ export const upsertAnswerFeedbackSchema = z.object({
   /** Optional: what a good answer would have contained. Empty is stored as null. */
   expectedAnswer: z.string().trim().max(MAX_FEEDBACK_COMMENT_LENGTH).nullish(),
   conversationId: conversationIdSchema.nullish(),
-  projectId: z.string().uuid().nullish(),
+  projectId: z.guid().nullish(),
 })
 
 export type UpsertAnswerFeedbackInput = z.infer<typeof upsertAnswerFeedbackSchema>

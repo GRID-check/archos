@@ -214,7 +214,7 @@ export const restoreFolderBinPayloadSchema = z.object({
   /** The restored folder (the bin entry's root). */
   folderId: z.string().min(1),
   /** This job's own id, stamped on the rows it owns. */
-  jobId: z.string().uuid(),
+  jobId: z.guid(),
   requester: requesterSchema,
   /** The last document id handled; `null` is the first slice. */
   cursor: z.string().nullable(),
@@ -229,7 +229,7 @@ export type RestoreFolderBinPayload = z.infer<typeof restoreFolderBinPayloadSche
  * trusting what the queue saved.
  */
 export const rootSortPayloadSchema = z.object({
-  runId: z.string().uuid(),
+  runId: z.guid(),
   requester: requesterSchema,
 })
 export type RootSortPayload = z.infer<typeof rootSortPayloadSchema>
@@ -337,8 +337,8 @@ export type FileResearchReportPayload = z.infer<typeof fileResearchReportPayload
  * a slice can die between two of them.
  */
 export const mailImportPayloadSchema = z.object({
-  importId: z.string().uuid(),
-  projectId: z.string().uuid(),
+  importId: z.guid(),
+  projectId: z.guid(),
   requester: requesterSchema,
 })
 export type MailImportPayload = z.infer<typeof mailImportPayloadSchema>
@@ -351,12 +351,12 @@ export type MailImportPayload = z.infer<typeof mailImportPayloadSchema>
  * queued wake carries no tenant content and a revoked right ends it.
  */
 export const pilotiWakePayloadSchema = z.object({
-  wakeId: z.string().uuid(),
+  wakeId: z.guid(),
   trigger: z.enum(['thread_mention', 'thread_reply', 'assigned']),
   /** The reply id, or the delegation's event id. */
   eventId: z.string().min(1).max(128),
-  documentId: z.string().uuid(),
-  annotationId: z.string().uuid(),
+  documentId: z.guid(),
+  annotationId: z.guid(),
   /** The person whose act is the event: the turn runs as them, today. */
   actor: z.object({ userId: z.string().min(1), email: z.string().nullable() }),
   /** How often the wake has waited already (another turn ran, or no server could take it). */
@@ -373,9 +373,9 @@ export type PilotiWakePayload = z.infer<typeof pilotiWakePayloadSchema>
  * deleted mark.
  */
 export const pilotiWakeStopPayloadSchema = z.object({
-  wakeId: z.string().uuid(),
-  documentId: z.string().uuid(),
-  annotationId: z.string().uuid(),
+  wakeId: z.guid(),
+  documentId: z.guid(),
+  annotationId: z.guid(),
   /** The person the woken turn runs as: whose thread about the document it is in. */
   actorUserId: z.string().min(1),
 })
@@ -389,7 +389,7 @@ export type PilotiWakeStopPayload = z.infer<typeof pilotiWakeStopPayloadSchema>
  * documents are read again when it runs.
  */
 export const projectIntakeReadPayloadSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.guid(),
   requester: requesterSchema,
 })
 export type ProjectIntakeReadPayload = z.infer<typeof projectIntakeReadPayloadSchema>
@@ -402,7 +402,7 @@ export type ProjectIntakeReadPayload = z.infer<typeof projectIntakeReadPayloadSc
  * folders and the uploader's rights are read again when it runs.
  */
 export const filingReviewPayloadSchema = z.object({
-  batchId: z.string().uuid(),
+  batchId: z.guid(),
   basis: z.enum(['name', 'content']),
   requester: requesterSchema,
 })
@@ -416,7 +416,7 @@ export type FilingReviewPayload = z.infer<typeof filingReviewPayloadSchema>
  * newer occurrence has its own job, and this one then stands down.
  */
 export const inboxPushPayloadSchema = z.object({
-  itemId: z.string().uuid(),
+  itemId: z.guid(),
   recipientUserId: z.string().min(1),
   stamp: z.string().min(1),
 })
@@ -454,7 +454,7 @@ export const emptyDueReminderCounts = (): DueReminderCounts => ({
  */
 export const annotationDueRemindersPayloadSchema = z.object({
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  cursor: z.string().uuid().nullable(),
+  cursor: z.guid().nullable(),
   counts: dueReminderCountsSchema,
 })
 export type AnnotationDueRemindersPayload = z.infer<typeof annotationDueRemindersPayloadSchema>
@@ -467,9 +467,9 @@ export type AnnotationDueRemindersPayload = z.infer<typeof annotationDueReminder
  * organization's switch are read again when it runs.
  */
 export const revisionNoticePayloadSchema = z.object({
-  noticeId: z.string().uuid(),
-  newerId: z.string().uuid(),
-  olderId: z.string().uuid(),
+  noticeId: z.guid(),
+  newerId: z.guid(),
+  olderId: z.guid(),
   /** The person whose upload or link made the Fassung: the notice runs as them, today. */
   actor: z.object({ userId: z.string().min(1), email: z.string().nullable() }),
 })
@@ -484,8 +484,8 @@ export type RevisionNoticePayload = z.infer<typeof revisionNoticePayloadSchema>
  * again at every slice.
  */
 export const documentCheckPayloadSchema = z.object({
-  checkId: z.string().uuid(),
-  documentId: z.string().uuid(),
+  checkId: z.guid(),
+  documentId: z.guid(),
   /** The person whose upload finished: the check runs as them, today. */
   actor: z.object({ userId: z.string().min(1), email: z.string().nullable() }),
   conversationId: z.string().min(1).nullable(),
@@ -520,7 +520,7 @@ export interface JobSliceResult<TPayload> {
  */
 export const searchFacetsSyncPayloadSchema = z.object({
   shelfKey: z.string().min(1).max(60),
-  afterId: z.string().uuid().nullable(),
+  afterId: z.guid().nullable(),
   sourceFingerprint: z.string().min(1).max(120),
   /** Rows written so far, for the log. */
   written: z.number().int().nonnegative(),

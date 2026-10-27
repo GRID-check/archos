@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    The workspace no longer calls the backend without the internal service
+    token. When GRID_INTERNAL_API_TOKEN is unset, or BACKEND_URL is plain HTTP
+    to a public host, those calls now fail with a 503 naming the reason instead
+    of reaching the backend and coming back as a 403. Set the token, and use
+    HTTPS or an internal host name for the backend.

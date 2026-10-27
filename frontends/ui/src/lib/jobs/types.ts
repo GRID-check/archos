@@ -228,5 +228,5 @@ export type PatchJobInput = z.infer<typeof patchJobSchema>
  * `task_definitions.id` since migration 0086.
  */
 export const internalFireSchema = z.object({
-  scheduleId: z.string().uuid(),
+  scheduleId: z.guid(),
 })

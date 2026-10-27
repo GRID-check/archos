@@ -265,7 +265,7 @@ def test_a_job_a_dead_process_left_processing_reads_interrupted(tmp_path, monkey
     from sqlalchemy import text
 
     url = f"sqlite:///{tmp_path / 'jobs.db'}"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("GRID_SUMMARY_DB", url)
     try:
         stranded = IngestionJobStatus(
             job_id="stranded",
@@ -313,7 +313,7 @@ def test_startup_settles_and_each_beat_vouches_for_live_jobs_only(monkeypatch, h
 @pytest.fixture()
 def status_db(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path / 'jobs.db'}"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("GRID_SUMMARY_DB", url)
     yield url
     ingest_status_store._initialized.discard(url)
 
@@ -438,7 +438,7 @@ def test_a_submitted_job_waits_in_its_organisations_lane(tmp_path, held_ingestor
 
 def test_a_prepared_job_is_vouched_for_by_the_process_that_runs_it(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path / 'jobs.db'}"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("GRID_SUMMARY_DB", url)
     upload = tmp_path / "a.txt"
     upload.write_text("x", encoding="utf-8")
     accepting = LlamaIndexIngestor({})

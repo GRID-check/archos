@@ -23,6 +23,7 @@
  * assertion in this file is here to catch.
  */
 
+import { discriminatedOptions } from '@/lib/api/zod-union'
 import { describe, expect, it } from 'vitest'
 import { createTranslator } from '@/i18n/translate'
 import { de, en } from '@/i18n/dictionaries'
@@ -802,7 +803,7 @@ describe('every string in the document comes from a dictionary', () => {
     CARD_EXPORT[card.type as keyof typeof CARD_EXPORT]
 
   const authored = new Map(authoredCards.map((card) => [card.type as string, card]))
-  const everyCardType: Record<string, unknown>[] = [...gridCardSchema.optionsMap.keys()]
+  const everyCardType: Record<string, unknown>[] = [...discriminatedOptions(gridCardSchema).keys()]
     .filter((type): type is string => typeof type === 'string')
     .map(
       (type) =>
@@ -812,7 +813,7 @@ describe('every string in the document comes from a dictionary', () => {
 
   it('covers every card type in the union', () => {
     const covered = new Set(everyCardType.map((card) => card.type))
-    const uncovered = [...gridCardSchema.optionsMap.keys()].filter((type) => !covered.has(type))
+    const uncovered = [...discriminatedOptions(gridCardSchema).keys()].filter((type) => !covered.has(type))
     expect(
       uncovered,
       'no authored body and no preview fixture — add one, or the export is untested for this type'
