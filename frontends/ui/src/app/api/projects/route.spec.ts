@@ -16,7 +16,6 @@ vi.mock('@/lib/auth/require-auth', () => ({
     role: 'member',
     permissions: [],
   }),
-  authzErrorResponse: () => null,
 }))
 
 const service = vi.hoisted(() => ({ listProjects: vi.fn(), createProject: vi.fn() }))

@@ -50,7 +50,7 @@ import { NextResponse } from 'next/server'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
 import { FEATURE_FLAGS, requireFeature } from '@/lib/authz/feature-flags'
-import { isAuthzError } from '@/lib/auth-utils'
+import { isAuthzRefusal } from '@/lib/api/errors'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { loadProjectFederalState } from '@/lib/project-profile/prompt-view'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
@@ -325,7 +325,7 @@ export const GET = tenantSlotRoute(async function GET(
     }
     return NextResponse.json(data)
   } catch (error) {
-    if (isAuthzError(error)) {
+    if (isAuthzRefusal(error)) {
       return handleAuthzError(error)
     }
 
@@ -461,7 +461,7 @@ export const POST = tenantSlotRoute(async function POST(
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    if (isAuthzError(error)) {
+    if (isAuthzRefusal(error)) {
       return handleAuthzError(error)
     }
 
@@ -514,7 +514,7 @@ export const DELETE = tenantSlotRoute(async function DELETE(
     const data = await response.json().catch(() => ({}))
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    if (isAuthzError(error)) {
+    if (isAuthzRefusal(error)) {
       return handleAuthzError(error)
     }
 

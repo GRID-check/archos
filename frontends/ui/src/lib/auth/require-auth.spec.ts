@@ -3,7 +3,7 @@
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
-import { isAuthzError } from '@/lib/auth-utils'
+import { isAuthzRefusal, NoOrganizationError, SessionRequiredError } from '@/lib/api/errors'
 
 class RedirectError extends Error {
   constructor(public url: string) {
@@ -25,8 +25,6 @@ vi.mock('next/navigation', () => ({
 import { requireGridSession } from './session'
 import { redirect } from 'next/navigation'
 import {
-  authzErrorResponse,
-  NoOrganizationError,
   requireAuthorizedSession,
   requireAuthorizedPageSession,
 } from './require-auth'
@@ -67,7 +65,8 @@ describe('require-auth guards', () => {
     }
 
     expect(caught).toBeInstanceOf(NoOrganizationError)
-    expect(isAuthzError(caught)).toBe(true)
+    expect(isAuthzRefusal(caught)).toBe(true)
+    expect((caught as NoOrganizationError).status).toBe(403)
   })
 
   it('requireAuthorizedPageSession redirects to organization onboarding when no organization', async () => {
@@ -86,37 +85,11 @@ describe('require-auth guards', () => {
   })
 
   it('requireAuthorizedPageSession rethrows non-org errors without redirecting', async () => {
-    vi.mocked(requireGridSession).mockRejectedValue(
-      new Error('Unauthorized: Grid session required'),
-    )
+    vi.mocked(requireGridSession).mockRejectedValue(new SessionRequiredError())
 
     await expect(requireAuthorizedPageSession()).rejects.toThrow(
       'Unauthorized: Grid session required',
     )
     expect(redirect).not.toHaveBeenCalled()
-  })
-})
-
-describe('authzErrorResponse', () => {
-  it('maps a NoOrganizationError to a 403 JSON response', async () => {
-    const res = authzErrorResponse(new NoOrganizationError())
-
-    expect(res).not.toBeNull()
-    expect(res!.status).toBe(403)
-    await expect(res!.json()).resolves.toEqual({ error: 'Forbidden' })
-  })
-
-  it.each([
-    'Unauthorized: Grid session required',
-    'Forbidden: insufficient permissions',
-    'not found',
-  ])('maps authz-style error "%s" to a 403', (message) => {
-    const res = authzErrorResponse(new Error(message))
-    expect(res?.status).toBe(403)
-  })
-
-  it('returns null for a non-authorization error so the caller can rethrow', () => {
-    expect(authzErrorResponse(new Error('database connection reset'))).toBeNull()
-    expect(authzErrorResponse('not an Error instance')).toBeNull()
   })
 })

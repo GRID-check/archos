@@ -1,6 +1,7 @@
 /**
  * @vitest-environment node
  */
+import { SessionRequiredError } from '@/lib/api/errors'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const session = {
@@ -35,7 +36,7 @@ describe('GET /api/auth/connection-diagnostics', () => {
   })
 
   it('rejects an unauthenticated caller and never runs the budget check', async () => {
-    requireAuthorizedSession.mockRejectedValueOnce(new Error('Unauthorized'))
+    requireAuthorizedSession.mockRejectedValueOnce(new SessionRequiredError())
     const res = await GET(request())
     expect(res.status).toBe(403)
     expect(getConnectionDiagnostics).not.toHaveBeenCalled()

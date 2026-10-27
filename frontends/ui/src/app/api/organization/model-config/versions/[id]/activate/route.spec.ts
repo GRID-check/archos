@@ -9,6 +9,7 @@
  * about rollback changes.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ForbiddenError } from '@/lib/api/errors'
 
 const session = {
   userId: 'user-1',
@@ -29,7 +30,6 @@ afterEach(() => {
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockImplementation(async () => session),
-  authzErrorResponse: vi.fn().mockReturnValue(null),
 }))
 
 const VERSION_ID = '11111111-2222-3333-4444-555555555555'
@@ -46,7 +46,8 @@ vi.mock('@/lib/model-config/service', async (importOriginal) => ({
         written.push(null)
         return null
       }
-      if (!storedRow) throw new Error('not found: version does not exist for this organization')
+      // What the real `activateVersion` throws for a version this org does not hold.
+      if (!storedRow) throw new ForbiddenError()
       await params.validate?.(storedRow as never)
       written.push(params.versionId)
       return storedRow
@@ -148,7 +149,7 @@ describe('POST /api/organization/model-config/versions/[id]/activate', () => {
     expect(fetchZdrEndpoints).not.toHaveBeenCalled()
   })
 
-  it('keeps the pre-existing answer for a version of another org (403 via the legacy not-found mapping)', async () => {
+  it('keeps the pre-existing answer for a version of another org (403)', async () => {
     storedRow = null
     expect((await activate(VERSION_ID)).status).toBe(403)
     expect(fetchZdrEndpoints).not.toHaveBeenCalled()
