@@ -72,3 +72,22 @@ def test_the_project_keys_are_the_same():
 def test_the_project_directive_is_named_the_same():
     source = TS_DIALECT.read_text(encoding="utf-8")
     assert f"'{PROJECT_DIRECTIVE}'" in source
+
+
+TS_AGENT_TEXT = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "piloti-asks" / "answer-text.ts"
+
+
+def test_the_agent_text_rewrites_the_verifiers_labels_as_written():
+    """`answerTextForAgent` replaces the verifier's labels for an outside agent by their exact text.
+
+    A label reworded here and not there would reach the agent raw and German again.
+    """
+    from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
+    from aiq_agent.common.citation_verification import UNVERIFIED_QUOTE_MARKER
+
+    source = TS_AGENT_TEXT.read_text(encoding="utf-8")
+    match = re.search(r"export const VERIFICATION_MARKERS = \{(.*?)\} as const", source, re.S)
+    assert match, f"VERIFICATION_MARKERS not found in {TS_AGENT_TEXT}"
+    keys = re.findall(r"^\s*'([^']*)':", _without_comments(match.group(1)), re.M)
+
+    assert sorted(keys) == sorted([UNVERIFIED_QUOTE_MARKER, DROPPED_CITATION_MARKER])

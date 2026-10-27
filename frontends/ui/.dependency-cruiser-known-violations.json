@@ -6080,23 +6080,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/lib/answer-export/service.ts",
-    "to": "src/features/chat/lib/answer-markdown.ts",
-    "unresolvedTo": "@/features/chat/lib/answer-markdown",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "lib-imports-ui"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/lib/conversations/agent-answer-metadata.ts",
     "to": "src/features/chat/lib/citations/index.ts",
     "unresolvedTo": "@/features/chat/lib/citations",
