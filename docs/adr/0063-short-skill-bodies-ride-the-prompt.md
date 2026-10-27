@@ -173,6 +173,19 @@ abstained on every row (`decision_eval_2026-09-22.csv`). Everything else
 in this ADR — the premise, `skills_applied`, the block's shape, the
 opt-in budget's tests — is unchanged.
 
+## Amendment (2026-10-27): the budget is gone; the decision's pick is pinned
+
+Skills run on Deep Agents' `SkillsMiddleware` now
+([ADR-0135](0135-skills-run-on-deep-agents-skills-middleware.md)), and a body
+that is not in the prompt is read with `read_file` on its `SKILL.md`, not
+`use_skill`. The opt-in budget had no taker (both keys 0 in the shipped config),
+so `skills_inline_max_body_chars`, `skills_inline_budget_chars` and their tests
+are deleted. The turn-start decision's one chosen body still rides the turn,
+now as a *pinned* skill in the middleware's own shape (`<skill name path>`,
+`SkillRuntime.pin`), and it still activates only when the envelope names it in
+`skills_applied`. The round this ADR measured is saved exactly as before, on
+exactly the turns it was saved on.
+
 ## More Information
 
 - ADR-0060 (c) is amended by this ADR; its category rule stands.

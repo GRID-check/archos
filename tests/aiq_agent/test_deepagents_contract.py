@@ -53,7 +53,7 @@ _IMPORTED_NAMES = {
     ],
     "deepagents.backends.sandbox": ["BaseSandbox"],
     "deepagents.backends.store": ["StoreBackend"],
-    "deepagents.backends.utils": ["validate_path"],
+    "deepagents.backends.utils": ["create_file_data", "slice_read_response", "validate_path"],
     "deepagents.middleware.filesystem": [
         "FilesystemMiddleware",
         "FilesystemPermission",
@@ -149,7 +149,7 @@ def test_the_allowlist_builds_only_the_listed_tools() -> None:
     "path",
     [
         "aiq_agent.tools.documents.draft_store:DraftBackend",
-        "aiq_agent.agents.deep_researcher.deepagents_runtime:MachineryOnlyFilesystemBackend",
+        "aiq_agent.skills.backend:SkillsBackend",
     ],
 )
 def test_our_backend_overrides_match_the_protocol(path: str) -> None:
@@ -165,6 +165,38 @@ def test_our_backend_overrides_match_the_protocol(path: str) -> None:
         ours = set(inspect.signature(member).parameters)
         theirs = set(inspect.signature(stock).parameters)
         assert theirs <= ours, f"{class_name}.{name} lacks {sorted(theirs - ours)} that BackendProtocol.{name} takes"
+
+
+def test_state_backend_still_reads_through_the_one_hook_the_skills_backend_overrides() -> None:
+    """``SkillsBackend`` hands ``StateBackend`` its files by overriding ``_read_files`` (ADR-0135)."""
+    from deepagents.backends import StateBackend
+
+    from aiq_agent.skills.backend import SkillsBackend
+    from aiq_agent.skills.models import Skill
+
+    assert callable(getattr(StateBackend, "_read_files", None)), "StateBackend._read_files is gone"
+    backend = SkillsBackend({"office": (Skill(name="x", description="d", body="b"),)})
+    # Outside a graph: a StateBackend that still read the graph's channel would raise here.
+    assert [e["path"] for e in backend.ls("/office/").entries or []] == ["/office/x/"]
+    assert backend.glob("**/SKILL.md").matches
+    assert backend.download_files(["/office/x/SKILL.md"])[0].content
+
+
+def test_skills_middleware_takes_our_template_and_renders_outside_an_agent() -> None:
+    """Piloti renders the catalog with ``before_agent`` + ``modify_request``, without hosting the middleware."""
+    from deepagents.middleware.skills import SkillsMiddleware
+
+    from aiq_agent.skills.models import Skill
+    from aiq_agent.skills.runtime import SKILLS_PROMPT
+    from aiq_agent.skills.runtime import SkillRuntime
+
+    parameters = set(inspect.signature(SkillsMiddleware.__init__).parameters)
+    assert {"backend", "sources", "system_prompt"} <= parameters
+    for slot in ("{skills_locations}", "{skills_load_warnings}", "{skills_list}"):
+        assert slot in SKILLS_PROMPT
+    block = SkillRuntime.office((Skill(name="x", description="the d", body="b"),)).catalog_block() or ""
+    assert "- **x**: the d" in block, "the middleware's catalog line changed shape; the skills tests read it"
+    assert "/skills/office/x/SKILL.md" in block
 
 
 def test_store_backend_still_has_the_helpers_the_draft_backend_calls() -> None:

@@ -346,7 +346,7 @@ def test_the_routing_table_puts_each_operation_under_its_own_tool(text: str) -> 
 def test_the_description_survives_the_level_one_catalog_intact(text: str) -> None:
     """The description IS the trigger, and it is rendered as ONE bullet line.
 
-    `SkillRuntime.prompt_block` writes `- \\`{name}\\`: {description}` per skill,
+    The SkillsMiddleware catalog writes `- **{name}**: {description}` per skill,
     so a description carrying a newline (a blank line inside the folded YAML
     scalar) breaks out of its own bullet and the rest of it reads as loose
     system-prompt text. `parse_skill_md` caps the length at 1024; there is no
@@ -362,8 +362,8 @@ def test_the_description_survives_the_level_one_catalog_intact(text: str) -> Non
     assert "\n" not in skill.description
     assert len(skill.description) <= MAX_DESCRIPTION_CHARS
 
-    block = SkillRuntime((skill,)).prompt_block() or ""
-    assert f"- `{skill.name}`: {skill.description}" in block.splitlines()
+    block = SkillRuntime.office((skill,)).catalog_block() or ""
+    assert f"- **{skill.name}**: {skill.description}" in block.splitlines()
 
     # Both tool names belong in the one sentence: the moment the model reaches
     # for one of them is the moment it has to load this. The rest of the

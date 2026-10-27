@@ -7,7 +7,7 @@
  * contributes its name and description to the agent's catalogue on every turn
  * (progressive disclosure level 1, ~a line each), but a skill's full
  * instructions enter the conversation only when the agent decides to load them
- * with `use_skill`. Those decisions are what `skills_activated` reports, and
+ * with `read_file`. Those decisions are what `skills_activated` reports, and
  * they are the ones worth showing — "this skill was available" is not news,
  * "this skill's instructions shaped this answer" is.
  *
