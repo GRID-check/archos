@@ -17,6 +17,7 @@ import { retryTransientFailure } from './service'
 import {
   TRANSIENT_BATCH,
   TRANSIENT_FIRST_BACKOFF_MINUTES,
+  TRANSIENT_MAX_AGE_HOURS,
   TRANSIENT_MAX_ATTEMPTS,
   retryTransientFailures,
 } from './transient-retry'
@@ -31,16 +32,23 @@ beforeEach(() => {
 })
 
 describe('retryTransientFailures', () => {
-  it('asks for transient failures under the attempt cap, past their backoff, a bounded batch', async () => {
+  it('asks for recent transient failures under the attempt cap, past their backoff, a bounded batch', async () => {
     await retryTransientFailures(NOW)
 
     expect(listTransientFailures).toHaveBeenCalledWith(NOW, {
       maxAttempts: TRANSIENT_MAX_ATTEMPTS,
       firstBackoffMinutes: TRANSIENT_FIRST_BACKOFF_MINUTES,
+      maxAgeHours: TRANSIENT_MAX_AGE_HOURS,
       limit: TRANSIENT_BATCH,
     })
     // Two automatic retries at most: a provider outage must not turn into a loop of vision calls.
     expect(TRANSIENT_MAX_ATTEMPTS).toBe(3)
+    // A day, never unbounded: the first deploy must not re-read every failure ever recorded.
+    expect(TRANSIENT_MAX_AGE_HOURS).toBe(24)
+    // The last retry (5 + 10 minutes after the first failure) still falls inside the window.
+    expect(TRANSIENT_FIRST_BACKOFF_MINUTES * (2 ** (TRANSIENT_MAX_ATTEMPTS - 1) - 1)).toBeLessThan(
+      TRANSIENT_MAX_AGE_HOURS * 60,
+    )
   })
 
   it('retries each document inside its own organization', async () => {
