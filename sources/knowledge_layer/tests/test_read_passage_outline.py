@@ -33,9 +33,6 @@ from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.scoping import ScopedCollection
 
-# NOTE: `knowledge_layer.read_passage` as an ATTRIBUTE is the registered NAT
-# function (see `knowledge_layer/__init__.py`); the module holding the helpers
-# is reached through the import system instead.
 rp = importlib.import_module("knowledge_layer.read_passage")
 
 OIB = "oib-rl_2_ausgabe_mai_2023.pdf"

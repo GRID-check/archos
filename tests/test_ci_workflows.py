@@ -80,6 +80,7 @@ def plan(
     build: str = BUILD,
     py_mode: str | None = None,
     ui_mode: str | None = None,
+    reference: str | None = None,
 ) -> dict:
     """The plan job's outputs, given what each of its scripts would answer."""
     github = {"event_name": event}
@@ -91,7 +92,7 @@ def plan(
     if evaluate(STEPS["filter"]["if"], github=github, steps=steps):
         steps["filter"] = {"outputs": dict.fromkeys(TIERS, "true")}
     if evaluate(STEPS["pysel"]["if"], github=github, steps=steps) and (py_mode or ui_mode):
-        steps["pysel"] = {"outputs": {"py_mode": py_mode or "", "ui_mode": ui_mode or ""}}
+        steps["pysel"] = {"outputs": {"py_mode": py_mode or "", "ui_mode": ui_mode or "", "reference": reference or ""}}
     steps["images"] = {"outputs": {"build": build, "images": "[]"}}
     if evaluate(STEPS["pins"]["if"], github=github, steps=steps):
         steps["pins"] = {"outputs": {"pins": '["x@sha256:' + "0" * 64 + '"]'}}
@@ -220,6 +221,19 @@ def test_a_selected_pull_request_runs_the_affected_tests_instead_of_the_full_sui
     assert not any(runs(job, event="pull_request", outputs=selected) for job in FULL_PY)
     assert not runs("backend-affected", event="pull_request", outputs=full)
     assert all(runs(job, event="pull_request", outputs=full) for job in FULL_PY)
+
+
+@pytest.mark.parametrize(("reference", "own"), [("green", True), ("base", False), (None, False)])
+def test_a_suite_reads_its_own_database_only_against_the_last_green_run(reference, own):
+    # A selection against the whole pull request is sound only measured from
+    # develop's database: from the pull request's own, a test reaching a file
+    # an earlier push changed would not be selected again.
+    outputs = plan(event="pull_request", py_mode="select", reference=reference)
+    step = next(s for s in JOBS["backend-affected"]["steps"] if s.get("id") == "own-db")
+    needs = {"changes": {"outputs": outputs}}
+
+    assert bool(evaluate(step["if"], matrix={"suite": "api"}, needs=needs)) is own
+    assert not evaluate(step["if"], matrix={"suite": "core", "shard": 1}, needs=needs)
 
 
 def test_a_push_always_runs_the_full_python_suite():
