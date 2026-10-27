@@ -3513,7 +3513,7 @@
    "domain": "knowledge",
    "sensitivity": null,
    "external": true,
-   "piloti": "native:ls",
+   "piloti": "native:list_files",
    "platform": false,
    "withheld": null,
    "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"

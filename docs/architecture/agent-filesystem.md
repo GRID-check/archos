@@ -540,16 +540,18 @@ our own caching stays), the general-purpose subagent, `write_todos`.
 
 | Today | Becomes |
 |---|---|
-| `list_files` | `ls` and `glob`. `revisions_of` and `compare_to` stay on `list_files` until a revisions surface exists |
+| `list_files` | `ls` and `glob` for a folder and a name; `list_files` stays, without its tree view, for the filtered, paged listing (`added_since`, `doc_class`, `topic`, `offset`) and the Fassungen (`revisions_of`, `compare_to`), which neither has |
 | `read_passage` | `read_file` with `pages` and `clause` |
 | `knowledge_search(match="exact"\|"regex")` | `grep` |
 | draft `ls`, `read_file`, `write_file`, `edit_file` | the same tools, on `/drafts/` |
 | `knowledge_search` (meaning) | stays, with `path` |
 | `look`, `ris_lookup`, `web_search_tool`, `ifc_query`, `ifc_measure`, `project_lookup`, `workspace__*`, `canvas__*` and the write tools | stay |
 
-Since slice 6 the old names are off Piloti's chat binding: a call to one is answered with
-the exact replacement call (`common/retired_calls.py`), and `list_files` stays bound with
-`revisions_of` and `compare_to` only. They stay registered, because stored and replayed turns
+Since slice 6 `read_passage` and the literal `knowledge_search` are off Piloti's chat binding
+where the estate is read. A `read_passage` call is answered by the tool node's own error, which
+names the tools there are; a retired argument (`match`, `stemmed`, `context`, `view`, `depth`) is
+rejected by the schema with its replacement named (`common/retired_calls.py`). `list_files` keeps
+every filter and its paging. The old names stay registered, because stored and replayed turns
 name them, the read side reads them for good, and the answer suite's matcher maps old to new so
 before and after compare. The MCP door keeps its operations (`files-list`,
 `passage-read`, `knowledge-search`) and gains `path`. Deep research and intake keep the

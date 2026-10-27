@@ -12,7 +12,10 @@ pairs on the one config, by today's tool names and by the ones ADR-0133 brings (
 ``grep``, ``read_file``):
 
 - ``semantic``: ranked search only. Every listing, reading and literal tool is unbound and
-  ``knowledge_search`` accepts ``match=meaning`` alone.
+  ``knowledge_search`` accepts ``match=meaning`` alone. One confound: with ``filesystem`` null the
+  chat rebinding does not run (``register._chat_bound``), so this arm's ``knowledge_search`` carries
+  the full shared description and schema while the other two carry the chat contract. A gap
+  between arms is partly a gap between descriptions.
 - ``grep``: no round-0 prefetch and no ranked search: ``knowledge_search`` is unbound, and the
   filesystem verbs (``ls``, ``glob``, ``grep``, ``read_file``) are what finds and reads. Piloti's
   ``knowledge_search`` has no literal mode since ADR-0133 slice 6, so ``match_modes`` no longer narrows it.
