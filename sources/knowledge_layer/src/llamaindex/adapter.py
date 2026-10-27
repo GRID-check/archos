@@ -1414,6 +1414,22 @@ def indexed_visual_type(content_type: str, *, extract_images: bool, extract_char
     return content_type if extract_images else None
 
 
+def _table_pass_skips(dense_pages: Sequence[int], triage: Any, *, vision_reads: bool) -> list[int]:
+    """The pages the table pass does not look at: the dense ones, and the drawings the vision model reads.
+
+    On a vector drawing, every wall and dimension line is an edge to pdfplumber's
+    table finder: measured at 0.68 s a page on a sheet of 8000 segments, which finds
+    no table, and production's 133-page set spent 125 s here before its first model
+    call. A drawing page within the render cap is read whole by the vision model,
+    a table drawn on the sheet included, so it is skipped here. A drawing past the
+    cap, or any drawing when no vision model reads them, keeps the table pass. Pure.
+    """
+    skip = set(dense_pages)
+    if vision_reads and triage is not None:
+        skip.update(sorted(triage.drawings)[:MAX_RENDERED_PAGES])
+    return sorted(skip)
+
+
 def _extract_tables_from_pdf(
     pdf_path: str, taken: dict[int, list[tuple]] | None = None, skip_pages: Sequence[int] = ()
 ) -> list[dict[str, Any]]:
@@ -2252,7 +2268,14 @@ def _ingest_cost_scope(job_id: str, config: dict[str, Any]):
 
 
 def _vlm_slot():
-    """One of the fleet's ``VLM_FLEET_CONCURRENCY`` vision-call slots, for as long as the call may last."""
+    """One of the fleet's ``VLM_FLEET_CONCURRENCY`` vision-call slots, for as long as the call may last.
+
+    Shared fairly between organisations (``lease_slots.FAIR_ACQUIRE_LUA``): an
+    office's 300-sheet upload takes every slot while it is alone, and gives one
+    up to the next office's first page as soon as that office waits. The lane is
+    the organisation on the job's cost ledger (``_ingest_cost_scope``), which the
+    vision pool's threads inherit; a call outside a job has none and is unlaned.
+    """
     from aiq_agent.common import lease_slots
 
     return lease_slots.hold(
@@ -2260,7 +2283,17 @@ def _vlm_slot():
         VLM_FLEET_CONCURRENCY,
         lease_seconds=VLM_REQUEST_TIMEOUT_SECONDS + 30,
         max_wait_seconds=VLM_REQUEST_TIMEOUT_SECONDS * 3,
+        lane=_vision_lane(),
     )
+
+
+def _vision_lane() -> str | None:
+    """The organisation the running ingest job reads for, or ``None`` outside one."""
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    tracker = grid_cost_tracker_var.get()
+    organization_id = getattr(tracker, "organization_id", None)
+    return str(organization_id) if organization_id else None
 
 
 def _rate_limited_for(error: Exception) -> float | None:
@@ -5026,8 +5059,13 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             from knowledge_layer.llamaindex.section_chunking import uncaptioned_table_documents
 
                             taken = {page["page_number"]: page.get("table_boxes") or [] for page in text_pages}
+                            skip = _table_pass_skips(
+                                dense_pages,
+                                screen.triage,
+                                vision_reads=bool(vlm_api_key) and RENDER_VISUAL_PAGES,
+                            )
                             with _stage(stages, "tables"):
-                                tables = _extract_tables_from_pdf(source_path, taken, dense_pages)
+                                tables = _extract_tables_from_pdf(source_path, taken, skip)
                             _log_memory(f"tables:done tables={len(tables)}")
                             table_documents = [
                                 document
