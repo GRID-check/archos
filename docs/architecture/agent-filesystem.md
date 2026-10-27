@@ -101,6 +101,33 @@ verb `list` with file and folder counts. `list_files` stays bound as the alias.
 3. **Deferred: the mount digest in the prompt.** It is a turn-context block, and the prompt is
    slice 6's; the one prompt line that named `list_files(name_contains=…)` now names `glob`.
 
+**Slice 4, `grep` under its own name** (built). `sources/knowledge_layer/src/estate_grep.py`:
+stage 1 is the index's literal scan (`retriever.find_text`, the scan `knowledge_search(match=…)`
+runs, with slice 1's fixed counts), stage 2 recounts each candidate on its stored pages (up to 20
+documents within 3 s) and otherwise on its chunks' own text. `content` returns one grounding
+block per matching page (up to 8, round-robin over the files) and a `## Lines around the matches`
+index with `context`; a failed collection, a regex scan past its deadline and a capped scan are
+named as `incomplete: …`, and such a result never says "no match". Herleitung verb `search` with
+its mode. `knowledge_search` gains `path=` (it compiles to `shelf`, `folder` and `file_name`; an
+explicit one wins) and keeps `match="exact"|"regex"` as the alias. On the wire `mount` is `estate`
+for a grep without a path.
+
+1. **Stage 1 never needs a separate page scan.** The design reads the scope's stored pages when
+   the `MatchText` pre-filter cannot be a superset (part of a token, no literal word, a regex).
+   `find_text` already reads every chunk in scope in that case (it narrows only by
+   `literal_tokens`, which proves the superset), and a chunk holds its page's text plus overlap,
+   so the chunk scan is the superset and the deadline-and-cap reporting covers it.
+2. **A stemmed grep is verified on the chunks only**: the stemmed index decides which chunks match,
+   and the counting pattern is an approximation of its stems that a page recount would make
+   stricter than the index.
+3. **Restricted folders are searched, as `knowledge_search` searches them**; their matches are
+   reported for the round's admission and the denominators count only listable files. A
+   `path=` into a folder nothing listable is filed in answers as a folder that does not exist.
+4. **Deferred:** the three-arm suite (`grep only`, `semantic only`, `hybrid`) is the files eval's
+   existing three arms with the aliases mapped (`files_eval.aliases`); a `grep`-only arm that
+   unbinds `knowledge_search` entirely is not added. The answer suite has not been run on any
+   slice (no model access in the build container): every row above is unmeasured.
+
 ## 1. Mounts and paths
 
 | Mount | What | Backed by | Writable |

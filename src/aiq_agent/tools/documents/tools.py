@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 DRAFT_TOOL_NAMES = ("ls", "read_file", "write_file", "edit_file")
 
 #: The estate's readers, bound whether or not the turn has a working directory.
-ESTATE_TOOL_NAMES = ("ls", "read_file", "glob")
+ESTATE_TOOL_NAMES = ("ls", "read_file", "glob", "grep")
 
 #: The tools only a working directory gives: the two that write.
 DRAFT_ONLY_TOOL_NAMES = ("write_file", "edit_file")
@@ -136,6 +136,20 @@ _ESTATE_DESCRIPTIONS = {
         "cited; read_file reads, grep finds wording, knowledge_search finds meaning. list_files is the former "
         "name and stays for one release."
     ),
+    "grep": (
+        "Finds WORDING in the office's documents, not meaning: every place a word, number, code or phrase "
+        'stands. mode="exact" (default) matches `pattern` literally, folding case, ä/ae, ß/ss, soft hyphens and '
+        'line-break hyphenation; a pattern of 2-3 characters matches a whole word only. mode="regex" takes a '
+        "Python regular expression (case-insensitive). `stemmed=true` also finds inflected forms. `path` limits it "
+        "to a place, a folder or one file (default: every place the person may see; the drafts only under "
+        "/drafts/); `glob` to file names. output_mode: `files_with_matches` (default) lists each file with its "
+        "count and pages, `count` the counts, `content` the matching pages as citable passages (each with a "
+        "`Citation:` and a `Path:` line, up to 8, spread over the files) and, with `context` 1-3, the lines "
+        "around each match. It counts each place in a document once and says how many files it searched. A no "
+        "is a no for the wording only (knowledge_search finds a topic by meaning), and a result marked "
+        "`incomplete` is not a no for what it could not search. Files and counts are an index; only `content` "
+        'passages are cited. knowledge_search(match="exact") is the former name and stays for one release.'
+    ),
     "glob": (
         "Finds the office's documents by file NAME: `*`, `**`, `?`, `[abc]`, `{a,b}`. A pattern without `/` "
         "matches the name at any depth (`*Brandschutz*`, `*.pdf`); one with `/` matches the path below `path` "
@@ -160,9 +174,9 @@ _ESTATE_DESCRIPTIONS = {
         f"- This conversation's drafts under `{DRAFT_ROOT}`: read before a revision, so that `old_string` comes "
         "verbatim from the document. The output starts with a `@@ lines … @@` header that is not part of the file. "
         "A draft is what the answer wrote itself, never evidence.\n"
-        "Paths come from a hit's `Path:` line, the turn context or the person. To find which document says "
-        'something, search first (knowledge_search by meaning, knowledge_search with match="exact" for a '
-        "wording); read_passage is the former name of this read and stays for one release."
+        "Paths come from a hit's `Path:` line, a listing, the turn context or the person. To find which "
+        "document says something, search first: knowledge_search by meaning, grep for a wording. read_passage "
+        "is the former name of this read and stays for one release."
     ),
 }
 

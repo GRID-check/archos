@@ -25,6 +25,7 @@ import logging
 from collections.abc import Awaitable
 from collections.abc import Callable
 from typing import Any
+from typing import Literal
 
 from deepagents.backends import CompositeBackend
 from deepagents.backends.protocol import BackendProtocol
@@ -36,6 +37,7 @@ from deepagents.backends.protocol import ReadResult
 from deepagents.backends.protocol import WriteResult
 from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.filesystem import GlobSchema
+from deepagents.middleware.filesystem import GrepSchema
 from deepagents.middleware.filesystem import LsSchema
 from deepagents.middleware.filesystem import ReadFileSchema
 from langchain.tools import ToolRuntime
@@ -315,6 +317,86 @@ class PilotiFilesystem(FilesystemMiddleware):
             infer_schema=False,
             description=self._custom_tool_descriptions.get("glob") or stock.description,
         )
+
+    def _create_grep_tool(self) -> BaseTool:
+        stock = super()._create_grep_tool()
+        if self._estate is None:
+            return stock
+        estate = self._estate
+        has_drafts = self._has_drafts
+
+        async def grep(
+            pattern: str,
+            runtime: ToolRuntime,
+            path: str | None = None,
+            glob: str | None = None,
+            output_mode: str = "files_with_matches",
+            max_count: int | None = None,
+            mode: str = "exact",
+            stemmed: bool = False,
+            context: int = 0,
+        ) -> ToolMessage | Any:
+            if path is not None and is_draft_path(path):
+                if not has_drafts:
+                    return _refusal("grep", runtime, NO_DRAFTS)
+                # The drafts are lines the answer wrote: the stock literal grep, never evidence.
+                return await stock.coroutine(
+                    pattern=pattern,
+                    runtime=runtime,
+                    path=modernize_draft_path(path),
+                    glob=glob,
+                    output_mode=output_mode,
+                    max_count=max_count,
+                )
+            return await estate_message(
+                "grep",
+                runtime,
+                lambda: estate.grep(
+                    pattern,
+                    path=path,
+                    glob=glob,
+                    output_mode=output_mode,
+                    max_count=max_count,
+                    mode=mode,
+                    stemmed=stemmed,
+                    context=context,
+                ),
+            )
+
+        return StructuredTool.from_function(
+            name="grep",
+            coroutine=grep,
+            args_schema=EstateGrepSchema,
+            infer_schema=False,
+            description=self._custom_tool_descriptions.get("grep") or stock.description,
+        )
+
+
+class EstateGrepSchema(GrepSchema):
+    """``grep``'s arguments: the stock five, then how the pattern is read and how much is shown around it."""
+
+    pattern: str = Field(
+        description='The wording to find: literal by default (mode="exact"), a Python regular expression with '
+        'mode="regex".'
+    )
+    path: str | None = Field(
+        default=None,
+        description="Where to search: a place (/project/), a folder, or one file. Omit for every place the person "
+        "may see; the drafts are searched only under /drafts/.",
+    )
+    glob: str | None = Field(default=None, description="Only files whose name matches this glob (`*.pdf`, `EP-*`).")
+    mode: Literal["exact", "regex"] = Field(
+        default="exact",
+        description="exact: the pattern literally, folding case, ä/ae, ß/ss, soft hyphens and line-break "
+        "hyphenation; 2-3 characters match a whole word only. regex: a Python regular expression, case-insensitive.",
+    )
+    stemmed: bool = Field(default=False, description="exact only: also find inflected forms (German stemming).")
+    context: int = Field(
+        default=0,
+        ge=0,
+        le=3,
+        description="content only: lines shown around each match, 0 to 3, in an index under the passages.",
+    )
 
 
 class EstateLsSchema(LsSchema):

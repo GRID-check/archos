@@ -261,11 +261,14 @@ class EstateBackend(BackendProtocol):
         page_reader: Any = None,
         rows_loader: Any = None,
         restricted_loader: Any = None,
+        retriever: Any = None,
     ) -> None:
         self.search_config = search_config
         self._page_reader = page_reader or stored_pages.read_pages
         self._rows_loader = rows_loader
         self._restricted_loader = restricted_loader
+        #: ``None``: the knowledge layer's active retriever, looked up per call.
+        self._retriever = retriever
 
     # -- scope -----------------------------------------------------------------
 
@@ -613,6 +616,34 @@ class EstateBackend(BackendProtocol):
             raise
         _settle_listing(row, listing)
         return ToolOutput(listing.text, status="ok")
+
+    async def grep(
+        self,
+        pattern: str,
+        *,
+        path: str | None = None,
+        glob: str | None = None,
+        output_mode: str = "files_with_matches",
+        max_count: int | None = None,
+        mode: str = "exact",
+        stemmed: bool = False,
+        context: int = 0,
+    ) -> ToolOutput:
+        """``grep`` on the estate: wording in two stages, never a silent no (``estate_grep``)."""
+        from .estate_grep import search
+
+        return await search(
+            self,
+            pattern,
+            path=path,
+            glob=glob,
+            output_mode=output_mode,
+            max_count=max_count,
+            mode=mode,
+            stemmed=stemmed,
+            context=context,
+            retriever=self._retriever,
+        )
 
     # -- the protocol ------------------------------------------------------------
 

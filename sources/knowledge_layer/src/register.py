@@ -112,6 +112,9 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "whose Herkunft line says 'Piloti-Dokument' is office knowledge the office has approved, never a source for a "
     "normative value: cite it for what the office decided, not for what the OIB requires. An empty result says "
     "how to retry.\n"
+    "`path=` limits the search to a place, a folder or one file as the filesystem tools name them "
+    '("/project/Gutachten/", a hit\'s `Path:`); each hit carries the `Path:` read_file opens. The literal modes '
+    "are also `grep`, under its standard name.\n"
     "`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
 )
 
@@ -1907,6 +1910,35 @@ def _citation_key_for_span(chunk) -> str | None:
         return None
 
 
+def _path_scope(
+    path: str, shelf: str | None, folder: str | None, file_name: str | None
+) -> tuple[str | None, str | None, str | None]:
+    """``knowledge_search(path=…)`` as the shelf, folder and file it compiles to (ADR-0133); explicit ones win.
+
+    The scope ``grep`` reads for the same path: the mount is the shelf, the folder part the folder, a leaf
+    the file (``Plan.pdf.md`` is ``Plan.pdf``). Raises ``ValueError`` with the refusal for a path that is
+    not canonical or names no place.
+    """
+    from aiq_agent.common.estate_paths import MOUNT_SHELVES
+    from aiq_agent.common.estate_paths import PathRefused
+    from aiq_agent.common.estate_paths import file_name_candidates
+    from aiq_agent.common.estate_paths import parse_estate_path
+
+    try:
+        parsed = parse_estate_path(path)
+    except PathRefused as refusal:
+        raise ValueError(str(refusal)) from refusal
+    if parsed.path == "/":
+        return shelf, folder, file_name
+    if parsed.mount is None or parsed.mount == "drafts":
+        raise ValueError(
+            f'"{path}" is no place knowledge_search reads: /project/, /office/, /chat/, /law/oib/ or a folder in one.'
+        )
+    shelf_value = {"office_shelf": "office"}.get(MOUNT_SHELVES[parsed.mount], MOUNT_SHELVES[parsed.mount])
+    leaf_file = file_name_candidates(parsed.leaf)[0] if parsed.leaf else None
+    return shelf or shelf_value, folder or (parsed.folder or None), file_name or leaf_file
+
+
 def _search_row_fields(
     query: str, match: str | None, folder: str | None, file_name: str | None, shelf: str | None
 ) -> dict[str, str | None]:
@@ -2059,6 +2091,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         stemmed: bool = False,
         shelf: str | None = None,
         conclusion: str = "",
+        path: str | None = None,
     ) -> str:
         """Read and cite passages from the ingested knowledge base.
 
@@ -2109,10 +2142,20 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             stemmed (bool): Exact only: also find each word's inflected forms
                 (German stemming: "Fluchtwegbreite" finds "Fluchtwegbreiten" and
                 the reverse). Off by default: the exact search is literal.
+            path (str | None): Where to search, as the filesystem tools name it: a place
+                ("/project/", "/office/", "/chat/", "/law/oib/"), a folder in one
+                ("/project/Gutachten/"), or one file (a hit's `Path:`). Advised, never
+                automatic: omitted, every place this question may read is searched.
+                It sets `shelf`, `folder` and `file_name`; an explicit one of those wins.
 
         Returns:
-            str: Numbered excerpts with a Citation key to copy verbatim.
+            str: Numbered excerpts with a Citation key to copy verbatim, each with the `Path:` read_file opens.
         """
+        if path is not None and str(path).strip():
+            try:
+                shelf, folder, file_name = _path_scope(str(path), shelf, folder, file_name)
+            except ValueError as refusal:
+                return str(refusal)
         outcome = ActionOutcome()
         row = ActionRow("search", **_search_row_fields(query, match, folder, file_name, shelf))
         try:

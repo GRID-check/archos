@@ -79,10 +79,10 @@ async def _call(tools: dict, name: str, **args):
 
 class TestWhatIsBound:
     def test_with_drafts_the_four_verbs(self, drafts: DraftBackend) -> None:
-        assert list(_tools(drafts)) == ["ls", "read_file", "write_file", "edit_file", "glob"]
+        assert list(_tools(drafts)) == ["ls", "read_file", "write_file", "edit_file", "glob", "grep"]
 
     def test_without_a_conversation_only_the_readers(self) -> None:
-        assert list(_tools(None)) == ["ls", "read_file", "glob"]
+        assert list(_tools(None)) == ["ls", "read_file", "glob", "grep"]
 
     def test_delete_and_execute_are_never_built(self, drafts: DraftBackend) -> None:
         """``CompositeBackend`` always offers ``delete`` (prototype trap 3): only the allowlist keeps it off."""
@@ -219,3 +219,41 @@ class TestTheRound:
             ("read_file", "drafts", "running"),
             ("knowledge_search", None, "running"),
         ]
+
+
+class TestGrepOnTheDrafts:
+    async def test_a_drafts_grep_is_the_stock_literal_grep(self, drafts: DraftBackend) -> None:
+        tools = _tools(drafts)
+        await _call(tools, "write_file", file_path="/drafts/a.md", content="# A\nFluchtweg hier")
+        found = await _call(tools, "grep", pattern="Fluchtweg", path="/drafts/")
+        assert "/drafts/a.md" in found.content and found.artifact is None
+
+    def test_grep_takes_the_standard_arguments_and_ours(self, drafts: DraftBackend) -> None:
+        grep = _tools(drafts)["grep"]
+        assert list(grep.args)[:5] == ["pattern", "path", "glob", "output_mode", "max_count"]
+        assert {"mode", "stemmed", "context"} <= set(grep.args)
+
+    def test_an_estate_grep_is_signed_and_a_drafts_grep_is_not(self) -> None:
+        signed = fetch_signature({"name": "grep", "args": {"pattern": "Fluchtweg", "path": "/project/"}})
+        assert signed is not None
+        assert fetch_signature({"name": "grep", "args": {"pattern": "fluchtweg", "path": "/project/"}}) == signed
+        assert fetch_signature({"name": "grep", "args": {"pattern": "Fluchtweg", "mode": "regex"}}) != signed
+        assert fetch_signature({"name": "grep", "args": {"pattern": "x", "path": "/drafts/"}}) is None
+
+
+class TestKnowledgeSearchPath:
+    def test_a_path_compiles_to_shelf_folder_and_file(self) -> None:
+        from sources.knowledge_layer.src.register import _path_scope
+
+        assert _path_scope("/project/Gutachten/", None, None, None) == ("project", "Gutachten", None)
+        assert _path_scope("/office/", None, None, None) == ("office", None, None)
+        assert _path_scope("/law/oib/oib-rl_2.pdf.md", None, None, None) == ("base", None, "oib-rl_2.pdf")
+        assert _path_scope("/project/A/x.pdf.md", None, "B", None) == ("project", "B", "x.pdf")
+        assert _path_scope("/", "office", None, None) == ("office", None, None)
+
+    @pytest.mark.parametrize("path", ["/drafts/a.md", "project/x", "/nowhere/"])
+    def test_a_path_that_names_no_place_is_refused(self, path: str) -> None:
+        from sources.knowledge_layer.src.register import _path_scope
+
+        with pytest.raises(ValueError):
+            _path_scope(path, None, None, None)
