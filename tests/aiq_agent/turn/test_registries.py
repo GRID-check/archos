@@ -8,8 +8,8 @@ import pytest
 
 from aiq_agent.cards.registry import get_card_registry
 from aiq_agent.cards.registry import get_or_create_card_registry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import get_session_registry
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.session import get_session_registry
 from aiq_agent.common.image_view_budget import get_image_view_budget
 from aiq_agent.knowledge.project_memory import record_turn_memory_write
 from aiq_agent.knowledge.project_memory import turn_memory_writes
@@ -50,7 +50,7 @@ class TestTurnRegistries:
 
     async def test_the_registrys_collections_are_read_back_at_exit(self, persisted):
         """ADR-0087: the memory restriction decision reads what the conversation read."""
-        from aiq_agent.common.citation_verification import SourceEntry
+        from aiq_agent.citations.entries import SourceEntry
 
         session = SourceRegistry()
         async with turn_registries("conv-5", session) as registries:

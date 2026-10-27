@@ -791,7 +791,7 @@ def _separates_horizontally_only(model: SpatialModel, global_id: str) -> bool:
     """
     try:
         element = model.file.by_guid(global_id)
-    except (RuntimeError, KeyError):
+    except RuntimeError, KeyError:
         return False
     return any(element.is_a(name) for name in _HORIZONTAL_SEPARATORS)
 
@@ -1026,7 +1026,7 @@ def _vector_text(value: Any) -> str:
     """A vector as it should read back in a `method`, whatever was passed in."""
     try:
         return "[" + ", ".join(f"{float(c):.3f}" for c in value) + "]"
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return repr(value)
 
 
@@ -1798,7 +1798,7 @@ def ray(
     try:
         d = np.array(direction, dtype=float).reshape(3)
         o = np.array(origin, dtype=float).reshape(3)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         d = np.zeros(3)
         o = np.full(3, np.nan)
     bad_length = length is not None and (not np.isfinite(length) or float(length) <= 0)

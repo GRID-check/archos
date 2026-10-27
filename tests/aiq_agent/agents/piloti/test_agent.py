@@ -11,15 +11,15 @@ from langchain_core.tools import tool
 
 from aiq_agent.agents.piloti.agent import PilotiAgent
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
+from aiq_agent.citations.entries import EmptySourceRegistryError
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.session import reset_session_registry
+from aiq_agent.citations.session import set_session_registry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
 from aiq_agent.common.answer_envelope import render_envelope_response_format
-from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
-from aiq_agent.common.citation_verification import EmptySourceRegistryError
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import reset_session_registry
-from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.data_source_registry import populate_from_config
 from aiq_agent.common.data_source_registry import reset_registry
 from aiq_agent.common.retrieval_rounds import assistant_checkpoint
@@ -1736,7 +1736,7 @@ class TestPilotiSessionRegistry:
     @pytest.mark.asyncio
     async def test_run_uses_session_registry_when_set(self, mock_llm_provider, mock_llm):
         """When session registry is set via ContextVar, run() uses it and doesn't raise."""
-        from aiq_agent.common.citation_verification import set_session_registry
+        from aiq_agent.citations.session import set_session_registry
 
         # Pre-populate a session registry with a source from a "prior turn"
         session_reg = SourceRegistry()
@@ -1771,7 +1771,7 @@ class TestPilotiSessionRegistry:
     async def test_standalone_runs_never_share_a_registry(self, mock_llm_provider, mock_llm):
         """Without a session registry every run gets a fresh one: a source the
         previous run captured must not be auto-appended as this run's citation."""
-        from aiq_agent.common.citation_verification import set_session_registry
+        from aiq_agent.citations.session import set_session_registry
 
         set_session_registry(None)  # Ensure no session registry
         populate_from_config(
@@ -1808,8 +1808,8 @@ class TestPilotiSessionRegistry:
     @pytest.mark.asyncio
     async def test_the_session_registry_is_left_bound_after_the_run(self, mock_llm_provider, mock_llm):
         """A run reads the session registry and never unbinds or replaces it."""
-        from aiq_agent.common.citation_verification import get_session_registry
-        from aiq_agent.common.citation_verification import set_session_registry
+        from aiq_agent.citations.session import get_session_registry
+        from aiq_agent.citations.session import set_session_registry
 
         session_reg = SourceRegistry()
         session_reg.add(SourceEntry(url="https://session.example.com/doc"))

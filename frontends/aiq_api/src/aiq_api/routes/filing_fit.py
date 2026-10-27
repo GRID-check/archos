@@ -418,7 +418,7 @@ def add_filing_fit_routes(router: APIRouter) -> None:
         except httpx.HTTPError as exc:
             logger.warning("Filing judgement LLM call failed: %s", type(exc).__name__)
             return FilingFitResponse(error="llm_request_failed", trace_id=trace_id)
-        except (KeyError, IndexError, TypeError, ValueError):
+        except KeyError, IndexError, TypeError, ValueError:
             logger.warning("Filing judgement LLM response had an unexpected shape")
             return FilingFitResponse(error="llm_response_malformed", model=cred.model, trace_id=trace_id)
 

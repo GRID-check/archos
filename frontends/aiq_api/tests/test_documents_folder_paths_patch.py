@@ -47,7 +47,7 @@ def summary_db():
                     disposed = engine.dispose()
                     if asyncio.iscoroutine(disposed):
                         asyncio.run(disposed)
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
         DocumentMetadataStore._tables_initialized.discard(db_url)
 
