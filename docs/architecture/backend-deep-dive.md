@@ -126,9 +126,12 @@ field at its default, and each is reset at the turn boundary in
   lead-in is one claim, the confirmed project profile is a record), plus the
   quote gate below. Rule 3 travels as
   version 2 with `support` on each stamp, so an open tab still parses it. A turn
-  stored under rule 2 (the weakest sentence's ceiling) keeps its level. A passage, a workspace record (`common/workspace_records.py`), an
-  action or a measurement lets its sentence reach `"high"`; only a passage
-  grounds a verdict on the law (`claim_provenance.states_verdict`). Rule 2 names a cap `normative_claim_uncited`
+  stored under rule 2 (the weakest sentence's ceiling) keeps its level. A passage that holds its sentence
+  (`claim_provenance.passage_holds`) lets it count whole; a workspace record
+  (`common/workspace_records.py`), an action or a measurement does so only for
+  a sentence that states no law, half for one the normative net catches, and
+  only a passage grounds a verdict on the law (`claim_provenance.states_verdict`).
+  Every heuristic fails safe: unsure, it drops a claim to half, never lifts it. Rule 2 names a cap `normative_claim_uncited`
   (a statement about the law without a passage) or `ungrounded` (any other
   sentence without evidence). Deep research, and any state without stamps, keep
   rule 1, the answer-level floors described in the rest of this entry.

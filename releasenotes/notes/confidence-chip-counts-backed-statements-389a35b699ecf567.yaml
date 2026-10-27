@@ -8,6 +8,6 @@ fixes:
     suggested next step.
   - >
     When an answer numbers its sources without listing them, each number now
-    points to the file or passage this answer read, and the source list is
-    added for you, instead of an unrelated source from earlier in the
-    conversation.
+    points to the passage this answer read that says what the sentence says,
+    and the source list is added for you, instead of an unrelated source from
+    earlier in the conversation.

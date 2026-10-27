@@ -40,8 +40,9 @@ level the count of backed claims allows (`claim_provenance.claims_ceiling`,
 rule 3: high only when every claim is backed, low when most are not or an
 uncited verdict has no legal passage beside it; a table under a lead-in is one
 claim), and the chip leads with that count („12 von 14 Aussagen belegt"). A
-cited passage, a workspace record, an action or a measurement each lets its
-sentence count whole, but only a passage grounds a verdict on the law: a
+cited passage that holds its sentence counts whole, a workspace record, an
+action or a measurement only a sentence that states no law, and only a passage
+grounds a verdict on the law: a
 record, a measurement or a hedge beside one leaves it counting nothing, and an
 uncited verdict beside them reads `low`. Never
 aggregate the stamps by their minimum: the normative detector is a wide net
@@ -54,9 +55,13 @@ says which (rule 3 is version 2 on the wire, told apart by `support` on the
 stamps, so an open tab still parses it). Only a verdict needs a passage
 (`claim_provenance.states_verdict`), a next step bears no load
 (`is_next_step`), and the confirmed project profile in the turn context is a
-record (`workspace_records.profile_record`). A turn numbers its passages on
-across its blocks, so an `[N]` with no source list names one passage of the
-turn; a file the sentence names or its content settles a collision
+record (`workspace_records.profile_record`), as is the turn context's
+inventory (`inventory_record`). Every heuristic here fails safe: a citation
+counts whole only when its passage holds the sentence
+(`claim_provenance.passage_holds`), a record backs a sentence the net reads
+normative only half, and a word list that is unsure may drop a claim to
+half, never lift it. An `[N]` with no source list names the passage of this
+turn that holds its sentences, the printed number only breaking a tie
 (`citation_verification.resolve_unlisted_numbers`); never a registry position.
 
 ## Obligations
