@@ -60,6 +60,11 @@
  * server never renders — it validates and files — so it is indifferent to which
  * kinds a client can produce, and declaring the kind now is what makes adding
  * the renderer later a one-file change rather than a vocabulary migration.
+ *
+ * Since ADR-0141 a person can produce one: the sketch editor
+ * (`features/diagrams/sketch/`) files a drawing Piloti made, reworked by hand,
+ * as an `excalidraw` scene with the SVG Excalidraw exported. The model still
+ * never writes one.
  */
 export const DIAGRAM_SOURCE_KINDS = ['mermaid', 'excalidraw'] as const
 export type DiagramSourceKind = (typeof DIAGRAM_SOURCE_KINDS)[number]

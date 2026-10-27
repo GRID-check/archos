@@ -178,7 +178,10 @@ class TestOneListOfNames:
         # without this test knowing its name; the literals catch a name written inline.
         constants = set(re.findall(r"""_SCORE_NAME = ['"]([a-z-]+)['"]""", source))
         literals = set(
-            re.findall(r"""['"](user-feedback[a-z-]*|piloti-decision|revision-notice|document-check)['"]""", source)
+            re.findall(
+                r"""['"](user-feedback[a-z-]*|piloti-decision|revision-notice|document-check|diagram-filed)['"]""",
+                source,
+            )
         )
         defined = {definition.name for definition in SCORE_DEFINITIONS if definition.writer == "bff"}
 

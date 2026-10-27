@@ -11,10 +11,19 @@ import {
   savedSearchProperties,
   searchIssuedProperties,
   SearchTracker,
+  suggestionPickedProperties,
   type IssuedSearch,
 } from './search-telemetry'
 
 const WORDS = 'Fluchtweg GK 4'
+
+describe('suggestionPickedProperties', () => {
+  it('says which filter, the place taken and how much was typed, never the words or the value', () => {
+    const properties = suggestionPickedProperties('party', 2, ' Lind ')
+    expect(properties).toEqual({ dimension: 'party', rank: 2, prefix_chars: 4 })
+    expect(JSON.stringify(properties)).not.toContain('Lind')
+  })
+})
 
 const issued = (overrides: Partial<IssuedSearch> = {}): IssuedSearch => ({
   scope: {},

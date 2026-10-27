@@ -146,7 +146,10 @@ describe('icons', () => {
   })
 
   it('puts one icon per meaning on the meta-tools, the prompts and the resources', async () => {
-    const tools = (await rpc('tools/list')).result?.tools as { icons: { src: string; theme?: string }[] }[]
+    // The meta-tools; the proposal card's tools (ADR-0142) are drawn by the card, and carry none.
+    const tools = ((await rpc('tools/list')).result?.tools as { name: string; icons?: { src: string; theme?: string }[] }[]).filter(
+      (tool) => tool.icons
+    ) as { icons: { src: string; theme?: string }[] }[]
     expect(new Set(tools.map((tool) => tool.icons[0].src)).size).toBe(4)
     const prompts = (await rpc('prompts/list')).result?.prompts as { icons: { src: string; theme?: string }[] }[]
     expect(prompts.length).toBeGreaterThan(0)

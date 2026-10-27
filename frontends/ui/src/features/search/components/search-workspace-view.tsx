@@ -41,7 +41,7 @@ import {
 } from './search-atoms'
 import { SearchExportMenu } from './search-export-menu'
 import { SearchFacetRail } from './search-facet-rail'
-import { PartyNameFilter, SearchFilterForm, SearchKeyFilters } from './search-filter-form'
+import { CitesFilter, PartyNameFilter, SearchFilterForm, SearchKeyFilters } from './search-filter-form'
 import { SearchRegister, SearchRegisterBar } from './search-register'
 import { SearchResultList } from './search-result-list'
 
@@ -258,7 +258,7 @@ export function SearchWorkspaceView({
         onToggle={onFacet}
         unread={response?.unread ?? null}
         showProjects={officeWide}
-        extras={{ partyRole: <PartyNameFilter state={state} onChange={onStateChange} /> }}
+        extras={{ partyRole: <PartyNameFilter state={state} onChange={onStateChange} />, cites: <CitesFilter state={state} onChange={onStateChange} /> }}
       />
       <SearchFilterForm state={state} onChange={onStateChange} currentUserId={currentUserId} defaultOpen={filtersOpen} />
     </>

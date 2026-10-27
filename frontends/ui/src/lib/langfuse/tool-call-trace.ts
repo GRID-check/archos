@@ -45,8 +45,8 @@ export interface ToolCallRecord {
    * (`agent-api/confirmation.ts`).
    */
   decision: 'run' | 'propose' | 'refused' | 'confirm' | 'declined' | 'person_required'
-  /** `elicitation` when the person confirmed this call in their own chat; otherwise absent. */
-  decisionSource?: 'elicitation' | null
+  /** `elicitation` when the person confirmed this call in their own chat; `app` when they pressed it on an MCP Apps card; otherwise absent. */
+  decisionSource?: 'elicitation' | 'app' | 'app-unverified' | null
   status: number
   startedAt: number
   endedAt: number

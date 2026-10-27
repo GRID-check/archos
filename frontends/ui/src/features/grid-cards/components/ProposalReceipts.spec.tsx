@@ -19,6 +19,7 @@
  * Rendered without an `I18nProvider`, so the dictionary falls back to `en`.
  */
 import { render, screen, waitFor } from '@/test-utils'
+import { I18nProvider } from '@/i18n'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -542,9 +543,63 @@ describe('operation proposal with a proposal_id', () => {
 
     expect(await screen.findByTestId('operation-targets')).toHaveTextContent('Applies to: Project Neubau Musterstraße')
     const input = screen.getByTestId('operation-input')
-    expect(input).toHaveTextContent('tone')
+    expect(input).toHaveTextContent('Tone')
     expect(input).toHaveTextContent('formal')
-    expect(input).toHaveTextContent('limits')
+    expect(input).toHaveTextContent('Limits')
+  })
+
+  it('names each input field in words, a path id after the object it names, its technical name kept on hover', async () => {
+    serve(
+      operationProposal({
+        payload: {
+          operation: 'folder-rename',
+          input: {
+            params: { id: '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f', folderId: 'f-118' },
+            body: { name: 'Archiv 2025', memoryScope: 'project', heatSupply: 'waermepumpe' },
+          },
+          summary: 'Rename the folder',
+        },
+      })
+    )
+    render(<OperationReceipt proposalId={PROPOSAL_ID} title="Rename the folder" operation="folder-rename" input={{}} />)
+    const input = await screen.findByTestId('operation-input')
+    await waitFor(() => expect(input).toHaveTextContent('Folder'))
+    const terms = Array.from(input.querySelectorAll('dt')).map((term) => [term.textContent, term.getAttribute('title')])
+    expect(terms).toEqual([
+      ['Name', 'name'],
+      ['Where to keep it', 'memoryScope'],
+      // A field the card has no word for reads as its name in words.
+      ['Heat supply', 'heatSupply'],
+      // The path id resolved to the proposal's project target.
+      ['Project', 'id'],
+      ['Folder', 'folderId'],
+    ])
+  })
+
+  it('names the fields in German on a German card, the path id included', async () => {
+    serve(
+      operationProposal({
+        payload: {
+          operation: 'folder-rename',
+          input: { params: { id: '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f', folderId: 'f-118' }, body: { name: 'Archiv 2025', memoryScope: 'project', note: 'n' } },
+          summary: 'Rename the folder',
+        },
+      })
+    )
+    render(
+      <I18nProvider initialLocale="de" fixedLocale>
+        <OperationReceipt proposalId={PROPOSAL_ID} title="Rename the folder" operation="folder-rename" input={{}} />
+      </I18nProvider>
+    )
+    const input = await screen.findByTestId('operation-input')
+    await waitFor(() => expect(input).toHaveTextContent('Ordner'))
+    expect(Array.from(input.querySelectorAll('dt')).map((term) => term.textContent)).toEqual([
+      'Name',
+      'Wo gemerkt',
+      'Notiz',
+      'Projekt',
+      'Ordner',
+    ])
   })
 
   it('keeps „Apply“ waiting until every shortened value has been read in full, then applies', async () => {

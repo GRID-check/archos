@@ -102,6 +102,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("followed", "other_thread", "new_thread"),
     ),
     ScoreDefinition(
+        "diagram-filed",
+        "CATEGORICAL",
+        "A drawing Piloti made in this turn, filed into the project: as drawn, or edited by a person in the "
+        "sketch editor first (ADR-0141). Metadata names the filed SVG's document id. The share edited is how "
+        "often the drawing was a starting point rather than the result.",
+        writer="bff",
+        categories=("as_drawn", "edited"),
+    ),
+    ScoreDefinition(
         "revision-notice",
         "NUMERIC",
         "How many marks Piloti proposed when it compared a new Fassung on its own (ADR-0130); 0 is compared, "

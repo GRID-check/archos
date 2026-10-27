@@ -205,6 +205,8 @@ describe('SearchWorkspaceView', () => {
     expect(within(rail).queryByTestId('filter-cites')).toBeNull()
     expect(within(rail).queryByTestId('filter-file-type')).toBeNull()
     expect(within(rail).queryByTestId('filter-party-role')).toBeNull()
+    // A reference beyond the counted ones is typed inside its own group, as a party's name is.
+    expect(within(screen.getByTestId('search-facet-cites')).getByTestId('search-facet-cites-more')).toBeInTheDocument()
     const parties = screen.getByTestId('search-facet-partyRole')
     await userEvent.type(within(parties).getByTestId('filter-party-name'), 'Haas{Enter}')
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: { parties: [{ name: 'Haas' }] } }))

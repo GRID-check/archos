@@ -1,5 +1,5 @@
 {
- "comment": "Who sees each capability: frontends/ui/src/lib/agent-api/exposure.config.ts, written by exposure.config.spec.ts (UPDATE_FIXTURES=1). `piloti` is true, false or \"native:<tool>\" (Piloti uses that tool; the door hides the operation from it).",
+ "comment": "Who sees each capability: frontends/ui/src/lib/agent-api/exposure.config.ts, written by exposure.config.spec.ts (UPDATE_FIXTURES=1). `piloti` is true, false or \"native:<tool>\" (Piloti uses that tool; the door hides the operation from it). `appTools` are the MCP Apps views’ app-only tools (ADR-0142), each running the operation it names.",
  "operations": {
   "project-cleanup-confirm": {
    "kind": "catalog",
@@ -821,6 +821,16 @@
    "reason": null
   },
   "workspace-search-export": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search-suggest": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -3793,6 +3803,20 @@
    "platform": false,
    "withheld": null,
    "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  }
+ },
+ "appTools": {
+  "proposal-card-apply": {
+   "view": "ui://piloti/proposal-card",
+   "operation": "proposal-apply",
+   "app": true,
+   "reason": "pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
+  },
+  "proposal-card-dismiss": {
+   "view": "ui://piloti/proposal-card",
+   "operation": "proposal-dismiss",
+   "app": true,
+   "reason": "pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
   }
  }
 }

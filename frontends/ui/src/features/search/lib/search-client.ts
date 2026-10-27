@@ -6,7 +6,7 @@
  */
 
 import { downloadFetched, type FetchedDownload } from '@/lib/browser-download'
-import type { SearchBody, SearchResponse, SearchScopeQuery } from '@/lib/search/search-wire'
+import type { SearchBody, SearchResponse, SearchScopeQuery, SuggestBody, SuggestResponse } from '@/lib/search/search-wire'
 
 export type SearchExportFormat = 'csv' | 'xlsx'
 
@@ -43,6 +43,19 @@ export async function postSearch(
   if (!response.ok) throw new SearchRequestError(response.status)
   onServerTiming?.(response.headers.get('server-timing'))
   return (await response.json()) as SearchResponse
+}
+
+/** Complete one free-text filter (`POST /api/search/suggest`) where the search looks, under its other filters. */
+export async function postSuggest(scope: SearchScopeQuery, body: SuggestBody, signal?: AbortSignal): Promise<SuggestResponse> {
+  const query = scopeQueryString(scope)
+  const response = await fetch(`/api/search/suggest${query ? `?${query}` : ''}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  })
+  if (!response.ok) throw new SearchRequestError(response.status)
+  return (await response.json()) as SuggestResponse
 }
 
 /** Download the current document result as a Planliste, named as the route names it. */
