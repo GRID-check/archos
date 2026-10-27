@@ -8,7 +8,7 @@ settled and renumbered, and travels to the reader as ``TurnResult.quote_stamps``
 (one entry per quote line, in document order). The excerpt renders „Wortlaut
 belegt [N]" and „Stelle öffnen" off this stamp and off nothing the model wrote.
 
-The test is the one the prose's quotes pass (``citation_verification``'s
+The test is the one the prose's quotes pass (``citations.quote_verification``'s
 coverage against ``QUOTE_MATCH_THRESHOLD``, over the same registry
 ``verify_quoted_spans`` reads), so a line stamped ``not_found`` is one the prose
 check flagged too, and the other way round. Candidates are tried in order: the
@@ -32,11 +32,11 @@ from collections.abc import Iterator
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.common.citation_verification import MIN_QUOTE_LEN
-from aiq_agent.common.citation_verification import QUOTE_MATCH_THRESHOLD
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import quote_coverage
-from aiq_agent.common.citation_verification import source_entry_to_wire
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.quote_matching import MIN_QUOTE_LEN
+from aiq_agent.citations.quote_matching import QUOTE_MATCH_THRESHOLD
+from aiq_agent.citations.quote_matching import quote_coverage
+from aiq_agent.citations.wire import source_entry_to_wire
 
 #: What the reader needs to open the passage: the fields a citation chip opens
 #: its document from (``source_entry_to_wire``), and nothing that restates it.

@@ -13,13 +13,8 @@ import 'server-only'
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import {
-  deletionQueue,
-  legalHolds,
-  type DeletionEntityType,
-  type LegalHold,
-  type NewLegalHold,
-} from '@/lib/db/schema'
+import { deletionQueue, type DeletionEntityType } from '@/lib/db/schema/deletion-queue'
+import { legalHolds, type LegalHold, type NewLegalHold } from '@/lib/db/schema/legal-holds'
 
 /** Hard cap for unpaginated org-wide compliance lists. */
 export const COMPLIANCE_LIST_LIMIT = 200

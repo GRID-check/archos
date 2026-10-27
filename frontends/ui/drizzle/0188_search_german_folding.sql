@@ -1,4 +1,4 @@
--- 0187: one German spelling for the workspace search's words (ADR-0136).
+-- 0188: one German spelling for the workspace search's words (ADR-0136).
 --
 -- ## What was missing
 --

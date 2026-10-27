@@ -10,7 +10,7 @@
 import 'server-only'
 import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { pushSubscriptions, type PushSubscriptionRow } from '@/lib/db/schema'
+import { pushSubscriptions, type PushSubscriptionRow } from '@/lib/db/schema/push-subscriptions'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 
 /** The most devices one person keeps; registering past it drops the oldest. */

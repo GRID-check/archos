@@ -60,3 +60,8 @@ where = ["src"]
 
 [project.entry-points."nat.plugins"]
 aiq_api = "aiq_api.register"
+
+# The WorkOS validator, the one this deployment uses. Still an entry point
+# rather than an import (ADR-0002): another package can add its own.
+[project.entry-points."aiq_api.validators"]
+workos = "aiq_api.auth.workos_validator:get_validators"

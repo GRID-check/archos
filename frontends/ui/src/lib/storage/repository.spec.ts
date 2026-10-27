@@ -76,7 +76,7 @@ vi.mock('@/lib/db/tenant-context', () => ({
 
 import { insertDocumentWithinQuota, replaceDocumentWithinQuota } from './repository'
 import { ReplacedDocumentGoneError } from '@/lib/documents/unique-conflicts'
-import type { NewDocument } from '@/lib/db/schema'
+import type { NewDocument } from '@/lib/db/schema/documents'
 
 const row = (fileSize: number): NewDocument =>
   ({ id: 'doc-1', organizationId: 'org-1', fileSize }) as unknown as NewDocument

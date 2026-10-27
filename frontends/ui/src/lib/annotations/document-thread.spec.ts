@@ -16,7 +16,7 @@ import { ForbiddenError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg, insertConversation } from '@/lib/conversations/repository'
-import type { Conversation } from '@/lib/db/schema'
+import type { Conversation } from '@/lib/db/schema/conversations'
 import { ensureDocumentThread } from './document-thread'
 import { documentThreadConversationId } from './wake-ids'
 

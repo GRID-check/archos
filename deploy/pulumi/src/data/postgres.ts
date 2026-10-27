@@ -17,6 +17,7 @@ import {
   POSTGRES_POOLER,
   POSTGRES_TUNING,
 } from "../constants";
+import { logicalName, objectName } from "../names";
 
 /**
  * Where a connection goes (ADR-0083). There is no default, on purpose: a caller
@@ -75,7 +76,7 @@ export interface Postgres {
   langfuseStoreDeps: pulumi.Resource[];
 }
 
-export const CLUSTER_NAME = "grid-pg";
+export const CLUSTER_NAME = objectName("pgCluster");
 
 // Table DDL adapted from deploy/compose/init-db.sql, minus the psql
 // meta-commands (\gexec/\connect) — CNPG creates the databases, this Job only
@@ -352,7 +353,7 @@ export function installPostgres(
   //     provider's StorageClasses reclaim `Delete`, so WAL archiving + scheduled
   //     base backups to SeaweedFS are the only path to point-in-time recovery
   //     after an accidental PVC/volume loss.
-  const backupSecretName = "grid-pg-backup-s3"; // pragma: allowlist secret
+  const backupSecretName = objectName("pgBackupSecret"); // pragma: allowlist secret
   const backupSecret = cfg.postgres.backups.enabled
     ? new k8s.core.v1.Secret(
         "pg-backup-s3",
@@ -418,7 +419,7 @@ export function installPostgres(
   //    two databases are created by postInitSQL (as superuser, once) owned by
   //    the app role, so the same credentials reach all three.
   const cluster = new k8s.apiextensions.CustomResource(
-    "grid-pg",
+    logicalName("grid-pg"),
     {
       apiVersion: "postgresql.cnpg.io/v1",
       kind: "Cluster",
@@ -609,7 +610,7 @@ export function installPostgres(
   // node.
   const poolerPods = { "cnpg.io/poolerName": POSTGRES_POOLER.name };
   const pooler = new k8s.apiextensions.CustomResource(
-    "grid-pg-pooler-rw",
+    logicalName("grid-pg-pooler-rw"),
     {
       apiVersion: "postgresql.cnpg.io/v1",
       kind: "Pooler",
@@ -966,7 +967,7 @@ export function installScheduledBackup(
     {
       apiVersion: "postgresql.cnpg.io/v1",
       kind: "ScheduledBackup",
-      metadata: { name: "grid-pg-nightly", namespace, labels: commonLabels("postgres") },
+      metadata: { name: objectName("pgScheduledBackup"), namespace, labels: commonLabels("postgres") },
       spec: {
         schedule: cfg.postgres.backups.schedule,
         backupOwnerReference: "self",

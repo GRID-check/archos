@@ -18,7 +18,7 @@ vi.mock('@/lib/db/tenant-context', () => ({
   withPlatformAccess: vi.fn(async (_why: string, run: () => Promise<unknown>) => run()),
 }))
 
-import type { TaskRun } from '@/lib/db/schema'
+import type { TaskRun } from '@/lib/db/schema/task-model'
 import { withTenant } from '@/lib/db/tenant-context'
 import { killActiveBackendJobs, type BackendKillResult } from '@/lib/jobs/backend-client'
 import { claimRunsToReconcile } from '@/lib/tasks/repository'

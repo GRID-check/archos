@@ -366,7 +366,7 @@ describe('listDocumentLevelPage', () => {
   })
 
   it('folds the name and what was typed alike in SQL (Unicode form, umlaut spelling), with no wildcard', async () => {
-    // `grid_fold_german` (migration 0187) normalizes and folds both sides; the
+    // `grid_fold_german` (migration 0188) normalizes and folds both sides; the
     // spellings it joins are proven against Postgres in document-repository.integration.spec.ts.
     const decomposed = 'Übersicht'.normalize('NFD')
     await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ q: `  ${decomposed} 50%_ ` }) })

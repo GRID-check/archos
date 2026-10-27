@@ -13,7 +13,10 @@ import 'server-only'
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { executeRows } from '@/lib/db/execute-rows'
-import { documents, documentSearchFacets, projectFolders, projects, type SearchFacetChange } from '@/lib/db/schema'
+import { documentSearchFacets, type SearchFacetChange } from '@/lib/db/schema/document-search'
+import { documents } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import { projects } from '@/lib/db/schema/projects'
 import { withTenant } from '@/lib/db/tenant-context'
 import { squashDrawingNumber } from '@/lib/documents/findings'
 import { nameContains, readFamilyWhere } from '@/lib/documents/repository'
@@ -173,7 +176,7 @@ export function filtersWhere(filters: DocumentFilters): SQL[] {
 
 /**
  * The words as a query over `search_vector`, in both spellings the vector holds
- * (migration 0187): as typed, and folded by `grid_fold_german`, so
+ * (migration 0188): as typed, and folded by `grid_fold_german`, so
  * „Flaechenwidmung“ and „Flächenwidmung“ find the same documents.
  */
 const tsQuery = (text: string): SQL =>

@@ -16,7 +16,7 @@
 
 import 'server-only'
 import { and, eq, inArray, isNotNull, isNull, ne, not, notInArray, or, sql, type SQL } from 'drizzle-orm'
-import { documents } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
 import { IN_FLIGHT_DOCUMENT_STATUSES, columnStatuses } from './document-status'
 import {
   SCREENING_PASSED_OUTCOMES,

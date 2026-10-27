@@ -684,7 +684,7 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
     })
 
     it('reads ä ö ü ß and ae oe ue ss as one spelling in the reading, the stemmer still folding a plural', async () => {
-      // „Flaechenwidmung“ and „Flächenwidmung“ found different documents (migration 0187).
+      // „Flaechenwidmung“ and „Flächenwidmung“ found different documents (migration 0188).
       expect(await found(officeReach(), query({}, { text: 'Brandschutzplaene', contentKeys: [] }))).toEqual(keys('A3'))
       expect(await found(officeReach(), query({}, { text: 'Ingenieurbuero', contentKeys: [] }))).toEqual(keys('A3'))
       expect(await found(officeReach(), query({}, { text: 'Hauptstrasse', contentKeys: [] }))).toEqual(keys('A1'))

@@ -17,11 +17,11 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import reset_session_registry
-from aiq_agent.common.citation_verification import set_session_registry
-from aiq_agent.common.citation_verification import verify_citations
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.session import reset_session_registry
+from aiq_agent.citations.session import set_session_registry
+from aiq_agent.citations.verification import verify_citations
 from aiq_api.jobs.callbacks import AgentEventCallback
 from aiq_api.jobs.callbacks import ArtifactType
 

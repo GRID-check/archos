@@ -35,7 +35,7 @@
  */
 
 import 'server-only'
-import type { InboxItem, InboxItemType } from '@/lib/db/schema'
+import type { InboxItem, InboxItemType } from '@/lib/db/schema/inbox'
 import { listTouchedOfType } from '@/lib/inbox/repository'
 import { BURST_HOLD_MS } from './enqueue'
 

@@ -28,7 +28,7 @@ from knowledge_layer.qdrant.search import phrase
 from knowledge_layer.qdrant.store import QdrantStore
 
 DIM = 8
-IDENTITY = {"aiq:embed_fingerprint": "test-fp", "aiq:embed_model": "test-model"}
+IDENTITY = {"embed_fingerprint": "test-fp", "embed_model": "test-model"}
 
 
 def _server_url() -> str:
@@ -332,7 +332,7 @@ def test_strict_mode_refuses_an_unindexed_filter_at_the_server(store):
 
 def test_a_foreign_embedder_is_refused(store):
     store.upsert("proj_a", [_record("x", "a.pdf")])
-    other = QdrantStore(store.client, {"aiq:embed_fingerprint": "other", "aiq:embed_model": "other-model"})
+    other = QdrantStore(store.client, {"embed_fingerprint": "other", "embed_model": "other-model"})
     with pytest.raises(RuntimeError, match="embedding mismatch"):
         other.check_identity("proj_a")
     with pytest.raises(RuntimeError, match="embedding mismatch"):

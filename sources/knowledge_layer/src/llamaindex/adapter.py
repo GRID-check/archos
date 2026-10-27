@@ -103,7 +103,7 @@ def _env_float(name: str, fallback: float, *, minimum: float = _POSITIVE) -> flo
     raw = os.environ.get(name, "")
     try:
         value = float(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         if raw:
             logger.warning("%s=%r is not a number; using %s", name, raw, fallback)
         return fallback
@@ -614,7 +614,7 @@ def unit_score(score: Any) -> float:
     """
     try:
         value = float(score)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0.0
     if not math.isfinite(value):
         return 0.0
@@ -721,7 +721,7 @@ def _apply_metadata_exclusions(document: Any) -> None:
         merged = existing + [key for key in EMBED_EXCLUDED_METADATA_KEYS if key not in existing]
         try:
             setattr(document, attribute, merged)
-        except (AttributeError, ValueError):  # pragma: no cover - non-llama-index document
+        except AttributeError, ValueError:  # pragma: no cover - non-llama-index document
             logger.debug("Could not set %s on %r", attribute, type(document).__name__)
 
 
@@ -814,8 +814,8 @@ def _stamp_chunk_metadata(
 #: Collection-metadata keys recording which embedding produced a collection's vectors
 #: (``qdrant.schema.EMBED_IDENTITY_KEYS``): stamped when a Qdrant collection is
 #: created, compared before every write and every read of it.
-EMBED_FINGERPRINT_KEY = "aiq:embed_fingerprint"
-EMBED_MODEL_KEY = "aiq:embed_model"
+EMBED_FINGERPRINT_KEY = "embed_fingerprint"
+EMBED_MODEL_KEY = "embed_model"
 
 
 def embed_fingerprint(model: str, base_url: str) -> str:
@@ -1255,7 +1255,7 @@ def _rss_mib() -> float | None:
         with open("/proc/self/statm", encoding="ascii") as statm:
             resident_pages = int(statm.read().split()[1])
         page_size = os.sysconf("SC_PAGE_SIZE")
-    except (OSError, ValueError, IndexError, AttributeError):
+    except OSError, ValueError, IndexError, AttributeError:
         # Not Linux (no procfs, no os.sysconf): the line is simply not emitted.
         return None
     return resident_pages * page_size / (1024 * 1024)
@@ -2397,7 +2397,7 @@ def _rate_limited_for(error: Exception) -> float | None:
     headers = getattr(getattr(error, "response", None), "headers", None) or {}
     try:
         stated = float(headers.get("retry-after", ""))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0.0
     return min(max(stated, 0.0), _VLM_BACKOFF_CAP_SECONDS)
 
@@ -2832,7 +2832,7 @@ def _digest_passages(documents: list[Any]) -> list[tuple[Any, str, str]]:
 def _page_number(label: Any) -> int | None:
     try:
         number = int(str(label).strip())
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return number if number > 0 else None
 
@@ -2868,7 +2868,7 @@ def _reading_of(
             analyses.append(
                 (_page_number(doc.metadata.get("page_label")), json.loads(raw) if isinstance(raw, str) else raw)
             )
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
     facts = list(dossier.get("facts") or [])
     seen = {(fact["key"], fact["value"]) for fact in facts}
@@ -4108,7 +4108,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             return None
         try:
             return datetime.fromisoformat(iso_string)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     def list_collections(self) -> list[CollectionInfo]:
@@ -4423,15 +4423,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             body = text.split("\n\n", 1)[1] if "\n\n" in text else text
             try:
                 page = int(meta.get("page_label") or 0)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 page = 0
             try:
                 segment = int(meta.get("segment_index") or 0)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 segment = 0
             try:
                 segment_count = max(1, int(meta.get("segment_count") or 1))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 segment_count = 1
             # The v2 structured payload rides along parsed, so the FE never
             # has to know it is stored as a JSON string on the point.
@@ -4440,7 +4440,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             if raw_data:
                 try:
                     structured = json.loads(raw_data)
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     structured = None
             items.append(
                 {
@@ -6834,7 +6834,7 @@ class LlamaIndexRetriever(BaseRetriever):
             if page_number is not None:
                 try:
                     page_number = int(page_number)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     page_number = None
 
             # Determine content type from metadata

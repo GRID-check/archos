@@ -5,7 +5,7 @@
  */
 
 import 'server-only'
-import type { AgentProfilerSpan, NewAgentProfilerSpan, SpanKind, SpanStatus } from '@/lib/db/schema'
+import type { AgentProfilerSpan, NewAgentProfilerSpan, SpanKind, SpanStatus } from '@/lib/db/schema/agent-profiler'
 import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import { scopeBounds, type QualityScope } from '@/lib/quality/scope'
 import * as repository from './repository'

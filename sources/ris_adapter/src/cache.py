@@ -59,7 +59,7 @@ def ris_cache_ttl_seconds() -> int:
         raw = ""
     try:
         days = int(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         days = _DEFAULT_TTL_DAYS
     if days <= 0:
         days = _DEFAULT_TTL_DAYS

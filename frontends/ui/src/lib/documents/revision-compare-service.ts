@@ -33,7 +33,7 @@ import {
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { restrictedCollectionBase } from '@/lib/authz/folder-access-rule'
 import { getBackendUrl } from '@/lib/backend-proxy'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { internalServiceHeaders } from '@/lib/internal-auth'
 import { getAccessibleDocument } from './access'
 import { collectionFileRef } from './collection-file-ref'

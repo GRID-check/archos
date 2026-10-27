@@ -51,7 +51,7 @@ def reading_order(page_label: Any) -> int:
     """
     try:
         page = int(page_label)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0
     return page if page >= 1 else 0
 
@@ -497,7 +497,7 @@ class BaseIngestor(ABC):
         collection_name: str,
         config: dict[str, Any] | None = None,
         job_id: str | None = None,
-    ) -> "PreparedIngestJob":
+    ) -> PreparedIngestJob:
         """Validate a job and record it PENDING without running it (see ``PreparedIngestJob``).
 
         ``job_id`` names the job when its caller needs the same id for the same work
@@ -505,11 +505,11 @@ class BaseIngestor(ABC):
         """
         raise NotImplementedError
 
-    def submit_prepared(self, prepared: "PreparedIngestJob") -> None:
+    def submit_prepared(self, prepared: PreparedIngestJob) -> None:
         """Queue a prepared job in this process."""
         raise NotImplementedError
 
-    def run_prepared(self, prepared: "PreparedIngestJob", still_owner: Callable[[], bool] | None = None) -> None:
+    def run_prepared(self, prepared: PreparedIngestJob, still_owner: Callable[[], bool] | None = None) -> None:
         """Run a prepared job on the calling thread; ``still_owner`` says whether its claim is still held."""
         raise NotImplementedError
 

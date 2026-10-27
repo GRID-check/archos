@@ -396,10 +396,23 @@ src/app/                 config (Secret + env), migrations Job,
                          audit-schemas Job, chroma-migration Job,
                          backend, frontend (+HPA),
                          workers, httproutes
+src/names.ts             every object name, legacy and brand-free (ADR-0147)
 scripts/                 deploy.yml's helpers: GHCR tag lookup, the staging
                          image resolver + downgrade guard (reads the
-                         `deployedImages` output), CR schema validation
+                         `deployedImages` output), CR schema validation,
+                         the workspace stack file and ESC environment
+workspace/               the `workspace` project (ADR-0147): this program
+                         again, for the namespace `workspace`
 ```
+
+**Two projects, one program (ADR-0147).** While the namespace moves from `grid`
+to `workspace`, this directory is the project `grid-oib` (the running stacks)
+and `workspace/` is the project `workspace`, whose `Pulumi.yaml` points `main`
+back here. `src/names.ts` gives each project its own object names. The
+workspace stack files are generated at deploy time from `Pulumi.<stack>.yaml`
+by `scripts/workspace-stack-file.mjs` and are never committed; edit the legacy
+file and both stacks get the change. Until the expand step, the deploy job only
+**previews** the workspace stack.
 
 ## Notes
 

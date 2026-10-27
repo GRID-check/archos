@@ -28,14 +28,9 @@ import { and, asc, desc, eq, inArray, isNull, lte, or, sql, type SQL } from 'dri
 import { CROSS_PROJECT_MAX_PERMIT_REQUIREMENTS, CROSS_PROJECT_MAX_PERMITS } from '@/lib/cross-project/types'
 import { getDb } from '@/lib/db'
 import { documentVisibleTo, internalRead, SCREENED_ONLY } from '@/lib/documents/visibility'
-import {
-  documents,
-  permitRecords,
-  permitRequirements,
-  type PermitRecordKind,
-  projects,
-  type PermitRequirementKind,
-} from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
+import { permitRecords, permitRequirements, type PermitRecordKind, type PermitRequirementKind } from '@/lib/db/schema/permit-records'
+import { projects } from '@/lib/db/schema/projects'
 import { contentTokens, jaccardSimilarity, normalizeContentGerman } from '@/lib/knowledge/consolidation'
 import { cosineSimilaritySql, embedNote, type EmbeddedNote } from '@/lib/knowledge/embeddings'
 import { fuseHybridRelevance } from '@/lib/knowledge/recall-scoring'

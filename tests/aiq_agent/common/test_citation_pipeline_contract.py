@@ -3,7 +3,7 @@
 Every bug the citation audit found lived between two well-tested units, not
 inside one. The worst pair is the knowledge-layer text protocol: it is PRODUCED
 by ``sources/knowledge_layer/src/register.py::_format_results`` and PARSED by
-``aiq_agent.common.citation_verification::_parse_knowledge_layer`` — two
+``citations.grounding_text.parse_knowledge_layer`` — two
 packages that never meet in a test.
 
 The unit tests on either side cannot catch drift between them because they use
@@ -36,14 +36,14 @@ from ris_adapter.lookup.passages import SCORE_RANKED_TOP
 from ris_adapter.lookup.passages import Passage
 from ris_adapter.lookup.render import format_passages
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import document_key
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
-from aiq_agent.common.citation_verification import sanitize_report
-from aiq_agent.common.citation_verification import source_entry_to_wire
-from aiq_agent.common.citation_verification import source_lane
-from aiq_agent.common.citation_verification import verify_citations
+from aiq_agent.citations.binding import document_key
+from aiq_agent.citations.binding import source_lane
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.sanitize import sanitize_report
+from aiq_agent.citations.verification import verify_citations
+from aiq_agent.citations.wire import source_entry_to_wire
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 

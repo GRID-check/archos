@@ -21,11 +21,11 @@ from langchain_core.messages import ToolMessage
 from pydantic import ValidationError
 
 from aiq_agent import project_context
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
+from aiq_agent.citations.grounding_text import parse_knowledge_layer
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.verification import verify_citations
 from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import _parse_knowledge_layer
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
-from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.knowledge import restricted_use
@@ -273,7 +273,7 @@ class TestTheSearchAnswer:
         result = await lookup.run_project_lookup("search", query="Traufe")
 
         # A replayed turn holds the text without the records: the registered parser reads it.
-        replayed = _parse_knowledge_layer(result, "project_lookup")
+        replayed = parse_knowledge_layer(result, "project_lookup")
 
         assert [(e.project_id, e.project_name, e.project_status) for e in replayed] == [
             (OTHER, "Wohnbau Graz", "closed"),
@@ -423,7 +423,7 @@ class TestThePermitRecords:
         _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [], "permits": [_permit()]})
         result = await lookup.run_project_lookup("search", query="Brandschutzgutachten")
 
-        replayed = _parse_knowledge_layer(result, "project_lookup")
+        replayed = parse_knowledge_layer(result, "project_lookup")
 
         assert [(e.citation_key, e.project_id, e.project_status) for e in replayed] == [
             ("Baubescheid_Baden_2020.pdf (Wohnbau Graz), p.2", OTHER, "closed")
@@ -830,7 +830,7 @@ class TestFindAndBrief:
         _answering(monkeypatch, calls, body)
         result = await lookup.run_project_lookup("brief", project_id=OTHER)
 
-        replayed = _parse_knowledge_layer(result, "project_lookup")
+        replayed = parse_knowledge_layer(result, "project_lookup")
 
         assert [s.citation_key for s in replayed] == ["Projektdaten (Wohnbau Graz)"]
 
@@ -839,7 +839,7 @@ class TestTheWire:
     """What the browser is told about a source from another project (ADR-0094)."""
 
     def _entry(self):
-        from aiq_agent.common.citation_verification import SourceEntry
+        from aiq_agent.citations.entries import SourceEntry
 
         return SourceEntry(
             citation_key="Detail Traufe.pdf (Wohnbau Graz), p.3",
@@ -855,7 +855,7 @@ class TestTheWire:
         )
 
     def test_the_cited_wire_names_the_project_and_the_real_file(self) -> None:
-        from aiq_agent.common.citation_verification import source_entry_to_wire
+        from aiq_agent.citations.wire import source_entry_to_wire
 
         wire = source_entry_to_wire(self._entry(), number=1)
 
@@ -867,8 +867,8 @@ class TestTheWire:
     def test_the_read_wire_keeps_the_project_and_a_source_of_the_chat_names_none(self) -> None:
         from dataclasses import replace
 
-        from aiq_agent.common.citation_verification import read_source_to_wire
-        from aiq_agent.common.citation_verification import source_entry_to_wire
+        from aiq_agent.citations.wire import read_source_to_wire
+        from aiq_agent.citations.wire import source_entry_to_wire
 
         assert read_source_to_wire(self._entry())["project"]["id"] == OTHER
         own = replace(

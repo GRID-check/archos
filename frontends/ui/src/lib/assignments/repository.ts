@@ -7,7 +7,8 @@ import 'server-only'
 import { and, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { resourceAssignments, type ShareableResourceType } from '@/lib/db/schema'
+import { resourceAssignments } from '@/lib/db/schema/resource-assignments'
+import type { ShareableResourceType } from '@/lib/db/schema/resource-shares'
 
 export interface AssignmentRow {
   resourceType: ShareableResourceType

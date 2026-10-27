@@ -1,4 +1,4 @@
--- Reverse 0187. ORDER: roll the frontend back first; the newer build calls
+-- Reverse 0188. ORDER: roll the frontend back first; the newer build calls
 -- `grid_fold_german` in the search's name and full-text tests.
 --
 -- Lossless: the vector is generated from `search_text`, which stays.

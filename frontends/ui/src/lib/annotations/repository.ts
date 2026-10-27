@@ -15,14 +15,9 @@ import { alias } from 'drizzle-orm/pg-core'
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
 import type { DbTransaction } from '@/lib/db/executor'
-import {
-  documentAnnotationReplies,
-  documentAnnotations,
-  documents,
-  documentVersions,
-  type DocumentAnnotationReplyRow,
-  type DocumentAnnotationRow,
-} from '@/lib/db/schema'
+import { documentAnnotationReplies, documentAnnotations, type DocumentAnnotationReplyRow, type DocumentAnnotationRow } from '@/lib/db/schema/document-annotations'
+import { documentVersions } from '@/lib/db/schema/document-versions'
+import { documents } from '@/lib/db/schema/documents'
 import { withTenant } from '@/lib/db/tenant-context'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 import {

@@ -33,17 +33,12 @@ import {
   type ShelfFolderTally,
   type ShelfSummary,
 } from './shelf-summary-types'
-import {
-  bffJobQueue,
-  documentQuarantineDecisions,
-  documents,
-  documentVersions,
-  projectFolders,
-  type Document,
-  type DocumentAuthor,
-  type DocumentLifecycle,
-  type ResourceVisibility,
-} from '@/lib/db/schema'
+import { bffJobQueue } from '@/lib/db/schema/bff-job-queue'
+import { documentQuarantineDecisions } from '@/lib/db/schema/document-quarantine-decisions'
+import { documentVersions } from '@/lib/db/schema/document-versions'
+import { documents, type Document, type DocumentAuthor, type DocumentLifecycle } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import type { ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import type { DocumentScope, DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import {
   auditedQuarantineReasons,
@@ -487,7 +482,7 @@ export function afterDocumentLevelCursor(cursor: DocumentLevelCursor): SQL {
 
 /**
  * Documents whose file name or rename contains `q`, both sides folded by
- * `grid_fold_german` (migration 0187): case, either Unicode form (a name off a
+ * `grid_fold_german` (migration 0188): case, either Unicode form (a name off a
  * Mac is decomposed), and ä ö ü ß as ae oe ue ss, so „Abgabepläne“ and
  * „Abgabeplaene“ find the same files, as the agent's file listing does
  * (`knowledge_layer/browse.py`, `fold`). `strpos` and not `LIKE`, so a `%` or

@@ -18,7 +18,7 @@
 
 import 'server-only'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
-import type { UploadBatch } from '@/lib/db/schema'
+import type { UploadBatch } from '@/lib/db/schema/upload-batches'
 import { withTenant } from '@/lib/db/tenant-context'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { BFF_JOB_PRIORITY, requesterOf, type FilingReviewPayload } from '@/lib/jobs-queue/types'

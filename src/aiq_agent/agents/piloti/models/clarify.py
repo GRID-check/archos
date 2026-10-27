@@ -97,7 +97,7 @@ class ClarificationResponse(_StrictContract):
         return data
 
     @classmethod
-    def complete(cls) -> "ClarificationResponse":
+    def complete(cls) -> ClarificationResponse:
         """The sentinel written when nothing more needs asking."""
         return cls(needs_clarification=False, clarification_question=None, options=[])
 
