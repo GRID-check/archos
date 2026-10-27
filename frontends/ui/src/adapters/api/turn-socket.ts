@@ -205,6 +205,12 @@ export const forServer = (message: ClientMessage, accepts: ReadonlySet<string>):
     const { if_idle: _unread, ...rest } = shaped
     shaped = rest
   }
+  // The frontend tools this page can run (ADR-0144). An older server would refuse the question; without
+  // the field it answers as it did before, with no viewer actions.
+  if (shaped.client_tools !== undefined && !accepts.has('user_message.client_tools')) {
+    const { client_tools: _unread, ...rest } = shaped
+    shaped = rest
+  }
   return shaped
 }
 

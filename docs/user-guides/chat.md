@@ -298,6 +298,15 @@ the end.
 - **Relations are drawn.** A process or decision path, a tree or outline of a
   Regelwerk, a handoff between parties, a schedule of dated phases, and the
   shares of one whole each become a diagram.
+- **A drawing can be reworked by hand.** Inside a project, a drawn process or
+  outline offers „Als Skizze bearbeiten". It opens a drawing canvas
+  (Excalidraw) with Piloti's drawing as the starting point: move boxes, add
+  steps, notes and freehand lines, then „Im Projekt ablegen" files your version
+  as an SVG and a PDF. Both files say „Von Piloti entworfen, von einer Person
+  bearbeitet" and „nicht maßstäblich, ohne Maßangabe". A sketch is never a
+  measured drawing, whatever is drawn on it. Each save files a new document;
+  a filed sketch cannot be reopened yet. Closing with unsaved changes asks
+  first.
 - **Your question stays at the top.** A sent question is anchored near the top
   of the view and the answer grows below it. A short answer does not drop when
   it finishes.
@@ -431,6 +440,52 @@ Clicking a source chip opens a preview of the source instead of doing nothing:
 - **A citation of an older Fassung says so.** When the cited document is a Fassung a person has since replaced by a newer one (a link confirmed in Dateien, ADR-0099), the source's preview popover adds one muted line, **Ältere Fassung – aktuell: \<Name\>** (English: *Older revision. Current:*). The name is a button: it opens the current Fassung beside the conversation. The citation itself is unchanged, because an older Fassung is still read when you ask for it; the line only keeps you from relying on a replaced Fassung unawares. It names only a Fassung you may open yourself: a newer file held back by the content check or filed in a folder you cannot open is not named. A document nobody replaced, and a suggestion Piloti made that nobody confirmed, show no line.
 - **Ask for a document's history.** „Welche Fassungen gibt es vom EG-Grundriss?“ and „Was hat sich zwischen Index B und C geändert?“ are answered from the whole chain of Fassungen, newest first, with each one's Index and date (read from the file name and, where there is one, the Plankopf), upload date and the line saying what changed. Answers otherwise use the newest Fassung and name an older one only when you ask for it or Piloti compares; opening an older one by name says in the first line that it is the older and which one is current. The change lines are Piloti's summaries, not a comparison of the files: for a detail it reads both Fassungen.
 - **Anything unresolvable** (unknown document, non-previewable file type) shows a light popover with the source's origin, title, and passage instead — never a broken viewer. Chips with nothing beyond their label stay plain.
+- **Neben dem Chat öffnen / Open beside the chat.** The viewer dialog of a project or Büroablage document offers to open the same place in the peek beside the conversation instead: the page, with the passage or the box marked. It is the same move Piloti makes on its own (below), so it opens nothing you could not open from Dateien. It is offered only while there is room beside the chat; the platform corpus and a file attached to the chat have no peek and do not offer it.
+
+## Piloti takes you to the place
+
+When an answer rests on one place in a document, „Laut Baubeschreibung S. 4 …“,
+Piloti can take you there: once the answer has arrived, the document opens in
+the peek beside the chat at that page, with the passage or the box marked
+(ADR-0144). Under the answer a short row says what it opened.
+**Zurücknehmen / Undo** puts the viewer back as it was; if nothing was open, it
+closes. If you have opened another document since, it leaves yours alone and
+says so.
+
+What Piloti may do is a short, fixed list: open a document at a page, mark a
+passage on a page, mark a box on a page, offer the comparison of two Fassungen,
+and offer a building model with one element selected. Nothing else moves, and
+at most one place opens on its own per answer.
+
+- **It never opens what you could not open yourself.** Before anything moves,
+  your page reads the document in your own session, the way Dateien does. If
+  you may not see it, nothing moves and the row says only that the document is
+  not available.
+- **Not before the answer.** Nothing moves while Piloti is still working. If the
+  answer fails or you stop it, nothing moves at all.
+- **Only your own screen, only while you are here.** It moves the viewer of the
+  person who asked, in the tab they asked in. Someone watching a shared
+  conversation sees the answer without the row, and so does the same answer
+  after a reload: the row described a moment on your screen.
+- **The comparison and the model only offer themselves.** A Fassung comparison
+  covers the conversation and the model view leaves it, so those two wait for
+  **Anzeigen / Show**. A comparison opens only for two Fassungen a person has
+  linked as Fassungen of one document.
+- **Not while you are typing.** A place that is ready while you type in a field
+  waits for a pause; if none comes, the row offers it instead.
+- **You can turn it off.** The switch **Automatisch öffnen / Open automatically**
+  under the answer, and the same switch on your profile page (**Stellen im
+  Viewer / Places in the viewer**), decide whether Piloti opens places on its
+  own; off, the row offers each one with **Anzeigen / Show**. The choice is kept
+  in this browser. With reduced motion set in your system, it starts off.
+- **On a phone** there is no room beside the chat, so Piloti does not propose
+  places there at all. A place offered on a wider screen that you show after
+  the window became narrow opens over the chat instead.
+- **A file attached to the chat** never opens this way; cite it, or open it from
+  the composer.
+
+Other agents connected to your office cannot do this: the agent door does not
+offer your screen to anyone.
 
 ## What Piloti noted ("Piloti hat sich gemerkt")
 

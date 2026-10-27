@@ -88,6 +88,13 @@ import {
 import { STAGE_COUNT } from '../lib/turn-projection'
 import { runErrorCard, type RunErrorCard } from '../lib/run-error'
 import { isSteerRead, type TurnView } from '../lib/turn-fold'
+import {
+  dropViewerActions,
+  newViewerActions,
+  proposeViewerAction,
+  releaseViewerActions,
+  viewerClientTools,
+} from '../lib/viewer-actions'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatMessage, Conversation, PendingInteraction } from '../types'
 
@@ -473,6 +480,12 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   let socketOpen = false
   /** The notes this page sent, by `steer_id`, until their turn ends. */
   const steers = new Map<string, SentSteer>()
+  /**
+   * The turns this page asked. Only their viewer actions may move this page's
+   * viewer (ADR-0144): a turn attached after a reload, or watched as a
+   * spectator, folds the same events and runs none of them.
+   */
+  const asked = new Set<string>()
 
   const keyOf = (message: ClientMessage): string =>
     `${message.type}:${'turn_id' in message ? message.turn_id : message.message_id}`
@@ -620,6 +633,20 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   /** What a folded turn asks of the page beyond its messages. */
   const react = (previous: TurnView | undefined, view: TurnView | undefined): void => {
     if (!view) return
+    if (asked.has(view.turnId) && view.messageId) {
+      // Held while the turn runs; nothing moves before the answer is on screen (ADR-0144).
+      for (const call of newViewerActions(previous?.viewerActions, view.viewerActions)) {
+        proposeViewerAction(view.messageId, call)
+      }
+      const ended = view.phase !== 'running' && (previous === undefined || previous.phase === 'running')
+      // An answer releases them; an error, a Stop, a refusal or a hand-off drops them. A retracted
+      // stream is a round, not the answer (`answer_retracted`), so it neither releases nor drops.
+      if (ended && view.phase === 'finished' && view.outcome === 'answered' && view.text) {
+        void releaseViewerActions(view.messageId)
+      } else if (ended) {
+        dropViewerActions(view.messageId)
+      }
+    }
     if (view.phase !== 'running' && previous?.phase === 'running') settleSteers(view)
     if (view.gap && gapsAttached.get(view.turnId) !== view.lastSeq) {
       gapsAttached.set(view.turnId, view.lastSeq)
@@ -748,6 +775,7 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
       socket.close()
     },
     ask: (message) => {
+      asked.add(message.message_id)
       unacknowledged.set(message.message_id, message)
       awaitAck(message.message_id)
       // No socket to take it: open one (a new ladder, if the last one gave up).
@@ -1284,6 +1312,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       })
       // `focus_region` and `reply_in_thread` are being added to the wire; until
       // the generated type carries them they ride on this wider local type.
+      const clientTools = viewerClientTools()
       const question: UserMessage & { focus_region?: CanvasFocusRegion | null; reply_in_thread?: boolean } = {
         type: 'user_message',
         conversation_id: conversationId,
@@ -1301,6 +1330,9 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         reasoning_effort: effort,
         // Omitted, not null, while PostHog is off: `forServer` keys on presence.
         ...(posthogSessionId ? { posthog_session_id: posthogSessionId } : {}),
+        // The frontend tools this page can run (AG-UI's RunAgentInput.tools): the viewer, when it has
+        // room beside the chat. Omitted otherwise, so the server never offers the model the tool (ADR-0144).
+        ...(clientTools.length ? { client_tools: clientTools } : {}),
       }
       ensureDriver(conversationId).ask(question)
       return true

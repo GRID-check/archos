@@ -76,6 +76,8 @@ ADR-0030); the Python agent SDK (it requires Google ADK and genai, and its
 prompt is ~6–10k tokens of JSON Schema where our contract is ~3.5k). The
 model keeps writing card objects; only composition is A2UI-shaped.
 
+**Amended by [ADR-0142](0142-piloti-cards-render-in-the-persons-own-assistant-as-mcp-apps.md) (2026-10-27):** the catalog's cards also render in external hosts, as MCP Apps views on Piloti's MCP door, drawn by the same `A2uiCard` over the same catalog.
+
 ## Consequences
 
 - One renderer path for every card, owned by a library, with the protocol

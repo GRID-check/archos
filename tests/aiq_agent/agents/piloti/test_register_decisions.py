@@ -382,6 +382,33 @@ class TestTheBuildingModelToolsNeedAProject:
         ]
 
 
+class TestTheViewerToolIsSentOnlyToAPageThatCanRunIt:
+    """``show_in_viewer`` runs on the asking page (ADR-0144): bound only when that page declared it."""
+
+    @staticmethod
+    def _tools():
+        from types import SimpleNamespace
+
+        return [SimpleNamespace(name=n) for n in ("knowledge_search", "show_in_viewer")]
+
+    def test_a_turn_that_declared_nothing_is_not_sent_it(self, monkeypatch):
+        from aiq_agent.agents.piloti import register
+        from aiq_agent.common.client_tools import set_turn_client_tools
+
+        monkeypatch.setattr(register, "get_project_id_from_context", lambda: "proj-1")
+        set_turn_client_tools(None)
+        assert [t.name for t in register._tools_in_scope(self._tools())] == ["knowledge_search"]
+
+    def test_a_turn_whose_page_declared_it_is(self, monkeypatch):
+        from aiq_agent.agents.piloti import register
+        from aiq_agent.common.client_tools import set_turn_client_tools
+
+        monkeypatch.setattr(register, "get_project_id_from_context", lambda: None)
+        set_turn_client_tools(["show_in_viewer"])
+        assert [t.name for t in register._tools_in_scope(self._tools())] == ["knowledge_search", "show_in_viewer"]
+        set_turn_client_tools(None)
+
+
 def test_the_catalog_is_counted_by_its_project_lines_not_its_tail():
     from aiq_agent.agents.piloti.register import reference_project_count
 

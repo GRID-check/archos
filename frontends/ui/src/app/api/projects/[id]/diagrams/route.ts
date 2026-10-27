@@ -22,6 +22,7 @@ import { MAX_DIAGRAM_SOURCE_BYTES, MAX_DIAGRAM_SVG_BYTES } from '@/lib/diagrams/
 import { fileDiagramSchema } from '@/lib/diagrams/diagram-wire'
 import { DiagramSvgError } from '@/lib/diagrams/svg'
 import { fileDiagramDocuments } from '@/lib/diagrams/filing'
+import { recordDiagramScore } from '@/lib/langfuse/diagram-score'
 import { requireResourceAccess } from '@/lib/sharing/access'
 
 type Params = { id: string }
@@ -84,9 +85,19 @@ export const POST = apiRoute<Params>(
         sourceKind: body.sourceKind,
         source: body.source,
         svg: body.svg,
-        marking: dictionary.diagrams.marking,
+        // An edited sketch has two authors and its files say so; „Von Piloti
+        // erstellt" on a drawing a person reworked would be half false.
+        marking: body.edited ? dictionary.diagrams.markingEdited : dictionary.diagrams.marking,
         request,
         origin: body.conversationId ? { conversationId: body.conversationId, locale } : undefined,
+      })
+      // Not awaited, and it never rejects: Langfuse slow or down costs the
+      // filing nothing (`recordDiagramScore`).
+      void recordDiagramScore({
+        organizationId: session.organizationId,
+        answerId: body.answerId ?? null,
+        documentId: filed.svg.documentId,
+        edited: body.edited === true,
       })
       // `pdf` is null when only the SVG landed, and the status stays 201: a
       // document WAS created, is quota-charged and is visible in Berichte, so
