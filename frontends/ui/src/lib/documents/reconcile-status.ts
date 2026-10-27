@@ -235,12 +235,15 @@ const recordedIngestHash = (metadata: unknown): string | null => {
   return null
 }
 
-const fetchJson = async (url: string, init?: RequestInit): Promise<{ status: number; body: unknown } | null> => {
+const fetchJson = async (
+  url: string,
+  init?: RequestInit
+): Promise<{ status: number; body: unknown; headers?: Headers } | null> => {
   try {
     const response = await fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
     if (response.status === 404) return { status: 404, body: null }
     if (!response.ok) return null
-    return { status: response.status, body: await response.json() }
+    return { status: response.status, body: await response.json(), headers: response.headers }
   } catch {
     return null
   }
@@ -439,7 +442,16 @@ interface BackendFileEntry {
 interface CollectionFiles {
   byName: Map<string, BackendFileEntry>
   ambiguousNames: Set<string>
+  /**
+   * The backend listed the files but could not merge what it read of them
+   * (`X-Grid-Reading-Unavailable`, `aiq_api/routes/documents.py`): summaries,
+   * dossiers, references and coverage are missing for this read, not absent.
+   */
+  readingUnavailable: boolean
 }
+
+/** The header the backend sets on a listing whose reading could not be merged. */
+const READING_UNAVAILABLE_HEADER = 'x-grid-reading-unavailable'
 
 interface RawBackendFile extends RawRevisionLinkFields {
   file_name?: string
@@ -495,7 +507,7 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       revision: parseRevisionLinkNames(file),
     })
   }
-  return { byName, ambiguousNames }
+  return { byName, ambiguousNames, readingUnavailable: result.headers?.get(READING_UNAVAILABLE_HEADER) === '1' }
 }
 
 // ---------------------------------------------------------------------------
@@ -828,7 +840,8 @@ export interface ListedReading {
  * The readings of one collection's documents, from a FRESH listing, for the
  * search projection's backstop refresh (`lib/search/shelf-projection.ts`).
  * Takes {@link CollectionFileRef}s, the same gate {@link extractMetadata}
- * takes. `null` when the listing could not be read: the caller writes nothing.
+ * takes. `null` when the listing could not be read, or came without the
+ * reading (`X-Grid-Reading-Unavailable`): the caller writes nothing.
  * A ref absent from the map is one the listing does not name, or names twice.
  */
 export const readCollectionReadings = async (
@@ -836,7 +849,8 @@ export const readCollectionReadings = async (
   refs: readonly CollectionFileRef[]
 ): Promise<Map<string, ListedReading> | null> => {
   const files = await loadCollectionFilesFresh(collectionName)
-  if (!files) return null
+  // A listing without the reading says nothing about it: the refresh retries rather than records it.
+  if (!files || files.readingUnavailable) return null
   const readings = new Map<string, ListedReading>()
   for (const ref of refs) {
     if (ref.collectionName !== collectionName || files.ambiguousNames.has(ref.filename)) continue

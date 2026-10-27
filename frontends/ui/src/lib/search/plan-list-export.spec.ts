@@ -72,7 +72,7 @@ describe('renderPlanListWorkbook', () => {
   it('writes one sheet with the header row and one row per document', async () => {
     const bytes = await renderPlanListWorkbook([hit()], de)
     const workbook = new Workbook()
-    await workbook.xlsx.load(Buffer.from(bytes))
+    await workbook.xlsx.load(Buffer.from(bytes) as unknown as ArrayBuffer)
     const sheet = workbook.getWorksheet('Planliste')
     expect(sheet?.getRow(1).getCell(1).value).toBe('Plannummer')
     expect(sheet?.getRow(2).getCell(1).value).toBe('EP-03')

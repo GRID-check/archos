@@ -37,6 +37,7 @@ import {
   describeBackendIngestState,
   readRevisionLinkNames,
   refreshCollectionFiles,
+  readCollectionReadings,
   type ReconcilableDocument,
 } from './reconcile-status'
 import { collectionFileRef } from './collection-file-ref'
@@ -771,6 +772,32 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
     // The gate runs ahead of the fetch: the row owns nothing in that list either
     // way, so deciding costs no backend round trip.
     expect(mockFetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('readCollectionReadings', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  const ref = collectionFileRef(makeRow())
+  const file = { file_name: 'plan.pdf', status: 'success', summary: 'A plan.', superseded_by: 'plan-b.pdf' }
+
+  it('reads each named file\'s reading and whether a newer Fassung replaces it', async () => {
+    mockFetch.mockResolvedValue(collectionResponse([file]))
+    const readings = await readCollectionReadings('proj_abc', ref ? [ref] : [])
+    expect(readings?.get('plan.pdf')).toEqual({ metadata: { summary: 'A plan.' }, superseded: true })
+  })
+
+  it('says nothing when the backend listed the files without their reading, so nothing is blanked', async () => {
+    mockFetch.mockResolvedValue({ ...collectionResponse([file]), headers: new Headers({ 'X-Grid-Reading-Unavailable': '1' }) })
+    expect(await readCollectionReadings('proj_abc', ref ? [ref] : [])).toBeNull()
   })
 })
 
