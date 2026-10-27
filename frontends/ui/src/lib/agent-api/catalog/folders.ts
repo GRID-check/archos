@@ -334,7 +334,7 @@ export const foldersOperations = [
     summary: 'Cancel a mail import',
     description:
       'Cancels an import for good: sent parts and the staged archive are discarded. Filed mails stay (document-bin removes them). ' +
-      'Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.',
+      'Only the person who started it, or an org project administrator, may cancel.',
     method: 'DELETE',
     path: '/api/projects/[id]/mail-imports/[importId]',
     params: mailImportParams,
@@ -477,8 +477,8 @@ export const foldersOperations = [
     summary: 'Start an Outlook archive import',
     description:
       'Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, ' +
-      'partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete. Then filed as ' +
-      'you, without a proposal, through the upload checks, into "E-Mail-Import/<archive name>".',
+      'partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete. Filed as you, ' +
+      'no proposal, via the upload checks, into "E-Mail-Import/<archive name>".',
     method: 'POST',
     path: '/api/projects/[id]/mail-imports',
     params: projectParams,
@@ -508,8 +508,8 @@ export const foldersOperations = [
     summary: 'Finish sending an Outlook archive',
     description:
       'Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its ' +
-      'status; follow it with mail-import-get. 409 if cancelled, or with `details.missingParts` (the first 50) while parts are ' +
-      'missing or mis-sized: send those, call again.',
+      'status; follow it with mail-import-get. 409 if cancelled, or with `details.missingParts` (first 50) while parts are ' +
+      'missing or mis-sized: resend them.',
     method: 'POST',
     path: '/api/projects/[id]/mail-imports/[importId]/complete',
     params: mailImportParams,
