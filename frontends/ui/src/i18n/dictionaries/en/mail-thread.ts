@@ -108,6 +108,7 @@ export const mailThread = {
   /** „Verlauf folgen“ in the tab: the viewer's own follow, and for managers everybody's. */
   follow: {
     offer: 'Follow this mail thread',
+    start: 'Follow',
     explain:
       'Replies from verified domains already writing in the mail thread are added without a click. Attachments keep waiting in Project mail.',
     following: 'You follow this mail thread until {date}',

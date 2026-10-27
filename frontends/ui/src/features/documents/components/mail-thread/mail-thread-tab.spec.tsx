@@ -253,4 +253,18 @@ describe('MailThreadTab', () => {
     await userEvent.click(screen.getByRole('button', { name: /try again/i }))
     expect(get).toHaveBeenCalledTimes(2)
   })
+
+  it('says a confirmed domain once per run of its mails, and an unconfirmed one on every mail', async () => {
+    renderTab('same-sender')
+    const rows = await entries()
+    const said = rows.map((row) => within(row).queryByTestId('mail-thread-entry-trust')?.textContent ?? null)
+    // Newest first: three replies from statik-weber.at in a row, then Miriam's first mail.
+    expect(said).toEqual(['Domain verified: statik-weber.at', null, null, 'Domain verified: huber-architektur.at'])
+  })
+
+  it('keeps the heading exactly as the document prints it, while it wraps between date, name and domain', async () => {
+    renderTab('three-messages')
+    const [newest] = await entries()
+    expect(within(newest).getByTestId('mail-thread-entry-heading')).toHaveTextContent('14.10.2026, 09:12 · Mag. Huber (ma37.wien.gv.at)')
+  })
 })

@@ -9,6 +9,7 @@
  *   Fassung 4 · eingegangen …“: the Fassung the mail first appeared in.
  * - **How far its sender was confirmed**, in the three words a filed mail can
  *   carry; an unconfirmed domain wears the warning glyph, its words stay ink.
+ *   A confirmed domain is said once per run of its mails (`entriesSayingTrust`).
  *   How it was filed is said only where no person decided it in the app (a
  *   follow, the archive import, an agent, a Piloti card).
  * - **What came with it** (D36): every attachment, as a link to the document
@@ -40,7 +41,7 @@ import { documentFilesHref } from '../../lib/document-question'
 import { DocumentVersionDiff } from '../document-version-diff'
 import type { MailThreadClient } from './client'
 import { EntryOriginal } from './entry-original'
-import { attachmentLines, comparedVersions, filedSenderTrust, type AttachmentLine } from './mail-thread-model'
+import { attachmentLines, comparedVersions, filedSenderTrust, headingParts, type AttachmentLine } from './mail-thread-model'
 
 /** The ways of filing worth a line: every other mail was decided by a person in the app. */
 const FILED_VIA_ICON: Partial<Record<MailThreadFiledVia, typeof Bot>> = {
@@ -64,12 +65,14 @@ export interface MailThreadEntryItemProps {
   /** The thread document's Fassungen, once read; null while they are not. */
   versions: readonly DocumentVersionView[] | null
   focused: boolean
+  /** Whether this entry says its sender's trust: the newer mail of the same confirmed domain may have said it already. */
+  showTrust?: boolean
   /** „Herauslösen …“ is offered: the reader may file mail here, and the thread has another mail. */
   onDetach?: (entry: MailThreadEntryView) => void
   client: MailThreadClient
 }
 
-export function MailThreadEntryItem({ projectId, documentId, threadId, entry, versions, focused, onDetach, client }: MailThreadEntryItemProps): JSX.Element {
+export function MailThreadEntryItem({ projectId, documentId, threadId, entry, versions, focused, showTrust = true, onDetach, client }: MailThreadEntryItemProps): JSX.Element {
   const t = useTranslations('mailThread')
   const { locale } = useLocale()
   const ref = useRef<HTMLLIElement>(null)
@@ -78,6 +81,7 @@ export function MailThreadEntryItem({ projectId, documentId, threadId, entry, ve
   const compared = versions ? comparedVersions(entry, versions) : null
   const ViaIcon = FILED_VIA_ICON[entry.filedVia]
   const attachments = attachmentLines(entry.attachments)
+  const heading = headingParts(entry.heading)
 
   useEffect(() => {
     if (!focused || !ref.current) return
@@ -134,17 +138,26 @@ export function MailThreadEntryItem({ projectId, documentId, threadId, entry, ve
     >
       <div className="flex min-w-0 items-start gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h4 className="text-foreground text-[13px] font-medium leading-snug [overflow-wrap:anywhere]" data-testid="mail-thread-entry-heading">
-            {entry.heading}
+          {/* The heading as the document prints it, wrapping between its date, name and domain, never inside the date. */}
+          <h4 className="text-foreground text-[13px] font-medium leading-snug" data-testid="mail-thread-entry-heading">
+            {heading.when && <span className="whitespace-nowrap tabular-nums">{heading.when}</span>}
+            <span className="[overflow-wrap:anywhere]">{heading.who}</span>
+            {/* The space stays outside the block, where a line may break; the parenthesis keeps its domain. */}
+            {heading.domain && (
+              <>
+                {' '}
+                <span className="text-muted-foreground inline-block max-w-full font-normal [overflow-wrap:anywhere]">{heading.domain.trimStart()}</span>
+              </>
+            )}
           </h4>
-          <p className="text-muted-foreground text-xs tabular-nums leading-snug">
+          {/* Two facts that wrap as units: a separator dot left dangling at the rail's edge read as a fault. */}
+          <p className="text-muted-foreground flex flex-wrap gap-x-2.5 text-xs tabular-nums leading-snug">
             {entry.firstVersion && (
-              <span className="text-foreground font-medium" data-testid="mail-thread-entry-from">
+              <span className="text-foreground whitespace-nowrap font-medium" data-testid="mail-thread-entry-from">
                 {t('entry.fromRevision', { number: entry.firstVersion.number })}
               </span>
             )}
-            {entry.firstVersion && ' · '}
-            {t('entry.received', { time: formatAbsoluteTime(entry.receivedAt, locale) })}
+            <span className="whitespace-nowrap">{t('entry.received', { time: formatAbsoluteTime(entry.receivedAt, locale) })}</span>
           </p>
         </div>
         {menu.length > 0 && (
@@ -168,14 +181,16 @@ export function MailThreadEntryItem({ projectId, documentId, threadId, entry, ve
         )}
       </div>
 
-      <p
-        className={cn('flex min-w-0 items-start gap-1.5 text-xs leading-snug', trust === 'unverified' ? 'text-foreground font-medium' : 'text-muted-foreground')}
-        data-testid="mail-thread-entry-trust"
-        data-trust={trust}
-      >
-        <trustLine.Icon className={cn('mt-px size-3.5 shrink-0', trust === 'unverified' && 'text-warning')} aria-hidden />
-        <span className="min-w-0 [overflow-wrap:anywhere]">{trustLine.words}</span>
-      </p>
+      {showTrust && (
+        <p
+          className={cn('flex min-w-0 items-start gap-1.5 text-xs leading-snug', trust === 'unverified' ? 'text-foreground font-medium' : 'text-muted-foreground')}
+          data-testid="mail-thread-entry-trust"
+          data-trust={trust}
+        >
+          <trustLine.Icon className={cn('mt-px size-3.5 shrink-0', trust === 'unverified' && 'text-warning')} aria-hidden />
+          <span className="min-w-0 [overflow-wrap:anywhere]">{trustLine.words}</span>
+        </p>
+      )}
       {ViaIcon && (
         <p className="text-muted-foreground flex min-w-0 items-start gap-1.5 text-xs leading-snug" data-testid="mail-thread-entry-via">
           <ViaIcon className="mt-px size-3.5 shrink-0" aria-hidden />

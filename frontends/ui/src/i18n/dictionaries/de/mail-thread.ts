@@ -109,6 +109,7 @@ export const mailThread: typeof en.mailThread = {
   /** „Verlauf folgen“ im Reiter: das eigene Folgen, und für die Projektverwaltung das aller. */
   follow: {
     offer: 'Diesem E-Mail-Verlauf folgen',
+    start: 'Folgen',
     explain:
       'Antworten von bestätigten Domains, die schon im E-Mail-Verlauf schreiben, werden ohne Klick angefügt. Anhänge warten weiter im E-Mail-Eingang.',
     following: 'Sie folgen diesem E-Mail-Verlauf bis {date}',

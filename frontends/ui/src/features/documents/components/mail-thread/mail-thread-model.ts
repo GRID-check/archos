@@ -16,7 +16,8 @@
  *   a name when it sits in a folder the viewer may not read.
  * - **How far a sender is confirmed**, in the three words a filed message can
  *   carry: a confirmed domain, an unconfirmed one, or an archived message
- *   nobody checked.
+ *   nobody checked; and on which entries it is said at all, so a run of
+ *   replies from one confirmed domain does not repeat it on every mail.
  */
 
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
@@ -205,4 +206,41 @@ export function filedSenderTrust(trust: SenderTrust): FiledSenderTrust {
   if (trust === 'member_verified' || trust === 'external_verified') return 'verified'
   if (trust === 'not_checked') return 'not_checked'
   return 'unverified'
+}
+
+/**
+ * The entries that say their sender's trust, in the order given (the tab's,
+ * newest first). A confirmed domain is said once per run of consecutive mails
+ * it signed, on the first of the run: ten replies from the structural
+ * engineer's domain read as one conversation, not ten certificates (the
+ * owner's review, 2026-10-27). An unconfirmed sender and an archived mail
+ * nobody checked are said on every mail: those are the ones a reader must not
+ * miss, wherever they scroll in.
+ */
+export function entriesSayingTrust(entries: readonly Pick<MailThreadEntryView, 'id' | 'senderTrust' | 'signerDomain'>[]): Set<string> {
+  const saying = new Set<string>()
+  let run: string | null = null
+  for (const entry of entries) {
+    const verified = filedSenderTrust(entry.senderTrust) === 'verified'
+    const key = verified ? `verified:${entry.signerDomain ?? ''}` : null
+    if (key === null || key !== run) saying.add(entry.id)
+    run = key
+  }
+  return saying
+}
+
+/**
+ * A section heading split where it may wrap (`„14.10.2026, 09:12 · Mag. Huber
+ * (ma37.wien.gv.at)“`): the date, the name, and the domain in parentheses,
+ * each kept whole on a line where it fits. Joined, the parts are the heading
+ * exactly as the document prints it, so a citation still finds it.
+ */
+export function headingParts(heading: string): { when: string; who: string; domain: string } {
+  const split = heading.indexOf(' · ')
+  if (split < 0) return { when: '', who: heading, domain: '' }
+  const when = heading.slice(0, split + 3)
+  const rest = heading.slice(split + 3)
+  const paren = rest.lastIndexOf(' (')
+  if (paren < 0 || !rest.endsWith(')')) return { when, who: rest, domain: '' }
+  return { when, who: rest.slice(0, paren), domain: rest.slice(paren) }
 }

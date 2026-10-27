@@ -2,7 +2,8 @@
  * The tab's rules, each once: whose follow is the viewer's and whether it can
  * still grow; who may end someone else's; which entry a link or a citation
  * means; what a detach keeps; which Fassungen „Vergleichen“ lays side by side;
- * what came with a mail; how far a filed sender was confirmed.
+ * what came with a mail; how far a filed sender was confirmed, and where
+ * that is said; where a heading may wrap.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -13,9 +14,11 @@ import {
   currentVersionNumber,
   detachKeeps,
   entriesNewestFirst,
+  entriesSayingTrust,
   filedSenderTrust,
   focusedEntryId,
   followRenewable,
+  headingParts,
   mayEndFollow,
   mayWrite,
   otherFollows,
@@ -132,4 +135,37 @@ it('says a filed sender in three words', () => {
   expect(filedSenderTrust('member_unverified')).toBe('unverified')
   expect(filedSenderTrust('external_unverified')).toBe('unverified')
   expect(filedSenderTrust('not_checked')).toBe('not_checked')
+})
+
+describe('where a sender’s trust is said', () => {
+  const mail = (id: string, senderTrust: 'external_verified' | 'external_unverified' | 'not_checked', signerDomain: string | null) => ({ id, senderTrust, signerDomain })
+
+  it('says a confirmed domain once per run of its mails, on the newest', () => {
+    const entries = [
+      mail('a', 'external_verified', 'statik-weber.at'),
+      mail('b', 'external_verified', 'statik-weber.at'),
+      mail('c', 'external_verified', 'wien.gv.at'),
+      mail('d', 'external_verified', 'statik-weber.at'),
+    ]
+    expect([...entriesSayingTrust(entries)]).toEqual(['a', 'c', 'd'])
+  })
+
+  it('says an unconfirmed or unchecked sender on every mail', () => {
+    const entries = [mail('a', 'external_unverified', null), mail('b', 'external_unverified', null), mail('c', 'not_checked', null), mail('d', 'not_checked', null)]
+    expect([...entriesSayingTrust(entries)]).toEqual(['a', 'b', 'c', 'd'])
+  })
+})
+
+describe('a heading split where it may wrap', () => {
+  it('keeps the date, the name and the domain whole, and joins back to the heading exactly', () => {
+    const heading = '14.10.2026, 09:12 · Mag. Huber (ma37.wien.gv.at)'
+    const parts = headingParts(heading)
+    expect(parts).toEqual({ when: '14.10.2026, 09:12 · ', who: 'Mag. Huber', domain: ' (ma37.wien.gv.at)' })
+    expect(parts.when + parts.who + parts.domain).toBe(heading)
+  })
+
+  it('takes a heading of another shape whole', () => {
+    expect(headingParts('Ohne Datum')).toEqual({ when: '', who: 'Ohne Datum', domain: '' })
+    expect(headingParts('14.10.2026 · Miriam Huber')).toEqual({ when: '14.10.2026 · ', who: 'Miriam Huber', domain: '' })
+  })
 })
