@@ -47,7 +47,9 @@ const countPillVariants = cva(
   {
     variants: {
       tone: {
-        muted: 'bg-muted font-medium text-muted-foreground',
+        // Muted ink on the muted fill measured 4.44:1 at 11px (axe, 2026-10-27), under AA's 4.5:1:
+        // the tabs' cure, ink at 70 % (`grid-design-language.md`, „Measured contrasts“).
+        muted: 'bg-muted font-medium text-foreground/70',
         attention: 'bg-primary font-semibold text-primary-foreground',
       },
     },
