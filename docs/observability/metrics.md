@@ -122,11 +122,13 @@ either is missing.
 One alert in PostHog, **Platform health (prod)**, on the insight
 [`tqqimEor`](https://eu.posthog.com/project/269895/insights/tqqimEor) on the
 [Platform health (prod)](https://eu.posthog.com/project/269895/dashboard/1040252)
-dashboard. The insight is a SQL query over `posthog.metrics` that returns one
-row per rule: `rule` names it, prefixed by its area, and what breaks it;
-`breach` counts the breaches. The alert fires when any row is above 0
-(`any_row`, upper bound 0), and its notification carries the `rule` text, so
-it says which pod, queue or node. It checks hourly (the free plan's fastest),
+dashboard. The insight is a SQL query over `posthog.metrics` that evaluates
+one row per rule and folds them into a single row: `rule` lists every rule
+that fired, each prefixed by its area and naming what breaks it, and `breach`
+counts them. The alert fires when `breach` is above 0, and its notification
+carries the `rule` text, so it says which pod, queue or node. One row because
+PostHog's scheduled check errored on every run of the multi-row version
+([`deploy/posthog/README.md`](../../deploy/posthog/README.md#alerts)). It checks hourly (the free plan's fastest),
 production only, emails its subscriber and posts to `#alerts-prod`.
 
 It used to be five alerts, one per area. The plan allows five insight alerts
