@@ -70,7 +70,7 @@
   "src/lib/runs/plan-vocabulary.ts": 3,
   "src/lib/runs/run-ledger-types.ts": 1,
   "src/lib/skills/legacy-names.ts": 4,
-  "src/lib/source-kinds.ts": 5,
+  "src/lib/source-kinds.ts": 4,
   "src/lib/storage/service.spec.ts": 2,
   "src/lib/storage/upload-limit.spec.ts": 1,
   "src/lib/tasks/task-vocabulary.ts": 1,
