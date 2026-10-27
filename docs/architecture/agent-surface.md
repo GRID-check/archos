@@ -92,20 +92,29 @@ is how old the answers about the person may be:
 
 | Client | A read | A write |
 |---|---|---|
-| External agent | Runs | The client asks its user, driven by the tool annotations. On a 2026-07-28 request from a client that declares form elicitation, the door asks the person itself before a destructive write (below) |
+| External agent | Runs | The client asks its user, driven by the tool annotations. On a 2026-07-28 request from a client that declares form elicitation, the door asks the person itself before a destructive write, and before deciding a proposal (`proposal-apply`, `proposal-dismiss`: `personDecides`), whatever the proposal changes (below) |
 | Piloti in-product, in a conversation that is the person's alone | Runs if what it names lies in a project the person may chat in, after what it may carry is recorded on the conversation (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
 | Piloti in-product, in a shared conversation | Runs only a document's content or a project's facts (`AUDIENCE_READS`), of the conversation's own project or one every reader may open, never of a restricted folder, recorded first; every other read is refused with a sentence the model relays | As above, refused when it names a project outside the audience's reach |
 
 #### The person confirms in their own chat
 
 An outside agent's destructive write (`destructiveHint`, never a read, never
-Piloti's) is put to the person before it runs when the request is of the
-2026-07-28 era and its client declares form elicitation in the request's
-`_meta` capabilities (`lib/agent-api/confirmation.ts`). The tool answers
-`inputRequired` with one `elicitation/create`: a plain English line built from
+Piloti's), and its decision of a proposal (an operation marked
+`personDecides`: `proposal-apply`, `proposal-dismiss`, ADR-0142), is put to the
+person before it runs when the request is of the 2026-07-28 era and its client
+declares form elicitation in the request's `_meta` capabilities
+(`lib/agent-api/confirmation.ts`). A proposal is asked about because the model
+never decides one for the person, and one it would apply may itself delete.
+The tool answers `inputRequired` with one `elicitation/create`: a plain English
+line and a form with one boolean, `confirm`. For a write the line is built from
 the operation's summary and the names of the project or document it touches
-(`summaryOfOperation`, `describeTargets`), and a form with one boolean,
-`confirm`. The client shows it in the person's own chat and calls again with
+(`summaryOfOperation`, `describeTargets`). For a decision it is the proposal's
+own: read as the person (`getProposal`), its kind, its summary, the targets it
+names and its project ("An agent connected to Piloti wants to apply this Piloti
+proposal as you: an action, "Delete the document Grundriss EG.pdf"
+(document-delete), on document "Grundriss EG.pdf". In project "Wohnhaus
+Lindengasse"."), never the proposal's id alone. A press on the MCP Apps card is
+not asked about: it is the person's (`mcp-apps.ts`). The client shows it in the person's own chat and calls again with
 the answer in `inputResponses`. A yes runs the call through `runOperation`, the
 path every call takes; a no, a cancel or an unchecked box returns "nothing was
 changed" (`structuredContent.decision: 'declined'`). Either answer is an audit
@@ -689,7 +698,7 @@ sequenceDiagram
 | Who gets it | An outside agent on an office door whose client can draw it: on the 2026-07-28 era, one whose request capabilities name `io.modelcontextprotocol/ui` with `text/html;profile=mcp-app` (read off each request's `_meta` before the SDK serves it); on the 2025 era, which carries no capabilities, every outside client, as before. Not Piloti (it draws its own cards and never decides a proposal), not the platform door | `declaresMcpApps`, `appHostOf`, `offersAppViews`, `isAppToolFor` |
 | A model's own decision | `proposal-apply` and `proposal-dismiss` carry `personDecides`: an outside agent's call is put to the person first through elicitation, like a destructive write, on a 2026-07-28 client that declares form elicitation; elsewhere it runs as before | `confirmation.ts` |
 | Telemetry | A press is `agent_operation_called` / `agent-tool-call` with `decision_source: app` from a client that declared MCP Apps, `app-unverified` from one that declared nothing (the 2025 era); either is the host's word, not a signed answer like `elicitation`. The decision is the proposal's (`piloti.proposal.decided`, the decider the person) | `telemetry.ts` |
-| The view's data | `structuredContent` of `proposal-get` and the buttons' operations is never dropped for length; only the text is capped | `VIEW_DATA_OPERATIONS` in `discovery.ts` |
+| The view's data | For a caller offered the views, `structuredContent` of `proposal-get` and the buttons' operations is never dropped for length; only the text is capped. Every other caller gets the usual cap | `VIEW_DATA_OPERATIONS` in `discovery.ts`, `offersAppViews` in `app-host.ts` |
 
 **The view** draws the catalog card for the proposal's kind (`operation`,
 `file_operation`, `memory`) through `A2uiCard` with the chat's own receipts;

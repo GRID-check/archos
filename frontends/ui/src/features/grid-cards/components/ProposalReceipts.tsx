@@ -25,7 +25,7 @@ import type { MemoryPayload, OperationTargetView, ProposedChangeResult } from '@
 import { useCurrentProfile } from '../hooks/use-current-profile'
 import { useServerProposal } from '../hooks/use-server-proposal'
 import { notifyIfAnyApplied, type FileOperationItem, type FileOperationKind } from '../lib/file-operations'
-import { operationInputRows, previewOf, rowKey, type OperationInputRow } from '../lib/operation-input'
+import { humanizeKey, isNamedInputKey, operationInputRows, previewOf, rowKey, type OperationInputRow } from '../lib/operation-input'
 import { OperationList } from './FileOperationRows'
 import { ProfilePatchTable } from './ProfilePatchTable'
 import { ProposalReceipt } from './ProposalReceipt'
@@ -151,7 +151,10 @@ function OperationInput({
         const open = !row.long || unfolded.has(key)
         return (
           <div key={key} className="flex flex-col gap-0.5 sm:flex-row sm:gap-x-1.5">
-            <dt className="shrink-0 font-medium">{row.key}</dt>
+            {/* The field in words; its technical name stays on hover, for whoever checks it against the action. */}
+            <dt className="shrink-0 font-medium" title={row.key} data-key={row.key}>
+              {isNamedInputKey(row.key) ? t(`cards.operationProposal.inputKeys.${row.key}`) : humanizeKey(row.key)}
+            </dt>
             <dd className="min-w-0 break-words" data-testid="operation-input-value">
               {open ? <span className="whitespace-pre-wrap">{row.value}</span> : previewOf(row)}
               {row.long && (

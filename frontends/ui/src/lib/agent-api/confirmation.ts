@@ -46,9 +46,12 @@ import {
 import { recordAuditEventAfterCommit } from '@/lib/audit/after-commit'
 import { withTenant } from '@/lib/db/tenant-context'
 import { usableInternalSecret } from '@/lib/internal-auth'
+import { getProposal } from '@/lib/proposals/service'
+import type { ProposedChangeView } from '@/lib/proposals/types'
 import { type OperationInput, OperationInputError, validateOperationInput } from './dispatch'
 import { type AgentOperation, annotationsOf } from './operation'
 import { describeTargets, targetsOf } from './operation-targets'
+import { findProjectName } from './operation-targets-repository'
 import { summaryOfOperation } from './operation-proposals'
 import { callDecision, findVisibleOperation } from './policy'
 import type { AgentPrincipal } from './principal'
@@ -157,8 +160,73 @@ async function namedTargets(principal: AgentPrincipal, op: AgentOperation, input
   }
 }
 
+/** At most `max` characters of `text`, on one line. */
+const clip = (text: string, max = 160): string => {
+  const line = text.replace(/\s+/g, ' ').trim()
+  return line.length <= max ? line : `${line.slice(0, max - 1)}…`
+}
+
+/** What a proposal would do, in the person's terms: its kind, its summary and what it names. */
+export function describeProposal(proposal: ProposedChangeView): string {
+  switch (proposal.kind) {
+    case 'operation': {
+      const named = (proposal.targets ?? []).flatMap((target) =>
+        target.name ? [`${target.type.replace('_', ' ')} "${clip(target.name, 80)}"`] : [],
+      )
+      const on = named.length > 0 ? `, on ${named.join(', ')}` : ''
+      return `an action, "${clip(proposal.payload.summary)}" (${proposal.payload.operation})${on}`
+    }
+    case 'file_operation': {
+      const files = proposal.payload.operations.map((item) => (item.document ? `"${clip(item.document, 80)}"` : "a file"))
+      const shown = files.length > 3 ? `${files.slice(0, 3).join(', ')} and ${files.length - 3} more` : files.join(', ')
+      return `a file ${proposal.payload.operation} of ${files.length === 1 ? 'one file' : `${files.length} files`}: ${shown}`
+    }
+    case 'memory':
+      return `a note for Piloti to remember (${proposal.payload.kind}): "${clip(proposal.payload.content)}"`
+    case 'project_profile':
+      return `a change to the project context, "${clip(proposal.payload.title)}"`
+  }
+}
+
+/**
+ * The proposal a decision names, read as the person, and its project's name:
+ * what the person is asked to apply or discard. Null when it cannot be read
+ * (gone, not theirs to read): the route will answer that, and the question
+ * falls back to the operation's own words.
+ */
+async function decidedProposal(principal: AgentPrincipal, input: OperationInput): Promise<{ proposal: ProposedChangeView; project: string | null } | null> {
+  const id = input.params?.id
+  if (typeof id !== 'string') return null
+  const { session } = principal
+  try {
+    return await withTenant({ organizationId: session.organizationId, userId: session.userId }, async () => {
+      const proposal = await getProposal(session, id)
+      const project = proposal.projectId ? await findProjectName(session.organizationId, proposal.projectId) : null
+      return { proposal, project }
+    })
+  } catch {
+    return null
+  }
+}
+
+/** The question for deciding a proposal: what it does, on what, in which project. */
+async function decisionMessage(principal: AgentPrincipal, op: AgentOperation, input: OperationInput): Promise<string | null> {
+  const read = await decidedProposal(principal, input)
+  if (!read) return null
+  const verb = op.name === 'proposal-dismiss' ? 'discard' : 'apply'
+  const where = read.project ? ` In project "${clip(read.project, 80)}".` : ''
+  const effect = verb === 'discard' ? ' Discarding changes nothing in the workspace.' : ''
+  return (
+    `An agent connected to Piloti wants to ${verb} this Piloti proposal as you: ${describeProposal(read.proposal)}.` +
+    `${where}${effect} Nothing happens unless you confirm.`
+  )
+}
+
 /** What the person reads: what will change, on what, and that nothing does without them. */
 export async function confirmationMessage(principal: AgentPrincipal, op: AgentOperation, input: OperationInput): Promise<string> {
+  // Deciding a proposal: the person reads what the proposal does, not "apply a proposed change (id: …)".
+  const decision = op.personDecides ? await decisionMessage(principal, op, input) : null
+  if (decision) return decision
   const what = summaryOfOperation(op, input).replace(/\.$/, '')
   const targets = await namedTargets(principal, op, input)
   const on = targets.length > 0 ? ` This affects ${targets.join(', ')}.` : ''

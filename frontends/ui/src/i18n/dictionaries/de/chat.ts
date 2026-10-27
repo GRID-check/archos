@@ -699,6 +699,19 @@ export const chat: typeof en.chat = {
       eyebrow: 'Aktion',
       // „{operation}“ ist der technische Name der Aktion, er bleibt unübersetzt.
       operation: 'Aktion: {operation}',
+      // Die Eingabefelder, die die meisten Aktionen haben, wie die Karte sie nennt (`NAMED_INPUT_KEYS`).
+      inputKeys: {
+        id: 'ID',
+        name: 'Name',
+        title: 'Titel',
+        description: 'Beschreibung',
+        projectId: 'Projekt',
+        folderId: 'Ordner',
+        parentId: 'Übergeordneter Ordner',
+        documentId: 'Dokument',
+        conversationId: 'Chat',
+        targetFolder: 'Zielordner',
+      },
       inputLabel: 'Eingaben',
       // Ein langer Wert ist erst gekürzt; „Übernehmen“ wartet, bis jeder ganz gelesen ist.
       showAll: 'Ganz anzeigen ({length} Zeichen)',

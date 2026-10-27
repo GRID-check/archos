@@ -542,9 +542,31 @@ describe('operation proposal with a proposal_id', () => {
 
     expect(await screen.findByTestId('operation-targets')).toHaveTextContent('Applies to: Project Neubau Musterstraße')
     const input = screen.getByTestId('operation-input')
-    expect(input).toHaveTextContent('tone')
+    expect(input).toHaveTextContent('Tone')
     expect(input).toHaveTextContent('formal')
-    expect(input).toHaveTextContent('limits')
+    expect(input).toHaveTextContent('Limits')
+  })
+
+  it('names each input field in words, its technical name kept on hover', async () => {
+    serve(
+      operationProposal({
+        payload: {
+          operation: 'folder-rename',
+          input: { params: { id: 'p-1', folderId: 'f-118' }, body: { name: 'Archiv 2025', memoryScope: 'project' } },
+          summary: 'Rename the folder',
+        },
+      })
+    )
+    render(<OperationReceipt proposalId={PROPOSAL_ID} title="Rename the folder" operation="folder-rename" input={{}} />)
+    const input = await screen.findByTestId('operation-input')
+    await waitFor(() => expect(input).toHaveTextContent('Folder'))
+    const terms = Array.from(input.querySelectorAll('dt')).map((term) => [term.textContent, term.getAttribute('title')])
+    expect(terms).toEqual([
+      ['Name', 'name'],
+      ['Memory scope', 'memoryScope'],
+      ['ID', 'id'],
+      ['Folder', 'folderId'],
+    ])
   })
 
   it('keeps „Apply“ waiting until every shortened value has been read in full, then applies', async () => {

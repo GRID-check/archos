@@ -47,12 +47,16 @@ import { APP_TOOLS, APP_VIEWS, type AppTool, type AppToolRefusal, type AppView }
 import { executeOperation, fromOperationResult } from './discovery'
 import { RESOURCE_ICONS } from './icons'
 import type { OperationInput } from './dispatch'
-import { audienceOf, doorOfPrincipal, isAppToolFor, isOnDoor } from './exposure'
+import { offersAppViews } from './app-host'
+import { audienceOf, isAppToolFor, isOnDoor } from './exposure'
 import type { AgentOperation } from './operation'
 import type { McpCallContext } from './telemetry'
 
-/** The extension's id, as a client declares it in `capabilities.extensions` (MCP Apps, "Capability Negotiation"). */
-export const UI_EXTENSION = 'io.modelcontextprotocol/ui'
+export { UI_EXTENSION, appHostOf, declaresMcpApps, offersAppViews } from './app-host'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
 /**
  * What each view's resource declares to the host (`_meta.ui`): an empty CSP,
@@ -83,33 +87,6 @@ export function viewDocument(view: Pick<AppView, 'file'>, dir: string = VIEWS_DI
     documents.set(key, read)
   }
   return read
-}
-
-/**
- * Whether a 2026-07-28 request's client capabilities (`_meta`
- * `io.modelcontextprotocol/clientCapabilities`) declare that it renders MCP
- * Apps: the extension, with `text/html;profile=mcp-app` among its mime types.
- */
-export function declaresMcpApps(capabilities: unknown): boolean {
-  const extensions = isRecord(capabilities) ? capabilities.extensions : undefined
-  const ui = isRecord(extensions) ? extensions[UI_EXTENSION] : undefined
-  const mimeTypes = isRecord(ui) ? ui.mimeTypes : undefined
-  return Array.isArray(mimeTypes) && mimeTypes.includes(RESOURCE_MIME_TYPE)
-}
-
-/** What a server for this request knows of its client's MCP Apps support (`McpCallContext.appHost`). */
-export function appHostOf(era: 'modern' | 'legacy', clientCapabilities: unknown): McpCallContext['appHost'] {
-  if (era === 'legacy') return 'unknown'
-  return declaresMcpApps(clientCapabilities) ? 'declared' : undefined
-}
-
-/** Whether `ctx`'s caller is offered the views: an outside agent on an office door, whose client may draw them. */
-export function offersAppViews(ctx: Pick<McpCallContext, 'principal' | 'appHost'>): boolean {
-  return ctx.appHost !== undefined && doorOfPrincipal(ctx.principal) === 'office' && audienceOf(ctx.principal) === 'external'
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /** The view that draws `operation`'s result, if one does. */
@@ -173,7 +150,7 @@ export async function runAppTool(ctx: McpCallContext, tool: AppTool, args: unkno
   const decisionSource = ctx.appHost === 'declared' ? 'app' : 'app-unverified'
   const outcome = await executeOperation({ ...ctx, decisionSource }, op, input)
   if ('refusal' in outcome) return refused(outcome.refusal, outcome)
-  const result = fromOperationResult(op, outcome.result, input)
+  const result = fromOperationResult(op, outcome.result, input, undefined, true)
   if (outcome.result.ok) return result
   const body = outcome.result.body
   const code = isRecord(body) && typeof body.code === 'string' ? body.code : undefined

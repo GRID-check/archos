@@ -46,12 +46,23 @@ vi.mock('./dispatch', async (importOriginal) => ({
   callOperation: vi.fn(),
 }))
 vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordOperationMissing: vi.fn() }))
+vi.mock('@/lib/proposals/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/proposals/service')>()),
+  getProposal: vi.fn(),
+}))
+vi.mock('@/lib/db/tenant-context', () => ({ withTenant: vi.fn((_tenant: unknown, run: () => unknown) => run()) }))
+vi.mock('./operation-targets-repository', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./operation-targets-repository')>()),
+  findProjectName: vi.fn(async () => 'Wohnhaus Lindengasse'),
+}))
 vi.mock('./read-gate', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./read-gate')>()
   return { ...actual, readGateFor: vi.fn(actual.readGateFor) }
 })
 
 import { ConflictError } from '@/lib/api/errors'
+import { getProposal } from '@/lib/proposals/service'
+import type { ProposedChangeView } from '@/lib/proposals/types'
 import { proposalResponseSchema } from '@/lib/proposals/types'
 import { APP_TOOLS, PROPOSAL_CARD_URI } from './catalog/app-views'
 import { MAX_RESULT_CHARS } from './discovery'
@@ -368,6 +379,40 @@ describe('a model deciding a proposal itself', () => {
     expect(callOperation).not.toHaveBeenCalled()
   })
 
+  const questionOf = (result: CallResult) =>
+    (result as unknown as { inputRequests: { confirm: { params: { message: string } } } }).inputRequests.confirm.params.message
+
+  it('asks in the words of the proposal: what it does, what it names, in which project', async () => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
+    vi.mocked(getProposal).mockResolvedValueOnce({
+      ...proposal('proposed'),
+      projectId: '3d1c2f7a-5b8e-4c1d-9f20-6a7b8c9d0e1f',
+      payload: { operation: 'document-delete', summary: 'Delete the document Grundriss EG.pdf', input: { params: { id: 'd-1' } } },
+      targets: [{ type: 'document', id: 'd-1', name: 'Grundriss EG.pdf' }],
+    } as ProposedChangeView)
+    const apply = await callTool(outside, 'search', 'call-operation', { name: 'proposal-apply', input: { params: { id: PROPOSAL_ID } } }, ELICITS)
+    expect(questionOf(apply)).toBe(
+      'An agent connected to Piloti wants to apply this Piloti proposal as you: an action, "Delete the document Grundriss EG.pdf" ' +
+        '(document-delete), on document "Grundriss EG.pdf". In project "Wohnhaus Lindengasse". Nothing happens unless you confirm.',
+    )
+    expect(questionOf(apply)).not.toContain(PROPOSAL_ID)
+  })
+
+  it('asks a discard in the words of a file proposal', async () => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
+    vi.mocked(getProposal).mockResolvedValueOnce({
+      ...proposal('proposed'),
+      kind: 'file_operation',
+      projectId: null,
+      payload: { operation: 'move', operations: [{ document: 'Schnitt A-A.pdf', current: 'Nachweise', target_folder: 'Einreichung' }] },
+    } as unknown as ProposedChangeView)
+    const dismiss = await callTool(outside, 'search', 'call-operation', { name: 'proposal-dismiss', input: { params: { id: PROPOSAL_ID } } }, ELICITS)
+    expect(questionOf(dismiss)).toBe(
+      'An agent connected to Piloti wants to discard this Piloti proposal as you: a file move of one file: "Schnitt A-A.pdf". ' +
+        'Discarding changes nothing in the workspace. Nothing happens unless you confirm.',
+    )
+  })
+
   it('is not asked about on the card: a press is the person’s, and runs', async () => {
     vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
     vi.mocked(callOperation).mockResolvedValue({ status: 200, ok: true, body: { proposal: proposal('applied') } })
@@ -394,6 +439,13 @@ describe('a large proposal', () => {
     const applied = await callTool(outside, 'search', 'proposal-card-apply', { id: PROPOSAL_ID })
     expect(applied.isError).toBeFalsy()
     expect(proposalResponseSchema.parse(applied.structuredContent).proposal.status).toBe('applied')
+  })
+
+  it('is capped as any answer for a caller not offered the views: no structured content past the cap', async () => {
+    vi.mocked(callOperation).mockResolvedValue({ status: 200, ok: true, body: { proposal: large() } })
+    const read = await callTool(outside, 'search', 'call-operation', { name: 'proposal-get', input: { params: { id: PROPOSAL_ID } } }, {})
+    expect(read.content[0]?.text).toContain('[Truncated')
+    expect(read.structuredContent).toBeUndefined()
   })
 })
 

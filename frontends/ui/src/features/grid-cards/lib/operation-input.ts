@@ -56,5 +56,39 @@ export function previewOf(row: OperationInputRow): string {
   return flat.length > PREVIEW_LENGTH ? `${flat.slice(0, PREVIEW_LENGTH - 1)}…` : `${flat}…`
 }
 
+/**
+ * The input fields most actions take, named in the person's language
+ * (`cards.operationProposal.inputKeys`). Any other field reads as its name in
+ * words (`humanizeKey`): `memoryScope` is "Memory scope", never `memoryScope`.
+ */
+export const NAMED_INPUT_KEYS = [
+  'id',
+  'name',
+  'title',
+  'description',
+  'projectId',
+  'folderId',
+  'parentId',
+  'documentId',
+  'conversationId',
+  'targetFolder',
+] as const
+
+export type NamedInputKey = (typeof NAMED_INPUT_KEYS)[number]
+
+export const isNamedInputKey = (key: string): key is NamedInputKey => (NAMED_INPUT_KEYS as readonly string[]).includes(key)
+
+/** A field name in words: `folderId` → "Folder ID", `target_folder` → "Target folder", `if-match` → "If match". */
+export function humanizeKey(key: string): string {
+  const words = key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => (/^id$/i.test(word) ? 'ID' : word.toLowerCase()))
+  if (words.length === 0) return key
+  const [first, ...rest] = words
+  return [first === 'ID' ? first : first.charAt(0).toUpperCase() + first.slice(1), ...rest].join(' ')
+}
+
 /** A stable key per row: the same field name may occur in body, query and params. */
 export const rowKey = (row: OperationInputRow, index: number) => `${index}:${row.key}`

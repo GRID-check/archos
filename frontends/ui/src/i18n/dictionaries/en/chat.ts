@@ -695,6 +695,19 @@ export const chat = {
       eyebrow: 'Action',
       // `{operation}` is the action's technical name; it is not translated.
       operation: 'Action: {operation}',
+      // The input fields most actions take, as the card names them (`NAMED_INPUT_KEYS`).
+      inputKeys: {
+        id: 'ID',
+        name: 'Name',
+        title: 'Title',
+        description: 'Description',
+        projectId: 'Project',
+        folderId: 'Folder',
+        parentId: 'Parent folder',
+        documentId: 'Document',
+        conversationId: 'Conversation',
+        targetFolder: 'Target folder',
+      },
       inputLabel: 'Inputs',
       // A long value is shortened at first; „Apply“ waits until every one has been read in full.
       showAll: 'Show all ({length} characters)',

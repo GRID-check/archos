@@ -124,13 +124,18 @@ Chosen option 1.
   Apps, `app-unverified` when it declared nothing (PostHog
   `agent_operation_called`, Langfuse `agent-tool-call`); the decision itself is
   the proposal's (`decidedBy`, audit `piloti.proposal.decided`), as for a press
-  in Piloti. The view's data (`structuredContent`) is never dropped for length:
-  only the text the model reads is capped (`VIEW_DATA_OPERATIONS`).
+  in Piloti. For a caller offered the views, the view's data
+  (`structuredContent`) is never dropped for length: only the text the model
+  reads is capped (`VIEW_DATA_OPERATIONS`); every other caller gets the cap as
+  for any operation.
 * **A model's own decision.** `proposal-apply` and `proposal-dismiss` stay
   operations an outside agent may call, and carry `personDecides`: on the
   2026-07-28 era, to a client that declares form elicitation, the call is put
   to the person first (`confirmThenRun`), as a destructive write is. A proposal
-  the model would apply may itself delete. Elsewhere (the 2025 era, or a client
+  the model would apply may itself delete, so the question says what it does:
+  the proposal read as the person, its kind, summary, targets and project
+  (`decisionMessage` in `confirmation.ts`), never "apply a proposed change
+  (id: …)". Elsewhere (the 2025 era, or a client
   without elicitation) the call runs as before, after the client's own
   confirmation of a write.
 * **Every settled state is told to the model** (`ui/update-model-context`):
@@ -285,7 +290,9 @@ would block a font served from the host's origin. The language is
   `isToolVisibilityAppOnly`), absent from search and refused by
   `call-operation`, and run `proposal-apply` / `proposal-dismiss` through
   `callOperation` as the person, with the route's status on a refusal (the
-  route's, the read gate's and a thrown `ApiError`'s); Piloti and the platform
+  route's, the read gate's and a thrown `ApiError`'s); the elicitation for a
+  model's decision names what the proposal does and its project; a large
+  proposal's data is kept whole only for a caller offered the views; Piloti and the platform
   door get none of it, and `isAppToolFor` refuses Piloti's audience; a
   2026-07-28 client that declared no MCP Apps gets none of it, a 2025-era press
   is `app-unverified`; a model's `proposal-apply` / `proposal-dismiss` asks the

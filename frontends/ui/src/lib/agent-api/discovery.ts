@@ -37,6 +37,7 @@ import {
 import { type BackendOperation, type JsonSchemaObject, callBackendOperation, toMcpContent } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
 import { APP_TOOLS, APP_VIEWS } from './catalog/app-views'
+import { offersAppViews } from './app-host'
 import { layerSchema, resolveField } from './layered-schema'
 import { configuredAppOrigin } from '@/lib/app-origin'
 import { withLinks } from './links'
@@ -113,9 +114,11 @@ function renderText(value: unknown, hint = GENERIC_NARROWING_HINT): { text: stri
 
 /**
  * The operations an MCP Apps view reads its data from (ADR-0142): the ones a
- * view draws, and the ones its app-only tools run. Their `structuredContent` is
- * the view's input, so it is kept whole however long the text is; only the
- * text, which the model reads, is capped. A proposal is one bounded object.
+ * view draws, and the ones its app-only tools run. For a caller offered the
+ * views (`offersAppViews`) their `structuredContent` is the view's input, so it
+ * is kept whole however long the text is; only the text, which the model
+ * reads, is capped. A proposal is one bounded object. Every other caller gets
+ * the cap as for any operation.
  */
 const VIEW_DATA_OPERATIONS: ReadonlySet<string> = new Set<string>([
   ...APP_VIEWS.flatMap((view) => view.drawsResultOf),
@@ -222,13 +225,15 @@ export function fromOperationResult(
   result: OperationResult,
   input: OperationInput = {},
   origin: string | null = configuredAppOrigin(),
+  /** The caller draws MCP Apps views: a view's data is kept whole (`VIEW_DATA_OPERATIONS`). */
+  forView = false,
 ): CallToolResult {
   const opName = op.name
   if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
   if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
   if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
-  return success(withLinks(op, input, result.body, origin), narrowingHint(op), VIEW_DATA_OPERATIONS.has(opName))
+  return success(withLinks(op, input, result.body, origin), narrowingHint(op), forView && VIEW_DATA_OPERATIONS.has(opName))
 }
 
 /**
@@ -446,7 +451,7 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
     }
   }
   const outcome = await executeOperation(ctx, op, input, startedAt)
-  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result, input)
+  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result, input, undefined, offersAppViews(ctx))
 }
 
 /**
