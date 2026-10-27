@@ -113,6 +113,18 @@ server's `dryRun` is ([servers][mcp-fs]).
   "at least" and adds one facet over `file_name` (`store.facet_counts`) under the same
   word filter: per file, the passages that hold the words, an upper bound beside the
   counted lower bound.
+  A count is one per place in the document, not per stored chunk
+  (`sources/knowledge_layer/src/chunk_positions.py`). The heading breadcrumb a section
+  or Punkt chunk opens with (`A › B`, the Richtlinie's label, a table caption repeated
+  on every part) is never matched; a section's own heading, which the breadcrumb is the
+  only copy of, counts once, on the section's first part. A match inside the overlap a
+  chunk repeats from its predecessor (`chunk_ordinal − 1` among the returned chunks) is
+  the predecessor's, and a chunk left without a match of its own is no passage. The
+  context lines, the distinct strings of a regex and the Herleitung row's hits and
+  documents are counted the same way. A point without `chunk_ordinal` is matched
+  against the ordinal-less chunks of its own page and otherwise counts as stored. A
+  capped scan whose passages held the words only in breadcrumbs or overlaps says it is
+  not a no.
 - `list_files` replaces the 50-row prompt inventory as the way to see a
   project. It is uncapped and paged, facets by folder, name, `doc_class` and
   date, and lists in-flight files. It drops the shelves the turn did not ask for,
