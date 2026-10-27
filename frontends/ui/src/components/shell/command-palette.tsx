@@ -4,7 +4,9 @@
  * The command palette (⌘K / Ctrl+K) — keyboard-first navigation over things
  * the UI can already do: jump to a project, jump to a section of the current
  * project, and a handful of global actions (new project, organization,
- * profile, theme, sign out). Pure navigation/dispatch; no new capabilities.
+ * profile, theme, sign out), and the workspace search: what is typed is
+ * asked of `POST /api/search` as the reader types, and the hits come back
+ * grouped by kind, drawn by the search page's own rows (`features/search`).
  *
  * The project list is fetched lazily from the existing `GET /api/projects`
  * endpoint (the same list the project switcher renders) the first time the
@@ -12,13 +14,13 @@
  */
 
 import * as React from 'react'
+import { defaultFilter } from 'cmdk'
 import { usePathname, useRouter } from 'next/navigation'
 import { Building2, FolderKanban, LogOut, Moon, Plus, Sun, UserRound } from 'lucide-react'
 
 import { useAuth } from '@/adapters/auth/use-auth'
 import {
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -28,11 +30,25 @@ import {
 } from '@/components/ui/command'
 import { DialogClose } from '@/components/ui/dialog'
 import { useLayoutStore } from '@/features/layout/store'
+import {
+  PALETTE_ALL_RESULTS_VALUE,
+  PaletteSearchResults,
+  PaletteSearchStart,
+  captureSavedSearchRun,
+  paletteFilter,
+  isPaletteHitValue,
+  paletteHitValue,
+  savedSearchHref,
+  searchPageHref,
+  usePaletteSearch,
+  usePaletteShortcuts,
+} from '@/features/search'
+import { SEARCH_KINDS } from '@/lib/search/search-wire'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
 import { paletteSections } from './project-sections'
 import { ShortcutKeys } from './shortcut-keys'
-import { LEADER_KEY } from './shortcuts'
+import { LEADER_KEY, MOD } from './shortcuts'
 
 interface PaletteProject {
   id: string
@@ -49,6 +65,15 @@ export function projectIdFromPathname(pathname: string): string | null {
 // than borrowing a catchment from its neighbour.
 const PALETTE_ITEM_CLASS =
   'transition-colors duration-snap ease-out motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:text-[15px]'
+
+/**
+ * On a desktop the palette carries search hits as well as commands: a hit is
+ * two lines (its name, then where it lives and what it is; the passage only on
+ * the row the arrows are on), so the card is wider than a command list needs
+ * and stands higher, leaving the list room for every kind's hits and the
+ * „Alle Treffer“ row without a scroll.
+ */
+const DESKTOP_PALETTE_CLASS = 'md:top-[15%] md:max-w-2xl!'
 
 /**
  * On a phone the palette is the whole screen above the keyboard, the shape of
@@ -122,7 +147,61 @@ export function CommandPalette({
   const tNav = useTranslations('nav')
   const tCommon = useTranslations('common')
 
+  // What the reader typed is also a workspace search: the hits arrive under
+  // the field as they type, grouped by kind and drawn as the search page draws
+  // them, and the last search row opens all of them (`/app/search?q=…`). In a
+  // project the search is that project's.
+  const [query, setQuery] = React.useState('')
+  React.useEffect(() => {
+    if (!open) setQuery('')
+  }, [open])
+  const words = query.trim()
+
   const projectId = projectIdFromPathname(pathname)
+  const scope = React.useMemo(() => (projectId ? { scope: 'project' as const, projectId } : {}), [projectId])
+  const search = usePaletteSearch(query, scope, open)
+  const shortcuts = usePaletteShortcuts(open)
+
+  // The row the arrows are on. When hits arrive for what is typed, the first
+  // one takes the selection from the „Alle Treffer“ row cmdk put it on, so
+  // Enter opens the best hit; a row the reader moved to themselves is kept.
+  const [selected, setSelected] = React.useState('')
+  const firstHit = React.useMemo(() => {
+    if (search.answered !== words || !search.response) return null
+    for (const kind of SEARCH_KINDS) {
+      const hit = search.response.sections[kind]?.hits[0]
+      if (hit) return paletteHitValue(hit)
+    }
+    return null
+  }, [search.answered, search.response, words])
+  React.useEffect(() => {
+    if (!firstHit) return
+    setSelected((current) => (current === '' || current === PALETTE_ALL_RESULTS_VALUE || isPaletteHitValue(current) ? firstHit : current))
+  }, [firstHit])
+  const filter = React.useMemo(() => paletteFilter(defaultFilter), [])
+
+  const { opening } = search
+  const openSearchHref = React.useCallback(
+    (href: string) => {
+      if (words) shortcuts.remember(words)
+      opening(href)
+      onOpenChange(false)
+      router.push(href)
+    },
+    [words, shortcuts, opening, onOpenChange, router],
+  )
+  // Mod+Enter opens every hit for what is typed from whichever row the arrows
+  // are on, so the search page is one chord away and never a scroll.
+  const allHref = words ? searchPageHref(words, projectId) : null
+  const onFieldKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || !allHref) return
+      // cmdk skips its own Enter (select the active row) once this is handled.
+      event.preventDefault()
+      openSearchHref(allHref)
+    },
+    [allHref, openSearchHref],
+  )
   // The ↑ ↓ ↵ Esc legend is for a keyboard. Read off the primary pointer, so a
   // touch tablet past `md` drops it as well as a phone does.
   const finePointer = useMediaQuery('(pointer: fine)')
@@ -170,7 +249,8 @@ export function CommandPalette({
       title={t('title')}
       description={t('description')}
       showHints={finePointer}
-      className={`motion-reduce:animate-none ${PHONE_PALETTE_CLASS}`}
+      className={`motion-reduce:animate-none ${DESKTOP_PALETTE_CLASS} ${PHONE_PALETTE_CLASS}`}
+      commandProps={{ filter, value: selected, onValueChange: setSelected }}
       hintLabels={{
         move: t('hints.move'),
         open: t('hints.open'),
@@ -179,6 +259,9 @@ export function CommandPalette({
     >
       <div className="flex shrink-0 items-center md:contents max-md:border-b max-md:[&_[data-slot=command-input-wrapper]]:border-b-0 max-md:[&_[data-slot=command-input-wrapper]]:flex-1 max-md:[&_[data-slot=command-input-wrapper]]:h-14 max-md:[&_[data-slot=command-input-wrapper]]:bg-transparent!">
         <CommandInput
+          value={query}
+          onValueChange={setQuery}
+          onKeyDown={onFieldKeyDown}
           placeholder={t('placeholder')}
           // The wrapper's wash is this field's focus signal (and on a phone,
           // the keyboard is); the global `:focus-visible` outline is unlayered
@@ -194,8 +277,43 @@ export function CommandPalette({
           {tCommon('actions.cancel')}
         </DialogClose>
       </div>
-      <CommandList className="min-h-0 max-md:max-h-none max-md:flex-1 max-md:overscroll-contain">
-        <CommandEmpty>{t('empty')}</CommandEmpty>
+      <CommandList className="min-h-0 md:max-h-[min(60dvh,32rem)] max-md:max-h-none max-md:flex-1 max-md:overscroll-contain">
+        {/* No „Keine Ergebnisse“: a search row always answers, with the way
+            to every hit for what was typed. */}
+        {words ? (
+          <PaletteSearchResults
+            text={query}
+            answered={search.answered}
+            response={search.response}
+            loading={search.loading}
+            failed={search.failed}
+            onOpen={openSearchHref}
+            allHref={allHref ?? searchPageHref(words, projectId)}
+            scope={scope}
+            allShortcut={
+              finePointer ? (
+                <CommandShortcut className="ml-0 shrink-0 tracking-normal">
+                  <ShortcutKeys segments={[{ kind: 'chord', caps: [MOD, '↵'] }]} />
+                </CommandShortcut>
+              ) : null
+            }
+            itemClassName={PALETTE_ITEM_CLASS}
+          />
+        ) : (
+          <PaletteSearchStart
+            inProject={projectId !== null}
+            recent={shortcuts.recent}
+            saved={shortcuts.saved}
+            onRecent={setQuery}
+            onSaved={(item) => {
+              captureSavedSearchRun(item)
+              openSearchHref(savedSearchHref(item))
+            }}
+            onOpenSearch={() => openSearchHref('/app/search')}
+            itemClassName={PALETTE_ITEM_CLASS}
+          />
+        )}
+        <CommandSeparator />
 
         {projects !== null && projects.length > 0 && (
           <CommandGroup heading={t('groups.projects')}>

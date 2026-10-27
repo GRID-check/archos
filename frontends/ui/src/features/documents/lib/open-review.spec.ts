@@ -17,11 +17,13 @@ import {
   clearReviewParams,
   hrefWithParams,
   isProjectChatPath,
+  readDocumentBack,
   readReviewParams,
   openReviewAt,
   reviewFilesHref,
   reviewHrefAt,
   showDocumentBeside,
+  withBack,
   withReviewBack,
 } from './open-review'
 
@@ -204,5 +206,24 @@ describe('opening it', () => {
 
     expect(navigate).toHaveBeenCalledWith(`/app/projects/p1/files?doc=${DOC}&review=1&mark=ann-7`, 'push')
     expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('back from a document link', () => {
+  const SEARCH = '/app/search?q=REI&view=register'
+
+  it('puts back on any link, keeping its place and hash', () => {
+    expect(withBack(`/app/office-shelf?doc=${DOC}&page=3&highlight=REI+90#x`, SEARCH)).toBe(
+      `/app/office-shelf?doc=${DOC}&page=3&highlight=REI+90&back=%2Fapp%2Fsearch%3Fq%3DREI%26view%3Dregister#x`
+    )
+  })
+
+  it('reads back beside the doc it was written for, never a path outside the app', () => {
+    expect(readDocumentBack(new URLSearchParams({ doc: DOC, back: SEARCH }))).toBe(SEARCH)
+    expect(readDocumentBack(new URLSearchParams({ back: SEARCH }))).toBeNull()
+    for (const back of ['https://evil.example/app/x', '//evil.example/app/x', '/\\evil.example', '/app/x\n', 'javascript:alert(1)', '/api/x']) {
+      expect(readDocumentBack(new URLSearchParams({ doc: DOC, back }))).toBeNull()
+      expect(withBack(`/app/office-shelf?doc=${DOC}`, back)).toBe(`/app/office-shelf?doc=${DOC}`)
+    }
   })
 })

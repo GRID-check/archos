@@ -62,7 +62,7 @@ def test_the_conversation_state_hands_the_block_to_the_research_state():
 
 
 def test_the_static_prompt_teaches_the_workspace_facts_and_the_work_kind():
-    """The contract, not the prose: English queries, records not cited, the work kind.
+    """The contract, not the prose: English operation discovery, records not cited, the work kind.
 
     That a proposal is not done is said where it matters, by the tool that
     proposes: `workspace__call`'s description and its "Proposed" result. The
@@ -73,7 +73,9 @@ def test_the_static_prompt_teaches_the_workspace_facts_and_the_work_kind():
 
     static = (ROOT / "src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
     rules = static.split("<rules>")[1].split("</rules>")[0]
-    assert "A `workspace__search` query is in English" in rules
+    # English is for finding an operation; a document search runs over German documents.
+    assert "look one up (`workspace__search`) in English" in rules
+    assert "search documents in their language" in rules
     assert "never with `[N]`" in static.split("CITATIONS.")[1]
     assert "never claim it is done" in DESCRIPTIONS["call"]
     assert "`kind` to one of `direct`, `walkthrough`, `ruling`, `handoff`, `work`" in static

@@ -41,6 +41,9 @@
  * the tab's first page. Such a link carries `back`, the page it came from
  * with its filters ({@link appReturnPath}: a path of this app, nothing else),
  * and closing the review goes there instead of leaving the reader in Dateien.
+ * A plain document link carries it the same way (a search hit, {@link withBack}):
+ * closing the preview, not only the review, returns to the page it came from
+ * (`hooks/use-preview-channel.ts`).
  */
 
 import { appReturnPath } from '@/lib/utils/same-origin-path'
@@ -155,18 +158,41 @@ export function reviewFilesHref(projectId: string, target: ReviewTarget, { back 
 }
 
 /**
+ * `href` with `back` on it, so closing what it opens (the preview, or the
+ * review) returns to `back`; a `back` outside the app leaves `href` unchanged.
+ * Every other param and the hash are kept, `page` and `highlight` among them.
+ */
+export function withBack(href: string, back: string | null | undefined): string {
+  return withBackWhen(href, back, () => true)
+}
+
+/**
  * A review link (`review=1`) with `back` on it, so closing the review returns
  * to `back`; anything else, or a `back` outside the app, comes back unchanged.
  * For a link built elsewhere, such as a Postfach row's.
  */
 export function withReviewBack(href: string, back: string | null | undefined): string {
+  return withBackWhen(href, back, (params) => Boolean(params.get(REVIEW_PARAM)))
+}
+
+function withBackWhen(href: string, back: string | null | undefined, applies: (params: URLSearchParams) => boolean): string {
   const path = appReturnPath(back)
   const [base, hash = ''] = href.split('#')
   const [pathname, search = ''] = base.split('?')
   const params = new URLSearchParams(search)
-  if (!path || !params.get(REVIEW_PARAM)) return href
+  if (!path || !applies(params)) return href
   params.set(BACK_PARAM, path)
   return `${pathname}?${params.toString()}${hash ? `#${hash}` : ''}`
+}
+
+/**
+ * The page a document link came from, to return to when its preview closes:
+ * only a path of this app ({@link appReturnPath}), and only beside the `doc`
+ * it was written for. The review's own `back` is {@link readReviewParams}'.
+ */
+export function readDocumentBack(params: Pick<URLSearchParams, 'get'> | null | undefined): string | null {
+  if (!params?.get(DOC_PARAM)) return null
+  return appReturnPath(params.get(BACK_PARAM))
 }
 
 /** Whether a pathname is a project's chat, which keeps the file pane beside the conversation. */

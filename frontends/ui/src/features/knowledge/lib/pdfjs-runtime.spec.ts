@@ -18,10 +18,10 @@ import { readPageTextItems } from './pdfjs-runtime'
 type TextStream = ReturnType<PDFPageProxy['streamTextContent']>
 
 /** A text stream in pdf.js's chunk shape that cannot be async-iterated. */
-const safariStream = (chunks: Array<{ items: unknown[] }>): TextStream => {
+const safariStream = (chunks: Array<{ items: unknown[]; styles?: Record<string, unknown> }>): TextStream => {
   const stream = new ReadableStream({
     start(controller) {
-      for (const chunk of chunks) controller.enqueue({ ...chunk, styles: {}, lang: null })
+      for (const chunk of chunks) controller.enqueue({ styles: {}, ...chunk, lang: null })
       controller.close()
     },
   })
@@ -57,6 +57,16 @@ describe('readPageTextItems', () => {
 
     expect(items.map((item) => item.str)).toEqual(['Die Sitztreppe', 'im Innenhof'])
     expect(items[0]?.transform).toEqual([12, 0, 0, 12, 72, 700])
+  })
+
+  it("carries each run's font family, which the passage highlight measures in", async () => {
+    const page = {
+      streamTextContent: () => safariStream([{ items: [run('Treppenhaus')], styles: { f1: { fontFamily: 'sans-serif', ascent: 0.9, descent: -0.2, vertical: false } } }]),
+    }
+
+    const items = await readPageTextItems(page)
+
+    expect(items[0]?.fontFamily).toBe('sans-serif')
   })
 
   it('drops marked-content entries, which carry structure and no text', async () => {

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * A sortable column header for the platform directory tables: the label as a
+ * A sortable column header for a data table (the platform directories, the search register): the label as a
  * button, an arrow for the active direction, and `aria-sort` on the cell so a
  * screen reader hears the order rather than inferring it from a glyph.
  */

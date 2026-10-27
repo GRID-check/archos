@@ -42,7 +42,26 @@ export interface TextChunk {
   y: number
   width: number
   height: number
+  /**
+   * The CSS font family pdf.js's text layer sets the run in (its
+   * `styles[fontName].fontFamily`), which is what `MeasureText` measures in.
+   */
+  fontFamily?: string
 }
+
+/**
+ * The advance of `text` set in `fontFamily`, in any unit, the same for every
+ * call. Only ratios of two measurements of one run are used, so the unit and
+ * the font size cancel out.
+ */
+export type MeasureText = (text: string, fontFamily: string | undefined) => number
+
+/**
+ * Every character one advance: the measure where no canvas is (a unit test,
+ * the server). It is exact for a monospaced run and within a glyph or two for
+ * a proportional one, which is why the viewer passes a real measure.
+ */
+export const countCharacters: MeasureText = (text) => text.length
 
 export interface HighlightRect {
   x: number
@@ -78,6 +97,8 @@ interface IndexedChar {
 
 export interface PassageIndex {
   chunks: TextChunk[]
+  /** Where a character sits inside its run; see {@link rangeToRects}. */
+  measure: MeasureText
   /** The normalised page text, one character per `chars` entry. */
   haystack: string
   chars: IndexedChar[]
@@ -253,7 +274,7 @@ const collapse = (raw: IndexedChar[]): IndexedChar[] => {
  * printed line arrives as several items and concatenating them raw would weld
  * the last word of one to the first of the next.
  */
-export function buildPassageIndex(chunks: TextChunk[]): PassageIndex {
+export function buildPassageIndex(chunks: TextChunk[], measure: MeasureText = countCharacters): PassageIndex {
   const raw: IndexedChar[] = []
   chunks.forEach((chunk, chunkIndex) => {
     if (chunkIndex > 0) raw.push({ ch: ' ', chunk: -1, offset: -1 })
@@ -263,7 +284,7 @@ export function buildPassageIndex(chunks: TextChunk[]): PassageIndex {
     }
   })
   const chars = collapse(raw)
-  return { chunks, chars, haystack: chars.map((entry) => entry.ch).join('') }
+  return { chunks, chars, measure, haystack: chars.map((entry) => entry.ch).join('') }
 }
 
 /** Normalise a snippet with exactly the rules the index was built with. */
@@ -465,17 +486,35 @@ const rangeToRects = (index: PassageIndex, range: Range): HighlightRect[] => {
   for (const [chunkIndex, span] of spans) {
     const chunk = index.chunks[chunkIndex]
     if (!chunk || !chunk.text.length || chunk.width <= 0) continue
-    // Runs are laid out with one advance per character often enough that a
-    // proportional slice lands within a glyph of the truth, and a highlight is
-    // forgiving of a glyph. A whole-run match skips the arithmetic entirely.
+    // A whole-run match skips the arithmetic entirely. A part of a run is cut
+    // where its glyphs end, not where an even share of the run's width would
+    // put them: a run is one width with no per-glyph advances, and slicing it
+    // by character count lit „im Treppenhau“ and left the „s“ dark, because
+    // „im Treppenhaus“ sets wider than the narrow „fl“ and „l“ further along
+    // the line. The text layer stretches each run to its width from one
+    // measurement in its font, so the share of that measurement a prefix takes
+    // is where the text layer, and the glyph under it, ends.
     const covers = span.from === 0 && span.to >= chunk.text.length - 1
-    const start = covers ? 0 : (span.from / chunk.text.length) * chunk.width
-    const width = covers
-      ? chunk.width
-      : ((span.to + 1 - span.from) / chunk.text.length) * chunk.width
-    rects.push({ x: chunk.x + start, y: chunk.y, width, height: chunk.height })
+    if (covers) {
+      rects.push({ x: chunk.x, y: chunk.y, width: chunk.width, height: chunk.height })
+      continue
+    }
+    const at = advanceWithin(chunk, index.measure)
+    const start = at(span.from)
+    rects.push({ x: chunk.x + start, y: chunk.y, width: at(span.to + 1) - start, height: chunk.height })
   }
   return mergeRects(rects)
+}
+
+/**
+ * Where the character at `offset` of a run begins, in the run's own width. Falls
+ * back to counting characters when the measure has nothing to say (no canvas,
+ * no font).
+ */
+const advanceWithin = (chunk: TextChunk, measure: MeasureText): ((offset: number) => number) => {
+  const whole = measure(chunk.text, chunk.fontFamily)
+  if (!(whole > 0)) return (offset) => (offset / chunk.text.length) * chunk.width
+  return (offset) => (measure(chunk.text.slice(0, offset), chunk.fontFamily) / whole) * chunk.width
 }
 
 /**
@@ -677,8 +716,8 @@ const foldWholeText = (text: string): { haystack: string; offsets: number[] } =>
 }
 
 /** Convenience wrapper for callers holding raw runs. */
-export function locatePassage(chunks: TextChunk[], snippet: string): PassageMatch | null {
-  return findPassage(buildPassageIndex(chunks), snippet)
+export function locatePassage(chunks: TextChunk[], snippet: string, measure?: MeasureText): PassageMatch | null {
+  return findPassage(buildPassageIndex(chunks, measure), snippet)
 }
 
 /** The union of a match's rectangles — what the viewer scrolls into view. */
