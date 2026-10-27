@@ -129,7 +129,7 @@ server's `dryRun` is ([servers][mcp-fs]).
   project. It is uncapped and paged, facets by folder, name, `doc_class` and
   date, and lists in-flight files. It drops the shelves the turn did not ask for,
   as the search does, and its rows are an index: they register no citable source
-  (`src/aiq_agent/common/citation_verification.py`). Tools resolve names against the uncapped
+  (`src/aiq_agent/citations/session.py`). Tools resolve names against the uncapped
   inventory, which fixes the 51st-file bug, and rows carry `added_at`.
 - Earlier: `emit_card` left chat, `ris_lookup` collapsed, parallel calls are
   capped at 12, and errors teach (`src/aiq_agent/common/tool_errors.py`).

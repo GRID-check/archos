@@ -435,7 +435,7 @@ class GateContext:
 
     prose_chars: int
     #: Normalised names of the AGENT-AUTHORED documents this turn captured
-    #: (``citation_verification.agent_authored_document_names``). Empty on
+    #: (``citations.binding.agent_authored_document_names``). Empty on
     #: every turn that retrieved none, which is nearly all of them — and an
     #: empty set makes the verdict gate below a no-op, so a caller that cannot
     #: reach a registry loses nothing it had.
@@ -1110,7 +1110,7 @@ def gate_answer_meta(
     judges the answer, not its apparatus.
 
     ``agent_authored_documents`` is what the turn retrieved that PILOTI wrote
-    (``citation_verification.agent_authored_document_names``); a verdict whose
+    (``citations.binding.agent_authored_document_names``); a verdict whose
     Fundstelle resolves into it is dropped, and so is a verdict that names no
     Fundstelle at all — see :func:`_verdict_drop_reason` for why the second
     refusal is not the first one being over-eager. Defaulted so a caller with no

@@ -12,7 +12,7 @@ from aiq_agent.agents.piloti.answer_pipeline import CitedSource
 from aiq_agent.agents.piloti.answer_pipeline import FinalAnswer
 from aiq_agent.agents.piloti.ledger import assemble_result
 from aiq_agent.agents.piloti.ledger import read_but_uncited
-from aiq_agent.common.citation_verification import SourceEntry
+from aiq_agent.citations.entries import SourceEntry
 
 
 def _kb(

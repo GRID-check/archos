@@ -28,8 +28,8 @@ from aiq_agent.cards.models import SURFACE_LAYOUTS
 from aiq_agent.cards.models import SURFACE_TEXT
 from aiq_agent.cards.models import SurfaceCard
 from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.common.citation_verification import _map_outside_code
-from aiq_agent.common.citation_verification import expand_grouped_citations
+from aiq_agent.citations.markdown_code import map_outside_code
+from aiq_agent.citations.references import expand_grouped_citations
 
 #: A bare ``[N]`` with the blanks before it: not a ``[[card:N]]`` marker, not
 #: the label of a Markdown link. The blanks are group 1 so a dropped marker
@@ -52,7 +52,7 @@ def recite_text(
     """``text`` with each ``[N]`` renumbered, or removed when it is not a cited source.
 
     ``merged`` maps a duplicate source line's number to the line it duplicates
-    (``citation_verification.merged_citations``), in the numbering before
+    (``citations.entries.merged_citations``), in the numbering before
     sanitize's; ``renumber`` is sanitize's map of every survivor, old to new.
     A removed marker goes with the blanks before it (``REI 90 [4].`` becomes
     ``REI 90.``), and nothing outside the markers changes. Code (a fence, an
@@ -69,7 +69,7 @@ def recite_text(
         return f"{match.group(1)}[{new}]" if new is not None and new in cited else ""
 
     # Outside code only: `x[1]` or a mermaid node `S[1]` is source, not a citation.
-    return _map_outside_code(
+    return map_outside_code(
         text,
         lambda prose: _CITATION.sub(replace, expand_grouped_citations(prose)),
         unterminated_fence_is_code=False,
