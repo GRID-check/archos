@@ -325,7 +325,7 @@ async function acceptForAddress(
   await requireFeature(address.organizationId)
   const length = signature.contentLength
   if (length > MAX_RAW_MESSAGE_BYTES) throw new InboundMailRejectedError('too_large')
-  await enforceLimits(signature, address, length)
+  await enforceInboundLimits(signature, address, length)
 
   const mailId = randomUUID()
   trail.mailId = mailId
@@ -374,11 +374,17 @@ async function requireFeature(organizationId: string): Promise<void> {
   if (!isFeatureEnabled({ featureFlags }, FEATURE_FLAGS.inboundMail)) throw new InboundMailRejectedError('switched_off')
 }
 
-/** Step 7: the rate limits, then the byte caps, all before the body is read. */
-async function enforceLimits(signature: VerifiedSignature, address: ResolvedInboundAddress, length: number): Promise<void> {
-  await enforceLimit(INBOUND_MAIL_SIGNING_KEY_LIMIT, `keyid:${signature.keyId}`)
-  await enforceLimit(INBOUND_MAIL_ORGANIZATION_LIMIT, address.organizationId)
+/**
+ * Step 7: the rate limits, then the byte caps, all before the body is read.
+ * Narrowest first (address, organization, signing key): a bucket is spent even
+ * when it refuses, so a refusal must never have charged a wider one. One
+ * flooded address then spends 120 of its office's 600 and nothing more.
+ * Exported for its spec.
+ */
+export async function enforceInboundLimits(signature: VerifiedSignature, address: ResolvedInboundAddress, length: number): Promise<void> {
   await enforceLimit(INBOUND_MAIL_ADDRESS_LIMIT, `${address.organizationId}:${address.addressId}`)
+  await enforceLimit(INBOUND_MAIL_ORGANIZATION_LIMIT, address.organizationId)
+  await enforceLimit(INBOUND_MAIL_SIGNING_KEY_LIMIT, `keyid:${signature.keyId}`)
   const staged = await stagedBytes(address.organizationId, address.addressId)
   if (staged.address + length > INBOUND_MAIL_ADDRESS_STAGED_BYTES) throw new StagedBytesCapError()
   if (staged.organization + length > INBOUND_MAIL_ORGANIZATION_STAGED_BYTES) throw new StagedBytesCapError()

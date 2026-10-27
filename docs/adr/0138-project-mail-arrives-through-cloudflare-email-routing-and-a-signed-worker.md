@@ -152,8 +152,8 @@ read: the signature (by the route factory), the pause switch, the envelope
 headers, the token (under the platform bypass, ids only; an unknown token is
 charged to a bucket of its own), the office's `inbound-mail` flag (read from
 WorkOS, so a failed lookup is a retry, never an "off"), the signed length, then
-the rate limits (per signing key 3,000/h, per organization 600/h, per address
-120/h) and the byte caps on staged raw bytes (1 GiB per address, 5 GiB per
+the rate limits, narrowest first so a refusal never spends a wider bucket
+(per address 120/h, per organization 600/h, per signing key 3,000/h), and the byte caps on staged raw bytes (1 GiB per address, 5 GiB per
 organization). Then it inserts the row naming the bucket and key (ADR-0043),
 streams the body to `raw.eml` counting and hashing, requires the byte count to
 **equal** the signed length (a short body is 503 `body-truncated`, a tampered

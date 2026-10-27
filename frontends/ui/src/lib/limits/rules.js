@@ -388,8 +388,9 @@ const INBOUND_MAIL_ADDRESS_LIMIT = { name: 'inbound-mail-address', limit: 120, w
 
 /**
  * Mail reaching any address of one organization, per hour: five busy projects
- * at once. One leaked address cannot spend it alone (the per-address rule
- * stops it at a fifth).
+ * at once. One leaked address cannot spend it alone: the webhook charges the
+ * per-address rule first and stops there on a refusal, so an address spends
+ * at most a fifth of this (`enforceInboundLimits` in `lib/inbound-mail/receive.ts`).
  * @type {LimitRule}
  */
 const INBOUND_MAIL_ORGANIZATION_LIMIT = { name: 'inbound-mail-organization', limit: 600, windowMs: 60 * 60 * 1000 }
@@ -397,7 +398,8 @@ const INBOUND_MAIL_ORGANIZATION_LIMIT = { name: 'inbound-mail-organization', lim
 /**
  * Every delivery one signing key makes, per hour: the Worker's whole traffic
  * under that key. A leaked key spraying known addresses meets this before it
- * meets the database.
+ * meets the database. Charged last, after the address and organization rules
+ * allowed the mail, so one office's flood cannot spend every office's budget.
  * @type {LimitRule}
  */
 const INBOUND_MAIL_SIGNING_KEY_LIMIT = { name: 'inbound-mail-signing-key', limit: 3000, windowMs: 60 * 60 * 1000 }

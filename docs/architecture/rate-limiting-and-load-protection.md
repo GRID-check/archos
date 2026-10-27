@@ -430,9 +430,10 @@ silent retune.
 mail arrives from Cloudflare's shared egress, so a per-IP budget would let any
 other Cloudflare traffic defer it (ADR-0138). Its edge bound is a 27 MiB
 `Content-Length` header match. The BFF charges, after the signature and before
-the body is read (`lib/inbound-mail/receive.ts`): `inbound-mail-signing-key`
-3,000/h per signing key, `inbound-mail-organization` 600/h,
-`inbound-mail-address` 120/h, and `inbound-mail-unknown-address` 300/h per
+the body is read (`lib/inbound-mail/receive.ts`), narrowest first so a
+refusal never spends a wider bucket: `inbound-mail-address` 120/h,
+`inbound-mail-organization` 600/h, `inbound-mail-signing-key` 3,000/h per
+signing key; and `inbound-mail-unknown-address` 300/h per
 signing key for tokens no project has, a bucket of its own so a guesser walking
 the token space never spends real mail's budget. On top, byte caps on staged
 raw bytes: 1 GiB per address, 5 GiB per organization; over either the answer

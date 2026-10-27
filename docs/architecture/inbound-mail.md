@@ -70,9 +70,10 @@ streams the body. In order, before a byte of the body is read:
 5. the organization's scope, then its `inbound-mail` flag read from WorkOS; off
    is the same 404 and text, a failed lookup a 503;
 6. the signed length against 26 MiB: 413 with the verdict;
-7. the rate limits per signing key (3,000/h), organization (600/h) and address
-   (120/h), and the byte caps on staged raw bytes (1 GiB per address, 5 GiB per
-   organization): 429;
+7. the rate limits per address (120/h), organization (600/h) and signing key
+   (3,000/h), charged in that order, narrowest first: a bucket is spent even
+   when it refuses, so a refused mail never spends a wider one; then the byte
+   caps on staged raw bytes (1 GiB per address, 5 GiB per organization): 429;
 
 then:
 
