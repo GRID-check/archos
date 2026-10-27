@@ -14,7 +14,7 @@ export const createConversationSchema = z.object({
   // reach the database unbounded.
   id: z.string().min(1).max(128),
   title: z.string().nullable().optional(),
-  projectId: z.string().uuid().nullable().optional(),
+  projectId: z.guid().nullable().optional(),
   subjectResourceType: z.literal('document').nullable().optional(),
   subjectResourceId: z.string().min(1).max(128).nullable().optional(),
 })
@@ -24,7 +24,7 @@ export const CONVERSATION_PAGE_MAX = 200
 
 export const listConversationsQuerySchema = z.object({
   // Optional project scope; the service enforces project access + tenancy.
-  projectId: z.string().uuid().optional().describe('Only this project’s conversations.'),
+  projectId: z.guid().optional().describe('Only this project’s conversations.'),
   limit: z.coerce
     .number()
     .int()
@@ -52,7 +52,7 @@ export const listMessagesQuerySchema = z.object({
     .describe(`Page size (default 50, most ${MESSAGE_PAGE_MAX}).`),
   cursor: z
     .string()
-    .uuid()
+    .guid()
     .optional()
     .describe('The previous `nextCursor`: earlier messages.'),
   include: z
@@ -207,7 +207,7 @@ const MAX_SHOWN_CHARS = 200_000
 
 export const cutStoppedAnswerSchema = z.object({
   /** The question that opened the turn: its id is the turn's, and it names the asker. */
-  turnId: z.string().uuid(),
+  turnId: z.guid(),
   /** The answer's text as it was on screen at the press. */
   shown: z.string().max(MAX_SHOWN_CHARS),
 })

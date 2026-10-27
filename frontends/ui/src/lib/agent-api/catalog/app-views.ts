@@ -45,7 +45,7 @@ export const APP_VIEWS = [
   },
 ] as const satisfies readonly AppView[]
 
-const proposalIdArgument = z.string().uuid().describe('The proposal id, from the proposal-get result the card shows.')
+const proposalIdArgument = z.guid().describe('The proposal id, from the proposal-get result the card shows.')
 
 export interface AppTool {
   /** `<entity>-<verb>`, distinct from every operation name: the operation stays listed for the model. */

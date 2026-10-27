@@ -42,7 +42,7 @@ describe('the repo’s decisions on top of z.toJSONSchema', () => {
 
   it('says a string format once, by its format, and keeps a regex of our own', () => {
     const properties = propertiesOf(
-      z.object({ id: z.string().uuid(), at: z.string().datetime(), day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+      z.object({ id: z.guid(), at: z.string().datetime(), day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
     )
     expect(properties.id).toEqual({ type: 'string', format: 'uuid' })
     expect(properties.at).toEqual({ type: 'string', format: 'date-time' })

@@ -75,7 +75,7 @@ export type ListSavedSearchesQuery = z.infer<typeof listSavedSearchesQuerySchema
 
 /** `[id]` of `/api/search/saved/[id]`. */
 export const savedSearchParamsSchema = z.object({
-  id: z.string().uuid().describe('The saved search id, from saved-search-list.'),
+  id: z.guid().describe('The saved search id, from saved-search-list.'),
 })
 
 /** One saved search as every client reads it. */

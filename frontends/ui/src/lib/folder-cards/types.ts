@@ -47,7 +47,7 @@ export const deleteFolderCardQuerySchema = getFolderCardsQuerySchema.extend({
 })
 
 export const folderCardViewSchema = z.object({
-  folder_id: z.string().uuid(),
+  folder_id: z.guid(),
   folder_path: z.string(),
   /** What a person wrote about the folder; the card complements it, never replaces it. */
   folder_description: z.string().nullable(),
@@ -66,13 +66,13 @@ export type FolderCardView = z.infer<typeof folderCardViewSchema>
 
 /** A living folder of the collection, card or not: what a person wrote about it, for the builder's first build. */
 export const folderDescriptionViewSchema = z.object({
-  folder_id: z.string().uuid(),
+  folder_id: z.guid(),
   folder_path: z.string(),
   folder_description: z.string().nullable(),
 })
 export type FolderDescriptionView = z.infer<typeof folderDescriptionViewSchema>
 
-export const putFolderCardResponseSchema = z.object({ folder_id: z.string().uuid(), status: z.enum(FOLDER_CARD_STATUSES) })
+export const putFolderCardResponseSchema = z.object({ folder_id: z.guid(), status: z.enum(FOLDER_CARD_STATUSES) })
 export type PutFolderCardResponse = z.infer<typeof putFolderCardResponseSchema>
 
 /**

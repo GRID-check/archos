@@ -120,13 +120,13 @@ export type CrossProjectFacts = z.infer<typeof crossProjectFactsSchema>
  * it in `message_restricted_use` (ADR-0093), in the transaction that records
  * what the lookup hands out, when the conversation drew on a restricted folder.
  */
-const answerMessageId = z.string().uuid().nullish()
+const answerMessageId = z.guid().nullish()
 
 export const crossProjectSearchRequestSchema = z.object({
   query: z.string().trim().min(2).max(500),
   scope: z.enum(CROSS_PROJECT_SCOPES).default('similar'),
   /** The projects a `named` scope searches; ignored for the others. Ids the reader may not open are skipped without a word. */
-  projectIds: z.array(z.string().uuid()).max(CROSS_PROJECT_MAX_NAMED).default([]),
+  projectIds: z.array(z.guid()).max(CROSS_PROJECT_MAX_NAMED).default([]),
   /** Only documents tagged with one of these types (ingestion's closed vocabulary). */
   documentTypes: z.array(z.enum(DOCUMENT_TYPE_TAGS)).max(DOCUMENT_TYPE_TAGS.length).default([]),
   /** Only documents tagged with one of these OIB disciplines. */
@@ -157,7 +157,7 @@ export const crossProjectSearchRequestSchema = z.object({
    * may not open, is skipped without a word, and the rest keep their likeness
    * order behind it.
    */
-  order: z.array(z.string().uuid()).max(CROSS_PROJECT_MAX_NAMED).default([]),
+  order: z.array(z.guid()).max(CROSS_PROJECT_MAX_NAMED).default([]),
   /**
    * Only projects with these facts ({@link crossProjectFactsSchema}), applied to
    * whatever the scope covers before a page is cut, so `projectsInScope`,
@@ -330,7 +330,7 @@ export const crossProjectListResponseSchema = z.object({
 export type CrossProjectListResponse = z.infer<typeof crossProjectListResponseSchema>
 
 export const crossProjectBriefRequestSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.guid(),
   answerMessageId,
 })
 export type CrossProjectBriefRequest = z.infer<typeof crossProjectBriefRequestSchema>

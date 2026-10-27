@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { canonicalDocumentRole, DOCUMENT_ROLES } from '@/lib/project-profile/document-roles'
 
 export const declareDocumentRoleSchema = z.object({
-  documentId: z.string().uuid(),
+  documentId: z.guid(),
   // Enumerated from the vocabulary rather than restated, so a role added there
   // is accepted here without a second edit — and one removed is rejected.
   role: z.preprocess(canonicalDocumentRole, z.enum(DOCUMENT_ROLES)),

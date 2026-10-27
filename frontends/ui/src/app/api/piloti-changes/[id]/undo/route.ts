@@ -14,7 +14,7 @@ import type { UndoChangeResponse } from '@/lib/changes/types'
 
 type Params = { id: string }
 
-const idSchema = z.string().uuid()
+const idSchema = z.guid()
 
 export const POST = apiRoute<Params>(
   async ({ session, params }): Promise<UndoChangeResponse | Response> => {

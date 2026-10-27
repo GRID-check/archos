@@ -20,7 +20,7 @@ import { PAGE_TEXT_PARTS } from '@/lib/s3'
 import { presignDocumentPageTextUpload } from '@/lib/documents/service'
 
 const bodySchema = z.object({
-  documentId: z.string().uuid(),
+  documentId: z.guid(),
   collection: z.string().min(1),
   part: z.enum(PAGE_TEXT_PARTS),
   organizationId: z.string().min(1).optional(),

@@ -78,7 +78,7 @@ export const documentUploadFields = {
     .describe('Send "name" only when a reviewer released this file’s name from the upload screening.'),
   uploadBatchId: z
     .string()
-    .uuid()
+    .guid()
     .optional()
     .describe('The batch uuid given to upload-batch-open, to file this upload under that batch.'),
 } satisfies Record<string, z.ZodType>
