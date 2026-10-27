@@ -9,7 +9,10 @@ const repository = vi.hoisted(() => ({
   readReferenceSubject: vi.fn(),
   listCandidateDocumentIds: vi.fn(),
 }))
-vi.mock('./document-repository', () => repository)
+vi.mock('./document-repository', async (importOriginal) => ({
+  contentKey: (await importOriginal<typeof import('./document-repository')>()).contentKey,
+  ...repository,
+}))
 const providers = vi.hoisted(() => ({
   searchAnnotations: vi.fn(),
   searchFolders: vi.fn(),
@@ -111,7 +114,7 @@ describe('runSearch', () => {
     expect(fetchGroupedSemanticHits).toHaveBeenCalledWith(['proj_a', 'office_org_1'], 'Fluchtweg', 20, 400, {})
     expect(repository.listCandidateDocumentIds).not.toHaveBeenCalled()
     const query = repository.searchDocumentPage.mock.calls[0][1]
-    expect(query.text).toEqual({ text: 'Fluchtweg', contentKeys: ['proj_a\u0000bsk.pdf'], contentIds: [''] })
+    expect(query.text).toEqual({ text: 'Fluchtweg', contentKeys: ['proj_a\u001fbsk.pdf'], contentIds: [''] })
     expect(repository.searchDocumentPage.mock.calls[0][2]).toEqual({ sort: 'relevance', dir: 'desc', limit: 25, offset: 0 })
     const [hit] = answer.sections.document?.hits ?? []
     expect(hit.passage).toEqual({ text: 'Fluchtweglänge max. 40 m', page: 7 })

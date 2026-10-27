@@ -115,6 +115,20 @@ node -e '
   }
 done
 
+# `--only <spec…>`: the migrated cluster and the restricted role, for the specs
+# named and nothing else. For one suite while you work on it, and for the
+# measurements that are not part of the gate (`task fe:search:latency`). The
+# owner's URL is passed too, for a measurement that has to ANALYZE its seed:
+# the runtime role may not, and production's statistics are autovacuum's.
+if [ "${1:-}" = "--only" ]; then
+  shift
+  echo "==> running $* as grid_app_rw"
+  GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+  GRID_TEST_OWNER_DATABASE_URL="postgres://grid_app_owner@127.0.0.1:$PORT/grid_app" \
+    npx vitest run "$@"
+  exit 0
+fi
+
 # Every suite here needs the same cluster and the same restricted role. The BIM
 # and memory ones are here rather than in the unit shards because every claim
 # they make is a claim about SQL — jsonb property filters, grouped aggregates,
@@ -122,7 +136,7 @@ done
 # cosine query — and a mocked drizzle handle cannot disagree with the fixture
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
-echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers suites as grid_app_rw"
+echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers and workspace search suites as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
@@ -178,7 +192,8 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/feedback/repository.integration.spec.ts \
     src/lib/filing/root-sort-run-repository.integration.spec.ts \
     src/lib/folder-cards/repository.integration.spec.ts \
-    src/lib/search/providers.integration.spec.ts
+    src/lib/search/providers.integration.spec.ts \
+    src/lib/search/document-repository.integration.spec.ts
 
 # The tenant suites above may leave queued jobs behind: Ausmisten bins a
 # subfolder, and a Papierkorb delete queues its purge takeover and a refused

@@ -22,6 +22,7 @@ import {
 } from '@/lib/documents/service'
 import { resolvePeople } from '@/lib/sharing/directory'
 import {
+  contentKey,
   documentFacetCounts,
   listCandidateDocumentIds,
   readReferenceSubject,
@@ -98,8 +99,6 @@ export function documentOrder(body: Pick<SearchBody, 'sort' | 'dir' | 'text'>): 
   const sort = body.sort === 'relevance' && !hasText ? 'added' : (body.sort ?? (hasText ? 'relevance' : 'added'))
   return { sort, dir: body.dir ?? (ASCENDING_BY_DEFAULT.has(sort) ? 'asc' : 'desc') }
 }
-
-const contentKey = (collection: string, filename: string): string => `${collection}\u0000${filename}`
 
 /** What the documents a reference filter names must carry, read for this reader; null when the document is out of reach. */
 async function referenceTargets(reach: SearchReach, documentId: string, direction: 'citedBy' | 'citing'): Promise<ReferenceTargets | null> {
