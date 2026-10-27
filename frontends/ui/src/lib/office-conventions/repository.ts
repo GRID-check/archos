@@ -9,15 +9,10 @@
 import 'server-only'
 import { and, count, desc, eq, inArray, isNull, lt, max, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  documents,
-  officeConventionDecisions,
-  officeConventions,
-  projectFolders,
-  proposedChanges,
-  type Document,
-  type OfficeConventionsRow,
-} from '@/lib/db/schema'
+import { documents, type Document } from '@/lib/db/schema/documents'
+import { officeConventionDecisions, officeConventions, type OfficeConventionsRow } from '@/lib/db/schema/office-conventions'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import { proposedChanges } from '@/lib/db/schema/proposed-changes'
 import { withTenant } from '@/lib/db/tenant-context'
 import { SCREENED_ONLY } from '@/lib/documents/document-reader'
 import { documentVisibleTo } from '@/lib/documents/visibility'

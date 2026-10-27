@@ -75,11 +75,15 @@ describe('citationFromWire', () => {
     expect(citationFromWire({ ...KB_WIRE, binding_status: 'unbekannt' }).bindingStatus).toBeUndefined()
   })
 
-  test('reads the German kind, lane and Punkt a stored citation still carries', () => {
-    const citation = citationFromWire({ ...KB_WIRE, kind: 'baurecht', lane: 'baurecht_oib', punkt: '3.5.2' })
+  test('reads the German lane and Punkt a stored citation still carries', () => {
+    const citation = citationFromWire({ ...KB_WIRE, kind: 'building_law', lane: 'baurecht_oib', punkt: '3.5.2' })
     expect(citation.kind).toBe('building_law')
     expect(citation.lane).toBe('building_law_oib')
     expect(citation.clause).toBe('3.5.2')
+  })
+
+  test('reads a German kind as no kind: migration 0163 rewrote every stored one', () => {
+    expect(citationFromWire({ ...KB_WIRE, kind: 'baurecht' }).kind).toBeUndefined()
   })
 
   test('drops unknown to undefined so it renders as no badge, not a hedge', () => {

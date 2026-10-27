@@ -25,7 +25,7 @@
 import 'server-only'
 import { and, asc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { documents } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
 import { documentVisibleTo, SCREENED_ONLY } from '@/lib/documents/visibility'
 import { liveFolderAccess } from '@/lib/permits/live-access'
 import { servedFrom } from '@/lib/permits/repository'

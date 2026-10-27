@@ -13,15 +13,8 @@
 import 'server-only'
 import { and, desc, ne, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  CITATION_BASELINE_KIND,
-  CITATION_PRECISION_KIND,
-  citationEvents,
-  conversations,
-  type CitationEvent,
-  type CitationEventKind,
-  type NewCitationEvent,
-} from '@/lib/db/schema'
+import { CITATION_BASELINE_KIND, CITATION_PRECISION_KIND, citationEvents, type CitationEvent, type CitationEventKind, type NewCitationEvent } from '@/lib/db/schema/citation-events'
+import { conversations } from '@/lib/db/schema/conversations'
 
 /**
  * What every read below is restricted to: `[start, endExclusive)` on

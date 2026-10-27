@@ -50,7 +50,7 @@ vi.mock('./repository', () => ({
   SESSION_DOCUMENT_LIST_LIMIT: 100,
 }))
 
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { deleteDocumentObjects } from '@/lib/documents/object-cleanup'
 import { deleteSessionCollection, purgeCollectionChunks, purgeSessionDocuments } from './cleanup'
 import { collectionFileRef } from '@/lib/documents/collection-file-ref'

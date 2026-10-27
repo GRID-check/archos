@@ -1,3 +1,4 @@
+// @disk-inputs: drizzle/0049_session_documents.sql, drizzle/0063_agent_authored_documents.sql, drizzle/0064_generated_document_idempotency.sql, drizzle/0065_diagram_document_producer_idempotency.sql, drizzle/0066_authored_ref_names_its_kind.sql, drizzle/0102_archiv_folders.sql, src/lib/documents/repository.ts
 /**
  * @vitest-environment node
  */

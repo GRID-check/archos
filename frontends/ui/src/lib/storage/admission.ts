@@ -25,7 +25,7 @@
  */
 
 import 'server-only'
-import type { NewDocument } from '@/lib/db/schema'
+import type { NewDocument } from '@/lib/db/schema/documents'
 import { discardObject } from './discard'
 import { admitDocumentWithinQuota, admitReplacementWithinQuota } from './service'
 

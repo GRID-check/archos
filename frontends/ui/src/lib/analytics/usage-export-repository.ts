@@ -11,14 +11,8 @@
 import 'server-only'
 import { and, eq, gte, isNull, lt, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  analyticsExportCursors,
-  budgetPolicies,
-  llmUsageEvents,
-  llmUsageRollups,
-  type AnalyticsExportStream,
-  type UsageActivity,
-} from '@/lib/db/schema'
+import { analyticsExportCursors, type AnalyticsExportStream } from '@/lib/db/schema/analytics-export-cursors'
+import { budgetPolicies, llmUsageEvents, llmUsageRollups, type UsageActivity } from '@/lib/db/schema/budgets'
 
 /**
  * Take the stream for `leaseMs`, or `null` when another run holds it. A stream

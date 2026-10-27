@@ -19,7 +19,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeDocument } from '@/test-utils/db-fixtures'
-import type { Document, DocumentVersion } from '@/lib/db/schema'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
+import type { Document } from '@/lib/db/schema/documents'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
 vi.mock('./access', () => ({ getAccessibleDocument: vi.fn() }))

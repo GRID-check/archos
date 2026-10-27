@@ -84,7 +84,7 @@ vi.mock('./access', () => ({
   findDocumentForSession: vi.fn(async () => db.selects.shift()?.[0] ?? null),
 }))
 
-vi.mock('@/lib/db/schema', () => ({
+vi.mock('@/lib/db/schema/documents', () => ({
   documents: {
     id: 'documents.id',
     organizationId: 'documents.organization_id',
@@ -95,6 +95,8 @@ vi.mock('@/lib/db/schema', () => ({
     authoredBy: 'documents.authored_by',
     updatedAt: 'documents.updated_at',
   },
+}))
+vi.mock('@/lib/db/schema/project-folders', () => ({
   projectFolders: { id: 'folders.id', projectId: 'folders.project_id', path: 'folders.path' },
 }))
 

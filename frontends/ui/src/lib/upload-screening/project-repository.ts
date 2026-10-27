@@ -8,7 +8,7 @@ import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { projectUploadScreening } from '@/lib/db/schema'
+import { projectUploadScreening } from '@/lib/db/schema/project-upload-screening'
 import type { ProjectScreeningOverride } from './project-policy'
 
 /** The project's override, or null when it changes nothing. */

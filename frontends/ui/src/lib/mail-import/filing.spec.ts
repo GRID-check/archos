@@ -51,7 +51,7 @@ vi.mock('@/lib/upload-batches/service', () => ({
 import { BadRequestError, ConflictError, FileTooLargeError, ForbiddenError, InsufficientStorageError } from '@/lib/api/errors'
 import { folderReadOnlyError } from '@/lib/authz/folder-access-rule'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { MailImport } from '@/lib/db/schema'
+import type { MailImport } from '@/lib/db/schema/mail-imports'
 import { resolveShelfFolderPath } from '@/lib/documents/folder-path'
 import { findLiveDocumentByFilename, findProjectCollectionsHoldingFilename } from '@/lib/documents/repository'
 import { uploadDocument } from '@/lib/documents/service'

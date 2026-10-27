@@ -22,7 +22,7 @@ vi.mock('drizzle-orm', () => ({
   }),
 }))
 
-vi.mock('@/lib/db/schema', () => ({
+vi.mock('@/lib/db/schema/project-memory', () => ({
   PROJECT_MEMORY_MAX_RESTRICTED_FOLDERS: 20,
   projectMemory: {
     id: 'pm.id',
@@ -38,6 +38,8 @@ vi.mock('@/lib/db/schema', () => ({
     updatedAt: 'pm.updatedAt',
     restrictedFolderIds: 'pm.restrictedFolderIds',
   },
+}))
+vi.mock('@/lib/db/schema/projects', () => ({
   projects: {
     id: 'p.id',
     organizationId: 'p.organizationId',
@@ -75,7 +77,7 @@ import { getDb } from '@/lib/db'
 import { BadRequestError } from '@/lib/api/errors'
 import { sourceFoldersOfCollections } from '@/lib/authz/folder-access'
 import { embedNote } from '@/lib/knowledge/embeddings'
-import type { ProjectMemoryItem } from '@/lib/db/schema'
+import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 import { asDb, makeMemoryItem } from '@/test-utils/db-fixtures'
 import {
   buildProjectMemoryDigest,

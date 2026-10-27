@@ -447,7 +447,7 @@ def decode_cursor(token: str) -> ReadCursor | None:
         raw = json.loads(base64.urlsafe_b64decode(text + "=" * (-len(text) % 4)))
         *fields, check = raw
         file_name, collection, position, last_page, filters = fields
-    except (ValueError, TypeError, binascii.Error):
+    except ValueError, TypeError, binascii.Error:
         return None
     if not isinstance(check, str) or check != _cursor_check(fields):
         return None

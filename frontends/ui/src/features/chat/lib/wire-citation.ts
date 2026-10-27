@@ -4,7 +4,7 @@
  */
 
 import type { CitationProject, CitationSource, WireCitationSource } from '../types'
-import { asShelf, asSourceKind, modernizeLane, modernizeSourceKind } from '@/lib/source-kinds'
+import { asShelf, asSourceKind, modernizeLane } from '@/lib/source-kinds'
 import { parsePageRegions } from '@/features/knowledge/lib/page-region'
 import { toProjectStatus } from '@/lib/projects/project-status'
 
@@ -82,7 +82,7 @@ export const citationFromWire = (
       typeof wire.number === 'number' && Number.isInteger(wire.number) && wire.number > 0
         ? wire.number
         : undefined,
-    kind: asSourceKind(modernizeSourceKind(wire.kind)),
+    kind: asSourceKind(wire.kind),
     // The shelf as the backend stated it (ADR-0047). An unrecognised or missing
     // value stays undefined — unknown, never a default shelf.
     shelf: asShelf(wire.shelf),

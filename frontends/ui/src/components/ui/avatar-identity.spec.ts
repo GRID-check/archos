@@ -1,3 +1,4 @@
+// @disk-inputs: src/styles/tokens.css
 /**
  * @vitest-environment node
  */
