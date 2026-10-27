@@ -568,9 +568,11 @@ CREATE TABLE IF NOT EXISTS "inbound_mails" (
   "project_id" uuid NOT NULL,
   "address_id" uuid NOT NULL,
   "status" text DEFAULT 'receiving' NOT NULL,
-  -- sha256 hex of the raw message: a redelivery is the same key, and a replay
-  -- of a signed request is a duplicate rather than a second mail. Message-ID
-  -- is only a hint, forgeable and sometimes absent.
+  -- sha256 hex of the authored header fields and the body (`deliveryKey` in
+  -- lib/inbound-mail/mime.ts), not of the raw bytes: a relay's Received and ARC
+  -- fields differ on a redelivery, so the same mail keeps its key, and a replay
+  -- of a signed request is a duplicate rather than a second mail. Message-ID is
+  -- only a hint, forgeable and sometimes absent.
   "delivery_key" text,
   -- The SMTP MAIL FROM; '' is the null sender of a bounce.
   "envelope_from" text,

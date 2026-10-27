@@ -15,7 +15,7 @@
 --    WHERE original_storage_key IS NOT NULL;
 --
 -- delete each object by its key, set the column NULL (as the platform role,
--- with the feature paused: GRID_INBOUND_MAIL_PAUSED=1), and run this again.
+-- with the feature paused: GRID_INBOUND_MAIL_PAUSED=true; only the literal `true` pauses), and run this again.
 --
 -- Lossy, even then. Every project's address goes, and members must be given a
 -- new one after re-applying; every mail still waiting goes with the only record
