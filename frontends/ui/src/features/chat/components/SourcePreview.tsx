@@ -1604,10 +1604,9 @@ const InfoPreviewChip: FC<{
         {meta && <p className="text-muted-foreground text-xs">{meta}</p>}
         {bindingNote && (
           <div
-            className="rounded-md border-l-2 py-1.5 pl-2.5 pr-2"
+            className="rounded-md px-2.5 py-1.5"
             style={{
-              borderColor: `color-mix(in oklch, var(--source-${signal}, var(--foreground)) 45%, transparent)`,
-              backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
+                backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
             }}
           >
             <SectionLabel

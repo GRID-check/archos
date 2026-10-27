@@ -34,12 +34,13 @@
  * assertion IS the mount.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { z } from 'zod'
 import { render } from '@/test-utils'
 import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
 import { PREVIEW_EXCLUDED, previewFixtureFor } from '../preview-fixtures'
 import { GridCardItem } from './GridCards'
+import { rendererSettled } from '@/features/a2ui/A2uiCard'
 // The canonical card JSON Schema, generated from `models.py` and the input the
 // Zod mirror is generated FROM. Loaded at runtime (it lives above the app
 // root, outside the Docker build context) — see the helper for why a static
@@ -256,6 +257,9 @@ beforeEach(() => {
   )
 })
 
+// Cards are checked in the commit they render in, so the A2UI renderer must
+// already be here rather than arriving behind the placeholder.
+beforeAll(rendererSettled)
 afterEach(() => vi.unstubAllGlobals())
 
 describe('every card type renders', () => {

@@ -400,6 +400,14 @@ Clicking a source chip opens a preview of the source instead of doing nothing:
 - **Ask for a document's history.** „Welche Fassungen gibt es vom EG-Grundriss?“ and „Was hat sich zwischen Index B und C geändert?“ are answered from the whole chain of Fassungen, newest first, with each one's Index and date (read from the file name and, where there is one, the Plankopf), upload date and the line saying what changed. Answers otherwise use the newest Fassung and name an older one only when you ask for it or Piloti compares; opening an older one by name says in the first line that it is the older and which one is current. The change lines are Piloti's summaries, not a comparison of the files: for a detail it reads both Fassungen.
 - **Anything unresolvable** (unknown document, non-previewable file type) shows a light popover with the source's origin, title, and passage instead — never a broken viewer. Chips with nothing beyond their label stay plain.
 
+## What Piloti noted ("Piloti hat sich gemerkt")
+
+When an answer added something to the project's memory, its footer says so on the answer itself, on the row with the copy actions and **Details**, never inside them: a small chip, **Piloti hat sich gemerkt · 2** (*Piloti noted*). One tap or Enter opens the list of what this turn wrote, each note verbatim with its kind (Entscheidung, Vorgabe, Fakt …) and when it was written: *während der Antwort notiert* for a note you accepted while Piloti answered, *nach der Antwort ergänzt* for one Piloti added after the answer was finished. The chip counts only this answer's notes, not the conversation's, and an answer that noted nothing shows none.
+
+When a note **corrected** an earlier one, the chip reads **Gedächtnis aktualisiert** (*Memory updated*) with its own symbol. The list then shows the correction first, marked *Korrigiert*, with the note it replaced quoted and struck through (*Ersetzt: …*), because something you may have relied on is gone. You manage and delete notes in the project memory.
+
+The chip shows what an answer wrote, not what it read: Piloti does not yet report which remembered notes an answer drew on.
+
 ## Human-in-the-loop (HITL)
 
 When the agent needs input — clarification, approval, or a choice — it sends a prompt message. The chat switches to a waiting state with input controls matching the prompt type:

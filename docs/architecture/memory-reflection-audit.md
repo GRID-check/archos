@@ -108,7 +108,11 @@ Round 6:
 - **STALE follow-on**: a superseded entry vanishes from the panel (it filters
   `status !== 'superseded'`), so a user cannot see or undo an agent's correction.
   Surfacing "replaced an earlier note" — in the panel and on the memory chip —
-  is the natural next step now that `supersedes_id` is populated.
+  is the natural next step now that `supersedes_id` is populated. The chip's
+  half is done for in-turn corrections (2026-10): an accepted
+  `memory_proposal` with `supersedes` turns the chip into „Gedächtnis
+  aktualisiert" and quotes the retired note struck through. The reflection
+  stage's frame carries no supersede, and the panel still hides the row.
 - **INFORM polish**: live memory-panel refresh/badge when the panel is open.
 - **S1 (remember tool)**: a proper org-admin permission gate (with role
   propagation) so org writes can be *enabled* safely rather than all-or-nothing.

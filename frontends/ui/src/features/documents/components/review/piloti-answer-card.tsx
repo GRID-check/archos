@@ -11,6 +11,7 @@ import { ShimmerText } from '@/components/ui/shimmer-text'
 import { liveLine } from '@/features/chat/lib/turn-events'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { Quote } from '@/components/ui/quote'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { answerAsBody, answerMarkdown } from '../../lib/piloti-answer-text'
 import { CANVAS_ASK_INTENTS, stepsOf, type CanvasAsk, type CanvasAskIntent } from '../../hooks/use-canvas-ask'
@@ -160,9 +161,9 @@ export function PilotiAnswerCard({
       ) : (
         <>
           <div className="max-h-[min(24rem,55svh)] space-y-2.5 overflow-y-auto px-3 py-3">
-            <p className="text-muted-foreground border-l-foreground/20 border-l-2 pl-2 text-xs leading-5 break-words">
+            <Quote as="p" className="text-xs leading-5">
               {ask.question}
-            </p>
+            </Quote>
             {ask.degraded.includes('region') && (
               <p className="text-muted-foreground text-[11px] leading-4" role="note" data-testid="piloti-card-degraded">
                 {t('review.piloti.degradedRegion')}

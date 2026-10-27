@@ -63,8 +63,10 @@ one use case composition exists for could not be built. See
 [`docs/architecture/cards.md`](../architecture/cards.md) for how its
 citations are held to the prose's.
 
-**What is deliberately not adopted.** A2UI's basic catalog (its styles are
-empty in 0.11.1 and it registers Lit elements on import); data binding and
+**What is deliberately not adopted.** A2UI's basic catalog (its styles were
+empty in 0.11.1 and it registered Lit elements on import; since 0.13 the v0.9
+React basic catalog is gone, and what remains is `@a2ui/web_core`'s Web
+Components, which we would restyle wholesale); data binding and
 `updateDataModel` (a card is a statement about retrieved sources, not live
 state); A2UI actions (the interactive cards keep `useCardDecision`,
 ADR-0030); the Python agent SDK (it requires Google ADK and genai, and its
@@ -86,14 +88,19 @@ model keeps writing card objects; only composition is A2UI-shaped.
   once drawn. That was two copies of every card and three commits for each,
   and a streamed card's arrival measured its height off the copy that was
   thrown away. The chat draws its cards on the client only, so the direct
-  drawing now stays only as the failure fallback below.
+  drawing now stays only as the failure fallback below. *Amended 2026-10-27:*
+  since `@a2ui/react` 0.13 every component renders inside a custom element
+  (`<a2ui-react-<name>>`, `display: contents`) whose class is defined when the
+  module loads, so the library cannot even be imported on the server. Only
+  `features/a2ui/react-catalog.tsx` imports it, and `A2uiCard` loads that
+  module in the browser alone; `catalog.tsx` is the server-safe contract
+  (component APIs, `preflight`, the contexts).
 - **Churn.** Nearly every minor release of A2UI has broken its API. The pins
-  are exact: `@a2ui/react` 0.11.1 and `@a2ui/web_core` 0.11.0
-  (`frontends/ui/package.json`), `a2ui-core==0.1.1` (`pyproject.toml`). The
-  two npm versions differ because 0.11.0 is the newest `@a2ui/web_core`
-  published, and `@a2ui/react` 0.11.1 depends on `^0.11.0`. An upgrade is its
-  own change with the `features/a2ui` tests as the gate. v1.0 is the next
-  move.
+  are exact: `@a2ui/react` 0.14.0 and `@a2ui/web_core` 0.14.0
+  (`frontends/ui/package.json`), `a2ui-core==0.4.0` (`pyproject.toml`), the
+  releases of 2026-10-17. An upgrade is its own change with the
+  `features/a2ui` tests as the gate. v1.0 is the next move; what it takes is
+  under *A2UI 1.0 readiness* below.
 - A render failure inside A2UI (a validation error, a library bug) falls back
   to the direct component, so no card is lost to the library.
 
@@ -113,5 +120,33 @@ model keeps writing card objects; only composition is A2UI-shaped.
   `SURFACE_EXCLUDED_LEAVES` covers every system, envelope and interactive
   type, and `cards/models.py` and `features/a2ui/catalog.tsx` list the same
   types.
+- `frontends/ui/src/features/a2ui/ssr.spec.tsx`: in a node environment,
+  `catalog.tsx` and `A2uiCard` import without a DOM and a card server-renders
+  as its placeholder, so `@a2ui/react` cannot creep back into the server
+  bundle.
 - `/dev/a2ui` marks each card A2UI drew; a browser probe over it is how the
   "every card, no fallback" claim was checked when this was adopted.
+
+### A2UI 1.0 readiness
+
+Checked 2026-10-27 against the a2ui.org roadmap (v1.0 a candidate for Q4 2026,
+v0.9.1 the stable version) and the v1.0 specification, which was v0.10 in
+draft. What moving would take here:
+
+- **Version strings.** Envelopes say `version: "v1.0"` and the catalog declares
+  protocol `1.0` (`A2UI_PROTOCOL_VERSION` in `catalog.tsx`,
+  `BasicCatalog("1.0")` in `cards/models.py`). A v0.9 catalog is not accepted
+  by a v1.0 runtime, so both sides move in one change.
+- **Catalog resolution is strict.** A component's catalog is its own
+  `catalogId`, else the surface default, else an error. Every surface we build
+  names `PILOTI_CATALOG_ID`, so nothing falls through.
+- **Nothing we use is removed.** Bindings become `@path` / `@call`, `theme`
+  leaves `createSurface`, `Surface` becomes a reserved component name, and
+  entity names follow UAX #31. Our surfaces carry static ids and no bindings,
+  set no theme, name no `Surface`, and our card names (`legal_basis`) are
+  valid identifiers.
+- **A possible deletion.** v1.0's optional `allowedParents` /
+  `allowedChildren` on a component could state what `SURFACE_EXCLUDED_LEAVES`
+  states by hand today.
+- **Blocker.** `@a2ui/react` 0.14 has no `v1_0` entry point yet, only the
+  version-agnostic root. The move waits for one.
