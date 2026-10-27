@@ -87,6 +87,12 @@ export interface SavedSearchView {
   shared: boolean
   /** The reader saved it: only then may they rename, share or delete it. */
   ownedByMe: boolean
+  /**
+   * Who saved it, by the office's people directory, on a colleague's shared
+   * one; null on the reader's own, and when the directory cannot name the
+   * person (left the office, WorkOS not answering).
+   */
+  ownerName: string | null
   createdAt: string
 }
 

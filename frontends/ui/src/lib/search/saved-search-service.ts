@@ -19,6 +19,7 @@ import { ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/erro
 import { nextOffsetCursor, offsetPageOf } from '@/lib/api/offset-page'
 import { isUniqueViolation } from '@/lib/db/errors'
 import type { SavedSearchRow } from '@/lib/db/schema'
+import { resolvePeople } from '@/lib/sharing/directory'
 import {
   countOwnedSavedSearches,
   deleteOwnSavedSearch,
@@ -38,28 +39,37 @@ import {
 
 const NAME_CONSTRAINT = 'saved_searches_owner_name_key'
 
-export function toSavedSearchView(row: SavedSearchRow, readerUserId: string): SavedSearchView {
+export function toSavedSearchView(row: SavedSearchRow, readerUserId: string, ownerName: string | null = null): SavedSearchView {
+  const ownedByMe = row.ownerUserId === readerUserId
   return {
     id: row.id,
     name: row.name,
     scope: row.scope,
     query: row.query,
     shared: row.shared,
-    ownedByMe: row.ownerUserId === readerUserId,
+    ownedByMe,
+    ownerName: ownedByMe ? null : ownerName,
     createdAt: new Date(row.createdAt).toISOString(),
   }
 }
 
-/** The reader's own and the office's shared saved searches, newest first, one page. */
+/**
+ * The reader's own and the office's shared saved searches, newest first, one
+ * page. A colleague's is named by who saved it (the people directory, cached),
+ * so the reader knows whose question they are about to run.
+ */
 export async function listSavedSearches(
   reader: SavedSearchOwner,
   query: ListSavedSearchesQuery
 ): Promise<SavedSearchListResponse> {
   const page = offsetPageOf(query)
-  const rows = await listVisibleSavedSearches(reader, page)
+  const fetched = await listVisibleSavedSearches(reader, page)
+  const rows = fetched.slice(0, page.limit)
+  const colleagues = [...new Set(rows.map((row) => row.ownerUserId).filter((userId) => userId !== reader.userId))]
+  const people = await resolvePeople(reader.organizationId, colleagues)
   return {
-    savedSearches: rows.slice(0, page.limit).map((row) => toSavedSearchView(row, reader.userId)),
-    nextCursor: nextOffsetCursor(page, rows.length),
+    savedSearches: rows.map((row) => toSavedSearchView(row, reader.userId, people.get(row.ownerUserId)?.name ?? null)),
+    nextCursor: nextOffsetCursor(page, fetched.length),
   }
 }
 

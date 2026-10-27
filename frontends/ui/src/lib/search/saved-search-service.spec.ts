@@ -15,6 +15,7 @@ vi.mock('./saved-search-repository', () => ({
   listVisibleSavedSearches: vi.fn(),
   updateOwnSavedSearch: vi.fn(),
 }))
+vi.mock('@/lib/sharing/directory', () => ({ resolvePeople: vi.fn() }))
 
 import { BadRequestError, ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { SavedSearchRow } from '@/lib/db/schema'
@@ -25,6 +26,7 @@ import {
   listVisibleSavedSearches,
   updateOwnSavedSearch,
 } from './saved-search-repository'
+import { resolvePeople } from '@/lib/sharing/directory'
 import { createSavedSearch, deleteSavedSearch, listSavedSearches, updateSavedSearch } from './saved-search-service'
 import { SAVED_SEARCHES_PER_PERSON_MAX } from './saved-search-wire'
 
@@ -53,7 +55,10 @@ function uniqueViolation(): Error {
 }
 
 describe('saved searches', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(resolvePeople).mockResolvedValue(new Map())
+  })
 
   it('lists a page newest first, marks what the reader owns, and hands on a cursor when more exist', async () => {
     vi.mocked(listVisibleSavedSearches).mockResolvedValue([
@@ -71,6 +76,22 @@ describe('saved searches', () => {
     expect(page.nextCursor).toBe('2')
   })
 
+  it('names the colleague who saved a shared one, never the reader, and only those on the page', async () => {
+    vi.mocked(listVisibleSavedSearches).mockResolvedValue([
+      row(),
+      row({ id: '22222222-2222-4222-8222-222222222222', ownerUserId: 'user-max', shared: true }),
+      row({ id: '33333333-3333-4333-8333-333333333333', ownerUserId: 'user-gone', shared: true }),
+      row({ id: '44444444-4444-4444-8444-444444444444', ownerUserId: 'user-next-page', shared: true }),
+    ])
+    vi.mocked(resolvePeople).mockResolvedValue(
+      new Map([['user-max', { userId: 'user-max', email: 'max@example.com', name: 'Max Gruber', profilePictureUrl: null }]])
+    )
+    const page = await listSavedSearches(lena, { limit: 3 })
+    expect(resolvePeople).toHaveBeenCalledWith('org-1', ['user-max', 'user-gone'])
+    expect(page.savedSearches.map((s) => s.ownerName)).toEqual([null, 'Max Gruber', null])
+    expect(page.nextCursor).toBe('3')
+  })
+
   it('answers no cursor on the last page, and refuses a cursor it never gave', async () => {
     vi.mocked(listVisibleSavedSearches).mockResolvedValue([row()])
     expect((await listSavedSearches(lena, { cursor: '2' })).nextCursor).toBeNull()
@@ -83,7 +104,7 @@ describe('saved searches', () => {
     const input = { name: 'Brandschutz', scope: {}, query: { text: 'Brandschutzkonzept' }, shared: true }
     const view = await createSavedSearch(lena, input)
     expect(insertSavedSearch).toHaveBeenCalledWith(lena, input)
-    expect(view).toMatchObject({ name: 'Brandschutz', shared: true, ownedByMe: true })
+    expect(view).toMatchObject({ name: 'Brandschutz', shared: true, ownedByMe: true, ownerName: null })
   })
 
   it('answers 409 for a name the caller already uses', async () => {

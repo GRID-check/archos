@@ -224,6 +224,7 @@ export const SEARCH_FIXTURE_SAVED: SavedSearchView[] = [
     query: { kinds: ['document'], filters: { documentTypes: ['submission_drawing'], currentOnly: true }, sort: 'plan_number', dir: 'asc' },
     shared: true,
     ownedByMe: true,
+    ownerName: null,
     createdAt: '2026-10-21T09:10:00.000Z',
   },
   {
@@ -233,6 +234,7 @@ export const SEARCH_FIXTURE_SAVED: SavedSearchView[] = [
     query: { filters: { cites: ['ÖNORM B 1600'] } },
     shared: true,
     ownedByMe: false,
+    ownerName: 'Max Gruber',
     createdAt: '2026-10-02T13:00:00.000Z',
   },
 ]
