@@ -10,7 +10,7 @@
 
 import { z } from 'zod'
 import { planDocumentsSchema } from '@/lib/runs/plan-documents'
-import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema'
+import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema/tasks'
 import { canonicalTaskKind } from './task-vocabulary'
 
 /**

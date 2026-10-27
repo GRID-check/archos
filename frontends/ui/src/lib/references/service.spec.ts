@@ -16,7 +16,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { makeMemoryItem, makeProject } from '@/test-utils/db-fixtures'
 
 vi.mock('server-only', () => ({}))

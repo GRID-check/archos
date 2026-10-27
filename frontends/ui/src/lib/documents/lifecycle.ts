@@ -55,7 +55,8 @@ import { emitInboxItems, openRecipientsOf, resolveInboxItemsFor } from '@/lib/in
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { resolvePeople } from '@/lib/sharing/directory'
-import type { Document, DocumentVersion } from '@/lib/db/schema'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
+import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from './access'
 import {
   AGENT_REFUSAL_LOCALE,

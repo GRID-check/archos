@@ -24,7 +24,7 @@
 import 'server-only'
 import { v5 as uuidv5 } from 'uuid'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { MailImport } from '@/lib/db/schema'
+import type { MailImport } from '@/lib/db/schema/mail-imports'
 import {
   findJobUploadBatch,
   openUploadBatch,

@@ -28,7 +28,8 @@
 import { isUniqueViolation } from '@/lib/db/errors'
 import { and, eq, isNull, like, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { documents, projectFolders } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { listProjectDocumentCollections } from '@/lib/authz/folder-access-repository'
 import {

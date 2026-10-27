@@ -33,7 +33,6 @@ from collections.abc import Sequence
 from typing import Annotated
 from typing import Any
 from typing import Literal
-from typing import TypeVar
 
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
@@ -217,9 +216,6 @@ class DecisionReply(_Wire):
     )
 
 
-ReplyT = TypeVar("ReplyT", bound=_Wire)
-ItemT = TypeVar("ItemT", FingerprintValue, DraftedDecision)
-
 ListDocuments = Callable[[str], Sequence[AvailableDocument]]
 FetchPages = Callable[[str, str], Iterable[tuple[Any, str]] | None]
 
@@ -261,7 +257,7 @@ DECISION_SYSTEM_PROMPT = (
 )
 
 
-def _ask(llm: Any, system: str, user: str, reply_model: type[ReplyT]) -> ReplyT:
+def _ask[ReplyT: _Wire](llm: Any, system: str, user: str, reply_model: type[ReplyT]) -> ReplyT:
     """One strict structured call. A provider fault or a reply that does not fit raises; the caller decides its cost."""
     messages = [SystemMessage(content=system), HumanMessage(content=user)]
     response = llm.bind(response_format=strict_json_response_format(reply_model)).invoke(messages)
@@ -423,7 +419,9 @@ def folded_for_quote(text: str) -> str:
     return " ".join(unicodedata.normalize("NFC", text).split()).casefold()
 
 
-def _evidence_within(items: list[ItemT], read: Mapping[str, str]) -> list[ItemT]:
+def _evidence_within[ItemT: (FingerprintValue, DraftedDecision)](
+    items: list[ItemT], read: Mapping[str, str]
+) -> list[ItemT]:
     """Keep only the evidence whose quote stands in the text the pens read of the file it names.
 
     A quote is the proof, so code checks it rather than trusting it: one that names a file nobody

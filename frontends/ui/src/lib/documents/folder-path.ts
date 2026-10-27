@@ -1,4 +1,4 @@
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { documentShelf, type DocumentShelf } from './shelf'
 import { findFolderPathInOfficeShelf, findFolderPathInProject } from './repository'
 

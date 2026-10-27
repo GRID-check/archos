@@ -13,14 +13,9 @@ import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
 import { modernizeDocumentScope } from '@/lib/db/schema/documents'
 import { ACCESS_LOG_MAX_LIMIT } from './kinds'
-import {
-  documentAccessLog,
-  projectFolders,
-  projects,
-  type DownloadLogKind,
-  type DownloadLogScope,
-  type NewDocumentAccessLogRow,
-} from '@/lib/db/schema'
+import { documentAccessLog, type DownloadLogKind, type DownloadLogScope, type NewDocumentAccessLogRow } from '@/lib/db/schema/document-access-log'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import { projects } from '@/lib/db/schema/projects'
 
 /** What one hand-over of bytes writes. `occurredAt` is the database's clock. */
 export type NewAccessLogEntry = Omit<NewDocumentAccessLogRow, 'id' | 'occurredAt'>

@@ -68,10 +68,12 @@ vi.mock('@/lib/db', () => ({
 // `bim_models` / `bim_elements` are here only because the documents service now
 // reaches the BIM subsystem (IFC uploads are parsed rather than ingested), and
 // its repository reads the table objects at module scope.
-vi.mock('@/lib/db/schema', () => ({
-  documents: { id: 'id', organizationId: 'organization_id' },
+vi.mock('@/lib/db/schema/bim', () => ({
   bimModels: { id: 'id', documentId: 'document_id', organizationId: 'organization_id' },
   bimElements: { id: 'id', modelId: 'model_id' },
+}))
+vi.mock('@/lib/db/schema/documents', () => ({
+  documents: { id: 'id', organizationId: 'organization_id' },
 }))
 
 // Everything off this path, mocked so the module graph does not drag in WorkOS

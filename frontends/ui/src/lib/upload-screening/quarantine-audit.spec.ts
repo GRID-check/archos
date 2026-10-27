@@ -17,7 +17,7 @@ vi.mock('./repository', () => ({
 }))
 
 import { auditLogsEnabled, recordAuditEventOrThrow } from '@/lib/audit/service'
-import type { DocumentQuarantineDecision } from '@/lib/db/schema'
+import type { DocumentQuarantineDecision } from '@/lib/db/schema/document-quarantine-decisions'
 import {
   auditOwedQuarantines,
   auditQuarantineDecision,

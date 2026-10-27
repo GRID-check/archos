@@ -11,7 +11,9 @@
 
 import type { getDb } from '@/lib/db'
 import type { findLiveDocumentByFilename } from '@/lib/documents/repository'
-import type { Document, Project, ProjectMemoryItem } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
+import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
+import type { Project } from '@/lib/db/schema/projects'
 
 /**
  * The one place a hand-built drizzle query-builder stub widens to the real

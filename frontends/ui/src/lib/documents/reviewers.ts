@@ -39,7 +39,7 @@ import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
 import { filterUsersWithProjectPermission } from '@/lib/authz/project-membership'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 
 /** One person a version may be sent to, as the picker renders them. */
 export interface ReviewCandidate {

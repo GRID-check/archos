@@ -29,7 +29,7 @@ import 'server-only'
 
 import { captureServer, isPosthogServerEnabled } from '@/lib/analytics/posthog-server'
 import { getCached } from '@/lib/cache'
-import type { BudgetScope, BudgetUnit } from '@/lib/db/schema'
+import type { BudgetScope, BudgetUnit } from '@/lib/db/schema/budgets'
 import { withTenant } from '@/lib/db/tenant-context'
 import { getBudgetUtilisation, type BudgetUtilisation } from './service'
 import { utcWindow } from './usage-notice'

@@ -7,7 +7,7 @@
  * through it.
  */
 
-import type { ResourceRole, ResourceVisibility, ShareableResourceType } from '@/lib/db/schema'
+import type { ResourceRole, ResourceVisibility, ShareableResourceType } from '@/lib/db/schema/resource-shares'
 
 export type { ResourceRole, ResourceVisibility, ShareableResourceType }
 

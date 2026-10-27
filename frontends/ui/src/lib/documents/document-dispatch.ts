@@ -5,7 +5,7 @@
 
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { projectShelf } from './shelf'
 import { uploadToShelf, type UploadDocumentResult } from './shelf-upload'
 import { findDocumentInOrg, markDocumentNotIndexed, markDocumentIngestFailed, markDocumentProcessing, setDocumentBackgroundJob } from './repository'

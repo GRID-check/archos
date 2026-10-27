@@ -181,7 +181,7 @@ def _canonical(value: Any) -> str:
         return value
     try:
         return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return repr(value)
 
 

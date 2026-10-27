@@ -583,7 +583,7 @@ def _normalise_bbox(value: Any) -> list[float] | None:
         return None
     try:
         raw = [float(part) for part in value]
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     # A NaN clamps to 0.0 and an infinity to an edge, and both would then pass
     # as a plausible box, so a non-finite coordinate drops the box.
@@ -689,7 +689,7 @@ def parse_visual_analysis(reply: str | None, registry: DomainRegistry | None = N
         return None
     try:
         raw = json.loads(text[start : end + 1])
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
     if not isinstance(raw, dict):
         return None

@@ -27,7 +27,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeDocument } from '@/test-utils/db-fixtures'
-import type { Document, DocumentVersion, NewDocumentVersion } from '@/lib/db/schema'
+import type { DocumentVersion, NewDocumentVersion } from '@/lib/db/schema/document-versions'
+import type { Document } from '@/lib/db/schema/documents'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
 /** Postgres' `uniq_document_versions_published_per_document`, in four lines. */

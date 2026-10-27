@@ -25,7 +25,7 @@
 import 'server-only'
 import type { DbExecutor } from '@/lib/db/executor'
 import { getDb } from '@/lib/db'
-import type { PilotiWakeRow } from '@/lib/db/schema'
+import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { BFF_JOB_PRIORITY, type PilotiWakeStopPayload } from '@/lib/jobs-queue/types'
 import { withTenant } from '@/lib/db/tenant-context'

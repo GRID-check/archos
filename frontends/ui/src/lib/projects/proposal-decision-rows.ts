@@ -26,7 +26,8 @@ import 'server-only'
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
-import { conversations, proposedChanges } from '@/lib/db/schema'
+import { conversations } from '@/lib/db/schema/conversations'
+import { proposedChanges } from '@/lib/db/schema/proposed-changes'
 import { conversationOpenToProjectReaders } from '@/lib/conversations/repository'
 
 /** The statuses that are a decision the block can state. */

@@ -37,13 +37,8 @@ import 'server-only'
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
-import {
-  documents,
-  documentVersions,
-  DOCUMENT_SCOPES,
-  type DocumentScope,
-  type NewDocument,
-} from '@/lib/db/schema'
+import { documentVersions } from '@/lib/db/schema/document-versions'
+import { documents, DOCUMENT_SCOPES, type DocumentScope, type NewDocument } from '@/lib/db/schema/documents'
 import { mapDocumentInsertError, ReplacedDocumentGoneError } from '@/lib/documents/unique-conflicts'
 
 /** Bytes and document count for one scope. */

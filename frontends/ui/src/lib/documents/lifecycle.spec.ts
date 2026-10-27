@@ -20,7 +20,8 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Document, DocumentVersion } from '@/lib/db/schema'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
+import type { Document } from '@/lib/db/schema/documents'
 import { makeDocument, makeProject } from '@/test-utils/db-fixtures'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { AUDIT_ACTIONS } from '@/lib/audit/schemas.mjs'

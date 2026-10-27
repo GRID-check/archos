@@ -71,7 +71,7 @@ import { requirePinnedSession, requireVerifiedContext } from '@/lib/api/internal
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg } from '@/lib/conversations/repository'
-import type { Conversation } from '@/lib/db/schema'
+import type { Conversation } from '@/lib/db/schema/conversations'
 import type { ProposedChangeRow } from '@/lib/db/schema/proposed-changes'
 import { insertProposedChange, type NewProposedChange } from '@/lib/proposals/repository'
 import { internalProposalResponseSchema, type InternalProposalRequest } from '@/lib/proposals/types'

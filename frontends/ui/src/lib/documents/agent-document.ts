@@ -28,7 +28,7 @@
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { NotFoundError } from '@/lib/api/errors'
-import type { DocumentVersion } from '@/lib/db/schema'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
 import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { AGENT_DOCUMENT_MEDIA_TYPE, renderAgentDocumentMarkdown } from './agent-document-markdown'
 import { resolveDocumentBranding } from './branding'

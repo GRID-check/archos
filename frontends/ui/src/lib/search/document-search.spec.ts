@@ -36,7 +36,7 @@ vi.mock('@/lib/documents/semantic-search', () => ({
 
 import { UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { fetchGroupedSemanticHits } from '@/lib/documents/semantic-search'
 import {
   contentPrefilter,

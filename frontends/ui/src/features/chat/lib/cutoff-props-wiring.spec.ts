@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { Message } from '@/lib/db/schema'
+import type { Message } from '@/lib/db/schema/messages'
 import { mapServerMessageToChatMessage } from './server-message-mapper'
 
 /** A stored assistant message carrying the provenance a finished job wrote. */

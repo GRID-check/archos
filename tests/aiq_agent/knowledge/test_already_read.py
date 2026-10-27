@@ -7,7 +7,7 @@ wiring (persist, lift, forward) lives in
 ``conversation/test_already_read_digest.py``.
 """
 
-from aiq_agent.common.citation_verification import SourceEntry
+from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.knowledge.already_read import DIGEST_HEADING
 from aiq_agent.knowledge.already_read import MAX_DIGEST_DOCS
 from aiq_agent.knowledge.already_read import MAX_DIGEST_TOKENS
