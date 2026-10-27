@@ -6,6 +6,10 @@ Keep the office's files in folders and share them with everyone who has access t
 
 ## Uploading Documents
 
+Files can also reach a project by e-mail: mail sent to the project's own
+address waits in its **E-Mail-Eingang** until someone files it, and its text
+becomes an **E-Mail-Verlauf**. See [Project mail](inbound-mail.md).
+
 There are two upload zones in the UI:
 
 - **Project upload zone** — appears in the Data Sources panel when a project is active. Files uploaded here are scoped to the project (`proj_{projectId}` collection) and shared with everyone who has access to that project.
