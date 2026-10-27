@@ -57,6 +57,11 @@ export interface SearchReach {
    * for the asker alone must not reach the other readers.
    */
   screenedOnly?: boolean
+  /**
+   * The reach was cut to named projects (a `projectIds` filter): no office
+   * shelf, and no conversation outside those projects.
+   */
+  narrowedToProjects?: boolean
 }
 
 /** Projects whose folder access is read at once. Each is a tenancy probe and a folder-tree read. */
@@ -207,6 +212,22 @@ export async function reachForAudience(
         )
       : null
   return { ...base, projects, officeShelf: scope.kind === 'project' ? null : shelfOffice, folderIds }
+}
+
+/**
+ * The reach cut to `projectIds`, for every kind at once: a `projectIds` filter
+ * names the projects a search may say anything about, so the folders, projects,
+ * conversations and annotations it finds come from those projects alone, and
+ * the office shelf drops out. A project outside the reach stays out.
+ */
+export function narrowReach(reach: SearchReach, projectIds: readonly string[]): SearchReach {
+  const wanted = new Set(projectIds)
+  return {
+    ...reach,
+    projects: reach.projects.filter((reached) => wanted.has(reached.project.id)),
+    officeShelf: null,
+    narrowedToProjects: true,
+  }
 }
 
 /** The shelves a reach covers, for the projection's staleness check. */
