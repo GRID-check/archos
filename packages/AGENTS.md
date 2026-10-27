@@ -8,8 +8,9 @@ IfcOpenShell). The agent reaches them through
 `brand/` is the third, and not a library of that kind: the Piloti mark
 (`mark.svg`) and the script that renders it into both apps
 (`build-brand-assets.mjs`, which borrows `apps/site`'s sharp). It has no suite
-here: the site's `npm run check` runs its `--check` form, so the site and
-frontend tiers watch it, not the `packages` job.
+here: the site's `npm run check` runs its `--check` form, so the site tier
+checks it, not the `packages` job. The frontend tier fires on it too, because
+the script writes the app's icons.
 
 ## The gate, and why it is not in `task verify`
 

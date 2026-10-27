@@ -109,8 +109,9 @@ tasks:
       # `pkg:test` is deliberately NOT here, and the number is the reason:
       # packages/ifc-spatial-py is 636 tests in 1m40s on four workers (measured 2026-10-22)
       # against its own uv.lock and its own IfcOpenShell/shapely toolchain, on a
-      # directory most changes never touch. CI runs it behind a `packages/**`
-      # paths filter (ci.yml's `packages` job), which pays that cost only on the
+      # directory most changes never touch. CI runs it behind the `packages`
+      # paths filter (`packages/ifc-spatial*/**`, ci.yml's `packages` job; a new
+      # package with a suite adds its own line there), which pays that cost only on the
       # commits that earn it; making every local `task verify` pay it would be
       # the fastest way to get people to stop running `task verify`. Run
       # `task pkg:test` when you change `packages/`, the same discipline
