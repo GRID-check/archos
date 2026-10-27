@@ -3,7 +3,7 @@
     "deploy/pulumi/src/app/config.ts": 791,
     "deploy/pulumi/src/config.ts": 3505,
     "deploy/pulumi/src/constants.ts": 862,
-    "deploy/pulumi/src/data/postgres.ts": 964,
+    "deploy/pulumi/src/data/postgres.ts": 920,
     "deploy/pulumi/src/data/seaweedfs-split.ts": 640,
     "deploy/pulumi/src/platform/langfuse.ts": 722,
     "evals/oib-retrieval/src/oib_retrieval/overview.py": 804,
