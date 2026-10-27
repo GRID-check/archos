@@ -17,6 +17,7 @@ import { gridCardSchema } from '@/shared/cards/schemas'
 import cases from './formula-cases.json'
 import {
   DAYLIGHT,
+  RENOVATION_FACTOR,
   STAIR_TABLE,
   SURFACE_RESISTANCE,
   U_MAX_NEW_BUILD,
@@ -26,6 +27,7 @@ import {
   judgeFormula,
   sourceValues,
   startedMetres,
+  uValueBound,
   type FormulaCardData,
   type FormulaValues,
   type FormulaWords,
@@ -109,6 +111,8 @@ describe('the hand-computed cases', () => {
     expect([...stairs].sort()).toEqual(Object.keys(STAIR_TABLE).sort())
     const components = new Set(cards.flatMap((card) => (card.formula.name === 'u_value' ? [card.formula.component] : [])))
     expect([...components].sort()).toEqual(Object.keys(U_MAX_NEW_BUILD).sort())
+    const measures = new Set(cards.flatMap((card) => (card.formula.name === 'u_value' ? [card.formula.measure ?? 'unknown'] : [])))
+    expect([...measures].sort()).toEqual(['new_build', 'renovation', 'unknown'])
     for (const name of formulas) {
       expect(fixture.cases.some((entry) => cardOf(entry).formula.name === name && entry.overrides)).toBe(true)
     }
@@ -137,6 +141,14 @@ describe('the bounds are the Richtlinien’s, transcribed', () => {
     })
   })
 
+  it('OIB-RL 6 Pkt. 4.5 b): a renovation is the table value less 24 %, an unknown measure has no bound', () => {
+    expect(RENOVATION_FACTOR).toBe(0.76)
+    expect(uValueBound('external_wall', 'new_build')).toBe(0.35)
+    expect(uValueBound('external_wall', 'renovation')).toBe(0.266)
+    expect(uValueBound('roof_or_ceiling_to_outside_air', 'renovation')).toBe(0.152)
+    expect(uValueBound('external_wall', null)).toBeNull()
+  })
+
   it('OIB-RL 3 Pkt. 9.1.3 and 9.1.4 count started metres', () => {
     expect(DAYLIGHT).toMatchObject({ base: 12, raised: 15, raisedFrom: 1.5, perOverhangMetre: 2, overhangFrom: 3, perDepthMetre: 1, depthFrom: 5 })
     expect([3, 3.0000000000001, 3.1, 4, 4.1].map((value) => startedMetres(value, 3))).toEqual([0, 0, 1, 1, 2])
@@ -149,6 +161,13 @@ describe('the bounds are the Richtlinien’s, transcribed', () => {
     expect(riser?.limit?.value).toBe(20)
     const roof = run(cardOf(byId.get('u-value-roof') as FormulaCase))
     expect(roof.judged.checks[0].spec.reference.section).toBe('Pkt. 4.4.1, Zeile 18')
+    const renovation = run(cardOf(byId.get('u-value-renovation') as FormulaCase))
+    expect(renovation.judged.checks[0].spec.reference.section).toBe('Pkt. 4.5 b) mit Pkt. 4.4.1, Zeile 1')
+    expect(renovation.judged.checks[0].limit?.value).toBe(0.266)
+    expect(renovation.compiled.caveats.map((caveat) => caveat.key)).toEqual(['uValueRenovation', 'uValueScope'])
+    const unknown = run(cardOf(byId.get('u-value-measure-unknown') as FormulaCase))
+    expect(unknown.judged.checks[0].limit).toBeNull()
+    expect(unknown.compiled.caveats[0].key).toBe('uValueMeasureUnknown')
   })
 })
 
@@ -179,13 +198,20 @@ describe('a Rechenweg that reads the way it adds up', () => {
     const { compiled } = run(cardOf(byId.get('daylight-deep-room-under-a-loggia') as FormulaCase))
     expect(compiled.steps[0].label).toBe('requiredShare')
     expect(compiled.steps[0].operands.map((operand) => operand.value)).toEqual([15, 2, 2])
-    expect(compiled.caveats.map((caveat) => caveat.key)).toEqual(['daylightAngle', 'daylightOtherLaw'])
+    expect(compiled.caveats.map((caveat) => caveat.key)).toEqual(['daylightRoomsOnly', 'daylightAngle', 'daylightOtherLaw'])
   })
 
-  it('states the 45° precondition on every daylight card, raised or not', () => {
+  it('states the Aufenthaltsraum scope and the 45° precondition on every daylight card, raised or not', () => {
     const { compiled } = run(cardOf(byId.get('daylight-above-12-percent') as FormulaCase))
     expect(compiled.steps.map((step) => step.label)).toEqual(['daylightShare'])
-    expect(compiled.caveats.map((caveat) => caveat.key)).toEqual(['daylightAngle'])
+    expect(compiled.caveats.map((caveat) => caveat.key)).toEqual(['daylightRoomsOnly', 'daylightAngle'])
+  })
+
+  it('says on every escape route that only OIB-RL 2 is modelled', () => {
+    for (const id of ['route-within-40-m', 'route-exactly-40-m']) {
+      const { compiled } = run(cardOf(byId.get(id) as FormulaCase))
+      expect(compiled.caveats.map((caveat) => caveat.key)).toContain('routeOnlyGuideline2')
+    }
   })
 })
 

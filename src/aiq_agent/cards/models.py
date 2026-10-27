@@ -944,21 +944,53 @@ class CalculationCard(CardModel):
 FormulaStairType = Literal["main", "dwelling", "secondary"]
 FormulaComponent = Literal["external_wall", "roof_or_ceiling_to_outside_air", "floor_over_outside_air"]
 FormulaRouteStart = Literal["room", "dwelling_entrance"]
+FormulaMeasure = Literal["new_build", "renovation"]
 
-#: A figure with a unit of measure, or a stated result (`= 0,17`). Refused in a
-#: formula card's title, labels and note: the card computes the figures, and one
-#: written into text beside it disagrees with the card the moment an input moves.
-#: Identifiers are not figures: „AW 01", „Büro 2.14", „2. OG" pass.
-_FIGURE_IN_TEXT = re.compile(
-    r"(?:=\s*-?\d)|(?:\d+(?:[.,]\d+)?\s*(?:mm|cm|dm|m²|m2|m³|m|%|°|W/|kWh)(?![A-Za-zÄÖÜäöüß]))"
+# The card computes every figure and every verdict; a figure or a verdict
+# written into text beside it disagrees with the card the moment an input
+# moves, and is the line that gets copied into a submission. Two guards:
+#
+#   - a NAME (the title, a layer's or a leg's label) carries no number at all
+#     but an identifier: a component code („AW 01", „BA 2"), a numbered place
+#     („Top 7", „Büro 2.14", „Stiege 3", „Gst.-Nr. 123/4"), a storey („2. OG");
+#   - a TEXT (the note, an input's `source`) may cite a Punkt or a plan number,
+#     but carries no measurement, no comparison with a number and no verdict.
+
+#: Identifiers a name may hold. Anything else with a digit in it is a figure.
+_IDENTIFIER = re.compile(
+    r"\b[A-ZÄÖÜ]{2,4}[ -]?\d{1,4}[a-z]?\b"
+    r"|\b\d{1,2}\.\s?(?:OG|UG|DG|KG|EG|Obergescho(?:ß|ss)|Untergescho(?:ß|ss)|Stock|Etage)\b"
+    r"|\b(?:Top|Büro|Raum|Zimmer|Haus|Stiege|Treppe|Wohnung|Whg\.?|Bauteil|Bauplatz|Trakt|Achse|Schnitt|Lauf"
+    r"|Gst\.?-?Nr\.?|Nr\.?)\s+[A-Z]{0,2}-?\d{1,4}(?:[./]\d{1,4})*[a-z]?\b"
+)
+_DIGIT = re.compile(r"\d")
+
+#: What a text may not carry: a measurement, a comparison with a number, a stated result, a verdict.
+_MEASUREMENT = re.compile(r"\d+(?:[.,]\d+)?\s*(?:mm|cm|dm|m²|m2|m³|m|%|°|W/|W\b|kWh|K\b)(?![A-Za-zÄÖÜäöüß])")
+_COMPARISON = re.compile(r"(?:[=≤≥<>]|\bmax\.?|\bmin\.?|\bhöchstens|\bmindestens)\s*-?\d")
+_VERDICT = re.compile(
+    r"\b(?:nicht\s+)?(?:erfüllt|zulässig|unzulässig|eingehalten|überschritten|unterschritten)\b", re.I
 )
 
 
-def _no_figure(value: str | None, field: str) -> str | None:
-    if value and _FIGURE_IN_TEXT.search(value):
+def _figure_in(value: str, *, name: bool) -> str | None:
+    """What makes ``value`` carry a figure or a verdict, or None. ``name``: the stricter rule for a title or label."""
+    if _VERDICT.search(value):
+        return "a verdict"
+    if _MEASUREMENT.search(value) or _COMPARISON.search(value):
+        return "a figure"
+    if name and _DIGIT.search(_IDENTIFIER.sub(" ", value)):
+        return "a number that is not an identifier"
+    return None
+
+
+def _no_figure(value: str | None, field: str, *, name: bool = True) -> str | None:
+    found = _figure_in(value, name=name) if value else None
+    if found:
         raise ValueError(
-            f"`{field}` names the component, never a value: '{value}' carries a figure the card computes. "
-            "Put figures in the inputs"
+            f"`{field}` carries {found}: '{value}'. The card computes every figure and every verdict, so a "
+            f"{'name names the component, never a value' if name else 'text says where or why, never what'}; "
+            "put figures in the inputs"
         )
     return value
 
@@ -1008,6 +1040,11 @@ class FormulaInput(CardModel):
         description="When the value is a norm's own figure (a tabulated λ): where it is written. Never invent one",
     )
 
+    @field_validator("source")
+    @classmethod
+    def _source_says_where_not_what(cls, value: str | None) -> str | None:
+        return _no_figure(value, "source", name=False)
+
     @model_validator(mode="after")
     def _range_is_consistent(self) -> "FormulaInput":
         if self.min is not None and self.max is not None and self.min >= self.max:
@@ -1046,6 +1083,11 @@ class UValueFormula(CardModel):
     components against outside air: elsewhere R_se is not the standard's 0,04.
     Air layers, inhomogeneous layers and the standard's corrections are out of
     scope.
+
+    `measure` picks the requirement: a new build (Pkt. 4.4.1, the table), or a
+    renovation by single measures or the renewal of a component (Pkt. 4.5),
+    which without a Sanierungskonzept is the table value less 24 %. Unknown:
+    the card cannot judge, because the bound depends on it.
     """
 
     name: Literal["u_value"]
@@ -1054,6 +1096,14 @@ class UValueFormula(CardModel):
             "Which component: 'external_wall', 'roof_or_ceiling_to_outside_air' (a ceiling or roof slope, "
             "slopes over 60° are walls), 'floor_over_outside_air' (a ceiling over a passage or parking deck)"
         )
+    )
+    measure: FormulaMeasure | None = Field(
+        default=None,
+        description=(
+            "'new_build' (Pkt. 4.4.1) or 'renovation' (single measures or a renewed component, Pkt. 4.5). "
+            "Read it from the project context (existing_or_new); null when it is not known, and the card "
+            "then says it cannot judge"
+        ),
     )
     layers: list[UValueLayer] = Field(min_length=1, max_length=8, description="The layers, inside to outside")
 
@@ -1165,7 +1215,7 @@ class FormulaCard(CardModel):
     @field_validator("note")
     @classmethod
     def _note_states_no_figure(cls, value: str | None) -> str | None:
-        return _no_figure(value, "note")
+        return _no_figure(value, "note", name=False)
 
 
 _FORMULA_SLOTS: dict[str, tuple[str, ...]] = {
@@ -1191,19 +1241,31 @@ def formula_inputs(card: dict[str, Any]) -> list[dict[str, Any]]:
 _STATED_RESULT_KEYS = frozenset({"result", "results", "limits"})
 
 
+_COMPUTING_CARDS = ("calculation", "formula")
+
+
+def _stated(node: Any) -> int:
+    if isinstance(node, dict):
+        return sum((key in _STATED_RESULT_KEYS) + _stated(value) for key, value in node.items())
+    if isinstance(node, list):
+        return sum(_stated(item) for item in node)
+    return 0
+
+
 def stated_result_fields(payload: Any) -> int:
-    """How many fields of a raw ``calculation`` or ``formula`` payload state what the card computes. Pure."""
-    if not isinstance(payload, dict) or payload.get("type") not in ("calculation", "formula"):
-        return 0
+    """How many fields of a raw computing card state what the card computes. Pure.
 
-    def walk(node: Any) -> int:
-        if isinstance(node, dict):
-            return sum((key in _STATED_RESULT_KEYS) + walk(value) for key, value in node.items())
-        if isinstance(node, list):
-            return sum(walk(item) for item in node)
+    A ``calculation`` or ``formula`` payload, or a ``surface`` whose leaves
+    include them (a leaf names its type as ``component``).
+    """
+    if not isinstance(payload, dict):
         return 0
-
-    return walk(payload)
+    if payload.get("type") in _COMPUTING_CARDS:
+        return _stated(payload)
+    if payload.get("type") == "surface":
+        leaves = [leaf for leaf in payload.get("components") or [] if isinstance(leaf, dict)]
+        return sum(_stated(leaf) for leaf in leaves if leaf.get("component") in _COMPUTING_CARDS)
+    return 0
 
 
 # ── Document-surfacing card (system-emitted) ─────────────────────────────────

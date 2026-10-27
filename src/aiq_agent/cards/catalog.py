@@ -381,7 +381,7 @@ _CARD_TRIGGERS: tuple[tuple[str, str, str], ...] = (
         "a U-value from its layers, the Schrittmaßregel, an escape route's Gehweglänge, or a "
         "Lichteintrittsfläche against the Bodenfläche",
         "formula",
-        "Name the rule and its case (`stair_type`, `component`, `start`) and fill each input from a "
+        "Name the rule and its case (`stair_type`, `component` and `measure`, `start`) and fill each input from a "
         "source, with `source` saying where it is written; an input you do not have stays null. The card "
         "owns the bounds: it reads them from the Richtlinie's table for that case, so you write no limit "
         "and no figure in the title, a label or the note. It computes, judges and lets the reader change "
@@ -592,13 +592,15 @@ CARD_EXAMPLES: dict[str, dict] = {
 # renderer cannot: the case (`component`), each input's `source`, and a
 # reader-adjustable range on the layer the question is about. It has no result
 # and no limit: 0,167 W/(m²K) is the card's, and so is the 0,35 of OIB-RL 6
-# Pkt. 4.4.1 row 1, which the card reads from its own table.
+# Pkt. 4.4.1 row 1, which the card reads from its own table for a new build
+# (0,266 under Pkt. 4.5 b) for a renovation).
 CARD_EXAMPLES["formula"] = {
     "type": "formula",
     "title": "U-Wert Außenwand AW 01",
     "formula": {
         "name": "u_value",
         "component": "external_wall",
+        "measure": "new_build",
         "layers": [
             {
                 "label": "Stahlbeton",

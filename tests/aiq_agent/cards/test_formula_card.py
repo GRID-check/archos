@@ -82,7 +82,7 @@ class TestTheModelNamesACaseNeverANumber:
         "title", ["U-Wert Außenwand – 20 cm Dämmung", "Fluchtweg 36,5 m", "Belichtung 12 %", "U = 0,17"]
     )
     def test_a_title_with_a_figure_is_refused(self, title):
-        with pytest.raises(ValidationError, match="never a value"):
+        with pytest.raises(ValidationError, match="carries"):
             grid_card_adapter.validate_python(_stair(title=title))
 
     @pytest.mark.parametrize("title", ["U-Wert Außenwand AW 01", "Fluchtweg Büro 2.14", "Stiege 2. OG", "Haus A"])
@@ -92,7 +92,7 @@ class TestTheModelNamesACaseNeverANumber:
     def test_a_layer_label_or_a_leg_label_with_a_figure_is_refused(self):
         wall = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
         wall["formula"]["layers"][1]["label"] = "EPS-F 20 cm"
-        with pytest.raises(ValidationError, match="never a value"):
+        with pytest.raises(ValidationError, match="carries"):
             grid_card_adapter.validate_python(wall)
         route = {
             "type": "formula",
@@ -103,11 +103,11 @@ class TestTheModelNamesACaseNeverANumber:
                 "segments": [{"label": "Gang 18 m", "length": {"value": 18}}],
             },
         }
-        with pytest.raises(ValidationError, match="never a value"):
+        with pytest.raises(ValidationError, match="carries"):
             grid_card_adapter.validate_python(route)
 
     def test_a_note_that_states_a_result_is_refused(self):
-        with pytest.raises(ValidationError, match="never a value"):
+        with pytest.raises(ValidationError, match="carries"):
             grid_card_adapter.validate_python(_stair(note="Das Schrittmaß = 63 und damit erfüllt."))
         grid_card_adapter.validate_python(_stair(note="Gilt für jede Stufe des Laufs."))
 
@@ -233,3 +233,77 @@ class TestProvenanceScore:
 
     def test_no_score_for_another_card(self):
         assert formula_provenance_score({"type": "calculation"}, index=1) is None
+
+
+class TestTheFigureGuardHoldsWhereItLeaked:
+    """The five texts the review found passing, and the ones that must keep passing."""
+
+    @pytest.mark.parametrize(
+        "title", ["U-Wert 0.17 W/m²K", "U ≤ 0,35", "U-Wert 0,17 erfüllt", "Schrittmaß 63", "Stiege mit 18 Stufen"]
+    )
+    def test_a_title_with_any_number_but_an_identifier_is_refused(self, title):
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(_stair(title=title))
+
+    @pytest.mark.parametrize(
+        "title", ["Stiege Top 7", "Fluchtweg Büro 2.14", "Stiege 2. OG", "U-Wert Außenwand AW 01", "Gst.-Nr. 123/4"]
+    )
+    def test_an_identifier_still_passes(self, title):
+        grid_card_adapter.validate_python(_stair(title=title))
+
+    @pytest.mark.parametrize(
+        "note", ["nicht erfüllt", "Die Stufenhöhe ist zulässig.", "Auftritt ≥ 27 erreicht.", "max. 18 laut Plan"]
+    )
+    def test_a_note_with_a_verdict_or_a_comparison_is_refused(self, note):
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(_stair(note=note))
+
+    def test_a_note_may_cite_a_clause(self):
+        grid_card_adapter.validate_python(_stair(note="Gilt sinngemäß auch für Außentreppen, Pkt. 3.2.7."))
+
+    @pytest.mark.parametrize("source", ["Schnitt A-A, 17 cm", "Plan: erfüllt", "laut Statik ≥ 20"])
+    def test_a_source_says_where_never_what(self, source):
+        card = _stair()
+        card["formula"]["riser"]["source"] = source
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(card)
+
+    @pytest.mark.parametrize("source", ["Einreichplan, Schnitt A-A", "Grundriss 2. OG", "Plan 04-123, Index B"])
+    def test_a_source_may_name_a_plan_and_its_number(self, source):
+        card = _stair()
+        card["formula"]["riser"]["source"] = source
+        grid_card_adapter.validate_python(card)
+
+
+class TestTheMeasureOfAUValue:
+    def test_new_build_renovation_or_unknown(self):
+        card = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
+        for measure in ("new_build", "renovation"):
+            card["formula"]["measure"] = measure
+            assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] == measure
+        del card["formula"]["measure"]
+        assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] is None
+        card["formula"]["measure"] = "major_renovation"
+        with pytest.raises(ValidationError):
+            grid_card_adapter.validate_python(card)
+
+    def test_the_fixture_has_a_case_for_each(self):
+        measures = {
+            case["card"]["formula"].get("measure")
+            for case in FIXTURE["cases"]
+            if "card" in case and case["card"]["formula"]["name"] == "u_value"
+        }
+        assert measures == {"new_build", "renovation", None}
+
+
+class TestAStatedResultInsideASurface:
+    def test_counts_a_formula_leaf_s_stated_fields(self):
+        surface = {
+            "type": "surface",
+            "components": [
+                {"id": "root", "component": "Tabs", "tabs": [{"title": "A", "child": "a"}]},
+                {"id": "a", "component": "formula", "title": "Stiege", "result": 63, "limits": [{"value": 18}]},
+                {"id": "b", "component": "stair_diagram", "result": 1},
+            ],
+        }
+        assert stated_result_fields(surface) == 2

@@ -167,6 +167,10 @@ export const answerExport: typeof en.answerExport = {
       roof_or_ceiling_to_outside_air: 'Decke oder Dachschräge gegen Außenluft',
       floor_over_outside_air: 'Decke über Außenluft',
     },
+    measure: {
+      new_build: 'Neubau',
+      renovation: 'Renovierung',
+    },
     stair_type: {
       main: 'Haupttreppe',
       dwelling: 'Wohnungstreppe',
@@ -289,6 +293,7 @@ export const answerExport: typeof en.answerExport = {
     formula: 'Rechenregel',
     name: 'Name',
     component: 'Bauteil',
+    measure: 'Neubau oder Renovierung',
     stair_type: 'Treppenart',
     start: 'Gemessen ab',
     layers: 'Schichten',

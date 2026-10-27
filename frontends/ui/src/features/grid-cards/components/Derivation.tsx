@@ -35,6 +35,12 @@ const operatorFor = (operation: CalculationStepData['operation'], operand: Calcu
   return '×'
 }
 
+/** The constant a percentage step applies after its operands. */
+const PERCENT_FACTOR: Partial<Record<CalculationStepData['operation'], string>> = {
+  percent_ratio: '× 100',
+  percent_of: '÷ 100',
+}
+
 const printResult = (value: number, display: StepDisplay | undefined): string =>
   formatResult(value, display?.decimals ?? 2, display?.fixed ?? false)
 
@@ -123,6 +129,14 @@ const StepRow: FC<{
           </span>
         ))}
 
+        {/* A percentage is a ratio times 100, and a share of a base is a
+            product over 100: the constant is part of the rule, so the line
+            shows it, or the arithmetic above the result does not add up. */}
+        {PERCENT_FACTOR[step.operation] && (
+          <span aria-hidden="true" className="pt-0.5 font-mono text-[13.5px] text-muted-foreground">
+            {PERCENT_FACTOR[step.operation]}
+          </span>
+        )}
         <span aria-hidden="true" className="pt-0.5 font-mono text-[13.5px] text-muted-foreground">
           =
         </span>

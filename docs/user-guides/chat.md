@@ -317,7 +317,8 @@ against the Bodenfläche (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). The card is headed
   product data sheet, a norm.
 - **The limit is the Richtlinie's, for your case.** A Wohnungstreppe is held to
   its own row of Tabelle 3, a ceiling over a passage to its own row of the
-  U-value table, a balcony or a deep room raises the required
+  U-value table (a renovation 24 % under it, Pkt. 4.5 b), a balcony or a deep
+  room raises the required
   Lichteintrittsfläche. Each limit names its Punkt and row, and it cannot be
   changed.
 - **Change an input and the card is recomputed**: the Rechenweg, the result and

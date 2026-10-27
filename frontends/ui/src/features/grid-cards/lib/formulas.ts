@@ -32,6 +32,7 @@ export type FormulaInputData = Rule<'stair_step_rule'>['riser']
 export type StairType = Rule<'stair_step_rule'>['stair_type']
 export type Component = Rule<'u_value'>['component']
 export type RouteStart = Rule<'escape_route_length'>['start']
+export type Measure = NonNullable<Rule<'u_value'>['measure']>
 type HeatFlow = 'horizontal' | 'upward' | 'downward'
 
 /** The value of every input, by slot key; null is "not known", or not a number the reader typed. */
@@ -99,6 +100,22 @@ export const U_MAX_NEW_BUILD: Record<Component, { value: number; row: number; he
   external_wall: { value: 0.35, row: 1, heatFlow: 'horizontal' },
   roof_or_ceiling_to_outside_air: { value: 0.2, row: 18, heatFlow: 'upward' },
   floor_over_outside_air: { value: 0.2, row: 22, heatFlow: 'downward' },
+}
+
+/**
+ * OIB-RL 6 Pkt. 4.5 b): at a renovation by single measures or the renewal of a
+ * component, without a Sanierungskonzept, the Pkt. 4.4 values „um mindestens
+ * 24 % unterschritten“, so the bound is 0,76 × the table's. With a concept
+ * (4.5 a) the concept sets the value, and the card says so rather than judge.
+ */
+export const RENOVATION_FACTOR = 0.76
+
+/** The U-value bound for a component and a measure; null when the measure is not known. */
+export const uValueBound = (component: Component, measure: Measure | null | undefined): number | null => {
+  const row = U_MAX_NEW_BUILD[component]
+  if (measure == null) return null
+  // Rounded to the six decimals the table and the factor have, so 0,76 × 0,35 is 0,266 and not 0,26599….
+  return measure === 'renovation' ? Number((row.value * RENOVATION_FACTOR).toFixed(6)) : row.value
 }
 
 /**
@@ -283,13 +300,19 @@ export interface CheckSpec {
   reference: NormReferenceData
   /** The inputs the verdict depends on, for the reader's-assumption marker and for "which value is missing". */
   dependsOn: string[]
+  /** The bound depends on a case the card was not told (a U-value's `measure`): no verdict, and it says why. */
+  unknownCase?: 'measure'
 }
 
 export type CaveatKey =
   | 'uValueNewBuild'
+  | 'uValueRenovation'
+  | 'uValueMeasureUnknown'
   | 'uValueScope'
   | 'routeFromRoom'
   | 'routeFromDwelling'
+  | 'routeOnlyGuideline2'
+  | 'daylightRoomsOnly'
   | 'daylightAngle'
   | 'daylightOtherLaw'
 
@@ -384,7 +407,7 @@ function compileRoute(
         dependsOn: keys,
       },
     ],
-    caveats: [{ key: fromDwelling ? 'routeFromDwelling' : 'routeFromRoom' }],
+    caveats: [{ key: fromDwelling ? 'routeFromDwelling' : 'routeFromRoom' }, { key: 'routeOnlyGuideline2' }],
     tint: 'routeMax',
   }
 }
@@ -464,7 +487,11 @@ function compileDaylight(formula: Rule<'daylight_ratio'>, values: FormulaValues,
         dependsOn: ['opening_area', 'floor_area', 'room_depth', 'overhang_depth'],
       },
     ],
-    caveats: [{ key: 'daylightAngle' }, ...((terms.depthMetres ?? 0) > 0 ? [{ key: 'daylightOtherLaw' as const }] : [])],
+    caveats: [
+      { key: 'daylightRoomsOnly' },
+      { key: 'daylightAngle' },
+      ...((terms.depthMetres ?? 0) > 0 ? [{ key: 'daylightOtherLaw' as const }] : []),
+    ],
     tint: 'daylightMin',
     zeroInput: 'floorArea',
   }
@@ -516,6 +543,12 @@ function compileUValue(formula: Rule<'u_value'>, values: FormulaValues, words: F
     ],
   }
   const keys = formula.layers.flatMap((_, index) => [`layers.${index}.thickness`, `layers.${index}.conductivity`])
+  const measure = formula.measure ?? null
+  const bound = uValueBound(formula.component, measure)
+  const section =
+    measure === 'renovation' ? `Pkt. 4.5 b) mit Pkt. 4.4.1, Zeile ${row.row}` : `Pkt. 4.4.1, Zeile ${row.row}`
+  const measureCaveat: CaveatKey =
+    measure === 'renovation' ? 'uValueRenovation' : measure === 'new_build' ? 'uValueNewBuild' : 'uValueMeasureUnknown'
   return {
     steps: [...layerSteps, total, transmittance],
     display: [...layerSteps.map(() => ({ decimals: 4, fixed: true })), { decimals: 4, fixed: true }, { decimals: 3 }],
@@ -524,12 +557,13 @@ function compileUValue(formula: Rule<'u_value'>, values: FormulaValues, words: F
         id: 'uMax',
         quantity: { kind: 'step', index: formula.layers.length + 1 },
         unit: U,
-        limit: { comparator: '<=', value: row.value },
-        reference: oib('6', `Pkt. 4.4.1, Zeile ${row.row}`),
+        limit: { comparator: '<=', value: bound ?? row.value },
+        reference: oib('6', section),
         dependsOn: keys,
+        ...(bound == null ? { unknownCase: 'measure' as const } : {}),
       },
     ],
-    caveats: [{ key: 'uValueNewBuild', params: { row: String(row.row) } }, { key: 'uValueScope' }],
+    caveats: [{ key: measureCaveat, params: { row: String(row.row) } }, { key: 'uValueScope' }],
     tint: 'uMax',
     zeroInput: 'conductivity',
   }
@@ -587,7 +621,13 @@ export function judgeFormula(compiled: CompiledFormula, values: FormulaValues): 
     const quantity =
       spec.quantity.kind === 'step' ? results[spec.quantity.index] : inputResult(at(values, spec.quantity.key), spec.unit)
     const derived = spec.boundStep == null ? undefined : results[spec.boundStep]
-    const limit = derived === undefined ? spec.limit : derived.value == null ? null : { ...spec.limit, value: derived.value }
+    const limit = spec.unknownCase
+      ? null
+      : derived === undefined
+        ? spec.limit
+        : derived.value == null
+          ? null
+          : { ...spec.limit, value: derived.value }
     if (limit == null) return { spec, quantity, limit, status: 'needs_input', decimals: 2 }
     return { spec, quantity, limit, status: verdictFor(quantity, limit) ?? 'needs_input', decimals: resultDecimals(quantity, limit) }
   })

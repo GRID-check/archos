@@ -206,6 +206,36 @@ describe('FormulaCard', () => {
     expect(screen.getByText('vorgegeben')).toBeInTheDocument()
   })
 
+  it('holds a renovation to Pkt. 4.5 b), 24 % under the table, and lets the reader find the insulation that meets it', async () => {
+    const user = userEvent.setup()
+    mount(fixtureCard('u-value-renovation'))
+    expect(screen.getByText('Außenwand gegen Außenluft · Renovierung')).toBeInTheDocument()
+    expect(checks().getByText('≤ 0,266 W/(m²K)')).toBeInTheDocument()
+    expect(checks().getByText(/Pkt\. 4\.5 b\) mit Pkt\. 4\.4\.1, Zeile 1/)).toBeInTheDocument()
+    expect(checks().getByText('nicht erfüllt')).toBeInTheDocument()
+    expect(screen.getByText(/ohne Sanierungskonzept \(Pkt\. 4\.5 b\)/)).toBeInTheDocument()
+    await enter(user, screen.getByRole('spinbutton', { name: 'EPS-F, Dicke d' }), '14')
+    expect(checks().getByText('erfüllt')).toBeInTheDocument()
+  })
+
+  it('cannot judge a U-value when neither new build nor renovation is stated, and says why', () => {
+    mount(fixtureCard('u-value-measure-unknown'))
+    expect(checks().getByText('Neubau oder Renovierung ist nicht angegeben: Ohne das kann die Karte nicht beurteilen.')).toBeInTheDocument()
+    expect(checks().getByText('Angabe fehlt')).toBeInTheDocument()
+  })
+
+  it('writes a percentage line with its × 100, and the daylight card’s scope and light angle', () => {
+    mount(fixtureCard('daylight-above-12-percent'))
+    expect(within(screen.getByRole('region', { name: 'Rechenweg' })).getByText('× 100')).toBeInTheDocument()
+    expect(screen.getByText(/Gilt für Aufenthaltsräume \(Pkt\. 9\.1\.1\)/)).toBeInTheDocument()
+    expect(screen.getByText(/seitlich höchstens 30° verschwenkt/)).toBeInTheDocument()
+  })
+
+  it('says on an escape route that only OIB-RL 2 is modelled', () => {
+    mount(fixtureCard('route-within-40-m'))
+    expect(screen.getByText(/Abgebildet ist nur OIB-Richtlinie 2\./)).toBeInTheDocument()
+  })
+
   it('tells a screen reader each verdict with its quantity and bound once it is recomputed', async () => {
     const user = userEvent.setup()
     const { container } = mount(stair())

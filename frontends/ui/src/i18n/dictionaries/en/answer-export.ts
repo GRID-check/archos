@@ -265,6 +265,11 @@ export const answerExport = {
       floor_over_outside_air: 'ceiling over outside air',
     },
     /** `formula.formula.stair_type` — the row of OIB-RL 4 Tabelle 3. */
+    /** `formula.formula.measure` — new build (OIB-RL 6 Pkt. 4.4.1) or renovation (Pkt. 4.5). */
+    measure: {
+      new_build: 'new build',
+      renovation: 'renovation',
+    },
     stair_type: {
       main: 'main stair',
       dwelling: 'stair within a dwelling',
@@ -425,6 +430,7 @@ export const answerExport = {
     formula: 'Rule',
     name: 'Name',
     component: 'Component',
+    measure: 'New build or renovation',
     stair_type: 'Stair type',
     start: 'Measured from',
     layers: 'Layers',

@@ -545,6 +545,7 @@ export const chat: typeof en.chat = {
       resetLabel: 'Alle Werte auf die Angaben der Quelle zurücksetzen',
       withAssumptions: 'Gerechnet mit Ihren Annahmen, nicht mit den Werten der Quelle.',
       cannotJudge: 'Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.',
+      measureUnknown: 'Neubau oder Renovierung ist nicht angegeben: Ohne das kann die Karte nicht beurteilen.',
       inputRejected: 'Ein eingegebener Wert ist nicht zulässig: Mit ihm kann die Karte nicht beurteilen.',
       undefinedResult: 'Durch null geteilt: Das Ergebnis ist nicht definiert.',
       zeroNotPossible: '{quantity} = 0 ist nicht möglich.',
@@ -558,6 +559,10 @@ export const chat: typeof en.chat = {
         external_wall: 'Außenwand gegen Außenluft',
         roof_or_ceiling_to_outside_air: 'Decke oder Dachschräge gegen Außenluft',
         floor_over_outside_air: 'Decke über Außenluft',
+      },
+      measure: {
+        new_build: 'Neubau',
+        renovation: 'Renovierung',
       },
       stairType: {
         main: 'Haupttreppe',
@@ -621,15 +626,23 @@ export const chat: typeof en.chat = {
       caveat: {
         uValueNewBuild:
           'Höchstwert für den Neubau (OIB-Richtlinie 6, Pkt. 4.4.1, Zeile {row}). Bei der Renovierung mittels Einzelmaßnahmen gilt Pkt. 4.5.',
+        uValueRenovation:
+          'Renovierung mittels Einzelmaßnahmen ohne Sanierungskonzept (Pkt. 4.5 b): der Höchstwert der Zeile {row} um mindestens 24 % unterschritten. Mit einem Sanierungskonzept nach Pkt. 4.5 a) bestimmt dieses den Wert; eine größere Renovierung fällt nicht unter Pkt. 4.5.',
+        uValueMeasureUnknown:
+          'Ob Neubau (Pkt. 4.4.1) oder Renovierung (Pkt. 4.5), ist nicht angegeben; davon hängt der Höchstwert ab.',
         uValueScope:
           'Homogene Schichten nach ÖNORM EN ISO 6946; Luftschichten, inhomogene Schichten und Korrekturen sind nicht berücksichtigt.',
         routeFromRoom: 'Gemessen von der entferntesten Stelle des Raumes (Pkt. 5.1.1).',
         routeFromDwelling:
           'Gemessen ab der Wohnungseingangstüre (Pkt. 5.1.2): für eine Wohnung über höchstens zwei Geschoße, deren Fluchtweg zu einem Treppenhaus oder einer Außentreppe führt.',
+        routeOnlyGuideline2:
+          'Abgebildet ist nur OIB-Richtlinie 2. Für Betriebsbauten (2.1), Garagen und Parkdecks (2.2) und Gebäude mit einem Fluchtniveau über 22 m (2.3) gelten deren eigene Bestimmungen.',
+        daylightRoomsOnly:
+          'Gilt für Aufenthaltsräume (Pkt. 9.1.1), nicht für Räume, deren Nutzung eine geringere oder keine natürliche Belichtung erfordert (Pkt. 9.1.6).',
         daylightAngle:
-          'Vorausgesetzt ist ein freier Lichteinfall unter 45° zur Horizontalen (Pkt. 9.1.2); die Karte prüft ihn nicht.',
+          'Vorausgesetzt ist ein freier Lichteinfall unter 45° zur Horizontalen, seitlich höchstens 30° verschwenkt (Pkt. 9.1.2); die Karte prüft ihn nicht.',
         daylightOtherLaw:
-          'Für die Raumtiefe gelten abweichende Bestimmungen anderer Rechtsmaterien vor, etwa der Arbeitsstättenverordnung (Pkt. 9.1.4).',
+          'Sofern andere Rechtsmaterien (z. B. die Arbeitsstättenverordnung) nichts Abweichendes bestimmen.',
       },
     },
     // Ein Dokument, das Piloti in den Arbeitsordner dieser Unterhaltung

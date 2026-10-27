@@ -57,8 +57,6 @@ import {
   inputSlots,
   judgeFormula,
   sourceValues,
-  type CaveatKey,
-  type CheckId,
   type CompiledFormula,
   type FormulaCardData,
   type FormulaWords,
@@ -66,171 +64,55 @@ import {
   type InputSlot,
   type JudgedFormula,
   type LimitCheck,
-  type LineKey,
   type TermKey,
 } from '../lib/formulas'
+import {
+  CAVEAT_KEYS,
+  CHECK_KEYS,
+  COMPONENT_KEYS,
+  INPUT_KEYS,
+  LINE_KEYS,
+  MEASURE_KEYS,
+  STAIR_TYPE_KEYS,
+  TERM_KEYS,
+  TERM_METRES_KEYS,
+  ZERO_QUANTITY_KEYS,
+} from '../lib/formula-copy'
 import { DerivationSteps } from './Derivation'
 
 type FormulaCardProps = Pick<FormulaCardData, 'title' | 'formula' | 'note'>
 
 const withUnit = (value: string, unit: string): string => (unit ? `${value} ${unit}` : value)
 
-/* ── the words, spelled out so key-coverage.spec.ts can see every key ─────── */
+/* ── the words: typed key maps in ../lib/formula-copy, resolved by its spec ── */
 
-const inputLabel = (key: InputLabel, t: Translator): string => {
-  switch (key) {
-    case 'riser':
-      return t('cards.formula.input.riser')
-    case 'going':
-      return t('cards.formula.input.going')
-    case 'thickness':
-      return t('cards.formula.input.thickness')
-    case 'conductivity':
-      return t('cards.formula.input.conductivity')
-    case 'length':
-      return t('cards.formula.input.length')
-    case 'openingArea':
-      return t('cards.formula.input.openingArea')
-    case 'floorArea':
-      return t('cards.formula.input.floorArea')
-    case 'roomDepth':
-      return t('cards.formula.input.roomDepth')
-    case 'overhangDepth':
-      return t('cards.formula.input.overhangDepth')
-  }
-}
+const inputLabel = (key: InputLabel, t: Translator): string => t(INPUT_KEYS[key])
 
 const zeroQuantity = (key: InputLabel, t: Translator): string =>
-  key === 'floorArea' ? t('cards.formula.zeroQuantity.floorArea') : t('cards.formula.zeroQuantity.conductivity')
+  t(key === 'floorArea' ? ZERO_QUANTITY_KEYS.floorArea : ZERO_QUANTITY_KEYS.conductivity)
 
 const termText = (key: TermKey, params: { group?: string | null; metres?: number } | undefined, t: Translator): string => {
-  const layer = params?.group ?? ''
-  const metres = params?.metres == null ? null : String(params.metres)
-  switch (key) {
-    case 'riser':
-      return t('cards.formula.term.riser')
-    case 'going':
-      return t('cards.formula.term.going')
-    case 'thickness':
-      return t('cards.formula.term.thickness', { layer })
-    case 'conductivity':
-      return t('cards.formula.term.conductivity', { layer })
-    case 'length':
-      return t('cards.formula.term.length', { layer })
-    case 'openingArea':
-      return t('cards.formula.term.openingArea')
-    case 'floorArea':
-      return t('cards.formula.term.floorArea')
-    case 'roomDepth':
-      return t('cards.formula.term.roomDepth')
-    case 'overhangDepth':
-      return t('cards.formula.term.overhangDepth')
-    case 'surfaceInside':
-      return t('cards.formula.term.surfaceInside')
-    case 'surfaceOutside':
-      return t('cards.formula.term.surfaceOutside')
-    case 'layerResistance':
-      return t('cards.formula.term.layerResistance', { layer })
-    case 'totalResistance':
-      return t('cards.formula.term.totalResistance')
-    case 'baseShare':
-      return t('cards.formula.term.baseShare')
-    case 'raisedShare':
-      return t('cards.formula.term.raisedShare')
-    case 'overhangIncrement':
-      return metres == null
-        ? t('cards.formula.term.overhangIncrement')
-        : t('cards.formula.term.overhangIncrementMetres', { metres })
-    case 'depthIncrement':
-      return metres == null
-        ? t('cards.formula.term.depthIncrement')
-        : t('cards.formula.term.depthIncrementMetres', { metres })
-  }
+  const values = { layer: params?.group ?? '', metres: params?.metres == null ? '' : String(params.metres) }
+  const withMetres = params?.metres != null && key in TERM_METRES_KEYS
+  return t(withMetres ? TERM_METRES_KEYS[key as keyof typeof TERM_METRES_KEYS] : TERM_KEYS[key], values)
 }
 
-const lineText = (key: LineKey, group: string | null | undefined, t: Translator): string => {
-  switch (key) {
-    case 'layerResistance':
-      return t('cards.formula.line.layerResistance', { layer: group ?? '' })
-    case 'totalResistance':
-      return t('cards.formula.line.totalResistance')
-    case 'uValue':
-      return t('cards.formula.line.uValue')
-    case 'stepMeasure':
-      return t('cards.formula.line.stepMeasure')
-    case 'routeLength':
-      return t('cards.formula.line.routeLength')
-    case 'daylightShare':
-      return t('cards.formula.line.daylightShare')
-    case 'requiredShare':
-      return t('cards.formula.line.requiredShare')
-  }
-}
-
-const checkLabel = (id: CheckId, t: Translator): string => {
-  switch (id) {
-    case 'stepRule':
-      return t('cards.formula.check.stepRule')
-    case 'riserMax':
-      return t('cards.formula.check.riserMax')
-    case 'goingMin':
-      return t('cards.formula.check.goingMin')
-    case 'uMax':
-      return t('cards.formula.check.uMax')
-    case 'routeMax':
-      return t('cards.formula.check.routeMax')
-    case 'daylightMin':
-      return t('cards.formula.check.daylightMin')
-  }
-}
-
-const caveatText = (key: CaveatKey, params: Record<string, string> | undefined, t: Translator): string => {
-  switch (key) {
-    case 'uValueNewBuild':
-      return t('cards.formula.caveat.uValueNewBuild', { row: params?.row ?? '' })
-    case 'uValueScope':
-      return t('cards.formula.caveat.uValueScope')
-    case 'routeFromRoom':
-      return t('cards.formula.caveat.routeFromRoom')
-    case 'routeFromDwelling':
-      return t('cards.formula.caveat.routeFromDwelling')
-    case 'daylightAngle':
-      return t('cards.formula.caveat.daylightAngle')
-    case 'daylightOtherLaw':
-      return t('cards.formula.caveat.daylightOtherLaw')
-  }
-}
-
-/** The case the model named, said in words above the inputs. */
+/** The case the model named, said in words above the inputs: „Außenwand gegen Außenluft · Neubau". */
 const caseText = (formula: FormulaCardData['formula'], t: Translator): string | null => {
   switch (formula.name) {
     case 'u_value':
-      switch (formula.component) {
-        case 'external_wall':
-          return t('cards.formula.component.external_wall')
-        case 'roof_or_ceiling_to_outside_air':
-          return t('cards.formula.component.roof_or_ceiling_to_outside_air')
-        case 'floor_over_outside_air':
-          return t('cards.formula.component.floor_over_outside_air')
-      }
-      return null
+      return [t(COMPONENT_KEYS[formula.component]), formula.measure ? t(MEASURE_KEYS[formula.measure]) : null]
+        .filter(Boolean)
+        .join(' · ')
     case 'stair_step_rule':
-      switch (formula.stair_type) {
-        case 'main':
-          return t('cards.formula.stairType.main')
-        case 'dwelling':
-          return t('cards.formula.stairType.dwelling')
-        case 'secondary':
-          return t('cards.formula.stairType.secondary')
-      }
-      return null
+      return t(STAIR_TYPE_KEYS[formula.stair_type])
     default:
       return null
   }
 }
 
 const wordsFor = (t: Translator): FormulaWords => ({
-  line: (key, group) => lineText(key, group, t),
+  line: (key, group) => t(LINE_KEYS[key], { layer: group ?? '' }),
   term: (key, params) => termText(key, params, t),
 })
 
@@ -462,6 +344,7 @@ const undecidedText = (
   t: Translator
 ): string => {
   if (check.spec.dependsOn.some((key) => issues[key])) return t('cards.formula.inputRejected')
+  if (check.spec.unknownCase === 'measure') return t('cards.formula.measureUnknown')
   if (check.quantity.undecidable === 'undefined') {
     return compiled.zeroInput
       ? t('cards.formula.zeroNotPossible', { quantity: zeroQuantity(compiled.zeroInput, t) })
@@ -483,7 +366,7 @@ const CheckRow: FC<{
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <StatusBadge status={check.status} />
-        <span className="card-body text-foreground">{checkLabel(check.spec.id, t)}</span>
+        <span className="card-body text-foreground">{t(CHECK_KEYS[check.spec.id])}</span>
         <span className="card-body font-mono tabular-nums text-foreground">{quantityText(check, judged, t)}</span>
         <span className="card-body font-mono text-muted-foreground">{boundText(check, t)}</span>
         {assumed && <AssumptionChip label={t('cards.formula.yourAssumption')} />}
@@ -542,7 +425,7 @@ export const FormulaCard: FC<FormulaCardProps> = ({ title, formula, note }) => {
   const spoken = judged.checks
     .map((check) =>
       t('cards.formula.checkSpoken', {
-        name: checkLabel(check.spec.id, t),
+        name: t(CHECK_KEYS[check.spec.id]),
         value: quantityText(check, judged, t),
         bound: boundText(check, t),
         verdict: statusLabel(check.status, t),
@@ -624,7 +507,7 @@ export const FormulaCard: FC<FormulaCardProps> = ({ title, formula, note }) => {
           <ul className="flex flex-col gap-1">
             {compiled.caveats.map((caveat) => (
               <li key={caveat.key} className="card-caption max-w-prose text-muted-foreground">
-                {caveatText(caveat.key, caveat.params, t)}
+                {t(CAVEAT_KEYS[caveat.key], caveat.params ?? {})}
               </li>
             ))}
           </ul>

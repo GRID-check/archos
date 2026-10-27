@@ -547,6 +547,7 @@ export const chat = {
       resetLabel: 'Reset every value to the source',
       withAssumptions: "Computed with your assumptions, not the source's values.",
       cannotJudge: 'A value is missing: without it the card cannot judge.',
+      measureUnknown: 'New build or renovation is not stated: without it the card cannot judge.',
       inputRejected: 'A value you entered is not admissible: with it the card cannot judge.',
       undefinedResult: 'Divided by zero: the result is not defined.',
       zeroNotPossible: '{quantity} = 0 is not possible.',
@@ -560,6 +561,10 @@ export const chat = {
         external_wall: 'External wall against outside air',
         roof_or_ceiling_to_outside_air: 'Ceiling or roof slope against outside air',
         floor_over_outside_air: 'Ceiling over outside air',
+      },
+      measure: {
+        new_build: 'New build',
+        renovation: 'Renovation',
       },
       stairType: {
         main: 'Main stair',
@@ -623,15 +628,22 @@ export const chat = {
       caveat: {
         uValueNewBuild:
           'Highest value for a new build (OIB-Richtlinie 6, Pkt. 4.4.1, row {row}). A renovation by single measures follows Pkt. 4.5.',
+        uValueRenovation:
+          'Renovation by single measures without a renovation concept (Pkt. 4.5 b): the highest value of row {row} undercut by at least 24 %. With a concept under Pkt. 4.5 a) the concept sets the value; a major renovation is not covered by Pkt. 4.5.',
+        uValueMeasureUnknown:
+          'Whether this is a new build (Pkt. 4.4.1) or a renovation (Pkt. 4.5) is not stated; the highest value depends on it.',
         uValueScope:
           'Homogeneous layers per ÖNORM EN ISO 6946; air layers, inhomogeneous layers and corrections are not included.',
         routeFromRoom: 'Measured from the most remote point of the room (Pkt. 5.1.1).',
         routeFromDwelling:
           'Measured from the dwelling’s entrance door (Pkt. 5.1.2): for a dwelling over at most two storeys whose route leads to a stair enclosure or an external stair.',
+        routeOnlyGuideline2:
+          'Only OIB-Richtlinie 2 is modelled. Industrial buildings (2.1), garages and parking decks (2.2) and buildings with an escape level above 22 m (2.3) follow their own provisions.',
+        daylightRoomsOnly:
+          'Applies to habitable rooms (Pkt. 9.1.1), not to rooms whose use needs less or no natural light (Pkt. 9.1.6).',
         daylightAngle:
-          'A free light angle of 45° to the horizontal is assumed (Pkt. 9.1.2); the card does not check it.',
-        daylightOtherLaw:
-          'For the room depth, deviating provisions of other law take precedence, such as the workplace regulation (Pkt. 9.1.4).',
+          'A free light angle of 45° to the horizontal is assumed, turned sideways by at most 30° (Pkt. 9.1.2); the card does not check it.',
+        daylightOtherLaw: 'Unless other law (such as the workplace regulation) provides otherwise.',
       },
     },
     // A document Piloti wrote into this conversation's working directory. Not a

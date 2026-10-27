@@ -217,6 +217,7 @@
         "formula": {
           "name": "u_value",
           "component": "external_wall",
+          "measure": "new_build",
           "layers": [
             { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Wandaufbau AW 01" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
             { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Wandaufbau AW 01" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
@@ -244,6 +245,7 @@
         "formula": {
           "name": "u_value",
           "component": "roof_or_ceiling_to_outside_air",
+          "measure": "new_build",
           "layers": [
             { "label": "Stahlbeton", "thickness": { "value": 20 }, "conductivity": { "value": 2.3 } },
             { "label": "Mineralwolle", "thickness": { "value": 30 }, "conductivity": { "value": 0.04 } }
@@ -261,6 +263,7 @@
         "formula": {
           "name": "u_value",
           "component": "floor_over_outside_air",
+          "measure": "new_build",
           "layers": [
             { "label": "Stahlbeton", "thickness": { "value": 25 }, "conductivity": { "value": 2.3 } },
             { "label": "Mineralwolle", "thickness": { "value": 12 }, "conductivity": { "value": 0.04 } }
@@ -268,6 +271,53 @@
         }
       },
       "expect": { "quantities": { "u_value": 0.301323 }, "checks": { "uMax": "fail" } }
+    },
+    {
+      "id": "u-value-renovation",
+      "preview": true,
+      "work": "Renovierung ohne Sanierungskonzept (OIB-RL 6 Pkt. 4.5 b): 0,35 − 24 % = 0,76 × 0,35 = 0,266 W/(m²K). EPS 12 cm: R_T = 0,13 + 0,021429 + 0,078261 + 3,428571 + 0,007143 + 0,04 = 3,705404; U = 0,269876 > 0,266, although it would meet a new build's 0,35",
+      "card": {
+        "type": "formula",
+        "title": "U-Wert Außenwand Bestand AW 02",
+        "formula": {
+          "name": "u_value",
+          "component": "external_wall",
+          "measure": "renovation",
+          "layers": [
+            { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Bestandsplan" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
+            { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Bestandsplan" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
+            { "label": "EPS-F", "thickness": { "value": 12, "min": 0, "max": 40, "step": 1, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.035, "source": "Produktdatenblatt" } },
+            { "label": "Außenputz", "thickness": { "value": 0.5, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "u_value": 0.269876 }, "checks": { "uMax": "fail" } }
+    },
+    {
+      "id": "u-value-renovation-more-insulation",
+      "work": "EPS 14 cm: 0,14/0,035 = 4,0; R_T = 4,276832; U = 0,233818 ≤ 0,266",
+      "base": "u-value-renovation",
+      "overrides": { "layers.2.thickness": 14 },
+      "expect": { "quantities": { "u_value": 0.233818 }, "checks": { "uMax": "pass" } }
+    },
+    {
+      "id": "u-value-measure-unknown",
+      "work": "neither new build nor renovation is stated: U is computed (0,269876) but the bound depends on the measure, so the card cannot judge",
+      "card": {
+        "type": "formula",
+        "title": "U-Wert Außenwand AW 02",
+        "formula": {
+          "name": "u_value",
+          "component": "external_wall",
+          "layers": [
+            { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Bestandsplan" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
+            { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Bestandsplan" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
+            { "label": "EPS-F", "thickness": { "value": 12, "min": 0, "max": 40, "step": 1, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.035, "source": "Produktdatenblatt" } },
+            { "label": "Außenputz", "thickness": { "value": 0.5, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "u_value": 0.269876 }, "checks": { "uMax": "needs_input" } }
     },
     {
       "id": "u-value-zero-conductivity",
