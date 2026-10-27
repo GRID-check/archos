@@ -37,3 +37,17 @@ export const listProjects = async (options: { signal?: AbortSignal } = {}): Prom
   }
   return (await response.json()) as ProjectListItem[]
 }
+
+/** The part of one project the file sources need: the collection its documents are indexed in. */
+export interface ProjectCollection {
+  collectionName?: string
+}
+
+/** One project's collection, as `/api/projects/[id]` answers it. */
+export const getProjectCollection = async (projectId: string): Promise<ProjectCollection> => {
+  const response = await fetch(`${PROJECTS_PATH}/${encodeURIComponent(projectId)}`)
+  if (!response.ok) {
+    throw new ApiRequestError(`Failed to load project: ${response.status}`, response.status)
+  }
+  return (await response.json()) as ProjectCollection
+}
