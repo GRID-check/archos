@@ -292,3 +292,36 @@ class TestDeepAgentsRuntimeJobId:
             pytest.raises(ImportError, match="langchain-modal"),
         ):
             _ = DeepAgentsRuntime(sandbox=DeepResearchSandboxConfig()).backend
+
+
+class TestTheSkillsMountIsReadOnly:
+    """The mount's root is the worker's own `skills/builtin`; deepagents 0.7 added a recursive `delete`.
+
+    The permission rules deny writes on `/skills/**` in the tools; the backend
+    refuses on its own so a call that bypasses the tools cannot change the
+    skills every later run reads.
+    """
+
+    def _skills(self) -> Any:
+        runtime = DeepAgentsRuntime(skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)}))
+        return runtime.backend.routes[BUILTIN_SKILL_SOURCE]
+
+    def test_write_edit_and_delete_are_refused(self) -> None:
+        skills = self._skills()
+        target = "/synthesis/long-form-report-writer/SKILL.md"
+        before = skills.read(target).file_data["content"]
+
+        assert "read-only" in (skills.write("/new.md", "x").error or "")
+        assert "read-only" in (skills.edit(target, "a", "b").error or "")
+        assert "read-only" in (skills.delete("/synthesis").error or "")
+        assert skills.read(target).file_data["content"] == before
+
+    async def test_the_async_twins_are_refused_too(self) -> None:
+        skills = self._skills()
+        assert "read-only" in ((await skills.adelete("/synthesis")).error or "")
+        assert "read-only" in ((await skills.awrite("/new.md", "x")).error or "")
+
+    def test_grep_still_honours_the_match_cap(self) -> None:
+        result = self._skills().grep("the", path="/synthesis", max_count=1)
+        assert result.error is None
+        assert len(result.matches or []) == 1

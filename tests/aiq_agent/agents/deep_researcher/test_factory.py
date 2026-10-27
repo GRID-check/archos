@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from deepagents.backends import StateBackend
 from deepagents.middleware.filesystem import _apply_permissions_to_ls_results
 from deepagents.middleware.filesystem import _check_fs_permission
 from langchain.agents.middleware import AgentMiddleware
@@ -366,7 +367,7 @@ def test_researcher_runnable_uses_rendered_prompt_and_runtime_middleware():
     researcher_agent = MagicMock()
     researcher_model = MagicMock()
     shared_middleware = [MagicMock(name="shared_middleware")]
-    backend = MagicMock()
+    backend = StateBackend()
 
     with (
         patch(

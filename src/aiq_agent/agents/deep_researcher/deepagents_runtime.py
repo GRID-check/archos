@@ -19,6 +19,8 @@ from uuid import uuid4
 from deepagents.backends import CompositeBackend
 from deepagents.backends import FilesystemBackend
 from deepagents.backends import StateBackend
+from deepagents.backends.protocol import DeleteResult
+from deepagents.backends.protocol import EditResult
 from deepagents.backends.protocol import ExecuteResponse
 from deepagents.backends.protocol import FileDownloadResponse
 from deepagents.backends.protocol import FileUploadResponse
@@ -26,6 +28,7 @@ from deepagents.backends.protocol import GlobResult
 from deepagents.backends.protocol import GrepResult
 from deepagents.backends.protocol import LsResult
 from deepagents.backends.protocol import ReadResult
+from deepagents.backends.protocol import WriteResult
 from deepagents.backends.sandbox import BaseSandbox
 from pydantic import ConfigDict
 from pydantic import Field
@@ -198,6 +201,13 @@ class MachineryOnlyFilesystemBackend(FilesystemBackend):
     This backend is the other half of that gate: a path whose skill directory is
     an offer 404s, and listings omit those directories. Activated offers reach
     a run through the BFF payload, not through this mount.
+
+    The mount is read-only at the backend too, not only through the
+    ``FilesystemPermission`` deny on ``/skills/**``: in ``virtual_mode`` its
+    root is this checkout's ``skills/builtin`` directory on the worker's disk,
+    and deepagents 0.7 added a recursive ``delete``. A write, edit or delete
+    that reached this backend another way would change the skills every later
+    run reads.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -223,12 +233,40 @@ class MachineryOnlyFilesystemBackend(FilesystemBackend):
         kept = [entry for entry in result.matches if not _path_is_curated_offer(entry["path"], self._curated)]
         return replace(result, matches=kept)
 
-    def grep(self, pattern: str, path: str | None = None, glob: str | None = None) -> GrepResult:
-        result = super().grep(pattern, path=path, glob=glob)
+    def grep(
+        self,
+        pattern: str,
+        path: str | None = None,
+        glob: str | None = None,
+        *,
+        max_count: int | None = None,
+        context_lines: int = 0,
+    ) -> GrepResult:
+        # Uncapped below, capped here: a cap applied before the offers are
+        # filtered out counts matches the agent never sees, and a grep whose
+        # first hits are all in an offer comes back empty and "truncated".
+        result = super().grep(pattern, path=path, glob=glob, context_lines=context_lines)
         if result.matches is None:
             return result
         kept = [match for match in result.matches if not _path_is_curated_offer(match["path"], self._curated)]
+        if max_count is not None and len(kept) > max_count:
+            return replace(result, matches=kept[:max_count], truncated=True)
         return replace(result, matches=kept)
+
+    def write(self, file_path: str, content: str) -> WriteResult:  # noqa: ARG002 - the protocol's shape
+        return WriteResult(error=f"Cannot write to {file_path}: the skills mount is read-only.")
+
+    def edit(
+        self,
+        file_path: str,
+        old_string: str,  # noqa: ARG002 - the protocol's shape
+        new_string: str,  # noqa: ARG002
+        replace_all: bool = False,  # noqa: ARG002, FBT001, FBT002
+    ) -> EditResult:
+        return EditResult(error=f"Cannot edit {file_path}: the skills mount is read-only.")
+
+    def delete(self, file_path: str) -> DeleteResult:
+        return DeleteResult(error=f"Cannot delete {file_path}: the skills mount is read-only.")
 
     def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
         visible = [path for path in paths if not _path_is_curated_offer(path, self._curated)]

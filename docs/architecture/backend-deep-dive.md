@@ -2196,9 +2196,11 @@ loads house voice, offers and org skills through `use_skill`
   parser remains as a second line of defense for non-conformant completions
   in general. See the same README section.
 - **Deep-research planner ceremony overhead** — deepagents' `StateBackend`
-  is write-once (a second `write_file` to an existing path errors; recovery
-  is via `edit_file`); the planner prompt mandates `write_todos` before
-  decomposing. As of the 2026-07-16 prompt pass (`77a4d7a`) the todo-list
+  was write-once up to 0.6 (a second `write_file` to an existing path
+  errored; recovery was via `edit_file`; since 0.7.0 it overwrites, see the
+  deep researcher README); the planner prompt mandated `write_todos` before
+  decomposing (`write_todos` itself is no longer a deepagents default since
+  0.7.0 and is added back by `factory.planning_middleware`). As of the 2026-07-16 prompt pass (`77a4d7a`) the todo-list
   ceremony is optional rather than mandatory, the planner's after-every-search
   `think` call is consolidated into a single pre-finalize `think`, and
   orchestrator `write_todos` updates are phase-level instead of per-step —

@@ -11,11 +11,13 @@ from typing import Any
 from deepagents import create_deep_agent
 from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.filesystem import FilesystemPermission
+from deepagents.middleware.filesystem import FsToolName
 from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from deepagents.middleware.skills import SkillsMiddleware
 from deepagents.middleware.summarization import create_summarization_middleware
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelRetryMiddleware
+from langchain.agents.middleware import TodoListMiddleware
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langchain_core.tools import tool
@@ -59,15 +61,23 @@ logger = logging.getLogger(__name__)
 # so 150 allows ~15–30 cycles before the limit triggers.
 _ORCHESTRATOR_RECURSION_LIMIT = 150
 
-FILESYSTEM_TOOL_NAMES = {
-    "edit_file",
-    "execute",
-    "grep",
-    "glob",
+#: The filesystem tools every deep-research agent is built with, as
+#: ``FilesystemMiddleware``'s ``tools=`` allowlist (:func:`research_filesystem_middleware`).
+#: ``delete`` is deliberately absent: since deepagents 0.7 it is a recursive,
+#: destructive tool that a ``CompositeBackend`` always advertises (its
+#: ``delete`` routes to every mount), so without the allowlist an agent could
+#: drop ``/shared/plan.json`` or the research notes the writer needs.
+#: ``execute`` stays listed; the middleware only offers it on a sandbox backend,
+#: and ``ToolVisibilityMiddleware`` hides it when there is none.
+FILESYSTEM_TOOL_NAMES: tuple[FsToolName, ...] = (
     "ls",
     "read_file",
     "write_file",
-}
+    "edit_file",
+    "glob",
+    "grep",
+    "execute",
+)
 ORCHESTRATOR_AGENT = "orchestrator"
 PLANNER_AGENT = "planner-agent"
 RESEARCHER_AGENT = "researcher-agent"
@@ -346,6 +356,31 @@ def build_deep_research_middleware_set(
     )
 
 
+def research_filesystem_middleware(
+    backend: Any, permissions: list[FilesystemPermission] | None = None
+) -> FilesystemMiddleware:
+    """The filesystem middleware for a deep-research agent: the stock tools, minus ``delete``.
+
+    Passed in an agent's ``middleware=`` it takes the stock instance's place by
+    name (``create_deep_agent`` matches on ``.name``) and is re-bound to that
+    agent's permissions there, so the orchestrator and subagents pass none.
+    The researcher is built with ``create_agent`` and passes its own.
+    """
+    return FilesystemMiddleware(backend=backend, tools=list(FILESYSTEM_TOOL_NAMES), permissions=permissions)
+
+
+def planning_middleware(backend: Any) -> list[Any]:
+    """What deepagents 0.6 gave every ``create_deep_agent`` agent and 0.7 no longer does.
+
+    ``TodoListMiddleware`` (``write_todos``, the ``todos`` channel the job's
+    todo artifact reads) stopped being a default in deepagents 0.7.0; the
+    orchestrator and planner prompts still offer it, so it is added back here
+    for the orchestrator and each declarative subagent. The researcher never
+    had it.
+    """
+    return [research_filesystem_middleware(backend), TodoListMiddleware()]
+
+
 def runtime_visibility_middleware(runtime: DeepAgentsRuntime) -> list[Any]:
     """Hide execution tools unless a sandbox backend is configured."""
     if runtime.execution_enabled:
@@ -413,7 +448,7 @@ def build_researcher_runnable(
         middleware.append(SkillsMiddleware(backend=backend, sources=skill_sources))
     middleware.extend(
         [
-            FilesystemMiddleware(backend=backend, _permissions=filesystem_permissions),
+            research_filesystem_middleware(backend, filesystem_permissions),
             create_summarization_middleware(researcher_model, backend),
             PatchToolCallsMiddleware(),
             # Strict structured output is deferred to the researcher's exit
@@ -452,7 +487,7 @@ def _subagent_spec(
         "tools": list(tools),
         "model": context.llm_provider.get(role),
         "permissions": context.permissions(name),
-        "middleware": context.middleware(middleware),
+        "middleware": context.middleware([*planning_middleware(context.backend), *middleware]),
     }
     if response_format is not None:
         spec["response_format"] = response_format
@@ -646,7 +681,7 @@ def build_deep_research_graph(
         subagents=build_deep_research_subagents(context),
         store=InMemoryStore(),
         checkpointer=checkpointer,
-        middleware=context.middleware(context.middleware_set.orchestrator),
+        middleware=context.middleware([*planning_middleware(context.backend), *context.middleware_set.orchestrator]),
         permissions=context.permissions(ORCHESTRATOR_AGENT),
         backend=context.backend,
     )
