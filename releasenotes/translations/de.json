@@ -2408,6 +2408,10 @@
     "de": "Piloti öffnet jetzt genau die Fundstelle, die eine Herleitung nennt, etwa „OIB-Richtlinie 2, Pkt. 3.5.2“, statt sie ein zweites Mal zu suchen."
   },
   {
+    "en": "Piloti now opens your office's skills the same way in chat and in deep research, and a deep research report's \"Skills used\" now names every working method it followed, including the report formats Piloti brings along.",
+    "de": "Piloti stellt die Skills Ihres Büros jetzt im Chat und in Deep Research auf dieselbe Weise bereit. Unter „Verwendete Skills“ werden in einem Deep-Research-Bericht nun alle angewandten Arbeitsmethoden genannt, einschließlich der von Piloti bereitgestellten Berichtsformate."
+  },
+  {
     "en": "Piloti now picks where to look based on your question rather than following a fixed order, so a question about the Bauordnung goes straight to the Bauordnung. Values in an answer are taken from passages Piloti read for that answer, and a reference that still fails the check is marked.",
     "de": "Piloti wählt jetzt anhand Ihrer Frage, wo es sucht, statt einer festen Reihenfolge zu folgen, sodass eine Frage zur Bauordnung direkt bei der Bauordnung landet. Werte in einer Antwort stammen aus Textstellen, die Piloti für diese Antwort gelesen hat, und ein Verweis, der die Prüfung auch nach einem zweiten Anlauf nicht besteht, wird markiert."
   },
