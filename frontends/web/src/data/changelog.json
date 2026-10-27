@@ -28,6 +28,38 @@
   },
   "releases": [
     {
+      "id": "2026-W44",
+      "kind": "week",
+      "version": null,
+      "date": "2026-10-26",
+      "dateEnd": "2026-11-01",
+      "summary": null,
+      "sections": [
+        {
+          "key": "features",
+          "notes": [
+            {
+              "en": "If you work in more than one office, you can now switch between them from the header, next to the Piloti name.",
+              "de": "Wenn Sie in mehr als einem Büro arbeiten, können Sie jetzt in der Kopfzeile neben dem Piloti-Namen zwischen ihnen wechseln."
+            }
+          ]
+        },
+        {
+          "key": "fixes",
+          "notes": [
+            {
+              "en": "Signing in from a new browser or a private window no longer bounces back and forth until the browser gives up with too many redirects.",
+              "de": "Wenn Sie sich über einen neuen Browser oder ein privates Fenster anmelden, kommt es nicht mehr zu endlosen Weiterleitungen, bis der Browser abbricht."
+            },
+            {
+              "en": "When your office gives someone a role of its own, Piloti now acts with exactly what that role allows, as the person does themselves.",
+              "de": "Wenn Ihr Büro einer Person eine eigene Rolle zuweist, handelt Piloti jetzt genau so, wie es diese Rolle erlaubt – genauso wie die Person selbst."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "2026-W43",
       "kind": "week",
       "version": null,
