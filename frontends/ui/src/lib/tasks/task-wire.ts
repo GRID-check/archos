@@ -50,7 +50,7 @@ export type TaskRunReviewFilter = (typeof TASK_RUN_REVIEW_FILTERS)[number]
 export const taskRunListQuerySchema = z.object({
   limit: limitParam,
   cursor: cursorParam,
-  taskId: z.string().uuid().optional(),
+  taskId: z.guid().optional(),
   status: z.enum(TASK_RUN_STATUSES).optional(),
   review: z.enum(TASK_RUN_REVIEW_FILTERS).optional(),
 })

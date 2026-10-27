@@ -24,7 +24,7 @@ type Params = { id: string }
  */
 const paramsObjectSchema = z
   .object({
-    modelId: z.string().uuid().optional(),
+    modelId: z.guid().optional(),
     /**
      * The model's file name, the way the rest of the app addresses one
      * (`buildModelHref`, the agent's `ifc_query`). Accepted so a link can be

@@ -9,12 +9,12 @@
  * an agent calls them THERE, with its OAuth token: the paths themselves accept
  * the app's signed-in session cookie only, which is what `security` says.
  *
- * OpenAPI 3.1 takes JSON Schema 2020-12 as its schema dialect, so the repo's own
- * zod converter (`lib/api/zod-json-schema.ts`) describes the inputs and no
+ * OpenAPI 3.1 takes JSON Schema 2020-12 as its schema dialect, so Zod's own
+ * exporter, through `lib/api/zod-json-schema.ts`, describes the inputs and no
  * second converter or dependency is needed.
  */
 
-import type { z, ZodTypeAny } from 'zod'
+import type { z } from 'zod'
 import { type JsonSchemaNode, toJsonSchema } from '@/lib/api/zod-json-schema'
 // The backend operations (backend-operations.ts) are left out on purpose: they are not BFF routes, so there is no path to document.
 import { isExposedTo } from './exposure'
@@ -52,7 +52,7 @@ const UNDESCRIBABLE: JsonSchemaNode = {
 }
 
 /** A zod schema as JSON Schema, or an open schema when the converter cannot describe it. */
-function schemaOf(schema: ZodTypeAny): JsonSchemaNode {
+function schemaOf(schema: z.ZodType): JsonSchemaNode {
   try {
     return toJsonSchema(schema)
   } catch {
@@ -74,8 +74,8 @@ interface ParameterObject {
   schema: JsonSchemaNode
 }
 
-function fieldsOf(schema: z.ZodObject<z.ZodRawShape> | undefined): Array<[string, ZodTypeAny]> {
-  return schema ? (Object.entries(schema.shape) as Array<[string, ZodTypeAny]>) : []
+function fieldsOf(schema: z.ZodObject | undefined): Array<[string, z.ZodType]> {
+  return schema ? (Object.entries(schema.shape) as Array<[string, z.ZodType]>) : []
 }
 
 function pathParameters(op: AgentOperation): ParameterObject[] {
@@ -132,7 +132,7 @@ function errorResponses(): Record<string, JsonSchemaNode> {
 }
 
 /** The `fields` of an upload body as the form's text parts. */
-function formFieldsOf(body: ZodTypeAny): Record<string, JsonSchemaNode> {
+function formFieldsOf(body: z.ZodType): Record<string, JsonSchemaNode> {
   const node = schemaOf(body)
   const fields = (node.properties as Record<string, JsonSchemaNode> | undefined)?.fields
   return { ...((fields?.properties as Record<string, JsonSchemaNode> | undefined) ?? {}) }
@@ -143,7 +143,7 @@ function formFieldsOf(body: ZodTypeAny): Record<string, JsonSchemaNode> {
  * JSON object, a multipart form with a `file` part, or raw bytes. Over MCP the
  * file travels as base64 inside JSON (`upload-wire.ts`); the description says so.
  */
-function requestBodyOf(op: AgentOperation, body: ZodTypeAny): JsonSchemaNode {
+function requestBodyOf(op: AgentOperation, body: z.ZodType): JsonSchemaNode {
   const required = !body.isOptional()
   if (op.bodyEncoding === 'multipart') {
     const fields = formFieldsOf(body)

@@ -124,9 +124,9 @@ export const refParserOverride = (node) => {
  * which it writes as `oneOf` of `$ref`s beside a `discriminator` — as
  * `z.discriminatedUnion`.
  *
- * Left to the library, such a node becomes `z.any().superRefine(…)` written
- * against Zod 4's `z.core` types, which this repo's Zod does not have: the
- * module stops compiling, and the field's type is erased to `any` besides.
+ * Left to the library, such a node becomes `z.any().superRefine(…)`, which
+ * checks "exactly one branch matches" by hand and erases the field's type to
+ * `any`; `z.discriminatedUnion` picks the branch by its tag and keeps the type.
  * Only the shape Pydantic emits is taken (every branch a `$ref`); anything else
  * returns undefined and goes to the library as before.
  */
@@ -147,7 +147,7 @@ export function buildCardSchemaModule(root) {
   const defs = root.$defs ?? root.definitions ?? {}
 
   const declarations = topologicallyOrderedDefNames(root).map((defName) => {
-    const zodExpr = jsonSchemaToZod(defs[defName], { module: false, parserOverride: cardParserOverride })
+    const zodExpr = jsonSchemaToZod(defs[defName], { module: false, zodVersion: 4, parserOverride: cardParserOverride })
     return `export const ${exportName(defName)} = ${zodExpr}`
   })
 

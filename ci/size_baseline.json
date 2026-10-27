@@ -108,7 +108,7 @@
     "frontends/ui/src/lib/agent-api/catalog/folders.ts": 667,
     "frontends/ui/src/lib/agent-api/catalog/organization.ts": 605,
     "frontends/ui/src/lib/agent-api/catalog/platform.ts": 818,
-    "frontends/ui/src/lib/agent-api/discovery.ts": 917,
+    "frontends/ui/src/lib/agent-api/discovery.ts": 901,
     "frontends/ui/src/lib/agent-api/exposure.config.ts": 722,
     "frontends/ui/src/lib/annotations/attention.ts": 703,
     "frontends/ui/src/lib/annotations/repository.ts": 658,
