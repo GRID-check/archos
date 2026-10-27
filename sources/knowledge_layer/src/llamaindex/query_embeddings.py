@@ -80,6 +80,12 @@ class QueryEmbeddingCache:
             return pending.result()
         return self._compute_as_owner(key, compute, owned)
 
+    def seed(self, key: tuple[str, str], embedding: list[float]) -> None:
+        """Hold ``embedding`` for ``key`` as if it had been computed, past the LRU bound (a harness's fixed queries)."""
+        with self._lock:
+            self._cache[key] = embedding
+            self._order.append(key)
+
     def _compute_as_owner(
         self, key: tuple[str, str], compute: Callable[[], list[float]], record: _InflightEmbedding
     ) -> list[float]:

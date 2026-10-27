@@ -16,6 +16,7 @@ from typing import Any
 import pytest
 from knowledge_layer.llamaindex import adapter as adapter_module
 from knowledge_layer.llamaindex import embedding as embedding_module
+from knowledge_layer.llamaindex.lexical_query import bm25_text
 from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.qdrant import writes
@@ -97,10 +98,10 @@ def test_bm25_terms_are_priced_like_the_german_mirror(retriever):
     rows += [_row("Ausgabe Mai 2023: Fluchtwege sind zu kennzeichnen.", "rl.pdf")]
     _ingest(retriever, "oib_knowledge", rows)
 
-    text, _terms = retriever._qdrant_lexical_inputs("oib-rl_2_ausgabe_mai_2023.pdf", "oib_knowledge")
+    text, _terms = retriever._lexical_inputs("oib-rl_2_ausgabe_mai_2023.pdf", "oib_knowledge")
     assert text == "", "every term is on the whole corpus or on none of it"
 
-    text, _terms = retriever._qdrant_lexical_inputs("Fluchtwege Ausgabe", "oib_knowledge")
+    text, _terms = retriever._lexical_inputs("Fluchtwege Ausgabe", "oib_knowledge")
     assert text == "fluchtwege"
     assert ("oib_knowledge", 28, "fluchtwege") in retriever._qdrant_term_df, "a priced term is cached per size"
 
@@ -113,8 +114,8 @@ def test_unmeasurable_term_frequencies_leave_the_lexical_channels_unpriced(retri
         raise ConnectionError("qdrant down")
 
     monkeypatch.setattr(qdrant_retrieval, "term_frequencies", down)
-    text, terms = retriever._qdrant_lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
-    assert text == retriever._bm25_text("Was regelt § 3 zur Fluchttreppe?")
+    text, terms = retriever._lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
+    assert text == bm25_text("Was regelt § 3 zur Fluchttreppe?")
     assert terms == ["§ 3"]
 
 
@@ -320,9 +321,9 @@ async def test_numeric_legal_references_reach_the_exact_term_channel(retriever):
 
     _ingest(retriever, "proj_a", [_row(text, f"{index}.pdf") for index, text in enumerate(NUMBERED)])
 
-    _, terms = retriever._qdrant_lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
+    _, terms = retriever._lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
     assert terms == ["§ 3"]
-    _, terms = retriever._qdrant_lexical_inputs('Was sagt die OIB-Richtlinie 2 in "5.1.1"? Und "43 cm"?', "proj_a")
+    _, terms = retriever._lexical_inputs('Was sagt die OIB-Richtlinie 2 in "5.1.1"? Und "43 cm"?', "proj_a")
     assert terms == ["OIB-Richtlinie 2", "5.1.1", "43 cm"]
 
     total, frequencies = qdrant_retrieval.term_frequencies("proj_a", ["§ 3", "5.1.1", "43 cm", "OIB-Richtlinie 2"])
@@ -572,7 +573,7 @@ def test_umlaut_stopwords_never_reach_bm25_whatever_their_frequency(retriever):
     rows += [_row(f"Fluchtwege führen über das Dach {i}.", "rl.pdf") for i in range(4)]
     _ingest(retriever, "oib_knowledge", rows)
 
-    text, _terms = retriever._qdrant_lexical_inputs("Fluchtwege über das Dach", "oib_knowledge")
+    text, _terms = retriever._lexical_inputs("Fluchtwege über das Dach", "oib_knowledge")
 
     assert "über" not in text.split() and "fluchtwege" in text.split()
 

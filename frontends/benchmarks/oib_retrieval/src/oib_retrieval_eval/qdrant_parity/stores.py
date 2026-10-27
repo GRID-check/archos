@@ -174,7 +174,5 @@ def retriever(model: str, base_url: str, queries: Sequence[str], query_vectors: 
     instance._embed_model = MockEmbedding(embed_dim=int(query_vectors.shape[1]))
     instance._initialized = True
     for query, vector in zip(queries, query_vectors, strict=True):
-        key = (model, query)
-        instance._embed_cache[key] = [float(value) for value in vector]
-        instance._embed_cache_order.append(key)
+        instance._query_embeddings.seed((model, query), [float(value) for value in vector])
     return instance

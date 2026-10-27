@@ -4,7 +4,7 @@ PURE module: no database, no I/O, no state. It owns the two halves of the German
 lexical channel that must never disagree — how a chunk's text becomes lexemes,
 and how a user's question becomes a query over those lexemes. Retrieval prices
 its BM25 terms with :func:`select_terms` against Qdrant's own counts
-(``LlamaIndexRetriever._qdrant_lexical_inputs``); the retrieval benchmark
+(``knowledge_layer.llamaindex.lexical_query.lexical_inputs``); the retrieval benchmark
 (``oib_retrieval_eval.lexical``) runs the whole channel offline.
 
 WHY THIS EXISTS

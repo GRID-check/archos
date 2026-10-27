@@ -11,6 +11,7 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Sequence
 from typing import Any
 
 from aiq_agent.knowledge.base import BaseRetriever
@@ -484,7 +485,7 @@ class LlamaIndexRetriever(BaseRetriever):
         query_vector = self._embed_query_cached(query)
         lexical_text, terms = "", []
         if self.hybrid_search:
-            lexical_text, terms = lexical_inputs(query, collection_name, self._qdrant_term_df)
+            lexical_text, terms = self._lexical_inputs(query, collection_name)
         hits = qdrant_retrieval.search(
             collection_name,
             vector=query_vector,
@@ -524,7 +525,7 @@ class LlamaIndexRetriever(BaseRetriever):
         self._ensure_initialized()
         lexical_text, terms = "", []
         if self.hybrid_search:
-            lexical_text, terms = lexical_inputs(query, collection_names, self._qdrant_term_df)
+            lexical_text, terms = self._lexical_inputs(query, collection_names)
         grouped = qdrant_retrieval.search_grouped(
             collection_names,
             vector=self._embed_query_cached(query),
@@ -554,6 +555,10 @@ class LlamaIndexRetriever(BaseRetriever):
     def embedding_identity(self) -> dict[str, str]:
         """The embedder behind :meth:`embed_query`, as Qdrant collection metadata records it."""
         return self._identity()
+
+    def _lexical_inputs(self, query: str, collection_names: str | Sequence[str]) -> tuple[str, list[str]]:
+        """The BM25 text and exact terms for ``query``, priced against these collections (``lexical_query``)."""
+        return lexical_inputs(query, collection_names, self._qdrant_term_df)
 
     def _chunk_from_hit(self, hit: Any) -> Chunk:
         """A Qdrant hit as a Chunk, through ``normalize``, with the hit's true cosine as its score."""
