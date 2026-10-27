@@ -50,11 +50,11 @@ import {
   type InboundMailListView,
   type InboundMailOutcome,
   type InboundMailTextView,
+  type InboundMailDecision,
   type InboundMailView,
   type IncompleteReason,
 } from '@/lib/inbound-mail/inbound-mail-wire'
 import { capturePosthog } from '@/lib/analytics/posthog'
-import type { InboundMailDecision } from '@/lib/inbound-mail/inbound-mail-wire'
 import { cn } from '@/lib/utils'
 import { bulkSelectable } from '../lib/impersonation'
 import { inboundMailAddressClient, inboundMailClient, type InboundMailAddressClient, type InboundMailClient } from '../lib/client'
