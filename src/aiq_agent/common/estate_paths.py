@@ -301,8 +301,6 @@ def action_place(path: str | None) -> dict[str, str]:
         return {}
     if parsed.path == "/":
         return {"mount": "estate"}
-    if parsed.path == "/law/":
-        return {"mount": "law"}
     if parsed.mount is None or parsed.mount in ("drafts", "skills"):
         return {}
     folder = "" if parsed.mount == "law" else parsed.folder

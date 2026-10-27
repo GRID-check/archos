@@ -2192,9 +2192,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             try:
                 shelf, folder, file_name = _path_scope(str(path), shelf, folder, file_name)
             except ValueError as refusal:
-                # Refused before it searched, and still a call the reader sees: an error row, its words kept.
-                fields = {**_search_row_fields(query, match, None, None, None), "target": str(path).strip()}
-                ActionRow("search", **fields).finish("error")
+                # Refused before it searched, and still a call the reader sees: an error row that names no folder.
+                ActionRow("search", **_search_row_fields(query, match, None, None, None)).finish("error")
                 return str(refusal)
         outcome = ActionOutcome()
         row = ActionRow("search", **_search_row_fields(query, match, folder, file_name, shelf))

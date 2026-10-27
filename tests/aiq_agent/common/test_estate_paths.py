@@ -117,7 +117,7 @@ class TestTheRowsPlace:
             ("/office/Vorlagen/", {"mount": "office", "target": "Vorlagen"}),
             ("/chat/", {"mount": "chat"}),
             ("/law/oib/", {"mount": "law"}),
-            ("/law/", {"mount": "law"}),
+            ("/law/", {}),
         ],
     )
     def test_a_path_is_its_place_and_folder(self, path, place) -> None:
