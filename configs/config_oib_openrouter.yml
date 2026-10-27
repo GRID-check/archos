@@ -511,6 +511,13 @@ functions:
   look:
     _type: look
 
+  # TAKE THE PERSON TO THE PLACE (`tools/viewer`, ADR-0141). One allow-listed
+  # viewer action per call (open at a page, mark a passage or a box, compare two
+  # Fassungen, select a model element), sent as an AG-UI frontend tool call that
+  # only the asker's live page runs. Chat only: deep research has no screen.
+  show_in_viewer:
+    _type: show_in_viewer
+
   knowledge_search:
     _type: knowledge_retrieval
     collection_name: ${COLLECTION_NAME:-oib_knowledge}
@@ -779,6 +786,7 @@ functions:
       - read_passage
       - list_files
       - look
+      - show_in_viewer
       # ONE RIS tool on the chat surface. Search → pick → fetch → find the
       # paragraph was three charged calls and a 40 000-character blob that
       # carried no Citation key, so nothing downstream could treat it as

@@ -72,6 +72,12 @@ TOOLS: dict[str, tuple[str, str]] = {
     "describe_card": ("no_collection_content", "returns a card type's schema"),
     "file_draft": ("no_collection_content", "files the conversation's own draft; returns the filing outcome"),
     "create_task": ("no_collection_content", "queues work; returns the task it created"),
+    # The asker's viewer (ADR-0141): returns one sentence naming the document the
+    # model named, after the BFF admitted it for the turn; no content of it.
+    "show_in_viewer": (
+        "no_collection_content",
+        "tests/aiq_agent/tools/viewer/test_register.py::TestADocumentThePersonMayNotSee",
+    ),
     # The review canvas, a function group: Anmerkungen rows and room presence of
     # a document the BFF admits against the conversation's audience and the
     # turn's signed scope before it answers (lib/annotations/agent.ts,

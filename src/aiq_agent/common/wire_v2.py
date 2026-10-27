@@ -637,6 +637,89 @@ class SteerAppliedValue(_Model):
     round: int = Field(ge=1)
 
 
+# --- Viewer actions: AG-UI frontend tool calls, allow-listed (ADR-0141) ------
+
+#: The allow-list: the only ways Piloti may move the asker's own document viewer.
+#: Each is a frontend tool in AG-UI's sense: Piloti names it and its arguments,
+#: and the asker's browser runs it on their own screen. No other name parses.
+ViewerActionName = Literal[
+    "open_document",
+    "highlight_passage",
+    "highlight_region",
+    "compare_revisions",
+    "focus_ifc_element",
+]
+
+#: What each action needs beyond the document; :class:`ViewerActionValue` holds a call to it.
+VIEWER_ACTION_REQUIRES: dict[str, tuple[str, ...]] = {
+    "open_document": (),
+    "highlight_passage": ("page", "passage"),
+    "highlight_region": ("page", "region"),
+    "compare_revisions": ("against_document_id",),
+    "focus_ifc_element": ("element",),
+}
+
+#: The longest passage a highlight carries: a sentence or two, found on the page by the viewer.
+MAX_VIEWER_PASSAGE_CHARS = 400
+
+
+class ViewerActionArgs(_Model):
+    """Where the viewer goes: a stored document the BFF let this turn see, and the place on it.
+
+    ``document_id`` is a workspace document's id, resolved and checked against
+    the BFF by the tool before the event is sent. The browser asks the BFF again,
+    in the asker's own session, before it moves anything
+    (``GET /api/documents/{id}/viewer-place``).
+    """
+
+    document_id: str = Field(min_length=1, max_length=128)
+    document_name: str = Field(min_length=1, max_length=300, description="The file name, for the chat's row.")
+    page: int | None = Field(default=None, ge=1, description="The page, from 1.")
+    passage: str | None = Field(
+        default=None, min_length=1, max_length=MAX_VIEWER_PASSAGE_CHARS, description="Text to mark on the page."
+    )
+    region: list[float] | None = Field(
+        default=None, min_length=4, max_length=4, description="`[x, y, w, h]`, shares of the page as shown."
+    )
+    against_document_id: str | None = Field(
+        default=None, min_length=1, max_length=128, description="The older Fassung a comparison is made against."
+    )
+    against_document_name: str | None = Field(default=None, min_length=1, max_length=300)
+    element: str | None = Field(default=None, pattern=r"^[0-9A-Za-z_$]{22}$", description="An IFC GlobalId.")
+
+    @model_validator(mode="after")
+    def _region_on_the_page(self) -> ViewerActionArgs:
+        if self.region is None:
+            return self
+        x, y, w, h = self.region
+        inside = all(0 <= v <= 1 for v in self.region) and w > 0 and h > 0
+        if not inside or x + w > 1 + _EDGE_EPSILON or y + h > 1 + _EDGE_EPSILON:
+            raise ValueError("the region is not a box on the page: shares from 0 to 1, x + w and y + h at most 1")
+        return self
+
+
+class ViewerActionValue(_Model):
+    """One frontend tool call: AG-UI's ``toolCallId``, ``toolCallName`` and ``args``, whole in one frame.
+
+    AG-UI streams a tool call's arguments as ``TOOL_CALL_ARGS`` deltas and takes
+    its result back in the next run. Neither fits: the arguments are complete
+    once the tool has checked them, and nothing comes back, because the
+    person's screen is not the agent's state. So the call rides ``CUSTOM`` under
+    AG-UI's field names (``docs/design/chat-wire-v2.md`` §a).
+    """
+
+    tool_call_id: str = Field(min_length=1, max_length=64)
+    tool_call_name: ViewerActionName
+    args: ViewerActionArgs
+
+    @model_validator(mode="after")
+    def _has_what_it_needs(self) -> ViewerActionValue:
+        missing = [name for name in VIEWER_ACTION_REQUIRES[self.tool_call_name] if getattr(self.args, name) is None]
+        if missing:
+            raise ValueError(f"{self.tool_call_name} needs {', '.join(missing)}")
+        return self
+
+
 class _CustomBody(_Model):
     type: Literal["CUSTOM"] = "CUSTOM"
 
@@ -707,6 +790,13 @@ class SteerAppliedBody(_CustomBody):
 
     name: Literal["steer_applied"] = "steer_applied"
     value: SteerAppliedValue
+
+
+class ViewerActionBody(_CustomBody):
+    """Piloti proposes to move the asker's document viewer (ADR-0141). Only the asker's live page runs it."""
+
+    name: Literal["viewer_action"] = "viewer_action"
+    value: ViewerActionValue
 
 
 #: The optional client fields this server reads, as ``<type>.<field>``, named in
@@ -841,6 +931,10 @@ class SteerApplied(Envelope, SteerAppliedBody):
     pass
 
 
+class ViewerAction(Envelope, ViewerActionBody):
+    pass
+
+
 CustomEvent = Annotated[
     Masthead
     | Card
@@ -852,7 +946,8 @@ CustomEvent = Annotated[
     | InteractionResolved
     | Rejected
     | SteerReceived
-    | SteerApplied,
+    | SteerApplied
+    | ViewerAction,
     Field(discriminator="name"),
 ]
 
@@ -891,6 +986,7 @@ EventBody = (
     | RejectedBody
     | SteerReceivedBody
     | SteerAppliedBody
+    | ViewerActionBody
 )
 
 _EVENT_OF_BODY: dict[type[BaseModel], type[Envelope]] = {
@@ -914,6 +1010,7 @@ _EVENT_OF_BODY: dict[type[BaseModel], type[Envelope]] = {
     RejectedBody: Rejected,
     SteerReceivedBody: SteerReceived,
     SteerAppliedBody: SteerApplied,
+    ViewerActionBody: ViewerAction,
 }
 
 

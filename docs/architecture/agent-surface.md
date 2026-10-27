@@ -508,8 +508,8 @@ where it is shown (ADR-0128). The canvas and the chat are mirrors: what a
 person or Piloti does on the review canvas, a reader of the chat sees done, and
 the other way round. [`parity.config.ts`](../../frontends/ui/src/lib/surface-parity/parity.config.ts)
 has one entry per capability (look, point, highlight, mark, update, delete,
-reply, compare Fassungen, ask about a box, open at a place) with its `canvas`
-and its `chat` form. A form is a rendering (a component, a card type, a step
+reply, compare Fassungen, ask about a box, open at a place, show in the
+asker's viewer) with its `canvas` and its `chat` form. A form is a rendering (a component, a card type, a step
 kind), an `exempt` line (the surface has no meaning for it), or a `gap` that
 names the slice closing it; the spec fails a gap whose card now exists, so a
 closed gap does not stay written down as open.
@@ -518,8 +518,14 @@ closed gap does not stay written down as open.
 a canvas operation of the catalog has no entry, when a side has neither mirror
 nor reason, or when a named component or card does not exist. It writes
 `tests/fixtures/surface-parity.json`; `tests/aiq_agent/tools/test_surface_parity.py`
-fails when a tool of the `canvas` group or `look` is missing from it, or an
-entry names a tool Piloti is not bound to. Regenerate with
+fails when a tool of the `canvas` group, `look` or `show_in_viewer` is missing
+from it, or an entry names a tool Piloti is not bound to.
+
+`show_in_viewer` is the one capability here that moves a person's screen
+(ADR-0141). It is an allow-listed AG-UI frontend tool call that only the asker's
+live page runs, after asking the BFF in that person's session
+(`document-viewer-place-get`). That operation is withheld from every door as
+`ui-state`: no agent moves somebody else's screen. Regenerate with
 `UPDATE_FIXTURES=1 bunx vitest run src/lib/surface-parity/parity.config.spec.ts`.
 
 ## What deserves a tool

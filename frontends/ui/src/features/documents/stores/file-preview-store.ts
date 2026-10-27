@@ -19,6 +19,7 @@ import type { DocumentScope } from '../components/document-actions'
 import type { FileItem } from '../components/project-file-workspace'
 import type { RevisionLinks } from '@/lib/documents/revision-links'
 import type { MarkTally } from '@/lib/annotations/types'
+import type { PageRegion } from '@/features/knowledge/lib/page-region'
 import type {
   DocumentLifecyclePermission,
   DocumentVersionState,
@@ -157,7 +158,23 @@ export interface FilePreviewContext {
   onMarksChanged?: (fileId: string, marks: MarkTally | null) => void
 }
 
+/**
+ * A place a viewer action asked the open document to show (ADR-0141): a page,
+ * and on it a passage or boxes to mark. `key` changes per action, so the same
+ * place asked twice turns the viewer again after the reader scrolled away.
+ */
+export interface ViewerTarget {
+  fileId: string
+  page: number | null
+  passage: string | null
+  regions: readonly PageRegion[] | null
+  key: string
+}
+
 interface FilePreviewState {
+  /** Where a viewer action asked the open document to be; null once nothing asks. */
+  viewerTarget: ViewerTarget | null
+  setViewerTarget: (target: ViewerTarget | null) => void
   file: FileItem | null
   mode: FilePreviewMode
   /** Peek dismissed; the conversation still knows the file. */
@@ -199,6 +216,8 @@ interface FilePreviewState {
 }
 
 export const useFilePreviewStore = create<FilePreviewState>((set, get) => ({
+  viewerTarget: null,
+  setViewerTarget: (viewerTarget) => set({ viewerTarget }),
   file: null,
   mode: 'modal',
   hidden: false,
@@ -211,6 +230,8 @@ export const useFilePreviewStore = create<FilePreviewState>((set, get) => ({
       file,
       mode,
       hidden: false,
+      // A place asked of another document, or of an earlier opening, is not this one's.
+      viewerTarget: null,
       context: { ...get().context, ...context },
     }),
 
@@ -238,7 +259,7 @@ export const useFilePreviewStore = create<FilePreviewState>((set, get) => ({
 
   close: () => {
     const file = get().file
-    set({ file: null, hidden: false, mode: 'modal', handoff: false })
+    set({ file: null, hidden: false, mode: 'modal', handoff: false, viewerTarget: null })
     clearMatchingComposerSubject(file)
   },
 

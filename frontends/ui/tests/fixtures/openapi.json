@@ -6016,6 +6016,72 @@
         }
       }
     },
+    "/api/documents/{id}/viewer-place": {
+      "get": {
+        "operationId": "document-viewer-place-get",
+        "summary": "Check where a viewer action may open a document",
+        "description": "Whether the person may see this document, and, with `against`, an older revision on the same shelf, read as their listing rows. The person’s own page asks it before a viewer action moves their screen.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or document-search."
+            },
+            "description": "The document id, from document-list or document-search."
+          },
+          {
+            "name": "against",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "The older revision a comparison is made against, by document id; it must sit on the same shelf."
+            },
+            "description": "The older revision a comparison is made against, by document id; it must sit on the same shelf."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Check where a viewer action may open a document",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/{id}/visual-details": {
       "get": {
         "operationId": "document-visual-details-get",

@@ -187,6 +187,16 @@ export const SURFACE_CAPABILITIES = {
     // A look card item, a Herleitung look row and a citation with a region open the viewer at the page with the box glowing.
     chat: { card: 'look', component: 'features/knowledge/components/page-place-button.tsx' },
   },
+  showInViewer: {
+    summary: 'Take the asker to a place: a page, a passage or a box on it, a Fassung comparison, a model element',
+    tool: 'show_in_viewer',
+    // The BFF's gate before the asker's page moves (ADR-0141), withheld from every door as screen state.
+    operations: ['document-viewer-place-get'],
+    // The viewer the action moves: the chat peek, turned to the page with the passage or the boxes marked.
+    canvas: { component: 'features/documents/components/file-preview-pane.tsx' },
+    // The row under the answer: what moved, „Zurück“, or „Anzeigen“ when it did not.
+    chat: { component: 'features/chat/components/ViewerActionRow.tsx' },
+  },
 } as const satisfies Readonly<Record<string, SurfaceCapability>>
 
 export type SurfaceCapabilityName = keyof typeof SURFACE_CAPABILITIES

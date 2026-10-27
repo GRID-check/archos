@@ -37,7 +37,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type FC, type ReactNode } from 'react'
 import { capturePosthog } from '@/lib/analytics/posthog'
-import { ChevronDown, ChevronUp, Download, ExternalLink, Link2, TextSearch } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, ExternalLink, Link2, PanelRight, TextSearch } from 'lucide-react'
+import { citationViewerAction, runViewerActionNow, viewerBesideChat } from '../lib/viewer-actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
@@ -925,6 +926,24 @@ export const CitationDocumentDialog: FC<{
     if (!next) similar.close()
     onOpenChange(next)
   }
+  // The same viewer action Piloti proposes (ADR-0141), on the reader's own
+  // click: the document beside the chat at this place, through the BFF's gate.
+  // Only where the peek has room beside a chat (not on a phone, not on Files).
+  const beside = target.document.type === 'stored' && viewerBesideChat() ? target.document : null
+  const openBeside = async (): Promise<void> => {
+    if (!beside) return
+    const result = await runViewerActionNow(
+      citationViewerAction({
+        documentId: beside.id,
+        documentName: beside.filename,
+        page: page ?? null,
+        passage,
+        box: regions?.[0]?.box ?? null,
+      })
+    )
+    if (result.outcome === 'shown') closeDialog(false)
+    else toast.error(t(result.outcome === 'refused' ? 'viewerActions.status.refused' : 'viewerActions.status.failed'))
+  }
   const similarRail = similar.request && (
     <SimilarPassagesPanel
       request={similar.request}
@@ -994,8 +1013,19 @@ export const CitationDocumentDialog: FC<{
       }
       headerActions={
         !openedView &&
-        (shown || rendition || citedSearchable) && (
+        (shown || rendition || citedSearchable || beside) && (
           <span className="flex shrink-0 items-center gap-2">
+            {beside && (
+              <button
+                type="button"
+                onClick={() => void openBeside()}
+                data-open-beside-chat=""
+                className={COPY_ACTION_CLASSES}
+              >
+                <PanelRight aria-hidden="true" className="size-3" />
+                {t('sourcePreview.openBesideChat')}
+              </button>
+            )}
             {citedSearchable && (
               // The cited passage's own neighbours: the Fundstelle is retrieved
               // text, so the backend finds its stored chunk and embeds nothing.

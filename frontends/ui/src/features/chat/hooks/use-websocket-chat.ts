@@ -88,6 +88,7 @@ import {
 import { STAGE_COUNT } from '../lib/turn-projection'
 import { runErrorCard, type RunErrorCard } from '../lib/run-error'
 import { isSteerRead, type TurnView } from '../lib/turn-fold'
+import { newViewerActions, proposeViewerAction } from '../lib/viewer-actions'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatMessage, Conversation, PendingInteraction } from '../types'
 
@@ -473,6 +474,12 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   let socketOpen = false
   /** The notes this page sent, by `steer_id`, until their turn ends. */
   const steers = new Map<string, SentSteer>()
+  /**
+   * The turns this page asked. Only their viewer actions may move this page's
+   * viewer (ADR-0141): a turn attached after a reload, or watched as a
+   * spectator, folds the same events and runs none of them.
+   */
+  const asked = new Set<string>()
 
   const keyOf = (message: ClientMessage): string =>
     `${message.type}:${'turn_id' in message ? message.turn_id : message.message_id}`
@@ -620,6 +627,11 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   /** What a folded turn asks of the page beyond its messages. */
   const react = (previous: TurnView | undefined, view: TurnView | undefined): void => {
     if (!view) return
+    if (asked.has(view.turnId) && view.messageId) {
+      for (const call of newViewerActions(previous?.viewerActions, view.viewerActions)) {
+        void proposeViewerAction(view.messageId, call)
+      }
+    }
     if (view.phase !== 'running' && previous?.phase === 'running') settleSteers(view)
     if (view.gap && gapsAttached.get(view.turnId) !== view.lastSeq) {
       gapsAttached.set(view.turnId, view.lastSeq)
@@ -748,6 +760,7 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
       socket.close()
     },
     ask: (message) => {
+      asked.add(message.message_id)
       unacknowledged.set(message.message_id, message)
       awaitAck(message.message_id)
       // No socket to take it: open one (a new ladder, if the last one gave up).

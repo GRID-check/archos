@@ -967,6 +967,17 @@ export function FilePreviewPane({
       setShownPage(page)
     })
   }, [])
+  /**
+   * Where Piloti's viewer action asked this document to be (ADR-0141): the
+   * page turns the way a reading turns it, and the passage or the boxes are
+   * marked there until the reader asks for another place.
+   */
+  const viewerTarget = useFilePreviewStore((state) => (state.viewerTarget?.fileId === file.id ? state.viewerTarget : null))
+  const viewerTargetKey = viewerTarget?.key ?? null
+  const viewerTargetPage = viewerTarget?.page ?? null
+  useEffect(() => {
+    if (viewerTargetKey !== null && viewerTargetPage !== null) showPage(viewerTargetPage)
+  }, [viewerTargetKey, viewerTargetPage, showPage])
   const retryDetails = useCallback(() => {
     setDetailsFailed(false)
     setDetails(null)
@@ -1513,7 +1524,8 @@ export function FilePreviewPane({
                     src={documentFileUrl(file.id)}
                     title={actions.name}
                     page={shownPage === 'turning' ? null : (shownPage ?? shownFinding?.page ?? null)}
-                    highlight={shownPage === null ? (shownFinding?.highlight ?? null) : null}
+                    highlight={viewerTarget?.passage ?? (shownPage === null ? (shownFinding?.highlight ?? null) : null)}
+                    regions={viewerTarget?.regions ?? null}
                     onFindSimilar={findSimilar}
                     onLoadError={handlePdfFailed}
                     ground={peeking ? 'host' : 'stage'}

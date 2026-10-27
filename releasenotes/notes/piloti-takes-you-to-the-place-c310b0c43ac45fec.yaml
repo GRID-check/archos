@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    When an answer rests on one place in a document, Piloti now opens it beside the chat at that
+    page with the passage or area marked, and a row under the answer takes you back in one click.
+    It opens only what you may see yourself and never while you are typing, and a switch in that
+    row turns it off.

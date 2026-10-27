@@ -227,3 +227,64 @@ class TestFocusRegion:
         from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
 
         assert {"user_message.focus_region", "user_message.reply_in_thread"} <= set(ACCEPTED_CLIENT_FIELDS)
+
+
+class TestViewerAction:
+    """A viewer action (ADR-0141): the allow-list and what each action needs, which the JSON Schema cannot say."""
+
+    def _value(self, name: str, **args) -> dict:
+        return {
+            "tool_call_id": "va_1",
+            "tool_call_name": name,
+            "args": {"document_id": "d", "document_name": "x.pdf", **args},
+        }
+
+    def test_the_allow_list_is_the_five_actions(self) -> None:
+        from aiq_agent.common.wire_v2 import VIEWER_ACTION_REQUIRES
+        from aiq_agent.common.wire_v2 import ViewerActionName
+
+        assert (
+            set(typing_args(ViewerActionName))
+            == set(VIEWER_ACTION_REQUIRES)
+            == {
+                "open_document",
+                "highlight_passage",
+                "highlight_region",
+                "compare_revisions",
+                "focus_ifc_element",
+            }
+        )
+
+    @pytest.mark.parametrize(
+        ("name", "args", "missing"),
+        [
+            ("highlight_passage", {"passage": "Fluchtweg"}, "page"),
+            ("highlight_region", {"page": 2}, "region"),
+            ("compare_revisions", {}, "against_document_id"),
+            ("focus_ifc_element", {}, "element"),
+        ],
+    )
+    def test_an_action_without_its_place_is_refused(self, name: str, args: dict, missing: str) -> None:
+        from aiq_agent.common.wire_v2 import ViewerActionValue
+
+        with pytest.raises(ValidationError, match=missing):
+            ViewerActionValue.model_validate(self._value(name, **args))
+
+    @pytest.mark.parametrize("region", [[0.8, 0.1, 0.3, 0.2], [0.1, 0.1, 0, 0.2], [-0.1, 0, 0.2, 0.2]])
+    def test_a_region_off_the_page_is_refused(self, region: list[float]) -> None:
+        from aiq_agent.common.wire_v2 import ViewerActionValue
+
+        with pytest.raises(ValidationError, match="not a box on the page"):
+            ViewerActionValue.model_validate(self._value("highlight_region", page=1, region=region))
+
+    def test_an_element_is_an_ifc_global_id(self) -> None:
+        from aiq_agent.common.wire_v2 import ViewerActionValue
+
+        with pytest.raises(ValidationError):
+            ViewerActionValue.model_validate(self._value("focus_ifc_element", element="wall-12"))
+
+
+def typing_args(annotation: Any) -> tuple[Any, ...]:
+    import typing
+
+    return typing.get_args(annotation)

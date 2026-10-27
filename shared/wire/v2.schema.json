@@ -3831,6 +3831,212 @@
       "title": "UserMessage",
       "type": "object"
     },
+    "ViewerAction": {
+      "additionalProperties": false,
+      "properties": {
+        "conversation_id": {
+          "minLength": 1,
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "name": {
+          "const": "viewer_action",
+          "default": "viewer_action",
+          "title": "Name",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ts": {
+          "minimum": 0,
+          "title": "Ts",
+          "type": "integer"
+        },
+        "turn_id": {
+          "minLength": 1,
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "CUSTOM",
+          "default": "CUSTOM",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 2,
+          "default": 2,
+          "title": "V",
+          "type": "integer"
+        },
+        "value": {
+          "$ref": "#/$defs/ViewerActionValue"
+        }
+      },
+      "required": [
+        "value",
+        "conversation_id",
+        "turn_id",
+        "seq",
+        "ts",
+        "type",
+        "name",
+        "v"
+      ],
+      "title": "ViewerAction",
+      "type": "object"
+    },
+    "ViewerActionArgs": {
+      "additionalProperties": false,
+      "description": "Where the viewer goes: a stored document the BFF let this turn see, and the place on it.\n\n``document_id`` is a workspace document's id, resolved and checked against\nthe BFF by the tool before the event is sent. The browser asks the BFF again,\nin the asker's own session, before it moves anything\n(``GET /api/documents/{id}/viewer-place``).",
+      "properties": {
+        "against_document_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The older Fassung a comparison is made against.",
+          "title": "Against Document Id"
+        },
+        "against_document_name": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Against Document Name"
+        },
+        "document_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_name": {
+          "description": "The file name, for the chat's row.",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Document Name",
+          "type": "string"
+        },
+        "element": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9A-Za-z_$]{22}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "An IFC GlobalId.",
+          "title": "Element"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The page, from 1.",
+          "title": "Page"
+        },
+        "passage": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Text to mark on the page.",
+          "title": "Passage"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "`[x, y, w, h]`, shares of the page as shown.",
+          "title": "Region"
+        }
+      },
+      "required": [
+        "document_id",
+        "document_name"
+      ],
+      "title": "ViewerActionArgs",
+      "type": "object"
+    },
+    "ViewerActionValue": {
+      "additionalProperties": false,
+      "description": "One frontend tool call: AG-UI's ``toolCallId``, ``toolCallName`` and ``args``, whole in one frame.\n\nAG-UI streams a tool call's arguments as ``TOOL_CALL_ARGS`` deltas and takes\nits result back in the next run. Neither fits: the arguments are complete\nonce the tool has checked them, and nothing comes back, because the\nperson's screen is not the agent's state. So the call rides ``CUSTOM`` under\nAG-UI's field names (``docs/design/chat-wire-v2.md`` §a).",
+      "properties": {
+        "args": {
+          "$ref": "#/$defs/ViewerActionArgs"
+        },
+        "tool_call_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Tool Call Id",
+          "type": "string"
+        },
+        "tool_call_name": {
+          "enum": [
+            "open_document",
+            "highlight_passage",
+            "highlight_region",
+            "compare_revisions",
+            "focus_ifc_element"
+          ],
+          "title": "Tool Call Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_call_id",
+        "tool_call_name",
+        "args"
+      ],
+      "title": "ViewerActionValue",
+      "type": "object"
+    },
     "WireEvent": {
       "discriminator": {
         "mapping": {
@@ -3847,7 +4053,8 @@
                 "rejected": "#/$defs/Rejected",
                 "stage": "#/$defs/Stage",
                 "steer_applied": "#/$defs/SteerApplied",
-                "steer_received": "#/$defs/SteerReceived"
+                "steer_received": "#/$defs/SteerReceived",
+                "viewer_action": "#/$defs/ViewerAction"
               },
               "propertyName": "name"
             },
@@ -3884,6 +4091,9 @@
               },
               {
                 "$ref": "#/$defs/SteerApplied"
+              },
+              {
+                "$ref": "#/$defs/ViewerAction"
               }
             ]
           },
@@ -3940,7 +4150,8 @@
               "rejected": "#/$defs/Rejected",
               "stage": "#/$defs/Stage",
               "steer_applied": "#/$defs/SteerApplied",
-              "steer_received": "#/$defs/SteerReceived"
+              "steer_received": "#/$defs/SteerReceived",
+              "viewer_action": "#/$defs/ViewerAction"
             },
             "propertyName": "name"
           },
@@ -3977,6 +4188,9 @@
             },
             {
               "$ref": "#/$defs/SteerApplied"
+            },
+            {
+              "$ref": "#/$defs/ViewerAction"
             }
           ]
         }

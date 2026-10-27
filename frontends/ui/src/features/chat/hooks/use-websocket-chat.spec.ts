@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ClientMessage, WireEvent } from '@/adapters/api/wire-v2'
 import type { TurnSocketOptions, TurnSocketStatus } from '@/adapters/api/turn-socket'
 import { eventOf, frameOf, wireEvents } from '@/test-utils/wire-v2-fixtures'
+import { registerViewerActionRunner, resetViewerActions, setViewerActionsAuto, type ViewerActionCall } from '../lib/viewer-actions'
 
 const sockets = vi.hoisted(() => [] as Array<{ options: TurnSocketOptions; sent: unknown[]; open: boolean; offers: Set<string>; connect: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn>; reconnect: ReturnType<typeof vi.fn> }>)
 vi.mock('@/adapters/api/turn-socket', () => ({
@@ -908,5 +909,44 @@ describe('a phone away: locked, offline, or a network that gave up', () => {
 
     status('open')
     expect(lostCards()).toHaveLength(0)
+  })
+})
+
+// ADR-0141: a viewer action moves only the asker's live page.
+describe('Piloti’s viewer actions', () => {
+  const recorded = wireEvents('turn-viewer-action.jsonl')
+  const VIEWER_CONVERSATION = recorded[0]!.conversation_id
+  const run = vi.fn(async (_call: ViewerActionCall) => ({ outcome: 'shown' as const, undo: () => {} }))
+
+  beforeEach(() => {
+    resetViewerActions()
+    setViewerActionsAuto(true)
+    registerViewerActionRunner({ hasRoom: () => true, run })
+  })
+  afterEach(() => resetViewerActions())
+
+  it('runs the actions of a turn this page asked, once each', async () => {
+    const { result } = open(conversationOf(VIEWER_CONVERSATION))
+    act(() => void result.current.sendMessage('Wo steht die Fluchtwegbreite?'))
+    const turnId = sentOf('user_message')[0]!.message_id as string
+
+    deliver(retarget(recorded, VIEWER_CONVERSATION, turnId))
+    deliver(retarget(recorded, VIEWER_CONVERSATION, turnId))
+    await act(async () => void (await Promise.resolve()))
+
+    // The peek actions run; the comparison and the model element only offer themselves.
+    expect(run.mock.calls.map(([call]) => call.tool_call_name)).toEqual([
+      'highlight_passage',
+      'highlight_region',
+      'open_document',
+    ])
+  })
+
+  it('runs nothing of a turn it did not ask: a reload’s attach, a spectator’s view', async () => {
+    openTurn(recorded)
+    deliver(recorded)
+    await act(async () => void (await Promise.resolve()))
+
+    expect(run).not.toHaveBeenCalled()
   })
 })

@@ -399,6 +399,40 @@ Clicking a source chip opens a preview of the source instead of doing nothing:
 - **A citation of an older Fassung says so.** When the cited document is a Fassung a person has since replaced by a newer one (a link confirmed in Dateien, ADR-0099), the source's preview popover adds one muted line, **Ältere Fassung – aktuell: \<Name\>** (English: *Older revision. Current:*). The name is a button: it opens the current Fassung beside the conversation. The citation itself is unchanged, because an older Fassung is still read when you ask for it; the line only keeps you from relying on a replaced Fassung unawares. It names only a Fassung you may open yourself: a newer file held back by the content check or filed in a folder you cannot open is not named. A document nobody replaced, and a suggestion Piloti made that nobody confirmed, show no line.
 - **Ask for a document's history.** „Welche Fassungen gibt es vom EG-Grundriss?“ and „Was hat sich zwischen Index B und C geändert?“ are answered from the whole chain of Fassungen, newest first, with each one's Index and date (read from the file name and, where there is one, the Plankopf), upload date and the line saying what changed. Answers otherwise use the newest Fassung and name an older one only when you ask for it or Piloti compares; opening an older one by name says in the first line that it is the older and which one is current. The change lines are Piloti's summaries, not a comparison of the files: for a detail it reads both Fassungen.
 - **Anything unresolvable** (unknown document, non-previewable file type) shows a light popover with the source's origin, title, and passage instead — never a broken viewer. Chips with nothing beyond their label stay plain.
+- **Neben dem Chat öffnen / Open beside the chat.** The viewer dialog of a project or Büroablage document offers to open the same place in the peek beside the conversation instead: the page, with the passage or the box marked. It is the same move Piloti makes on its own (below), so it opens nothing you could not open from Dateien. The platform corpus has no peek and does not offer it.
+
+## Piloti takes you to the place
+
+When an answer rests on one place in a document, „Laut Baubeschreibung S. 4 …“,
+Piloti can take you there: the document opens in the peek beside the chat at
+that page, with the passage or the box marked (ADR-0141). Under the answer a
+short row says what it opened. **Zurück / Back** puts the viewer back as it was;
+if nothing was open, it closes.
+
+What Piloti may do is a short, fixed list: open a document at a page, mark a
+passage on a page, mark a box on a page, offer the comparison of two Fassungen,
+and offer a building model with one element selected. Nothing else moves.
+
+- **It never opens what you could not open yourself.** Before anything moves,
+  your page asks the server, in your own session, whether you may see the
+  document. If you may not, nothing moves and the row says so.
+- **Only your own screen, only while you are here.** It moves the viewer of the
+  person who asked, in the tab they asked in. Someone watching a shared
+  conversation sees the answer without the row, and so does the same answer
+  after a reload: the row described a moment on your screen.
+- **The comparison and the model only offer themselves.** A Fassung comparison
+  covers the conversation and the model view leaves it, so those two wait for
+  **Anzeigen / Show**.
+- **Not while you are typing.** An action that arrives while you type in a field
+  waits for a pause; if none comes, the row offers the place instead.
+- **You can turn it off.** The switch **Automatisch öffnen / Open automatically**
+  in the row decides whether Piloti opens places on its own; off, the row offers
+  each one with **Anzeigen / Show**. The choice is kept in this browser. With
+  reduced motion set in your system, it starts off.
+- **On a phone** there is no room beside the chat, so every place is offered.
+
+Other agents connected to your office cannot do this: the agent door does not
+offer your screen to anyone.
 
 ## Human-in-the-loop (HITL)
 

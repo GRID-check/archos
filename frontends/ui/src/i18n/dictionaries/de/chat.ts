@@ -45,6 +45,7 @@ export const chat: typeof en.chat = {
     renditionNote: 'PDF-Vorschau des Originals',
     renditionPending: 'PDF-Vorschau wird erstellt…',
     downloadOriginal: 'Original herunterladen',
+    openBesideChat: 'Neben dem Chat öffnen',
     // Coarse source kind (ADR-0026) shown in the info popover. Preferred
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
@@ -1671,6 +1672,37 @@ export const chat: typeof en.chat = {
   noSources: {
     warning:
       'Keine Datenquellen ausgewählt und keine Dateien verfügbar. Antworten sind eher ungenau oder veraltet, sofern keine externen Datenquellen hinzugefügt werden.',
+  },
+  viewerActions: {
+    region: 'Was Piloti Ihnen im Viewer gezeigt hat',
+    place: '{name}, S. {page}',
+    what: {
+      open_document: '{place}',
+      highlight_passage: 'Stelle in {place}',
+      highlight_region: 'Bereich in {place}',
+      compare_revisions: '{name} mit {against} vergleichen',
+      focus_ifc_element: 'Bauteil in {name}',
+    },
+    status: {
+      pending: 'Wird geöffnet …',
+      shown: 'Piloti hat es neben dem Chat geöffnet',
+      undone: 'Zurückgenommen',
+      refused: 'Nicht geöffnet: Sie haben keinen Zugriff auf dieses Dokument',
+      failed: 'Konnte nicht geöffnet werden',
+    },
+    offered: {
+      off: 'Piloti schlägt diese Stelle vor',
+      typing: 'Nicht geöffnet, während Sie geschrieben haben',
+      leaves: 'Öffnet sich über dem Chat',
+      noRoom: 'Neben dem Chat ist kein Platz',
+      unavailable: 'Piloti schlägt diese Stelle vor',
+    },
+    undo: 'Zurück',
+    undoAria: 'Zurück zum Viewer vor „{what}“',
+    show: 'Anzeigen',
+    showAria: '{what} anzeigen',
+    auto: 'Automatisch öffnen',
+    autoHint: 'Piloti darf die Stellen, die es zitiert, neben dem Chat öffnen. Aus: Piloti schlägt sie hier nur vor.',
   },
   memory: {
     noted: 'Piloti hat sich gemerkt',

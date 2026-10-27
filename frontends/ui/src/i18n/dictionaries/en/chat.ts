@@ -50,6 +50,7 @@ export const chat = {
     renditionNote: 'PDF preview of the original',
     renditionPending: 'Creating PDF preview…',
     downloadOriginal: 'Download original',
+    openBesideChat: 'Open beside the chat',
     // Coarse source kind (ADR-0026) shown in the info popover. Preferred
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
@@ -1651,6 +1652,37 @@ export const chat = {
   noSources: {
     warning:
       'No data sources selected and no files are available. Responses are more likely to be inaccurate or outdated unless external data sources are added.',
+  },
+  viewerActions: {
+    region: 'What Piloti showed you in the viewer',
+    place: '{name}, p. {page}',
+    what: {
+      open_document: '{place}',
+      highlight_passage: 'Passage in {place}',
+      highlight_region: 'Area in {place}',
+      compare_revisions: 'Compare {name} with {against}',
+      focus_ifc_element: 'Element in {name}',
+    },
+    status: {
+      pending: 'Opening …',
+      shown: 'Piloti opened it beside the chat',
+      undone: 'Put back',
+      refused: 'Not opened: you have no access to this document',
+      failed: 'Could not be opened',
+    },
+    offered: {
+      off: 'Piloti suggests this place',
+      typing: 'Not opened while you were typing',
+      leaves: 'Opens over the chat',
+      noRoom: 'No room beside the chat',
+      unavailable: 'Piloti suggests this place',
+    },
+    undo: 'Back',
+    undoAria: 'Back to the viewer before “{what}”',
+    show: 'Show',
+    showAria: 'Show {what}',
+    auto: 'Open automatically',
+    autoHint: 'Piloti may open the places it cites beside the chat. Off: it only suggests them here.',
   },
   memory: {
     noted: 'Piloti noted',
