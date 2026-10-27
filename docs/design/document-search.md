@@ -238,9 +238,20 @@ export carries every column whatever is shown, and its menu says so. On a
 phone the register is a stack: Plannummer and Index over the title, the other
 chosen columns on a line under it, the order in a menu.
 
-- `/app/search`: the whole office. The rail's „Suche“ (`g u`), the header's
-  magnifier, and ⌘K, whose first row carries what was typed
-  (`/app/search?q=…`). The project facet narrows it to one project.
+- `/app/search`: the whole office. The rail's „Suche“ (`g u`) and the header's
+  magnifier open it. The project facet narrows it to one project.
+- ⌘K, from anywhere: what is typed is searched live (150 ms after the last
+  key, three hits of each kind, no facet counts; in a project, that project),
+  the hits grouped by kind and drawn by the page's own row components
+  (`HitRow` inside the palette's option), Enter on the first. The last search
+  row, „Alle Treffer für …“, opens the page with the question
+  (`/app/search?q=…`). With nothing typed the palette says in one line what the
+  search reaches and offers the recent searches (this browser, five) and the
+  saved ones. The palette's commands stay below. On the search page itself ⌘K
+  focuses the page's field, which is the same search.
+- The field is a WAI-ARIA combobox: ↑ ↓ move an active option while focus
+  stays in the field (`aria-activedescendant`), each kind's rows are a listbox
+  (the register's rows, its table), and the active row carries a 2px ink rule.
 - A project's Dateien and the Büroablage: „Suche“ in the header switches the
   listing to the search (`?mode=search`), scoped to the shelf and the open
   folder (`?folder=`).

@@ -6,6 +6,16 @@
 export { SearchWorkspace, type SearchWorkspaceProps } from './components/search-workspace'
 export { SearchWorkspaceView, type SearchWorkspaceViewProps } from './components/search-workspace-view'
 export { ShelfSearchBack, ShelfSearchToggle } from './components/shelf-search-toggle'
+export {
+  PALETTE_ALL_RESULTS_VALUE,
+  PaletteSearchResults,
+  PaletteSearchStart,
+  paletteFilter,
+  isPaletteHitValue,
+  paletteHitValue,
+} from './components/palette-search'
+export { usePaletteSearch, usePaletteShortcuts } from './hooks/use-palette-search'
+export { savedSearchHref, searchPageHref } from './lib/search-hrefs'
 export { useShelfSearchMode } from './hooks/use-shelf-search-mode'
 export type { SearchSurface } from './lib/search-surface'
 export { EMPTY_SEARCH_STATE, parseSearchParams, writeSearchParams, type SearchUrlState } from './lib/search-url'

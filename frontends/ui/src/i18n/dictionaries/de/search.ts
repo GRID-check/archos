@@ -230,7 +230,14 @@ export const search: typeof en.search = {
     backToShelf: 'Zurück zur Ablage',
   },
   palette: {
-    searchFor: 'Nach „{text}“ suchen',
+    allResults: 'Alle Treffer für „{text}“',
     open: 'Suche öffnen',
+    noHits: 'Nichts gefunden',
+    recent: 'Zuletzt gesucht',
+    hint: {
+      office:
+        'Findet Dokumente nach Name, Plankopf, Art und Inhalt (mit Seite), dazu Anmerkungen, Ordner, Projekte und Chats im ganzen Büro.',
+      project: 'Findet in diesem Projekt Dokumente nach Name, Plankopf, Art und Inhalt (mit Seite), dazu Anmerkungen, Ordner und Chats.',
+    },
   },
 }

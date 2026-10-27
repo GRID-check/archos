@@ -132,14 +132,45 @@ describe('SearchWorkspaceView', () => {
         onLoadMore={() => {}}
       />
     )
-    const field = screen.getByRole('searchbox', { name: 'Suchen' })
+    const field = screen.getByRole('combobox', { name: 'Suchen' })
     await userEvent.click(field)
     await userEvent.keyboard('{ArrowDown}{ArrowDown}')
-    expect(screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')).toHaveAttribute('aria-current', 'true')
+    const second = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')
+    expect(second).toHaveAttribute('aria-selected', 'true')
+    // Focus stays in the field; a screen reader follows the active option through it.
+    expect(field).toHaveFocus()
+    expect(field).toHaveAttribute('aria-activedescendant', second.id)
     await userEvent.keyboard('{ArrowUp}{Enter}')
     expect(routerPush).toHaveBeenCalledWith(CONCEPT_AT_PASSAGE)
     await userEvent.keyboard('{Escape}')
     expect(onField).toHaveBeenCalledWith('')
+  })
+
+  it('is a combobox over one listbox per kind, each hit an option with a stable id', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg' }} onChange={() => {}} />)
+    const field = screen.getByRole('combobox', { name: 'Suchen' })
+    expect(field).toHaveAttribute('aria-autocomplete', 'list')
+    expect(field).toHaveAttribute('aria-expanded', 'true')
+    expect(field).not.toHaveAttribute('aria-activedescendant')
+    const lists = screen.getAllByRole('listbox')
+    expect(lists.map((list) => list.getAttribute('aria-label'))).toEqual(['Dokumente', 'Anmerkungen', 'Chats'])
+    expect(field.getAttribute('aria-controls')?.split(' ')).toEqual(lists.map((list) => list.id))
+    const options = within(lists[0]).getAllByRole('option')
+    expect(options[0]).toHaveAttribute('aria-selected', 'false')
+    expect(options[0].id).not.toBe('')
+    expect(new Set(screen.getAllByRole('option').map((option) => option.id)).size).toBe(screen.getAllByRole('option').length)
+  })
+
+  it('in the register, the combobox controls the table and names the active row', async () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register' }} onChange={() => {}} />)
+    const field = screen.getByRole('combobox', { name: 'Suchen' })
+    const register = screen.getByTestId('search-register')
+    expect(field).toHaveAttribute('aria-controls', register.id)
+    await userEvent.click(field)
+    await userEvent.keyboard('{ArrowDown}')
+    const row = screen.getByTestId('search-register-row-d0000000-0000-4000-8000-000000000001')
+    expect(row).toHaveAttribute('aria-selected', 'true')
+    expect(field).toHaveAttribute('aria-activedescendant', row.id)
   })
 
   it('offers to clear the filters when they exclude everything, and keeps the words on a failed search', async () => {
@@ -280,7 +311,7 @@ describe('SearchWorkspace', () => {
     currentSearch = 'folder=f1'
     german(<SearchWorkspace surface={{ kind: 'office' }} />)
     await waitFor(() => expect(asked).toHaveLength(1))
-    await userEvent.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'EP-03')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Suchen' }), 'EP-03')
     await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/app/search?folder=f1&q=EP-03', { scroll: false }))
     expect(routerReplace).toHaveBeenCalledTimes(1)
   })

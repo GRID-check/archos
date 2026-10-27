@@ -85,6 +85,9 @@ export interface SearchRegisterProps {
   hideProject?: boolean
   /** The row the arrow keys are on (`document:id`). */
   activeKey: string | null
+  /** The table's id and each row's, which the search field's combobox names. */
+  listId?: string
+  optionId?: (hit: DocumentHit) => string
 }
 
 /**
@@ -211,7 +214,7 @@ function SortMenu({ state, onStateChange, hideProject }: { state: SearchUrlState
  * stays put. On a phone it is a stack of entries, the number over the name.
  * It is a view of what Piloti read, not a list anyone maintains.
  */
-export function SearchRegister({ state, section, onStateChange, onLoadMore, hideProject = false, activeKey }: SearchRegisterProps): JSX.Element {
+export function SearchRegister({ state, section, onStateChange, onLoadMore, hideProject = false, activeKey, listId, optionId }: SearchRegisterProps): JSX.Element {
   const t = useTranslations('search')
   const isMobile = useIsMobile()
   const columns = visibleRegisterColumns(state.columns, { hideProject })
@@ -219,13 +222,14 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
   return (
     <>
       {isMobile ? (
-        <RegisterStack label={t('register.caption')} testId="search-register">
+        <RegisterStack id={listId} label={t('register.caption')} testId="search-register">
           {hits.map((hit) => (
-            <RegisterStackLine key={hit.id} hit={hit} columns={columns} active={activeKey === `document:${hit.id}`} />
+            <RegisterStackLine key={hit.id} hit={hit} columns={columns} active={activeKey === `document:${hit.id}`} id={optionId?.(hit)} />
           ))}
         </RegisterStack>
       ) : (
         <RegisterTable
+          id={listId}
           caption={t('register.caption')}
           testId="search-register"
           columnWidths={columns.map((column) => COLUMN_WIDTH[column])}
@@ -250,7 +254,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
           </RegisterHead>
           <RegisterBody>
             {hits.map((hit) => (
-              <RegisterLine key={hit.id} hit={hit} columns={columns} active={activeKey === `document:${hit.id}`} />
+              <RegisterLine key={hit.id} hit={hit} columns={columns} active={activeKey === `document:${hit.id}`} id={optionId?.(hit)} />
             ))}
           </RegisterBody>
         </RegisterTable>
@@ -278,7 +282,7 @@ function useStatus(hit: DocumentHit): { node: ReactNode; quiet: boolean } {
   return { node: labels.readState(family), quiet: family === 'readable' }
 }
 
-function RegisterLine({ hit, columns, active }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean }): JSX.Element {
+function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const status = useStatus(hit)
@@ -329,14 +333,14 @@ function RegisterLine({ hit, columns, active }: { hit: DocumentHit; columns: rea
     }
   }
   return (
-    <RegisterRow active={active} testId={`search-register-row-${hit.id}`}>
+    <RegisterRow active={active} id={id} testId={`search-register-row-${hit.id}`}>
       {columns.map(cell)}
     </RegisterRow>
   )
 }
 
 /** On a phone: the number and Index over the name; the other chosen columns on one muted line. */
-function RegisterStackLine({ hit, columns, active }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean }): JSX.Element {
+function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const status = useStatus(hit)
@@ -372,6 +376,7 @@ function RegisterStackLine({ hit, columns, active }: { hit: DocumentHit; columns
   }
   return (
     <RegisterStackRow
+      id={id}
       href={documentHitHref(hit)}
       code={code || undefined}
       title={hit.title ?? hit.name}

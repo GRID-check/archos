@@ -36,6 +36,22 @@ export interface SearchFieldProps {
   hint?: ReactNode
   /** Keys the field handles itself (Escape, the arrows over a result list). */
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void
+  /**
+   * The field drives a result list from the keyboard (WAI-ARIA combobox
+   * pattern, list autocomplete): it stays focused while ↑ ↓ move an active
+   * option, and a screen reader follows that option through
+   * `aria-activedescendant`. Absent, the field is a plain text or search box.
+   */
+  combobox?: SearchFieldCombobox
+}
+
+export interface SearchFieldCombobox {
+  /** The id(s) of the listbox(es) or grid the field drives, space-separated. */
+  controls: string
+  /** Whether results are showing for the field to walk. */
+  expanded: boolean
+  /** The id of the option the arrow keys are on, if any. */
+  activeDescendant?: string | null
 }
 
 /**
@@ -57,6 +73,7 @@ export function SearchField({
   trailing,
   hint,
   onKeyDown,
+  combobox,
 }: SearchFieldProps): JSX.Element {
   const canClear = Boolean(clearLabel)
   const hasValue = Boolean(value)
@@ -74,6 +91,15 @@ export function SearchField({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={label}
+        {...(combobox
+          ? {
+              role: 'combobox',
+              'aria-autocomplete': 'list' as const,
+              'aria-controls': combobox.controls || undefined,
+              'aria-expanded': combobox.expanded,
+              'aria-activedescendant': combobox.activeDescendant ?? undefined,
+            }
+          : {})}
         // THE SOFT KEYBOARD IS PART OF THIS CONTROL, and until now nothing in the
         // app told it so — `enterKeyHint` appeared nowhere in `src/`.
         //
