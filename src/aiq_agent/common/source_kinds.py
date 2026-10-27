@@ -226,11 +226,12 @@ class Shelf(StrEnum):
     BASE = "base"
 
 
-#: The shelf's wire value before it had an English name. A peer that has not
-#: rolled yet (an old BFF, a conversation or citation stored by an earlier build)
-#: still says ``archiv``; it reads as the office shelf and nothing writes it.
-#: The TypeScript twin is ``LEGACY_SHELF`` in ``features/chat/lib/source-kinds.ts``.
-#: Remove after one release.
+#: The shelf's wire value before it had an English name. Nothing writes it. The
+#: BFF's stored JSON was rewritten by migration 0187 and its reader is gone; this
+#: one stays for what only this tier holds: a checkpointed turn replayed from
+#: before the rename (kept 14 days idle, ``GRID_CHAT_CHECKPOINT_RETENTION_SECONDS``),
+#: and a browser tab still running a bundle from before it. Remove once both have
+#: aged out.
 LEGACY_SHELF_VALUES: dict[str, str] = {"archiv": Shelf.OFFICE_SHELF.value}
 
 

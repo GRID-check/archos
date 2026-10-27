@@ -52,7 +52,7 @@
  */
 
 import { CITATIONS_PAYLOAD_VERSION } from '@/features/chat/lib/citations'
-import { modernizeLane, modernizeSourceKind } from '@/features/chat/lib/source-kinds'
+import { modernizeLane } from '@/features/chat/lib/source-kinds'
 import { LEGACY_BINDING_STATUS } from '@/features/chat/lib/wire-citation'
 import type { WireCitationSource } from '@/features/chat/types'
 import { sanitizeProvenance, type MessageProvenance } from './message-provenance'
@@ -256,7 +256,7 @@ function normalizeSource(input: unknown): StoredCitationSource | null {
     shelf: text(input.shelf, MAX_IDENTIFIER),
     // An older pod (rolling deploy) still sends the German kinds, lanes and
     // binding statuses; the row stores the English ones.
-    kind: text(modernizeSourceKind(input.kind as string | undefined), MAX_IDENTIFIER),
+    kind: text(input.kind, MAX_IDENTIFIER),
     lane: text(modernizeLane(input.lane as string | undefined), MAX_IDENTIFIER),
     lane_label: text(input.lane_label, MAX_TEXT),
     binding_note: text(input.binding_note, MAX_TEXT),
