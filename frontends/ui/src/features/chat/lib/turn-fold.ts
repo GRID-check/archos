@@ -229,6 +229,8 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
           ...some('documentId', step.document_id),
           ...some('pages', step.pages),
           ...some('shelf', step.shelf),
+          ...some('mount', step.mount),
+          ...(step.incomplete ? { incomplete: true } : {}),
           ...some('counts', actionCountsOf(step.counts)),
           ...(step.elapsed_ms === null ? {} : { elapsedMs: step.elapsed_ms }),
         },

@@ -139,8 +139,17 @@ const ESTATE_LABEL_KEYS: Record<string, string> = {
 /** The mounts that are no office document: the drafts the answer wrote, and the skills (ADR-0135). */
 const OFF_ESTATE: ReadonlySet<string> = new Set(['drafts', 'skills'])
 
+/**
+ * A file tool's chip by where it reached: the estate's reading or listing, the
+ * drafts' one chip for all four verbs, and none for a skill read, whose skill
+ * step already says which skill it was (ADR-0135; a draft chip there named a
+ * draft nobody wrote).
+ */
 const toolLabelKey = (tool: string, mount: unknown): string | undefined => {
-  if (typeof mount === 'string' && !OFF_ESTATE.has(mount) && ESTATE_LABEL_KEYS[tool]) return ESTATE_LABEL_KEYS[tool]
+  if (typeof mount === 'string' && ESTATE_LABEL_KEYS[tool]) {
+    if (mount === 'skills') return undefined
+    return OFF_ESTATE.has(mount) ? 'draft' : ESTATE_LABEL_KEYS[tool]
+  }
   return TOOL_LABEL_KEYS[tool]
 }
 

@@ -1573,6 +1573,8 @@ export function buildGraph(
   const linking: RowLinking = {
     selection,
     onSelect: interaction.onSelect,
+    // Only a call that returned a card links its row: a listing or a search for files returns none.
+    carded: new Set([...callsOf.values()].flat()),
     nameOf: (target) => {
       const card = cardForTarget(target, cards)
       return card ? cardName(card) : undefined

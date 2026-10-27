@@ -12,6 +12,8 @@ import { describe, expect, test, vi } from 'vitest'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { fakePdfjsRuntime, type FakePdfState } from '@/test-utils/pdfjs-fake'
 import {
+  filesystemEdgesScene,
+  filesystemScene,
   foldScene,
   mockupCitations,
   mockupScene,
@@ -53,9 +55,9 @@ describe('RoundCalls', () => {
     const items = screen.getAllByTestId('work-row')
     expect(items).toHaveLength(3)
     expect(items[0]).toHaveTextContent(
-      'Sucht wörtlich „Brandabschnitt“ im Projekt14 Treffer · 3 Dokumente'
+      'Sucht wörtlich „Brandabschnitt“ im Projekt14 Treffer in 3 Dokumenten'
     )
-    expect(items[1]).toHaveTextContent('Öffnet 03 Einreichung › Pläne12 Dateien, 2 Ordner')
+    expect(items[1]).toHaveTextContent('Listet 03 Einreichung › Pläne12 Dateien, 2 Ordner')
     expect(screen.queryByTestId('work-bar')).toBeNull()
     expect(document.body).not.toHaveTextContent(/\d,\d s|gleichzeitig/)
     restore()
@@ -197,6 +199,43 @@ describe('RoundCalls', () => {
     expect(screen.queryByTestId('look-step-row')).toBeNull()
   })
 
+  test('a filesystem search that could not search everything shows a dashed ring, the word and what it means', () => {
+    const [first] = rounds(foldScene(filesystemEdgesScene()))
+    render(<RoundCalls round={first} eager />)
+    const incomplete = screen
+      .getAllByTestId('work-row')
+      .filter((row) => row.getAttribute('data-incomplete') === 'true')
+    expect(incomplete).toHaveLength(2)
+    expect(incomplete[0]).toHaveTextContent(
+      'Durchsucht alle Ablagen wörtlich nach „Brandabschnitt“nicht alles durchsucht – es kann weitere Treffer geben3 Treffer in 1 Dokument, unvollständig'
+    )
+    expect(within(incomplete[0]).getByTestId('work-row-note')).toHaveTextContent(
+      'nicht alles durchsucht – es kann weitere Treffer geben'
+    )
+    expect(within(incomplete[1]).getByTestId('work-row-note')).toHaveTextContent('das ist kein Nein')
+    // Never the failure note: most of it WAS searched.
+    expect(screen.queryByTestId('work-row-failed-note')).toBeNull()
+  })
+
+  test('only a row whose call returned a card links; a listing or a search for files is no button', () => {
+    const [, second] = rounds(foldScene(filesystemScene()))
+    const onSelect = vi.fn()
+    render(
+      <RoundCalls
+        round={second}
+        linking={{ selection: null, onSelect, carded: new Set(['call:fs4', 'call:fs6']) }}
+      />
+    )
+    const links = screen.getAllByTestId('work-row-link')
+    expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
+      `Liest Baubeschreibung.pdf, S.${NB}4–6: 3${NB}Stellen`,
+      `Durchsucht alle Ablagen wörtlich nach „Fluchtweg“: 3${NB}Treffer in 1${NB}Dokument`,
+    ])
+    const listing = screen.getAllByTestId('work-row').find((row) => row.dataset.verb === 'list')!
+    expect(within(listing).queryByRole('button')).toBeNull()
+    expect(listing).toHaveTextContent('Listet 03 Einreichung › Pläne9 Dateien, 0 Ordner')
+  })
+
   test('a row with a call id is a button that links; its name is the sentence', async () => {
     const onSelect = vi.fn()
     const [first] = rounds(foldScene(mockupScene()))
@@ -204,7 +243,7 @@ describe('RoundCalls', () => {
       <RoundCalls round={first} linking={{ selection: null, onSelect }} />
     )
     const button = screen.getByRole('button', {
-      name: `Sucht wörtlich „Brandabschnitt“ im Projekt: 14${NB}Treffer${NB}· 3${NB}Dokumente`,
+      name: `Sucht wörtlich „Brandabschnitt“ im Projekt: 14${NB}Treffer in 3${NB}Dokumenten`,
     })
     expect(button).toHaveAttribute('aria-pressed', 'false')
     await userEvent.click(button)

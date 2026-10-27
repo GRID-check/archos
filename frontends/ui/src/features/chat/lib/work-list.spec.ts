@@ -329,7 +329,7 @@ describe('workParts', () => {
     ).toEqual({
       verb: 'Sucht wörtlich',
       object: '„Brandabschnitt“ im Projekt',
-      result: `14${NB}Treffer${NB}· 3${NB}Dokumente`,
+      result: `14${NB}Treffer in 3${NB}Dokumenten`,
       tone: 'ok',
     })
     // „von 41“ went by the value test: the place proves, the denominator does not.
@@ -363,7 +363,7 @@ describe('workParts', () => {
         target: '03 Einreichung/Pläne',
         counts: { files: 12, folders: 2 },
       })
-    ).toBe(`Öffnet 03 Einreichung › Pläne: 12${NB}Dateien, 2${NB}Ordner`)
+    ).toBe(`Listet 03 Einreichung › Pläne: 12${NB}Dateien, 2${NB}Ordner`)
     expect(breadcrumb('a\\b/c')).toBe('a › b › c')
   })
 
@@ -436,7 +436,7 @@ describe('workParts', () => {
       tone: 'running',
     })
     expect(workParts(t, { verb: 'read', status: 'empty', target: 'a.pdf' })).toMatchObject({
-      result: 'nichts gefunden',
+      result: 'nicht gefunden',
       tone: 'empty',
     })
     expect(workParts(t, { verb: 'law', status: 'error', query: 'x' })).toMatchObject({
@@ -476,7 +476,7 @@ describe('workParts', () => {
     })
     // Reading, looking and opening keep their verb: „Liest 7 Dokumente“ reads.
     expect(workParts(t, { verb: 'list', status: 'ok', target: 'a' }, { fold })).toMatchObject({
-      verb: 'Öffnet',
+      verb: 'Listet',
       object: `4${NB}Ordner`,
     })
   })
@@ -530,6 +530,6 @@ describe('workParts', () => {
           counts: { hits: 2, documents: 1 },
         })
       )
-    ).toBe(`Searches for the exact phrase “x” in the project: 2${NB}hits${NB}· 1${NB}document`)
+    ).toBe(`Searches for the exact phrase “x” in the project: 2${NB}hits in 1${NB}document`)
   })
 })

@@ -1034,8 +1034,21 @@ export const chat = {
       // A call the turn ended under (Stop, an error, a lost connection): no result.
       interrupted: 'interrupted',
       noHit: 'no hit',
+      // A literal search without a hit, with what it searched.
+      noHitIn: 'no hit in {count, plural, one {#\u00A0document} other {#\u00A0documents}}',
       nothingFound: 'nothing found',
+      // A folder or document that is not there (a restricted folder answers the same).
+      notFound: 'not found',
+      // A file-name search no file matched.
+      noFile: 'no file',
       failed: 'failed',
+      // A literal search that could not search everything: its count is a floor.
+      incomplete: 'incomplete',
+      incompleteResult: '{found}, incomplete',
+      incompleteNote: {
+        hits: 'not everything was searched – there may be more hits',
+        noHit: 'not everything was searched – this is not a no',
+      },
       // After „failed“: what it means for the answer.
       failedNote: 'the answer does not rest on it',
       // More than five calls in one step: the worst first, the rest folded.
@@ -1052,7 +1065,7 @@ export const chat = {
       kind: {
         search: 'Search',
         read: 'Reading',
-        list: 'Open folder',
+        list: 'List',
         look: 'Look',
         model: 'Query the model',
         workspace: 'Workspace',
@@ -1064,6 +1077,30 @@ export const chat = {
         web: 'on the web',
         session: 'in this chat',
       },
+      // The places of the filesystem (ADR-0133) as a row names them: as the object of a verb …
+      place: {
+        project: 'the project',
+        office: 'the office filing',
+        chat: "this chat's files",
+        law: 'the OIB guidelines',
+        estate: 'every place',
+        // … and as the first crumb before a folder outside the project: “Office filing › Templates”.
+        folderIn: '{place} ›\u00A0{folder}',
+        crumb: {
+          office: 'Office filing',
+          chat: 'Chat',
+          law: 'OIB guidelines',
+        },
+      },
+      // … and after “in”: “Looks for files named “*.pdf” in the project”.
+      placeIn: {
+        project: 'in the project',
+        office: 'in the office filing',
+        chat: "in this chat's files",
+        law: 'in the OIB guidelines',
+        estate: 'in every place',
+        folder: 'in {folder}',
+      },
       // The verb sits muted before its object: „Searches for the exact phrase“ „“Brandabschnitt” in the project“.
       verb: {
         search: 'Searches for',
@@ -1072,7 +1109,11 @@ export const chat = {
         searchIn: 'Searches',
         searchExactIn: 'Searches verbatim in',
         searchRegexIn: 'Searches by pattern in',
-        list: 'Opens',
+        list: 'Lists',
+        // The filesystem's literal search: “Searches 03 Einreichung for the exact words “Brandabschnitt””.
+        grep: 'Searches',
+        // The file-name search: “Looks for files named “*.pdf” in the project”.
+        glob: 'Looks for files named',
         read: 'Reads',
         look: 'Looks at',
         lookup: 'Searches other projects for',
@@ -1084,7 +1125,9 @@ export const chat = {
       // The settled head of a turn of exactly one call: what WAS done.
       done: {
         search: 'Searched: {name}',
-        list: 'Opened: {name}',
+        list: 'Listed: {name}',
+        grep: 'Searched: {name}',
+        glob: 'Looked for files named {name}',
         read: 'Read: {name}',
         look: 'Looked at: {name}',
         lookup: 'Searched other projects: {name}',
@@ -1095,7 +1138,7 @@ export const chat = {
       },
       doneFallback: {
         search: 'Searched the documents',
-        list: 'Opened a folder',
+        list: 'Listed a folder',
         read: 'Read a document',
         look: 'Looked at a document',
         lookup: 'Searched other projects',
@@ -1108,6 +1151,9 @@ export const chat = {
         query: '“{query}”',
         queryShelf: '“{query}” {shelf}',
         queryIn: '{target} for “{query}”',
+        grepExact: '{place} for the exact words “{query}”',
+        grepRegex: '{place} for the pattern “{query}”',
+        names: '“{query}” {place}',
         pages: '{target}, p.\u00A0{pages}',
         clause: '{target}, {pages}',
         where: '{target}, p.\u00A0{pages}, {where}',
@@ -1117,6 +1163,8 @@ export const chat = {
         documents: '{count, plural, one {#\u00A0document} other {#\u00A0documents}}',
         folders: '{count, plural, one {#\u00A0folder} other {#\u00A0folders}}',
         searches: '{count, plural, one {#\u00A0search} other {#\u00A0searches}}',
+        nameSearches:
+          '{count, plural, one {#\u00A0file-name search} other {#\u00A0file-name searches}}',
         lawSearches: '{count, plural, one {#\u00A0RIS search} other {#\u00A0RIS searches}}',
         webSearches: '{count, plural, one {#\u00A0web search} other {#\u00A0web searches}}',
         lookupSearches:
@@ -1128,7 +1176,7 @@ export const chat = {
       },
       fallback: {
         search: 'Searches the documents',
-        list: 'Opens a folder',
+        list: 'Lists a folder',
         read: 'Reads a document',
         look: 'Looks at a document',
         lookup: 'Searches other projects',
@@ -1140,9 +1188,12 @@ export const chat = {
       found: {
         hits: '{count, plural, one {#\u00A0hit} other {#\u00A0hits}}',
         hitsDocuments:
-          '{hits, plural, one {#\u00A0hit} other {#\u00A0hits}}\u00A0· {documents, plural, one {#\u00A0document} other {#\u00A0documents}}',
+          '{hits, plural, one {#\u00A0hit} other {#\u00A0hits}} in {documents, plural, one {#\u00A0document} other {#\u00A0documents}}',
         documents: '{count, plural, one {#\u00A0document} other {#\u00A0documents}}',
-        places: '{count, plural, one {#\u00A0passage} other {#\u00A0passages}}',
+        passages: '{count, plural, one {#\u00A0passage} other {#\u00A0passages}}',
+        // The places themselves (`ls /`): how many there are and what they hold.
+        places:
+          '{folders, plural, one {#\u00A0place} other {#\u00A0places}}, {files, plural, one {#\u00A0file} other {#\u00A0files}}',
         listing:
           '{files, plural, one {#\u00A0file} other {#\u00A0files}}, {folders, plural, one {#\u00A0folder} other {#\u00A0folders}}',
         files: '{count, plural, one {#\u00A0file} other {#\u00A0files}}',
@@ -1399,12 +1450,23 @@ export const chat = {
         openEmpty: 'Cannot be judged: a call found nothing ({what}).',
         // From a call that failed or broke off: the call as a noun.
         openFailed: 'Cannot be judged: {call} failed.',
+        // A literal search without a hit that could not search everything: not a no.
+        openIncomplete: 'Cannot be judged: {call} could not search everything.',
+        // A folder or document that is not there.
+        openNotFound: 'Cannot be judged: “{name}” was not found.',
+        // A literal filesystem search without a hit: `{place}` carries its preposition (“in every place”).
+        openNoHitPlace:
+          'Cannot be judged: the literal search {place} for “{query}” found no passage.',
         openInterrupted: 'Cannot be judged: {call} was stopped.',
         callQuery: '{call} for “{query}”',
         callTarget: '{call} “{target}”',
+        callPlace: '{call} {place}',
+        callPlaceQuery: '{call} {place} for “{query}”',
         call: {
           search: 'the search',
-          list: 'opening the folder',
+          list: 'listing the folder',
+          grep: 'the literal search',
+          glob: 'the file-name search',
           read: 'reading the document',
           look: 'looking at the document',
           lookup: 'the search in other projects',
