@@ -12,6 +12,9 @@ public/mockServiceWorker.js
 # pdf.js runtime assets (staged by scripts/copy-pdfjs-assets.mjs on install, dev and build)
 public/pdfjs/
 
+# MCP Apps views (built by scripts/build-mcp-app-views.ts on dev, build and in the image; ADR-0142)
+mcp-app-views/
+
 # Next.js
 .next/
 out/

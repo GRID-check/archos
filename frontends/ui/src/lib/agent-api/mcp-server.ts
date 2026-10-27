@@ -46,7 +46,7 @@ import {
   searchOperations,
 } from './discovery'
 import { type AgentOperation, annotationsOf } from './operation'
-import { type AgentDoor, doorOfPrincipal, visibleBackendOperations, visibleOperations } from './policy'
+import { type AgentDoor, doorOfPrincipal, findVisibleOperation, visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 import { offersDoorGuide, offersProjectResource, readableProjectUris, registerDoorGuide } from './door'
 import { DoorEventBus, listeningAs } from './door/event-bus'
@@ -54,6 +54,8 @@ import { META_TOOL_ICONS, serverIcons } from './icons'
 import { META_OUTPUT_SCHEMAS } from './meta-output-schemas'
 import { configuredAppOrigin } from '@/lib/app-origin'
 import { ASK_CREATE, TASKS_EXTENSION, offersAskTasks, registerAskTasks, runAskCreate } from './ask-calls'
+import { registerAppTool } from '@modelcontextprotocol/ext-apps/server'
+import { UI_EXTENSION, VIEW_TOOL_NOTE, offersAppViews, registerAppViews, viewMetaOf } from './mcp-apps'
 import type { McpCallContext, McpMode } from './telemetry'
 
 export const MODE_HEADER = 'x-piloti-mcp-mode'
@@ -194,25 +196,34 @@ function registerMetaTools(server: McpServer, ctx: McpCallContext, era: McpEra):
   }
 }
 
-function registerOperationTools(server: McpServer, ctx: McpCallContext, era: McpEra): void {
-  for (const op of visibleOperations(ctx.principal)) {
-    server.registerTool(
-      op.name,
-      {
-        title: op.summary,
-        description: op.description,
-        inputSchema: operationSchema(op),
-        annotations: listedAnnotations(annotationsOf(op)),
-        ...(ALWAYS_LOAD.has(op.name) ? { _meta: ALWAYS_LOAD_META } : {}),
-      },
-      op.name === ASK_CREATE && era === 'modern'
-        ? (args: unknown, req: ServerContext) => runAskCreate(ctx, (args ?? {}) as OperationInput, req)
-        : (args: unknown, req: ServerContext) => {
-            const input = (args ?? {}) as OperationInput
-            return confirmThenRun(ctx, req, { operation: op.name, input }, (runCtx) => runOperation(runCtx, op.name, input))
-          },
-    )
+/**
+ * One catalog operation as an MCP tool, as `tools` mode lists it. An operation
+ * whose result a view draws (`mcp-apps.ts`) also carries `_meta.ui.resourceUri`
+ * for an outside agent, registered through the MCP Apps SDK's `registerAppTool`.
+ */
+function registerOperationTool(server: McpServer, ctx: McpCallContext, era: McpEra, op: AgentOperation): void {
+  const view = viewMetaOf(ctx, op.name)
+  const meta = { ...(ALWAYS_LOAD.has(op.name) ? ALWAYS_LOAD_META : {}), ...(view ?? {}) }
+  const config = {
+    title: op.summary,
+    description: view ? op.description + VIEW_TOOL_NOTE : op.description,
+    inputSchema: operationSchema(op),
+    annotations: listedAnnotations(annotationsOf(op)),
+    ...(Object.keys(meta).length > 0 ? { _meta: meta } : {}),
   }
+  const handler =
+    op.name === ASK_CREATE && era === 'modern'
+      ? (args: unknown, req: ServerContext) => runAskCreate(ctx, (args ?? {}) as OperationInput, req)
+      : (args: unknown, req: ServerContext) => {
+          const input = (args ?? {}) as OperationInput
+          return confirmThenRun(ctx, req, { operation: op.name, input }, (runCtx) => runOperation(runCtx, op.name, input))
+        }
+  if (view) registerAppTool(server, op.name, { ...config, _meta: meta }, handler)
+  else server.registerTool(op.name, config, handler)
+}
+
+function registerOperationTools(server: McpServer, ctx: McpCallContext, era: McpEra): void {
+  for (const op of visibleOperations(ctx.principal)) registerOperationTool(server, ctx, era, op)
   // The Python agent's read tools: flat arguments, read-only, and open-world only where they reach beyond the workspace.
   for (const op of visibleBackendOperations(ctx.principal)) {
     server.registerTool(
@@ -254,10 +265,12 @@ export type McpEra = 'modern' | 'legacy'
 function capabilitiesFor(ctx: McpCallContext, era: McpEra) {
   const live = era === 'modern' && offersProjectResource(ctx)
   const tasks = era === 'modern' && offersAskTasks(ctx.principal)
+  const apps = era === 'modern' && offersAppViews(ctx)
+  const extensions = { ...(tasks ? { [TASKS_EXTENSION]: {} } : {}), ...(apps ? { [UI_EXTENSION]: {} } : {}) }
   return {
     tools: { listChanged: false },
-    // The tasks extension, to a caller that may ask Piloti (`ask-calls.ts`).
-    ...(tasks ? { extensions: { [TASKS_EXTENSION]: {} } } : {}),
+    // The tasks extension, to a caller that may ask Piloti (`ask-calls.ts`); MCP Apps, to an outside agent (`mcp-apps.ts`).
+    ...(Object.keys(extensions).length > 0 ? { extensions } : {}),
     ...(offersDoorGuide(ctx)
       ? { prompts: { listChanged: false }, resources: live ? { listChanged: true, subscribe: true } : { listChanged: false } }
       : {}),
@@ -286,6 +299,10 @@ export function buildMcpServer(principal: AgentPrincipal, mode: McpMode, era: Mc
   if (mode === 'tools') registerOperationTools(server, ctx, era)
   else registerMetaTools(server, ctx, era)
   registerDoorGuide(server, ctx)
+  // MCP Apps: the views, their app-only tools, and in `search` mode the tool that links to a view (ADR-0142).
+  registerAppViews(server, ctx, (op) => {
+    if (findVisibleOperation(principal, op.name)) registerOperationTool(server, ctx, era, op)
+  })
   if (era === 'modern' && offersAskTasks(principal)) registerAskTasks(server, ctx)
   return server
 }

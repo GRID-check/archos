@@ -42,8 +42,8 @@ export interface McpCallContext {
    * every call takes its path unchanged.
    */
   confirmation?: Confirmation | null
-  /** `elicitation` on the round that runs a call the person confirmed in their own chat. */
-  decisionSource?: 'elicitation'
+  /** `elicitation` on the round that runs a call the person confirmed in their own chat; `app` for a press on an MCP Apps card (`mcp-apps.ts`). */
+  decisionSource?: 'elicitation' | 'app'
 }
 
 /**

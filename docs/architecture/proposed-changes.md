@@ -472,6 +472,14 @@ After a profile change is applied, by this reader or a colleague, the facts the
 thread's answers bind (`:project[key]`) are told to re-read; after a file
 operation the Files list is.
 
+
+**In another assistant.** The same receipts are drawn inside Claude, ChatGPT or
+VS Code as an MCP App (ADR-0142, [`agent-surface.md`](agent-surface.md#mcp-apps-cards-in-the-persons-own-assistant)):
+`useServerProposal` reads and decides through a `ProposalTransport`
+(`features/grid-cards/hooks/proposal-transport.ts`), the HTTP client here and
+`tools/call` to the door there, so the route and its rules are the same; the
+host frame has no realtime channel, and a colleague's decision shows on the
+next read.
 ### Older answers, and a proposal the server did not store
 
 A card without a `proposal_id` is one the server did not take: an answer older

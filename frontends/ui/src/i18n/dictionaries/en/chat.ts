@@ -712,6 +712,19 @@ export const chat = {
       applied: 'The action was carried out.',
       dismissed: 'Discarded. The action was not carried out.',
     },
+    // The proposal card inside another assistant's chat (Claude, ChatGPT, VS Code),
+    // drawn as an MCP App from Piloti's MCP server (ADR-0142). The same receipt
+    // as in Piloti; these are the lines only that frame needs.
+    mcpApp: {
+      source: 'From Piloti',
+      fileTitle: '{count, plural, one {A change to one file} other {# changes to files}}',
+      memoryTitle: 'A note for Piloti to remember',
+      // A profile change shows before and after against the live profile, which
+      // the frame cannot read: it is decided in Piloti.
+      decideInPiloti: 'This proposal changes the project context. Open the project in Piloti to compare it with the current values and decide.',
+      unreadable: 'This proposal could not be shown.',
+      waiting: 'Loading the proposal…',
+    },
     // What Piloti did on a document: marks it set, threads it answered in.
     // One „take over" or „discard" per mark, and the way into the review at
     // exactly that place.

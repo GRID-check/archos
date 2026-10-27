@@ -216,8 +216,10 @@ describe('every other call answers one JSON body', () => {
 describe('the tasks extension (SEP-2663)', () => {
   it('is advertised on the 2026-07-28 era to an agent that may ask Piloti, and to nobody else', async () => {
     const offered = await modern('server/discover', {})
+    // Beside MCP Apps (`mcp-apps.ts`), which an outside agent is offered too.
     expect((last(offered.messages).result as { capabilities: { extensions?: object } }).capabilities.extensions).toEqual({
       [TASKS_EXTENSION]: {},
+      'io.modelcontextprotocol/ui': {},
     })
     const own = await modern('server/discover', {}, { principal: piloti })
     expect((last(own.messages).result as { capabilities: { extensions?: object } }).capabilities.extensions).toBeUndefined()

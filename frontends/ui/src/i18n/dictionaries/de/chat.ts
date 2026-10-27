@@ -715,6 +715,19 @@ export const chat: typeof en.chat = {
       applied: 'Die Aktion wurde ausgeführt.',
       dismissed: 'Verworfen. Die Aktion wurde nicht ausgeführt.',
     },
+    // Die Vorschlagskarte im Chat eines anderen Assistenten (Claude, ChatGPT,
+    // VS Code), als MCP App von Pilotis MCP-Server gezeichnet (ADR-0142). Dieselbe
+    // Quittung wie in Piloti; hier nur die Zeilen, die dieser Rahmen braucht.
+    mcpApp: {
+      source: 'Von Piloti',
+      fileTitle: '{count, plural, one {Eine Änderung an einer Datei} other {# Änderungen an Dateien}}',
+      memoryTitle: 'Eine Notiz, die Piloti sich merken soll',
+      // Eine Profiländerung zeigt Vorher und Nachher am aktuellen Profil, das der
+      // Rahmen nicht lesen kann: Darüber wird in Piloti entschieden.
+      decideInPiloti: 'Dieser Vorschlag ändert den Projektkontext. Öffnen Sie das Projekt in Piloti, um ihn mit den aktuellen Werten zu vergleichen und zu entscheiden.',
+      unreadable: 'Dieser Vorschlag konnte nicht angezeigt werden.',
+      waiting: 'Der Vorschlag wird geladen …',
+    },
     // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
     // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und
     // der Weg in die Prüfansicht an genau diese Stelle. Eine Datei heißt hier
