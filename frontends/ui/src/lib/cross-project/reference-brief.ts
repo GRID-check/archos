@@ -13,7 +13,7 @@
  */
 
 import 'server-only'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { isProjectClosed } from '@/lib/projects/project-status'
 import { findProjectInOrg, listProjectsInOrg } from '@/lib/projects/repository'
 import { fingerprintLabels, sharedTraitLabel } from './fingerprint'

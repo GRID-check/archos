@@ -231,7 +231,7 @@ def _page_lines(page: dict[str, Any]) -> list[Line]:
     styles = {str(text): (size, bold) for text, size, bold in recorded}
     try:
         number = int(page.get("page_number"))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         number = 0
     lines = []
     for raw in (page.get("text") or "").splitlines():

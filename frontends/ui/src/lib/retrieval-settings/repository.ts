@@ -7,7 +7,7 @@ import 'server-only'
 import { asc, inArray } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
-import { platformRetrievalSettings, type PlatformRetrievalSetting } from '@/lib/db/schema'
+import { platformRetrievalSettings, type PlatformRetrievalSetting } from '@/lib/db/schema/platform-retrieval-settings'
 import { RETRIEVAL_SETTING_KEYS } from './catalog'
 
 /**

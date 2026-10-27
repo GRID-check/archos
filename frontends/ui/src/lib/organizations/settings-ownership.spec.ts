@@ -29,7 +29,7 @@ vi.mock('@/lib/authz/platform', async (importOriginal) => {
 
 import { ForbiddenError } from '@/lib/api/errors'
 import { PlatformAccessDeniedError } from '@/lib/authz/platform'
-import { PLATFORM_OWNED_SETTINGS } from '@/lib/db/schema'
+import { PLATFORM_OWNED_SETTINGS } from '@/lib/db/schema/organizations'
 import type { GridSession } from '@/lib/auth/types'
 import { updateOrgSettings, updatePlatformOwnedOrgSettings, writeDedicatedOrgSetting } from './service'
 

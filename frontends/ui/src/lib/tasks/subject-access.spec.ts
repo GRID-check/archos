@@ -21,7 +21,7 @@ import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { clearanceOf } from '@/lib/authz/folder-access'
 import { listProjectFolderTree } from '@/lib/authz/folder-access-repository'
-import type { TaskPlan } from '@/lib/db/schema'
+import type { TaskPlan } from '@/lib/db/schema/tasks'
 import { findSubjectDocumentPlaces } from './repository'
 import { requireMaySeeSubject, withoutUnreadableSubjects } from './subject-access'
 

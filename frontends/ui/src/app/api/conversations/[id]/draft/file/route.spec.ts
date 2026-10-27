@@ -20,8 +20,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NotFoundError } from '@/lib/api/errors'
-import type { Conversation } from '@/lib/db/schema'
-import type { DocumentVersion } from '@/lib/db/schema'
+import type { Conversation } from '@/lib/db/schema/conversations'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
 import type { DocumentListRow } from '@/lib/documents/repository'
 
 vi.mock('@/lib/auth/require-auth', () => ({

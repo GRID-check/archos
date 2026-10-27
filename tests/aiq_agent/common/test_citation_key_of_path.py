@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import _parse_citation_ref
-from aiq_agent.common.citation_verification import citation_key_of_path
-from aiq_agent.common.citation_verification import verify_citations
+from aiq_agent.citations.citation_keys import citation_key_of_path
+from aiq_agent.citations.citation_keys import parse_citation_ref
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.verification import verify_citations
 from aiq_agent.common.source_kinds import Shelf
 
 
@@ -39,7 +39,7 @@ class TestThePath:
         assert citation_key_of_path("/elsewhere/x.pdf") is None
 
     def test_the_page_is_kept(self):
-        assert _parse_citation_ref("/project/A/Plan.pdf.md, p.3") == ("Plan.pdf", Shelf.PROJECT, 3)
+        assert parse_citation_ref("/project/A/Plan.pdf.md, p.3") == ("Plan.pdf", Shelf.PROJECT, 3)
 
 
 class TestTheRegistry:

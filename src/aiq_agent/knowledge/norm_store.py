@@ -125,7 +125,7 @@ class NormRegistryStore:
                 if engine:
                     try:
                         engine.dispose()
-                    except (RuntimeError, OSError):
+                    except RuntimeError, OSError:
                         pass
 
     # -- schema --------------------------------------------------------------
@@ -364,7 +364,7 @@ class NormRegistryStore:
             for _key, (engine, _) in list(cls._sync_engine_cache.items()):
                 try:
                     engine.dispose()
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
             cls._sync_engine_cache.clear()
             cls._tables_initialized.clear()

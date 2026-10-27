@@ -13,7 +13,7 @@ import 'server-only'
 import { and, asc, desc, eq, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
-import { bffJobQueue, type BffJobPriority, type BffJobRow } from '@/lib/db/schema'
+import { bffJobQueue, type BffJobPriority, type BffJobRow } from '@/lib/db/schema/bff-job-queue'
 
 /**
  * Add a job to the caller's own lane. Runs in the tenant scope of the request

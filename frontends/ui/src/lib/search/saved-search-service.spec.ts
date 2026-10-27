@@ -18,7 +18,7 @@ vi.mock('./saved-search-repository', () => ({
 vi.mock('@/lib/sharing/directory', () => ({ resolvePeople: vi.fn() }))
 
 import { BadRequestError, ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
-import type { SavedSearchRow } from '@/lib/db/schema'
+import type { SavedSearchRow } from '@/lib/db/schema/saved-searches'
 import {
   countOwnedSavedSearches,
   deleteOwnSavedSearch,

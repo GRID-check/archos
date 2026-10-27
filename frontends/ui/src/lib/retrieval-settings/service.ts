@@ -15,7 +15,7 @@
 
 import 'server-only'
 import { getCached, invalidateCached } from '@/lib/cache'
-import type { PlatformRetrievalSetting } from '@/lib/db/schema'
+import type { PlatformRetrievalSetting } from '@/lib/db/schema/platform-retrieval-settings'
 import { UnprocessableError } from '@/lib/api/errors'
 import {
   RETRIEVAL_SETTINGS,

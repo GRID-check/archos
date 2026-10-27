@@ -33,7 +33,7 @@
 
 import 'server-only'
 import { auditLogsEnabled, recordAuditEventOrThrow, SYSTEM_ACTORS } from '@/lib/audit/service'
-import type { DocumentQuarantineDecision } from '@/lib/db/schema'
+import type { DocumentQuarantineDecision } from '@/lib/db/schema/document-quarantine-decisions'
 import { modernizeDocumentScope } from '@/lib/db/schema/documents'
 import {
   deleteSpentQuarantineDecisions,

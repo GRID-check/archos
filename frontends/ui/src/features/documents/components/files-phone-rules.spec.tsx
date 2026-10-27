@@ -1,3 +1,4 @@
+// @disk-inputs: src/features/documents/components/file-browser-pane.tsx, src/features/documents/components/file-workspace.tsx, src/features/documents/components/folder-brief.tsx, src/features/documents/components/folder-navigation.tsx, src/features/documents/components/upload-fab.tsx
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'

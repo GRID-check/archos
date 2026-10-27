@@ -18,7 +18,7 @@ import { recordAuditEvent } from '@/lib/audit/service'
 import { filedInOf } from '@/lib/audit/document-names'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { canWriteFolder, requireFolderWrite } from '@/lib/authz/folder-access'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import {
   findDocumentInOrg,
   listQuarantinedDocuments,

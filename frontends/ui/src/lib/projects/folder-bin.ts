@@ -97,7 +97,7 @@ import { lockConversationAudience, recordSourceFolders } from '@/lib/conversatio
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
 import { withTenant } from '@/lib/db/tenant-context'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { computePurgeAfter, folderGraceDays } from '@/lib/deletion/policy'
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { eraseProjectDocument } from '@/lib/documents/service'

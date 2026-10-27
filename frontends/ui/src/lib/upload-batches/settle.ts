@@ -24,7 +24,8 @@
  */
 
 import 'server-only'
-import type { Document, UploadBatch } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
+import type { UploadBatch } from '@/lib/db/schema/upload-batches'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { internalRead } from '@/lib/documents/document-reader'
 import { isQuarantineReviewer } from '@/lib/documents/quarantine-reviewers'

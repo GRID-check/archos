@@ -11,16 +11,8 @@ import { withTenant } from '@/lib/db/tenant-context'
 import { CURSOR_TIMESTAMP_FORMAT, type DocumentListCursor } from '@/lib/documents/list-cursor'
 import { SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
 import type { TaskRunReviewFilter } from './task-wire'
-import {
-  documents,
-  taskDefinitions,
-  taskRuns,
-  type NewTaskDefinition,
-  type NewTaskRun,
-  type TaskDefinition,
-  type TaskRun,
-  type TaskRunStatus,
-} from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
+import { taskDefinitions, taskRuns, type NewTaskDefinition, type NewTaskRun, type TaskDefinition, type TaskRun, type TaskRunStatus } from '@/lib/db/schema/task-model'
 
 /** How many earlier rejections a new run of the same job is told about. */
 export const REJECTED_REVIEWS_CARRIED = 3

@@ -49,7 +49,7 @@ import {
   isAwaitingServerMessages,
 } from './chat-storage'
 
-const STORE = 'aiq-chat-store'
+const STORE = 'chat-store'
 const flush = () => new Promise((resolve) => setTimeout(resolve, 20))
 
 const openConversation: Conversation = {

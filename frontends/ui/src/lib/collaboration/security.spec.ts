@@ -163,15 +163,10 @@ import {
   updateConversationTitle,
 } from '@/lib/conversations/service'
 import { getDb } from '@/lib/db'
-import {
-  SHAREABLE_RESOURCE_TYPES,
-  type InboxItem,
-  type Message,
-  type MentionRequest,
-  type ResourceRole,
-  type ResourceVisibility,
-  type ShareableResourceType,
-} from '@/lib/db/schema'
+import type { InboxItem } from '@/lib/db/schema/inbox'
+import type { MentionRequest } from '@/lib/db/schema/mention-requests'
+import type { Message } from '@/lib/db/schema/messages'
+import { SHAREABLE_RESOURCE_TYPES, type ResourceRole, type ResourceVisibility, type ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import { publishToUsers } from '@/lib/events/bus'
 import {
   archiveInboxItem,

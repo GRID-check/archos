@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/skills_resolve/resolve_payload.json
 /**
  * @vitest-environment node
  */
@@ -70,7 +71,8 @@ import * as repository from './repository'
 import * as platformRepository from './platform-repository'
 import { findPlatformSkill, listPlatformSkills } from './platform-skills'
 import { resolveSkillsForAgent } from './service'
-import type { PlatformSkillRow, Skill } from '@/lib/db/schema'
+import type { Skill } from '@/lib/db/schema/jobs'
+import type { PlatformSkillRow } from '@/lib/db/schema/platform-skills'
 
 // frontends/ui/src/lib/skills → repo root is five levels up.
 const HERE = dirname(fileURLToPath(import.meta.url))

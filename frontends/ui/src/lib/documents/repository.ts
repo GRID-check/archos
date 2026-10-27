@@ -33,17 +33,12 @@ import {
   type ShelfFolderTally,
   type ShelfSummary,
 } from './shelf-summary-types'
-import {
-  bffJobQueue,
-  documentQuarantineDecisions,
-  documents,
-  documentVersions,
-  projectFolders,
-  type Document,
-  type DocumentAuthor,
-  type DocumentLifecycle,
-  type ResourceVisibility,
-} from '@/lib/db/schema'
+import { bffJobQueue } from '@/lib/db/schema/bff-job-queue'
+import { documentQuarantineDecisions } from '@/lib/db/schema/document-quarantine-decisions'
+import { documentVersions } from '@/lib/db/schema/document-versions'
+import { documents, type Document, type DocumentAuthor, type DocumentLifecycle } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import type { ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import type { DocumentScope, DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import {
   auditedQuarantineReasons,

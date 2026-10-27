@@ -51,7 +51,7 @@ def trace_id_for_message(message_id: str | None) -> int | None:
         return None
     try:
         value = uuid.UUID(str(message_id)).int
-    except (ValueError, TypeError, AttributeError):
+    except ValueError, TypeError, AttributeError:
         return None
     return value or None
 

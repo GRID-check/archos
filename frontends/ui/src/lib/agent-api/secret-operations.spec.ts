@@ -32,7 +32,7 @@ vi.mock('./policy', async (importOriginal) => {
 import { UnprocessableError } from '@/lib/api/errors'
 import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
-import type { OrgLlmCredential } from '@/lib/db/schema'
+import type { OrgLlmCredential } from '@/lib/db/schema/org-llm-credentials'
 import { keyFingerprint, keyHint } from '@/lib/llm-credentials/secret-store'
 import {
   createCredential,

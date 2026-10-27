@@ -8,7 +8,7 @@ import 'server-only'
 import { eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withOptionalTenant, withTenant } from '@/lib/db/tenant-context'
-import { userPreferences } from '@/lib/db/schema'
+import { userPreferences } from '@/lib/db/schema/user-preferences'
 
 export async function findUserPreferences(
   workosUserId: string,

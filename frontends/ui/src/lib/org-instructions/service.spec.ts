@@ -1,3 +1,4 @@
+// @disk-inputs: ../../src/aiq_agent/project_context.py, drizzle/0087_organization_instructions.sql
 /**
  * @vitest-environment node
  */
