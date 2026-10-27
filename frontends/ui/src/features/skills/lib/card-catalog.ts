@@ -19,6 +19,7 @@
  *    a picker row wants the one sentence that says what the card IS.
  */
 
+import { discriminatedOptions } from '@/lib/api/zod-union'
 import { gridCardSchema } from '@/shared/cards/schemas'
 
 /**
@@ -60,10 +61,10 @@ function firstParagraph(text: string): string {
 function buildCardCatalog(): CardCatalogEntry[] {
   const withheld = new Set<string>(SYSTEM_CARD_TYPES)
   const entries: CardCatalogEntry[] = []
-  // `optionsMap` is keyed by the discriminator value zod itself resolved, so it
+  // `discriminatedOptions` is keyed by the discriminator value zod itself resolved, so it
   // is correct even for the one card whose `type` literal is wrapped in a
   // `.default()` (project_profile_patch) — unwrapping `_def` by hand is not.
-  for (const [type, option] of gridCardSchema.optionsMap) {
+  for (const [type, option] of discriminatedOptions(gridCardSchema)) {
     if (typeof type !== 'string' || withheld.has(type)) continue
     entries.push({ type, description: firstParagraph(option.description ?? '') })
   }

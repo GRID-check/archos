@@ -20,7 +20,7 @@ import { exportAnswerDocument } from '@/lib/answer-export/service'
 type Params = { id: string; messageId: string }
 
 /** `messages.id` is a uuid column — a malformed id must 400, not blow up in SQL. */
-const messageIdSchema = z.string().uuid()
+const messageIdSchema = z.guid()
 
 export const GET = apiRoute<Params>(
   async ({ session, params }) => {

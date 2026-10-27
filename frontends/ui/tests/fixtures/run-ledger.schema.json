@@ -24,6 +24,7 @@
           ]
         },
         "phases": {
+          "maxItems": 5,
           "type": "array",
           "items": {
             "type": "object",
@@ -52,10 +53,10 @@
               "startedAt"
             ],
             "additionalProperties": false
-          },
-          "maxItems": 5
+          }
         },
         "steps": {
+          "maxItems": 50,
           "type": "array",
           "items": {
             "type": "object",
@@ -85,6 +86,7 @@
                 "format": "date-time"
               },
               "docs": {
+                "maxItems": 100,
                 "type": "array",
                 "items": {
                   "type": "object",
@@ -105,13 +107,13 @@
                       "maxLength": 64
                     },
                     "loci": {
+                      "maxItems": 20,
                       "type": "array",
                       "items": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 128
-                      },
-                      "maxItems": 20
+                      }
                     },
                     "repeat": {
                       "type": "boolean"
@@ -122,26 +124,25 @@
                     "loci"
                   ],
                   "additionalProperties": false
-                },
-                "maxItems": 100
+                }
               },
               "openPoints": {
+                "maxItems": 20,
                 "type": "array",
                 "items": {
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 200
-                },
-                "maxItems": 20
+                }
               },
               "findings": {
+                "maxItems": 8,
                 "type": "array",
                 "items": {
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 200
-                },
-                "maxItems": 8
+                }
               }
             },
             "required": [
@@ -152,8 +153,7 @@
               "docs"
             ],
             "additionalProperties": false
-          },
-          "maxItems": 50
+          }
         },
         "result": {
           "type": "object",
@@ -187,6 +187,7 @@
               "maxLength": 400
             },
             "completedBefore": {
+              "maxItems": 5,
               "type": "array",
               "items": {
                 "type": "string",
@@ -197,8 +198,7 @@
                   "writing",
                   "filed"
                 ]
-              },
-              "maxItems": 5
+              }
             }
           },
           "required": [
@@ -208,6 +208,7 @@
           "additionalProperties": false
         },
         "basis": {
+          "maxItems": 20,
           "type": "array",
           "items": {
             "type": "object",
@@ -228,13 +229,13 @@
                 "maxLength": 64
               },
               "loci": {
+                "maxItems": 20,
                 "type": "array",
                 "items": {
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 128
-                },
-                "maxItems": 20
+                }
               },
               "repeat": {
                 "type": "boolean"
@@ -245,8 +246,7 @@
               "loci"
             ],
             "additionalProperties": false
-          },
-          "maxItems": 20
+          }
         },
         "startedAt": {
           "type": "string",
@@ -280,6 +280,7 @@
               "const": "append"
             },
             "steps": {
+              "maxItems": 50,
               "type": "array",
               "items": {
                 "type": "object",
@@ -309,6 +310,7 @@
                     "format": "date-time"
                   },
                   "docs": {
+                    "maxItems": 100,
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -329,13 +331,13 @@
                           "maxLength": 64
                         },
                         "loci": {
+                          "maxItems": 20,
                           "type": "array",
                           "items": {
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 128
-                          },
-                          "maxItems": 20
+                          }
                         },
                         "repeat": {
                           "type": "boolean"
@@ -346,26 +348,25 @@
                         "loci"
                       ],
                       "additionalProperties": false
-                    },
-                    "maxItems": 100
+                    }
                   },
                   "openPoints": {
+                    "maxItems": 20,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 200
-                    },
-                    "maxItems": 20
+                    }
                   },
                   "findings": {
+                    "maxItems": 8,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 200
-                    },
-                    "maxItems": 8
+                    }
                   }
                 },
                 "required": [
@@ -376,10 +377,10 @@
                   "docs"
                 ],
                 "additionalProperties": false
-              },
-              "maxItems": 50
+              }
             },
             "phases": {
+              "maxItems": 5,
               "type": "array",
               "items": {
                 "type": "object",
@@ -408,8 +409,7 @@
                   "startedAt"
                 ],
                 "additionalProperties": false
-              },
-              "maxItems": 5
+              }
             },
             "status": {
               "type": "string",
@@ -424,6 +424,7 @@
               ]
             },
             "basis": {
+              "maxItems": 20,
               "type": "array",
               "items": {
                 "type": "object",
@@ -444,13 +445,13 @@
                     "maxLength": 64
                   },
                   "loci": {
+                    "maxItems": 20,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 128
-                    },
-                    "maxItems": 20
+                    }
                   },
                   "repeat": {
                     "type": "boolean"
@@ -461,8 +462,7 @@
                   "loci"
                 ],
                 "additionalProperties": false
-              },
-              "maxItems": 20
+              }
             }
           },
           "required": [
@@ -553,6 +553,7 @@
               ]
             },
             "phases": {
+              "maxItems": 5,
               "type": "array",
               "items": {
                 "type": "object",
@@ -581,10 +582,10 @@
                   "startedAt"
                 ],
                 "additionalProperties": false
-              },
-              "maxItems": 5
+              }
             },
             "steps": {
+              "maxItems": 50,
               "type": "array",
               "items": {
                 "type": "object",
@@ -614,6 +615,7 @@
                     "format": "date-time"
                   },
                   "docs": {
+                    "maxItems": 100,
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -634,13 +636,13 @@
                           "maxLength": 64
                         },
                         "loci": {
+                          "maxItems": 20,
                           "type": "array",
                           "items": {
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 128
-                          },
-                          "maxItems": 20
+                          }
                         },
                         "repeat": {
                           "type": "boolean"
@@ -651,26 +653,25 @@
                         "loci"
                       ],
                       "additionalProperties": false
-                    },
-                    "maxItems": 100
+                    }
                   },
                   "openPoints": {
+                    "maxItems": 20,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 200
-                    },
-                    "maxItems": 20
+                    }
                   },
                   "findings": {
+                    "maxItems": 8,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 200
-                    },
-                    "maxItems": 8
+                    }
                   }
                 },
                 "required": [
@@ -681,8 +682,7 @@
                   "docs"
                 ],
                 "additionalProperties": false
-              },
-              "maxItems": 50
+              }
             },
             "result": {
               "type": "object",
@@ -716,6 +716,7 @@
                   "maxLength": 400
                 },
                 "completedBefore": {
+                  "maxItems": 5,
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -726,8 +727,7 @@
                       "writing",
                       "filed"
                     ]
-                  },
-                  "maxItems": 5
+                  }
                 }
               },
               "required": [
@@ -737,6 +737,7 @@
               "additionalProperties": false
             },
             "basis": {
+              "maxItems": 20,
               "type": "array",
               "items": {
                 "type": "object",
@@ -757,13 +758,13 @@
                     "maxLength": 64
                   },
                   "loci": {
+                    "maxItems": 20,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 128
-                    },
-                    "maxItems": 20
+                    }
                   },
                   "repeat": {
                     "type": "boolean"
@@ -774,8 +775,7 @@
                   "loci"
                 ],
                 "additionalProperties": false
-              },
-              "maxItems": 20
+              }
             },
             "startedAt": {
               "type": "string",
@@ -816,33 +816,21 @@
           "maxLength": 64
         },
         "taskId": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "conversationId": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "messageId": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "status": {
@@ -880,6 +868,7 @@
                   ]
                 },
                 "phases": {
+                  "maxItems": 5,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -908,10 +897,10 @@
                       "startedAt"
                     ],
                     "additionalProperties": false
-                  },
-                  "maxItems": 5
+                  }
                 },
                 "steps": {
+                  "maxItems": 50,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -941,6 +930,7 @@
                         "format": "date-time"
                       },
                       "docs": {
+                        "maxItems": 100,
                         "type": "array",
                         "items": {
                           "type": "object",
@@ -961,13 +951,13 @@
                               "maxLength": 64
                             },
                             "loci": {
+                              "maxItems": 20,
                               "type": "array",
                               "items": {
                                 "type": "string",
                                 "minLength": 1,
                                 "maxLength": 128
-                              },
-                              "maxItems": 20
+                              }
                             },
                             "repeat": {
                               "type": "boolean"
@@ -978,26 +968,25 @@
                             "loci"
                           ],
                           "additionalProperties": false
-                        },
-                        "maxItems": 100
+                        }
                       },
                       "openPoints": {
+                        "maxItems": 20,
                         "type": "array",
                         "items": {
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 200
-                        },
-                        "maxItems": 20
+                        }
                       },
                       "findings": {
+                        "maxItems": 8,
                         "type": "array",
                         "items": {
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 200
-                        },
-                        "maxItems": 8
+                        }
                       }
                     },
                     "required": [
@@ -1008,8 +997,7 @@
                       "docs"
                     ],
                     "additionalProperties": false
-                  },
-                  "maxItems": 50
+                  }
                 },
                 "result": {
                   "type": "object",
@@ -1043,6 +1031,7 @@
                       "maxLength": 400
                     },
                     "completedBefore": {
+                      "maxItems": 5,
                       "type": "array",
                       "items": {
                         "type": "string",
@@ -1053,8 +1042,7 @@
                           "writing",
                           "filed"
                         ]
-                      },
-                      "maxItems": 5
+                      }
                     }
                   },
                   "required": [
@@ -1064,6 +1052,7 @@
                   "additionalProperties": false
                 },
                 "basis": {
+                  "maxItems": 20,
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -1084,13 +1073,13 @@
                         "maxLength": 64
                       },
                       "loci": {
+                        "maxItems": 20,
                         "type": "array",
                         "items": {
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 128
-                        },
-                        "maxItems": 20
+                        }
                       },
                       "repeat": {
                         "type": "boolean"
@@ -1101,8 +1090,7 @@
                       "loci"
                     ],
                     "additionalProperties": false
-                  },
-                  "maxItems": 20
+                  }
                 },
                 "startedAt": {
                   "type": "string",
@@ -1136,26 +1124,18 @@
           "type": "object",
           "properties": {
             "text": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "truncated": {
               "type": "boolean"
             },
             "filedDocumentId": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -1167,13 +1147,9 @@
           "additionalProperties": false
         },
         "backendJobId": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         }
       },

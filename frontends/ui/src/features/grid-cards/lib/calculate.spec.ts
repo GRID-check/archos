@@ -16,7 +16,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { evaluate, formatInput, formatResult, resultDecimals, verdictFor } from './calculate'
-import type { CalculationStepData } from '../schematics/types'
+import type { CalculationStepData } from '@/shared/cards/schemas'
 
 const step = (partial: Partial<CalculationStepData> & Pick<CalculationStepData, 'operation' | 'operands'>) =>
   ({ label: 'Schritt', unit: '', ...partial }) as CalculationStepData

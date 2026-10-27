@@ -44,7 +44,7 @@ import { useCorpusFiles } from '@/features/knowledge/lib/use-corpus-files'
 import { cn } from '@/lib/utils'
 import { Quote } from '@/components/ui/quote'
 import { declutterLabels } from './declutter'
-import type { DimensionCheckData, DimStatus, NormReferenceData, Provenance } from './types'
+import type { DimensionCheckData, DimStatus, NormReferenceData, Provenance } from '@/shared/cards/schemas'
 
 /* ── status vocabulary ────────────────────────────────────────────────────── */
 
