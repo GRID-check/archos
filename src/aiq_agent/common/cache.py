@@ -375,7 +375,7 @@ def get_json(key: str) -> Any | None:
         return None
     try:
         value = json.loads(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         _count(errors=1)
         return None
     _count(local_hits=1)
@@ -386,7 +386,7 @@ def set_json(key: str, value: Any, ttl_seconds: float) -> None:
     """JSON-encode and store a value with a TTL; errors are swallowed."""
     try:
         raw = json.dumps(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         logger.warning("Refusing to cache non-JSON-serializable value for %s", key)
         return
     client = _get_client()
@@ -507,7 +507,7 @@ def incr_fixed_window(key: str, window_seconds: int) -> int | None:
             return 1
         try:
             count = int(entry[1]) + 1
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             _local_store[key] = (now + window_seconds, "1")
             return 1
         _local_store[key] = (entry[0], str(count))

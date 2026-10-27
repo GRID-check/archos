@@ -35,12 +35,12 @@ import signal
 from collections.abc import Callable
 from collections.abc import Mapping
 from typing import Any
+from typing import override
 
 from fastapi import APIRouter
 from fastapi import FastAPI
 from pydantic import Field
 from pydantic import model_validator
-from typing_extensions import override
 
 from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
@@ -223,7 +223,7 @@ class AIQAPIConfig(FastApiFrontEndConfig, name="aiq_api"):
     step_adaptor: StepAdaptorConfig = StepAdaptorConfig(mode=StepAdaptorMode.OFF)
 
     @model_validator(mode="after")
-    def _the_chat_socket_is_the_only_turn_route(self) -> "AIQAPIConfig":
+    def _the_chat_socket_is_the_only_turn_route(self) -> AIQAPIConfig:
         """Refuse a config that puts a NAT route in front of the workflow, rather than serve it.
 
         NAT's defaults put the workflow behind ``/v1/workflow*``, ``/generate*``,

@@ -17,7 +17,7 @@ def page_number(value: Any) -> int | None:
         return None
     try:
         page = int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return page if page >= 1 else None
 

@@ -1932,7 +1932,7 @@ def headroom(model: SpatialModel, global_id: str) -> Answer[dict[str, Any]]:
     if culprit:
         try:
             culprit_name = model.label(model.file.by_guid(culprit)) or culprit
-        except (RuntimeError, KeyError):
+        except RuntimeError, KeyError:
             culprit_name = culprit
 
     value = {

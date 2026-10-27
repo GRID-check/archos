@@ -218,7 +218,7 @@ def pages_from_chunks(rows: list[tuple[Any, str, dict[str, Any]]]) -> list[Page]
     for label, text, metadata in rows:
         try:
             number = int(str(label).strip())
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             number = 1
         number = max(1, number)
         texts.setdefault(number, []).append(text.strip())
@@ -268,7 +268,7 @@ async def read_stored(
         return None
     try:
         index = json.loads(raw_index.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except UnicodeDecodeError, json.JSONDecodeError:
         logger.warning("stored_pages: an index.json does not parse; rebuilding from the chunks")
         return None
     refusal = check_index(index, document_id=getattr(location, "document_id", None), storage_key=str(storage_key))

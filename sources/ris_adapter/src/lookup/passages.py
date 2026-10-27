@@ -32,7 +32,7 @@ DOC_CLASS = "law"
 #: caller named by § scores :data:`SCORE_ADDRESSED`; a passage the picker
 #: ranked scores :data:`SCORE_RANKED_TOP` minus its rank. The line is emitted
 #: because it is also the header/body delimiter of the grounding grammar
-#: (``citation_verification._kl_block_header``).
+#: (``citations.grounding_text._kl_block_header``).
 SCORE_ADDRESSED = 1.0
 SCORE_RANKED_TOP = 0.9
 SCORE_RANK_STEP = 0.05
