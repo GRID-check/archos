@@ -314,14 +314,23 @@ export async function sweepFailedScans(now: Date): Promise<SweepCounts> {
   return result
 }
 
-/** Sweep 10: what a hold deferred, erased once the hold is released. */
+/**
+ * Sweep 10: what a hold deferred, erased once the hold is released. Each row
+ * is taken first, under the find's whole condition with the hold included, and
+ * the objects erased only then; what the store kept comes back to the row.
+ */
 export async function sweepReleasedErasures(now: Date): Promise<SweepCounts> {
   const result = counts('erased')
   const rows = await discover('erasures a released hold deferred', () => sweeps.findReleasedErasures(SWEEP_BATCH))
   await eachRow(rows, result, (row) => `the deferred erasure of ${row.kind} ${row.id}`, async (row) => {
-    if ((await eraseStagedObjects(row.stagingBucket, row.keys)).length > 0) throw new Error('its staged objects could not be erased')
-    const forgotten = row.kind === 'part' ? await sweeps.forgetPartBytes(row.id, now) : await sweeps.forgetDeferredMailObjects(row.id, now)
-    if (forgotten) result.erased += 1
+    // The row first: a hold placed since the find erases nothing.
+    if (!(await sweeps.takeReleasedErasure(row, now))) return
+    const kept = await eraseStagedObjects(row.stagingBucket, row.keys)
+    if (kept.length > 0) {
+      await sweeps.returnReleasedErasure(row, kept, now)
+      throw new Error('its staged objects could not be erased')
+    }
+    result.erased += 1
   })
   return result
 }

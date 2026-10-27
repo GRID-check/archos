@@ -313,19 +313,6 @@ export async function returnEndedPartKey(part: { partId: string; storageKey: str
     .where(and(eq(inboundMailParts.id, part.partId), isNull(inboundMailParts.storageKey), endedOrFiled))
 }
 
-/**
- * A part's bytes were erased (by their key): it forgets the key, the name that
- * goes with them and the suggestion that named them, and any deferral.
- */
-export async function forgetPartBytes(partId: string, now: Date): Promise<boolean> {
-  const rows = await getDb()
-    .update(inboundMailParts)
-    .set({ storageKey: null, filename: null, suggestion: null, suggestionTraceId: null, erasureDeferredAt: null, updatedAt: now })
-    .where(and(eq(inboundMailParts.id, partId), endedOrFiled))
-    .returning({ id: inboundMailParts.id })
-  return rows.length === 1
-}
-
 /** A hold stopped the erasure of a part's bytes: sweep 10 erases them once it is released. */
 export async function deferPartErasure(partId: string, now: Date): Promise<void> {
   await getDb()
@@ -653,20 +640,31 @@ export async function deleteOrphanedThread(id: string, holder: string, now: Date
 // Sweep 10: erasures a hold deferred, once it is released
 // ---------------------------------------------------------------------------
 
-/** A deferred erasure no hold stops any more: a part's bytes, or an ended mail's staged objects. */
+/**
+ * A deferred erasure no hold stops any more: a part's bytes (`storageKey`), or
+ * an ended mail's staged objects (`readKey`, and `rawKey` unless the raw
+ * message is still moving to its entry's original, sweep 13). The keys as the
+ * find saw them; `keys` is what is to be erased.
+ */
 export interface DeferredErasure {
   id: string
   kind: 'part' | 'mail'
   organizationId: string
   stagingBucket: string
+  storageKey: string | null
+  readKey: string | null
+  rawKey: string | null
   keys: string[]
 }
 
+/** The raw message sweep 10 erases: none while it is still moving to its entry's original (sweep 13). */
+const erasableRawKey = sql`CASE WHEN m.original_move_pending_at IS NULL THEN m.raw_storage_key END`
+
 /** Deferred erasures whose hold was released. Platform scope. */
 export async function findReleasedErasures(limit: number): Promise<DeferredErasure[]> {
-  const rows = await select<{ id: string; kind: 'part' | 'mail'; organizationId: string; stagingBucket: string; keys: Array<string | null> }>(sql`
+  const rows = await select<Omit<DeferredErasure, 'keys'>>(sql`
     (SELECT p.id, 'part' AS kind, p.organization_id AS "organizationId", m.staging_bucket AS "stagingBucket",
-            ARRAY[p.storage_key] AS keys
+            p.storage_key AS "storageKey", NULL::text AS "readKey", NULL::text AS "rawKey"
        FROM inbound_mail_parts p
        JOIN inbound_mails m ON m.id = p.mail_id
       WHERE p.erasure_deferred_at IS NOT NULL AND p.state IN ('filed', 'dismissed', 'expired') AND ${mailErasable}
@@ -674,31 +672,76 @@ export async function findReleasedErasures(limit: number): Promise<DeferredErasu
       LIMIT ${limit})
     UNION ALL
     (SELECT m.id, 'mail' AS kind, m.organization_id AS "organizationId", m.staging_bucket AS "stagingBucket",
-            ARRAY[m.read_storage_key, CASE WHEN m.original_move_pending_at IS NULL THEN m.raw_storage_key END] AS keys
+            NULL::text AS "storageKey", m.read_storage_key AS "readKey", ${erasableRawKey} AS "rawKey"
        FROM inbound_mails m
       WHERE m.erasure_deferred_at IS NOT NULL AND m.status IN ('settled', 'dropped') AND ${mailErasable}
       ORDER BY m.erasure_deferred_at
       LIMIT ${limit})`)
-  return rows.map((row) => ({ ...row, keys: row.keys.filter((key): key is string => key !== null) }))
+  return rows.map((row) => ({
+    ...row,
+    keys: [row.storageKey, row.readKey, row.rawKey].filter((key): key is string => key !== null),
+  }))
 }
 
 /**
- * An ended mail's deferred objects were erased: it forgets their keys and the
- * deferral. A raw message still moving to its entry's original stays the
- * move's (sweep 13).
+ * Sweep 10, before the erasure: the row forgets the keys and the deferral only
+ * while every condition of the find still holds: still deferred, still ended,
+ * the same keys, and no hold (project or custodian). True when it did; the
+ * caller erases the objects only then, so a hold placed after the find erases
+ * nothing. A part also forgets the name and suggestion that went with its
+ * bytes; a raw message still moving to its entry's original stays the move's.
  */
-export async function forgetDeferredMailObjects(mailId: string, now: Date): Promise<boolean> {
-  const rows = await getDb()
+export async function takeReleasedErasure(row: DeferredErasure, now: Date): Promise<boolean> {
+  const at = now.toISOString()
+  const rows = await select<{ id: string }>(
+    row.kind === 'part'
+      ? sql`
+    UPDATE inbound_mail_parts p
+       SET storage_key = NULL, filename = NULL, suggestion = NULL, suggestion_trace_id = NULL,
+           erasure_deferred_at = NULL, updated_at = ${at}::timestamptz
+      FROM inbound_mails m
+     WHERE p.id = ${row.id}::uuid AND m.id = p.mail_id
+       AND p.erasure_deferred_at IS NOT NULL AND p.state IN ('filed', 'dismissed', 'expired')
+       AND p.storage_key IS NOT DISTINCT FROM ${row.storageKey}::text
+       AND ${mailErasable}
+    RETURNING p.id`
+      : sql`
+    UPDATE inbound_mails m
+       SET read_storage_key = NULL, raw_storage_key = CASE WHEN m.original_move_pending_at IS NULL THEN NULL ELSE m.raw_storage_key END,
+           erasure_deferred_at = NULL, updated_at = ${at}::timestamptz
+     WHERE m.id = ${row.id}::uuid
+       AND m.erasure_deferred_at IS NOT NULL AND m.status IN ('settled', 'dropped')
+       AND m.read_storage_key IS NOT DISTINCT FROM ${row.readKey}::text
+       AND ${erasableRawKey} IS NOT DISTINCT FROM ${row.rawKey}::text
+       AND ${mailErasable}
+    RETURNING m.id`,
+  )
+  return rows.length === 1
+}
+
+/**
+ * The store kept some of what `takeReleasedErasure` took: those keys, and the
+ * deferral, come back, so the next tick tries again. A key the store did
+ * erase stays forgotten.
+ */
+export async function returnReleasedErasure(row: DeferredErasure, kept: readonly string[], now: Date): Promise<void> {
+  const keptKey = (key: string | null) => (key !== null && kept.includes(key) ? key : null)
+  if (row.kind === 'part') {
+    await getDb()
+      .update(inboundMailParts)
+      .set({ storageKey: keptKey(row.storageKey), erasureDeferredAt: now, updatedAt: now })
+      .where(and(eq(inboundMailParts.id, row.id), isNull(inboundMailParts.storageKey), isNull(inboundMailParts.erasureDeferredAt), endedOrFiled))
+    return
+  }
+  await getDb()
     .update(inboundMails)
     .set({
-      readStorageKey: null,
-      rawStorageKey: sql`CASE WHEN ${inboundMails.originalMovePendingAt} IS NULL THEN NULL ELSE ${inboundMails.rawStorageKey} END`,
-      erasureDeferredAt: null,
+      readStorageKey: keptKey(row.readKey),
+      rawStorageKey: sql`COALESCE(${inboundMails.rawStorageKey}, ${keptKey(row.rawKey)}::text)`,
+      erasureDeferredAt: now,
       updatedAt: now,
     })
-    .where(and(eq(inboundMails.id, mailId), inArray(inboundMails.status, ['settled', 'dropped'])))
-    .returning({ id: inboundMails.id })
-  return rows.length === 1
+    .where(and(eq(inboundMails.id, row.id), isNull(inboundMails.erasureDeferredAt), inArray(inboundMails.status, ['settled', 'dropped'])))
 }
 
 // ---------------------------------------------------------------------------

@@ -71,6 +71,7 @@ vi.mock('@/lib/inbound-mail/sweep-repository', async (importOriginal) => {
     ...actual,
     findEndedPartBytes: thenRace(actual.findEndedPartBytes),
     findOrphanedThreads: thenRace(actual.findOrphanedThreads),
+    findReleasedErasures: thenRace(actual.findReleasedErasures),
   }
 })
 
@@ -149,6 +150,8 @@ describe.skipIf(!url)('the E-Mail-Eingang’s sweeps against Postgres', () => {
 
   interface MailSeed {
     projectId?: string
+    /** The project's address, for a project other than the two seeded in `beforeAll`. */
+    addressId?: string
     status?: 'receiving' | 'received' | 'waiting' | 'settled' | 'dropped'
     trust?: 'external_verified' | 'external_unverified' | 'member_verified'
     senderUserId?: string | null
@@ -170,7 +173,7 @@ describe.skipIf(!url)('the E-Mail-Eingang’s sweeps against Postgres', () => {
   async function seedMail(seed: MailSeed = {}): Promise<string> {
     const id = crypto.randomUUID()
     const projectId = seed.projectId ?? project
-    const addressId = projectId === heldProject ? heldAddress : address
+    const addressId = seed.addressId ?? (projectId === heldProject ? heldAddress : address)
     const status = seed.status ?? 'waiting'
     const open = status === 'waiting'
     const shown = status === 'waiting' || status === 'settled'
@@ -607,6 +610,51 @@ describe.skipIf(!url)('the E-Mail-Eingang’s sweeps against Postgres', () => {
           stagingKey(heldProject, mail, 'read.json'),
         ]),
       )
+    })
+  })
+
+  describe('sweep 10 and a hold placed after its find', () => {
+    it('erases nothing a hold placed since covers: the rows are taken first, under the hold', async () => {
+      const { projectId: racing, addressId } = await newProject(`Release race ${STAMP}`)
+      const mail = await seedMail({ projectId: racing, addressId, status: 'settled', raw: true, read: true, erasureDeferred: true })
+      const part = await seedPart(mail, { state: 'dismissed', endedAgo: '9 days', deferred: true })
+      let holdId: string | null = null
+      race.afterFind = async () => {
+        holdId = await hold(racing)
+      }
+      try {
+        await sweep.sweepReleasedErasures(now())
+
+        expect(staging.erased.filter((key) => key.includes(`/project/${racing}/`))).toEqual([])
+        expect(await partRow(part)).toMatchObject({ storage_key: stagingKey(racing, mail, '1') })
+        expect((await partRow(part))?.erasure_deferred_at).not.toBeNull()
+        expect(await mailRow(mail)).toMatchObject({
+          raw_storage_key: stagingKey(racing, mail, 'raw.eml'),
+          read_storage_key: stagingKey(racing, mail, 'read.json'),
+        })
+        expect((await mailRow(mail))?.erasure_deferred_at).not.toBeNull()
+      } finally {
+        if (holdId) await release(holdId)
+      }
+    })
+
+    it('puts back the keys the store kept, and the deferral, for the next tick', async () => {
+      const { projectId: failing, addressId } = await newProject(`Release failure ${STAMP}`)
+      const mail = await seedMail({ projectId: failing, addressId, status: 'settled', raw: true, read: true, erasureDeferred: true })
+      const part = await seedPart(mail, { state: 'dismissed', endedAgo: '9 days', deferred: true })
+      staging.failing.add(stagingKey(failing, mail, '1'))
+      staging.failing.add(stagingKey(failing, mail, 'raw.eml'))
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const result = await sweep.sweepReleasedErasures(now())
+
+      expect(result.errors).toBeGreaterThanOrEqual(2)
+      expect((await partRow(part))?.storage_key).toBe(stagingKey(failing, mail, '1'))
+      expect((await partRow(part))?.erasure_deferred_at).not.toBeNull()
+      // The read model went; only the raw message the store kept is named again.
+      expect(staging.erased).toContain(stagingKey(failing, mail, 'read.json'))
+      expect(await mailRow(mail)).toMatchObject({ raw_storage_key: stagingKey(failing, mail, 'raw.eml'), read_storage_key: null })
+      expect((await mailRow(mail))?.erasure_deferred_at).not.toBeNull()
     })
   })
 
