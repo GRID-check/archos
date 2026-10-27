@@ -232,7 +232,7 @@ and Piloti's dark tokens agree. Fonts come from `styles.css.fonts`
 * Good, because the theming follows the host where it says something and
   Piloti everywhere else, measured in the `/dev/mcp-apps` preview against the
   SDK's own `AppBridge`.
-* Bad, because the document is about 1.4 MB (React, the SDK with its own zod,
+* Bad, because the document is about 1.7 MB with A2UI 0.14 (React, the SDK with its own zod,
   A2UI, the receipts, three namespaces in two languages), read once per
   connection; `view-build.spec.ts` holds it under 2 MiB.
 * Bad, because a host that does not render MCP Apps shows its model two more

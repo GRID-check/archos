@@ -18,7 +18,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { APP_VIEWS } from '@/lib/agent-api/catalog/app-views'
 
-/** About 1.4 MiB today (React, the MCP Apps SDK with its own zod, A2UI, the card and three namespaces in two languages). */
+/** About 1.7 MiB with A2UI 0.14 (React, the MCP Apps SDK with its own zod, A2UI, the card and three namespaces in two languages). */
 const BUDGET_BYTES = 2 * 1024 * 1024
 
 let dir = ''

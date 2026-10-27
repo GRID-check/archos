@@ -696,7 +696,7 @@ its card needs the live profile. The host's theme maps onto Piloti's tokens
 where the host gives a variable (`host-theme.ts`, the table in ADR-0142), and
 `hostContext.locale` picks the language. The bundle leaves out the Markdown
 renderer (a view draws no `Text` leaf) and every dictionary namespace but
-`chat`, `common` and `nav`; it is about 1.4 MB, held under 2 MiB by
+`chat`, `common` and `nav`; it is about 1.7 MB, held under 2 MiB by
 `view-build.spec.ts`.
 
 **What the server cannot tell.** A view's `tools/call` and a model's look the
