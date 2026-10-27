@@ -66,7 +66,7 @@ const JOB = "kubernetes:batch/v1:Job";
 const CLUSTER = "kubernetes:postgresql.cnpg.io/v1:Cluster";
 
 const QUEUE_TIERS = ["ingest-worker", "agent-worker", "bff-jobs"];
-const ALL_TIERS = [...QUEUE_TIERS, "aiq-agent"];
+const ALL_TIERS = [...QUEUE_TIERS, "chat"];
 
 const STACK = {
   "grid-oib:allowPlaintextJobPayloads": "true",
@@ -170,7 +170,7 @@ describe("the program's ScaledObjects", () => {
         if (hasCpu) expect(spec, r.name).not.toHaveProperty("fallback");
         else expect(spec, r.name).toHaveProperty("fallback");
       }
-      expect(withoutFallback).toEqual(["aiq-agent"]);
+      expect(withoutFallback).toEqual(["chat"]);
     });
 
     it("sizes the blind count from the tier's own floor and ceiling", () => {

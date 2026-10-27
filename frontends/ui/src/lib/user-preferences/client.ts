@@ -33,7 +33,7 @@ export interface UserPreferences {
   showReasoningSkills?: boolean
   /**
    * When the reader finished or skipped each product tour (ISO). Keys are
-   * `TOUR_SEEN_KEYS` in `features/onboarding/lib/product-tour.ts`; absence is
+   * `TOUR_SEEN_KEYS` in `lib/onboarding/product-tour.ts`; absence is
    * one half of "start this tour by itself" (`lib/onboarding/tour-eligibility.ts`).
    */
   tourWelcomeSeenAt?: string

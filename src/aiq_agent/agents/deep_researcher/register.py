@@ -253,7 +253,7 @@ async def _open_checkpointer(checkpoint_db: str | None) -> Checkpointer | None:
     except Exception:  # noqa: BLE001 - deliberate fail-open boundary
         logger.warning(
             "Durable deep-research checkpointing DISABLED: cannot open checkpoint_db %r "
-            "(set AIQ_DEEP_CHECKPOINT_DB to a writable path/DSN to enable resume-by-job_id)",
+            "(set GRID_DEEP_CHECKPOINT_DB to a writable path/DSN to enable resume-by-job_id)",
             checkpoint_db,
             exc_info=True,
         )

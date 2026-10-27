@@ -21,8 +21,7 @@
  * and carries the OIB / RIS / ÖNORM rung of the authority ladder.
  */
 
-import type { SourceSignal } from '@/features/layout/lib/source-presets'
-import { authorityTag, kindForLane, KIND_TO_SIGNAL } from '@/features/chat/lib/source-kinds'
+import { authorityTag, kindForLane, KIND_TO_SIGNAL, type SourceSignal } from '@/lib/source-kinds'
 
 /** Ordered, immutable key list — mirrors backend `DOCUMENT_CLASSES`. */
 export const DOC_CLASSES = [

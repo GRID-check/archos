@@ -25,7 +25,7 @@
  * restricted folder.
  */
 
-import { ForbiddenError } from '@/lib/api/errors'
+import { ForbiddenError } from '@/lib/api/api-error'
 import type { ProjectPermission } from '@/lib/authz/permissions'
 import { dateToMonth, isMonth, isOrderedPeriod, type Month } from './month'
 

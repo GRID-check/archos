@@ -13,6 +13,7 @@
  */
 
 import { z } from 'zod'
+import { discriminatedOptions } from '@/lib/api/zod-union'
 import {
   clientMessageSchema,
   heartbeatSchema,
@@ -74,10 +75,10 @@ export type StepKind = Step['kind']
 export type TurnResult = Extract<WireEvent, { type: 'RUN_FINISHED' }>['result']
 
 const [byType, byName] = wireEventSchema.options
-const KNOWN_TYPES: ReadonlySet<unknown> = new Set([...byType.optionsMap.keys(), 'CUSTOM'])
-const KNOWN_CUSTOM_NAMES: ReadonlySet<unknown> = new Set(byName.optionsMap.keys())
+const KNOWN_TYPES: ReadonlySet<unknown> = new Set([...discriminatedOptions(byType).keys(), 'CUSTOM'])
+const KNOWN_CUSTOM_NAMES: ReadonlySet<unknown> = new Set(discriminatedOptions(byName).keys())
 const KNOWN_STEP_KINDS: ReadonlySet<unknown> = new Set(
-  stepStartedSchema.shape.step.optionsMap.keys()
+  discriminatedOptions(stepStartedSchema.shape.step).keys()
 )
 
 /**

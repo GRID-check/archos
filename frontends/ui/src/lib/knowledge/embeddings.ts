@@ -30,6 +30,7 @@
 import 'server-only'
 import { sql, type SQL } from 'drizzle-orm'
 import { getBackendUrl } from '@/lib/backend-proxy'
+import { internalServiceHeaders } from '@/lib/internal-auth'
 
 /** Bounded like the backend route; a batch is a prompt-sized thing. */
 export const MAX_EMBED_BATCH = 64
@@ -80,7 +81,7 @@ export async function embedNotes(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-grid-internal-token': process.env.GRID_INTERNAL_API_TOKEN ?? '',
+        ...internalServiceHeaders(getBackendUrl()),
       },
       body: JSON.stringify({ texts: batch }),
       signal: AbortSignal.timeout(options.timeoutMs ?? EMBED_TIMEOUT_MS),

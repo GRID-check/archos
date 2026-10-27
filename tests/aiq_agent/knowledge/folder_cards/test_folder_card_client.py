@@ -14,6 +14,7 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge.folder_cards import client
 from aiq_agent.knowledge.folder_cards.build import KeyFact
 
@@ -73,7 +74,7 @@ class TestTransport:
             seen.update(url=request.full_url, token=request.headers["X-grid-internal-token"], method=request.method)
             return _Reply(json.dumps({"cards": [{"folder_path": "A/B", "abstract": "x"}]}).encode())
 
-        monkeypatch.setattr(client._opener, "open", opened)
+        monkeypatch.setattr(bff_http._opener, "open", opened)
 
         assert client.get_cards("org_1", "proj") == {"A/B": {"folder_path": "A/B", "abstract": "x"}}
         assert seen["method"] == "GET" and seen["token"] == "t"
@@ -88,7 +89,7 @@ class TestTransport:
                 {"folder_path": "B", "folder_description": "Pläne"},
             ],
         }
-        monkeypatch.setattr(client._opener, "open", lambda request, timeout: _Reply(json.dumps(reply).encode()))
+        monkeypatch.setattr(bff_http._opener, "open", lambda request, timeout: _Reply(json.dumps(reply).encode()))
 
         cards, descriptions, owned = client.read_collection("org_1", "proj")
 
@@ -96,7 +97,7 @@ class TestTransport:
 
     def test_a_reply_without_folders_owns_nothing_known(self, monkeypatch):
         monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
-        monkeypatch.setattr(client._opener, "open", lambda request, timeout: _Reply(b'{"cards": []}'))
+        monkeypatch.setattr(bff_http._opener, "open", lambda request, timeout: _Reply(b'{"cards": []}'))
 
         assert client.read_collection("org_1", "proj")[2] is None
 
@@ -106,7 +107,7 @@ class TestTransport:
         def refused(request, timeout):
             raise urllib.error.HTTPError(request.full_url, 404, "not found", {}, io.BytesIO(b"{}"))
 
-        monkeypatch.setattr(client._opener, "open", refused)
+        monkeypatch.setattr(bff_http._opener, "open", refused)
 
         assert client.put_card(_body()) is False
         assert client.delete_card("org_1", "proj", "A") is False

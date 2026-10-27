@@ -14,7 +14,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react'
 import { Archive, FileText, Globe, Ruler, Scale } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { SourceSignal, SourceTint } from '../lib/source-presets'
+import type { SourceSignal, SourceTint } from '@/lib/source-kinds'
 
 /** Icon per signal — always shown next to the label. */
 const SIGNAL_ICON: Record<SourceSignal, typeof Globe> = {

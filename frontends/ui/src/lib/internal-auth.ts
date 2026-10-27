@@ -1,13 +1,21 @@
 /**
- * Shared guard for INTERNAL service endpoints (backend → BFF over the compose
- * network). Same token + fail-closed rules as /api/internal/memory:
- * requests authenticate with GRID_INTERNAL_API_TOKEN via the
- * `x-grid-internal-token` header; the well-known dev default is refused
- * outside dev environments; an unconfigured token disables the endpoint.
+ * The internal service token, both ways across the BFF ↔ backend seam.
+ *
+ * Inbound (backend → BFF over the compose network): `requireInternalToken`,
+ * the guard every `/api/internal/*` route goes through. Requests authenticate
+ * with GRID_INTERNAL_API_TOKEN via the `x-grid-internal-token` header; the
+ * well-known dev default is refused outside dev environments; an unconfigured
+ * token disables the endpoint.
+ *
+ * Outbound (BFF → backend): `internalServiceHeaders`, the one producer of that
+ * header. Nothing else writes it (`internal-auth.spec.ts` scans `src/`).
+ *
+ * Leaf-safe: no AuthKit import, so the session-less job client can use it.
  */
 
 import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
+import { ServiceUnavailableError } from '@/lib/api/errors'
 
 export const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
 
@@ -71,4 +79,87 @@ export function requireInternalToken(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   return null
+}
+
+/**
+ * Whether the shared internal token may travel to `baseUrl`.
+ *
+ * HTTPS always qualifies. Plain HTTP qualifies only for destinations that cannot
+ * leave the deployment's own network: loopback, an RFC1918/link-local/CGNAT
+ * address, `.internal`/`.local`, or a single-label hostname — which is what a
+ * compose service name (`aiq-api`) or a Kubernetes short name looks like.
+ * Anything else is a public host over cleartext and does not get the secret.
+ */
+export function isTokenSafeDestination(baseUrl: string): boolean {
+  let url: URL
+  try {
+    url = new URL(baseUrl)
+  } catch {
+    return false
+  }
+  if (url.protocol === 'https:') return true
+  if (url.protocol !== 'http:') return false
+
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (host === 'localhost' || host === '::1' || host.endsWith('.localhost')) return true
+  if (host.endsWith('.internal') || host.endsWith('.local')) return true
+  // No dot and no colon: a container/service short name, resolvable only inside
+  // the deployment's own network.
+  if (!host.includes('.') && !host.includes(':')) return true
+
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])]
+    if (a === 127 || a === 10) return true
+    if (a === 192 && b === 168) return true
+    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 169 && b === 254) return true
+    if (a === 100 && b >= 64 && b <= 127) return true
+    return false
+  }
+  // IPv6 unique-local (fc00::/7) and link-local (fe80::/10).
+  if (/^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host)) return true
+  return false
+}
+
+/**
+ * Why a call to the backend cannot carry the service token. A 503: the
+ * deployment, not the caller, is what is wrong, and a request sent without the
+ * token would only come back as the backend's 401 or 403 and hide that.
+ */
+export class InternalServiceUnavailableError extends ServiceUnavailableError {
+  constructor(
+    readonly reason: 'token_missing' | 'unsafe_destination',
+    message: string
+  ) {
+    super(message, { reason })
+    this.name = 'InternalServiceUnavailableError'
+  }
+}
+
+/**
+ * The service-token header for one call to the backend at `destination` (the
+ * base URL the call is sent to). The one producer of `x-grid-internal-token`.
+ *
+ * One policy for every caller: no token, or a destination the token must not
+ * travel to (`isTokenSafeDestination`), throws `InternalServiceUnavailableError`
+ * and nothing is sent. Every backend route that reads the header refuses a
+ * request without a valid one (`routes/internal_auth.py`, the envelope
+ * middleware's internal-caller exemption), so an empty header only ever bought
+ * a misleading 403. A caller whose backend route also answers without the
+ * token (the llm-defaults read in an anonymous dev setup) catches the error and
+ * says so, as `lib/model-config/backend-defaults.ts` does.
+ */
+export function internalServiceHeaders(destination: string): Record<string, string> {
+  const token = process.env.GRID_INTERNAL_API_TOKEN
+  if (!token) {
+    throw new InternalServiceUnavailableError('token_missing', 'GRID_INTERNAL_API_TOKEN is not configured')
+  }
+  if (!isTokenSafeDestination(destination)) {
+    throw new InternalServiceUnavailableError(
+      'unsafe_destination',
+      'Withholding the internal token: the backend URL is plain HTTP to a non-internal host'
+    )
+  }
+  return { [INTERNAL_TOKEN_HEADER]: token }
 }

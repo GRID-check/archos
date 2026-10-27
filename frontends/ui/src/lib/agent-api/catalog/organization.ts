@@ -34,7 +34,7 @@ const roleParams = z.object({
 })
 
 const credentialParams = z.object({
-  id: z.string().uuid().describe('The credential id (a UUID), from organization-llm-credential-list.'),
+  id: z.guid().describe('The credential id (a UUID), from organization-llm-credential-list.'),
 })
 
 const versionParams = z.object({

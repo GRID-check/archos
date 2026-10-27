@@ -291,7 +291,7 @@ async def test_worker_quarantines_poison_and_runs_healthy(monkeypatch, tmp_path)
 
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", async_db_url)
     monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
-    monkeypatch.delenv("AIQ_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
 
     ran: list[dict] = []
 

@@ -22,6 +22,11 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.browse import ListFilesConfig
+from knowledge_layer.browse import list_files
+from knowledge_layer.read_passage import ReadPassageConfig
+from knowledge_layer.read_passage import read_passage
+from knowledge_layer.register import KnowledgeRetrievalConfig
 from langchain_core.messages import ToolMessage
 
 from aiq_agent.common.source_kinds import Shelf
@@ -31,11 +36,6 @@ from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.browse import ListFilesConfig
-from sources.knowledge_layer.src.browse import list_files
-from sources.knowledge_layer.src.read_passage import ReadPassageConfig
-from sources.knowledge_layer.src.read_passage import read_passage
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 
 PROJ = "proj_11111111-1111-1111-1111-111111111111"
 R = PROJ + "_rabcdefabcdef"
@@ -268,7 +268,7 @@ async def test_read_passage_withholds_a_restricted_passage_the_bff_refuses(scope
 
 
 async def test_exact_search_reports_every_collection_its_match_table_names(monkeypatch):
-    from sources.knowledge_layer.src import browse
+    from knowledge_layer import browse
 
     class _Retriever:
         async def find_text(self, collection, pattern, *, filters, limit):
@@ -295,7 +295,7 @@ def _no_passages(*_args, **_kwargs) -> str:
 
 
 def test_a_failed_restricted_collection_is_never_named_in_a_message():
-    from sources.knowledge_layer.src import browse
+    from knowledge_layer import browse
 
     text = browse.search_failed_message(["Gehalt"], [PROJ, R])
 
@@ -318,7 +318,7 @@ def _png() -> bytes:
 @pytest.fixture
 def image_tool(monkeypatch):
     """``look``'s renderer with storage faked: every lookup it makes is recorded."""
-    import sources.knowledge_layer.src.view_image as vi
+    import knowledge_layer.view_image as vi
 
     asked: list[tuple[str, str]] = []
 
@@ -402,8 +402,7 @@ async def test_view_image_reaches_an_open_collection_in_scope_without_admitting_
 async def test_the_lookup_echoes_the_turns_signed_envelope(monkeypatch):
     """The BFF answers only inside the scope the envelope signs; the tool sends it byte-for-byte."""
     import httpx
-
-    from sources.knowledge_layer.src.view_image import _resolve_storage_location
+    from knowledge_layer.view_image import _resolve_storage_location
 
     seen: list[dict[str, str]] = []
 
@@ -438,9 +437,8 @@ async def test_the_lookup_echoes_the_turns_signed_envelope(monkeypatch):
 async def test_the_lookup_carries_the_revision_the_bff_names(monkeypatch):
     """``versionId`` rides on the location, so ``look`` can record which Fassung it rendered (ADR-0128)."""
     import httpx
-
-    from sources.knowledge_layer.src.view_image import _resolve_storage_location
-    from sources.knowledge_layer.src.view_image import location_version
+    from knowledge_layer.view_image import _resolve_storage_location
+    from knowledge_layer.view_image import location_version
 
     body = {"storageKey": "k", "versionId": "v-7"}
 

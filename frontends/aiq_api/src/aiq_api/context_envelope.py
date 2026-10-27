@@ -198,7 +198,7 @@ class GridContextEnvelopeMiddleware:
             here only to independently classify WebSocket callers (see module
             docstring) since ``AuthMiddleware`` skips WS scopes entirely.
         external_hostnames: Same set ``AuthMiddleware`` uses to decide which
-            requests are "external"; defaults to the ``AIQ_EXTERNAL_HOSTNAMES``
+            requests are "external"; defaults to the ``GRID_EXTERNAL_HOSTNAMES``
             env var like ``AuthMiddleware`` does.
     """
 

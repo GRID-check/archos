@@ -109,6 +109,8 @@ function summaryCall() {
 
 describe('reconcileOrphanedVectors', () => {
   beforeEach(() => {
+    // The summary sweep is service-token guarded; without a token nothing is sent.
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockReset()
     // Every scripted response below is chunk work; the summary half runs last
@@ -117,6 +119,7 @@ describe('reconcileOrphanedVectors', () => {
   })
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   // A machine-authored row is never ingested, so it owns no chunks — but it

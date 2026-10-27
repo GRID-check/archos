@@ -68,9 +68,10 @@ from opentelemetry import metrics
 from opentelemetry.metrics import CallbackOptions
 from opentelemetry.metrics import Observation
 from sqlalchemy import bindparam
-from sqlalchemy import inspect
 from sqlalchemy import text
 
+from aiq_agent.common.claim_queue_schema import ensure_status_guard
+from aiq_agent.common.claim_queue_schema import upgrade_columns
 from aiq_agent.common.db_utils import lock_schema
 from aiq_agent.common.db_utils import present_indexes
 
@@ -278,6 +279,7 @@ class ClaimQueue:
         for statement in statements:
             _execute_constant(conn, statement)
         self._add_missing_columns(conn, ts)
+        ensure_status_guard(conn, t, born=QUEUED, live=(QUEUED, CLAIMED), retired=RETIRED)
         # Only the MISSING indexes: ``CREATE INDEX IF NOT EXISTS`` takes the table's
         # SHARE lock before it checks the name, so run on every start it blocked every
         # heartbeat and claim, and behind one idle-in-transaction writer it wedged the
@@ -308,11 +310,7 @@ class ClaimQueue:
             "dead_reason": "TEXT",
             "cancelled_at": ts,
         }
-        present = {column["name"] for column in inspect(conn).get_columns(self.table)}
-        guard = "IF NOT EXISTS " if "WITH TIME ZONE" in ts else ""
-        for column, definition in wanted.items():
-            if column not in present:
-                _execute_constant(conn, f"ALTER TABLE {self.table} ADD COLUMN {guard}{column} {definition}")
+        upgrade_columns(conn, self.table, wanted, postgres="WITH TIME ZONE" in ts)
 
     # ----------------------------------------------------------------- intake
 

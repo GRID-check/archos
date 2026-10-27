@@ -124,9 +124,9 @@ export const refParserOverride = (node) => {
  * which it writes as `oneOf` of `$ref`s beside a `discriminator` — as
  * `z.discriminatedUnion`.
  *
- * Left to the library, such a node becomes `z.any().superRefine(…)` written
- * against Zod 4's `z.core` types, which this repo's Zod does not have: the
- * module stops compiling, and the field's type is erased to `any` besides.
+ * Left to the library, such a node becomes `z.any().superRefine(…)`, which
+ * checks "exactly one branch matches" by hand and erases the field's type to
+ * `any`; `z.discriminatedUnion` picks the branch by its tag and keeps the type.
  * Only the shape Pydantic emits is taken (every branch a `$ref`); anything else
  * returns undefined and goes to the library as before.
  */
@@ -139,15 +139,47 @@ export const discriminatedOneOfOverride = (node) => {
   return node.description ? `${union}.describe(${JSON.stringify(node.description)})` : union
 }
 
+/** Append the `description` and `default` a node carries, as the library would on its own path. */
+const withDescribeAndDefault = (expression, node) => {
+  const described = node.description ? `${expression}.describe(${JSON.stringify(node.description)})` : expression
+  return 'default' in node ? `${described}.default(${JSON.stringify(node['default'])})` : described
+}
+
+/** Keywords that say nothing about a value's shape. */
+const ANNOTATION_KEYWORDS = new Set(['title', 'description', 'default', 'examples'])
+
+/**
+ * Emit a value the Pydantic model types as `Any` as `z.unknown()`, never `z.any()`.
+ *
+ * Pydantic writes `Any` as a schema with no shape keyword at all, and
+ * `dict[str, Any]` as an object whose `additionalProperties` is `true`; the
+ * library turns both into `z.any()`. The wire carries the same JSON either
+ * way, but `any` switches the type checker off for every reader of the field,
+ * while `unknown` makes the reader narrow before it uses the value.
+ */
+export const unknownValueOverride = (node) => {
+  if (!node || typeof node !== 'object' || Array.isArray(node)) return undefined
+  if (Object.keys(node).every((key) => ANNOTATION_KEYWORDS.has(key))) {
+    return withDescribeAndDefault('z.unknown()', node)
+  }
+  const onlyOpenObject =
+    node.type === 'object' &&
+    node.additionalProperties === true &&
+    Object.keys(node).every((key) => key === 'type' || key === 'additionalProperties' || ANNOTATION_KEYWORDS.has(key))
+  return onlyOpenObject ? withDescribeAndDefault('z.record(z.string(), z.unknown())', node) : undefined
+}
+
 /** Every override the generator applies, first match wins. */
-export const cardParserOverride = (node, refs) => refParserOverride(node, refs) ?? discriminatedOneOfOverride(node, refs)
+export const cardParserOverride = (node, refs) =>
+  refParserOverride(node, refs) ?? discriminatedOneOfOverride(node, refs) ?? unknownValueOverride(node, refs)
 
 /** The whole `generated.ts` module, as text. Pure — no file system. */
 export function buildCardSchemaModule(root) {
   const defs = root.$defs ?? root.definitions ?? {}
 
-  const declarations = topologicallyOrderedDefNames(root).map((defName) => {
-    const zodExpr = jsonSchemaToZod(defs[defName], { module: false, parserOverride: cardParserOverride })
+  const orderedDefNames = topologicallyOrderedDefNames(root)
+  const declarations = orderedDefNames.map((defName) => {
+    const zodExpr = jsonSchemaToZod(defs[defName], { module: false, zodVersion: 4, parserOverride: cardParserOverride })
     return `export const ${exportName(defName)} = ${zodExpr}`
   })
 
@@ -159,6 +191,22 @@ export function buildCardSchemaModule(root) {
   const unionMembers = (cardDefNames.length ? cardDefNames : Object.keys(defs))
     .map((defName) => exportName(defName))
     .join(',\n  ')
+
+  const anyAt = declarations.find((declaration) => declaration.includes('z.any()'))
+  if (anyAt) {
+    throw new Error(
+      `The generator emitted z.any() in \`${anyAt.split(' =')[0]}\`: it erases the field's type for every ` +
+        'reader. Teach `cardParserOverride` the schema shape that produced it.'
+    )
+  }
+
+  // One type per def, so a renderer names the shape it reads instead of
+  // declaring a copy of it. The INPUT type: a field with a default stays
+  // optional, so the type takes both a parsed card and the operands a renderer
+  // builds itself (`lib/formulas.ts`).
+  const types = orderedDefNames.map(
+    (defName) => `export type ${defName}Data = z.input<typeof ${exportName(defName)}>`
+  )
 
   const discriminator = root.discriminator?.propertyName ?? 'type'
   const banner =
@@ -173,6 +221,8 @@ ${declarations.join('\n\n')}
 export const gridCardSchema = z.discriminatedUnion('${discriminator}', [
   ${unionMembers},
 ])
+
+${types.join('\n')}
 `
 }
 

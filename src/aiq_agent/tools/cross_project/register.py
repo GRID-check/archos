@@ -75,6 +75,7 @@ from pydantic import BeforeValidator
 
 from aiq_agent import project_context
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
 from aiq_agent.common.grounding_block import GroundingBlock
 from aiq_agent.common.grounding_block import GroundingHit
@@ -99,7 +100,6 @@ from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
 from nat.plugin_api import register_function
 
-from ..documents.filing import SignedEnvelope
 from .client import BRIEF_PATH
 from .client import PROJECTS_PATH
 from .client import SEARCH_PATH

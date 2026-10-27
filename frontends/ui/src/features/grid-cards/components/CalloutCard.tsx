@@ -43,11 +43,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { StatCardIcon, type StatCardIconTone } from '@/components/ui/stat-card'
 import { useTranslations, type Translator } from '@/i18n'
 import { cn } from '@/lib/utils'
-import type { CalloutKind } from '../schematics/types'
+import type { AnswerCalloutKind } from '@/lib/conversations/message-answer-meta'
 import { CARD_SHELL } from './card-chrome'
 
 interface CalloutCardProps {
-  kind: CalloutKind
+  kind: AnswerCalloutKind
   text: string
   title?: string | null
   detail?: string | null
@@ -82,7 +82,7 @@ const AMBER_WASH = 'bg-[color-mix(in_oklch,var(--source-office)_7%,transparent)]
 /** Brick red at 6% — the Achtung wash. */
 const RED_WASH = 'bg-[color-mix(in_oklch,var(--signal-error)_6%,transparent)]'
 
-const TONES: Record<CalloutKind, CalloutTone> = {
+const TONES: Record<AnswerCalloutKind, CalloutTone> = {
   note: {
     label: (t) => t('cards.callout.note'),
     icon: Info,

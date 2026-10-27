@@ -19,7 +19,7 @@ import pytest
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.tools.documents.filing import SignedEnvelope
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.tools.tasks import client as task_client
 from aiq_agent.tools.tasks import register as task_tools
 

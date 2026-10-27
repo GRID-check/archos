@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Every AIQ_ environment variable is renamed to GRID_ with the same rest, so
+    AIQ_QDRANT_URL is now GRID_QDRANT_URL. For this release the old names still
+    work and log a deprecation warning at start; rename them in your Compose
+    .env before the next release, which drops them. The full list is in the
+    environment variable reference under Renamed variables.

@@ -65,7 +65,7 @@ def default_path() -> Path:
 
 def ledger_path() -> Path:
     """The ledger in use. The env var is a TRUSTED deployment override, never request-influenced."""
-    override = os.environ.get("AIQ_CAPABILITY_GAP_LOG")
+    override = os.environ.get("GRID_CAPABILITY_GAP_LOG")
     return Path(override) if override else default_path()
 
 
