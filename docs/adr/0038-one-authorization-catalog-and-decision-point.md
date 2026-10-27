@@ -250,10 +250,14 @@ The three `skill:*` permissions and the Skill resource type followed the same
 day: dropped from the catalog, then deleted in both environments right after
 the change merged, so the provisioning Job never saw the two disagree.
 
-**Next, not done here.** The project tier still asks up to three `check` calls
-per request and derives a role from them, and `GET /api/projects` checks every
-project. WorkOS answers both natively (`listEffectivePermissionsByExternalId`
-for what a member holds on one project, `listResourcesForMembership` for which
-projects they reach). Neither was adopted in this change because neither could be
-exercised against a live environment from where it was written; they belong in a
-change that can measure them.
+**One call answers what a member holds on a project.** The project tier asked
+up to three `check` calls per request and derived a role from them, and the
+projects grid asked one per project and permission. Both now ask
+`listEffectivePermissionsByExternalId` once per (membership, project)
+(`effectiveResourcePermissions` in `lib/authz/resource-check.ts`), which
+counts roles assigned on the project and on its ancestors. The answer is
+cached under one key, so opening a project the grid just listed asks WorkOS
+nothing new. A 404 (no such resource) holds nothing; any other failure holds
+nothing and is not cached. `listResourcesForMembership` for the grid was not
+adopted: it requires a parent resource, and a project is a top-level resource
+of its organization with none.
