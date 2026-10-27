@@ -50,6 +50,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.wire_v2 import RunFinishedBody
 from aiq_agent.common.wire_v2 import UserMessage
 from aiq_agent.observability.langfuse_scores import emit_scores
@@ -60,7 +61,6 @@ from aiq_agent.tools.canvas.client import post_canvas
 from aiq_agent.tools.canvas.marks import MAX_BODY
 from aiq_agent.tools.canvas.policy import shared_write_refusal
 from aiq_agent.tools.canvas.target import is_uuid
-from aiq_agent.tools.documents.filing import SignedEnvelope
 from aiq_agent.turn.payload import thread_reply_requested
 
 logger = logging.getLogger(__name__)

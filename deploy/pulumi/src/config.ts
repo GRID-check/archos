@@ -11,6 +11,8 @@ import {
   POSTGRES_POOLER,
   POSTGRES_TUNING,
 } from "./constants";
+import { GOTENBERG_SLOTS_PER_REPLICA, bffJobsMode } from "./rendition-sizing";
+export { GOTENBERG_SLOTS_PER_REPLICA, bffJobsMode, gotenbergCapacity, renditionCeiling } from "./rendition-sizing";
 
 /**
  * Typed configuration for the Grid OIB Kubernetes deployment.
@@ -1036,20 +1038,20 @@ export interface GridConfig {
     minReplicas: number;
     /**
      * Ceiling. The real ceiling is the model provider's rate limit on the
-     * shared key: replicas × concurrency × `AIQ_VLM_BATCH_WORKERS` is the
+     * shared key: replicas × concurrency × `GRID_VLM_BATCH_WORKERS` is the
      * peak number of VLM calls in flight, and `assertVlmPeakFitsCeiling` fails
      * the deploy when that is more than twice `vlmFleetConcurrency`, which is
      * itself held to the provider ceilings.
      */
     maxReplicas: number;
-    /** Jobs one replica runs at once (`AIQ_INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
+    /** Jobs one replica runs at once (`GRID_INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
     concurrency: number;
     /** SIGTERM budget to finish claimed jobs; an unfinished one is claimed again elsewhere. */
     drainSeconds: number;
     /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
     maxPerOrg: number;
     /**
-     * `AIQ_MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
+     * `GRID_MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
      * refused before it is decoded. pypdfium2 cannot downscale an embedded image
      * on decode, so this is the only bound on one bitmap's allocation; the
      * PDFium lock serialises decodes within a process, so the tier's raster peak
@@ -1081,6 +1083,13 @@ export interface GridConfig {
     /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
     maxPerOrg: number;
     /**
+     * Where a slice runs (`GRID_BFF_JOBS_MODE`): `http`, in a `node server.js`
+     * the pod spawns, or `inprocess`, in the supervisor from the bundled
+     * services (`dist-jobs/slice.mjs`, ADR-0079 amendment 1). `http` until the
+     * in-process host has run in every environment.
+     */
+    mode: "http" | "inprocess";
+    /**
      * Office conversions ONE pod runs at Gotenberg at once (`GOTENBERG_MAX_
      * CONCURRENCY` in the pod). The fleet's ceiling is this times `maxReplicas`
      * ({@link renditionCeiling}), and a spec holds that to the converter's
@@ -1106,9 +1115,9 @@ export interface GridConfig {
    * vision model's own `modelLimitCeiling` (a call takes a slot in each pool).
    */
   providerLimits: {
-    /** `AIQ_VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
+    /** `GRID_VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
     vlmFleetConcurrency: number;
-    /** `AIQ_VLM_BATCH_WORKERS`: vision calls one file runs at once. */
+    /** `GRID_VLM_BATCH_WORKERS`: vision calls one file runs at once. */
     vlmBatchWorkers: number;
     /** `GRID_PROVIDER_LIMIT_CEILING`: model calls in flight fleet-wide, all models together. */
     limitCeiling: number;
@@ -2993,7 +3002,7 @@ export function loadConfig(): GridConfig {
         limitsMemory: cfg.get("ingestWorkerLimitsMemory") ?? "6Gi",
       },
       minReplicas: Math.max(0, num(cfg, "ingestWorkerMinReplicas", 1)),
-      // 5 x 3 x `AIQ_VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
+      // 5 x 3 x `GRID_VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
       // most the default budget can feed (`assertVlmPeakFitsCeiling`).
       maxReplicas: Math.max(1, num(cfg, "ingestWorkerMaxReplicas", 5)),
       concurrency: Math.max(1, num(cfg, "ingestWorkerConcurrency", 3)),
@@ -3021,6 +3030,7 @@ export function loadConfig(): GridConfig {
       concurrency: Math.max(1, num(cfg, "bffJobsConcurrency", 2)),
       drainSeconds: Math.max(15, num(cfg, "bffJobsDrainSeconds", 60)),
       maxPerOrg: Math.max(0, num(cfg, "bffJobsMaxPerOrg", 0)),
+      mode: bffJobsMode(cfg.get("bffJobsMode")),
       // One: LibreOffice converts one document at a time, and the second slot
       // Gotenberg is sized for is the next job waiting behind it. A pod running
       // two jobs at once still converts one file at a time.
@@ -3376,34 +3386,10 @@ export function assertHpaTargetIsProportional(
 }
 
 /**
- * Conversions one Gotenberg replica is sized to take at once: one running and
- * one ready behind it. The second is deliberate (`rendition.ts` in the BFF):
- * it keeps the converter busy between files without queueing anything inside
- * it that could run out of its own API timeout.
- */
-export const GOTENBERG_SLOTS_PER_REPLICA = 2;
-
-/**
- * The most office conversions the `bff-jobs` pool can have in flight at
- * Gotenberg at once: its replicas at the ceiling times what one pod runs.
- * Background conversions are claimed from `bff_job_queue` (ADR-0079), so this
- * is the fleet-wide bound that replaced a per-process queue in every frontend
- * pod; readers opening a preview are the frontend pods' own, bounded apart.
- */
-export function renditionCeiling(cfg: Pick<GridConfig, "bffJobs">): number {
-  return cfg.bffJobs.maxReplicas * cfg.bffJobs.renditionConcurrency;
-}
-
-/** What the converter can take: its replicas times {@link GOTENBERG_SLOTS_PER_REPLICA}. */
-export function gotenbergCapacity(cfg: Pick<GridConfig, "gotenberg">): number {
-  return cfg.gotenberg.replicas * GOTENBERG_SLOTS_PER_REPLICA;
-}
-
-/**
  * Vision calls the ingest tier can have in flight at its ceiling: replicas, times
  * the jobs one replica runs at once, times the files' own parallelism
- * (`AIQ_VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
- * slot of the fleet pool (`AIQ_VLM_FLEET_CONCURRENCY`).
+ * (`GRID_VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
+ * slot of the fleet pool (`GRID_VLM_FLEET_CONCURRENCY`).
  */
 export function vlmPeakCalls(cfg: Pick<GridConfig, "ingestWorker" | "providerLimits">): number {
   return cfg.ingestWorker.maxReplicas * cfg.ingestWorker.concurrency * cfg.providerLimits.vlmBatchWorkers;
@@ -3414,7 +3400,7 @@ export function vlmPeakCalls(cfg: Pick<GridConfig, "ingestWorker" | "providerLim
  * wait for a slot, which is what the pool is for, so some overshoot is a queue
  * that keeps the pool busy between files; a lot of it is replicas that only hold
  * memory while they wait, and a wait long enough to meet the vision client's
- * timeout (`AIQ_VLM_TIMEOUT_SECONDS`) is a retry for nothing.
+ * timeout (`GRID_VLM_TIMEOUT_SECONDS`) is a retry for nothing.
  */
 export const VLM_OVERSUBSCRIPTION = 2;
 

@@ -11,13 +11,8 @@ See docs/architecture/project-memory-design.md.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 import re
-import urllib.error
-import urllib.parse
-import urllib.request
 from collections.abc import Mapping
 from collections.abc import Sequence
 from contextvars import ContextVar
@@ -25,12 +20,17 @@ from contextvars import Token
 from dataclasses import dataclass
 from dataclasses import field
 
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge.restricted_use import current_restricted_use
 
 logger = logging.getLogger(__name__)
 
 
-class CrossProjectMemoryRefusedError(RuntimeError):
+class ProjectMemoryError(bff_http.BffError):
+    """The memory route refused a write for a reason the caller handles by name."""
+
+
+class CrossProjectMemoryRefusedError(ProjectMemoryError):
     """The frontend refused a write from a conversation that drew on another project (ADR-0094).
 
     Raised when ``POST /api/internal/memory`` answers 409 ``CROSS_PROJECT_MEMORY``.
@@ -41,7 +41,7 @@ class CrossProjectMemoryRefusedError(RuntimeError):
     """
 
 
-class OrgMemoryDisabledError(RuntimeError):
+class OrgMemoryDisabledError(ProjectMemoryError):
     """The frontend refused an agent organization-scoped write on purpose.
 
     Raised when ``POST /api/internal/memory`` returns 403 with the
@@ -66,22 +66,6 @@ _REQUEST_TIMEOUT_SECONDS = 5
 # Still bounded and still fail-open to the frozen header digest — a slow BFF
 # costs staleness, never the turn.
 _DIGEST_TIMEOUT_SECONDS = 2.5
-
-
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Refuse to follow redirects.
-
-    The internal endpoint never redirects; a 3xx means an auth middleware
-    intercepted the call (e.g. AuthKit sending us to a sign-in page). Following
-    it would drop the POST body and the service-token header and surface a
-    misleading downstream error, so fail fast with the original status instead.
-    """
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        raise urllib.error.HTTPError(req.full_url, code, f"unexpected redirect to {newurl}", headers, fp)
-
-
-_opener = urllib.request.build_opener(_NoRedirectHandler)
 
 
 @dataclass
@@ -145,34 +129,6 @@ def turn_memory_writes() -> tuple[str, ...]:
     return tuple(log.writes) if log is not None else ()
 
 
-def _internal_base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
-
-
-def _error_code(exc: urllib.error.HTTPError) -> str | None:
-    """Best-effort ``code`` field from a JSON error envelope, tolerating non-JSON.
-
-    The internal API's error responses are ``{"error": ..., "code": ...}`` (see
-    ``lib/api/handler.ts``). Returns the machine-readable code or ``None`` when
-    the body is empty, unreadable, or not the expected JSON shape.
-    """
-    try:
-        raw = exc.read()
-    except Exception:  # noqa: BLE001 — body may already be consumed / unreadable
-        return None
-    if not raw:
-        return None
-    try:
-        data = json.loads(raw.decode("utf-8"))
-    except ValueError, UnicodeDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    code = data.get("code")
-    return code if isinstance(code, str) else None
-
-
 VALID_PROVENANCES = {"agent", "distillation"}
 
 
@@ -213,8 +169,9 @@ def fetch_memory_digest(
     :class:`aiq_agent.knowledge.restricted_use.RestrictedUse` is confined.
 
     Returns the digest string, or ``None`` when there is no active memory (a valid
-    empty result). Raises RuntimeError on configuration problems and urllib errors
-    on transport failures, so the caller can fall back to the frozen header digest
+    empty result). Raises :class:`aiq_agent.common.bff_http.BffError` (a
+    ``RuntimeError``) on configuration, refusal and transport problems alike, so
+    the caller can fall back to the frozen header digest
     instead of dropping memory entirely. Blocking; call via ``asyncio.to_thread``
     — which copies the current context, so the default read below still sees it.
     """
@@ -227,10 +184,6 @@ def fetch_memory_digest(
         from aiq_agent.project_context import get_conversation_id_from_context
 
         conversation_id = get_conversation_id_from_context()
-
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise RuntimeError("GRID_INTERNAL_API_TOKEN is not configured")
 
     params = {}
     if project_id:
@@ -259,16 +212,9 @@ def fetch_memory_digest(
         # The answer this turn writes: marked when a restricted note is
         # admitted, in the same transaction (ADR-0093).
         params["answerMessageId"] = use.answer_message_id
-    query_string = urllib.parse.urlencode(params)
-
-    request = urllib.request.Request(
-        f"{_internal_base_url()}/api/internal/memory/digest?{query_string}",
-        headers={"X-Grid-Internal-Token": token},
-        method="GET",
-    )
-
-    with _opener.open(request, timeout=_DIGEST_TIMEOUT_SECONDS) as response:
-        body = json.loads(response.read().decode("utf-8"))
+    body = bff_http.get_json("/api/internal/memory/digest", timeout=_DIGEST_TIMEOUT_SECONDS, query=params)
+    if not isinstance(body, dict):
+        raise bff_http.BffMalformedResponseError("the memory digest answered with something that is not an object")
     if body.get("restrictedFoldersServed"):
         # Restricted notes entered the prompt: the BFF recorded their folders
         # for the conversation.
@@ -355,8 +301,9 @@ def insert_memory_item(
     trail with the item it was about. Collections only, never text.
 
     Returns the new item id, or None when the target (project/org) is unknown.
-    Raises RuntimeError on configuration problems and urllib errors on
-    transport failures — callers translate these into friendly tool output.
+    Raises :class:`aiq_agent.common.bff_http.BffError` (a ``RuntimeError``)
+    for configuration, refusal and transport failures — callers translate these
+    into friendly tool output.
     Blocking; call via ``asyncio.to_thread`` from async code.
     """
     if scope not in VALID_SCOPES:
@@ -372,10 +319,6 @@ def insert_memory_item(
         # written, the same way it is for an unknown project.
         logger.info("Memory item not recorded: content matches a personal-data shape (scope=%s)", scope)
         return None
-
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise RuntimeError("GRID_INTERNAL_API_TOKEN is not configured")
 
     payload: dict[str, object] = {
         "scope": scope,
@@ -402,64 +345,63 @@ def insert_memory_item(
     if restriction_judge:
         payload["restrictionJudge"] = dict(restriction_judge)
 
-    request = urllib.request.Request(
-        f"{_internal_base_url()}/api/internal/memory",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "X-Grid-Internal-Token": token,
-        },
-        method="POST",
-    )
-
     try:
-        with _opener.open(request, timeout=_REQUEST_TIMEOUT_SECONDS) as response:
-            body = json.loads(response.read().decode("utf-8"))
-            item_id = body.get("item", {}).get("id")
-            if item_id:
-                record_turn_memory_write(content, restricted=bool(restricted_collections))
-            return item_id
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
+        body = bff_http.post_json("/api/internal/memory", payload, timeout=_REQUEST_TIMEOUT_SECONDS)
+    except bff_http.BffRefusedError as exc:
+        if exc.status == 404:
             # Unknown project — nothing recorded, not a transport failure.
             return None
-        if 300 <= exc.code < 400:
-            logger.error(
-                "Internal memory endpoint redirected (%s) — an auth middleware is "
-                "intercepting %s/api/internal/memory. Exclude /api/internal/* from "
-                "the frontend auth proxy (unauthenticatedPaths in proxy.ts).",
-                exc.code,
-                _internal_base_url(),
-            )
-        elif exc.code == 403:
-            if _error_code(exc) == "ORG_MEMORY_DISABLED":
-                # Expected default-deny (audit finding S1), not a misconfiguration:
-                # an agent's service token may not write org-wide memory, so the
-                # caller routes the user to the confirmation-card path instead.
-                # Logged at INFO (the caller logs the handled outcome); set
-                # GRID_ALLOW_AGENT_ORG_MEMORY=true on the frontend to let agents
-                # write org-wide directly.
-                logger.info(
-                    "Internal memory endpoint declined an agent organization-scoped write "
-                    "(403 ORG_MEMORY_DISABLED); routing to the user confirmation card"
-                )
-                raise OrgMemoryDisabledError("agent organization-scoped memory is disabled on the frontend") from exc
-            logger.error(
-                "Internal memory endpoint rejected the service token (403) — GRID_INTERNAL_API_TOKEN "
-                "mismatch between the aiq-agent and frontend services (the same value must be set on both)."
-            )
-        elif exc.code == 409 and _error_code(exc) == "CROSS_PROJECT_MEMORY":
-            logger.info("Internal memory endpoint declined a write from a conversation that drew on another project")
-            raise CrossProjectMemoryRefusedError("the conversation drew on another project") from exc
-        elif exc.code == 503:
-            logger.error(
-                "Internal memory endpoint disabled (503) — GRID_INTERNAL_API_TOKEN "
-                "is unset, or is the dev default in a non-dev environment "
-                "(set APP_ENV=development on the frontend or configure a real token)."
-            )
-        else:
-            logger.warning("Internal memory endpoint returned %s", exc.code)
+        _raise_named_refusal(exc)
         raise
+    item = body.get("item") if isinstance(body, dict) else None
+    item_id = item.get("id") if isinstance(item, dict) else None
+    if item_id:
+        record_turn_memory_write(content, restricted=bool(restricted_collections))
+    return item_id
+
+
+def _raise_named_refusal(exc: bff_http.BffRefusedError) -> None:
+    """Log a refused write, and raise the named error for the two refusals a caller handles."""
+    if 300 <= exc.status < 400:
+        logger.error(
+            "Internal memory endpoint redirected (%s) — an auth middleware is "
+            "intercepting %s/api/internal/memory. Exclude /api/internal/* from "
+            "the frontend auth proxy (unauthenticatedPaths in proxy.ts).",
+            exc.status,
+            bff_http.internal_base_url(),
+        )
+    elif exc.status == 403 and exc.code == "ORG_MEMORY_DISABLED":
+        # Expected default-deny (audit finding S1), not a misconfiguration:
+        # an agent's service token may not write org-wide memory, so the
+        # caller routes the user to the confirmation-card path instead.
+        # Logged at INFO (the caller logs the handled outcome); set
+        # GRID_ALLOW_AGENT_ORG_MEMORY=true on the frontend to let agents
+        # write org-wide directly.
+        logger.info(
+            "Internal memory endpoint declined an agent organization-scoped write "
+            "(403 ORG_MEMORY_DISABLED); routing to the user confirmation card"
+        )
+        raise OrgMemoryDisabledError(
+            "agent organization-scoped memory is disabled on the frontend", status=403, code=exc.code
+        ) from exc
+    elif exc.status == 403:
+        logger.error(
+            "Internal memory endpoint rejected the service token (403) — GRID_INTERNAL_API_TOKEN "
+            "mismatch between the aiq-agent and frontend services (the same value must be set on both)."
+        )
+    elif exc.status == 409 and exc.code == "CROSS_PROJECT_MEMORY":
+        logger.info("Internal memory endpoint declined a write from a conversation that drew on another project")
+        raise CrossProjectMemoryRefusedError(
+            "the conversation drew on another project", status=409, code=exc.code
+        ) from exc
+    elif exc.status == 503:
+        logger.error(
+            "Internal memory endpoint disabled (503) — GRID_INTERNAL_API_TOKEN "
+            "is unset, or is the dev default in a non-dev environment "
+            "(set APP_ENV=development on the frontend or configure a real token)."
+        )
+    else:
+        logger.warning("Internal memory endpoint returned %s", exc.status)
 
 
 def check_internal_api() -> bool:
@@ -472,46 +414,37 @@ def check_internal_api() -> bool:
     backend startup. Blocking; call via ``asyncio.to_thread`` / a background
     task. Returns ``True`` only on a confirmed 200.
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
+    try:
+        bff_http.send("GET", "/api/internal/health", timeout=_REQUEST_TIMEOUT_SECONDS)
+    except bff_http.BffNotConfiguredError:
         logger.error(
             "Cannot verify the internal API: GRID_INTERNAL_API_TOKEN is not configured on the "
             "aiq-agent service. The `remember` tool will not be able to write memory."
         )
         return False
-
-    request = urllib.request.Request(
-        f"{_internal_base_url()}/api/internal/health",
-        headers={"X-Grid-Internal-Token": token},
-        method="GET",
-    )
-
-    try:
-        with _opener.open(request, timeout=_REQUEST_TIMEOUT_SECONDS) as response:
-            response.read()
-        logger.info("internal API reachable, service token accepted")
-        return True
-    except urllib.error.HTTPError as exc:
-        if exc.code == 403:
+    except bff_http.BffRefusedError as exc:
+        if exc.status == 403:
             logger.error(
                 "Internal API rejected the service token (403) — GRID_INTERNAL_API_TOKEN mismatch "
                 "between the aiq-agent and frontend services (the same value must be set on both)."
             )
-        elif exc.code == 503:
+        elif exc.status == 503:
             logger.error(
                 "Internal API disabled (503) — GRID_INTERNAL_API_TOKEN is unset on the frontend, "
                 "or is the well-known dev default in a non-dev environment (set APP_ENV=development "
                 "on the frontend or configure a real token)."
             )
         else:
-            logger.warning("Internal API health check returned %s", exc.code)
+            logger.warning("Internal API health check returned %s", exc.status)
         return False
-    except (urllib.error.URLError, OSError) as exc:
+    except bff_http.BffError as exc:
         # Connection refused / DNS / timeout — the frontend may simply not be up
         # yet at backend startup. Non-fatal; the first `remember` call re-checks.
         logger.warning(
             "Internal API health check could not reach %s (%s) — the frontend may not be up yet.",
-            _internal_base_url(),
+            bff_http.internal_base_url(),
             exc,
         )
         return False
+    logger.info("internal API reachable, service token accepted")
+    return True

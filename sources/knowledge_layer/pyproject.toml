@@ -9,7 +9,7 @@ package-dir = {"knowledge_layer" = "src"}
 [project]
 name = "knowledge-layer"
 version = "1.0.0"
-description = "NAT-based Knowledge Layer - pluggable document ingestion and retrieval"
+description = "Piloti's knowledge layer: reads the office's documents and the legal corpus, and finds the passages Piloti cites"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 license = {text = "Apache-2.0"}

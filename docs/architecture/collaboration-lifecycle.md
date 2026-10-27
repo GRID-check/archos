@@ -163,7 +163,7 @@ Recorded because an undocumented known gap is indistinguishable from a bug.
   an org-scoped lookup alone. Any signed-in org member could therefore open a turn
   on a colleague's private conversation and have the answer written into it and
   published to its participants. The upgrade now authorizes the conversation too
-  (`lib/collection-scope-request.ts`, at least `viewer`), refusing with a 403 that
+  (`lib/retrieval-scope/collection-scope-request.ts`, at least `viewer`), refusing with a 403 that
   makes the gateway destroy the socket — while still allowing an id that does not
   exist yet, which is the ordinary first-message path.
 

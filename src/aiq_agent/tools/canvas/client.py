@@ -18,15 +18,11 @@ schema file.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import urllib.error
-import urllib.parse
-import urllib.request
 from typing import Any
 
-from ..documents.filing import SignedEnvelope
+from aiq_agent.common import bff_http
+from aiq_agent.common.bff_http import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 
@@ -38,51 +34,24 @@ REQUEST_TIMEOUT_SECONDS = 20
 LEAVE_TIMEOUT_SECONDS = 3
 
 
-class CanvasRequestError(RuntimeError):
+class CanvasRequestError(bff_http.BffError):
     """The route refused, or could not be reached. ``status``, ``code`` and ``reason`` say which."""
 
     def __init__(
         self, message: str, *, status: int | None = None, code: str | None = None, reason: str | None = None
     ) -> None:
-        super().__init__(message)
-        self.status = status
-        self.code = code
+        super().__init__(message, status=status, code=code)
         self.reason = reason
 
 
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Refuse redirects: a 3xx means an auth middleware intercepted the call."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        raise urllib.error.HTTPError(req.full_url, code, f"unexpected redirect to {newurl}", headers, fp)
-
-
-_opener = urllib.request.build_opener(_NoRedirectHandler)
-
-
-def _internal_base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
-
-
-def _error_body(exc: urllib.error.HTTPError) -> dict[str, Any]:
-    try:
-        payload = json.loads(exc.read().decode("utf-8"))
-    except Exception:  # noqa: BLE001 - the body may be empty, unreadable or not JSON
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def _refusal(exc: urllib.error.HTTPError) -> CanvasRequestError:
+def _refusal(exc: bff_http.BffRefusedError) -> CanvasRequestError:
     """The BFF's ``{error, code, details}`` envelope as an error the tool can word."""
-    error = _error_body(exc)
-    detail, code = error.get("error"), error.get("code")
-    details = error.get("details") if isinstance(error.get("details"), dict) else {}
+    details = exc.body.get("details") if isinstance(exc.body.get("details"), dict) else {}
     reason = details.get("reason")
     return CanvasRequestError(
-        detail if isinstance(detail, str) and detail.strip() else f"the request was refused ({exc.code})",
-        status=exc.code,
-        code=code if isinstance(code, str) else None,
+        exc.error_text or f"the request was refused ({exc.status})",
+        status=exc.status,
+        code=exc.code,
         reason=reason if isinstance(reason, str) else None,
     )
 
@@ -95,27 +64,13 @@ def post_canvas(
     Raises :class:`CanvasRequestError` for every refusal and transport
     failure, carrying the status, the BFF's ``code`` and ``details.reason``.
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise CanvasRequestError("GRID_INTERNAL_API_TOKEN is not configured")
-    request = urllib.request.Request(
-        f"{_internal_base_url()}{ANNOTATIONS_PATH}",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "X-Grid-Internal-Token": token,
-            # Who this is, forwarded exactly as the BFF minted it for the turn.
-            "X-Grid-Request-Context": envelope.header,
-            "X-Grid-Request-Context-Sig": envelope.signature,
-        },
-        method="POST",
-    )
     try:
-        with _opener.open(request, timeout=timeout) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
+        body = bff_http.post_json(ANNOTATIONS_PATH, payload, timeout=timeout, headers=envelope.headers())
+    except bff_http.BffNotConfiguredError as exc:
+        raise CanvasRequestError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
         raise _refusal(exc) from exc
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+    except bff_http.BffError as exc:
         logger.warning("Canvas request %s failed", payload.get("op"), exc_info=True)
         raise CanvasRequestError("the canvas route could not be reached") from exc
     if not isinstance(body, dict):
@@ -135,23 +90,16 @@ def lookup_document_id(collection: str, file_name: str, envelope: SignedEnvelope
     carries no ``documentId``: the caller then says it cannot address the
     document by name, which is true.
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        return None
-    query = urllib.parse.urlencode({"collection": collection, "filename": file_name})
-    request = urllib.request.Request(
-        f"{_internal_base_url()}{DOCUMENT_FILE_PATH}?{query}",
-        headers={
-            "X-Grid-Internal-Token": token,
-            "X-Grid-Request-Context": envelope.header,
-            "X-Grid-Request-Context-Sig": envelope.signature,
-        },
-        method="GET",
-    )
     try:
-        with _opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except urllib.error.URLError, OSError, ValueError:
+        body = bff_http.get_json(
+            DOCUMENT_FILE_PATH,
+            timeout=REQUEST_TIMEOUT_SECONDS,
+            query={"collection": collection, "filename": file_name},
+            headers=envelope.headers(),
+        )
+    except bff_http.BffNotConfiguredError:
+        return None
+    except bff_http.BffError:
         logger.info("No document id for %s in %s", file_name, collection, exc_info=True)
         return None
     document_id = body.get("documentId") if isinstance(body, dict) else None

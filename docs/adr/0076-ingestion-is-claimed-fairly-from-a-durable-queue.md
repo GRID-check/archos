@@ -11,7 +11,7 @@ informed: everyone working in this repo
 ## Context and Problem Statement
 
 Every ingestion job ran in one in-memory `ThreadPoolExecutor` per backend
-process: `AIQ_INGEST_MAX_WORKERS=2`, FIFO across every tenant. Prod runs one
+process: `GRID_INGEST_MAX_WORKERS=2`, FIFO across every tenant. Prod runs one
 backend replica, so the platform indexed two documents at a time, in arrival
 order. One office's folder upload or project reindex of a few hundred document sets
 put every other office's single upload behind it for hours. A restart lost the
@@ -34,7 +34,7 @@ The product has to serve thousands of offices on this path.
 
 ## Considered Options
 
-1. Raise `AIQ_INGEST_MAX_WORKERS` and the backend replica count.
+1. Raise `GRID_INGEST_MAX_WORKERS` and the backend replica count.
 2. A per-organisation FIFO in each process (fair share inside one pod only).
 3. A durable Postgres claim queue with a fair claim order, a dedicated worker
    tier, and KEDA scaling that tier on the queue's depth.
@@ -82,7 +82,7 @@ has run in production since ADR-0021.
   The cluster-autoscaler adds nodes for Pending replicas (docs/deployment/
   kubernetes.md). CPU cannot drive this tier: a job mostly waits on the provider.
 * **The provider sees a fixed ceiling, not the worker count.** Every vision
-  call holds one of `AIQ_VLM_FLEET_CONCURRENCY` fleet-wide slots, a lease pool
+  call holds one of `GRID_VLM_FLEET_CONCURRENCY` fleet-wide slots, a lease pool
   on Dragonfly (`common.lease_slots`, the chat admission's scripts). A 429 waits
   out its `Retry-After`, or 2, 4, 8 … s, outside the slot.
 
@@ -134,7 +134,7 @@ already give at this volume: a few claims per second.
 ### Confirmation
 
 * The claim order: `tests/knowledge_layer_tests/test_ingest_queue.py`, on
-  SQLite and, with `AIQ_TEST_POSTGRES_URL`, on Postgres, including eight racing
+  SQLite and, with `GRID_TEST_POSTGRES_URL`, on Postgres, including eight racing
   workers that must never claim one job twice.
 * The in-process order: `tests/aiq_agent/knowledge/test_ingest_scheduler.py`.
 * The payload and the worker: `frontends/aiq_api/tests/test_ingest_dispatch.py`,

@@ -12,7 +12,7 @@ import {
   type CollectionShelf,
   type ScopeContext,
   type ScopedCollection,
-} from '@/lib/collection-scope'
+} from '@/lib/retrieval-scope/collection-scope'
 import { officeShelfCollectionName } from '@/lib/office-shelf/collection'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
 
@@ -39,7 +39,7 @@ export interface RequestContext {
  * service-heavy builder. Kept exported here because this module is where
  * callers meet the shelf.
  */
-export type { CollectionShelf, ScopedCollection } from '@/lib/collection-scope'
+export type { CollectionShelf, ScopedCollection } from '@/lib/retrieval-scope/collection-scope'
 
 /**
  * The base knowledge corpus name, resolved ONCE here and handed to

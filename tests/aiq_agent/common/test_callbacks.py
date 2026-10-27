@@ -17,36 +17,36 @@ class TestIsVerboseEnabled:
 
     def test_verbose_enabled_true(self):
         """Test is_verbose_enabled returns True for enabled values."""
-        with patch.dict(os.environ, {"AIQ_VERBOSE": "1"}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": "1"}):
             assert is_verbose_enabled() is True
 
-        with patch.dict(os.environ, {"AIQ_VERBOSE": "true"}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": "true"}):
             assert is_verbose_enabled() is True
 
-        with patch.dict(os.environ, {"AIQ_VERBOSE": "yes"}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": "yes"}):
             assert is_verbose_enabled() is True
 
-        with patch.dict(os.environ, {"AIQ_VERBOSE": "TRUE"}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": "TRUE"}):
             assert is_verbose_enabled() is True
 
     def test_verbose_disabled(self):
         """Test is_verbose_enabled returns False for disabled/empty values."""
-        with patch.dict(os.environ, {"AIQ_VERBOSE": "0"}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": "0"}):
             assert is_verbose_enabled() is False
 
-        with patch.dict(os.environ, {"AIQ_VERBOSE": "false"}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": "false"}):
             assert is_verbose_enabled() is False
 
-        with patch.dict(os.environ, {"AIQ_VERBOSE": "no"}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": "no"}):
             assert is_verbose_enabled() is False
 
-        with patch.dict(os.environ, {"AIQ_VERBOSE": ""}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": ""}):
             assert is_verbose_enabled() is False
 
     def test_verbose_unset(self):
         """Test is_verbose_enabled returns False when env var is not set."""
         with patch.dict(os.environ, clear=True):
-            os.environ.pop("AIQ_VERBOSE", None)
+            os.environ.pop("GRID_VERBOSE", None)
             assert is_verbose_enabled() is False
 
 
@@ -68,7 +68,7 @@ class TestResearchLogger:
 
     def test_research_logger_init_from_env(self, mock_logger):
         """Test ResearchLogger initialization from environment variable."""
-        with patch.dict(os.environ, {"AIQ_VERBOSE": "true"}):
+        with patch.dict(os.environ, {"GRID_VERBOSE": "true"}):
             logger = ResearchLogger(mock_logger)
             assert logger.verbose is True
 

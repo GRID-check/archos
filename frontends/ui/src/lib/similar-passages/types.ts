@@ -8,7 +8,7 @@
  */
 
 import { z } from 'zod'
-import type { RevisionTag } from '@/features/documents/lib/revision-timeline'
+import type { RevisionTag } from '@/lib/documents/revision-timeline'
 import type { ProjectStatus } from '@/lib/cross-project/types'
 
 /** Longer than this, a selection is a page and not a passage; the server reads its head. */

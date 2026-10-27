@@ -21,6 +21,7 @@ from langchain_core.messages import ToolMessage
 from pydantic import ValidationError
 
 from aiq_agent import project_context
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.citation_verification import _parse_knowledge_layer
 from aiq_agent.common.citation_verification import extract_sources_from_tool_result
@@ -37,7 +38,6 @@ from aiq_agent.knowledge.restricted_use import may_name
 from aiq_agent.knowledge.restricted_use import reset_cross_project_turn
 from aiq_agent.tools.cross_project import register as lookup
 from aiq_agent.tools.cross_project.client import CrossProjectLookupError
-from aiq_agent.tools.documents.filing import SignedEnvelope
 from aiq_agent.turn.response import answer_message_id
 from nat.plugin_api import FunctionInfo
 

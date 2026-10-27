@@ -29,13 +29,10 @@ Nothing here branches on a stage id: the legacy fallback is driven by the
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 
+from aiq_agent.common import bff_http
 from aiq_agent.stages.registry import iter_stages
 
 logger = logging.getLogger(__name__)
@@ -102,11 +99,6 @@ def legacy_enabled_stages(*, memory_reflection_enabled: bool) -> frozenset[str]:
     return stages_for_flag_slug(MEMORY_REFLECTION_FLAG_SLUG)
 
 
-def _internal_base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
-
-
 def fetch_turn_flags(*, organization_id: str | None, project_id: str | None = None) -> TurnFlags:
     """What this tenant's turn may do, read from the BFF for THIS turn.
 
@@ -119,24 +111,14 @@ def fetch_turn_flags(*, organization_id: str | None, project_id: str | None = No
     read with a True default so a mixed deployment keeps the behaviour it had
     before deep research could be withdrawn at all.
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise RuntimeError("GRID_INTERNAL_API_TOKEN is not configured")
-
     # The project, when the turn has one: a closed project withdraws deep
     # research and tasks (ADR-0090), because both file into it.
     params = {"organizationId": organization_id} if organization_id else {}
     if project_id:
         params["projectId"] = project_id
-    query = urllib.parse.urlencode(params)
-    url = f"{_internal_base_url()}/api/internal/stages"
-    request = urllib.request.Request(
-        f"{url}?{query}" if query else url,
-        headers={"X-Grid-Internal-Token": token},
-        method="GET",
-    )
-    with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:  # noqa: S310 - fixed internal URL
-        body = json.loads(response.read().decode("utf-8"))
+    body = bff_http.get_json("/api/internal/stages", timeout=_TIMEOUT_SECONDS, query=params)
+    if not isinstance(body, dict):
+        raise ValueError("the internal stages endpoint returned no object")
     enabled = body.get("enabled")
     if not isinstance(enabled, list):
         raise ValueError("the internal stages endpoint returned no 'enabled' list")

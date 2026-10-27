@@ -295,6 +295,75 @@ known-third-party = [
 ]
 order-by-type = true
 
+# The seams between the three Python packages, checked by import-linter in
+# `task be:lint` (`lint-imports`). It reads the import graph through grimp, lazy
+# imports inside functions included. An `ignore_imports` entry whose import is
+# gone fails the run (import-linter's default), so these lists only shrink.
+# docs/contributing/module-seams.md
+[tool.importlinter]
+root_packages = ["aiq_agent", "aiq_api", "knowledge_layer"]
+# Third-party packages become nodes too, so a contract can name one.
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+id = "qdrant-client-confined"
+name = "Only knowledge_layer.qdrant imports qdrant_client"
+type = "forbidden"
+source_modules = ["aiq_agent", "aiq_api", "knowledge_layer"]
+forbidden_modules = ["qdrant_client"]
+# Who names the client, not who reaches a module that does: everything reaches
+# knowledge_layer.qdrant, which is the point of confining the client there.
+allow_indirect_imports = true
+ignore_imports = ["knowledge_layer.qdrant.** -> qdrant_client"]
+
+[[tool.importlinter.contracts]]
+id = "agent-api-seam"
+name = "aiq_agent reaches aiq_api only through turn/api_seam.py"
+type = "forbidden"
+source_modules = ["aiq_agent"]
+forbidden_modules = ["aiq_api"]
+ignore_imports = [
+  # The seam itself; its module docstring is the rule.
+  "aiq_agent.turn.api_seam -> aiq_api.**",
+  # An older inversion that predates the seam and is not the seam's to undo.
+  # Listed so the contract covers the whole package, not because it is approved.
+  "aiq_agent.auth.utils -> aiq_api.**",
+  "aiq_agent.auth.workos_validator -> aiq_api.**",
+]
+
+[[tool.importlinter.contracts]]
+id = "agent-knowledge-port"
+name = "aiq_agent reaches knowledge_layer only through the retriever and ingestor port (ADR-0072)"
+type = "forbidden"
+source_modules = ["aiq_agent"]
+forbidden_modules = ["knowledge_layer"]
+# Direct imports only: aiq_agent reaching knowledge_layer through aiq_api is the
+# API tier's business, and the agent-api-seam contract already bounds that edge.
+allow_indirect_imports = true
+ignore_imports = [
+  # The port: `aiq_agent.knowledge.factory` builds the BaseRetriever and
+  # BaseIngestor the agent talks to, so it is the one module that should.
+  "aiq_agent.knowledge.factory -> knowledge_layer.**",
+  # Known bypasses of the port, from before this contract. Route each one
+  # through the port and delete its line; a new one fails the build.
+  "aiq_agent.agents.piloti.register -> knowledge_layer.chat_binding",
+  "aiq_agent.agents.piloti.register -> knowledge_layer.estate",
+  "aiq_agent.knowledge.collection_pages -> knowledge_layer.chunk_positions",
+  "aiq_agent.knowledge.collection_pages -> knowledge_layer.qdrant.payload",
+  "aiq_agent.knowledge.collection_pages -> knowledge_layer.qdrant.reads",
+  "aiq_agent.knowledge.folder_cards.inputs -> knowledge_layer.browse",
+  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.browse",
+  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.qdrant.folders",
+  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.qdrant.store",
+  "aiq_agent.knowledge.scoping -> knowledge_layer.register",
+  "aiq_agent.oib_sync -> knowledge_layer.llamaindex.adapter",
+  "aiq_agent.tools.cross_project.hit_judge -> knowledge_layer.decisions",
+  "aiq_agent.tools.cross_project.register -> knowledge_layer.register",
+  "aiq_agent.tools.look.reading -> knowledge_layer.llamaindex.adapter",
+  "aiq_agent.tools.look.register -> knowledge_layer.view_image",
+  "aiq_agent.tools.look.resolve -> knowledge_layer.view_image",
+]
+
 [tool.yapf]
 based_on_style = "pep8"
 column_limit = 120
@@ -333,6 +402,7 @@ dev = [
     "pytest-split>=0.11.0",
     # Runs only the tests a pull request's change reaches (ci.yml `backend-affected`).
     "pytest-testmon>=2.2.0",
+    "import-linter>=2.15",
 ]
 
 [tool.uv]

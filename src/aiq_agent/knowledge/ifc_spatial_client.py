@@ -46,7 +46,6 @@ hash is only ever used to skip work for a model this process was just granted.
 from __future__ import annotations
 
 import atexit
-import json
 import logging
 import os
 import tempfile
@@ -55,6 +54,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge.bim_query import BimQueryRejectedError
 from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
 
@@ -199,27 +199,6 @@ class SpatialToolError(ValueError):
     """
 
 
-def _internal_base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
-
-
-def _service_token() -> str | None:
-    return os.environ.get("GRID_INTERNAL_API_TOKEN") or None
-
-
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Refuse redirects on the internal call — a 3xx means an auth middleware
-    intercepted it, and following it would drop the POST body and the service
-    token. Mirrors :mod:`aiq_agent.knowledge.bim_query`."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        raise urllib.error.HTTPError(req.full_url, code, f"unexpected redirect to {newurl}", headers, fp)
-
-
-_opener = urllib.request.build_opener(_NoRedirectHandler)
-
-
 def resolve_model_source(
     *,
     organization_id: str,
@@ -238,10 +217,7 @@ def resolve_model_source(
         refused it, which is correctable by the caller.
     """
     from aiq_agent.knowledge.bim_query import _rejection_message
-
-    token = _service_token()
-    if not token:
-        raise BimQueryUnavailableError("GRID_INTERNAL_API_TOKEN is not configured")
+    from aiq_agent.knowledge.bim_query import is_correctable
 
     payload: dict[str, Any] = {"organizationId": organization_id}
     if project_id:
@@ -249,31 +225,22 @@ def resolve_model_source(
     if model_name:
         payload["modelName"] = model_name
 
-    request = urllib.request.Request(
-        f"{_internal_base_url()}/api/internal/bim/source",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-grid-internal-token": token},
-        method="POST",
-    )
-
     try:
-        with _opener.open(request, timeout=_RESOLVE_TIMEOUT_SECONDS) as response:
-            body = response.read()
-    except urllib.error.HTTPError as exc:
+        parsed = bff_http.post_json("/api/internal/bim/source", payload, timeout=_RESOLVE_TIMEOUT_SECONDS)
+    except bff_http.BffNotConfiguredError as exc:
+        raise BimQueryUnavailableError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
         # Never log the body: it names the tenant's files. The status is what a
         # reader needs.
-        logger.warning("BIM source lookup refused by the frontend (status=%s)", exc.code)
-        if 400 <= exc.code < 500 and exc.code not in (401, 403, 429):
+        logger.warning("BIM source lookup refused by the frontend (status=%s)", exc.status)
+        if is_correctable(exc):
             raise BimQueryRejectedError(_rejection_message(exc)) from exc
-        raise BimQueryUnavailableError(f"internal BIM source endpoint returned {exc.code}") from exc
-    except Exception as exc:  # noqa: BLE001 — urllib raises a wide family here
-        logger.warning("BIM source lookup could not reach the frontend: %s", type(exc).__name__)
-        raise BimQueryUnavailableError("internal BIM source endpoint unreachable") from exc
-
-    try:
-        parsed = json.loads(body)
-    except json.JSONDecodeError as exc:
+        raise BimQueryUnavailableError(f"internal BIM source endpoint returned {exc.status}") from exc
+    except bff_http.BffMalformedResponseError as exc:
         raise BimQueryUnavailableError("internal BIM source endpoint returned a non-JSON body") from exc
+    except bff_http.BffError as exc:
+        logger.warning("BIM source lookup could not reach the frontend: %s", type(exc.__cause__).__name__)
+        raise BimQueryUnavailableError("internal BIM source endpoint unreachable") from exc
     if not isinstance(parsed, dict):
         raise BimQueryUnavailableError("internal BIM source endpoint returned an unexpected body")
     return parsed

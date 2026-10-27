@@ -28,12 +28,8 @@ read it as their parent when they open.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
 import time
-import urllib.error
-import urllib.request
 import uuid
 from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
@@ -46,6 +42,7 @@ from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
 
+from aiq_agent.common import bff_http
 from aiq_agent.common.cache import cache_counters
 from aiq_agent.common.cache import count_cache_operations
 
@@ -280,28 +277,12 @@ def _now_iso() -> str:
 
 def _post_profiler_spans(payload: dict[str, Any]) -> None:
     """POST one batch to the BFF ledger endpoint. Best-effort, never raises."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        logger.warning("GRID_INTERNAL_API_TOKEN not configured — dropping %d profiler spans", len(payload["spans"]))
-        return
-    base_url = (
-        os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    ).rstrip("/")
-    request = urllib.request.Request(
-        f"{base_url}/api/internal/agent-profiler-spans",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "x-grid-internal-token": token,
-        },
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(request, timeout=_REQUEST_TIMEOUT_SECONDS) as response:
-            if response.status not in (200, 201, 202):
-                logger.warning("Internal profiler endpoint returned %s", response.status)
-    except urllib.error.HTTPError as error:
-        logger.warning("Internal profiler endpoint rejected batch: HTTP %s", error.code)
+        bff_http.send("POST", "/api/internal/agent-profiler-spans", timeout=_REQUEST_TIMEOUT_SECONDS, body=payload)
+    except bff_http.BffNotConfiguredError:
+        logger.warning("GRID_INTERNAL_API_TOKEN not configured — dropping %d profiler spans", len(payload["spans"]))
+    except bff_http.BffRefusedError as error:
+        logger.warning("Internal profiler endpoint rejected batch: HTTP %s", error.status)
     except Exception:
         logger.warning("Failed to post profiler spans to internal endpoint", exc_info=True)
 

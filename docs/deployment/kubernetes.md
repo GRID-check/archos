@@ -373,8 +373,8 @@ Full command list is in [`deploy/pulumi/README.md`](../../deploy/pulumi/README.m
 In short:
 
 ```bash
+task infra:install   # the program and its policy pack, each from its own lockfile
 cd deploy/pulumi
-bun install --frozen-lockfile
 pulumi stack init prod
 # edit Pulumi.prod.yaml placeholders, then set --secret values (kubeconfig,
 # pgAppPassword, seaweedfsSecretKey, tokens, OpenRouter/Tavily/WorkOS keys)
@@ -851,9 +851,9 @@ schema.
 - **Two routes to the primary (ADR-0083).** `grid-pg-pooler-rw` is a CloudNativePG
   `Pooler` running PgBouncer in **transaction** mode, and `grid-pg-rw` is the
   primary itself. Every DSN picks one (`via: "pooler" | "direct"`, no default in
-  `data/postgres.ts`). Pooled: `NAT_JOB_STORE_DB_URL`, `AIQ_CHECKPOINT_DB`,
-  `AIQ_DEEP_CHECKPOINT_DB`, `AIQ_SUMMARY_DB` and `GRID_APP_DATABASE_URL`. Direct:
-  `AIQ_LISTEN_DB_URL` (LISTEN/NOTIFY), `AIQ_LOCK_DB_URL` (session advisory
+  `data/postgres.ts`). Pooled: `NAT_JOB_STORE_DB_URL`, `GRID_CHECKPOINT_DB`,
+  `GRID_DEEP_CHECKPOINT_DB`, `GRID_SUMMARY_DB` and `GRID_APP_DATABASE_URL`. Direct:
+  `GRID_LISTEN_DB_URL` (LISTEN/NOTIFY), `GRID_LOCK_DB_URL` (session advisory
   locks), `GRID_APP_MIGRATION_DATABASE_URL`, the KEDA scaler DSNs, the init and
   grants Jobs, Langfuse and the SeaweedFS filer. Anything that needs the same
   server connection across statements must be direct: through the pooler a
@@ -881,7 +881,7 @@ schema.
   `idle_in_transaction_session_timeout` 10min; the Pooler sets PgBouncer's
   `idle_transaction_timeout` to 600 s. All are reload-level, so changing them
   restarts nothing. There is deliberately no `statement_timeout` and no
-  `idle_session_timeout`: a session-lock holder on `AIQ_LOCK_DB_URL` sits idle
+  `idle_session_timeout`: a session-lock holder on `GRID_LOCK_DB_URL` sits idle
   for minutes on purpose. The values live in `POSTGRES_TUNING` and
   `POSTGRES_POOLER` (`src/constants.ts`).
 - **Backups (PITR) — IMPLEMENTED, with an honest scope.** With
@@ -1108,7 +1108,7 @@ Two preconditions for *any* scaling are already done in this deployment, so you
 never have to retrofit them:
 
 - **Postgres everywhere, never SQLite** — job store, checkpoints, summaries, the
-  SSE `LISTEN` DSN, and durable deep-research checkpoints (`AIQ_DEEP_CHECKPOINT_DB`)
+  SSE `LISTEN` DSN, and durable deep-research checkpoints (`GRID_DEEP_CHECKPOINT_DB`)
   all point at CloudNativePG. Restarts no longer lose durable state.
 - **A shared Redis cache** (Dragonfly) is wired into both tiers, so cross-replica
   caches are consistent the moment a second replica appears.
@@ -1197,7 +1197,7 @@ lost on restart. Now:
   `ingestWorkerMinReplicas` and `ingestWorkerMaxReplicas`. Out at once, in a pod
   a minute; dev's floor is 0. Pulumi installs KEDA (`installKeda`, default on)
   and a NetworkPolicy letting it reach Postgres.
-- **The provider sees a fixed ceiling.** `AIQ_VLM_FLEET_CONCURRENCY`
+- **The provider sees a fixed ceiling.** `GRID_VLM_FLEET_CONCURRENCY`
   (`vlmFleetConcurrency`, 32) vision calls in flight fleet-wide, a Dragonfly
   lease pool; more workers queue on it instead of multiplying 429s on the shared
   OpenRouter key. A vision call also holds a slot in its model's own limiter pool
@@ -1248,6 +1248,10 @@ died half way left no record of which half. Both are now jobs:
   interactive before bulk, then oldest), heartbeats, and POSTs each slice to
   its own pod's `/api/internal/jobs/run`. **There is no Service and no
   HTTPRoute**, and the work runs here, never on the pods that proxy chat.
+  With `bffJobsMode: inprocess` (default `http`) the pod spawns no BFF: the
+  loop runs each slice from the services bundled at image build
+  (`dist-jobs/slice.mjs`) and answers the probes' `/api/healthz` itself
+  (ADR-0079 amendment 1).
 - **A drain never costs an attempt; a failure always does.** On SIGTERM the loop stops claiming, lets
   the slice in hand finish (`bffJobsDrainSeconds`, 60), gives every claim back
   without spending an attempt, and only then stops the BFF; the pod's grace
@@ -1370,8 +1374,8 @@ parts that are not about their own signal, and `keda-scaling.spec.ts` holds it.
   finish are released without an attempt before the kubelet's SIGKILL.
 - **The ingest ceiling is held to the provider budget.** `vlmFleetConcurrency`,
   `vlmBatchWorkers`, `providerLimitCeiling` and `providerModelLimitCeiling` are
-  stack config (and reach the pods as `AIQ_VLM_FLEET_CONCURRENCY`,
-  `AIQ_VLM_BATCH_WORKERS`, `GRID_PROVIDER_LIMIT_CEILING`,
+  stack config (and reach the pods as `GRID_VLM_FLEET_CONCURRENCY`,
+  `GRID_VLM_BATCH_WORKERS`, `GRID_PROVIDER_LIMIT_CEILING`,
   `GRID_PROVIDER_MODEL_LIMIT_CEILING`). `assertVlmPeakFitsCeiling` fails the plan
   when `ingestWorkerMaxReplicas` × `ingestWorkerConcurrency` × `vlmBatchWorkers`
   is more than twice `vlmFleetConcurrency`, or when the vision pool is larger
@@ -1834,8 +1838,8 @@ Helm-rendered charts (cert-manager, Envoy Gateway, CNPG) arrive as a single
 opaque `Release` resource and are out of scope by construction.
 
 ```bash
-cd deploy/pulumi/policy && bun install --frozen-lockfile   # once
-cd .. && pulumi preview --policy-pack ./policy
+task infra:install   # once
+cd deploy/pulumi && pulumi preview --policy-pack ./policy
 ```
 
 ## 7d. Protected resources

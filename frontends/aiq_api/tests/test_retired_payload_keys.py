@@ -29,7 +29,7 @@ import pytest
 
 from aiq_api.jobs import queue
 from aiq_api.jobs import worker as worker_mod
-from aiq_api.jobs.runner import run_agent_job
+from aiq_api.jobs.agent_job import run_agent_job
 
 from .test_job_queue import _age_heartbeat
 
@@ -53,7 +53,7 @@ def db_url(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path}/jobs.db"
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", url)
     monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
-    monkeypatch.delenv("AIQ_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
     queue.ensure_research_queue_table(url)
     yield url
     queue._queues.pop(url, None)

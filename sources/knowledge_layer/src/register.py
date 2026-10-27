@@ -247,7 +247,7 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         description=(
             "Enable the lexical channels beside the dense one (German BM25 and the exact-term "
             "phrase channels, fused in Qdrant by reciprocal rank fusion). "
-            "None = environment default AIQ_HYBRID_RETRIEVAL (on)."
+            "None = environment default GRID_HYBRID_RETRIEVAL (on)."
         ),
     )
     rerank_llm: str | None = Field(
@@ -262,7 +262,7 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         description=(
             "Cross-encoder reranking provider (none|openrouter|jev). `jev` scores one decision-model "
             "noul per candidate (ADR-0064), an option to evaluate beside the cross-encoder. "
-            "None falls back to the AIQ_RERANKER_PROVIDER environment default, which is "
+            "None falls back to the GRID_RERANKER_PROVIDER environment default, which is "
             "'none'. When one resolves it becomes the primary reranker and rerank_llm "
             "becomes the fallback; a missing key or any provider error degrades to the judge."
         ),
@@ -343,7 +343,7 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
             "Leave text passages that are OCR debris (a scanned drawing's text layer: rotated labels one "
             "glyph group per line, spaced capitals one letter per token; `chunk_noise`) out of the ranked "
             "pool, before the reranker and the per-document cap, so their slots go to real passages. "
-            'Never touches `match="exact"`/`"regex"`. None = environment default AIQ_DROP_OCR_NOISE '
+            'Never touches `match="exact"`/`"regex"`. None = environment default GRID_DROP_OCR_NOISE '
             "(off). Switch it on only after the answer suite has measured it."
         ),
     )
@@ -861,7 +861,7 @@ def _merge_results(results, query: str, top_k: int, backend_name: str, max_per_d
     does not exist yet) and raised exceptions are treated as empty contributions
     and skipped — EXCEPT an embedding-fingerprint mismatch (see
     ``_EMBEDDING_MISMATCH_MARKER``), which is a configuration fault, not a miss:
-    a wrong ``AIQ_EMBED_MODEL``/``AIQ_EMBED_BASE_URL`` silently drops the whole
+    a wrong ``GRID_EMBED_MODEL``/``GRID_EMBED_BASE_URL`` silently drops the whole
     base corpus while the surviving layers still answer. A mismatch therefore
     rides along on the merged result instead of being skipped quietly: no
     surviving channel means ``success=False`` with the mismatch detail (an

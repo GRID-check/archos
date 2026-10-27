@@ -27,6 +27,7 @@
 
 import 'server-only'
 import { getBackendUrl } from '@/lib/backend-proxy'
+import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/internal-auth'
 
 /** Same ceiling as the chunk purge: an unreachable backend must not hold the request. */
 const DRAFT_DISCARD_TIMEOUT_MS = 10_000
@@ -38,9 +39,12 @@ const DRAFT_DISCARD_TIMEOUT_MS = 10_000
  * caller is deleting a conversation and must not be stopped by it.
  */
 export async function discardConversationDrafts(conversationId: string): Promise<boolean> {
-  const token = process.env.GRID_INTERNAL_API_TOKEN
-  if (!token) {
-    console.warn('[conversations] GRID_INTERNAL_API_TOKEN is not configured; drafts not discarded')
+  let tokenHeaders: Record<string, string>
+  try {
+    tokenHeaders = internalServiceHeaders(getBackendUrl())
+  } catch (error) {
+    if (!(error instanceof InternalServiceUnavailableError)) throw error
+    console.warn(`[conversations] ${error.message}; drafts not discarded`)
     return false
   }
   try {
@@ -48,9 +52,7 @@ export async function discardConversationDrafts(conversationId: string): Promise
       `${getBackendUrl()}/v1/drafts/${encodeURIComponent(conversationId)}`,
       {
         method: 'DELETE',
-        // The same service-to-service header every other call from this tier
-        // carries (`lib/jobs/backend-client.ts`, the vector reconcile).
-        headers: { 'x-grid-internal-token': token },
+        headers: tokenHeaders,
         signal: AbortSignal.timeout(DRAFT_DISCARD_TIMEOUT_MS),
       },
     )
