@@ -77,11 +77,19 @@ def test_what_changes_how_every_python_test_runs_forces_the_full_suite(mod, path
 
 
 @pytest.mark.parametrize(
-    "path", ["scripts/release_notes.py", "frontends/benchmarks/x/run.py", "deploy/migration/chroma_export.py"]
+    "path",
+    ["scripts/release_notes.py", "packages/ifc-spatial-py/x.py", "deploy/migration/chroma_export.py"],
 )
 def test_python_outside_the_tested_packages_forces_the_full_suite(mod, path):
     # Tests load these by path or in a subprocess, where testmon records nothing.
     assert mod.decide_python([path], TESTS, recorded=True)[0] == "full"
+
+
+def test_an_eval_harness_is_python_testmon_sees(mod):
+    # evals/ runs in the core suite with its harnesses installed editable.
+    changed = ["evals/oib-retrieval/src/oib_retrieval/metrics.py", "evals/oib-retrieval/tests/test_x.py"]
+
+    assert mod.decide_python(changed, TESTS, recorded=True)[0] == "select"
 
 
 def test_a_non_python_input_adds_every_test_that_names_it(mod):
@@ -133,6 +141,13 @@ def test_a_document_a_helper_only_cites_selects_nothing_extra(mod):
 
 def test_a_fixture_no_test_names_forces_the_full_suite(mod):
     assert mod.decide_python(["tests/fixtures/orphan/data.json"], TESTS, recorded=True)[0] == "full"
+
+
+def test_an_eval_fixture_no_test_names_forces_the_full_suite(mod):
+    # The harness reads its recordings through its own code, not by a name a test spells out.
+    changed = ["evals/oib-retrieval/fixtures/vector_channel_recorded.json"]
+
+    assert mod.decide_python(changed, TESTS, recorded=True)[0] == "full"
 
 
 def test_a_lookup_failure_answers_no_database(mod):

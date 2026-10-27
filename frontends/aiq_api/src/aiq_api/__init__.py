@@ -7,8 +7,7 @@ This package combines:
 
 ``AIQAPIConfig`` and ``AIQAPIWorker`` load on first use. Importing ``.plugin``
 here pulled the routes, the job runner and the agents in with ANY submodule
-(``aiq_api.auth.errors`` included), which closed an import cycle through
-``aiq_agent.turn.api_seam``. NAT registers through ``aiq_api.register``.
+(``aiq_api.auth.errors`` included). NAT registers through ``aiq_api.register``.
 """
 
 from typing import TYPE_CHECKING

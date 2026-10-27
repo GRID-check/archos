@@ -13,7 +13,7 @@ report is delivered around a list of them rather than as one wall of Markdown.
 | `answer_meta` | one structured call over the finished report (`deep_researcher/anatomy.py`), gated by `common/answer_envelope.gate_answer_meta` | the same masthead a chat answer has: verdict when there is one copyable value, summary, topic, context; takeaways and callout after the prose |
 | `findings` | the same call, under `common/findings.py` | the Befundmatrix between the masthead and the prose (`FindingsMatrix.tsx`), and a table in the Word export |
 | `stages.followUps` | the follow-ups stage's own handler, run in the job runner under the org flag | the follow-up chips under the report |
-| `retrieval_ledger`, `skills_hidden` | recorded on the deep state; lifted by `runner._extract_answer_transparency` | the Herleitung and the skills disclosure |
+| `retrieval_ledger`, `skills_hidden` | recorded on the deep state; lifted by `run_result.extract_answer_transparency` | the Herleitung and the skills disclosure |
 
 The extraction is post hoc on purpose: the writer's contract and the citation
 verification stay untouched, the extraction cannot change a word of the report,

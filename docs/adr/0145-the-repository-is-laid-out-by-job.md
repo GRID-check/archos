@@ -134,7 +134,8 @@ packages/                 libraries: a directory that holds a distribution is na
 contracts/                schemas two languages share
   cards/  wire/           (was shared/cards, shared/wire)
 evals/                    Piloti's own evaluation harnesses, each with its tests inside
-  oib-retrieval/  oib-compliance/   (was frontends/benchmarks/oib_* + tests/benchmarks)
+  oib-retrieval/          (was frontends/benchmarks/oib_retrieval + its tests in tests/benchmarks)
+  turn-shapes/            the live turn-shape eval (was tests/benchmarks/test_turn_shapes_live.py)
 scripts/                  repo tooling and one-off operations (unchanged)
 tests/                    repo-level tests only: guards, CI, deploy, cross-service contract fixtures
 deploy/  docs/  configs/  ci/  taskfiles/  skills/  releasenotes/  data/   (unchanged)
@@ -220,10 +221,16 @@ because sorting them inside the rename would turn the rename into a refactor.
 
 ### Evals and scripts
 
-`evals/` holds the two harnesses that measure Piloti, with their tests inside
-each one. Rule 3 renames their distributions `oib-retrieval-eval` and
-`oib-compliance-eval` to `oib-retrieval` and `oib-compliance`, with the imports
-to match, in row 2's second commit. The eval runners now in
+`evals/` holds the harnesses that measure Piloti, with their tests inside
+each one. Rule 3 renames the distribution `oib-retrieval-eval` to
+`oib-retrieval`, with the import to match, in row 2's second commit. It is an
+editable path source of the root dev group, not a workspace member: a path
+source locks no extra (its `dense` extra would pull torch into `uv.lock`), and
+the backend image's `uv sync --all-packages` does not need `evals/` in its
+context. The second harness, `oib_compliance`, was deleted in row 2 rather than
+moved: its latency and cost bounds had waited for calibration since July
+(`bounds_calibration_pending: true`), and nothing but its own checklist unit
+test ever ran it. The eval runners now in
 `scripts/` (`decision_eval*.py`, `loop_eval.py`, `intake_eval/`,
 `root_sort_eval.py`, `turn_census/`) follow into `evals/` in a PR of their own.
 
@@ -253,7 +260,7 @@ open PRs touching that tree have drained or been rebased by their authors.
 |---|---|---|---|
 | 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter; in flight, and written here if that PR has not merged), and `tests/test_repo_layout.py` (below) | — | — |
 | 1 | `plans/` and `docs/superpowers/` deleted (#1250, #1252) | — | — |
-| 2 | `frontends/benchmarks` + `tests/benchmarks` → `evals/`; distribution names per rule 3 | 140 | — |
+| 2 | `frontends/benchmarks/oib_retrieval` + `tests/benchmarks` → `evals/`; distribution name per rule 3; `oib_compliance` deleted | 140 | — |
 | 3 | `frontends/web` → `apps/site`; `shared/brand` and the brand script → `packages/brand`; task namespace `web:` → `site:` | ~140 | open site PRs |
 | 4 | `shared/cards`, `shared/wire` → `contracts/` | 211 | open card and wire PRs |
 | 5 | Import hygiene: `sources.<pkg>.src.X` → the installed name (338 lines), and the 69 dotted `tests.aiq_agent.…` imports → an importable helpers module. This ends the double identity and makes rows 6 and 7 pure renames | ~410 | open retrieval and agent-test PRs |

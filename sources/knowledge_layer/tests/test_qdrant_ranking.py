@@ -1,7 +1,7 @@
 """``search.Ranking``: what each knob the parity sweep measures sends to Qdrant.
 
 Offline: the requests are built, not run. The sweep
-(``oib_retrieval_eval.qdrant_parity.variants``) swaps ``search.RANKING`` and
+(``oib_retrieval.qdrant_parity.variants``) swaps ``search.RANKING`` and
 reads through production, so a knob that silently sent nothing would measure the
 baseline under another name. What each setting does to the ranking is measured
 by ``task be:eval:qdrant-parity -- --variants all`` (``qdrant-gates-2026-10.md``).

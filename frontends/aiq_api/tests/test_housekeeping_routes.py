@@ -84,11 +84,13 @@ def test_chat_checkpoints_without_a_checkpoint_db_says_why_it_did_nothing(
 
 def test_base_corpus_runs_one_sync_cycle_and_reports_its_counts(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     from aiq_agent import oib_sync
+    from aiq_api.jobs import ingest_dispatch
 
     calls = []
 
-    def sync():
+    def sync(*, enqueue):
         calls.append("sync")
+        assert enqueue is ingest_dispatch.enqueue_only, "the route hands the sync the API tier's own enqueue"
         return oib_sync.SyncResult(enqueued=3, ingested_recorded=2, failed=1, total=12)
 
     monkeypatch.setattr(oib_sync, "sync", sync)
@@ -101,7 +103,7 @@ def test_base_corpus_runs_one_sync_cycle_and_reports_its_counts(client: TestClie
 def test_base_corpus_does_not_sync_for_a_caller_without_the_token(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     from aiq_agent import oib_sync
 
-    monkeypatch.setattr(oib_sync, "sync", lambda: pytest.fail("an unauthenticated call must not start a sync"))
+    monkeypatch.setattr(oib_sync, "sync", lambda **_: pytest.fail("an unauthenticated call must not start a sync"))
     assert client.post("/v1/maintenance/housekeeping/base-corpus").status_code == 403
 
 
@@ -110,7 +112,7 @@ def test_base_corpus_that_cannot_run_fails_the_call_so_the_scheduler_shows_it(
 ):
     from aiq_agent import oib_sync
 
-    def broken():
+    def broken(**_kwargs):
         raise RuntimeError("the base corpus needs GRID_SUMMARY_DB")
 
     monkeypatch.setattr(oib_sync, "sync", broken)

@@ -462,7 +462,7 @@ What lives where in the checkout.
 | `frontends/ui/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
 | `apps/site/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
 | `frontends/aiq_api/` | The backend FastAPI front-end plugin (`_type: aiq_api`): REST routes, async jobs, `/v1/ingest` |
-| `frontends/benchmarks/` | Piloti's building-law evals (`oib_retrieval`, `oib_compliance`) |
+| `evals/` | Piloti's evals, each with its tests: `oib-retrieval` and the live `turn-shapes` check |
 | `packages/` | Libraries outside the uv and bun workspaces: `ifc-spatial` and `ifc-spatial-py` (the IFC spatial engine, ADR-0045) and `brand` (the Piloti mark and the script that renders every icon from it) |
 | `configs/` | Workflow configs. **LLM-agnostic** — any OpenAI-compatible endpoint (set `base_url`/key per config). **`config_oib_openrouter.yml` is the working reference config** (`config_grid_oib.yml`/Kimi is currently unmaintained). The `model_name` values are only the **boot fallback**: the live default per agent group is admin-controlled (Platform → Models, `platform_model_defaults`) and a tenant may override it (Organization → Models) — see `docs/architecture/org-model-configuration.md`. Do not edit the YAML to move the fleet to a new model. |
 | `deploy/` | Docker Compose assets and environment templates; `deploy/pulumi/` holds the Pulumi (TypeScript) Kubernetes deployment (see `docs/deployment/kubernetes.md`) |
