@@ -119,7 +119,7 @@ What that means in practice:
   indexed from a real PDF instead of the raw-bytes fallback.
 * Bad, because captions cost a VLM call per picture. Every embedded raster of at
   least 100 x 100 px is captioned, with duplicates removed by content hash, when
-  `extract_images` is on (`AIQ_EXTRACT_IMAGES`, on in the deployed stacks). The
+  `extract_images` is on (`GRID_EXTRACT_IMAGES`, on in the deployed stacks). The
   BFF keeps at most 64 of the rasters per document
   (`MAX_STORED_IMAGES_PER_DOCUMENT`); that bounds storage, not captioning. A
   picture-heavy deck costs more to ingest than it did.

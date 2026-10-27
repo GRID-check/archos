@@ -21,7 +21,7 @@ import {
   SvgLabel,
 } from './kit'
 import { sketchLine, sketchRect } from './rough'
-import type { NormReferenceData, SectionMarkerData, SectionStoreyData } from './types'
+import type { NormReferenceData, SectionMarkerData, SectionStoreyData } from '@/shared/cards/schemas'
 
 interface BuildingSectionCardProps {
   title: string

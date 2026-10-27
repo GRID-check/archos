@@ -35,7 +35,7 @@ import {
 } from './kit'
 import { sketchRect } from './rough'
 import { useTranslations, type Translator } from '@/i18n'
-import type { DimensionCheckData, NormReferenceData, SetbackSideData } from './types'
+import type { DimensionCheckData, NormReferenceData, SetbackSideData } from '@/shared/cards/schemas'
 
 interface SetbackPlanCardProps {
   title: string

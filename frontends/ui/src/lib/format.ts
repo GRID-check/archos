@@ -232,13 +232,15 @@ export const formatCalendarDate = (isoDate: string, locale?: string): string => 
 
 /**
  * Localized absolute date/time ("14 Jul 2026, 09:30"), used as the hover
- * tooltip that pins a relative timestamp to an exact moment.
+ * tooltip that pins a relative timestamp to an exact moment. Without
+ * `timeZone` it reads in the runtime's own zone, so text that is rendered on the
+ * server and hydrated in the browser must pass one (`OFFICE_TIME_ZONE`).
  */
-export const formatAbsoluteTime = (isoDate: string, locale?: string): string => {
+export const formatAbsoluteTime = (isoDate: string, locale?: string, timeZone?: string): string => {
   const date = new Date(isoDate)
   if (Number.isNaN(date.getTime())) return isoDate
 
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(date)
 }
 
 /**

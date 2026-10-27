@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.knowledge import project_memory
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge.project_memory import insert_memory_item
 from aiq_agent.knowledge.project_memory import looks_like_personal_data
 
@@ -41,7 +41,7 @@ def test_insert_refuses_personal_data_before_any_request(monkeypatch):
     def _no_request(*args, **kwargs):  # pragma: no cover - the assertion is that this is never reached
         raise AssertionError("a personal-data finding must never reach the BFF")
 
-    monkeypatch.setattr(project_memory._opener, "open", _no_request)
+    monkeypatch.setattr(bff_http._opener, "open", _no_request)
     assert (
         insert_memory_item(
             scope="project",

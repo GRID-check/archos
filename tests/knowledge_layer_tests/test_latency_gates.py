@@ -437,12 +437,12 @@ class TestGateSkipsTheJudge:
 
 class TestSpanEnrichment:
     def test_normalized_query_folds_whitespace_and_case(self):
-        from sources.knowledge_layer.src.register import _normalized_query_for_span
+        from knowledge_layer.register import _normalized_query_for_span
 
         assert _normalized_query_for_span("  FluchtWEG   GK4\n") == "fluchtweg gk4"
 
     def test_citation_key_prefers_the_stored_display_citation(self):
-        from sources.knowledge_layer.src.register import _citation_key_for_span
+        from knowledge_layer.register import _citation_key_for_span
 
         chunk = SimpleNamespace(display_citation="oib-rl_2.pdf p.12", file_name="x.pdf", page_number=5)
         assert _citation_key_for_span(chunk) == "oib-rl_2.pdf p.12"

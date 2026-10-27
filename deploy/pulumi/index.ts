@@ -401,7 +401,7 @@ const bffJobs = cfg.bffJobs.enabled
 // count is the fleet's, so only the tier that takes new turns scales on it; the
 // legacy one keeps the count it had while its last turns drain.
 if (backendAutoscaled(cfg)) {
-  installBackendScaling(wiring, cfg, backend.statefulSet, keda ? [keda] : []);
+  installBackendScaling(wiring, cfg, legacyBackend.statefulSet, keda ? [keda] : [], LEGACY_CHAT_TIER);
 }
 
 // ── Edge (Gateway API) ───────────────────────────────────────────────────────

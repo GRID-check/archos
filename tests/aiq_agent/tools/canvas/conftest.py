@@ -15,6 +15,7 @@ from aiq_agent import project_context
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.focus_file import set_turn_intent
 from aiq_agent.knowledge import AvailableDocument
 from aiq_agent.knowledge.inventory import set_turn_documents
@@ -23,7 +24,6 @@ from aiq_agent.knowledge.restricted_use import bind_restricted_use
 from aiq_agent.tools.canvas import calls as canvas_calls
 from aiq_agent.tools.canvas import presence
 from aiq_agent.tools.canvas import target as canvas_target
-from aiq_agent.tools.documents.filing import SignedEnvelope
 
 HEADER, SIGNATURE = "eyJzaWduZWQiOiJ0dXJuIn0", "c0ffee"
 DOCUMENT = "11111111-0000-4000-8000-000000000001"

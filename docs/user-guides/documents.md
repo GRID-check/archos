@@ -654,9 +654,9 @@ for indexing.
 |-------|--------------------|------------|-------------|
 | **Büroablage (org-wide)** | `archiv_{orgId}` | Every project in the organization | Never (persistent) |
 | **Project** | `proj_{projectId}` | All project members | Never (persistent) |
-| **Session** | `s_{conversationId}` | Only within that conversation | Deleted after 24 hours (configurable via `AIQ_COLLECTION_TTL_HOURS`) |
+| **Session** | `s_{conversationId}` | Only within that conversation | Deleted after 24 hours (configurable via `GRID_COLLECTION_TTL_HOURS`) |
 
-Session-scoped collections are prefixed with `s_` and are automatically reaped by the `TTLCleanupMixin` background thread that runs periodically (every `AIQ_TTL_CLEANUP_INTERVAL_SECONDS`, default 3600s).
+Session-scoped collections are prefixed with `s_` and are automatically reaped by the `TTLCleanupMixin` background thread that runs periodically (every `GRID_TTL_CLEANUP_INTERVAL_SECONDS`, default 3600s).
 
 ### The Büroablage (ADR-0024)
 

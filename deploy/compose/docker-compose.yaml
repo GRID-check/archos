@@ -65,18 +65,18 @@ services:
       # statements goes straight to `postgres`, so a session-feature regression
       # fails here and not first in production.
       NAT_JOB_STORE_DB_URL: ${NAT_JOB_STORE_DB_URL:-postgresql+asyncpg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
-      AIQ_CHECKPOINT_DB: ${AIQ_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      GRID_CHECKPOINT_DB: ${GRID_CHECKPOINT_DB:-${AIQ_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # A research job's deep checkpoint, so one that loses its worker resumes where it
       # was instead of starting over. Kubernetes sets the same (deploy/pulumi config.ts).
-      AIQ_DEEP_CHECKPOINT_DB: ${AIQ_DEEP_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
-      AIQ_SUMMARY_DB: ${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      GRID_DEEP_CHECKPOINT_DB: ${GRID_DEEP_CHECKPOINT_DB:-${AIQ_DEEP_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      GRID_SUMMARY_DB: ${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # SSE LISTEN/NOTIFY: a notification reaches the one server session that ran
       # LISTEN, which a transaction pooler does not keep for the client.
-      AIQ_LISTEN_DB_URL: ${AIQ_LISTEN_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      GRID_LISTEN_DB_URL: ${GRID_LISTEN_DB_URL:-${AIQ_LISTEN_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # Session advisory locks (leader election, the re-ingest lock, the ghost-job
       # reaper). A session owns the lock, so behind the pooler it would be taken
       # on one server connection and "released" on another.
-      AIQ_LOCK_DB_URL: ${AIQ_LOCK_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      GRID_LOCK_DB_URL: ${GRID_LOCK_DB_URL:-${AIQ_LOCK_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # Shared cache (Dragonfly, ADR-0020): citation-registry snapshots and
       # cross-replica caches. Unset = per-process in-memory fallback.
       REDIS_URL: ${REDIS_URL:-redis://dragonfly:6379/0}
@@ -113,12 +113,12 @@ services:
       # the base corpus is in SeaweedFS and a table (ADR-0082), its cache is under
       # /tmp. An installation that ran Chroma moves its vectors over once:
       # see the Chroma migration in docs/deployment/qdrant-runbook.md.
-      AIQ_QDRANT_URL: ${AIQ_QDRANT_URL:-http://qdrant:6333}
-      AIQ_QDRANT_API_KEY: ${AIQ_QDRANT_API_KEY:-}
+      GRID_QDRANT_URL: ${GRID_QDRANT_URL:-${AIQ_QDRANT_URL:-http://qdrant:6333}}
+      GRID_QDRANT_API_KEY: ${GRID_QDRANT_API_KEY:-${AIQ_QDRANT_API_KEY:-}}
       # `true` only while an old store is imported into a Qdrant this release
       # already runs against: the base-corpus sync then does not take the empty
       # corpus collection for a reset (docs/deployment/qdrant-runbook.md).
-      AIQ_VECTOR_IMPORT_PENDING: ${AIQ_VECTOR_IMPORT_PENDING:-}
+      GRID_VECTOR_IMPORT_PENDING: ${GRID_VECTOR_IMPORT_PENDING:-${AIQ_VECTOR_IMPORT_PENDING:-}}
       # Research jobs (ADR-0021) are claimed from Postgres by the `agent-worker`
       # service below: the chat role submits one, the api role streams and cancels it.
       # Encrypts DB-claimed job payloads at rest (AES-256-GCM). Empty = plaintext
@@ -271,7 +271,7 @@ services:
       <<: *backend-environment
       GRID_ROLE: ingest-worker
       # Ingestion jobs this process runs at once (K8s: ingestWorker.concurrency).
-      AIQ_INGEST_MAX_WORKERS: ${AIQ_INGEST_MAX_WORKERS:-2}
+      GRID_INGEST_MAX_WORKERS: ${GRID_INGEST_MAX_WORKERS:-${AIQ_INGEST_MAX_WORKERS:-2}}
       GRID_INGEST_WORKER_DRAIN_SECONDS: ${GRID_INGEST_WORKER_DRAIN_SECONDS:-600}
       GRID_WORKER_LIVENESS_FILE: /tmp/ingest-worker.alive
     volumes:
@@ -316,7 +316,7 @@ services:
     env_file:
       - ../.env
     environment:
-      - AIQ_SUMMARY_DB=${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}
+      - GRID_SUMMARY_DB=${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
     entrypoint: ["python", "-m", "aiq_agent.legacy_corpus_import"]

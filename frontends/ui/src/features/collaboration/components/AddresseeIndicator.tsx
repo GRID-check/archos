@@ -38,7 +38,7 @@ import { AvatarStack, type AvatarStackPerson } from '@/components/ui/avatar-stac
 import { useTranslations } from '@/i18n'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { cn } from '@/lib/utils'
-import type { DraftMention } from '../lib/mention-text'
+import type { DraftMention } from '@/lib/mentions/mention-text'
 
 export interface AddresseeIndicatorProps {
   /**

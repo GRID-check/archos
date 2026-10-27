@@ -14,7 +14,7 @@ import type { TurnChangesResponse } from '@/lib/changes/types'
 type Params = { id: string; messageId: string }
 
 /** The answer id the backend derives is a uuid, and so is `origin_message_id`. */
-const messageIdSchema = z.string().uuid()
+const messageIdSchema = z.guid()
 
 export const GET = apiRoute<Params>(
   async ({ session, params }): Promise<TurnChangesResponse> => {

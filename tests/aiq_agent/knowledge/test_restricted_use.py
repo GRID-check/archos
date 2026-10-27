@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 from langchain_core.messages import ToolMessage
 
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge import restricted_use as ru
 from aiq_agent.knowledge import scoping
 from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
@@ -137,7 +138,7 @@ class TestTheAnswerTravels:
                 seen.append(json.loads(request.data))
                 return _Response()
 
-        monkeypatch.setattr(ru, "_opener", _Opener())
+        monkeypatch.setattr(bff_http, "_opener", _Opener())
         return seen
 
     async def test_the_turn_start_and_every_admission_name_the_answer(self, posted):

@@ -9,7 +9,7 @@
  * arrived from outside should not reach three subsystems without anyone having
  * said what it is allowed to look like.
  *
- * ## Why NOT `z.string().uuid()`
+ * ## Why NOT `z.guid()`
  *
  * That was the suggested fix and it is the wrong one: it would reject every id
  * the application mints and break the feature outright. A conversation id is a
@@ -44,7 +44,7 @@
  */
 
 import { z } from 'zod'
-import { BadRequestError } from '@/lib/api/errors'
+import { BadRequestError } from '@/lib/api/api-error'
 
 /** `s_` + a v4 UUID with underscores for hyphens. See the module comment. */
 export const CONVERSATION_ID_PATTERN =

@@ -340,19 +340,19 @@ describe("Qdrant, three peers on the data group", () => {
     ];
     for (const [kind, name] of tiers) {
       const env = envOf(find(kind, name).spec.template.spec.containers[0]);
-      expect(env.AIQ_QDRANT_URL?.value, name).toBe("http://qdrant.grid.svc.cluster.local:6333");
-      expect(env.AIQ_QDRANT_API_KEY?.valueFrom?.secretKeyRef, name).toEqual({
+      expect(env.GRID_QDRANT_URL?.value, name).toBe("http://qdrant.grid.svc.cluster.local:6333");
+      expect(env.GRID_QDRANT_API_KEY?.valueFrom?.secretKeyRef, name).toEqual({
         name: "grid-secrets",
-        key: "AIQ_QDRANT_API_KEY",
+        key: "GRID_QDRANT_API_KEY",
       });
       // The tenant collection spread over the peers, not created on one.
-      expect(env.AIQ_QDRANT_SHARD_NUMBER?.value, name).toBe("6");
-      expect(env.AIQ_QDRANT_REPLICATION_FACTOR?.value, name).toBe("2");
+      expect(env.GRID_QDRANT_SHARD_NUMBER?.value, name).toBe("6");
+      expect(env.GRID_QDRANT_REPLICATION_FACTOR?.value, name).toBe("2");
       // Qdrant is the only store: nothing points a tier at Chroma or picks between the two.
-      const retired = Object.keys(env).filter((k) => k.startsWith("AIQ_CHROMA") || k === "AIQ_VECTOR_BACKEND");
+      const retired = Object.keys(env).filter((k) => k.startsWith("GRID_CHROMA") || k === "GRID_VECTOR_BACKEND");
       expect(retired, name).toEqual([]);
     }
-    expect(secretData("grid-secrets").AIQ_QDRANT_API_KEY).toBe("qd-rw");
+    expect(secretData("grid-secrets").GRID_QDRANT_API_KEY).toBe("qd-rw");
   });
 
   it("rolls the backend tiers out after Qdrant is up", () => {

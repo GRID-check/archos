@@ -62,7 +62,7 @@ const digestQuerySchema = z
     /** The turn's asker, as the BFF signed it; the admission checks them with the conversation's audience. */
     userId: z.string().trim().max(128).optional(),
     /** The answer the turn writes; marked when a restricted note is admitted (ADR-0093). */
-    answerMessageId: z.string().uuid().optional(),
+    answerMessageId: z.guid().optional(),
   })
   // Empty strings behave like absent params (previous `|| undefined` behavior).
   .transform((query) => ({

@@ -45,9 +45,6 @@ import functools
 import json
 import logging
 import math
-import os
-import urllib.error
-import urllib.request
 from collections.abc import Mapping
 from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
@@ -60,6 +57,8 @@ from types import SimpleNamespace
 from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
+
+from aiq_agent.common import bff_http
 
 logger = logging.getLogger(__name__)
 
@@ -590,28 +589,12 @@ class GridCostTracker(BaseCallbackHandler):
 
 def _post_usage_events(payload: dict[str, Any]) -> None:
     """POST one batch to the BFF ledger endpoint. Best-effort, never raises."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        logger.warning("GRID_INTERNAL_API_TOKEN not configured — dropping %d usage events", len(payload["events"]))
-        return
-    base_url = (
-        os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    ).rstrip("/")
-    request = urllib.request.Request(
-        f"{base_url}/api/internal/usage",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "x-grid-internal-token": token,
-        },
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(request, timeout=_REQUEST_TIMEOUT_SECONDS) as response:
-            if response.status not in (200, 201, 202):
-                logger.warning("Internal usage endpoint returned %s", response.status)
-    except urllib.error.HTTPError as error:
-        logger.warning("Internal usage endpoint rejected batch: HTTP %s", error.code)
+        bff_http.send("POST", "/api/internal/usage", timeout=_REQUEST_TIMEOUT_SECONDS, body=payload)
+    except bff_http.BffNotConfiguredError:
+        logger.warning("GRID_INTERNAL_API_TOKEN not configured — dropping %d usage events", len(payload["events"]))
+    except bff_http.BffRefusedError as error:
+        logger.warning("Internal usage endpoint rejected batch: HTTP %s", error.status)
     except Exception:
         logger.warning("Failed to post usage events to internal endpoint", exc_info=True)
 
