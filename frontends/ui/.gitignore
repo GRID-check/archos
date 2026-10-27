@@ -11,6 +11,8 @@ coverage/
 public/mockServiceWorker.js
 # pdf.js runtime assets (staged by scripts/copy-pdfjs-assets.mjs on install, dev and build)
 public/pdfjs/
+# Excalidraw fonts for the sketch editor (staged by scripts/copy-excalidraw-assets.mjs on install, dev and build)
+public/excalidraw/
 
 # MCP Apps views (built by scripts/build-mcp-app-views.ts on dev, build and in the image; ADR-0142)
 mcp-app-views/

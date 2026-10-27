@@ -143,34 +143,57 @@ export interface DiagramFilingOptions {
    * matter the source carries. Better provenance wins, so this is checked first.
    */
   title?: string | null
+  /**
+   * A drawing whose source and picture exist only when the person files it:
+   * the sketch editor, whose scene changes with every stroke. Called once per
+   * press, instead of `source` and `fileSvg`, and the result is filed as an
+   * Excalidraw scene a person edited (`edited: true`).
+   */
+  prepareSketch?: () => Promise<{ source: string; svg: string }>
 }
 
-export function useDiagramFiling({ source, fileSvg, renderFileSvg, title }: DiagramFilingOptions): DiagramFiling {
+export function useDiagramFiling({
+  source,
+  fileSvg,
+  renderFileSvg,
+  title,
+  prepareSketch,
+}: DiagramFilingOptions): DiagramFiling {
   const t = useTranslations('diagrams')
   const target = useDiagramFilingTarget()
   const [state, setState] = useState<DiagramFilingState>({ kind: 'idle' })
 
   const file = useCallback(async () => {
-    if (!target || (!fileSvg && !renderFileSvg)) return
+    if (!target || (!fileSvg && !renderFileSvg && !prepareSketch)) return
     // Feedback inside 100ms: this lands synchronously, before the network is
     // touched, so the control the reader pressed is replaced by „Wird abgelegt …"
     // in the same frame as the press.
     setState({ kind: 'filing' })
     try {
-      const svg = fileSvg ?? (await renderFileSvg?.())
+      const sketch = prepareSketch ? await prepareSketch() : null
+      const svg = sketch?.svg ?? fileSvg ?? (await renderFileSvg?.())
       if (!svg) throw new Error('no paper copy to file')
+      const filedSource = sketch?.source ?? source
       const response = await fetch(`/api/projects/${encodeURIComponent(target.projectId)}/diagrams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          runId: diagramRunId(target.answerId, source),
-          title: title?.trim() || titleFromSource(source) || target.title || t('defaultTitle'),
-          sourceKind: 'mermaid',
-          source,
+          // A sketch is keyed by its own scene: two different edits of one
+          // drawing are two files, the same edit filed twice is one.
+          runId: diagramRunId(target.answerId, filedSource),
+          title:
+            title?.trim() ||
+            titleFromSource(source) ||
+            target.title ||
+            (sketch ? t('sketch.defaultTitle') : t('defaultTitle')),
+          sourceKind: sketch ? 'excalidraw' : 'mermaid',
+          source: filedSource,
           // The drawing on screen, in the colours a document is printed in.
           // Same source, same fonts, same layout — only the palette differs, and
           // the reason it has to is in `./diagram-palette.ts`.
           svg,
+          answerId: target.answerId,
+          ...(sketch ? { edited: true } : {}),
           ...(target.conversationId ? { conversationId: target.conversationId } : {}),
         }),
       })
@@ -198,13 +221,13 @@ export function useDiagramFiling({ source, fileSvg, renderFileSvg, title }: Diag
       console.debug('[diagrams] filing failed', error)
       setState({ kind: 'failed', message: t('file.failed') })
     }
-  }, [target, fileSvg, renderFileSvg, source, title, t])
+  }, [target, fileSvg, renderFileSvg, prepareSketch, source, title, t])
 
   return {
     state,
     target,
     documentId: state.kind === 'filed' || state.kind === 'partial' ? state.documentId : null,
-    canFile: Boolean(target && (fileSvg || renderFileSvg)),
+    canFile: Boolean(target && (fileSvg || renderFileSvg || prepareSketch)),
     file,
   }
 }

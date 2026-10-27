@@ -45,6 +45,7 @@ export const chat: typeof en.chat = {
     renditionNote: 'PDF-Vorschau des Originals',
     renditionPending: 'PDF-Vorschau wird erstellt…',
     downloadOriginal: 'Original herunterladen',
+    openBesideChat: 'Neben dem Chat öffnen',
     // Coarse source kind (ADR-0026) shown in the info popover. Preferred
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
@@ -1763,6 +1764,49 @@ export const chat: typeof en.chat = {
   noSources: {
     warning:
       'Keine Datenquellen ausgewählt und keine Dateien verfügbar. Antworten sind eher ungenau oder veraltet, sofern keine externen Datenquellen hinzugefügt werden.',
+  },
+  viewerActions: {
+    region: 'Was Piloti Ihnen im Viewer gezeigt hat',
+    place: '{name}, S. {page}',
+    what: {
+      open_document: '{place}',
+      highlight_passage: 'Stelle in {place}',
+      highlight_region: 'Bereich in {place}',
+      compare_revisions: '{name} mit {against} vergleichen',
+      focus_ifc_element: 'Bauteil in {name}',
+    },
+    status: {
+      pending: 'Wird geöffnet …',
+      undone: 'Zurückgenommen',
+      kept: 'Nicht zurückgenommen: Sie haben den Viewer inzwischen geändert',
+      failed: 'Konnte nicht geöffnet werden',
+    },
+    shown: {
+      beside: 'Piloti hat es neben dem Chat geöffnet',
+      over: 'Piloti hat es über dem Chat geöffnet',
+      compare: 'Vergleich geöffnet',
+      model: 'Modellansicht geöffnet',
+    },
+    refused: {
+      // Neutral: ein 404 sagt nicht, ob es das Dokument gibt.
+      unavailable: 'Nicht geöffnet: Dokument nicht verfügbar',
+      notRevisions: 'Nicht geöffnet: keine zwei Fassungen desselben Dokuments',
+    },
+    offered: {
+      off: 'Piloti schlägt diese Stelle vor',
+      typing: 'Nicht geöffnet, während Sie geschrieben haben',
+      leaves: 'Öffnet sich über dem Chat',
+      model: 'Öffnet die Modellansicht',
+      noRoom: 'Neben dem Chat ist kein Platz: öffnet sich darüber',
+      unavailable: 'Piloti schlägt diese Stelle vor',
+      another: 'Eine weitere Stelle, die Piloti vorschlägt',
+    },
+    undo: 'Zurücknehmen',
+    undoAria: '„{what}“ zurücknehmen',
+    show: 'Anzeigen',
+    showAria: '{what} anzeigen',
+    auto: 'Automatisch öffnen',
+    autoHint: 'Piloti darf die Stellen, die es zitiert, neben dem Chat öffnen. Aus: Piloti schlägt sie hier nur vor.',
   },
   memory: {
     noted: 'Piloti hat sich gemerkt',

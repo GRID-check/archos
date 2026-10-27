@@ -64,3 +64,55 @@ describe('useDiagramFiling — the conversation rides with the filing (ADR-0087)
     vi.unstubAllGlobals()
   })
 })
+
+describe('useDiagramFiling — a sketch a person edited (ADR-0141)', () => {
+  const filingFetch = (bodies: Record<string, unknown>[], pdf: unknown) =>
+    vi.fn(async (_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)))
+      return { ok: true, status: 201, json: async () => ({ svg: { documentId: 'doc-svg' }, pdf }) }
+    })
+  const wrapper = ({ children }: { children: React.ReactNode }) =>
+    createElement(
+      DiagramFilingProvider,
+      { target: { projectId: 'proj-1', answerId: 'msg-1' } } as ComponentProps<typeof DiagramFilingProvider>,
+      children
+    )
+
+  it('files the scene the editor hands over, as an edited Excalidraw drawing, keyed by that scene', async () => {
+    const bodies: Record<string, unknown>[] = []
+    vi.stubGlobal('fetch', filingFetch(bodies, { documentId: 'doc-pdf' }))
+    const prepareSketch = vi.fn(async () => ({ source: '{"type":"excalidraw"}', svg: '<svg/>' }))
+    const { result } = renderHook(
+      () => useDiagramFiling({ source: '---\ntitle: Ablauf\n---\nflowchart LR\n  A --> B', fileSvg: null, prepareSketch }),
+      { wrapper }
+    )
+
+    expect(result.current.canFile).toBe(true)
+    await act(() => result.current.file())
+
+    expect(prepareSketch).toHaveBeenCalledOnce()
+    expect(bodies[0]).toMatchObject({
+      sourceKind: 'excalidraw',
+      source: '{"type":"excalidraw"}',
+      svg: '<svg/>',
+      edited: true,
+      answerId: 'msg-1',
+      title: 'Ablauf',
+    })
+    expect(bodies[0].runId).toMatch(/^msg-1-[0-9a-f]{8}$/)
+    expect(result.current.state).toEqual({ kind: 'filed', documentId: 'doc-svg' })
+    vi.unstubAllGlobals()
+  })
+
+  it('does not mark a drawing filed as drawn as edited', async () => {
+    const bodies: Record<string, unknown>[] = []
+    vi.stubGlobal('fetch', filingFetch(bodies, null))
+    const { result } = renderHook(() => useDiagramFiling({ source: 'flowchart LR\n  A --> B', fileSvg: '<svg/>' }), {
+      wrapper,
+    })
+    await act(() => result.current.file())
+    expect(bodies[0]).toMatchObject({ sourceKind: 'mermaid', answerId: 'msg-1' })
+    expect(bodies[0]).not.toHaveProperty('edited')
+    vi.unstubAllGlobals()
+  })
+})
