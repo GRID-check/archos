@@ -1,6 +1,9 @@
+---
+status: proposed
+---
+
 # ADR-0046: Agent skills — user-selected, progressive-disclosure instruction packages
 
-- **Status:** Proposed
 - **Date:** 2026-08-10, amended 2026-08-11, noted and amended 2026-10-27
 - **Deciders:** Platform
 - **Related:** ADR-0018 (per-run state), ADR-0020 (Dragonfly shared cache),

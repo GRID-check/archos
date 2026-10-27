@@ -232,19 +232,16 @@ that does not match the source word for word, or changes what it negates
 (*nicht*, *kein*, *nur*, *außer*), is marked *nicht wörtlich in der Quelle
 belegt* (not verbatim in the source) and lowers the answer's confidence.
 
-**Provenance class** (Belegart):
-Where one sentence of an answer comes from: *quoted* or *cited* (a passage),
-*record* (an object in the workspace, read this turn), *action* (a proposal this
-turn filed), *measured* (the building model), *reasoning* (an Einschätzung drawn
-from a cited sentence), *model knowledge* (nothing in the answer behind it), or
-*cited, not verified*. Every sentence shows where it comes from.
-_Code_: `claim_provenance`, `claim_stamps`.
-
 **Confidence** (Sicherheit):
-How far an answer can be relied on: high, medium or low. It is held to the
-weakest sentence the answer rests on (every statement about the law, a value
-or a deadline). A statement about the law needs a cited passage; a record or a
-measurement backs a fact about the office or the building, never the law.
+How far an answer can be relied on: high, medium or low. A grading model reads
+the answer against everything its turn retrieved and read (passages, workspace
+records, the project profile, measurements, readings off drawings) and names
+the statements it relies on that nothing backs or that a source contradicts.
+A statement about the law needs a passage of that law; a record or a
+measurement backs a fact about the office or the building, never the law. A
+quote the source does not hold word for word lowers the level. When the check
+cannot run, no level is shown (*Belegprüfung nicht verfügbar*).
+_Code_: `claim_judge`, `confidence_check`.
 
 **Answer kind**:
 The shape of an answer: *direct*, *walkthrough*, *ruling* or *handoff*. Only a

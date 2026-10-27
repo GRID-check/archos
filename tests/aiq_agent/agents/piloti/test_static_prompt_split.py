@@ -133,7 +133,7 @@ class TestByteIdentity:
         """
         The system prompt is paid on every call of every turn. It was cut from
         ~13.8k to under 5k tokens (characters / 4) in 2026-10 by a value test
-        per line (`docs/architecture/prompt-value-audit-2026-10.md`); a line
+        per line (`docs/audit/prompt-value-audit-2026-10.md`); a line
         that does not pass it is what grows the file back.
         """
         committed = (PROMPTS_DIR / STATIC_PROMPT_FILE).read_text(encoding="utf-8")

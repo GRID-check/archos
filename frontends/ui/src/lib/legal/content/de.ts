@@ -53,7 +53,7 @@ export const de: LegalContent = {
 
   privacy: {
     title: 'Datenschutzerklärung',
-    updated: '2026-10-10',
+    updated: '2026-10-27',
     intro:
       'Diese Erklärung informiert gemäß Verordnung (EU) 2016/679 (DSGVO) darüber, wie personenbezogene Daten bei der Nutzung von Piloti verarbeitet werden.',
     sections: [
@@ -113,7 +113,7 @@ export const de: LegalContent = {
         heading: '7. Cookies',
         paragraphs: [
           'Piloti verwendet technisch notwendige Cookies: einen verschlüsselten Session-Cookie für die Anmeldung (WorkOS AuthKit) und einen Cookie für Ihre Spracheinstellung.',
-          'Zusätzlich speichert unsere Produktanalyse (PostHog) eine pseudonyme Kennung, die Sitzungs-ID und einige Einstellungen in einem Cookie und im lokalen Speicher Ihres Browsers (Schlüssel „ph_…“, konkret „ph_<Projekt-Token>_posthog“; das Cookie läuft nach 365 Tagen ab und gilt auch für die öffentliche Website von Piloti auf derselben Domain). Wird Ihnen eine Umfrage angezeigt, legt PostHog dafür weitere Einträge im lokalen Speicher an (Schlüssel „seenSurvey_…“ und „lastSeenSurveyDate“). Diese Speicherung ist nicht technisch notwendig; sie dient der Produktverbesserung. Werbe- oder seitenübergreifende Tracking-Cookies setzen wir nicht.',
+          'Zusätzlich speichert unsere Produktanalyse (PostHog) eine pseudonyme Kennung, die Sitzungs-ID und einige Einstellungen in einem Cookie und im lokalen Speicher Ihres Browsers (Schlüssel „ph_…“, konkret „ph_<Projekt-Token>_posthog“; das Cookie läuft nach 365 Tagen ab und gilt auch für die öffentliche Website von Piloti auf derselben Domain). Wird Ihnen eine Umfrage angezeigt, legt PostHog dafür weitere Einträge im lokalen Speicher an (Schlüssel „seenSurvey_…“ und „lastSeenSurveyDate“). Ebenso merkt sich PostHog, welche Hinweise und Ankündigungen Sie schon gesehen, geschlossen oder abgeschlossen haben, damit sie nicht erneut erscheinen (Schlüssel „ph_product_tour_…“, „ph_last_seen_tour_date_…“ und „ph_active_product_tour“). Diese Speicherung ist nicht technisch notwendig; sie dient der Produktverbesserung. Werbe- oder seitenübergreifende Tracking-Cookies setzen wir nicht.',
           `Sie können die Produktanalyse in den Einstellungen Ihres Profils abschalten oder ihr jederzeit unter ${EMAIL} widersprechen; sie erfasst dann nichts mehr, und die genannten Einträge werden nicht mehr fortgeschrieben.`,
         ],
       },

@@ -1,6 +1,9 @@
+---
+status: superseded by ADR-0046
+---
+
 # ADR-0023: Workflows — saved research briefs with cron scheduling
 
-- **Status:** Superseded by [ADR-0046](0046-agent-skills.md)
 - **Date:** 2026-07-16
 - **Deciders:** Grid engineering
 - **Related:** ADR-0003 (BFF + stateless agent), ADR-0004 (tenancy), ADR-0008 (single-writer grid_app), ADR-0011 (deletion pipeline / purger worker), ADR-0015 (spend limits), ADR-0016 (permission registry), ADR-0020 (Dragonfly cache-only), ADR-0021 (DB-claimed workers, no-broker verdict), ADR-0046 (Agent Skills — supersedes this ADR)
@@ -215,6 +218,6 @@ service refuses to start when the deployment-level gate is off.
 
 - `docs/architecture/agent-skills.md` (the successor subsystem; the workflows
   subsystem doc was removed with the feature)
-- `docs/architecture/scaling-review-2026-07.md` §4
+- `docs/audit/scaling-review-2026-07.md` §4
 - `frontends/ui/purger/index.js` (worker precedent)
 - `frontends/aiq_api/src/aiq_api/jobs/submit.py` (admission control)

@@ -16,8 +16,8 @@ evidence tool answers in, so:
 
 The entry is the document's OWN kind (project, office) and never building law.
 It holds the reading in ``SourceEntry.read``, not in ``chunk_text``: it is a
-perception, so no quote is checked against it and, in ``common/claim_provenance``,
-a sentence citing it is ``observed``. It is not ``citation_grounded`` either
+perception, so no quote is checked against it, and the answer check reads it as
+a reading off a drawing, not a passage. It is not ``citation_grounded`` either
 (``agents/piloti/answer_pipeline._ground``): a place never grounds a claim about
 the law, the laundering path ``common/source_kinds.py`` describes for a
 measurement. A look at the base corpus (Basiswissen, the law) registers nothing.

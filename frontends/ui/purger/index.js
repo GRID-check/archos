@@ -5,7 +5,7 @@
  * Dedicated container (frontend image, `node purger/index.js`) that polls the
  * deletion_queue in grid_app and hard-deletes soft-deleted entities across all
  * stores after their grace period. See
- * docs/superpowers/specs/2026-07-05-deletion-pipeline-design.md.
+ * docs/adr/0011-deletion-pipeline.md (the design was never committed).
  *
  * Environment:
  *   GRID_APP_DATABASE_URL   - grid_app Postgres DSN

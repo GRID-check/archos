@@ -217,12 +217,12 @@ class ConversationState(BaseModel):
     # lifted from Piloti's state and onto ``TurnResult.quote_stamps``. None when
     # the answer quotes nothing.
     quote_stamps: list[dict[str, Any]] | None = None
-    # One stamp per sentence of the answer (``common/claim_provenance.py``),
-    # lifted from Piloti's state onto ``TurnResult.claim_stamps``. None when the
-    # pipeline did not stamp the answer.
-    claim_stamps: list[dict[str, Any]] | None = None
-    # Which confidence rule computed ``answer_confidence``: 2 the per-sentence
-    # formula (ADR-0125), 1 the answer-level floors. None with no confidence.
+    # What the answer check found (``common/claim_judge.py``, ADR-0139), lifted
+    # from Piloti's state onto ``TurnResult.confidence_check``. None when the
+    # answer graded nothing.
+    confidence_check: dict[str, Any] | None = None
+    # Which confidence rule computed ``answer_confidence``: 2 a checked answer
+    # (and, on stored turns, the per-sentence rule), 1 the answer-level floors.
     answer_confidence_version: int | None = None
     # A lookup ran, found nothing, and the answer shipped labelled as model
     # knowledge (ADR-0125): the reader's banner.

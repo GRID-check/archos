@@ -36,6 +36,7 @@ const sdk = vi.hoisted(() => ({
   identify: vi.fn(),
   register: vi.fn(),
   unregister: vi.fn(),
+  setPersonProperties: vi.fn(),
   reset: vi.fn(),
   opt_out_capturing: vi.fn(),
   opt_in_capturing: vi.fn(),
@@ -473,6 +474,15 @@ describe('posthog enabled path', () => {
     expect(sdk.unregister).not.toHaveBeenCalled()
     expect('group' in sdk).toBe(false)
     expect(JSON.stringify(sdk.register.mock.calls)).not.toMatch(/email/)
+  })
+
+  test('context is also set on the person, so surveys and announcements can target it', async () => {
+    const mod = await load()
+    mod.registerPosthogContext({ organizationId: 'org_01', organizationName: null, role: 'admin', locale: 'de' })
+    expect(sdk.setPersonProperties.mock.calls).toEqual([
+      [{ organization_id: 'org_01', organization_name: null, user_role: 'admin', locale: 'de' }],
+    ])
+    expect(JSON.stringify(sdk.setPersonProperties.mock.calls)).not.toMatch(/email|"name"/)
   })
 
   test('a missing context field removes its stamp instead of keeping the previous one', async () => {

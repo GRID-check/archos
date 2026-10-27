@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0010: LLM-agnostic via OpenAI-compatible endpoints
 
-- **Status:** Accepted
 - **Date:** 2026-07-05
 - **Deciders:** Grid Agent team
 - **Related:** [`../architecture/llm-providers.md`](../architecture/llm-providers.md)

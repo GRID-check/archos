@@ -24,7 +24,7 @@ sources was replaced 22 s later by one citing two. A card's `[N]`, written
 against the original's source list, was read against the rewrite's. Every
 repair the audits traced came from a verifier or grammar defect, fixed
 upstream, not from the model misquoting. The research behind this decision is
-`docs/architecture/repair-pass-alternatives-2026-09.md`.
+`docs/audit/repair-pass-alternatives-2026-09.md`.
 
 ## Decision Drivers
 

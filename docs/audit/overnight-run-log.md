@@ -1,7 +1,9 @@
 # Overnight Run Log — append-only, one entry per cycle
 
 > **Archived.** Frozen record of a finished loop, moved here from `run_log.md`
-> in the repo root. Do not append. Live loop state is `backlog.md` at the root.
+> in the repo root. Do not append. The loop's queue is archived beside it,
+> [`overnight-run-backlog.md`](overnight-run-backlog.md); the one live backlog is the
+> [continuous-improvement ledger](../roadmap/continuous-improvement-ledger.md).
 > Context: [`README.md`](README.md).
 
 Run started: 2026-07-05 ~00:30 local. Branch: `feature/applicable-oib-standards`.

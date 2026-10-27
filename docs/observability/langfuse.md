@@ -149,6 +149,21 @@ masked like the question. A write the model chose before the note arrived and
 the turn held back is the technical step `status:steered:<round>` beside
 `repeat`, `refused` and `width`.
 
+The seconds before the first model call are one `CHAIN` observation per phase,
+with its real start and latency (`observability/turn_phases.observed_phase`;
+the profiler's span names, so a phase is called the same in both places):
+`setup.restricted_use`, the setup gather's `setup.project_context`,
+`setup.available_documents`, `setup.ingest_status`, `setup.session_registry`,
+`setup.subject_document` and `setup.shown_restricted_notes`, then
+`setup.answer_streaming`, `admission.wait` and `setup.checkpoint_digest`
+before the LangGraph run; inside it `history.trim` in the graph's first node,
+and in Piloti's own function `setup.skills`, `setup.file_tools` and
+`setup.llm_provider` beside `decide.turn`. Input is a few counts, output
+`outcome` (`ok`, `error`, `cancelled`), `ms` and counts; never turn content.
+A `decide.<slot>` generation also spans its call now (its `latency_ms`), where
+it used to read 1 ms. "Where did the first turn's seconds go" is a read of
+these rows: `docs/audit/turn-latency-measured-2026-09.md` §3.6.
+
 ### A tool call on the agent door
 
 Each MCP tool call at `/api/mcp` (ADR-0122), from an external agent or from
@@ -237,8 +252,10 @@ a name is written but not declared, or declared but not listed here.
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
 | `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped`; or `stripped`, a calculation or formula that stated what the card computes (a `result`, a formula's `limits`), with `fields` in metadata |
 | `formula-input-provenance` | numeric 0..1 | agent | per formula card (ADR-0143): the share of its given inputs that say where the value is written (`source` or a norm `reference`); metadata `formula`, `inputs`, `given`, `sourced`, `unknown` |
-| `claims-by-class` | categorical | agent | one score per provenance class present in the answer (`quoted`, `cited`, `cited_dropped`, `record`, `action`, `measured`, `observed`, `reasoning`, `model_knowledge`; `common/claim_provenance.py`, ADR-0125); the comment and `metadata.count` say how many sentences |
-| `claims-normative-uncited` | numeric | agent | sentences about the law with no quoted or cited passage behind them |
+| `claims-by-class` | categorical | agent | retired with the per-sentence provenance classes (ADR-0139); no longer written, kept so older traces chart |
+| `claims-normative-uncited` | numeric | agent | retired with the normative-claim detector (ADR-0139); no longer written, kept so older traces chart |
+| `confidence-judged-level` | categorical | agent | the level the answer check gave the answer (`low`, `medium`, `high`; `common/claim_judge.py`, ADR-0139), before the quote gate; not written when the check was unavailable or the answer graded nothing. The check's call is a generation of the same trace |
+| `confidence-judge-unavailable` | boolean | agent | on a turn whose answer was to be graded: true when the check could not run (no model, a timeout, an error, an unreadable reply) and the turn surfaced no level |
 | `look-count` | numeric | agent, at the terminal | looks Piloti made in the turn (ADR-0128), whether or not the answer relies on them; written on every answered chat turn, zero included |
 | `looked-before-measurement` | boolean | agent, at the terminal | on a turn whose answer states a value read off a drawing (a value sentence that cites a place a look read, or a drawing region, or repeats a reading): true when Piloti made a region look (not only an overview) at that drawing before it answered. No score on a turn that states no such value |
 | `citations-dropped-labelled` | numeric | agent | places the answer cited something that did not resolve (no source, or a § / Punkt the cited passage does not hold), labelled in the text instead of removed |

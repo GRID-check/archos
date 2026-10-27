@@ -409,7 +409,7 @@ async function toView(
   if (typed.kind !== 'operation') return { ...base, ...typed, projectId }
   // What the call names, by name where THIS reader may read it, so the card never shows only an id.
   const op = findOperation(typed.payload.operation)
-  const targets = op ? await describeTargets(session, op, typed.payload.input) : []
+  const targets = op ? await describeTargets(session, op, typed.payload.input, directory) : []
   return { ...base, ...typed, projectId, targets }
 }
 

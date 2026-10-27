@@ -10,7 +10,7 @@
 > only the deep researcher.
 > Status: **EXPLORATION — superseded in scope, and the narrowed part is now
 > BUILT.** The build spec is
-> [`docs/superpowers/specs/2026-08-20-agent-authored-documents-design.md`](../superpowers/specs/2026-08-20-agent-authored-documents-design.md);
+> [`docs/specs/2026-08-20-agent-authored-documents-design.md`](../specs/2026-08-20-agent-authored-documents-design.md);
 > it shipped on branch `claude/piloti-filesystem-write-design-mftg4d`. What
 > survived review: §2's threat analysis, the work/estate line, and the
 > invariants. What was cut: the node/version/blob store, mounts as an
@@ -54,7 +54,7 @@ and visibly *not yet* the office's word until a human says it is.
 ## 0.05 [CORRECTED] The spec this failed to reference
 
 This document was written without reference to
-[`2026-08-13-file-native-ownership-design.md`](../superpowers/specs/2026-08-13-file-native-ownership-design.md),
+[`2026-08-13-file-native-ownership-design.md`](../specs/2026-08-13-file-native-ownership-design.md),
 which was **merged in PR #416** before this was drafted. That spec makes a file
 three things — bytes, a subject of a conversation, and a place with people —
 registers `document` as the second shareable-resource consumer, and ships

@@ -118,8 +118,8 @@ def format_user_facing_tool_error(
 ) -> str:
     """Format a tool-unavailability error appropriate for the current deployment mode.
 
-    In CLI mode (``AIQ_DEV_ENV=cli``), the full tool details are returned so
-    developers can diagnose quickly in the terminal.  In all other modes
+    In local development (``AIQ_DEV_ENV=cli``), the full tool details are
+    returned so developers can diagnose quickly.  In all other modes
     (e2e, web, production, unset) a generic message is returned to avoid
     leaking infrastructure details to end users in the web UI.
 
@@ -147,7 +147,7 @@ def format_user_facing_tool_error(
         return detailed
 
     # Detailed diagnostics (tool names, missing keys) are only shown when
-    # AIQ_DEV_ENV is "cli" — set automatically by scripts/start_cli.sh.
+    # AIQ_DEV_ENV is "cli", which deploy/.env.example sets for local development.
     return TOOLS_UNAVAILABLE_MESSAGE
 
 

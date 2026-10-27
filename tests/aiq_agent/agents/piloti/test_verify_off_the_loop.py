@@ -36,9 +36,9 @@ def test_only_a_patch_about_to_run_asks_for_the_nearest_passage(monkeypatch):
     asked: list[bool] = []
     real = answer_pipeline._verify
 
-    def recording(content, registry, *, with_nearest=False):
+    def recording(content, registry, *, with_nearest=False, numbering=None):
         asked.append(with_nearest)
-        return real(content, registry, with_nearest=with_nearest)
+        return real(content, registry, with_nearest=with_nearest, numbering=numbering)
 
     monkeypatch.setattr(answer_pipeline, "_verify", recording)
 

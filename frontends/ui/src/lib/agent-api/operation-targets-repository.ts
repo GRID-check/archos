@@ -112,3 +112,17 @@ export async function findProjectName(organizationId: string, projectId: string)
     .limit(1)
   return row?.name ?? null
 }
+
+/** A shelf folder's name and project in `organizationId`, or null (`projectId` null: an Archiv folder). */
+export async function findFolderName(
+  organizationId: string,
+  folderId: string,
+): Promise<{ projectId: string | null; name: string } | null> {
+  if (!isUuid(folderId)) return null
+  const [row] = await getDb()
+    .select({ projectId: projectFolders.projectId, name: projectFolders.name })
+    .from(projectFolders)
+    .where(and(eq(projectFolders.id, folderId), eq(projectFolders.organizationId, organizationId)))
+    .limit(1)
+  return row ? { projectId: row.projectId === null ? null : String(row.projectId), name: row.name } : null
+}

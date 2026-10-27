@@ -131,13 +131,38 @@ def emit_retrieval_span(*, tool_name: str, search_input: dict[str, Any], picks: 
     emit_step_span(f"retrieve.{tool_name}", search_input, picks)
 
 
-def emit_step_span(step_name: str, body_in: dict[str, Any], body_out: dict[str, Any]) -> None:
+def _end_timestamps(started_at: float | None, ended_at: float | None) -> dict[str, float]:
+    """The END event's two clocks: when the span ended, and when it started (NAT's convention)."""
+    stamps: dict[str, float] = {}
+    if ended_at is not None:
+        stamps["event_timestamp"] = ended_at
+    if started_at is not None:
+        stamps["span_event_timestamp"] = started_at
+    return stamps
+
+
+def emit_step_span(
+    step_name: str,
+    body_in: dict[str, Any],
+    body_out: dict[str, Any],
+    *,
+    started_at: float | None = None,
+    ended_at: float | None = None,
+) -> None:
     """Push ONE balanced FUNCTION step pair named ``step_name``, with these as its input and output.
 
     The mechanics every Grid-named observation shares (``retrieve.*``, and the
     decision model's ``decide.*``): a START and an END with one UUID, so NAT's
     span stack stays balanced and the observation nests under whatever step is
     open. Never raises: telemetry must never take a turn down.
+
+    Both events are pushed now, back to back. Without timestamps the
+    observation is a point (its latency reads ~1 ms in Langfuse, whatever the
+    work took). ``started_at`` and ``ended_at`` (NAT's clock,
+    ``nat.utils.providers.current_time``) give it the real interval instead:
+    the exporter reads a span's start off the START event's timestamp and its
+    end off the END's (``span_exporter``). ``observability.turn_phases`` is the
+    caller that measures one.
     """
     try:
         from nat.data_models.intermediate_step import IntermediateStepPayload
@@ -157,6 +182,7 @@ def emit_step_span(step_name: str, body_in: dict[str, Any], body_out: dict[str, 
                     event_type=IntermediateStepType.FUNCTION_START,
                     name=step_name,
                     data=StreamEventData(input=body_input),
+                    **({"event_timestamp": started_at} if started_at is not None else {}),
                 )
             )
             started = True
@@ -173,6 +199,7 @@ def emit_step_span(step_name: str, body_in: dict[str, Any], body_out: dict[str, 
                             event_type=IntermediateStepType.FUNCTION_END,
                             name=step_name,
                             data=StreamEventData(input=body_input, output=body_output),
+                            **_end_timestamps(started_at, ended_at),
                         )
                     )
                 except Exception:  # noqa: BLE001

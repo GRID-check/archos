@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0037: An answer's provenance — and its open questions — persist on the message
 
-- **Status:** Accepted
 - **Date:** 2026-07-30
 - **Deciders:** Platform engineering, product
 - **Related:** ADR-0030 (interactive card decisions persist on the message),

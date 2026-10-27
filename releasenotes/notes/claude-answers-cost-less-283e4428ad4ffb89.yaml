@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    Chat answers on a Claude model now use considerably less of your office's
+    monthly budget, because the parts Piloti sends again on every step of an
+    answer are now billed at a tenth of the price.

@@ -2,9 +2,8 @@
 """NAT evaluator: OIB compliance golden-case checklist + performance bounds.
 
 Registers ``oib_compliance_checklist_evaluator`` with NAT (see ``register.py``
-for the plugin entry point). Unlike the LLM-judge evaluators in the sibling
-``freshqa``/``deepsearch_qa`` suites, this evaluator makes no LLM calls of its
-own: correctness is a deterministic substring/keyword checklist match (see
+for the plugin entry point). This evaluator makes no LLM calls of its own:
+correctness is a deterministic substring/keyword checklist match (see
 ``checklist.py``), and performance is read straight off the per-item
 ``trajectory`` (``IntermediateStep`` list) that NAT's eval runner already
 populates for every ``nat eval`` run

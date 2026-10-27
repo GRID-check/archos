@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0014: Org-level runtime model configuration per agent group
 
-- **Status**: Accepted
 - **Date**: 2026-07-07
 - **Deciders**: Grid Agent team
 - **Related**: ADR-0010 (LLM-agnostic via OpenAI-compatible endpoints), ADR-0013 (base64url context headers), ADR-0004 (tenancy), `docs/architecture/org-model-configuration.md`

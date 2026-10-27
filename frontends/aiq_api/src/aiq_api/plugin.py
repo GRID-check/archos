@@ -7,8 +7,8 @@ One plugin, two web roles (``GRID_ROLE``, ``roles.WebRole``, ADR-0082 step B):
   what is left of NAT's own routes once its HTTP turn routes are off (see
   ``AIQAPIConfig``), and drains running chat turns at shutdown.
 * ``api`` mounts the Knowledge API (collections/documents, the LLM utilities,
-  admin), the Async Job API (agent jobs, SSE streaming, housekeeping) and the
-  debug console, and closes its SSE streams at shutdown.
+  admin) and the Async Job API (agent jobs, SSE streaming, housekeeping), and
+  closes its SSE streams at shutdown.
 
 Both mount ``/health`` and the same auth and context-envelope middleware. A
 route belongs to exactly one role; ``frontends/aiq_api/tests/test_roles.py``
@@ -554,7 +554,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         app.add_api_websocket_route(CHAT_SOCKET_PATH, chat_socket_endpoint(session_manager))
 
     async def _add_api_routes(self, app: FastAPI, builder: WorkflowBuilder) -> None:
-        """What only ``api`` serves beside its router: the job routes and the debug console.
+        """What only ``api`` serves beside its router: the job routes.
 
         NAT's own routes (execution, the OAuth callback, evaluate item, monitor,
         static, MCP) belong to ``chat`` alone: nothing calls them on this tier.
@@ -562,18 +562,6 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         for register in API_APP_REGISTRARS:
             await register(app, builder, self)
         logger.info("Async Job API routes registered")
-
-        enable_debug = os.environ.get("AIQ_ENABLE_DEBUG", "true").lower() not in {"0", "false", "no", "off"}
-        if enable_debug:
-            try:
-                from aiq_debug import register_debug_routes
-
-                await register_debug_routes(app)
-                logger.info("Debug console registered at /debug")
-            except ImportError:
-                pass
-        else:
-            logger.info("Debug console disabled by AIQ_ENABLE_DEBUG")
 
     async def _create_chat_session_manager(self, builder: WorkflowBuilder) -> SessionManager:
         """The chat socket's session manager, with NAT's concurrency gate off (``max_concurrency=0``).
