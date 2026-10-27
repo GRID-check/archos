@@ -48,7 +48,7 @@ MOUNT_LABELS: dict[Mount, str] = {
     "law": "the OIB-Richtlinien",
 }
 
-INDEX_NOTE = "An index, not a source: read_file to read, grep for wording, knowledge_search for meaning."
+INDEX_NOTE = "An index, not a source: `read_file` to read, `grep` for wording, `knowledge_search` for meaning."
 
 
 @dataclass(frozen=True)
@@ -158,10 +158,12 @@ def render_root(files: Sequence[EstateFile], *, drafts: bool) -> Listing:
         shown += 1
         lines.append(f"{MOUNT_ROOTS[mount]:<12} {_count(count, 'document')} · {MOUNT_LABELS[mount]}")
     if drafts:
-        lines.append(f"{MOUNT_ROOTS['drafts']:<12} this conversation's drafts: written with write_file, never evidence")
+        lines.append(
+            f"{MOUNT_ROOTS['drafts']:<12} this conversation's drafts: written with `write_file`, never evidence"
+        )
     if not shown:
         lines.append("No document of the office is readable in this conversation.")
-    lines.append("Next: ls a mount, glob by name, grep for wording, read_file to read.")
+    lines.append("Next: `ls` a mount, `glob` by name, `grep` for wording, `read_file` to read.")
     # The row counts what the places hold (every document, every place), as a folder's row does.
     return Listing(text="\n".join(lines), files=len(files), folders=shown)
 
@@ -177,11 +179,11 @@ def render_folder(
     """``ls(path, depth)``: one folder's subfolders and files, or (``depth`` > 1) its tree as folder cards."""
     mount = parsed.mount
     if mount is None:
-        return Listing(text=f'No folder "{parsed.path}". ls("/") lists the places there are.', error=True)
+        return Listing(text=f'No folder "{parsed.path}". `ls("/")` lists the places there are.', error=True)
     asked = "" if mount == "law" else parsed.folder
     folder = stored_folder(files, mount, asked)
     if folder is None:
-        return Listing(text=f'No folder "{parsed.path}". ls("{MOUNT_ROOTS[mount]}") lists what is there.', error=True)
+        return Listing(text=f'No folder "{parsed.path}". `ls("{MOUNT_ROOTS[mount]}")` lists what is there.', error=True)
     selected = in_folder(files, mount, folder)
     root = MOUNT_ROOTS[mount] + (f"{folder}/" if folder else "")
     if depth > 1:
@@ -204,11 +206,11 @@ def render_folder(
         lines.append(_file_line(file))
     left = len(here) - MAX_LS_FILES
     if left > 0:
-        lines.append(f"… {_count(left, 'more file')} here, not listed: glob by name or ls a subfolder.")
+        lines.append(f"… {_count(left, 'more file')} here, not listed: `glob` by name or `ls` a subfolder.")
     if in_flight:
         lines.append(f"Not listed here: files still being read ({len(in_flight)}).")
     lines.append("Restricted folders are not listed.")
-    lines.append("Next: ls a folder, glob by name, grep for wording, read_file to read.")
+    lines.append("Next: `ls` a folder, `glob` by name, `grep` for wording, `read_file` to read.")
     # What the folder holds, not what the text had room for: the text says how many it left out.
     return Listing(text="\n".join(lines), files=len(here), folders=len(subfolders))
 
@@ -264,7 +266,7 @@ def render_glob(files: Sequence[EstateFile], pattern: str, path: str | None) -> 
     if not matched:
         return Listing(
             text=f'No file matches "{pattern}" in {where} ({_count(searched, "file")} searched). '
-            "A name says nothing of the content: grep for wording, knowledge_search for meaning.",
+            "A name says nothing of the content: `grep` for wording, `knowledge_search` for meaning.",
             files=0,
         )
     lines = [f'{_count(len(matched), "file")} match "{pattern}" in {where} ({searched} searched):']

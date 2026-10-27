@@ -41,6 +41,7 @@ from langchain_core.messages import SystemMessage
 from aiq_agent.common import load_prompt
 from aiq_agent.common import render_prompt_template
 from aiq_agent.common.applicability import render_project_block
+from aiq_agent.common.estate_paths import estate_path
 from aiq_agent.common.norm_registry import parcel_note
 from aiq_agent.common.page_region_words import percent
 from aiq_agent.common.page_region_words import where_on_the_page_en
@@ -53,6 +54,7 @@ from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
 from aiq_agent.common.source_kinds import parse_shelf
 from aiq_agent.common.steering import AppliedSteer
 from aiq_agent.common.steering import with_steering
+from aiq_agent.common.tool_vocabulary import FILESYSTEM_VERBS
 from aiq_agent.knowledge.already_read import render_already_read_block
 from aiq_agent.observability.langfuse_trace_attributes import current_fallback_identity
 from aiq_agent.observability.langfuse_trace_attributes import record_prompt_link
@@ -228,6 +230,20 @@ def shelf_label(shelf: str | None) -> str | None:
         return None
     parsed = parse_shelf(shelf)
     return SHELF_QUALIFIERS.get(parsed) if parsed is not None else None
+
+
+def focus_file_path(state: Any, tool_names: Sequence[str]) -> str | None:
+    """The estate path of the turn's subject, when the turn reads the estate by path; else None.
+
+    The folder is left out: inside one shelf the leaf names the document, and
+    ``read_file`` resolves it wherever it is filed (``knowledge_layer.estate.resolve_in``).
+    """
+    file_name = getattr(state, "focus_file_name", None)
+    shelf = getattr(state, "focus_shelf", None)
+    if not file_name or not shelf or not FILESYSTEM_VERBS <= set(tool_names):
+        return None
+    parsed = parse_shelf(shelf)
+    return estate_path(parsed if parsed is not None else shelf, None, file_name)
 
 
 def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
@@ -450,6 +466,9 @@ def render_turn_context(
         ),
         focus_file_name=state.focus_file_name,
         focus_shelf_label=shelf_label(state.focus_shelf),
+        # The path `read_file` opens it by, when the turn reads the estate: a bare „dieses Dokument“
+        # then goes straight into the read. A hint, never a filter (ADR-0133 decision 3).
+        focus_file_path=focus_file_path(state, tool_names),
         focus_region_block=focus_region_block(state, tool_names),
         trigger_block=trigger_block(state, tool_names),
         oib_applicability=oib_applicability(state.project_context),

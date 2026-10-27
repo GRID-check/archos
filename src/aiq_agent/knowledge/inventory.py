@@ -21,9 +21,12 @@ from contextvars import ContextVar
 from datetime import datetime
 from typing import Any
 
+from aiq_agent.common.estate_paths import MOUNT_ROOTS
+from aiq_agent.common.estate_paths import SHELF_MOUNTS
 from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.common.source_kinds import parse_shelf
+from aiq_agent.common.tool_vocabulary import current_vocabulary
 
 _listing_shelf: ContextVar[Shelf | None] = ContextVar("grid_listing_shelf", default=None)
 
@@ -578,6 +581,16 @@ def _folded_base_lines(count: int) -> list[str]:
     ]
 
 
+def _complete_list(shelf: str | None = None) -> str:
+    """The call that lists a shelf completely, in the caller's spelling (``common.tool_vocabulary``)."""
+    if not current_vocabulary().filesystem:
+        return f'`list_files(shelf="{shelf}")`' if shelf else "`list_files`"
+    mount = SHELF_MOUNTS.get(shelf or "")
+    if mount is None:
+        return "`ls` or `glob`"
+    return f'`glob(pattern="*", path="{MOUNT_ROOTS[mount]}")`'
+
+
 def render_inventory_block(
     docs: Sequence[Any],
     *,
@@ -650,7 +663,7 @@ def render_inventory_block(
         "hast du\"), answer ONLY from that shelf's files. If the group is empty, say "
         "so. Never fill a gap with another shelf. Büroablage is never the OIB corpus. "
         "When the group says it is incomplete, or the question narrows by folder, name, "
-        "kind or date, `list_files` returns the complete, filtered list.",
+        f"kind or date, {_complete_list()} returns the complete, filtered list.",
         "",
     ]
     if any(_folder_of(doc) for doc in docs):
@@ -728,7 +741,7 @@ def render_inventory_block(
         if missing > 0:
             lines.append(
                 f"- (and {missing} more file(s) on this shelf, not listed here — "
-                f'this list is incomplete. `list_files(shelf="{shelf.value}")` shows all, '
+                f"this list is incomplete. {_complete_list(shelf.value)} shows all, "
                 f"also filtered by folder, name or date; without that call do not treat the list "
                 f"as complete)"
             )

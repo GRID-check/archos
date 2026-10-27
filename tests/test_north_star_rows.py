@@ -48,8 +48,14 @@ def _file_change_operations() -> set[str]:
     return set(ast.literal_eval(re.search(r"^_OPERATIONS = (\(.*?\))", source, re.MULTILINE).group(1)))
 
 
+#: The estate's readers, built per turn rather than listed in the config (ADR-0133).
+ESTATE_TOOLS = {"ls", "glob", "grep", "read_file"}
+#: Spellings Piloti's chat no longer binds that a row may still name: `files_eval.aliases` counts the
+#: filesystem call that replaced one under its old name, so the parent-commit baseline and a run on this
+#: commit are matched by the same rows.
+ALIASED = {"read_passage"}
 #: Every name the model can call today: the configured tools, the canvas group spelled out, and `look`.
-TOOLS = {*files_eval.configured_tools(), *_canvas_members(), "look"} - {"canvas"}
+TOOLS = {*files_eval.configured_tools(), *_canvas_members(), "look", *ESTATE_TOOLS, *ALIASED} - {"canvas"}
 
 
 def _tool_items(row: dict) -> list:

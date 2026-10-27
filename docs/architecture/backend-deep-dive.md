@@ -1304,13 +1304,16 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    the requery round (`requery.judge_coverage`, one `noul` per passage, the same
    0.55). When every judged passage was decided and none reaches it, the
    preamble reads `Found N document(s); none of the judged ones answers the
-   question:` and the line under it reads `Abdeckung: unzureichend — keine der
-   N gezeigten Passagen enthält die gesuchte Aussage …`, or, for a pool longer
-   than 24, `keine der 24 besten Passagen …; die übrigen K Passagen wurden
-   nicht geprüft` (`GroundingBlock.coverage_gap`). The pool reaches the model whole: a
+   question:` and the line under it reads `Coverage: insufficient — none of the
+   N shown passages contains the statement sought …`, or, for a pool longer
+   than 24, `none of the best 24 passages …; the remaining K passages were not
+   checked` (`GroundingBlock.coverage_gap`), followed by what that means: say so
+   and what was searched, and that it is not „Nicht geregelt“
+   (`COVERAGE_GAP_NOTE`). The pool reaches the model whole: a
    decision never withholds a passage (ADR-0064), so the gap is stated, not
-   enforced. The prompt's `<research_rules>` tell the agent to say it found no
-   supporting passage rather than answer from them. The retrieval span records
+   enforced. The line itself tells the agent to say it found no supporting
+   passage rather than answer from them (since ADR-0133 slice 6; before, a rule in
+   the system prompt did, on every call). The retrieval span records
    `coverage: "insufficient"` and `coverage_best`. Anything short of a
    complete "no" claims nothing:
    a decision that did not run or left a passage unanswered, the LLM decider,
@@ -1905,8 +1908,9 @@ the office block and the Project Context, followed by a one-line legend for
 each record block the Project Context actually holds (`PROJECT_MEMORY`,
 `PROPOSAL_DECISIONS`, `REVIEW_DECISIONS`, `FOLDER_DESCRIPTIONS`,
 `documents_missing:`). It lists no tool names: the bound schemas carry them.
-If deferred tool loading (ADR-0048, off since 2026-09-25) is turned back on,
-check whether the model still finds the deferred tools without a name index.
+When a tool search arrives (ADR-0048's deferred loading was removed on
+2026-10-27; a standards-based one replaces it in its own change), check whether
+the model still finds the deferred tools without a name index.
 
 Everything else that used to sit in the prompt is either a tool's own contract,
 which lives in the tool description that owns it (ADR-0060 (d)), a rail code

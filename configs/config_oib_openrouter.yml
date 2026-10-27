@@ -153,14 +153,12 @@ llms:
     # weigh it knowing that a truncated answer at 27 s is worse than a complete
     # one at 35 s.
     reasoning_effort: medium
-    # The Responses API, for `shallow_research_agent.deferred_tool_loading`
-    # below: that feature needs it and fails the workflow build without it,
-    # deliberately, rather than sending the tool schemas anyway (ADR-0048).
-    # Nothing else in this file needs it; the default (chat_completion) is what
-    # every other role runs on. Deferral is off since 2026-09-25 (see below);
-    # this stays on until the answer suite has measured Chat Completions for
-    # this role, because the transport of every research call is not a change
-    # to make as a side effect.
+    # The Responses API. Nothing in this file needs it any more (the deferred
+    # tool loading it was switched on for is gone, ADR-0048), and the default
+    # (chat_completion) is what every other role runs on. It stays until the
+    # answer suite has measured Chat Completions for this role, because the
+    # transport of every research call is not a change to make as a side
+    # effect.
     api_type: responses
     # ── PROMPT CACHING: nothing to configure here, and that is the point ──
     # This role re-sends ~35 KB of identical prefix (system prompt + tool
@@ -614,6 +612,9 @@ functions:
 
   # The locator beside the search: open the passage a conclusion NAMED
   # (document + Punkt, or document + page) instead of searching for it again.
+  # Bound by deep research, intake and the door; Piloti's chat reads with
+  # `read_file` instead (ADR-0133 slice 6), and a `read_passage` call there is
+  # answered with the replacement call (`common/retired_calls.py`).
   # Deterministic — one filtered fetch, no reranker, no requery judge, no LLM.
   # Collection scope, base corpus and file exclusions are read off the
   # `knowledge_search` instance named here rather than restated, so the two
@@ -626,8 +627,10 @@ functions:
   # reader's own shelves — every file, by folder, name, Dokumentart and upload
   # date, paged. The prompt inventory stops at a few dozen names; this does
   # not. Deterministic, no LLM, and it reads only the scope `knowledge_search`
-  # reads. Its partner, Ctrl+F across the files, is NOT a tool: it is
-  # `knowledge_search(match="exact")`, the same verb over the same scope
+  # reads. Its partner, Ctrl+F across the files, is `knowledge_search(match=
+  # "exact")` for deep research and intake, and `grep` for Piloti's chat, which
+  # binds `list_files` for Fassungen only (`revisions_of`, `compare_to`;
+  # `knowledge_layer.chat_binding`) and lists with `ls` and `glob`
   # (docs/architecture/agent-tool-surface.md).
   list_files:
     _type: list_files
@@ -769,16 +772,18 @@ functions:
     _type: research_agent
     llm: research_llm
     # The filesystem verbs read the office's documents through this search's
-    # scope (ADR-0133): `read_file` over /project/, /office/, /chat/ and
-    # /law/oib/, beside the conversation's drafts under /drafts/. They are
-    # built per turn (the drafts are per conversation), not listed below.
+    # scope (ADR-0133): `ls`, `glob`, `grep` and `read_file` over /project/,
+    # /office/, /chat/ and /law/oib/, beside the conversation's drafts under
+    # /drafts/. They are built per turn (the drafts are per conversation), not
+    # listed below. They replace `read_passage` and the listing form of
+    # `list_files` on this binding (slice 6); `knowledge_search` and
+    # `list_files` are rebound to Piloti's contracts at build time.
     filesystem: knowledge_search
     # Explicit list (replaces registry inheritance) so the non-data-source
     # `remember` and `ask_user` tools are included alongside search/knowledge.
     tools:
       - web_search_tool
       - knowledge_search
-      - read_passage
       - list_files
       - look
       # ONE RIS tool on the chat surface. Search → pick → fetch → find the
@@ -818,7 +823,7 @@ functions:
     #   * PARALLEL calls inside one round cost ONE between them. That is the
     #     point: a model that opens all five members of a Richtlinien-Familie in
     #     one batch is using its round well, and „was weißt du über die OIB 2"
-    #     — one `knowledge_search` plus five parallel `read_passage` — used to
+    #     — one `knowledge_search` plus five parallel `read_file` — used to
     #     exhaust a budget of seven on the single most ordinary question the
     #     product answers. The prompt asks for that fan-out; the budget used to
     #     forbid it;
@@ -850,7 +855,7 @@ functions:
     #     find_elements, egressPath+clearWidth over the door list,
     #     fire/doorGraph                                                    = 5
     #   „was weißt du über die OIB 2"  knowledge_search, then the family
-    #     opened in one parallel batch of read_passage                      = 2
+    #     opened in one parallel batch of read_file                         = 2
     #
     # Truncation is still silent TO THE READER — the synthesis anchor says
     # „exhausted your research budget" to the MODEL and asks for no disclosure,
@@ -936,124 +941,6 @@ functions:
     # GRID_DECISIONS_ENABLED=false switches every decision off at once.
     turn_decisions: true
     skill_allowlist: []
-    # Retrieval-based tool narrowing. OFF, deliberately — the block below is the
-    # tested configuration, not a suggestion, and it is commented out because on
-    # THIS surface the trade is not yet worth taking.
-    #
-    # The two BIM tools are 81 % of the ~9 000 tokens of tool schema that ride on
-    # every call here, so narrowing to four tools saves ~24 % of that payload on
-    # average and 81 % on a pure-Normen question. But tokens are not what this
-    # agent runs out of — TURNS are, and narrowing does not buy one back. What it
-    # can spend is an answer: measured against the eleven tools it had then, a lexical rank
-    # over the user's turn alone keeps the answering tool for only 71 % of a
-    # realistic German question set. The pins below carry that to 100 %, because
-    # they cover the two shapes a query-time ranking structurally cannot see —
-    # tools named by INTENT rather than subject (`remember`, `use_skill`,
-    # `surface_documents`) and tools that are SEQUENCED, whose turn
-    # comes from what a previous tool returned (`ris_fetch_tool` after
-    # `ris_search_tool`). Both are guarded by tests.
-    #
-    # Turn it on when the surface grows past what a prompt can hold — an MCP
-    # server with thirty tools — not to shave tokens off eleven.
-    #
-    # tool_search:
-    #   enabled: true
-    #   top_k: 4
-    #   always_include:
-    #     - remember
-    #     - use_skill
-    #     - surface_documents
-    #     - ris_fetch_tool
-    #
-    # OpenRouter server-side tool search (ADR-0048). ON, but as of 2026-09-23
-    # NO model we measured honours it, so today it binds full schemas
-    # everywhere (see below). Orthogonal to `tool_search` above: that one decides
-    # WHICH tools are bound, this one decides whether their schemas travel with
-    # the request. Requires `api_type: responses` on research_llm — enabling it
-    # without that fails the workflow build instead of quietly sending the
-    # schemas. The build-time probe measures whether the deferral is HONOURED,
-    # not whether the flag is echoed: it sends the canary namespace, then the
-    # same plus a ~4 000-token deferred ballast function, and accepts only if
-    # usage.input_tokens grows by < 200. A model that bills the ballast binds
-    # full schemas and the build logs a WARNING naming the growth; it never
-    # fails the build.
-    #
-    # Measured 2026-09-23. A replayed Piloti research call to
-    # openai/gpt-5.6-luna (19 functions, all defer_loading: true, echoed back
-    # on every one) billed 40 154 input tokens with defer_loading true AND
-    # false; dropping three large tools from the namespace cut 10 012. The
-    # earlier "14 023 -> 437" saving recorded here no longer holds. The probe:
-    #
-    #                                  canary   + deferred ballast    growth
-    #   openai/gpt-5.6-luna              187          4 100           +3 913
-    #   openai/gpt-5.6-sol               187          4 100           +3 913
-    #   anthropic/claude-sonnet-5        847          6 034           +5 187
-    #   google/gemini-3.7-flash          175          5 072           +4 897
-    #
-    # Where a provider does honour it, deferral still saves nothing on the turn
-    # that loads a schema (it adds the ~620-token tool-search apparatus); it
-    # saves the other turns. Where it does not, it would cost that apparatus on
-    # every turn, which is why the probe now turns it off.
-    #
-    # Deferral is gated PER MODEL as well as per endpoint, because the per-org
-    # override seam (ADR-0014) can hand a single research turn a model this
-    # workflow was never built against. Two independent conditions must hold:
-    # the model is cleared for the tool_search + namespace shape, AND it scores
-    # at least `min_intelligence_index` on Artificial Analysis's
-    # intelligence_index. Neither implies the other — x-ai/grok-4.6 scores 60.9
-    # and cannot defer at all; anthropic/claude-sonnet-4.6 defers (it was one of
-    # six models seen emitting a real function_call) and is excluded on SCORE
-    # alone, at 48.4. Do not re-add sonnet-4.6 or minimax/minimax-m3 (45.4) to
-    # the allowlist without also moving the threshold — their absence is a
-    # threshold decision, not a missing measurement.
-    #
-    # A "no" from either condition means BIND THE FULL SCHEMAS. It is never a
-    # refused request or a failed build, so a sub-floor model runs exactly as it
-    # did before this existed.
-    #
-    # The defaults ship the measured lists (see `deferred_tool_loading.py`), so
-    # `enabled: true` alone turns it on. The `allow` list means the provider
-    # accepted and echoed the shape — NOT that it saves anything.
-    #
-    # Any model not denied is probed ONCE, off the request path, and the
-    # verdict cached; until a probe has measured the saving, an unlisted or
-    # allowlisted model gets full schemas. So a new model costs one background
-    # request, never a wasted round trip on a live turn.
-    # OFF since 2026-09-25. Every model measured on 2026-09-23 echoed
-    # `defer_loading` and billed the deferred schemas in full, and the boot
-    # model measured +3,913 input tokens with it on; no model has been shown
-    # to save. What it did send was the `tool_search` payload, which NAT's
-    # trace callback cannot parse (one ERROR per call, #635). Turn it back on
-    # when a model's probe measures a saving: from then on only such a model
-    # defers, an allowlisted one included.
-    deferred_tool_loading:
-      enabled: false
-      # Floor on Artificial Analysis intelligence_index. 0 disables it.
-      min_intelligence_index: 50
-    #   models:
-    #     # Only override these to add a model the shipped lists do not know.
-    #     # Every list REPLACES its seeded counterpart rather than extending it
-    #     # — `deny` no less than `allow`. So an override has to restate the
-    #     # shipped entries it still wants, or it silently re-enables them: the
-    #     # three-line example below would readmit the four denied ids it omits,
-    #     # and each of those would then cost a wasted round trip per tool
-    #     # subset before the fallback latched. The shipped `deny` is:
-    #     #   x-ai/grok-4.6, x-ai/grok-4.5, deepseek/deepseek-v4-pro-0813,
-    #     #   deepseek/deepseek-v4-flash-0731, moonshotai/kimi-k3,
-    #     #   meta-llama/llama-3.3-70b-instruct, openai/gpt-4o-mini
-    #     deny:
-    #       - x-ai/grok-4.6                    # 422, and scores 60.9 — capability is not quality
-    #       - deepseek/deepseek-v4-flash-0731  # routing-flaky: two sweeps disagreed
-    #       - meta-llama/llama-3.3-70b-instruct  # routing-flaky: 5 of 6 defer, the 6th 422s
-    #     provisional:
-    #       # Permitted on request, capability UNVERIFIED — OpenRouter answers 403
-    #       # "requires 18+ age confirmation", an ACCOUNT gate that fires before
-    #       # the payload is read, so nobody knows whether it takes the shape.
-    #       # Yields to whatever the probe or a real request learns (unlike
-    #       # `allow`, which is an assertion). Deliberate and informed: if it
-    #       # cannot defer, the fallback costs one round trip per tool subset,
-    #       # then latches. Not a precedent for listing unverified models.
-    #       - meta/muse-spark-1.1
 
   # Filesystem skills for deep research. Researcher workers load OIB/BIM
   # methods with read_file from /skills/; the writer loads synthesis the same

@@ -66,9 +66,6 @@ from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var
 from aiq_agent.common.data_sources import disabled_source_notice
 from aiq_agent.common.data_sources import source_id_for_call
-from aiq_agent.common.deferred_tool_loading import DeferredToolBinding
-from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
-from aiq_agent.common.deferred_tool_loading import bind_tools_deferred
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.common.grounding_block import strip_trace_lanes
@@ -76,6 +73,11 @@ from aiq_agent.common.model_vision import chat_model_scope
 from aiq_agent.common.model_vision import model_name_of
 from aiq_agent.common.prompt_caching import begin_stable_prefix
 from aiq_agent.common.prompt_caching import end_stable_prefix
+from aiq_agent.common.retired_calls import NEEDS_PATHS
+from aiq_agent.common.retired_calls import RETIRED_CALL_TAG
+from aiq_agent.common.retired_calls import RetiredNotice
+from aiq_agent.common.retired_calls import known_paths
+from aiq_agent.common.retired_calls import retired_call_notice
 from aiq_agent.common.retrieval_rounds import assistant_checkpoint
 from aiq_agent.common.retrieval_rounds import failed_call_ids
 from aiq_agent.common.retrieval_rounds import ran_signatures
@@ -89,6 +91,8 @@ from aiq_agent.common.steering import current_steer_inbox
 from aiq_agent.common.steering import is_write_call
 from aiq_agent.common.steering import render_note
 from aiq_agent.common.tool_errors import render_tool_error
+from aiq_agent.common.tool_vocabulary import use_vocabulary
+from aiq_agent.common.tool_vocabulary import vocabulary_for
 from aiq_agent.common.turn_status import begin_lane_capture
 from aiq_agent.common.turn_status import emit
 from aiq_agent.common.turn_status import emit_family_coverage
@@ -107,6 +111,7 @@ from aiq_agent.common.turn_status import is_retrieval_round
 from aiq_agent.common.turn_status import is_skill_read
 from aiq_agent.common.turn_status import record_round_announcement
 from aiq_agent.common.turn_status import retrieval_round_scope
+from aiq_agent.common.turn_status import tool_basename
 from aiq_agent.common.wire_v2 import SteerAppliedBody
 from aiq_agent.common.wire_v2 import SteerAppliedValue
 from aiq_agent.knowledge.already_read import merge_digest
@@ -141,23 +146,12 @@ from .prompt import shelf_label
 from .prompt import stamp_static_prompt_for_turn
 from .prompt import system_prompt_template
 from .quote_patch import quote_patcher
-from .tool_search import ToolSearchIndex
-from .tool_search import ToolSearchSettings
-from .tool_search import build_query_parts
-from .tool_search import tool_basename
 
 logger = logging.getLogger(__name__)
 
 # Imported from outside this package under this name
 # (``tests/aiq_agent/agents/test_composer_subject_reaches_prompts.py``).
 _shelf_label = shelf_label
-
-# Cap on both tool-search caches (query → selection, selection → bound LLM).
-# A shared agent serves many requests, so each map is dropped WHOLE at the cap
-# rather than grown or LRU-tracked: a miss costs one re-rank (0.05 ms) or one
-# bind_tools (pure CPU, no network), while an unbounded dict on a long-lived
-# worker costs memory forever.
-_MAX_CACHED_BINDINGS = 32
 
 #: Cumulative INPUT tokens one turn may spend before synthesis is forced.
 #: Rounds bound how far the investigation goes; this bounds what it COSTS, and
@@ -368,12 +362,15 @@ def _withheld_calls(
     state: ResearchAgentState,
     disabled: frozenset[str],
     max_calls: int = 0,
+    bound: frozenset[str] = frozenset(),
 ) -> tuple[list[Any], list[tuple[Any, str]], list[Any]]:
     """The three guards on this seam, applied once: ``(repeats, refused, over_width)``.
 
     A fetch whose answer the turn already holds (:func:`repeat_fetches`), a
-    call to a source this conversation switched off — each paired with the
-    sentence that answers it — and the calls past the round's width cap
+    call to a retired spelling on this binding (:func:`retired_call_notice`,
+    ``bound`` being the binding's tool names) or to a source this conversation
+    switched off — each paired with the sentence that answers it — and the calls
+    past the round's width cap
     (:func:`_over_width`). Repeats are decided first, so a call that is both is
     counted once and answered as the repeat it is; the cap sees what the other
     two left.
@@ -384,15 +381,28 @@ def _withheld_calls(
     """
     repeats = repeat_fetches(calls, state.executed_fetches)
     seen = {id(call) for call in repeats}
+    # Read only for a call that is answered with a path; a round of searches never pays the scan.
+    paths = _result_paths(state) if bound and any(_call_name(c) in NEEDS_PATHS for c in calls) else {}
     refused = [
         (call, sentence)
         for call in calls
         if id(call) not in seen
-        and (sentence := disabled_source_notice(_call_name(call), disabled, _call_args(call))) is not None
+        and (
+            sentence := retired_call_notice(_call_name(call), _call_args(call), bound, paths)
+            or disabled_source_notice(_call_name(call), disabled, _call_args(call))
+        )
+        is not None
     ]
     seen |= {id(call) for call, _ in refused}
     over_width = _over_width([call for call in calls if id(call) not in seen], max_calls)
     return repeats, refused, over_width
+
+
+def _result_paths(state: ResearchAgentState) -> dict[str, str]:
+    """``file name -> path`` from the ``Path:`` lines of the tool results in the transcript."""
+    return known_paths(
+        content_to_text(message.content) for message in state.messages if isinstance(message, ToolMessage)
+    )
 
 
 def _drop_withheld(
@@ -400,6 +410,7 @@ def _drop_withheld(
     state: ResearchAgentState,
     disabled: frozenset[str],
     max_calls: int = 0,
+    bound: frozenset[str] = frozenset(),
 ) -> list[Any]:
     """The calls that will actually RUN, and the records the withholding leaves.
 
@@ -408,7 +419,16 @@ def _drop_withheld(
     announcement, so a batch that is only withheld calls consumes no
     ``status:retrieval:N`` slot and does not advance the round counter.
     """
-    repeats, refused, over_width = _withheld_calls(calls, state, disabled, max_calls)
+    repeats, refused, over_width = _withheld_calls(calls, state, disabled, max_calls, bound)
+    retired = [call for call, sentence in refused if isinstance(sentence, RetiredNotice)]
+    if retired:
+        add_trace_tag(RETIRED_CALL_TAG)
+        logger.info(
+            "Retired spelling: %d call(s) answered with the replacement call (%s, round=%d)",
+            len(retired),
+            ", ".join(sorted({_call_name(call) for call in retired})),
+            state.retrieval_round,
+        )
     if repeats:
         emit_repeat_fetch(round_index=state.retrieval_round, withheld=len(repeats))
         logger.info(
@@ -491,6 +511,7 @@ def _charge_tool_calls(
     ceiling: int,
     disabled: frozenset[str] = frozenset(),
     max_calls: int = 0,
+    bound: frozenset[str] = frozenset(),
 ) -> tuple[int, int, dict[str, Any] | None]:
     """What this round COSTS and ANNOUNCED: ``(rounds, retrieval_round, record)``.
 
@@ -516,7 +537,7 @@ def _charge_tool_calls(
     calls = getattr(response, "tool_calls", None) or []
     if not calls:
         return state.tool_iterations, state.retrieval_round, None
-    calls = _drop_withheld(calls, state, disabled, max_calls)
+    calls = _drop_withheld(calls, state, disabled, max_calls, bound)
     if not calls:
         return _charge_empty_round(state, ceiling)
     rounds = state.tool_iterations + 1
@@ -661,11 +682,12 @@ def _without_trace_lanes(message: Any) -> Any:
 
 
 def _notice(call: Any, content: str) -> ToolMessage:
-    """The one result a withheld call gets, addressed to the call that asked."""
+    """The one result a withheld call gets, addressed to the call that asked; a retired spelling's is an error."""
     return ToolMessage(
-        content=content,
+        content=str(content),
         name=_call_name(call),
         tool_call_id=str(call.get("id") or ""),
+        status="error" if isinstance(content, RetiredNotice) else "success",
     )
 
 
@@ -749,7 +771,9 @@ class _RoundSplit:
         ]
 
 
-def _split_round(state: ResearchAgentState, disabled: frozenset[str], max_calls: int = 0) -> _RoundSplit:
+def _split_round(
+    state: ResearchAgentState, disabled: frozenset[str], max_calls: int = 0, bound: frozenset[str] = frozenset()
+) -> _RoundSplit:
     """What the tools node runs, derived the way the agent node derived its charge.
 
     :func:`_withheld_calls`, reading the SAME calls, the SAME
@@ -758,7 +782,7 @@ def _split_round(state: ResearchAgentState, disabled: frozenset[str], max_calls:
     and what is executed cannot drift apart.
     """
     calls = _last_tool_calls(state)
-    repeats, refused, over_width = _withheld_calls(calls, state, disabled, max_calls)
+    repeats, refused, over_width = _withheld_calls(calls, state, disabled, max_calls, bound)
     withheld = {id(call) for call in (*repeats, *(call for call, _ in refused), *over_width)}
     return _RoundSplit(
         ran=[call for call in calls if id(call) not in withheld],
@@ -1029,8 +1053,6 @@ class PilotiAgent:
         max_input_tokens_per_turn: int = _DEFAULT_MAX_INPUT_TOKENS_PER_TURN,
         max_calls_per_round: int = _DEFAULT_MAX_CALLS_PER_ROUND,
         callbacks: list[Any] | None = None,
-        tool_search: ToolSearchSettings | None = None,
-        deferred_tool_loading: DeferredToolLoadingSettings | None = None,
         envelope_json_mode_with_tools: bool = False,
         repair_pass: bool = True,
         card_repair_llm: BaseChatModel | None = None,
@@ -1061,11 +1083,6 @@ class PilotiAgent:
                 issued again next round, never deleted from the AIMessage. 0
                 disables it.
             callbacks: Optional LangGraph callbacks.
-            tool_search: Optional retrieval-based tool narrowing. None (or
-                disabled) binds the full set.
-            deferred_tool_loading: Optional OpenRouter server-side tool
-                search. Orthogonal to ``tool_search``: that one decides WHICH
-                tools are bound, this one whether their schemas travel.
             envelope_json_mode_with_tools: Whether provider JSON mode is ALSO
                 bound on tool-bound research iterations, not only on the
                 tool-free forced-synthesis call. Default False: some
@@ -1089,23 +1106,9 @@ class PilotiAgent:
         self.max_calls_per_round = max_calls_per_round
         self.callbacks = callbacks or []
         self.repair_pass = repair_pass
-        self.tool_search = tool_search if (tool_search is not None and tool_search.enabled) else None
-        self.deferred_tool_loading = (
-            deferred_tool_loading if (deferred_tool_loading is not None and deferred_tool_loading.enabled) else None
-        )
         self.envelope_json_mode_with_tools = envelope_json_mode_with_tools
         self.system_prompt = system_prompt or system_prompt_template()
         self.tools_info = build_tools_info(self.tools)
-        # Retrieval-based tool narrowing, off unless configured. A pure
-        # in-process BM25 over tool name + description, built here once: a
-        # turn never pays for it, and a deployment that does not ask for it
-        # does not even tokenize its tool descriptions. Indexed over the BOOT
-        # tools; a tool a turn adds (the file verbs) is never withheld.
-        self._tool_search_index: ToolSearchIndex | None = ToolSearchIndex(self.tools) if self.tool_search else None
-        # Selected-tool-set → bound LLM, for the boot binding only.
-        self._narrowed_bindings: dict[frozenset[str], Any] = {}
-        # Query string → selection, so the retrieval runs once per run.
-        self._tool_search_selections: dict[str, Any] = {}
         self._boot = self._bind_turn(self.llm_provider, tuple(self.tools))
         self._graph = self._build_graph()
 
@@ -1137,13 +1140,8 @@ class PilotiAgent:
         return self.llm_provider.get(LLMRole.RESEARCHER)
 
     def _bind_research_tools(self, llm: BaseChatModel, tools: Sequence[BaseTool]) -> Any:
-        """Bind a RESEARCH-turn tool set, deferring the schemas when configured.
-
-        The single binding seam: the boot binding, every per-turn binding and
-        every narrowed one go through it, so the deferral cannot apply to one
-        and silently miss another.
-        """
-        return bind_tools_deferred(llm, list(tools), settings=self.deferred_tool_loading, parallel_tool_calls=True)
+        """Bind a RESEARCH-turn tool set: the one seam the boot binding and every per-turn binding go through."""
+        return llm.bind_tools(list(tools), parallel_tool_calls=True)
 
     def _bind_turn(self, provider: LLMProvider, tools: tuple[BaseTool, ...]) -> TurnBinding:
         """Resolve one tool set against one provider: the only per-turn cost, one ``bind_tools``."""
@@ -1184,89 +1182,6 @@ class PilotiAgent:
             return base
         return replace(base, disabled_sources=frozenset(turn.disabled_sources), prefetch=tuple(turn.prefetch))
 
-    def _select_tools_for_query(self, messages: Sequence[Any]) -> Any:
-        """Run (or replay) the tool-search retrieval for this run's question.
-
-        Cached on the query string: the query is built from HUMAN turns only,
-        so it is identical across every iteration of one run. Returns ``None``
-        when the feature is off or the retrieval could not produce a decision;
-        both mean "use the full set".
-        """
-        settings = self.tool_search
-        index = self._tool_search_index
-        if settings is None or index is None:
-            return None
-        try:
-            query_parts = build_query_parts(messages)
-            if not query_parts:
-                return None
-            cache_key = "\n<<part>>\n".join(f"{part.weight}:{part.text}" for part in query_parts)
-            cached = self._tool_search_selections.get(cache_key)
-            if cached is not None:
-                return cached
-            selection = index.select(query_parts, top_k=settings.top_k, always_include=settings.always_include)
-        except Exception:  # noqa: BLE001 - a ranking is a convenience; the tool set is the contract
-            logger.warning("[ToolSearch] retrieval failed; binding the full tool set", exc_info=True)
-            return None
-        # ADR-0045: the shape of the call, never the building. Tool names are
-        # code identifiers from our own config.
-        logger.info(
-            "[ToolSearch] %s: bound %d/%d tool(s) — selected=%s withheld=%s",
-            selection.reason,
-            len(selection.selected),
-            len(index.tool_names),
-            list(selection.selected),
-            list(selection.withheld),
-        )
-        if len(self._tool_search_selections) >= _MAX_CACHED_BINDINGS:
-            self._tool_search_selections.clear()
-        self._tool_search_selections[cache_key] = selection
-        return selection
-
-    def _narrowed_binding(self, binding: TurnBinding, chosen: frozenset[str], tools: list[BaseTool]) -> Any:
-        """The bound LLM for a narrowed set; cached for the boot binding only."""
-        if binding is not self._boot:
-            return self._bind_research_tools(binding.llm, tools)
-        bound = self._narrowed_bindings.get(chosen)
-        if bound is not None:
-            return bound
-        bound = self._bind_research_tools(binding.llm, tools)
-        if len(self._narrowed_bindings) >= _MAX_CACHED_BINDINGS:
-            self._narrowed_bindings.clear()
-        self._narrowed_bindings[chosen] = bound
-        return bound
-
-    def _research_tool_binding(
-        self,
-        messages: Sequence[Any],
-        tools_info: list[dict[str, str]],
-        binding: TurnBinding | None = None,
-    ) -> tuple[Any, list[dict[str, str]]]:
-        """LLM + prompt tool list for a RESEARCH turn, narrowed if configured.
-
-        With tool search off this returns the turn's binding and the caller's
-        tool list untouched. With it on, the narrowing happens HERE, around
-        the LLM call: the model is offered fewer tools, not asked to find
-        them, so a narrowed turn costs exactly what an unnarrowed one costs.
-        The prompt's tool list is narrowed to match the binding, so the model
-        is never told about a tool it has not been given. A tool the index
-        never saw (one the turn added) is always kept.
-        """
-        binding = binding or self._boot
-        selection = self._select_tools_for_query(messages)
-        if selection is None or not selection.narrowed:
-            return binding.llm_with_tools, tools_info
-        chosen = frozenset(selection.selected)
-        indexed = set(self._tool_search_index.tool_names) if self._tool_search_index else set()
-        keep = {t.name for t in binding.tools if t.name in chosen or t.name not in indexed}
-        narrowed_tools = [t for t in binding.tools if t.name in keep]
-        if not narrowed_tools:
-            # Belt and braces over ``select``'s own empty guard: an empty
-            # binding would leave the model with no way to answer at all.
-            return binding.llm_with_tools, tools_info
-        bound = self._narrowed_binding(binding, chosen, narrowed_tools)
-        return bound, [ti for ti in tools_info if ti.get("name") in keep]
-
     # -- graph ------------------------------------------------------------------
 
     def _build_graph(self) -> CompiledStateGraph:
@@ -1292,7 +1207,7 @@ class PilotiAgent:
         """One LLM call: the full binding (ADR-0052), or forced synthesis at a ceiling."""
         binding = self._turn_binding(config)
         tools_info = state.tools_info if state.tools_info else binding.tools_info
-        llm_with_tools, tools_info = self._research_tool_binding(state.messages, tools_info, binding)
+        llm_with_tools = binding.llm_with_tools
         # Rendered once per run and cached on the state: every input is fixed
         # for the life of one run(), so both strings are byte-identical across
         # tool-loop iterations and the norm-block computation runs once.
@@ -1323,13 +1238,8 @@ class PilotiAgent:
         messages = request_messages(prompt, state.messages, steering)
         # Every round may be the answer, and only its tokens say so; each
         # streams, and the reader shows nothing from a round that is not an
-        # envelope. The deferred binding stays buffered (its fallback would
-        # replay tokens it already streamed).
-        answering, call_config = (
-            (llm_with_tools, None)
-            if isinstance(llm_with_tools, DeferredToolBinding)
-            else streaming_call(llm_with_tools, live=_live_answer(state))
-        )
+        # envelope.
+        answering, call_config = streaming_call(llm_with_tools, live=_live_answer(state))
         if self.envelope_json_mode_with_tools:
             response = await ainvoke_with_envelope_json_mode(answering, messages, call_config)
         else:
@@ -1340,7 +1250,12 @@ class PilotiAgent:
         if _starts_synthesis(response, state):
             emit_synthesis()
         rounds, retrieval_round, round_record = _charge_tool_calls(
-            response, state, binding.ceiling, binding.disabled_sources, binding.max_calls_per_round
+            response,
+            state,
+            binding.ceiling,
+            binding.disabled_sources,
+            binding.max_calls_per_round,
+            binding.source_tool_names,
         )
         update: dict[str, Any] = {
             "messages": [response],
@@ -1444,10 +1359,7 @@ class PilotiAgent:
     async def _tools_node(self, state: ResearchAgentState, config: RunnableConfig) -> dict[str, Any]:
         """Execute the round's tools and capture sources and measurements.
 
-        Tool-search narrowing gets no execution-side defense: it is a GUESS
-        about relevance, and if the model calls a withheld tool anyway the
-        guess was wrong and the model is right. Measurement grounding is
-        STICKY (OR-ed with what the loop already saw) and recorded BEFORE the
+        Measurement grounding is STICKY (OR-ed with what the loop already saw) and recorded BEFORE the
         data-source gate, because ``ifc_measure`` is deliberately not a data
         source: it produces no citable passage.
 
@@ -1475,7 +1387,7 @@ class PilotiAgent:
         for.
         """
         binding = self._turn_binding(config)
-        split = _split_round(state, binding.disabled_sources, binding.max_calls_per_round)
+        split = _split_round(state, binding.disabled_sources, binding.max_calls_per_round, binding.source_tool_names)
         # Derived before the steering hold, from what the agent node charged: a
         # held write is never a fetch, so the stamp is the same either way.
         executing_round = _executing_retrieval_round(state, split.ran)
@@ -1615,7 +1527,9 @@ class PilotiAgent:
             return {}
         announcement = AIMessage(content=PREFETCH_NOTE, tool_calls=calls)
         announced = state.model_copy(update={"messages": [*state.messages, announcement]})
-        split = _split_round(announced, binding.disabled_sources, binding.max_calls_per_round)
+        split = _split_round(
+            announced, binding.disabled_sources, binding.max_calls_per_round, binding.source_tool_names
+        )
         if not split.ran or not is_retrieval_round(split.ran):
             return {}
         searched = emit_retrieval(split.ran, round_index=state.retrieval_round, conclusion=None, prefetch=True)
@@ -1687,7 +1601,10 @@ class PilotiAgent:
         # evidence tool wrote (ADR-0061).
         grounding_capture = begin_grounding_capture()
         try:
-            graph_result = await self._graph.ainvoke(state, config=self._graph_config(binding))
+            # The tool spellings every shared hint of this turn names (ADR-0133 slice 6): the binding's own,
+            # set around the graph so every node and every parallel tool call inherits it.
+            with use_vocabulary(vocabulary_for(binding.source_tool_names)):
+                graph_result = await self._graph.ainvoke(state, config=self._graph_config(binding))
             turn_sources = get_turn_captures()
             turn_measurements = get_measurement_captures()
             lane_hits = get_lane_captures()

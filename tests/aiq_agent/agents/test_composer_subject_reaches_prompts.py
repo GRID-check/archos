@@ -185,8 +185,7 @@ class TestSubjectKeepsTheSearchTools:
 
         # The turn's binding is the proof of which tools the model was offered;
         # the prompt no longer repeats it as a list.
-        _, offered = agent._research_tool_binding(state.messages, agent.tools_info)
-        assert "searching_tool" in [tool["name"] for tool in offered]
+        assert "searching_tool" in [tool["name"] for tool in agent._boot.tools_info]
 
 
 class TestSubjectSurvivesTheGraphHandoff:

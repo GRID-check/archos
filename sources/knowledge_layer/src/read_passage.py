@@ -73,6 +73,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.tool_vocabulary import current_vocabulary
 from aiq_agent.common.turn_status import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
@@ -323,8 +324,8 @@ def _older_revision_notice(targets: Sequence[PassageTarget]) -> str:
 def older_revision_line(name: str, current: str) -> str:
     """The notice line for one older Fassung a tool hands the model: which file replaced it, and what to say."""
     return (
-        f"Ältere Fassung: {name} ist durch {current} ersetzt (bestätigt), aktuell ist {current}. "
-        "Sage in der Antwort, dass du die ältere Fassung liest.\n\n"
+        f"Older Fassung: {name} is replaced by {current} (confirmed); {current} is current. "
+        "Say in the answer that you are reading the older Fassung.\n\n"
     )
 
 
@@ -948,33 +949,41 @@ def _outline_lines(entries: Sequence[OutlineEntry], limit: int = _MAX_OUTLINE_LI
         indent = "  " if entry.depth == 2 else ""
         # An unnumbered section is addressed by its title; saying it twice is noise.
         title = f": {entry.title}" if entry.title and entry.title != entry.clause_id else ""
-        page = f" (S. {entry.page})" if entry.page else ""
+        page = f" (p. {entry.page})" if entry.page else ""
         excerpt = f" — {entry.excerpt}" if entry.excerpt else ""
         lines.append(f"{indent}- Punkt {entry.clause_id}{title}{page}{excerpt}")
     remaining = len(entries) - len(shown)
     if remaining > 0:
-        lines.append(f"(+{remaining} weitere Punkte nicht gelistet)")
+        lines.append(f"(+{remaining} more Punkte not listed)")
     return lines
 
 
-#: The one line that says what the Gliederung is and what it is not. German,
-#: because it is read by the same model that writes the German answer, and it
-#: has to be unmistakable that a heading is not a source.
-_OUTLINE_INSTRUCTION = (
-    "Einen gelisteten Punkt öffnest du mit `read_passage(document=…, clause=…)`; die "
-    "Gliederung ist ein Index, keine Evidenz — nur die Passage(n) oben tragen eine Citation."
-)
+def _outline_instruction() -> str:
+    """The one line that says what the Gliederung is and what it is not, naming the caller's read.
 
-#: The same sentence for a document that has no Punkte to list.
-_NO_CLAUSES_LINE = (
-    "Dieses Dokument ist nicht nach Punkten gegliedert, es gibt also keine Gliederung — oben "
-    "stehen seine ersten Passagen; weitere Seiten öffnest du mit `read_passage(document=…, page=…)`."
-)
+    English, like everything an agent reads (AGENTS.md); it has to be unmistakable that a heading
+    is not a source. The read is the binding's own (``common.tool_vocabulary``): ``read_file`` on
+    Piloti's chat, ``read_passage`` for deep research and intake.
+    """
+    read = current_vocabulary().read(clause="…")
+    return (
+        f"Open a listed Punkt with {read}. The Gliederung is an index, not evidence: only the passages above "
+        "carry a Citation."
+    )
+
+
+def _no_clauses_line() -> str:
+    """The same sentence for a document that has no Punkte to list."""
+    read = current_vocabulary().read(page="…")
+    return (
+        "This document is not structured in Punkte, so it has no Gliederung: its first passages are above; "
+        f"open further pages with {read}."
+    )
 
 
 def _outline_block(entries: Sequence[OutlineEntry]) -> str:
     """The ``## Gliederung`` index appended under the outline's passage."""
-    return "\n".join(["## Gliederung", *_outline_lines(entries), "", _OUTLINE_INSTRUCTION, ""])
+    return "\n".join(["## Gliederung", *_outline_lines(entries), "", _outline_instruction(), ""])
 
 
 # ---------------------------------------------------------------------------
@@ -1036,14 +1045,15 @@ class FamilyOverview:
     def preamble(self) -> str:
         """What the family IS, above the results: the parts, where they are, and that they are open."""
         numbers = ", ".join(member.number for member in self.members)
-        count = f"{len(self.members)} Teil" if len(self.members) == 1 else f"{len(self.members)} Teile"
-        span = "Treffer 1" if len(self.chunks) == 1 else f"Treffer 1 bis {len(self.chunks)}"
+        count = f"{len(self.members)} part" if len(self.members) == 1 else f"{len(self.members)} parts"
+        span = "Result 1 is" if len(self.chunks) == 1 else f"Results 1 to {len(self.chunks)} are"
+        read = current_vocabulary().read_name
         return (
-            f"{self.label}: {count} im Bestand ({numbers}).\n"
-            f"{span} sind der Geltungsbereich dieser Teile, ihre Gliederungen stehen unten; "
-            "danach folgen die Treffer zur Suchanfrage.\n"
-            "Damit sind diese Teile geöffnet, auf der Ebene von `read_passage(document=…)`; "
-            "tiefer führt nur ein einzelner Punkt aus einer Gliederung, wie unten beschrieben."
+            f"{self.label}: {count} in the corpus ({numbers}).\n"
+            f"{span} the Geltungsbereich of these parts, their Gliederungen are below; "
+            "the results for the query follow.\n"
+            f"These parts are therefore open at the level {read} opens a document at; "
+            "deeper goes only a single Punkt from a Gliederung, as described below."
         )
 
 
@@ -1062,7 +1072,7 @@ def _family_trailer(members: Sequence[FamilyMember]) -> str:
     lines: list[str] = []
     for member in members:
         lines += [f"## Gliederung {member.title}", *_outline_lines(member.entries, budget), ""]
-    return "\n".join([*lines, _OUTLINE_INSTRUCTION, ""])
+    return "\n".join([*lines, _outline_instruction(), ""])
 
 
 def _member_title(file_name: str) -> str:
@@ -1812,7 +1822,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             merged,
             query,
             notice=_older_revision_notice(targets),
-            trailer=_NO_CLAUSES_LINE,
+            trailer=_no_clauses_line(),
             reading_of=document,
         )
         logger.info("read_passage: %s outlined %d opening chunk(s)", query, len(merged.chunks))

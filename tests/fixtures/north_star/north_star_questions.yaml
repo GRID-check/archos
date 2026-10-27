@@ -32,8 +32,8 @@
 document_check_instruction: &document_check_instruction |-
   A new document was just uploaded to this project and indexed: "${document.name}" (document id ${document.id}).
   Check it against the project's other documents, as a careful colleague would.
-  1. Read the new document (list_files, read_passage) and find the 2 to 4 load-bearing facts it states: counts, areas, heights, classes, dates, named standards or approvals, anything other documents also depend on.
-  2. Check each fact against the project's other documents: knowledge_search for where the fact is stated elsewhere, read_passage to read the passage itself. Compare with the newest Fassung of each document.
+  1. Read the new document and find the 2 to 4 load-bearing facts it states: counts, areas, heights, classes, dates, named standards or approvals, anything other documents also depend on.
+  2. Check each fact against the project's other documents: where else the fact is stated, and the passage itself. Compare with the newest Fassung of each document.
   3. Only where a fact contradicts another document, propose a mark on the new document with canvas__mark (kind hint, on the place that states the fact, at most 4 marks). The body names both values; the basis cites both sources by file name and page. Never open a mark and never say a deviation is allowed or forbidden.
   4. Where everything agrees, or nothing comparable exists, propose nothing and answer with the single word "Agrees".
   Nobody watches this turn and nobody answers questions: do not ask anything, and do not change anything except by proposing marks.

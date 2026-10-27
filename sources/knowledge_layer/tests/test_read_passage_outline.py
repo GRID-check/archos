@@ -245,12 +245,12 @@ class TestTheClauseOutline:
         out = await _read(document=OIB, conclusion="Ich kenne die OIB 2 noch nicht.")
 
         assert _outline(out)[:6] == [
-            "- Punkt 0: Vorbemerkungen (S. 3) — Diese Richtlinie gilt für …",
-            "- Punkt 1: Begriffsbestimmungen (S. 3) — Text zu Begriffsbestimmungen.",
-            "- Punkt 2: Allgemeine Anforderungen (S. 4) — Text zu Allgemeine Anforderungen.",
-            "  - Punkt 2.1: Abstände (S. 4)",
-            "  - Punkt 2.9: Löschwasser (S. 5)",
-            "  - Punkt 2.10: Blitzschutz (S. 5)",
+            "- Punkt 0: Vorbemerkungen (p. 3) — Diese Richtlinie gilt für …",
+            "- Punkt 1: Begriffsbestimmungen (p. 3) — Text zu Begriffsbestimmungen.",
+            "- Punkt 2: Allgemeine Anforderungen (p. 4) — Text zu Allgemeine Anforderungen.",
+            "  - Punkt 2.1: Abstände (p. 4)",
+            "  - Punkt 2.9: Löschwasser (p. 5)",
+            "  - Punkt 2.10: Blitzschutz (p. 5)",
         ]
 
     async def test_a_chapter_line_carries_its_opening_sentence_and_a_sub_clause_does_not(self, store):
@@ -276,11 +276,11 @@ class TestTheClauseOutline:
 
         lines = _outline(await _read(document=OIB))
 
-        assert lines[0] == "- Punkt 0: Vorbemerkungen (S. 3) — Diese Richtlinie gilt für Bauwerke."
-        assert lines[1].startswith("- Punkt 2: Anforderungen (S. 4) — Tragende Bauteile müssen sehr")
+        assert lines[0] == "- Punkt 0: Vorbemerkungen (p. 3) — Diese Richtlinie gilt für Bauwerke."
+        assert lines[1].startswith("- Punkt 2: Anforderungen (p. 4) — Tragende Bauteile müssen sehr")
         assert lines[1].endswith("…")
         assert len(lines[1].split(" — ", 1)[1]) <= rp._EXCERPT_CHARS + 1
-        assert lines[2] == "  - Punkt 2.1: Abstände (S. 4)"
+        assert lines[2] == "  - Punkt 2.1: Abstände (p. 4)"
 
     async def test_the_numbering_orders_the_index_even_when_a_page_runs_ahead(self, store):
         """An outline is an index of the document's own numbering, not a walk
@@ -294,11 +294,11 @@ class TestTheClauseOutline:
         ]
 
         assert _outline(await _read(document=OIB)) == [
-            "- Punkt 2: Allgemeine Anforderungen (S. 4) — Text zu Allgemeine Anforderungen.",
-            "  - Punkt 2.1: Abstände (S. 4)",
-            "  - Punkt 2.2: Löschwasser (S. 6)",
-            "- Punkt 3: Brandschutz (S. 5) — Text zu Brandschutz.",
-            rp._OUTLINE_INSTRUCTION,
+            "- Punkt 2: Allgemeine Anforderungen (p. 4) — Text zu Allgemeine Anforderungen.",
+            "  - Punkt 2.1: Abstände (p. 4)",
+            "  - Punkt 2.2: Löschwasser (p. 6)",
+            "- Punkt 3: Brandschutz (p. 5) — Text zu Brandschutz.",
+            rp._outline_instruction(),
         ]
 
     async def test_a_split_clause_is_one_line_not_two(self, store):
@@ -343,7 +343,7 @@ class TestTheClauseOutline:
         out = await _read(document=OIB)
 
         assert "read_passage(document=…, clause=…)" in out
-        assert "keine Evidenz" in out
+        assert "not evidence" in out
 
     async def test_a_document_without_clause_zero_opens_its_first_clause(self, store):
         """Lowest-numbered, not first-returned: 1 before 2 before 10."""
@@ -360,7 +360,7 @@ class TestTheClauseOutline:
         assert "Read 1 passage(s) of" in head
         assert "Erstens …" in head
         assert "Zweitens …" not in head
-        assert _outline(out)[0] == "- Punkt 1: Begriffsbestimmungen (S. 3) — Erstens …"
+        assert _outline(out)[0] == "- Punkt 1: Begriffsbestimmungen (p. 3) — Erstens …"
 
 
 class TestTheRecheckHoldsWhenTheBackendDoesNot:
@@ -378,8 +378,8 @@ class TestTheRecheckHoldsWhenTheBackendDoesNot:
         lines = _outline(await _read(document=OIB))
 
         assert lines[:2] == [
-            "- Punkt 2: Allgemeine Anforderungen (S. 4) — Text zu Allgemeine Anforderungen.",
-            "  - Punkt 2.1: Abstände (S. 4)",
+            "- Punkt 2: Allgemeine Anforderungen (p. 4) — Text zu Allgemeine Anforderungen.",
+            "  - Punkt 2.1: Abstände (p. 4)",
         ]
         assert not any("2.1.1" in line or "2.1.2" in line for line in lines)
 
@@ -392,7 +392,7 @@ class TestTheRecheckHoldsWhenTheBackendDoesNot:
 
         assert (
             _outline(await _read(document=OIB))[0]
-            == "- Punkt 2: Allgemeine Anforderungen (S. 4) — Text zu Allgemeine Anforderungen."
+            == "- Punkt 2: Allgemeine Anforderungen (p. 4) — Text zu Allgemeine Anforderungen."
         )
 
 
@@ -404,7 +404,7 @@ class TestTheCap:
         listed = [line for line in lines if line.strip().startswith("- Punkt ")]
 
         assert len(listed) == rp._MAX_OUTLINE_LINES == 80
-        assert "(+10 weitere Punkte nicht gelistet)" in lines
+        assert "(+10 more Punkte not listed)" in lines
 
     async def test_an_outline_that_fits_says_nothing_about_a_rest(self, store):
         store.outline_chunks = _oib_outline()
@@ -431,7 +431,7 @@ class TestThePerPageFallback:
         out = await _read(document=PLAN)
 
         assert "## Gliederung" not in out
-        assert "nicht nach Punkten gegliedert" in out
+        assert "not structured in Punkte" in out
         assert "read_passage(document=…, page=…)" in out
 
     async def test_pages_come_back_in_page_order(self, store):
@@ -537,7 +537,7 @@ class TestADocumentWhosePageLabelIsNotAPage:
         assert "Position | Betrag …" in out
         assert "Preisbasis 2024 …" in out
         assert "no passage of it could be read" not in out
-        assert "nicht nach Punkten gegliedert" in out
+        assert "not structured in Punkte" in out
 
     async def test_the_workbook_passages_carry_a_citation(self, store):
         store.page_chunks = [_sheet_chunk("Kostenaufstellung", "Position | Betrag …")]

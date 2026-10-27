@@ -5,7 +5,7 @@ Source: OIB-Richtlinie 2, Ausgabe Mai 2023
 Collection: oib_knowledge
 Shelf: base
 Dokumentart: oib_guideline — OIB-Richtlinie (verbindlich)
-Herkunft: Piloti-Dokument · freigegeben von Maria Muster am 03.02.2026
+Herkunft: Piloti-Dokument · freigegeben von Maria Muster am 03.02.2026 — what the office decided, never a source for a normative value
 Page: 12
 Punkt: 3.5.2
 Citation: oib-rl_2_ausgabe_mai_2023.pdf, p.12

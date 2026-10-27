@@ -23,6 +23,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from aiq_agent.common.tool_vocabulary import current_vocabulary
+
 #: The only grouping ``knowledge_search`` offers. Qdrant's own word for the parameter.
 GROUP_BY_DOCUMENT = "document"
 
@@ -112,6 +114,7 @@ def render_document_groups(groups: Sequence[DocumentGroup], pool_size: int) -> s
     """
     if not groups:
         return ""
+    vocabulary = current_vocabulary()
     lines = [
         f"## Documents ({len(groups)}, grouped from {pool_size} ranked passages)",
         "| # | Document | Passages in pool | Pages |",
@@ -122,6 +125,6 @@ def render_document_groups(groups: Sequence[DocumentGroup], pool_size: int) -> s
         lines.append(f"| {number} | {name} | {group.passages} | {_pages_cell(group.pages)} |")
     lines.append(
         "Each document's passage above is its best one. The counts are lower bounds over the ranked pool; "
-        'for every mention use `match="exact"`, and to read a document use `read_passage`.'
+        f"for every mention use {vocabulary.literal_name}, and to read a document use {vocabulary.read_name}."
     )
     return "\n".join(lines)

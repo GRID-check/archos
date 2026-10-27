@@ -262,31 +262,26 @@ class TestThePrefetch:
         calls = prefetch_calls(self._decided("projekt"), q)
         assert calls == [
             {"name": "knowledge_search", "args": {"query": q}},
-            {"name": "knowledge_search", "args": {"query": "Rauchabzug", "match": "exact", "shelf": "project"}},
+            {"name": "grep", "args": {"pattern": "Rauchabzug", "path": "/project/"}},
         ]
 
     def test_an_exact_prefetch_stays_in_the_open_document(self):
         q = "Wo steht „Rauchabzug“?"
         calls = prefetch_calls(self._decided("projekt"), q, focus_file_name="Gutachten.pdf")
-        assert calls[1]["args"] == {
-            "query": "Rauchabzug",
-            "match": "exact",
-            "shelf": "project",
-            "file_name": "Gutachten.pdf",
-        }
+        assert calls[1] == {"name": "grep", "args": {"pattern": "Rauchabzug", "path": "/project/Gutachten.pdf.md"}}
 
     def test_codes_and_file_names_are_literal_terms_at_most_two_and_the_office_shelf_follows_the_corpus(self):
         q = "Vergleiche A-101, EG_02, 04-112 und Grundriss_EG.pdf"
         assert literal_terms(q) == ["A-101", "EG_02"]
         assert literal_terms("Was steht in Grundriss_EG.pdf, 04-112?") == ["Grundriss_EG.pdf", "04-112"]
         calls = prefetch_calls(self._decided("buero"), q)
-        assert [c["args"].get("shelf") for c in calls] == [None, "office", "office"]
-        assert all(c["args"]["match"] == "exact" for c in calls[1:])
+        assert [c["args"].get("path") for c in calls] == [None, "/office/", "/office/"]
+        assert all(c["name"] == "grep" for c in calls[1:])
 
     def test_a_law_question_or_a_plain_one_gets_no_literal_search(self):
         assert literal_terms("Wie breit ist der Gang? Es gilt die OIB 2 von 2023.") == []
         calls = prefetch_calls(self._decided("baurecht"), "Was heißt „Fluchtweg“?")
-        assert all("match" not in c["args"] for c in calls)
+        assert all(c["name"] != "grep" for c in calls)
 
     def test_straight_quotes_count_but_an_apostrophe_does_not(self):
         assert literal_terms('Steht "BA-03" drin?') == ["BA-03"]

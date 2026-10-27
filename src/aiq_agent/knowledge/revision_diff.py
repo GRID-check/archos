@@ -36,6 +36,8 @@ from difflib import SequenceMatcher
 from typing import Any
 from typing import Literal
 
+from aiq_agent.common.tool_vocabulary import current_vocabulary
+
 #: Title-block fields in the order the report names them, with their German labels.
 TITLE_BLOCK_LABELS: tuple[tuple[str, str], ...] = (
     ("document_number", "Nummer"),
@@ -475,7 +477,7 @@ def render_diff(
         lines.append(f"Piloti's summary of the change (from the descriptions): {_clip(change_summary)}")
     lines.append(
         "What was compared is the printed text and Piloti's reading of the drawings, not the drawings themselves. "
-        "Check a dimension in the document with `read_passage` before stating it; marks on the page are shown by "
-        "„Vergleichen“ in Dateien."
+        f"Check a dimension in the document with {current_vocabulary().read_name} before stating it; marks on the "
+        "page are shown by „Vergleichen“ in Dateien."
     )
     return "\n".join(lines)

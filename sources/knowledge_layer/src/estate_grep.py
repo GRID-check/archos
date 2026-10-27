@@ -230,7 +230,7 @@ async def _search(
     except (TypeError, ValueError):
         return ToolOutput(f"`context` is a number of lines from 0 to {MAX_CONTEXT_LINES}.", status="error")
     if parsed is not None and parsed.mount is None:
-        return ToolOutput(f'No place "{parsed.path}". ls("/") lists the places there are.', status="error")
+        return ToolOutput(f'No place "{parsed.path}". `ls("/")` lists the places there are.', status="error")
     listable = await backend.listable_files()
     searchable = listable + [file for file in await _restricted_files(backend) if file not in listable]
     narrowed, refusal = _narrowing(searchable, listable, parsed, glob)
@@ -312,7 +312,7 @@ def _narrowing(
         ]
         if not any(not file.restricted for file in files):
             # A folder nothing listable is filed in is a folder that does not exist, restricted or not.
-            return None, f'No folder "{parsed.path}". ls("{MOUNT_ROOTS[parsed.mount]}") lists what is there.'
+            return None, f'No folder "{parsed.path}". `ls("{MOUNT_ROOTS[parsed.mount]}")` lists what is there.'
     elif parsed is not None and parsed.mount is not None:
         if parsed.mount and not glob:
             return None, ""
@@ -406,7 +406,7 @@ async def _candidates(
     if not answered and gaps and all(gap.reason in ("failed", "unavailable") for gap in gaps):
         return ToolOutput(
             "The full-text search could not be read just now. This is NOT a no: nothing was searched. "
-            "Try again, or use knowledge_search.",
+            "Try again, or use `knowledge_search`.",
             status="error",
         ), []
     return chunks, _merged(gaps)
@@ -548,7 +548,7 @@ def _gap_lines(gaps: Sequence[Gap]) -> list[str]:
 
 def _next() -> str:
     return (
-        'An index, not a source: read_file the pages to cite them, or grep with output_mode="content" for '
+        'An index, not a source: `read_file` the pages to cite them, or `grep` with output_mode="content" for '
         "citable passages."
     )
 
@@ -563,7 +563,7 @@ def _no_match(query: Query, where: str, searched: int, gaps: Sequence[Gap]) -> s
         )
     return (
         f'No match for "{query.pattern}" in {searched} files of {where}. A solid no for the WORDING, not the '
-        "topic: knowledge_search finds it by meaning."
+        "topic: `knowledge_search` finds it by meaning."
     )
 
 

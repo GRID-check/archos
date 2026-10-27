@@ -1085,3 +1085,21 @@ def test_a_call_that_still_names_punkt_reads_as_the_same_clause():
     new = {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}}
 
     assert turn_status.fetch_signature(old) == turn_status.fetch_signature(new)
+
+
+class TestToolBasename:
+    """The one resolver every caller of a group-qualified tool name reads (grounding, steering, the status line)."""
+
+    @pytest.mark.parametrize(
+        ("qualified", "base"),
+        [
+            ("ifc_measure", "ifc_measure"),
+            ("bim__ifc_measure", "ifc_measure"),
+            ("mcp__piloti__ifc_measure", "ifc_measure"),
+            ("canvas.mark", "mark"),
+            ("group__sub.tool", "tool"),
+            ("", ""),
+        ],
+    )
+    def test_it_returns_the_final_segment(self, qualified: str, base: str) -> None:
+        assert turn_status.tool_basename(qualified) == base

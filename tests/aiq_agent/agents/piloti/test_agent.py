@@ -2626,7 +2626,7 @@ class TestADirectReplyMayStillEmitACard:
         rules = rendered.split("<rules>")[1].split("</rules>")[0]
         assert "A file you did not open is not described" in rules
         assert "„nicht gelesen“" in rules
-        assert "Abdeckung: unzureichend" in rules
+        assert "Abdeckung: unzureichend" not in rules
         assert "`conclusion`" not in rules
         procedures = (
             "at most two searches",
@@ -2766,7 +2766,9 @@ class TestKnowledgeInventoryIsNotCitable:
     def test_piloti_prompt_teaches_the_four_shelves(self):
         """The shelves themselves are taught where they are listed (the inventory block); the prompt names them."""
         source = self._prompt("piloti/prompts/piloti.j2")
-        assert "Basiswissen, Büroablage, Projektwissen, Private Sitzung" in source
+        for mount, name in (("/project/", "Projektwissen"), ("/office/", "Büroablage"), ("/chat/", "Private Sitzung")):
+            assert f"{mount} is {name}" in source or f"{mount} {name}" in source
+        assert "/law/oib/ Basiswissen" in source
         rendered = self._render(source, self.DOCUMENTS)
         assert "Büroablage is never the OIB corpus" in rendered
 
@@ -3879,7 +3881,7 @@ class TestTheTidyingRulesLiveInTheTools:
 
     def test_a_name_is_taken_from_the_overview_and_never_invented(self):
         (description,) = _file_verb_descriptions().values()
-        assert "exactly as the overview or `list_files` shows it" in description
+        assert "exactly as the overview or a listing shows it" in description
 
 
 class TestTheThreeDraftingTurnShapes:

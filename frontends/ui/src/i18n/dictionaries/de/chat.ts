@@ -1738,6 +1738,14 @@ export const chat: typeof en.chat = {
     noted: 'Piloti hat sich gemerkt',
     notedAria: 'Piloti hat sich {count, plural, one {# Notiz} other {# Notizen}} gemerkt',
     addedToMemory: 'In das Projektgedächtnis aufgenommen',
+    // Mindestens eine Notiz hat eine frühere ersetzt (`supersedes`): das
+    // wichtigere Ereignis, daher eigenes Wort und eigenes Symbol am Chip.
+    updated: 'Gedächtnis aktualisiert',
+    updatedAria:
+      'Piloti hat das Gedächtnis aktualisiert: {count, plural, one {# Notiz} other {# Notizen}}, davon {corrected} korrigiert',
+    updatedInMemory: 'Projektgedächtnis aktualisiert',
+    correctedLabel: 'Korrigiert',
+    replaced: 'Ersetzt:',
     manageHint: 'Diese Einträge können Sie im Projektgedächtnis verwalten und löschen.',
     kinds: {
       decision: 'Entscheidung',

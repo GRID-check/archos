@@ -164,7 +164,9 @@ def no_such_file(path: str, suggestions: Sequence[str] = ()) -> str:
     text = f'No file "{path}".'
     if suggestions:
         text += " Did you mean:\n" + "\n".join(f"- {name}" for name in suggestions[:MAX_SUGGESTIONS])
-    return text + "\nls a folder or glob by name to see what exists; grep or knowledge_search find wording."
+    return (
+        text + "\n`ls` a folder or `glob` by name to see what exists; `grep` finds wording, `knowledge_search` meaning."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -531,7 +533,7 @@ class EstateBackend(BackendProtocol):
             return ToolOutput(_store_down(file), status="error")
         if not chunks:
             return ToolOutput(
-                f'{file.path} has no Punkt "{clause}". read_file without clause returns its Gliederung.',
+                f'{file.path} has no Punkt "{clause}". `read_file` without `clause` returns its Gliederung.',
                 status="empty",
             )
         hits = tuple(_chunk_hit(file, chunk) for chunk in chunks[:12])
@@ -910,13 +912,13 @@ def _pages_field(pages: Any, clause: Any) -> str | None:
 
 
 def _directory_message(path: str) -> str:
-    return f'"{path}" is a folder, not a file: ls("{path}") lists it, glob finds files by name.'
+    return f'"{path}" is a folder, not a file: `ls("{path}")` lists it, `glob` finds files by name.'
 
 
 def _model_message(file: EstateFile) -> str:
     return (
         f"{file.path} is a building model (IFC), not a text: its numbers are measured, not read. "
-        f'ifc_query and ifc_measure answer from it (document="{file.row.file_name}").'
+        f'`ifc_query` and `ifc_measure` answer from it (document="{file.row.file_name}").'
     )
 
 
@@ -948,7 +950,7 @@ def _read_preamble(file: EstateFile, text: stored_pages.PageText, served: Sequen
         lines.append(
             f"Page(s) {pages_label(drawings)} are a drawing: the text is a vision model's reading of the sheet, "
             "not its printed text. Read off, not measured; "
-            f'look(document="{file.row.file_name}", page={drawings[0]}) shows it.'
+            f'`look(document="{file.row.file_name}", page={drawings[0]})` shows it.'
         )
     return "\n".join(lines)
 

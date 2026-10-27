@@ -381,8 +381,29 @@ function build(entry: Entry): BackendOperation {
 /** Every read tool of the Python agent offered over MCP, in the contract's order. */
 export const BACKEND_OPERATIONS: readonly BackendOperation[] = ENTRIES.map(build)
 
+/**
+ * The tool Piloti's own chat does an operation's work with, where it is not the tool the door calls.
+ * Piloti reads the estate with the filesystem verbs (ADR-0133 slice 6), while the door keeps calling
+ * the older tools, which deep research and intake still bind.
+ */
+export const PILOTI_TOOL_FOR: Readonly<Record<string, string>> = { read_passage: 'read_file', list_files: 'ls' }
+
+/**
+ * The filesystem verbs' operations, for a shared hint that names one: the door's tools are the older ones,
+ * so an outside agent is sent to the operation that does the same work.
+ */
+const FILESYSTEM_OPERATION_NAMES: ToolNames = {
+  read_file: 'passage-read',
+  ls: 'files-list',
+  glob: 'files-list',
+  grep: 'knowledge-search',
+}
+
 /** The operation each Python tool is over MCP, for the names its answers mention. */
-const OPERATION_NAMES: ToolNames = Object.fromEntries(ENTRIES.map((entry) => [entry.tool, entry.name]))
+const OPERATION_NAMES: ToolNames = {
+  ...FILESYSTEM_OPERATION_NAMES,
+  ...Object.fromEntries(ENTRIES.map((entry) => [entry.tool, entry.name])),
+}
 
 /**
  * A tool's text as an outside agent reads it: its next-call hints name the

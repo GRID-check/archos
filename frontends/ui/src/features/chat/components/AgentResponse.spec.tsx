@@ -118,23 +118,17 @@ describe('AgentResponse', () => {
 
     test('lists the note once its receipt has read the proposal as applied', async () => {
       serveProposal('applied')
-      const user = userEvent.setup()
       render(<AgentResponse content="Answer" messageId="m1" cards={[card]} />)
 
-      await user.click(await screen.findByTestId('answer-details-trigger'))
+      // On the meta row: no disclosure to open first.
       expect(await screen.findByText('Piloti noted')).toBeInTheDocument()
     })
 
     test('does not list a note whose proposal was dismissed', async () => {
       serveProposal('dismissed')
-      const user = userEvent.setup()
       render(<AgentResponse content="Answer" messageId="m1" cards={[card]} />)
 
       await screen.findByTestId('proposal-status')
-      // The chip renders inside the answer's details: open them when there are
-      // any, or a wrongly counted note would hide behind the closed disclosure.
-      const trigger = screen.queryByTestId('answer-details-trigger')
-      if (trigger) await user.click(trigger)
       expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
     })
   })
@@ -387,24 +381,37 @@ describe('AgentResponse', () => {
       },
     ]
 
-    test('keeps the memory chip behind the details disclosure', async () => {
-      // Memory is no longer in the visible row — it mounts when the reader
-      // opens the disclosure.
+    test('shows the memory chip on the meta row, outside the details disclosure', async () => {
+      // A write to the project's memory changes every later answer, so the
+      // reader is told on the answer itself: the chip sits in the visible row
+      // beside the details trigger, and the closed disclosure does not hold it.
       const user = userEvent.setup()
       render(
         <AgentResponse
           content="Answer"
           conversationId="conv-1"
           stages={NOTED}
+          answerConfidence="high"
+          timestamp={new Date('2026-07-17T10:30:00')}
         />
       )
 
-      expect(screen.getByTestId('answer-details-trigger')).toBeInTheDocument()
-      expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
+      const chip = screen.getByRole('button', { name: 'Piloti noted 1 item' })
+      const trigger = screen.getByTestId('answer-details-trigger')
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(chip.closest('.min-h-6')).toContainElement(trigger)
+      // After the trigger, so a chip that arrives late moves nothing before it.
+      expect(chip.compareDocumentPosition(trigger) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
 
-      await user.click(screen.getByTestId('answer-details-trigger'))
+      // One tap opens what it was.
+      await user.click(chip)
+      expect(await screen.findByText('Fluchtweg über den Innenhof')).toBeInTheDocument()
+    })
 
-      expect(screen.getByText('Piloti noted')).toBeInTheDocument()
+    test('a memory-only turn shows the chip and no empty details trigger', () => {
+      render(<AgentResponse content="Answer" stages={NOTED} />)
+      expect(screen.getByTestId('memory-chip')).toBeInTheDocument()
+      expect(screen.queryByTestId('answer-details-trigger')).not.toBeInTheDocument()
     })
 
     test('renders no meta row when it would hold nothing at all', () => {
@@ -448,7 +455,7 @@ describe('AgentResponse', () => {
       expect(reserved?.className).not.toContain('animation-delay')
     })
 
-    test('holds confidence, memory and the timestamp behind ONE disclosure — feedback stays out', async () => {
+    test('holds confidence and the timestamp behind ONE disclosure — memory and feedback stay out', async () => {
       const user = userEvent.setup()
       // Local-only, uncited turn: no conversationId means no Word export, so
       // the plain-copy fallback keeps the row from going silent (AnswerActions
@@ -464,16 +471,17 @@ describe('AgentResponse', () => {
       )
 
       // The visible row holds the copy action, the thumbs and the trigger —
-      // rating the answer costs no click. Confidence, memory and time wait
-      // behind the disclosure.
+      // rating the answer costs no click, and the memory chip, because a write
+      // to the project's memory must be seen without asking. Confidence and
+      // time wait behind the disclosure.
       const metaRow = screen.getByRole('button', { name: 'Copy answer' }).closest('.min-h-6')
       expect(metaRow).not.toBeNull()
       expect(metaRow).toContainElement(screen.getByTestId('answer-details-trigger'))
       expect(metaRow).toContainElement(
         screen.getByRole('button', { name: 'Mark this answer as helpful' })
       )
+      expect(metaRow).toContainElement(screen.getByTestId('memory-chip'))
       expect(screen.queryByText('Confidence: high')).not.toBeInTheDocument()
-      expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
 
       await user.click(screen.getByTestId('answer-details-trigger'))
 
@@ -551,7 +559,7 @@ describe('AgentResponse', () => {
       expect(metaRow?.className).toContain('flex-wrap')
     })
 
-    test('the pills stay out of the visible row until the disclosure opens', async () => {
+    test('the confidence pill stays out of the visible row until the disclosure opens; memory does not wait', async () => {
       const user = userEvent.setup()
       render(
         <AgentResponse
@@ -564,12 +572,13 @@ describe('AgentResponse', () => {
       )
 
       expect(screen.queryByText('Confidence: high')).not.toBeInTheDocument()
-      expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
+      expect(screen.getByText('Piloti noted')).toBeInTheDocument()
 
       await user.click(screen.getByTestId('answer-details-trigger'))
 
       expect(screen.getByText('Confidence: high')).toBeInTheDocument()
-      expect(screen.getByText('Piloti noted')).toBeInTheDocument()
+      // Still exactly one chip: opening the details does not mount a second.
+      expect(screen.getAllByText('Piloti noted')).toHaveLength(1)
     })
 
     test('renders the feedback row in the open, beside the export actions', async () => {

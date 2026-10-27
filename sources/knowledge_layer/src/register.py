@@ -23,6 +23,7 @@ from pydantic import model_validator
 
 from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.estate_paths import estate_path
+from aiq_agent.common.tool_vocabulary import current_vocabulary
 from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
@@ -112,9 +113,8 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "whose Herkunft line says 'Piloti-Dokument' is office knowledge the office has approved, never a source for a "
     "normative value: cite it for what the office decided, not for what the OIB requires. An empty result says "
     "how to retry.\n"
-    "`path=` limits the search to a place, a folder or one file as the filesystem tools name them "
-    '("/project/Gutachten/", a hit\'s `Path:`); each hit carries the `Path:` read_file opens. The literal modes '
-    "are also `grep`, under its standard name.\n"
+    "`path=` limits the search to a place, a folder or one file as a hit's `Path:` line names it "
+    '("/project/Gutachten/", "/law/oib/").\n'
     "`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
 )
 
@@ -141,9 +141,6 @@ def knowledge_search_description(match_modes: Sequence[str]) -> str:
         text = text.replace(_EXACT_PARAGRAPH, "")
     if "regex" not in modes:
         text = text.replace(_REGEX_PARAGRAPH, "")
-    if "meaning" not in modes:
-        offered = " or ".join(f'`match="{mode}"`' for mode in ("exact", "regex") if mode in modes)
-        text = f"In this configuration the search is literal only: pass {offered} on every call.\n{text}"
     return text
 
 
@@ -217,10 +214,11 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
     match_modes: list[str] = Field(
         default_factory=lambda: ["meaning", "exact", "regex"],
         description=(
-            "EVAL KNOB, not a product setting: the `match=` modes the search accepts. The answer suite's "
-            "`semantic` arm keeps only `meaning` and its `grep` arm only the literal modes, to measure "
-            "each way of finding on its own (ADR-0127). A comma-separated string is read as a list, which "
-            "is how `nat run --override` hands one over. Production keeps the default: every mode."
+            "EVAL KNOB, not a product setting: the `match=` modes the search accepts on the bindings that "
+            "offer `match` (deep research, intake). The answer suite's `semantic` arm keeps only `meaning`; "
+            "Piloti's chat binds ranked search only since ADR-0133 slice 6, so its `grep` arm unbinds the "
+            "search instead of narrowing it. A comma-separated string is read as a list, which is how "
+            "`nat run --override` hands one over. Production keeps the default: every mode."
         ),
     )
     hybrid_search: bool | None = Field(
@@ -1747,11 +1745,12 @@ def _format_results(
 #: two-document search, in the result and in the Herleitung built from it. It
 #: names the way back rather than an instruction: the parts are still readable,
 #: one call each.
-_FAMILY_OVERVIEW_FAILED_NOTICE = (
-    "Hinweis: der Überblick über die Teile der OIB-Richtlinie {key} konnte nicht erstellt werden; "
-    "es folgen nur die gerankten Treffer, die Teile sind einzeln mit `read_passage(document=…)` "
-    "zu öffnen.\n\n"
-)
+def _family_overview_failed_notice(key: str) -> str:
+    """The notice, naming the caller's read (``common.tool_vocabulary``)."""
+    return (
+        f"Note: the overview of the parts of OIB-Richtlinie {key} could not be built; only the ranked results "
+        f"follow, and each part opens on its own with {current_vocabulary().read_name}.\n\n"
+    )
 
 
 #: Replaced files one notice names before it counts the rest.
@@ -1811,8 +1810,9 @@ def _hidden_revisions_notice(superseded: dict[str, dict[str, str]]) -> str:
         return ""
     shown = ", ".join(names[:_HIDDEN_REVISIONS_NAMED])
     rest = len(names) - _HIDDEN_REVISIONS_NAMED
-    tail = f" und {rest} weitere" if rest > 0 else ""
-    return f"Ältere Fassungen ausgeblendet: {shown}{tail} — mit file_name=… gezielt lesbar.\n\n"
+    tail = f" and {rest} more" if rest > 0 else ""
+    how = "by its path with `read_file`" if current_vocabulary().filesystem else "with `file_name=…`"
+    return f"Older Fassungen left out: {shown}{tail}; each is readable {how}.\n\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -2946,7 +2946,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # the family question. Said only where there ARE passages: an empty
             # or failed search already tells the model the stronger thing.
             if branch.failed and merged.chunks:
-                notice += _FAMILY_OVERVIEW_FAILED_NOTICE.format(key=family_key)
+                notice += _family_overview_failed_notice(family_key)
 
             # After the floor, not before: the floor is the only thing that can empty a
             # non-empty result set, and this message is the vocabulary for saying so.

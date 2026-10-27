@@ -681,8 +681,8 @@ export const EXPOSURE = {
 
   // the agent’s read tools (`backend-operations.ts`)
   'knowledge-search': { external: true, piloti: 'native:knowledge_search', reason: NATIVE_READ },
-  'passage-read': { external: true, piloti: 'native:read_passage', reason: NATIVE_READ },
-  'files-list': { external: true, piloti: 'native:list_files', reason: NATIVE_READ },
+  'passage-read': { external: true, piloti: 'native:read_file', reason: NATIVE_READ },
+  'files-list': { external: true, piloti: 'native:ls', reason: NATIVE_READ },
   'document-look': { external: true, piloti: 'native:look', reason: NATIVE_READ },
   'ifc-query': { external: true, piloti: 'native:ifc_query', reason: NATIVE_READ },
   'ifc-measure': { external: true, piloti: 'native:ifc_measure', reason: NATIVE_READ },
