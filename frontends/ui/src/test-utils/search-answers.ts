@@ -33,6 +33,7 @@ export function fileSearchHit(file: FileItem, passage: { text: string; page: num
     pageCount: file.pageCount,
     pagesNotRead: null,
     superseded: false,
+    changedFacts: [],
     municipality: null,
     author: null,
     matchedOn: passage ? ['content'] : ['name'],
@@ -47,6 +48,7 @@ export function documentSearchAnswer(hits: DocumentHit[], scope: SearchScope = {
     setAside: {},
     sections: { document: { hits, total: hits.length, totalIsLowerBound: false, nextCursor: null } },
     facets: null,
+    unread: null,
     building: [],
     contentPartial: false,
   }

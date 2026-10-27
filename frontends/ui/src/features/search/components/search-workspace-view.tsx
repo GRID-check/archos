@@ -267,7 +267,7 @@ export function SearchWorkspaceView({
   const rail = (
     <>
       <SearchKeyFilters state={state} onChange={onStateChange} />
-      <SearchFacetRail state={state} facets={response?.facets ?? null} onToggle={onFacet} showProjects={officeWide} />
+      <SearchFacetRail state={state} facets={response?.facets ?? null} unread={response?.unread ?? null} onToggle={onFacet} showProjects={officeWide} />
       <SearchFilterForm state={state} onChange={onStateChange} currentUserId={currentUserId} defaultOpen={filtersOpen} />
     </>
   )

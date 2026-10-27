@@ -212,6 +212,18 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
           page={hit.passage.page !== null ? t('passage.page', { page: hit.passage.page }) : undefined}
         />
       ) : null}
+      {hit.changedFacts.length > 0 ? (
+        <MatchHint
+          label={t('document.changed')}
+          testId="search-changed-facts"
+          parts={hit.changedFacts.map((change) => {
+            const fact = labels.factKey(change.key)
+            if (change.before === null) return t('document.changedAdded', { fact, after: change.after ?? '' })
+            if (change.after === null) return t('document.changedRemoved', { fact })
+            return t('document.changedValue', { fact, before: change.before, after: change.after })
+          })}
+        />
+      ) : null}
       {matchedOn.length > 0 ? <MatchHint label={t('matchedOn.label')} parts={matchedOn.map((reason) => t(`matchedOn.${reason}`))} /> : null}
     </ResultRow>
   )

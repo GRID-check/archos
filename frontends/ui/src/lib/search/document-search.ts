@@ -23,6 +23,7 @@ import {
 import { resolvePeople } from '@/lib/sharing/directory'
 import {
   contentKey,
+  countUnreadDocuments,
   documentFacetCounts,
   listCandidateDocumentIds,
   readReferenceSubject,
@@ -77,6 +78,7 @@ const FACET_KEYS: Record<SearchFacetDimension, FacetKey> = {
   state: 'status',
   fileType: 'fileType',
   uploader: 'uploader',
+  changedFact: 'changedFact',
 }
 
 /** The reach every kind reads: cut to the projects a `projectIds` filter names, when it names any. */
@@ -207,6 +209,7 @@ function toDocumentHit(row: DocumentSearchRow, passage: BackendSearchHit | undef
     pageCount: row.pageCount,
     pagesNotRead: row.pagesNotRead,
     superseded: row.superseded,
+    changedFacts: row.changedFacts,
     municipality: row.municipality,
     author: row.author,
     matchedOn: [
@@ -284,11 +287,16 @@ async function searchDocuments(
   documents: Omit<DocumentQuery, 'text'> | null,
   page: { limit: number; offset: number },
   withFacets: boolean
-): Promise<{ section: SearchSection<DocumentHit>; facets: SearchResponse['facets']; contentPartial: boolean; contentMs: number }> {
+): Promise<{ section: SearchSection<DocumentHit>; facets: SearchResponse['facets']; unread: number | null; contentPartial: boolean; contentMs: number }> {
+  // Started first and read last: it does not wait on the content search.
+  const unreadCount = withFacets ? countUnreadDocuments(reach, body.filters?.includeArchived === true) : Promise.resolve(null)
+  // Handled here too, so a failure before it is read is not an unhandled rejection; the await below still throws.
+  unreadCount.catch(() => undefined)
   if (!documents) {
     return {
       section: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null },
       facets: withFacets ? {} : null,
+      unread: await unreadCount,
       contentPartial: false,
       contentMs: 0,
     }
@@ -337,6 +345,7 @@ async function searchDocuments(
       nextCursor: nextOffset < result.total && nextOffset <= SEARCH_OFFSET_MAX ? encodeSearchCursor('document', nextOffset) : null,
     },
     facets: counts ? labelFacets(reach, counts, Object.keys(FACET_KEYS) as SearchFacetDimension[], people) : null,
+    unread: await unreadCount,
     contentPartial: content.partial,
     contentMs: content.ms,
   }
@@ -401,6 +410,7 @@ export async function runTimedSearch(
   const freshness = refreshStaleShelves(reach.organizationId, reachShelves(reach))
   const sections: SearchResponse['sections'] = {}
   let facets: SearchResponse['facets'] = null
+  let unread: number | null = null
   let contentPartial = false
   let contentMs = 0
   await Promise.all(
@@ -409,6 +419,7 @@ export async function runTimedSearch(
         const found = await searchDocuments(reach, body, documents, pageFor(kind), body.facets !== false && offset === 0)
         sections.document = found.section
         facets = found.facets
+        unread = found.unread
         contentPartial = found.contentPartial
         contentMs = found.contentMs
         return
@@ -429,7 +440,7 @@ export async function runTimedSearch(
       }
     })
   )
-  const response: SearchResponse = { scope, setAside, sections, facets, building: (await freshness).building, contentPartial }
+  const response: SearchResponse = { scope, setAside, sections, facets, unread, building: (await freshness).building, contentPartial }
   const totalMs = performance.now() - started
   return { response, timing: { totalMs, contentMs, sqlMs: Math.max(0, totalMs - contentMs) } }
 }

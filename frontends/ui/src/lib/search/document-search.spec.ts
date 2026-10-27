@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const repository = vi.hoisted(() => ({
   searchDocumentPage: vi.fn(),
   documentFacetCounts: vi.fn(),
+  countUnreadDocuments: vi.fn(),
   readReferenceSubject: vi.fn(),
   listCandidateDocumentIds: vi.fn(),
 }))
@@ -94,6 +95,7 @@ const row = (overrides: Partial<DocumentSearchRow> = {}): DocumentSearchRow => (
   pageCount: 24,
   pagesNotRead: 0,
   superseded: false,
+  changedFacts: [],
   municipality: 'Wien',
   author: null,
   matchedName: false,
@@ -111,6 +113,7 @@ beforeEach(() => {
     status: [{ value: 'completed', count: 1 }, { value: 'failed', count: 2 }, { value: 'COMPLETED', count: 1 }],
     cites: [{ value: 'norm:önorm b 1600', count: 1 }],
   })
+  repository.countUnreadDocuments.mockResolvedValue(4)
   for (const provider of Object.values(providers)) provider.mockResolvedValue({ hits: [], total: 0 })
 })
 
@@ -260,6 +263,24 @@ describe('runSearch', () => {
       { value: 'readable', label: null, count: 2 },
       { value: 'failed', label: null, count: 2 },
     ])
+  })
+
+  it('says how many documents in scope are not read yet with the facets, and counts none without them', async () => {
+    const counted = await runSearch(session, {}, { kinds: ['document'], filters: { includeArchived: true } })
+    expect(counted.unread).toBe(4)
+    expect(repository.countUnreadDocuments).toHaveBeenCalledWith(reach, true)
+
+    repository.countUnreadDocuments.mockClear()
+    const palette = await runSearch(session, {}, { kinds: ['document'], facets: false })
+    expect(palette.unread).toBeNull()
+    expect(repository.countUnreadDocuments).not.toHaveBeenCalled()
+  })
+
+  it('hands a hit what its Fassung changed against the one it replaced', async () => {
+    const changedFacts = [{ key: 'building_class', before: '3', after: '4', page: 2 }]
+    repository.searchDocumentPage.mockResolvedValue({ rows: [row({ changedFacts })], total: 1 })
+    const answer = await runSearch(session, {}, { kinds: ['document'], filters: { factsChanged: true } })
+    expect(answer.sections.document?.hits[0].changedFacts).toEqual(changedFacts)
   })
 
   it('answers no documents when a citedBy document is out of reach, without running the query', async () => {

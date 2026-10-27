@@ -102,6 +102,8 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
           testId="filter-cites"
         />
         <DateRange label={t('uploaded')} value={f.uploaded} onChange={(range) => set({ uploaded: range })} testId="filter-uploaded" />
+        {/* Beside the upload date: "what changed recently" is the two together. */}
+        <Flag label={t('factsChanged')} checked={Boolean(f.factsChanged)} onChange={(on) => set({ factsChanged: on || undefined })} testId="filter-facts-changed" />
         {currentUserId ? (
           <Flag
             label={t('uploadedByMe')}

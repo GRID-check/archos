@@ -149,7 +149,7 @@ with, so the search and the grid cannot disagree.
 | Question | Where | Why |
 |---|---|---|
 | who may read it, which shelf, folder, status, uploader, upload date, file type, archived | `documents` (BFF Postgres) | authorization lives there; ADR-0086/0087/0088 are SQL predicates on it |
-| type, parties, place, facts, references, Plankopf, capture, coverage, current Fassung | `document_search_facets` (BFF Postgres, new) | a projection of the dossier keyed by document id, so a filter and the authorization are one query, with facet counts over exactly what the reader may see |
+| type, parties, place, facts, references, Plankopf, capture, coverage, current Fassung, what a Fassung changed | `document_search_facets` (BFF Postgres, new) | a projection of the dossier keyed by document id, so a filter and the authorization are one query, with facet counts over exactly what the reader may see |
 | content | Qdrant, through the backend's grouped search | the passages and their pages are only there |
 
 The dossier itself stays where ingestion writes it (`document_metadata` in the
@@ -196,6 +196,38 @@ blanks nothing, and a document with no reading at all has no row, so a Fassung
 decision about it reaches the search only once it has one. A shelf never synced
 is still searched by name, status and content, and the answer says its facets
 are being built.
+
+### What changed, and what is not read yet
+
+Planfred's question about a new Index is "what is new in it"; its answer is a
+history entry. Ours is the facts. A new Fassung's dossier carries `changes`
+(per fact key `{key, before, after, page}`, against the Fassung it replaced:
+a re-upload under the same name or the one linked at upload,
+[`document-dossier.md`](../architecture/document-dossier.md)), and the
+projection keeps them as `changed_facts` with their keys in
+`changed_fact_keys`. So "which documents changed a fact recently" is two
+filters: `factsChanged` (any fact) or `changedFacts` (these keys), with
+`uploaded` for "recently", because the change is as new as the Fassung that
+carries it. The keys are also a facet (`changedFact`, „Geänderte Angaben“), and
+a hit says what changed („Gegenüber der Vorfassung: Fluchtweglänge 38,50 m →
+42,10 m“).
+
+Only documents ingested since the comparison landed carry it; nothing
+backfills the older ones, and the dossier writes `changes` only when something
+differs. An empty list therefore says "nothing changed, or nothing was
+compared", never "unchanged", and the filter finds only positive answers. The
+predecessor's file name (`changed_against`) is not projected: the version
+chain the preview already shows names it better.
+
+A facet counts only what Piloti read: a document without a projection row
+(still reading, failed, uploaded before its shelf's first sync) is in no count
+and found by no reading filter. So the answer carries `unread`, the documents
+in scope without a row, counted with the facets over the reach alone (a reading
+filter admits none of them, so counting under it would always say 0), and the
+rail says it in one line under the facets: „3 Dokumente noch nicht gelesen, in
+den Zahlen oben nicht enthalten.“ It is information the counts cannot show
+(design language, principle 9), so it stays, and it is absent when it is 0.
+`building` remains the per-shelf note above the results.
 
 ### What "everything" covers in this change
 

@@ -52,6 +52,8 @@ export function useSearchLabels(): SearchLabels {
           return partyRole(facet.value) ?? facet.value
         case 'state':
           return readState(facet.value)
+        case 'changedFact':
+          return factKey(facet.value)
         case 'fileType':
           return facet.label ?? facet.value.toUpperCase()
         default:
@@ -83,6 +85,8 @@ export function useSearchLabels(): SearchLabels {
           const amount = v.fact.equals ?? range(v.fact.min ?? null, v.fact.max ?? null, false)
           return `${factKey(v.fact.key)} ${amount}`
         }
+        case 'factKey':
+          return factKey(v.key)
         case 'range':
           return range(v.from, v.to, filter.id !== 'pages')
         case 'project':

@@ -4158,5 +4158,9 @@
   {
     "en": "Closing a document or annotation opened from the search returns to the search as you left it, with its words, filters, view and sort.",
     "de": "Wer ein Dokument oder eine Anmerkung aus der Suche öffnet und wieder schließt, kehrt zur Suche zurück, wie sie war: mit Suchbegriff, Filtern, Ansicht und Sortierung."
+  },
+  {
+    "en": "See what a new version of a document changed: filter for documents whose stated facts differ from the version they replaced, such as a new building class or one more storey, and each result names the change, before and after. The filter panel also says how many documents Piloti has not read yet, so a count never suggests they lack a value.",
+    "de": "Sehen Sie, was eine neue Fassung geändert hat: Filtern Sie nach Dokumenten, deren Angaben von der ersetzten Fassung abweichen, etwa eine neue Gebäudeklasse oder ein Geschoss mehr, und jeder Treffer nennt die Änderung mit altem und neuem Wert. Die Filterleiste sagt außerdem, wie viele Dokumente Piloti noch nicht gelesen hat, damit eine Zahl nie den Eindruck erweckt, ihnen fehle ein Wert."
   }
 ]

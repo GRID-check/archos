@@ -42,6 +42,8 @@ const EVERYTHING: SearchUrlState = {
     uploadedBy: ['user_lena'],
     states: ['readable', 'reading'],
     incompleteRead: true,
+    factsChanged: true,
+    changedFacts: ['building_class', 'storeys_above_ground'],
     fileTypes: ['pdf', 'dwg'],
     pages: { min: 1, max: 40 },
     includeArchived: true,
@@ -71,7 +73,7 @@ describe('the URL and the search state', () => {
   it('drops what a hand-edited link cannot name, instead of sending a body the route refuses', () => {
     const state = parseSearchParams(
       new URLSearchParams(
-        'view=grid&sort=colour&dir=up&type=castle&tag=Unsinn&state=gone&ext=p.df&planFrom=gestern&fact=height=&fact=nonsense:1..2&party=wizard:&project=not-a-uuid&pagesMin=-3&kind=memo'
+        'view=grid&sort=colour&dir=up&type=castle&tag=Unsinn&state=gone&ext=p.df&planFrom=gestern&fact=height=&fact=nonsense:1..2&party=wizard:&project=not-a-uuid&pagesMin=-3&kind=memo&changedFact=colour&changed=yes'
       )
     )
     expect(state).toEqual(EMPTY_SEARCH_STATE)
