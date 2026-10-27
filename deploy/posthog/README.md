@@ -58,11 +58,11 @@ fails with `not_in_channel`.
 
 | Channel | ID | The question it answers | What posts there |
 |---|---|---|---|
-| `#alerts-prod` | `C0CCG0Z1EKF` | Is production broken? | The „Platform health (prod)" alert; error-tracking spikes and upstream outages |
+| `#alerts-prod` | `C0CCG0Z1EKF` | Is production broken? | The „Platform health (prod)" alert; error-tracking spikes (`01a15d7e…`) and upstream outages, created and reopened (`01a159e8-d931…`, `01a159e8-dc54…`) |
 | `#support-tickets` | `C0CBG0ZC0TB` | Does a member wait for us? | New reports and replies (`support/`), the 24-hour reminder |
 | `#answer-quality` | `C0CCKAS3TRC` | Where did Piloti answer badly? | Thumbs-down votes with a reason |
 | `#piloti-metrics` | `C0CDFLKKYRE` | What does it cost, and how is the week going? | The „Costs and budgets (prod)" alert, the Monday report |
-| `#posthog-inbox` | `C0CAHK8EYAF` | | Error-tracking destinations until they move to `#alerts-prod` |
+| `#posthog-inbox` | `C0CAHK8EYAF` | | Nothing any more: every destination moved to the channels above on 2026-10-27 |
 
 ## Alerts
 
