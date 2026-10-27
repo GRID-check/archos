@@ -8,7 +8,7 @@ status: proposed
 - **Deciders:** Platform engineering
 - **Related:** ADR-0004 (tenancy, ownership & access), ADR-0032 (shareable-resource
   model), ADR-0035 (inbox),
-  [../specs/2026-08-13-file-native-ownership-design.md](../specs/2026-08-13-file-native-ownership-design.md),
+  ../specs/2026-08-13-file-native-ownership-design.md (removed; in git history at `56ee3329`),
   [../architecture/adding-a-shareable-resource-type.md](../architecture/adding-a-shareable-resource-type.md)
 
 ## Context
@@ -85,7 +85,7 @@ independent of access grants and of upload provenance.**
   sense unless the copy says verantwortlich / unassigned and the share chip
   stays a separate control. The spec forbids an AccessChip on project-visible
   files and forbids rendering `createdBy` as verantwortlich. Mitigated in the
-  Files surfaces (`docs/specs/2026-08-13-file-native-ownership-design.md`
+  Files surfaces (`docs/specs/2026-08-13-file-native-ownership-design.md` at `56ee3329`
   § UX language), not in the schema.
 - **A missed call site writes `createdBy` into the assignment table** “as a
   default.” Forbidden. Tests must show a fresh upload has zero assignment rows.
@@ -118,7 +118,7 @@ ordinary `documents` row — `authored_by = 'agent'`, `authored_by_ref` naming
 the run with `authored_by_ref_kind = 'agent_run'` saying what kind of identifier
 that is (migration 0066; the column was `authored_by_run_id` until then),
 `status = 'stored'`, and **zero assignees**. The design is
-[../specs/2026-08-20-agent-authored-documents-design.md](../specs/2026-08-20-agent-authored-documents-design.md).
+[../specs/agent-authored-documents.md](../architecture/agent-authored-documents.md).
 
 Four things this ADR has to say about it.
 
@@ -368,6 +368,6 @@ Two consequences worth stating rather than discovering:
 ## References
 
 - ../specs/2026-08-13-file-native-ownership-design.md
-- ../specs/2026-08-20-agent-authored-documents-design.md
+- ../architecture/agent-authored-documents.md
 - ../architecture/adding-a-shareable-resource-type.md
 - ../design/collaboration-sharing-and-inbox-spec.md §5, Phase 3

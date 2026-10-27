@@ -6,7 +6,7 @@ status: accepted
 
 - **Date:** 2026-07-18
 - **Deciders:** GRID engineering
-- **Related:** ADR-0012 (cards as rich UI layer), ADR-0020 (Dragonfly shared cache), ADR-0024 (org-wide document Archiv), ADR-0025 (norm registry), `docs/specs/2026-07-18-herleitung-source-hero-design.md`, `docs/design/click-dummy-overhaul-spec.md`
+- **Related:** ADR-0012 (cards as rich UI layer), ADR-0020 (Dragonfly shared cache), ADR-0024 (org-wide document Archiv), ADR-0025 (norm registry), `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329`, `docs/design/click-dummy-overhaul-spec.md`
 
 ## Context
 
@@ -170,5 +170,5 @@ Rules that keep the accent from becoming a fifth signal:
 ## References
 
 - Click-dummy: `Ask_Piloti_v6_standalone2.html` (`TYPES`, `threadSources`, `Belegt durch`).
-- `docs/specs/2026-07-18-herleitung-source-hero-design.md`
+- `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329`
 - ADR-0025 (norm registry), ADR-0024 (Archiv), ADR-0020 (Dragonfly cache).

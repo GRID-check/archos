@@ -140,8 +140,9 @@ tests/                    repo-level tests only: guards, CI, deploy, cross-servi
 deploy/  docs/  configs/  ci/  taskfiles/  skills/  releasenotes/  data/   (unchanged)
 ```
 
-`plans/` (the June 2026 MVP plans) joins `docs/superpowers/plans/`, where plans
-already live. Gone without a successor: `frontends/`, `sources/`, `shared/`,
+`plans/` and `docs/superpowers/` were folded into `docs/plans/` and
+`docs/specs/` by #1250, and both were deleted by #1252 (the one living
+spec became `docs/architecture/agent-authored-documents.md`). Gone without a successor: `frontends/`, `sources/`, `shared/`,
 `src/`.
 
 `bff/`, not `server/`: next to `server.js`, a `server/` folder makes a reader
@@ -251,7 +252,7 @@ open PRs touching that tree have drained or been rebased by their authors.
 | # | Move | Lines | Waits on |
 |---|---|---|---|
 | 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter; in flight, and written here if that PR has not merged), and `tests/test_repo_layout.py` (below) | — | — |
-| 1 | `plans/` → `docs/superpowers/plans/` | 21 | — |
+| 1 | `plans/` and `docs/superpowers/` deleted (#1250, #1252) | — | — |
 | 2 | `frontends/benchmarks` + `tests/benchmarks` → `evals/`; distribution names per rule 3 | 140 | — |
 | 3 | `frontends/web` → `apps/site`; `shared/brand` and the brand script → `packages/brand`; task namespace `web:` → `site:` | ~140 | open site PRs |
 | 4 | `shared/cards`, `shared/wire` → `contracts/` | 211 | open card and wire PRs |

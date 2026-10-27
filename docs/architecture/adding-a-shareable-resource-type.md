@@ -233,7 +233,7 @@ a visibility write that no-ops, a cleanup that only deletes conversations, an
 inbox row that calls a document “Chat ohne Titel.”
 
 The files work is the second consumer this document was waiting for
-([spec](../specs/2026-08-13-file-native-ownership-design.md),
+(spec (removed; in git history at `56ee3329`),
 [ADR-0047](../adr/0059-assignment-is-not-access.md)). That change is not
 allowed to leave this §3 standing.
 

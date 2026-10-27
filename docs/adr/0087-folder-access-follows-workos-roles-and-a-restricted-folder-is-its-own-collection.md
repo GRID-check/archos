@@ -401,6 +401,6 @@ to them. They now ask WorkOS for the organization's roles first.
 ## More Information
 
 * Feasibility study of the Python side, and the touch-point table:
-  `docs/plans/2026-10-01-upload-governance-worklog.md`.
+  `docs/plans/2026-10-01-upload-governance-worklog.md` at `56ee3329`.
 * ADR-0007 (no local identity sync), ADR-0038 (one decision point), ADR-0047 (shelf travels as
   data), ADR-0049 (folders as a materialised path).

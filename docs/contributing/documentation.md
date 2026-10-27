@@ -10,7 +10,7 @@ follow-up. A change is not done until the docs it invalidates are correct.
 | Architecture, a data flow, a subsystem, a cross-cutting mechanism | `docs/architecture/backend-deep-dive.md` and the specific subsystem doc |
 | A significant or hard-to-reverse decision (new subsystem, transport, storage, provider model, security boundary) | Add an ADR under `docs/adr/`, taking the number from `python3 scripts/check_adrs.py --next` and the shape from `0000-template.md`, with its row in the index in the same commit |
 | An audit or measurement of how things stood at a date | a new `docs/audit/<topic>-YYYY-MM.md`, with its row in [`../audit/README.md`](../audit/README.md). `docs/architecture/` holds what is true now, and a register kept current as the code moves |
-| A plan or a design spec for one piece of work | `docs/plans/` or `docs/specs/`, dated in the file name |
+| A plan, worklog or design spec for one piece of work | The pull request description. A design that outlives the change belongs in `docs/architecture/`, a decision in an ADR |
 | An environment variable, config key, or default | [`../deployment/environment-variables.md`](../deployment/environment-variables.md) |
 | An API route, WebSocket message, or tool contract | `docs/api/` |
 | A database schema or migration | `docs/database/` |

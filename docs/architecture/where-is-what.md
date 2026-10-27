@@ -19,7 +19,7 @@ does not exist, so a moved file is caught; a missing row is not.
 
 | Concept | Owning code | Doc of record | Decision |
 |---|---|---|---|
-| Filing a machine-authored document | `frontends/ui/src/lib/documents/generated.ts` — `fileGeneratedDocument` | [`docs/specs/2026-08-20-agent-authored-documents-design.md`](../specs/2026-08-20-agent-authored-documents-design.md) | ADR-0042, ADR-0038 |
+| Filing a machine-authored document | `frontends/ui/src/lib/documents/generated.ts` — `fileGeneratedDocument` | [`docs/architecture/agent-authored-documents.md`](agent-authored-documents.md) | ADR-0042, ADR-0038 |
 | Producers and their reference kinds | `frontends/ui/src/lib/documents/generated.ts` — `GENERATED_DOCUMENT_PRODUCER_REF_KINDS` | same | — |
 | Author and ref-kind vocabulary | `frontends/ui/src/lib/documents/document-authors.ts` — `AUTHORED_REF_KINDS` | [`document-roles.md`](document-roles.md) | ADR-0032 |
 | The "written by a machine" marking in the bytes | `frontends/ui/src/lib/ai-provenance.ts` — `aiProvenanceMarking` | [`docs/user-guides/agent-authored-reports.md`](../user-guides/agent-authored-reports.md) | — |
@@ -376,7 +376,7 @@ does not exist, so a moved file is caught; a missing row is not.
 | Data-source registry (the UI toggles) | `src/aiq_agent/common/data_source_registry.py` | [`docs/user-guides/knowledge-search.md`](../user-guides/knowledge-search.md) | ADR-0026 |
 | Source kinds, Python | `src/aiq_agent/common/source_kinds.py` — `SOURCE_KINDS`, `kind_for_lane` | [`docs/audit/rag-system-audit-2026-08.md`](../audit/rag-system-audit-2026-08.md) | ADR-0026 |
 | Source kinds, TypeScript mirror | `frontends/ui/src/features/chat/lib/source-kinds.ts` — `KIND_TO_SIGNAL`, `kindForLane` | same | ADR-0026 |
-| `doc_class` (human-set, beats every filename guess) | `src/aiq_agent/knowledge/document_classification.py`; UI in `frontends/ui/src/lib/knowledge/doc-class.ts` | [`docs/specs/2026-07-17-norm-registry-design.md`](../specs/2026-07-17-norm-registry-design.md) | ADR-0025 |
+| `doc_class` (human-set, beats every filename guess) | `src/aiq_agent/knowledge/document_classification.py`; UI in `frontends/ui/src/lib/knowledge/doc-class.ts` | — | ADR-0025 |
 | Norm registry lanes | `src/aiq_agent/common/norm_registry.py` | same | ADR-0025 |
 | Citation verification | `src/aiq_agent/common/citation_verification.py` | [`docs/audit/citation-system-audit-2026-07.md`](../audit/citation-system-audit-2026-07.md) | ADR-0058 (retrieval correctness) |
 | The grounding block: the record, and the one renderer | `src/aiq_agent/common/grounding_block.py` — `GroundingHit`, `GroundingBlock`, `render_grounding_block` | [`backend-deep-dive.md`](backend-deep-dive.md) | ADR-0061 |

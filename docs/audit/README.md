@@ -53,7 +53,7 @@ Who cites these:
 
 - [`../design/click-dummy-overhaul-spec.md`](../design/click-dummy-overhaul-spec.md)
   draws its scope from `feedback-backlog.md` (FB-2/4/6/8/9/10/11/12) and `ux-system-audit.md`.
-- [`../plans/2026-07-16-ris-catalog-index-design.md`](../plans/2026-07-16-ris-catalog-index-design.md)
+- `../plans/2026-07-16-ris-catalog-index-design.md` (removed; in git history at `56ee3329`)
   cites `feedback-backlog.md:106`.
 - [`rag-system-audit-2026-08.md`](rag-system-audit-2026-08.md)
   cites `feedback-backlog.md` and `overnight-run-log.md`.

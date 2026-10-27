@@ -61,7 +61,7 @@ ENV UV_HTTP_TIMEOUT=120 \
 # without .pyc compiled every module from source in every process, on every
 # start: the agent's boot imports took 11.0 s instead of 4.0 s, and the
 # retrieval stack the first knowledge search imports lazily 4.9 s instead of
-# 2.2 s (measured 2026-10-27, docs/architecture/turn-latency-measured-2026-09.md §3.6).
+# 2.2 s (measured 2026-10-27, docs/audit/turn-latency-measured-2026-09.md §3.6).
 ENV UV_COMPILE_BYTECODE=1
 # The BPE table the history budget counts tokens with (tiktoken cl100k_base),
 # baked in below. Without it every process downloaded it on its first turn,
