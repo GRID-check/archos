@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { claimMix, sanitizeClaimStamps } from './message-claim-stamps'
+import { claimEvidenceCount, claimMix, sanitizeClaimStamps } from './message-claim-stamps'
 import { sanitizeProvenance } from './message-provenance'
 import { provenanceFromBackendMetadata } from './agent-answer-metadata'
 
@@ -100,9 +100,33 @@ describe('claim stamps', () => {
   test('an unknown version or a false flag is not stored', () => {
     const provenance = sanitizeProvenance({
       answerConfidence: 'high',
-      answerConfidenceVersion: 3,
+      answerConfidenceVersion: 4,
       lookupFoundNothing: false,
     })
     expect(provenance).toEqual({ answerConfidence: 'high' })
+  })
+
+  test('rule 3 is stored, and the support each stamp carries survives', () => {
+    const provenance = sanitizeProvenance({
+      answerConfidence: 'medium',
+      answerConfidenceVersion: 3,
+      claimStamps: [
+        { text: 'A.', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1 },
+        { text: 'B.', provenance: 'reasoning', claim_type: 'normative', load_bearing: true, support: 0.5 },
+        { text: 'C.', provenance: 'model_knowledge', claim_type: 'normative', load_bearing: true, support: 0.7 },
+      ],
+    })
+    expect(provenance?.answerConfidenceVersion).toBe(3)
+    expect(provenance?.claimStamps?.map((stamp) => stamp.support)).toEqual([1, 0.5, undefined])
+  })
+
+  test('the evidence count reads the support the agent computed', () => {
+    const stamps = sanitizeClaimStamps([
+      { text: 'A.', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1 },
+      { text: 'B.', provenance: 'reasoning', claim_type: 'normative', load_bearing: true, support: 0.5 },
+      { text: 'C.', provenance: 'cited', claim_type: 'descriptive', load_bearing: false, support: 1 },
+    ])
+    expect(claimEvidenceCount(stamps ?? [])).toEqual({ backed: 1, claims: 2 })
+    expect(claimEvidenceCount([{ text: 'A.', provenance: 'cited', claimType: 'value', loadBearing: true }])).toBeNull()
   })
 })

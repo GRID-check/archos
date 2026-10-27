@@ -1716,6 +1716,39 @@ export const chat = {
       citationFallback:
         'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
     },
+    // Since ADR-0139: the chip leads with what the answer rests on („12 of 14
+    // statements backed"), not a self-assessment. A warning shows only when a named
+    // cap fires, and names it.
+    byShare: {
+      label: '{backed} of {claims} statements backed',
+      ariaLabel: '{backed} of {claims} load-bearing statements backed, confidence {level}',
+      tooltip:
+        'Counted are the load-bearing statements: about the law, numbers, classes and deadlines. Backed means a cited source, a workspace record or a measurement from this answer stands behind it.',
+      selfAssessment: 'Assistant self-assessment: {level}',
+      levelMeanings: {
+        high: 'High: at least four in five load-bearing statements are backed, and no legal statement stands without a source.',
+        medium:
+          'Medium: most is backed, but a legal statement without a source, an unverified citation or assessments remain.',
+        low: 'Low: at least half of the load-bearing statements have nothing behind them that this answer read.',
+      },
+      capLabels: {
+        ungrounded: 'too little backed',
+        quoteUnverified: 'quote unconfirmed',
+        normativeClaimUncited: 'legal statement uncited',
+        measurementOnly: 'measured only',
+        citationFallback: 'source attached',
+      },
+      cappedReasons: {
+        ungrounded: 'Capped: too many load-bearing statements have no evidence behind them.',
+        quoteUnverified: 'Capped: a quotation could not be confirmed verbatim in its source.',
+        normativeClaimUncited:
+          'Capped: a legal statement has no cited source. A workspace record or a measurement does not back a legal statement.',
+        measurementOnly:
+          'Medium confidence: the value is measured on the model (with tolerance and method) but not backed by a cited source.',
+        citationFallback:
+          'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
+      },
+    },
     // The assessment since ADR-0125: computed per statement, not per answer.
     // Older answers keep the copy above, under which they were computed.
     byClaim: {

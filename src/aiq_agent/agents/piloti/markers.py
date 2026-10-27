@@ -180,12 +180,14 @@ def detect_and_strip_confidence_marker(content: Any) -> tuple[Any, ConfidenceLev
 # Two rules, and a turn says which it was computed under
 # (``claim_provenance.CONFIDENCE_RULE_VERSION`` on the wire):
 #
-# - **Rule 2, chat** (:func:`surface_claim_confidence`, ADR-0125): the level is
-#   the self-report, held under the weakest load-bearing SENTENCE's ceiling
-#   (``common/claim_provenance.py``). A record, an action or a measurement
-#   grounds the sentences it states; a normative sentence still needs a
-#   passage, so no evidence of the second kind can launder a claim about the
-#   law.
+# - **Rules 2 and 3, chat** (:func:`surface_claim_confidence`): the level is
+#   the self-report, held under the claims ceiling of the per-sentence stamps
+#   (``common/claim_provenance.claims_ceiling``). Rule 2 (ADR-0125) took the
+#   weakest load-bearing sentence's ceiling; rule 3 (ADR-0139) takes the share
+#   of load-bearing sentences evidence carries. A record, an action or a
+#   measurement grounds the sentences it states; a normative sentence still
+#   needs a passage, so no evidence of the second kind can launder a claim
+#   about the law.
 # - **Rule 1, deep research** (:func:`surface_answer_confidence`): the
 #   answer-level floors. A research report has no per-sentence stamps yet,
 #   and every chat turn stored before rule 2 was computed under it.
@@ -193,7 +195,7 @@ def detect_and_strip_confidence_marker(content: Any) -> tuple[Any, ConfidenceLev
 
 #: Why a self-report was downgraded.
 #:
-#: - ``ungrounded``             nothing behind the weakest sentence: no verified
+#: - ``ungrounded``             too little behind the answer's claims: no verified
 #:   citation and no record or measurement (rule 1: for the whole answer).
 #: - ``quote_unverified``       a quoted span matched no retrieved passage.
 #: - ``normative_claim_uncited`` a claim about the law with no passage behind it.
@@ -308,7 +310,7 @@ def surface_claim_confidence(
     quotes_verified: bool = True,
     citation_grounded: bool = False,
 ) -> ConfidenceLevel | None:
-    """Rule 2: ``min(self-report, weakest load-bearing sentence's ceiling)``, under the hard quote gate.
+    """Rules 2 and 3: ``min(self-report, claims ceiling)``, under the hard quote gate.
 
     ``claims_ceiling`` is ``claim_provenance.claims_ceiling`` of the final
     answer, which floors an answer with no sentence at ``low``

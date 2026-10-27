@@ -1,6 +1,6 @@
 /**
  * Where each sentence of an answer comes from (`TurnResult.claim_stamps`,
- * `src/aiq_agent/common/claim_provenance.py`, ADR-0125), made durable.
+ * `src/aiq_agent/common/claim_provenance.py`, ADR-0125, ADR-0139), made durable.
  *
  * One stamp per sentence, in document order: its provenance class (a quoted or
  * cited passage, a workspace record, an action, a measurement, an
@@ -40,6 +40,12 @@ export interface ClaimStamp {
   loadBearing: boolean
   /** For a record or an action: the workspace operation it came from. */
   operation?: string
+  /**
+   * What the sentence contributes to the answer's evidence share (rule 3,
+   * ADR-0139): 1 evidence of its own, 0.5 an Einschätzung or a hedge, 0
+   * nothing. Computed by the agent, never here; absent on older answers.
+   */
+  support?: 0 | 0.5 | 1
 }
 
 /** A long answer is a few dozen sentences; more is a runaway producer. */
@@ -73,7 +79,26 @@ function sanitizeStamp(input: unknown): ClaimStamp | undefined {
   }
   const operation = cap(input.operation, MAX_OPERATION_CHARS)
   if (operation) stamp.operation = operation
+  if (input.support === 0 || input.support === 0.5 || input.support === 1) stamp.support = input.support
   return stamp
+}
+
+/** How many load-bearing sentences the answer has, and how many carry evidence of their own. */
+export interface ClaimEvidenceCount {
+  backed: number
+  claims: number
+}
+
+/**
+ * The count the confidence chip leads with under rule 3 („12 von 14 Aussagen
+ * belegt"): the load-bearing sentences, and those whose `support` the agent
+ * computed as whole. Null when the stamps carry no support (an answer stored
+ * before rule 3) or nothing bears load.
+ */
+export function claimEvidenceCount(stamps: readonly ClaimStamp[]): ClaimEvidenceCount | null {
+  const bearing = stamps.filter((stamp) => stamp.loadBearing)
+  if (bearing.length === 0 || bearing.some((stamp) => stamp.support === undefined)) return null
+  return { backed: bearing.filter((stamp) => stamp.support === 1).length, claims: bearing.length }
 }
 
 /** The stamps, bounded, or null when none survive. */

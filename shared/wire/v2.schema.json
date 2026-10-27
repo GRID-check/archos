@@ -690,6 +690,20 @@
           "title": "Provenance",
           "type": "string"
         },
+        "support": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Support"
+        },
         "text": {
           "description": "The sentence as the final text writes it, cut at 300 characters.",
           "maxLength": 300,
@@ -3332,7 +3346,8 @@
             {
               "enum": [
                 1,
-                2
+                2,
+                3
               ],
               "type": "integer"
             },

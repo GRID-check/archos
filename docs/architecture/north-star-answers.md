@@ -1236,8 +1236,9 @@ with the question, the answer and the Herleitung.
    the drawing shows, what the law requires (always a cited passage), what is
    Piloti's own estimate. A reading of a drawing, a record or an estimate never
    carries a statement about the law.
-7. **Its confidence is that of its weakest load-bearing claim**, with a reason
-   that names what is and is not belegt. Uncertainty is said once, concretely,
+7. **Its confidence is what its load-bearing claims rest on** („12 von 14
+   Aussagen belegt", ADR-0139), with a reason that names what is and is not
+   belegt. Uncertainty is said once, concretely,
    with where it gets decided.
 8. **Absence is reported as absence.** With the scope that was searched, and
    without a number, a reason or a value from another project or Fassung put in

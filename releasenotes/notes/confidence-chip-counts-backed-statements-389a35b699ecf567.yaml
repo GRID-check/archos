@@ -1,0 +1,11 @@
+---
+fixes:
+  - >
+    The chip under an answer now says how many of its statements are backed by
+    a source, a record or a measurement, and warns only when something is
+    missing, with the reason. Well-sourced answers no longer show low confidence
+    because of a single next-step sentence.
+  - >
+    A number in an answer that points to no source is marked as unverified
+    instead of being attached to an unrelated source from earlier in the
+    conversation.

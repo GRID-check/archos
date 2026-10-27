@@ -1738,6 +1738,41 @@ export const chat: typeof en.chat = {
       citationFallback:
         'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
     },
+    // Seit ADR-0139: die Antwort führt mit dem, worauf sie steht („12 von 14
+    // Aussagen belegt"), nicht mit einer Selbsteinschätzung. Eine Warnung
+    // erscheint nur, wenn eine benannte Grenze greift, und nennt sie.
+    byShare: {
+      label: '{backed} von {claims} Aussagen belegt',
+      ariaLabel: '{backed} von {claims} tragenden Aussagen belegt, Einschätzung {level}',
+      tooltip:
+        'Gezählt sind die tragenden Aussagen: zum Recht, zu Zahlen, Klassen und Fristen. Belegt heißt: eine zitierte Quelle, ein Eintrag im Arbeitsbereich oder eine Messung aus dieser Antwort steht dahinter.',
+      selfAssessment: 'Eigene Einschätzung des Assistenten: {level}',
+      levelMeanings: {
+        high: 'Hoch: mindestens vier von fünf tragenden Aussagen sind belegt, und keine Rechtsaussage steht ohne Quelle.',
+        medium:
+          'Mittel: der größere Teil ist belegt, aber eine Rechtsaussage ohne Quelle, ein nicht verifizierter Beleg oder Einschätzungen bleiben.',
+        low: 'Niedrig: hinter mindestens der Hälfte der tragenden Aussagen steht nichts, was diese Antwort gelesen hat.',
+      },
+      // Kurz, im Chip selbst hinter der Zählung, nur wenn die Grenze greift.
+      capLabels: {
+        ungrounded: 'zu wenig belegt',
+        quoteUnverified: 'Zitat nicht bestätigt',
+        normativeClaimUncited: 'Rechtsaussage ohne Beleg',
+        measurementOnly: 'nur gemessen',
+        citationFallback: 'Quelle ergänzt',
+      },
+      cappedReasons: {
+        ungrounded: 'Begrenzt: hinter zu vielen tragenden Aussagen steht kein Beleg.',
+        quoteUnverified:
+          'Begrenzt: ein Zitat konnte nicht wörtlich in der Quelle bestätigt werden.',
+        normativeClaimUncited:
+          'Begrenzt: eine Rechtsaussage steht ohne zitierte Quelle. Ein Eintrag im Arbeitsbereich oder eine Messung belegt keine Rechtsaussage.',
+        measurementOnly:
+          'Mittlere Sicherheit: die Angabe ist am Modell gemessen (mit Toleranz und Methode), aber nicht durch eine Quelle belegt.',
+        citationFallback:
+          'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
+      },
+    },
     // Die Einschätzung seit ADR-0125: pro Aussage gerechnet, nicht pro Antwort.
     // Ältere Antworten behalten die Texte oben, unter denen sie berechnet wurden.
     byClaim: {

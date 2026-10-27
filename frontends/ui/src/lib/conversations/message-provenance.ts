@@ -215,6 +215,17 @@ export type StepDetailValue = string | number | boolean | string[]
 export type AnswerConfidenceCappedReason = (typeof CAPPED_REASONS)[number]
 
 /**
+ * Which rule computed an answer's confidence: 1 the answer-level floors, 2 the
+ * weakest load-bearing sentence (ADR-0125), 3 the evidence share (ADR-0139).
+ * The chip renders a stored answer under the rule it was computed with.
+ */
+export const ANSWER_CONFIDENCE_VERSIONS = [1, 2, 3] as const
+export type AnswerConfidenceVersion = (typeof ANSWER_CONFIDENCE_VERSIONS)[number]
+
+export const isAnswerConfidenceVersion = (value: unknown): value is AnswerConfidenceVersion =>
+  (ANSWER_CONFIDENCE_VERSIONS as readonly unknown[]).includes(value)
+
+/**
  * WHY a deep-research run stopped before it was finished, as the backend's own
  * stable token (`deep_researcher/models/state.py`):
  *
@@ -320,11 +331,12 @@ export interface MessageProvenance {
    */
   claimStamps?: ClaimStamp[]
   /**
-   * Which rule computed `answerConfidence`: 2 the per-sentence formula
-   * (ADR-0125). Absent on every answer stored before it, which renders under
-   * the answer-level floors it was computed with.
+   * Which rule computed `answerConfidence`: 2 the weakest load-bearing
+   * sentence (ADR-0125), 3 the evidence share over the same stamps
+   * (ADR-0139). Absent on every answer stored before rule 2, which renders
+   * under the answer-level floors it was computed with.
    */
-  answerConfidenceVersion?: 1 | 2
+  answerConfidenceVersion?: AnswerConfidenceVersion
   /** A search ran and found nothing; the answer is the model's own knowledge. Present or absent. */
   lookupFoundNothing?: true
 }
@@ -728,7 +740,7 @@ export function sanitizeProvenance(input: unknown): MessageProvenance | null {
 
   const claims = sanitizeClaimStamps(input.claimStamps)
   if (claims) out.claimStamps = claims
-  if (input.answerConfidenceVersion === 1 || input.answerConfidenceVersion === 2) {
+  if (isAnswerConfidenceVersion(input.answerConfidenceVersion)) {
     out.answerConfidenceVersion = input.answerConfidenceVersion
   }
   if (input.lookupFoundNothing === true) out.lookupFoundNothing = true

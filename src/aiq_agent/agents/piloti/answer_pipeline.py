@@ -158,8 +158,9 @@ class FinalAnswer:
     #: One stamp per sentence of ``content``: where it comes from and what kind
     #: of claim it is (``common/claim_provenance.py``), wire-ready.
     claim_stamps: tuple[dict[str, Any], ...] = ()
-    #: The weakest load-bearing sentence's ceiling, and that sentence's
-    #: ``(class, type)``: what the surfaced confidence is held under.
+    #: The claims ceiling (the evidence share, ADR-0139): what the surfaced
+    #: confidence is held under; and the ``(class, type)`` of the sentence
+    #: that most explains a cap.
     claims_ceiling: str | None = None
     weakest_claim: tuple[str, str] | None = None
     #: A lookup ran and retrieved nothing, and the answer ships anyway, every
@@ -527,10 +528,12 @@ def _verify(content: str, registry: SourceRegistry, *, with_nearest: bool = Fals
     """
     # Labelled, not stripped: a claim whose pointer did not hold must not read
     # like every other unmarked sentence (ADR-0125). The locus beside a marker
-    # is held to the passage it resolves to.
-    verification = verify_citations(
-        content, registry, reference_sources=registry.all_sources(), label_dropped=True, check_locus=True
-    )
+    # is held to the passage it resolves to. No writer-facing list: Piloti's
+    # model never sees the registry numbered, so an answer that writes [N]
+    # without its Quellen list has numbers that name nothing. Reading them as
+    # registry positions (the registry is cumulative across the conversation)
+    # cited project drawings to OIB passages of the turn before (ADR-0139).
+    verification = verify_citations(content, registry, reference_sources=None, label_dropped=True, check_locus=True)
     logger.debug(
         "Piloti: citation verification complete — %d valid, %d removed",
         len(verification.valid_citations),

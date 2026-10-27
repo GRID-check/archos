@@ -1,18 +1,22 @@
 'use client'
 
 /**
- * Dev preview: what an answer rests on, sentence by sentence (ADR-0125).
+ * Dev preview: what an answer rests on, sentence by sentence (ADR-0125, ADR-0139).
  *
  * Four answers through the real `AgentResponse`, and the confidence chip on its
  * own beside each, so its tooltip can be hovered without opening the details:
  *
- *   1. A WORKSPACE ANSWER read from records: „hoch", with the mix
- *      „2 Aussagen belegt". Under the old rule it showed „niedrig".
+ *   1. A WORKSPACE ANSWER read from records: the chip leads with
+ *      „1 von 1 Aussagen belegt", muted.
+ *   1b. AN ANSWER FROM FILES IT READ, with one next step the normative net
+ *      catches: „3 von 4 Aussagen belegt · Rechtsaussage ohne Beleg". Rule 2
+ *      showed „niedrig" (the bug ADR-0139 fixes).
  *   2. A MIXED ANSWER: a record and a cited passage, and a statement about the
  *      law with no source beside them. „niedrig", and the tooltip says which.
  *   3. A SEARCH THAT FOUND NOTHING: the answer shows, with the note under it,
  *      and the label „[Beleg nicht verifiziert]" where it cited anyway.
- *   4. A STORED ANSWER from before the change: no version, the old copy.
+ *   4. STORED ANSWERS from before: rule 2 keeps its level and its copy; no
+ *      version keeps the answer-level copy.
  *
  * 404s outside development. Pinned to German.
  */
@@ -32,6 +36,7 @@ const WORKSPACE: ClaimStamp[] = [
     provenance: 'record',
     claimType: 'value',
     loadBearing: true,
+    support: 1,
     operation: 'project-approvals-list',
   },
   {
@@ -39,6 +44,7 @@ const WORKSPACE: ClaimStamp[] = [
     provenance: 'record',
     claimType: 'descriptive',
     loadBearing: false,
+    support: 1,
     operation: 'project-approvals-list',
   },
 ]
@@ -49,6 +55,7 @@ const MIXED: ClaimStamp[] = [
     provenance: 'record',
     claimType: 'value',
     loadBearing: true,
+    support: 1,
     operation: 'project-approvals-list',
   },
   {
@@ -56,18 +63,21 @@ const MIXED: ClaimStamp[] = [
     provenance: 'cited',
     claimType: 'normative',
     loadBearing: true,
+    support: 1,
   },
   {
     text: 'Das betrifft auch das Dachgeschoß.',
     provenance: 'reasoning',
     claimType: 'descriptive',
     loadBearing: false,
+    support: 0.5,
   },
   {
     text: 'Der Einreichplan muss nach § 5 bewilligt werden.',
     provenance: 'model_knowledge',
     claimType: 'normative',
     loadBearing: true,
+    support: 0,
   },
 ]
 
@@ -77,12 +87,52 @@ const NOTHING_FOUND: ClaimStamp[] = [
     provenance: 'cited_dropped',
     claimType: 'normative',
     loadBearing: true,
+    support: 0,
   },
   {
     text: 'Ab 22 m Fluchtniveau gelten zusätzliche Anforderungen.',
     provenance: 'model_knowledge',
     claimType: 'normative',
     loadBearing: true,
+    support: 0,
+  },
+]
+
+const FILES_READ: ClaimStamp[] = [
+  {
+    text: 'Der Fluchtweg führt über das Treppenhaus T1 ins Freie [1].',
+    provenance: 'cited',
+    claimType: 'normative',
+    loadBearing: true,
+    support: 1,
+  },
+  {
+    text: 'Eine Sprinkleranlage ist nicht vorgesehen [2].',
+    provenance: 'cited',
+    claimType: 'descriptive',
+    loadBearing: false,
+    support: 1,
+  },
+  {
+    text: 'Für die Einreichung sind 2 Pläne vorhanden [1].',
+    provenance: 'cited',
+    claimType: 'value',
+    loadBearing: true,
+    support: 1,
+  },
+  {
+    text: 'Die Brandmeldeanlage deckt alle 4 Geschoße ab [2].',
+    provenance: 'cited',
+    claimType: 'value',
+    loadBearing: true,
+    support: 1,
+  },
+  {
+    text: 'Welche Brandabschnitte die Pläne zeigen, muss im Einzelnen geöffnet werden.',
+    provenance: 'model_knowledge',
+    claimType: 'normative',
+    loadBearing: true,
+    support: 0,
   },
 ]
 
@@ -108,26 +158,37 @@ function Preview() {
     >
       <Block
         title="Antwort aus dem Arbeitsbereich"
-        note="Zwei Sätze, beide aus gelesenen Einträgen: „hoch“. Unter der alten Regel stand hier „niedrig“."
+        note="Zwei Sätze, beide aus gelesenen Einträgen: „1 von 1 Aussagen belegt“, ruhig."
       >
-        <ConfidenceChip confidence="high" version={2} claimStamps={WORKSPACE} />
+        <ConfidenceChip confidence="high" version={3} claimStamps={WORKSPACE} />
         <AgentResponse
           content={WORKSPACE.map((stamp) => stamp.text).join(' ')}
           messageId="claims-workspace"
           timestamp={at}
           answerConfidence="high"
-          answerConfidenceVersion={2}
+          answerConfidenceVersion={3}
           claimStamps={WORKSPACE}
         />
       </Block>
       <Block
-        title="Gemischte Antwort"
-        note="Ein Eintrag und eine zitierte Stelle, daneben eine Rechtsaussage ohne Quelle: „niedrig“, und der Tooltip sagt warum."
+        title="Aus gelesenen Dateien, mit einem nächsten Schritt"
+        note="Vier Aussagen zitiert, ein nächster Schritt fängt sich im Rechtsnetz: „3 von 4 Aussagen belegt · Rechtsaussage ohne Beleg“. Unter Regel 2 stand hier „niedrig“."
       >
         <ConfidenceChip
-          confidence="low"
+          confidence="medium"
           cappedReason="normative_claim_uncited"
-          version={2}
+          version={3}
+          claimStamps={FILES_READ}
+        />
+      </Block>
+      <Block
+        title="Gemischte Antwort"
+        note="Ein Eintrag und eine zitierte Stelle, daneben eine Rechtsaussage ohne Quelle: die Zählung, die benannte Grenze, und der Tooltip sagt warum."
+      >
+        <ConfidenceChip
+          confidence="medium"
+          cappedReason="normative_claim_uncited"
+          version={3}
           claimStamps={MIXED}
         />
       </Block>
@@ -141,16 +202,22 @@ function Preview() {
           timestamp={at}
           routingDecision="shallow"
           answerConfidence="low"
-          answerConfidenceCappedReason="normative_claim_uncited"
-          answerConfidenceVersion={2}
+          answerConfidenceCappedReason="ungrounded"
+          answerConfidenceVersion={3}
           claimStamps={NOTHING_FOUND}
           lookupFoundNothing
         />
       </Block>
       <Block
         title="Gespeicherte Antwort von vorher"
-        note="Ohne Version: die Texte der alten Regel, keine Aufschlüsselung."
+        note="Regel 2 (gespeichert vor ADR-0139): die Stufe, mit der Aufschlüsselung im Tooltip. Ohne Version: die Texte der alten Regel, keine Aufschlüsselung."
       >
+        <ConfidenceChip
+          confidence="low"
+          cappedReason="normative_claim_uncited"
+          version={2}
+          claimStamps={MIXED}
+        />
         <ConfidenceChip confidence="low" cappedReason="ungrounded" />
       </Block>
     </main>

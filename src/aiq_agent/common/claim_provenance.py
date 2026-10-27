@@ -42,6 +42,15 @@ not about the law. That is the anti-laundering rule of
 ``agents/piloti/grounding.py``, now enforced per sentence rather than by
 flooring the whole answer.
 
+The answer's level is the SHARE of its load-bearing sentences that evidence
+carries (:func:`evidence_share`, rule 3, ADR-0139), not the weakest one. The
+normative detector is a deliberately wide net, built as a brake on uncited
+answers; run per sentence it catches a next step („muss im Einzelnen geöffnet
+werden") or a fact about the corpus as readily as a verdict, and a minimum
+over twenty such labels is decided by the noisiest one. An uncited claim about
+the law still counts nothing, and still keeps the answer below ``high``
+(:func:`unsupported_claims`).
+
 Pure: text and evidence in, stamps out. The caller supplies the normative
 detector (it lives with Piloti) so this module has no agent dependency.
 """
@@ -93,9 +102,10 @@ PROVENANCE_CLASSES: tuple[ProvenanceClass, ...] = (
 
 #: The version of the confidence rule a turn's level was computed under. 1 is
 #: the answer-level floors (absent on the wire: every turn stored before this
-#: change); 2 is the per-sentence formula here. The reader renders a stored
-#: turn under the rule it was computed with.
-CONFIDENCE_RULE_VERSION = 2
+#: change); 2 held the answer to its weakest load-bearing sentence (ADR-0125);
+#: 3 is the evidence share over the same per-sentence stamps (ADR-0139). The
+#: reader renders a stored turn under the rule it was computed with.
+CONFIDENCE_RULE_VERSION = 3
 
 _LEVELS: tuple[Level, ...] = ("low", "medium", "high")
 
@@ -265,6 +275,7 @@ class ClaimStamp:
             wire["operation"] = self.operation
         if self.unmatched:
             wire["unmatched"] = list(self.unmatched)
+        wire["support"] = support(self)
         return wire
 
 
@@ -312,11 +323,19 @@ def _units(prose: str) -> Iterator[_Unit]:
 
     Skipped: code fences, directive lines, headings, a table's header and rule
     rows. A quote line is its own unit and keeps its wording for the stamp.
+
+    A table or a list that a sentence ending in „:" introduces belongs to that
+    sentence's paragraph, blank line or not: „Die Richtlinie gliedert sich wie
+    folgt [1]:" and the rows under it are one statement, and a row read off the
+    passage the lead-in cites is an Einschätzung drawn from it (``reasoning``),
+    not knowledge from nowhere.
     """
     wordings = iter(quote_lines(prose))
     paragraph = 0
     fence: str | None = None
     table_header_pending = True
+    gap = False
+    lead_in = False
     for line in prose.split("\n"):
         fence_match = _FENCE_RE.match(line)
         if fence is not None:
@@ -327,12 +346,22 @@ def _units(prose: str) -> Iterator[_Unit]:
             fence = fence_match.group(1)
             continue
         if not line.strip():
-            paragraph += 1
+            gap = True
             table_header_pending = True
             continue
-        if _DIRECTIVE_RE.match(line) or _HEADING_RE.match(line) or _TABLE_RULE_RE.match(line):
+        if _DIRECTIVE_RE.match(line) or _HEADING_RE.match(line):
+            lead_in = False
             continue
-        if line.lstrip().startswith("|"):
+        if _TABLE_RULE_RE.match(line):
+            continue
+        is_row = line.lstrip().startswith("|")
+        is_block = is_row or _LIST_PREFIX_RE.match(line) is not None
+        if gap and not (lead_in and is_block):
+            paragraph += 1
+        gap = False
+        if not is_block:
+            lead_in = line.rstrip().rstrip("*_").endswith(":")
+        if is_row:
             if table_header_pending:
                 table_header_pending = False
                 continue
@@ -869,20 +898,105 @@ def stamp_ceiling(stamp: ClaimStamp) -> Level:
     return min(level, stamp.cap, key=_LEVELS.index) if stamp.cap else level
 
 
+#: What one load-bearing sentence contributes to :func:`evidence_share`, by the
+#: ceiling it allows: evidence of its own counts whole, an Einschätzung or an
+#: honest hedge half, nothing behind it nothing.
+_SUPPORT: dict[Level, float] = {"low": 0.0, "medium": 0.5, "high": 1.0}
+
+#: The evidence share an answer needs to read „high" (rule 3, ADR-0139): four in five.
+HIGH_SHARE = 0.8
+#: The share of load-bearing sentences with NOTHING behind them (support 0) at
+#: which an answer reads „low": half. A two-claim answer whose second claim is an
+#: uncited verdict beside a measurement is half unbacked, and stays „low"; a lone
+#: Einschätzung is partly backed, and reads „medium".
+UNBACKED_SHARE = 0.5
+
+
+def support(stamp: ClaimStamp) -> float:
+    """What one sentence contributes to the evidence share: 1, 0.5 or 0.
+
+    Its own ceiling (:func:`stamp_ceiling`), with one difference: a ``reasoning``
+    sentence (no pointer, but drawn from a quoted or cited sentence of its
+    paragraph) that states a value counts half, like a table row under a cited
+    lead-in. A normative sentence without a passage counts nothing, reasoning
+    or not: a cited sentence beside it does not make it a claim the law backs.
+    """
+    level = stamp_ceiling(stamp)
+    if stamp.provenance == "reasoning" and stamp.claim_type != "normative" and level == "low":
+        level = "medium"
+    return _SUPPORT[level]
+
+
+def _bearing(stamps: Sequence[ClaimStamp]) -> list[ClaimStamp]:
+    return [stamp for stamp in stamps if stamp.load_bearing]
+
+
+def evidence_share(stamps: Sequence[ClaimStamp]) -> float | None:
+    """How much of what the answer asserts rests on evidence this turn read: 0 to 1, None with no claim.
+
+    The mean :func:`support` over the load-bearing sentences. This is what the
+    confidence chip measures under rule 3 (ADR-0139), and what Langfuse scores
+    as ``claims-evidence-share``.
+    """
+    bearing = _bearing(stamps)
+    if not bearing:
+        return None
+    return sum(support(stamp) for stamp in bearing) / len(bearing)
+
+
+def unsupported_claims(stamps: Sequence[ClaimStamp]) -> list[ClaimStamp]:
+    """The load-bearing sentences that keep an answer below ``high`` however well the rest is grounded.
+
+    A sentence about the law without a passage behind it (``normative`` and
+    not ``quoted`` or ``cited``, unless it only reports an absence of evidence)
+    and a pointer that did not hold (``cited_dropped``). The reader checks these
+    first; the tooltip's mix line names them.
+    """
+    return [
+        stamp
+        for stamp in _bearing(stamps)
+        if stamp.provenance == "cited_dropped"
+        or (stamp.claim_type == "normative" and stamp.provenance not in _PASSAGE_CLASSES and not stamp.hedged)
+    ]
+
+
 def claims_ceiling(stamps: Sequence[ClaimStamp]) -> Level:
-    """The lowest ceiling among the load-bearing sentences; :data:`NO_CLAIMS_CEILING` when there is none."""
-    bearing = [stamp for stamp in stamps if stamp.load_bearing]
+    """The level the answer's evidence allows (rule 3, ADR-0139); :data:`NO_CLAIMS_CEILING` with no claim.
+
+    ``low`` when at least :data:`UNBACKED_SHARE` of the load-bearing sentences
+    have nothing behind them; ``high`` when the evidence share is at least
+    :data:`HIGH_SHARE` and no load-bearing sentence is an uncited claim about
+    the law or a dropped pointer; ``medium`` otherwise. Before (rule 2) this was
+    the weakest load-bearing sentence's ceiling: one sentence the wide
+    normative net caught („muss im Einzelnen geöffnet werden", „die 39 Dateien
+    des OIB-Korpus") floored an answer whose every other sentence was read off
+    a record or a passage.
+    """
+    bearing = _bearing(stamps)
     if not bearing:
         return NO_CLAIMS_CEILING
-    return min((stamp_ceiling(stamp) for stamp in bearing), key=_LEVELS.index)
+    unbacked = sum(1 for stamp in bearing if support(stamp) == 0.0) / len(bearing)
+    if unbacked >= UNBACKED_SHARE:
+        return "low"
+    share = evidence_share(bearing) or 0.0
+    if share >= HIGH_SHARE and not unsupported_claims(bearing):
+        return "high"
+    return "medium"
 
 
 def weakest_claim(stamps: Sequence[ClaimStamp]) -> ClaimStamp | None:
-    """The load-bearing sentence that set :func:`claims_ceiling`, the first of its level."""
-    bearing = [stamp for stamp in stamps if stamp.load_bearing]
+    """The load-bearing sentence that most explains a capped level: an uncited legal claim first, else the weakest.
+
+    Read for the capped reason only: a normative sentence names
+    ``normative_claim_uncited``, anything else ``ungrounded``.
+    """
+    unsupported = [stamp for stamp in unsupported_claims(stamps) if stamp.claim_type == "normative"]
+    if unsupported:
+        return unsupported[0]
+    bearing = _bearing(stamps)
     if not bearing:
         return None
-    return min(bearing, key=lambda stamp: _LEVELS.index(stamp_ceiling(stamp)))
+    return min(bearing, key=support)
 
 
 def class_counts(stamps: Sequence[ClaimStamp]) -> dict[str, int]:

@@ -207,8 +207,9 @@ class ResearchAgentState(BaseModel):
     # load-bearing. Set by ``ledger.assemble_result``. None means the pipeline
     # did not stamp this answer, and the guard falls back to rule 1.
     claim_stamps: list[dict[str, Any]] | None = None
-    # The weakest load-bearing sentence's ceiling, and its (class, type): what
-    # rule 2 holds the self-report under. None with no sentence to hold it to.
+    # The claims ceiling (rule 3, ADR-0139: what the evidence share allows) and
+    # the (class, type) of the sentence that most explains a cap. None with no
+    # sentence to hold the self-report to.
     answer_claims_ceiling: Literal["low", "medium", "high"] | None = None
     answer_weakest_claim: list[str] | None = None
     # A passage lookup ran and found nothing, and the answer shipped anyway with
@@ -363,7 +364,7 @@ class ResearchAgentState(BaseModel):
 
     @property
     def answer_confidence_version(self) -> int | None:
-        """Which rule computed :attr:`answer_confidence`: 2 for the per-sentence formula, 1 for the floors.
+        """Which rule computed :attr:`answer_confidence`: 3 for the evidence share over the stamps, 1 for the floors.
 
         None when nothing is surfaced. The reader renders a turn's level and
         its explanation under the rule it was computed with.
@@ -377,7 +378,7 @@ class ResearchAgentState(BaseModel):
         """The self-assessment as it may be SURFACED, after the overconfidence guard.
 
         ``answer_confidence_marker`` is what the model claimed. With claim
-        stamps it is held under the weakest load-bearing sentence
+        stamps it is held under the claims ceiling (the evidence share, ADR-0139)
         (:func:`~aiq_agent.agents.piloti.markers.surface_claim_confidence`,
         ADR-0125); without them, under the answer-level floors.
         """

@@ -16,6 +16,7 @@ from aiq_agent.agents.piloti import answer_pipeline
 from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
 from aiq_agent.agents.piloti.ledger import assemble_result
 from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.common.claim_provenance import CONFIDENCE_RULE_VERSION
 
 APPROVALS = (
     '{"items": [{"assignee": "Anna Berger", "status": "pending", "document": "Einreichplan EG"},'
@@ -56,7 +57,7 @@ async def test_a_workspace_answer_is_record_grounded_and_reaches_the_models_leve
     assert [(stamp["provenance"], stamp["operation"]) for stamp in final.claim_stamps] == [
         ("record", "project-approvals-list")
     ]
-    assert state.answer_confidence == "high" and state.answer_confidence_version == 2
+    assert state.answer_confidence == "high" and state.answer_confidence_version == CONFIDENCE_RULE_VERSION
     assert state.answer_confidence_capped_reason is None
 
 
@@ -189,7 +190,7 @@ async def test_a_work_turn_is_grounded_by_what_it_read_and_proposed():
         ("record", "project-approvals-list"),
         ("action", "project-folder-create"),
     ]
-    assert state.answer_confidence == "high" and state.answer_confidence_version == 2
+    assert state.answer_confidence == "high" and state.answer_confidence_version == CONFIDENCE_RULE_VERSION
 
 
 async def test_a_work_turn_still_floors_on_a_legal_sentence_without_a_passage():

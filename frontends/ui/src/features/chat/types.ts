@@ -11,6 +11,7 @@ import type { ProjectStatus } from '@/lib/projects/project-status'
 import type { DraftMention } from '@/features/collaboration/lib/mention-text'
 import type {
   AnswerConfidenceCappedReason,
+  AnswerConfidenceVersion,
   StoredThinkingStep,
 } from '@/lib/conversations/message-provenance'
 import type { AnswerMeta } from '@/lib/conversations/message-answer-meta'
@@ -384,7 +385,7 @@ export interface ChatMessage {
    * (ADR-0125). Absent on an answer stored before it, which keeps the
    * explanation of the answer-level floors it was computed with.
    */
-  answerConfidenceVersion?: 1 | 2
+  answerConfidenceVersion?: AnswerConfidenceVersion
   /** A search ran and found nothing; the answer is the model's own knowledge. Present or absent. */
   lookupFoundNothing?: true
   /**

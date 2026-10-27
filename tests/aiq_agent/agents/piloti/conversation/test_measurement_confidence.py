@@ -28,6 +28,7 @@ from aiq_agent.agents.piloti.markers import answer_confidence_capped_reason
 from aiq_agent.agents.piloti.markers import surface_answer_confidence
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.common.claim_provenance import CONFIDENCE_RULE_VERSION
 from tests.aiq_agent.agents.piloti.conversation import turn
 
 # The two answers the whole design turns on: the same measured sentence, once
@@ -293,7 +294,7 @@ class TestRuleTwoKeepsTheLaunderingPathShut:
         state = self._stamped((KELLER_MEASURED, "measured", "value"))
         assert state.answer_confidence == "high"
         assert state.answer_confidence_capped_reason is None
-        assert state.answer_confidence_version == 2
+        assert state.answer_confidence_version == CONFIDENCE_RULE_VERSION
 
     def test_a_verdict_beside_the_measurement_floors_the_answer(self):
         state = self._stamped(

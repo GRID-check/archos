@@ -330,3 +330,14 @@ What does not change: the listing is an index, never cited. It registers no
 source (`register_source_parser` for `list_files` still returns nothing), no
 `[N]` resolves to it, and `browse.py` still tells the model not to cite it. The
 provenance is the stamp, not a citation marker.
+
+## Amendment, 2026-10-27: the aggregation moved to ADR-0139
+
+The per-sentence provenance, the claim types and every ceiling above stand. The
+answer's level is no longer the weakest load-bearing sentence's ceiling: it is
+the share of load-bearing sentences evidence carries, with an uncited normative
+sentence still counting nothing and still keeping the answer below „high"
+([ADR-0139](0139-confidence-is-the-share-of-claims-evidence-carries.md)). The
+minimum let one sentence caught by the wide normative net floor 8 of 9 stored
+answers. ADR-0139 also stops reading `[N]` as a registry position when an answer
+writes no source list.

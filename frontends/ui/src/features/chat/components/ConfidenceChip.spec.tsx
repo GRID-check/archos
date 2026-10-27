@@ -156,3 +156,43 @@ describe('ConfidenceChip under the per-sentence rule', () => {
     expect(screen.queryByTestId('confidence-claim-mix')).not.toBeInTheDocument()
   })
 })
+
+/**
+ * Rule 3 (ADR-0139): the chip leads with what the answer rests on, the count of
+ * load-bearing statements backed, and warns only when a named cap fired.
+ */
+describe('ConfidenceChip under the evidence share', () => {
+  const stamps = [
+    { text: 'The escape route leads outside [1].', provenance: 'cited', claimType: 'normative', loadBearing: true, support: 1 },
+    { text: 'There are 2 drawings [1].', provenance: 'cited', claimType: 'value', loadBearing: true, support: 1 },
+    { text: 'The alarm covers all 4 floors [2].', provenance: 'cited', claimType: 'value', loadBearing: true, support: 1 },
+    { text: 'No sprinklers are planned [2].', provenance: 'cited', claimType: 'descriptive', loadBearing: false, support: 1 },
+    { text: 'Each drawing must be opened.', provenance: 'model_knowledge', claimType: 'normative', loadBearing: true, support: 0 },
+  ] as const
+
+  test('leads with the count and names the cap that fired', () => {
+    render(
+      <ConfidenceChip confidence="medium" cappedReason="normative_claim_uncited" version={3} claimStamps={[...stamps]} />
+    )
+
+    expect(screen.getByRole('button')).toHaveTextContent('3 of 4 statements backed · legal statement uncited')
+    expect(screen.queryByText(/Confidence: medium/)).not.toBeInTheDocument()
+  })
+
+  test('stays muted and names no cap when none fired, the level in the tooltip', async () => {
+    const user = userEvent.setup()
+    render(<ConfidenceChip confidence="high" version={3} claimStamps={[...stamps.slice(0, 4)]} />)
+
+    expect(screen.getByRole('button')).toHaveTextContent('3 of 3 statements backed')
+    expect(screen.getByRole('button')).not.toHaveTextContent('·')
+    await user.hover(screen.getByRole('button'))
+    expect((await screen.findAllByText(/Assistant self-assessment: high/)).length).toBeGreaterThan(0)
+  })
+
+  test('a rule-3 answer whose stamps carry no support falls back to the level', () => {
+    const bare = stamps.map(({ support: _support, ...stamp }) => stamp)
+    render(<ConfidenceChip confidence="medium" version={3} claimStamps={bare} />)
+
+    expect(screen.getByText('Confidence: medium')).toBeInTheDocument()
+  })
+})

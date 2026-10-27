@@ -401,6 +401,10 @@ class ClaimStamp(_Model):
     operation: str | None = None
     #: For a ``record``: numbers the sentence states that no record this turn held.
     unmatched: list[str] = Field(default_factory=list)
+    #: What the sentence contributes to the turn's evidence share (rule 3,
+    #: ADR-0139): 1 evidence of its own, 0.5 an Einschätzung or a hedge, 0
+    #: nothing. Absent on a turn stored before it.
+    support: float | None = Field(default=None, ge=0, le=1)
 
 
 class TurnResult(_Model):
@@ -436,10 +440,11 @@ class TurnResult(_Model):
     quote_stamps: list[QuoteStamp] = Field(default_factory=list)
     #: One stamp per sentence of ``text``, in document order (ADR-0125).
     claim_stamps: list[ClaimStamp] = Field(default_factory=list)
-    #: Which rule computed ``answer_confidence``: 2 the per-sentence formula
-    #: (ADR-0125). Absent on every turn stored before it, which the reader
+    #: Which rule computed ``answer_confidence``: 2 the weakest load-bearing
+    #: sentence (ADR-0125), 3 the evidence share over the same stamps
+    #: (ADR-0139). Absent on every turn stored before rule 2, which the reader
     #: renders under the answer-level floors it was computed with.
-    answer_confidence_version: Literal[1, 2] | None = None
+    answer_confidence_version: Literal[1, 2, 3] | None = None
     #: A lookup ran and found nothing; the answer is the model's own knowledge
     #: and says so in a banner. False on every other turn.
     lookup_found_nothing: bool = False

@@ -254,6 +254,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "claims-evidence-share",
+        "NUMERIC",
+        "The share of the answer's load-bearing sentences that evidence read this turn carries (ADR-0139): "
+        "a quoted or cited passage, a record, an action or a measurement counts 1, an Einschätzung or a hedge 0.5, "
+        "nothing 0. What the confidence chip measures. Not written on an answer with no load-bearing sentence.",
+        min_value=0,
+        max_value=1,
+    ),
+    ScoreDefinition(
         "look-count",
         "NUMERIC",
         "Looks Piloti made in the turn (ADR-0128): renders of a page, a region of it or an embedded image, "
@@ -438,6 +447,7 @@ def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:
     final text carries where a citation did not resolve.
     """
     from aiq_agent.common.claim_provenance import class_counts
+    from aiq_agent.common.claim_provenance import evidence_share
     from aiq_agent.common.claim_provenance import normative_uncited
 
     stamps = list(stamps)
@@ -447,6 +457,9 @@ def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:
     ]
     scores.append(RuntimeScore("claims-normative-uncited", float(normative_uncited(stamps))))
     scores.append(RuntimeScore("citations-dropped-labelled", float(max(0, dropped))))
+    share = evidence_share(stamps)
+    if share is not None:
+        scores.append(RuntimeScore("claims-evidence-share", round(share, 3)))
     return scores
 
 

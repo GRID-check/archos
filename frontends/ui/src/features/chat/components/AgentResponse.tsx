@@ -60,7 +60,10 @@ import {
 import { MarkdownSlotProvider } from '@/shared/components/MarkdownRenderer/slot-context'
 import type { GridCard } from '@/shared/cards/schemas'
 import type { CitationSource } from '../types'
-import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
+import type {
+  AnswerConfidenceCappedReason,
+  AnswerConfidenceVersion,
+} from '@/lib/conversations/message-provenance'
 import { ANSWER_DEGRADED_REASONS, TRUNCATION_REASONS } from '@/lib/conversations/message-provenance'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 import type { CardInteractions } from '@/features/grid-cards/card-decision'
@@ -263,7 +266,7 @@ export interface AgentResponseProps {
   /** Where each sentence comes from (`TurnResult.claim_stamps`); the chip explains its level with them. */
   claimStamps?: ClaimStamp[]
   /** Which rule computed the confidence: 2 the per-sentence formula; absent on older answers. */
-  answerConfidenceVersion?: 1 | 2
+  answerConfidenceVersion?: AnswerConfidenceVersion
   /** A search ran and found nothing; the answer is the model's own knowledge, said in a note. */
   lookupFoundNothing?: true
   /**
@@ -812,7 +815,7 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidenceCappedReason?: AnswerConfidenceCappedReason
   answerConfidenceReason?: string
   claimStamps?: ClaimStamp[]
-  answerConfidenceVersion?: 1 | 2
+  answerConfidenceVersion?: AnswerConfidenceVersion
   skillsActivated?: string[]
   skillsHidden?: string[]
   showReasoning?: boolean

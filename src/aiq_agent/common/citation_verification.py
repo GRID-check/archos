@@ -3160,6 +3160,11 @@ LOCUS_MISMATCH_REASON = "locus_not_in_source"
 #: Why a cited number had nothing to resolve against at all.
 NO_SOURCE_REASON = "no_source_retrieved"
 
+#: Why a cited number was labelled although sources were retrieved: the answer
+#: wrote ``[N]`` with no source list, and the caller holds no list in the order
+#: the writer saw (``reference_sources``) to read the numbers against.
+NO_SOURCE_LIST_REASON = "no_source_list"
+
 # Quoted-span matcher: German „…“ (also lenient „…”), guillemets »…«, curly
 # “…”, and plain ASCII "…". Each alternative captures the inner text in its own
 # group; the first non-None group of a match is the quote. German „…“ is tried
@@ -3948,6 +3953,17 @@ def verify_citations(
                 "[CitationVerify] No source section found; cannot safely synthesize sources "
                 "without the writer-facing source list"
             )
+            if label_dropped:
+                # A number with no line behind it names nothing the registry can
+                # check. Reading it as a position in the registry bound „[2]" to
+                # whatever was registered second, two turns ago (ADR-0139).
+                numbers = sorted(_inline_citation_numbers(report_text))
+                return CitationVerificationResult(
+                    verified_report=_label_inline_citations_not_in(report_text, set()),
+                    removed_citations=[
+                        {"number": number, "line": "", "reason": NO_SOURCE_LIST_REASON} for number in numbers
+                    ],
+                )
             return CitationVerificationResult(verified_report=report_text)
 
         writer_sources = list(reference_sources)

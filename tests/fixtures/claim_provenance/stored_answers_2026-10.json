@@ -1,0 +1,67 @@
+{
+  "about": "Claim stamps of real answers stored in the dev workspace (conversation-message-list, include=metadata), 2026-10-22 to 2026-10-27. Each was surfaced as 'low' under rule 2 (ADR-0125). 'expected' is the evidence ceiling under rule 3 (ADR-0139), and 'judged' says what the answer actually rests on. Texts are the stored stamps, cut where long.",
+  "answers": [
+    {
+      "id": "folder-listing",
+      "question": "was liegt in den foldern ?",
+      "rule_2": "low",
+      "expected": "medium",
+      "judged": "Every count and file name read off this turn's list_files; one next-step sentence ('muss im Einzelnen geöffnet werden') trips the normative net.",
+      "stamps": [
+        ["Das Projektwissen enthält 21 Dateien in vier Unterordnern und im Hauptverzeichnis.", "record", "value"],
+        ["Die Liste stammt aus dem Dateiindex; den Inhalt habe ich nicht gelesen.", "model_knowledge", "descriptive"],
+        ["00_Grundlagen · 4 · 250120_PerspektivischerSchnitt.pdf, AC20-Institute-Var-2.ifc, Wien-Lacknergasse-Schnitt-section.pdf, wizard_konzept (1).md", "record", "value"],
+        ["Abgabepläne · 8 · 220724_Aufsicht_1_100.pdf, 220725_P4_final (verschoben) 2.pdf, Invoice.jpg, pd8280-2.pdf", "record", "value"],
+        ["Berichte · 2 · piloti/…/projektstand-holzbau-wien-2026-09-15.md, Screenshot 2026-08-28 175733.png", "record", "value"],
+        ["sonstiges · 7 · Ausschreibung-proHolz-StudentTrophy26.pdf, Bild (1).png, Bild.png, expense_template.xlsx", "record", "value"],
+        ["Hauptverzeichnis · 0 · keine Dateien direkt; alle 21 liegen in den Unterordnern", "record", "value"],
+        ["Auffällig ist der Ordner sonstiges: Er enthält unter anderem eine Reisekostenvorlage und eine Hotelrechnung.", "record", "descriptive"],
+        ["Für die Einreichung sind vor allem die Pläne in Abgabepläne und 00_Grundlagen relevant.", "model_knowledge", "descriptive"],
+        ["Die Pläne in Abgabepläne und 00_Grundlagen sind nur dem Namen und der Kurzbeschreibung nach bekannt.", "model_knowledge", "descriptive"],
+        ["Welche Maßstäbe und Stände sie tatsächlich tragen, muss im Einzelnen geöffnet werden.", "model_knowledge", "normative"]
+      ]
+    },
+    {
+      "id": "listing-complete",
+      "question": "aber ich hab ja noch gnaz viele andere pdfs bist du dir sicher ?",
+      "rule_2": "low",
+      "expected": "medium",
+      "judged": "Counts per shelf read off this turn's list_files; 'die 39 Dateien des OIB-Korpus' trips the normative net on 'OIB'.",
+      "stamps": [
+        ["Ja, die Liste ist vollständig.", "model_knowledge", "descriptive"],
+        ["Projektwissen (dieses Projekt) · 20 · 10", "record", "value"],
+        ["Büroablage · 17 · 11", "record", "value"],
+        ["Private Sitzung (nur dieser Chat) · 0 · 0", "record", "value"],
+        ["Im Projektwissen liegen die PDFs 250120_PerspektivischerSchnitt, Wien-Lacknergasse-Schnitt-section, 220724_Aufsicht_1_100", "record", "value"],
+        ["Dazu kommen die 39 Dateien des OIB-Korpus im Basiswissen.", "model_knowledge", "normative"],
+        ["Die sind nicht als Einzelliste hinterlegt, Sie erreichen sie über die Suche.", "model_knowledge", "descriptive"]
+      ]
+    },
+    {
+      "id": "door-count-correction",
+      "question": "achso ne ich meinte wirklich eher ein pdf",
+      "rule_2": "low",
+      "expected": "low",
+      "judged": "Two load-bearing claims: one cited, one an uncited sentence naming OIB-RL. Half of what it asserts has nothing behind it; the knife edge, kept low on purpose (the laundering case has the same shape).",
+      "stamps": [
+        ["Im Projekt ist kein PDF-Grundriss mit einer Türzählung bekannt.", "reasoning", "descriptive"],
+        ["Die Zahl (77 Türen) stammt aus dem IFC-Modell AC20-Institute-Var-2.ifc, nicht aus einem PDF [1].", "cited", "value"],
+        ["Die Quellen aus meiner vorherigen Antwort (Erläuterungen zu OIB-RL 4 und 2.2) enthalten keine Türzählung und stützen die Zahl nicht.", "model_knowledge", "normative"]
+      ]
+    },
+    {
+      "id": "project-overview-from-profile",
+      "question": "was weißt du über das project",
+      "rule_2": "low",
+      "expected": "low",
+      "judged": "Written from the confirmed project profile in the turn context, which is no evidence channel: nothing this turn read stands behind it. Honest 'low' until the profile is a record (follow-up).",
+      "stamps": [
+        ["Das Projekt „Holzbau Wien“ betrifft einen Zubau in Holzbauweise an der Lacknergasse 98 in Wien.", "model_knowledge", "value"],
+        ["Geschoße · 5 oberirdisch, 1 unterirdisch", "model_knowledge", "value"],
+        ["Gebäudeklasse · GK 5 (bestätigt)", "model_knowledge", "normative"],
+        ["Fluchtniveau · 11–22 m, Rechenwert 12 m", "model_knowledge", "normative"],
+        ["Widmung · Wohngebiet, geschlossene Bauweise, Altstadterhaltungszone", "model_knowledge", "normative"]
+      ]
+    }
+  ]
+}
