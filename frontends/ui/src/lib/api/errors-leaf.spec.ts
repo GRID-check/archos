@@ -17,11 +17,18 @@ import { describe, expect, it } from 'vitest'
 import { BYTES_PER_MB } from '@/shared/config/request-body-limit'
 import { formatMegabytes } from './errors'
 
+/** The modules a file in this directory imports for a value. */
+function valueImports(file: string): string[] {
+  const source = readFileSync(join(__dirname, file), 'utf8')
+  return [...new Set([...source.matchAll(/^(?:import|export)\s+(?!type\b)[^']*?from\s+'([^']+)'/gm)].map((match) => match[1]))]
+}
+
 describe('lib/api/errors.ts', () => {
-  it('imports nothing but types', () => {
-    const source = readFileSync(join(__dirname, 'errors.ts'), 'utf8')
-    const valueImports = [...source.matchAll(/^import\s+(?!type\b)[^']*?from\s+'([^']+)'/gm)].map((match) => match[1])
-    expect(valueImports, 'Move the code that needs the import out of errors.ts, or redeclare the constant').toEqual([])
+  it('imports nothing but types and its import-free base', () => {
+    expect(valueImports('errors.ts'), 'Move the code that needs the import out of errors.ts, or redeclare the constant').toEqual([
+      './api-error',
+    ])
+    expect(valueImports('api-error.ts')).toEqual([])
   })
 
   it('counts a megabyte the way the request body limit does', () => {
