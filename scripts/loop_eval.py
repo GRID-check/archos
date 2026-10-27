@@ -408,7 +408,7 @@ def _citation_keys_by_round(payloads: Sequence[tuple[str, dict]]) -> dict[int | 
             continue
         try:
             round_index: int | None = int(inp.get("round")) if inp.get("round") is not None else None
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             round_index = None
         by_round.setdefault(round_index, set()).update(keys)
     return by_round
@@ -569,7 +569,7 @@ def observe(question: Question, steps: Sequence[dict], answer: str, envelope: di
             if isinstance(raw, dict) and raw.get("round") is not None:
                 try:
                     rounds.add(int(raw["round"]))
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     pass
     checkpoints = {
         int(m.group(1)): str(body.get("source") or "none")

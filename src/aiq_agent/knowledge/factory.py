@@ -156,7 +156,7 @@ def _retriever_identity(backend: str, config: dict[str, Any]) -> tuple[str, str]
     """
     try:
         fingerprint = json.dumps(config, sort_keys=True, default=repr)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         # Exotic config (non-string keys). Fall back to a repr — coarser, but a
         # key that always exists beats a factory that raises.
         fingerprint = repr(sorted(config.items(), key=lambda item: str(item[0])))
@@ -456,7 +456,7 @@ def clear_active_retriever() -> None:
 # databases/deployments are not orphaned — only the misnamed TABLE and store
 # CLASS were renamed to ``document_metadata`` (see document_metadata_store.py).
 
-_document_metadata_store: "DocumentMetadataStore | None" = None
+_document_metadata_store: DocumentMetadataStore | None = None
 # Guards lazy init of _document_metadata_store. The default-init path is now
 # reachable from thread-pool workers (knowledge_search formats results via
 # asyncio.to_thread), so double-check under this lock to prevent two concurrent
@@ -480,7 +480,7 @@ def configure_summary_db(db_url: str) -> None:
     logger.info("Document metadata store configured: %s", redact_db_url(db_url))
 
 
-def _get_document_metadata_store() -> "DocumentMetadataStore":
+def _get_document_metadata_store() -> DocumentMetadataStore:
     """Get or create the document metadata store (lazy init with default)."""
     global _document_metadata_store
     if _document_metadata_store is None:
@@ -667,7 +667,7 @@ def set_document_superseded_by(collection: str, older: str, newer: str | None) -
     return changed
 
 
-def link_document_revision(collection: str, older: str, newer: str) -> "LinkOutcome":
+def link_document_revision(collection: str, older: str, newer: str) -> LinkOutcome:
     """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop in the same transaction.
 
     The writer of a NEW link, for the ``PUT /v1/collections/{collection}/revision`` route and for a
@@ -867,17 +867,17 @@ def list_summary_collections() -> list[str]:
     return _get_document_metadata_store().list_collections()
 
 
-def get_available_documents(collection: str) -> list["AvailableDocument"]:
+def get_available_documents(collection: str) -> list[AvailableDocument]:
     """Get documents with summaries (sync)."""
     return _get_document_metadata_store().get_all(collection)
 
 
-def get_documents(collection: str, filenames: list[str]) -> list["AvailableDocument"]:
+def get_documents(collection: str, filenames: list[str]) -> list[AvailableDocument]:
     """The metadata rows of ``filenames`` only (sync); ``supersedes`` is not derived (see ``get_many``)."""
     return _get_document_metadata_store().get_many(collection, filenames)
 
 
-async def get_available_documents_async(collection: str) -> list["AvailableDocument"]:
+async def get_available_documents_async(collection: str) -> list[AvailableDocument]:
     """Get documents with summaries (async)."""
     return await _get_document_metadata_store().get_all_async(collection)
 

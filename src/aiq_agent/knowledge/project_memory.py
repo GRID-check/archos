@@ -165,7 +165,7 @@ def _error_code(exc: urllib.error.HTTPError) -> str | None:
         return None
     try:
         data = json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError):
+    except ValueError, UnicodeDecodeError:
         return None
     if not isinstance(data, dict):
         return None

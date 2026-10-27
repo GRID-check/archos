@@ -501,7 +501,7 @@ def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, sta
     """The per-turn entry point NAT calls, composed from ``aiq_agent.turn``."""
     any_stage_llm = any(llm is not None for llm in stage_llms.values())
 
-    async def _run(query: object) -> Annotated[AsyncGenerator[EventBody, None], Streaming(convert=fold_turn)]:
+    async def _run(query: object) -> Annotated[AsyncGenerator[EventBody], Streaming(convert=fold_turn)]:
         conversation_id = Context.get().conversation_id
         thread_id = thread_id_for_turn(conversation_id)
         # The signed request-context envelope, parsed ONCE per turn (base64 +

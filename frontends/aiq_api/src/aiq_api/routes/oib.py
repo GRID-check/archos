@@ -153,7 +153,7 @@ def _is_safe_zip_member(member_name: str, base_dir: Path) -> bool:
     base_resolved = base_dir.resolve()
     try:
         target = (base_dir / member_name).resolve()
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return False
     return target == base_resolved or base_resolved in target.parents
 

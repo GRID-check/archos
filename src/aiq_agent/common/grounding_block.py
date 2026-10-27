@@ -97,7 +97,7 @@ class SourceRegion:
             return None
         try:
             x0, y0, x1, y1 = (float(part) for part in box)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
         if not all(math.isfinite(part) for part in (x0, y0, x1, y1)):
             return None

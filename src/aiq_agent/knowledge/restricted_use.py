@@ -234,7 +234,7 @@ def _post(use: RestrictedUse, body: dict[str, Any]) -> dict[str, Any] | None:
     try:
         with _opener.open(request, timeout=_TIMEOUT_SECONDS) as response:
             parsed = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError):
+    except urllib.error.URLError, OSError, ValueError:
         logger.warning("Restricted-use check for conversation %s failed", use.conversation_id, exc_info=True)
         return None
     return parsed if isinstance(parsed, dict) else None
@@ -403,7 +403,7 @@ def _text_of(message: Any) -> str:
         return content
     try:
         return json.dumps(content, ensure_ascii=False, default=str)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return str(content)
 
 

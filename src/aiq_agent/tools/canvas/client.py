@@ -151,7 +151,7 @@ def lookup_document_id(collection: str, file_name: str, envelope: SignedEnvelope
     try:
         with _opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             body = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError):
+    except urllib.error.URLError, OSError, ValueError:
         logger.info("No document id for %s in %s", file_name, collection, exc_info=True)
         return None
     document_id = body.get("documentId") if isinstance(body, dict) else None

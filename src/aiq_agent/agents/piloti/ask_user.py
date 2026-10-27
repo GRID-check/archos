@@ -193,7 +193,7 @@ def _normalize_options(options: list[str] | str | None) -> list[str]:
         text = options.strip()
         try:
             parsed = json.loads(text)
-        except (json.JSONDecodeError, TypeError):
+        except json.JSONDecodeError, TypeError:
             parsed = [part for part in text.split("\n")] if "\n" in text else text.split(",")
         options = parsed if isinstance(parsed, list) else [str(parsed)]
     return [str(option).strip() for option in options if str(option).strip()]

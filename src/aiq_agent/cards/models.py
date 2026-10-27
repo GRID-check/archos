@@ -524,7 +524,7 @@ class SetbackPlanCard(CardModel):
     reference: NormReference = Field(description="Source of the setback requirements")
 
     @model_validator(mode="after")
-    def _plan_or_areas(self) -> "SetbackPlanCard":
+    def _plan_or_areas(self) -> SetbackPlanCard:
         """The plan needs its four dimensions; a pure density question needs the parcel area instead.
 
         A Bebauungsgrad or GFZ question with no parcel geometry leaves ``sides``
@@ -544,7 +544,7 @@ class SetbackPlanCard(CardModel):
         return self
 
     @model_validator(mode="after")
-    def _ratio_units(self) -> "SetbackPlanCard":
+    def _ratio_units(self) -> SetbackPlanCard:
         """A ratio's unit, when the model gave none: ``%`` for Bebauungsgrad, none for GFZ (never ``cm``)."""
         if self.coverage is not None and "unit" not in self.coverage.model_fields_set:
             self.coverage = self.coverage.model_copy(update={"unit": "%"})
@@ -776,7 +776,7 @@ class CalculationOperand(CardModel):
     )
 
     @model_validator(mode="after")
-    def _reference_or_value(self) -> "CalculationOperand":
+    def _reference_or_value(self) -> CalculationOperand:
         if self.step is not None:
             if self.step < 1:
                 raise ValueError("`step` is a 1-based index of an earlier step")
@@ -820,7 +820,7 @@ class CalculationStep(CardModel):
     )
 
     @model_validator(mode="after")
-    def _operand_count_matches_operation(self) -> "CalculationStep":
+    def _operand_count_matches_operation(self) -> CalculationStep:
         if self.operation in ("quotient", "percent_of", "percent_ratio") and len(self.operands) != 2:
             raise ValueError(f"operation '{self.operation}' takes exactly two operands")
         if self.operation != "sum" and any(o.factor is not None for o in self.operands):
@@ -852,7 +852,7 @@ class CalculationLimit(CardModel):
     reference: NormReference | None = Field(default=None, description="Where the bound is written. Never invent one")
 
     @model_validator(mode="after")
-    def _range_needs_an_upper_bound(self) -> "CalculationLimit":
+    def _range_needs_an_upper_bound(self) -> CalculationLimit:
         if self.comparator == "between":
             if self.upper is None:
                 raise ValueError("a 'between' limit needs `upper`")
@@ -905,7 +905,7 @@ class CalculationCard(CardModel):
     note: str | None = Field(default=None, description="Optional one-line caveat, e.g. what the figure does not cover")
 
     @model_validator(mode="after")
-    def _references_point_backwards(self) -> "CalculationCard":
+    def _references_point_backwards(self) -> CalculationCard:
         # A forward or self reference has no value to read, so the renderer
         # would have nothing to compute; rejecting it here means an
         # uncomputable card never reaches the client at all.
@@ -1149,7 +1149,7 @@ class FormulaInput(CardModel):
         return _no_figure(value, "source", name=False)
 
     @model_validator(mode="after")
-    def _range_is_consistent(self) -> "FormulaInput":
+    def _range_is_consistent(self) -> FormulaInput:
         if self.min is not None and self.max is not None and self.min >= self.max:
             raise ValueError("`min` must be below `max`")
         if self.value is not None:
@@ -1490,7 +1490,7 @@ class DocumentDraftCard(CardModel):
     )
 
     @model_validator(mode="after")
-    def _require_filed_together(self) -> "DocumentDraftCard":
+    def _require_filed_together(self) -> DocumentDraftCard:
         filed = (self.document_id, self.version_id, self.version_state)
         if any(filed) and not all(filed):
             raise ValueError(
@@ -1661,7 +1661,7 @@ class FileOperationProposalCard(CardModel):
     )
 
     @model_validator(mode="after")
-    def _require_operation_fields(self) -> "FileOperationProposalCard":
+    def _require_operation_fields(self) -> FileOperationProposalCard:
         """Every entry must carry what its verb needs, and nothing it does not.
 
         The card is built in Python, so this is not a guard against a model —
@@ -1906,7 +1906,7 @@ class LookItem(CardModel):
     )
 
     @model_validator(mode="after")
-    def _a_place(self) -> "LookItem":
+    def _a_place(self) -> LookItem:
         if self.region is not None:
             x, y, w, h = self.region
             if w <= 0 or h <= 0 or x + w > 1 + 1e-6 or y + h > 1 + 1e-6:
@@ -1969,7 +1969,7 @@ class RevisionCompareChange(CardModel):
     label: str = Field(min_length=1, max_length=200, pattern=_NOT_A_DATA_URL, description="What changed there")
 
     @model_validator(mode="after")
-    def _a_box(self) -> "RevisionCompareChange":
+    def _a_box(self) -> RevisionCompareChange:
         x, y, w, h = self.region
         if w <= 0 or h <= 0 or x + w > 1 + 1e-6 or y + h > 1 + 1e-6:
             raise ValueError("the region reaches past the page or has no area: x + w and y + h are at most 1")
@@ -2140,7 +2140,7 @@ class IfcHighlight(CardModel):
     )
 
     @model_validator(mode="after")
-    def exactly_one_selector(self) -> "IfcHighlight":
+    def exactly_one_selector(self) -> IfcHighlight:
         """A group with neither selects nothing; with both, the two disagree.
 
         Both is the dangerous one: the renderer would have to pick, and either
@@ -2534,7 +2534,7 @@ class SurfaceCard(CardModel):
     )
 
     @model_validator(mode="after")
-    def _is_a_valid_a2ui_surface(self) -> "SurfaceCard":
+    def _is_a_valid_a2ui_surface(self) -> SurfaceCard:
         from a2ui.core.state.validation_helpers import analyze_topology
         from a2ui.core.state.validation_helpers import validate_component_integrity
 

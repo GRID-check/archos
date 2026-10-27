@@ -133,7 +133,7 @@ def _region(value: Any) -> Box:
     """A call's ``region`` as a box; no region, or one that is not four numbers, is the whole page."""
     try:
         x, y, w, h = (float(part) for part in value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return WHOLE_PAGE
     return (x, y, w, h)
 

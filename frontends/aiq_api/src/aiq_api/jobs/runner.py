@@ -503,7 +503,7 @@ async def _finalize_cancelled_run(
             finalized = await _update_status_if_not_terminal(
                 job_store, job_id, JobStatus.INTERRUPTED, error="cancelled by user"
             )
-        except (ConnectionError, TimeoutError, RuntimeError):
+        except ConnectionError, TimeoutError, RuntimeError:
             finalized = False
 
     # Gated on verdict agreement (item 10): a user cancel (standing
@@ -2110,7 +2110,7 @@ async def _run_agent(
                         "Research worker passing %d available documents to agent state",
                         len(available_documents),
                     )
-                except (ImportError, TypeError):
+                except ImportError, TypeError:
                     # AvailableDocument not available or state doesn't support it
                     pass
             state = state_cls(**state_kwargs)
@@ -2193,7 +2193,7 @@ def _get_agent_state_class(agent) -> type | None:
                 if isinstance(cls, type) and hasattr(cls, "model_fields"):
                     if "messages" in cls.model_fields:
                         return cls
-    except (ImportError, AttributeError):
+    except ImportError, AttributeError:
         pass
 
     # Try same module

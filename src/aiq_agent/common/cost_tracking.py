@@ -237,7 +237,7 @@ class UsageEvent:
 def _as_int(value: Any) -> int:
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0
 
 
@@ -307,7 +307,7 @@ def extract_usage_event(response: Any) -> UsageEvent | None:
     try:
         generation = response.generations[0][0]
         message = getattr(generation, "message", None)
-    except (AttributeError, IndexError):
+    except AttributeError, IndexError:
         generation = None
     if message is not None:
         generation_id = getattr(message, "id", None)

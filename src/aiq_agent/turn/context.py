@@ -228,7 +228,7 @@ async def _live_memory_digest(
             user_id=request.user_id,
             restricted_collections=signed_restricted_collections(request),
         )
-    except (RuntimeError, OSError, ValueError):
+    except RuntimeError, OSError, ValueError:
         # The documented failure modes of fetch_memory_digest: configuration,
         # transport, and an unparseable body. Degrade to the connection-time digest.
         logger.warning("Live memory digest fetch failed; using connection-time digest", exc_info=True)

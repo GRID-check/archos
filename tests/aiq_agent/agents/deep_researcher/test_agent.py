@@ -1311,7 +1311,7 @@ class TestDeepResearcherAgent:
             def __init__(self) -> None:
                 self.spawned: list[FakeIsolatingCallback] = []
 
-            def for_new_run(self) -> "FakeIsolatingCallback":
+            def for_new_run(self) -> FakeIsolatingCallback:
                 fresh = FakeIsolatingCallback()
                 self.spawned.append(fresh)
                 return fresh

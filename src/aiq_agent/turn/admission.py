@@ -25,7 +25,6 @@ from collections.abc import AsyncIterator
 from collections.abc import Awaitable
 from dataclasses import dataclass
 from typing import Any
-from typing import Generic
 from typing import Protocol
 from typing import TypeVar
 from typing import get_args
@@ -54,7 +53,6 @@ logger = logging.getLogger(__name__)
 PROFILE_AGENT_NAME = "chat_researcher"
 
 StateT = TypeVar("StateT")
-T = TypeVar("T")
 
 
 #: Every wire body type: what the agent's stream yields before its final state.
@@ -65,7 +63,7 @@ class AnsweringAgent(Protocol[StateT]):
     def stream(self, state: StateT, thread_id: str | None = None) -> AsyncIterator[EventBody | StateT]: ...
 
 
-async def spanned(name: str, awaitable: Awaitable[T]) -> T:
+async def spanned[T](name: str, awaitable: Awaitable[T]) -> T:
     """Await inside a profiler span and a Langfuse observation of the same name.
 
     Each gathered branch runs in its own task and therefore its own copy of the
@@ -88,7 +86,7 @@ class TurnRefusal:
 
 
 @dataclass(frozen=True)
-class TurnOutcome(Generic[StateT]):
+class TurnOutcome[StateT]:
     """What ``answer_turn`` produced: a finished state or a refusal."""
 
     state: StateT | None
@@ -128,7 +126,7 @@ async def _enter_admission_slot(
     return None
 
 
-async def answer_turn(
+async def answer_turn[StateT](
     agent: AnsweringAgent[StateT],
     state: StateT,
     *,

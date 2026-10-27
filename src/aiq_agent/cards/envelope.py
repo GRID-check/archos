@@ -324,7 +324,7 @@ def envelope_card_objects(raw: Sequence[Any] | None) -> list[Any]:
         if isinstance(element, str):
             try:
                 objects.append(json.loads(element, strict=False))
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 objects.append(element)
             continue
         objects.append(element)
