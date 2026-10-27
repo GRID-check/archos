@@ -12,6 +12,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.register import KnowledgeRetrievalConfig
+from knowledge_layer.register import knowledge_retrieval
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.inventory import set_turn_documents
@@ -20,8 +22,6 @@ from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
-from sources.knowledge_layer.src.register import knowledge_retrieval
 
 PROJECT = "proj_1"
 OFFICE_SHELF = "archiv_1"
@@ -84,7 +84,7 @@ def search(monkeypatch):
     """Install a scope (base + project, optionally the Büroablage), the pools, and the store's replaced files."""
     monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
     monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-    monkeypatch.setattr("sources.knowledge_layer.src.register._initialize_ingestor", lambda config, llm: None)
+    monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
         monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
 
@@ -102,7 +102,7 @@ def search(monkeypatch):
         monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", get_superseded_files)
         store = _Store(pools)
         set_turn_documents(documents)
-        monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: store)
+        monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: store)
         store.asked = asked
         return store
 

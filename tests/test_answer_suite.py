@@ -173,7 +173,7 @@ def test_a_question_about_a_guideline_the_corpus_lacks_is_skipped_by_name(tmp_pa
     assert suite.lacking_family({"family": "OIB-RL 5"}, families) == "OIB-RL 5"
     assert suite.lacking_family(QUESTION, families) is None
     assert suite.lacking_family({"family": "Bauordnung"}, families) is None
-    monkeypatch.delenv("AIQ_SUMMARY_DB")
+    monkeypatch.delenv("GRID_SUMMARY_DB")
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
     assert suite.lacking_family({"family": "OIB-RL 5"}, suite.corpus_families()) is None
     report = suite.render([], [], {"started": "t", "runs_per_question": 1}, None, ["schallschutz (OIB-RL 5)"])
@@ -317,10 +317,10 @@ def test_the_inventory_checked_is_the_one_the_runs_read(monkeypatch, tmp_path):
     # Every run's `nat run` starts in the repo root, so a relative path means
     # the root's file, wherever the suite itself was started from.
     monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
     assert suite.inventory_database() == (suite.ROOT / "summaries.db").resolve()
 
-    monkeypatch.setenv("AIQ_SUMMARY_DB", f"sqlite+aiosqlite:///{tmp_path}/elsewhere.db")
+    monkeypatch.setenv("GRID_SUMMARY_DB", f"sqlite+aiosqlite:///{tmp_path}/elsewhere.db")
     assert suite.inventory_database() == tmp_path / "elsewhere.db"
 
 
@@ -646,7 +646,7 @@ def test_a_summary_db_given_as_a_path_is_refused_before_any_run(monkeypatch, tmp
     monkeypatch.setattr(suite, "ensure_key", lambda: True)
     monkeypatch.setattr(suite, "foreign_imports", lambda out: [])
     monkeypatch.setattr(suite, "_corpus_ready", lambda: True)
-    monkeypatch.setenv("AIQ_SUMMARY_DB", str(tmp_path / "summaries.db"))
+    monkeypatch.setenv("GRID_SUMMARY_DB", str(tmp_path / "summaries.db"))
 
     assert suite._preflight(tmp_path, ingest=False) == 2
     assert "not a database URL" in capsys.readouterr().err

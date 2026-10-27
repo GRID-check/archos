@@ -190,7 +190,7 @@
     "sources/knowledge_layer/src/browse.py": 2788,
     "sources/knowledge_layer/src/cross_encoder.py": 632,
     "sources/knowledge_layer/src/estate.py": 1013,
-    "sources/knowledge_layer/src/llamaindex/adapter.py": 6656,
+    "sources/knowledge_layer/src/llamaindex/adapter.py": 6655,
     "sources/knowledge_layer/src/llamaindex/clause_chunking.py": 723,
     "sources/knowledge_layer/src/llamaindex/section_chunking.py": 768,
     "sources/knowledge_layer/src/llamaindex/visual_analysis.py": 996,

@@ -18,7 +18,7 @@ _TABLES = ("checkpoints", "checkpoint_blobs", "checkpoint_writes")
 
 def test_purge_deletes_only_the_finished_thread(tmp_path, monkeypatch):
     dsn = f"sqlite:///{tmp_path / 'ckpt.db'}"
-    monkeypatch.setenv("AIQ_DEEP_CHECKPOINT_DB", dsn)
+    monkeypatch.setenv("GRID_DEEP_CHECKPOINT_DB", dsn)
     engine = EventStore._get_or_create_sync_engine(dsn)
     with engine.connect() as conn:
         for t in _TABLES:
@@ -36,13 +36,13 @@ def test_purge_deletes_only_the_finished_thread(tmp_path, monkeypatch):
 
 
 def test_purge_is_noop_without_dsn(monkeypatch):
-    monkeypatch.delenv("AIQ_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
     _purge_deep_checkpoint("job-x")  # must not raise
 
 
 def test_purge_swallows_missing_tables(tmp_path, monkeypatch):
     # DSN set but no checkpoint tables yet (durability on, no run) -> no raise.
-    monkeypatch.setenv("AIQ_DEEP_CHECKPOINT_DB", f"sqlite:///{tmp_path / 'empty.db'}")
+    monkeypatch.setenv("GRID_DEEP_CHECKPOINT_DB", f"sqlite:///{tmp_path / 'empty.db'}")
     _purge_deep_checkpoint("job-x")
 
 
@@ -57,7 +57,7 @@ def test_purge_swallows_missing_tables(tmp_path, monkeypatch):
 
 def _checkpoint_db(tmp_path, monkeypatch):
     dsn = f"sqlite:///{tmp_path / 'ckpt.db'}"
-    monkeypatch.setenv("AIQ_DEEP_CHECKPOINT_DB", dsn)
+    monkeypatch.setenv("GRID_DEEP_CHECKPOINT_DB", dsn)
     engine = EventStore._get_or_create_sync_engine(dsn)
     with engine.connect() as conn:
         for t in _TABLES:

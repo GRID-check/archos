@@ -3212,6 +3212,10 @@
     "de": "Die Dateiliste behält beim Laden ihr endgültiges Layout. Bisher zeigten Laden und Suchen auch in der Detailansicht Platzhalterkarten, sodass die Liste erst nach einem Aufblitzen von Karten erschien, die gar nicht dort hätten stehen sollen."
   },
   {
+    "en": "The file list no longer flashes a browser error when it opens: dates in the list read in Vienna time on the first paint, whatever time zone your computer is set to. Sign-in redirects are also no longer reported to us as errors.",
+    "de": "Beim Öffnen der Dateiliste wird kein Browserfehler mehr kurz angezeigt: Die Datumsangaben erscheinen bereits beim ersten Laden in Wiener Zeit – unabhängig von der Zeitzone Ihres Computers. Auch Anmelde-Weiterleitungen werden uns nicht mehr als Fehler gemeldet."
+  },
+  {
     "en": "The file preview beside a chat can be resized again. The divider used to stop after a short distance and now follows your pointer across the whole width.",
     "de": "Die Dateivorschau neben einem Chat lässt sich wieder in der Breite ändern. Der Trenner blieb bisher nach einer kurzen Strecke stehen und folgt dem Zeiger jetzt über die gesamte Breite."
   },

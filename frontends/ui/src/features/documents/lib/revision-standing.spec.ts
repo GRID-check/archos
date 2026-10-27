@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DocumentReadFamily } from '@/lib/documents/document-status'
 import type { DocumentVersionState, DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { revisionStanding, resolvePerson } from './revision-standing'
-import { buildRevisionTimeline } from './revision-timeline'
+import { buildRevisionTimeline } from '@/lib/documents/revision-timeline'
 
 const version = (
   versionNumber: number,

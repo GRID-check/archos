@@ -152,7 +152,7 @@ describe("frontendEnv", () => {
 
 /**
  * Extraction is on because the CODE says so, not because a deployment
- * remembered a flag. Production once set only AIQ_EXTRACT_IMAGES: uncaptioned
+ * remembered a flag. Production once set only GRID_EXTRACT_IMAGES: uncaptioned
  * tables were indexed as garbled page text, and every raster the VLM typed as a
  * chart was analysed, paid for, and dropped. The rule is now "no flag set in a
  * deployment = on", which holds only while the adapter reads each flag as an
@@ -163,7 +163,7 @@ describe("backendEnv extraction switches", () => {
     join(repoRoot, "sources", "knowledge_layer", "src", "llamaindex", "adapter.py"),
     "utf8",
   );
-  const switches = ["AIQ_EXTRACT_TABLES", "AIQ_EXTRACT_IMAGES", "AIQ_EXTRACT_CHARTS"];
+  const switches = ["GRID_EXTRACT_TABLES", "GRID_EXTRACT_IMAGES", "GRID_EXTRACT_CHARTS"];
 
   it("sets none of them, so none can be left off by omission", () => {
     for (const name of switches) {
