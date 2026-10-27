@@ -1978,8 +1978,10 @@ The agent can now persist curated findings across turns. Full design:
   (`frontends/ui/src/app/api/internal/memory/route.ts`), authenticated by the
   shared service token `GRID_INTERNAL_API_TOKEN` (`x-grid-internal-token`
   header; the route fails closed with 503 when the token is unconfigured).
-  Backend client: `src/aiq_agent/knowledge/project_memory.py` (base URL from
-  `FRONTEND_INTERNAL_URL`, default `http://frontend:3000`).
+  Backend client: `src/aiq_agent/knowledge/project_memory.py`, over
+  `src/aiq_agent/common/bff_http.py`, the one client every agent-side call to
+  the BFF goes through (base URL from `FRONTEND_INTERNAL_URL`, then
+  `FRONTEND_URL`, default `http://frontend:3000`; redirects refused).
 - **Two scopes**: the `project_memory` table has a `scope` column —
   `project` (requires `projectId`) or `organization` (org-wide, requires
   `organizationId`, `projectId` null).

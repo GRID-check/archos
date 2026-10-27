@@ -14,6 +14,7 @@ import urllib.error
 
 import pytest
 
+from aiq_agent.common import bff_http
 from aiq_agent.tools.canvas import calls as canvas_calls
 from aiq_agent.tools.canvas import client as canvas_client
 from aiq_agent.tools.canvas.client import CanvasRequestError
@@ -275,7 +276,9 @@ class TestAnOfficeThatHasPilotiProposeOnly:
         }
         exc = urllib.error.HTTPError("http://frontend/api", 403, "Forbidden", {}, io.BytesIO(json.dumps(body).encode()))
 
-        refusal = canvas_client._refusal(exc)
+        refusal = canvas_client._refusal(
+            bff_http.BffRefusedError("refused", status=exc.code, body=bff_http._error_envelope(exc))
+        )
 
         assert (refusal.status, refusal.code, refusal.reason) == (403, "PILOTI_ACTS_OFF", "piloti-acts-off")
 

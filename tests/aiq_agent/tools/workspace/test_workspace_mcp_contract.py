@@ -30,7 +30,8 @@ from urllib.parse import urlparse
 
 import pytest
 
-from aiq_agent.tools.documents.filing import SignedEnvelope
+from aiq_agent.common import bff_http
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.tools.workspace import client
 
 REPO = Path(__file__).resolve().parents[4]
@@ -125,7 +126,7 @@ def _built_requests(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     built = []
     for case, tool, arguments in CASES:
         opener = _Opener(_Reply(json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"content": []}}), "application/json"))
-        monkeypatch.setattr(client, "_opener", opener)
+        monkeypatch.setattr(bff_http, "_opener", opener)
         client.call_tool(tool, arguments, _envelope(), answer_message_id=ANSWER_MESSAGE_ID)
         request = opener.request
         built.append(
@@ -209,7 +210,7 @@ def test_client_reads_what_the_route_answers(case: str, monkeypatch: pytest.Monk
     entry = _responses()["responses"][case]
     assert entry["status"] == 200
     tool, arguments = next((t, a) for n, t, a in CASES if n == case)
-    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    monkeypatch.setattr(bff_http, "_opener", _Opener(_reply_for(entry)))
     text = client.call_tool(tool, arguments, _envelope())
     assert not text.startswith("Error:"), text
     for needle in EXPECTED_TEXT[case]:
@@ -219,7 +220,7 @@ def test_client_reads_what_the_route_answers(case: str, monkeypatch: pytest.Monk
 def test_a_proposed_write_carries_the_shape_the_card_is_made_from(monkeypatch: pytest.MonkeyPatch) -> None:
     """``structuredContent`` ``{decision, proposalId, summary, operation}`` is what ``cards.proposal_from`` reads."""
     entry = _responses()["responses"]["call_write"]
-    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    monkeypatch.setattr(bff_http, "_opener", _Opener(_reply_for(entry)))
     tool, arguments = next((t, a) for n, t, a in CASES if n == "call_write")
 
     result = client.call_tool_result(tool, arguments, _envelope())
@@ -238,7 +239,7 @@ def test_a_read_has_no_decision_to_propose(monkeypatch: pytest.MonkeyPatch) -> N
     from aiq_agent.tools.workspace.cards import proposal_from
 
     entry = _responses()["responses"]["call_read"]
-    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    monkeypatch.setattr(bff_http, "_opener", _Opener(_reply_for(entry)))
     tool, arguments = next((t, a) for n, t, a in CASES if n == "call_read")
 
     assert proposal_from(client.call_tool_result(tool, arguments, _envelope()).structured) is None
@@ -248,7 +249,7 @@ def test_a_read_has_no_decision_to_propose(monkeypatch: pytest.MonkeyPatch) -> N
 def test_client_words_the_route_refusals(case: str, monkeypatch: pytest.MonkeyPatch) -> None:
     entry = _responses()["responses"][case]
     assert entry["status"] in (401, 403)
-    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    monkeypatch.setattr(bff_http, "_opener", _Opener(_reply_for(entry)))
     with pytest.raises(client.WorkspaceError) as caught:
         client.call_tool("search-operations", {"query": "x"}, _envelope())
     assert caught.value.status == entry["status"]
@@ -258,7 +259,7 @@ def test_client_words_the_route_refusals(case: str, monkeypatch: pytest.MonkeyPa
 
 def test_a_tool_level_error_comes_back_as_text(monkeypatch: pytest.MonkeyPatch) -> None:
     entry = _responses()["responses"]["unknown_operation"]
-    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    monkeypatch.setattr(bff_http, "_opener", _Opener(_reply_for(entry)))
     text = client.call_tool("describe-operation", {"name": "nope"}, _envelope())
     assert text.startswith("Error: Unknown operation")
 
@@ -267,7 +268,7 @@ def test_a_read_refused_in_a_shared_conversation_reaches_the_model_as_the_server
     """A read a shared conversation refuses (ADR-0094) reaches the model as the server's sentence, an error."""
     entry = _responses()["responses"]["refused_shared_conversation"]
     assert entry["status"] == 200
-    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    monkeypatch.setattr(bff_http, "_opener", _Opener(_reply_for(entry)))
     tool, arguments = next((t, a) for n, t, a in CASES if n == "call_read")
 
     result = client.call_tool_result(tool, arguments, _envelope(), answer_message_id=ANSWER_MESSAGE_ID)

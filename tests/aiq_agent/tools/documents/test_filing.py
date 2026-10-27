@@ -16,6 +16,7 @@ import re
 from urllib.parse import parse_qs
 from urllib.parse import urlsplit
 
+from aiq_agent.common import bff_http
 from aiq_agent.common import turn_status
 from aiq_agent.tools.documents import filing
 from aiq_agent.tools.documents import register as filing_tools
@@ -495,7 +496,7 @@ class TestTheReadRouteIsScopedToTheConversation:
                 seen.append(request.full_url)
                 return _Response()
 
-        monkeypatch.setattr(filing, "_opener", _Opener())
+        monkeypatch.setattr(bff_http, "_opener", _Opener())
         body = filing.get_document_version_content("ver 9", "org_1", "conv-1")
 
         assert body["documentId"] == "doc-9"

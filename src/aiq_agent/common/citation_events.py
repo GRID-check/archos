@@ -32,13 +32,9 @@ Design notes:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
-import urllib.error
-import urllib.parse
-import urllib.request
 import uuid
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
@@ -47,6 +43,8 @@ from dataclasses import field
 from threading import Lock
 from typing import Any
 from typing import Literal
+
+from aiq_agent.common import bff_http
 
 logger = logging.getLogger(__name__)
 
@@ -451,51 +449,18 @@ def _resolve_context(
     return resolved
 
 
-#: Only real HTTP(S) endpoints may be posted to. A misconfigured
-#: FRONTEND_INTERNAL_URL must not let urllib open a ``file://`` (or ftp://, …)
-#: handler with the internal token and the batch attached.
-_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
-
-
 def _post_batch(payload: dict[str, Any]) -> None:
     """POST one batch to the BFF ledger endpoint. Best-effort, never raises."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        logger.warning(
-            "GRID_INTERNAL_API_TOKEN not configured — dropping %d citation event(s)",
-            len(payload.get("events") or ()),
-        )
-        return
-    base_url = (
-        os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    ).rstrip("/")
-    scheme = urllib.parse.urlparse(base_url).scheme.lower()
-    if scheme not in _ALLOWED_URL_SCHEMES:
-        logger.warning(
-            "Internal frontend URL uses unsupported scheme %r — dropping citation events",
-            scheme or "(none)",
-        )
-        return
-    # Serialization and request construction are inside the guard too: a payload
-    # that will not serialize is a bug worth a log line, not a silent exception
-    # swallowed by an unread Future on the dispatch thread.
     try:
-        request = urllib.request.Request(
-            f"{base_url}/api/internal/citation-events",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "x-grid-internal-token": token},
-            method="POST",
+        bff_http.send("POST", "/api/internal/citation-events", timeout=_REQUEST_TIMEOUT_SECONDS, body=payload)
+    except bff_http.BffNotConfiguredError:
+        logger.warning(
+            "GRID_INTERNAL_API_TOKEN not configured — dropping %d citation event(s)", len(payload.get("events") or ())
         )
-        # The URL is the deployment-set internal frontend base plus a fixed path;
-        # no user input reaches it (same pattern as the profiler/cost ledgers).
-        # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
-        with urllib.request.urlopen(request, timeout=_REQUEST_TIMEOUT_SECONDS) as response:
-            if response.status not in (200, 201, 202):
-                logger.warning("Internal citation-events endpoint returned %s", response.status)
-    except urllib.error.HTTPError as error:
-        logger.warning("Internal citation-events endpoint rejected batch: HTTP %s", error.code)
+    except bff_http.BffRefusedError as error:
+        logger.warning("Internal citation-events endpoint rejected batch: HTTP %s", error.status)
     except Exception:
-        logger.warning("Failed to post citation events to internal endpoint", exc_info=True)
+        logger.warning("Failed to post citation event(s) to internal endpoint", exc_info=True)
 
 
 def _score_in_langfuse(events: list[CitationEvent], agent: str) -> None:
