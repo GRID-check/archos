@@ -310,6 +310,8 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
 const COMPOSING_HELPERS: Record<string, string> = {
   'lib/search/document-repository.ts#reachWhere':
     "The search reach's documents predicate (ADR-0136): every search provider joins `documents` under it, and it ANDs `documentVisibleTo(reachReader(reach))`.",
+  'lib/search/document-repository.ts#documentSearchWhere':
+    "The document search's whole WHERE (ADR-0136): `reachWhere` and the filters; annotations narrow through their document with it, so they inherit the same `documentVisibleTo`.",
 }
 
 /** A relative or `@/` import, as a path under `src`; null for a package. */
