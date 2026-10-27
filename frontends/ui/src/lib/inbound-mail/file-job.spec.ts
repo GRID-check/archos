@@ -569,7 +569,7 @@ describe('filedForm (B8: a filed entry names no project address, its own include
   const own = `wohnbau.abcdefgh2345@${domain}`
   const other = `nachbar.zzzzzzzzzzzz@${domain}`
   const read = {
-    ...unreadableRead('empty'),
+    ...unreadableRead('failed'),
     unreadable: false,
     unreadableReasons: [],
     ownText: `Bitte an ${own} und ${other} schicken.`,
