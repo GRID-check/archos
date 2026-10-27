@@ -7,7 +7,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Document, UploadBatch } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
+import type { UploadBatch } from '@/lib/db/schema/upload-batches'
 import type { ProjectFolderRow } from '@/lib/projects/folder-service'
 import { makeDocument, makeProject } from '@/test-utils/db-fixtures'
 

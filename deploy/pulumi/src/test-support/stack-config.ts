@@ -81,3 +81,12 @@ export function langfuseStackConfig(): Record<string, string> {
     "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret
   };
 }
+
+/**
+ * The same configuration under another project's namespace: `grid-oib:x`
+ * becomes `<project>:x`. The program reads its keys through the running
+ * project (ADR-0147), so a spec that mocks `workspace` needs them keyed so.
+ */
+export function forProject(config: Record<string, string>, project: string): Record<string, string> {
+  return Object.fromEntries(Object.entries(config).map(([k, v]) => [k.replace(/^grid-oib:/, `${project}:`), v]));
+}

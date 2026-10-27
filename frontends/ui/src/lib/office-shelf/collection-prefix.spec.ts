@@ -1,3 +1,4 @@
+// @disk-inputs: ../../src/aiq_agent/common/source_kinds.py
 /**
  * @vitest-environment node
  */

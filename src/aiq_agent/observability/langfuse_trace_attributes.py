@@ -91,7 +91,7 @@ METADATA_PREFIX = "langfuse.trace.metadata."
 #: keeps each snapshot frozen at what was known when the task was created.
 #: Per-job lifecycle (bind fresh at job start, reset in ``finally``) lives with
 #: the runner — see ``DeepResearcherAgent.run`` — the way ``cards/registry.py``
-#: and ``common/citation_verification.py`` bind per turn.
+#: and ``citations/session.py`` bind per turn.
 _CONTRIBUTED: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
     "grid_langfuse_contributed", default=None
 )
@@ -514,7 +514,7 @@ def _as_count(value: Any) -> int:
     """A token count as a non-negative int; anything else is 0."""
     try:
         return max(0, int(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0
 
 

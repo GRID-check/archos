@@ -88,6 +88,7 @@ from fastapi import WebSocket
 from pydantic import ValidationError
 from starlette.websockets import WebSocketDisconnect
 
+from aiq_agent.auth.errors import AuthError
 from aiq_agent.common.content_screen import ScreeningRules
 from aiq_agent.common.content_screen import findings_summary
 from aiq_agent.common.content_screen import mask_text
@@ -168,7 +169,6 @@ from aiq_agent.turn.payload import thread_reply_requested
 from aiq_agent.turn.payload import turn_surface
 from aiq_agent.turn.response import answer_message_id
 from aiq_agent.turn.streaming import TurnTextFold
-from aiq_api.auth.errors import AuthError
 from aiq_api.auth.middleware import build_request_trace_tags
 from aiq_api.auth.middleware import detect_internal_caller
 from aiq_api.auth.middleware import resolve_request_user
@@ -984,7 +984,7 @@ async def _write(socket: WebSocket, frame: dict[str, Any]) -> bool:
     """Write one frame. A closed socket is normal, not an error: the frame is in the conversation's stream."""
     try:
         await socket.send_json(frame)
-    except (RuntimeError, OSError, WebSocketDisconnect):
+    except RuntimeError, OSError, WebSocketDisconnect:
         logger.debug("Socket write failed; the frame stays in the conversation stream", exc_info=True)
         return False
     return True
@@ -1368,7 +1368,7 @@ class ChatRegistry:
         """A note a relay received for a turn running here, authorised here. The relay already masked it."""
         try:
             message = CLIENT_MESSAGE.validate_python(payload["message"])
-        except (ValidationError, KeyError):
+        except ValidationError, KeyError:
             logger.warning("Dropping a malformed relayed steer", exc_info=True)
             return
         turn = self.running(message.conversation_id, getattr(message, "turn_id", None))
@@ -1385,7 +1385,7 @@ class ChatRegistry:
         """A relay's message for a turn running here, authorised here: the relay does not know the asker."""
         try:
             message = CLIENT_MESSAGE.validate_python(payload["message"])
-        except (ValidationError, KeyError):
+        except ValidationError, KeyError:
             logger.warning("Dropping a malformed relayed message", exc_info=True)
             return
         subject, internal = payload.get("subject"), bool(payload.get("internal"))

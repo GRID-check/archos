@@ -21,7 +21,7 @@ vi.mock('@/lib/organizations/display-names', () => ({
 
 import * as repository from './repository'
 import { getConversationTimeline, listProfiledConversations, recordProfilerSpans } from './service'
-import type { AgentProfilerSpan } from '@/lib/db/schema'
+import type { AgentProfilerSpan } from '@/lib/db/schema/agent-profiler'
 import type { QualityScope } from '@/lib/quality/scope'
 
 const mockInsertSpans = vi.mocked(repository.insertSpans)

@@ -15,7 +15,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
-vi.mock('@/lib/db/schema', () => ({
+vi.mock('@/lib/db/schema/documents', () => ({
+  documents: {
+    id: 'd.id',
+    organizationId: 'd.organization_id',
+    scope: 'd.scope',
+    projectId: 'd.project_id',
+    folderId: 'd.folder_id',
+  },
+}))
+vi.mock('@/lib/db/schema/project-folders', () => ({
   projectFolders: {
     id: 'f.id',
     organizationId: 'f.organization_id',
@@ -24,13 +33,6 @@ vi.mock('@/lib/db/schema', () => ({
     parentId: 'f.parent_id',
     name: 'f.name',
     path: 'f.path',
-  },
-  documents: {
-    id: 'd.id',
-    organizationId: 'd.organization_id',
-    scope: 'd.scope',
-    projectId: 'd.project_id',
-    folderId: 'd.folder_id',
   },
 }))
 vi.mock('@/lib/authz/organizations', () => ({ canManageOfficeShelf: vi.fn() }))

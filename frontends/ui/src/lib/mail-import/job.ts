@@ -24,7 +24,7 @@
 
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { MailImport, MailImportErrorCode, MailImportSkippedSample, MailImportStatus } from '@/lib/db/schema'
+import type { MailImport, MailImportErrorCode, MailImportSkippedSample, MailImportStatus } from '@/lib/db/schema/mail-imports'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { isAuthzRefusal } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'

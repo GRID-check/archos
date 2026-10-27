@@ -12,7 +12,7 @@ import 'server-only'
 import { eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
-import { organizations, type Organization } from '@/lib/db/schema'
+import { organizations, type Organization } from '@/lib/db/schema/organizations'
 
 /** The stored settings row for an organization, or null before its first write. */
 export async function findOrganization(organizationId: string): Promise<Organization | null> {

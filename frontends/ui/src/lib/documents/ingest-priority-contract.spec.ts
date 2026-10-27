@@ -1,3 +1,4 @@
+// @disk-inputs: ../aiq_api/src/aiq_api/models/requests.py
 /**
  * The ingest priority the BFF sends, pinned to the one the backend accepts.
  *

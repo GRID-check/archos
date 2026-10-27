@@ -226,7 +226,7 @@ class TestTextRecital:
         assert recite_text("A [2], B [3].", {1: 1, 3: 2}, {1, 2}, merged={2: 1}) == "A [1], B [2]."
 
     def test_merged_duplicates_are_read_off_the_removals(self):
-        from aiq_agent.common.citation_verification import merged_citations
+        from aiq_agent.citations.entries import merged_citations
 
         removed = [
             {"number": 2, "line": "- [2] oib.pdf, p.3", "reason": "duplicate_of_citation_1"},

@@ -5,7 +5,6 @@ import logging
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
-from typing import TypeVar
 
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
@@ -51,8 +50,6 @@ from .deepagents_runtime import DeepResearchSkillsConfig
 from .models import DeepResearchAgentState
 
 logger = logging.getLogger(__name__)
-
-ConfigT = TypeVar("ConfigT")
 
 
 class DeepResearchAgentConfig(FunctionBaseConfig, name="deep_research_agent"):
@@ -160,7 +157,7 @@ async def deep_research_sandbox(config: DeepResearchSandboxConfig, builder: Buil
     yield FunctionInfo.from_fn(_noop, description="Deep research sandbox config-only function.")
 
 
-def _resolve_config_ref(
+def _resolve_config_ref[ConfigT](
     builder: Builder, value: ConfigT | FunctionRef | None, expected_type: type[ConfigT]
 ) -> ConfigT | None:
     if value is None or isinstance(value, expected_type):

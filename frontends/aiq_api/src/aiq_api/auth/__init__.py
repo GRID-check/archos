@@ -1,5 +1,7 @@
 """Auth components for the AIQ API frontend."""
 
+from aiq_agent.auth.request_identity import get_current_user
+
 from .base import TokenValidator
 from .errors import AuthError
 from .errors import TokenExpiredError
@@ -7,7 +9,6 @@ from .errors import TokenInvalidError
 from .jwt_validator import JWTValidator
 from .middleware import AuthMiddleware
 from .middleware import get_current_trace_tags
-from .middleware import get_current_user
 
 __all__ = [
     "AuthError",

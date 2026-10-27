@@ -10,7 +10,7 @@
 # set against a reachable backend before and after and prints the deltas.
 #
 # It is NOT a correctness benchmark. The retrieval golden set
-# (frontends/benchmarks/oib_retrieval) measures whether the right passage comes
+# (evals/oib-retrieval) measures whether the right passage comes
 # back; this measures the SHAPE of the turn that went looking for it — how many
 # rounds, whether the locator was used, whether the cited Punkt is the one the
 # question is about, whether the budget ran out.
@@ -24,7 +24,7 @@
 #           grow a verdict.
 # `clause`   The Punkt the citation should name, or `null`. Every non-null value is
 #           read off the committed structural index
-#           (frontends/benchmarks/oib_retrieval/fixtures/clause_index.json), never
+#           (evals/oib-retrieval/fixtures/clause_index.json), never
 #           remembered: a Punkt number somebody typed from memory scores a correct
 #           answer as wrong, which is worse than not scoring it. A citation to a
 #           CHILD of the listed Punkt counts as a match (`5.1.2` matches `5.1`) —

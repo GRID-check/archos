@@ -10,7 +10,7 @@ import 'server-only'
 import { and, desc, eq, gte, inArray, lt, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
-import { documentAnnotations, pilotiWakes, type PilotiWakeRow } from '@/lib/db/schema'
+import { documentAnnotations, pilotiWakes, type PilotiWakeRow } from '@/lib/db/schema/document-annotations'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { PilotiWakeTrigger } from './types'
 

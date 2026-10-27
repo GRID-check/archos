@@ -61,7 +61,8 @@ import {
   updateDocumentAnnotation,
   type AnnotationRecord,
 } from '@/lib/annotations/repository'
-import type { Document, DocumentAnnotationRow } from '@/lib/db/schema'
+import type { DocumentAnnotationRow } from '@/lib/db/schema/document-annotations'
+import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import type { InboxEmission } from '@/lib/inbox/service'

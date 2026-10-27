@@ -1,3 +1,4 @@
+// @disk-inputs: ../../ci/german_stems.json, src/app/api/mcp/**, src/lib/agent-api/**
 /**
  * @vitest-environment node
  */

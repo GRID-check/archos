@@ -627,7 +627,7 @@ def _attempt(member: str, cls: str, model: str | None = None, pool: str = POOL) 
     )
     try:
         taken, limit, in_flight, model_limit, model_in_flight = (int(float(v)) for v in result)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return _Attempt(taken == 1, limit, in_flight, model_limit, model_in_flight)
 
@@ -774,7 +774,7 @@ def retry_after_seconds(exc: BaseException) -> float:
         for name, scale in (("retry-after-ms", 0.001), ("retry-after", 1.0)):
             try:
                 stated = float(headers.get(name, "")) * scale
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             return min(max(stated, 0.0), RETRY_AFTER_CAP_SECONDS)
     return 0.0

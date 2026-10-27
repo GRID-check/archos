@@ -30,7 +30,7 @@
  */
 
 import type { Shelf, SourceKind, SourceSignal } from '@/lib/source-kinds'
-import { modernizeLane, modernizeSourceKind } from '@/lib/source-kinds'
+import { modernizeLane } from '@/lib/source-kinds'
 import { modernizeTurnEventKey, modernizeTurnEventValueName } from './legacy-turn-event'
 import type { RetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
@@ -621,7 +621,7 @@ function sanitizeStep(input: unknown): StoredThinkingStep | null {
         .map((lane) => ({
           ...lane,
           key: modernizeLane(lane.key) ?? lane.key,
-          ...(lane.kind ? { kind: modernizeSourceKind(lane.kind) as SourceKind } : {}),
+          ...(lane.kind ? { kind: lane.kind as SourceKind } : {}),
         }))
     : []
   if (traceLanes.length > 0) step.traceLanes = traceLanes

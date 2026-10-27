@@ -370,7 +370,7 @@ def _parse_tags(raw: str) -> list[str] | None:
 
     try:
         parsed = json.loads(text)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return None
 
     if not isinstance(parsed, list):
@@ -678,7 +678,7 @@ def parse_topics(content: str, existing: Sequence[str] = ()) -> list[str] | None
         body = fenced.group(1)
     try:
         items = json.loads(body)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     if not isinstance(items, list):
         return None

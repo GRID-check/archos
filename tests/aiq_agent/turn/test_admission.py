@@ -139,6 +139,27 @@ class TestAnswerTurn:
 
         assert await spanned("setup.anything", value()) == 42
 
+    async def test_spanned_records_what_the_result_says_on_the_phase(self, monkeypatch):
+        from aiq_agent.observability import turn_phases
+
+        emitted: list[tuple[str, dict]] = []
+        monkeypatch.setattr(
+            turn_phases, "emit_step_span", lambda name, _facts, outcome, **_: emitted.append((name, outcome))
+        )
+
+        class _Result:
+            phase_facts = {"bff_memory_ms": 812.0}
+
+        async def value():
+            return _Result()
+
+        result = await spanned("setup.project_context", value())
+        assert isinstance(result, _Result)
+        [(name, outcome)] = emitted
+        assert name == "setup.project_context"
+        assert outcome["bff_memory_ms"] == 812.0
+        assert outcome["outcome"] == "ok"
+
 
 class TestRefused:
     def test_carries_the_message_and_the_retry_hint(self):

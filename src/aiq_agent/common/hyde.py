@@ -20,7 +20,7 @@ limits are deliberate:
 - FAIL-OPEN. No model, a slow model, an empty reply — all read as "no draft",
   and retrieval is exactly the baseline it always was.
 - DEFAULT OFF. Enabled per deployment through the retrieval config; the
-  golden harness (``oib_retrieval_eval.overview``) measures on-vs-off, and
+  golden harness (``oib_retrieval.overview``) measures on-vs-off, and
   the channel ships as default behaviour only if that shows an overview lift
   with no exact-id/paraphrase regression.
 

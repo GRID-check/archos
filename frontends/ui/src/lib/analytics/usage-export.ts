@@ -43,7 +43,7 @@ import {
   getSpendSummary,
   listActivePolicies,
 } from '@/lib/budgets/service'
-import { UNBILLED_USAGE_ACTIVITIES, type BudgetUnit } from '@/lib/db/schema'
+import { UNBILLED_USAGE_ACTIVITIES, type BudgetUnit } from '@/lib/db/schema/budgets'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { createPosthogBatch, type PosthogBatch, type ServerEventProperties } from './posthog-server'

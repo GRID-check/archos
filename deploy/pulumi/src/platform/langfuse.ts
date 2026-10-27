@@ -16,6 +16,7 @@ import {
 import { GATEWAY_NAME } from "./gateway";
 import { OBSERVABILITY_VIEW_PERMISSION, OIDC_CLIENT_SECRET_KEY, platformOidcSecurityPolicySpec } from "./platform-oidc";
 import { EDGE_TIMEOUT, LANGFUSE, PORT } from "../constants";
+import { logicalName, objectName } from "../names";
 
 /** Secret name. A constant rather than `secret.metadata.name` because the
  *  SecurityPolicy spec is a plain (typed) object, not a Pulumi resource input. */
@@ -698,7 +699,7 @@ export function installLangfuse(
     ],
   };
   const route = new k8s.apiextensions.CustomResource(
-    "grid-langfuse-route",
+    logicalName("grid-langfuse-route"),
     {
       apiVersion: "gateway.networking.k8s.io/v1",
       kind: "HTTPRoute",
@@ -709,11 +710,11 @@ export function installLangfuse(
   );
 
   const securityPolicy = new k8s.apiextensions.CustomResource(
-    "grid-langfuse-security-policy",
+    logicalName("grid-langfuse-security-policy"),
     {
       apiVersion: "gateway.envoyproxy.io/v1alpha1",
       kind: "SecurityPolicy",
-      metadata: { name: "grid-langfuse-auth", namespace, labels: webLabels },
+      metadata: { name: objectName("langfuseAuth"), namespace, labels: webLabels },
       spec: platformOidcSecurityPolicySpec(cfg, {
         routeName: LANGFUSE.routeName,
         domain: lf.domain,
