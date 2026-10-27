@@ -6,14 +6,15 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/search/saved-search-client', () => ({
+vi.mock('@/lib/search/saved-search-client', async (importActual) => ({
+  SavedSearchError: (await importActual<typeof import('@/lib/search/saved-search-client')>()).SavedSearchError,
   listSavedSearches: vi.fn(),
   createSavedSearch: vi.fn(),
   updateSavedSearch: vi.fn(),
   deleteSavedSearch: vi.fn(),
 }))
 
-import { deleteSavedSearch, listSavedSearches, type SavedSearchView } from '@/lib/search/saved-search-client'
+import { SavedSearchError, deleteSavedSearch, listSavedSearches, updateSavedSearch, type SavedSearchView } from '@/lib/search/saved-search-client'
 import { useSavedSearches } from './use-saved-searches'
 
 const MINE: SavedSearchView = {
@@ -88,5 +89,35 @@ describe('useSavedSearches: delete with undo', () => {
     act(() => result.current.remove(MINE))
     unmount()
     expect(deleteSavedSearch).toHaveBeenCalledWith(MINE.id)
+  })
+})
+
+describe('useSavedSearches: rename', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(listSavedSearches).mockResolvedValue([MINE, OTHER])
+  })
+
+  it('renames in the list once the server has it', async () => {
+    vi.mocked(updateSavedSearch).mockResolvedValue(undefined)
+    const { result } = await loaded()
+    let outcome: string | undefined
+    await act(async () => {
+      outcome = await result.current.rename(MINE, 'Einreichung Seestadt')
+    })
+    expect(outcome).toBe('renamed')
+    expect(updateSavedSearch).toHaveBeenCalledWith(MINE.id, { name: 'Einreichung Seestadt' })
+    expect(result.current.items?.[0]?.name).toBe('Einreichung Seestadt')
+  })
+
+  it('says a name is taken on 409 and keeps the old one; any other refusal is a failure', async () => {
+    vi.mocked(updateSavedSearch).mockRejectedValueOnce(new SavedSearchError(409)).mockRejectedValueOnce(new SavedSearchError(500))
+    const { result } = await loaded()
+    let outcomes: string[] = []
+    await act(async () => {
+      outcomes = [await result.current.rename(MINE, 'Brandschutz'), await result.current.rename(MINE, 'X')]
+    })
+    expect(outcomes).toEqual(['taken', 'failed'])
+    expect(result.current.items?.[0]?.name).toBe(MINE.name)
   })
 })

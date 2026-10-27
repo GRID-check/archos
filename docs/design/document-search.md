@@ -300,7 +300,12 @@ yet for the same reason.
    reader never learns a project exists that the projects list hides. Only the owner
    renames, shares or deletes one; anyone else's answers 404. A colleague's
    shared one carries `ownerName`, from the office's people directory
-   (`lib/sharing/directory.ts`), so the list says whose question it is. A
+   (`lib/sharing/directory.ts`), so the list says whose question it is. Under
+   each name one muted line says what the search asks, the words quoted and
+   the filters in the chips' words, a Dokumentart or a switch by its value
+   alone (`savedSearchSummary`), so a name alone
+   never has to be trusted. One's own carries a ⋯ (Teilen or Nicht mehr
+   teilen, Umbenennen, Löschen), not a switch in the row. A
    delete in the page is held for the undo toast's window and sent when it
    closes (`useUndoableArchive`), so „Rückgängig“ never has to re-create one.
    `GET/POST /api/search/saved`, `PATCH/DELETE /api/search/saved/[id]`,
@@ -388,13 +393,17 @@ folder, takes `page` and `highlight` off the address with the review's params.
 A preview that is not a PDF (an image, a text file) ignores both.
 
 A document hit also leads on, through its ⋯ in the list, the register and the
-phone's stack (the house's `ActionMenu`, `features/search/components/hit-actions-menu.tsx`):
-„Piloti fragen" starts a chat about the file in its project through the one
+phone's stack (the house's `ActionMenu`, `features/search/components/hit-actions-menu.tsx`),
+in the order and the words of a Dateien row's ⋯: „Öffnen" goes where the
+row's link goes, at the passage; „Piloti fragen" starts a chat about the file in its project through the one
 ask (`askAboutFile`), the question prefilled with the passage's page when the
 hit was found by one; „Aktuelle Fassung öffnen", on a superseded hit, asks the
 document's status for the newer Fassung this reader may open (the hit carries
 only that one exists) and opens it on the same shelf; „Offene Punkte" opens
-the document's Prüfansicht, and closing it returns to the search. A
+the document's Prüfansicht, and closing it returns to the search; „Im Ordner
+zeigen" opens the folder it lies in on its shelf; „Link kopieren" puts the
+document's own absolute address on the clipboard (without the passage or the
+way back, which are this reader's), and a toast says it did. A
 Büroablage document has no chat to start, so it offers no „Piloti fragen".
 With a row marked, Shift+F10 or the menu key opens its ⋯ while the focus
 stays in the field. Each action is an operation that already exists

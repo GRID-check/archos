@@ -267,6 +267,33 @@ describe('SearchWorkspaceView', () => {
     expect(screen.getByTestId('search-empty-office')).toHaveAttribute('href', '/app/search?q=Stiege&kind=document')
   })
 
+  it('draws an empty answer without a frame, and counts on every kind tab or on none', () => {
+    const view = (response: typeof SEARCH_FIXTURE_RESPONSE, sections = {}) => (
+      <SearchWorkspaceView
+        surface={{ kind: 'office' }}
+        state={{ ...EMPTY_SEARCH_STATE, text: 'Stiege' }}
+        onStateChange={() => {}}
+        fieldValue="Stiege"
+        onFieldChange={() => {}}
+        response={response}
+        sections={sections}
+        loading={false}
+        failed={false}
+        onRetry={() => {}}
+        onLoadMore={() => {}}
+      />
+    )
+    const tabs = (): string[] => ['document', 'annotation', 'folder', 'project', 'conversation'].map((kind) => screen.getByTestId(`search-kind-${kind}`).textContent ?? '')
+    const zero = { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null }
+    const { rerender } = german(view({ ...SEARCH_FIXTURE_RESPONSE, sections: { document: zero } }))
+    expect(screen.getByTestId('search-empty').className).not.toMatch(/border-dashed/)
+    expect(tabs()).toEqual(['Dokumente', 'Anmerkungen', 'Ordner', 'Projekte', 'Chats'])
+
+    const all = { document: zero, annotation: zero, folder: zero, project: zero, conversation: zero }
+    rerender(<I18nProvider initialLocale="de" fixedLocale>{view({ ...SEARCH_FIXTURE_RESPONSE, sections: all })}</I18nProvider>)
+    expect(tabs()).toEqual(['Dokumente0', 'Anmerkungen0', 'Ordner0', 'Projekte0', 'Chats0'])
+  })
+
   it('says what a Fassung changed against the one it replaced, in the dossier’s words', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
     const indexC = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')

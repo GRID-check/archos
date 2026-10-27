@@ -21,7 +21,10 @@ vi.mock('next/navigation', () => ({
 }))
 
 const toastError = vi.fn()
-vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: (message: string) => toastError(message) }) }))
+const toastSuccess = vi.fn()
+vi.mock('sonner', () => ({
+  toast: Object.assign(vi.fn(), { success: (message: string) => toastSuccess(message), error: (message: string) => toastError(message) }),
+}))
 
 const PROJECT = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01'
 const CONCEPT = 'd0000000-0000-4000-8000-000000000001'
@@ -61,12 +64,54 @@ describe('a document hit’s ⋯', () => {
   beforeEach(() => {
     routerPush.mockClear()
     toastError.mockClear()
+    toastSuccess.mockClear()
   })
 
-  it('offers Piloti, the current Fassung on a replaced hit, and the open points', async () => {
+  it('offers what a Dateien row offers, in its order: open and ask, where it stands, its link', async () => {
     render(view({ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg' }))
     await userEvent.click(screen.getByTestId(`search-hit-actions-${REPLACED}`))
-    expect(items()).toEqual(['Piloti fragen', 'Aktuelle Fassung öffnen', 'Offene Punkte'])
+    expect(items()).toEqual(['Öffnen', 'Piloti fragen', 'Aktuelle Fassung öffnen', 'Offene Punkte', 'Im Ordner zeigen', 'Link kopieren'])
+  })
+
+  it('opens where the row goes: at the passage, returning to this search', async () => {
+    render(view({ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg' }))
+    await userEvent.click(screen.getByTestId(`search-hit-actions-${CONCEPT}`))
+    await userEvent.click(screen.getByTestId('search-hit-action-open'))
+    const url = new URL(routerPush.mock.calls[0][0] as string, 'https://piloti.test')
+    expect(url.pathname).toBe(`/app/projects/${PROJECT}/files`)
+    expect(url.searchParams.get('doc')).toBe(CONCEPT)
+    expect(url.searchParams.get('page')).toBe('7')
+    expect(url.searchParams.get('back')).toBe('/app/search?q=Fluchtweg')
+  })
+
+  it('shows the document in its folder on its shelf', async () => {
+    render(view({ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg' }))
+    await userEvent.click(screen.getByTestId(`search-hit-actions-${CONCEPT}`))
+    await userEvent.click(screen.getByTestId('search-hit-action-showInFolder'))
+    const url = new URL(routerPush.mock.calls[0][0] as string, 'https://piloti.test')
+    expect(url.pathname).toBe(`/app/projects/${PROJECT}/files`)
+    const hit = SEARCH_FIXTURE_RESPONSE.sections.document!.hits.find((entry) => entry.id === CONCEPT)!
+    expect(url.searchParams.get('folder')).toBe(hit.folderId)
+  })
+
+  it('copies the document’s own absolute link, without this reader’s way here, and says so', async () => {
+    const writeText = vi.fn(async (_text: string) => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    render(view({ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg' }))
+    await userEvent.click(screen.getByTestId(`search-hit-actions-${CONCEPT}`))
+    await userEvent.click(screen.getByTestId('search-hit-action-copyLink'))
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Link kopiert'))
+    const url = new URL(writeText.mock.calls[0][0])
+    expect(url.origin).toBe(window.location.origin)
+    expect(url.pathname).toBe(`/app/projects/${PROJECT}/files`)
+    expect(url.searchParams.get('doc')).toBe(CONCEPT)
+    expect(url.searchParams.has('back')).toBe(false)
+    expect(url.searchParams.has('page')).toBe(false)
+
+    writeText.mockRejectedValueOnce(new Error('denied'))
+    await userEvent.click(screen.getByTestId(`search-hit-actions-${CONCEPT}`))
+    await userEvent.click(screen.getByTestId('search-hit-action-copyLink'))
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Der Link konnte nicht kopiert werden.'))
   })
 
   it('opens the open points in the document’s Prüfansicht, returning to this search', async () => {

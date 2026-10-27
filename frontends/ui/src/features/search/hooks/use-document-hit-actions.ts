@@ -10,7 +10,7 @@ import { fileItemFromStatus } from '@/features/documents/lib/document-question'
 import { useTranslations } from '@/i18n'
 import type { DocumentHit } from '@/lib/search/search-wire'
 import { documentHitActionEntries } from '../lib/hit-actions'
-import { documentHitHref, documentReviewHitHref } from '../lib/search-hrefs'
+import { documentFolderHref, documentHitHref, documentLinkHref, documentReviewHitHref } from '../lib/search-hrefs'
 import { useSearchReturn } from './use-search-return'
 
 /**
@@ -33,11 +33,28 @@ export async function currentRevisionId(documentId: string, fetcher: typeof fetc
 }
 
 /**
- * A document hit's menu entries, wired: Piloti fragen through the product's
- * one ask (`askAboutFile`, which carries the file into the chat as its
- * subject and its peek), at the passage's page when the hit was found by one;
- * the current Fassung; the open points in the document's Prüfansicht, from
- * which closing comes back to this search.
+ * Puts `text` on the clipboard and says how it went, as the review's
+ * „Link kopieren“ does: a browser without a clipboard, or one that refuses
+ * the write, is told rather than left silent.
+ */
+function copyToClipboard(text: string, messages: { done: string; failed: string }): void {
+  if (!navigator.clipboard) {
+    toast.error(messages.failed)
+    return
+  }
+  void navigator.clipboard.writeText(text).then(
+    () => toast.success(messages.done),
+    () => toast.error(messages.failed)
+  )
+}
+
+/**
+ * A document hit's menu entries, wired: open where the row's link goes;
+ * Piloti fragen through the product's one ask (`askAboutFile`, which carries
+ * the file into the chat as its subject and its peek), at the passage's page
+ * when the hit was found by one; the current Fassung; the open points in the
+ * document's Prüfansicht, from which closing comes back to this search; the
+ * folder it lies in; and its link.
  */
 export function useDocumentHitActions(hit: DocumentHit): ActionMenuEntry[] {
   const t = useTranslations('search.hitActions')
@@ -47,8 +64,16 @@ export function useDocumentHitActions(hit: DocumentHit): ActionMenuEntry[] {
     const name = hit.title ?? hit.name
     return documentHitActionEntries(
       hit,
-      { ask: t('ask'), openCurrent: t('openCurrent'), openPoints: t('openPoints') },
       {
+        open: t('open'),
+        ask: t('ask'),
+        openCurrent: t('openCurrent'),
+        openPoints: t('openPoints'),
+        showInFolder: t('showInFolder'),
+        copyLink: t('copyLink'),
+      },
+      {
+        onOpen: () => router.push(documentHitHref(hit, from)),
         onAsk: () => {
           if (!hit.projectId) return
           const page = hit.passage?.page ?? null
@@ -78,6 +103,9 @@ export function useDocumentHitActions(hit: DocumentHit): ActionMenuEntry[] {
           })
         },
         onOpenPoints: () => router.push(documentReviewHitHref(hit, from)),
+        onShowInFolder: () => router.push(documentFolderHref(hit)),
+        onCopyLink: () =>
+          copyToClipboard(documentLinkHref(hit, window.location.origin), { done: t('linkCopied'), failed: t('linkCopyFailed') }),
       }
     )
   }, [hit, t, router, from])

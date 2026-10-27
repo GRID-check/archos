@@ -15,7 +15,8 @@
  * with no hits while a shelf's facts are still being read, `?state=loading`
  * the first answer on its way, `?state=error` a search that did not answer.
  * `?scope=project` is the search inside one project's Dateien. Each document
- * hit carries its ⋯ (Piloti fragen, Aktuelle Fassung öffnen, Offene Punkte).
+ * hit carries its ⋯ (Öffnen, Piloti fragen, Aktuelle Fassung öffnen, Offene Punkte,
+ * Im Ordner zeigen, Link kopieren).
  * `?composer=1` is the chat composer's `#` picker (`composer-preview.tsx`).
  *
  * German, pinned: the copy that has to fit is German.
@@ -32,7 +33,7 @@ import { SavedSearchesMenu } from '@/features/search/components/saved-searches-m
 import { useSuggestedSearchName } from '@/features/search/hooks/use-suggested-search-name'
 import { EMPTY_SEARCH_STATE, type SearchUrlState } from '@/features/search/lib/search-url'
 import { sectionView } from '@/features/search/lib/sections'
-import type { SearchKind, SearchResponse } from '@/lib/search/search-wire'
+import { SEARCH_KINDS, type SearchKind, type SearchResponse } from '@/lib/search/search-wire'
 import type { SearchSurface } from '@/features/search/lib/search-surface'
 import { SEARCH_FIXTURE_RESPONSE, SEARCH_FIXTURE_SAVED } from '../_fixtures/search'
 import { searchFixtureAnswer } from '../_fixtures/search-answer'
@@ -49,7 +50,8 @@ type PreviewState = 'answer' | 'empty' | 'loading' | 'error'
 
 const EMPTY_RESPONSE: SearchResponse = {
   ...SEARCH_FIXTURE_RESPONSE,
-  sections: { document: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null } },
+  // The answer to words: every kind was searched and found nothing, so each tab knows its count.
+  sections: Object.fromEntries(SEARCH_KINDS.map((kind) => [kind, { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null }])),
   facets: {},
   building: ['office_shelf', 'p-hernals'],
 }
@@ -100,6 +102,11 @@ function Preview({
           failed={false}
           onApply={() => {}}
           onToggleShare={(item) => setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, shared: !entry.shared } : entry)))}
+          onRename={async (item, name) => {
+            if (saved.some((entry) => entry.id !== item.id && entry.ownedByMe && entry.name === name)) return 'taken'
+            setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, name } : entry)))
+            return 'renamed'
+          }}
           onDelete={(item) => setDeleting((ids) => new Set(ids).add(item.id))}
           onUndoDelete={(item) => setDeleting((ids) => new Set([...ids].filter((id) => id !== item.id)))}
           suggestedName={suggestedName}

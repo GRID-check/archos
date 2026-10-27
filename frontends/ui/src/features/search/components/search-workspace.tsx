@@ -111,6 +111,7 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
               if (!ok) toast.error(t('saved.changeFailed'))
             })
           }}
+          onRename={saved.rename}
           onDelete={saved.remove}
           onUndoDelete={saved.undoRemove}
           suggestedName={suggestedName}
