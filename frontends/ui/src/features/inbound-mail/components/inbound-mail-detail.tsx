@@ -4,8 +4,8 @@
  * One held mail, decided part by part (`InboundMailDetail`, DECISION §9).
  *
  * Top to bottom, in the order a person reads before deciding: who it is from
- * and how far that is confirmed, what the content check found in the text and
- * what to do about it, the text itself (plain, inert), where the text goes
+ * and how far that is confirmed, the text itself (plain, inert), what the
+ * content check found in it and what to do about it, where the text goes
  * (its E-Mail-Verlauf), each attachment with its case and its target, and the
  * decision bar pinned to the bottom. After filing: what landed, what did not
  * and why, and the offer to follow the conversation.
@@ -426,6 +426,10 @@ export function InboundMailDetail({
           now={now}
         />
 
+
+        <MailText state={text} onRetry={() => void loadText()} />
+
+        {/* After the text, beside the choice it shapes: on a phone the mail itself is the first screen. */}
         {!stopped && messagePart?.state === 'waiting' && messagePart.contentFindings.length > 0 && draft?.message?.findingChoice && (
           <ContentFindingChoice
             findings={messagePart.contentFindings}
@@ -434,8 +438,6 @@ export function InboundMailDetail({
             disabled={filing}
           />
         )}
-
-        <MailText state={text} onRetry={() => void loadText()} />
 
         {/* The forged mail's way to filing is one deliberate press, never the page's default. */}
         {impersonation && view.status === 'waiting' && waitingParts.length > 0 && (

@@ -101,6 +101,18 @@ describe('InboundMailWorkspace', () => {
     expect(screen.queryByTestId('bulk-destinations')).not.toBeInTheDocument()
   })
 
+  it('files the first twenty of a longer conversation, the most one request decides, and says so before the press', async () => {
+    const { client } = renderWorkspace('worst-case')
+    const file = vi.spyOn(client, 'file')
+    const press = screen.getByTestId('thread-group-file')
+    expect(press).toHaveTextContent('File the first 20 (becomes revisions 4–23)')
+    expect(screen.getByTestId('readiness-file-all')).toHaveTextContent('File the first 20 as suggested')
+    await userEvent.click(press)
+    await userEvent.click(await screen.findByTestId('bulk-file-confirm'))
+    await waitFor(() => expect(file).toHaveBeenCalledTimes(1))
+    expect(file.mock.calls[0][1].mails).toHaveLength(20)
+  })
+
   it('heads the list with „Bereit“ and „Braucht Sie“, and says on each waiting row what it needs', () => {
     renderWorkspace('many')
     expect(screen.getByTestId('readiness-ready')).toHaveTextContent('Ready (3)')

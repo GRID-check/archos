@@ -74,11 +74,13 @@ export const inboundMail = {
     needs_you: 'Needs you ({count})',
     readyHint: 'Domain verified, a place for every part, nothing to check.',
     fileAll: 'File all {count} as suggested',
+    fileFirst: 'File the first {count} as suggested',
   },
 
   group: {
     thread: 'Mail thread “{name}” · {count, plural, one {# new mail} other {# new mails}}',
     threadAction: 'File all {count} (becomes revisions {first}–{last})',
+    threadActionFirst: 'File the first {count} (becomes revisions {first}–{last})',
     reviewInOrder: 'Go through them in order',
     quiet: 'Domain not verified or automatic ({count})',
     quietHint: 'These are listed in full. Piloti makes no suggestions for them, and they file nothing on their own.',

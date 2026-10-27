@@ -79,11 +79,13 @@ export const inboundMail: typeof en.inboundMail = {
     needs_you: 'Braucht Sie ({count})',
     readyHint: 'Domain bestätigt, für jeden Teil ein Ziel, nichts zu prüfen.',
     fileAll: 'Alle {count} wie vorgeschlagen ablegen',
+    fileFirst: 'Die ersten {count} wie vorgeschlagen ablegen',
   },
 
   group: {
     thread: 'E-Mail-Verlauf „{name}“ · {count, plural, one {# neue E-Mail} other {# neue E-Mails}}',
     threadAction: 'Alle {count} ablegen (wird Fassung {first}–{last})',
+    threadActionFirst: 'Die ersten {count} ablegen (wird Fassung {first}–{last})',
     reviewInOrder: 'Der Reihe nach ansehen',
     quiet: 'Domain nicht bestätigt oder automatisch ({count})',
     quietHint: 'Sie stehen vollständig hier. Piloti macht für sie keine Vorschläge, und von selbst wird nichts davon abgelegt.',

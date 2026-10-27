@@ -671,13 +671,21 @@ const allMails = [
   ...quietMails,
 ]
 
+/** Twenty-four replies to one Verlauf, more than one request may decide (the worst-case list). */
+const bulkMails = Array.from({ length: 24 }, (_, index) =>
+  mail({ key: `bulk-${index}`, subject: index % 2 ? null : `RE: ${'Sehr langer Betreff '.repeat(index % 5)}`, receivedAt: minutesAgo(60 * index) })
+)
+
 /**
  * Each mail by id, the FIRST fixture of an id winning: later variants reuse a
  * mail's view (a filed or followed state of it) with the default text, and the
  * list's detail must show the mail's own text, not the Statik mail's.
  */
 export const DETAIL_BY_ID = new Map<string, DetailFixture>()
-for (const fixture of [...Object.values(DETAIL_VARIANTS), ...groupMails.map((view) => ({ view, text: text() })), ...quietMails.map((view) => ({ view, text: text() }))]) {
+for (const fixture of [
+  ...Object.values(DETAIL_VARIANTS),
+  ...[...groupMails, ...quietMails, ...bulkMails].map((view) => ({ view, text: text() })),
+]) {
   if (!DETAIL_BY_ID.has(fixture.view.id)) DETAIL_BY_ID.set(fixture.view.id, fixture)
 }
 
@@ -701,7 +709,7 @@ export const LIST_VARIANTS: Record<string, ListFixture> = {
   closed: { closed: true, items: [summaryOf(v('closed')), summaryOf(v('member-verified'))], open: v('closed').id },
   followed: { items: [summaryOf(v('followed')), summaryOf(v('revision'))] },
   'worst-case': {
-    items: [summaryOf(v('worst-case')), ...Array.from({ length: 24 }, (_, index) => summaryOf(mail({ key: `bulk-${index}`, subject: index % 2 ? null : `RE: ${'Sehr langer Betreff '.repeat(index % 5)}`, receivedAt: minutesAgo(60 * index) }), { attachments: index * 11, senderName: index % 4 ? null : 'Jo' }))],
+    items: [summaryOf(v('worst-case')), ...bulkMails.map((view, index) => summaryOf(view, { attachments: index * 11, senderName: index % 4 ? null : 'Jo' }))],
     nextCursor: 'more',
     open: v('worst-case').id,
   },

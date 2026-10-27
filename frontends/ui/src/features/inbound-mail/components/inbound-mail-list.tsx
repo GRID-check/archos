@@ -232,7 +232,8 @@ function ListBody({
                 <SectionLabel as="h3">{t(`readiness.${section.readiness}`, { count: section.mails.length })}</SectionLabel>
                 {ready && batch.length > 1 && (
                   <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onFileReady(batch.map((mail) => mail.id))} data-testid="readiness-file-all">
-                    {t('readiness.fileAll', { count: batch.length })}
+                    {/* One request decides at most twenty mails: past that, the press says it files the first ones. */}
+                    {t(batch.length < section.mails.length ? 'readiness.fileFirst' : 'readiness.fileAll', { count: batch.length })}
                   </Button>
                 )}
               </div>
@@ -243,6 +244,8 @@ function ListBody({
         if (section.kind === 'thread') {
           // A thread's ready and waiting halves are two groups (`listSections`): the first mail tells them apart.
           const groupKey = `${section.threadId}:${section.mails[0]?.id ?? ''}`
+          // One request decides at most twenty mails; in filing order, the first twenty keep their Fassungen.
+          const batch = section.mails.slice(0, INBOUND_MAIL_DECISION_MAX_MAILS)
           return (
             <section key={groupKey} className="bg-muted/20 border-b" aria-label={t('group.thread', { name: section.name, count: section.mails.length })} data-testid={`thread-group-${section.threadId}`}>
               <div className="flex flex-col gap-2 px-3 pt-3 sm:px-4">
@@ -258,11 +261,15 @@ function ListBody({
                     className="h-auto min-h-8 w-full justify-start whitespace-normal py-1.5 text-left"
                     busy={fileGroupBusy === groupKey}
                     busyLabel={t('bulk.fileSuggestedBusy')}
-                    onClick={() => onFileGroup(groupKey, section.mails.map((mail) => mail.id))}
+                    onClick={() => onFileGroup(groupKey, batch.map((mail) => mail.id))}
                     data-testid="thread-group-file"
                   >
                     {/* The line above names the thread; the button says only what the press does. */}
-                    {t('group.threadAction', { count: section.mails.length, first: section.firstVersion, last: section.lastVersion })}
+                    {t(batch.length < section.mails.length ? 'group.threadActionFirst' : 'group.threadAction', {
+                      count: batch.length,
+                      first: section.firstVersion,
+                      last: section.firstVersion + batch.length - 1,
+                    })}
                   </BusyButton>
                 ) : (
                   // Every mail of this half needs the person, so no press files it: the way in is its first mail. No
