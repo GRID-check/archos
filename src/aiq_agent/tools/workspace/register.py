@@ -27,6 +27,7 @@ from typing import Any
 
 from aiq_agent import project_context
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.turn_status import record_lane_hit
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
@@ -37,7 +38,6 @@ from nat.plugin_api import FunctionGroup
 from nat.plugin_api import FunctionGroupBaseConfig
 from nat.plugin_api import register_function_group
 
-from ..documents.filing import SignedEnvelope
 from .cards import REVISION_COMPARE_OPERATION
 from .cards import emit_operation_proposal_card
 from .cards import emit_revision_compare_card

@@ -40,13 +40,13 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.focus_file import get_focused_document_id
 from aiq_agent.common.focus_file import get_focused_file_name
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.common.source_kinds import parse_shelf
 from aiq_agent.knowledge.inventory import get_turn_documents
 
-from ..documents.filing import SignedEnvelope
 from .client import lookup_document_id
 
 _UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")

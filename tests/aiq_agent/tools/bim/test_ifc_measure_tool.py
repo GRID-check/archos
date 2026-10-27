@@ -1284,7 +1284,7 @@ class TestTheSourceClientDrawsTheSameDistinction:
             raise error
 
         monkeypatch.setattr(
-            "aiq_agent.knowledge.ifc_spatial_client._opener",
+            "aiq_agent.common.bff_http._opener",
             type("O", (), {"open": staticmethod(opener)})(),
         )
 
@@ -1341,7 +1341,7 @@ class TestTheSourceClientDrawsTheSameDistinction:
             return _Response()
 
         monkeypatch.setattr(
-            "aiq_agent.knowledge.ifc_spatial_client._opener",
+            "aiq_agent.common.bff_http._opener",
             type("O", (), {"open": staticmethod(opener)})(),
         )
 

@@ -39,9 +39,9 @@ from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
+from aiq_agent.common import bff_http
 from aiq_agent.common.answer_envelope import AnswerMeta
 from aiq_agent.knowledge import scoping
-from aiq_agent.tools import proposals_client
 from aiq_agent.turn.response import answer_message_id
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -120,7 +120,7 @@ def turn(monkeypatch):
 def transport(monkeypatch):
     def install(*answers: Any) -> Transport:
         fake = Transport(*answers)
-        monkeypatch.setattr(proposals_client._opener, "open", fake)
+        monkeypatch.setattr(bff_http._opener, "open", fake)
         return fake
 
     return install
