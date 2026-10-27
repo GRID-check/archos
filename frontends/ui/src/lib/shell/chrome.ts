@@ -92,6 +92,10 @@ export async function resolveShellChrome(): Promise<ShellChrome> {
   if (!session) return emptyChrome()
 
   const authRequired = isAuthRequired()
+  // Independent of everything below, so it runs alongside it.
+  const switchable = authRequired
+    ? belongsToSeveralOrganizations(session.organizationId, session.userId)
+    : Promise.resolve(false)
 
   let navFlags = EMPTY_NAV_FLAGS
   try {
@@ -122,13 +126,12 @@ export async function resolveShellChrome(): Promise<ShellChrome> {
   } catch {
     organizationName = null
   }
-  const canSwitchOrganization = authRequired && (await belongsToSeveralOrganizations(session.organizationId, session.userId))
 
   return {
     projects,
     user: { name: session.name, email: session.email },
     organizationName,
-    canSwitchOrganization,
+    canSwitchOrganization: await switchable,
     navFlags,
     showSkills: isSkillsEnabled(session),
     showModels: isIfcModelsEnabled(session),

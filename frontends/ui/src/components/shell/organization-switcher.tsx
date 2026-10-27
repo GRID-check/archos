@@ -28,6 +28,17 @@ import { useResolvedAppearance, widgetTheme } from '@/lib/workos/use-widget-appe
 
 const AFTER_SWITCH = '/app/projects'
 
+/**
+ * An organization that requires SSO or MFA: AuthKit's server action answers
+ * with `redirect()` to WorkOS, and Next is already navigating there when it
+ * rejects the action's promise with its redirect error (`NEXT_REDIRECT…`
+ * digest, what Next's own `isRedirectError` reads). Nothing failed.
+ */
+function isNavigatingAway(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('digest' in error)) return false
+  return String(error.digest).startsWith('NEXT_REDIRECT')
+}
+
 export function HeaderOrganizationSwitcher(): JSX.Element {
   const { switchToOrganization } = useAuth()
   const appearance = useResolvedAppearance()
@@ -35,7 +46,12 @@ export function HeaderOrganizationSwitcher(): JSX.Element {
 
   const switchTo = useCallback(
     async ({ organizationId }: { organizationId: string }) => {
-      await switchToOrganization(organizationId)
+      try {
+        await switchToOrganization(organizationId)
+      } catch (error) {
+        if (isNavigatingAway(error)) return
+        throw error
+      }
       window.location.assign(AFTER_SWITCH)
     },
     [switchToOrganization],
