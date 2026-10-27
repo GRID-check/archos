@@ -272,7 +272,7 @@ def enqueue_only(prepared: PreparedIngestJob) -> bool:
     if prepared.status.status != JobState.PENDING:
         raise QueueUnavailable(f"ingestion job {prepared.job_id} was not accepted: {prepared.status.error_message}")
     if not queue_enabled():
-        raise QueueUnavailable("the ingest queue is off or has no database (GRID_INGEST_QUEUE, AIQ_SUMMARY_DB)")
+        raise QueueUnavailable("the ingest queue is off or has no database (GRID_INGEST_QUEUE, GRID_SUMMARY_DB)")
     if not durable(prepared):
         raise QueueUnavailable(f"ingestion job {prepared.job_id} cannot run in another process")
     try:

@@ -11,12 +11,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from knowledge_layer.register import _AGENT_FILTER_OVERFETCH
+from knowledge_layer.register import _KNOWLEDGE_SEARCH_DESCRIPTION
+from knowledge_layer.register import _apply_agent_filters
+from knowledge_layer.register import _empty_search_message
+from knowledge_layer.register import _file_name_matches
+
 from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
-from sources.knowledge_layer.src.register import _AGENT_FILTER_OVERFETCH
-from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION
-from sources.knowledge_layer.src.register import _apply_agent_filters
-from sources.knowledge_layer.src.register import _empty_search_message
-from sources.knowledge_layer.src.register import _file_name_matches
 
 
 def _chunk(

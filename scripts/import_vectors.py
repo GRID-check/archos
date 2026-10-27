@@ -30,8 +30,8 @@ the chunks of every document deleted since. ``--dry-run`` and
 Each collection's vectors must come from the embedder the Qdrant collection
 was created with (``aiq:embed_fingerprint``); a mismatch refuses the run
 before anything is written. A collection the export names no embedder for
-takes the configured one (``AIQ_EMBED_MODEL``, ``AIQ_EMBED_BASE_URL``). It
-reads ``AIQ_QDRANT_URL``, ``AIQ_QDRANT_API_KEY`` and, for the person-set
+takes the configured one (``GRID_EMBED_MODEL``, ``GRID_EMBED_BASE_URL``). It
+reads ``GRID_QDRANT_URL``, ``GRID_QDRANT_API_KEY`` and, for the person-set
 facts, the metadata store's settings, as the backend does.
 
 EXIT CODES: ``0`` done and, with ``--verify``, every collection in step;
@@ -80,8 +80,8 @@ def _configured_identity() -> dict[str, str]:
     from knowledge_layer.llamaindex.adapter import embed_fingerprint_metadata
 
     return embed_fingerprint_metadata(
-        os.environ.get("AIQ_EMBED_MODEL", "openai/text-embedding-3-large"),
-        os.environ.get("AIQ_EMBED_BASE_URL", "https://openrouter.ai/api/v1"),
+        os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large"),
+        os.environ.get("GRID_EMBED_BASE_URL", "https://openrouter.ai/api/v1"),
     )
 
 

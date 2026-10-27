@@ -10,7 +10,7 @@
  */
 
 import { z } from 'zod'
-import { BadRequestError } from '@/lib/api/errors'
+import { BadRequestError } from '@/lib/api/api-error'
 import type { DocumentShelf } from './shelf'
 
 export const SHELF_SCOPES = ['project', 'office_shelf'] as const

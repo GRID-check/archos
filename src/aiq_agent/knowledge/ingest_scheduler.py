@@ -55,8 +55,6 @@ PLATFORM_LANE = "__platform__"
 JobSource = Callable[[], Callable[[], None] | None]
 
 _CAP_ENV = "GRID_INGEST_MAX_PER_ORG"
-_LEGACY_CAP_ENV = "AIQ_INGEST_MAX_PER_ORG"
-_legacy_cap_warned = False
 
 
 # @environment_variable GRID_INGEST_MAX_PER_ORG
@@ -67,17 +65,10 @@ _legacy_cap_warned = False
 # Most ingestion jobs one organisation may have running; 0 for no cap. Across
 # the whole fleet for jobs in the durable queue, and per process for jobs in a
 # process's own pool. The claim is fair without it (fewest running first); a
-# cap also idles workers when one organisation is alone. `AIQ_INGEST_MAX_PER_ORG`
-# is the deprecated name for the same setting.
+# cap also idles workers when one organisation is alone.
 def per_org_cap_from_env() -> int:
-    """The per-organisation cap: ``GRID_INGEST_MAX_PER_ORG``, else its deprecated alias."""
-    global _legacy_cap_warned
+    """The per-organisation cap: ``GRID_INGEST_MAX_PER_ORG``."""
     raw = os.environ.get(_CAP_ENV, "").strip()
-    if not raw:
-        raw = os.environ.get(_LEGACY_CAP_ENV, "").strip()
-        if raw and not _legacy_cap_warned:
-            _legacy_cap_warned = True
-            logger.warning("%s is deprecated; set %s instead", _LEGACY_CAP_ENV, _CAP_ENV)
     try:
         return max(0, int(raw))
     except ValueError:

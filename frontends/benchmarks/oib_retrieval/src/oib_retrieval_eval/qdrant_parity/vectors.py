@@ -39,8 +39,8 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-PRODUCTION_MODEL = os.environ.get("AIQ_EMBED_MODEL", "openai/text-embedding-3-large")
-PRODUCTION_BASE_URL = os.environ.get("AIQ_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
+PRODUCTION_MODEL = os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large")
+PRODUCTION_BASE_URL = os.environ.get("GRID_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
 
 #: Dimension of the offline stand-in. Small, so a test indexes a corpus in milliseconds.
 HASHED_DIMENSION = 64
@@ -161,7 +161,7 @@ class Embedder:
             api_key = _resolve_embed_api_key(self.base_url, self.model)
             if not api_key:
                 raise SystemExit(
-                    "No embeddings key: set OPENROUTER_API_KEY (or AIQ_EMBED_API_KEY), or run with --embedder hashed"
+                    "No embeddings key: set OPENROUTER_API_KEY (or GRID_EMBED_API_KEY), or run with --embedder hashed"
                 )
             self._client = make_embed_model(base_url=self.base_url, model=self.model, api_key=api_key)
         return self._client

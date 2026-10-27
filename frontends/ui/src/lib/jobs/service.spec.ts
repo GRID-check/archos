@@ -46,7 +46,7 @@ vi.mock('@/lib/project-profile/prompt-view', () => ({
   loadProjectFederalState: vi.fn(),
 }))
 
-vi.mock('@/lib/collection-scope', () => ({
+vi.mock('@/lib/retrieval-scope/collection-scope', () => ({
   computeCollectionScope: vi.fn(),
 }))
 
@@ -106,7 +106,7 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import { requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { computeCollectionScope } from '@/lib/collection-scope'
+import { computeCollectionScope } from '@/lib/retrieval-scope/collection-scope'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { resolveSelectableSkills, resolveSkillSnapshot } from '@/lib/skills/service'
@@ -833,7 +833,7 @@ describe('submitAgentRun', () => {
 
   it('never searches a restricted folder: its report is filed for the whole project (ADR-0087)', async () => {
     // The real scope assembly, so the names on the wire are the ones checked.
-    const actual = await vi.importActual<typeof import('@/lib/collection-scope')>('@/lib/collection-scope')
+    const actual = await vi.importActual<typeof import('@/lib/retrieval-scope/collection-scope')>('@/lib/retrieval-scope/collection-scope')
     vi.mocked(computeCollectionScope).mockImplementation(actual.computeCollectionScope)
 
     await submitAgentRun(spec)

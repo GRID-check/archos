@@ -42,7 +42,7 @@ def object_store(monkeypatch):
 @pytest.fixture
 def db(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path}/jobs.db"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("GRID_SUMMARY_DB", url)
     yield url
     ingest_queue._initialized.discard(url)
     ingest_status_store._initialized.discard(url)
@@ -158,7 +158,7 @@ def test_a_job_with_a_local_file_runs_where_the_file_is(db, tmp_path):
 
 
 def test_without_a_database_the_job_runs_here(monkeypatch):
-    monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
     ingestor = FakeIngestor()
 
@@ -703,7 +703,7 @@ def test_enqueue_only_never_falls_back_to_running_the_job_here(db, monkeypatch):
 
 
 def test_enqueue_only_without_a_database_raises(monkeypatch):
-    monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
 
     with pytest.raises(ingest_dispatch.QueueUnavailable):
@@ -771,7 +771,7 @@ def test_cancel_is_unavailable_when_the_queue_is_off_or_has_no_database(db, monk
     assert ingest_dispatch.cancel("job-1") == ingest_dispatch.CANCEL_UNAVAILABLE
 
     monkeypatch.delenv("GRID_INGEST_QUEUE", raising=False)
-    monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
     assert ingest_dispatch.cancel("job-1") == ingest_dispatch.CANCEL_UNAVAILABLE
 
