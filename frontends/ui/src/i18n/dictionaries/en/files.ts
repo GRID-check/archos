@@ -490,7 +490,7 @@ export const files = {
       noResultsDescription:
         'Nothing in this project matched the meaning of your query. Try different wording, or clear the search to browse every file.',
       page: 'Page {page}',
-      relevance: '{percent}% relevance',
+      rank: 'Match {rank} in the ranking',
     },
   },
   folders: {

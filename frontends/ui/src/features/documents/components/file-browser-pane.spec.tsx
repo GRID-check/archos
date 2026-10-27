@@ -7,6 +7,7 @@ import { FileBrowserPane } from './file-browser-pane'
 import { FileSearchField } from './file-search-bar'
 import { useFileSearch } from '../hooks/use-file-search'
 import { projectSearchScope } from '../lib/file-shelf'
+import { documentSearchAnswer, fileSearchHit } from '@/test-utils/search-answers'
 import { useTranslations } from '@/i18n'
 import type { FileItem, FolderItem } from './project-file-workspace'
 
@@ -312,22 +313,20 @@ describe('FileBrowserPane — search', () => {
 })
 
 describe('FileBrowserPane — semantic search (explicit run)', () => {
-  const searchHit = {
-    ...files[0],
-    filename: 'site-plan.pdf',
-    displayName: null,
-    snippet: 'The second escape route runs along the north facade.',
-    page: 4,
-    score: 0.87,
-  }
+  const searchAnswer = documentSearchAnswer([
+    fileSearchHit(
+      { ...files[0], filename: 'site-plan.pdf', displayName: null },
+      { text: 'The second escape route runs along the north facade.', page: 4 }
+    ),
+  ])
 
   let fetchMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     fetchMock = vi.fn((url: string | URL) => {
       const href = String(url)
-      if (href.includes('/api/documents/search')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ hits: [searchHit] }) })
+      if (href.includes('/api/search?')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(searchAnswer) })
       }
       // Thumbnail probes and anything else: fall back to the SVG sketch.
       return Promise.resolve({ ok: false, json: () => Promise.resolve({}) })
@@ -347,7 +346,7 @@ describe('FileBrowserPane — semantic search (explicit run)', () => {
     // reader something about their own files that it had no way of knowing,
     // and offered them a reset for it.
     fetchMock.mockImplementation((url: string | URL) =>
-      String(url).includes('/api/documents/search')
+      String(url).includes('/api/search?')
         ? Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
         : Promise.resolve({ ok: false, json: () => Promise.resolve({}) }),
     )
@@ -369,13 +368,13 @@ describe('FileBrowserPane — semantic search (explicit run)', () => {
     let attempt = 0
     fetchMock.mockImplementation((url: string | URL) => {
       const href = String(url)
-      if (!href.includes('/api/documents/search')) {
+      if (!href.includes('/api/search?')) {
         return Promise.resolve({ ok: false, json: () => Promise.resolve({}) })
       }
       attempt += 1
       return attempt === 1
         ? Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
-        : Promise.resolve({ ok: true, json: () => Promise.resolve({ hits: [searchHit] }) })
+        : Promise.resolve({ ok: true, json: () => Promise.resolve(searchAnswer) })
     })
     const user = userEvent.setup()
     renderPane({ projectId: 'proj-1' })
@@ -400,17 +399,17 @@ describe('FileBrowserPane — semantic search (explicit run)', () => {
     // cards — and clearing the query threw them back again.
     expect(await screen.findByTestId('file-list-view')).toBeInTheDocument()
     expect(screen.queryByTestId('semantic-match')).not.toBeInTheDocument()
-    // And the ranking survives into it: the score is on the row.
-    expect(await screen.findByTestId('file-list-relevance')).toHaveTextContent('87%')
+    // And the ranking survives into it: the rank is on the row.
+    expect(await screen.findByTestId('file-list-relevance')).toHaveTextContent('1')
   })
 
   it('waits in the shape of the view the answer will arrive in', async () => {
     // Held open so the searching state is observable at all.
     let release: () => void = () => undefined
     fetchMock.mockImplementation((url: string | URL) =>
-      String(url).includes('/api/documents/search')
+      String(url).includes('/api/search?')
         ? new Promise((resolve) => {
-            release = () => resolve({ ok: true, json: () => Promise.resolve({ hits: [searchHit] }) })
+            release = () => resolve({ ok: true, json: () => Promise.resolve(searchAnswer) })
           })
         : Promise.resolve({ ok: false, json: () => Promise.resolve({}) }),
     )
@@ -439,10 +438,10 @@ describe('FileBrowserPane — semantic search (explicit run)', () => {
     expect(screen.getByText('permit.pdf')).toBeInTheDocument()
     expect(screen.queryByText('site-plan.pdf')).not.toBeInTheDocument()
     // Substring filtering never hits the semantic endpoint.
-    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/documents/search'))).toBe(false)
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/search?'))).toBe(false)
   })
 
-  it('runs the semantic search on Enter and renders the snippet, page and relevance', async () => {
+  it('runs the semantic search on Enter and renders the snippet and page', async () => {
     const user = userEvent.setup()
     renderPane({ projectId: 'proj-1' })
 
@@ -452,17 +451,19 @@ describe('FileBrowserPane — semantic search (explicit run)', () => {
     // over a list that shows both.
     expect(screen.queryByText(/semantic search:/i)).not.toBeInTheDocument()
 
-    // The match evidence: snippet + page + relevance percent.
+    // The match evidence: the passage and its page. The search ranks and shows no score (ADR-0133).
     const match = await screen.findByTestId('semantic-match')
     expect(within(match).getByText(/second escape route/i)).toBeInTheDocument()
     expect(within(match).getByTestId('semantic-page')).toHaveTextContent(/page 4/i)
-    expect(within(match).getByText('87%')).toBeInTheDocument()
+    expect(within(match).queryByText(/%/)).not.toBeInTheDocument()
 
     // The right endpoint was called with the query.
-    const call = fetchMock.mock.calls.find(([u]) => String(u).includes('/api/documents/search'))
-    expect(JSON.parse((call?.[1] as RequestInit).body as string)).toMatchObject({
-      q: 'fire escape',
-      projectId: 'proj-1',
+    const call = fetchMock.mock.calls.find(([u]) => String(u).includes('/api/search?'))
+    expect(String(call?.[0])).toBe('/api/search?projectId=proj-1')
+    expect(JSON.parse((call?.[1] as RequestInit).body as string)).toEqual({
+      text: 'fire escape',
+      kinds: ['document'],
+      facets: false,
     })
   })
 

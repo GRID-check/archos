@@ -279,9 +279,13 @@ return citable passages, which this search does not (a passage here is a
 pointer to read). Making `list_files` take its structured filters from the core
 is the next step, once the answer suite measures it (ADR-0127's eval set).
 
+The Files pane's semantic search asks the core too: `POST /api/search` with the
+shelf as its query and `kinds: ['document']`. `POST /api/documents/search` and
+the operation `document-search` are gone; the old name leads to
+`workspace-search` for one release, its fields rewritten.
+
 Next, not in this change: tasks and memory as kinds, `list_files` on the core,
-Planfred-style "who received which Index" from the version access log, the
-Files pane's semantic search (`POST /api/documents/search`) moved onto the core.
+Planfred-style "who received which Index" from the version access log.
 
 ## Measured
 

@@ -88,10 +88,27 @@ const byName = new Map(AGENT_OPERATIONS.map((op) => [op.name, op]))
 export interface RenamedWithInput {
   readonly to: string
   readonly input: OperationExample
+  /** The old input's fields under their new names, for a rename that renamed them too. */
+  readonly rewrite?: (given: OperationExample) => OperationExample
 }
 
 const OFFICE_QUERY = { query: { scope: 'office_shelf' } } as const
 const OFFICE_BODY = { body: { scope: 'office_shelf' } } as const
+
+/** A shelf's documents, as `document-search` answered: documents only, no counts. */
+const DOCUMENTS_ONLY = { kinds: ['document'], facets: false } as const
+
+/**
+ * `document-search` (one shelf, by meaning) is `workspace-search` scoped to that shelf (ADR-0133):
+ * the shelf moves from the body to the query, `q` is `text`, `topK` is `limit`.
+ */
+function documentSearchInput(given: OperationExample): OperationExample {
+  const { q, topK, projectId, scope, ...rest } = (given.body ?? {}) as Record<string, unknown>
+  return {
+    query: { ...(projectId === undefined ? {} : { projectId }), ...(scope === undefined ? {} : { scope }), ...given.query },
+    body: { ...rest, ...(q === undefined ? {} : { text: q }), ...(topK === undefined ? {} : { limit: topK }) },
+  }
+}
 
 export const RENAMED_OPERATIONS: Readonly<Record<string, string | RenamedWithInput>> = {
   'job-list': 'task-list',
@@ -116,7 +133,13 @@ export const RENAMED_OPERATIONS: Readonly<Record<string, string | RenamedWithInp
   'office-shelf-document-lookup': { to: 'document-by-name-resolve', input: OFFICE_BODY },
   'office-shelf-document-name-probe': { to: 'document-name-match', input: OFFICE_BODY },
   'office-shelf-document-revision-probe': { to: 'document-revision-candidates', input: OFFICE_BODY },
-  'office-shelf-document-search': { to: 'document-search', input: OFFICE_BODY },
+  'office-shelf-document-search': {
+    to: 'workspace-search',
+    input: { query: { scope: 'office_shelf' }, body: DOCUMENTS_ONLY },
+    rewrite: documentSearchInput,
+  },
+  // The one-shelf search moved onto the one search (ADR-0133); its answer is the search's.
+  'document-search': { to: 'workspace-search', input: { body: DOCUMENTS_ONLY }, rewrite: documentSearchInput },
   'office-shelf-document-upload': { to: 'document-upload', input: { body: { fields: { scope: 'office_shelf' } } } },
   'office-shelf-document-delete': 'document-delete',
   // `params.versionId` still reaches the route, which reads it as `?versionId=`.
@@ -140,5 +163,5 @@ export function findOperation(name: string): AgentOperation | undefined {
   const renamed = RENAMED_OPERATIONS[name]
   if (typeof renamed !== 'object') return byName.get(renamed ?? '')
   const op = byName.get(renamed.to)
-  return op && { ...op, inputDefaults: renamed.input }
+  return op && { ...op, inputDefaults: renamed.input, ...(renamed.rewrite ? { rewriteInput: renamed.rewrite } : {}) }
 }

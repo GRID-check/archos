@@ -8,7 +8,6 @@ import {
   documentSummaryQuerySchema,
   moveDocumentSchema,
   renameDocumentSchema,
-  searchDocumentsSchema,
   updateTagsSchema,
 } from '@/lib/documents/document-wire'
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
@@ -19,7 +18,7 @@ import type { AgentOperation } from '../operation'
 import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
 
 const documentParams = z.object({
-  id: z.string().describe('The document id, from document-list or document-search.'),
+  id: z.string().describe('The document id, from document-list or workspace-search.'),
 })
 
 
@@ -246,19 +245,6 @@ export const documentsOperations = [
     params: documentParams,
     idempotent: true,
     load: () => import('@/app/api/documents/[id]/cancel/route'),
-  },
-  {
-    name: 'document-search',
-    domain: 'documents',
-    summary: 'Search a shelf’s documents by meaning',
-    description:
-      'Semantic search over one shelf, a project’s (`projectId`, from project-list) or the office shelf (`scope: office_shelf`), ' +
-      'for a question or phrase `q`. Returns the best matching documents with a snippet, page and score, up to `topK` (1 to 100). Read-only.',
-    method: 'POST',
-    path: '/api/documents/search',
-    body: searchDocumentsSchema,
-    readOnly: true,
-    load: () => import('@/app/api/documents/search/route'),
   },
   {
     name: 'workspace-search',
