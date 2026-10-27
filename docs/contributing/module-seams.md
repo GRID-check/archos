@@ -1,8 +1,9 @@
 # Module seams
 
-Which module may import which is checked by a tool, not by review:
-dependency-cruiser for the UI (`task fe:lint`). It has a list of the violations
-that existed when the check arrived. A new violation fails, and so does a listed one that is
+Which module may import which is checked by a tool in each language, not by
+review: dependency-cruiser for the UI (`task fe:lint`), import-linter for the
+Python packages (`task be:lint`). Each has a list of the violations that existed
+when the check arrived. A new violation fails, and so does a listed one that is
 gone, so the lists only shrink. That is the ratchet: fixing an edge removes its
 line, and the line cannot come back.
 
@@ -51,8 +52,24 @@ dependency-cruiser accepts it.
 
 A run takes about thirty seconds, most of it parsing 2,900 modules.
 
+## Python: `aiq_agent`, `aiq_api`, `knowledge_layer`
+
+The contracts are `[tool.importlinter]` in the root `pyproject.toml`. import-linter
+builds the graph with grimp, which sees imports inside functions too.
+
+| Contract | What it forbids | Allowed |
+|---|---|---|
+| `agent-api-seam` | `aiq_agent` importing `aiq_api`, directly or through a chain | `turn/api_seam.py`, the seam itself; `auth/utils.py` and `auth/workos_validator.py`, an older inversion |
+| `agent-knowledge-port` | `aiq_agent` importing `knowledge_layer` directly | `knowledge/factory.py`, the BaseRetriever/BaseIngestor port (ADR-0072); sixteen known bypasses, each listed |
+| `qdrant-client-confined` | Any of the three packages importing `qdrant_client` directly | `knowledge_layer.qdrant` |
+
+An `ignore_imports` entry whose import no longer exists fails the run
+(import-linter's default), so a bypass routed through the port has to leave the
+list in the same change. `lint-imports` runs in `task be:lint` and in the
+`import-contracts` pre-commit hook, in about a second.
+
 ## Adding a seam
 
-Add the rule to the config, run the check, and baseline what it
+Add the rule where its language's rules are, run the check, and baseline what it
 finds only if fixing it now is a change of its own. Say in the PR how many
 entries the baseline starts with.

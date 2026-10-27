@@ -142,6 +142,15 @@ repos:
         pass_filenames: false
         files: \.py$|^ci/(german_stems|english_names_baseline_py)\.json$
 
+      - id: import-contracts
+        name: the Python packages keep their seams (import-linter)
+        # The contracts in pyproject.toml's [tool.importlinter]; `task be:lint`
+        # runs them too. About a second, only when Python or the contracts change.
+        entry: .venv/bin/lint-imports --no-cache
+        language: system
+        pass_filenames: false
+        files: ^(src/aiq_agent|frontends/aiq_api/src|sources/knowledge_layer/src)/.*\.py$|^pyproject\.toml$
+
       - id: env-docs
         name: the queue workers' environment variables have a row in the env reference
         # AGENTS.md asks for a row per variable; nothing else checks it, and an
