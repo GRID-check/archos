@@ -1104,6 +1104,10 @@
     "de": "Bitten Sie um ein Diagramm, ein Schaubild oder eine Grafik, und Piloti antwortet mit einer echten Zeichnung statt mit Textkunst aus Strichen und Pfeilen."
   },
   {
+    "en": "Asked for an Excalidraw diagram or a sketch, Piloti now draws it, and you can open the drawing as a sketch to rework it, instead of being told it cannot. Asked about itself, such as whether it works inside your own assistant, Piloti now answers instead of searching your files.",
+    "de": "Wenn Sie Piloti um ein Excalidraw-Diagramm oder eine Skizze bitten, erstellt es diese jetzt. Sie können die Zeichnung als Skizze öffnen und weiterbearbeiten, statt die Meldung zu erhalten, dass dies nicht möglich ist. Fragen Sie Piloti nach sich selbst, etwa ob es in Ihrem eigenen Assistenten funktioniert, antwortet es jetzt, statt Ihre Dateien zu durchsuchen."
+  },
+  {
     "en": "Asked from your own agent (Claude, Cursor or another MCP client), Piloti reads the building-law corpus, the project's documents and RIS again instead of answering that these sources were switched off. Comment threads that wake Piloti and the check of a new document read every source your office allows as well.",
     "de": "Wenn Sie Piloti über Ihren eigenen Agenten (Claude, Cursor oder einen anderen MCP-Client) fragen, greift Piloti wieder auf den Baurechtskorpus, die Projektdokumente und RIS zu, statt zu melden, dass diese Quellen deaktiviert sind. Auch Kommentar-Threads, die Piloti aktivieren, und die Prüfung neuer Dokumente berücksichtigen alle Quellen, die Ihr Büro freigegeben hat."
   },
