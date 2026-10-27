@@ -60,7 +60,7 @@ The hash and version are written only after the file's job reached `FileStatus.S
 
 **The ingest workers do.** A file that needs ingestion becomes exactly one job on the `ingest_job_queue` table, the queue `POST /v1/ingest` uses (`aiq_agent.knowledge.ingest_queue`), in the platform lane (no organisation) at `bulk` priority. It is claimed by the ingest-worker tier, and by nothing else: the `chat` and `api` roles only enqueue (ADR-0082 step B). Kubernetes runs it as the `ingest-worker` Deployment and both Compose files as the `ingest-worker` service, with the queue's heartbeat, stale-claim reclaim, attempt limit, dead rows and drain behaviour. The queue is on whenever `AIQ_SUMMARY_DB` is set, which the corpus needs anyway.
 
-**There is no in-process path.** `oib_sync` never calls `upload_file`, `submit_job` or `run_prepared`, and has no thread pool (a test greps for it). If the queue is off or cannot take the job (`GRID_INGEST_QUEUE=off`, no database, a write error), `ingest_dispatch.enqueue_only` (reached through the agent tier's one seam into the API tier, `aiq_agent.turn.api_seam.enqueue_ingest_job`) raises `QueueUnavailable`: the upload route answers 500, the sync cycle fails loudly, and the next cycle queues the file once the queue is back.
+**There is no in-process path.** `oib_sync` never calls `upload_file`, `submit_job` or `run_prepared`, and has no thread pool (a test greps for it). If the queue is off or cannot take the job (`GRID_INGEST_QUEUE=off`, no database, a write error), `ingest_dispatch.enqueue_only` (the API tier's own enqueue, which its routes hand to `oib_sync` as `enqueue`, so the agent tier never imports the API tier) raises `QueueUnavailable`: the upload route answers 500, the sync cycle fails loudly, and the next cycle queues the file once the queue is back.
 
 **The job** is built like `POST /v1/ingest` builds one: `ingestor.prepare_job(...)` records a `PENDING` status and `ingest_dispatch.enqueue_only(prepared)` stores it. Its pieces:
 
@@ -202,7 +202,7 @@ src/aiq_agent/oib_sync.py ──────────► src/aiq_agent/corpus
        │   │                              │ writes: BFF presigned URLs / delete
        │   │                              │ reads:  aiq_agent.common.seaweed_s3
        │   │                              └ cache:  GRID_BASE_CORPUS_CACHE_DIR
-       │   └── turn/api_seam.enqueue_ingest_job ─► aiq_api.jobs.ingest_dispatch.enqueue_only ─► ingest_job_queue
+       │   └── enqueue (handed in by the route) ─► aiq_api.jobs.ingest_dispatch.enqueue_only ─► ingest_job_queue
        │                                                          │ claimed by
        │                                                          ▼
        │                                         ingest workers (QueueSource) ─► CorpusObjectDownload
