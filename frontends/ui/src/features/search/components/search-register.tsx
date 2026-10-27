@@ -35,6 +35,7 @@ import {
 } from '../lib/search-sort'
 import { compactFilters, type SearchUrlState } from '../lib/search-url'
 import { titleSpan } from '../lib/register-cells'
+import { headerRem, valuesRem, withoutLegalForm, type CellSetting, type ColumnFit } from '../lib/register-fit'
 import type { SectionView } from '../lib/sections'
 import { DocumentHitMenu, useHitMenus } from './hit-actions-menu'
 import {
@@ -62,27 +63,66 @@ import {
 /** Columns whose values are figures: right-aligned, as a register reads them. */
 const NUMERIC: ReadonlySet<RegisterColumn> = new Set(['pages'])
 
+/** How each column sets its values, which is what its width is estimated from (`register-fit.ts`). */
+const SETTING: Readonly<Record<RegisterColumn, Exclude<CellSetting, 'header'>>> = {
+  planNumber: 'code',
+  planIndex: 'code',
+  title: 'strong',
+  planDate: 'text',
+  scale: 'code',
+  documentType: 'text',
+  author: 'text',
+  project: 'mark',
+  folder: 'text',
+  uploaded: 'text',
+  pages: 'text',
+  status: 'text',
+}
+
+/** Room „Ersetzt“ takes beside a replaced Fassung's name. */
+const SUPERSEDED_REM = 5.5
+
 /**
- * Each column's width in rem; the title takes the rest. Sized so the default
- * columns stand beside a readable title in the register's room at 1440 (about
- * 70rem): each header fits its word and its sort arrow, in German and English.
+ * What each column claims on this page: its header's width, and the width of
+ * its longest value among the rows shown, by the same text each cell draws.
  */
-const COLUMN_WIDTH: Readonly<Record<RegisterColumn, number | null>> = {
-  planNumber: 7,
-  planIndex: 4.5,
-  title: null,
-  planDate: 6.5,
-  scale: 5.5,
-  documentType: 8.5,
-  // Verfasser and Projekt carry the words that tell two rows apart („Atelier
-  // Lindner ZT GmbH“, „Wohnhaus Seestadt J7“): the width Status gave a column
-  // of „Gelesen“ went to them.
-  author: 10.5,
-  project: 11.5,
-  folder: 8,
-  uploaded: 7.5,
-  pages: 5,
-  status: 6.5,
+function useColumnFits(columns: readonly RegisterColumn[], hits: readonly DocumentHit[]): ColumnFit[] {
+  const t = useTranslations('search')
+  const labels = useSearchLabels()
+  const text = (column: RegisterColumn, hit: DocumentHit): string | null => {
+    switch (column) {
+      case 'planNumber':
+        return hit.planNumber
+      case 'planIndex':
+        return hit.planIndex
+      case 'title':
+        return hit.title ?? hit.name
+      case 'planDate':
+        return labels.day(hit.planDate)
+      case 'scale':
+        return hit.scale
+      case 'documentType':
+        return labels.documentType(hit.documentType)
+      case 'author':
+        return hit.author ? withoutLegalForm(hit.author) : null
+      case 'project':
+        return hit.shelf === 'office_shelf' ? t('where.officeShelf') : hit.projectName
+      case 'folder':
+        return hit.folderName
+      case 'uploaded':
+        return labels.day(hit.uploadedAt)
+      case 'pages':
+        return hit.pageCount === null ? null : String(hit.pageCount)
+      case 'status':
+        return documentReadFamily(hit.status) === 'readable' ? null : labels.readState(documentReadFamily(hit.status))
+    }
+  }
+  return columns.map((column) => {
+    const min = headerRem(t(`register.columns.${column}`))
+    const want = valuesRem(hits.map((hit) => text(column, hit)), SETTING[column])
+    if (column !== 'title') return { min, want }
+    return { min, want: want + (hits.some((hit) => hit.superseded) ? SUPERSEDED_REM : 0), rest: true }
+  })
 }
 
 export interface SearchRegisterProps {
@@ -231,6 +271,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
   const columns = visibleRegisterColumns(state.columns, { hideProject })
   const menus = useHitMenus()
   const hits = section?.hits ?? []
+  const fits = useColumnFits(columns, hits)
   return (
     <>
       {isMobile ? (
@@ -244,7 +285,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
           id={listId}
           caption={t('register.caption')}
           testId="search-register"
-          columnWidths={columns.map((column) => COLUMN_WIDTH[column])}
+          columns={fits}
           actionsRem={menus ? REGISTER_ACTIONS_WIDTH : 0}
           scrollLabel={t('register.scrollLabel')}
         >
@@ -333,7 +374,8 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
         return <RegisterCell key={column} title={type ?? undefined}>{type}</RegisterCell>
       }
       case 'author':
-        return <RegisterCell key={column} title={hit.author ?? undefined}>{hit.author}</RegisterCell>
+        // „Atelier Lindner“, as the office says it; the tooltip keeps the legal form.
+        return <RegisterCell key={column} title={hit.author ?? undefined}>{hit.author ? withoutLegalForm(hit.author) : null}</RegisterCell>
       case 'project':
         return (
           <RegisterCell key={column} kind="mark">
@@ -390,7 +432,7 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
       case 'documentType':
         return labels.documentType(hit.documentType)
       case 'author':
-        return hit.author
+        return hit.author ? withoutLegalForm(hit.author) : null
       case 'folder':
         return hit.folderName
       case 'uploaded':
