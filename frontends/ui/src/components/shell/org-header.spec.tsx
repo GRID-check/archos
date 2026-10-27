@@ -23,8 +23,12 @@ vi.mock('next/link', () => ({
   }),
 }))
 
+const userMenuProps = vi.fn()
 vi.mock('./sidebar-user-menu', () => ({
-  SidebarUserMenu: () => <div data-testid="user-menu" />,
+  SidebarUserMenu: (props: { organizations?: unknown }) => {
+    userMenuProps(props)
+    return <div data-testid="user-menu" />
+  },
 }))
 
 // The badge subscription is the hook's own concern; here only the count's
@@ -50,8 +54,6 @@ vi.mock('@/hooks/use-is-mobile', () => ({
   useIsMobile: () => mobile,
 }))
 vi.mock('./connection-band', () => ({ ConnectionBand: () => <div data-testid="connection-band" /> }))
-// WorkOS's widget needs a live token; the header decides only whether it is there.
-vi.mock('./organization-switcher', () => ({ default: () => <div data-testid="workos-organization-switcher" /> }))
 
 afterEach(() => {
   pathname = '/app/projects'
@@ -119,15 +121,14 @@ describe('OrgHeader — on a phone', () => {
 })
 
 describe('the organization switcher', () => {
-  test('stands beside the wordmark for someone in several organizations', async () => {
-    render(<OrgHeader {...baseProps} canSwitchOrganization />)
+  test('is handed to the avatar menu, and the header band carries none', () => {
+    const organizations = [
+      { id: 'org_1', name: 'GRID Test', current: true },
+      { id: 'org_2', name: 'feld72 Architekten', current: false },
+    ]
+    render(<OrgHeader {...baseProps} organizations={organizations} />)
 
-    expect(await screen.findByTestId('workos-organization-switcher')).toBeInTheDocument()
-  })
-
-  test('is not there for someone in one organization', () => {
-    render(<OrgHeader {...baseProps} />)
-
-    expect(screen.queryByTestId('organization-switcher')).not.toBeInTheDocument()
+    expect(userMenuProps).toHaveBeenLastCalledWith(expect.objectContaining({ organizations }))
+    expect(screen.queryByTestId('user-menu-switch-organization')).not.toBeInTheDocument()
   })
 })

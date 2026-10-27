@@ -44,9 +44,16 @@ const MEMBER = `user_opprop_member_${STAMP}`
 const ids = { visible: '', hidden: '' }
 
 // WorkOS: the member holds a grant on the visible project and none on the hidden one.
-vi.mock('@/lib/authz/resource-check', () => ({
-  checkResourcePermission: vi.fn(async (input: { resourceExternalId: string }) => input.resourceExternalId === ids.visible),
-}))
+vi.mock('@/lib/authz/resource-check', async () => {
+  const { PROJECT_PERMISSION_SPECS } = await import('@/lib/authz/catalog')
+  return {
+    checkResourcePermission: vi.fn(async (input: { resourceExternalId: string }) => input.resourceExternalId === ids.visible),
+    effectiveResourcePermissions: vi.fn(
+      async (input: { resourceExternalId: string }) =>
+        new Set(input.resourceExternalId === ids.visible ? PROJECT_PERMISSION_SPECS.map(({ slug }) => slug) : [])
+    ),
+  }
+})
 // WorkOS: who besides the asker may open which project; the member opens the visible one only.
 vi.mock('@/lib/authz/project-membership', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authz/project-membership')>()),

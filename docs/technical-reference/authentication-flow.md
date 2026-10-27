@@ -70,13 +70,20 @@ upgrade that leaves the patch behind fails there. When AuthKit is upgraded,
 
 ## Switching organization
 
-Someone who belongs to more than one organization gets WorkOS's
-`OrganizationSwitcher` widget beside the wordmark in the org header
-(`components/shell/organization-switcher.tsx`; the shell asks
-`belongsToSeveralOrganizations`). It calls AuthKit's `switchToOrganization`,
+Someone who belongs to more than one organization finds „Switch organization"
+in the avatar menu (`components/shell/organization-switcher.tsx`, a submenu of
+`sidebar-user-menu.tsx`). The shell asks `switchableOrganizations` in
+`lib/organizations/service.ts`, which lists the person's active WorkOS
+memberships by name (cached five minutes, empty for one organization, so the
+entry is not there). Picking one calls AuthKit's `switchToOrganization`,
 which refreshes the session into the chosen organization, or sends the person
 to sign in when that organization requires SSO or MFA, and then loads
 `/app/projects` of the new office.
+
+It is not WorkOS's `OrganizationSwitcher` widget. The widget mounts the first
+Radix Theme on the page, and Radix gives a root Theme `min-height: 100dvh`: in
+the header band it stretched the header to the height of the window. Its own
+dropdown also cannot nest in our menu.
 
 ## Session resolution
 
