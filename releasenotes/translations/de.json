@@ -500,6 +500,10 @@
     "de": "Die Übersicht eines Projekts öffnet sich wieder, wenn Ihr Büro ein abgeschlossenes Projekt zum Vergleich hat. Zuvor konnte die Kachel für ähnliche Projekte nicht geladen werden und brachte die gesamte Übersicht mit einer Fehlerseite zum Absturz."
   },
   {
+    "en": "A proposed action's card in the chat now names each input in words, such as Folder or Project, instead of its technical name, in German and English.",
+    "de": "Die Karte einer vorgeschlagenen Aktion im Chat benennt nun jede Eingabe auf Deutsch und Englisch ausgeschrieben, etwa als Ordner oder Projekt, statt mit ihrem technischen Namen."
+  },
+  {
     "en": "A question about a file you just attached now waits until the file can be searched, instead of being answered from everything except that document. The chat says what it is waiting for, and one click asks right away.",
     "de": "Eine Frage zu einer gerade angehängten Datei wartet jetzt, bis die Datei durchsuchbar ist, statt aus allem außer diesem Dokument beantwortet zu werden. Der Chat sagt, worauf er wartet, und ein Klick fragt sofort."
   },
@@ -3950,6 +3954,10 @@
   {
     "en": "When your office's screening rules cannot be applied to an upload, its files are now held unread instead of being read unchecked. Reading them again applies the rules afresh.",
     "de": "Wenn die Prüfvorgaben Ihres Büros auf einen Upload nicht angewendet werden können, werden dessen Dateien nun ungelesen zurückgehalten, statt ungeprüft eingelesen zu werden. Beim erneuten Einlesen werden die Vorgaben erneut angewendet."
+  },
+  {
+    "en": "When your own assistant is connected to Piloti, Piloti's proposals now appear as Piloti's card inside Claude, ChatGPT and VS Code, in your assistant's colours and language. You apply or discard the change there with one press, with your rights, and the assistant keeps the card's buttons from its own model.",
+    "de": "Wenn Ihr eigener Assistent mit Piloti verbunden ist, erscheinen die Vorschläge von Piloti jetzt als Piloti-Karte in Claude, ChatGPT und VS Code – in den Farben und der Sprache Ihres Assistenten. Mit einem Klick übernehmen oder verwerfen Sie die Änderung dort, mit Ihren Berechtigungen. Die Schaltflächen auf der Karte stammen weiterhin vom eigenen Modell des Assistenten."
   },
   {
     "en": "Where a text does not show a structure well, Piloti draws its own diagram, such as for a branching procedure, for who hands what to whom, or for a construction schedule from the project documents. You can file the drawing in the project.",
