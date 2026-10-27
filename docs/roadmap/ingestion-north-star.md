@@ -119,10 +119,12 @@ is.
 
 | Set | Page kind | View | Title block | Drawing | Per page |
 |---|---|---|---|---|---|
-| Fixture drawings, exact gold, 4 pages | 4/4 | 4/4 | IoU 0.88-0.92, coverage 1.0 | coverage 1.0 | 0.5 s, $0.0002 |
+| Fixture drawings, exact gold, 4 pages × 4 runs | 16/16 | 16/16 | IoU 0.88-0.96, coverage ≥ 0.95 on 16/16 | ink covered on 14/16 | 0.5 s, $0.0002 |
 | Real HABS sheets (Library of Congress), 5 pages, checked by eye | 5/5 | multi-view 5/5 | strip found on all 5 | within a few % where checked | 0.5 s, $0.0001 |
 
-The current vision model takes 25 s for the same kind of sheet. Jev cannot read a
+The title block is where Jev is dependable; the box around the whole drawing missed
+on one page in eight, so the page map crops title blocks first and views only once a
+later release holds. The current vision model takes 25 s for the same kind of sheet. Jev cannot read a
 dimension or a room name; it can say what a page is and where to look, about 50
 times faster and roughly a hundred times cheaper. That is the job of a first stage.
 
@@ -293,6 +295,29 @@ says it worked.
 | 6 | Project findings (L3) and the Eingangsbericht | 16:06 | finding precision on planted traps (the intake eval's fixture has them) |
 | 7 | Crop-level L1 reading | 16:20 on A0 sheets | dimension and label recall on the visual eval (`task be:eval:answer-suite -- --set visual`) |
 | 8 | Visual retrieval channel (page-image embeddings) | questions whose answer is only in the picture | visual eval, with and without `look` |
+
+### Built in the first change (2026-10-27)
+
+| What | Slice | Where |
+|---|---|---|
+| The pipeline drawn, measured stage times, the Jev page-image eval | 0 | `ingestion-pipeline.md`, `task be:eval:decisions:vision` |
+| Photos keep their capture date and camera; OCR is timed; a dense sheet's reply is not generated twice | 0 | `adapter.py` |
+| Permit records and folder cards get the output budget their schema needs: both ran on the summary model's 100-token cap and were cut off mid-object | bug | `permit_extraction.py`, `folder_cards/build.py` |
+| A Langfuse trace per ingested file, stage seconds and coverage on it, every vision call and the dossier nested under it | 1 | `direct_trace.observed_span`, `adapter._file_trace` |
+| Coverage per file: pages fully read, and why the rest were not | 1 | `knowledge_layer/coverage.py` |
+| The vision pool shared fairly between offices | 3 | `lease_slots.FAIR_ACQUIRE_LUA` |
+| The table pass skips drawings the vision model reads (0.68 s a page on a vector sheet, for no table) | speed | `adapter._table_pass_skips` |
+| References: norms, laws, plans, named documents, no model | 4 | `knowledge_layer/references.py` |
+| The dossier: one strict call over a digest of every page; its summary replaces the first-and-last-chunk one; printed drawing quantities lifted into facts | 5 | `aiq_agent/knowledge/dossier.py` |
+| Findings derived per project (missing document, missing plan, contradiction, incomplete read), served to people and agents | 6 (first half) | `frontends/ui/src/lib/documents/findings.ts` |
+| Transient failures read again on their own, capped, at bulk priority | reliability | `lib/documents/transient-retry.ts` |
+| Piloti sees the type, facts, references and unread pages of each document | 5 | `browse.py`, `inventory.py` |
+
+Not built yet: the page map (slice 2; the eval says title blocks first), the
+two-speed queue (3), the Eingangsbericht in the inbox (6, second half), crop-level
+reading (7), the visual channel (8). Considered and rejected: an embedding cache.
+A vector is about 60 KB in the cache, and the embedded text carries the folder path,
+so the moves that trigger a re-read change the vectors anyway.
 
 Slices 1 and 2 come first because every later one needs the trace to be judged and
 the page map to be cheap. Slice 3 is what makes the platform feel fast to every

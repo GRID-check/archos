@@ -224,7 +224,7 @@ tasks:
       # The adoption gate for a Jev page map at ingest (docs/roadmap/ingestion-north-star.md).
       # Image input is experimental at TypeSafe, so nothing in the path sends images yet.
       # Four requests, under a tenth of a cent; `-- --sheets DIR` adds real sheets, ungraded.
-      - '{{.PY}} -I scripts/decision_eval_vision.py {{.CLI_ARGS}}'
+      - '{{.PY}} scripts/decision_eval_vision.py {{.CLI_ARGS}}'
 
   be:eval:decisions:holdout:
     desc: 'Held-out check for the decision-model uses, on sets written blind to the wording — never tune on them (NEEDS OPENROUTER_API_KEY; no backend)'

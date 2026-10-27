@@ -36,8 +36,14 @@ the document's own words.
 ## `dossier`
 
 Written by `aiq_agent.knowledge.dossier` from one model call over the document's
-digest (not its first and last chunk). Its `summary` becomes the document summary
-when the call succeeds; when it fails the old summary call runs as before.
+digest (`build_digest`: every page in order under `[Seite N · kind]`, an equal share
+of 16 000 characters each, the Plankopf, the file name), on the summary model with
+its own output budget and a strict JSON schema, traced as the Langfuse generation
+`document-dossier`. Its `summary` replaces the one-sentence summary, which read only
+the first and last chunk; the old call still runs beside it, so a failed dossier
+leaves the document as it was. Not written for the base corpus. Facts a drawing's
+analysis printed (`drawing_data` quantities with `source: text`: room height,
+building height, storeys) are added to the dossier's own (`lifted_drawing_facts`).
 
 ```json
 {
@@ -93,10 +99,12 @@ Written by the ingest worker for every PDF from what it read.
  "reasons": {"render_cap": 2}}
 ```
 
-`not_read` counts pages whose content is in no chunk: a drawing past the render cap,
-a vision or transcription call that failed, a scan past the transcription cap.
-`reasons` keys: `render_cap`, `vision_failed`, `transcription_failed`,
-`transcription_cap`.
+`not_read` counts pages that needed a vision read (a drawing or a scan) and did not
+get one: a drawing past the render cap, a vision or transcription call that failed,
+a scan past the transcription cap, or no vision model configured. Such a page may
+still have its text layer in the index, so the UI says "nicht vollständig gelesen",
+not "fehlt". `reasons` keys: `render_cap`, `vision_failed`, `transcription_failed`,
+`transcription_cap`, `no_vision`. Written by `knowledge_layer.coverage.reading_coverage`.
 
 ## Findings (BFF)
 

@@ -124,7 +124,7 @@ flowchart TB
   TY -- Word without rendition --> F1[fail: office_rendition_required]:::stop
   TX --> SC[upload screen<br/>local rules, no model]:::cpu
   SC -- match --> QU[quarantine: file FAILED with verdict]:::stop
-  SC --> TB[tables, pdfplumber<br/>A:1413]:::cpu
+  SC --> TB[tables, pdfplumber<br/>not on drawings vision reads]:::cpu
   TB --> TR[page triage<br/>text / scan / garbled / drawing]:::cpu
   TR --> OCR[transcribe scans + garbled pages<br/>1 vision call per page, cap 500]:::model
   OCR --> TH[thumbnail -> presigned PUT]:::cpu
@@ -132,10 +132,15 @@ flowchart TB
   CH --> RD[render drawing pages<br/>cap 20 per file, A:361]:::cpu
   RD --> VI[analyze_visual per drawing page<br/>and per embedded raster, cap 64<br/>4 threads, fleet slot each]:::model
   VI --> SUM[summary + tags + topics<br/>first and last chunk, 4000 chars]:::model
+  VI --> DS[dossier: one strict call<br/>over a digest of every page]:::model
+  VI --> CV[coverage: pages read and why not]:::cpu
   SUM --> PM[permit extraction<br/>only when tagged Bescheid]:::model
+  DS --> RF[references: norms, laws,<br/>plans, documents, no model]:::cpu
   PM --> EM[embed: 1024-token chunks<br/>batches of 64, not cached]:::model
   EM --> WR[upsert into Qdrant<br/>then retire the previous version]:::cpu
-  WR --> MD[document_metadata rows:<br/>summary, tags, topics, Plankopf, capture]:::cpu
+  WR --> MD[document_metadata rows:<br/>summary, tags, topics, Plankopf, capture,<br/>dossier, doc_references, coverage]:::cpu
+  RF --> MD
+  CV --> MD
   MD --> FA[Fassung: confirm, change summary<br/>or suggestion, 45 s bound]:::model
 ```
 
@@ -145,14 +150,17 @@ What fails the file, and what only makes it poorer:
 |---|---|---|
 | Download, unreadable PDF, binary or empty content, Word without rendition, no vision key for an image or a scan | the **file** fails, its partial points are discarded, a previous version stays | "Fehlgeschlagen" with a reason; "Erneut lesen" is offered by `retry-policy.ts` |
 | Screening match | the file is held in quarantine | the uploader and reviewers see it; nobody else does |
-| One OCR page, one vision page, one embedded raster | that **page** is skipped; the file goes on | nothing. The page is simply not in the index |
-| Summary, tags, topics, permit, Fassung, thumbnail | skipped after a 30 s (90 s, 45 s) bound | a file with no summary or no tags |
-| Pages over the render cap (20) or the raster cap (64) | counted on the file, not read | nothing visible to the person |
+| One OCR page, one vision page, one embedded raster | that **page** is skipped; the file goes on | the file's coverage says how many pages were not fully read, and why |
+| Summary, tags, topics, dossier, permit, Fassung, thumbnail | skipped after a 30 s (60 s, 90 s, 45 s) bound | a file with no summary, no tags or no dossier |
+| Pages over the render cap (20) or the raster cap (64) | counted on the file and in its coverage, not read | "n Seiten nicht vollständig gelesen" |
 | A worker dies or stalls | the claim goes stale after 180 s and another worker takes the job, up to 3 times, then `dead` | "unterbrochen" |
 
-There is **no automatic retry of a failed file**. A 429 or a timeout inside a vision
-call is retried in place (A:2274), but a file that failed stays failed until a
-person or the `reingest_failed` job asks again.
+A 429 or a timeout inside a vision call is retried in place (A:2274). A file whose
+read failed for a passing reason (`transient`: an interruption, a timeout, a download
+or provider error) is sent back by the background-work sweep
+(`frontends/ui/src/lib/documents/transient-retry.ts`): at `bulk` priority, at most
+three attempts in all, 5 minutes after the first failure and doubling. Every other
+failure waits for a person or the `reingest_failed` job.
 
 ## 4. Where the time goes
 
@@ -206,15 +214,18 @@ page is the first move in the roadmap.
 
 What is measured in production today:
 
-- `[ingest-perf]` log line per file: text, tables, screen, ocr (since this change),
-  renders, rasters, vision, summary, embedding, write (A:2931). Log only.
+- A Langfuse trace per file, `ingest-file`: its status, every stage's seconds, its
+  pages, drawings read and pages not fully read, with every vision call
+  (`ingest-vision`) and the dossier (`document-dossier`) nested under it as
+  generations (`direct_trace.observed_span`). Filter by `file_type`,
+  `organization_id` or `priority` to see where a kind of document spends its time.
+- `[ingest-perf]` log line per file: text, tables, screen, ocr, renders, rasters,
+  vision, summary, embedding, write (A:2931).
 - `llm_usage_events` with `activity = ingest` per job: the one queryable cost
   breakdown (roles `ingest_vision`, `ingest_transcription`, `embedding`).
 - `document_ingest_finished` in PostHog with `duration_ms`, accurate to one poll
   interval because it is measured when the BFF notices.
 - `grid.queue.job_duration_seconds` and claim latency (OTel).
-- **Not measured:** Langfuse has no ingest traces at all, so a slow document
-  cannot be opened and read stage by stage, and a vision call cannot be scored.
 
 ## 5. What is stored, and who reads it
 
@@ -247,20 +258,28 @@ flowchart LR
 ```
 
 Green is read by retrieval, the UI or the agent; yellow is stored and almost never
-read. The richest thing the pipeline produces, the structured reading of every
-drawing (`drawing_data`: rooms, quantities with units, relations as triples, the
-author, the location), sits on the chunk as an unindexed JSON string. Only the
-revision diff and the drawing detail view open it.
+read. The structured reading of every drawing (`drawing_data`: rooms, quantities
+with units, relations as triples, the author, the location) sits on the chunk as an
+unindexed JSON string; its printed room heights, building heights and storey counts
+now reach the dossier's facts, and the rest is still read only by the revision diff
+and the drawing detail view.
 
-What is **not** extracted at ingest at all:
+Since 2026-10-27 the row also carries what the ingest read of the whole document
+([`document-dossier.md`](document-dossier.md)):
 
-- references between documents: a plan number on another plan, "gem.
-  Brandschutzkonzept", DIN, ÖNORM, EN, OIB-RL points (only `§ n` is captured);
-- storey (Geschoss) per page, a computed scale, a plan number per chunk;
-- anything about the **project**: what this document adds to it, contradicts in it,
-  or leaves open. That is read again later by three separate readers (the permit
-  extraction, the intake agent of ADR-0111, the experience reader of ADR-0096),
-  each with its own model calls and none sharing a stored fact set.
+- `dossier`: the document type (24 kinds), parties, dates, place and facts with page
+  and quote, from one strict call over a digest of every page;
+- `doc_references`: norms, laws with their `§`, plan numbers and named documents it
+  points at, read with patterns and no model;
+- `coverage`: how many pages were fully read, and why the rest were not.
+
+The BFF derives the project's findings from them (a referenced document the project
+lacks, a plan number no document carries, two documents stating one fact
+differently, a document not fully read), `list_files` shows them to Piloti, and the
+per-turn inventory carries the type and the unread pages.
+
+Still **not** extracted at ingest: storey (Geschoss) per page, a computed scale, a
+plan number per chunk.
 
 ## 6. Fairness across offices
 
@@ -282,13 +301,13 @@ flowchart LR
 ```
 
 The claim order (ADR-0076) keeps a newcomer's single upload from waiting behind
-another office's folder of 300. Two limits sit below it and are not per office:
-the 15 document slots and the 32 vision slots. Office A's 300-document folder holds
-every slot it reaches until each document finishes, so office B's first document
-waits for the next free document slot, then competes for vision slots with
-everything already running. Fair claiming bounds that wait to one document's
-length. It does not shorten that length, so a long drawing set sets the wait for
-everyone.
+another office's folder of 300. Below it, the 32 vision slots are shared by lane
+too (`lease_slots.FAIR_ACQUIRE_LUA`): an office alone takes every slot, and once a
+second office waits, an office holding more than its share (the pool over the
+offices holding or waiting) gives the next free slot up. Office B's first drawing
+page no longer competes with office A's fourteen running documents for a slot; it
+gets the next one. The 15 document slots are still first come within the claim
+order, so B's document waits for one document of A's to finish before it starts.
 
 ## 7. The code, by question
 

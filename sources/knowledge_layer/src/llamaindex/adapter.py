@@ -526,6 +526,9 @@ JOB_RETENTION_SECONDS = 3600  # 1 hour
 # call over the document, then the BFF embeds its requirements). Past it the
 # record is skipped, never the file.
 PERMIT_RECORD_TIMEOUT_SECONDS = 90
+#: The Langfuse trace one file's ingest is recorded under (``_file_trace``).
+INGEST_TRACE_NAME = "ingest-file"
+
 #: How long the document's dossier may take (``aiq_agent.knowledge.dossier``). It runs
 #: beside the summary, the tags and the topics, after the vision batch, and writes a
 #: JSON object where they write a line: about twice the summary's 30 s.
@@ -2296,6 +2299,61 @@ def _vision_lane() -> str | None:
     return str(organization_id) if organization_id else None
 
 
+#: The Langfuse name of one vision call made by an ingest (a drawing page, an image, a raster).
+VISION_GENERATION_NAME = "ingest-vision"
+
+
+def _observed_vlm_call(client: Any, request: dict[str, Any]) -> Any:
+    """One vision call, as a Langfuse generation under the file's trace (images redacted from the span)."""
+    from aiq_agent.observability.direct_trace import observed_generation
+
+    with observed_generation(
+        VISION_GENERATION_NAME, model=request.get("model"), messages=request.get("messages")
+    ) as generation:
+        response = client.chat.completions.create(**request)
+        dump = getattr(response, "model_dump", None)
+        generation.finish(dump() if callable(dump) else {})
+        return response
+
+
+def _file_trace(file_name: str, config: dict[str, Any], job_id: str):
+    """The Langfuse trace one file's ingest runs under: ids and the file type, never its text."""
+    from aiq_agent.observability.direct_trace import observed_span
+
+    return observed_span(
+        INGEST_TRACE_NAME,
+        metadata={
+            "job_id": job_id,
+            "organization_id": config.get("organization_id"),
+            "project_id": config.get("project_id"),
+            "document_id": config.get("document_id"),
+            "file_type": Path(file_name).suffix.lower().lstrip(".") or "none",
+            "priority": config.get("priority") or "interactive",
+        },
+    )
+
+
+def _finish_file_trace(
+    recorder: Any, job: Any, index: int, stages: dict[str, float], coverage: dict[str, Any] | None = None
+) -> None:
+    """Write the file's outcome on its trace: status, every stage's seconds, pages, chunks. Never raises."""
+    try:
+        detail = job.file_details[index] if index < len(job.file_details) else None
+        status = getattr(getattr(detail, "status", None), "value", None)
+        error = getattr(detail, "error_message", None)
+        output: dict[str, Any] = {
+            "status": status,
+            **{f"seconds_{name}": round(value, 3) for name, value in stages.items()},
+        }
+        output["seconds_total"] = round(sum(stages.values()), 3)
+        for key in ("pages", "drawings", "drawings_read", "transcribed", "not_read"):
+            if coverage and key in coverage:
+                output[f"pages_{key}" if key != "pages" else "pages"] = coverage[key]
+        recorder.finish(output, failed=error if status == FileStatus.FAILED.value else None)
+    except Exception:  # noqa: BLE001 - telemetry never fails an ingest
+        logger.debug("Could not finish the ingest trace", exc_info=True)
+
+
 def _rate_limited_for(error: Exception) -> float | None:
     """Seconds to wait before retrying a call the provider rate-limited; None when it was not a 429."""
     if getattr(error, "status_code", None) != 429 and "rate_limit" not in str(error).lower():
@@ -2320,7 +2378,7 @@ def _vlm_create_fairly(client, **request):
     for attempt in range(VLM_RATE_LIMIT_RETRIES + 1):
         try:
             with _vlm_slot():
-                return client.chat.completions.create(**request)
+                return _observed_vlm_call(client, request)
         except Exception as error:
             wait = _rate_limited_for(error)
             if wait is None or attempt == VLM_RATE_LIMIT_RETRIES:
@@ -4925,6 +4983,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 source_path = rendition or file_path
                 # ``[ingest-perf]``: this file's stage seconds, logged in the finally below.
                 stages: dict[str, float] = {}
+                # One Langfuse trace per file (ADR-0089): its stages, its coverage, its outcome,
+                # and every model call it makes nested under it. Closed in the finally below.
+                file_trace = _file_trace(file_name, config, job_id)
+                file_recorder = file_trace.__enter__()
+                coverage = None
                 try:
                     file_size = os.path.getsize(file_path)
 
@@ -5866,6 +5929,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # not on the success path, so a held or failed file shows the
                     # stages it did reach: that is where the screening win reads.
                     _log_ingest_perf(file_name, stages)
+                    _finish_file_trace(file_recorder, job, i, stages, coverage)
+                    file_trace.__exit__(None, None, None)
                     _release_memory(file_name)
                     # Still under the replacement lock: a quarantined re-upload
                     # holds its whole document (ADR-0086) until a reviewer

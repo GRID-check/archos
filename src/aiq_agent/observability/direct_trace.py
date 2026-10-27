@@ -38,7 +38,10 @@ import json
 import logging
 import os
 import threading
+from collections.abc import Iterator
 from collections.abc import Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 from aiq_agent.common.image_redaction import redact_inline_images
@@ -73,6 +76,10 @@ TRUNCATION_MARKER = "…[truncated]"
 AUXILIARY_SURFACE_TAG = "surface:auxiliary"
 
 _SCOPE = "aiq_agent.observability.direct_trace"
+
+#: The span a direct generation nests under: an ingest file's (:func:`observed_span`). Unset, a
+#: generation is its own root trace, as every route's is.
+_parent_span: ContextVar[Any | None] = ContextVar("direct_trace_parent_span", default=None)
 
 _lock = threading.Lock()
 _resolved = False
@@ -302,15 +309,88 @@ def _start_span(feature: str, attributes: dict[str, Any]) -> Any | None:
         from opentelemetry.context import Context
         from opentelemetry.trace import SpanKind
 
+        parent = _parent_span.get()
+        context = Context()
+        if parent is not None:
+            from opentelemetry.trace import set_span_in_context
+
+            context = set_span_in_context(parent, context)
         return tracer.start_span(
             feature,
-            context=Context(),
+            context=context,
             kind=SpanKind.CLIENT,
             attributes=generation_start_attributes(feature, **attributes),
         )
     except Exception:
         logger.debug("direct_trace: could not start a generation span", exc_info=True)
         return None
+
+
+class SpanRecorder:
+    """The handle a unit of background work reports its outcome through. A no-op when tracing is off."""
+
+    __slots__ = ("_span",)
+
+    def __init__(self, span: Any | None) -> None:
+        self._span = span
+
+    def finish(self, output: Mapping[str, Any], *, failed: str | None = None) -> None:
+        """Record the outcome (counts, seconds, statuses: never document text). Never raises."""
+        if self._span is None:
+            return
+        try:
+            self._span.set_attributes(
+                {
+                    OUTPUT_ATTRIBUTE: _clip(json.dumps(dict(output), ensure_ascii=False, default=str)),
+                    **_scalars(output),
+                }
+            )
+            if failed:
+                self._span.set_attributes(
+                    {OBSERVATION_LEVEL_ATTRIBUTE: "ERROR", OBSERVATION_STATUS_MESSAGE_ATTRIBUTE: failed[:500]}
+                )
+        except Exception:
+            logger.debug("direct_trace: could not record a span's outcome", exc_info=True)
+
+
+@contextmanager
+def observed_span(feature: str, *, metadata: Mapping[str, Any] | None = None) -> Iterator[SpanRecorder]:
+    """One root trace for a unit of background work, the generations made inside it nested under it.
+
+    Synchronous, for a worker thread: an ingest opens one per file, and every vision call,
+    transcription and dossier the file makes (on this thread, or on a pool thread that copied
+    its context) becomes a child generation. ``metadata`` is scalars only (ids, a file type);
+    the outcome goes through :meth:`SpanRecorder.finish`. Fail-open like the rest of this module.
+    """
+    span = None
+    tracer = _current_tracer()
+    if tracer is not None:
+        try:
+            from opentelemetry.context import Context
+            from opentelemetry.trace import SpanKind
+
+            span = tracer.start_span(
+                feature,
+                context=Context(),
+                kind=SpanKind.INTERNAL,
+                attributes={
+                    **process_trace_attributes(),
+                    OBSERVATION_TYPE_ATTRIBUTE: "span",
+                    TRACE_NAME_ATTRIBUTE: feature,
+                    TAGS_ATTRIBUTE: [f"feature:{feature}", AUXILIARY_SURFACE_TAG],
+                    **_scalars({**(metadata or {}), "feature": feature}),
+                },
+            )
+        except Exception:
+            logger.debug("direct_trace: could not start a span", exc_info=True)
+            span = None
+    token = _parent_span.set(span) if span is not None else None
+    try:
+        yield SpanRecorder(span)
+    finally:
+        if token is not None:
+            _parent_span.reset(token)
+        _end_span(span, None)
 
 
 def _end_span(span: Any | None, exc: BaseException | None) -> None:
