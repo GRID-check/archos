@@ -115,7 +115,7 @@ def test_a_failed_dossier_keeps_the_old_summary_and_the_references(tmp_path, rea
     assert any(r["kind"] == "norm" for r in document.doc_references)
 
 
-def test_the_predecessor_is_the_re_uploaded_name_else_the_linked_fassung():
+def test_the_predecessor_is_the_re_uploaded_name_else_the_linked_version():
     from types import SimpleNamespace
 
     from knowledge_layer.llamaindex.adapter import _predecessor_dossier
