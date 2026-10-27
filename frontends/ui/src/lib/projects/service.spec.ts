@@ -126,7 +126,7 @@ describe('listProjects', () => {
   it('org admins still see every project in their organization (named bypass)', async () => {
     // A legacy admin session: role slug, no claims. `hasPermission`'s bounded
     // catalog implication carries it, so nobody re-logs-in for the fix.
-    const visible = await listProjects(session({ role: 'admin' }))
+    const visible = await listProjects(session({ role: 'admin', permissions: ['org:projects:administer'] }))
 
     expect(visible).toHaveLength(3)
     expect(check).not.toHaveBeenCalled()

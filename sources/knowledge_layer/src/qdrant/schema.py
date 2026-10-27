@@ -230,6 +230,14 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     # The document's format when it states one (``mail``: a filed E-Mail-Verlauf), so
     # "only the correspondence" is one exact filter.
     "source_format",
+    # What the ingest read of the whole document (``payload.reading_facts``), on every chunk:
+    # one condition finds the passages of a fire safety concept, of a document citing
+    # ÖNORM B 1600 (``norm:önorm b 1600``), stating Gebäudeklasse 4 (``building_class=4``),
+    # or naming a party.
+    "document_type",
+    "references",
+    "dossier_facts",
+    "parties",
 )
 #: Payload field holding a chunk's place in document order (the seam's
 #: ``READING_ORDER``): derived at write time from ``page_label``, never read
@@ -262,6 +270,8 @@ INTEGER_FIELDS: tuple[str, ...] = (
     "image_index",
     "stored_image_index",
     "segment_index",
+    # Pages of the document not fully read (``coverage.not_read``); 0 for a document read whole.
+    "pages_not_read",
 )
 #: Payload field holding the document's own date: the title block's ``revision_date``, else the
 #: photo's ``capture.captured_at``, else a mail thread's newest message (``mail_thread.latest_sent_at``),

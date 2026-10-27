@@ -20,6 +20,7 @@ from fastapi import Depends
 from fastapi import File
 from fastapi import Header
 from fastapi import HTTPException
+from fastapi import Response
 from fastapi import UploadFile
 from pydantic import BaseModel
 from pydantic import ConfigDict
@@ -65,6 +66,10 @@ logger = logging.getLogger(__name__)
 BATCH_STATUS_MAX_IDS = 200
 
 
+#: Set on a listing whose metadata (summaries, dossiers, references, coverage) could not be read.
+READING_UNAVAILABLE_HEADER = "X-Grid-Reading-Unavailable"
+
+
 def _merge_summaries(
     files: list[FileInfo],
     summaries: list[AvailableDocument],
@@ -78,7 +83,8 @@ def _merge_summaries(
     knows what the vector store holds. The join key is the
     filename, unique within the summaries table, so a straight lookup is safe.
     A file without a stored summary/tags/folder is left untouched; already-populated
-    values are never overwritten. Topics (Themen), the camera's capture facts and the
+    values are never overwritten. Topics (Themen), the camera's capture facts, the ingest's
+    reading (``dossier``, ``doc_references``, ``coverage``) and the
     title-block facts (``revision_facts``: Plannummer, Index, Datum, Maßstab, Planinhalt read from the
     Plankopf) travel the same way, and so do the Fassungen: the confirmed link
     (``superseded_by``, and ``supersedes`` as its reverse), the change summary with
@@ -112,6 +118,12 @@ def _merge_summaries(
             file.capture = doc.capture
         if file.revision_facts is None and doc.revision_facts:
             file.revision_facts = doc.revision_facts
+        if file.dossier is None and doc.dossier:
+            file.dossier = doc.dossier
+        if file.doc_references is None and doc.doc_references:
+            file.doc_references = doc.doc_references
+        if file.coverage is None and doc.coverage:
+            file.coverage = doc.coverage
         if file.superseded_by is None and doc.superseded_by:
             file.superseded_by = doc.superseded_by
         if not file.supersedes and doc.supersedes:
@@ -412,9 +424,16 @@ def add_document_routes(router: APIRouter):
     )
     async def list_documents(
         collection_name: str,
+        response: Response,
         ingestor: BaseIngestor = Depends(_require_ingestor),
     ) -> list[FileInfo]:
-        """List all documents in a collection."""
+        """List all documents in a collection.
+
+        When the metadata store cannot be read the files are still listed, without their
+        summaries and readings, and the ``X-Grid-Reading-Unavailable: 1`` header says so: a
+        reader that projects the readings (the BFF's search facets) must keep what it has
+        instead of taking the empty fields as "nothing was read".
+        """
         # Verify collection exists
         await require_collection(ingestor, collection_name)
 
@@ -434,6 +453,7 @@ def add_document_routes(router: APIRouter):
             await asyncio.to_thread(_merge_summaries, files, summaries, _held_names_of(collection_name))
         except Exception as e:
             logger.warning(f"Failed to merge summaries for {collection_name}: {e}")
+            response.headers[READING_UNAVAILABLE_HEADER] = "1"
 
         return files
 

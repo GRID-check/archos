@@ -86,9 +86,9 @@
     "@uppy/core": "^6.2.0",
     "@uppy/react": "^6.0.0",
     "@uppy/xhr-upload": "^6.0.1",
-    "@workos-inc/authkit-nextjs": "^4.4.0",
-    "@workos-inc/node": "^11.0.0",
-    "@workos-inc/widgets": "^1.20.0",
+    "@workos-inc/authkit-nextjs": "4.6.2",
+    "@workos-inc/node": "^12.0.0",
+    "@workos-inc/widgets": "^1.20.2",
     "@xyflow/react": "^12.12.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -109,7 +109,7 @@
     "marked": "^18.1.1",
     "mermaid": "^12.2.0",
     "motion": "^14.2.0",
-    "next": "^16.4.0",
+    "next": "^16.4.3",
     "nextstepjs": "2.3.0",
     "pdfjs-dist": "^6.4.299",
     "postal-mime": "^4.1.4",
@@ -184,5 +184,8 @@
     "workerDirectory": [
       "public"
     ]
+  },
+  "patchedDependencies": {
+    "@workos-inc/authkit-nextjs@4.6.2": "patches/@workos-inc%2Fauthkit-nextjs@4.6.2.patch"
   }
 }

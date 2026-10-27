@@ -20,6 +20,7 @@ import { MailImportDialog } from './mail-import-dialog'
 import { InboundMailAddressDialog } from '@/features/inbound-mail/components/inbound-mail-address'
 import { inboundMailPaths } from '@/features/inbound-mail/lib/paths'
 import { useInboundMailWaiting } from '@/features/inbound-mail/hooks/use-inbound-mail-waiting'
+import { DocumentFindingsPanel } from './document-findings-panel'
 
 // The row and folder types live in `../file-types`; they are re-exported here
 // because this is the name every importer already uses.
@@ -178,6 +179,9 @@ export function ProjectFileWorkspace({
         initialFiles={initialFiles}
         initialNextCursor={initialNextCursor}
         initialFolderId={initialFolderId}
+        aboveList={({ readyCount }) => (
+          <DocumentFindingsPanel projectId={projectId} refreshKey={String(readyCount)} className="px-4 pt-3" />
+        )}
       />
       {mailOffered && phone && <MailImportDialog projectId={projectId} open={mailOpen} onOpenChange={setMailOpen} />}
       {inboundMailEnabled && (

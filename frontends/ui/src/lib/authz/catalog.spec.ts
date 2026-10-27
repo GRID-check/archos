@@ -10,7 +10,6 @@ import {
   PROJECT_PERMISSION_SPECS,
   RESOURCE_TYPES,
   ROLES,
-  SKILL_PERMISSION_SPECS,
   FOLDER_PERMISSION_SPECS,
   findPermissionSpec,
   findRoleSpec,
@@ -20,7 +19,6 @@ import {
   ORG_PERMISSIONS,
   PLATFORM_PERMISSIONS,
   PROJECT_PERMISSIONS,
-  SKILL_PERMISSIONS,
   FOLDER_PERMISSIONS,
 } from './permissions'
 
@@ -132,14 +130,10 @@ describe('authorization catalog', () => {
   })
 
   it('the registry constants and the catalog agree on every slug', () => {
-    // All FOUR tiers. The skill tier used to be omitted from both halves of this
-    // check, so `skill:*` was the one part of the catalog that could drift from
-    // the registry — and from WorkOS — without anything failing.
     const registrySlugs: string[] = [
       ...Object.values(ORG_PERMISSIONS),
       ...Object.values(PLATFORM_PERMISSIONS),
       ...Object.values(PROJECT_PERMISSIONS),
-      ...Object.values(SKILL_PERMISSIONS),
       ...Object.values(FOLDER_PERMISSIONS),
     ]
     for (const slug of registrySlugs) {
@@ -152,7 +146,6 @@ describe('authorization catalog', () => {
       ...ORG_PERMISSION_SPECS,
       ...PLATFORM_PERMISSION_SPECS,
       ...PROJECT_PERMISSION_SPECS,
-      ...SKILL_PERMISSION_SPECS,
       ...FOLDER_PERMISSION_SPECS,
     ]
       // A deprecated slug stays in the catalog only so existing grants keep working

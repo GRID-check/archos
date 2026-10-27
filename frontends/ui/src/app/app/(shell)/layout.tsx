@@ -59,6 +59,7 @@ export default async function AppShellLayout({
       user={chrome.user}
       organizationName={chrome.organizationName}
       authRequired={chrome.authRequired}
+      canSwitchOrganization={chrome.canSwitchOrganization}
       canManageOrganization={chrome.navFlags.canManageOrganization}
       canViewOrganization={chrome.navFlags.canViewOrganization}
       canManagePlatform={chrome.navFlags.canManagePlatform}

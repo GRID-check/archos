@@ -8,7 +8,7 @@ const session = {
   organizationId: 'org-1',
   email: 'admin@grid.com',
   role: 'admin',
-  permissions: [] as string[],
+  permissions: adminPermissions(),
 }
 
 vi.mock('@/lib/auth/require-auth', () => ({
@@ -25,6 +25,7 @@ vi.mock('@/lib/organizations/service', () => ({
 
 import { GET } from './route'
 import { listOrganizationMembers } from '@/lib/organizations/service'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const request = (): Request => new Request('http://localhost/api/organization/members')
 
@@ -32,10 +33,12 @@ describe('GET /api/organization/members', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     session.role = 'admin'
+    session.permissions = adminPermissions()
   })
 
   it('rejects non-admins', async () => {
     session.role = 'member'
+    session.permissions = []
     expect((await GET(request())).status).toBe(403)
     expect(listOrganizationMembers).not.toHaveBeenCalled()
   })

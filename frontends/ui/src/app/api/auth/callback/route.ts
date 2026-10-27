@@ -1,4 +1,4 @@
-import { handleAuth } from '@workos-inc/authkit-nextjs'
+import { CallbackError, handleAuth } from '@workos-inc/authkit-nextjs'
 import { type NextRequest, NextResponse } from 'next/server'
 import { captureServer } from '@/lib/analytics/posthog-server'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
@@ -43,7 +43,7 @@ type HandleAuthOptions = NonNullable<Parameters<typeof handleAuth>[0]>
 type SignInData = Parameters<NonNullable<HandleAuthOptions['onSuccess']>>[0]
 
 const announceSignIn = ({ user, organizationId, authenticationMethod }: SignInData): void => {
-  const createdAt = Date.parse(user.createdAt)
+  const createdAt = user.createdAt.getTime()
   captureServer({
     event: 'user_signed_in',
     distinctId: user.id,
@@ -55,7 +55,32 @@ const announceSignIn = ({ user, organizationId, authenticationMethod }: SignInDa
   })
 }
 
-const authkitCallback = handleAuth({ returnPathname: '/app/projects', baseURL, onSuccess: announceSignIn })
+/**
+ * A sign-in that arrives without its flow cannot be completed by retrying the
+ * same callback URL: AuthKit has already deleted that flow's PKCE cookie, so a
+ * reload reproduces the failure. The flow is lost when the browser dropped the
+ * ten-minute verifier cookie, its window closed, or two tabs collided in one
+ * cookie jar — `missing_pkce_cookie` and `oauth_state_mismatch` respectively.
+ *
+ * Send those to our own page, which says so and offers Try Again, instead of
+ * AuthKit's generic answer. Everything else lands there too, on the `Default`
+ * message: supplying `onError` means AuthKit no longer renders its own page at
+ * all, and an `invalid_grant` from WorkOS is not something the person can act on
+ * differently anyway.
+ */
+const LOST_FLOW_CODES = new Set<string>(['missing_pkce_cookie', 'oauth_state_mismatch'])
+
+function reportSignInFailure({ error, request }: { error?: unknown; request: NextRequest }): Response {
+  const code = error instanceof CallbackError && LOST_FLOW_CODES.has(error.code) ? 'SessionExpired' : 'Default'
+  return NextResponse.redirect(new URL(`/auth/error?error=${code}`, baseURL ?? request.url))
+}
+
+const authkitCallback = handleAuth({
+  returnPathname: '/app/projects',
+  baseURL,
+  onSuccess: announceSignIn,
+  onError: reportSignInFailure,
+})
 
 /**
  * A request that carries neither `code` nor `state` is not a returning

@@ -210,6 +210,7 @@ export const EXPOSURE = {
   'document-role-clear': OFFERED,
   'document-role-declare': OFFERED,
   'document-role-list': OFFERED,
+  'project-document-findings': OFFERED,
   'document-search': { external: true, piloti: 'native:knowledge_search', reason: SEARCH },
   'document-status': OFFERED,
   'document-summary-get': OFFERED,

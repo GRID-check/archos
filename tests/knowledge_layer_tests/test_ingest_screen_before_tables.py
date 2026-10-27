@@ -225,3 +225,29 @@ def test_the_screen_runs_before_the_table_pass(tmp_path, calls, monkeypatch):
     _ingest(calls, path, "Liste.pdf", _TERMS, extract_tables=True)
 
     assert events == ["screen", "tables", "screen"]
+
+
+class TestTheTablePassLeavesTheDrawingsToVision:
+    """A vector drawing is all edges to the table finder: 0.68 s a page for no table. Vision reads it whole."""
+
+    def _triage(self, *drawings: int):
+        from knowledge_layer.llamaindex.page_triage import PageKind
+        from knowledge_layer.llamaindex.page_triage import PdfTriage
+
+        kinds = {page: PageKind.TEXT for page in range(1, 31)}
+        kinds.update({page: PageKind.DRAWING for page in drawings})
+        return PdfTriage(kinds=kinds)
+
+    def test_the_drawings_vision_reads_are_skipped_beside_the_dense_pages(self):
+        skip = adapter._table_pass_skips([7], self._triage(2, 3), vision_reads=True)
+        assert skip == [2, 3, 7]
+
+    def test_a_drawing_past_the_render_cap_keeps_its_table_pass(self, monkeypatch):
+        monkeypatch.setattr(adapter, "MAX_RENDERED_PAGES", 2)
+        assert adapter._table_pass_skips([], self._triage(4, 5, 6), vision_reads=True) == [4, 5]
+
+    def test_without_a_vision_model_no_drawing_is_skipped(self):
+        assert adapter._table_pass_skips([7], self._triage(2, 3), vision_reads=False) == [7]
+
+    def test_an_unmeasured_pdf_skips_only_the_dense_pages(self):
+        assert adapter._table_pass_skips([7], None, vision_reads=True) == [7]

@@ -69,6 +69,7 @@ export interface AppShellChromeProps {
   user?: SidebarUser
   organizationName?: string | null
   authRequired: boolean
+  canSwitchOrganization?: boolean
   canManageOrganization: boolean
   canViewOrganization: boolean
   canManagePlatform: boolean
@@ -157,6 +158,7 @@ export function AppShellChrome({
           user={chrome.user}
           organizationName={chrome.organizationName}
           authRequired={chrome.authRequired}
+          canSwitchOrganization={chrome.canSwitchOrganization}
           canManageOrganization={chrome.canManageOrganization}
           canViewOrganization={chrome.canViewOrganization}
           canManagePlatform={chrome.canManagePlatform}

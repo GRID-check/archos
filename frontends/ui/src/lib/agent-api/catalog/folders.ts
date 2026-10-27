@@ -16,6 +16,7 @@ import {
   folderListQuerySchema,
   updateFolderSchema,
 } from '@/lib/documents/folder-wire'
+import { documentFindingsQuerySchema } from '@/lib/documents/findings-wire'
 import { documentListQuerySchema } from '@/lib/documents/list-query'
 import { applyRootSortRequestSchema } from '@/lib/filing/root-sort-wire'
 import { folderAccessSchema } from '@/lib/projects/folder-access-wire'
@@ -251,6 +252,25 @@ export const foldersOperations = [
     path: '/api/projects/[id]/document-roles',
     params: projectParams,
     load: () => import('@/app/api/projects/[id]/document-roles/route'),
+  },
+  {
+    name: 'project-document-findings',
+    domain: 'documents',
+    summary: 'List what a project’s documents say about each other',
+    description:
+      "Findings read from the project's documents at ingest: `profile_contradiction` (a current document states a " +
+      'fact, e.g. building_class, that differs from the confirmed project profile; `profileValue` is the profile side), ' +
+      '`contradiction` (two current documents state one fact, ' +
+      'e.g. storeys_above_ground, with different values), `missing_document` (a document points at a document type ' +
+      'the project does not hold), `missing_plan` (a drawing number no document matches) and `incomplete_read` ' +
+      '(pages Piloti could not fully read). Each finding names its documents and pages in `sources`; open them with ' +
+      'document-get. Pass `documentId` to also get that document’s references resolved to project documents and ' +
+      'the documents that point at it.',
+    method: 'GET',
+    path: '/api/projects/[id]/document-findings',
+    params: projectParams,
+    query: documentFindingsQuerySchema,
+    load: () => import('@/app/api/projects/[id]/document-findings/route'),
   },
   {
     name: 'document-role-declare',

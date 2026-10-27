@@ -144,6 +144,12 @@ export interface FileWorkspaceProps {
   initialFiles?: readonly DocumentWireRow[]
   initialNextCursor?: string | null
   initialFolderId?: string | null
+  /**
+   * What sits above the list and scrolls with it: a project's findings panel.
+   * `readyCount` is how many documents of the listing are read, so a panel
+   * derived from them re-reads when another one finishes.
+   */
+  aboveList?: (state: { readyCount: number }) => ReactNode
 }
 
 /** The ⋯ slot every card and row renders; the row's {@link DocumentObjectMenu} fills it. */
@@ -178,6 +184,7 @@ export function FileWorkspace({
   initialFiles,
   initialNextCursor = null,
   initialFolderId = null,
+  aboveList,
 }: FileWorkspaceProps) {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -991,6 +998,7 @@ export function FileWorkspace({
             uploadFab && (inSheet ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : 'pb-24')
           )}
         >
+          {aboveList?.({ readyCount: files.filter((file) => file.status === 'completed').length })}
           {listingError ? (
             <PaneLoadError message={t('workspace.documentsLoadError')} onRetry={retryListing} />
           ) : (

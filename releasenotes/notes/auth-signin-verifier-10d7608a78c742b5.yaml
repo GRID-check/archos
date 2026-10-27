@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Signing in no longer bounces between Piloti and the login page. If a sign-in
+    is interrupted, you now see what happened and a Try Again button instead of
+    an error page with no way forward.

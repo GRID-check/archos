@@ -15,7 +15,7 @@ const session = {
   organizationId: 'org_1',
   email: 'admin@grid.com',
   role: 'admin',
-  permissions: [] as string[],
+  permissions: adminPermissions(),
   featureFlags: ['runtime-model-config'] as string[] | null,
 }
 
@@ -68,6 +68,7 @@ vi.mock('@/lib/model-config/zdr-coverage', () => ({
 }))
 
 import { PUT } from './route'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const put = (body: unknown): Promise<Response> =>
   PUT(
@@ -82,6 +83,7 @@ describe('PUT /api/organization/model-config/zdr', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     session.role = 'admin'
+    session.permissions = adminPermissions()
     session.featureFlags = ['runtime-model-config']
     vi.stubEnv('REQUIRE_AUTH', 'true')
     stored.settings = {}
@@ -93,6 +95,7 @@ describe('PUT /api/organization/model-config/zdr', () => {
 
   it('refuses a caller without org:models:manage', async () => {
     session.role = 'member'
+    session.permissions = []
     expect((await put({ enabled: false })).status).toBe(403)
     expect(upsertOrganization).not.toHaveBeenCalled()
   })

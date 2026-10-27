@@ -174,7 +174,6 @@ export const organization = {
     tiers: {
       org: 'Organization',
       project: 'Project',
-      skill: 'Skill schedule',
       folder: 'Folder',
       platform: 'Platform',
     },

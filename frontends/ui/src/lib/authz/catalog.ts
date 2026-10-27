@@ -35,7 +35,7 @@
  */
 
 /** WorkOS resource type a permission or role attaches to. */
-export type PermissionTier = 'org' | 'platform' | 'project' | 'skill' | 'folder'
+export type PermissionTier = 'org' | 'platform' | 'project' | 'folder'
 
 /** Where a role may be assigned. */
 export type RoleScope =
@@ -110,12 +110,6 @@ export const RESOURCE_TYPES: readonly ResourceTypeSpec[] = [
     description:
       'A tenant workspace: shared documents, memory and conversations for the research agent.',
     parent: 'organization',
-  },
-  {
-    slug: 'skill',
-    name: 'Skill',
-    description: 'A scheduled agent-skill job attached to a project (Agent Skills).',
-    parent: 'project',
   },
   {
     slug: 'folder',
@@ -359,34 +353,6 @@ export const PROJECT_PERMISSION_SPECS: readonly PermissionSpec[] = [
 ]
 
 /**
- * Skill-tier permissions — checked per skill schedule via WorkOS FGA. Mirrors
- * CREATING a schedule is `project:skills:manage` (no
- * schedule exists yet to check against); operating an existing one is checked
- * here, with the project-tier fallback in `./decide` keeping project admins
- * working without provisioning per-skill roles.
- */
-export const SKILL_PERMISSION_SPECS: readonly PermissionSpec[] = [
-  {
-    slug: 'skill:view',
-    name: 'View skill schedule',
-    description: "See a skill schedule's definition, schedule and run history.",
-    tier: 'skill',
-  },
-  {
-    slug: 'skill:run',
-    name: 'Run skill schedule',
-    description: 'Trigger a skill schedule manually, outside its schedule. Spends LLM budget.',
-    tier: 'skill',
-  },
-  {
-    slug: 'skill:manage',
-    name: 'Manage skill schedule',
-    description: "Edit a skill schedule's definition and schedule, or delete it.",
-    tier: 'skill',
-  },
-]
-
-/**
  * Folder-tier permissions (ADR-0097). Only a folder with its own access list is
  * a WorkOS resource, registered directly under its project, and no project role
  * holds these: being in the project grants nothing on such a folder, which is
@@ -464,7 +430,6 @@ export const ALL_PERMISSION_SPECS: readonly PermissionSpec[] = [
   ...ORG_PERMISSION_SPECS,
   ...PLATFORM_PERMISSION_SPECS,
   ...PROJECT_PERMISSION_SPECS,
-  ...SKILL_PERMISSION_SPECS,
   ...FOLDER_PERMISSION_SPECS,
   ...WIDGET_PERMISSION_SPECS,
 ]

@@ -65,6 +65,7 @@ from .factory import set_document_mail_origin
 from .factory import set_document_mail_thread
 from .factory import set_document_page_count
 from .factory import set_document_provenance
+from .factory import set_document_reading
 from .factory import set_document_revision_facts
 from .factory import set_document_revision_suggestion
 from .factory import set_document_superseded_by
@@ -122,6 +123,7 @@ __all__ = [
     "get_document_person_topics",
     "get_topic_vocabulary",
     "set_document_capture",
+    "set_document_reading",
     "set_document_superseded_by",
     "get_document_superseded_by",
     "get_superseded_files",

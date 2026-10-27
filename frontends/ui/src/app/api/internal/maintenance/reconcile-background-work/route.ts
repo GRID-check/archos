@@ -6,6 +6,8 @@
  *     conversion job is gone or dead (`lib/documents/stuck-processing.ts`);
  *   - research reports still `queued` for filing whose job is gone or dead
  *     (`lib/tasks/filing-sweep.ts`);
+ *   - documents whose read failed for a passing reason (`transient`), read
+ *     again with a capped backoff (`lib/documents/transient-retry.ts`);
  *   - Outlook archive imports left open: an upload nobody finished, an import
  *     whose job is gone, a staged archive an ended import did not delete
  *     (`lib/mail-import/job.ts`, ADR-0085);
@@ -28,6 +30,7 @@
 
 import { internalApiRoute } from '@/lib/api/handler'
 import { recoverStuckProcessing } from '@/lib/documents/stuck-processing'
+import { retryTransientFailures } from '@/lib/documents/transient-retry'
 import { sweepInboundMail } from '@/lib/inbound-mail/sweep'
 import { sweepStaleMailImports } from '@/lib/mail-import/job'
 import { recoverStuckFilings } from '@/lib/tasks/filing-sweep'
@@ -35,10 +38,11 @@ import { recoverStuckFilings } from '@/lib/tasks/filing-sweep'
 export const POST = internalApiRoute(
   'Background Work Reconcile',
   async () => {
-    const [documents, filings, mailImports, inboundMail] = await Promise.allSettled([
+    const [documents, filings, mailImports, transientFailures, inboundMail] = await Promise.allSettled([
       recoverStuckProcessing(),
       recoverStuckFilings(),
       sweepStaleMailImports(),
+      retryTransientFailures(),
       sweepInboundMail(),
     ])
     // All ran, so a part that threw is rethrown only now: the others' work is
@@ -46,11 +50,13 @@ export const POST = internalApiRoute(
     if (documents.status === 'rejected') throw documents.reason
     if (filings.status === 'rejected') throw filings.reason
     if (mailImports.status === 'rejected') throw mailImports.reason
+    if (transientFailures.status === 'rejected') throw transientFailures.reason
     if (inboundMail.status === 'rejected') throw inboundMail.reason
     return {
       documents: documents.value,
       filings: filings.value,
       mailImports: mailImports.value,
+      transientFailures: transientFailures.value,
       inboundMail: inboundMail.value,
     }
   },
@@ -58,9 +64,10 @@ export const POST = internalApiRoute(
     tenancy: {
       crossTenant:
         'discovery only: lists the documents, report filings, mail imports and project mail of every organization that ' +
-        'have been left without a live job or are due for retention. Each is then recovered inside withTenant for its own ' +
-        'organization, so the reads, the writes and the jobs it enqueues are subject to row-level security; only the ' +
-        'project mail rows past their keep are deleted as the platform role, which DELETE is revoked from the tenant role for',
+        'have been left without a live job or are due for retention, and the documents whose read failed for a passing ' +
+        'reason. Each is then recovered inside withTenant for its own organization, so the reads, the writes and the jobs ' +
+        'it enqueues are subject to row-level security; only the project mail rows past their keep are deleted as the ' +
+        'platform role, which DELETE is revoked from the tenant role for',
     },
   }
 )

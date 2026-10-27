@@ -87,6 +87,9 @@ _OPTIONAL_COLUMNS: tuple[str, ...] = (
     "change_basis",
     "revision_facts",
     "page_count",
+    "dossier",
+    "doc_references",
+    "coverage",
     "mail_thread",
     "mail_origin",
 )
@@ -109,7 +112,7 @@ SUGGESTION_BASES = ("title_block", "name", "content")
 _DOCUMENT_COLUMNS = (
     "filename, summary, tags, doc_class, display_title, folder_path, created_at, "
     "topics, capture, superseded_by, revision_suggestion, change_summary, change_basis, revision_facts, "
-    "page_count, mail_thread, mail_origin"
+    "page_count, dossier, doc_references, coverage, mail_thread, mail_origin"
 )
 
 #: Where the Fassung facts a person made outlive a purge that can be undone (an archive, the folder
@@ -1050,6 +1053,31 @@ class DocumentMetadataStore:
             collection, filename, "revision_facts", json.dumps(normalised, ensure_ascii=False) if normalised else None
         )
 
+    def set_reading(
+        self,
+        collection: str,
+        filename: str,
+        *,
+        dossier: dict[str, Any] | None,
+        references: list[dict[str, Any]] | None,
+        coverage: dict[str, Any] | None,
+    ) -> bool:
+        """Replace what the ingest read of the document (sync): its dossier, its references, its coverage.
+
+        All three are written by the ingest that read the file, together, so a re-ingest
+        replaces the whole reading and a document never carries one reading's references
+        beside another's dossier. ``None`` (or empty) clears a column. Shapes:
+        ``docs/architecture/document-dossier.md``. Same UPDATE-only contract as
+        :meth:`set_capture`; ``False`` when the document has no row.
+        """
+        import json
+
+        written = True
+        for column, value in (("dossier", dossier), ("doc_references", references), ("coverage", coverage)):
+            encoded = json.dumps(value, ensure_ascii=False) if value else None
+            written = self._update_column(collection, filename, column, encoded) and written
+        return written
+
     def set_page_count(self, collection: str, filename: str, page_count: int | None) -> bool:
         """Replace only the ``page_count`` of an existing metadata row (sync): how many pages the file has.
 
@@ -1543,6 +1571,19 @@ class DocumentMetadataStore:
             return tags or None
         return None
 
+    @staticmethod
+    def _decode_json(raw: Any, kind: type) -> Any:
+        """A JSON column of the ingest's reading, when it decodes to ``kind`` and is not empty; else ``None``."""
+        import json
+
+        if not raw:
+            return None
+        try:
+            decoded = json.loads(raw)
+        except (TypeError, ValueError):
+            return None
+        return decoded if isinstance(decoded, kind) and decoded else None
+
     #: The keys a ``capture`` object may carry, and the type each must have.
     _CAPTURE_TYPES: dict[str, type | tuple[type, ...]] = {
         "captured_at": str,
@@ -1667,8 +1708,11 @@ class DocumentMetadataStore:
             change_basis=(row[12] or None) if len(row) > 12 else None,
             revision_facts=self._decode_revision_facts(row[13]) if len(row) > 13 else None,
             page_count=_decode_page_count(row[14]) if len(row) > 14 else None,
-            mail_thread=self._decode_mail(row[15], normalise_mail_thread) if len(row) > 15 else None,
-            mail_origin=self._decode_mail(row[16], normalise_mail_origin) if len(row) > 16 else None,
+            dossier=self._decode_json(row[15], dict) if len(row) > 15 else None,
+            doc_references=self._decode_json(row[16], list) if len(row) > 16 else None,
+            coverage=self._decode_json(row[17], dict) if len(row) > 17 else None,
+            mail_thread=self._decode_mail(row[18], normalise_mail_thread) if len(row) > 18 else None,
+            mail_origin=self._decode_mail(row[19], normalise_mail_origin) if len(row) > 19 else None,
             collection=collection,
         )
 

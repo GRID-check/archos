@@ -92,7 +92,7 @@ is how old the answers about the person may be:
 
 | What changed | When the agent door notices |
 |---|---|
-| Removed from the organization, or the organization role changed | Within a minute on the external door: its membership lookup is cached for `FRESH_MEMBERSHIP_TTL_MS` (60 s) under its own key, not the ten minutes the session cache keeps. A lookup WorkOS does not answer refuses. Piloti's door reads the envelope's person through the ten-minute cache; a turn is minutes long |
+| Removed from the organization, or the organization role changed | Within a minute on every door: the one membership lookup (`lookupSubjectMembership`) is at most a minute old (`MEMBERSHIP_TTL_MS`), and what the roles hold is asked of WorkOS the same way. A lookup WorkOS does not answer refuses |
 | A project role or a folder's access changed | As fast as the route's own check: the project and folder decisions read WorkOS through their own caches, exactly as for a browser |
 | The `agent-mcp` flag turned off | Within 30 seconds: the flag is read per call, through the flag cache (`lib/workos/feature-flags.ts`) |
 | The token revoked in WorkOS | Not before it expires. The server verifies the signature and claims and does not introspect; the membership check above is what makes a revoked person's token useless |

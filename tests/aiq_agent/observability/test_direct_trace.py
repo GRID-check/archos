@@ -202,3 +202,35 @@ async def test_a_broken_tracer_never_raises_into_the_route(monkeypatch, exporter
         generation.finish(_RESPONSE)
 
     assert _spans(exporter) == ()
+
+
+class TestObservedSpan:
+    """A unit of background work (one ingested file) is one trace, its model calls nested under it."""
+
+    def test_a_generation_inside_the_span_is_its_child_and_one_outside_is_a_root(self, exporter):
+        with direct_trace.observed_span("ingest-file", metadata={"file_type": "pdf", "job_id": "job-1"}) as span:
+            with direct_trace.observed_generation("ingest-vision", model="m", messages=[]) as generation:
+                generation.finish({"choices": [{"message": {"content": "ok"}}], "usage": {"prompt_tokens": 3}})
+            span.finish({"status": "success", "seconds_vision": 25.4})
+        with direct_trace.observed_generation("conversation-title", model="m", messages=[]) as generation:
+            generation.finish({})
+
+        spans = {span.name: span for span in _spans(exporter)}
+        parent, child, alone = spans["ingest-file"], spans["ingest-vision"], spans["conversation-title"]
+        assert child.parent is not None and child.parent.span_id == parent.context.span_id
+        assert child.context.trace_id == parent.context.trace_id
+        assert alone.parent is None
+        assert parent.attributes["langfuse.trace.metadata.file_type"] == "pdf"
+        assert parent.attributes["langfuse.trace.metadata.seconds_vision"] == 25.4
+
+    def test_a_failed_unit_is_marked_error(self, exporter):
+        with direct_trace.observed_span("ingest-file") as span:
+            span.finish({"status": "failed"}, failed="original_download_failed")
+
+        (span,) = _spans(exporter)
+        assert span.attributes["langfuse.observation.level"] == "ERROR"
+
+    def test_without_a_tracer_the_span_is_a_no_op(self, monkeypatch):
+        monkeypatch.setattr(direct_trace, "_current_tracer", lambda: None)
+        with direct_trace.observed_span("ingest-file") as span:
+            span.finish({"status": "success"})

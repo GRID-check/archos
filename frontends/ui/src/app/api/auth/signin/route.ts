@@ -1,5 +1,6 @@
 import { getSignInUrl } from '@workos-inc/authkit-nextjs'
-import { NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
+import { safeReturnPathname } from '@/lib/auth/return-pathname'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 
 /**
@@ -14,12 +15,24 @@ import { tenantSlotRoute } from '@/lib/db/tenant-context'
  * and this handler — a Route Handler, where cookie mutation is legal — issues
  * the authorization redirect with its PKCE cookie attached.
  *
+ * The proxy sends a navigation it could not authenticate here too, with
+ * `returnPathname`, because AuthKit's own middleware redirect mints no verifier
+ * cookie for a client-side navigation and that flow can never complete.
+ *
+ * `getSignInUrl` caps the verifier cookies it leaves behind at five, as the
+ * middleware does (authkit-nextjs 4.6.2, #505), so a browser that keeps
+ * bouncing through here cannot fill its cookie jar into an HTTP 431.
+ *
  * Anonymous by design: like /api/auth/callback, it runs BEFORE a session
  * exists — creating one is its whole job — so no session-based posture can
  * apply. AuthKit's middlewareAuth lets it through via
  * proxy.ts unauthenticatedPaths.
  */
-export const GET = tenantSlotRoute(async (): Promise<Response> => {
-  const url = await getSignInUrl()
+
+const signIn = async (request: NextRequest): Promise<Response> => {
+  const returnTo = safeReturnPathname(new URL(request.url).searchParams.get('returnPathname'))
+  const url = await getSignInUrl(returnTo ? { returnTo } : {})
   return NextResponse.redirect(url)
-})
+}
+
+export const GET = tenantSlotRoute(signIn)

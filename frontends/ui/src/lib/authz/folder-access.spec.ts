@@ -11,7 +11,9 @@ vi.mock('./folder-access-repository', () => ({
 vi.mock('./folder-roles', () => ({ heldFolderLevels: vi.fn(async () => ({})) }))
 vi.mock('./projects', () => ({ requireProjectAccess: vi.fn() }))
 vi.mock('@/lib/auth/membership-roles', () => ({ resolveMembershipRoles: vi.fn() }))
-vi.mock('./org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn(async (role: string) => role === 'admin') }))
+vi.mock('./org-role-permissions', () => ({
+  rolesHoldPermission: vi.fn(async (_org: string, roles: readonly string[]) => roles.includes('admin')),
+}))
 vi.mock('@/lib/projects/repository', () => ({
   findProjectTenancy: vi.fn(async () => ({ organizationId: 'org-1', deletedAt: null, status: 'active' })),
 }))

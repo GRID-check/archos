@@ -117,6 +117,7 @@ import { useUndoableArchive } from '../hooks/use-undoable-archive'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
 import type { MarksSetBy } from '@/lib/annotations/attention'
 import { MentionText } from './MentionText'
+import { UploadReportLines } from '@/features/uploads/components/upload-report'
 
 /**
  * The ONE place the registry's icon names become components. Keeping the map here
@@ -703,6 +704,10 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               />
             </p>
           )}
+
+          {/* A completed project upload's Eingangsbericht: what it brought the
+              project. Keyed on the data, as `href` is: only such a row carries one. */}
+          {item.uploadReport && !inert && <UploadReportLines report={item.uploadReport} />}
 
           {/* The excerpt above is the order once the submit request carries
               one; the open link below is the file behind the decision. A real
