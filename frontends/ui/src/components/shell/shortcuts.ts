@@ -29,6 +29,7 @@ import {
   Archive,
   ArrowDownUp,
   AtSign,
+  Hash,
   Building2,
   CircleCheck,
   Command,
@@ -38,6 +39,7 @@ import {
   FolderKanban,
   Keyboard,
   ListOrdered,
+  MoreHorizontal,
   MailOpen,
   MessageCircle,
   MessageSquarePlus,
@@ -271,10 +273,12 @@ export type ShortcutOwner =
   | 'review'
   /** The inbox list (`features/collaboration/components/InboxList.tsx`), while it is open. */
   | 'inbox'
+  /** The search page's field (`features/search/components/search-workspace-view.tsx`). */
+  | 'search'
   /** The E-Mail-Eingang (`features/inbound-mail/components/inbound-mail-workspace.tsx`), while it is open. */
   | 'inboundMail'
 
-export type ShortcutGroupId = 'general' | 'navigation' | 'chat' | 'review' | 'inbox' | 'inboundMail'
+export type ShortcutGroupId = 'general' | 'navigation' | 'chat' | 'search' | 'review' | 'inbox' | 'inboundMail'
 
 export interface ShortcutRow {
   /** Stable id — the React key, and the test handle. */
@@ -381,12 +385,30 @@ export function shortcutSections(flags: ShortcutFlags): ShortcutSection[] {
           gate: 'canCollaborate',
         },
         {
+          // `#` searches the workspace for a document to put into the message.
+          id: 'reference',
+          label: shortcutLabel('reference'),
+          keys: [chord('#')],
+          owner: 'composer',
+          icon: Hash,
+        },
+        {
           id: 'chooseOption',
           label: shortcutLabel('chooseOption'),
           keys: [chord('1'), RANGE, chord('9')],
           owner: 'prompt',
           icon: ListOrdered,
         },
+      ],
+    },
+    {
+      // The search field binds it while focus stays in the field and a row is marked:
+      // the platform's key for the menu of the thing one is on.
+      id: 'search',
+      i18nKey: 'search',
+      note: false,
+      rows: [
+        { id: 'searchHitActions', label: shortcutLabel('searchHitActions'), keys: [chord('Shift', 'F10')], owner: 'search', icon: MoreHorizontal },
       ],
     },
     {

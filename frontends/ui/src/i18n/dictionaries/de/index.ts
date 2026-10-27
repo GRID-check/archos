@@ -36,6 +36,7 @@ import { answerExport } from './answer-export'
 import { diagrams } from './diagrams'
 import { feedback } from './feedback'
 import { feedbackExport } from './feedback-export'
+import { searchExport } from './search-export'
 import { uploadBatches } from './upload-batches'
 import { references } from './references'
 import { projectIntake } from './project-intake'
@@ -48,6 +49,7 @@ import { intakeShell } from './intake-shell'
 import { notifications } from './notifications'
 import { inboundMail } from './inbound-mail'
 import { mailThread } from './mail-thread'
+import { search } from './search'
 import type { Dictionary } from '../index'
 
 export const de: Dictionary = {
@@ -81,6 +83,7 @@ export const de: Dictionary = {
   diagrams,
   feedback,
   feedbackExport,
+  searchExport,
   uploadBatches,
   references,
   projectIntake,
@@ -93,4 +96,5 @@ export const de: Dictionary = {
   notifications,
   inboundMail,
   mailThread,
+  search,
 }

@@ -25,11 +25,14 @@ export const shortcuts: typeof en.shortcuts = {
     title: 'Tastaturkürzel',
     description: 'Piloti bedienen, ohne die Tastatur zu verlassen.',
     thenSeparator: 'dann',
+    /** The control key as a German keyboard prints it; `⌘` on a Mac. */
+    controlKey: 'Strg',
     orSeparator: 'oder',
     groups: {
       general: 'Allgemein',
       navigation: 'Wechseln zu',
       chat: 'Chat',
+      search: 'Suche',
       review: 'Prüfansicht',
       inbox: 'Postfach',
       inboundMail: 'E-Mail-Eingang',
@@ -43,6 +46,8 @@ export const shortcuts: typeof en.shortcuts = {
       sendMessage: 'Nachricht senden',
       newLine: 'Neue Zeile',
       mention: 'Person erwähnen',
+      reference: 'Dokument einfügen',
+      searchHitActions: 'Aktionen des gewählten Treffers',
       chooseOption: 'Nummerierte Option wählen',
       reviewPoint: 'Anmerken',
       reviewRegion: 'Bereich anmerken',

@@ -101,6 +101,24 @@ output `origin` (`point` or `embedded`), the filter fields (never values) and
 the picks by collection, file, chunk, page and score. Metadata: `origin`,
 `documents`, `candidates`. No passage text either way.
 
+Each workspace search with text (ADR-0136, `POST /api/search`) asks the
+backend's content search (`POST /v1/collections/search` with `purpose:
+"workspace_search"`), and that call is a root trace `workspace-search` holding
+one `retrieve.workspace_search` retriever observation (`observed_retrieval`,
+as above): its input the query's length in `text_chars` and `text_tokens`
+(never the words), how many `collections` were named, `groups` and
+`files_per_group`, the `prefilter` mode (`document_ids`: the BFF's SQL
+candidates named by id; `payload`: too many to name, so what they are and cite;
+`none`), how many `document_ids` and which `filter_fields`; its output
+`candidates` (the passages ranked), `documents` handed back, `with_document_id`,
+`collections_with_hits` and `hits_per_collection` (the 50 collections with most,
+by name: `proj_<uuid>`, `office_shelf_<org>`). Metadata: `prefilter`,
+`collections`, `candidates`, `documents`. A grouped search without the purpose
+(the cross-project lookup) is traced where it runs, as
+`retrieve.project_lookup`, never twice. The browser's side of the same search
+is PostHog's `search_issued`, and the route's `Server-Timing` header splits its
+time into `sql` and `content` ([`posthog-events.md`](posthog-events.md)).
+
 Each canvas tool (the `canvas` function group, `tools/canvas/`) is a tool
 observation of its own (`canvas__room`, `canvas__point`,
 `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`,

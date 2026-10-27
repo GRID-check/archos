@@ -177,6 +177,9 @@ const ROUTES: Record<string, RouteDisposition> = {
   'projects/[id]/annotations/export/route.ts': {
     exempt: 'renders the open Anmerkungen of a project’s documents and their threads as one Protokoll; none of a document’s bytes, and the audit event project.annotations.exported records it.',
   },
+  'search/export/route.ts': {
+    exempt: 'renders the documents a search finds as a Planliste (names, Plankopf facts, dates); none of a document’s bytes, and the audit event search.plan_list.exported records it.',
+  },
   'conversations/[id]/live/route.ts': { exempt: 'server-sent events of a conversation.' },
   'stream/route.ts': { exempt: 'server-sent events.' },
   'realtime/route.ts': { exempt: 'server-sent events of the live channels (lib/realtime): presence, pointers and change hints; no file bytes.' },

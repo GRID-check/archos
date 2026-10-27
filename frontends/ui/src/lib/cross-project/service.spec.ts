@@ -60,7 +60,7 @@ const state = vi.hoisted(() => ({
   hydrating: 0,
   hydratePeak: 0,
   /** Every project whose hits were joined to its rows, with how. */
-  hydrated: [] as Array<{ projectId: string; snippetMaxChars?: number; forModel?: boolean }>,
+  hydrated: [] as Array<{ projectId: string; forModel?: boolean }>,
 }))
 
 vi.mock('./audience-reach', () => ({
@@ -192,10 +192,10 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
         _session: unknown,
         plan: { project: Project; collections: string[] },
         hits: Array<{ collection: string; file_name: string; score: number; snippet: string; page_number: number | null; rank?: number }>,
-        options: { snippetMaxChars?: number; forModel?: boolean }
+        options: { forModel?: boolean }
       ) => {
         if (state.hydrateFails.has(plan.project.id)) throw new Error('connection terminated')
-        state.hydrated.push({ projectId: plan.project.id, snippetMaxChars: options.snippetMaxChars, forModel: options.forModel })
+        state.hydrated.push({ projectId: plan.project.id, forModel: options.forModel })
         state.hydrating += 1
         state.hydratePeak = Math.max(state.hydratePeak, state.hydrating)
         await Promise.resolve()
@@ -534,7 +534,7 @@ describe('searchAcrossProjects', () => {
     expect(state.groupedCalls[0].snippetMaxChars).toBe(CROSS_PROJECT_SNIPPET_CHARS)
     // Screened documents only, never the asker's held uploads in that project.
     expect(state.hydrated.map((call) => call.projectId)).toEqual([one.id, two.id])
-    expect(state.hydrated.every((call) => call.forModel && call.snippetMaxChars === CROSS_PROJECT_SNIPPET_CHARS)).toBe(true)
+    expect(state.hydrated.every((call) => call.forModel)).toBe(true)
   })
 
   it('searches one bounded page of projects and says where the next starts', async () => {

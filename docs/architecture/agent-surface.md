@@ -530,7 +530,7 @@ ceiling.
 | Piloti uses | Instead of |
 |---|---|
 | `remember` | `project-memory-create`, `organization-memory-create` |
-| `knowledge_search` | `document-search`, `knowledge-search` |
+| `knowledge_search` | `knowledge-search` |
 | `create_task` | `task-create`, `task-run-commission` |
 | `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | `annotation-create`, `annotation-update`, `annotation-delete`, `annotation-reply-create` |
 | `ifc_query`, `ifc_measure` | `bim-model-query`, `ifc-query`, `ifc-measure` |
@@ -550,7 +550,8 @@ where it is shown (ADR-0128). The canvas and the chat are mirrors: what a
 person or Piloti does on the review canvas, a reader of the chat sees done, and
 the other way round. [`parity.config.ts`](../../frontends/ui/src/lib/surface-parity/parity.config.ts)
 has one entry per capability (look, point, highlight, mark, update, delete,
-reply, compare Fassungen, ask about a box, open at a place) with its `canvas`
+reply, compare Fassungen, ask about a box, open at a place, reference a
+document with `#` in the composer) with its `canvas`
 and its `chat` form. A form is a rendering (a component, a card type, a step
 kind), an `exempt` line (the surface has no meaning for it), or a `gap` that
 names the slice closing it; the spec fails a gap whose card now exists, so a
@@ -775,10 +776,13 @@ proposals filed before and agents that remember them. A shelf is an argument,
 not a prefix (ADR-0131 rule 5): the `office-shelf-document-*` twins are the
 document operations with `scope: office_shelf` (`document-list`,
 `document-summary-get`, `document-by-name-resolve`, `document-name-match`,
-`document-revision-candidates`, `document-search`, `document-upload`,
-`document-delete`), and an old name that stood for a scope maps to
-`{ to, input }`: the input is a default under what the caller sends
-(`withInputDefaults`, `operation.ts`). PostHog's
+`document-revision-candidates`, `document-upload`, `document-delete`), and an
+old name that stood for a scope maps to `{ to, input }`: the input is a default
+under what the caller sends (`withInputDefaults`, `operation.ts`). A rename that
+also renamed fields adds `rewrite`: `document-search` and
+`office-shelf-document-search` (one shelf, by meaning) are `workspace-search`
+over that shelf (ADR-0136), their `q`, `topK` and shelf rewritten to `text`,
+`limit` and the query's `projectId` or `scope`. PostHog's
 `agent_operation_called` carries the new names from then on: an insight over the
 history needs both.
 

@@ -451,7 +451,9 @@ export const files: typeof en.files = {
     noDocumentsTitle: 'Noch keine Dokumente',
     noDocumentsDescription:
       'Laden Sie die Unterlagen Ihres Projekts hoch: Zeichnungen, Bescheide, Gutachten, Berichte. Piloti liest sie und zitiert daraus, statt aus allgemeinen Hinweisen zu antworten.',
-    searchPlaceholder: 'Suchen …',
+    searchPlaceholder: 'Suchen…',
+    /** Das Feld einer Ablage mit der Suche: Tippen filtert Namen, Enter durchsucht alles. */
+    searchPlaceholderEverything: 'Filtern, Enter sucht alles…',
     searchLabel: 'Dateien durchsuchen',
     noMatch: 'Keine Dateien entsprechen „{query}“',
     noMatchDescription:
@@ -468,7 +470,7 @@ export const files: typeof en.files = {
     loadingMore: 'Weitere Dokumente werden geladen …',
     loadMoreFailed: 'Weitere Dokumente konnten nicht geladen werden.',
     semantic: {
-      searchPlaceholder: 'Dateien durchsuchen – Enter für semantische Suche …',
+      searchPlaceholder: 'Dateien durchsuchen – Enter für semantische Suche…',
       run: 'Suchen',
       reset: 'Alle Dateien anzeigen',
       noResults: 'Keine semantischen Treffer für „{query}“',
@@ -479,7 +481,7 @@ export const files: typeof en.files = {
       noResultsDescription:
         'Nichts in diesem Projekt entsprach dem Sinn Ihrer Anfrage. Versuchen Sie eine andere Formulierung oder löschen Sie die Suche, um alle Dateien zu durchsuchen.',
       page: 'Seite {page}',
-      relevance: '{percent}% Relevanz',
+      rank: 'Treffer {rank} der Rangfolge',
     },
   },
   folders: {

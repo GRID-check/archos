@@ -846,7 +846,7 @@ export function FileBrowserPane({
             <FileGrid>
               {semantic.hits.map((hit) => (
                 <Fragment key={hit.id}>
-                  {fileCard(hit, { match: { snippet: hit.snippet, page: hit.page, score: hit.score } })}
+                  {fileCard(hit, { match: { snippet: hit.snippet, page: hit.page } })}
                 </Fragment>
               ))}
             </FileGrid>

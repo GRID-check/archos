@@ -130,7 +130,6 @@ const HELD_MAIL =
 const NATIVE_READ = 'Piloti reads with this native tool itself; the door offers it to outside agents'
 const MEMORY =
   'Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project'
-const SEARCH = 'a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages'
 const TASK = 'Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms'
 const SKILL_READ =
   'Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents'
@@ -211,7 +210,10 @@ export const EXPOSURE = {
   'document-role-declare': OFFERED,
   'document-role-list': OFFERED,
   'project-document-findings': OFFERED,
-  'document-search': { external: true, piloti: 'native:knowledge_search', reason: SEARCH },
+  // Piloti too: the filters (type, facts, references, register order) are what `knowledge_search` cannot ask, and the
+  // description says a passage is a pointer to read, not a source to quote.
+  'workspace-search': OFFERED,
+  'workspace-search-export': OFFERED,
   'document-status': OFFERED,
   'document-summary-get': OFFERED,
   'document-tags-update': OFFERED,
@@ -236,6 +238,11 @@ export const EXPOSURE = {
   'upload-batch-get': OFFERED,
   'upload-batch-open': OFFERED,
   'upload-batch-seal': OFFERED,
+  // saved searches (catalog/saved-searches.ts)
+  'saved-search-create': OFFERED,
+  'saved-search-delete': OFFERED,
+  'saved-search-list': OFFERED,
+  'saved-search-update': OFFERED,
 
   // folders
   'office-shelf-folder-create': OFFERED,

@@ -120,6 +120,7 @@ import {
   setReviewParams,
   type ReviewLinkTool,
 } from '../lib/open-review'
+import { readDocumentLocus } from '../lib/document-locus'
 import { isLive, type MarkTally } from '@/lib/annotations/types'
 import { CountPill } from '@/components/ui/count-pill'
 import { ToolbarTextButton } from '@/components/ui/floating-toolbar'
@@ -775,6 +776,12 @@ export function FilePreviewPane({
    * is `review`, `mark` and `tool` alone, and this pane writes no `doc`.
    */
   const reviewLink = readReviewParams(searchParams)
+  /**
+   * The place a link opened this document at (`?page=` and `?highlight=`,
+   * `lib/document-locus.ts`): a search hit's passage, handed to the viewer as
+   * a citation's page and passage are. Read for the document `doc` names only.
+   */
+  const linkedLocus = readDocumentLocus(searchParams, file.id)
   /** This page's address names this pane's document: Dateien's `doc`, or the chat's peek. Elsewhere the pane writes no address. */
   const addressed = reviewLink.documentId === file.id || (reviewLink.documentId === null && inChat)
   const urlOpen = reviewLink.open && addressed && pdfInWell
@@ -1548,8 +1555,10 @@ export function FilePreviewPane({
                     key={file.id}
                     src={documentFileUrl(file.id)}
                     title={actions.name}
-                    page={shownPage === 'turning' ? null : (shownPage ?? shownFinding?.page ?? null)}
-                    highlight={shownPage === null ? (shownFinding?.highlight ?? null) : null}
+                    page={shownPage === 'turning' ? null : (shownPage ?? linkedLocus.page ?? shownFinding?.page ?? null)}
+                    highlight={
+                      shownPage === null ? (linkedLocus.highlight ?? shownFinding?.highlight ?? null) : null
+                    }
                     onFindSimilar={findSimilar}
                     onLoadError={handlePdfFailed}
                     ground={peeking ? 'host' : 'stage'}

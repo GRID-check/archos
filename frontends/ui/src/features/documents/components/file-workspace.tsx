@@ -133,6 +133,13 @@ export interface FileWorkspaceProps {
    */
   moreEntries?: readonly ActionMenuEntry[]
   /**
+   * The shelf's search, if it has one (a project's Dateien, the Büroablage):
+   * Enter in the header's field opens it with what was typed, instead of the
+   * listing's own content search. One field, one way in: typing still filters
+   * the listing by name as it did.
+   */
+  onOpenSearch?: (text: string) => void
+  /**
    * The folder tree and the first page of a folder level as the SERVER already
    * read them, for the first paint (ADR-0102). `initialFiles` is the first
    * page of the level `initialFolderId` names (null: the root) in the default
@@ -180,6 +187,7 @@ export function FileWorkspace({
   shelf,
   renderHeader,
   moreEntries,
+  onOpenSearch,
   initialFolders,
   initialFiles,
   initialNextCursor = null,
@@ -842,7 +850,13 @@ export function FileWorkspace({
       // The corpus search, in the header with the other controls that act on the
       // listing. No run button: the field reads as the plain filter it mostly is,
       // and Enter commits the query to the semantic search.
-      search={{ value: search.query, onChange: search.setQuery, onSubmit: search.run, onClear: search.clear }}
+      search={{
+        value: search.query,
+        onChange: search.setQuery,
+        onSubmit: onOpenSearch ? () => onOpenSearch(search.query.trim()) : search.run,
+        onClear: search.clear,
+        opensSearch: Boolean(onOpenSearch),
+      }}
       // The durable corpus is where a büro brings a whole tree in. On a phone the
       // same control floats at the foot of the screen instead (`uploadFab`).
       upload={phone ? undefined : uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}

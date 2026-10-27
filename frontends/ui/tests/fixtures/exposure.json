@@ -587,16 +587,6 @@
    "withheld": null,
    "reason": null
   },
-  "document-search": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": "native:knowledge_search",
-   "platform": false,
-   "withheld": null,
-   "reason": "a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages"
-  },
   "document-status": {
    "kind": "catalog",
    "domain": "documents",
@@ -740,6 +730,46 @@
    "withheld": null,
    "reason": null
   },
+  "saved-search-create": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-delete": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-update": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "session-document-upload": {
    "kind": "catalog",
    "domain": "documents",
@@ -771,6 +801,26 @@
    "reason": null
   },
   "upload-batch-seal": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search-export": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,

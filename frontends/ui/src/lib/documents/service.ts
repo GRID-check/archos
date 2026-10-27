@@ -142,6 +142,7 @@ import { recordDocumentAccess } from '@/lib/download-log/service'
 import { findOpenVersion, listDocumentVersionSummaries } from './version-repository'
 import { eraseDocumentObjectsOrKeepRow } from './object-cleanup'
 import { isIfcFilename } from '@/lib/bim/types'
+import { refreshSearchRows } from '@/lib/search/refresh-rows'
 import {
   INLINE_PREVIEW_CONTENT_TYPES,
   TEXT_PREVIEW_CONTENT_TYPES as SHARED_TEXT_PREVIEW_CONTENT_TYPES,
@@ -640,6 +641,8 @@ export interface BackendSearchHit {
    * search, whose hits are ordered by `score`.
    */
   rank?: number
+  /** The document's id, when the backend states it (the grouped search, from the chunk's payload). */
+  grid_document_id?: string
 }
 
 /**
@@ -653,83 +656,6 @@ export type SearchedDocument<T> = T & {
   score: number
   /** Position in one ranking across several collections, when the search produced one (`BackendSearchHit.rank`). */
   rank?: number
-}
-
-/**
- * Passages retrieved per requested file. `_aggregate_hits` on the backend keeps
- * one hit per file (its best-scoring chunk), so the chunk budget (`top_k`) must
- * comfortably exceed `top_k_files` or it silently caps how many distinct files
- * can surface. A few passages per file absorbs the common case where a file's
- * best chunk isn't its first-ranked one without over-fetching. The backend
- * bounds `top_k` at 100 (`DocumentSearchRequest`), so the derived budget is
- * clamped to that ceiling — the invariant `top_k >= top_k_files` still holds for
- * every `top_k_files` in the allowed 1..100 range.
- */
-const SEARCH_PASSAGES_PER_FILE = 3
-const SEARCH_MAX_PASSAGES = 100
-
-/** Derive the passage budget from the requested file count (see the constants above). */
-export function deriveSearchTopK(topKFiles: number): number {
-  return Math.min(SEARCH_MAX_PASSAGES, Math.max(1, topKFiles) * SEARCH_PASSAGES_PER_FILE)
-}
-
-/** Bounded, fail-open POST to the backend's document-centric search endpoint.
- *
- * Deterministic vector search. Any non-OK response, malformed body, timeout, or
- * transport failure yields `[]` (never throws) — the caller surfaces this to the
- * UI as "no semantic results" rather than a crash.
- *
- * The `top_k` passage budget is DERIVED from `topKFiles` (`deriveSearchTopK`) so
- * a large `top_k_files` is never starved by a fixed chunk cap.
- *
- * Forwards the signed `X-Grid-Request-Context` envelope scoped to exactly this
- * collection (defense-in-depth, PB-SYNTH-4): the callers here have already
- * authorized the caller to read `collectionName` (project FGA / org membership),
- * and the backend route rejects any `collection_name` not present in the signed
- * scope — closing the cross-tenant read hole if the backend is reachable by
- * anything other than this BFF. Signed with `GRID_INTERNAL_API_TOKEN` via the
- * shared envelope builder (never hand-rolled), so the raw, forgeable
- * `X-Grid-Collection-Scope` header alone can't be used to widen scope.
- */
-export async function fetchSemanticHits(
-  collectionName: string,
-  query: string,
-  topKFiles: number,
-  /** Longer than the backend's 300 only where the snippet is the evidence (the cross-project lookups, ADR-0094). */
-  snippetMaxChars?: number
-): Promise<BackendSearchHit[]> {
-  const scopeHeaders = buildGridRequestContextWireHeaders(
-    { collectionScope: [collectionName] },
-    process.env.GRID_INTERNAL_API_TOKEN
-  )
-  try {
-    const res = await fetch(
-      `${getBackendUrl()}/v1/collections/${encodeURIComponent(collectionName)}/search`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...scopeHeaders },
-        body: JSON.stringify({
-          query,
-          top_k: deriveSearchTopK(topKFiles),
-          top_k_files: topKFiles,
-          ...(snippetMaxChars ? { snippet_max_chars: snippetMaxChars } : {}),
-        }),
-        signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
-      }
-    )
-    if (!res.ok) return []
-    const body = await res.json().catch(() => ({}))
-    if (!Array.isArray(body?.hits)) return []
-    // Stamp the collection that was searched. The backend echoes the chunk's own
-    // `collection` metadata, with the searched collection only as its fallback;
-    // the join keys on this field, so it must be the one collection this call was
-    // signed for and not whatever a chunk's metadata happens to say.
-    return (body.hits as BackendSearchHit[]).map((hit) => ({ ...hit, collection: collectionName }))
-  } catch {
-    // Includes a TimeoutError abort — a hung/unreachable backend fails open to
-    // an empty result set, exactly like any other transport failure.
-    return []
-  }
 }
 
 /**
@@ -773,6 +699,7 @@ export async function fetchGroupedSemanticHits(
         ...(snippetMaxChars ? { snippet_max_chars: snippetMaxChars } : {}),
         ...(options.filters ? { filters: options.filters } : {}),
         ...(options.boost ? { boost: options.boost } : {}),
+        ...(options.purpose ? { purpose: options.purpose } : {}),
       }),
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
@@ -826,6 +753,12 @@ export interface GroupedSearchFilters {
   disciplines?: string[]
   project_facts?: Partial<ProjectFactsWire>
   project_status?: Array<'active' | 'paused' | 'closed'>
+  /** Only passages of these documents (their ids, `grid_document_id` on the chunks); at most 1000. */
+  document_ids?: string[]
+  /** The dossier's `document_type` (`site_plan`, ...), any of; not `document_types`, which reads the tags. */
+  reading_types?: string[]
+  /** Documents referring to any of these: typed text ("ÖNORM B 1600", "EP-05") or a `kind:key` token; at most 8. */
+  refers_to?: string[]
 }
 
 /** What narrows and what lifts a grouped search, applied inside its one query. */
@@ -833,6 +766,13 @@ export interface GroupedSearchOptions {
   filters?: GroupedSearchFilters
   /** The current project's facts and the similarity weights (`similarityBoostOf`). */
   boost?: SearchBoostWire | null
+  /**
+   * Who asks, when the backend should trace the search itself: the workspace
+   * search's call is a `retrieve.workspace_search` observation there, because
+   * no NAT run sees it. The cross-project lookup sends none: Piloti's
+   * `project_lookup` tool already traces it as `retrieve.project_lookup`.
+   */
+  purpose?: 'workspace_search'
 }
 
 /** The identity of a document in the backend: its collection and its filename. */
@@ -853,7 +793,7 @@ function collectionFileKey(collectionName: string, filename: string): string {
  *
  * A filename is unique only within a collection, and a project has several: its
  * own, plus one per restricted folder (`<collection>_r<12hex>`, ADR-0087), and
- * `searchProjectDocuments` searches every one the reader is cleared for. The
+ * a project's search covers every one the reader is cleared for. The
  * same name can sit in a restricted folder and, newer, at the root. A join on
  * the name alone handed the restricted folder's passage to the root row, so the
  * reader saw a restricted passage under the open document, filed at the root
@@ -894,15 +834,15 @@ export function joinHitsToFiles<
     // the model, and recency would then hand it that document's snippet and page
     // under a „Von Piloti erstellt" label.
     //
-    // `authoredBy` is required rather than optional on purpose. Both callers
-    // select it (`documentListColumns`); making it optional would
+    // `authoredBy` is required rather than optional on purpose. Every caller
+    // selects it (`documentListColumns`); making it optional would
     // mean a future caller that forgets the column fails OPEN at runtime instead
     // of failing to compile.
     //
     // `collectionName` is required for the same reason, and the failure it
     // prevents is worse: a row type without it would key every row under
     // `undefined`, match no hit, and a "fix" that falls back to the name alone
-    // would reopen the restricted-folder misjoin. Both callers select it too.
+    // would reopen the restricted-folder misjoin. Every caller selects it too.
     if (file.authoredBy !== 'user') continue
     const key = collectionFileKey(file.collectionName, file.filename)
     const existing = byName.get(key)
@@ -927,44 +867,8 @@ export function joinHitsToFiles<
   return matched
 }
 
-/**
- * Document-centric semantic search over a project's corpus. Enforces
- * `project:view`, resolves the project's RAG collection, runs the deterministic
- * vector search on the backend, and joins the hits to the project's own file
- * rows by collection and filename. Fail-open: a backend error/timeout yields `{ hits: [] }`,
- * never a crash.
- *
- * The rows are looked up BY THE HIT NAMES, as `searchOfficeShelfDocuments` does,
- * never read from the listing: the listing is paged, and a hit on a document
- * past its first page used to be dropped as if the search had not found it.
- *
- * `forModel`: the hits go to a model, not to this person (the cross-project
- * lookups hand them to the agent). They are joined to screened rows only
- * (`SCREENED_ONLY`, ADR-0086): the person's own held uploads, and a reviewer's
- * view of the quarantine, stay with the person.
- */
-export async function searchProjectDocuments(
-  session: AuthorizedSession,
-  projectId: string,
-  query: string,
-  topK = 20,
-  options: ProjectSearchOptions = {}
-): Promise<{ hits: Array<SearchedDocument<ListedDocument>> }> {
-  const plan = await planProjectSearch(session, projectId)
-  const hits = (
-    await Promise.all(
-      plan.collections.map((collection) => fetchSemanticHits(collection, query, topK, options.snippetMaxChars))
-    )
-  )
-    .flat()
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK)
-  return { hits: await hydrateProjectHits(session, plan, hits, options) }
-}
-
 /** How a project search's hits are cut and who they are for. */
 export interface ProjectSearchOptions {
-  snippetMaxChars?: number
   /**
    * The hits go to a model: joined to screened rows only (`SCREENED_ONLY`,
    * ADR-0086), and no superseded Fassung among them (ADR-0099).
@@ -2481,7 +2385,12 @@ export async function updateDocumentTags(
   }
   if (!res.ok) throw new UpstreamError('The document service rejected the tag update')
 
-  const body = await res.json().catch(() => ({}))
+  // Tags and topics are search filters: the person who set them finds the
+  // document by them at once (ADR-0136). Never fails the write.
+  const [body] = await Promise.all([
+    res.json().catch(() => ({})),
+    refreshSearchRows(session.organizationId, [doc]),
+  ])
   const answer: { id: string; tags: string[]; topics?: string[] } = {
     id: doc.id,
     tags: Array.isArray(body.tags) ? body.tags : tags,

@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useRef, type FC } from 'react'
+import Link from 'next/link'
+import { Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { searchHref } from '@/features/search/lib/search-hrefs'
+import type { SearchScopeQuery } from '@/lib/search/search-wire'
 import { FileCard } from '@/features/documents/components/file-card'
 import { FileGrid, FileCardSkeleton } from '@/features/documents/components/file-grid'
 import {
@@ -10,11 +15,26 @@ import {
 } from '@/features/documents/hooks/use-surfaced-documents'
 import { peekFile, ResolveErrorState, UnresolvedCard } from './document-surface'
 
+/** The `workspace-search` question the files came from (`DocumentGridSearch` in `cards/models.py`). */
+export interface DocumentGridSearch {
+  text: string
+  scope: 'office' | 'project' | 'office_shelf'
+}
+
 interface DocumentGridCardProps {
   title: string
   query?: string | null
   documents: SurfacedDocument[]
+  search?: DocumentGridSearch | null
   projectId?: string | null
+}
+
+/** The search the card's link opens: the project's only with the project it was asked in, else the whole office. */
+export function documentGridSearchHref(search: DocumentGridSearch, projectId: string | null): string {
+  let scope: SearchScopeQuery = {}
+  if (search.scope === 'office_shelf') scope = { scope: 'office_shelf' }
+  else if (search.scope === 'project' && projectId) scope = { scope: 'project', projectId }
+  return searchHref(scope, { text: search.text })
 }
 
 /**
@@ -22,9 +42,10 @@ interface DocumentGridCardProps {
  *
  * Visual: the same raised {@link FileCard} (thumbnail well, name, summary)
  * the Files grid uses — without search ranking chrome. One file is that
- * card plus an automatic peek. Several close matches are a short FileGrid.
+ * card plus an automatic peek. Several close matches are a short FileGrid; when they came from the
+ * workspace search, the card offers that search with every result.
  */
-export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _query, documents, projectId }) => {
+export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _query, documents, search, projectId }) => {
   const t = useTranslations('chat')
   const { locale } = useLocale()
   const { resolved, isLoading, error, retry } = useSurfacedDocuments(documents, projectId ?? null)
@@ -99,6 +120,14 @@ export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _que
               ),
             )}
           </FileGrid>
+          {search && (
+            <Button asChild size="sm" variant="ghost" className="mt-2">
+              <Link href={documentGridSearchHref(search, projectId ?? null)} data-testid="document-grid-open-search">
+                <Search className="size-3.5" aria-hidden="true" />
+                {t('documentGrid.openInSearch')}
+              </Link>
+            </Button>
+          )}
         </>
       )}
     </section>

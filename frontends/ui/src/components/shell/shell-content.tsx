@@ -15,8 +15,14 @@ import { cn } from '@/lib/utils'
  * column instead of a stretched second one. Prose, forms and settings stacks
  * take the default — a 1152px line of text is past the readable measure and no
  * amount of card grids elsewhere makes it not be.
+ *
+ * `tool` (the frame's whole width, up to max-w-screen-2xl) is for a tool with a side
+ * rail beside a table: the search, whose Planliste has eight columns next to
+ * its filter rail. In 1152px the rail left the table about 52rem, so Verfasser
+ * and Projekt scrolled out of sight at 1440; the Dateien browser fills its frame
+ * for the same reason. Its rows clamp their text, so no line runs past measure.
  */
-export type ShellContentWidth = 'default' | 'wide'
+export type ShellContentWidth = 'default' | 'wide' | 'tool'
 
 export interface ShellContentProps extends ComponentProps<'div'> {
   width?: ShellContentWidth
@@ -44,7 +50,7 @@ export function ShellContent({
       data-shell-content={width}
       className={cn(
         'mx-auto w-full px-4 md:px-8',
-        width === 'wide' ? 'max-w-6xl' : 'max-w-5xl',
+        width === 'tool' ? 'max-w-screen-2xl' : width === 'wide' ? 'max-w-6xl' : 'max-w-5xl',
         fill ? 'flex h-full min-h-0 flex-col py-4 md:py-6' : 'py-6 md:py-10',
         className
       )}

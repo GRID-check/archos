@@ -64,6 +64,10 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * rights, quota and screening. `inbound_mail_follow` runs AS THE FOLLOWER: their
  * standing decision to append a conversation's verified replies, re-checked as
  * them before anything is written.
+ *
+ * `search_facets_sync` walks one shelf's documents a page per slice as the
+ * system (ADR-0136): it rewrites their derived search rows from the reading the
+ * agent stored, and decides nothing about who may read them.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -92,6 +96,8 @@ export const BFF_JOB_KINDS = [
   'inbound_mail_suggest',
   'inbound_mail_file',
   'inbound_mail_follow',
+ *
+  'search_facets_sync',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -590,3 +596,18 @@ export interface JobSliceResult<TPayload> {
    */
   notBefore?: Date
 }
+
+/**
+ * `search_facets_sync`: refresh one shelf's search rows (ADR-0136), a page of
+ * its documents per slice, by id. `sourceFingerprint` is the shelf's
+ * fingerprint when the refresh was queued, recorded as synced when the walk
+ * ends, so a change during the walk is found stale by the next search.
+ */
+export const searchFacetsSyncPayloadSchema = z.object({
+  shelfKey: z.string().min(1).max(60),
+  afterId: z.string().uuid().nullable(),
+  sourceFingerprint: z.string().min(1).max(120),
+  /** Rows written so far, for the log. */
+  written: z.number().int().nonnegative(),
+})
+export type SearchFacetsSyncPayload = z.infer<typeof searchFacetsSyncPayloadSchema>

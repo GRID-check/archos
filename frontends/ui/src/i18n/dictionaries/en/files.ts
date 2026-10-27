@@ -464,6 +464,8 @@ export const files = {
     noDocumentsDescription:
       'Upload your project’s documents: drawings, official notices, expert reports. Piloti reads them and cites them instead of answering from generic guidance.',
     searchPlaceholder: 'Search…',
+    /** The field of a shelf that has the workspace search: typing filters names, Enter searches everything. */
+    searchPlaceholderEverything: 'Filter, Enter searches all…',
     searchLabel: 'Search files',
     noMatch: 'No files match “{query}”',
     noMatchDescription:
@@ -498,7 +500,7 @@ export const files = {
       noResultsDescription:
         'Nothing in this project matched the meaning of your query. Try different wording, or clear the search to browse every file.',
       page: 'Page {page}',
-      relevance: '{percent}% relevance',
+      rank: 'Match {rank} in the ranking',
     },
   },
   folders: {

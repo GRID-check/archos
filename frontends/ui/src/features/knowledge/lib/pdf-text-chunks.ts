@@ -19,6 +19,8 @@ export interface RawTextItem {
   height: number
   /** The run's 6-element matrix, in PDF user space. */
   transform: number[]
+  /** The CSS font family the text layer sets the run in, from the page's styles. */
+  fontFamily?: string
 }
 
 /**
@@ -61,6 +63,7 @@ export const textItemToChunk = (item: RawTextItem, viewportTransform: number[]):
     y: (tx[5] ?? 0) - height,
     width: item.width * scale,
     height,
+    ...(item.fontFamily ? { fontFamily: item.fontFamily } : {}),
   }
 }
 

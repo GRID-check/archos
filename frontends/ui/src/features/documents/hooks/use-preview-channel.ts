@@ -6,7 +6,9 @@ import { MAIL_ENTRY_PARAM } from '../components/mail-thread/mail-thread-model'
 import type { FileItem } from '../file-types'
 import { refreshedFileFields } from '../lib/file-item'
 import type { FileShelf } from '../lib/file-shelf'
-import { clearReviewParams } from '../lib/open-review'
+import { clearDocumentLocus } from '../lib/document-locus'
+import { backLandsOn } from '@/lib/navigation/history-step'
+import { clearReviewParams, readDocumentBack } from '../lib/open-review'
 import { useFilePreviewStore, type FilePreviewContext } from '../stores/file-preview-store'
 
 export interface PreviewHandlers {
@@ -103,6 +105,10 @@ export function usePreviewChannel(
  * shutting the preview leaves no entry back would re-open. When the URL moved,
  * the preview is opened or shut to match.
  *
+ * A link from another page that says where it came from (`back`, a search
+ * hit's: `lib/open-review.ts`) is closed back to that page, the way a review
+ * link is: Back when the entry behind is that page, else a replace with it.
+ *
  * `onUrlOpen` is the way in for a link: the rows may still be loading, and then
  * it is NOT yet handled — `previousDocRef` is left behind on purpose, so the
  * render that has them still counts as a move.
@@ -138,9 +144,16 @@ export function useDocParamSync({
 
     if (previewMoved) {
       previousDocRef.current = wanted
-      // The review belongs to the document that was open: a different one,
-      // or none, starts without it (`lib/open-review.ts`).
-      const params = clearReviewParams(new URLSearchParams(searchParams?.toString() ?? ''))
+      const back = openId === null ? readDocumentBack(searchParams) : null
+      if (back) {
+        if (backLandsOn(back)) router.back()
+        else router.replace(back, { scroll: false })
+        return
+      }
+      // The review and the place a link opened at belong to the document that
+      // was open: a different one, or none, starts without them
+      // (`lib/open-review.ts`, `lib/document-locus.ts`).
+      const params = clearDocumentLocus(clearReviewParams(new URLSearchParams(searchParams?.toString() ?? '')))
       // So does the mail a link pointed at in a thread document (`?mailEntry=`).
       params.delete(MAIL_ENTRY_PARAM)
       const path = pathname ?? ''

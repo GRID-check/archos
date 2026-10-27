@@ -23,10 +23,13 @@ export const shortcuts = {
     title: 'Keyboard shortcuts',
     description: 'Navigate Piloti without leaving the keyboard.',
     thenSeparator: 'then',
+    /** The control key as the keyboard prints it; `⌘` on a Mac. */
+    controlKey: 'Ctrl',
     orSeparator: 'or',
     groups: {
       general: 'General',
       navigation: 'Jump to',
+      search: 'Search',
       chat: 'Chat',
       review: 'Review',
       inbox: 'Inbox',
@@ -40,6 +43,8 @@ export const shortcuts = {
       dismiss: 'Close a dialog or menu',
       sendMessage: 'Send message',
       newLine: 'New line',
+      reference: 'Insert a document',
+      searchHitActions: 'Actions of the chosen result',
       mention: 'Mention a colleague',
       chooseOption: 'Pick a numbered option',
       reviewPoint: 'Annotate',

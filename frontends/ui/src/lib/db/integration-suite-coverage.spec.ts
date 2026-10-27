@@ -16,6 +16,19 @@ import { describe, expect, it } from 'vitest'
 
 const UI = process.cwd()
 const SCRIPT = join(UI, '..', '..', 'scripts', 'rls-test-db.sh')
+const TASKFILES = join(UI, '..', '..', 'taskfiles')
+
+/**
+ * The specs a task runs on the same cluster with `rls-test-db.sh --only <spec>`:
+ * a measurement such as the search latency, which is no gate and seeds too much
+ * for every run. Read from the taskfiles, so a spec counts only while a task names it.
+ */
+function specsRunByATask(): string[] {
+  const named = readdirSync(TASKFILES)
+    .filter((name) => name.endsWith('.yml'))
+    .flatMap((name) => [...readFileSync(join(TASKFILES, name), 'utf8').matchAll(/rls-test-db\.sh --only ([^\n]+)/g)])
+  return named.flatMap((match) => match[1].split(/\s+/).filter((part) => part.endsWith('.integration.spec.ts')))
+}
 
 /** Specs that predate this check and are not in the run. Remove a line when its spec joins the script. */
 const NOT_YET_RUN = new Set([
@@ -37,13 +50,14 @@ function specs(dir: string): string[] {
 
 describe('the Postgres integration suite', () => {
   const script = readFileSync(SCRIPT, 'utf8')
+  const byATask = new Set(specsRunByATask())
   const needingPostgres = specs(join(UI, 'src')).filter(
     (path) => path !== THIS_SPEC && readFileSync(join(UI, path), 'utf8').includes('GRID_TEST_DATABASE_URL'),
   )
 
   it('runs every spec that needs Postgres', () => {
-    const missing = needingPostgres.filter((path) => !script.includes(path) && !NOT_YET_RUN.has(path))
-    expect(missing, 'Add these to scripts/rls-test-db.sh, or nothing ever runs them').toEqual([])
+    const missing = needingPostgres.filter((path) => !script.includes(path) && !NOT_YET_RUN.has(path) && !byATask.has(path))
+    expect(missing, 'Add these to scripts/rls-test-db.sh (or a task running it with --only), or nothing ever runs them').toEqual([])
   })
 
   it('keeps the exemptions honest', () => {

@@ -129,7 +129,8 @@ function FilesPreview(): JSX.Element {
           />
         </ProjectSectionFrame>
       </main>
-      <nav className="text-muted-foreground flex h-[51px] shrink-0 items-center justify-around border-t text-xs">
+      {/* The phone tab bar stand-in: a phone shell has it, a desktop one does not (md: is the shell's own breakpoint). */}
+      <nav className="text-muted-foreground flex h-[51px] shrink-0 items-center justify-around border-t text-xs md:hidden">
         <span>Frag Piloti</span>
         <span className="text-foreground font-medium">Dateien</span>
         <span>Übersicht</span>

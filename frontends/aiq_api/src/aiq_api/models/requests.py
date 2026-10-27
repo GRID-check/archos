@@ -18,6 +18,7 @@ from pydantic import ValidatorFunctionWrapHandler
 from pydantic import field_validator
 from pydantic import model_validator
 
+from aiq_agent.knowledge.dossier import DocumentType
 from aiq_agent.profile_names import normalize_profile_token
 
 from ..object_store_url import ObjectStoreUrl
@@ -99,6 +100,19 @@ ProjectStatus = Literal["active", "paused", "closed"]
 
 #: A token as the intake stores it (``lower_austria``, ``timber``).
 _FactToken = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+
+#: A BFF document id as ``grid_document_id`` holds it: a UUID, lowercase as Postgres prints it.
+_DocumentId = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        to_lower=True,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    ),
+]
+
+#: What a person names a reference by, or a ``kind:key`` token.
+_ReferenceText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
 class ProjectFacts(BaseModel):
@@ -466,12 +480,42 @@ class GroupedSearchFilters(BaseModel):
     Within a list: any of. Across lists: all of. ``document_types`` and
     ``disciplines`` both read the document's tags (one closed vocabulary,
     ``tag-vocabulary.ts``), as two separate any-of conditions.
+    ``document_ids``, ``reading_types`` and ``refers_to`` read what ingestion
+    put on every chunk (``grid_document_id`` and the dossier's
+    ``document_type`` and ``references``), so the BFF's search core can narrow
+    the content query to its own candidates for recall (ADR-0136, item 5).
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    document_types: list[_FactToken] = Field(default_factory=list, max_length=40)
+    document_types: list[_FactToken] = Field(
+        default_factory=list,
+        max_length=40,
+        description="The document's tags of the document-type group (Plan, Detail, ...). Not `reading_types`.",
+    )
     disciplines: list[_FactToken] = Field(default_factory=list, max_length=40)
+    document_ids: list[_DocumentId] = Field(
+        default_factory=list,
+        max_length=1000,
+        description="Only passages of these documents (the BFF's document ids, `grid_document_id` on the chunks).",
+    )
+    reading_types: list[DocumentType] = Field(
+        default_factory=list,
+        max_length=24,
+        description=(
+            "The dossier's document type, as ingestion read it (`fire_safety_concept`, `site_plan`, ...). "
+            "Not `document_types`, which reads the tags a person or the tagger set."
+        ),
+    )
+    refers_to: list[_ReferenceText] = Field(
+        default_factory=list,
+        max_length=8,
+        description=(
+            "Documents that refer to any of these: what a person types (`ÖNORM B 1600`, `EP-05`, "
+            "`Brandschutzkonzept`) or a `kind:key` token as the projection holds it (`norm:önorm b 1600`). "
+            "A text no reference is read from matches nothing."
+        ),
+    )
     project_facts: ProjectFacts | None = Field(
         None,
         description=(
@@ -499,6 +543,14 @@ class GroupedDocumentSearchRequest(BaseModel):
     snippet_max_chars: int = Field(300, ge=100, le=1500, description="Max characters of each document's snippet")
     filters: GroupedSearchFilters | None = Field(None, description="Narrow the search before ranking")
     boost: SearchBoost | None = Field(None, description="The current project's facts, to lift similar projects")
+    purpose: Literal["workspace_search"] | None = Field(
+        None,
+        description=(
+            "Who asks, when this route should trace the search itself: `workspace_search` (the BFF's search, "
+            "ADR-0136) is a `retrieve.workspace_search` observation. Absent for the cross-project lookup, which "
+            "Piloti's `project_lookup` tool already traces."
+        ),
+    )
 
 
 class ProjectFactsResult(BaseModel):
@@ -522,6 +574,9 @@ class DocumentSearchHit(BaseModel):
     snippet: str = Field(..., description="Snippet (300 chars unless asked for more) of the best-matching chunk")
     page_number: int | None = Field(None, description="Page number of the best-matching chunk (None if N/A)")
     collection: str = Field(..., description="Collection the document belongs to")
+    grid_document_id: str | None = Field(
+        None, description="The BFF's id of the document, when its chunks carry it (the search joins hits by it)"
+    )
 
 
 class DocumentSearchResponse(BaseModel):

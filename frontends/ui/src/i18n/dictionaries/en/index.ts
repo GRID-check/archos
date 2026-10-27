@@ -36,6 +36,7 @@ import { answerExport } from './answer-export'
 import { diagrams } from './diagrams'
 import { feedback } from './feedback'
 import { feedbackExport } from './feedback-export'
+import { searchExport } from './search-export'
 import { uploadBatches } from './upload-batches'
 import { references } from './references'
 import { projectIntake } from './project-intake'
@@ -48,6 +49,7 @@ import { intakeShell } from './intake-shell'
 import { notifications } from './notifications'
 import { inboundMail } from './inbound-mail'
 import { mailThread } from './mail-thread'
+import { search } from './search'
 
 export const en = {
   common,
@@ -80,6 +82,7 @@ export const en = {
   diagrams,
   feedback,
   feedbackExport,
+  searchExport,
   uploadBatches,
   references,
   projectIntake,
@@ -92,4 +95,5 @@ export const en = {
   notifications,
   inboundMail,
   mailThread,
+  search,
 } as const

@@ -48,6 +48,7 @@ import { runInboundMailFiling } from '@/lib/inbound-mail/file-job'
 import { runInboundMailFollow } from '@/lib/inbound-mail/follow-job'
 import { runInboundMailReceive } from '@/lib/inbound-mail/receive-job'
 import { runInboundMailSuggest } from '@/lib/inbound-mail/suggest-job'
+import { runSearchFacetsSyncSlice } from '@/lib/search/shelf-projection'
 import { isLastAttempt } from './attempts'
 import {
   annotationDueRemindersPayloadSchema,
@@ -72,6 +73,7 @@ import {
   inboundMailReceivePayloadSchema,
   inboundMailSuggestPayloadSchema,
   rootSortPayloadSchema,
+  searchFacetsSyncPayloadSchema,
   type BffJobKind,
   type JobAttempt,
   type JobRequester,
@@ -222,4 +224,5 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   inbound_mail_follow: systemSliceHandler(inboundMailFollowPayloadSchema, (organizationId, payload) =>
     runInboundMailFollow(organizationId, payload),
   ),
+  search_facets_sync: systemSliceHandler(searchFacetsSyncPayloadSchema, runSearchFacetsSyncSlice),
 }

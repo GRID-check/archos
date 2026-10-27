@@ -115,6 +115,20 @@ node -e '
   }
 done
 
+# `--only <spec…>`: the migrated cluster and the restricted role, for the specs
+# named and nothing else. For one suite while you work on it, and for the
+# measurements that are not part of the gate (`task fe:search:latency`). The
+# owner's URL is passed too, for a measurement that has to ANALYZE its seed:
+# the runtime role may not, and production's statistics are autovacuum's.
+if [ "${1:-}" = "--only" ]; then
+  shift
+  echo "==> running $* as grid_app_rw"
+  GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+  GRID_TEST_OWNER_DATABASE_URL="postgres://grid_app_owner@127.0.0.1:$PORT/grid_app" \
+    npx vitest run "$@"
+  exit 0
+fi
+
 # Every suite here needs the same cluster and the same restricted role. The BIM
 # and memory ones are here rather than in the unit shards because every claim
 # they make is a claim about SQL — jsonb property filters, grouped aggregates,
@@ -128,7 +142,7 @@ done
 # and the archive (D11). A name vitest finds no file for filters nothing, and
 # `integration-suite-coverage.spec.ts` fails a spec that lands under any other
 # name, so a suite cannot arrive here unrun.
-echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards, mail-import paging and inbound mail and mail thread suites as grid_app_rw"
+echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers, workspace search, inbound mail and mail thread suites as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
@@ -185,6 +199,9 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/filing/root-sort-run-repository.integration.spec.ts \
     src/lib/folder-cards/repository.integration.spec.ts \
     src/lib/mail-import/repository.integration.spec.ts \
+    src/lib/estate-tree/repository.integration.spec.ts \
+    src/lib/search/providers.integration.spec.ts \
+    src/lib/search/document-repository.integration.spec.ts \
     src/lib/inbound-mail/repository.integration.spec.ts \
     src/lib/inbound-mail/sweep.integration.spec.ts \
     src/lib/inbound-mail/review-first.e2e.spec.ts \
@@ -2009,6 +2026,72 @@ check_in grid_feedbacknotice "SELECT count(*) FROM information_schema.columns WH
 apply_in grid_feedbacknotice 0184_product_feedback_reply_notice.sql
 check_in grid_feedbacknotice "SELECT count(*) FROM information_schema.columns WHERE table_name = 'product_feedback' AND column_name = 'reporter_notified_at'" "1" "0184 applies again after its down"
 echo "==> 0184 product feedback reply notice and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0185: the search projection (ADR-0136). The full-text vector is
+# generated with German stemming, so a plural finds the singular; the shelf key
+# names its project or the office shelf and nothing else; what a Fassung changed
+# keeps its keys and its entries to one length; a row goes with its document; the
+# down drops both tables and 0185 applies again after it.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0185 search projection and its down migration on grid_documentsearch"
+migrate_until grid_documentsearch 0185_document_search
+sql_in grid_documentsearch <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name) VALUES
+  ('aaaaaaaa-0000-4000-8000-000000000185', 'org_0185', 'Haus Wien', 'user_1', 'proj_0185');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000185', 'org_0185', 'user_1', 'bsk.pdf', 'k/0185/a', 'proj_0185', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000185');
+INSERT INTO document_search_facets (document_id, organization_id, document_type, reference_tokens, fact_tokens, fact_numbers, search_text, fingerprint) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000185', 'org_0185', 'fire_safety_concept', '{"norm:önorm b 1600"}', '{"building_class=4"}',
+   '{"building_class": 4}', 'Brandschutzkonzept · Fluchtwege und Stiegenhäuser', 'f1');
+INSERT INTO document_search_shelves (organization_id, shelf_key, project_id, source_fingerprint, synced_at) VALUES
+  ('org_0185', 'project:aaaaaaaa-0000-4000-8000-000000000185', 'aaaaaaaa-0000-4000-8000-000000000185', '1@x', now());
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE search_vector @@ websearch_to_tsquery('german', 'Brandschutzkonzepte Fluchtweg')" "1" "0185: the German vector finds a plural and a singular"
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE reference_tokens @> ARRAY['norm:önorm b 1600'] AND (fact_numbers->>'building_class')::numeric BETWEEN 3 AND 4" "1" "0185: a reference token and a numeric fact range"
+refused_in grid_documentsearch "INSERT INTO document_search_facets (document_id, organization_id, fingerprint) VALUES ('d1d1d1d1-0000-4000-8000-000000000185', 'org_other', 'f2') ON CONFLICT (document_id) DO UPDATE SET organization_id = excluded.organization_id" "document_search_facets_document_tenant_fkey" "0185: a search row cannot move to another organization than its document's"
+sql_in grid_documentsearch <<'SQL'
+UPDATE document_search_facets SET changed_facts = '[{"key": "building_class", "before": "3", "after": "4", "page": 2}]', changed_fact_keys = '{building_class}'
+  WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185';
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE changed_fact_keys && ARRAY['building_class', 'units'] AND cardinality(changed_fact_keys) > 0" "1" "0185: a changed fact is found by its key"
+refused_in grid_documentsearch "UPDATE document_search_facets SET changed_fact_keys = '{}' WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185'" "document_search_facets_changes_keyed" "0185: a change cannot lose its key, nor a key its change"
+refused_in grid_documentsearch "UPDATE document_search_facets SET changed_facts = '{}', changed_fact_keys = '{}' WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185'" "document_search_facets_changes_array" "0185: changed_facts is a list"
+refused_in grid_documentsearch "INSERT INTO document_search_shelves (organization_id, shelf_key, project_id) VALUES ('org_0185', 'project:other', 'aaaaaaaa-0000-4000-8000-000000000185')" "document_search_shelves_key_shape" "0185: a shelf key names its own project"
+sql_in grid_documentsearch <<'SQL'
+DELETE FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000185';
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets" "0" "0185: a search row goes with its document"
+apply_in grid_documentsearch 0185_document_search.down.sql
+check_in grid_documentsearch "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('document_search_facets', 'document_search_shelves')" "0" "0185 down drops both tables"
+apply_in grid_documentsearch 0185_document_search.sql
+check_in grid_documentsearch "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('document_search_facets', 'document_search_shelves')" "2" "0185 applies again after its down"
+echo "==> 0185 search projection and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0186: saved searches (ADR-0136, slice 5). A saved search holds a
+# question, never an answer: scope and query are objects, the query is bounded,
+# a name is 1 to 120 characters and unique per owner (two owners may share one
+# name); the down drops the table and 0186 applies again after it.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0186 saved searches and their down migration on grid_savedsearch"
+migrate_until grid_savedsearch 0186_saved_searches
+sql_in grid_savedsearch <<'SQL'
+INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query, shared) VALUES
+  ('org_0186', 'user_a', 'Brandschutz', '{}', '{"text":"Brandschutzkonzept","kinds":["document"]}', true),
+  ('org_0186', 'user_b', 'Brandschutz', '{"scope":"office_shelf"}', '{"text":"Brandschutz"}', false);
+SQL
+check_in grid_savedsearch "SELECT count(*) FROM saved_searches WHERE organization_id = 'org_0186' AND (owner_user_id = 'user_a' OR shared)" "1" "0186: user_a sees their own and the shared ones"
+check_in grid_savedsearch "SELECT count(*) FROM saved_searches WHERE name = 'Brandschutz'" "2" "0186: two owners may use one name"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Brandschutz', '{}', '{}')" "saved_searches_owner_name_key" "0186: a name is unique per owner"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', '', '{}', '{}')" "saved_searches_name_bounded" "0186: a name is not empty"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Liste', '{}', '[]')" "saved_searches_query_object" "0186: the query is an object"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Gross', '{}', jsonb_build_object('text', repeat('x', 16000)))" "saved_searches_query_bounded" "0186: the query is bounded"
+apply_in grid_savedsearch 0186_saved_searches.down.sql
+check_in grid_savedsearch "SELECT count(*) FROM information_schema.tables WHERE table_name = 'saved_searches'" "0" "0186 down drops the table"
+apply_in grid_savedsearch 0186_saved_searches.sql
+check_in grid_savedsearch "SELECT count(*) FROM information_schema.tables WHERE table_name = 'saved_searches'" "1" "0186 applies again after its down"
+echo "==> 0186 saved searches and down migration verified"
 
 # ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
