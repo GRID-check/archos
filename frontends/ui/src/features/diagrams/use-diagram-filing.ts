@@ -150,6 +150,14 @@ export interface DiagramFilingOptions {
    * Excalidraw scene a person edited (`edited: true`).
    */
   prepareSketch?: () => Promise<{ source: string; svg: string }>
+  /**
+   * Whether a person changed the sketch before filing it. True for the editor,
+   * the default; false for a sketch Piloti drew in an ```excalidraw fence and
+   * the reader files as drawn (ADR-0145). An unedited sketch is keyed by its
+   * fence, so filing it again after a reload finds the same document, and its
+   * files say Piloti made it.
+   */
+  edited?: boolean
 }
 
 export function useDiagramFiling({
@@ -158,6 +166,7 @@ export function useDiagramFiling({
   renderFileSvg,
   title,
   prepareSketch,
+  edited = true,
 }: DiagramFilingOptions): DiagramFiling {
   const t = useTranslations('diagrams')
   const target = useDiagramFilingTarget()
@@ -178,9 +187,10 @@ export function useDiagramFiling({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // A sketch is keyed by its own scene: two different edits of one
-          // drawing are two files, the same edit filed twice is one.
-          runId: diagramRunId(target.answerId, filedSource),
+          // An edited sketch is keyed by its own scene: two different edits of
+          // one drawing are two files, the same edit filed twice is one. A
+          // sketch filed as drawn is keyed by its fence, like a mermaid one.
+          runId: diagramRunId(target.answerId, sketch && edited ? filedSource : source),
           title:
             title?.trim() ||
             titleFromSource(source) ||
@@ -193,7 +203,7 @@ export function useDiagramFiling({
           // the reason it has to is in `./diagram-palette.ts`.
           svg,
           answerId: target.answerId,
-          ...(sketch ? { edited: true } : {}),
+          ...(sketch && edited ? { edited: true } : {}),
           ...(target.conversationId ? { conversationId: target.conversationId } : {}),
         }),
       })
@@ -221,7 +231,7 @@ export function useDiagramFiling({
       console.debug('[diagrams] filing failed', error)
       setState({ kind: 'failed', message: t('file.failed') })
     }
-  }, [target, fileSvg, renderFileSvg, prepareSketch, source, title, t])
+  }, [target, fileSvg, renderFileSvg, prepareSketch, edited, source, title, t])
 
   return {
     state,

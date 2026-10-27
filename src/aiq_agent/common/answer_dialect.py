@@ -42,6 +42,11 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
+from .sketch_fence import SketchCheck
+from .sketch_fence import check_sketch
+from .sketch_fence import is_sketch_fence
+from .sketch_fence import refused_fence_info
+
 logger = logging.getLogger(__name__)
 
 #: Blocks, written ``:::name`` … ``:::``. Mirrors ``DIRECTIVE_BLOCKS`` in
@@ -163,6 +168,8 @@ class DialectResult:
     census: dict[str, int] = field(default_factory=dict)
     #: One entry per repair: ``{"repair": …, "name": …}``.
     repairs: list[dict[str, str]] = field(default_factory=list)
+    #: One verdict per ``excalidraw`` fence, in order (``common/sketch_fence``).
+    sketches: list[SketchCheck] = field(default_factory=list)
 
     def as_trace(self) -> dict[str, Any]:
         """The census and the repairs by kind, for the trace metadata."""
@@ -172,24 +179,41 @@ class DialectResult:
         }
 
 
-def _scan(lines: Sequence[str]) -> tuple[list[_Block], list[bool], int]:
-    """The blocks, which lines are code, and how many mermaid fences: ``scanDirectiveFences``, kept structured."""
+@dataclass
+class _Sketch:
+    """An ``excalidraw`` fence: its opener's line and the body between its fences."""
+
+    open: int
+    body: list[str] = field(default_factory=list)
+
+
+def _scan(lines: Sequence[str]) -> tuple[list[_Block], list[bool], int, list[_Sketch]]:
+    """The blocks, which lines are code, how many drawings, and the sketch fences: ``scanDirectiveFences``, kept structured."""
     blocks: list[_Block] = []
     stack: list[int] = []
     code = [False] * len(lines)
     fence: str | None = None
     diagrams = 0
+    sketches: list[_Sketch] = []
+    sketch: _Sketch | None = None
     for index, line in enumerate(lines):
         if fence is not None:
             code[index] = True
             if _closes(line, fence):
-                fence = None
+                fence, sketch = None, None
+            elif sketch is not None:
+                sketch.body.append(line)
             continue
         opened = _code_fence(line)
         if opened:
             fence = opened
             code[index] = True
-            diagrams += _FENCE_OPEN.match(line).group(2).strip().lower().startswith("mermaid")  # type: ignore[union-attr]
+            info = _FENCE_OPEN.match(line).group(2)  # type: ignore[union-attr]
+            if is_sketch_fence(info):
+                sketch = _Sketch(index)
+                sketches.append(sketch)
+            # A sketch is a drawing too, and the budget counts drawings.
+            diagrams += info.strip().lower().startswith("mermaid") or sketch is not None
             continue
         opener = _OPENER.match(line)
         if opener:
@@ -214,7 +238,22 @@ def _scan(lines: Sequence[str]) -> tuple[list[_Block], list[bool], int]:
             continue
         if _CLOSER.match(line) and stack:
             blocks[stack.pop()].close = index
-    return blocks, code, diagrams
+    return blocks, code, diagrams, sketches
+
+
+def _refused_sketches(lines: list[str], sketches: Sequence[_Sketch], repairs: list[dict[str, str]]) -> list[SketchCheck]:
+    """Each sketch's verdict; a refused one's opener is retagged in ``lines`` so every reader shows its source."""
+    checks: list[SketchCheck] = []
+    for sketch in sketches:
+        check = check_sketch("\n".join(sketch.body))
+        checks.append(check)
+        if check.refusal is None:
+            continue
+        repairs.append({"repair": "sketch_refused", "name": check.refusal})
+        opener = _FENCE_OPEN.match(lines[sketch.open])
+        marker_end = opener.end(1)  # type: ignore[union-attr]
+        lines[sketch.open] = lines[sketch.open][:marker_end] + refused_fence_info(opener.group(2))  # type: ignore[union-attr]
+    return checks
 
 
 def _unwrap_set(blocks: Sequence[_Block], kind: str | None, repairs: list[dict[str, str]]) -> set[int]:
@@ -298,16 +337,17 @@ def validate_dialect(text: str, kind: str | None) -> DialectResult:
     if ":" not in text and "```" not in text and "~~~" not in text:
         return DialectResult(text)
     lines = text.split("\n")
-    blocks, code, diagrams = _scan(lines)
+    blocks, code, diagrams, sketch_fences = _scan(lines)
     census = dict(Counter(block.name for block in blocks))
     if diagrams:
         census["diagrams"] = diagrams
     repairs: list[dict[str, str]] = []
+    sketches = _refused_sketches(lines, sketch_fences, repairs)
     unwrap = _unwrap_set(blocks, kind, repairs)
     budget = BUDGET.get(kind or "")
     if budget is not None and diagrams > budget[1]:
         # A mermaid fence has no content-keeping degrade: logged, never removed.
-        repairs.append({"repair": "diagrams_over_budget", "name": "mermaid"})
+        repairs.append({"repair": "diagrams_over_budget", "name": "excalidraw" if sketches else "mermaid"})
     _cases_keys(blocks, unwrap, repairs)
     around = _enclosing(blocks, unwrap, len(lines))
     replaced: dict[int, list[str]] = {}
@@ -340,7 +380,7 @@ def validate_dialect(text: str, kind: str | None) -> DialectResult:
     result = "\n".join(out)
     if repairs:
         logger.info("Answer dialect: %d repair(s) %s; blocks %s", len(repairs), _summary(repairs), census)
-    return DialectResult(result, census, repairs)
+    return DialectResult(result, census, repairs, sketches)
 
 
 def _canonical_opener(line: str, block: _Block) -> str:
