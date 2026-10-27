@@ -21,11 +21,10 @@ from knowledge_layer.llamaindex import section_chunking as sc
 from knowledge_layer.llamaindex.adapter import _extract_text_from_pdf
 from knowledge_layer.llamaindex.adapter import text_documents_for_pages
 from knowledge_layer.llamaindex.section_chunking import Line
-
-from tests.knowledge_layer_tests.pdf_fixtures import body_lines
-from tests.knowledge_layer_tests.pdf_fixtures import fire_safety_concept_pages
-from tests.knowledge_layer_tests.pdf_fixtures import footer
-from tests.knowledge_layer_tests.pdf_fixtures import write_pdf
+from knowledge_layer_testing.pdf_fixtures import body_lines
+from knowledge_layer_testing.pdf_fixtures import fire_safety_concept_pages
+from knowledge_layer_testing.pdf_fixtures import footer
+from knowledge_layer_testing.pdf_fixtures import write_pdf
 
 FILE = "brandschutzkonzept_musterstrasse.pdf"
 

@@ -23,11 +23,11 @@ from knowledge_layer.llamaindex.adapter import _build_image_caption_document
 from knowledge_layer.llamaindex.adapter import _looks_like_image
 from knowledge_layer.llamaindex.adapter import _read_image_as_jpeg
 from knowledge_layer.llamaindex.adapter import _strip_visual_marker
+from knowledge_layer_testing.qdrant import FakeEmbedder
 from PIL import ExifTags
 from PIL import Image
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
 
 
 def _patch_vlm_credential(monkeypatch, api_key: str):

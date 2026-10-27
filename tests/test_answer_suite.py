@@ -660,9 +660,10 @@ def test_the_suite_reads_the_dialect_the_validator_holds():
 
 def test_a_corpus_in_the_store_reads_as_ready(qdrant_store):
     """Readiness is the corpus's chunk count in the store the ingest writes through."""
+    from knowledge_layer_testing.qdrant import record
+    from knowledge_layer_testing.qdrant import write
+
     from aiq_agent import oib_sync
-    from sources.knowledge_layer.tests.qdrant_testing import record
-    from sources.knowledge_layer.tests.qdrant_testing import write
 
     assert not suite._corpus_ready()
     write(oib_sync.COLLECTION_NAME, [record("Punkt 12", "oib-rl_2.pdf")])

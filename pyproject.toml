@@ -189,7 +189,10 @@ addopts = "--import-mode=importlib -m 'not live'"
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
 # those tests against the MAIN checkout's `aiq_api`. `knowledge_layer` is a
 # finder-style editable and is NOT covered by this; see docs/contributing/gotchas.md.
-pythonpath = [".", "src", "frontends/aiq_api/src"]
+# The test-support packages come last: `<distribution>_testing`, one per suite
+# family, so a suite imports its helpers by a name that no directory move changes
+# (ADR-0145 row 5; tests/test_test_imports.py holds it).
+pythonpath = [".", "src", "frontends/aiq_api/src", "sources/knowledge_layer/testing"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [

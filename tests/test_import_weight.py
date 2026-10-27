@@ -12,6 +12,7 @@ fresh interpreter, because this one has long since imported everything.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -44,8 +45,11 @@ def _loaded_by(statement: str) -> list[str]:
         f"{statement}\n"
         "print(json.dumps(sorted(set(sys.modules) - before)))\n"
     )
+    # This interpreter's path, so the child resolves what the suite resolves:
+    # pytest's `pythonpath` (the test-support packages) never reaches a child.
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(entry for entry in sys.path if entry)}
     done = subprocess.run(
-        [sys.executable, "-c", script], cwd=ROOT, capture_output=True, text=True, check=True, timeout=120
+        [sys.executable, "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=True, timeout=120
     )
     return json.loads(done.stdout.strip().splitlines()[-1])
 

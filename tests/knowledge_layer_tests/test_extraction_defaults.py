@@ -16,10 +16,10 @@ import time
 import pytest
 from knowledge_layer.llamaindex import adapter
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
 _SWITCHES = ("AIQ_EXTRACT_TABLES", "AIQ_EXTRACT_IMAGES", "AIQ_EXTRACT_CHARTS")
 
