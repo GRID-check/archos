@@ -500,6 +500,14 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
       expect(facets.documentType).toEqual([{ value: 'fire_safety_concept', count: 1 }])
     })
 
+    it('counts the facets of a text search alike in one statement and side by side', async () => {
+      const text = { text: 'Grundriss', contentKeys: [contentKey('A4'), contentKey('A3')] }
+      const once = await repo.facetCountsOnce(officeReach(), query({}, text), FACET_KEYS)
+      const apart = await repo.facetCountsSideBySide(officeReach(), query({}, text), FACET_KEYS)
+      expect(once).toEqual(apart)
+      expect(Object.values(once).some((entries) => entries.length > 0)).toBe(true)
+    })
+
     it('shows a held upload to its project reviewer, and the office shelf held one to the shelf reviewer', async () => {
       expect(await found(officeReach({ reviewP1: true }), query())).toEqual(keys(...VISIBLE, 'A8'))
       expect(await found(officeReach({ reviewShelf: true }), query())).toEqual(keys(...VISIBLE, 'A11'))
