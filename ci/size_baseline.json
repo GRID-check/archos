@@ -97,7 +97,7 @@
     "frontends/ui/src/features/runs/components/RunBlock.tsx": 1046,
     "frontends/ui/src/features/search/components/search-atoms.tsx": 1176,
     "frontends/ui/src/features/skills/components/skill-editor-dialog.tsx": 1085,
-    "frontends/ui/src/features/tasks/components/tasks-panel.tsx": 684,
+    "frontends/ui/src/features/tasks/components/tasks-panel.tsx": 681,
     "frontends/ui/src/lib/agent-api/catalog/folders.ts": 644,
     "frontends/ui/src/lib/agent-api/catalog/platform.ts": 785,
     "frontends/ui/src/lib/agent-api/discovery.ts": 856,
