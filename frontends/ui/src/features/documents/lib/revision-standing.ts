@@ -32,7 +32,7 @@ import {
   type DocumentLifecycleViewer,
   type LifecycleProgress,
 } from './document-lifecycle'
-import { bornPublished, ownNewestRow, type TimelineRow } from './revision-timeline'
+import { bornPublished, ownNewestRow, type TimelineRow } from '@/lib/documents/revision-timeline'
 
 /** The act that moves the newest Fassung on, named the way the track names its stages. */
 export type NextStepKind = 'submit' | 'approve' | 'revise' | 'publish'

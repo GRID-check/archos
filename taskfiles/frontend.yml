@@ -24,12 +24,17 @@ tasks:
       - bun run build:jobs
 
   fe:lint:
-    desc: 'Lint the UI (oxlint, the repo rules included as a JS plugin). CI: task fe:lint -- --format=github'
+    desc: 'Lint the UI (oxlint, the repo rules included as a JS plugin) and its module seams (dependency-cruiser). CI: task fe:lint -- --format=github'
     dir: '{{.UI}}'
     cmds:
       # Extra arguments reach oxlint: CI passes `--format=github`, which turns
       # each finding into an annotation on the pull request's diff.
       - bun run lint {{.CLI_ARGS}}
+      # The module seams (dependency-cruiser): lib ↛ UI, components ↛ features,
+      # no deep or circular feature imports, server-only stays server-side.
+      # Known violations pass, new ones and stale baseline entries fail.
+      # docs/contributing/module-seams.md
+      - bun run lint:seams
 
   fe:types:
     desc: Typecheck the UI, specs included (next build checks production code only)

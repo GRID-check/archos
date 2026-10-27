@@ -51,7 +51,7 @@ the listing is read.
   erneut lesen“ never count or re-read a replaced Fassung.
 - The preview's section „Fassungen und Freigabe“ lists every state, newest first:
   the same-name uploads and the older documents under other names, merged by date
-  (`features/documents/lib/revision-timeline.ts`, rendered by
+  (`lib/documents/revision-timeline.ts`, rendered by
   `components/document-revisions.tsx`), numbered „Fassung 3, 2, 1“ across both.
   Each row has its index or date as a tag, who and when, what changed, Öffnen,
   and download and compare behind its ⋯. An earlier upload under the same name

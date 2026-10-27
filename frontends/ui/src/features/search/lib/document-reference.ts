@@ -3,7 +3,7 @@
  * document to put into the message. Pure, so the trigger and the insertion are
  * tested without a DOM.
  *
- * The trigger is the mention's (`features/collaboration/lib/mention-text.ts`):
+ * The trigger is the mention's (`lib/mentions/mention-text.ts`):
  * the fragment runs from a `#` at a word boundary to the caret and closes at
  * whitespace, so `#Fluchtweg` opens the picker and `Nr.#3` or a Markdown
  * heading (`# Titel`, a space after the mark) do not.

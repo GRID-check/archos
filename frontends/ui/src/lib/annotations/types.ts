@@ -129,7 +129,7 @@ const checkPlace = (value: PlaceInput, context: z.RefinementCtx) => {
  * Someone a mark's text or a reply mentions: who was picked in the composer's
  * „@" picker (a user id, or Piloti's `AGENT_MENTION_ID`) and the name the
  * text shows for them, without the „@". The chat's own mention shape
- * (`DraftMention`, `features/collaboration/lib/mention-text.ts`), stored on
+ * (`DraftMention`, `lib/mentions/mention-text.ts`), stored on
  * the row (migration 0150) and rendered with the chat's chip. The server keeps
  * one only while its token still stands in the text, the name is the one the
  * directory has, and the person may open the document (`./mentions.ts`): a
