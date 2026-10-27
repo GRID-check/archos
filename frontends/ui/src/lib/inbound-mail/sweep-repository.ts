@@ -679,16 +679,6 @@ export async function findEndingFollows(now: Date, limit: number): Promise<Array
      LIMIT ${limit}`)
 }
 
-/** End a running follow for the system's reason; whether this call ended it. */
-export async function endFollow(followId: string, reason: 'expired' | 'document_gone', now: Date): Promise<boolean> {
-  const rows = await getDb()
-    .update(mailThreadFollows)
-    .set({ endedAt: now, endedBy: null, endedReason: reason })
-    .where(and(eq(mailThreadFollows.id, followId), isNull(mailThreadFollows.endedAt)))
-    .returning({ id: mailThreadFollows.id })
-  return rows.length === 1
-}
-
 /** How long before its end a follower is asked to renew: day 55 of 60 (D31). */
 export const FOLLOW_EXPIRING_BEFORE_MS = 5 * DAY_MS
 

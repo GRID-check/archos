@@ -26,6 +26,7 @@ import { publishProjectChanged } from '@/lib/realtime/door-events'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { managesProject, requireAddressManager, requireMailReviewer } from './access'
 import { formatInboundAddress, inboundMailDomain, mintToken, projectSlug } from './address'
+import { settleFollowExpiring } from './announce'
 import { auditFollowsEnded } from './audit'
 import { refusal } from './decision'
 import type { InboundMailAddressView } from './inbound-mail-wire'
@@ -127,9 +128,10 @@ export async function createInboundMailAddress(session: AuthorizedSession, proje
   throw new ConflictError('Could not mint a project mail address. Try again.')
 }
 
-/** After an address changed: the follows it ended, in the trail, and the live hint. */
-function afterAddressChange(session: AuthorizedSession, projectId: string, change: AddressChange): void {
+/** After an address changed: the follows it ended, in the trail, their renewal rows settled, and the live hint. */
+async function afterAddressChange(session: AuthorizedSession, projectId: string, change: AddressChange): Promise<void> {
   auditFollowsEnded(session.organizationId, projectId, session.userId, change.followsEnded)
+  await settleFollowExpiring(session.organizationId, change.followsEnded.map((follow) => follow.id))
   publishProjectChanged(session.organizationId, projectId)
 }
 
@@ -153,7 +155,7 @@ export async function rotateInboundMailAddress(session: AuthorizedSession, proje
       followsEnded: change.followsEnded.length,
     })
     captureServer({ event: 'inbound_mail_address_rotated', distinctId: session.userId, organizationId: session.organizationId, properties: {} })
-    afterAddressChange(session, projectId, change)
+    await afterAddressChange(session, projectId, change)
     return addressView(session, projectId)
   }
   throw new ConflictError('Could not mint a project mail address. Try again.')
@@ -169,7 +171,7 @@ export async function deleteInboundMailAddress(session: AuthorizedSession, proje
   const change = await switchOffAddress(projectId, session.userId)
   if (change?.previousAddressId) {
     auditAddress(session, 'inbound_mail_address.deleted', change.previousAddressId, projectId)
-    afterAddressChange(session, projectId, change)
+    await afterAddressChange(session, projectId, change)
   }
   return addressView(session, projectId)
 }

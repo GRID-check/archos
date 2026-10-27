@@ -50,6 +50,7 @@ vi.mock('./receive', () => ({
 }))
 vi.mock('@/lib/mail-thread/originals', () => ({ finishOriginalMove: vi.fn() }))
 vi.mock('@/lib/mail-thread/write-repository', () => ({ findEntryOfMail: vi.fn(), forgetMovedRaw: vi.fn() }))
+vi.mock('@/lib/mail-thread/follows', () => ({ endFollowBySystem: vi.fn() }))
 vi.mock('@/lib/realtime/door-events', () => ({ publishProjectChanged: vi.fn() }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn(), SYSTEM_ACTORS: { inboundMail: 'system:inbound_mail' } }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))

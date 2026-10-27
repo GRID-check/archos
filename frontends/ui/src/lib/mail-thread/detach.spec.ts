@@ -40,6 +40,7 @@ vi.mock('@/lib/documents/service', () => ({ uploadDocument: vi.fn() }))
 vi.mock('@/lib/projects/folder-service', () => ({ ensureProjectFolderPaths: vi.fn() }))
 vi.mock('@/lib/audit/after-commit', () => ({ recordAuditEventAfterCommit: vi.fn() }))
 vi.mock('@/lib/realtime/door-events', () => ({ publishProjectChanged: vi.fn() }))
+vi.mock('@/lib/inbound-mail/announce', () => ({ settleFollowExpiring: vi.fn(async () => undefined) }))
 vi.mock('@/lib/upload-screening/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/upload-screening/service')>()),
   gatePolicy: vi.fn(async () => ({
@@ -56,6 +57,7 @@ import { recordAuditEventAfterCommit } from '@/lib/audit/after-commit'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { MailThreadEntryRow, MailThreadRow } from '@/lib/db/schema'
 import { uploadDocument } from '@/lib/documents/service'
+import { settleFollowExpiring } from '@/lib/inbound-mail/announce'
 import { heldMail, PERSON, PROJECT_ID } from '@/lib/inbound-mail/__fixtures__/review'
 import { findDocumentIdByStoredName } from '@/lib/inbound-mail/repository'
 import { inboundEntryOf } from './append'
@@ -267,6 +269,7 @@ describe('moving a message into another thread', () => {
         metadata: expect.objectContaining({ reason: 'detached' }),
       })
     )
+    expect(settleFollowExpiring).toHaveBeenCalledWith(expect.any(String), [expect.any(String)])
     expect(releaseRenderLease).toHaveBeenCalledTimes(2)
   })
 

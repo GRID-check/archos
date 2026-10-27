@@ -36,6 +36,7 @@ vi.mock('./screening', () => ({
 }))
 vi.mock('./file-job', () => ({ runInboundMailFiling: vi.fn() }))
 vi.mock('./audit', () => ({ auditDecisions: vi.fn(async () => true) }))
+vi.mock('./announce', () => ({ announceAppended: vi.fn(async () => true) }))
 vi.mock('./suggest-scores', () => ({ scoreMailDecision: vi.fn(() => 'no_suggestion') }))
 vi.mock('./service', () => ({ FILING_CLAIM_MS: 300_000, hoursWaitingBucket: () => 'lt_1h' }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
@@ -63,6 +64,7 @@ import { endFollowBySystem } from '@/lib/mail-thread/follows'
 import { findWritableThread, type WritableThread } from '@/lib/mail-thread/write-repository'
 import { PROJECT_CLOSED_REASON } from '@/lib/projects/project-status'
 import { filePart, heldMail, MAIL_ID, PERSON, PROJECT_ID, textPart, THREAD_ID } from './__fixtures__/review'
+import { announceAppended } from './announce'
 import { auditDecisions } from './audit'
 import { runInboundMailFiling } from './file-job'
 import { findFilingWork } from './filing-repository'
@@ -120,7 +122,7 @@ function given(
   ])
 }
 
-const decided = { id: 'decision-1', partId: textPart().id, via: 'follow' } as InboundMailDecisionRow
+const decided = { id: 'decision-1', partId: textPart().id, via: 'follow', mailThreadId: THREAD_ID } as InboundMailDecisionRow
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -180,6 +182,18 @@ describe('a reply every condition of D31 holds for', () => {
       userId: PERSON,
       email: 'petra@example.test',
       organizationId: 'org_1',
+    })
+  })
+
+  it('tells the follower their Verlauf took the reply (`inbound_mail.appended`), once', async () => {
+    await followMail('org_1', payload)
+    expect(announceAppended).toHaveBeenCalledOnce()
+    expect(announceAppended).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      projectId: PROJECT_ID,
+      mailId: MAIL_ID,
+      threadId: THREAD_ID,
+      followerUserId: PERSON,
     })
   })
 
@@ -326,6 +340,8 @@ describe('the mail itself', () => {
   it('waits with the upload path’s failure when the Fassung was refused', async () => {
     vi.mocked(findMailParts).mockResolvedValue([textPart({ lastFailure: 'quota' }), filePart()])
     expect(await followMail('org_1', payload)).toEqual({ kind: 'waits', reason: 'not_filed' })
+    // Nothing went into the Verlauf, so nobody is told it did.
+    expect(announceAppended).not.toHaveBeenCalled()
   })
 
   it('belongs to its organization only', async () => {
@@ -345,14 +361,18 @@ describe('the run', () => {
     const result = await runInboundMailFollow('org_1', payload)
     expect(result.done).toBe(false)
     expect(result.notBefore!.getTime()).toBeGreaterThanOrEqual(before + 10_000)
+    expect(announceAppended).not.toHaveBeenCalled()
   })
 
   it('files a text it decided and could not finish on that decision, as its decider, without deciding again', async () => {
     given({}, { state: 'filing', decisionId: 'decision-1' }, [filePart()], new Map([[textPart().id, { ...decided, decidedBy: OTHER_FOLLOWER }]]))
+    vi.mocked(resolvePinnedRequesterSessionStrict).mockResolvedValue({ ...follower, userId: OTHER_FOLLOWER })
     expect(await followMail('org_1', payload)).toEqual({ kind: 'appended' })
     expect(writeFollowDecision).not.toHaveBeenCalled()
     expect(resolvePinnedRequesterSessionStrict).toHaveBeenCalledWith({ userId: OTHER_FOLLOWER, email: null, organizationId: 'org_1' })
     expect(runInboundMailFiling).toHaveBeenCalledOnce()
+    // The thread is the decision's own, and the one told is its decider.
+    expect(announceAppended).toHaveBeenCalledWith(expect.objectContaining({ threadId: THREAD_ID, followerUserId: OTHER_FOLLOWER }))
   })
 
   it('leaves a text a person is filing to their filing job', async () => {

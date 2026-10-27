@@ -37,6 +37,7 @@ import { recordAuditEventAfterCommit } from '@/lib/audit/after-commit'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getHiddenFolderIds, requireFolderWrite } from '@/lib/authz/folder-access'
 import { requireMailReviewer } from '@/lib/inbound-mail/access'
+import { settleFollowExpiring } from '@/lib/inbound-mail/announce'
 import { INBOUND_THREAD_APPEND_EFFECTS } from '@/lib/inbound-mail/batch-effects'
 import { findDocumentIdByStoredName, findLiveFolders } from '@/lib/inbound-mail/repository'
 import { openQuietBatch, sealQuietBatch } from '@/lib/inbound-mail/quiet-batch'
@@ -391,6 +392,8 @@ async function moveEntry(
       created: destination.kind === 'new',
       ended,
     })
+    // An ended follow is asked to renew no more.
+    await settleFollowExpiring(session.organizationId, ended.map((follow) => follow.id))
     return {
       entryId: moving.id,
       from: { threadId: source.thread.id, documentId: left.documentId, versionId: left.versionId },

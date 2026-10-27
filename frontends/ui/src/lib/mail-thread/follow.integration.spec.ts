@@ -110,7 +110,15 @@ vi.mock('@/lib/authz/folder-access', async (importOriginal) => ({
   requireFolderWrite: vi.fn(async () => undefined),
   getHiddenFolderIds: vi.fn(async () => []),
 }))
-vi.mock('@/lib/inbound-mail/announce', () => ({ announceWaiting: vi.fn(async () => true) }))
+vi.mock('@/lib/inbound-mail/announce', () => ({
+  announceWaiting: vi.fn(async () => true),
+  announceAppended: vi.fn(async () => true),
+  announceDecided: vi.fn(async () => true),
+  announceFilingFailed: vi.fn(async () => true),
+  settleFilingFailed: vi.fn(async () => undefined),
+  settleFollowExpiring: vi.fn(async () => undefined),
+  settleProjectNotices: vi.fn(async () => undefined),
+}))
 vi.mock('@/lib/inbound-mail/suggest-scores', () => ({ scoreMailDecision: vi.fn(() => 'no_suggestion') }))
 vi.mock('@/lib/inbound-mail/quiet-batch', () => ({
   openQuietBatch: vi.fn(async () => crypto.randomUUID()),
@@ -337,6 +345,9 @@ describe.skipIf(!url)('following an E-Mail-Verlauf against Postgres', () => {
       state: 'filing',
       claimed: true,
     })
+    // Decided, not appended yet: the E-Mail-Eingang names no follower until the text is filed.
+    const { findFollowDeciders } = await import('@/lib/inbound-mail/repository')
+    expect(await inTenant(() => findFollowDeciders([mail.mailId]))).toEqual(new Map())
     // Decided once: the text is no longer waiting.
     expect(await inTenant(() => repo.writeFollowDecision(decisionInput(ref, projectId, mail, received)))).toEqual({ kind: 'not_waiting' })
 
@@ -611,6 +622,9 @@ describe.skipIf(!url)('following an E-Mail-Verlauf against Postgres', () => {
       expect(
         await rows(sql`SELECT via, decided_by, follow_id FROM inbound_mail_decisions WHERE mail_id = ${mailId}::uuid`),
       ).toEqual([{ via: 'follow', decided_by: MEMBER_ID, follow_id: followId }])
+      // The E-Mail-Eingang's `followedBy` names the follow's person, the one the job appended as.
+      const { findFollowDeciders } = await import('@/lib/inbound-mail/repository')
+      expect(await inTenant(() => findFollowDeciders([mailId]))).toEqual(new Map([[mailId, MEMBER_ID]]))
       expect(
         await one(sql`SELECT entry_count, filed_via FROM mail_threads t JOIN mail_thread_entries e ON e.thread_id = t.id
                       WHERE t.id = ${project.threadId}::uuid AND e.inbound_mail_id = ${mailId}::uuid`),

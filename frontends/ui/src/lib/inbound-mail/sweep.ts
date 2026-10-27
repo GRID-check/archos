@@ -39,9 +39,9 @@ import 'server-only'
  * filing started (13) and erases what nobody filed, but files nothing.
  */
 
-import { captureServer } from '@/lib/analytics/posthog-server'
 import { recordAuditEvent, SYSTEM_ACTORS } from '@/lib/audit/service'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
+import { endFollowBySystem } from '@/lib/mail-thread/follows'
 import { finishOriginalMove } from '@/lib/mail-thread/originals'
 import { findEntryOfMail, forgetMovedRaw } from '@/lib/mail-thread/write-repository'
 import { publishProjectChanged } from '@/lib/realtime/door-events'
@@ -51,7 +51,6 @@ import {
   announceFilingFailed,
   announceFollowExpiring,
   settleCapReached,
-  settleFollowExpiring,
   settleProjectNotices,
 } from './announce'
 import { auditDecisions } from './audit'
@@ -332,38 +331,14 @@ export async function sweepKeptMails(now: Date): Promise<SweepCounts> {
   return result
 }
 
-/**
- * End a running follow for the system's reason (the seam D10's
- * `endFollowBySystem` in `lib/mail-thread/follows.ts` fills once both are on
- * one branch: same compare-and-set, same audit line under the same key, same
- * personless PostHog event). Whether this call ended it.
- */
-async function endFollowAsSystem(row: sweeps.DueFollow, reason: 'expired' | 'document_gone', now: Date): Promise<boolean> {
-  if (!(await sweeps.endFollow(row.id, reason, now))) return false
-  await recordAuditEvent({
-    action: 'mail_thread.follow_ended',
-    organizationId: row.organizationId,
-    actor: { userId: SYSTEM_ACTORS.inboundMail, email: null },
-    targetType: 'mail_thread',
-    targetId: row.threadId,
-    alsoTargets: [{ type: 'project', id: row.projectId }],
-    metadata: { projectId: row.projectId, followId: row.id, reason, followerUserId: row.userId },
-    occurredAt: now,
-    idempotencyKey: `mail_thread.follow_ended:${row.id}`,
-  })
-  captureServer({ event: 'mail_thread_followed', distinctId: null, organizationId: row.organizationId, properties: { action: 'end', reason } })
-  publishProjectChanged(row.organizationId, row.projectId)
-  return true
-}
-
 /** Sweep 12: follows that ran out, or whose document is gone, end (audited); five days left asks to renew, once. */
 export async function sweepFollows(now: Date): Promise<SweepCounts> {
   const result = counts('ended', 'told')
   const ending = await discover('follows that end', () => sweeps.findEndingFollows(now, SWEEP_BATCH))
   await eachRow(ending, result, (row) => `the end of follow ${row.id}`, async (row) => {
-    if (!(await endFollowAsSystem(row, row.reason, now))) return
+    // Ending also settles its renewal row.
+    if (!(await endFollowBySystem(row, row.reason, now))) return
     result.ended += 1
-    await settleFollowExpiring(row.organizationId, [row.id])
   })
 
   const expiring = await discover('follows about to end', () => sweeps.findExpiringFollows(now, SWEEP_BATCH))

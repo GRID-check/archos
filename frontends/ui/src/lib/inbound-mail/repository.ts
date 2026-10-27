@@ -870,14 +870,31 @@ export async function findMailParts(mailIds: readonly string[], executor: DbExec
     .limit(mailIds.length * 101)
 }
 
-/** Whose follow appended a mail's text (D31), per mail; mails no follow touched are absent. */
+/**
+ * Whose follow appended a mail's text (D31), per mail; mails no follow
+ * appended are absent. Read from the decision the filed text part carries, so
+ * it agrees with the follow job by construction: the job decides only as the
+ * earliest follow running (not ended, not run out) and made before the mail
+ * arrived (`earliestActiveFollow`), and `writeFollowDecision` re-checks that
+ * under the follow's row lock, as that follow's person. A follow
+ * decision whose filing has not finished, or whose claim lapsed and handed the
+ * text back to a person, names nobody: the text was not appended.
+ */
 export async function findFollowDeciders(mailIds: readonly string[]): Promise<Map<string, string>> {
   if (mailIds.length === 0) return new Map()
   const rows = await getDb()
     .select({ mailId: inboundMailDecisions.mailId, decidedBy: inboundMailDecisions.decidedBy })
     .from(inboundMailDecisions)
-    .where(and(inArray(inboundMailDecisions.mailId, [...mailIds]), eq(inboundMailDecisions.via, 'follow')))
-    .limit(mailIds.length * 4)
+    .innerJoin(inboundMailParts, eq(inboundMailParts.decisionId, inboundMailDecisions.id))
+    .where(
+      and(
+        inArray(inboundMailDecisions.mailId, [...mailIds]),
+        eq(inboundMailDecisions.via, 'follow'),
+        eq(inboundMailParts.kind, 'message'),
+        eq(inboundMailParts.state, 'filed'),
+      ),
+    )
+    .limit(mailIds.length)
   return new Map(rows.map((row) => [row.mailId, row.decidedBy]))
 }
 

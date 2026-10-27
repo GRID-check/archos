@@ -32,6 +32,7 @@ vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn(async () =>
 vi.mock('@/lib/audit/after-commit', () => ({ recordAuditEventAfterCommit: vi.fn() }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
 vi.mock('@/lib/realtime/door-events', () => ({ publishProjectChanged: vi.fn() }))
+vi.mock('@/lib/inbound-mail/announce', () => ({ settleFollowExpiring: vi.fn(async () => undefined) }))
 
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { captureServer } from '@/lib/analytics/posthog-server'
@@ -41,6 +42,7 @@ import { requireFolderWrite } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { MailThreadFollowRow } from '@/lib/db/schema'
 import { managesProject, requireInboundMailEnabled, requireMailReviewer } from '@/lib/inbound-mail/access'
+import { settleFollowExpiring } from '@/lib/inbound-mail/announce'
 import { endFollow, findRunningFollow, renewFollow, startFollow } from './follow-repository'
 import { endFollowBySystem, followMailThread, unfollowMailThread } from './follows'
 import type { ThreadRow } from './repository'
@@ -143,6 +145,13 @@ describe('followMailThread', () => {
     expect(startFollow).not.toHaveBeenCalled()
     expect(renewFollow).toHaveBeenCalledWith('f-1', expect.any(Date), expect.any(Date))
     expect(captureServer).toHaveBeenCalledWith(expect.objectContaining({ properties: { action: 'renew', days: 90 } }))
+    // Day 55's „Verlängern“ row is answered by the renewal.
+    expect(settleFollowExpiring).toHaveBeenCalledWith('org_1', ['f-1'])
+  })
+
+  it('asks no renewal row to settle for a follow it only started', async () => {
+    await followMailThread(session, PROJECT, THREAD, {})
+    expect(settleFollowExpiring).not.toHaveBeenCalled()
   })
 
   it('ends a follow that ran out but was not swept yet, then starts a new one', async () => {
@@ -151,6 +160,7 @@ describe('followMailThread', () => {
     const result = await followMailThread(session, PROJECT, THREAD, {})
     expect(endFollow).toHaveBeenCalledWith('f-old', { reason: 'expired', endedBy: null }, expect.any(Date))
     expect(result).toMatchObject({ renewed: false, follow: { id: 'f-new' } })
+    expect(settleFollowExpiring).toHaveBeenCalledWith('org_1', ['f-old'])
   })
 
   it('renews the follow another request started between its read and its insert', async () => {
@@ -179,6 +189,8 @@ describe('unfollowMailThread', () => {
     expect(captureServer).toHaveBeenCalledWith(
       expect.objectContaining({ event: 'mail_thread_followed', distinctId: ME, properties: { action: 'end', reason: 'unfollowed' } }),
     )
+    // An ended follow is asked to renew no more.
+    expect(settleFollowExpiring).toHaveBeenCalledWith('org_1', ['f-1'])
   })
 
   it('refuses ending someone else’s follow without project:manage', async () => {
@@ -193,6 +205,7 @@ describe('unfollowMailThread', () => {
     expect(await unfollowMailThread(session, PROJECT, THREAD, { userId: COLLEAGUE })).toEqual({ endedFollowId: 'f-1' })
     expect(findRunningFollow).toHaveBeenCalledWith(THREAD, COLLEAGUE)
     expect(endFollow).toHaveBeenCalledWith('f-1', { reason: 'revoked_by_manager', endedBy: ME })
+    expect(settleFollowExpiring).toHaveBeenCalledWith('org_1', ['f-1'])
   })
 
   it('changes nothing when no follow runs, and is not found for a thread the caller may not read', async () => {
@@ -229,11 +242,13 @@ describe('endFollowBySystem', () => {
     expect(captureServer).toHaveBeenCalledWith(
       expect.objectContaining({ distinctId: null, properties: { action: 'end', reason: 'access_lost' } }),
     )
+    expect(settleFollowExpiring).toHaveBeenCalledWith('org_1', ['f-1'])
   })
 
   it('records once: a follow already ended is left as it is', async () => {
     vi.mocked(endFollow).mockResolvedValue(null)
     expect(await endFollowBySystem({ id: 'f-1' }, 'document_gone')).toBe(false)
     expect(recordAuditEventAfterCommit).not.toHaveBeenCalled()
+    expect(settleFollowExpiring).not.toHaveBeenCalled()
   })
 })

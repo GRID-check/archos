@@ -39,6 +39,7 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import type { MailThreadFollowRow } from '@/lib/db/schema'
 import { memberReader } from '@/lib/documents/document-reader'
 import { managesProject, requireInboundMailEnabled, requireMailReviewer } from '@/lib/inbound-mail/access'
+import { settleFollowExpiring } from '@/lib/inbound-mail/announce'
 import { publishProjectChanged } from '@/lib/realtime/door-events'
 import { endFollow, findRunningFollow, renewFollow, startFollow, type FollowEnd } from './follow-repository'
 import type {
@@ -109,8 +110,10 @@ async function startOrRenew(
     const running = await findRunningFollow(threadId, session.userId)
     if (running && new Date(running.expiresAt).getTime() > now.getTime()) {
       const follow = await renewFollow(running.id, until, now)
-      if (follow) return { follow, renewed: true }
-      continue
+      if (!follow) continue
+      // Renewed: a renewal asked for on day 55 is answered (sweep 12 asks again before the new end).
+      await settleFollowExpiring(session.organizationId, [follow.id])
+      return { follow, renewed: true }
     }
     if (running) await endFollowBySystem(running, 'expired', now)
     const follow = await startFollow({
@@ -157,6 +160,7 @@ export async function unfollowMailThread(
   const ended = await endFollow(running.id, end)
   if (!ended) return { endedFollowId: null }
   recordFollowEnded(session.organizationId, { userId: session.userId, email: session.email || null }, ended)
+  await settleFollowExpiring(session.organizationId, [ended.id])
   publishProjectChanged(session.organizationId, projectId)
   return { endedFollowId: ended.id }
 }
@@ -174,6 +178,7 @@ export async function endFollowBySystem(
   const ended = await endFollow(follow.id, { reason, endedBy: null }, now)
   if (!ended) return false
   recordFollowEnded(ended.organizationId, { userId: SYSTEM_ACTORS.inboundMail, email: null }, ended)
+  await settleFollowExpiring(ended.organizationId, [ended.id])
   publishProjectChanged(ended.organizationId, ended.projectId)
   return true
 }
