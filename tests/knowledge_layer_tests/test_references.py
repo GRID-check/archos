@@ -116,3 +116,21 @@ class TestMerging:
 
     def test_a_passage_without_a_page_still_counts(self):
         assert extract_references([("ÖNORM B 1600", None)])[0]["pages"] == []
+
+
+class TestKeysForWhatSomeoneNames:
+    @pytest.mark.parametrize(
+        ("text", "keys"),
+        [
+            ("ÖNORM B 1600", [("norm", "önorm b 1600")]),
+            ("§ 33 BayBO", [("law", "§ 33 baybo")]),
+            ("EP-05", [("plan", "ep-05")]),
+            ("Brandschutzkonzept", [("document", "fire_safety_concept")]),
+            ("Hubergasse", []),
+            ("", []),
+        ],
+    )
+    def test_a_name_reads_into_the_keys_a_document_carries(self, text, keys):
+        from knowledge_layer.references import reference_keys_for
+
+        assert reference_keys_for(text) == keys

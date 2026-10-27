@@ -423,3 +423,63 @@ _QUANTITY_KEYS = (
 def _quantity_key(quantity: dict[str, Any]) -> str | None:
     said = f"{quantity.get('object', '')} {quantity.get('property', '')}".casefold()
     return next((key for words, key in _QUANTITY_KEYS if any(word in said for word in words)), None)
+
+
+#: Changes kept per dossier: what a person reads in a side panel and an inbox line.
+MAX_CHANGES = 12
+
+
+def _folded(value: Any) -> str:
+    return " ".join(str(value or "").split()).casefold().replace(",", ".")
+
+
+def _stated(dossier: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """The first statement of every fact key in a dossier: what "this Fassung says" means for a key."""
+    stated: dict[str, dict[str, Any]] = {}
+    for fact in (dossier or {}).get("facts") or []:
+        if isinstance(fact, dict) and fact.get("key") and fact.get("value") and fact["key"] not in stated:
+            stated[fact["key"]] = fact
+    return stated
+
+
+def fact_changes(before: dict[str, Any] | None, after: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """What the new Fassung states differently from the one it replaces, fact by fact. Pure.
+
+    A key both state with different values is a change ("4" → "5" oberirdische Geschosse);
+    a key only one of them states is ``before: None`` (newly stated) or ``after: None`` (no
+    longer stated). Values compare folded (case, spaces, decimal comma), so "2,60 m" and
+    "2.60 m" are one value. The change line the summary model writes says what changed in
+    words; this says it in the facts the project compares, without a model.
+    """
+    old, new = _stated(before), _stated(after)
+    if not old or not new:
+        return []
+    changes = []
+    for key in [k for k in FACT_KEYS if k in old or k in new]:
+        was, now = old.get(key), new.get(key)
+        if (
+            was
+            and now
+            and (_folded(was["value"]), _folded(was.get("unit")))
+            == (
+                _folded(now["value"]),
+                _folded(now.get("unit")),
+            )
+        ):
+            continue
+        changes.append(
+            {
+                "key": key,
+                "before": _with_unit(was),
+                "after": _with_unit(now),
+                "page": (now or {}).get("page"),
+            }
+        )
+    return changes[:MAX_CHANGES]
+
+
+def _with_unit(fact: dict[str, Any] | None) -> str | None:
+    if not fact:
+        return None
+    unit = fact.get("unit")
+    return f"{fact['value']} {unit}" if unit else str(fact["value"])

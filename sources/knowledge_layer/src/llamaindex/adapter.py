@@ -2802,7 +2802,7 @@ def _page_number(label: Any) -> int | None:
 
 
 def _reading_of(
-    documents: list[Any], dossier: dict[str, Any] | None
+    documents: list[Any], dossier: dict[str, Any] | None, predecessor: tuple[str, Any] | None = None
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
     """The dossier with the facts the drawings printed, and the document's references. Pure over the chunks.
 
@@ -2840,7 +2840,30 @@ def _reading_of(
         if (fact["key"], fact["value"]) not in seen and len(facts) < MAX_FACTS:
             seen.add((fact["key"], fact["value"]))
             facts.append(fact)
-    return {**dossier, "facts": facts}, references
+    reading = {**dossier, "facts": facts}
+    # The Fassung this one replaces (a re-upload under the name, or the one a person
+    # linked at upload): what the facts say differently now, without a model.
+    if predecessor is not None:
+        from aiq_agent.knowledge.dossier import fact_changes
+
+        name, before = predecessor
+        changes = fact_changes(before if isinstance(before, dict) else None, reading)
+        if changes:
+            reading["changes"] = changes
+            reading["changed_against"] = name
+    return reading, references
+
+
+def _predecessor_dossier(
+    rows: Sequence[Any], stored_names: Sequence[str], confirmed_older: str | None
+) -> tuple[str, Any] | None:
+    """The Fassung this file replaces and its dossier, from the rows read before this upload overwrote them."""
+    wanted = [*stored_names, *([confirmed_older] if confirmed_older else [])]
+    for name in wanted:
+        row = next((row for row in rows if getattr(row, "file_name", None) == name), None)
+        if row is not None and getattr(row, "dossier", None):
+            return name, row.dossier
+    return None
 
 
 def _generate_document_summary(text_content: str, file_name: str, llm=None) -> str | None:
@@ -5788,7 +5811,13 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # Written together, so a re-ingest replaces the whole reading.
                         from aiq_agent.knowledge import set_document_reading
 
-                        reading, references = _reading_of(all_documents, dossier)
+                        reading, references = _reading_of(
+                            all_documents,
+                            dossier,
+                            _predecessor_dossier(
+                                revision_rows, previous.stored_names if previous else (), confirmed_older
+                            ),
+                        )
                         set_document_reading(
                             collection_name, file_name, dossier=reading, references=references, coverage=coverage
                         )
