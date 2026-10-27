@@ -3692,6 +3692,10 @@
     "de": "Wenn Piloti alle Stellen in Ihren Dokumenten ermittelt, an denen ein Wort vorkommt, zählt jede Stelle jetzt nur einmal. Ein Wort in einer Kapitelüberschrift oder in einem Textabschnitt, der auf der nächsten Seite weitergeht, wurde bisher zwei- oder mehrmals gezählt und konnte auf Seiten aufgeführt werden, auf denen es nicht vorkommt."
   },
   {
+    "en": "When Piloti may not show you something, you now see that access was refused instead of a general error. A file that fails more than one upload check is now refused for the same reason in project files, the Archiv and the chat.",
+    "de": "Kann Piloti Ihnen etwas nicht anzeigen, sehen Sie jetzt statt einer allgemeinen Fehlermeldung, dass der Zugriff verweigert wurde. Eine Datei, die mehrere Upload-Prüfungen nicht besteht, wird jetzt in Projektdateien, im Archiv und im Chat aus demselben Grund abgelehnt."
+  },
+  {
     "en": "When Piloti notes something about your project during an answer, you now see it right on the answer instead of inside Details, and one tap shows what was noted. When a note corrects an earlier one, the answer says Memory updated and shows the old note struck through.",
     "de": "Wenn Piloti während einer Antwort etwas zu Ihrem Projekt festhält, sehen Sie es jetzt direkt bei der Antwort statt unter „Details“. Mit einem Tippen sehen Sie, was festgehalten wurde. Korrigiert eine Notiz eine frühere, steht in der Antwort „Memory aktualisiert“, und die alte Notiz wird durchgestrichen angezeigt."
   },

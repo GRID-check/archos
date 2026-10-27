@@ -151,9 +151,11 @@ vi.mock('@/lib/organizations/service', () => ({
   getOrgSettings: vi.fn(async () => ({ displayName: null, defaultLocale: 'de', settings: {} })),
   writeDedicatedOrgSetting: vi.fn(),
 }))
+// The type and size gates, mocked where they live: `admitUpload`
+// (`@/lib/documents/upload-admission`) imports them from there.
+vi.mock('@/lib/documents/upload-type', () => ({ assertUploadTypeAllowed: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/documents/service', () => ({
-  assertUploadTypeAllowed: vi.fn(),
-  assertFileSizeAllowed: vi.fn(),
   dispatchDocument: vi.fn().mockResolvedValue({ jobId: null, status: 'uploaded' }),
 }))
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn() }))

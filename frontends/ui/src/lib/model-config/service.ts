@@ -10,6 +10,7 @@
 import 'server-only'
 import { and, desc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
+import { ForbiddenError } from '@/lib/api/errors'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { invalidateBackendModelConfig } from './backend-key'
 import {
@@ -230,7 +231,10 @@ export async function activateVersion(params: {
         ),
       )
       .limit(1)
-    if (!row) throw new Error('not found: version does not exist for this organization')
+    // A version this organization does not hold, whether it exists elsewhere or
+    // not, answers 403 as it did when this was a message-matched plain Error
+    // (the activate route's spec pins it); 404 would be the usual answer.
+    if (!row) throw new ForbiddenError()
     if (params.validate) await params.validate(row)
     version = row
   }

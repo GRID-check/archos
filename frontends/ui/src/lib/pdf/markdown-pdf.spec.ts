@@ -277,7 +277,7 @@ describe('renderMarkdownPdf', () => {
 
       await expect(renderMarkdownPdf(markdown, BASE)).rejects.toThrow(MarkdownTooLongError)
       // The cost and the limit are both on the error because the caller that
-      // swallows this (`fileReportIfCommissioned`) logs it and nothing else —
+      // swallows this (`fileCommissionedReport`) logs it and nothing else —
       // "too long" without "how long" tells an operator nothing they can act on.
       await expect(renderMarkdownPdf(markdown, BASE)).rejects.toMatchObject({
         length: MAX_MARKDOWN_PDF_CHARS + 1,

@@ -75,9 +75,11 @@ vi.mock('@/lib/conversations/service', () => ({
   assertConversationAcceptsUploads: vi.fn(),
   createConversation: vi.fn(),
 }))
+// The type and size gates, mocked where they live: `admitUpload`
+// (`@/lib/documents/upload-admission`) imports them from there.
+vi.mock('@/lib/documents/upload-type', () => ({ assertUploadTypeAllowed: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/documents/service', () => ({
-  assertUploadTypeAllowed: vi.fn(),
-  assertFileSizeAllowed: vi.fn(),
   dispatchDocument: vi.fn().mockResolvedValue({ jobId: 'job-1', status: 'pending' }),
 }))
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn() }))

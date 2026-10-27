@@ -20,7 +20,6 @@ const COLLEAGUES = '22222222-2222-4222-8222-222222222222'
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockImplementation(async () => session),
-  authzErrorResponse: vi.fn().mockReturnValue(null),
 }))
 
 vi.mock('@/lib/search/saved-search-service', async () => {

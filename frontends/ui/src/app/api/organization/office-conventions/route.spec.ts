@@ -18,7 +18,6 @@ const session = {
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockImplementation(async () => session),
-  authzErrorResponse: vi.fn().mockReturnValue(null),
 }))
 
 vi.mock('@/lib/office-conventions/service', async () => {

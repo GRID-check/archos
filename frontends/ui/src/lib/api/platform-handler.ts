@@ -45,8 +45,8 @@ export interface PlatformApiContext<TParams = Record<string, never>> {
  *
  * Eighteen routes used to open with the same twelve lines: resolve the session,
  * a platform gate, then a bespoke try/catch translating
- * `PlatformAccessDeniedError` into a 403 and delegating everything else to
- * `authzErrorResponse`. Every copy was a chance to get the translation subtly
+ * `PlatformAccessDeniedError` into a 403 and delegating everything else to a
+ * shared authz-error helper (since removed). Every copy was a chance to get the translation subtly
  * wrong, and none of them went through the shared factory, so none of them
  * benefited from its error mapping.
  *
