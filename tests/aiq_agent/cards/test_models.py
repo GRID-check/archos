@@ -414,8 +414,8 @@ class TestTheCalculationCardCannotStateItsOwnAnswer:
         assert card.type == "calculation"
         # The example has to SHOW the provenance vocabulary, not just allow it —
         # a derived number is only as honest as the inputs it was built from.
-        assert card.steps[0].operands[0].provenance == "computed"
-        assert card.steps[0].operands[0].tolerance == 0.5
+        measured = [operand for operand in card.steps[0].operands if operand.provenance == "computed"]
+        assert measured and measured[0].tolerance == 2.0
 
     def test_render_card_details_spells_out_the_nested_blocks(self):
         from aiq_agent.cards.catalog import render_card_details

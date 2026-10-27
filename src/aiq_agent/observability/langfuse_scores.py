@@ -213,8 +213,10 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "card-validity",
         "CATEGORICAL",
-        "Each envelope card that missed its schema: repaired, or dropped.",
-        categories=("repaired", "dropped"),
+        "Each envelope card that missed its schema: repaired, or dropped. Also `stripped`: a computing "
+        "card (calculation, formula) that arrived with a field stating what the card computes (a result, "
+        "a formula's limits), which validation removed; the comment counts the fields.",
+        categories=("repaired", "dropped", "stripped"),
     ),
     ScoreDefinition(
         "formula-input-provenance",
@@ -552,9 +554,14 @@ def formula_provenance_score(card: dict[str, Any], *, index: int) -> RuntimeScor
     )
 
 
-def card_validity_score(*, outcome: str, card_type: str, index: int) -> RuntimeScore:
-    """One envelope card's schema miss, repaired or dropped."""
-    return RuntimeScore("card-validity", outcome, comment=card_type, item=str(index), metadata={"card_type": card_type})
+def card_validity_score(*, outcome: str, card_type: str, index: int, fields: int | None = None) -> RuntimeScore:
+    """One envelope card's schema miss: repaired, dropped, or `stripped` of ``fields`` it may not state."""
+    metadata: dict[str, Any] = {"card_type": card_type}
+    comment = card_type
+    if fields is not None:
+        metadata["fields"] = fields
+        comment = f"{card_type}: {fields} stated field(s) removed"
+    return RuntimeScore("card-validity", outcome, comment=comment, item=str(index), metadata=metadata)
 
 
 def thread_reply_scores(verdict: str) -> list[RuntimeScore]:

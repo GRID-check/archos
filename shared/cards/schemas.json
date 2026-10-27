@@ -66,7 +66,7 @@
       "type": "object"
     },
     "CalculationCard": {
-      "description": "Emit for the arithmetic behind a number \u2014 the Rechenweg a Ziviltechniker re-checks.\n\nWhenever the answer computes something (the Schrittma\u00dfregel, a GFZ, a\nBrandlast, a required parking count, a U-value from its resistances), this\ncard is the derivation laid out line by line instead of a sentence the\nreader has to re-derive to trust.\n\nYOU SUPPLY THE INPUTS, NEVER THE ANSWER. Give each operand its label, value\nand unit, name the operation, and give the limit if there is one. The card\nevaluates every step itself, carries the tolerance bands through, formats\nthe numbers in Austrian convention and decides pass/fail. There is no field\nfor a result, and that absence is the feature: a stated result that\ndisagreed with its own operands would be the worst artefact this product can\nproduce, because this is the part that gets screenshotted into a submission.\n\nSeveral steps chain by reference: a later operand can name an earlier step\n(`step: 1`) instead of carrying a value, so a two-stage derivation stays\nauditable rather than collapsing into one pre-computed figure.",
+      "description": "Emit for the arithmetic behind a number \u2014 the Rechenweg a Ziviltechniker re-checks.\n\nWhenever the answer computes something (a GFZ, a Brandabschnitt's\nNetto-Grundfl\u00e4che, a Brandlast, a required parking count), this card is the\nderivation laid out line by line instead of a sentence the reader has to\nre-derive to trust. The four named rules are NOT a calculation: a U-value\nfrom its layers, the Schrittma\u00dfregel, an escape route's Gehwegl\u00e4nge and a\nLichteintrittsfl\u00e4che are a `formula`, which owns their bounds.\n\nYOU SUPPLY THE INPUTS, NEVER THE ANSWER. Give each operand its label, value\nand unit, name the operation, and give the limit if there is one. The card\nevaluates every step itself, carries the tolerance bands through, formats\nthe numbers in Austrian convention and decides pass/fail. There is no field\nfor a result, and that absence is the feature: a stated result that\ndisagreed with its own operands would be the worst artefact this product can\nproduce, because this is the part that gets screenshotted into a submission.\n\nSeveral steps chain by reference: a later operand can name an earlier step\n(`step: 1`) instead of carrying a value, so a two-stage derivation stays\nauditable rather than collapsing into one pre-computed figure.",
       "properties": {
         "limit": {
           "anyOf": [
@@ -116,7 +116,7 @@
           "type": "array"
         },
         "title": {
-          "description": "What is being computed, e.g. 'Schrittma\u00dfregel \u2013 Treppenlauf Haus A'",
+          "description": "What is being computed, e.g. 'Netto-Grundfl\u00e4che Brandabschnitt BA 2'",
           "minLength": 1,
           "title": "Title",
           "type": "string"
@@ -158,7 +158,7 @@
             }
           ],
           "default": null,
-          "description": "Optional name of the limit, e.g. 'Schrittma\u00dfregel'; omit when the reference says it",
+          "description": "Optional name of the limit, e.g. 'Netto-Grundfl\u00e4che'; omit when the reference says it",
           "title": "Label"
         },
         "reference": {
@@ -183,7 +183,7 @@
             }
           ],
           "default": null,
-          "description": "With 'between': the upper bound, e.g. 65 for the Schrittma\u00dfregel's 59\u201365 cm. Otherwise omit",
+          "description": "With 'between': the upper bound of the range. Otherwise omit",
           "title": "Upper"
         },
         "value": {
@@ -212,11 +212,11 @@
             }
           ],
           "default": null,
-          "description": "Only on a 'sum': the RULE's own multiplier for this term, e.g. 2 in the Schrittma\u00dfregel '2 \u00d7 Steigung + Auftritt'. Negative subtracts the term. Omit for a plain +1 \u2014 never use it to smuggle a second measured quantity in, which is what a 'product' step is for",
+          "description": "Only on a 'sum': the RULE's own multiplier for this term, e.g. 2 for a two-sided Abstand. Negative subtracts the term. Omit for a plain +1 \u2014 never use it to smuggle a second measured quantity in, which is what a 'product' step is for",
           "title": "Factor"
         },
         "label": {
-          "description": "What this number IS, e.g. 'Steigung', 'Bruttogeschossfl\u00e4che', 'Grundfl\u00e4che'. Empty ONLY for a bare constant that names itself, such as the 1 in a U-value's 1 \u00f7 R \u2014 everything a reader has to look up needs its name under it",
+          "description": "What this number IS, e.g. 'Steigung', 'Bruttogeschossfl\u00e4che', 'Grundfl\u00e4che'. Empty ONLY for a bare constant that names itself, such as the 100 of a percentage \u2014 everything a reader has to look up needs its name under it",
           "title": "Label",
           "type": "string"
         },
@@ -315,7 +315,7 @@
       "description": "One line of the Rechenweg: an operation over its operands.\n\nThe step states no result. The renderer evaluates ``operation`` over\n``operands`` and prints what it computed \u2014 which is the whole point of the\ncard, so there is no field here for the model to disagree with it in.",
       "properties": {
         "label": {
-          "description": "What this step computes, e.g. 'Schrittma\u00df', 'Geschossfl\u00e4chenzahl'",
+          "description": "What this step computes, e.g. 'Netto-Grundfl\u00e4che', 'Geschossfl\u00e4chenzahl'",
           "minLength": 1,
           "title": "Label",
           "type": "string"
@@ -961,26 +961,36 @@
       "type": "object"
     },
     "DaylightRatioFormula": {
-      "description": "Lichteintrittsfl\u00e4che as a percentage of the room's Bodenfl\u00e4che (OIB-Richtlinie 3, Pkt. 9.1.1).",
+      "description": "Lichteintrittsfl\u00e4che against the room's Bodenfl\u00e4che (OIB-RL 3 Pkt. 9.1.1, 9.1.3, 9.1.4).\n\nThe required share is 12 %, raised to 15 % by an overhang over 1,50 m, by\n2 % per started metre of overhang beyond 3,00 m, and by 1 % per started\nmetre of room depth beyond 5,00 m; the renderer derives it from the inputs.\nThe free light angle of 45\u00b0 (Pkt. 9.1.2) is a precondition the card states\nand does not check.",
       "properties": {
         "floor_area": {
           "$ref": "#/$defs/FormulaInput",
           "description": "Bodenfl\u00e4che of the room in m\u00b2"
         },
-        "glazing_area": {
-          "$ref": "#/$defs/FormulaInput",
-          "description": "Lichteintrittsfl\u00e4che (architectural opening) in m\u00b2"
-        },
         "name": {
           "const": "daylight_ratio",
           "title": "Name",
           "type": "string"
+        },
+        "opening_area": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Lichteintrittsfl\u00e4che: the Architekturlichte of the room's windows and skylights, in m\u00b2"
+        },
+        "overhang_depth": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Depth of an overhang of the same building that shades the openings (balcony, eaves, loggia), from the fa\u00e7ade, in m. 0 when there is none"
+        },
+        "room_depth": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Raumtiefe in m, measured from the fa\u00e7ade with the openings"
         }
       },
       "required": [
         "name",
-        "glazing_area",
-        "floor_area"
+        "opening_area",
+        "floor_area",
+        "room_depth",
+        "overhang_depth"
       ],
       "title": "DaylightRatioFormula",
       "type": "object"
@@ -1409,7 +1419,7 @@
       "type": "object"
     },
     "EscapeRouteLengthFormula": {
-      "description": "The Gehwegl\u00e4nge: the legs of one escape route added up (OIB-Richtlinie 2, Pkt. 5.1.1).",
+      "description": "The Gehwegl\u00e4nge, its legs added up, against 40 m (OIB-RL 2 Pkt. 5.1.1 and 5.1.2).",
       "properties": {
         "name": {
           "const": "escape_route_length",
@@ -1425,10 +1435,20 @@
           "minItems": 1,
           "title": "Segments",
           "type": "array"
+        },
+        "start": {
+          "description": "Where the route starts: 'room', the most remote point of the room (Pkt. 5.1.1); 'dwelling_entrance', the Wohnungseingangst\u00fcre, for a dwelling over at most two storeys whose route leads to a Treppenhaus or Au\u00dfentreppe (Pkt. 5.1.2, cases b and c)",
+          "enum": [
+            "room",
+            "dwelling_entrance"
+          ],
+          "title": "Start",
+          "type": "string"
         }
       },
       "required": [
         "name",
+        "start",
         "segments"
       ],
       "title": "EscapeRouteLengthFormula",
@@ -1438,7 +1458,7 @@
       "description": "One leg of the escape route, measured along the walking line.",
       "properties": {
         "label": {
-          "description": "The leg, e.g. 'Raum \u2192 Gang', 'Gang \u2192 Treppenhaus'",
+          "description": "The leg, by its ends, never its length: 'Raum \u2192 Gang'",
           "minLength": 1,
           "title": "Label",
           "type": "string"
@@ -1765,10 +1785,10 @@
       "type": "object"
     },
     "FormulaCard": {
-      "description": "Emit for a number worked out by one of the named rules, so the reader can ask \"what if\" on the card.\n\nThe rules: a U-value from its layers (u_value), the Schrittma\u00dfregel\n(stair_step_rule), an escape route's Gehwegl\u00e4nge (escape_route_length), and\nthe Lichteintrittsfl\u00e4che against the Bodenfl\u00e4che (daylight_ratio). Anything\nelse worked out is a `calculation`.\n\nYOU SUPPLY THE INPUTS AND THE CITED LIMITS, NEVER THE RESULT. Fill each input\nfrom the project's documents, the user's own figures or the norm, and say in\n`source` where each one is written. An input you do not have stays null: the\ncard says it cannot judge, and the reader can enter an assumption. The card\ncomputes, recomputes when the reader changes an input, marks a changed value\nas the reader's assumption, and judges each result against `limits`. A limit\nyou cannot cite with its Punkt stays out, and then the card judges nothing.",
+      "description": "Emit for a number worked out by one of four named rules, so the reader can ask \"what if\" on the card.\n\nThe rules: a U-value from its layers (u_value), the Schrittma\u00dfregel and the\nstair table (stair_step_rule), an escape route's Gehwegl\u00e4nge\n(escape_route_length), the Lichteintrittsfl\u00e4che against the Bodenfl\u00e4che\n(daylight_ratio). Anything else worked out is a `calculation`.\n\nYOU SUPPLY THE CASE AND THE INPUTS, NEVER A NUMBER OF YOUR OWN. Name the\ncase the rule asks for (`stair_type`, `component`, `start`) and fill each\ninput from the project's documents, the user's own figures or the norm,\nwith `source` saying where it is written. An input you do not have stays\nnull: the card says it cannot judge, and the reader can enter an\nassumption. The card computes, takes the bound from the Richtlinie's table\nfor that case, judges, and recomputes when the reader changes an input.\nThe title names the component (\u201eU-Wert Au\u00dfenwand AW 01\"), never a value.",
       "properties": {
         "formula": {
-          "description": "The rule, by `name`, with its inputs",
+          "description": "The rule, by `name`, with its case and its inputs",
           "discriminator": {
             "mapping": {
               "daylight_ratio": "#/$defs/DaylightRatioFormula",
@@ -1794,15 +1814,6 @@
           ],
           "title": "Formula"
         },
-        "limits": {
-          "description": "The Bestimmungen the results are held against, each cited. Empty: the card judges nothing",
-          "items": {
-            "$ref": "#/$defs/FormulaLimit"
-          },
-          "maxItems": 4,
-          "title": "Limits",
-          "type": "array"
-        },
         "note": {
           "anyOf": [
             {
@@ -1813,11 +1824,11 @@
             }
           ],
           "default": null,
-          "description": "Optional one-line caveat, e.g. what the rule leaves out",
+          "description": "Optional one-line caveat in words, never a figure or a result, e.g. what the rule leaves out",
           "title": "Note"
         },
         "title": {
-          "description": "What is worked out, e.g. 'U-Wert Au\u00dfenwand \u2013 20 cm D\u00e4mmung'",
+          "description": "The component the rule is applied to, never a value: 'U-Wert Au\u00dfenwand AW 01', 'Stiege Haus B'",
           "minLength": 1,
           "title": "Title",
           "type": "string"
@@ -1943,69 +1954,6 @@
         }
       },
       "title": "FormulaInput",
-      "type": "object"
-    },
-    "FormulaLimit": {
-      "description": "A Bestimmung one result is held against: a cited statement, which the reader cannot change.",
-      "properties": {
-        "comparator": {
-          "description": "At most, at least, or inside a range",
-          "enum": [
-            "<=",
-            ">=",
-            "between"
-          ],
-          "title": "Comparator",
-          "type": "string"
-        },
-        "label": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Optional name, e.g. 'Schrittma\u00dfregel'",
-          "title": "Label"
-        },
-        "reference": {
-          "$ref": "#/$defs/NormReference",
-          "description": "Where the bound is written, with its Punkt. Required: a limit nobody can look up is left out"
-        },
-        "target": {
-          "description": "Which quantity: 'u_value' (W/(m\u00b2K)); 'step_measure', 'riser' or 'going' (cm); 'route_length' (m); 'daylight_ratio' (%). The bound is in that unit",
-          "title": "Target",
-          "type": "string"
-        },
-        "upper": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "With 'between': the upper bound. Otherwise omit",
-          "title": "Upper"
-        },
-        "value": {
-          "description": "The bound, as the Bestimmung states it. With 'between', the LOWER bound",
-          "title": "Value",
-          "type": "number"
-        }
-      },
-      "required": [
-        "target",
-        "comparator",
-        "value",
-        "reference"
-      ],
-      "title": "FormulaLimit",
       "type": "object"
     },
     "GuardrailCheckCard": {
@@ -3720,7 +3668,7 @@
       "type": "object"
     },
     "StairStepRuleFormula": {
-      "description": "The Schrittma\u00dfregel: 2 \u00d7 Stufenh\u00f6he + Stufenauftritt (OIB-Richtlinie 4, Pkt. 3.2.1).",
+      "description": "2 \u00d7 Stufenh\u00f6he + Stufenauftritt = 62 \u00b1 3 cm, and Tabelle 3's row for the stair (OIB-RL 4 Pkt. 3.2.1).",
       "properties": {
         "going": {
           "$ref": "#/$defs/FormulaInput",
@@ -3734,10 +3682,21 @@
         "riser": {
           "$ref": "#/$defs/FormulaInput",
           "description": "Stufenh\u00f6he (Steigung) s in cm"
+        },
+        "stair_type": {
+          "description": "The row of Tabelle 3: 'main' (Haupttreppe, not a Wohnungstreppe), 'dwelling' (Wohnungstreppe, inside one dwelling), 'secondary' (Nebentreppe)",
+          "enum": [
+            "main",
+            "dwelling",
+            "secondary"
+          ],
+          "title": "Stair Type",
+          "type": "string"
         }
       },
       "required": [
         "name",
+        "stair_type",
         "riser",
         "going"
       ],
@@ -3945,16 +3904,16 @@
       "type": "object"
     },
     "UValueFormula": {
-      "description": "U = 1 / (R_si + \u03a3 d/\u03bb + R_se), for a component of homogeneous layers (\u00d6NORM EN ISO 6946).\n\nThe surface resistances are the standard's conventional values for the heat\nflow direction, fixed by the renderer. Air layers, inhomogeneous layers and\nthe standard's corrections are out of scope: say so in the card's `note`\nwhen the component has them.",
+      "description": "U = 1 / (R_si + \u03a3 d/\u03bb + R_se), for an opaque component of homogeneous layers (\u00d6NORM EN ISO 6946).\n\n`component` picks the row of OIB-RL 6 Pkt. 4.4.1 the card holds the U-value\nagainst, and with it the heat-flow direction for the surface resistances:\nan external wall (row 1, horizontal), a ceiling or roof slope against\noutside air (row 18, upward; a slope steeper than 60\u00b0 counts as a wall),\na ceiling over outside air such as a passage (row 22, downward). Only\ncomponents against outside air: elsewhere R_se is not the standard's 0,04.\nAir layers, inhomogeneous layers and the standard's corrections are out of\nscope.",
       "properties": {
-        "heat_flow": {
-          "description": "Direction of heat flow: 'horizontal' (a wall), 'upward' (a roof), 'downward' (a floor above air)",
+        "component": {
+          "description": "Which component: 'external_wall', 'roof_or_ceiling_to_outside_air' (a ceiling or roof slope, slopes over 60\u00b0 are walls), 'floor_over_outside_air' (a ceiling over a passage or parking deck)",
           "enum": [
-            "horizontal",
-            "upward",
-            "downward"
+            "external_wall",
+            "roof_or_ceiling_to_outside_air",
+            "floor_over_outside_air"
           ],
-          "title": "Heat Flow",
+          "title": "Component",
           "type": "string"
         },
         "layers": {
@@ -3975,7 +3934,7 @@
       },
       "required": [
         "name",
-        "heat_flow",
+        "component",
         "layers"
       ],
       "title": "UValueFormula",
@@ -3989,7 +3948,7 @@
           "description": "Thermal conductivity \u03bb in W/(m\u00b7K), the design value"
         },
         "label": {
-          "description": "The layer, e.g. 'Mineralwolle', 'Stahlbeton', 'Innenputz'",
+          "description": "The layer's material, never its thickness: 'Mineralwolle', 'Stahlbeton'",
           "minLength": 1,
           "title": "Label",
           "type": "string"

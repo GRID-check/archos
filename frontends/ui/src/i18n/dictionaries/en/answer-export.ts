@@ -258,11 +258,22 @@ export const answerExport = {
       left: 'left',
       right: 'right',
     },
-    /** `formula.formula.heat_flow` — the direction the U-value's surface resistances are taken for. */
-    heat_flow: {
-      horizontal: 'horizontal (wall)',
-      upward: 'upward (roof)',
-      downward: 'downward (floor)',
+    /** `formula.formula.component` — the row of OIB-RL 6 Pkt. 4.4.1 a U-value is held against. */
+    component: {
+      external_wall: 'external wall against outside air',
+      roof_or_ceiling_to_outside_air: 'ceiling or roof slope against outside air',
+      floor_over_outside_air: 'ceiling over outside air',
+    },
+    /** `formula.formula.stair_type` — the row of OIB-RL 4 Tabelle 3. */
+    stair_type: {
+      main: 'main stair',
+      dwelling: 'stair within a dwelling',
+      secondary: 'secondary stair',
+    },
+    /** `formula.formula.start` — where an escape route is measured from (OIB-RL 2 Pkt. 5.1.1, 5.1.2). */
+    start: {
+      room: 'most remote point of the room',
+      dwelling_entrance: 'dwelling entrance door',
     },
   },
   /** Yes/no for the boolean fields a card carries. */
@@ -413,18 +424,20 @@ export const answerExport = {
     // The formula card (ADR-0143). Exported as the source's inputs and limits.
     formula: 'Rule',
     name: 'Name',
-    heat_flow: 'Heat flow',
+    component: 'Component',
+    stair_type: 'Stair type',
+    start: 'Measured from',
     layers: 'Layers',
     thickness: 'Thickness d (cm)',
     conductivity: 'Thermal conductivity λ (W/(m·K))',
     riser: 'Riser height s (cm)',
     going: 'Going a (cm)',
-    glazing_area: 'Glazing area (m²)',
+    opening_area: 'Glazing area (m²)',
+    room_depth: 'Room depth (m)',
+    overhang_depth: 'Overhang (m)',
     floor_area: 'Floor area (m²)',
     editable: 'Reader may change it',
     min: 'Lowest value',
     max: 'Highest value',
-    limits: 'Limits',
-    target: 'Checked quantity',
   },
 }

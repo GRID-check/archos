@@ -124,7 +124,7 @@ export const GridCardView: FC<GridCardViewProps> = ({
   if (card.type === 'formula') {
     return (
       <FadeIn distance={6}>
-        <FormulaCard title={card.title} formula={card.formula} limits={card.limits} note={card.note} />
+        <FormulaCard title={card.title} formula={card.formula} note={card.note} />
       </FadeIn>
     )
   }

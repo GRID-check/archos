@@ -522,34 +522,45 @@ export const chat: typeof en.chat = {
     // können (ADR-0143). Gerechnet wird im Browser; eine geänderte Zahl ist
     // „Ihre Annahme", nicht die der Quelle, und wird nirgends gespeichert.
     formula: {
-      eyebrow: 'Was wäre wenn',
-      hint: 'Ändern Sie einen Wert: Das Ergebnis rechnet sofort neu. Gespeichert wird nichts.',
+      eyebrow: 'Was wäre, wenn',
+      hint: 'Ändern Sie einen Wert: Das Ergebnis wird sofort neu berechnet. Gespeichert wird nichts.',
       inputsLabel: 'Eingangswerte',
       derivationLabel: 'Rechenweg',
       checksLabel: 'Beurteilung',
-      // Neben einem Wert, den die Lesenden geändert haben. Er ist ihre Annahme,
-      // nicht die Angabe der Quelle, und das muss man sehen, bevor man ihn
-      // weitergibt.
+      notesLabel: 'Hinweise',
+      // Neben einem Wert, den die Lesenden geändert haben, und neben jeder
+      // Beurteilung, die auf ihm beruht. Er ist ihre Annahme, nicht die Angabe
+      // der Quelle, und das muss man sehen, bevor man ihn weitergibt.
       yourAssumption: 'Ihre Annahme',
+      // Neben der Beurteilung im Kopf der Karte, wenn sie auf einer Annahme beruht.
+      withYourAssumptions: 'mit Ihren Annahmen',
       sourceValue: 'Quelle: {value}',
       sourceMissing: 'Quelle: kein Wert',
       // Steht in einem leeren Feld, dessen Wert die Quelle nicht nennt.
       missingPlaceholder: 'fehlt',
-      fixed: 'fest',
+      fixed: 'vorgegeben',
       reset: 'Zurücksetzen',
       resetLabel: 'Alle Werte auf die Angaben der Quelle zurücksetzen',
       withAssumptions: 'Gerechnet mit Ihren Annahmen, nicht mit den Werten der Quelle.',
-      noLimits: 'Kein zitierter Grenzwert: Die Karte rechnet, beurteilt aber nichts.',
       cannotJudge: 'Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.',
+      inputRejected: 'Ein eingegebener Wert ist nicht zulässig: Mit ihm kann die Karte nicht beurteilen.',
       undefinedResult: 'Durch null geteilt: Das Ergebnis ist nicht definiert.',
+      zeroNotPossible: '{quantity} = 0 ist nicht möglich.',
       invalidNumber: 'Keine Zahl.',
       outOfRange: 'Zulässig sind {min} bis {max} {unit}.',
-      // Für Screenreader, wenn das Ergebnis nach einer Eingabe neu gerechnet ist.
-      recomputed: 'Neu berechnet: {verdict}',
-      heatFlow: {
-        horizontal: 'Wärmestrom horizontal (Wand)',
-        upward: 'Wärmestrom nach oben (Dach)',
-        downward: 'Wärmestrom nach unten (Boden)',
+      // Für Screenreader, nachdem das Ergebnis neu berechnet ist: jede
+      // Beurteilung mit Größe, Wert, Grenzwert und Ergebnis.
+      recomputed: 'Neu berechnet. {checks}',
+      checkSpoken: '{name}: {value}, Grenzwert {bound}, {verdict}.',
+      component: {
+        external_wall: 'Außenwand gegen Außenluft',
+        roof_or_ceiling_to_outside_air: 'Decke oder Dachschräge gegen Außenluft',
+        floor_over_outside_air: 'Decke über Außenluft',
+      },
+      stairType: {
+        main: 'Haupttreppe',
+        dwelling: 'Wohnungstreppe',
+        secondary: 'Nebentreppe',
       },
       input: {
         riser: 'Stufenhöhe s',
@@ -557,14 +568,36 @@ export const chat: typeof en.chat = {
         thickness: 'Dicke d',
         conductivity: 'Wärmeleitfähigkeit λ',
         length: 'Länge',
-        glazingArea: 'Lichteintrittsfläche',
+        openingArea: 'Lichteintrittsfläche',
+        floorArea: 'Bodenfläche',
+        roomDepth: 'Raumtiefe',
+        overhangDepth: 'Auskragung',
+      },
+      // Wofür „{quantity} = 0 ist nicht möglich." steht.
+      zeroQuantity: {
+        conductivity: 'λ',
         floorArea: 'Bodenfläche',
       },
       term: {
+        riser: 'Stufenhöhe s',
+        going: 'Stufenauftritt a',
+        thickness: 'd {layer}',
+        conductivity: 'λ {layer}',
+        length: '{layer}',
+        openingArea: 'Lichteintrittsfläche',
+        floorArea: 'Bodenfläche',
+        roomDepth: 'Raumtiefe',
+        overhangDepth: 'Auskragung',
         surfaceInside: 'R_si',
         surfaceOutside: 'R_se',
         layerResistance: 'R {layer}',
         totalResistance: 'R_T',
+        baseShare: 'Grundanforderung (Pkt. 9.1.1)',
+        raisedShare: 'Auskragung über 1,50 m (Pkt. 9.1.3)',
+        overhangIncrement: 'Auskragung über 3,00 m (Pkt. 9.1.3)',
+        overhangIncrementMetres: 'Auskragung über 3,00 m: {metres} angefangene m (Pkt. 9.1.3)',
+        depthIncrement: 'Raumtiefe über 5,00 m (Pkt. 9.1.4)',
+        depthIncrementMetres: 'Raumtiefe über 5,00 m: {metres} angefangene m (Pkt. 9.1.4)',
       },
       line: {
         layerResistance: 'Wärmedurchlasswiderstand {layer}',
@@ -572,15 +605,29 @@ export const chat: typeof en.chat = {
         uValue: 'U-Wert',
         stepMeasure: 'Schrittmaß 2s + a',
         routeLength: 'Gehweglänge',
-        daylightRatio: 'Lichteintrittsfläche je Bodenfläche',
+        daylightShare: 'Lichteintrittsfläche je Bodenfläche',
+        requiredShare: 'Erforderlicher Anteil',
       },
-      target: {
-        uValue: 'U-Wert',
-        stepMeasure: 'Schrittmaß',
-        riser: 'Stufenhöhe',
-        going: 'Stufenauftritt',
-        routeLength: 'Gehweglänge',
-        daylightRatio: 'Lichteintrittsfläche',
+      check: {
+        stepRule: 'Schrittmaßregel 62 ± 3 cm',
+        riserMax: 'Stufenhöhe',
+        goingMin: 'Stufenauftritt',
+        uMax: 'U-Wert',
+        routeMax: 'Gehweglänge',
+        daylightMin: 'Lichteintrittsfläche',
+      },
+      caveat: {
+        uValueNewBuild:
+          'Höchstwert für den Neubau (OIB-Richtlinie 6, Pkt. 4.4.1, Zeile {row}). Bei der Renovierung mittels Einzelmaßnahmen gilt Pkt. 4.5.',
+        uValueScope:
+          'Homogene Schichten nach ÖNORM EN ISO 6946; Luftschichten, inhomogene Schichten und Korrekturen sind nicht berücksichtigt.',
+        routeFromRoom: 'Gemessen von der entferntesten Stelle des Raumes (Pkt. 5.1.1).',
+        routeFromDwelling:
+          'Gemessen ab der Wohnungseingangstüre (Pkt. 5.1.2): für eine Wohnung über höchstens zwei Geschoße, deren Fluchtweg zu einem Treppenhaus oder einer Außentreppe führt.',
+        daylightAngle:
+          'Vorausgesetzt ist ein freier Lichteinfall unter 45° zur Horizontalen (Pkt. 9.1.2); die Karte prüft ihn nicht.',
+        daylightOtherLaw:
+          'Für die Raumtiefe gelten abweichende Bestimmungen anderer Rechtsmaterien vor, etwa der Arbeitsstättenverordnung (Pkt. 9.1.4).',
       },
     },
     // Ein Dokument, das Piloti in den Arbeitsordner dieser Unterhaltung

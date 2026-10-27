@@ -35,17 +35,19 @@ already draws every card (ADR-0065), has had the standard shape since v0.9: a
 surface's data model, JSON-pointer paths, `DataContext.set` and subscriptions.
 
 The product's north star for a computed answer: **every number on the page is
-computed, cited, or the reader's own input.**
+computed, cited, or the reader's own input.** A bound the model typed is none of
+the three, and neither is a figure in a title that the reader's change has made
+stale.
 
 ## Considered Options
 
 1. **Keep cards unbound; ask again.** Every what-if is a turn.
 2. **Bind everything.** Adopt A2UI data binding for every field, the model
    writing `{path}` bindings.
-3. **Bind only reader inputs on computing cards.** Cited statements and limits
-   stay literal and immutable; an operand the card declares editable is bound
-   to a path the renderer derives, and the result is recomputed in the browser
-   from a closed set of formulas.
+3. **Bind only reader inputs on computing cards, and let the renderer own the
+   rules.** An operand the card declares editable is bound to a path the
+   renderer derives; the rule and its bounds are the renderer's, from a closed
+   set transcribed from the Richtlinien.
 4. **Let the model write the formula.** An expression string or code the
    browser evaluates (the "calculator in seconds" of the consumer products).
 
@@ -57,25 +59,39 @@ Chosen: **option 3**.
   the source's value, whether the reader may change it, its bounds and step,
   and where the value is written (`source`, or a norm `reference`). The unit is
   the formula's, not the wire's.
-- **Statements stay unbound.** A limit is a cited statement: comparator, bound
-  and a `NormReference` with its Punkt, which the schema requires. The reader
-  cannot change it, and a limit nobody can cite stays off the card; then the
-  card computes and judges nothing.
-- **The model never states a computed result.** There is no result field on
-  the wire, as on `calculation` since its first version.
-- **The formula is a name from a closed, tested set.** `formula.name` is one of
-  `u_value` (ÖNORM EN ISO 6946), `stair_step_rule` (OIB-RL 4 Pkt. 3.2.1),
-  `escape_route_length` (OIB-RL 2 Pkt. 5.1.1), `daylight_ratio` (OIB-RL 3 Pkt.
-  9.1.1). Each is a pure function in `features/grid-cards/lib/formulas.ts`,
-  tested against hand-computed cases in `shared/cards/formula-cases.json`,
-  which the backend also validates. A rule whose arithmetic cannot be cited
-  exactly is not added: the lichte Raumhöhe was drafted and withdrawn, because
-  the definition it rests on is in the OIB Begriffsbestimmungen and that text is
-  not in the corpus.
+- **The model names the case, never a number.** The bounds are not on the
+  wire. The renderer reads them from typed tables in
+  `features/grid-cards/lib/formulas.ts`, transcribed from the Mai 2023
+  Richtlinien, for the case the model names. A model that writes a result or a
+  `limits` list has it dropped by validation and counted (`card-validity`,
+  outcome `stripped`). The title, a layer's or a leg's label and the note may
+  carry no figure: the schema refuses a number with a unit, or a stated result
+  (`= 0,17`), there.
+
+  | `formula.name` | Case the model names | Bound the renderer derives |
+  |---|---|---|
+  | `stair_step_rule` | `stair_type`: `main`, `dwelling`, `secondary` | 2s + a = 62 ± 3 cm, and Tabelle 3's row: 18/27, 20/24, 21/21 cm (OIB-RL 4 Pkt. 3.2.1) |
+  | `u_value` | `component`: `external_wall`, `roof_or_ceiling_to_outside_air`, `floor_over_outside_air` | OIB-RL 6 Pkt. 4.4.1 rows 1, 18, 22: 0,35, 0,20, 0,20 W/(m²K) at a Neubau; the heat flow follows the row. The card states that a renovation follows Pkt. 4.5 |
+  | `escape_route_length` | `start`: `room`, `dwelling_entrance` | 40 m, from the most remote point of the room (OIB-RL 2 Pkt. 5.1.1), or from the Wohnungseingangstüre (5.1.2) |
+  | `daylight_ratio` | (none) | 12 % of the Bodenfläche (OIB-RL 3 Pkt. 9.1.1); 15 % with an overhang over 1,50 m, plus 2 % per started metre over 3,00 m (9.1.3); plus 1 % per started metre of depth over 5,00 m (9.1.4). Unknown depth or overhang: no verdict. The 45° light angle (9.1.2) is stated, not checked |
+
+- **One arithmetic, one verdict rule.** Each rule compiles to
+  `CalculationStepData`, the steps a `calculation` carries, so it is evaluated
+  by `calculate.ts`'s `evaluate`, judged by `verdictFor` and drawn by the one
+  derivation renderer (`components/Derivation.tsx`). A fix there is a fix for
+  both cards. `verdictFor` treats a value within a billionth of a bound's
+  magnitude as on it, so 12,3 + 20,6 + 7,1 m passes „≤ 40 m"; and a result
+  printed past the house two decimals keeps its digits fixed, so the printed
+  number never disagrees with the verdict.
+- **The rule set is closed and cited.** A rule is added only where its
+  arithmetic and its bound can be cited exactly. The lichte Raumhöhe was
+  drafted and withdrawn: its subtraction is defined in the OIB
+  Begriffsbestimmungen, not in a Punkt the card could name. Only opaque
+  components against outside air are U-value cases, because only there is
+  R_se the standard's 0,04.
 - **Recomputing is in the browser, pure and deterministic.** No model call, no
-  request. The verdict rule is `calculation`'s (`verdictFor`), so both cards
-  judge a bound the same way, including how far a result is printed so the
-  number and the verdict cannot disagree.
+  request. A typed value is taken when the reader pauses, leaves the field or
+  presses Enter, never mid-number; the arrow keys take effect at once.
 - **The binding is A2UI's standard shape, and version-agnostic.** A changed
   input is written with `DataContext.set` to `/inputs/<leaf id>` of the card's
   surface and read by subscription (`features/a2ui/reader-inputs.ts`). The path
@@ -86,9 +102,10 @@ Chosen: **option 3**.
   tested on 0.14 (`@a2ui/react` and `@a2ui/web_core` 0.14.0), with the same
   calls in both. A card drawn without A2UI (the fallback) gets a local store
   with the same interface.
-- **A reader's value is marked as theirs.** Beside a changed input: „Ihre
-  Annahme" and the source's value; under the Rechenweg: „Gerechnet mit Ihren
-  Annahmen"; one „Zurücksetzen" restores every source value.
+- **A reader's value is marked as theirs.** „Ihre Annahme" beside the changed
+  field with the source's value, beside every verdict resting on it, and „mit
+  Ihren Annahmen" beside the header's verdict; one „Zurücksetzen" restores every
+  source value.
 - **A changed input writes nowhere.** Not to the message (`cardInteractions`),
   not to a backend, not to an export (an exported card prints the source's
   values), and it is gone on reload. The card is `presentational` (ADR-0030).
@@ -109,23 +126,33 @@ a model-written formula before it is drawn beside a citation.
 **`formula` is a new card type, and it earns its place** under ADR-0069's
 category 3 (arithmetic the renderer computes). The Apps SDK test: replacing it
 with text loses the what-if, which is the card's whole point, and the verdict
-the card computes. `calculation` keeps every other derivation.
+the card computes. `calculation` keeps every other derivation; its docstring,
+trigger row and worked example no longer use the four named rules (its example
+is a Brandabschnitt's Netto-Grundfläche against OIB-RL 2 Pkt. 3.1.1). The
+envelope teaches the `formula` shape up front (`ENVELOPE_SHAPE_TYPES`), because
+a model guessing it from the index line writes the `limits` list the card no
+longer takes.
 
 ### Consequences
 
 - Good: the what-if costs no turn, no token and no model call; it is precise by
-  construction, and the cited limit stays pinned to its Punkt.
-- Good: provenance per input is now on the wire and measured
-  (`formula-input-provenance` in Langfuse, one score per formula card).
+  construction, and every bound names its Punkt and row.
+- Good: a model cannot assume the wrong row: a Wohnungstreppe is held to 20/24,
+  not to a Haupttreppe's 18/27, because the row follows the case.
+- Good: provenance per input is on the wire and measured
+  (`formula-input-provenance` in Langfuse, one score per formula card), and so
+  is a stated result (`card-validity`, `stripped`).
 - Good: two variants of one wall in tabs each keep their own what-if, because
   the surface's data model holds it.
-- Bad: a formula is ours to keep. Each needs its citation, its hand-computed
-  cases and its dictionary words, and the formulas exist only in TypeScript, so
-  the backend can validate a card but not compute it.
+- Bad: a rule and its tables are ours to keep. Each needs its citation, its
+  hand-computed cases and its dictionary words, and the next Ausgabe of the
+  Richtlinien (2027 is in draft) means re-reading every row.
+- Bad: the rules exist only in TypeScript, so the backend can validate a card
+  but not compute it.
 - Bad: ÖNORM EN ISO 6946 is a paid standard outside the corpus. Its
   conventional surface resistances (R_si 0,13 / 0,10 / 0,17, R_se 0,04 m²K/W)
-  agree across published sources, and the table is cited as Tabelle 7 of the
-  2017 edition; a reviewer with the standard confirms both.
+  agree across published sources and are cited as EN ISO 6946:2017, 6.8 and
+  Annex C; a reviewer with the standard confirms them.
 - Neutral: `calculation` operands could gain the same inputs, and the
   schematics (`stair_diagram`, `guardrail_check`) after them. That is the next
   slice, not this one.
@@ -133,14 +160,20 @@ the card computes. `calculation` keeps every other derivation.
 ### Confirmation
 
 - `frontends/ui/src/features/grid-cards/lib/formulas.spec.ts`: every case in
-  `shared/cards/formula-cases.json` recomputes to its hand-computed value and
-  verdicts, what-if cases included; the checkable quantities are one list.
-- `FormulaCard.spec.tsx`: an input change recomputes and is marked as the
-  reader's; „Zurücksetzen" restores the source; an unknown input cannot be
-  judged; nothing is fetched or sent; through the real A2UI renderer a
-  variant's what-if survives a tab switch (it fails with the binding removed).
+  `formula-cases.json` (beside it) compiles, evaluates and is judged to its
+  hand-computed values and verdicts, what-if and boundary cases included; the
+  transcribed tables are pinned.
+- `calculate.spec.ts`: a sum and a ratio on the bound up to floating point
+  pass, a value a real margin past it fails and prints far enough to show it,
+  a division by zero carries through the steps built on it.
+- `FormulaCard.spec.tsx`: a change recomputes once the field settles, never
+  mid-number; it is marked as the reader's beside the field, the verdicts and
+  the header; „Zurücksetzen" restores and stays mounted; the stair type picks
+  the row; a refused entry is said as refused; nothing is fetched or sent;
+  through the real A2UI renderer a variant's what-if survives a tab switch (it
+  fails with the binding removed).
 - `tests/aiq_agent/cards/test_formula_card.py`: every fixture card validates; a
-  limit without its Punkt, a limit on another formula's quantity and a stated
-  result are refused or dropped; the provenance score counts what it says.
+  result and a `limits` list are dropped and counted; a figure in a title, a
+  label or a note is refused, an identifier is not; the case is required.
 - `task be:eval:answer-suite` before and after, on a machine with the corpus,
-  because the card contract the model reads gained a trigger row.
+  because the card contract the model reads changed.

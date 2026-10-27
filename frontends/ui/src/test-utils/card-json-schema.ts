@@ -20,22 +20,13 @@ import { dirname, join } from 'node:path'
  * `fileURLToPath` throws.
  */
 export function loadCardJsonSchema(): unknown {
-  return loadSharedCardFile('schemas.json')
-}
-
-/**
- * Any JSON file in `shared/cards/`, read the same way and for the same reason:
- * the formula card's hand-computed cases (`formula-cases.json`) are shared
- * with the backend's tests and live beside the schema.
- */
-export function loadSharedCardFile(name: string): unknown {
   let dir = process.cwd()
   for (;;) {
-    const candidate = join(dir, 'shared', 'cards', name)
+    const candidate = join(dir, 'shared', 'cards', 'schemas.json')
     if (existsSync(candidate)) return JSON.parse(readFileSync(candidate, 'utf8'))
     const parent = dirname(dir)
     if (parent === dir) {
-      throw new Error(`shared/cards/${name} not found in any directory above ${process.cwd()}`)
+      throw new Error(`shared/cards/schemas.json not found in any directory above ${process.cwd()}`)
     }
     dir = parent
   }

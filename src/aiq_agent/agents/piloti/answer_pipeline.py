@@ -437,6 +437,7 @@ async def _checked_envelope_card(
     """One envelope card validated, repaired once on a shape miss, or ``None`` (recorded)."""
     from aiq_agent.cards.envelope import REFUSED_SHAPE
     from aiq_agent.cards.envelope import validate_model_card
+    from aiq_agent.cards.models import stated_result_fields
     from aiq_agent.common.turn_status import CARD_INVALID_DROPPED
     from aiq_agent.common.turn_status import CARD_INVALID_REPAIRED
     from aiq_agent.common.turn_status import emit_card_invalid
@@ -456,6 +457,17 @@ async def _checked_envelope_card(
     if validated is None:
         emit_card_invalid(card_type=card_type, index=index, outcome=CARD_INVALID_DROPPED)
         emit_scores([card_validity_score(outcome="dropped", card_type=card_type, index=index)], writer="piloti")
+        return None
+    # A computing card that stated what it computes (a `result`, a formula's
+    # `limits`) validates, because validation drops unknown fields. Counted, so
+    # a model that keeps stating results is seen rather than silently corrected.
+    stated = stated_result_fields(payload)
+    if stated:
+        logger.info("envelope card %d (%s): %d stated result field(s) removed", index, card_type, stated)
+        emit_scores(
+            [card_validity_score(outcome="stripped", card_type=card_type, index=index, fields=stated)],
+            writer="piloti",
+        )
     return validated
 
 

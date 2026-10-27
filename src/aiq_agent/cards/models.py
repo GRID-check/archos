@@ -683,15 +683,17 @@ Each is ONE formula the renderer evaluates directly. They were chosen against
 the arithmetic that actually appears in Austrian Baurecht answers, not against
 what an expression grammar would cover:
 
-    sum           Σ factorᵢ · valueᵢ   Schrittmaßregel (2 × 17 + 30), Gehweglänge,
+    sum           Σ factorᵢ · valueᵢ   a Netto-Grundfläche from its rooms, a
                                        Gesamthöhe, a Restbreite (negative factor)
     product       Π valueᵢ             Stellplatzbedarf (14 WE × 1,0), an area
-    quotient      v₁ ÷ v₂              GFZ (BGF ÷ Grundfläche), Brandlast je m²,
-                                       U = 1 ÷ R (numerator 1)
-    percent_of    v₁ · v₂ ÷ 100        erforderliche Lichteintrittsfläche (10 % der
-                                       Bodenfläche), Grünflächenanteil
+    quotient      v₁ ÷ v₂              GFZ (BGF ÷ Grundfläche), Brandlast je m²
+    percent_of    v₁ · v₂ ÷ 100        Grünflächenanteil
     percent_ratio v₁ ÷ v₂ · 100        Bebauungsgrad, Rampenneigung — the result is a
                                        percentage and the renderer prints '%' for it
+
+The four named rules (a U-value from its layers, the Schrittmaßregel, the
+Gehweglänge, the Lichteintrittsfläche) are a :class:`FormulaCard`, not a
+derivation: their bounds are the Richtlinie's, and the renderer owns them.
 
 Anything more composite is expressed as SEVERAL steps, with a later step
 referencing an earlier one's result (:attr:`CalculationOperand.step`).
@@ -715,7 +717,7 @@ class CalculationOperand(CardModel):
     label: str = Field(
         description=(
             "What this number IS, e.g. 'Steigung', 'Bruttogeschossfläche', 'Grundfläche'. Empty ONLY for a "
-            "bare constant that names itself, such as the 1 in a U-value's 1 ÷ R — everything a reader "
+            "bare constant that names itself, such as the 100 of a percentage — everything a reader "
             "has to look up needs its name under it"
         ),
     )
@@ -733,8 +735,8 @@ class CalculationOperand(CardModel):
     factor: float | None = Field(
         default=None,
         description=(
-            "Only on a 'sum': the RULE's own multiplier for this term, e.g. 2 in the Schrittmaßregel "
-            "'2 × Steigung + Auftritt'. Negative subtracts the term. Omit for a plain +1 — never use it "
+            "Only on a 'sum': the RULE's own multiplier for this term, e.g. 2 for a "
+            "two-sided Abstand. Negative subtracts the term. Omit for a plain +1 — never use it "
             "to smuggle a second measured quantity in, which is what a 'product' step is for"
         ),
     )
@@ -790,7 +792,9 @@ class CalculationStep(CardModel):
     card, so there is no field here for the model to disagree with it in.
     """
 
-    label: str = Field(min_length=1, description="What this step computes, e.g. 'Schrittmaß', 'Geschossflächenzahl'")
+    label: str = Field(
+        min_length=1, description="What this step computes, e.g. 'Netto-Grundfläche', 'Geschossflächenzahl'"
+    )
     operation: CalculationOperation = Field(
         description=(
             "Which of the five shapes this step is: 'sum' (Σ factor × value), 'product' (Π value), "
@@ -838,10 +842,11 @@ class CalculationLimit(CardModel):
     value: float = Field(description="The bound. With 'between', this is the LOWER bound")
     upper: float | None = Field(
         default=None,
-        description="With 'between': the upper bound, e.g. 65 for the Schrittmaßregel's 59–65 cm. Otherwise omit",
+        description="With 'between': the upper bound of the range. Otherwise omit",
     )
     label: str | None = Field(
-        default=None, description="Optional name of the limit, e.g. 'Schrittmaßregel'; omit when the reference says it"
+        default=None,
+        description="Optional name of the limit, e.g. 'Netto-Grundfläche'; omit when the reference says it",
     )
     reference: NormReference | None = Field(default=None, description="Where the bound is written. Never invent one")
 
@@ -860,10 +865,12 @@ class CalculationLimit(CardModel):
 class CalculationCard(CardModel):
     """Emit for the arithmetic behind a number — the Rechenweg a Ziviltechniker re-checks.
 
-    Whenever the answer computes something (the Schrittmaßregel, a GFZ, a
-    Brandlast, a required parking count, a U-value from its resistances), this
-    card is the derivation laid out line by line instead of a sentence the
-    reader has to re-derive to trust.
+    Whenever the answer computes something (a GFZ, a Brandabschnitt's
+    Netto-Grundfläche, a Brandlast, a required parking count), this card is the
+    derivation laid out line by line instead of a sentence the reader has to
+    re-derive to trust. The four named rules are NOT a calculation: a U-value
+    from its layers, the Schrittmaßregel, an escape route's Gehweglänge and a
+    Lichteintrittsfläche are a `formula`, which owns their bounds.
 
     YOU SUPPLY THE INPUTS, NEVER THE ANSWER. Give each operand its label, value
     and unit, name the operation, and give the limit if there is one. The card
@@ -879,7 +886,7 @@ class CalculationCard(CardModel):
     """
 
     type: Literal["calculation"]
-    title: str = Field(min_length=1, description="What is being computed, e.g. 'Schrittmaßregel – Treppenlauf Haus A'")
+    title: str = Field(min_length=1, description="What is being computed, e.g. 'Netto-Grundfläche Brandabschnitt BA 2'")
     steps: list[CalculationStep] = Field(
         min_length=1,
         max_length=4,
@@ -910,28 +917,50 @@ class CalculationCard(CardModel):
 
 # ── Formula card: a named rule whose inputs the reader may change ────────────
 #
-# `formula` is `calculation`'s sibling for the handful of rules an Austrian
-# architect computes again and again, where the question after the answer is
-# always "and what if?" (ADR-0143): the insulation that would meet the U-value,
-# the riser that keeps the Schrittmaß, the shorter escape route. The model names
-# the rule from a CLOSED set and fills its inputs from cited sources; the
-# renderer owns the arithmetic (`frontends/ui/src/features/grid-cards/lib/
-# formulas.ts`), recomputes it in the browser when the reader changes an input,
-# and judges every result against the cited limits.
+# `formula` is `calculation`'s sibling for the four rules an Austrian architect
+# computes again and again, where the question after the answer is always "and
+# what if?" (ADR-0143): the insulation that would meet the U-value, the riser
+# that keeps the Schrittmaß, the shorter escape route, the larger window. The
+# model names the rule from a CLOSED set, names the case the rule asks for (the
+# stair type, the component, where the route is measured from) and fills the
+# inputs from cited sources. The renderer owns everything else
+# (`frontends/ui/src/features/grid-cards/lib/formulas.ts`): it compiles the rule
+# to `calculation` steps, evaluates them with `calculation`'s own arithmetic,
+# derives the bound from the Richtlinie's table for that case, and judges.
 #
-# Three things are deliberately not on the wire:
+# Four things are deliberately not on the wire:
 #
-#   - a RESULT, for the reason `calculation` has none: a stated result that
-#     disagreed with its inputs is the worst artefact this product can make;
-#   - a UNIT: each input's unit is fixed by its formula, so a thickness cannot
-#     arrive in metres where the rule expects centimetres;
-#   - an EXPRESSION: the rule is a name, its arithmetic a tested function. A
-#     formula string would be code the browser must parse and trust.
+#   - a RESULT, for the reason `calculation` has none;
+#   - a UNIT: each input's unit is fixed by its formula;
+#   - an EXPRESSION: the rule is a name, its arithmetic a tested function;
+#   - a LIMIT: the bound is the Richtlinie's, read from a typed table in the
+#     renderer for the case the model named (OIB-RL 4 Tabelle 3 by stair type,
+#     OIB-RL 6 Pkt. 4.4.1 by component, OIB-RL 2 Pkt. 5.1.1, OIB-RL 3 Pkt.
+#     9.1.1 to 9.1.4). The model may choose the case; it never writes the number.
 #
-# A limit is a cited statement, never an input: it carries its NormReference,
-# with the Punkt, and the reader cannot change it.
+# No figure in free text either: a title or a label that carries a value goes
+# stale the moment the reader changes the input it repeats.
 
-FormulaHeatFlow = Literal["horizontal", "upward", "downward"]
+FormulaStairType = Literal["main", "dwelling", "secondary"]
+FormulaComponent = Literal["external_wall", "roof_or_ceiling_to_outside_air", "floor_over_outside_air"]
+FormulaRouteStart = Literal["room", "dwelling_entrance"]
+
+#: A figure with a unit of measure, or a stated result (`= 0,17`). Refused in a
+#: formula card's title, labels and note: the card computes the figures, and one
+#: written into text beside it disagrees with the card the moment an input moves.
+#: Identifiers are not figures: „AW 01", „Büro 2.14", „2. OG" pass.
+_FIGURE_IN_TEXT = re.compile(
+    r"(?:=\s*-?\d)|(?:\d+(?:[.,]\d+)?\s*(?:mm|cm|dm|m²|m2|m³|m|%|°|W/|kWh)(?![A-Za-zÄÖÜäöüß]))"
+)
+
+
+def _no_figure(value: str | None, field: str) -> str | None:
+    if value and _FIGURE_IN_TEXT.search(value):
+        raise ValueError(
+            f"`{field}` names the component, never a value: '{value}' carries a figure the card computes. "
+            "Put figures in the inputs"
+        )
+    return value
 
 
 class FormulaInput(CardModel):
@@ -994,31 +1023,51 @@ class FormulaInput(CardModel):
 class UValueLayer(CardModel):
     """One homogeneous layer of a component, inside to outside."""
 
-    label: str = Field(min_length=1, description="The layer, e.g. 'Mineralwolle', 'Stahlbeton', 'Innenputz'")
+    label: str = Field(
+        min_length=1, description="The layer's material, never its thickness: 'Mineralwolle', 'Stahlbeton'"
+    )
     thickness: FormulaInput = Field(description="Thickness d in cm")
     conductivity: FormulaInput = Field(description="Thermal conductivity λ in W/(m·K), the design value")
 
+    @field_validator("label")
+    @classmethod
+    def _label_names_the_material(cls, value: str) -> str:
+        return _no_figure(value, "label") or value
+
 
 class UValueFormula(CardModel):
-    """U = 1 / (R_si + Σ d/λ + R_se), for a component of homogeneous layers (ÖNORM EN ISO 6946).
+    """U = 1 / (R_si + Σ d/λ + R_se), for an opaque component of homogeneous layers (ÖNORM EN ISO 6946).
 
-    The surface resistances are the standard's conventional values for the heat
-    flow direction, fixed by the renderer. Air layers, inhomogeneous layers and
-    the standard's corrections are out of scope: say so in the card's `note`
-    when the component has them.
+    `component` picks the row of OIB-RL 6 Pkt. 4.4.1 the card holds the U-value
+    against, and with it the heat-flow direction for the surface resistances:
+    an external wall (row 1, horizontal), a ceiling or roof slope against
+    outside air (row 18, upward; a slope steeper than 60° counts as a wall),
+    a ceiling over outside air such as a passage (row 22, downward). Only
+    components against outside air: elsewhere R_se is not the standard's 0,04.
+    Air layers, inhomogeneous layers and the standard's corrections are out of
+    scope.
     """
 
     name: Literal["u_value"]
-    heat_flow: FormulaHeatFlow = Field(
-        description="Direction of heat flow: 'horizontal' (a wall), 'upward' (a roof), 'downward' (a floor above air)"
+    component: FormulaComponent = Field(
+        description=(
+            "Which component: 'external_wall', 'roof_or_ceiling_to_outside_air' (a ceiling or roof slope, "
+            "slopes over 60° are walls), 'floor_over_outside_air' (a ceiling over a passage or parking deck)"
+        )
     )
     layers: list[UValueLayer] = Field(min_length=1, max_length=8, description="The layers, inside to outside")
 
 
 class StairStepRuleFormula(CardModel):
-    """The Schrittmaßregel: 2 × Stufenhöhe + Stufenauftritt (OIB-Richtlinie 4, Pkt. 3.2.1)."""
+    """2 × Stufenhöhe + Stufenauftritt = 62 ± 3 cm, and Tabelle 3's row for the stair (OIB-RL 4 Pkt. 3.2.1)."""
 
     name: Literal["stair_step_rule"]
+    stair_type: FormulaStairType = Field(
+        description=(
+            "The row of Tabelle 3: 'main' (Haupttreppe, not a Wohnungstreppe), 'dwelling' (Wohnungstreppe, "
+            "inside one dwelling), 'secondary' (Nebentreppe)"
+        )
+    )
     riser: FormulaInput = Field(description="Stufenhöhe (Steigung) s in cm")
     going: FormulaInput = Field(description="Stufenauftritt a in cm")
 
@@ -1026,23 +1075,51 @@ class StairStepRuleFormula(CardModel):
 class EscapeRouteSegment(CardModel):
     """One leg of the escape route, measured along the walking line."""
 
-    label: str = Field(min_length=1, description="The leg, e.g. 'Raum → Gang', 'Gang → Treppenhaus'")
+    label: str = Field(min_length=1, description="The leg, by its ends, never its length: 'Raum → Gang'")
     length: FormulaInput = Field(description="Length in m")
+
+    @field_validator("label")
+    @classmethod
+    def _label_names_the_leg(cls, value: str) -> str:
+        return _no_figure(value, "label") or value
 
 
 class EscapeRouteLengthFormula(CardModel):
-    """The Gehweglänge: the legs of one escape route added up (OIB-Richtlinie 2, Pkt. 5.1.1)."""
+    """The Gehweglänge, its legs added up, against 40 m (OIB-RL 2 Pkt. 5.1.1 and 5.1.2)."""
 
     name: Literal["escape_route_length"]
+    start: FormulaRouteStart = Field(
+        description=(
+            "Where the route starts: 'room', the most remote point of the room (Pkt. 5.1.1); "
+            "'dwelling_entrance', the Wohnungseingangstüre, for a dwelling over at most two storeys whose "
+            "route leads to a Treppenhaus or Außentreppe (Pkt. 5.1.2, cases b and c)"
+        )
+    )
     segments: list[EscapeRouteSegment] = Field(min_length=1, max_length=8, description="The legs in walking order")
 
 
 class DaylightRatioFormula(CardModel):
-    """Lichteintrittsfläche as a percentage of the room's Bodenfläche (OIB-Richtlinie 3, Pkt. 9.1.1)."""
+    """Lichteintrittsfläche against the room's Bodenfläche (OIB-RL 3 Pkt. 9.1.1, 9.1.3, 9.1.4).
+
+    The required share is 12 %, raised to 15 % by an overhang over 1,50 m, by
+    2 % per started metre of overhang beyond 3,00 m, and by 1 % per started
+    metre of room depth beyond 5,00 m; the renderer derives it from the inputs.
+    The free light angle of 45° (Pkt. 9.1.2) is a precondition the card states
+    and does not check.
+    """
 
     name: Literal["daylight_ratio"]
-    glazing_area: FormulaInput = Field(description="Lichteintrittsfläche (architectural opening) in m²")
+    opening_area: FormulaInput = Field(
+        description="Lichteintrittsfläche: the Architekturlichte of the room's windows and skylights, in m²"
+    )
     floor_area: FormulaInput = Field(description="Bodenfläche of the room in m²")
+    room_depth: FormulaInput = Field(description="Raumtiefe in m, measured from the façade with the openings")
+    overhang_depth: FormulaInput = Field(
+        description=(
+            "Depth of an overhang of the same building that shades the openings (balcony, eaves, loggia), "
+            "from the façade, in m. 0 when there is none"
+        )
+    )
 
 
 FormulaSpec = Annotated[
@@ -1050,88 +1127,50 @@ FormulaSpec = Annotated[
     Field(discriminator="name"),
 ]
 
-#: What a limit may be checked against, per formula: its results, and the inputs
-#: a Bestimmung bounds on their own (OIB-RL 4's Stufenhöhe and Auftritt).
-#: Mirrored in `formulas.ts` (`FORMULA_TARGETS`); the shared fixture
-#: `shared/cards/formula-cases.json` holds the two to the same set.
-FORMULA_TARGETS: dict[str, frozenset[str]] = {
-    "u_value": frozenset({"u_value"}),
-    "stair_step_rule": frozenset({"step_measure", "riser", "going"}),
-    "escape_route_length": frozenset({"route_length"}),
-    "daylight_ratio": frozenset({"daylight_ratio"}),
-}
-
-
-class FormulaLimit(CardModel):
-    """A Bestimmung one result is held against: a cited statement, which the reader cannot change."""
-
-    target: str = Field(
-        description=(
-            "Which quantity: 'u_value' (W/(m²K)); 'step_measure', 'riser' or 'going' (cm); 'route_length' (m); "
-            "'daylight_ratio' (%). The bound is in that unit"
-        )
-    )
-    comparator: Literal["<=", ">=", "between"] = Field(description="At most, at least, or inside a range")
-    value: float = Field(description="The bound, as the Bestimmung states it. With 'between', the LOWER bound")
-    upper: float | None = Field(default=None, description="With 'between': the upper bound. Otherwise omit")
-    label: str | None = Field(default=None, description="Optional name, e.g. 'Schrittmaßregel'")
-    reference: NormReference = Field(
-        description="Where the bound is written, with its Punkt. Required: a limit nobody can look up is left out"
-    )
-
-    @model_validator(mode="after")
-    def _bound_is_well_formed(self) -> "FormulaLimit":
-        if self.comparator == "between":
-            if self.upper is None or self.upper <= self.value:
-                raise ValueError("a 'between' limit needs an `upper` above `value`")
-        elif self.upper is not None:
-            raise ValueError("`upper` is only meaningful with comparator 'between'")
-        if not (self.reference.section or "").strip():
-            raise ValueError("a limit's reference names its Punkt or Tabelle (`section`)")
-        return self
-
 
 class FormulaCard(CardModel):
-    """Emit for a number worked out by one of the named rules, so the reader can ask "what if" on the card.
+    """Emit for a number worked out by one of four named rules, so the reader can ask "what if" on the card.
 
-    The rules: a U-value from its layers (u_value), the Schrittmaßregel
-    (stair_step_rule), an escape route's Gehweglänge (escape_route_length), and
-    the Lichteintrittsfläche against the Bodenfläche (daylight_ratio). Anything
-    else worked out is a `calculation`.
+    The rules: a U-value from its layers (u_value), the Schrittmaßregel and the
+    stair table (stair_step_rule), an escape route's Gehweglänge
+    (escape_route_length), the Lichteintrittsfläche against the Bodenfläche
+    (daylight_ratio). Anything else worked out is a `calculation`.
 
-    YOU SUPPLY THE INPUTS AND THE CITED LIMITS, NEVER THE RESULT. Fill each input
-    from the project's documents, the user's own figures or the norm, and say in
-    `source` where each one is written. An input you do not have stays null: the
-    card says it cannot judge, and the reader can enter an assumption. The card
-    computes, recomputes when the reader changes an input, marks a changed value
-    as the reader's assumption, and judges each result against `limits`. A limit
-    you cannot cite with its Punkt stays out, and then the card judges nothing.
+    YOU SUPPLY THE CASE AND THE INPUTS, NEVER A NUMBER OF YOUR OWN. Name the
+    case the rule asks for (`stair_type`, `component`, `start`) and fill each
+    input from the project's documents, the user's own figures or the norm,
+    with `source` saying where it is written. An input you do not have stays
+    null: the card says it cannot judge, and the reader can enter an
+    assumption. The card computes, takes the bound from the Richtlinie's table
+    for that case, judges, and recomputes when the reader changes an input.
+    The title names the component („U-Wert Außenwand AW 01"), never a value.
     """
 
     type: Literal["formula"]
-    title: str = Field(min_length=1, description="What is worked out, e.g. 'U-Wert Außenwand – 20 cm Dämmung'")
-    formula: FormulaSpec = Field(description="The rule, by `name`, with its inputs")
-    limits: list[FormulaLimit] = Field(
-        default_factory=list,
-        max_length=4,
-        description="The Bestimmungen the results are held against, each cited. Empty: the card judges nothing",
+    title: str = Field(
+        min_length=1,
+        description="The component the rule is applied to, never a value: 'U-Wert Außenwand AW 01', 'Stiege Haus B'",
     )
-    note: str | None = Field(default=None, description="Optional one-line caveat, e.g. what the rule leaves out")
+    formula: FormulaSpec = Field(description="The rule, by `name`, with its case and its inputs")
+    note: str | None = Field(
+        default=None,
+        description="Optional one-line caveat in words, never a figure or a result, e.g. what the rule leaves out",
+    )
 
-    @model_validator(mode="after")
-    def _limits_name_this_formulas_quantities(self) -> "FormulaCard":
-        allowed = FORMULA_TARGETS[self.formula.name]
-        for limit in self.limits:
-            if limit.target not in allowed:
-                raise ValueError(
-                    f"a '{self.formula.name}' limit targets one of {sorted(allowed)}, not '{limit.target}'"
-                )
-        return self
+    @field_validator("title")
+    @classmethod
+    def _title_names_the_component(cls, value: str) -> str:
+        return _no_figure(value, "title") or value
+
+    @field_validator("note")
+    @classmethod
+    def _note_states_no_figure(cls, value: str | None) -> str | None:
+        return _no_figure(value, "note")
 
 
 _FORMULA_SLOTS: dict[str, tuple[str, ...]] = {
     "stair_step_rule": ("riser", "going"),
-    "daylight_ratio": ("glazing_area", "floor_area"),
+    "daylight_ratio": ("opening_area", "floor_area", "room_depth", "overhang_depth"),
 }
 
 
@@ -1144,6 +1183,27 @@ def formula_inputs(card: dict[str, Any]) -> list[dict[str, Any]]:
     if name == "escape_route_length":
         return [segment["length"] for segment in formula.get("segments") or []]
     return [formula[slot] for slot in _FORMULA_SLOTS.get(str(name), ()) if isinstance(formula.get(slot), dict)]
+
+
+#: Fields no computing card has: a model that writes one is stating what the
+#: renderer computes. They are dropped by validation like any unknown field,
+#: and counted (`card-validity`, outcome `stripped`) so the drop is seen.
+_STATED_RESULT_KEYS = frozenset({"result", "results", "limits"})
+
+
+def stated_result_fields(payload: Any) -> int:
+    """How many fields of a raw ``calculation`` or ``formula`` payload state what the card computes. Pure."""
+    if not isinstance(payload, dict) or payload.get("type") not in ("calculation", "formula"):
+        return 0
+
+    def walk(node: Any) -> int:
+        if isinstance(node, dict):
+            return sum((key in _STATED_RESULT_KEYS) + walk(value) for key, value in node.items())
+        if isinstance(node, list):
+            return sum(walk(item) for item in node)
+        return 0
+
+    return walk(payload)
 
 
 # ── Document-surfacing card (system-emitted) ─────────────────────────────────
@@ -2377,7 +2437,6 @@ __all__ = [
     "CardModel",
     "FormulaCard",
     "FormulaInput",
-    "FormulaLimit",
     "DocumentDraftCard",
     "DocumentGridCard",
     "GridCard",
@@ -2401,6 +2460,8 @@ __all__ = [
     "ProjectProfilePatchPreviewItem",
     "TaskCreatedCard",
     "flatten_card_markup",
+    "formula_inputs",
+    "stated_result_fields",
     "grid_card_adapter",
     "validate_cards",
 ]

@@ -526,32 +526,44 @@ export const chat = {
     // is saved nowhere.
     formula: {
       eyebrow: 'What if',
-      hint: 'Change a value and the result recomputes at once. Nothing is saved.',
+      hint: 'Change a value and the result is recomputed at once. Nothing is saved.',
       inputsLabel: 'Inputs',
       derivationLabel: 'Derivation',
       checksLabel: 'Assessment',
-      // Beside a value the reader changed. It is their assumption, not the
-      // source's statement, and that has to be visible before it is passed on.
+      notesLabel: 'Notes',
+      // Beside a value the reader changed, and beside every verdict resting on
+      // it. It is their assumption, not the source's statement, and that has to
+      // be visible before it is passed on.
       yourAssumption: 'Your assumption',
+      // Beside the verdict in the card's header, when it rests on an assumption.
+      withYourAssumptions: 'with your assumptions',
       sourceValue: 'Source: {value}',
       sourceMissing: 'Source: no value',
       // Shown in an empty field whose value the source does not give.
       missingPlaceholder: 'missing',
-      fixed: 'fixed',
+      fixed: 'given',
       reset: 'Reset',
       resetLabel: 'Reset every value to the source',
       withAssumptions: "Computed with your assumptions, not the source's values.",
-      noLimits: 'No cited limit: the card computes, but judges nothing.',
       cannotJudge: 'A value is missing: without it the card cannot judge.',
+      inputRejected: 'A value you entered is not admissible: with it the card cannot judge.',
       undefinedResult: 'Divided by zero: the result is not defined.',
+      zeroNotPossible: '{quantity} = 0 is not possible.',
       invalidNumber: 'Not a number.',
       outOfRange: 'Allowed: {min} to {max} {unit}.',
-      // For screen readers, when the result has been recomputed after an input.
-      recomputed: 'Recomputed: {verdict}',
-      heatFlow: {
-        horizontal: 'Heat flow horizontal (wall)',
-        upward: 'Heat flow upward (roof)',
-        downward: 'Heat flow downward (floor)',
+      // For screen readers, once the result is recomputed: every verdict with
+      // its quantity, value, limit and outcome.
+      recomputed: 'Recomputed. {checks}',
+      checkSpoken: '{name}: {value}, limit {bound}, {verdict}.',
+      component: {
+        external_wall: 'External wall against outside air',
+        roof_or_ceiling_to_outside_air: 'Ceiling or roof slope against outside air',
+        floor_over_outside_air: 'Ceiling over outside air',
+      },
+      stairType: {
+        main: 'Main stair',
+        dwelling: 'Stair within a dwelling',
+        secondary: 'Secondary stair',
       },
       input: {
         riser: 'Riser height s',
@@ -559,14 +571,36 @@ export const chat = {
         thickness: 'Thickness d',
         conductivity: 'Thermal conductivity λ',
         length: 'Length',
-        glazingArea: 'Glazing area',
+        openingArea: 'Glazing area',
+        floorArea: 'Floor area',
+        roomDepth: 'Room depth',
+        overhangDepth: 'Overhang',
+      },
+      // What „{quantity} = 0 is not possible." names.
+      zeroQuantity: {
+        conductivity: 'λ',
         floorArea: 'Floor area',
       },
       term: {
+        riser: 'Riser height s',
+        going: 'Going a',
+        thickness: 'd {layer}',
+        conductivity: 'λ {layer}',
+        length: '{layer}',
+        openingArea: 'Glazing area',
+        floorArea: 'Floor area',
+        roomDepth: 'Room depth',
+        overhangDepth: 'Overhang',
         surfaceInside: 'R_si',
         surfaceOutside: 'R_se',
         layerResistance: 'R {layer}',
         totalResistance: 'R_T',
+        baseShare: 'Base requirement (Pkt. 9.1.1)',
+        raisedShare: 'Overhang over 1.50 m (Pkt. 9.1.3)',
+        overhangIncrement: 'Overhang over 3.00 m (Pkt. 9.1.3)',
+        overhangIncrementMetres: 'Overhang over 3.00 m: {metres} started m (Pkt. 9.1.3)',
+        depthIncrement: 'Room depth over 5.00 m (Pkt. 9.1.4)',
+        depthIncrementMetres: 'Room depth over 5.00 m: {metres} started m (Pkt. 9.1.4)',
       },
       line: {
         layerResistance: 'Thermal resistance {layer}',
@@ -574,15 +608,29 @@ export const chat = {
         uValue: 'U-value',
         stepMeasure: 'Step measure 2s + a',
         routeLength: 'Escape route length',
-        daylightRatio: 'Glazing area per floor area',
+        daylightShare: 'Glazing area per floor area',
+        requiredShare: 'Required share',
       },
-      target: {
-        uValue: 'U-value',
-        stepMeasure: 'Step measure',
-        riser: 'Riser height',
-        going: 'Going',
-        routeLength: 'Escape route length',
-        daylightRatio: 'Glazing area',
+      check: {
+        stepRule: 'Step rule 62 ± 3 cm',
+        riserMax: 'Riser height',
+        goingMin: 'Going',
+        uMax: 'U-value',
+        routeMax: 'Escape route length',
+        daylightMin: 'Glazing area',
+      },
+      caveat: {
+        uValueNewBuild:
+          'Highest value for a new build (OIB-Richtlinie 6, Pkt. 4.4.1, row {row}). A renovation by single measures follows Pkt. 4.5.',
+        uValueScope:
+          'Homogeneous layers per ÖNORM EN ISO 6946; air layers, inhomogeneous layers and corrections are not included.',
+        routeFromRoom: 'Measured from the most remote point of the room (Pkt. 5.1.1).',
+        routeFromDwelling:
+          'Measured from the dwelling’s entrance door (Pkt. 5.1.2): for a dwelling over at most two storeys whose route leads to a stair enclosure or an external stair.',
+        daylightAngle:
+          'A free light angle of 45° to the horizontal is assumed (Pkt. 9.1.2); the card does not check it.',
+        daylightOtherLaw:
+          'For the room depth, deviating provisions of other law take precedence, such as the workplace regulation (Pkt. 9.1.4).',
       },
     },
     // A document Piloti wrote into this conversation's working directory. Not a

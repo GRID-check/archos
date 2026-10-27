@@ -216,7 +216,7 @@ export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
 
   // Findings. Walked field by field.
   calculation: 'content',
-  // Exported as the SOURCE's inputs and limits: a reader's what-if never
+  // Exported as the rule, its case and the SOURCE's inputs: a reader's what-if never
   // reaches a document, because it was never stored (ADR-0143).
   formula: 'content',
   building_section: 'content',

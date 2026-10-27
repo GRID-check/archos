@@ -60,12 +60,15 @@ logger = logging.getLogger(__name__)
 #: The whole catalog's shapes are far too much for a prefix re-sent on every
 #: call. `calculation` is the one content card an answer earns that Markdown
 #: cannot carry and whose shape is easy to get wrong (operands, a `factor`, a
-#: limit, no result field). The cards that stood here before they were
+#: limit, no result field). `formula` stands beside it since ADR-0143: its
+#: shape is a discriminated `formula` with a case per rule (`stair_type`,
+#: `component`, `start`), and a model guessing it from the index line writes a
+#: `limits` list the card no longer takes. The cards that stood here before they were
 #: deleted (`legal_basis`, `condition_tree`, `process_map`) are written in the
 #: answer's Markdown now (``catalog.RETIRED_CARD_TYPES``). Every other type
 #: keeps its index line, and a miss on one of those is repaired by the small
 #: model rather than by a round.
-ENVELOPE_SHAPE_TYPES: tuple[str, ...] = ("calculation",)
+ENVELOPE_SHAPE_TYPES: tuple[str, ...] = ("calculation", "formula")
 
 #: Composition (ADR-0065). Taught as prose plus one worked shape rather than
 #: through `render_card_details`: the model's `components` field is an A2UI

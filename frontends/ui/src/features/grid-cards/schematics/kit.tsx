@@ -817,6 +817,12 @@ interface SchematicCardProps {
   eyebrow?: string
   title: string
   verdict?: DimStatus | null
+  /**
+   * Beside the verdict pill: what the verdict rests on, when that is not the
+   * source (a formula card judged with the reader's own figures). A node, so
+   * the card composes its own `Chip` with its icon and word.
+   */
+  verdictNote?: ReactNode
   note?: string | null
   reference?: NormReferenceData | null
   children: ReactNode
@@ -831,6 +837,7 @@ export const SchematicCard: FC<SchematicCardProps> = ({
   eyebrow,
   title,
   verdict,
+  verdictNote,
   note,
   reference,
   children,
@@ -845,7 +852,12 @@ export const SchematicCard: FC<SchematicCardProps> = ({
           <Icon className="size-3.5" aria-hidden="true" />
           <span>{eyebrow ?? t('cards.kit.eyebrow')}</span>
         </div>
-        {verdict && <StatusBadge status={verdict} />}
+        {(verdict || verdictNote) && (
+          <span className="flex flex-wrap items-center justify-end gap-1.5">
+            {verdictNote}
+            {verdict && <StatusBadge status={verdict} />}
+          </span>
+        )}
       </div>
 
       <p className="card-title text-foreground">{title}</p>

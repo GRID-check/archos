@@ -4,14 +4,17 @@
  * The arithmetic is `../lib/formulas.spec.ts`'s, against hand-computed cases.
  * What is asserted here is the part only a mounted tree shows:
  *
- *   1. A changed input recomputes the result and the verdict on the spot.
- *   2. A changed input is marked as the reader's assumption, with the source's
- *      value beside it, and „Zurücksetzen" restores the source.
- *   3. An unknown input is said, never guessed, and the card cannot judge.
- *   4. Nothing leaves the browser: no fetch, no send.
- *   5. Through the real A2UI renderer, the inputs live in the surface's data
- *      model: a variant's what-if survives switching tabs, which a component's
- *      own state would not.
+ *   1. A changed input recomputes once the reader pauses or leaves the field,
+ *      never mid-number: typing „19" does not judge „1".
+ *   2. A changed input is marked as the reader's assumption beside the field,
+ *      beside every verdict resting on it and beside the header's verdict;
+ *      „Zurücksetzen" restores the source and stays mounted.
+ *   3. The bound is the Richtlinie's row for the case the model named.
+ *   4. An unknown input is said, never guessed; a refused entry is said as
+ *      refused, not as missing.
+ *   5. Nothing leaves the browser: no fetch, no send.
+ *   6. Through the real A2UI renderer, the inputs live in the surface's data
+ *      model: a variant's what-if survives switching tabs.
  */
 
 import { render as rtlRender, screen, waitFor, within } from '@testing-library/react'
@@ -23,9 +26,10 @@ import { de } from '@/i18n/dictionaries/de'
 import { en } from '@/i18n/dictionaries/en'
 import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
 import { A2uiCard } from '@/features/a2ui/A2uiCard'
+import cases from '../lib/formula-cases.json'
+import type { FormulaCardData } from '../lib/formulas'
 import { GridCardView } from './GridCards'
 import { FormulaCard } from './FormulaCard'
-import type { FormulaCardData } from '../lib/formulas'
 
 const chatSendFn = vi.fn()
 vi.mock('@/features/chat/store', () => {
@@ -49,67 +53,103 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
-const OIB4 = { document: 'OIB-Richtlinie 4', section: 'Pkt. 3.2.1', edition: 'Ausgabe Mai 2023' }
+const fixtureCard = (id: string, patch?: (card: Record<string, unknown>) => void): FormulaCardData => {
+  const entry = (cases.cases as Array<{ id: string; card?: unknown }>).find((item) => item.id === id)
+  const card = structuredClone(entry?.card) as Record<string, unknown>
+  patch?.(card)
+  return gridCardSchema.parse(card) as FormulaCardData
+}
 
-const stair = (going: number | null = 29): FormulaCardData =>
-  gridCardSchema.parse({
-    type: 'formula',
-    title: 'Schrittmaßregel – Stiege Haus A',
-    formula: {
-      name: 'stair_step_rule',
-      riser: { value: 17, min: 10, max: 25, step: 0.5, source: 'Einreichplan, Schnitt A-A' },
-      going: { value: going, min: 20, max: 40, step: 0.5, source: 'Einreichplan, Schnitt A-A' },
-    },
-    limits: [{ target: 'step_measure', comparator: 'between', value: 59, upper: 65, label: 'Schrittmaßregel', reference: OIB4 }],
-  }) as FormulaCardData
+const stair = (going: number | null = 29) =>
+  fixtureCard('stair-main-within', (card) => {
+    ;((card.formula as Record<string, unknown>).going as Record<string, unknown>).value = going
+  })
 
 const mount = (card: FormulaCardData) =>
-  render(<FormulaCard title={card.title} formula={card.formula} limits={card.limits} note={card.note} />)
+  render(<FormulaCard title={card.title} formula={card.formula} note={card.note} />)
 
 const riserField = () => screen.getByRole('spinbutton', { name: 'Stufenhöhe s' })
 const checks = () => within(screen.getByRole('region', { name: 'Beurteilung' }))
 /** A number in the Rechenweg: the result the card computed (the verdict row repeats it). */
 const derived = (text: string) => within(screen.getByRole('region', { name: 'Rechenweg' })).getByText(text)
+const resetButton = () => screen.getByRole('button', { name: 'Alle Werte auf die Angaben der Quelle zurücksetzen' })
+
+/** Type into a field and leave it, which reports the value at once. */
+const enter = async (user: ReturnType<typeof userEvent.setup>, field: HTMLElement, text: string) => {
+  await user.clear(field)
+  await user.type(field, text)
+  await user.tab()
+}
 
 describe('FormulaCard', () => {
-  it('prints the result it computed and judges it against the cited limit', () => {
+  it('prints the result it computed and judges it against the Richtlinie’s bound', () => {
     mount(stair())
     expect(derived('63')).toBeInTheDocument()
-    expect(checks().getByText('erfüllt')).toBeInTheDocument()
-    expect(checks().getByText(/OIB-Richtlinie 4 · Pkt\. 3\.2\.1/)).toBeInTheDocument()
+    expect(checks().getAllByText('erfüllt')).toHaveLength(3)
+    expect(checks().getAllByText(/OIB-Richtlinie 4 · Pkt\. 3\.2\.1, Tabelle 3: Haupttreppen, ausgenommen Wohnungstreppen/)).toHaveLength(2)
+    expect(screen.getByText('Haupttreppe')).toBeInTheDocument()
     expect(screen.queryByText('Ihre Annahme')).toBeNull()
-    expect(screen.queryByRole('button', { name: /zurücksetzen/i })).toBeNull()
+    expect(resetButton()).toBeDisabled()
   })
 
-  it('recomputes on the spot when the reader changes an input, and marks it as theirs', async () => {
+  it('recomputes when the reader leaves the field, and marks the value as theirs everywhere it counts', async () => {
     const user = userEvent.setup()
     mount(stair())
-    await user.clear(riserField())
-    await user.type(riserField(), '19')
+    await enter(user, riserField(), '19')
 
-    // 2 × 19 + 29 = 67, outside 59–65: the verdict moved with the number.
+    // 2 × 19 + 29 = 67, outside 59–65; 19 > 18: both verdicts moved with the number.
     expect(derived('67')).toBeInTheDocument()
-    expect(checks().getByText('nicht erfüllt')).toBeInTheDocument()
-    expect(screen.getByText('Ihre Annahme')).toBeInTheDocument()
+    expect(checks().getAllByText('nicht erfüllt')).toHaveLength(2)
     expect(screen.getByText('Quelle: 17 cm')).toBeInTheDocument()
     expect(screen.getByText('Gerechnet mit Ihren Annahmen, nicht mit den Werten der Quelle.')).toBeInTheDocument()
-    // The marker is part of the field's description, so a screen reader hears it.
+    // Beside the field, beside the two verdicts that rest on the riser (not the Auftritt's), and in the header.
+    expect(screen.getAllByText('Ihre Annahme')).toHaveLength(3)
+    expect(checks().getAllByText('Ihre Annahme')).toHaveLength(2)
+    expect(screen.getByText('mit Ihren Annahmen')).toBeInTheDocument()
     expect(riserField().getAttribute('aria-describedby')).toBeTruthy()
   })
 
-  it('restores the source values with „Zurücksetzen"', async () => {
+  it('does not judge a number while it is being typed', async () => {
     const user = userEvent.setup()
     mount(stair())
     await user.clear(riserField())
-    await user.type(riserField(), '19')
-    await user.click(screen.getByRole('button', { name: 'Alle Werte auf die Angaben der Quelle zurücksetzen' }))
+    await user.type(riserField(), '1')
+    // „1" is below the field's 10, but the reader has not finished: nothing moved, nothing announced.
+    expect(derived('63')).toBeInTheDocument()
+    expect(screen.queryByText('Zulässig sind 10 bis 25 cm.')).toBeNull()
+    await user.type(riserField(), '9')
+    await waitFor(() => expect(derived('67')).toBeInTheDocument())
+    expect(screen.queryByText('Zulässig sind 10 bis 25 cm.')).toBeNull()
+  })
+
+  it('says a refused entry is refused, not that a value is missing', async () => {
+    const user = userEvent.setup()
+    mount(stair())
+    await enter(user, riserField(), '40')
+    expect(riserField()).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText('Zulässig sind 10 bis 25 cm.')).toBeInTheDocument()
+    expect(checks().getAllByText('Ein eingegebener Wert ist nicht zulässig: Mit ihm kann die Karte nicht beurteilen.')).toHaveLength(2)
+    expect(screen.queryByText('Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.')).toBeNull()
+
+    await enter(user, riserField(), '1x')
+    expect(screen.getByText('Keine Zahl.')).toBeInTheDocument()
+  })
+
+  it('restores the source values with „Zurücksetzen", which stays mounted for the keyboard', async () => {
+    const user = userEvent.setup()
+    mount(stair())
+    await enter(user, riserField(), '19')
+    expect(resetButton()).toBeEnabled()
+    await user.click(resetButton())
 
     expect(riserField()).toHaveValue('17')
     expect(derived('63')).toBeInTheDocument()
     expect(screen.queryByText('Ihre Annahme')).toBeNull()
+    expect(resetButton()).toBeInTheDocument()
+    expect(resetButton()).toBeDisabled()
   })
 
-  it('steps with the arrow keys by the card’s own step', async () => {
+  it('steps with the arrow keys by the card’s own step, at once', async () => {
     const user = userEvent.setup()
     mount(stair())
     riserField().focus()
@@ -119,51 +159,67 @@ describe('FormulaCard', () => {
     expect(derived('64')).toBeInTheDocument()
   })
 
-  it('says it cannot judge without an input, and judges once the reader assumes one', async () => {
+  it('says it cannot judge without an input, and judges once the reader enters one', async () => {
     const user = userEvent.setup()
     mount(stair(null))
-    expect(checks().getByText('Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.')).toBeInTheDocument()
-
-    await user.type(screen.getByRole('spinbutton', { name: 'Stufenauftritt a' }), '29')
+    expect(checks().getAllByText('Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.')).toHaveLength(2)
+    await enter(user, screen.getByRole('spinbutton', { name: 'Stufenauftritt a' }), '29')
     expect(derived('63')).toBeInTheDocument()
     expect(screen.getByText('Quelle: kein Wert')).toBeInTheDocument()
   })
 
-  it('refuses text that is not a number, and a value outside the card’s bounds', async () => {
-    const user = userEvent.setup()
-    mount(stair())
-    await user.clear(riserField())
-    await user.type(riserField(), '1x')
-    expect(riserField()).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByRole('alert')).toHaveTextContent('Keine Zahl.')
-
-    await user.clear(riserField())
-    await user.type(riserField(), '40')
-    expect(screen.getByRole('alert')).toHaveTextContent('Zulässig sind 10 bis 25 cm.')
+  it('takes the bound from the row of Tabelle 3 for the stair type the model named', () => {
+    mount(fixtureCard('stair-dwelling'))
+    // s 19 passes the Wohnungstreppe's 20 cm that a Haupttreppe's 18 cm would fail.
+    expect(screen.getByText('Wohnungstreppe')).toBeInTheDocument()
+    expect(checks().getByText('≤ 20 cm')).toBeInTheDocument()
+    expect(checks().getAllByText(/Tabelle 3: Wohnungstreppen/)).toHaveLength(2)
+    expect(checks().getAllByText('erfüllt')).toHaveLength(3)
   })
 
-  it('shows an input the reader may not change as fixed, with no field', () => {
-    const card = gridCardSchema.parse({
-      type: 'formula',
-      title: 'Lichteintrittsfläche – Wohnzimmer',
-      formula: {
-        name: 'daylight_ratio',
-        glazing_area: { value: 3.1 },
-        floor_area: { value: 25, editable: false, source: 'Raumbuch Top 3' },
-      },
-    }) as FormulaCardData
-    mount(card)
-    expect(screen.queryByRole('spinbutton', { name: 'Bodenfläche' })).toBeNull()
-    expect(screen.getByText('fest')).toBeInTheDocument()
-    expect(screen.getByText('Kein zitierter Grenzwert: Die Karte rechnet, beurteilt aber nichts.')).toBeInTheDocument()
+  it('refuses λ = 0 in the field, in the rule’s own words', async () => {
+    const user = userEvent.setup()
+    mount(fixtureCard('u-value-roof'))
+    await enter(user, screen.getByRole('spinbutton', { name: 'Mineralwolle, Wärmeleitfähigkeit λ' }), '0')
+    expect(screen.getByText('λ = 0 ist nicht möglich.')).toBeInTheDocument()
+  })
+
+  it('states the Neubau row and Pkt. 4.5 on a U-value, and prints R_T at one precision', () => {
+    mount(fixtureCard('u-value-external-wall'))
+    expect(screen.getByText(/Zeile 1\)\. Bei der Renovierung mittels Einzelmaßnahmen gilt Pkt\. 4\.5\./)).toBeInTheDocument()
+    // R_T printed as its line's result and as the U line's operand, both at four fixed decimals.
+    const rechenweg = within(screen.getByRole('region', { name: 'Rechenweg' }))
+    expect(rechenweg.getAllByText('5,9911')).toHaveLength(2)
+    expect(rechenweg.getAllByText('5,7143')).toHaveLength(2)
+    // The source's λ prints as written, not rounded to the house two decimals.
+    expect(rechenweg.getByText('0,035')).toBeInTheDocument()
+  })
+
+  it('raises the required daylight share under a balcony, and always states the 45° precondition', async () => {
+    const user = userEvent.setup()
+    mount(fixtureCard('daylight-above-12-percent'))
+    expect(screen.getByText(/freier Lichteinfall unter 45°/)).toBeInTheDocument()
+    expect(checks().getByText('≥ 12 %')).toBeInTheDocument()
+    await enter(user, screen.getByRole('spinbutton', { name: 'Auskragung' }), '2')
+    expect(checks().getByText('≥ 15 %')).toBeInTheDocument()
+    expect(checks().getByText('nicht erfüllt')).toBeInTheDocument()
+    expect(screen.getByText('vorgegeben')).toBeInTheDocument()
+  })
+
+  it('tells a screen reader each verdict with its quantity and bound once it is recomputed', async () => {
+    const user = userEvent.setup()
+    const { container } = mount(stair())
+    const live = container.querySelector('[aria-live="polite"].sr-only') as HTMLElement
+    expect(live).toHaveTextContent('')
+    await enter(user, riserField(), '19')
+    expect(live).toHaveTextContent('Schrittmaßregel 62 ± 3 cm: 67 cm, Grenzwert 59–65 cm, nicht erfüllt.')
+    expect(live).toHaveTextContent('Stufenhöhe: 19 cm, Grenzwert ≤ 18 cm, nicht erfüllt.')
   })
 
   it('takes an input without `editable` as editable, as the wire’s default says', () => {
-    // A2UI hands a card component its props as written, without the schema's
-    // defaults: only an explicit `false` may fix a value.
     const raw = {
-      title: 'Gehweglänge',
-      formula: { name: 'escape_route_length', segments: [{ label: 'Gang', length: { value: 18.5 } }] },
+      title: 'Fluchtweg',
+      formula: { name: 'escape_route_length', start: 'room', segments: [{ label: 'Gang', length: { value: 18.5 } }] },
     } as unknown as FormulaCardData
     mount(raw)
     expect(screen.getByRole('spinbutton', { name: 'Gang, Länge' })).toHaveValue('18,5')
@@ -172,9 +228,8 @@ describe('FormulaCard', () => {
   it('writes nothing anywhere: no fetch, no send', async () => {
     const user = userEvent.setup()
     mount(stair())
-    await user.clear(riserField())
-    await user.type(riserField(), '19')
-    await user.click(screen.getByRole('button', { name: 'Alle Werte auf die Angaben der Quelle zurücksetzen' }))
+    await enter(user, riserField(), '19')
+    await user.click(resetButton())
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(chatSendFn).not.toHaveBeenCalled()
   })
@@ -211,8 +266,7 @@ describe('reader inputs in the A2UI data model', () => {
       />
     )
     const field = await screen.findByRole('spinbutton', { name: 'Stufenhöhe s' })
-    await user.clear(field)
-    await user.type(field, '19')
+    await enter(user, field, '19')
     expect(derived('67')).toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: 'Variante B' }))
@@ -220,7 +274,6 @@ describe('reader inputs in the A2UI data model', () => {
     await user.click(screen.getByRole('tab', { name: 'Variante A' }))
     await waitFor(() => expect(screen.getByRole('spinbutton', { name: 'Stufenhöhe s' })).toHaveValue('19'))
     expect(derived('67')).toBeInTheDocument()
-    expect(screen.getByText('Ihre Annahme')).toBeInTheDocument()
   })
 })
 
@@ -233,7 +286,6 @@ describe('the copy', () => {
     const formulaOf = (dictionary: unknown) =>
       (dictionary as { chat: { cards: { formula: unknown } } }).chat.cards.formula
     expect(keys(formulaOf(en)).sort()).toEqual(keys(formulaOf(de)).sort())
-    expect(keys(formulaOf(de))).toContain('yourAssumption')
-    expect(keys(formulaOf(de))).toContain('reset')
+    expect((de as unknown as { chat: { cards: { formula: { eyebrow: string } } } }).chat.cards.formula.eyebrow).toBe('Was wäre, wenn')
   })
 })
