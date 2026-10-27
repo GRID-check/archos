@@ -13,7 +13,8 @@
  * field as the new state.
  */
 
-import type { InboxItemType, ShareableResourceType } from '@/lib/db/schema'
+import type { InboxItemType } from '@/lib/db/schema/inbox'
+import type { ShareableResourceType } from '@/lib/db/schema/resource-shares'
 
 export type CollaborationEvent =
   | {

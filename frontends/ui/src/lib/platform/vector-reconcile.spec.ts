@@ -14,7 +14,7 @@ vi.mock('drizzle-orm', async (importOriginal) => ({
   ...(await importOriginal<typeof import('drizzle-orm')>()),
   eq: (column: unknown, value: unknown) => ({ column, value }),
 }))
-vi.mock('@/lib/db/schema', () => ({
+vi.mock('@/lib/db/schema/documents', () => ({
   documents: { collectionName: 'collection_name', filename: 'filename', authoredBy: 'authored_by' },
 }))
 

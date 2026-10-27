@@ -27,7 +27,7 @@ function makeBuilder() {
 }
 
 vi.mock('@/lib/db', () => ({ getDb: () => makeBuilder() }))
-vi.mock('@/lib/db/schema', () => ({
+vi.mock('@/lib/db/schema/projects', () => ({
   projects: { id: 'id', profile: 'profile', profilePromptView: 'profilePromptView' },
 }))
 

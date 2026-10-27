@@ -7,7 +7,7 @@
  */
 
 import { z } from 'zod'
-import { ANSWER_FEEDBACK_REASONS, ANSWER_FEEDBACK_VERDICTS } from '@/lib/db/schema'
+import { ANSWER_FEEDBACK_REASONS, ANSWER_FEEDBACK_VERDICTS } from '@/lib/db/schema/answer-feedback'
 
 /** Client-side chat identifiers are short strings; keep abuse bounded. */
 export const MAX_FEEDBACK_ID_LENGTH = 128

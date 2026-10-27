@@ -31,14 +31,10 @@ import { FEATURE_FLAGS, isCollaborationEnabled } from '@/lib/authz/feature-flags
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { ConflictError, ForbiddenError, NotFoundError, UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type {
-  Conversation,
-  ConversationEngagement,
-  ConversationRead,
-  Message,
-  ResourceRole,
-  ResourceVisibility,
-} from '@/lib/db/schema'
+import type { ConversationRead } from '@/lib/db/schema/conversation-reads'
+import type { Conversation, ConversationEngagement } from '@/lib/db/schema/conversations'
+import type { Message } from '@/lib/db/schema/messages'
+import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import { purgeConversationCollaboration } from '@/lib/collaboration/cleanup'
 import { discardConversationDrafts } from './working-directory'
 import { deleteSessionCollection, purgeSessionDocuments } from '@/lib/session-documents/cleanup'

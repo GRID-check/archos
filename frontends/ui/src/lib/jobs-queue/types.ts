@@ -11,7 +11,7 @@
 
 import { z } from 'zod'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
+import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema/bff-job-queue'
 
 /**
  * The kinds a `bff-jobs` worker knows how to run. A new kind is added here, as a

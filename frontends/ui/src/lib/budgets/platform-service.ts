@@ -1,6 +1,6 @@
 import 'server-only'
 import type { GridSession } from '@/lib/auth/types'
-import type { BudgetPolicy } from '@/lib/db/schema'
+import type { BudgetPolicy } from '@/lib/db/schema/budgets'
 import { hasPlatformPermission, requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { withTenant } from '@/lib/db/tenant-context'

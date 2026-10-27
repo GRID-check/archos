@@ -29,8 +29,8 @@
 
 import { eq, sql } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { projectMemory } from '@/lib/db/schema'
-import type { ProjectMemoryItem } from '@/lib/db/schema'
+import { projectMemory } from '@/lib/db/schema/project-memory'
+import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 import {
   NEAR_DUP_JACCARD_THRESHOLD,
   contentTokens,

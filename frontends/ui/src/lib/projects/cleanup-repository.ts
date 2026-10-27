@@ -8,7 +8,8 @@ import { and, eq, isNull, notExists } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { documents, projectFolders } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
 
 /**
  * Remove a folder the clean-out created, when it is living and empty: no

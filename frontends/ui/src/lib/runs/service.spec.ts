@@ -83,7 +83,8 @@ import {
   mergeMessageMetadata,
   writeMessageContent,
 } from '@/lib/conversations/repository'
-import type { Message, TaskRun } from '@/lib/db/schema'
+import type { Message } from '@/lib/db/schema/messages'
+import type { TaskRun } from '@/lib/db/schema/task-model'
 import { withTenant } from '@/lib/db/tenant-context'
 import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
 import {

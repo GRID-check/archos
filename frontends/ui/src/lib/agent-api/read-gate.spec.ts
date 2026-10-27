@@ -41,7 +41,7 @@ vi.mock('./conversation-audience', async (importOriginal) => ({
 }))
 
 import { audienceReachAmong } from '@/lib/cross-project/audience-reach'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { BACKEND_OPERATIONS, callBackendOperation } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
 import {

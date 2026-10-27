@@ -21,7 +21,7 @@
  */
 
 import { z } from 'zod'
-import { JOB_OUTPUTS, type JobOutput } from '@/lib/db/schema'
+import { JOB_OUTPUTS, type JobOutput } from '@/lib/db/schema/jobs'
 import { skillNameSchema, type KnownSkillAgent, type SkillSnapshot } from '@/lib/skills/types'
 import { isValidCronExpression, isValidTimezone } from './schedule'
 

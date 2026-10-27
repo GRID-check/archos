@@ -52,7 +52,7 @@ import {
   upsertConversationRead,
   visibleConversationsWhere,
 } from './repository'
-import { conversations } from '@/lib/db/schema'
+import { conversations } from '@/lib/db/schema/conversations'
 
 const PROJECT_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301'
 

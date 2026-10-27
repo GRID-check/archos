@@ -24,7 +24,7 @@ import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import { likeContains } from '@/lib/text/like-pattern'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/errors'
-import { bimElements } from '@/lib/db/schema'
+import { bimElements } from '@/lib/db/schema/bim'
 import { internalRead } from '@/lib/documents/document-reader'
 import {
   aggregateBimElements,

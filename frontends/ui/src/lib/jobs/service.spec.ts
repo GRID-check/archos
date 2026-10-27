@@ -118,7 +118,7 @@ import * as repository from '@/lib/tasks/repository'
 import { submitJob, JobSubmitError, JobSubmitSkippedError } from './backend-client'
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { TaskDefinition, TaskRun } from '@/lib/db/schema'
+import type { TaskDefinition, TaskRun } from '@/lib/db/schema/task-model'
 import type { SkillSnapshot } from '@/lib/skills/types'
 import {
   createJob,

@@ -23,7 +23,7 @@ vi.mock('./repository', async (importOriginal) => ({
 
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import { reachForAudience, type SearchReach } from '@/lib/search/reach'
 import { decodeTreeCursor, findFolderIdByPath, listTreeDocuments, listTreeFolders, type TreeDocumentRow } from './repository'

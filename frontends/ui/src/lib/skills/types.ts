@@ -27,7 +27,8 @@ import {
   isSelectableCardType,
   parsePreferredCardTypes,
 } from '@/features/skills/lib/card-catalog'
-import { PLATFORM_SKILL_DELIVERIES, type SkillOrigin } from '@/lib/db/schema'
+import type { SkillOrigin } from '@/lib/db/schema/jobs'
+import { PLATFORM_SKILL_DELIVERIES } from '@/lib/db/schema/platform-skills'
 
 export const MAX_SKILL_NAME_LENGTH = 64
 export const MAX_SKILL_DESCRIPTION_LENGTH = 1024

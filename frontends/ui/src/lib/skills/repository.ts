@@ -11,13 +11,8 @@
 import 'server-only'
 import { and, asc, desc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  curatedSkillActivations,
-  skills,
-  type NewSkill,
-  type CuratedSkillActivation,
-  type Skill,
-} from '@/lib/db/schema'
+import { curatedSkillActivations, type CuratedSkillActivation } from '@/lib/db/schema/curated-skill-activations'
+import { skills, type NewSkill, type Skill } from '@/lib/db/schema/jobs'
 
 /** Hard cap for an organization's skill list. */
 export const SKILLS_LIST_LIMIT = 100

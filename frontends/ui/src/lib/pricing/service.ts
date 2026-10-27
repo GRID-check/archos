@@ -13,7 +13,7 @@
 import 'server-only'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { UnprocessableError } from '@/lib/api/errors'
-import type { PlatformPricingVersion } from '@/lib/db/schema'
+import type { PlatformPricingVersion } from '@/lib/db/schema/platform-pricing'
 import type { PricingRates } from './model'
 import { findActivePricingVersion, insertPricingVersionSuperseding, listPricingHistory } from './repository'
 

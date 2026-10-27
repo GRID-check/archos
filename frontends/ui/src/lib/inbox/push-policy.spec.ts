@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-import { INBOX_ITEM_TYPES } from '@/lib/db/schema'
+import { INBOX_ITEM_TYPES } from '@/lib/db/schema/inbox'
 import {
   applyPushPreferencesPatch,
   DEFAULT_PUSH_PREFERENCES,
