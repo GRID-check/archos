@@ -77,8 +77,9 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
       leading={leading}
       currentUserId={currentUserId}
       autoFocus={autoFocus}
-      savedSearches={
+      savedSearches={(narrow) => (
         <SavedSearchesMenu
+          narrow={narrow}
           items={saved.items}
           failed={saved.failed}
           onApply={(item) => setState(fromSearchBody(item.query, projectFromSavedScope(surface, item.scope)))}
@@ -97,7 +98,7 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
             return created !== null
           }}
         />
-      }
+      )}
     />
   )
   return inset ? <SearchInset>{view}</SearchInset> : view

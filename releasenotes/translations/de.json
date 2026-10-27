@@ -4148,7 +4148,7 @@
     "de": "„Offen“ wird jetzt überall gleich gezählt: Vorschläge von Piloti, die niemand übernommen hat, werden in Dateien, in der Prüfansicht oder vor einer Freigabe nicht mehr als offen gezählt. Sie werden separat ausgewiesen: „2 offen · 12 Vorschläge“, damit die Zahl mit „Offene Punkte“ und dem Protokoll übereinstimmt."
   },
   {
-    "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents with the passage and page, annotations, folders, projects and chats, filtered by document type, parties, place, facts or cited norms. Its register shows one row per document, sortable by any column and exportable as a CSV or Excel drawing list.",
-    "de": "Die Suche findet alles, was das Büro hat, von überall mit Strg+K: Dokumente mit der Fundstelle und Seite, Anmerkungen, Ordner, Projekte und Chats, gefiltert nach Dokumentart, Beteiligten, Ort, Angaben oder zitierten Normen. Ihre Planliste zeigt eine Zeile je Dokument, nach jeder Spalte sortierbar und als CSV oder Excel exportierbar."
+    "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents with the passage and page, annotations, folders, projects and chats, filtered by document type, parties, place, facts or cited norms. Its register shows one row per document, sortable by any column and exportable as a CSV or Excel drawing list. In a project's files and the office filing, Enter in the search field opens it there.",
+    "de": "Die Suche findet alles, was das Büro hat, von überall mit Strg+K: Dokumente mit der Fundstelle und Seite, Anmerkungen, Ordner, Projekte und Chats, gefiltert nach Dokumentart, Beteiligten, Ort, Angaben oder zitierten Normen. Ihre Planliste zeigt eine Zeile je Dokument, nach jeder Spalte sortierbar und als CSV oder Excel exportierbar. In den Dateien eines Projekts und in der Büroablage öffnet Enter im Suchfeld sie dort."
   }
 ]

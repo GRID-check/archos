@@ -445,6 +445,8 @@ export const files: typeof en.files = {
     noDocumentsDescription:
       'Laden Sie die Unterlagen Ihres Projekts hoch: Zeichnungen, Bescheide, Gutachten, Berichte. Piloti liest sie und zitiert daraus, statt aus allgemeinen Hinweisen zu antworten.',
     searchPlaceholder: 'Suchen …',
+    /** Das Feld einer Ablage mit der Suche: Tippen filtert Namen, Enter durchsucht alles. */
+    searchPlaceholderEverything: 'Namen filtern, Enter sucht alles …',
     searchLabel: 'Dateien durchsuchen',
     noMatch: 'Keine Dateien entsprechen „{query}“',
     noMatchDescription:

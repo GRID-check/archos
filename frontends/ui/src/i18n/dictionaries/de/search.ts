@@ -20,6 +20,7 @@ export const search: typeof en.search = {
       project: 'In diesem Projekt suchen: Dokumente, Anmerkungen, Ordner, Chats…',
       office_shelf: 'In der Büroablage suchen: Dokumente und Ordner…',
     },
+    placeholderShort: 'Suchen…',
     modKey: 'Strg',
     label: 'Suchen',
     clear: 'Suche leeren',
@@ -28,6 +29,10 @@ export const search: typeof en.search = {
     label: 'Ansicht',
     list: 'Treffer',
     register: 'Planliste',
+  },
+  more: {
+    label: 'Mehr',
+    savedLabel: 'Gespeicherte Suchen',
   },
   kinds: {
     document: 'Dokumente',
@@ -53,12 +58,20 @@ export const search: typeof en.search = {
   retry: 'Erneut versuchen',
   empty: {
     title: 'Nichts gefunden',
-    description: 'Andere Begriffe versuchen, einen kürzeren Teil der Plannummer oder eine andere Art.',
+    description: 'Andere Begriffe versuchen oder nur den Anfang der Plannummer: „EP“ findet EP-03 und EP-05.',
+    oneKind: 'Gezeigt werden nur {kind}. In den anderen Arten kann etwas passen.',
+    allKinds: 'Alles zeigen',
+    readingTitle: 'Noch nichts gefunden',
+    reading:
+      '{count, plural, one {Piloti liest noch eine Ablage, dort können noch Treffer dazukommen.} other {Piloti liest noch # Ablagen, dort können noch Treffer dazukommen.}}',
+    includeArchived: 'Archivierte einschließen',
+    wholeOffice: 'Im ganzen Büro suchen',
     withFilters: 'Die Filter schließen alles aus, was gepasst hat. Einen entfernen oder alle.',
   },
   notes: {
     building:
       '{count, plural, one {Piloti liest noch, was die Dokumente einer Ablage sind. Bis dahin finden Filter nach Art, Beteiligten und Angaben dort nicht alles.} other {Piloti liest noch, was die Dokumente in # Ablagen sind. Bis dahin finden Filter nach Art, Beteiligten und Angaben dort nicht alles.}}',
+    buildingShort: '{count, plural, one {eine Ablage wird noch gelesen} other {# Ablagen werden noch gelesen}}',
     contentPartial: 'Die Suche im Inhalt der Dokumente hat nur einen Teil dieses Bereichs abgedeckt.',
   },
   passage: {
@@ -116,6 +129,18 @@ export const search: typeof en.search = {
   },
   filters: {
     title: 'Weitere Filter',
+    keyTitle: 'Plannummer und Fassung',
+    sheetTitle: 'Filter',
+    sheetDescription: 'Die Treffer nach Art, Projekt, Plannummer und mehr eingrenzen. Jeder Filter wirkt sofort.',
+    showResults: '{count, plural, one {# Treffer zeigen} other {# Treffer zeigen}}',
+    showNone: 'Keine Treffer',
+    clearAllShort: 'Alle entfernen',
+    sheetClose: 'Filter schließen',
+    dateTokens: {
+      day: 'TT',
+      month: 'MM',
+      year: 'JJJJ',
+    },
     toggle: 'Filter',
     toggleCount: 'Filter ({count})',
     clearAll: 'Alle Filter entfernen',
@@ -224,8 +249,6 @@ export const search: typeof en.search = {
     delete: '{name} löschen',
   },
   mode: {
-    open: 'Suche',
-    openHint: 'Hier suchen: was in den Dokumenten steht, Plankopfangaben, Anmerkungen',
     backToFiles: 'Zurück zu den Dateien',
     backToShelf: 'Zurück zur Ablage',
   },

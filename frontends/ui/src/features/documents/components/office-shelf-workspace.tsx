@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, type ReactNode } from 'react'
-import { Archive, Search } from 'lucide-react'
+import { Archive } from 'lucide-react'
 import { sourceTint } from '@/lib/ui/source-tint'
 import { CountPill } from '@/components/ui/count-pill'
 import { useTranslations } from '@/i18n'
@@ -11,7 +11,7 @@ import type { FileItem } from '../file-types'
 import { useOfficeShelfDocuments } from '../hooks/use-office-shelf-documents'
 import { OFFICE_SHELF_ENDPOINTS, type CardExtras, type FileShelf } from '../lib/file-shelf'
 import { FileWorkspace } from './file-workspace'
-import { SearchWorkspace, ShelfSearchBack, ShelfSearchToggle, useShelfSearchMode } from '@/features/search'
+import { SearchWorkspace, ShelfSearchBack, useShelfSearchMode } from '@/features/search'
 
 interface OfficeShelfWorkspaceProps {
   /** Whether the viewer may change the Archiv (holds `org:office_shelf:manage`). */
@@ -48,7 +48,6 @@ export function OfficeShelfWorkspace({
   trailingActions,
 }: OfficeShelfWorkspaceProps) {
   const t = useTranslations('officeShelf')
-  const tSearch = useTranslations('search.mode')
   const probe = useMemo(() => createDocumentNameProbeClient(), [])
   // „Suche“ in place of the listing (`?mode=search`), scoped to the shelf and the open folder.
   const search = useShelfSearchMode()
@@ -126,8 +125,7 @@ export function OfficeShelfWorkspace({
   return (
     <FileWorkspace
       shelf={shelf}
-      headerLeading={<ShelfSearchToggle onOpen={search.open} />}
-      moreEntries={[{ type: 'item', id: 'search', label: tSearch('open'), icon: Search, onSelect: search.open, testId: 'shelf-search-open-more' }]}
+      onOpenSearch={search.open}
       renderHeader={(controls, { count }) => (
         // Identity row — the gold Büroablage mark, the name of the store, and
         // how much is in it. The count sits with the title: it is a property of

@@ -252,10 +252,21 @@ chosen columns on a line under it, the order in a menu.
 - The field is a WAI-ARIA combobox: ↑ ↓ move an active option while focus
   stays in the field (`aria-activedescendant`), each kind's rows are a listbox
   (the register's rows, its table), and the active row carries a 2px ink rule.
-- A project's Dateien and the Büroablage: „Suche“ in the header switches the
-  listing to the search (`?mode=search`), scoped to the shelf and the open
-  folder (`?folder=`).
-- `/dev/search`: the organism over a fixture answer, list and register.
+- A project's Dateien and the Büroablage: one field in the header. Typing
+  filters the listing by name; Enter opens the search (`?mode=search&q=…`),
+  scoped to the shelf and the open folder (`?folder=`). There is no second
+  „Suche“ button beside it.
+- `/dev/search`: the organism over a fixture answer, list and register,
+  filtered and sorted in memory to match what is set (`searchFixtureAnswer`),
+  so a capture never contradicts its chips. `?scope=project`,
+  `?state=empty|loading|error`, `?filters=open`.
+
+The rail starts with Plannummer, Index and „Nur aktuelle Fassung“, always
+open; the counted facets follow; the rest folds under „Weitere Filter“. Under
+`md` the rail is a bottom sheet behind „Filter“ with „Alle entfernen“ and
+„N Treffer zeigen“ pinned at the foot; on a phone the saved searches and the
+export fold into one „Mehr“. Dates are typed in the page's locale
+(`components/ui/date-input.tsx`), not in the browser's.
 
 A hit opens where the workspace already shows it: a document in its shelf's
 preview (`?doc=`), an annotation in the review at the mark. A document hit

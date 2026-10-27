@@ -8,19 +8,19 @@
 import type { DocumentHit, SearchResponse } from '@/lib/search/search-wire'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 
-const P_SEESTADT = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01'
-const P_HERNALS = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a02'
-const F_SUBMISSION = '5d1a2c3b-1111-4a2b-8c3d-000000000001'
-const F_FIRE_SAFETY = '5d1a2c3b-1111-4a2b-8c3d-000000000002'
+const PROJECT_LAKE_TOWN = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01'
+const PROJECT_ATTIC = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a02'
+const FOLDER_SUBMISSION = '5d1a2c3b-1111-4a2b-8c3d-000000000001'
+const FOLDER_FIRE_SAFETY = '5d1a2c3b-1111-4a2b-8c3d-000000000002'
 
 function doc(partial: Partial<DocumentHit> & Pick<DocumentHit, 'id' | 'name'>): DocumentHit {
   return {
     kind: 'document',
     filename: `${partial.name}.pdf`,
     shelf: 'project',
-    projectId: P_SEESTADT,
+    projectId: PROJECT_LAKE_TOWN,
     projectName: 'Wohnhaus Seestadt Baufeld J7',
-    folderId: F_SUBMISSION,
+    folderId: FOLDER_SUBMISSION,
     folderName: 'Einreichung',
     status: 'success',
     contentType: 'application/pdf',
@@ -49,7 +49,7 @@ export const SEARCH_FIXTURE_DOCUMENTS: DocumentHit[] = [
     id: 'd0000000-0000-4000-8000-000000000001',
     name: 'Brandschutzkonzept_GK4_Seestadt_J7',
     title: 'Brandschutzkonzept Wohnhaus Seestadt J7',
-    folderId: F_FIRE_SAFETY,
+    folderId: FOLDER_FIRE_SAFETY,
     folderName: 'Brandschutz',
     documentType: 'fire_safety_concept',
     documentDate: '2026-09-30',
@@ -92,7 +92,7 @@ export const SEARCH_FIXTURE_DOCUMENTS: DocumentHit[] = [
     id: 'd0000000-0000-4000-8000-000000000005',
     name: 'Brandschutzgutachten_Hernalser_Hauptstrasse',
     title: 'Brandschutztechnisches Gutachten',
-    projectId: P_HERNALS,
+    projectId: PROJECT_ATTIC,
     projectName: 'Dachausbau Hernalser Hauptstraße 112',
     folderId: null,
     folderName: null,
@@ -130,7 +130,7 @@ export const SEARCH_FIXTURE_RESPONSE: SearchResponse = {
           id: 'a0000000-0000-4000-8000-000000000001',
           documentId: 'd0000000-0000-4000-8000-000000000002',
           documentName: 'EP-03 Grundriss EG, Index C',
-          projectId: P_SEESTADT,
+          projectId: PROJECT_LAKE_TOWN,
           projectName: 'Wohnhaus Seestadt Baufeld J7',
           annotationKind: 'defect',
           status: 'open',
@@ -147,10 +147,10 @@ export const SEARCH_FIXTURE_RESPONSE: SearchResponse = {
       hits: [
         {
           kind: 'folder',
-          id: F_FIRE_SAFETY,
+          id: FOLDER_FIRE_SAFETY,
           name: 'Brandschutz',
           shelf: 'project',
-          projectId: P_SEESTADT,
+          projectId: PROJECT_LAKE_TOWN,
           projectName: 'Wohnhaus Seestadt Baufeld J7',
           excerpt: 'Brandschutzkonzept, Fluchtwegpläne und Stellungnahmen der MA 37',
         },
@@ -166,7 +166,7 @@ export const SEARCH_FIXTURE_RESPONSE: SearchResponse = {
           kind: 'conversation',
           id: 'c0000000-0000-4000-8000-000000000001',
           title: 'Fluchtweglängen nach OIB-RL 2 für GK 4',
-          projectId: P_SEESTADT,
+          projectId: PROJECT_LAKE_TOWN,
           projectName: 'Wohnhaus Seestadt Baufeld J7',
           updatedAt: '2026-10-26T16:05:00.000Z',
         },
@@ -189,8 +189,8 @@ export const SEARCH_FIXTURE_RESPONSE: SearchResponse = {
       { value: 'Schnitt', label: null, count: 2 },
     ],
     project: [
-      { value: P_SEESTADT, label: 'Wohnhaus Seestadt Baufeld J7', count: 12 },
-      { value: P_HERNALS, label: 'Dachausbau Hernalser Hauptstraße 112', count: 1 },
+      { value: PROJECT_LAKE_TOWN, label: 'Wohnhaus Seestadt Baufeld J7', count: 12 },
+      { value: PROJECT_ATTIC, label: 'Dachausbau Hernalser Hauptstraße 112', count: 1 },
     ],
     partyRole: [
       { value: 'architect', label: null, count: 11 },
@@ -220,7 +220,7 @@ export const SEARCH_FIXTURE_SAVED: SavedSearchView[] = [
   {
     id: 's0000000-0000-4000-8000-000000000001',
     name: 'Einreichpläne, aktuell',
-    scope: { scope: 'project', projectId: P_SEESTADT },
+    scope: { scope: 'project', projectId: PROJECT_LAKE_TOWN },
     query: { kinds: ['document'], filters: { documentTypes: ['submission_drawing'], currentOnly: true }, sort: 'plan_number', dir: 'asc' },
     shared: true,
     ownedByMe: true,

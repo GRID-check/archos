@@ -5,7 +5,7 @@
 
 export { SearchWorkspace, type SearchWorkspaceProps } from './components/search-workspace'
 export { SearchWorkspaceView, type SearchWorkspaceViewProps } from './components/search-workspace-view'
-export { ShelfSearchBack, ShelfSearchToggle } from './components/shelf-search-toggle'
+export { ShelfSearchBack } from './components/shelf-search-toggle'
 export {
   PALETTE_ALL_RESULTS_VALUE,
   PaletteSearchResults,

@@ -4,17 +4,18 @@ import type { JSX, KeyboardEvent } from 'react'
 import { useId, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { DateInput } from '@/components/ui/date-input'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { useTranslations } from '@/i18n'
+import { useLocale, useTranslations } from '@/i18n'
 import { DOSSIER_FACT_KEYS, DOSSIER_PARTY_ROLES, type DossierFactKey, type DossierPartyRole } from '@/lib/documents/dossier'
 import type { DocumentFilters } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { splitList } from '../lib/active-filters'
 import { compactFilters, NUMERIC_FACT_KEYS, type SearchUrlState } from '../lib/search-url'
-import { FieldPair, RailAction, RailBody, RailSection } from './search-atoms'
+import { FieldPair, FieldStack, RailAction, RailBody, RailSection } from './search-atoms'
 
 export interface SearchFilterFormProps {
   state: SearchUrlState
@@ -35,10 +36,41 @@ function numberOrUndefined(value: string): number | undefined {
 }
 
 /**
- * The structured filters of `DocumentFilters` that are typed rather than
- * counted: Plannummer, Index, Planstand, Maßstab, Beteiligte, Ort, Angaben,
- * Verweise, Hochgeladen, Seiten. A typed field takes effect on Enter or when
- * it loses focus, so the search does not run on every keystroke of a number.
+ * The three filters a drawing is found by in the Jour fixe: Plannummer, Index
+ * and „Nur aktuelle Fassung“. The rail's first group, always open, because
+ * they are typed rather than counted and are what an office reaches for first.
+ */
+export function SearchKeyFilters({ state, onChange }: Pick<SearchFilterFormProps, 'state' | 'onChange'>): JSX.Element {
+  const t = useTranslations('search.filters')
+  const f = state.filters
+  const set = (patch: Partial<DocumentFilters>): void => onChange({ ...state, filters: compactFilters({ ...f, ...patch }) })
+  return (
+    <RailSection title={t('keyTitle')} fixed testId="search-key-filters">
+      <RailBody>
+        <CommitText label={t('planNumber')} value={f.planNumber ?? ''} onCommit={(value) => set({ planNumber: value || undefined })} testId="filter-plan-number" />
+        <CommitText
+          label={t('planIndex')}
+          hint={t('listHint')}
+          value={(f.planIndex ?? []).join(', ')}
+          onCommit={(value) => set({ planIndex: splitList(value) })}
+          testId="filter-plan-index"
+        />
+        {/* The register says it above its table (`SearchRegisterBar`); one switch for one setting. */}
+        {state.view === 'register' ? null : (
+          <Flag label={t('currentOnly')} checked={Boolean(f.currentOnly)} onChange={(on) => set({ currentOnly: on || undefined })} testId="filter-current" />
+        )}
+      </RailBody>
+    </RailSection>
+  )
+}
+
+/**
+ * The rest of the structured filters of `DocumentFilters` that are typed
+ * rather than counted: Planstand, Maßstab, Beteiligte, Ort, Angaben, Verweise,
+ * Hochgeladen, Dateityp, Seiten. Folded under „Weitere Filter“: they are
+ * reached for less, and a rail that shows them all buries the counts. A typed
+ * field takes effect on Enter or when it loses focus, so the search does not
+ * run on every keystroke of a number.
  */
 export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen = false }: SearchFilterFormProps): JSX.Element {
   const t = useTranslations('search.filters')
@@ -47,78 +79,62 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
 
   return (
     <RailSection title={t('title')} defaultOpen={defaultOpen} testId="search-more-filters">
-        <RailBody>
-            <CommitText label={t('planNumber')} value={f.planNumber ?? ''} onCommit={(value) => set({ planNumber: value || undefined })} testId="filter-plan-number" />
-            <CommitText
-              label={t('planIndex')}
-              hint={t('listHint')}
-              value={(f.planIndex ?? []).join(', ')}
-              onCommit={(value) => set({ planIndex: splitList(value) })}
-              testId="filter-plan-index"
-            />
-            <DateRange
-              label={t('planDate')}
-              value={f.planDate}
-              onChange={(range) => set({ planDate: range })}
-              testId="filter-plan-date"
-            />
-            <CommitText
-              label={t('scale')}
-              hint={t('listHint')}
-              value={(f.scale ?? []).join(', ')}
-              onCommit={(value) => set({ scale: splitList(value) })}
-              testId="filter-scale"
-            />
-            <Flag label={t('currentOnly')} checked={Boolean(f.currentOnly)} onChange={(on) => set({ currentOnly: on || undefined })} testId="filter-current" />
-            <PartyAdder onAdd={(party) => set({ parties: [...(f.parties ?? []), party] })} />
-            <CommitText label={t('place')} hint={t('placeHint')} value={f.place ?? ''} onCommit={(value) => set({ place: value || undefined })} testId="filter-place" />
-            <FactAdder onAdd={(fact) => set({ facts: [...(f.facts ?? []), fact] })} />
-            <CommitText
-              label={t('cites')}
-              hint={t('citesHint')}
-              value=""
-              clearOnCommit
-              onCommit={(value) => {
-                if (value) set({ cites: [...new Set([...(f.cites ?? []), value])] })
-              }}
-              testId="filter-cites"
-            />
-            <DateRange label={t('uploaded')} value={f.uploaded} onChange={(range) => set({ uploaded: range })} testId="filter-uploaded" />
-            {currentUserId ? (
-              <Flag
-                label={t('uploadedByMe')}
-                checked={(f.uploadedBy ?? []).includes(currentUserId)}
-                onChange={(on) =>
-                  set({ uploadedBy: on ? [...new Set([...(f.uploadedBy ?? []), currentUserId])] : (f.uploadedBy ?? []).filter((id) => id !== currentUserId) })
-                }
-                testId="filter-uploaded-by-me"
-              />
-            ) : null}
-            <CommitText
-              label={t('fileType')}
-              hint={t('listHint')}
-              value={(f.fileTypes ?? []).join(', ')}
-              onCommit={(value) =>
-                set({ fileTypes: splitList(value.toLowerCase().replace(/\./g, '')).filter((ext) => /^[a-z0-9]{1,8}$/.test(ext)) })
-              }
-              testId="filter-file-type"
-            />
-            <NumberRange
-              label={t('pages')}
-              min={f.pages?.min}
-              max={f.pages?.max}
-              onChange={(min, max) =>
-                set({
-                  pages:
-                    min === undefined && max === undefined
-                      ? undefined
-                      : { ...(min !== undefined ? { min: Math.max(0, Math.trunc(min)) } : {}), ...(max !== undefined ? { max: Math.max(0, Math.trunc(max)) } : {}) },
-                })
-              }
-            />
-            <Flag label={t('incompleteRead')} checked={Boolean(f.incompleteRead)} onChange={(on) => set({ incompleteRead: on || undefined })} testId="filter-incomplete" />
-            <Flag label={t('includeArchived')} checked={Boolean(f.includeArchived)} onChange={(on) => set({ includeArchived: on || undefined })} testId="filter-archived" />
-        </RailBody>
+      <RailBody>
+        <DateRange label={t('planDate')} value={f.planDate} onChange={(range) => set({ planDate: range })} testId="filter-plan-date" />
+        <CommitText
+          label={t('scale')}
+          hint={t('listHint')}
+          value={(f.scale ?? []).join(', ')}
+          onCommit={(value) => set({ scale: splitList(value) })}
+          testId="filter-scale"
+        />
+        <PartyAdder onAdd={(party) => set({ parties: [...(f.parties ?? []), party] })} />
+        <CommitText label={t('place')} hint={t('placeHint')} value={f.place ?? ''} onCommit={(value) => set({ place: value || undefined })} testId="filter-place" />
+        <FactAdder onAdd={(fact) => set({ facts: [...(f.facts ?? []), fact] })} />
+        <CommitText
+          label={t('cites')}
+          hint={t('citesHint')}
+          value=""
+          clearOnCommit
+          onCommit={(value) => {
+            if (value) set({ cites: [...new Set([...(f.cites ?? []), value])] })
+          }}
+          testId="filter-cites"
+        />
+        <DateRange label={t('uploaded')} value={f.uploaded} onChange={(range) => set({ uploaded: range })} testId="filter-uploaded" />
+        {currentUserId ? (
+          <Flag
+            label={t('uploadedByMe')}
+            checked={(f.uploadedBy ?? []).includes(currentUserId)}
+            onChange={(on) =>
+              set({ uploadedBy: on ? [...new Set([...(f.uploadedBy ?? []), currentUserId])] : (f.uploadedBy ?? []).filter((id) => id !== currentUserId) })
+            }
+            testId="filter-uploaded-by-me"
+          />
+        ) : null}
+        <CommitText
+          label={t('fileType')}
+          hint={t('listHint')}
+          value={(f.fileTypes ?? []).join(', ')}
+          onCommit={(value) => set({ fileTypes: splitList(value.toLowerCase().replace(/\./g, '')).filter((ext) => /^[a-z0-9]{1,8}$/.test(ext)) })}
+          testId="filter-file-type"
+        />
+        <NumberRange
+          label={t('pages')}
+          min={f.pages?.min}
+          max={f.pages?.max}
+          onChange={(min, max) =>
+            set({
+              pages:
+                min === undefined && max === undefined
+                  ? undefined
+                  : { ...(min !== undefined ? { min: Math.max(0, Math.trunc(min)) } : {}), ...(max !== undefined ? { max: Math.max(0, Math.trunc(max)) } : {}) },
+            })
+          }
+        />
+        <Flag label={t('incompleteRead')} checked={Boolean(f.incompleteRead)} onChange={(on) => set({ incompleteRead: on || undefined })} testId="filter-incomplete" />
+        <Flag label={t('includeArchived')} checked={Boolean(f.includeArchived)} onChange={(on) => set({ includeArchived: on || undefined })} testId="filter-archived" />
+      </RailBody>
     </RailSection>
   )
 }
@@ -185,7 +201,9 @@ function DateRange({
   testId?: string
 }): JSX.Element {
   const t = useTranslations('search.filters')
+  const { locale } = useLocale()
   const id = useId()
+  const tokens = { day: t('dateTokens.day'), month: t('dateTokens.month'), year: t('dateTokens.year') }
   const change = (patch: { from?: string; to?: string }): void => {
     const next = { ...value, ...patch }
     const from = next.from || undefined
@@ -195,10 +213,29 @@ function DateRange({
   return (
     <Field>
       <FieldLabel htmlFor={`${id}-from`}>{label}</FieldLabel>
-      <FieldPair>
-        <Input id={`${id}-from`} type="date" aria-label={`${label} ${t('from')}`} value={value?.from ?? ''} max={value?.to} onChange={(event) => change({ from: event.target.value })} data-testid={testId ? `${testId}-from` : undefined} />
-        <Input type="date" aria-label={`${label} ${t('to')}`} value={value?.to ?? ''} min={value?.from} onChange={(event) => change({ to: event.target.value })} data-testid={testId ? `${testId}-to` : undefined} />
-      </FieldPair>
+      <FieldStack>
+        <DateInput
+          id={`${id}-from`}
+          locale={locale}
+          tokens={tokens}
+          placeholderPrefix={t('from')}
+          aria-label={`${label} ${t('from')}`}
+          value={value?.from ?? ''}
+          max={value?.to}
+          onChange={(from) => change({ from })}
+          data-testid={testId ? `${testId}-from` : undefined}
+        />
+        <DateInput
+          locale={locale}
+          tokens={tokens}
+          placeholderPrefix={t('to')}
+          aria-label={`${label} ${t('to')}`}
+          value={value?.to ?? ''}
+          min={value?.from}
+          onChange={(to) => change({ to })}
+          data-testid={testId ? `${testId}-to` : undefined}
+        />
+      </FieldStack>
     </Field>
   )
 }

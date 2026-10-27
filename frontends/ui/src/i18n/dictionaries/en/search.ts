@@ -14,6 +14,8 @@ export const search = {
       project: 'Search this project: documents, annotations, folders, chats…',
       office_shelf: 'Search the office filing: documents and folders…',
     },
+    /** On a phone, where the long placeholder is cut mid-word. */
+    placeholderShort: 'Search…',
     /** The modifier key of the shortcut shown in the field, where the platform is not a Mac. */
     modKey: 'Ctrl',
     label: 'Search',
@@ -23,6 +25,10 @@ export const search = {
     label: 'View',
     list: 'Results',
     register: 'Register',
+  },
+  more: {
+    label: 'More',
+    savedLabel: 'Saved searches',
   },
   kinds: {
     document: 'Documents',
@@ -48,12 +54,22 @@ export const search = {
   retry: 'Try again',
   empty: {
     title: 'Nothing found',
-    description: 'Try other words, a shorter part of a drawing number, or another kind.',
+    description: 'Try other words, or only the start of a drawing number: “EP” finds EP-03 and EP-05.',
+    /** When one kind is chosen above the results. */
+    oneKind: 'Only {kind} are shown. The other kinds may hold a match.',
+    allKinds: 'Show everything',
+    /** No match yet while shelves are still being read. */
+    readingTitle: 'Nothing found yet',
+    reading:
+      '{count, plural, one {Piloti is still reading one shelf, so matches can still appear there.} other {Piloti is still reading # shelves, so matches can still appear there.}}',
+    includeArchived: 'Include archived',
+    wholeOffice: 'Search the whole office',
     withFilters: 'The filters exclude everything that matched. Take one off, or clear them all.',
   },
   notes: {
     building:
       '{count, plural, one {Piloti is still reading what the documents on one shelf are. Filters by type, parties and facts may miss some of them until it is done.} other {Piloti is still reading what the documents on # shelves are. Filters by type, parties and facts may miss some of them until it is done.}}',
+    buildingShort: '{count, plural, one {one shelf still being read} other {# shelves still being read}}',
     contentPartial: 'The search through what the documents say covered only part of this scope.',
   },
   passage: {
@@ -111,6 +127,20 @@ export const search = {
   },
   filters: {
     title: 'More filters',
+    /** The rail's first group, always open. */
+    keyTitle: 'Drawing number and revision',
+    sheetTitle: 'Filters',
+    sheetDescription: 'Narrow the results by kind, project, drawing number and more. They apply as you set them.',
+    /** The sheet's primary action: back to the answer, its size on the button. */
+    showResults: '{count, plural, one {Show # result} other {Show # results}}',
+    showNone: 'No results',
+    clearAllShort: 'Clear all',
+    sheetClose: 'Close filters',
+    dateTokens: {
+      day: 'DD',
+      month: 'MM',
+      year: 'YYYY',
+    },
     toggle: 'Filters',
     toggleCount: 'Filters ({count})',
     clearAll: 'Clear all filters',
@@ -219,10 +249,8 @@ export const search = {
     delete: 'Delete {name}',
   },
   mode: {
-    open: 'Search',
-    openHint: 'Search in here: what the documents say, drawing facts, annotations',
     backToFiles: 'Back to files',
-    backToShelf: 'back to the filing',
+    backToShelf: 'Back to the filing',
   },
   palette: {
     allResults: 'All results for “{text}”',
