@@ -54,6 +54,26 @@ vi.mock('@/lib/inbound-mail/staging', () => ({
   putStagedObject: vi.fn(async (_bucket: string, key: string, body: Uint8Array) => void staging.written.set(key, body)),
 }))
 
+/** What happens between a sweep's find and its act: a hold placed, a part restored (review D, finding 5). */
+const race = vi.hoisted(() => ({ afterFind: null as null | (() => Promise<unknown>) }))
+vi.mock('@/lib/inbound-mail/sweep-repository', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/inbound-mail/sweep-repository')>()
+  const thenRace =
+    <A extends unknown[], R>(find: (...args: A) => Promise<R>) =>
+    async (...args: A): Promise<R> => {
+      const found = await find(...args)
+      const step = race.afterFind
+      race.afterFind = null
+      if (step) await step()
+      return found
+    }
+  return {
+    ...actual,
+    findEndedPartBytes: thenRace(actual.findEndedPartBytes),
+    findOrphanedThreads: thenRace(actual.findOrphanedThreads),
+  }
+})
+
 const scan = vi.hoisted(() => ({ status: 'clean' as 'clean' | 'infected' | 'failed' }))
 vi.mock('@/lib/inbound-mail/malware-scan', () => ({
   scanForStorage: vi.fn(async () => ({
@@ -306,6 +326,7 @@ describe.skipIf(!url)('the E-Mail-Eingang’s sweeps against Postgres', () => {
   beforeEach(() => {
     staging.erased.length = 0
     staging.failing.clear()
+    race.afterFind = null
     audit.events.length = 0
     posthog.events.length = 0
     scan.status = 'clean'
@@ -509,6 +530,32 @@ describe.skipIf(!url)('the E-Mail-Eingang’s sweeps against Postgres', () => {
       } finally {
         await release(holdId)
       }
+    })
+
+    it('erases nothing of a part restored between its find and its erasure: the row is taken first', async () => {
+      const mail = await seedMail({ trust: 'external_unverified' })
+      await seedPart(mail, { kind: 'message', state: 'waiting' })
+      const file = await seedPart(mail, { state: 'dismissed' })
+      race.afterFind = () =>
+        rows(sql`UPDATE inbound_mail_parts SET state = 'waiting', ended_at = NULL WHERE id = ${file}::uuid`)
+
+      await sweep.sweepEndedParts(now())
+
+      expect(staging.erased).not.toContain(stagingKey(project, mail, '1'))
+      expect(await partRow(file)).toMatchObject({ state: 'waiting', storage_key: stagingKey(project, mail, '1') })
+    })
+
+    it('puts the key back when the store could not erase the bytes, for the next tick', async () => {
+      const mail = await seedMail()
+      await seedPart(mail, { kind: 'message', state: 'waiting' })
+      const file = await seedPart(mail, { state: 'dismissed', endedAgo: '8 days' })
+      staging.failing.add(stagingKey(project, mail, '1'))
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const result = await sweep.sweepEndedParts(now())
+
+      expect(result.errors).toBeGreaterThanOrEqual(1)
+      expect((await partRow(file))?.storage_key).toBe(stagingKey(project, mail, '1'))
     })
 
     it('leaves a mail with a part still restorable', async () => {
@@ -730,6 +777,26 @@ describe.skipIf(!url)('the E-Mail-Eingang’s sweeps against Postgres', () => {
         expect(staging.erased.some((key) => key.includes(heldProject))).toBe(false)
       } finally {
         await release(holdId)
+      }
+    })
+  })
+
+  describe('sweep 9 and a hold placed after its find (review D, finding 5)', () => {
+    it('erases no original of a thread whose project a hold now covers', async () => {
+      const { projectId: racing } = await newProject(`Hold race ${STAMP}`)
+      const thread = await seedThread({ projectId: racing })
+      const entry = await seedEntry(thread, racing, true)
+      let holdId: string | null = null
+      race.afterFind = async () => {
+        holdId = await hold(racing)
+      }
+      try {
+        await sweep.sweepOrphanedThreads(now())
+
+        expect(staging.erased).not.toContain(originalKey(racing, entry))
+        expect(await rows(sql`SELECT id FROM mail_threads WHERE id = ${thread}::uuid`)).toHaveLength(1)
+      } finally {
+        if (holdId) await release(holdId)
       }
     })
   })

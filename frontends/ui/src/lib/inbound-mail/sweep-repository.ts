@@ -286,6 +286,34 @@ export async function findEndedPartBytes(now: Date, limit: number): Promise<Ende
 const endedOrFiled = inArray(inboundMailParts.state, ['dismissed', 'expired', 'filed'])
 
 /**
+ * Sweep 6, before the erasure: the part forgets its bytes' key (and the name
+ * and suggestion that go with them) only while every condition of the find
+ * still holds: still dismissed or expired, past restoring, the same key, no
+ * deferral, no hold. True when it did; the caller erases the object only then,
+ * so a restore or a hold that landed after the find erases nothing.
+ */
+export async function takeEndedPartBytes(part: { partId: string; storageKey: string }, now: Date): Promise<boolean> {
+  const rows = await select<{ id: string }>(sql`
+    UPDATE inbound_mail_parts p
+       SET storage_key = NULL, filename = NULL, suggestion = NULL, suggestion_trace_id = NULL, updated_at = ${now.toISOString()}::timestamptz
+      FROM inbound_mails m
+     WHERE p.id = ${part.partId}::uuid AND m.id = p.mail_id
+       AND p.state IN ('dismissed', 'expired') AND p.storage_key = ${part.storageKey} AND p.erasure_deferred_at IS NULL
+       AND ${pastRestore(new Date(now.getTime() - RESTORE_WINDOW_MS))}
+       AND ${mailErasable}
+    RETURNING p.id`)
+  return rows.length === 1
+}
+
+/** The store could not erase what `takeEndedPartBytes` took: the key comes back, so the next tick tries again. */
+export async function returnEndedPartKey(part: { partId: string; storageKey: string }, now: Date): Promise<void> {
+  await getDb()
+    .update(inboundMailParts)
+    .set({ storageKey: part.storageKey, updatedAt: now })
+    .where(and(eq(inboundMailParts.id, part.partId), isNull(inboundMailParts.storageKey), endedOrFiled))
+}
+
+/**
  * A part's bytes were erased (by their key): it forgets the key, the name that
  * goes with them and the suggestion that named them, and any deferral.
  */
@@ -529,14 +557,18 @@ export const ABANDONED_RENDER_AFTER_MS = 24 * 60 * 60 * 1000
  * decision about a part such a decision filed, is still owed to the trail (the
  * cascade from its follows would take them along, RT-S8).
  */
-const threadDeletable = (now: Date) => sql`
+const threadDeletable = (now: Date, leaseHolder: string | null = null) => sql`
   t.document_id IS NULL
   AND (t.render_pending_at IS NULL
        OR (t.render_pending_at < ${new Date(now.getTime() - ABANDONED_RENDER_AFTER_MS).toISOString()}::timestamptz
            AND NOT EXISTS (
              SELECT 1 FROM mail_thread_entries e JOIN mail_imports i ON i.id = e.mail_import_id
               WHERE e.thread_id = t.id AND i.status IN ('uploading', 'queued', 'importing'))))
-  AND (t.render_lease_until IS NULL OR t.render_lease_until < ${now.toISOString()}::timestamptz)
+  AND ${
+    leaseHolder === null
+      ? sql`(t.render_lease_until IS NULL OR t.render_lease_until < ${now.toISOString()}::timestamptz)`
+      : sql`t.render_lease_holder = ${leaseHolder}::uuid`
+  }
   AND NOT grid_legal_hold_blocks('project', t.project_id::text, t.organization_id)
   AND NOT EXISTS (SELECT 1 FROM mail_thread_follows f WHERE f.thread_id = t.id AND f.ended_at IS NULL)
   AND NOT EXISTS (
@@ -567,16 +599,50 @@ export async function findOrphanedThreads(now: Date, limit: number): Promise<Orp
   return rows.map((row) => ({ ...row, originals: row.originals ?? [] }))
 }
 
+/** How long sweep 9 holds a thread's render lease while it erases the originals: a writer's own lease. */
+const ORPHANED_THREAD_LEASE_MS = 5 * 60 * 1000
+
 /**
- * Delete a thread whose originals were erased (sweep 9), as the platform role:
- * the cascade takes its entries, what came with them, its message ids, its
- * ended follows and their audited decisions. Repeats the whole condition;
- * the number of entries it took, or null when it was not deleted.
+ * Sweep 9, before any erasure, as the platform role: the thread's render
+ * lease, taken only while the whole condition holds (the legal hold
+ * included), so no append lands while its originals go and a hold placed
+ * after the find erases nothing. The originals to erase are read here, under
+ * the lease, not from the find; null when it was not taken.
  */
-export async function deleteOrphanedThread(id: string, now: Date): Promise<number | null> {
+export async function claimOrphanedThread(
+  id: string,
+  holder: string,
+  now: Date,
+): Promise<Array<{ bucket: string; key: string }> | null> {
+  const until = new Date(now.getTime() + ORPHANED_THREAD_LEASE_MS).toISOString()
+  const rows = await select<{ originals: Array<{ bucket: string; key: string }> | null }>(sql`
+    UPDATE mail_threads t SET render_lease_holder = ${holder}::uuid, render_lease_until = ${until}::timestamptz
+     WHERE t.id = ${id}::uuid AND ${threadDeletable(now)}
+    RETURNING (SELECT json_agg(json_build_object('bucket', e.original_bucket, 'key', e.original_storage_key))
+                 FROM mail_thread_entries e
+                WHERE e.thread_id = t.id AND e.original_storage_key IS NOT NULL) AS originals`)
+  const [row] = rows
+  return row ? (row.originals ?? []) : null
+}
+
+/** Sweep 9 could not erase an original: the lease goes, and the next tick asks again. */
+export async function releaseOrphanedThread(id: string, holder: string): Promise<void> {
+  await getDb().execute(sql`
+    UPDATE mail_threads SET render_lease_holder = NULL, render_lease_until = NULL
+     WHERE id = ${id}::uuid AND render_lease_holder = ${holder}::uuid`)
+}
+
+/**
+ * Delete a thread whose originals were erased (sweep 9), as the platform role,
+ * under the lease `claimOrphanedThread` took: the cascade takes its entries,
+ * what came with them, its message ids, its ended follows and their audited
+ * decisions. Repeats the whole condition; the number of entries it took, or
+ * null when it was not deleted.
+ */
+export async function deleteOrphanedThread(id: string, holder: string, now: Date): Promise<number | null> {
   const rows = await select<{ entries: number | string }>(sql`
     WITH gone AS (
-      DELETE FROM mail_threads t WHERE t.id = ${id}::uuid AND ${threadDeletable(now)} RETURNING t.id)
+      DELETE FROM mail_threads t WHERE t.id = ${id}::uuid AND ${threadDeletable(now, holder)} RETURNING t.id)
     SELECT (SELECT count(*) FROM mail_thread_entries e WHERE e.thread_id IN (SELECT id FROM gone)) AS entries,
            (SELECT count(*) FROM gone) AS deleted`)
   const [row] = rows as Array<{ entries: number | string; deleted: number | string }>

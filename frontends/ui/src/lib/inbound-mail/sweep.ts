@@ -39,6 +39,7 @@ import 'server-only'
  * filing started (13) and erases what nobody filed, but files nothing.
  */
 
+import { randomUUID } from 'node:crypto'
 import { recordAuditEvent, SYSTEM_ACTORS } from '@/lib/audit/service'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { endFollowBySystem } from '@/lib/mail-thread/follows'
@@ -261,7 +262,8 @@ export async function sweepExpiringMails(now: Date): Promise<SweepCounts> {
 
 /**
  * Sweep 6: the bytes of parts past restoring are erased (deferred under a
- * hold), then each mail nothing of which waits or can be restored is settled
+ * hold), each part's row taken first under the find's condition and the
+ * object erased only then, then each mail nothing of which waits or can be restored is settled
  * and scrubbed, its staged objects erased by key (kept under a hold).
  */
 export async function sweepEndedParts(now: Date): Promise<SweepCounts> {
@@ -273,8 +275,13 @@ export async function sweepEndedParts(now: Date): Promise<SweepCounts> {
       result.deferred += 1
       return
     }
-    if ((await eraseStagedObjects(row.stagingBucket, [row.storageKey])).length > 0) throw new Error('its bytes could not be erased')
-    if (await sweeps.forgetPartBytes(row.partId, now)) result.erased += 1
+    // The row first, under the find's whole condition: a restore or a hold that landed since erases nothing.
+    if (!(await sweeps.takeEndedPartBytes(row, now))) return
+    if ((await eraseStagedObjects(row.stagingBucket, [row.storageKey])).length > 0) {
+      await sweeps.returnEndedPartKey(row, now)
+      throw new Error('its bytes could not be erased')
+    }
+    result.erased += 1
   })
 
   const mails = await discover('mail to settle', () => sweeps.findMailsToSettle(now, SWEEP_BATCH))
@@ -356,20 +363,35 @@ export async function sweepFollows(now: Date): Promise<SweepCounts> {
   return result
 }
 
-/** Sweep 9: a thread whose document is gone: its originals erased by key, then the thread and all it holds. */
+/**
+ * Sweep 9: a thread whose document is gone: its render lease taken under the
+ * whole condition (the legal hold included), then its originals erased by key,
+ * then the thread and all it holds. A hold placed after the find erases
+ * nothing.
+ */
 export async function sweepOrphanedThreads(now: Date): Promise<SweepCounts> {
   const result = counts('deleted', 'entries', 'originals')
   const rows = await discover('threads whose document is gone', () => sweeps.findOrphanedThreads(now, SWEEP_BATCH))
   result.checked = rows.length
   for (const row of rows) {
+    const holder = randomUUID()
     try {
-      for (const [bucket, originals] of Map.groupBy(row.originals, (original) => original.bucket)) {
-        const keys = originals.map((original) => original.key)
-        if ((await eraseStagedObjects(bucket, keys)).length > 0) throw new Error('an original could not be erased')
+      const originals = await withPlatformAccess('inbound mail sweep 9: leasing a thread whose document is gone', () =>
+        sweeps.claimOrphanedThread(row.id, holder, now),
+      )
+      if (originals === null) continue
+      for (const [bucket, inBucket] of Map.groupBy(originals, (original) => original.bucket)) {
+        const keys = inBucket.map((original) => original.key)
+        if ((await eraseStagedObjects(bucket, keys)).length > 0) {
+          await withPlatformAccess('inbound mail sweep 9: releasing a thread an original stayed in', () =>
+            sweeps.releaseOrphanedThread(row.id, holder),
+          )
+          throw new Error('an original could not be erased')
+        }
         result.originals += keys.length
       }
       const entries = await withPlatformAccess('inbound mail sweep 9: deleting a thread whose document is gone', () =>
-        sweeps.deleteOrphanedThread(row.id, now),
+        sweeps.deleteOrphanedThread(row.id, holder, now),
       )
       if (entries === null) continue
       result.deleted += 1
