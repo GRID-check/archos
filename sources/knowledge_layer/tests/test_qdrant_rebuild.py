@@ -27,7 +27,7 @@ pytestmark = pytest.mark.usefixtures("few_payload_indexes")
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[3] / "scripts" / "qdrant_rebuild.py"
 DIM = 8
-IDENTITY = {"grid:embed_fingerprint": "fp-rebuild", "grid:embed_model": "model-rebuild"}
+IDENTITY = {"embed_fingerprint": "fp-rebuild", "embed_model": "model-rebuild"}
 
 
 def _server_url() -> str:

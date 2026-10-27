@@ -814,8 +814,8 @@ def _stamp_chunk_metadata(
 #: Collection-metadata keys recording which embedding produced a collection's vectors
 #: (``qdrant.schema.EMBED_IDENTITY_KEYS``): stamped when a Qdrant collection is
 #: created, compared before every write and every read of it.
-EMBED_FINGERPRINT_KEY = "grid:embed_fingerprint"
-EMBED_MODEL_KEY = "grid:embed_model"
+EMBED_FINGERPRINT_KEY = "embed_fingerprint"
+EMBED_MODEL_KEY = "embed_model"
 
 
 def embed_fingerprint(model: str, base_url: str) -> str:

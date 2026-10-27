@@ -87,7 +87,7 @@ PRUNE_BATCH = 512
 #: Collection metadata key an import that verified in step leaves on both
 #: physical collections (:func:`record_import`); its value says which export
 #: and when.
-IMPORT_MARKER_KEY = "grid:vector_import"
+IMPORT_MARKER_KEY = "vector_import"
 
 
 class InvalidExport(ValueError):

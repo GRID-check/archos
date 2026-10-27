@@ -54,41 +54,38 @@ BM25_OPTIONS: dict[str, Any] = {"language": "german", "ascii_folding": True}
 #: an edit here. A collection without the key was written with Qdrant's defaults
 #: (:data:`BM25_DEFAULT_LENGTH`), which is every collection made before the key existed and every
 #: collection made by anything but a rebuild.
-BM25_LENGTH_KEY = "grid:bm25_length"
+BM25_LENGTH_KEY = "bm25_length"
 #: Qdrant's own BM25 length parameters (the ``qdrant/bm25`` model's defaults).
 BM25_DEFAULT_LENGTH: dict[str, float] = {"k": 1.2, "b": 0.75, "avg_len": 256.0}
 _BM25_LENGTH_KEYS = frozenset(BM25_DEFAULT_LENGTH)
 
 
-#: The prefix of every collection metadata key this code writes.
-METADATA_PREFIX = "grid:"
-#: The prefix the keys carried before ADR-0145 (row 10d). For one release a key is
-#: read under it where the ``grid:`` one is missing and written under both, so a
-#: process of the previous release still finds its own; then it goes.
+#: The collection metadata keys this code writes, unprefixed. Before ADR-0145
+#: (row 10d) each carried the prefix below; for one release a key is read under it
+#: where the bare one is missing and written under both, so a process of the
+#: previous release still finds its own. Then the prefix goes.
+METADATA_KEYS = frozenset({"embed_fingerprint", "embed_model", "bm25_length", "vector_import"})
 LEGACY_METADATA_PREFIX = "aiq:"
 
 
 def current_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
-    """``metadata`` with each legacy ``aiq:`` key read as its ``grid:`` key wherever that one is missing."""
+    """``metadata`` with each legacy ``aiq:`` key read under its bare name wherever that one is missing."""
     current = dict(metadata or {})
-    for key, value in (metadata or {}).items():
-        if key.startswith(LEGACY_METADATA_PREFIX):
-            current.setdefault(METADATA_PREFIX + key.removeprefix(LEGACY_METADATA_PREFIX), value)
+    for key in METADATA_KEYS:
+        legacy = LEGACY_METADATA_PREFIX + key
+        if legacy in current:
+            current.setdefault(key, current[legacy])
     return current
 
 
 def with_legacy_keys(metadata: dict[str, Any]) -> dict[str, Any]:
-    """``metadata`` with each ``grid:`` key written again under its legacy name, for the previous release."""
-    legacy = {
-        LEGACY_METADATA_PREFIX + key.removeprefix(METADATA_PREFIX): value
-        for key, value in metadata.items()
-        if key.startswith(METADATA_PREFIX)
-    }
+    """``metadata`` with each of our keys written again under its legacy name, for the previous release."""
+    legacy = {LEGACY_METADATA_PREFIX + key: value for key, value in metadata.items() if key in METADATA_KEYS}
     return {**metadata, **legacy}
 
 
 def adopt_legacy_metadata(client: QdrantClient, collection: str) -> dict[str, Any]:
-    """Write the ``grid:`` keys a collection holds only under the legacy prefix; returns what it wrote.
+    """Write the bare keys a collection holds only under the legacy prefix; returns what it wrote.
 
     The copy every collection made before the rename needs, run by every
     process before it reads one, so nobody runs it by hand. Idempotent: a
@@ -99,7 +96,7 @@ def adopt_legacy_metadata(client: QdrantClient, collection: str) -> dict[str, An
     missing = {key: value for key, value in current_metadata(stored).items() if key not in stored}
     if missing:
         client.update_collection(collection, metadata=missing)
-        logger.info("Qdrant collection %s: copied metadata %s to the grid: prefix", collection, sorted(missing))
+        logger.info("Qdrant collection %s: copied metadata %s from the aiq: prefix", collection, sorted(missing))
     return missing
 
 
@@ -333,7 +330,7 @@ INDEXED_FIELDS = frozenset(KEYWORD_FIELDS + INTEGER_FIELDS + DATETIME_FIELDS + B
 TENANT_PREFIXES = (*OFFICE_SHELF_COLLECTION_PREFIXES, "proj_", "s_")
 
 #: Collection metadata keys naming the embedder every dense vector came from.
-EMBED_IDENTITY_KEYS = ("grid:embed_fingerprint", "grid:embed_model")
+EMBED_IDENTITY_KEYS = ("embed_fingerprint", "embed_model")
 
 
 class Physical(StrEnum):

@@ -103,7 +103,7 @@ def store(monkeypatch):
     suffix = uuid.uuid4().hex[:8]
     monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"ranking_corpus_{suffix}")
     monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"ranking_office_{suffix}")
-    yield QdrantStore(client, {"grid:embed_fingerprint": "test-fp", "grid:embed_model": "test-model"})
+    yield QdrantStore(client, {"embed_fingerprint": "test-fp", "embed_model": "test-model"})
     for physical in schema.Physical:
         name = schema.ALIASES[physical] + schema.FIRST_VERSION
         if client.collection_exists(name):

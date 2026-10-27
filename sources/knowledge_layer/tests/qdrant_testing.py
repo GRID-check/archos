@@ -40,7 +40,7 @@ from qdrant_client import models
 #: Dense size of every test vector: small, so a test collection costs nothing.
 DIM = 8
 #: The embedder identity test collections are created with.
-IDENTITY = {"grid:embed_fingerprint": "test-fp", "grid:embed_model": "test-model"}
+IDENTITY = {"embed_fingerprint": "test-fp", "embed_model": "test-model"}
 
 
 def server_url() -> str:
