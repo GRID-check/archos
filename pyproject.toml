@@ -92,9 +92,6 @@ viz = [
 # See [tool.uv.workspace] below for auto-discovered packages
 # -----------------------------------------------------------------------------
 
-[project.entry-points."aiq_api.validators"]
-workos = "aiq_agent.auth.workos_validator:get_validators"
-
 [project.entry-points."nat.plugins"]
 # `aiq_researcher*` and not `aiq_piloti*` although the package moved to
 # `agents/piloti`: a plugin entry-point name is what a deployment's
@@ -311,12 +308,6 @@ name = "aiq_agent never imports aiq_api: the API tier hosts the agent, not the r
 type = "forbidden"
 source_modules = ["aiq_agent"]
 forbidden_modules = ["aiq_api"]
-ignore_imports = [
-  # The WorkOS validator builds the API tier's JWTValidator and is registered as
-  # an `aiq_api.validators` entry point: API-tier code in the agent's package.
-  # Moving it into aiq_api deletes this line.
-  "aiq_agent.auth.workos_validator -> aiq_api.**",
-]
 
 [[tool.importlinter.contracts]]
 id = "agent-knowledge-port"
