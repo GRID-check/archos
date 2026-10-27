@@ -78,6 +78,27 @@ def test_a_turn_is_one_ordered_sequence(path: Path) -> None:
     assert all(event["type"] == "CUSTOM" and event["name"] == "stage" for event in after)
 
 
+@pytest.mark.parametrize("path", TURNS, ids=[path.name for path in TURNS])
+def test_a_subagent_s_work_lies_between_its_start_and_its_end(path: Path) -> None:
+    """AG-UI 1.0: a step names an open invocation, a nested one an open parent, and each closes once."""
+    open_runs: set[str] = set()
+    closed: set[str] = set()
+    for event in _lines(path):
+        run = event.get("subagent_run_id")
+        if event["type"] == "SUBAGENT_STARTED":
+            parent = event.get("parent_subagent_run_id")
+            assert run not in open_runs | closed, f"{run} started twice"
+            assert parent is None or parent in open_runs, f"{run}'s parent {parent} is not running"
+            open_runs.add(run)
+        elif event["type"] in {"SUBAGENT_FINISHED", "SUBAGENT_ERROR"}:
+            assert run in open_runs, f"{run} ended without running"
+            open_runs.discard(run)
+            closed.add(run)
+        elif run is not None:
+            assert run in open_runs, f"a step names {run}, which is not running"
+    assert not open_runs, f"never ended: {open_runs}"
+
+
 def test_a_rejection_is_out_of_band() -> None:
     for event in _lines(FIXTURES / "rejected.jsonl"):
         assert event["seq"] == 0
@@ -193,6 +214,11 @@ def test_a_turn_still_ends_only_on_the_terminals_old_tabs_know() -> None:
         "STATE_SNAPSHOT",
         "STEP_STARTED",
         "STEP_FINISHED",
+        # AG-UI 1.0's subagent lifecycle: none of the three ends a turn, and a
+        # SUBAGENT_ERROR is deliberately not RUN_ERROR (the turn goes on).
+        "SUBAGENT_STARTED",
+        "SUBAGENT_FINISHED",
+        "SUBAGENT_ERROR",
         "RUN_FINISHED",
         "RUN_ERROR",
         "CUSTOM",
@@ -230,7 +256,7 @@ class TestFocusRegion:
 
 
 class TestViewerAction:
-    """A viewer action (ADR-0141): the allow-list and what each action needs, which the JSON Schema cannot say."""
+    """A viewer action (ADR-0142): the allow-list and what each action needs, which the JSON Schema cannot say."""
 
     def _value(self, name: str, **args) -> dict:
         return {

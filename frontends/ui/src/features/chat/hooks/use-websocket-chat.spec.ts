@@ -912,7 +912,7 @@ describe('a phone away: locked, offline, or a network that gave up', () => {
   })
 })
 
-// ADR-0141: a viewer action moves only the asker's live page.
+// ADR-0142: a viewer action moves only the asker's live page.
 describe('Piloti’s viewer actions', () => {
   const recorded = wireEvents('turn-viewer-action.jsonl')
   const VIEWER_CONVERSATION = recorded[0]!.conversation_id

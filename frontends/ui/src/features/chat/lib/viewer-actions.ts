@@ -1,5 +1,5 @@
 /**
- * Piloti's viewer actions on the asker's own screen (ADR-0141).
+ * Piloti's viewer actions on the asker's own screen (ADR-0142).
  *
  * A `viewer_action` event is an AG-UI frontend tool call from an allow-list
  * (`wire_v2.ViewerActionName`): open a document at a page, mark a passage or a

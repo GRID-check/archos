@@ -926,7 +926,7 @@ export const CitationDocumentDialog: FC<{
     if (!next) similar.close()
     onOpenChange(next)
   }
-  // The same viewer action Piloti proposes (ADR-0141), on the reader's own
+  // The same viewer action Piloti proposes (ADR-0142), on the reader's own
   // click: the document beside the chat at this place, through the BFF's gate.
   // Only where the peek has room beside a chat (not on a phone, not on Files).
   const beside = target.document.type === 'stored' && viewerBesideChat() ? target.document : null
@@ -1634,10 +1634,9 @@ const InfoPreviewChip: FC<{
         {meta && <p className="text-muted-foreground text-xs">{meta}</p>}
         {bindingNote && (
           <div
-            className="rounded-md border-l-2 py-1.5 pl-2.5 pr-2"
+            className="rounded-md px-2.5 py-1.5"
             style={{
-              borderColor: `color-mix(in oklch, var(--source-${signal}, var(--foreground)) 45%, transparent)`,
-              backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
+                backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
             }}
           >
             <SectionLabel

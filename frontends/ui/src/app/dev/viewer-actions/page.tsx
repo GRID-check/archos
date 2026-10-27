@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * `/dev/viewer-actions` — Piloti's viewer actions (ADR-0141) through the real
+ * `/dev/viewer-actions` — Piloti's viewer actions (ADR-0142) through the real
  * row, the real runner and the real peek store.
  *
  * Four answers, each with the row its viewer actions leave:

@@ -1203,7 +1203,7 @@ export function ThreadCard({
           />
         )}
         {annotation.basis && (
-          <p className="border-l-source-law/40 text-muted-foreground ml-8.5 flex items-center gap-1.5 border-l-2 pl-2 text-[11px]">
+          <p className="text-muted-foreground ml-8.5 flex items-center gap-1.5 text-[11px]">
             <Scale className="size-3 shrink-0" aria-hidden />
             <span className="font-mono">{annotation.basis}</span>
           </p>

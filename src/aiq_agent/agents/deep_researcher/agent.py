@@ -32,6 +32,7 @@ from aiq_agent.common.turn_status import begin_lane_capture
 from aiq_agent.common.turn_status import end_lane_capture
 from aiq_agent.common.turn_status import get_lane_captures
 from aiq_agent.common.turn_status import step_scope
+from aiq_agent.common.turn_status import subagent_run
 from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
 from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
 from aiq_agent.project_context import get_organization_id_from_context
@@ -94,6 +95,8 @@ AGENT_DIR = Path(__file__).parent
 #: ``agent_type`` uses, the string the Skills tab writes, and the string
 #: resolved here are the same string.
 SKILL_AGENT = "deep_researcher"
+#: Its name as a subagent of a chat turn on the wire (SUBAGENT_STARTED): the same identifier.
+DEEP_RESEARCH_AGENT = SKILL_AGENT
 
 _PROMPT_NAMES = ("planner", "researcher", "orchestrator", "writer", "source_router")
 
@@ -353,9 +356,16 @@ class DeepResearcherAgent:
         return config or None, stream_kwargs
 
     async def run(self, state: DeepResearchAgentState) -> DeepResearchAgentState:
-        """Execute deep research, every step it emits drawn as deep research's (``scope: deep``)."""
+        """Execute deep research, every step it emits drawn as deep research's (``scope: deep``).
+
+        On a chat turn (in process) the run is one subagent invocation of the
+        turn's agent (AG-UI 1.0 SUBAGENT_*), and its planner, researchers and
+        writer nest under it. In a job worker there is no graph stream, and both
+        bindings cost nothing.
+        """
         with step_scope("deep"):
-            return await self._run(state)
+            async with subagent_run(DEEP_RESEARCH_AGENT):
+                return await self._run(state)
 
     async def _run(self, state: DeepResearchAgentState) -> DeepResearchAgentState:
         """Execute deep research with multi-phase workflow.

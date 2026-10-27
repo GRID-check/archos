@@ -1,4 +1,4 @@
-"""``show_in_viewer`` (ADR-0141): one allow-listed viewer action, only on a document the person may see.
+"""``show_in_viewer`` (ADR-0142): one allow-listed viewer action, only on a document the person may see.
 
 Only the HTTP calls are faked (the canvas route the document is read through,
 and the document-id lookup). The resolver, the wire model and the emitter are

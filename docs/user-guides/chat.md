@@ -405,7 +405,7 @@ Clicking a source chip opens a preview of the source instead of doing nothing:
 
 When an answer rests on one place in a document, „Laut Baubeschreibung S. 4 …“,
 Piloti can take you there: the document opens in the peek beside the chat at
-that page, with the passage or the box marked (ADR-0141). Under the answer a
+that page, with the passage or the box marked (ADR-0142). Under the answer a
 short row says what it opened. **Zurück / Back** puts the viewer back as it was;
 if nothing was open, it closes.
 
@@ -433,6 +433,14 @@ and offer a building model with one element selected. Nothing else moves.
 
 Other agents connected to your office cannot do this: the agent door does not
 offer your screen to anyone.
+
+## What Piloti noted ("Piloti hat sich gemerkt")
+
+When an answer added something to the project's memory, its footer says so on the answer itself, on the row with the copy actions and **Details**, never inside them: a small chip, **Piloti hat sich gemerkt · 2** (*Piloti noted*). One tap or Enter opens the list of what this turn wrote, each note verbatim with its kind (Entscheidung, Vorgabe, Fakt …) and when it was written: *während der Antwort notiert* for a note you accepted while Piloti answered, *nach der Antwort ergänzt* for one Piloti added after the answer was finished. The chip counts only this answer's notes, not the conversation's, and an answer that noted nothing shows none.
+
+When a note **corrected** an earlier one, the chip reads **Gedächtnis aktualisiert** (*Memory updated*) with its own symbol. The list then shows the correction first, marked *Korrigiert*, with the note it replaced quoted and struck through (*Ersetzt: …*), because something you may have relied on is gone. You manage and delete notes in the project memory.
+
+The chip shows what an answer wrote, not what it read: Piloti does not yet report which remembered notes an answer drew on.
 
 ## Human-in-the-loop (HITL)
 

@@ -61,6 +61,14 @@ export interface TurnMemoryItem {
   /** The finding itself, shown verbatim. */
   content: string
   provenance: TurnMemoryProvenance
+  /**
+   * The earlier note this one corrected, quoted verbatim, when the write
+   * REPLACED something rather than adding to it. Only the in-turn path carries
+   * it (`memory_proposal.supersedes`; accepting the card retires that note);
+   * the reflection stage only ever adds. A correction is the event a reader
+   * most needs to see, because something they may have relied on is gone.
+   */
+  supersedes?: string
 }
 
 /**
@@ -123,7 +131,14 @@ export function turnMemoryItems({ stages, cards, cardInteractions, decidedPropos
     if (!card || card.type !== 'memory_proposal') continue
     const key = cardKey(card, index)
     if (!wasRemembered(card, key, cardInteractions, decidedProposals)) continue
-    items.push({ id: key, kind: card.kind, content: card.content, provenance: 'inTurn' })
+    const supersedes = card.supersedes?.trim()
+    items.push({
+      id: key,
+      kind: card.kind,
+      content: card.content,
+      provenance: 'inTurn',
+      ...(supersedes ? { supersedes } : {}),
+    })
   }
 
   for (const item of stages?.memoryReflection?.items ?? []) {

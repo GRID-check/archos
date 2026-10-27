@@ -1,5 +1,5 @@
 /**
- * The chat's row for Piloti's viewer actions (ADR-0141): announced, undoable,
+ * The chat's row for Piloti's viewer actions (ADR-0142): announced, undoable,
  * offered when it did not move, and the person's switch beside it.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'

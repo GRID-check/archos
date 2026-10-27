@@ -1,5 +1,5 @@
 /**
- * The runner of a viewer action (ADR-0141): the BFF decides what may open,
+ * The runner of a viewer action (ADR-0142): the BFF decides what may open,
  * the viewer moves the way the person's own clicks move it, and every move
  * can be undone.
  */

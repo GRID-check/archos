@@ -1,5 +1,5 @@
 /**
- * Viewer place API (ADR-0141): may Piloti's viewer action open this document
+ * Viewer place API (ADR-0142): may Piloti's viewer action open this document
  * for this person, and what does the viewer need to open it.
  *
  * The browser asks it before a viewer action moves the asker's screen. It reads

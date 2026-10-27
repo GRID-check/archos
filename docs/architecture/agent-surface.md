@@ -522,7 +522,7 @@ fails when a tool of the `canvas` group, `look` or `show_in_viewer` is missing
 from it, or an entry names a tool Piloti is not bound to.
 
 `show_in_viewer` is the one capability here that moves a person's screen
-(ADR-0141). It is an allow-listed AG-UI frontend tool call that only the asker's
+(ADR-0142). It is an allow-listed AG-UI frontend tool call that only the asker's
 live page runs, after asking the BFF in that person's session
 (`document-viewer-place-get`). That operation is withheld from every door as
 `ui-state`: no agent moves somebody else's screen. Regenerate with

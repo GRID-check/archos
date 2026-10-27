@@ -26,6 +26,8 @@ from aiq_agent.common.citation_verification import _parse_citation_key
 from aiq_agent.common.citation_verification import extract_sources_from_tool_result
 from aiq_agent.common.citation_verification import get_session_registry
 from aiq_agent.common.cost_tracking import BudgetExceededError
+from aiq_agent.common.turn_status import fail_subagent
+from aiq_agent.common.turn_status import subagent_run
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +322,41 @@ class ToolVisibilityMiddleware(AgentMiddleware):
     async def awrap_model_call(self, request, handler):
         """Filter hidden tools before an asynchronous model call."""
         return await handler(request.override(tools=self._filter_tools(request.tools)))
+
+
+class SubagentEventsMiddleware(AgentMiddleware):
+    """Each ``task`` call the orchestrator makes is one subagent invocation on the chat wire (AG-UI 1.0).
+
+    deepagents runs a declarative subagent (planner, writer, source router)
+    inside its ``task`` tool, so the invocation is bound around that tool:
+    SUBAGENT_STARTED with the subagent's name and the spawning call's id, every
+    step inside attributed to it, then SUBAGENT_FINISHED, or SUBAGENT_ERROR
+    when the call raised or came back as an error result. A ``task`` naming a
+    subagent the run does not have runs nothing, so it announces nothing.
+
+    The orchestrator's innermost middleware, so a retried call is one
+    invocation per attempt. Async only: the orchestrator is streamed.
+    """
+
+    def __init__(self, subagent_names: Iterable[str], tool_name: str = "task") -> None:
+        self.subagent_names = frozenset(subagent_names)
+        self.tool_name = tool_name
+
+    def wrap_tool_call(self, request, handler):
+        """Synchronous calls are passed through: the orchestrator never runs them on the chat wire."""
+        return handler(request)
+
+    async def awrap_tool_call(self, request, handler):
+        """Bind the subagent invocation around the ``task`` call that runs it."""
+        call = request.tool_call
+        name = (call.get("args") or {}).get("subagent_type") if call.get("name") == self.tool_name else None
+        if name not in self.subagent_names:
+            return await handler(request)
+        async with subagent_run(str(name), parent_tool_call_id=call.get("id")) as frame:
+            result = await handler(request)
+            if isinstance(result, ToolMessage) and result.status == "error":
+                fail_subagent(frame, "tool_error")
+            return result
 
 
 class SourceRegistryMiddleware(AgentMiddleware):
