@@ -552,7 +552,10 @@ def _corpus_prefetch(
     if shelf:
         scope = {"path": MOUNT_ROOTS.get(SHELF_MOUNTS.get(str(focus_shelf), ""), MOUNT_ROOTS[SHELF_MOUNTS[shelf]])}
         if focus:
-            scope["glob"] = re.sub(r"([*?\[\]{}])", r"[\1]", focus.rsplit("/", 1)[-1])
+            from wcmatch import glob as wcglob
+
+            # Deep Agents' own matcher, which `glob` uses with BRACE: every metacharacter escaped.
+            scope["glob"] = wcglob.escape(focus.rsplit("/", 1)[-1])
         calls.extend(
             {"name": GREP, "args": {"pattern": term, "output_mode": "content", **scope}}
             for term in literal_terms(question)

@@ -60,6 +60,24 @@ class TestTheRegistry:
     def test_another_file_does_not_match(self):
         assert not _registry("Brandschutzkonzept.pdf, p.3").has_citation_key("/project/Anderes.pdf.md, p.3")
 
+    @pytest.mark.parametrize(
+        ("stored", "line", "shown"),
+        [
+            # A comma in the file name is no end of the path; the page is.
+            (
+                "Bescheid, Stand 2024.pdf, p.3",
+                "[1] /project/Behörde/Bescheid, Stand 2024.pdf.md, p.3",
+                "[1] Bescheid, Stand 2024.pdf, p.3",
+            ),
+            # A German page reference survives the rewrite.
+            ("Plan.pdf, p.3", "[1] /project/Einreichung/Plan.pdf.md S. 3", "[1] Plan.pdf S. 3"),
+        ],
+    )
+    def test_the_rewrite_replaces_exactly_the_path(self, stored, line, shown):
+        text = f"Der Fluchtweg ist 40 m lang [1].\n\n## Sources\n{line}\n"
+        report = verify_citations(text, _registry(stored)).verified_report
+        assert shown in report.splitlines()
+
     def test_the_answer_s_source_line_names_the_file_not_the_path(self):
         text = "Der Fluchtweg ist 40 m lang [1].\n\n## Sources\n[1] /project/Einreichung/Plan.pdf.md, p.3\n"
         result = verify_citations(text, _registry("Plan.pdf, p.3"))
