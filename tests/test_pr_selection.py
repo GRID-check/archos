@@ -197,6 +197,10 @@ def test_the_declaration_is_read_relative_to_the_ui(mod):
 
     assert mod.declared_inputs(source) == ("frontends/ui/src/app/api/**", "shared/wire/v2/**")
     assert mod.declared_inputs("import x from 'y'\n") is None
+    # A Next route's brackets are literal, not an fnmatch character class.
+    (route,) = mod.declared_inputs("// @disk-inputs: src/app/api/v1/[...path]/route.ts\n")
+    assert mod._matches("frontends/ui/src/app/api/v1/[...path]/route.ts", [route])
+    assert not mod._matches("frontends/ui/src/app/api/v1/p/route.ts", [route])
     # What a child process reads, no recorder sees: such a spec never counts as declared.
     spawning = "// @disk-inputs: src/**\nimport { execFileSync } from 'node:child_process'\n"
     assert mod.declared_inputs(spawning) is None

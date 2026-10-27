@@ -196,7 +196,9 @@ def declared_inputs(source: str) -> tuple[str, ...] | None:
     if not found or SPAWNS.search(source):
         return None
     globs = (glob.strip() for glob in found.group(1).split(","))
-    return tuple(posixpath.normpath(posixpath.join(UI, glob)) for glob in globs if glob)
+    # `*` is the only wildcard a declaration has; a Next route's `[...path]`
+    # is literal, and fnmatch would read it as a character class.
+    return tuple(posixpath.normpath(posixpath.join(UI, glob)).replace("[", "[[]") for glob in globs if glob)
 
 
 def _matches(path: str, patterns: Iterable[str]) -> bool:

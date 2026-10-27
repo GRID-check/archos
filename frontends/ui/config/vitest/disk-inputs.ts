@@ -69,25 +69,48 @@ if (!state.installed) {
 }
 state.reads.clear()
 
+/** One path segment against one glob segment, where `*` is any run of characters. */
+function segmentMatches(glob: string, name: string): boolean {
+  const parts = glob.split('*')
+  if (parts.length === 1) return glob === name
+  const first = parts[0]!
+  const last = parts.at(-1)!
+  if (!name.startsWith(first) || !name.endsWith(last) || name.length < first.length + last.length) return false
+  let at = first.length
+  for (const part of parts.slice(1, -1)) {
+    const found = name.indexOf(part, at)
+    if (found === -1 || found + part.length > name.length - last.length) return false
+    at = found + part.length
+  }
+  return true
+}
+
 /**
- * A glob as a pattern: `**` crosses directories (dot-directories too, unlike
- * `path.matchesGlob`), `*` stays inside one. `ci/pr_selection.py` matches the
- * same globs with `fnmatch`, whose `*` also crosses `/`: a little wider, so a
+ * A glob as a test. Only `*` (inside one segment) and `**` (any number of
+ * segments, dot-directories too) are wildcards: a declaration names real
+ * paths, and Next's `(shell)` and `[...path]` directories are literal there,
+ * which no glob library reads them as. `ci/pr_selection.py` matches the same
+ * globs with `fnmatch`, whose `*` also crosses `/`: a little wider, so a
  * selection can run a spec this check would not require, never the reverse.
  */
-export function globPattern(glob: string): RegExp {
-  const body = glob
-    .split('**')
-    .map((part) => part.replace(/[.+^${}()|[\]\\]/g, '\\$&').replaceAll('*', '[^/]*').replaceAll('?', '[^/]'))
-    .join('.*')
-  return new RegExp(`^${body}$`)
+export function globMatcher(glob: string): (path: string) => boolean {
+  const globs = glob.split('/')
+  const match = (g: number, names: string[], n: number): boolean => {
+    if (g === globs.length) return n === names.length
+    if (globs[g] === '**') {
+      for (let skip = n; skip <= names.length; skip++) if (match(g + 1, names, skip)) return true
+      return false
+    }
+    return n < names.length && segmentMatches(globs[g]!, names[n]!) && match(g + 1, names, n + 1)
+  }
+  return (path) => match(0, path.split('/'), 0)
 }
 
 /** Every read the declaration does not cover. A directory read is covered by any glob inside it. */
 export function uncovered(reads: Iterable<string>, globs: string[]): string[] {
-  const patterns = globs.map(globPattern)
+  const matchers = globs.map(globMatcher)
   const covers = (read: string) =>
-    patterns.some((pattern) => pattern.test(read)) || globs.some((glob) => glob.startsWith(`${read}/`))
+    matchers.some((matches) => matches(read)) || globs.some((glob) => glob.startsWith(`${read}/`))
   return [...reads].filter((read) => !covers(read)).sort()
 }
 
