@@ -7,9 +7,11 @@
  * is decoration, so the failing cases are the ones pinned here.
  */
 import { describe, expect, it } from 'vitest'
-import { THRESHOLD, baselineOf, specReach, violations } from './blast-radius.mjs'
+import { RECORD_FLOOR, THRESHOLD, baselineOf, specReach, violations } from './blast-radius.mjs'
 
-const input = (...imports) => ({ imports: imports.map((path) => ({ path, kind: 'import-statement' })) })
+const input = (...imports) => ({
+  imports: imports.map((path) => ({ path, kind: 'import-statement' })),
+})
 
 describe('specReach', () => {
   it('counts every spec above a module, through any number of importers', () => {
@@ -49,13 +51,33 @@ describe('violations', () => {
   it('passes a module below the threshold that nothing recorded', () => {
     expect(violations({ 'src/leaf.ts': THRESHOLD - 1 }, {})).toEqual([])
   })
+
+  it('lets every count grow with the suite, and holds the growth beyond it', () => {
+    // A tenth more specs: a hub recorded at 500 may reach 550, and 605 with its slack.
+    expect(violations({ 'src/hub.ts': 605 }, { 'src/hub.ts': 500 }, 1.1)).toEqual([])
+    expect(violations({ 'src/hub.ts': 606 }, { 'src/hub.ts': 500 }, 1.1)).toHaveLength(1)
+    expect(violations({ 'src/new.ts': THRESHOLD }, {}, 1.1)).toEqual([])
+  })
 })
 
 describe('baselineOf', () => {
-  it('records the hubs and nothing else', () => {
-    expect(baselineOf({ 'src/b.ts': THRESHOLD, 'src/a.ts': THRESHOLD + 1, 'src/leaf.ts': 3 })).toEqual({
+  it('records every module from the floor up, so one just under the threshold has its slack', () => {
+    expect(
+      baselineOf({
+        'src/b.ts': RECORD_FLOOR,
+        'src/a.ts': THRESHOLD + 1,
+        'src/leaf.ts': RECORD_FLOOR - 1,
+      })
+    ).toEqual({
       'src/a.ts': THRESHOLD + 1,
-      'src/b.ts': THRESHOLD,
+      'src/b.ts': RECORD_FLOOR,
     })
+  })
+
+  it('gives a recorded module just under the threshold its slack, where an unrecorded one would fail', () => {
+    const baseline = baselineOf({ 'src/near.ts': THRESHOLD - 1 })
+
+    expect(violations({ 'src/near.ts': THRESHOLD }, baseline)).toEqual([])
+    expect(violations({ 'src/near.ts': THRESHOLD }, {})).toHaveLength(1)
   })
 })
