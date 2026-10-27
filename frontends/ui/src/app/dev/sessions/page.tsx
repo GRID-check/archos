@@ -54,7 +54,7 @@ import { AppSidebar } from '@/components/shell/app-sidebar'
 import { RightsLostPanel } from '@/features/layout/components/RightsLostPanel'
 import { SessionsPanel } from '@/features/layout/components/SessionsPanel'
 import { useLayoutStore } from '@/features/layout/store'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000)
 const daysAgo = (d: number) => new Date(Date.now() - d * 24 * 60 * 60 * 1000)
