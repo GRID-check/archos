@@ -434,6 +434,9 @@ Not structural, but measured and left out of this PR:
   117 specs for a one-spec change). Most read a fixed set of paths. Giving each
   spec a declared input glob would let `decide_ui` run one only when its inputs
   change.
+  *Done (2026-10-27): each declares a `// @disk-inputs:` line, checked at run
+  time by `config/vitest/disk-inputs.ts`; a one-file chat change now selects
+  ~25 of 124 (`docs/contributing/ci.md`).*
 - **Repo checks and SAST check out the full history** (75 s and 72 s median).
   A shallow clone plus a targeted fetch of the base would save about a minute
   on every PR's critical path.

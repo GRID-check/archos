@@ -73,3 +73,6 @@ package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
 dist-scripts/
+
+# What each tree-reading spec read, while scripts/declare-disk-inputs.mjs records it
+.disk-inputs/
