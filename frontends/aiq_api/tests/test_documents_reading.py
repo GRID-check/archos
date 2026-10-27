@@ -36,3 +36,43 @@ def test_a_value_the_file_already_carries_is_not_overwritten():
     file = _file("BSK.pdf", coverage={"pages": 1})
     _merge_summaries([file], [AvailableDocument(file_name="BSK.pdf", coverage=COVERAGE)])
     assert file.coverage == {"pages": 1}
+
+
+async def test_a_listing_read_without_the_metadata_store_says_so(monkeypatch):
+    """The files still list; the header tells a projector not to take the empty readings as read."""
+    from unittest.mock import MagicMock
+
+    from fastapi import APIRouter
+    from fastapi import FastAPI
+    from httpx import ASGITransport
+    from httpx import AsyncClient
+
+    from aiq_agent.knowledge.factory import clear_active_ingestor
+    from aiq_agent.knowledge.factory import set_active_ingestor
+    from aiq_api.routes import documents as routes
+
+    async def present(*args, **kwargs):
+        return None
+
+    async def store_down(collection):
+        raise RuntimeError("summary store unreachable")
+
+    ingestor = MagicMock()
+    ingestor.backend_name = "test"
+    ingestor.list_files.return_value = [_file("BSK.pdf")]
+    monkeypatch.setattr(routes, "require_collection", present)
+    monkeypatch.setattr(routes, "get_available_documents_async", store_down)
+    set_active_ingestor(ingestor)
+    try:
+        app = FastAPI()
+        router = APIRouter()
+        routes.add_document_routes(router)
+        app.include_router(router)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/v1/collections/proj_a/documents")
+    finally:
+        clear_active_ingestor()
+
+    assert response.status_code == 200
+    assert [row["file_name"] for row in response.json()] == ["BSK.pdf"]
+    assert response.headers[routes.READING_UNAVAILABLE_HEADER] == "1"
