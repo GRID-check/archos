@@ -122,6 +122,8 @@ No-op until `initPosthogClient` ran, which needs the host and project token in
 | `search_suggestion_picked` | `dimension` (the completed filter: `party`, `place`, `cites`, `scale`, `planNumber`, `planIndex`, `fact`), `rank` (1-based place of the value taken), `prefix_chars` (characters typed before taking it; never the characters, never the value) | `features/search/components/search-filter-form.tsx`, when a completion of a free-text filter is taken (`captureSuggestionPicked`); the filter it sets then counts as a `search_refined` like any other |
 | `usage_notice_shown` | `level` (`forecast`, `warning`, `critical`, `exhausted`), `scope`, `window`, `unit`, `can_change` | `features/chat/components/ChatUsageNotice.tsx`, once per notice key per page view |
 | `usage_notice_dismissed` | `level`, `scope`, `window` | `features/chat/components/ChatUsageNotice.tsx`, the notice's × |
+| `viewer_action_outcome` | `action` (the allow-list name), `outcome` (`shown`, `offered`, `refused`, `failed`, `undone`, `kept`), `reason` (why it was offered or refused, else null) | `features/chat/lib/viewer-actions.ts`, each change of a viewer action's status on the asker's page (ADR-0144). Never the document or the passage |
+| `viewer_actions_auto_changed` | `on` | `features/chat/lib/viewer-actions.ts`, the „Automatisch öffnen“ switch under an answer or on the profile page |
 
 `organization_created` is still a member of the `PostHogEvent` union, but nothing
 in the browser sends it any more: the route does. Drop it from the union when the

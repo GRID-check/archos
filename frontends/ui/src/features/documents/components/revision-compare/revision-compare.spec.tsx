@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { JSX } from 'react'
-import { act, fireEvent, render, screen, waitFor, within } from '@/test-utils'
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@/test-utils'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import type { UseRevisionVisualChanges } from '../../hooks/use-revision-visual-changes'
 import { RevisionCompare } from './revision-compare'
@@ -610,5 +610,28 @@ describe('RevisionCompare on a phone', () => {
   it('still opens side by side when the caller asks for it', async () => {
     await open(setup(1, 1), { initialMode: 'side' })
     expect(screen.getByTestId('stage-side')).toBeInTheDocument()
+  })
+})
+
+describe('closing a comparison from elsewhere (a viewer action’s „Zurücknehmen“, ADR-0144)', () => {
+  const older = { id: 'old', filename: 'EG_VE.pdf' }
+  const newer = { id: 'new', filename: 'EG.pdf' }
+
+  it('shuts only the pair it opened, and says whether it did', () => {
+    const { result } = renderHook(() => useRevisionCompare())
+    act(() => result.current.openRevisionCompare(older, newer))
+
+    let shut = true
+    act(() => {
+      shut = result.current.closeRevisionCompare({ id: 'other', filename: 'x.pdf' }, newer)
+    })
+    expect(shut).toBe(false)
+    expect(result.current.compareElement).not.toBeNull()
+
+    act(() => {
+      shut = result.current.closeRevisionCompare(older, newer)
+    })
+    expect(shut).toBe(true)
+    expect(result.current.compareElement).toBeNull()
   })
 })

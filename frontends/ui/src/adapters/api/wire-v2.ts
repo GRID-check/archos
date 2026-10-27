@@ -39,6 +39,12 @@ export const WIRE_VERSION = 2
 export const CLOSE_CLIENT_OUTDATED = 4426
 
 /**
+ * The longest passage a viewer action marks (`wire_v2.MAX_VIEWER_PASSAGE_CHARS`).
+ * `wire-v2.spec.ts` holds it to the generated schema, so the two cannot part.
+ */
+export const MAX_VIEWER_PASSAGE_CHARS = 400
+
+/**
  * A turn event from a server newer than this bundle, as {@link parseWireEvent}
  * hands it on: a `type`, a step `kind` or a `CUSTOM` name this bundle does not
  * know. Its envelope is kept, so the fold advances `seq` past it and the turn

@@ -528,6 +528,38 @@ today's scene schema. The kind stays in the vocabulary (`DIAGRAM_SOURCE_KINDS`)
 and the server already accepts it, so adding a renderer later is one entry in
 `DIAGRAM_RENDERERS`, not a vocabulary migration over stored rows.
 
+**Since ADR-0141 Excalidraw ships as an editor, not as a renderer.** The
+argument above is about drawing a model's source, and it still holds: the model
+writes mermaid, never Excalidraw. The new use is a person reworking a drawing
+Piloti made. A drawn flow or Gliederung inside a project offers „Als Skizze
+bearbeiten" (`features/diagrams/sketch/`):
+
+- `sketchFromModel` turns the parsed `FlowModel`/`MapModel` into Excalidraw
+  skeleton elements, laid out by dagre in the view's direction, labels in
+  Helvetica. It reads the model, not the source, so the sketch opens in the
+  arrangement the person just saw. `@excalidraw/mermaid-to-excalidraw` would
+  have parsed again with a second mermaid (it depends on `^11`).
+- `sketch-canvas.tsx` is the only importer of `@excalidraw/excalidraw` 0.18.1,
+  loaded by `next/dynamic` when the dialog opens (`sketch-isolation.spec.ts`).
+  Measured with esbuild: the chat gains 2.4 KB gzip; the click loads 2.46 MB
+  gzip.
+- Fonts come from `public/excalidraw/` (`scripts/copy-excalidraw-assets.mjs`,
+  run with `postinstall`, `dev` and `build` like pdf.js's). Without them
+  Excalidraw fetches every font from `esm.sh`.
+- Filing: `exportToSvg` (`skipInliningFonts`, always on paper), then
+  `fileableSketchSvg` removes `<style>` and `<mask>` and runs the server's own
+  parser and serialiser in the browser, then the same `POST` as a fence with
+  `sourceKind: 'excalidraw'` and `edited: true`. The route then marks both files
+  „Von Piloti entworfen, von einer Person bearbeitet … nicht maßstäblich"
+  (`diagrams.markingEdited`). The `<mask>` is Excalidraw's gap in an arrow under
+  its label, so in the file a label sits on its line.
+- Every filing, sketch or not, scores `diagram-filed` (`as_drawn | edited`) on
+  the answer's trace; the browser sends `answerId` for that.
+
+`DIAGRAM_RENDERERS.excalidraw` stays `null`: nothing renders a stored scene
+yet. Reopening a filed sketch, and saving a new Fassung instead of a new pair
+of documents, is the next slice.
+
 ## Known limits
 
 - **`journey`, `block-beta` and `sankey-beta` do not draw.** Mermaid emits

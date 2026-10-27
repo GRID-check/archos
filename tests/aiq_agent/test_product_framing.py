@@ -88,3 +88,54 @@ def test_the_scan_sees_the_prompts() -> None:
     """A glob that silently matched nothing would pass every test above."""
     assert "src/aiq_agent/agents/piloti/prompts/piloti_static.md" in PROMPTS
     assert len(PROMPTS) >= 8
+
+
+#: The same rule in English, for what an agent reads: a file is "the same plan",
+#: "an older plan". A research plan or a floor plan stays allowed; what is caught
+#: is a determiner that points at one file as a plan.
+FILE_AS_PLAN_EN = re.compile(
+    r"\b(?:same|this|that|each|every|which|older|newer|other|another|its|their|whose)\s+plans?\b", re.IGNORECASE
+)
+
+
+def _tool_descriptions() -> list[tuple[str, int, str]]:
+    """Every string a tool or its arguments is described with: ``*DESCRIPTION*`` constants and ``description=``."""
+    import ast
+
+    found: list[tuple[str, int, str]] = []
+    for path in sorted((ROOT / "src" / "aiq_agent").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            values: list[ast.AST] = []
+            if isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and "DESCRIPTION" in target.id for target in node.targets
+            ):
+                values.append(node.value)
+            if isinstance(node, ast.keyword) and node.arg == "description":
+                values.append(node.value)
+            for value in values:
+                for sub in ast.walk(value):
+                    if isinstance(sub, ast.Constant) and isinstance(sub.value, str):
+                        found.append((path.relative_to(ROOT).as_posix(), sub.lineno, sub.value))
+    return found
+
+
+def test_no_tool_description_calls_a_file_a_plan() -> None:
+    """A tool's DESCRIPTION is a prompt the model reads with every call (ADR-0144 shipped "the same plan")."""
+    hits = [
+        f"{relative}:{line}: {text.strip()[:160]}"
+        for relative, line, text in _tool_descriptions()
+        if FILE_AS_PLAN.search(text) or FILE_AS_PLAN_EN.search(text)
+    ]
+    assert hits == [], "Never call a file a plan (CONTEXT.md, „Fassung“), in a tool description either:\n" + "\n".join(
+        hits
+    )
+
+
+def test_the_description_scan_sees_the_tools() -> None:
+    """A walk that silently found nothing would pass the test above."""
+    files = {relative for relative, _, _ in _tool_descriptions()}
+    assert "src/aiq_agent/tools/viewer/register.py" in files
+    assert "src/aiq_agent/tools/canvas/register.py" in files
+    assert FILE_AS_PLAN_EN.search("the older Fassung of the same plan")
+    assert not FILE_AS_PLAN_EN.search("reads the plan and research notes")

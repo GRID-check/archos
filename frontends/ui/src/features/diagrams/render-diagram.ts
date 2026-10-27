@@ -401,6 +401,15 @@ const renderMermaid: DiagramRenderer = (request) => withMermaid(() => renderMerm
  * one. So the kind stays in the vocabulary and the renderer does not exist: the
  * server already accepts `excalidraw` as a source kind, so adding it later is
  * one entry in this map, not a vocabulary migration.
+ *
+ * **Since ADR-0141 Excalidraw ships, as an EDITOR, and this entry stays null.**
+ * The argument above is about rendering a model's source, and it still holds.
+ * What changed is a second use: a person reworking a drawing Piloti made
+ * („Als Skizze bearbeiten", `sketch/`). That path draws its own SVG with
+ * Excalidraw's `exportToSvg` at the moment of filing and posts scene and
+ * picture together, so nothing renders an `.excalidraw` source from storage.
+ * An entry here would be code with no caller; it belongs here on the day
+ * something reopens a filed sketch.
  */
 export const DIAGRAM_RENDERERS: Readonly<Record<DiagramSourceKind, DiagramRenderer | null>> = {
   mermaid: renderMermaid,

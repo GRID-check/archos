@@ -18,7 +18,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { foldTurnEvents } from '@/features/chat/lib/turn-fold'
-import { clientMessageSchema, parseHello, parseWireEvent, type WireEvent } from './wire-v2'
+import { MAX_VIEWER_PASSAGE_CHARS, clientMessageSchema, parseHello, parseWireEvent, type WireEvent } from './wire-v2'
+import { viewerActionArgsSchema } from './wire-v2.generated'
 
 function fixtureDir(): string {
   let dir = process.cwd()
@@ -212,5 +213,22 @@ describe('chat wire v2 frames from a newer server', () => {
     expect(actual?.gap).toBe(false)
     expect(actual?.lastSeq).toBe(recorded.length + unknown.length)
     expect({ ...actual, lastSeq: 0, lastBeatAt: 0 }).toEqual({ ...expected, lastSeq: 0, lastBeatAt: 0 })
+  })
+})
+
+describe('a viewer action (ADR-0144)', () => {
+  it('marks at most the passage the generated schema allows', () => {
+    const args = (passage: string) => ({ document_id: 'd', document_name: 'x.pdf', page: 1, passage })
+    expect(viewerActionArgsSchema.safeParse(args('a'.repeat(MAX_VIEWER_PASSAGE_CHARS))).success).toBe(true)
+    expect(viewerActionArgsSchema.safeParse(args('a'.repeat(MAX_VIEWER_PASSAGE_CHARS + 1))).success).toBe(false)
+  })
+
+  it('reads an action this bundle does not know, so a sixth one does not make an older tab reload', () => {
+    const newer = (lines('newer-events.jsonl') as Array<Record<string, unknown>>).find(
+      (frame) => frame.name === 'viewer_action'
+    )
+    const event = parseWireEvent(newer)
+    if (event?.type !== 'CUSTOM' || event.name !== 'viewer_action') throw new Error('an unknown action must still parse')
+    expect(event.value.tool_call_name).toBe('follow_cursor')
   })
 })
