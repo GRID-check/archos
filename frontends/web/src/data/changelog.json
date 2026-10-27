@@ -177,6 +177,10 @@
               "de": "Wenn Piloti alle Stellen in Ihren Dokumenten ermittelt, an denen ein Wort vorkommt, zählt jede Stelle jetzt nur einmal. Ein Wort in einer Kapitelüberschrift oder in einem Textabschnitt, der auf der nächsten Seite weitergeht, wurde bisher zwei- oder mehrmals gezählt und konnte auf Seiten aufgeführt werden, auf denen es nicht vorkommt."
             },
             {
+              "en": "Piloti starts on the first question of a chat sooner: the first answer after an update or a restart no longer waits several seconds before Piloti begins to look things up.",
+              "de": "Piloti beginnt bei der ersten Frage in einem Chat schneller mit der Suche: Bei der ersten Antwort nach einem Update oder Neustart wartet Piloti nicht mehr mehrere Sekunden, bis die Suche beginnt."
+            },
+            {
               "en": "An answer no longer loses a source because Piloti cited a document by its place in the folders instead of by its name.",
               "de": "Eine Antwort lässt eine Quelle nicht mehr aus, wenn Piloti ein Dokument anhand seiner Position in der Ordnerstruktur statt anhand seines Namens zitiert."
             },

@@ -2504,6 +2504,10 @@
     "de": "Piloti überspringt in diesen Projekten Ordner, die Sie nicht lesen dürfen, sowie Dateien, die noch zur Prüfung zurückgehalten sind, auch Ihre eigenen Uploads."
   },
   {
+    "en": "Piloti starts on the first question of a chat sooner: the first answer after an update or a restart no longer waits several seconds before Piloti begins to look things up.",
+    "de": "Piloti beginnt bei der ersten Frage in einem Chat schneller mit der Suche: Bei der ersten Antwort nach einem Update oder Neustart wartet Piloti nicht mehr mehrere Sekunden, bis die Suche beginnt."
+  },
+  {
     "en": "Piloti starts reading before it starts thinking: for a question about a regulation or a project file, it fetches the likely passages first, so questions can be answered one step sooner. The derivation (Herleitung) shows this as the first search step.",
     "de": "Piloti beginnt mit dem Lesen, bevor es zu denken beginnt: Bei einer Frage zu einer Vorschrift oder einer Projektdatei holt es zuerst die wahrscheinlich passenden Textstellen, sodass Fragen einen Schritt früher beantwortet werden können. Die Herleitung zeigt dies als ersten Suchschritt."
   },
