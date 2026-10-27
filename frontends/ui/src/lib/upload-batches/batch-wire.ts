@@ -25,10 +25,10 @@ export const uploadBatchExclusionsSchema = z
 /** `POST /api/upload-batches`. */
 export const openUploadBatchSchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     // `archiv` is what an open tab still sends. Remove after one release.
     scope: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(UPLOAD_BATCH_SCOPES)),
-    projectId: z.string().uuid().nullable().default(null),
+    projectId: z.guid().nullable().default(null),
     conversationId: z.string().min(1).max(200).nullable().default(null),
     expectedCount: z.number().int().min(0).max(UPLOAD_BATCH_MAX_FILES),
     excluded: uploadBatchExclusionsSchema,

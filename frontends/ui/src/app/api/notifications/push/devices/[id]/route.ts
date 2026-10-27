@@ -8,7 +8,7 @@ import { apiRoute } from '@/lib/api/handler'
 import { NotFoundError } from '@/lib/api/errors'
 import { removeDevice } from '@/lib/push/service'
 
-const idSchema = z.string().uuid()
+const idSchema = z.guid()
 
 export const DELETE = apiRoute<{ id: string }>(
   async ({ session, params }) => {
