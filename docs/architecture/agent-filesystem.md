@@ -41,7 +41,7 @@ with the reason. The design text stays as written; this section is the delta.
 | Stored page text and the chunk rebuild | `packages/knowledge-layer/src/stored_pages.py` |
 | The tools, the `CompositeBackend`, the `/drafts/` route | `src/aiq_agent/tools/documents/filesystem.py`, `tools.py` |
 | Citations on `ToolMessage.artifact` | `src/aiq_agent/common/citation_collector.py`; read first by `extract_sources_from_tool_result` |
-| `ToolStep.mount` | `common/wire_v2.py`, `turn_status.ToolStepCallback`; the UI's `executed-steps.ts` |
+| `ToolStep.mount` | `common/wire_v2.py`, `action_rows.ToolStepCallback`; the UI's `executed-steps.ts` |
 | Config | `filesystem: knowledge_search` on `shallow_research_agent` (`configs/config_oib_openrouter.yml`) |
 
 Departures, each with its reason:

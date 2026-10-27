@@ -185,6 +185,14 @@
               "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
             },
             {
+              "en": "Piloti now answers in the language you ask in, also when the project's documents are in German, and no longer writes an internal project field name into an answer.",
+              "de": "Piloti antwortet jetzt in der Sprache, in der Sie fragen, auch wenn die Projektdokumente auf Deutsch sind, und nennt interne Projektfeldnamen nicht mehr in Antworten."
+            },
+            {
+              "en": "An assistant such as Claude or Cursor that asks Piloti now receives the answer as plain Markdown, its check and action tables intact, instead of Piloti's own display markup.",
+              "de": "Ein Assistent wie Claude oder Cursor, der jetzt Piloti befragt, erhält die Antwort als einfaches Markdown mit intakten Prüf- und Aktionstabellen statt im Piloti-eigenen Darstellungs-Markup."
+            },
+            {
               "en": "Taking back a model view Piloti opened works again after you selected another element there, and once you have left the model view the chat no longer offers to take it back.",
               "de": "Das Zurückholen einer von Piloti geöffneten Modellansicht funktioniert wieder, nachdem Sie darin ein anderes Element ausgewählt haben. Sobald Sie die Modellansicht verlassen haben, bietet der Chat nicht mehr an, sie zurückzuholen."
             },

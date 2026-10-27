@@ -1137,7 +1137,7 @@ export function defaultFoldedRounds(_count: number): Set<number> {
 /**
  * The tools that open a passage of a document the turn already found: `read_file` on the estate
  * since ADR-0133 slice 6, `read_passage` before it and for the turns stored with it. A skill read
- * never reaches a round's tools (`turn_status._describe_calls` skips it), and a draft read returns
+ * never reaches a round's tools (`retrieval_status._describe_calls` skips it), and a draft read returns
  * no documents, so a `read_file` round with documents opened the office's own.
  */
 const OPEN_TOOLS: ReadonlySet<string> = new Set(['read_file', 'read_passage'])
