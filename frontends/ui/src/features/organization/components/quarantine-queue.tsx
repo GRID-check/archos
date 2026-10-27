@@ -28,6 +28,7 @@ import { Eye, FileWarning, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { ApiRequestError } from '@/adapters/api/api-error'
+import { listProjects } from '@/adapters/api/projects-client'
 import {
   deleteQuarantinedDocument,
   listQuarantineQueue,
@@ -59,8 +60,7 @@ function useProjectNames(): Map<string, string> {
   const [names, setNames] = useState<Map<string, string>>(new Map())
   useEffect(() => {
     const controller = new AbortController()
-    fetch('/api/projects', { signal: controller.signal })
-      .then(async (res) => (res.ok ? ((await res.json()) as { id: string; name: string }[]) : []))
+    listProjects({ signal: controller.signal })
       .then((rows) => setNames(new Map(rows.map((row) => [row.id, row.name]))))
       .catch(() => undefined)
     return () => controller.abort()
