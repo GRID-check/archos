@@ -19,7 +19,7 @@ vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { FRESH_MEMBERSHIP_TTL_MS } from '@/lib/authz/project-membership'
+import { MEMBERSHIP_TTL_MS } from '@/lib/authz/project-membership'
 import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import {
@@ -99,12 +99,9 @@ describe('external agent (bearer token)', () => {
       scopes: ['openid', 'profile'],
       sensitiveOptIns: ['access', 'secret', 'control'],
     })
-    // The fresh membership lookup: a removed member's token stops working within a minute (L7).
-    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith(
-      { userId: 'user_1', email: null, organizationId: 'org_1' },
-      { membershipTtlMs: FRESH_MEMBERSHIP_TTL_MS }
-    )
-    expect(FRESH_MEMBERSHIP_TTL_MS).toBeLessThanOrEqual(60_000)
+    // The membership lookup is at most a minute old: a removed member's token stops working within a minute (L7).
+    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({ userId: 'user_1', email: null, organizationId: 'org_1' })
+    expect(MEMBERSHIP_TTL_MS).toBeLessThanOrEqual(60_000)
     expect(isOrgFeatureEnabled).toHaveBeenCalledWith('agent-mcp', 'org_1')
   })
 

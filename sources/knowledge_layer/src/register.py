@@ -22,6 +22,9 @@ from pydantic import Field
 from pydantic import model_validator
 
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.estate_paths import estate_path
+from aiq_agent.common.turn_status import CONCLUSION_ARG
+from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
 from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
@@ -31,6 +34,9 @@ from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
 from nat.plugin_api import register_function
 
+from .chunk_noise import noise_filter_enabled
+from .chunk_noise import noise_notice
+from .chunk_noise import without_noise
 from .document_groups import GROUP_BY_DOCUMENT
 from .document_groups import GROUP_OVERFETCH
 from .document_groups import group_by_document
@@ -78,17 +84,26 @@ def _is_embedding_mismatch(value: object) -> bool:
 # Agent-facing contract. Distinct from ``surface_documents`` (show a file). A minimal contract:
 # what it does, its inputs, what it returns and where it stops. How and when to use it is the
 # agent's judgement, not this text's (writing-tools-for-agents).
+#: How the search is scoped, the one paragraph a binding replaces (``chat_binding``). The query is
+#: asked for in the documents' language: the corpus is German, and beside the multilingual dense
+#: channel the lexical ones (German BM25, the exact-term phrases) match only the documents' words.
+SCOPE_PARAGRAPH = (
+    "Inputs: `query`, a search query in the documents' language (topic, jurisdiction, year), not the raw user "
+    "message. Narrow with `file_name=` (an indexed name from the inventory or the user; never invent one), "
+    "`folder=` (a path as the inventory prints it after 'Ordner:'; includes everything filed beneath it; never "
+    "invent one), `doc_class=` (Dokumentart key, e.g. oib_guideline), `title_contains=`, and `shelf=` (project, "
+    "office or base; omitted, every shelf is read), or with `path=` as a hit's `Path:` line names a place, a "
+    "folder or one file. "
+)
+#: Said of ``conclusion`` where the schema cannot carry a field description.
+CONCLUSION_LINE = f"\n`{CONCLUSION_ARG}=`: {CONCLUSION_DESCRIPTION}"
+
 _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "Searches the ingested knowledge base (the office's files and the OIB corpus) and returns quotable "
     "passages, each with a Citation key: the evidence tool. It does not put a file on screen "
-    "(`surface_documents` does). To open a document you can already name use `read_passage`; to list which "
-    "files exist use `list_files`.\n"
-    "Inputs: `query`, a search query (topic, jurisdiction, year), not the raw user message. Narrow with "
-    "`file_name=` (an indexed name from the inventory or the user; never invent one), `folder=` (a path as the "
-    "inventory prints it after 'Ordner:'; includes everything filed beneath it; never invent one), `doc_class=` "
-    "(Dokumentart key, e.g. oib_guideline), `title_contains=`, and `shelf=` (project, office or base; omitted, "
-    "every shelf is read). "
-    '`group_by="document"` (ranked search only) returns one entry per document: its best passage and how many '
+    "(`surface_documents` does).\n"
+    + SCOPE_PARAGRAPH
+    + '`group_by="document"` (ranked search only) returns one entry per document: its best passage and how many '
     "passages of the ranked pool it held.\n"
     '`match="exact"` returns EVERY passage that contains the query literally, plus a table of the matching files '
     "with count and pages, and shows a term is written nowhere. Several spellings go in one query separated by "
@@ -102,13 +117,8 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "every hit. A search that stops at its limit says so, and its counts are then lower bounds.\n"
     "Returns: numbered passages with Source, Citation (cite this key verbatim), Dokumentart, Ordner, page and "
     "text. A query that names a Richtlinie and nothing else ('OIB 2') returns every part of it the corpus "
-    "holds, each with its Geltungsbereich and Gliederung: every member is then open at the level "
-    "`read_passage(document=…)` opens it, and what is left to open is a Punkt by number. A `Folder:` line is a "
-    "pointer, never a source. A hit "
-    "whose Herkunft line says 'Piloti-Dokument' is office knowledge the office has approved, never a source for a "
-    "normative value: cite it for what the office decided, not for what the OIB requires. An empty result says "
-    "how to retry.\n"
-    "`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
+    "holds, each with its Geltungsbereich and Gliederung: every member is then open at the level a read of one "
+    "document opens it, and what is left to open is a Punkt by number." + CONCLUSION_LINE
 )
 
 #: The paragraphs of :data:`_KNOWLEDGE_SEARCH_DESCRIPTION` that offer a literal mode, each dropped when
@@ -121,23 +131,38 @@ _REGEX_PARAGRAPH = _KNOWLEDGE_SEARCH_DESCRIPTION[
 ]
 
 
-def knowledge_search_description(match_modes: Sequence[str]) -> str:
+def knowledge_search_description(match_modes: Sequence[str], scope: str | None = None) -> str:
     """The description, offering only the ``match`` modes this configuration accepts.
 
     ``match_modes`` is an eval knob (``KnowledgeRetrievalConfig.match_modes``). A description that
     offered a mode the search then refuses would cost each arm a call to learn so, and bias the
-    comparison the knob exists for.
+    comparison the knob exists for. ``scope`` replaces :data:`SCOPE_PARAGRAPH` (and the
+    ``conclusion`` line, which such a binding's schema describes) for a binding scoped another way.
     """
     modes = set(match_modes)
     text = _KNOWLEDGE_SEARCH_DESCRIPTION
+    if scope is not None:
+        text = text.replace(SCOPE_PARAGRAPH, scope).replace(CONCLUSION_LINE, "")
     if "exact" not in modes:
         text = text.replace(_EXACT_PARAGRAPH, "")
     if "regex" not in modes:
         text = text.replace(_REGEX_PARAGRAPH, "")
-    if "meaning" not in modes:
-        offered = " or ".join(f'`match="{mode}"`' for mode in ("exact", "regex") if mode in modes)
-        text = f"In this configuration the search is literal only: pass {offered} on every call.\n{text}"
     return text
+
+
+def result_budget(top_k: int, max_per_document: int) -> str:
+    """The sentence that states how many passages a search returns, from its configuration."""
+    if max_per_document > 0:
+        diversity = (
+            f"spread across multiple distinct documents (at most {max_per_document} per document "
+            "where possible), so cross-cutting questions see every relevant Richtlinie."
+        )
+    else:
+        diversity = "ranked purely by relevance, with no per-document diversity cap."
+    return (
+        f"Returns up to {top_k} excerpts by default (platform-configurable up to 50; the result header counts "
+        f"them), {diversity}"
+    )
 
 
 # The knowledge layer has one backend (ADR-0072). The name still keys the
@@ -210,10 +235,11 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
     match_modes: list[str] = Field(
         default_factory=lambda: ["meaning", "exact", "regex"],
         description=(
-            "EVAL KNOB, not a product setting: the `match=` modes the search accepts. The answer suite's "
-            "`search` arm keeps only `meaning` and its `navigate` arm only the literal modes, to measure "
-            "each way of finding on its own (ADR-0127). A comma-separated string is read as a list, which "
-            "is how `nat run --override` hands one over. Production keeps the default: every mode."
+            "EVAL KNOB, not a product setting: the `match=` modes the search accepts on the bindings that "
+            "offer `match` (deep research, intake). The answer suite's `semantic` arm keeps only `meaning`; "
+            "Piloti's chat binds ranked search only since ADR-0133 slice 6, so its `grep` arm unbinds the "
+            "search instead of narrowing it. A comma-separated string is read as a list, which is how "
+            "`nat run --override` hands one over. Production keeps the default: every mode."
         ),
     )
     hybrid_search: bool | None = Field(
@@ -311,6 +337,16 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
             "shows an overview lift with no exact-id/paraphrase regression."
         ),
     )
+    drop_ocr_noise: bool | None = Field(
+        default=None,
+        description=(
+            "Leave text passages that are OCR debris (a scanned drawing's text layer: rotated labels one "
+            "glyph group per line, spaced capitals one letter per token; `chunk_noise`) out of the ranked "
+            "pool, before the reranker and the per-document cap, so their slots go to real passages. "
+            'Never touches `match="exact"`/`"regex"`. None = environment default AIQ_DROP_OCR_NOISE '
+            "(off). Switch it on only after the answer suite has measured it."
+        ),
+    )
     hyde_timeout_seconds: float = Field(
         default=8.0,
         ge=1.0,
@@ -329,6 +365,13 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         if isinstance(data, dict) and isinstance(data.get("match_modes"), str):
             data = {**data, "match_modes": [mode.strip() for mode in data["match_modes"].split(",") if mode.strip()]}
         return data
+
+    @model_validator(mode="after")
+    def keep_ranked_search(self):
+        """A search without ``meaning`` is refused: literal-only is ``grep``'s, on a binding that reads the estate."""
+        if "meaning" not in self.match_modes:
+            raise ValueError("match_modes must keep `meaning`; a literal-only arm unbinds the search for `grep`.")
+        return self
 
     @model_validator(mode="after")
     def validate_summary_config(self):
@@ -719,6 +762,30 @@ def _apply_diversity_cap(ordered, top_k: int, max_per_document: int) -> list:
         selected.append(index)
 
     return [ordered[index] for index in sorted(selected)]
+
+
+def _noise_key(chunk) -> str:
+    """One passage, the same in every pool it turns up in."""
+    return getattr(chunk, "chunk_id", None) or str(getattr(chunk, "content", ""))
+
+
+def _without_noise(pool, *, enabled: bool) -> tuple[object, frozenset[str]]:
+    """``pool`` without its OCR-debris passages (``chunk_noise``), and which went.
+
+    Off, the pool comes back as it came in, the same object: the search is then
+    exactly what it was before the filter existed. What went is keyed by
+    passage, so a requery that widens the pool counts a passage left out of
+    both pools once.
+    """
+    if not enabled:
+        return pool, frozenset()
+    kept, dropped = without_noise(pool.chunks)
+    if not dropped:
+        return pool, frozenset()
+    kept_ids = {id(chunk) for chunk in kept}
+    gone = frozenset(_noise_key(chunk) for chunk in pool.chunks if id(chunk) not in kept_ids)
+    logger.info("OCR noise filter left out %d of %d ranked candidate(s)", dropped, len(pool.chunks))
+    return pool.model_copy(update={"chunks": kept}), gone
 
 
 def _merge_results(results, query: str, top_k: int, backend_name: str, max_per_document: int = _MAX_CHUNKS_PER_DOC):
@@ -1537,6 +1604,7 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
     page = chunk.page_number if chunk.page_number and chunk.page_number > 0 else None
     content = chunk.content
     truncated = len(content) > _CHUNK_TRUNCATE_CHARS
+    folder_path = _hit_folder_path(chunk, resolved_folders)
     return GroundingHit(
         citation_key=_citation_key_for(chunk.file_name, shelf, page, ambiguous),
         file_name=chunk.file_name,
@@ -1545,7 +1613,7 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         collection=_metadata_text(metadata.get("collection")),
         doc_class=_hit_doc_class(chunk, resolved),
         display_title=_hit_display_title(chunk, resolved_titles) or chunk.file_name,
-        folder_path=_hit_folder_path(chunk, resolved_folders),
+        folder_path=folder_path,
         clause=_metadata_text(metadata.get("clause_id")),
         score=chunk.score,
         content_type=chunk.content_type.value,
@@ -1556,6 +1624,8 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         body_truncated=truncated,
         regions=_hit_regions(chunk),
         page_end=_page_end(chunk, page),
+        # Where `read_file` opens the page around this hit (ADR-0133); none for a shelf with no mount.
+        path=estate_path(shelf, folder_path, chunk.file_name) if chunk.file_name else None,
     )
 
 
@@ -1639,7 +1709,7 @@ def _format_results(
 
     ``coverage_gap`` is why the passages do not answer the question, when the
     decider read them and said so (``requery.judge_coverage``). The block then
-    says „Abdeckung: unzureichend" under a preamble that no longer calls the
+    says "Coverage: insufficient" under a preamble that no longer calls the
     hits relevant; the line itself says how many were judged, and the preamble
     claims nothing about the rest.
 
@@ -1704,9 +1774,8 @@ def _format_results(
 #: names the way back rather than an instruction: the parts are still readable,
 #: one call each.
 _FAMILY_OVERVIEW_FAILED_NOTICE = (
-    "Hinweis: der Überblick über die Teile der OIB-Richtlinie {key} konnte nicht erstellt werden; "
-    "es folgen nur die gerankten Treffer, die Teile sind einzeln mit `read_passage(document=…)` "
-    "zu öffnen.\n\n"
+    "Note: the overview of the parts of OIB-Richtlinie {key} could not be built; only the ranked results "
+    "follow, and each part opens on its own by its file name.\n\n"
 )
 
 
@@ -1767,8 +1836,8 @@ def _hidden_revisions_notice(superseded: dict[str, dict[str, str]]) -> str:
         return ""
     shown = ", ".join(names[:_HIDDEN_REVISIONS_NAMED])
     rest = len(names) - _HIDDEN_REVISIONS_NAMED
-    tail = f" und {rest} weitere" if rest > 0 else ""
-    return f"Ältere Fassungen ausgeblendet: {shown}{tail} — mit file_name=… gezielt lesbar.\n\n"
+    tail = f" and {rest} more" if rest > 0 else ""
+    return f"Older Fassungen left out: {shown}{tail}; each is readable when it is named.\n\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -1864,6 +1933,35 @@ def _citation_key_for_span(chunk) -> str | None:
         return str(name)
     except Exception:
         return None
+
+
+def _path_scope(
+    path: str, shelf: str | None, folder: str | None, file_name: str | None
+) -> tuple[str | None, str | None, str | None]:
+    """``knowledge_search(path=…)`` as the shelf, folder and file it compiles to (ADR-0133); explicit ones win.
+
+    The scope ``grep`` reads for the same path: the mount is the shelf, the folder part the folder, a leaf
+    the file (``Plan.pdf.md`` is ``Plan.pdf``). Raises ``ValueError`` with the refusal for a path that is
+    not canonical or names no place.
+    """
+    from aiq_agent.common.estate_paths import MOUNT_SHELVES
+    from aiq_agent.common.estate_paths import PathRefused
+    from aiq_agent.common.estate_paths import file_name_candidates
+    from aiq_agent.common.estate_paths import parse_estate_path
+
+    try:
+        parsed = parse_estate_path(path)
+    except PathRefused as refusal:
+        raise ValueError(str(refusal)) from refusal
+    if parsed.path == "/":
+        return shelf, folder, file_name
+    if parsed.mount is None or parsed.mount == "drafts":
+        raise ValueError(
+            f'"{path}" is no place knowledge_search reads: /project/, /office/, /chat/, /law/oib/ or a folder in one.'
+        )
+    shelf_value = {"office_shelf": "office"}.get(MOUNT_SHELVES[parsed.mount], MOUNT_SHELVES[parsed.mount])
+    leaf_file = file_name_candidates(parsed.leaf)[0] if parsed.leaf else None
+    return shelf or shelf_value, folder or (parsed.folder or None), file_name or leaf_file
 
 
 def _search_row_fields(
@@ -2001,6 +2099,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
     collection = config.collection_name
     top_k = config.top_k
     max_per_document = config.max_chunks_per_document
+    drop_noise = noise_filter_enabled(config.drop_ocr_noise)
 
     logger.info("Knowledge retrieval initialized: backend=%s, collection=%s, top_k=%d", BACKEND, collection, top_k)
 
@@ -2016,7 +2115,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         group_by: Literal["document"] | None = None,
         stemmed: bool = False,
         shelf: str | None = None,
+        document_type: str | None = None,
+        refers_to: str | None = None,
         conclusion: str = "",
+        path: str | None = None,
     ) -> str:
         """Read and cite passages from the ingested knowledge base.
 
@@ -2064,13 +2166,33 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 corpus (building law) included. For "is X in OUR documents" pass
                 "project" or "office" (or both in turn); an exact or regex answer
                 also counts matches and documents per shelf.
+            document_type (str | None): Only documents Piloti read to be this kind,
+                the "Type:" `list_files` prints with underscores (e.g.
+                "fire_safety_concept", "building_description", "permit",
+                "submission_drawing"). Project and office documents only.
+            refers_to (str | None): Only documents that refer to this: a norm
+                ("ÖNORM B 1600"), a law ("§ 33 BayBO"), a plan number ("EP-05") or a
+                kind of document, named the way the documents write it. For "which
+                documents cite this standard", "what points to plan EP-05", "who
+                relies on the fire safety concept". `list_files` prints each
+                document's "Refers to:".
             stemmed (bool): Exact only: also find each word's inflected forms
                 (German stemming: "Fluchtwegbreite" finds "Fluchtwegbreiten" and
                 the reverse). Off by default: the exact search is literal.
+            path (str | None): Where to search, as the filesystem tools name it: a place
+                ("/project/", "/office/", "/chat/", "/law/oib/"), a folder in one
+                ("/project/Gutachten/"), or one file (a hit's `Path:`). Advised, never
+                automatic: omitted, every place this question may read is searched.
+                It sets `shelf`, `folder` and `file_name`; an explicit one of those wins.
 
         Returns:
-            str: Numbered excerpts with a Citation key to copy verbatim.
+            str: Numbered excerpts with a Citation key to copy verbatim, each with the `Path:` read_file opens.
         """
+        if path is not None and str(path).strip():
+            try:
+                shelf, folder, file_name = _path_scope(str(path), shelf, folder, file_name)
+            except ValueError as refusal:
+                return str(refusal)
         outcome = ActionOutcome()
         row = ActionRow("search", **_search_row_fields(query, match, folder, file_name, shelf))
         try:
@@ -2087,6 +2209,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 group_by,
                 stemmed,
                 shelf,
+                document_type,
+                refers_to,
             )
         except BaseException:
             row.finish("error")
@@ -2108,6 +2232,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         group_by: str | None,
         stemmed: bool,
         shelf: str | None,
+        document_type: str | None = None,
+        refers_to: str | None = None,
     ) -> str:
         # `conclusion` is deliberately unread HERE. It is a checkpoint channel,
         # not a retrieval parameter: the researcher's agent node reads it off
@@ -2139,6 +2265,15 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                     "Omit `doc_class` to search every Dokumentart."
                 )
             doc_class = current_doc_class
+        document_type = (document_type or "").strip().casefold().replace(" ", "_") or None
+        if document_type is not None:
+            from aiq_agent.knowledge.dossier import DOCUMENT_TYPES
+
+            if document_type not in DOCUMENT_TYPES:
+                return (
+                    f"Invalid document_type {document_type!r}. Valid values: {', '.join(DOCUMENT_TYPES)}. "
+                    "Omit `document_type` to search every kind of document."
+                )
 
         # Platform-tunable counts (Platform → Retrieval), resolved per call so
         # an admin save takes effect without a redeploy; fail-open to the YAML
@@ -2153,11 +2288,20 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         # the search (`qdrant/prefilter.py`), so only the filters left after it do.
         from .qdrant import prefilter as qdrant_prefilter
 
-        pushdown = qdrant_prefilter.plan(doc_class=doc_class, folder=folder, file_name=file_name)
+        pushdown = qdrant_prefilter.plan(
+            doc_class=doc_class,
+            folder=folder,
+            file_name=file_name,
+            document_type=document_type,
+            refers_to=refers_to,
+        )
         narrowed = qdrant_prefilter.post_filtered(title_contains=title_contains, file_name=file_name)
         candidate_k = effective_top_k * _AGENT_FILTER_OVERFETCH if narrowed else effective_top_k
         if rerank_llm_obj is not None or cross_encoder is not None:
             candidate_k = max(candidate_k, config.rerank_candidates)
+        if drop_noise:
+            # Debris leaves the pool before the trim to top_k; without headroom its slots stay empty.
+            candidate_k = max(candidate_k, effective_top_k * _AGENT_FILTER_OVERFETCH)
 
         # Resolve the per-session collection (UI uploads for this conversation).
         try:
@@ -2465,6 +2609,11 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 return pool.chunks
 
             merged = merged.model_copy(update={"chunks": _narrowed(merged)})
+            # OCR debris out of the RANKED pool only, before the reranker, the
+            # judge and the cap see it, so its slots go to real passages. The
+            # literal modes returned above and keep every passage.
+            merged, noise_left_out = _without_noise(merged, enabled=drop_noise)
+            dropped_as_noise = len(noise_left_out)
 
             # Reranking: cross-encoder first when configured, LLM judge as the
             # fallback (fail-open: any error keeps the fused order).
@@ -2594,8 +2743,14 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                             [*results, *extra], query, candidate_k, retriever.backend_name, max_per_document=0
                         )
                         widened = widened.model_copy(update={"chunks": _narrowed(widened)})
+                        widened, widened_noise = _without_noise(widened, enabled=drop_noise)
                         reranked = await _reranked(widened.chunks)
                         merged = widened
+                        # A passage left out of both pools counts once; one left
+                        # out of the first only still counts, though the fusion
+                        # may not have carried it into the widened pool.
+                        noise_left_out = noise_left_out | widened_noise
+                        dropped_as_noise = len(noise_left_out)
                         requery_queries = list(verdict.queries)
                         requery_fired = True
                         logger.info(
@@ -2758,6 +2913,9 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                         search_input["dropped_by_cap"] = dropped_by_cap
                     if dropped_by_family:
                         search_input["dropped_by_family"] = dropped_by_family
+                    if drop_noise:
+                        # Stated whenever the filter is on, zero included: a zero is a measurement.
+                        search_input["dropped_as_noise"] = dropped_as_noise
                     if overview is not None:
                         # "fetch": the members were read by filter, no embedding (ADR-0115).
                         search_input["family_read"] = "fetch" if overview.structural else "retrieve"
@@ -2804,6 +2962,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 _hidden_revisions_notice(hidden_revisions)
                 + _named_older_revision_notice(file_name, superseded)
                 + requery_notice(requery_queries)
+                + noise_notice(dropped_as_noise)
             )
             # The overview raised, and the passages below are what is left of
             # the family question. Said only where there ARE passages: an empty
@@ -2893,23 +3052,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             if folder_task is not None and not folder_task.done():
                 folder_task.cancel()
 
-    # Yield the function info for NAT registration
-    if max_per_document > 0:
-        diversity_clause = (
-            f"spread across multiple distinct documents (at most {max_per_document} per document "
-            "where possible), so cross-cutting questions see every relevant Richtlinie."
-        )
-    else:
-        diversity_clause = "ranked purely by relevance, with no per-document diversity cap."
     try:
         yield FunctionInfo.from_fn(
             search,
-            description=(
-                f"{knowledge_search_description(config.match_modes)} "
-                f"Returns up to {top_k} excerpts by default "
-                "(platform-configurable up to 50; the result header counts them), "
-                f"{diversity_clause}"
-            ),
+            description=f"{knowledge_search_description(config.match_modes)} {result_budget(top_k, max_per_document)}",
         )
     finally:
         from aiq_agent.knowledge.factory import clear_search_retriever

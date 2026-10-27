@@ -502,17 +502,17 @@ WebSocket handshake.
 
 ## 5. Project summary / fact-sheet
 
-The Project Overview "Project Brief" panel (`project-brief.tsx`, mounted by
-`project-overview.tsx`) renders the AI `summary` from `projects.profile_display`
-plus a fact sheet derived **at render time from the raw `projects.profile`** via
-`buildProjectBriefView` (`lib/project-profile/brief-view.ts`): facts grouped in
-intake-stage order with question/option labels ("Main use: Residential", not
-"hauptnutzung: wohnen"), goal focus areas, unanswered questions as links back
-into the wizard, a completeness count, and agent-suggested `assumptions` with
-confirm/dismiss actions (confirm graduates the value into a `user_confirmed`
-fact through the same patches endpoint the agent's `project_profile_patch`
-cards use). `buildProjectProfileDisplay` (the stored `profile_display`
-projection) uses the same labels.
+The project brief is the AI `summary` from `projects.profile_display` plus a
+fact sheet derived from the raw `projects.profile` via `buildProjectBriefView`
+(`lib/project-profile/brief-view.ts`): facts grouped in intake-stage order with
+question/option labels ("Main use: Residential", not "hauptnutzung: wohnen"),
+goal focus areas, the unanswered questions, a completeness count, and the
+agent-suggested `assumptions`. The prompt view, the patch preview, the profile
+service and the research report read it; no panel shows it any longer (the
+overview's brief panel, `project-brief.tsx`, was mounted by nothing and was
+removed on 2026-10-22, with its wizard links and confirm/dismiss actions).
+`buildProjectProfileDisplay` (the stored `profile_display` projection) uses the
+same labels.
 
 ### Agent-driven brief updates (project_profile_patch)
 
@@ -691,8 +691,7 @@ to the shelves retrieval may keep; the knowledge layer **subtracts** other
 shelves from the ceiling at the retrieve site and, when the focused file has
 hits, does not pad the merge with Archiv/project leftovers (#429, #436).
 A subject shelf wins over a preset. Absence of both leaves the signed scope
-intact (ADR-0024: Archiv stays in every unscoped project turn). The TS twin
-is `includeShelvesForTurn` in `frontends/ui/src/features/layout/lib/retrieval-scope.ts`.
+intact (ADR-0024: Archiv stays in every unscoped project turn).
 
 **A subject file never subtracts `base`.** A subject narrows which *documents*
 a turn reads, which is what #429 and #436 asked for; neither was about the
@@ -1305,13 +1304,16 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    the requery round (`requery.judge_coverage`, one `noul` per passage, the same
    0.55). When every judged passage was decided and none reaches it, the
    preamble reads `Found N document(s); none of the judged ones answers the
-   question:` and the line under it reads `Abdeckung: unzureichend — keine der
-   N gezeigten Passagen enthält die gesuchte Aussage …`, or, for a pool longer
-   than 24, `keine der 24 besten Passagen …; die übrigen K Passagen wurden
-   nicht geprüft` (`GroundingBlock.coverage_gap`). The pool reaches the model whole: a
+   question:` and the line under it reads `Coverage: insufficient — none of the
+   N shown passages contains the statement sought …`, or, for a pool longer
+   than 24, `none of the best 24 passages …; the remaining K passages were not
+   checked` (`GroundingBlock.coverage_gap`), followed by what that means: say so
+   and what was searched, and that it is not „Nicht geregelt“
+   (`COVERAGE_GAP_NOTE`). The pool reaches the model whole: a
    decision never withholds a passage (ADR-0064), so the gap is stated, not
-   enforced. The prompt's `<research_rules>` tell the agent to say it found no
-   supporting passage rather than answer from them. The retrieval span records
+   enforced. The line itself tells the agent to say it found no supporting
+   passage rather than answer from them (since ADR-0133 slice 6; before, a rule in
+   the system prompt did, on every call). The retrieval span records
    `coverage: "insufficient"` and `coverage_best`. Anything short of a
    complete "no" claims nothing:
    a decision that did not run or left a passage unanswered, the LLM decider,
@@ -1906,8 +1908,9 @@ the office block and the Project Context, followed by a one-line legend for
 each record block the Project Context actually holds (`PROJECT_MEMORY`,
 `PROPOSAL_DECISIONS`, `REVIEW_DECISIONS`, `FOLDER_DESCRIPTIONS`,
 `documents_missing:`). It lists no tool names: the bound schemas carry them.
-If deferred tool loading (ADR-0048, off since 2026-09-25) is turned back on,
-check whether the model still finds the deferred tools without a name index.
+When a tool search arrives (ADR-0048's deferred loading was removed on
+2026-10-27; a standards-based one replaces it in its own change), check whether
+the model still finds the deferred tools without a name index.
 
 Everything else that used to sit in the prompt is either a tool's own contract,
 which lives in the tool description that owns it (ADR-0060 (d)), a rail code
@@ -2070,11 +2073,12 @@ nothing can require one. The model picks from the L1 catalog, which lists every
 resolved skill — nothing a person sets takes a row out of it — and `/name` in
 the composer inserts a mention into the message text rather than a force list on
 the wire. Delivery is
-**progressive disclosure**: L1 is a one-line-per-skill catalog in the system
-prompt (`## Available skills`), L2 is the full body, loaded only when the model
-calls the `use_skill` tool. Per-run `SkillRuntime` (ADR-0018 — never cached on
-the shared agent) records what was DELIVERED for `skills_activated` on the
-terminal frame. Standing instructions are prompt text instead: the platform
+**progressive disclosure** on Deep Agents' `SkillsMiddleware` (ADR-0135): L1
+is the middleware's catalog (`## Skills`, name, description and path per skill),
+L2 is the full `SKILL.md`, read only when the model calls `read_file` on it.
+Per-run `SkillRuntime` (ADR-0018 — never cached on the shared agent) owns the
+run's read-only `SkillsBackend` and records what was DELIVERED for
+`skills_activated` on the terminal frame. Standing instructions are prompt text instead: the platform
 prompt, and the office's own bounded block (`X-Grid-Org-Instructions`, rendered
 in the turn context as `## Anweisungen des Büros`).
 
@@ -2084,12 +2088,13 @@ deterministically, validated strictly) + org rows from the BFF internal
 fail-open and cached in the shared cache
 (`GRID_SKILLS_CACHE_TTL_SECONDS`, default 60). `shallow_research_agent`
 config gate: `skills_enabled` (default true) + `skill_allowlist` (empty =
-all). `use_skill` is bound on every turn like every other tool; whether a
-greeting loads a skill is the model's call (ADR-0052). Deep research loads
-machinery from the filesystem (`DeepResearchSkillsConfig` mounts `oib`/`bim`
-on Piloti and `synthesis` on the writer; curated dirs 404) and
-loads house voice, offers and org skills through `use_skill`
-(`resolve_served_skills`). Full design and tests:
+all). The catalog and the skill `read_file` are there on every turn; whether a
+greeting reads a skill is the model's call (ADR-0052). Piloti renders the
+catalog into its turn context, because its graph cannot host the middleware.
+Deep research lists the same backend through the middleware in each subagent:
+`DeepResearchSkillsConfig` assigns `oib`/`bim` to the researcher and `synthesis`
+to the writer (curated builtins left out), and the writer also lists the
+office's skills (`resolve_served_skills`) under `/skills/office/`. Full design and tests:
 `docs/architecture/agent-skills.md`.
 
 ## 9. Known issues / open items
@@ -2197,9 +2202,11 @@ loads house voice, offers and org skills through `use_skill`
   parser remains as a second line of defense for non-conformant completions
   in general. See the same README section.
 - **Deep-research planner ceremony overhead** — deepagents' `StateBackend`
-  is write-once (a second `write_file` to an existing path errors; recovery
-  is via `edit_file`); the planner prompt mandates `write_todos` before
-  decomposing. As of the 2026-07-16 prompt pass (`77a4d7a`) the todo-list
+  was write-once up to 0.6 (a second `write_file` to an existing path
+  errored; recovery was via `edit_file`; since 0.7.0 it overwrites, see the
+  deep researcher README); the planner prompt mandated `write_todos` before
+  decomposing (`write_todos` itself is no longer a deepagents default since
+  0.7.0 and is added back by `factory.planning_middleware`). As of the 2026-07-16 prompt pass (`77a4d7a`) the todo-list
   ceremony is optional rather than mandatory, the planner's after-every-search
   `think` call is consolidated into a single pre-finalize `think`, and
   orchestrator `write_todos` updates are phase-level instead of per-step —

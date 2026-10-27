@@ -26,7 +26,7 @@ BUILTIN_SKILLS_DIR = Path(__file__).resolve().parent / "builtin"
 #: A skill's name is what people type after a slash, what a stored schedule's prompt
 #: says (``/einreichcheck``) and what an older message lists as activated, so the old
 #: names keep resolving: :func:`canonical_skill_name` is the one place that maps them,
-#: and the ``use_skill`` tool, the skills the model reports followed and the turn-start
+#: and the pinned skill, the skills the model reports followed and the turn-start
 #: decision all go through it. Mirrored in ``frontends/ui/src/lib/skills/legacy-names.ts``;
 #: ``test_builtin.py`` pins the two against the same table. Nothing writes an old name
 #: again. Remove after one release.

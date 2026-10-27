@@ -156,6 +156,24 @@ def test_a_listing_is_a_read_record_capped_and_one_item_per_line():
     assert len(capped.haystack) <= LISTING_MAX_CHARS
 
 
+def _estate(tool: str, args: dict, result: str, status: str = "success") -> list:
+    return [
+        AIMessage(content="", tool_calls=[{"id": "e1", "name": tool, "args": args}]),
+        ToolMessage(content=result, tool_call_id="e1", name=tool, status=status),
+    ]
+
+
+def test_an_estate_ls_or_glob_is_a_listing_record_and_a_drafts_listing_is_not():
+    """ADR-0133 slice 6: Piloti lists with `ls` and `glob`, read like `list_files` was."""
+    (record,) = records_from_messages(_estate("ls", {"path": "/project/Einreichung/"}, TREE))
+    assert (record.operation, record.outcome) == ("ls", "read")
+    (found,) = records_from_messages(_estate("glob", {"pattern": "*Index*"}, "1 file matches"))
+    assert found.operation == "glob"
+    assert records_from_messages(_estate("ls", {"path": "/drafts/"}, "/drafts/a.md")) == []
+    assert records_from_messages(_estate("ls", {"path": "/skills/"}, "/skills/x/")) == []
+    assert records_from_messages(_estate("ls", {"path": "/project/X/"}, 'No folder "X".', status="error")) == []
+
+
 def test_a_bare_name_counts_and_a_refusal_or_an_empty_listing_is_no_record():
     assert len(records_from_messages(_listing(TREE, tool="list_files"))) == 1
     assert records_from_messages(_listing("`view` must be files or tree.")) == []

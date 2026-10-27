@@ -313,7 +313,71 @@ def _parse_citation_ref(key: str) -> tuple[str, Shelf | None, int | None]:
     if qualifier_match:
         shelf = shelf_for_qualifier(qualifier_match.group(1))
         filename = filename[: qualifier_match.start()].rstrip(", ").strip()
+    from_path = citation_key_of_path(filename)
+    if from_path is not None:
+        filename, path_shelf = from_path[0][0], from_path[1]
+        shelf = shelf or path_shelf
     return filename, shelf, page
+
+
+def _key_file_names(key: str, filename: str) -> list[str]:
+    """The file names a citation key may mean: its parsed ``filename``, or each one a path-shaped key stands for."""
+    from_path = citation_key_of_path(_cited_path(key) or "")
+    return from_path[0] if from_path is not None else [filename]
+
+
+#: Where an estate path starts inside a citation key or a source line.
+_ESTATE_PATH_START_RE = re.compile(r"/(?:project|office|chat|law/oib)/")
+#: An estate path up to its leaf's extensions (``Plan.pdf.md``, ``Notiz.v2.md``), where a delimiter follows.
+_ESTATE_PATH_LEAF_RE = re.compile(
+    r"[^\n]*?(?:\.(?:pdf|md|txt|csv|docx?|xlsx?|pptx?|ifc|dwg|dxf|png|jpe?g|tiff?|eml|msg|html?))+(?=[\s,;)\]]|$)",
+    re.IGNORECASE,
+)
+
+
+def _cited_path(text: str) -> str | None:
+    """The estate path ``text`` cites, exactly: from its mount to the leaf's extension.
+
+    A file name may hold commas (``Bescheid, Stand 2024.pdf``), so the path ends at its extension,
+    and text after it (a page, a dash, a closing parenthesis) stays. A leaf without a known extension
+    ends where the locus (``p.3``, ``S. 3``) or the shelf qualifier begins, never at the first comma.
+    """
+    start = _ESTATE_PATH_START_RE.search(text)
+    if start is None:
+        return None
+    rest = text[start.start() :].split("\n", 1)[0]
+    if leaf := _ESTATE_PATH_LEAF_RE.match(rest):
+        return leaf.group(0)
+    page = _TITLE_PAGE_RE.search(rest)
+    span = (rest[: page.start()] if page else rest).rstrip().rstrip(",").rstrip()
+    qualifier = _SCOPE_QUALIFIER_RE.search(span)
+    return (span[: qualifier.start()] if qualifier else span).rstrip() or None
+
+
+def citation_key_of_path(text: str) -> tuple[list[str], Shelf | None] | None:
+    """``(file names, shelf)`` a path-shaped citation names; ``None`` when ``text`` is no estate path.
+
+    The model reads paths since ADR-0133 (a hit's ``Path:``, a ``read_file`` header), so a citation
+    written as ``/project/Gutachten/Brandschutzkonzept.pdf.md, p.3`` is likely. The file names it may
+    mean are the leaf's candidates, as the estate resolves them (``estate_paths.file_name_candidates``:
+    ``x.pdf.md`` is ``x.pdf`` or itself, ``Plan.md`` itself or ``Plan``); the registry matches any. The
+    mount states the shelf, the way a qualifier does. Verification would otherwise drop the citation and
+    the answer lose its source without a word; this is that correction held by code, not prompt prose.
+    """
+    from aiq_agent.common.estate_paths import MOUNT_SHELVES
+    from aiq_agent.common.estate_paths import file_name_candidates
+    from aiq_agent.common.estate_paths import mount_of_path
+
+    candidate = text.strip()
+    if not candidate.startswith("/"):
+        return None
+    mount = mount_of_path(candidate)
+    if mount not in MOUNT_SHELVES:
+        return None
+    leaf = candidate.rstrip("/").rsplit("/", 1)[-1]
+    if not leaf or candidate.endswith("/"):
+        return None
+    return file_name_candidates(leaf), parse_shelf(MOUNT_SHELVES[mount])
 
 
 def _entry_shelf(entry: SourceEntry) -> Shelf | None:
@@ -582,10 +646,12 @@ class SourceRegistry:
         was already proof enough that the document was retrieved.
         """
         target_file, target_shelf, target_page = _parse_citation_ref(key)
-        target_lower = target_file.lower()
-        matches = [
-            entry for entry in self._citation_keys if _parse_citation_key(entry.citation_key)[0].lower() == target_lower
-        ]
+        named = [(_parse_citation_key(e.citation_key)[0].lower(), e) for e in self._citation_keys]
+        matches: list[SourceEntry] = []
+        for name in _key_file_names(key, target_file):
+            matches = [entry for entry_name, entry in named if entry_name == name.lower()]
+            if matches:
+                break
         if target_shelf:
             scoped = [entry for entry in matches if _entry_shelf(entry) == target_shelf]
             if scoped:
@@ -884,10 +950,15 @@ def extract_sources_from_tool_result(
     tool_name: str,
     content: str,
     source_id: str | None = None,
+    artifact: Any = None,
 ) -> list[SourceEntry]:
     """Extract sources from a tool's output.
 
     Strategy:
+    00. If the result carries its records on ``ToolMessage.artifact``
+       (``common.citation_collector``, the filesystem tools, ADR-0133), copy
+       their fields. The artifact travels with the message, so it holds for a
+       message whose text the turn's capture no longer knows.
     0. If this exact text was rendered from a grounding block during this turn,
        copy the fields off the records the producer stated (ADR-0061). No
        parsing, and nothing the passage body can forge.
@@ -919,6 +990,12 @@ def extract_sources_from_tool_result(
     :func:`aiq_agent.common.data_source_registry.get_source_id_for_tool`,
     but it does not gate the fallback.
     """
+    from aiq_agent.common.citation_collector import hits_from_artifact
+
+    carried = hits_from_artifact(artifact)
+    if carried is not None:
+        return [_entry_from_hit(hit, tool_name) for hit in carried]
+
     block = get_grounding_block(content)
     if block is not None:
         # Block order is load-bearing: ``SourceRegistry.add`` merges a repeated
@@ -1578,6 +1655,21 @@ register_source_parser(lambda name: name.endswith("list_files"), lambda content,
 # ``look`` answers in the same grammar when it read a project or office document
 # (``tools/look/place.py``): the reading is the passage, the region its box.
 register_source_parser(is_look_tool, _parse_look)
+# The filesystem tools (ADR-0133). ``read_file`` and ``grep`` answer in the same grammar on the estate, so
+# a replayed turn reads their passages back here; a DRAFT read through ``read_file`` carries no
+# ``Citation:`` line, and the parser's answer (none) is final, so a draft never becomes a source. ``ls``
+# and ``glob`` are an index, like ``list_files``: never evidence. Exact basenames, or a group-qualified
+# one (``x__read_file``), never a substring: ``read_file`` must not catch some other ``*read_file*``.
+_FILESYSTEM_PASSAGE_TOOLS = ("read_file", "grep")
+_FILESYSTEM_INDEX_TOOLS = ("ls", "glob")
+
+
+def _is_filesystem_tool(names: tuple[str, ...]) -> Callable[[str], bool]:
+    return lambda name: any(name == base or name.endswith(f"__{base}") for base in names)
+
+
+register_source_parser(_is_filesystem_tool(_FILESYSTEM_PASSAGE_TOOLS), _parse_knowledge_layer)
+register_source_parser(_is_filesystem_tool(_FILESYSTEM_INDEX_TOOLS), lambda content, tool_name: [])
 
 # ---------------------------------------------------------------------------
 # Citation parsing and source-section layout normalization
@@ -3963,6 +4055,7 @@ def verify_citations(
     # already start with a token are left as-is (idempotent).
     origin_tokens: dict[int, str] = {}
     dropped_urls: dict[int, str] = {}  # key-verified line -> the link it carried
+    cited_paths: dict[int, tuple[str, str]] = {}  # key-verified line -> (the path it named, the file name)
 
     for line_match in _CITATION_LINE_RE.finditer(ref_section):
         num = int(line_match.group(1))
@@ -3991,6 +4084,9 @@ def verify_citations(
             url_replacements[source.line_url] = source.url
         if source.citation_key and source.line_url:
             dropped_urls[num] = source.line_url
+        if source.citation_key and (cited_path := _cited_path(match_text)):
+            # The line shows the file's name, as its chip does, never the path the model copied.
+            cited_paths[num] = (cited_path, _parse_citation_key(source.citation_key)[0])
         if not already_tokenized and (entry := source.entry(registry)):
             if token := source_origin_token(entry):
                 origin_tokens[num] = token
@@ -4079,6 +4175,8 @@ def verify_citations(
                 continue
             if (dropped := dropped_urls.get(num)) is not None:
                 line = _drop_url(line, dropped)
+            if (cited := cited_paths.get(num)) is not None:
+                line = line.replace(*cited, 1)
             if (token := origin_tokens.get(num)) is not None:
                 line = _inject_origin_token(line, token)
         cleaned_ref_lines.append(line)

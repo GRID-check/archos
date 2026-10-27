@@ -115,6 +115,7 @@ import {
   type RunTallies,
 } from '@/lib/runs/run-vocabulary'
 import { cn } from '@/lib/utils'
+import { Quote } from '@/components/ui/quote'
 import { useRunClock } from '../hooks/use-run-clock'
 import { landingDelays, type LandingDelays } from '../lib/choreography'
 import { docProvenance } from '../lib/doc-provenance'
@@ -1054,8 +1055,9 @@ export function RunBlock({
             {reviewLine && review && (
               /* The reviewer's words, quoted on the run they are about —
                  the same adjunct a version row renders under itself. */
-              <p
-                className="text-foreground flex items-start gap-1.5 border-l-2 pl-2 text-xs leading-[1.5]"
+              <Quote
+                as="p"
+                className="flex items-start gap-1.5 text-xs leading-[1.5]"
                 data-testid="run-review"
                 data-decision={review.decision}
               >
@@ -1065,7 +1067,7 @@ export function RunBlock({
                   <XCircle className="text-error mt-0.5 size-3 shrink-0" aria-hidden />
                 )}
                 <span>{reviewLine}</span>
-              </p>
+              </Quote>
             )}
             {connectionLine && (
               <p

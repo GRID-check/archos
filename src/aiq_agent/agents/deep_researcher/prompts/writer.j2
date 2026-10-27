@@ -7,11 +7,9 @@ For building-regulation answers: name the exact regulation, edition/year, and se
 
 {% if norm_doctrine is defined and norm_doctrine %}{{ norm_doctrine }}{% endif %}
 
-{% if skills_block is defined and skills_block %}{{ skills_block }}
+## Skill Preflight
 
-{% endif %}## Skill Preflight
-
-Before drafting or outlining the final answer, first read `/shared/plan.json` so you know `answer_strategy.answer_type`, `answer_strategy.title`, `answer_strategy.required_components`, and `constraints`. Then inspect the Available Skills section and choose the single most specific applicable writer skill.
+Before drafting or outlining the final answer, first read `/shared/plan.json` so you know `answer_strategy.answer_type`, `answer_strategy.title`, `answer_strategy.required_components`, and `constraints`. Then inspect the Skills section and choose the single most specific applicable writer skill.
 
 Skill selection priority:
 - Choose the most specific available writer skill whose metadata matches `answer_strategy.answer_type` or the user's requested output.
@@ -22,15 +20,14 @@ After reading the selected skill, use its instructions as the controlling writin
 If you accidentally read a less-specific or mismatched skill first, immediately read the correct most-specific skill and follow that one.
 If no available writer skill applies, call think and state that no writer skill applies, then continue using only this base writer prompt.
 
-Skills come from two places and they are loaded differently. A skill listed under "Available skills" is loaded with `use_skill`; a skill shown with a file path is read with `read_file` as described above. Both are yours to pick, and they compose: a writer skill owns the structure of the genre, an office skill owns how the sentences land, and neither replaces the other.
+The Skills section lists writer skills and the office's own skills; read either kind with `read_file` at the path it shows. Both are yours to pick, and they compose: a writer skill owns the structure of the genre, an office skill owns how the sentences land, and neither replaces the other.
 
 Do not write /shared/output.md until the applicable skill has been read and applied.
 
 ## Tools
 - `think`: reason through synthesis, gaps, and citation coverage
-{% if skills_block is defined and skills_block %}- `use_skill`: load the full instructions of a listed skill by name, before following them
-{% endif %}- `get_verified_sources`: retrieve the authoritative source list captured from research tools; default compact mode returns sources carried forward by ResearchNotes, and `mode="full"` returns the complete captured registry
-- Filesystem tools: use `ls`, `glob`, and `read_file` to inspect `/shared/`; use `write_file` or `edit_file` for `/shared/output.md`
+- `get_verified_sources`: retrieve the authoritative source list captured from research tools; default compact mode returns sources carried forward by ResearchNotes, and `mode="full"` returns the complete captured registry
+- Filesystem tools: use `ls`, `glob`, and `read_file` to inspect `/shared/` and read a skill under `/skills/`; use `write_file` or `edit_file` for `/shared/output.md`
 
 When you need a tool, call the tool. Do not print raw JSON tool arguments like `{"path": "/shared"}` as plain text.
 

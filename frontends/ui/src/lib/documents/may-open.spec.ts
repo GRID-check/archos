@@ -15,13 +15,13 @@ vi.mock('@/lib/authz/project-membership', () => ({
   resolveSubjectMembership: vi.fn(),
 }))
 vi.mock('@/lib/authz/folder-access', () => ({ filterUsersWhoMayReadFolder: vi.fn(), filterUsersWhoMayWriteFolder: vi.fn() }))
-vi.mock('@/lib/authz/org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn() }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ rolesHoldPermission: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('./quarantine-reviewers', () => ({ isQuarantineReviewer: vi.fn() }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { filterUsersWhoMayReadFolder, filterUsersWhoMayWriteFolder } from '@/lib/authz/folder-access'
-import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
+import { rolesHoldPermission } from '@/lib/authz/org-role-permissions'
 import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
@@ -146,14 +146,10 @@ describe('mayWriteDocument', () => {
     vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) =>
       userId === 'user_gone'
         ? null
-        : {
-            organizationMembershipId: `om_${userId}`,
-            role: userId === 'user_curator' ? 'org-kuratorin' : 'member',
-            roles: [userId === 'user_curator' ? 'org-kuratorin' : 'member'],
-          }
+        : { organizationMembershipId: `om_${userId}`, role: null, roles: [userId === 'user_curator' ? 'org-kuratorin' : 'member'] }
     )
-    vi.mocked(orgRoleHoldsPermission).mockImplementation(
-      async (role, permission) => role === 'org-kuratorin' && permission === 'org:office_shelf:manage'
+    vi.mocked(rolesHoldPermission).mockImplementation(
+      async (_org, roles, permission) => roles.includes('org-kuratorin') && permission === 'org:office_shelf:manage'
     )
 
     const allowed = await mayWriteDocument(session, doc({ scope: 'office_shelf', projectId: null }), [
@@ -163,7 +159,7 @@ describe('mayWriteDocument', () => {
     ])
 
     expect(allowed).toEqual(new Set(['user_curator']))
-    expect(orgRoleHoldsPermission).toHaveBeenCalledWith('org-kuratorin', 'org:office_shelf:manage', 'org_1')
+    expect(rolesHoldPermission).toHaveBeenCalledWith('org_1', ['org-kuratorin'], 'org:office_shelf:manage')
     expect(userHoldsProjectPermission).not.toHaveBeenCalled()
   })
 

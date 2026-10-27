@@ -34,8 +34,8 @@ sources, and the persisted decisions of interactive cards.
 ## Current card types
 
 Defined in `src/aiq_agent/cards/models.py` as a discriminated union (`GridCard`)
-— **25 types in four families**: 17 the answering model may emit, 16 of them
-through `emit_card` too; the 17th is `surface` (ADR-0065), a composition whose
+— **26 types in four families**: 18 the answering model may emit, 17 of them
+through `emit_card` too; the 18th is `surface` (ADR-0065), a composition whose
 leaves are content cards or `Text`, offered on the chat envelope only
 (`CHAT_ONLY_CARD_TYPES`: `emit_card`, `describe_card` and the post-hoc
 validator refuse it, because only the chat pipeline recites its `[N]`); and
@@ -80,6 +80,7 @@ answer it has just written.
 |---|---|---|
 | `project_profile_patch` **(interactive)** | A proposed change to the project brief. With `proposal_id` it is the receipt of a stored `project_profile` proposal (`ProposalReceipt`): the server applies the patch in the deciding person's session and the card says who decided when. Without one, the browser applies it, as before | `title`, `rationale`, `patch[]` — JSON-Patch ops restricted to `/facts`, `/goals`, `/unknowns`, `/assumptions` (the before/after rows are built from the patch and the live profile, never from the model) |
 | `calculation` | The derivation behind a computed number — the Schrittmaßregel, a GFZ, a Brandlast, a U-value from its resistances. **There is no result field**: the model supplies operands, an operation from a closed set (`sum`, `product`, `quotient`, `percent_of`, `percent_ratio`) and the limit; the renderer computes, propagates the ± band, rounds and judges | `title`, `steps[]` (`label`, `operation`, `operands[]`, `unit`), `limit`, `reference`, `note` |
+| `formula` | A named rule the reader can ask "what if" of (ADR-0143): `u_value` (ÖNORM EN ISO 6946, held against OIB-RL 6 Pkt. 4.4.1), `stair_step_rule` (OIB-RL 4 Pkt. 3.2.1 and Tabelle 3), `escape_route_length` (OIB-RL 2 Pkt. 5.1.1, 5.1.2), `daylight_ratio` (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). **No result, no unit and no limit on the wire**: the model names the case and fills each input with its source's value and where it is written; the renderer compiles the rule to `calculation` steps, takes the bound from its own table for that case, recomputes when the reader changes an input and marks a changed value „Ihre Annahme" | `title` (the component, no figure), `formula` (`name`, its case: `stair_type`, `component` and `measure` (`new_build`, `renovation`, `major_renovation`), or `start`, and its inputs: `value`, `editable`, `min`, `max`, `step`, `provenance`, `source`, `reference`), `note` (no figure) |
 | `surface` | Variants the reader picks one of, or cards that read together in one slot (ADR-0065). An A2UI v0.9 component list: a `Row`, `Column` or `Tabs` root whose leaves are content cards or `Text`; see [Every card is drawn through A2UI](#every-card-is-drawn-through-a2ui) | `title`, `components[]` |
 
 **Schematic cards** — eight programmatically-drawn technical diagrams (SVG kit
@@ -148,6 +149,38 @@ persisted on the message; see
 [Interactive cards](#interactive-cards-the-answer-must-be-persisted).
 
 `validate_cards()` validates against the union and drops null fields.
+
+### `formula`: the reader's what-if, bound into the surface (ADR-0143)
+
+`formula` is `calculation` with a name instead of operations, and inputs the
+reader may change. The name picks one of four rules in
+`frontends/ui/src/features/grid-cards/lib/formulas.ts`, each of which compiles
+to `CalculationStepData`: the same `evaluate`, the same `verdictFor` and the one
+derivation renderer (`components/Derivation.tsx`) serve both cards. The rule's
+bounds are not on the wire at all. They are typed tables in `formulas.ts`,
+transcribed from the Mai 2023 Richtlinien and keyed by the case the model names
+(`stair_type`, `component`, `start`); the reader has no control over them, and a
+`limits` list or a `result` the model writes is dropped by validation and
+counted (`card-validity`, `stripped`). The rules are tested against
+hand-computed cases in `formula-cases.json` beside `formulas.ts`, which
+`tests/aiq_agent/cards/test_formula_card.py` validates as cards.
+
+Pydantic and the generated Zod schema do not refuse the same inputs: pydantic
+refuses a `value` outside its own `min`/`max` and a `min` at or above `max`, the
+TS schema accepts both. The renderer reconciles them (`inputSlots` drops the
+bound the source's value breaks), so a card that reaches the browser either way
+shows the source's value, never as an error. The title, a layer's or a leg's
+label is an alphabet (letters, spaces, a few marks, digits only in an
+allow-listed citation or identifier), the note and an input's `source` may
+also name documents (plan code, Index, Rev., Pos., a date) but hold no
+measurement, sign or symbol, and neither holds a verdict word (`_figure_in` in
+`cards/models.py`); pydantic refuses them, the TS schema does not check.
+
+A changed input is written to the card's A2UI surface data model at
+`/inputs/<leaf id>` (`features/a2ui/reader-inputs.ts`): never to the message,
+never to a backend, never to an export, and gone on reload. Langfuse records
+`formula-input-provenance` per card, the share of given inputs that say where
+they are written.
 
 ### `calculation` has nowhere to put a wrong answer
 
@@ -536,8 +569,8 @@ and the shapes of `ENVELOPE_SHAPE_TYPES` ride in the envelope contract
 enough to name the right card AND to build it, with a card the validator
 refuses handed to the small repair model (`cards/repair.py`) rather than back
 to the answering agent. Deep research still reads the doctrine in
-`emit_card`'s description, and gets the shape on the retry. Skills, too, are bound on
-every turn (`use_skill`); there is no gate in front of the skill runtime any
+`emit_card`'s description, and gets the shape on the retry. Skills, too, are offered on
+every turn (the catalog, and `read_file` on a `SKILL.md`); there is no gate in front of the skill runtime any
 more, and no way to require a skill either, so a greeting that loads no skill is
 the model's judgment, pinned by the prompt.
 
@@ -645,6 +678,10 @@ per card type, named by the type and validated by that card's generated Zod
 schema, plus `Row`, `Column`, `Tabs` and `Text` in the basic catalog's shapes. Each
 card component calls back into `GridCardView`, the per-type dispatch that used
 to be `GridCardItem`, so the pixels are the same components as before.
+`@a2ui/react` is imported only by `react-catalog.tsx`, which `A2uiCard` loads
+in the browser: the library defines custom elements on import and cannot load
+on the server. `catalog.tsx` is the server-safe half (component APIs,
+`preflight`, the contexts), and `ssr.spec.tsx` keeps it that way.
 
 - **Composition.** A `surface` card carries an A2UI component list: a
   container with id `root` and the content cards it holds. `SurfaceCard` in
@@ -923,9 +960,9 @@ without re-plumbing generation or transport.
 
 ## Card catalog
 
-The catalog is the twenty-three types tabulated under
-[Current card types](#current-card-types) — three structured
-(`project_profile_patch`, `calculation`, `surface`), eight schematic, six
+The catalog is the types tabulated under
+[Current card types](#current-card-types) — four structured
+(`project_profile_patch`, `calculation`, `formula`, `surface`), eight schematic, six
 model-facing IFC and six system — and that is the only place in this document
 where they are listed, on purpose: a card type appearing in two tables means one
 of them is already wrong. See

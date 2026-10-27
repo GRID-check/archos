@@ -4,6 +4,7 @@ description: >
   U-value, HWB and sound insulation. First whether new build or existing.
 metadata:
   grid-agents: researcher,deep_researcher
+  grid-cards: formula
 ---
 
 # Answering a question about energy or sound
@@ -32,6 +33,19 @@ new-build requirement is cited that then turns out to be the wrong one.
 
 U-values per envelope component → as a check table, one row per component, the
 value in the `Ist` column, the limit written with ≤ in the `Soll` column.
+A U-value worked out from the layers of a component against OUTSIDE AIR (an
+external wall, a ceiling or roof slope to outside air, a ceiling over a passage)
+→ `formula` with `u_value`, the component and the `measure` (new build, renovation, or a größere
+Renovierung, from `existing_or_new`; leave it out when that is open, and the
+card says it cannot judge), so the reader can try another insulation; the card
+takes the bound itself. A größere Renovierung is held to the energy figures of
+Pkt. 4.3, not to the component's U-value: say so, and do not cite the table.
+A component against the ground or an unheated space is NOT a `formula`: its
+surface resistance and its ground heat transfer differ (ÖNORM EN ISO 6946 does
+not cover the ground; ÖNORM EN ISO 13370 does), so the card would compute the
+wrong U-value. Give its U-value only from a sourced calculation (the
+Energieausweis, the building-physics report) in the check table, with the
+source named, and say that the card does not compute it.
 HWB and energy class → as key figures (value against limit), the energy
 efficiency class named.
 Sound insulation per component pairing → as a check table, the pairing in the

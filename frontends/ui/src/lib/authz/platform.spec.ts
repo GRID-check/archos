@@ -8,13 +8,12 @@ vi.mock('server-only', () => ({}))
 const getOrganizationByExternalId = vi.fn()
 const listOrganizationMemberships = vi.fn()
 const listOrganizationRoles = vi.fn()
-const listEnvironmentRoles = vi.fn()
 
 vi.mock('@/lib/workos/client', () => ({
   getWorkOS: () => ({
     organizations: { getOrganizationByExternalId },
     userManagement: { listOrganizationMemberships },
-    authorization: { listOrganizationRoles, listEnvironmentRoles },
+    authorization: { listOrganizationRoles },
   }),
 }))
 
@@ -38,6 +37,14 @@ import type { GridSession } from '@/lib/auth/types'
 
 const PLATFORM_ORG = 'org_platform'
 const SUPPORT_ROLE_SLUG = 'org-platform-support'
+/** What the owner's token carries inside the platform org. */
+const OWNER_CLAIMS = [
+  'platform:organizations:view',
+  'platform:organizations:manage',
+  'platform:usage:view',
+  'platform:settings:view',
+  'platform:settings:manage',
+]
 
 /** In-process store, cleared per test so a cached role list cannot leak across. */
 class TestStore implements CacheStore {
@@ -77,8 +84,7 @@ describe('platform tier', () => {
     delete process.env.GRID_PLATFORM_OWNER_EMAILS
     getOrganizationByExternalId.mockResolvedValue({ id: PLATFORM_ORG })
     listOrganizationMemberships.mockResolvedValue({ data: [] })
-    // What WorkOS says the two platform-org roles hold. Mirrors the catalog,
-    // which is also the fallback when this call fails.
+    // What WorkOS says the two platform-org roles hold, as the catalog provisions them.
     listOrganizationRoles.mockResolvedValue({
       data: [
         {
@@ -113,12 +119,16 @@ describe('platform tier', () => {
       expect(await isPlatformStaff(session())).toBe(false)
     })
 
-    it('fast path: active platform org + role or permission claims', async () => {
+    it('fast path: active platform org + permission claims', async () => {
       expect(
         await isPlatformStaff(
-          session({ organizationId: PLATFORM_ORG, role: PLATFORM_OWNER_ROLE_SLUG })
+          session({ organizationId: PLATFORM_ORG, role: PLATFORM_OWNER_ROLE_SLUG, permissions: OWNER_CLAIMS })
         )
       ).toBe(true)
+      // The role's NAME is not staff: the token carries what WorkOS gave it.
+      expect(
+        await isPlatformStaff(session({ organizationId: PLATFORM_ORG, role: PLATFORM_OWNER_ROLE_SLUG }))
+      ).toBe(false)
       expect(
         await isPlatformStaff(
           session({
@@ -220,7 +230,7 @@ describe('platform tier', () => {
   })
 
   it('the OWNER holds every platform permission, on both paths', async () => {
-    const inside = session({ organizationId: PLATFORM_ORG, role: PLATFORM_OWNER_ROLE_SLUG })
+    const inside = session({ organizationId: PLATFORM_ORG, role: PLATFORM_OWNER_ROLE_SLUG, permissions: OWNER_CLAIMS })
     expect(await hasPlatformPermission(inside, 'platform:settings:manage')).toBe(true)
     expect(await hasPlatformPermission(inside, 'platform:organizations:manage')).toBe(true)
 
@@ -232,13 +242,12 @@ describe('platform tier', () => {
     expect(await hasPlatformPermission(session(), 'platform:settings:manage')).toBe(true)
   })
 
-  it('falls back to the catalog when the role lookup fails, never to "yes"', async () => {
+  it('fails closed when the role lookup fails: staff, holding nothing', async () => {
     listOrganizationRoles.mockRejectedValue(new Error('roles down'))
     listOrganizationMemberships.mockResolvedValue({
       data: [{ role: { slug: SUPPORT_ROLE_SLUG } }],
     })
-    // The catalog says Support holds the three reads and neither write.
-    expect(await hasPlatformPermission(session(), 'platform:usage:view')).toBe(true)
+    expect(await hasPlatformPermission(session(), 'platform:usage:view')).toBe(false)
     expect(await hasPlatformPermission(session(), 'platform:settings:manage')).toBe(false)
   })
 
@@ -285,6 +294,7 @@ describe('platform tier', () => {
     // A fresh membership cache: the "no membership" answer above is cached per
     // user, and caching it is the point (a non-member costs one lookup per TTL).
     _clearPlatformCaches()
+    setCacheStore(new TestStore())
     listOrganizationMemberships.mockResolvedValue({ data: [{ role: { slug: 'unknown-role' } }] })
     // A member whose role the catalog and WorkOS both report as empty is staff
     // with no permissions, which must still deny every surface.

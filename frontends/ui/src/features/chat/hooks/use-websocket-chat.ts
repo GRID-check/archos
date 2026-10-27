@@ -88,6 +88,13 @@ import {
 import { STAGE_COUNT } from '../lib/turn-projection'
 import { runErrorCard, type RunErrorCard } from '../lib/run-error'
 import { isSteerRead, type TurnView } from '../lib/turn-fold'
+import {
+  dropViewerActions,
+  newViewerActions,
+  proposeViewerAction,
+  releaseViewerActions,
+  viewerClientTools,
+} from '../lib/viewer-actions'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatMessage, Conversation, PendingInteraction } from '../types'
 
@@ -473,6 +480,12 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   let socketOpen = false
   /** The notes this page sent, by `steer_id`, until their turn ends. */
   const steers = new Map<string, SentSteer>()
+  /**
+   * The turns this page asked. Only their viewer actions may move this page's
+   * viewer (ADR-0144): a turn attached after a reload, or watched as a
+   * spectator, folds the same events and runs none of them.
+   */
+  const asked = new Set<string>()
 
   const keyOf = (message: ClientMessage): string =>
     `${message.type}:${'turn_id' in message ? message.turn_id : message.message_id}`
@@ -620,6 +633,20 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   /** What a folded turn asks of the page beyond its messages. */
   const react = (previous: TurnView | undefined, view: TurnView | undefined): void => {
     if (!view) return
+    if (asked.has(view.turnId) && view.messageId) {
+      // Held while the turn runs; nothing moves before the answer is on screen (ADR-0144).
+      for (const call of newViewerActions(previous?.viewerActions, view.viewerActions)) {
+        proposeViewerAction(view.messageId, call)
+      }
+      const ended = view.phase !== 'running' && (previous === undefined || previous.phase === 'running')
+      // An answer releases them; an error, a Stop, a refusal or a hand-off drops them. A retracted
+      // stream is a round, not the answer (`answer_retracted`), so it neither releases nor drops.
+      if (ended && view.phase === 'finished' && view.outcome === 'answered' && view.text) {
+        void releaseViewerActions(view.messageId)
+      } else if (ended) {
+        dropViewerActions(view.messageId)
+      }
+    }
     if (view.phase !== 'running' && previous?.phase === 'running') settleSteers(view)
     if (view.gap && gapsAttached.get(view.turnId) !== view.lastSeq) {
       gapsAttached.set(view.turnId, view.lastSeq)
@@ -748,6 +775,7 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
       socket.close()
     },
     ask: (message) => {
+      asked.add(message.message_id)
       unacknowledged.set(message.message_id, message)
       awaitAck(message.message_id)
       // No socket to take it: open one (a new ladder, if the last one gave up).
@@ -1179,7 +1207,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
    * bounded few, and is discarded with the conversation if none comes up.
    */
   const deliverAsContext = useCallback(
-    (messageId: string, content: string, dataSourcesForMessage: string[]): void => {
+    (messageId: string, content: string, dataSourcesForMessage: string[] | null): void => {
       const conversationId = useChatStore.getState().currentConversation?.id
       if (!conversationId) return
       // The user just wrote in this thread, so they are not an observer any
@@ -1216,11 +1244,20 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         )
       : []
 
+    // Keep internal knowledge available for base/project/session corpora even though it is hidden from toggles.
+    const dataSourcesForMessage = layoutState.knowledgeLayerAvailable
+      ? Array.from(new Set([...enabledDataSources, 'knowledge_layer']))
+      : enabledDataSources
     return {
-      // Keep internal knowledge available for base/project/session corpora even though it is hidden from toggles.
-      dataSourcesForMessage: layoutState.knowledgeLayerAvailable
-        ? Array.from(new Set([...enabledDataSources, 'knowledge_layer']))
-        : enabledDataSources,
+      dataSourcesForMessage,
+      // On the wire, `[]` selects NO source. Before the source list has loaded
+      // (or when it failed to), an empty selection is the store's initial
+      // value, not a choice, so it states nothing: `null` is every source the
+      // organization allows. Sending it refused every retrieval of the turn
+      // ("Research turn has every data source switched off", PostHog Logs).
+      // A selection that does exist goes out as it is.
+      dataSourcesOnWire:
+        layoutState.availableDataSources === null && dataSourcesForMessage.length === 0 ? null : dataSourcesForMessage,
       // Prepare file metadata for display
       messageFiles: sessionFiles.map((f) => ({ id: f.id, fileName: f.fileName })),
     }
@@ -1238,7 +1275,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
     (
       messageId: string,
       content: string,
-      dataSourcesForMessage: string[],
+      dataSourcesForMessage: string[] | null,
       conversationId: string | undefined,
       reasoningEffort?: ChatEffort,
       asked?: CanvasFocus
@@ -1271,10 +1308,11 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       capturePosthog('chat_message_sent', {
         has_attachments: collectSendMetadata().messageFiles.length > 0,
         effort,
-        data_source_count: dataSourcesForMessage.length,
+        data_source_count: dataSourcesForMessage?.length ?? null,
       })
       // `focus_region` and `reply_in_thread` are being added to the wire; until
       // the generated type carries them they ride on this wider local type.
+      const clientTools = viewerClientTools()
       const question: UserMessage & { focus_region?: CanvasFocusRegion | null; reply_in_thread?: boolean } = {
         type: 'user_message',
         conversation_id: conversationId,
@@ -1292,6 +1330,9 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         reasoning_effort: effort,
         // Omitted, not null, while PostHog is off: `forServer` keys on presence.
         ...(posthogSessionId ? { posthog_session_id: posthogSessionId } : {}),
+        // The frontend tools this page can run (AG-UI's RunAgentInput.tools): the viewer, when it has
+        // room beside the chat. Omitted otherwise, so the server never offers the model the tool (ADR-0144).
+        ...(clientTools.length ? { client_tools: clientTools } : {}),
       }
       ensureDriver(conversationId).ask(question)
       return true
@@ -1328,7 +1369,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         return { ok: false }
       }
 
-      const { dataSourcesForMessage, messageFiles } = collectSendMetadata()
+      const { dataSourcesForMessage, dataSourcesOnWire, messageFiles } = collectSendMetadata()
       // Our id, generated up front: it is the anchor the mention request points at,
       // and the idempotency key the server rules on.
       const messageId = uuidv4()
@@ -1391,11 +1432,11 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         // The thread now waits for a human. Nothing is STARTED (MN-7) — but the
         // agent still has to see what was written, or the next `@Piloti given
         // that…` has nothing to refer to. Free, silent, best-effort.
-        deliverAsContext(messageId, content, dataSourcesForMessage)
+        deliverAsContext(messageId, content, dataSourcesOnWire)
         return { ok: true, addressees: ruling }
       }
 
-      const started = openAgentTurn(messageId, content, dataSourcesForMessage, conversationId, options.reasoningEffort)
+      const started = openAgentTurn(messageId, content, dataSourcesOnWire, conversationId, options.reasoningEffort)
       return { ok: started, addressees: ruling }
     },
     [addErrorCard, collectSendMetadata, deliverAsContext, openAgentTurn]
@@ -1419,14 +1460,14 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       if ((options?.mentions && options.mentions.length > 0) || options?.awaitingHuman) {
         return sendRuledMessage(content, options ?? {})
       }
-      const { dataSourcesForMessage, messageFiles } = collectSendMetadata()
+      const { dataSourcesForMessage, dataSourcesOnWire, messageFiles } = collectSendMetadata()
       const message = addUserMessage(content, { enabledDataSources: dataSourcesForMessage, messageFiles })
       // The conversation may have just been created inside addUserMessage.
       const conversationId = useChatStore.getState().currentConversation?.id
       return openAgentTurn(
         message.id,
         content,
-        dataSourcesForMessage,
+        dataSourcesOnWire,
         conversationId,
         options?.reasoningEffort,
         options?.canvas

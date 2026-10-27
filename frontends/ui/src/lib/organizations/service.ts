@@ -7,6 +7,7 @@
  */
 
 import 'server-only'
+import type { SwitchableOrganization } from './switchable'
 import { findOrganization, upsertOrganization } from './repository'
 import { getWorkOS } from '@/lib/workos/client'
 import { getCached, invalidateCached } from '@/lib/cache'
@@ -79,7 +80,7 @@ export async function getOrganizationOverview(
     id: org.id,
     name: org.name,
     domains: org.domains?.map((d) => d.domain) ?? [],
-    createdAt: org.createdAt,
+    createdAt: org.createdAt.toISOString(),
     memberCount,
     memberCountCapped,
     pendingInviteCount,
@@ -214,6 +215,47 @@ export async function getOrganizationDisplayName(
     })
   } catch {
     return null
+  }
+}
+
+/** Membership changes are rare; a joiner sees the switcher within this long. */
+const SWITCHER_CACHE_TTL_MS = 5 * 60_000
+
+/** More offices than one person works in; the menu lists them all on one page. */
+const SWITCHER_MEMBERSHIP_LIMIT = 50
+
+/**
+ * The organizations the person can switch between, by name, the current one
+ * marked: empty for someone in one organization, which is when the avatar menu
+ * offers no switch. WorkOS's membership carries the organization's name, so one
+ * call answers.
+ *
+ * Fails soft to empty, as the display name does: a menu without the switch
+ * still renders, and caught outside `getCached` so an outage is not remembered
+ * as "one organization".
+ */
+export async function switchableOrganizations(
+  organizationId: string | null | undefined,
+  userId: string
+): Promise<SwitchableOrganization[]> {
+  try {
+    return await getCached(`organization-switcher:${organizationId ?? 'none'}:${userId}`, SWITCHER_CACHE_TTL_MS, async () => {
+      const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
+        userId,
+        statuses: ['active'],
+        limit: SWITCHER_MEMBERSHIP_LIMIT,
+      })
+      if (memberships.data.length < 2) return []
+      return memberships.data
+        .map((membership) => ({
+          id: membership.organizationId,
+          name: membership.organizationName || membership.organizationId,
+          current: membership.organizationId === organizationId,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    })
+  } catch {
+    return []
   }
 }
 

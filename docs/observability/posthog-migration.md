@@ -104,13 +104,19 @@ date.
   `organization:read`, `annotation:write`) and repository variable
   `POSTHOG_PROJECT_ID=269895` ([`contributing/ci.md`](../contributing/ci.md)).
 - [ ] **Support key for product feedback**: a person with PostHog access creates a
-  personal API key with scopes `ticket:read` and `ticket:write`, and
+  personal API key with scopes `ticket:read`, `ticket:write` and
+  `organization_member:read` (the last is what the Slack alert's „Übernehmen"
+  button needs to find the clicker in PostHog by email), and
   puts it in each stack's ESC environment: `esc env set
   matthiasbigl/grid-oib/<dev|prod> pulumiConfig.grid-oib:posthogPersonalApiKey
   "phx_..." --secret`. `grid-oib:posthogProjectId` defaults to `269895`. Until
   the key is set, feedback reports open no Support ticket and Platform → Feedback
   shows the local log, read-only ([ADR-0118](../adr/0118-posthog-support-is-the-record-for-product-feedback.md)).
   The key belongs to that person: rotate it when they leave.
+- [ ] **Slack alert for product feedback**: the workflow „Piloti feedback →
+  Slack" (tag `piloti-feedback`) is created as a draft. Enable it in PostHog →
+  Workflows after checking it once; it posts to `#posthog-inbox`, where the
+  PostHog Slack app is a member ([how it routes](../architecture/product-feedback.md#the-slack-alert)).
 - [ ] **Turn the scouts on**: once consent and GitHub are in place, set the dry-run
   scouts to write to the inbox (`emit`) one at a time, and turn on pr-follow-up.
 - [ ] **Survey translations** (English) and launch, after the events they target

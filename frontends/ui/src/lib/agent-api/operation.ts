@@ -97,6 +97,12 @@ export interface AgentOperation {
    * something. Defaults to `method === 'DELETE'`.
    */
   readonly destructive?: boolean
+  /**
+   * The person decides it, whatever it changes: deciding a proposal (ADR-0105).
+   * An outside agent's call is put to the person first, as a destructive write
+   * is (`confirmation.ts`), since a proposal it applies may itself delete.
+   */
+  readonly personDecides?: true
   /** Calling it twice with the same input leaves the same state. Defaults to GET, PUT and DELETE. */
   readonly idempotent?: boolean
   /**
@@ -141,6 +147,13 @@ export interface AgentOperation {
    * `document-list` with `scope: office_shelf`. The caller's own values win.
    */
   readonly inputDefaults?: OperationExample
+  /**
+   * An old name's input rewritten into this operation's shape, when the rename
+   * also renamed fields (`document-search`'s `body.q` is `workspace-search`'s
+   * `body.text`). Set only on the operation an old name resolves to; runs
+   * before {@link inputDefaults}.
+   */
+  readonly rewriteInput?: (given: OperationExample) => OperationExample
   /**
    * The kind of object the answer holds, when a person can open it in the app:
    * the door adds `url`, that object's page, to the answer itself or to each

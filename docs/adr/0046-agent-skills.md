@@ -1,7 +1,7 @@
 # ADR-0046: Agent skills — user-selected, progressive-disclosure instruction packages
 
 - **Status:** Proposed
-- **Date:** 2026-08-10, amended 2026-08-11
+- **Date:** 2026-08-10, amended 2026-08-11, noted and amended 2026-10-27
 - **Deciders:** Platform
 - **Related:** ADR-0018 (per-run state), ADR-0020 (Dragonfly shared cache),
   ADR-0022 (org BYOK), ADR-0023 (Workflows — **superseded by this ADR**),
@@ -23,6 +23,23 @@
 >    skill (migrations 0043/0044). New sections: "A job is a prompt on a timer",
 >    "A chat job lands in a real conversation" and "The wire rename is tolerated
 >    for one deploy window".
+
+> **Amended 2026-10-27, in place** — still Proposed, so the engine decision is
+> changed here rather than superseded; everything else in this record stands.
+> Skills now run on Deep Agents' `SkillsMiddleware` in chat AND deep research,
+> over one read-only backend of the run's resolved skills
+> ([ADR-0135](0135-skills-run-on-deep-agents-skills-middleware.md)). That
+> replaces "a GRID-owned skills engine for the chat side", the L2 `use_skill`
+> tool, the deep side's `FilesystemBackend` mount and the writer's second
+> channel. The rejections "Reuse deepagents `SkillsMiddleware` for the chat
+> side" and "One engine for both sides" below stay as written, and their
+> premises no longer hold, each checked on that day: request-driven forcing was
+> gone (ADR-0060; `skills/runtime.py` "Nothing in this module can REQUIRE a
+> skill"), and the middleware renders a name, description and path catalog the
+> model opts into (deepagents 0.7.32, `middleware/skills.py`, "Progressive
+> Disclosure"). Resolution, shadowing, `grid-agents`, curation, the BFF and jobs
+> are unchanged. Where this record says `use_skill` below, read "a `read_file`
+> of the skill's `SKILL.md`".
 
 ## Context
 
@@ -445,6 +462,31 @@ and strict validation are shared.
 - **One engine for both sides** — rejected: the chat side needs prompt
   catalogs + request forcing; the deep side runs sandboxed filesystem tools
   natively. Forcing one engine onto both would distort one of them.
+
+  > **Noted 2026-10-27, in place.** This ADR is still Proposed, so the note
+  > sits beside the two rejections above, which stay as written. Both rested
+  > on premises that no longer hold, checked in the code that day:
+  >
+  > 1. **Request-driven forcing is gone.** `src/aiq_agent/skills/runtime.py`:
+  >    "Nothing in this module can REQUIRE a skill … There is no way to mark a
+  >    skill as required, for a deployment or for one request", and no
+  >    `force_skills` remains under `src/`.
+  > 2. **`SkillsMiddleware` renders a catalog.** Its `SKILLS_SYSTEM_PROMPT` lists
+  >    each skill's name, description and `SKILL.md` path under "Available
+  >    Skills" and tells the model to read the body only when the task matches
+  >    ("Progressive Disclosure"), in the installed 0.6.12 and in 0.7.32
+  >    (`deepagents/middleware/skills.py`). That is the catalog the model opts
+  >    into that this record asked for.
+  >
+  > Moving chat skills onto `SkillsMiddleware` is the next planned step after
+  > [ADR-0133](0133-piloti-reads-the-estate-through-standard-filesystem-tools.md),
+  > and it is decided in its own change, not here. What it would still have to
+  > carry: a backend serving the BFF-resolved office skills as `SKILL.md`,
+  > activation tracking (`skills_applied`, the "Skills used" disclosure), the
+  > preferred cards, curated and hidden filtering, and the inline shortcut of
+  > [ADR-0063](0063-short-skill-bodies-ride-the-prompt.md). Why a rejection
+  > names its premise:
+  > [working style](../contributing/working-style.md#a-rejection-names-its-premise).
 - **A `/` menu that opens anywhere in the message** (the `@` behaviour) —
   rejected: false positives on ordinary German punctuation, for no gain, since
   an invocation applies to the whole turn anyway.

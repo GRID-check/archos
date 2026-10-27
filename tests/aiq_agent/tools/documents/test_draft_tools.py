@@ -46,10 +46,14 @@ class TestWhichToolsAreBound:
     def test_exactly_the_four_verbs(self, backend: DraftBackend) -> None:
         assert [tool.name for tool in draft_tools(backend)] == list(DRAFT_TOOL_NAMES)
 
-    def test_nothing_that_searches_or_executes_is_bound(self, backend: DraftBackend) -> None:
-        """`glob`/`grep` buy nothing over one flat directory; `execute` has no sandbox."""
+    def test_nothing_that_searches_executes_or_deletes_is_bound(self, backend: DraftBackend) -> None:
+        """`glob`/`grep` buy nothing over one flat directory; `execute` has no sandbox.
+
+        `delete` arrived with DeepAgents 0.7 and is offered whenever the backend
+        implements it, which `StoreBackend` does: only the allowlist keeps it off.
+        """
         names = {tool.name for tool in draft_tools(backend)}
-        assert not names & {"glob", "grep", "execute"}
+        assert not names & {"glob", "grep", "execute", "delete"}
 
 
 class TestTheDescriptions:
@@ -73,11 +77,13 @@ class TestTheDescriptions:
         edit = next(tool for tool in draft_tools(backend) if tool.name == "edit_file")
         assert "heading" in edit.description
         assert "paragraph" in edit.description
-        assert "line numbers" in edit.description
+        assert "`@@ … @@` header" in edit.description
 
-    def test_read_warns_that_line_numbers_are_not_in_the_file(self, backend: DraftBackend) -> None:
+    def test_read_warns_that_the_header_is_not_in_the_file(self, backend: DraftBackend) -> None:
+        """DeepAgents 0.7 prints a ``@@ lines … @@`` header and no line numbers."""
         read = next(tool for tool in draft_tools(backend) if tool.name == "read_file")
-        assert "line number" in read.description
+        assert "@@ lines" in read.description
+        assert "line number" not in read.description
 
     def test_write_names_the_document_kinds_and_the_root(self, backend: DraftBackend) -> None:
         write = next(tool for tool in draft_tools(backend) if tool.name == "write_file")
@@ -185,6 +191,65 @@ class TestTheTurnFactory:
         with caplog.at_level("WARNING"):
             assert await draft_tools_for_turn() == []
         assert "Working directory unavailable" in caplog.text
+
+
+class TestTheSkillsRideTheSameReadFile:
+    """``read_file`` also reads the turn's skills under ``/skills/`` (ADR-0135), read-only."""
+
+    @pytest.fixture
+    def skills(self):
+        from aiq_agent.skills.models import Skill
+        from aiq_agent.skills.runtime import SkillRuntime
+
+        return SkillRuntime.office((Skill(name="building-class", description="Die GK.", body="# GK\n\nZuerst."),))
+
+    async def _read(self, tools, path: str):
+        from types import SimpleNamespace
+
+        read = next(tool for tool in tools if tool.name == "read_file")
+        return await read.coroutine(path, SimpleNamespace(tool_call_id="call-1"), offset=0, limit=1000)
+
+    async def test_a_skill_reads_beside_the_drafts_and_activates(self, backend: DraftBackend, skills) -> None:
+        tools = draft_tools(backend, skills=skills.backend)
+        assert [tool.name for tool in tools] == list(DRAFT_TOOL_NAMES)
+        message = await self._read(tools, "/skills/office/building-class/SKILL.md")
+        assert message.status != "error", message.content
+        assert "Zuerst." in message.content
+        assert skills.activated == ("building-class",)
+        assert "/skills/" in next(t for t in tools if t.name == "read_file").description
+
+    async def test_drafts_still_read_through_the_composite(self, backend: DraftBackend, skills) -> None:
+        await backend.awrite(DRAFT, "# Vermerk\n\nText.\n")
+        message = await self._read(draft_tools(backend, skills=skills.backend), DRAFT)
+        assert "Text." in message.content
+        assert skills.activated == ()
+
+    async def test_without_a_conversation_the_skills_get_read_file_alone(self, monkeypatch, skills) -> None:
+        monkeypatch.setattr(draft_tools_module, "get_conversation_id_from_context", lambda: None)
+        tools = await draft_tools_for_turn(skills=skills.backend)
+        assert [tool.name for tool in tools] == ["read_file"]
+        message = await self._read(tools, "/skills/office/building-class/SKILL.md")
+        assert "Zuerst." in message.content
+
+    async def test_a_skill_cannot_be_written(self, backend: DraftBackend, skills) -> None:
+        from types import SimpleNamespace
+
+        write = next(tool for tool in draft_tools(backend, skills=skills.backend) if tool.name == "write_file")
+        message = await write.coroutine(
+            "/skills/office/evil/SKILL.md", "x", SimpleNamespace(tool_call_id="call-2", state={})
+        )
+        text = message if isinstance(message, str) else getattr(message, "content", str(message))
+        assert "denied" in str(text).lower() or "read-only" in str(text).lower()
+        assert skills.backend.read("/office/evil/SKILL.md").error
+
+    def test_the_skill_gate_allows_read_and_denies_write(self) -> None:
+        from deepagents.middleware.filesystem import _check_fs_permission
+
+        from aiq_agent.tools.documents.tools import _SKILL_PERMISSION
+
+        rules = [_SKILL_PERMISSION, *_PERMISSIONS]
+        assert _check_fs_permission(rules, "read", "/skills/office/x/SKILL.md") == "allow"
+        assert _check_fs_permission(rules, "write", "/skills/office/x/SKILL.md") == "deny"
 
 
 class TestTheDraftCard:

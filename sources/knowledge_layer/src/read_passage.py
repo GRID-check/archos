@@ -81,6 +81,10 @@ from nat.plugin_api import FunctionInfo
 from nat.plugin_api import FunctionRef
 from nat.plugin_api import register_function
 
+from .chunk_positions import body
+from .chunk_positions import repeated_head
+from .chunk_positions import split_prefix
+
 logger = logging.getLogger(__name__)
 
 #: How many chunks one locator fetch may return per collection.
@@ -120,15 +124,6 @@ _MAX_RANGE_PAGES = 30
 #: chunk boundary and ends with a ``cursor`` the model passes back to continue.
 _MAX_READ_CHARS = 24_000
 
-#: The longest repeated head :func:`_without_overlap` will cut, in characters. The chunkers overlap
-#: neighbours by about 96 tokens; anything much longer is not an overlap but a coincidence.
-_MAX_OVERLAP_CHARS = 1_200
-
-#: The shortest repeat worth cutting: a heading or a table header that a neighbouring chunk
-#: happens to repeat is the chunk's own text, not overlap.
-_MIN_OVERLAP_WORDS = 8
-_MIN_OVERLAP_CHARS = 40
-
 #: How many Gliederung lines the outline may print before it says how many more
 #: exist. Headings are not rendered as passages (a heading is not evidence), so
 #: 80 lines is roughly one search result in tokens.
@@ -147,7 +142,8 @@ _READ_PASSAGE_DESCRIPTION = (
     "chunks, up to about 6k tokens; a read that stopped early ends with a `cursor` to pass back with the same "
     "`document=`.\n"
     "Returns: the passages, each with Source, Citation (copy verbatim), Dokumentart, Punkt and page. The "
-    "Gliederung is an index, not evidence: only passages carry a Citation. An unknown document name is refused, "
+    "Gliederung is an index, not evidence: only passages carry a Citation; a Punkt it lists, or one an outline "
+    "in a `knowledge_search` result lists, opens here by its number (`clause=`). An unknown document name is refused, "
     "with up to three labelled guesses from this turn's readable inventory when anything is close.\n"
     "`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
 )
@@ -328,8 +324,8 @@ def _older_revision_notice(targets: Sequence[PassageTarget]) -> str:
 def older_revision_line(name: str, current: str) -> str:
     """The notice line for one older Fassung a tool hands the model: which file replaced it, and what to say."""
     return (
-        f"Ältere Fassung: {name} ist durch {current} ersetzt (bestätigt), aktuell ist {current}. "
-        "Sage in der Antwort, dass du die ältere Fassung liest.\n\n"
+        f"Older Fassung: {name} is replaced by {current} (confirmed); {current} is current. "
+        "Say in the answer that you are reading the older Fassung.\n\n"
     )
 
 
@@ -530,10 +526,6 @@ def _range_order(chunks: Sequence[Any]) -> list[Any]:
     return sorted(chunks, key=_chunk_position)
 
 
-def _words_with_offsets(text: str) -> list[tuple[str, int]]:
-    return [(match.group(), match.start()) for match in re.finditer(r"\S+", text)]
-
-
 def _without_overlap(chunks: Sequence[Any]) -> list[Any]:
     """The chunks with each head cut by the words it repeats from the chunk before it.
 
@@ -542,16 +534,19 @@ def _without_overlap(chunks: Sequence[Any]) -> list[Any]:
     previous chunk's text (words compared after whitespace normalisation) is cut, only between two text
     chunks of one document that the chunker cut one after the other, only when the repeat is long enough
     not to be a repeated heading, and never when it would leave nothing. The Citation key and page are
-    the chunk's own and do not change.
+    the chunk's own and do not change. A section chunk's breadcrumb stays where it is: the repeat is
+    looked for in the bodies after it (``chunk_positions.split_prefix``), where the overlap stands.
     """
     result: list[Any] = []
     previous: Any = None
     for chunk in chunks:
         trimmed = chunk
         if previous is not None and _neighbours(previous, chunk):
-            cut = _repeated_head(previous.content, chunk.content)
+            start = split_prefix(chunk)[0]
+            cut = repeated_head(body(previous), chunk.content[start:])
             if cut:
-                trimmed = chunk.model_copy(update={"content": chunk.content[cut:].lstrip()})
+                content = chunk.content[:start] + chunk.content[start + cut :].lstrip()
+                trimmed = chunk.model_copy(update={"content": content})
         result.append(trimmed)
         previous = chunk
     return result
@@ -572,30 +567,6 @@ def _neighbours(previous: Any, chunk: Any) -> bool:
     before_ordinal, after_ordinal = _chunk_ordinal(previous), _chunk_ordinal(chunk)
     # A chunk without an ordinal has no known predecessor: legacy chunks of a page are ordered by id.
     return before_ordinal is not None and after_ordinal is not None and after_ordinal - before_ordinal == 1
-
-
-def _repeated_head(previous: str, text: str) -> int:
-    """How many characters of ``text`` repeat the end of ``previous``; 0 when they do not, or would be all of it.
-
-    Only a repeat that ends within :data:`_MAX_OVERLAP_CHARS` of ``text`` counts, so only the words
-    that start there are candidates, and only a count whose first word is ``text``'s first word is
-    compared: linear in practice, where trying every count was quadratic in the chunk's words.
-    """
-    after = _words_with_offsets(text[: _MAX_OVERLAP_CHARS + 1])
-    if len(after) <= _MIN_OVERLAP_WORDS:
-        return 0
-    tail = previous[-(_MAX_OVERLAP_CHARS * 2) :]
-    before = [word for word, _ in _words_with_offsets(tail)]
-    if len(tail) < len(previous):
-        before = before[1:]  # the slice may have cut its first word in two
-    words = [word for word, _ in after]
-    longest = min(len(before), len(after) - 1)
-    for count in range(longest, _MIN_OVERLAP_WORDS - 1, -1):
-        if before[-count] != words[0] or before[-count:] != words[:count]:
-            continue
-        end = after[count][1]
-        return end if _MIN_OVERLAP_CHARS <= end <= _MAX_OVERLAP_CHARS else 0
-    return 0
 
 
 def _is_range_text(value: Any) -> bool:
@@ -978,27 +949,26 @@ def _outline_lines(entries: Sequence[OutlineEntry], limit: int = _MAX_OUTLINE_LI
         indent = "  " if entry.depth == 2 else ""
         # An unnumbered section is addressed by its title; saying it twice is noise.
         title = f": {entry.title}" if entry.title and entry.title != entry.clause_id else ""
-        page = f" (S. {entry.page})" if entry.page else ""
+        page = f" (p. {entry.page})" if entry.page else ""
         excerpt = f" — {entry.excerpt}" if entry.excerpt else ""
         lines.append(f"{indent}- Punkt {entry.clause_id}{title}{page}{excerpt}")
     remaining = len(entries) - len(shown)
     if remaining > 0:
-        lines.append(f"(+{remaining} weitere Punkte nicht gelistet)")
+        lines.append(f"(+{remaining} more Punkte not listed)")
     return lines
 
 
-#: The one line that says what the Gliederung is and what it is not. German,
-#: because it is read by the same model that writes the German answer, and it
-#: has to be unmistakable that a heading is not a source.
+#: The one line that says what the Gliederung is and what it is not. English, like everything an
+#: agent reads (AGENTS.md), and it names no tool: three agents read it, each with its own reader.
 _OUTLINE_INSTRUCTION = (
-    "Einen gelisteten Punkt öffnest du mit `read_passage(document=…, clause=…)`; die "
-    "Gliederung ist ein Index, keine Evidenz — nur die Passage(n) oben tragen eine Citation."
+    "Open a listed Punkt by its number. The Gliederung is an index, not evidence: only the passages above "
+    "carry a Citation."
 )
 
 #: The same sentence for a document that has no Punkte to list.
 _NO_CLAUSES_LINE = (
-    "Dieses Dokument ist nicht nach Punkten gegliedert, es gibt also keine Gliederung — oben "
-    "stehen seine ersten Passagen; weitere Seiten öffnest du mit `read_passage(document=…, page=…)`."
+    "This document is not structured in Punkte, so it has no Gliederung: its first passages are above, and "
+    "further pages open by their number."
 )
 
 
@@ -1066,14 +1036,14 @@ class FamilyOverview:
     def preamble(self) -> str:
         """What the family IS, above the results: the parts, where they are, and that they are open."""
         numbers = ", ".join(member.number for member in self.members)
-        count = f"{len(self.members)} Teil" if len(self.members) == 1 else f"{len(self.members)} Teile"
-        span = "Treffer 1" if len(self.chunks) == 1 else f"Treffer 1 bis {len(self.chunks)}"
+        count = f"{len(self.members)} part" if len(self.members) == 1 else f"{len(self.members)} parts"
+        span = "Result 1 is" if len(self.chunks) == 1 else f"Results 1 to {len(self.chunks)} are"
         return (
-            f"{self.label}: {count} im Bestand ({numbers}).\n"
-            f"{span} sind der Geltungsbereich dieser Teile, ihre Gliederungen stehen unten; "
-            "danach folgen die Treffer zur Suchanfrage.\n"
-            "Damit sind diese Teile geöffnet, auf der Ebene von `read_passage(document=…)`; "
-            "tiefer führt nur ein einzelner Punkt aus einer Gliederung, wie unten beschrieben."
+            f"{self.label}: {count} in the corpus ({numbers}).\n"
+            f"{span} the Geltungsbereich of these parts, their Gliederungen are below; "
+            "the results for the query follow.\n"
+            "These parts are therefore open at the level a read of one document opens it at; "
+            "deeper goes only a single Punkt from a Gliederung, as described below."
         )
 
 

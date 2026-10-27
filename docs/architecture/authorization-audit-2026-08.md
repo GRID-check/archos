@@ -551,6 +551,11 @@ permission removal is a worse failure than the one it fixes.
 The order is: reconcile §6, keep the drift job green, *then* narrow the
 implication — at which point it can be retired outright rather than narrowed.
 
+**Done, 2026-10-27.** §6 was reconciled, and a read of both environments that
+day found every catalog org and platform role held in full by WorkOS (the
+renamed `org:office_shelf:manage` through its old slug in Production). The
+implication was retired outright: ADR-0038's 2026-10-27 amendment.
+
 ## 6. The WorkOS side — the catalog has shipped ahead of provisioning
 
 Read-only inspection of the live environments on 2026-08-25, via the WorkOS API:

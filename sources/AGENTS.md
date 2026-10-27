@@ -25,9 +25,14 @@ Keep it that way: a helper a test needs from another file is imported by its pat
 The run is parallel (`-n logical --dist loadfile`), so a test may not write
 into the repository or share any other state with a test in another file:
 `test_qdrant_import_boundary.py` plants its offenders under `tmp_path` for that
-reason. Most of the suite's time is Qdrant collection setup (about 130 tests
-each create their own), which a real Qdrant at `AIQ_QDRANT_TEST_URL` pays and
-a run without one skips.
+reason. A collection costs 62 payload indexes to make (over four seconds), so
+`qdrant_store` gives a test module one pair it shares, emptied after each test,
+and drops it when a test changed more than its points; a test of how a
+collection comes to be asks for `fresh_qdrant_store`. A test asserts what OUR
+code sends and gets back, not what Qdrant does on its own: a check that only a
+Qdrant upgrade could fail is not one of ours. A run without
+`AIQ_QDRANT_TEST_URL` skips them; `qdrant` (the release binary) on port 6333 is
+enough to run them locally.
 
 This suite went uncovered for a long time. CI now runs it in the Backend suites
 job (`task be:test:sources`). A package here once carried
@@ -59,11 +64,12 @@ changed, and they stayed green through every gate because nothing ran them.
   Membership is derived from what is indexed, never listed.
 - A ranked search the requery judge found insufficient is re-read by the `jev`
   decider after the requery round (`requery.judge_coverage`). A complete "no"
-  adds an `Abdeckung: unzureichend — …` line (`GroundingBlock.coverage_gap`)
+  adds a `Coverage: insufficient — …` line (`GroundingBlock.coverage_gap`)
   and keeps the pool whole (ADR-0064: a decision never withholds a passage);
   anything less claims nothing. Say
   "insufficient" through that field, never as text a producer writes itself:
-  the prompt names the label (`COVERAGE_GAP_LABEL`).
+  the line also says what it means (`COVERAGE_GAP_LABEL`, `COVERAGE_GAP_NOTE`),
+  which the system prompt no longer does.
 - The step-by-step for a new tool or data source, from package layout to
   binding it to an agent:
   [`adding-a-tool.md`](../docs/architecture/adding-a-tool.md).

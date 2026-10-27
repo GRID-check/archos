@@ -55,6 +55,7 @@ import { useKeyboardUp } from './use-keyboard-up'
 import type { ProjectSwitcherProject } from './project-switcher'
 import type { SidebarUser } from './sidebar-user-menu'
 import type { TourEligibility } from '@/features/onboarding/lib/product-tour'
+import type { SwitchableOrganization } from '@/lib/organizations/switchable'
 
 // `/app/uploads/<id>` is the upload summary's dialog (ADR-0086), opened from
 // the Postfach over the page the reader was on.
@@ -69,6 +70,7 @@ export interface AppShellChromeProps {
   user?: SidebarUser
   organizationName?: string | null
   authRequired: boolean
+  organizations?: SwitchableOrganization[]
   canManageOrganization: boolean
   canViewOrganization: boolean
   canManagePlatform: boolean
@@ -154,6 +156,7 @@ export function AppShellChrome({
           user={chrome.user}
           organizationName={chrome.organizationName}
           authRequired={chrome.authRequired}
+          organizations={chrome.organizations}
           canManageOrganization={chrome.canManageOrganization}
           canViewOrganization={chrome.canViewOrganization}
           canManagePlatform={chrome.canManagePlatform}

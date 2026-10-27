@@ -76,6 +76,10 @@ from nat.plugin_api import FunctionInfo
 from nat.plugin_api import FunctionRef
 from nat.plugin_api import register_function
 
+from .chunk_positions import OwnText
+from .chunk_positions import own_matches
+from .chunk_positions import own_text
+from .chunk_positions import own_texts
 from .revision_series import find_revision_series
 from .revision_series import parse_revision_name
 from .revision_series import revision_label
@@ -198,6 +202,14 @@ class FileRow:
     revision_facts: Mapping[str, Any] | None = field(default=None, compare=False)
     #: Pages the document has, when the store knows (None: not recorded, never "zero").
     page_count: int | None = None
+    #: What the ingest read the document to be (the dossier's ``document_type``), the facts it
+    #: states (``key value unit (p. N)``), what it points at, and how much of it was fully read.
+    document_type: str | None = None
+    facts: tuple[str, ...] = ()
+    references: tuple[str, ...] = ()
+    pages_not_read: int = 0
+    #: What the facts say differently from the Fassung this one replaced: ``key before → after``.
+    fact_changes: tuple[str, ...] = ()
 
     @property
     def document_date(self) -> str | None:
@@ -248,7 +260,46 @@ def file_row(row: Any) -> FileRow | None:
         change_basis=(str(_attr(row, "change_basis") or "").strip() or None),
         revision_facts=revision_facts if isinstance(revision_facts, dict) and revision_facts else None,
         page_count=page_number(_attr(row, "page_count")),
+        **_reading_fields(row),
     )
+
+
+#: What a listing row shows of the ingest's reading: a few facts and references, never the lot.
+MAX_ROW_FACTS = 6
+MAX_ROW_REFERENCES = 8
+
+
+def _reading_fields(row: Any) -> dict[str, Any]:
+    """The dossier's type and facts, the references and the unread pages, as :class:`FileRow` fields."""
+    dossier = _attr(row, "dossier")
+    dossier = dossier if isinstance(dossier, dict) else {}
+    facts = []
+    for fact in dossier.get("facts") or []:
+        if not isinstance(fact, dict) or not fact.get("key") or not fact.get("value"):
+            continue
+        unit = f" {fact['unit']}" if fact.get("unit") else ""
+        page = f" (p. {fact['page']})" if fact.get("page") else ""
+        facts.append(f"{fact['key']} {fact['value']}{unit}{page}")
+    references = [
+        str(ref.get("label") or ref.get("key"))
+        for ref in (_attr(row, "doc_references") or [])
+        if isinstance(ref, dict) and (ref.get("label") or ref.get("key"))
+    ]
+    coverage = _attr(row, "coverage")
+    not_read = coverage.get("not_read") if isinstance(coverage, dict) else 0
+    document_type = dossier.get("document_type")
+    changes = [
+        f"{change['key']} {change.get('before') or '–'} → {change.get('after') or '–'}"
+        for change in dossier.get("changes") or []
+        if isinstance(change, dict) and change.get("key")
+    ]
+    return {
+        "fact_changes": tuple(changes[:MAX_ROW_FACTS]),
+        "document_type": str(document_type) if document_type else None,
+        "facts": tuple(facts[:MAX_ROW_FACTS]),
+        "references": tuple(references[:MAX_ROW_REFERENCES]),
+        "pages_not_read": not_read if isinstance(not_read, int) and not_read > 0 else 0,
+    }
 
 
 def file_rows(rows: Iterable[Any]) -> list[FileRow]:
@@ -609,8 +660,12 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
     bits.append(f"Folder: {row.folder}" if row.folder else "Folder: (top level)")
     if row.doc_class:
         bits.append(f"Dokumentart: {row.doc_class}")
+    if row.document_type and row.document_type != "other":
+        bits.append(f"Type: {row.document_type.replace('_', ' ')}")
     if row.page_count:
         bits.append(f"{row.page_count} page{'' if row.page_count == 1 else 's'}")
+    if row.pages_not_read:
+        bits.append(f"{row.pages_not_read} page(s) not fully read: content there may be missing from search")
     if row.tags:
         bits.append(f"Tags: {', '.join(row.tags)}")
     if row.topics:
@@ -623,6 +678,12 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
     title_block = title_block_label(row.revision_facts)
     if title_block:
         bits.append(f"Plankopf: {title_block}")
+    if row.facts:
+        bits.append(f"States: {'; '.join(row.facts)}")
+    if row.references:
+        bits.append(f"Refers to: {', '.join(row.references)}")
+    if row.fact_changes:
+        bits.append(f"Facts changed against the previous Fassung: {'; '.join(row.fact_changes)}")
     if mark:
         bits.append(mark)
     change = _change_bit(row)
@@ -991,7 +1052,7 @@ def _card_lines(card: FolderCard, about: Sequence[str] = ()) -> list[str]:
     if card.files:
         lines.append(f"  Files here: {' · '.join(card.files)}")
     elif card.direct > MAX_CARD_FILES:
-        call = f'`list_files(folder="{card.path}")`' if card.path else "`list_files()`"
+        call = "a listing of the folder"
         lines.append(
             f"  Files here: {card.direct}, too many to name (a card names them up to {MAX_CARD_FILES}); "
             f"{call} lists them."
@@ -1288,8 +1349,8 @@ def render_revisions(
         "The change note sits on the NEWER Fassung and compares it with the base named beside it; between two "
         "Fassungen that are not neighbours, read the rows in between together. It is a summary by Piloti, not "
         "proof: what changed page by page is shown by `list_files(revisions_of=…, compare_to=…)`, and you check a "
-        "measurement with `read_passage(document=…)`. An older Fassung stays readable on request; otherwise rely "
-        "on the current one. Write file names exactly as they appear here."
+        "measurement by reading the document. An older Fassung stays readable on request; otherwise "
+        "rely on the current one. Write file names exactly as they appear here."
     )
     return "\n".join(lines)
 
@@ -1530,10 +1591,9 @@ def _occurrences(body: str, pattern: Any, timeout: float | None = None) -> int:
     return sum(1 for match in pattern.finditer(body, timeout=timeout) if match.end() > match.start())
 
 
-def _matched_strings(body: str, pattern: Any, timeout: float | None = None) -> list[str]:
-    """The text of every non-empty match, whitespace collapsed (a match across a line break reads as one line)."""
-    found = pattern.finditer(body) if timeout is None else pattern.finditer(body, timeout=timeout)
-    return [" ".join(match.group().split()) for match in found if match.end() > match.start()]
+def _matched_strings(own: OwnText, pattern: Any, timeout: float | None = None) -> list[str]:
+    """Every match that is the chunk's own, whitespace collapsed (a match across a line break reads as one line)."""
+    return [" ".join(match.group().split()) for match in own_matches(own, pattern, timeout)]
 
 
 @dataclass
@@ -1549,6 +1609,8 @@ class FileMatches:
     strings: dict[str, list[Any]] = field(default_factory=dict)
     #: True once the file had more distinct strings than :data:`MAX_TRACKED_STRINGS`.
     strings_cut: bool = False
+    #: Per chunk id, the text its matches were counted on (``chunk_positions.own_text``).
+    own: dict[str, OwnText] = field(default_factory=dict)
 
     def note_strings(self, found: Sequence[str], page: int | None) -> None:
         for text in found:
@@ -1592,20 +1654,27 @@ def group_matches(
 
     ``collect_strings`` (a regex search) also records each distinct matched string per file, for
     :func:`distinct_matches`.
+
+    One place in the document is one match (``chunk_positions``): a chunk's breadcrumb is not
+    matched, its own heading counts on its first part only, and a match inside the overlap it
+    repeats from the returned chunk before it is that chunk's. A chunk left with no match of its
+    own is no passage either.
     """
     compiled = pattern if hasattr(pattern, "finditer") else re.compile(pattern)
     groups: dict[tuple[str, str], FileMatches] = {}
-    for chunk in chunks:
+    chunks = list(chunks)
+    for chunk, own in zip(chunks, own_texts(chunks), strict=True):
         if deadline is not None and timeout is not None:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("the count ran out of time")
             timeout = min(timeout, remaining)
-        body = getattr(chunk, "content", "") or ""
-        found: list[str] = _matched_strings(body, compiled, timeout) if collect_strings else []
-        count = len(found) if collect_strings else _occurrences(body, compiled, timeout)
-        if store_decides:
-            count = max(count, 1)
+        found: list[str] = _matched_strings(own, compiled, timeout) if collect_strings else []
+        count = len(found) if collect_strings else sum(1 for _ in own_matches(own, compiled, timeout))
+        if store_decides and not count and not _occurrences(getattr(chunk, "content", "") or "", compiled, timeout):
+            # The stemmed index matched a form the counting pattern does not know: once. A chunk whose
+            # match the pattern does find, but only in its breadcrumb or overlap, is not its own match.
+            count = 1
         if not count:
             continue
         metadata = getattr(chunk, "metadata", None) or {}
@@ -1619,6 +1688,7 @@ def group_matches(
                 collection,
             )
         group.chunks.append(chunk)
+        group.own[chunk.chunk_id] = own
         group.occurrences += count
         if found:
             group.note_strings(found, getattr(chunk, "page_number", None))
@@ -1850,16 +1920,16 @@ def match_table(
     return "\n".join(lines)
 
 
-def _line_spans(body: str, pattern: Any, timeout: float | None) -> list[tuple[int, int]]:
-    """``(first line, last line)`` of every non-empty match in ``body``, counting from 0."""
+def _line_spans(own: OwnText, pattern: Any, timeout: float | None) -> list[tuple[int, int]]:
+    """``(first line, last line)`` of every match that is the chunk's own, counting from 0."""
     starts = [0]
-    starts.extend(match.end() for match in re.finditer("\n", body))
-    matches = pattern.finditer(body) if timeout is None else pattern.finditer(body, timeout=timeout)
+    starts.extend(match.end() for match in re.finditer("\n", own.text))
+    matches = own_matches(own, pattern, timeout)
 
     def line_of(offset: int) -> int:
         return max(0, bisect.bisect_right(starts, offset) - 1)
 
-    return [(line_of(m.start()), line_of(max(m.start(), m.end() - 1))) for m in matches if m.end() > m.start()]
+    return [(line_of(m.start()), line_of(max(m.start(), m.end() - 1))) for m in matches]
 
 
 def _context_ranges(spans: Sequence[tuple[int, int]], context: int, last: int) -> list[tuple[int, int]]:
@@ -1874,11 +1944,10 @@ def _context_ranges(spans: Sequence[tuple[int, int]], context: int, last: int) -
     return ranges
 
 
-def _chunk_snippets(chunk: Any, where: str, pattern: Any, context: int, room: int, timeout: float | None):
+def _chunk_snippets(own: OwnText, where: str, pattern: Any, context: int, room: int, timeout: float | None):
     """One chunk's ``(lines, cut)``: its hit ranges, at most ``room`` lines, ``cut`` when it had to stop."""
-    body = (getattr(chunk, "content", "") or "").replace("\r\n", "\n")
-    lines = body.split("\n")
-    spans = _line_spans(body, pattern, timeout)
+    lines = own.text.split("\n")
+    spans = _line_spans(own, pattern, timeout)
     hit_lines = {number for first, end in spans for number in range(first, end + 1)}
     out: list[str] = []
     for low, high in _context_ranges(spans, context, len(lines) - 1):
@@ -1901,11 +1970,12 @@ def match_snippets(groups: Sequence[FileMatches], pattern: Any, context: int, *,
     """
     out: list[str] = []
     cut = False
-    chunks = [(group.file_name, chunk) for group in groups for chunk in group.chunks]
-    for file_name, chunk in chunks:
+    chunks = [(group, chunk) for group in groups for chunk in group.chunks]
+    for group, chunk in chunks:
         page = getattr(chunk, "page_number", None)
-        where = f"{file_name}, p.{page}" if page else file_name
-        found, cut = _chunk_snippets(chunk, where, pattern, context, MAX_SNIPPET_LINES - len(out), timeout)
+        where = f"{group.file_name}, p.{page}" if page else group.file_name
+        own = group.own.get(chunk.chunk_id) or own_text(chunk)
+        found, cut = _chunk_snippets(own, where, pattern, context, MAX_SNIPPET_LINES - len(out), timeout)
         out.extend(found)
         if cut:
             break
@@ -2081,20 +2151,24 @@ def _in_flight(collections: Sequence[str]) -> list[str]:
 # Descriptions
 # ---------------------------------------------------------------------------
 
+#: The tree view, which a binding with ``ls(depth=…)`` leaves out (``chat_binding``).
+TREE_PARAGRAPH = (
+    '`view="tree"` (`depth=` 1-4, default 2) returns a card per folder instead of file lines: counts, '
+    "Dokumentart mix, pages, dates, the current Fassung; filters apply, no paging.\n"
+)
+
 _LIST_FILES_DESCRIPTION = (
     "Lists the reader's OWN files the way the Files pane shows them: which files exist, in which folder, of "
     "which Dokumentart, uploaded when. A deterministic listing, paged, not capped by the prompt inventory. "
-    "It says which files exist, not what they say: use `read_passage` or `knowledge_search` for that, and "
-    '`knowledge_search(match="exact")` to find which files mention a term.\n'
+    "It says which files exist, not what they say: reading or searching the documents does.\n"
     "Inputs, all optional: with none, every file on Projektwissen, Büroablage and Private Sitzung, ordered by "
     "folder, after an overview of the top-level folders with file counts. `folder=` one folder and everything "
     "below it. `name_contains=` words that must all appear in the file name or title (case and umlaut spelling "
     "do not matter). `doc_class=` a Dokumentart key. `added_since=` YYYY-MM-DD. `sort=newest`. `topic=` a Thema "
     "Piloti recognised (Attika, Holzrahmenbau). `shelf=` project | office_shelf | session | base (base, the "
     "platform OIB corpus, is listed only when asked). `offset=` the next page, as the result says.\n"
-    '`view="tree"` (`depth=` 1-4, default 2) returns a card per folder instead of file lines: counts, '
-    "Dokumentart mix, pages, dates, the current Fassung; filters apply, no paging.\n"
-    "`revisions_of=` a file name returns that document's whole chain of Fassungen, newest first, each with "
+    + TREE_PARAGRAPH
+    + "`revisions_of=` a file name returns that document's whole chain of Fassungen, newest first, each with "
     "Index/Datum, upload date and what changed against the one before; every other filter is ignored. With "
     '`compare_to=` another Fassung of the chain (its file name, or "previous"), it returns what changed, page by '
     "page, in the printed text and in the reading of the drawings, with the Plankopf's Index and Stand "
@@ -2377,7 +2451,7 @@ def user_pattern(text: str) -> tuple[Any | None, str]:
     except (regex.error, RecursionError, OverflowError) as error:
         return None, (
             f"`query` is not a valid regex (Python syntax): {error}. Escape a literal ( ) [ ] {{ }} . * + ? | \\ "
-            'with a backslash, or use `match="exact"` for a literal word.'
+            "with a backslash, or search literally for a literal word."
         )
     if compiled.search(""):
         return None, (
@@ -2407,6 +2481,14 @@ _TOO_COSTLY_SCAN = (
     "`query` is too costly: reading this regex over every passage that holds its words takes longer than one "
     "search may, and the search was stopped. This is NOT a result, neither a hit nor a no. Narrow it with "
     '`folder=`, `file_name=` or `doc_class=`, add a rarer literal word, or use `match="exact"` for a literal word.'
+)
+
+
+#: A capped scan whose passages all held the match only in a heading breadcrumb or an overlap.
+_CAPPED_WITHOUT_OWN_MATCH = (
+    f"The search stopped after {MAX_MATCH_CHUNKS} matching passages, and in those the words stood only in "
+    "headings restated from elsewhere or in text repeated from the passage before. What lies past that limit was "
+    "not read: this is NOT a no. Narrow it with `folder=`, `file_name=` or `doc_class=`."
 )
 
 
@@ -2709,6 +2791,10 @@ async def _search(
         )
     except TimeoutError:
         return _TOO_COSTLY_SCAN if deadline is not None and time.monotonic() >= deadline else _TOO_COSTLY
+    if not groups and truncated:
+        # Every passage the capped scan read held the words only in a breadcrumb or an overlap: what lies past
+        # the cap was not read, so this is no „no“ (and no row count either).
+        return _CAPPED_WITHOUT_OWN_MATCH
     if outcome is not None:
         # Hits are the literal matches (the table's count); documents are the files holding them, counted
         # only where the model may be told about them yet (ADR-0088). No match while a collection failed is

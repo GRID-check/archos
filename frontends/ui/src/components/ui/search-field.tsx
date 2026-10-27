@@ -1,7 +1,7 @@
 'use client'
 
 import type { JSX } from 'react'
-import type { ReactNode, Ref } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, Ref } from 'react'
 import { Search, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,31 @@ export interface SearchFieldProps {
   inputRef?: Ref<HTMLInputElement>
   /** Optional control after the field (a run / submit button). */
   trailing?: ReactNode
+  /**
+   * Shown inside the field's end while it is empty: the shortcut that focuses
+   * it (`<KbdGroup>`). Gives way to the clear control once there is a value.
+   */
+  hint?: ReactNode
+  /** Keys the field handles itself (Escape, the arrows over a result list). */
+  onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void
+  /** The field took or lost focus (a page that teaches its keys only while they work). */
+  onFocusChange?: (focused: boolean) => void
+  /**
+   * The field drives a result list from the keyboard (WAI-ARIA combobox
+   * pattern, list autocomplete): it stays focused while ↑ ↓ move an active
+   * option, and a screen reader follows that option through
+   * `aria-activedescendant`. Absent, the field is a plain text or search box.
+   */
+  combobox?: SearchFieldCombobox
+}
+
+export interface SearchFieldCombobox {
+  /** The id(s) of the listbox(es) or grid the field drives, space-separated. */
+  controls: string
+  /** Whether results are showing for the field to walk. */
+  expanded: boolean
+  /** The id of the option the arrow keys are on, if any. */
+  activeDescendant?: string | null
 }
 
 /**
@@ -48,6 +73,10 @@ export function SearchField({
   type = 'text',
   inputRef,
   trailing,
+  hint,
+  onKeyDown,
+  onFocusChange,
+  combobox,
 }: SearchFieldProps): JSX.Element {
   const canClear = Boolean(clearLabel)
   const hasValue = Boolean(value)
@@ -62,8 +91,20 @@ export function SearchField({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        onFocus={onFocusChange ? () => onFocusChange(true) : undefined}
+        onBlur={onFocusChange ? () => onFocusChange(false) : undefined}
         placeholder={placeholder}
         aria-label={label}
+        {...(combobox
+          ? {
+              role: 'combobox',
+              'aria-autocomplete': 'list' as const,
+              'aria-controls': combobox.controls || undefined,
+              'aria-expanded': combobox.expanded,
+              'aria-activedescendant': combobox.activeDescendant ?? undefined,
+            }
+          : {})}
         // THE SOFT KEYBOARD IS PART OF THIS CONTROL, and until now nothing in the
         // app told it so — `enterKeyHint` appeared nowhere in `src/`.
         //
@@ -87,14 +128,28 @@ export function SearchField({
         spellCheck={false}
         className={cn(
           'h-9 pl-8 [&::-webkit-search-cancel-button]:hidden',
+          // Focus is the field's own: its border turns ink, and nothing more.
+          // The global keyboard outline drew a second ink box 2px outside it,
+          // and `FIELD_FOCUS_RING`'s halo a third band, and a search field
+          // takes focus on arrival (⌘K, autofocus) and keeps it while the
+          // arrows walk the results, so that frame was the loudest thing on a
+          // page whose job is reading what it found. The ink border alone is
+          // well over 3:1 on paper and charcoal.
+          'focus-visible:outline-none! focus-visible:ring-0',
           // Reserve the clear gutter even when empty so typing does not shift text.
           // Under a finger the clear grows to 44px (the Button's own
           // `pointer-coarse:size-11`), so the gutter grows with it and the end
           // of a long query never runs under the X.
           canClear && 'pr-8 pointer-coarse:pr-11',
+          hint && !hasValue && 'sm:pr-20',
           inputClassName,
         )}
       />
+      {hint && !hasValue ? (
+        <InputGroupAddon align="end" className="right-2 max-sm:hidden pointer-coarse:hidden" aria-hidden>
+          {hint}
+        </InputGroupAddon>
+      ) : null}
       {canClear ? (
         <Button
           type="button"

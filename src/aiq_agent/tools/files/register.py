@@ -234,7 +234,7 @@ _DESCRIPTION = (
     "card — why exactly this change („gehört zum Bescheid vom 12. März“). Only what you can substantiate from "
     "the file name, content or conversation; nothing invented. The reason is stored with the proposal and "
     "appears among the decisions in later turns.\n"
-    "`document` is the file name exactly as the overview or `list_files` shows it. One call "
+    "`document` is the file name exactly as the overview or a listing shows it. One call "
     "proposes ONE change; several files are several calls."
 )
 
@@ -259,7 +259,7 @@ async def propose_file_change(tool_config: ProposeFileChangeConfig, builder: Bui
 
         Args:
             operation: move | rename | create_folder | assign.
-            document: The file, exactly as the overview or `list_files` names it (move, rename, assign).
+            document: The file, exactly as the overview or a listing names it (move, rename, assign).
             target_folder: Existing folder path; the destination for move, the parent for create_folder.
             new_name: The new display name (rename) or the new folder's name (create_folder).
             member: The person, as the user named them (assign).

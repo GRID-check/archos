@@ -5,10 +5,11 @@
   "scripts": {
     "dev": "concurrently --kill-others --names \",next\" \"bun run dev:proxy\" \"bun run dev:next\"",
     "dev:proxy": "node server.js",
-    "dev:next": "node scripts/copy-pdfjs-assets.mjs && next dev --turbopack -p 3001",
-    "build": "node scripts/copy-pdfjs-assets.mjs && next build",
+    "dev:next": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs && bun run build:mcp-apps && next dev --turbopack -p 3001",
+    "build": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs && bun run build:mcp-apps && next build",
+    "build:mcp-apps": "bun scripts/build-mcp-app-views.ts",
     "start": "NODE_ENV=production node server.js",
-    "postinstall": "node scripts/copy-pdfjs-assets.mjs",
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs",
     "lint": "node scripts/check-static-utility-modifiers.mjs && oxlint src tests",
     "lint:fix": "node scripts/check-static-utility-modifiers.mjs && oxlint src tests --fix",
     "format": "prettier --write .",
@@ -33,8 +34,8 @@
   },
   "dependencies": {
     "@a2a-js/sdk": "1.3.0",
-    "@a2ui/react": "0.11.1",
-    "@a2ui/web_core": "0.11.0",
+    "@a2ui/react": "0.14.0",
+    "@a2ui/web_core": "0.14.0",
     "@aws-sdk/client-s3": "^3.1151.0",
     "@aws-sdk/s3-request-presigner": "^3.1151.0",
     "@citation-js/core": "^0.9.0",
@@ -42,11 +43,14 @@
     "@citation-js/plugin-csl": "^0.9.0",
     "@citation-js/plugin-ris": "^0.9.0",
     "@dagrejs/dagre": "3.1.1",
+    "@excalidraw/excalidraw": "0.18.1",
     "@ifc-lite/data": "^6.2.0",
     "@ifc-lite/geometry": "^7.7.0",
     "@ifc-lite/parser": "^9.5.0",
     "@ifc-lite/renderer": "^6.0.1",
     "@langfuse/client": "5.13.1",
+    "@modelcontextprotocol/client": "2.3.1",
+    "@modelcontextprotocol/ext-apps": "2.0.3",
     "@modelcontextprotocol/server": "2.3.1",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/api-logs": "^0.223.0",
@@ -86,9 +90,9 @@
     "@uppy/core": "^6.2.0",
     "@uppy/react": "^6.0.0",
     "@uppy/xhr-upload": "^6.0.1",
-    "@workos-inc/authkit-nextjs": "^4.4.0",
-    "@workos-inc/node": "^11.0.0",
-    "@workos-inc/widgets": "^1.20.0",
+    "@workos-inc/authkit-nextjs": "4.6.2",
+    "@workos-inc/node": "^12.0.0",
+    "@workos-inc/widgets": "^1.20.2",
     "@xyflow/react": "^12.12.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -106,7 +110,7 @@
     "marked": "^18.1.1",
     "mermaid": "^12.2.0",
     "motion": "^14.2.0",
-    "next": "^16.4.0",
+    "next": "^16.4.3",
     "nextstepjs": "2.3.0",
     "pdfjs-dist": "^6.4.299",
     "postgres": "^3.4.0",
@@ -179,5 +183,8 @@
     "workerDirectory": [
       "public"
     ]
+  },
+  "patchedDependencies": {
+    "@workos-inc/authkit-nextjs@4.6.2": "patches/@workos-inc%2Fauthkit-nextjs@4.6.2.patch"
   }
 }

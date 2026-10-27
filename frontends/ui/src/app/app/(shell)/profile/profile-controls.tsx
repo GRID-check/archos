@@ -30,6 +30,7 @@ import { NotificationSettings } from '@/features/notifications/components/notifi
 import { AccountWidgets } from './account-widgets'
 import { ShortcutSettings } from './shortcut-settings'
 import { UsageAnalyticsSettings } from './usage-analytics-settings'
+import { ViewerActionsSettings } from './viewer-actions-settings'
 
 const THEME_MODES: ThemeMode[] = ['system', 'light', 'dark']
 const THEME_ICONS: Record<ThemeMode, FC<{ className?: string }>> = {
@@ -176,6 +177,9 @@ export const ProfileControls: FC<ProfileControlsProps> = ({
           <ShortcutSettings />
         </div>
       )}
+
+      {/* Whether Piloti opens the places it cites beside the chat (ADR-0144): per browser, like the row's switch */}
+      <ViewerActionsSettings />
 
       {/* Usage analytics: a per-browser opt-out of the PostHog storage and traffic */}
       <UsageAnalyticsSettings available={analyticsAvailable} />

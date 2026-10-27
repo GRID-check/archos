@@ -131,6 +131,13 @@ export interface FileWorkspaceProps {
    */
   moreEntries?: readonly ActionMenuEntry[]
   /**
+   * The shelf's search, if it has one (a project's Dateien, the Büroablage):
+   * Enter in the header's field opens it with what was typed, instead of the
+   * listing's own content search. One field, one way in: typing still filters
+   * the listing by name as it did.
+   */
+  onOpenSearch?: (text: string) => void
+  /**
    * The folder tree and the first page of a folder level as the SERVER already
    * read them, for the first paint (ADR-0102). `initialFiles` is the first
    * page of the level `initialFolderId` names (null: the root) in the default
@@ -142,6 +149,12 @@ export interface FileWorkspaceProps {
   initialFiles?: readonly DocumentWireRow[]
   initialNextCursor?: string | null
   initialFolderId?: string | null
+  /**
+   * What sits above the list and scrolls with it: a project's findings panel.
+   * `readyCount` is how many documents of the listing are read, so a panel
+   * derived from them re-reads when another one finishes.
+   */
+  aboveList?: (state: { readyCount: number }) => ReactNode
 }
 
 /** The ⋯ slot every card and row renders; the row's {@link DocumentObjectMenu} fills it. */
@@ -172,10 +185,12 @@ export function FileWorkspace({
   shelf,
   renderHeader,
   moreEntries,
+  onOpenSearch,
   initialFolders,
   initialFiles,
   initialNextCursor = null,
   initialFolderId = null,
+  aboveList,
 }: FileWorkspaceProps) {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -828,7 +843,13 @@ export function FileWorkspace({
       // The corpus search, in the header with the other controls that act on the
       // listing. No run button: the field reads as the plain filter it mostly is,
       // and Enter commits the query to the semantic search.
-      search={{ value: search.query, onChange: search.setQuery, onSubmit: search.run, onClear: search.clear }}
+      search={{
+        value: search.query,
+        onChange: search.setQuery,
+        onSubmit: onOpenSearch ? () => onOpenSearch(search.query.trim()) : search.run,
+        onClear: search.clear,
+        opensSearch: Boolean(onOpenSearch),
+      }}
       // The durable corpus is where a büro brings a whole tree in. On a phone the
       // same control floats at the foot of the screen instead (`uploadFab`).
       upload={phone ? undefined : uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}
@@ -977,6 +998,7 @@ export function FileWorkspace({
             uploadFab && (inSheet ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : 'pb-24')
           )}
         >
+          {aboveList?.({ readyCount: files.filter((file) => file.status === 'completed').length })}
           {listingError ? (
             <PaneLoadError message={t('workspace.documentsLoadError')} onRetry={retryListing} />
           ) : (

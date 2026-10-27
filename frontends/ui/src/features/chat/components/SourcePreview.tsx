@@ -37,7 +37,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type FC, type ReactNode } from 'react'
 import { capturePosthog } from '@/lib/analytics/posthog'
-import { ChevronDown, ChevronUp, Download, ExternalLink, Link2, TextSearch } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, ExternalLink, Link2, PanelRight, TextSearch } from 'lucide-react'
+import { citationViewerAction, runViewerActionNow, useViewerBesideChat } from '../lib/viewer-actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
@@ -925,6 +926,27 @@ export const CitationDocumentDialog: FC<{
     if (!next) similar.close()
     onOpenChange(next)
   }
+  // The same viewer action Piloti proposes (ADR-0144), on the reader's own
+  // click: the document beside the chat at this place, read again as the person.
+  // Only where the peek has room beside a chat (not on a phone, not on Files),
+  // and never for a chat attachment: it is on no shelf, so the read refuses it.
+  const besideChat = useViewerBesideChat()
+  const beside =
+    besideChat && target.document.type === 'stored' && target.document.shelf !== 'session' ? target.document : null
+  const openBeside = async (): Promise<void> => {
+    if (!beside) return
+    const result = await runViewerActionNow(
+      citationViewerAction({
+        documentId: beside.id,
+        documentName: beside.filename,
+        page: page ?? null,
+        passage,
+        box: regions?.[0]?.box ?? null,
+      })
+    )
+    if (result.outcome === 'shown') closeDialog(false)
+    else toast.error(t(result.outcome === 'refused' ? `viewerActions.refused.${result.reason}` : 'viewerActions.status.failed'))
+  }
   const similarRail = similar.request && (
     <SimilarPassagesPanel
       request={similar.request}
@@ -994,8 +1016,19 @@ export const CitationDocumentDialog: FC<{
       }
       headerActions={
         !openedView &&
-        (shown || rendition || citedSearchable) && (
+        (shown || rendition || citedSearchable || beside) && (
           <span className="flex shrink-0 items-center gap-2">
+            {beside && (
+              <button
+                type="button"
+                onClick={() => void openBeside()}
+                data-open-beside-chat=""
+                className={COPY_ACTION_CLASSES}
+              >
+                <PanelRight aria-hidden="true" className="size-3" />
+                {t('sourcePreview.openBesideChat')}
+              </button>
+            )}
             {citedSearchable && (
               // The cited passage's own neighbours: the Fundstelle is retrieved
               // text, so the backend finds its stored chunk and embeds nothing.
@@ -1604,10 +1637,9 @@ const InfoPreviewChip: FC<{
         {meta && <p className="text-muted-foreground text-xs">{meta}</p>}
         {bindingNote && (
           <div
-            className="rounded-md border-l-2 py-1.5 pl-2.5 pr-2"
+            className="rounded-md px-2.5 py-1.5"
             style={{
-              borderColor: `color-mix(in oklch, var(--source-${signal}, var(--foreground)) 45%, transparent)`,
-              backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
+                backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
             }}
           >
             <SectionLabel

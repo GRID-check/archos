@@ -62,10 +62,13 @@ export const storePermitRecordRequestSchema = z.object({
   documentId: z.string().uuid().optional(),
   collection: z.string().min(1).max(300),
   fileName: text(512),
-  /** The model that extracted it. */
-  model: text(200),
+  /** The model that extracted it. Empty on a delete (`record: null`): nothing was extracted. */
+  model: z.string().trim().max(200),
   /** Null: the document is no longer a Bescheid, or nothing was extracted. Its record goes. */
   record: permitRecordSchema.nullable(),
+}).refine((body) => body.record === null || body.model.length > 0, {
+  path: ['model'],
+  message: 'model is required with a record',
 })
 
 export type PermitRecordBody = z.infer<typeof permitRecordSchema>

@@ -27,6 +27,7 @@ which and does not ask you to convert them.
 | Add an ADR | Add its row to [`README.md`](README.md) in the same commit | `check_adrs.py`. An ADR nobody can find from the index is one nobody reads |
 | Change a status | Change it in the file **and** the index row | `check_adrs.py`. The two drifted apart for 0021 and 0045, and the index was the one people trusted |
 | Supersede an ADR | Set the new one's status, and set the old one's to `superseded by ADR-NNNN` | A reader lands on the old decision with nothing saying it was replaced |
+| Reject an option | Name the premise the rejection rests on, as a fact that can turn false (a version, a measurement, a property of one tool), so a later reader re-checks the premise rather than re-arguing the option | Review. ADR-0046 and ADR-0127 each rejected an option on a premise that later stopped holding; [the case](../contributing/working-style.md#a-rejection-names-its-premise) |
 | Accept an ADR | Fill in **Confirmation**, the gate that keeps the decision true, or an explicit "nothing enforces this yet" | Review. An unenforced decision decays quietly and reads as enforced |
 
 ## Rules that need more than a row

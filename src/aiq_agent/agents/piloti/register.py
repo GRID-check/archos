@@ -2,7 +2,7 @@
 
 One :class:`PilotiAgent` is built at boot. Per request ``_run_turn``
 computes only what the turn varies (the switched-off data sources, the org's
-skills as a ``use_skill`` tool, the model override) as a :class:`TurnConfig`
+skills behind ``read_file``, the model override) as a :class:`TurnConfig`
 and hands it to ``agent.run``; nothing is compiled, read or re-indexed per turn.
 The tool SET no longer varies with the data-source toggles — a switched-off
 source keeps its tool and refuses the call (``common/data_sources.py``), so
@@ -21,6 +21,7 @@ from typing import Any
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from pydantic import Field
+from pydantic import field_validator
 
 from aiq_agent.common import AgentGroup
 from aiq_agent.common import LLMProvider
@@ -34,16 +35,17 @@ from aiq_agent.common import unavailable_source_ids
 from aiq_agent.common import validate_tool_availability
 from aiq_agent.common.agent_tools import load_agent_tools
 from aiq_agent.common.citation_verification import EmptySourceRegistryError
+from aiq_agent.common.client_tools import KNOWN_CLIENT_TOOLS
+from aiq_agent.common.client_tools import client_tool_declared
 from aiq_agent.common.data_source_registry import get_all_sources
 from aiq_agent.common.decisions import SKIPPED_TOO_SHORT
 from aiq_agent.common.decisions import record_skipped
-from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
-from aiq_agent.common.deferred_tool_loading import verify_deferred_tool_loading
 from aiq_agent.common.openrouter import PLATFORM_FIXED
 from aiq_agent.common.openrouter import pin_chat_model
 from aiq_agent.common.reasoning_settings import effort_of
 from aiq_agent.common.request_llm_context import read_request_llm_context
 from aiq_agent.common.tool_validation import format_no_sources_message
+from aiq_agent.common.turn_status import tool_basename
 from aiq_agent.knowledge.restricted_use import current_cross_project_turn
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
@@ -52,7 +54,7 @@ from aiq_agent.project_context import get_project_id_from_context
 from aiq_agent.skills import SkillResolver
 from aiq_agent.skills import SkillRuntime
 from aiq_agent.skills.events import emit_skills_offered
-from aiq_agent.tools.documents.tools import draft_tools_for_turn
+from aiq_agent.tools.documents.tools import filesystem_tools_for_turn
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionGroupRef
@@ -82,8 +84,6 @@ from .reference_fit import FIT_THRESHOLD
 from .reference_fit import MIN_LINES as MIN_FIT_LINES
 from .reference_fit import ReferenceFit
 from .reference_fit import fit_references
-from .tool_search import ToolSearchSettings
-from .tool_search import tool_basename
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
         description=(
             "The research budget in tool-calling ROUNDS — LLM decisions that emitted tool calls — "
             "before synthesis is forced. A round costs one whatever it asked for, so a batch of five "
-            "parallel passage opens is one and so is a single `use_skill`. The graph's recursion "
+            "parallel passage opens is one and so is a single skill read. The graph's recursion "
             "guard is derived from it; nothing else bounds the loop."
         ),
     )
@@ -160,20 +160,14 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
     verbose: bool = Field(default=False, description="Whether to enable verbose logging")
     skills_enabled: bool = Field(
         default=True,
-        description="Whether agent skills (progressive-disclosure `use_skill` tool) are active on research turns.",
+        description=(
+            "Whether agent skills are offered: the SkillsMiddleware catalog in the turn context and "
+            "their SKILL.md behind `read_file` (ADR-0135). False offers no catalog and no skill read."
+        ),
     )
     skill_allowlist: list[str] = Field(
         default_factory=list,
         description="Optional skill-name allowlist; empty = every resolved skill is offered.",
-    )
-    skills_inline_max_body_chars: int = Field(
-        default=0,
-        description=(
-            "OPT-IN budget: a skill whose body is at most this many characters rides the system prompt "
-            "in full on every turn (ADR-0063, amended). 0, the default: no body rides by budget; the "
-            "turn-start decision (ADR-0064) reads the ONE skill the question is the subject of into the "
-            "turn, and the rest stay a catalog line behind `use_skill`."
-        ),
     )
     turn_decisions: bool = Field(
         default=True,
@@ -187,43 +181,32 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "is the global switch."
         ),
     )
-    skills_inline_budget_chars: int = Field(
-        default=0,
-        description=(
-            "OPT-IN budget: ceiling on the characters of skill bodies that ride the prompt per turn by "
-            "size alone, filled in catalog order. 0, the default: see skills_inline_max_body_chars."
-        ),
-    )
-    tool_search: ToolSearchSettings = Field(
-        default_factory=ToolSearchSettings,
-        description=(
-            "Retrieval-based tool narrowing (default OFF). When enabled, a local lexical ranking over "
-            "tool name + description picks the tools bound for a research turn, BEFORE the LLM call — "
-            "never as a tool the model has to call first, which would spend one of the five tool "
-            "iterations on discovery. Absent from the YAML this validates to enabled=false and the "
-            "agent binds every tool exactly as it always has."
-        ),
-    )
-    deferred_tool_loading: DeferredToolLoadingSettings = Field(
-        default_factory=DeferredToolLoadingSettings,
-        description=(
-            "OpenRouter server-side tool search (default OFF). When enabled, the tool "
-            "schemas are declared deferred and held by the provider instead of being sent "
-            "on every request; the model searches, loads and calls one inside a single "
-            "response, so no tool iteration is spent on discovery. Requires an OpenRouter "
-            "LLM with `api_type: responses` — enabling it against anything else fails the "
-            "workflow build rather than silently sending the schemas anyway."
-        ),
-    )
     prefetch: bool = Field(
         default=True,
         description=(
             "EVAL KNOB, not a product setting: false turns round 0's prefetched fetches off, so the "
-            "answer suite can measure the navigation tools (`list_files`, `read_passage`, exact search) "
+            "answer suite can measure the navigation tools (`ls`, `glob`, `grep`, `read_file`) "
             "without a ranked search already in the model's first request (`suite.py --set files "
-            "--arm navigate`, ADR-0127). Production keeps the default."
+            "--arm grep`, ADR-0127, ADR-0133). Production keeps the default."
         ),
     )
+    filesystem: FunctionRef | None = Field(
+        default=None,
+        description=(
+            "The `knowledge_retrieval` instance whose scope the filesystem tools read the office's documents "
+            "through (ADR-0133): `read_file` over /project/, /office/, /chat/ and /law/oib/ beside the drafts. "
+            "Unset: the file verbs reach the conversation's drafts alone, as before."
+        ),
+    )
+
+    @field_validator("filesystem", mode="before")
+    @classmethod
+    def _no_filesystem(cls, value: Any) -> Any:
+        """``null``, ``none`` or empty from an ``--override`` (the files eval's search arm) switch the estate off."""
+        if isinstance(value, str) and value.strip().lower() in ("", "null", "none"):
+            return None
+        return value
+
     envelope_json_mode_with_tools: bool = Field(
         default=False,
         description=(
@@ -244,6 +227,8 @@ class _Deployment:
     agent: PilotiAgent
     provider: LLMProvider
     tools: list[Any]
+    #: The read-only estate backend the filesystem tools read through (``knowledge_layer.estate``); built once.
+    estate: Any = None
     #: tool names → (is_valid, unavailable): the availability check is a scan
     #: with an INFO line per tool, and the tool set is fixed per deployment.
     availability: dict[tuple[str, ...], tuple[bool, list[str]]] = field(default_factory=dict)
@@ -279,11 +264,12 @@ async def _resolve_skill_runtime(
 ) -> SkillRuntime | None:
     """The org's skills for THIS run (ADR-0018: never cached on the agent), or None.
 
-    Builtin + org set from the resolver, narrowed by the config allowlist. The
-    catalog is announced BEFORE the LLM runs — how many skills were offered, on
-    the technical channel. The per-skill announcement fires at delivery instead,
-    because a catalog line is an offer until the model calls ``use_skill``. No
-    skills resolved: nothing to offer, no tool to bind, and silence is the
+    Builtin + org set from the resolver, narrowed by the config allowlist, in
+    the one office source of a :class:`SkillRuntime` (ADR-0135). The catalog is
+    announced BEFORE the LLM runs — how many skills were offered, on the
+    technical channel. The per-skill announcement fires at delivery instead,
+    because a catalog line is an offer until the model reads the ``SKILL.md``.
+    No skills resolved: nothing to offer, nothing to read, and silence is the
     correct announcement.
     """
     if not config.skills_enabled:
@@ -303,12 +289,7 @@ async def _resolve_skill_runtime(
         resolved = tuple(skill for skill in resolved if skill.name in allow)
     if not resolved:
         return None
-    runtime = SkillRuntime(
-        skills=resolved,
-        inline_max_body_chars=config.skills_inline_max_body_chars,
-        inline_budget_chars=config.skills_inline_budget_chars,
-    )
-    return runtime
+    return SkillRuntime.office(resolved)
 
 
 async def _active_provider(provider: LLMProvider) -> LLMProvider:
@@ -322,10 +303,6 @@ async def _active_provider(provider: LLMProvider) -> LLMProvider:
     read through too.
     """
     return (await read_request_llm_context()).apply(provider)
-
-
-def _skills_block(runtime: SkillRuntime) -> str:
-    return runtime.prompt_block() or ""
 
 
 def _turn_facts(state: ResearchAgentState, runtime: SkillRuntime | None) -> TurnFacts:
@@ -480,23 +457,30 @@ def _tools_in_scope(tools: list[Any]) -> list[Any]:
     """The turn's tools less those that cannot run in its scope.
 
     The tool payload still does not vary with the data-source toggles (the
-    cache shard stays one per org); it varies with one fact the turn cannot
-    change — whether there is a project — so an org has two shards, not one
-    per combination.
+    cache shard stays one per org); it varies with two facts the turn cannot
+    change — whether there is a project, and whether the asking page can run a
+    frontend tool (``common/client_tools``, ADR-0144) — so an org has at most
+    four shards, not one per combination.
     """
-    if get_project_id_from_context():
-        return tools
-    # The BASE name: a grouped or MCP tool arrives as ``bim__ifc_query``.
-    return [tool for tool in tools if tool_basename(getattr(tool, "name", "") or "") not in _PROJECT_MODEL_TOOLS]
+    in_project = bool(get_project_id_from_context())
+
+    def runs_here(tool: Any) -> bool:
+        # The BASE name: a grouped or MCP tool arrives as ``bim__ifc_query``.
+        name = tool_basename(getattr(tool, "name", "") or "")
+        if name in KNOWN_CLIENT_TOOLS:
+            return client_tool_declared(name)
+        return in_project or name not in _PROJECT_MODEL_TOOLS
+
+    return [tool for tool in tools if runs_here(tool)]
 
 
 def _apply_decisions(decisions: TurnDecisions, state: ResearchAgentState, runtime: SkillRuntime | None) -> None:
     """The two prompt-side effects: the chosen skill's body, and the likely card shapes.
 
-    The chosen skill rides this turn's prompt in full (``inline_also``), the
+    The chosen skill is pinned: its body rides this turn's prompt in full, the
     one method the question is the subject of; the shapes are its preferred
-    cards beyond the shapes the envelope teaches and ``surface`` — what
-    ``use_skill`` hands over with the body — then the turn decision's card
+    cards beyond the shapes the envelope teaches and ``surface`` — what a
+    ``read_file`` of it hands over with the body — then the turn decision's card
     picks, capped (``attached_card_types``). ``surface`` is left out because
     its shape is the envelope's compose rule, already in the prompt. Still
     offers: the model decides.
@@ -508,7 +492,7 @@ def _apply_decisions(decisions: TurnDecisions, state: ResearchAgentState, runtim
     withheld_shapes = {*ENVELOPE_SHAPE_TYPES, *CHAT_ONLY_CARD_TYPES}
 
     if runtime is not None and decisions.chosen_skill:
-        runtime.inline_also((decisions.chosen_skill,))
+        runtime.pin(decisions.chosen_skill)
     skill_cards = {
         skill.name: [card for card in preferred_cards(skill.metadata) if card not in withheld_shapes]
         for skill in (runtime.skills if runtime is not None else ())
@@ -524,10 +508,10 @@ def _report_skills(result: ResearchAgentState, runtime: SkillRuntime) -> None:
     """Lift what was DELIVERED AND FOLLOWED onto the result.
 
     ``skills_activated`` is rendered to the reader as what shaped this answer,
-    so only a skill whose body reached the model belongs in it: opened through
-    ``use_skill``, or ridden in the prompt and named in the envelope's
+    so only a skill whose body reached the model belongs in it: read with
+    ``read_file``, or pinned in the prompt and named in the envelope's
     ``skills_applied`` (ADR-0063), which the runtime accepts only for a body
-    it inlined. A catalog the model read past is not a miss to report: the
+    it pinned. A catalog the model read past is not a miss to report: the
     offer was the whole mechanism.
     """
     runtime.record_applied(result.skills_applied or ())
@@ -572,10 +556,10 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
     if not is_valid:
         return _reply(state, format_user_facing_tool_error(_RESEARCH_TYPE, unavailable_tools))
 
-    # The runtime's `use_skill` tool is folded into the tool set on every
-    # turn: the model has the catalog and decides whether a skill applies,
-    # the same way it decides whether to search (ADR-0052). A short body rides
-    # the prompt (ADR-0063); a long one still travels on a `use_skill` call.
+    # The skills are served on every turn: the model has the catalog and
+    # decides whether a skill applies, the same way it decides whether to
+    # search (ADR-0052), and reads the one it chooses with `read_file` over the
+    # run's skills backend (ADR-0135). The decision's pick rides the prompt.
     runtime = await _resolve_skill_runtime(config, state)
     # The conversation's working directory, folded in the same way: four file
     # verbs over a store namespaced by conversation, or nothing at all when the
@@ -591,16 +575,18 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
     facts = _turn_facts(state, runtime) if config.turn_decisions else None
     _warm_question(facts)
     draft_tools, decisions, llm_provider, fit = await asyncio.gather(
-        draft_tools_for_turn(), _decide_turn(facts), _active_provider(deployment.provider), _fit_references(facts)
+        filesystem_tools_for_turn(deployment.estate, skills=runtime.backend if runtime is not None else None),
+        _decide_turn(facts),
+        _active_provider(deployment.provider),
+        _fit_references(facts),
     )
     _apply_decisions(decisions, state, runtime)
     _apply_reference_fit(fit, state)
-    # After the decision: the skill it inlined is part of what this turn inlined.
+    # After the decision: the skill it pinned is part of what this turn offers.
     if runtime is not None:
         emit_skills_offered(runtime)
-    turn_tools = _tools_in_scope(
-        list(deployment.tools) + (list(runtime.build_tools()) if runtime is not None else []) + draft_tools
-    )
+        record_trace_metadata(skills_offered=len(runtime.skills), skills_pinned=list(runtime.pinned) or None)
+    turn_tools = _tools_in_scope(list(deployment.tools) + draft_tools)
     turn = TurnConfig(
         llm_provider=llm_provider,
         tools=turn_tools,
@@ -608,7 +594,7 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
         prefetch=_turn_prefetch(decisions, facts, state, enabled=config.prefetch),
     )
     if runtime is not None:
-        state.skills_block = _skills_block(runtime)
+        state.skills_block = runtime.prompt_block()
     result = await _run_agent(deployment, state, turn)
     if isinstance(result, str):
         return _reply(state, result)
@@ -630,6 +616,7 @@ def _turn_prefetch(
             decisions,
             facts.question,
             focus_file_name=state.focus_file_name,
+            focus_shelf=state.focus_shelf,
             previous_message=facts.previous_message,
             reference_projects=facts.reference_projects,
         )
@@ -668,17 +655,44 @@ async def _run_agent(deployment: _Deployment, state: ResearchAgentState, turn: T
         return format_no_sources_message(_RESEARCH_TYPE, exc.unavailable_tools, exc.available_count, scoped=scoped)
 
 
+def _estate_backend(config: ResearchAgentConfig, builder: Builder) -> Any:
+    """The estate backend the filesystem tools read through, built at boot; ``None`` when none is configured.
+
+    It reads nothing here: the scope, the rows and the pages are the turn's,
+    read per call from the turn's context (ADR-0133).
+    """
+    if config.filesystem is None:
+        return None
+    from knowledge_layer.estate import EstateBackend
+
+    return EstateBackend(builder.get_function_config(config.filesystem))
+
+
+def _chat_bound(tools: list[Any], config: ResearchAgentConfig, builder: Builder) -> list[Any]:
+    """The shared knowledge-layer tools on the contract of a binding that reads the estate (slice 6).
+
+    Only when the turns will bind the estate's verbs (``filesystem`` set): ``knowledge_search`` is
+    then ranked search with ``path`` and ``list_files`` loses its tree view, because ``grep`` and
+    ``ls`` do those. A config without the estate (an eval, a benchmark) keeps the full contracts,
+    the literal modes included. The budget the description states is the search's own configuration.
+    """
+    if config.filesystem is None:
+        return tools
+    from knowledge_layer.chat_binding import chat_tools
+
+    search = builder.get_function_config(config.filesystem)
+    return chat_tools(
+        tools,
+        top_k=int(getattr(search, "top_k", 5)),
+        max_per_document=int(getattr(search, "max_chunks_per_document", 0)),
+    )
+
+
 @register_function(config_type=ResearchAgentConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def research_agent(config: ResearchAgentConfig, builder: Builder):
     """Research agent with tool-calling capabilities."""
     llm = await get_langchain_llm(builder, config.llm)
-    tools = await _load_tools(config, builder)
-
-    # Deferred tool loading is verified HERE, at build time, against the live
-    # endpoint, before a user turn exists to lose. The failure it guards is a
-    # request that looks configured and defers nothing, which is invisible
-    # from the inside: the only symptom is the token bill.
-    await verify_deferred_tool_loading(llm, settings=config.deferred_tool_loading)
+    tools = _chat_bound(await _load_tools(config, builder), config, builder)
 
     provider = LLMProvider()
     provider.set_default(llm, group=AgentGroup.RESEARCH)
@@ -690,8 +704,6 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
         max_input_tokens_per_turn=config.max_input_tokens_per_turn,
         max_calls_per_round=config.max_calls_per_round,
         callbacks=callbacks,
-        tool_search=config.tool_search,
-        deferred_tool_loading=config.deferred_tool_loading,
         envelope_json_mode_with_tools=config.envelope_json_mode_with_tools,
         repair_pass=config.repair_pass,
         # No agent group, so no organization chooses it: pinned to
@@ -702,7 +714,9 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
             else None
         ),
     )
-    deployment = _Deployment(config=config, agent=agent, provider=provider, tools=tools)
+    deployment = _Deployment(
+        config=config, agent=agent, provider=provider, tools=tools, estate=_estate_backend(config, builder)
+    )
 
     async def _run(state: ResearchAgentState) -> ResearchAgentState:
         return await _run_turn(deployment, state)

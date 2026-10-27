@@ -4,7 +4,7 @@ Built ONCE per process (``register.py`` constructs it at boot): the prompt
 template is read once, the LangGraph is compiled once, and the boot tool set
 is bound once. What a turn may vary from that is a :class:`TurnConfig`: the
 model override (BYOK / ZDR / per-org model), the tool set (the per-turn
-``use_skill`` closure, the working directory) and the data sources this
+file verbs over the working directory and the skills) and the data sources this
 conversation has switched off — which narrow what the tools ANSWER, never what
 is bound.
 
@@ -52,7 +52,6 @@ from langgraph.prebuilt import tools_condition
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
 from aiq_agent.common import content_to_text
-from aiq_agent.common import get_source_id_for_tool
 from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.citation_verification import begin_turn_capture
 from aiq_agent.common.citation_verification import end_turn_capture
@@ -66,9 +65,7 @@ from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var
 from aiq_agent.common.data_sources import disabled_source_notice
-from aiq_agent.common.deferred_tool_loading import DeferredToolBinding
-from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
-from aiq_agent.common.deferred_tool_loading import bind_tools_deferred
+from aiq_agent.common.data_sources import source_id_for_call
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.common.grounding_block import strip_trace_lanes
@@ -104,8 +101,10 @@ from aiq_agent.common.turn_status import end_lane_capture
 from aiq_agent.common.turn_status import fetch_signature
 from aiq_agent.common.turn_status import get_lane_captures
 from aiq_agent.common.turn_status import is_retrieval_round
+from aiq_agent.common.turn_status import is_skill_read
 from aiq_agent.common.turn_status import record_round_announcement
 from aiq_agent.common.turn_status import retrieval_round_scope
+from aiq_agent.common.turn_status import tool_basename
 from aiq_agent.common.wire_v2 import SteerAppliedBody
 from aiq_agent.common.wire_v2 import SteerAppliedValue
 from aiq_agent.knowledge.already_read import merge_digest
@@ -140,23 +139,12 @@ from .prompt import shelf_label
 from .prompt import stamp_static_prompt_for_turn
 from .prompt import system_prompt_template
 from .quote_patch import quote_patcher
-from .tool_search import ToolSearchIndex
-from .tool_search import ToolSearchSettings
-from .tool_search import build_query_parts
-from .tool_search import tool_basename
 
 logger = logging.getLogger(__name__)
 
 # Imported from outside this package under this name
 # (``tests/aiq_agent/agents/test_composer_subject_reaches_prompts.py``).
 _shelf_label = shelf_label
-
-# Cap on both tool-search caches (query → selection, selection → bound LLM).
-# A shared agent serves many requests, so each map is dropped WHOLE at the cap
-# rather than grown or LRU-tracked: a miss costs one re-rank (0.05 ms) or one
-# bind_tools (pure CPU, no network), while an unbounded dict on a long-lived
-# worker costs memory forever.
-_MAX_CACHED_BINDINGS = 32
 
 #: Cumulative INPUT tokens one turn may spend before synthesis is forced.
 #: Rounds bound how far the investigation goes; this bounds what it COSTS, and
@@ -311,13 +299,22 @@ def _call_name(call: Any) -> str:
     return str(name or "")
 
 
+def _call_args(call: Any) -> Any:
+    """One call's arguments, however the provider spelled the call."""
+    return call.get("args") if isinstance(call, dict) else getattr(call, "args", None)
+
+
+#: How a ``read_file`` of a skill appears in a run's shape, apart from a draft read.
+SKILL_READ_SHAPE = "read_skill"
+
+
 def _call_basenames(message: Any) -> list[str]:
-    """The basenames of one message's tool calls, in order."""
+    """The basenames of one message's tool calls, in order; a skill read as :data:`SKILL_READ_SHAPE`."""
     names: list[str] = []
     for call in getattr(message, "tool_calls", None) or []:
         name = call.get("name") if isinstance(call, dict) else getattr(call, "name", None)
         if name:
-            names.append(tool_basename(str(name)))
+            names.append(SKILL_READ_SHAPE if is_skill_read(call) else tool_basename(str(name)))
     return names
 
 
@@ -325,7 +322,7 @@ def _tool_call_shape(messages: Sequence[Any], *, limit: int = 24) -> list[str]:
     """The ordered basenames of every tool this run called.
 
     The SHAPE of a question, standing in for the question itself: a truncated
-    ``use_skill>use_skill>knowledge_search>find_elements>…`` is the fingerprint
+    ``read_skill>read_skill>knowledge_search>find_elements>…`` is the fingerprint
     of an OIB 3 daylight chain, and grouping truncations by it is how "on which
     question shapes" gets answered. The tool names and never the arguments: a
     query string is the reader's own words. Capped, because it is a
@@ -377,7 +374,8 @@ def _withheld_calls(
     refused = [
         (call, sentence)
         for call in calls
-        if id(call) not in seen and (sentence := disabled_source_notice(_call_name(call), disabled)) is not None
+        if id(call) not in seen
+        and (sentence := disabled_source_notice(_call_name(call), disabled, _call_args(call))) is not None
     ]
     seen |= {id(call) for call, _ in refused}
     over_width = _over_width([call for call in calls if id(call) not in seen], max_calls)
@@ -932,6 +930,7 @@ def _capture_sources(
     content: str,
     source_tool_names: frozenset[str],
     registry: SourceRegistry,
+    artifact: Any = None,
 ) -> None:
     """Register the sources one tool result carries, gated twice.
 
@@ -944,13 +943,13 @@ def _capture_sources(
     """
     if tool_name not in source_tool_names:
         return
-    source_id = get_source_id_for_tool(tool_name)
+    source_id = source_id_for_call(tool_name)
     # `look` is no data source: it registers the PLACE it read, when it read a
     # project or office document (`tools/look/place.py`), and nothing else.
     if source_id is None and not is_look_tool(tool_name):
         logger.debug("[CitationRegistry] Skipping non-data-source tool result from %s", tool_name)
         return
-    sources = extract_sources_from_tool_result(tool_name, content, source_id=source_id)
+    sources = extract_sources_from_tool_result(tool_name, content, source_id=source_id, artifact=artifact)
     for source in sources:
         registry.add(source)
     # A place is no retrieval: it must not ground a trailer value or count as a retrieved source.
@@ -1017,8 +1016,6 @@ class PilotiAgent:
         max_input_tokens_per_turn: int = _DEFAULT_MAX_INPUT_TOKENS_PER_TURN,
         max_calls_per_round: int = _DEFAULT_MAX_CALLS_PER_ROUND,
         callbacks: list[Any] | None = None,
-        tool_search: ToolSearchSettings | None = None,
-        deferred_tool_loading: DeferredToolLoadingSettings | None = None,
         envelope_json_mode_with_tools: bool = False,
         repair_pass: bool = True,
         card_repair_llm: BaseChatModel | None = None,
@@ -1035,7 +1032,7 @@ class PilotiAgent:
                 LLM decisions that asked for tools — the turn may spend before
                 synthesis is forced. A round costs one whatever it asked for:
                 five parallel ``read_passage`` opens are one round, and so is a
-                single ``use_skill``. The name is a wire name; see the field
+                single skill read. The name is a wire name; see the field
                 note on ``ResearchAgentState.tool_iterations``.
             max_input_tokens_per_turn: Cumulative INPUT tokens the turn may
                 spend before synthesis is forced, read off the cost tracker
@@ -1049,11 +1046,6 @@ class PilotiAgent:
                 issued again next round, never deleted from the AIMessage. 0
                 disables it.
             callbacks: Optional LangGraph callbacks.
-            tool_search: Optional retrieval-based tool narrowing. None (or
-                disabled) binds the full set.
-            deferred_tool_loading: Optional OpenRouter server-side tool
-                search. Orthogonal to ``tool_search``: that one decides WHICH
-                tools are bound, this one whether their schemas travel.
             envelope_json_mode_with_tools: Whether provider JSON mode is ALSO
                 bound on tool-bound research iterations, not only on the
                 tool-free forced-synthesis call. Default False: some
@@ -1077,23 +1069,9 @@ class PilotiAgent:
         self.max_calls_per_round = max_calls_per_round
         self.callbacks = callbacks or []
         self.repair_pass = repair_pass
-        self.tool_search = tool_search if (tool_search is not None and tool_search.enabled) else None
-        self.deferred_tool_loading = (
-            deferred_tool_loading if (deferred_tool_loading is not None and deferred_tool_loading.enabled) else None
-        )
         self.envelope_json_mode_with_tools = envelope_json_mode_with_tools
         self.system_prompt = system_prompt or system_prompt_template()
         self.tools_info = build_tools_info(self.tools)
-        # Retrieval-based tool narrowing, off unless configured. A pure
-        # in-process BM25 over tool name + description, built here once: a
-        # turn never pays for it, and a deployment that does not ask for it
-        # does not even tokenize its tool descriptions. Indexed over the BOOT
-        # tools; a tool a turn adds (``use_skill``) is never withheld.
-        self._tool_search_index: ToolSearchIndex | None = ToolSearchIndex(self.tools) if self.tool_search else None
-        # Selected-tool-set → bound LLM, for the boot binding only.
-        self._narrowed_bindings: dict[frozenset[str], Any] = {}
-        # Query string → selection, so the retrieval runs once per run.
-        self._tool_search_selections: dict[str, Any] = {}
         self._boot = self._bind_turn(self.llm_provider, tuple(self.tools))
         self._graph = self._build_graph()
 
@@ -1125,13 +1103,8 @@ class PilotiAgent:
         return self.llm_provider.get(LLMRole.RESEARCHER)
 
     def _bind_research_tools(self, llm: BaseChatModel, tools: Sequence[BaseTool]) -> Any:
-        """Bind a RESEARCH-turn tool set, deferring the schemas when configured.
-
-        The single binding seam: the boot binding, every per-turn binding and
-        every narrowed one go through it, so the deferral cannot apply to one
-        and silently miss another.
-        """
-        return bind_tools_deferred(llm, list(tools), settings=self.deferred_tool_loading, parallel_tool_calls=True)
+        """Bind a RESEARCH-turn tool set: the one seam the boot binding and every per-turn binding go through."""
+        return llm.bind_tools(list(tools), parallel_tool_calls=True)
 
     def _bind_turn(self, provider: LLMProvider, tools: tuple[BaseTool, ...]) -> TurnBinding:
         """Resolve one tool set against one provider: the only per-turn cost, one ``bind_tools``."""
@@ -1160,7 +1133,7 @@ class PilotiAgent:
         rebinding anything, and that is the point of row 6: the tool set does
         not change with a toggle, so neither does the payload the provider's
         cache is keyed on. Only the model override and the turn's added tools
-        (``use_skill``, the working directory) ever cost a ``bind_tools``.
+        (the file verbs over drafts and skills) ever cost a ``bind_tools``.
         """
         if turn is None:
             return self._boot
@@ -1171,89 +1144,6 @@ class PilotiAgent:
         if turn.disabled_sources == base.disabled_sources and not turn.prefetch:
             return base
         return replace(base, disabled_sources=frozenset(turn.disabled_sources), prefetch=tuple(turn.prefetch))
-
-    def _select_tools_for_query(self, messages: Sequence[Any]) -> Any:
-        """Run (or replay) the tool-search retrieval for this run's question.
-
-        Cached on the query string: the query is built from HUMAN turns only,
-        so it is identical across every iteration of one run. Returns ``None``
-        when the feature is off or the retrieval could not produce a decision;
-        both mean "use the full set".
-        """
-        settings = self.tool_search
-        index = self._tool_search_index
-        if settings is None or index is None:
-            return None
-        try:
-            query_parts = build_query_parts(messages)
-            if not query_parts:
-                return None
-            cache_key = "\n<<part>>\n".join(f"{part.weight}:{part.text}" for part in query_parts)
-            cached = self._tool_search_selections.get(cache_key)
-            if cached is not None:
-                return cached
-            selection = index.select(query_parts, top_k=settings.top_k, always_include=settings.always_include)
-        except Exception:  # noqa: BLE001 - a ranking is a convenience; the tool set is the contract
-            logger.warning("[ToolSearch] retrieval failed; binding the full tool set", exc_info=True)
-            return None
-        # ADR-0045: the shape of the call, never the building. Tool names are
-        # code identifiers from our own config.
-        logger.info(
-            "[ToolSearch] %s: bound %d/%d tool(s) — selected=%s withheld=%s",
-            selection.reason,
-            len(selection.selected),
-            len(index.tool_names),
-            list(selection.selected),
-            list(selection.withheld),
-        )
-        if len(self._tool_search_selections) >= _MAX_CACHED_BINDINGS:
-            self._tool_search_selections.clear()
-        self._tool_search_selections[cache_key] = selection
-        return selection
-
-    def _narrowed_binding(self, binding: TurnBinding, chosen: frozenset[str], tools: list[BaseTool]) -> Any:
-        """The bound LLM for a narrowed set; cached for the boot binding only."""
-        if binding is not self._boot:
-            return self._bind_research_tools(binding.llm, tools)
-        bound = self._narrowed_bindings.get(chosen)
-        if bound is not None:
-            return bound
-        bound = self._bind_research_tools(binding.llm, tools)
-        if len(self._narrowed_bindings) >= _MAX_CACHED_BINDINGS:
-            self._narrowed_bindings.clear()
-        self._narrowed_bindings[chosen] = bound
-        return bound
-
-    def _research_tool_binding(
-        self,
-        messages: Sequence[Any],
-        tools_info: list[dict[str, str]],
-        binding: TurnBinding | None = None,
-    ) -> tuple[Any, list[dict[str, str]]]:
-        """LLM + prompt tool list for a RESEARCH turn, narrowed if configured.
-
-        With tool search off this returns the turn's binding and the caller's
-        tool list untouched. With it on, the narrowing happens HERE, around
-        the LLM call: the model is offered fewer tools, not asked to find
-        them, so a narrowed turn costs exactly what an unnarrowed one costs.
-        The prompt's tool list is narrowed to match the binding, so the model
-        is never told about a tool it has not been given. A tool the index
-        never saw (one the turn added) is always kept.
-        """
-        binding = binding or self._boot
-        selection = self._select_tools_for_query(messages)
-        if selection is None or not selection.narrowed:
-            return binding.llm_with_tools, tools_info
-        chosen = frozenset(selection.selected)
-        indexed = set(self._tool_search_index.tool_names) if self._tool_search_index else set()
-        keep = {t.name for t in binding.tools if t.name in chosen or t.name not in indexed}
-        narrowed_tools = [t for t in binding.tools if t.name in keep]
-        if not narrowed_tools:
-            # Belt and braces over ``select``'s own empty guard: an empty
-            # binding would leave the model with no way to answer at all.
-            return binding.llm_with_tools, tools_info
-        bound = self._narrowed_binding(binding, chosen, narrowed_tools)
-        return bound, [ti for ti in tools_info if ti.get("name") in keep]
 
     # -- graph ------------------------------------------------------------------
 
@@ -1280,7 +1170,7 @@ class PilotiAgent:
         """One LLM call: the full binding (ADR-0052), or forced synthesis at a ceiling."""
         binding = self._turn_binding(config)
         tools_info = state.tools_info if state.tools_info else binding.tools_info
-        llm_with_tools, tools_info = self._research_tool_binding(state.messages, tools_info, binding)
+        llm_with_tools = binding.llm_with_tools
         # Rendered once per run and cached on the state: every input is fixed
         # for the life of one run(), so both strings are byte-identical across
         # tool-loop iterations and the norm-block computation runs once.
@@ -1311,13 +1201,8 @@ class PilotiAgent:
         messages = request_messages(prompt, state.messages, steering)
         # Every round may be the answer, and only its tokens say so; each
         # streams, and the reader shows nothing from a round that is not an
-        # envelope. The deferred binding stays buffered (its fallback would
-        # replay tokens it already streamed).
-        answering, call_config = (
-            (llm_with_tools, None)
-            if isinstance(llm_with_tools, DeferredToolBinding)
-            else streaming_call(llm_with_tools, live=_live_answer(state))
-        )
+        # envelope.
+        answering, call_config = streaming_call(llm_with_tools, live=_live_answer(state))
         if self.envelope_json_mode_with_tools:
             response = await ainvoke_with_envelope_json_mode(answering, messages, call_config)
         else:
@@ -1368,7 +1253,7 @@ class PilotiAgent:
             state.tool_iterations,
             input_tokens,
             binding.max_input_tokens,
-            shape.count("use_skill"),
+            shape.count(SKILL_READ_SHAPE),
             ">".join(shape) or "-",
         )
         if cutoff == CUTOFF_INPUT_TOKENS:
@@ -1432,10 +1317,7 @@ class PilotiAgent:
     async def _tools_node(self, state: ResearchAgentState, config: RunnableConfig) -> dict[str, Any]:
         """Execute the round's tools and capture sources and measurements.
 
-        Tool-search narrowing gets no execution-side defense: it is a GUESS
-        about relevance, and if the model calls a withheld tool anyway the
-        guess was wrong and the model is right. Measurement grounding is
-        STICKY (OR-ed with what the loop already saw) and recorded BEFORE the
+        Measurement grounding is STICKY (OR-ed with what the loop already saw) and recorded BEFORE the
         data-source gate, because ``ifc_measure`` is deliberately not a data
         source: it produces no citable passage.
 
@@ -1536,7 +1418,9 @@ class PilotiAgent:
             # A look answers in blocks (text, then the image): its text is the grounding block.
             content = content_to_text(message.content) if isinstance(message.content, list) else str(message.content)
             measured = measured or tool_result_is_measurement(tool_name, content)
-            _capture_sources(tool_name, content, binding.source_tool_names, registry)
+            _capture_sources(
+                tool_name, content, binding.source_tool_names, registry, getattr(message, "artifact", None)
+            )
         return measured
 
     # -- the turn ---------------------------------------------------------------

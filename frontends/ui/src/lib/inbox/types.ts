@@ -15,6 +15,7 @@
 
 import type { InboxItemType, InboxTargetType, ShareableResourceType } from '@/lib/db/schema'
 import type { MarkMention } from '@/lib/annotations/types'
+import type { UploadReport } from '@/lib/upload-batches/upload-report'
 
 export type { InboxItemType, InboxTargetType, ShareableResourceType }
 
@@ -106,6 +107,13 @@ export interface InboxItemView {
    */
   openMarks?: number | null
   marksRevision?: number | null
+  /**
+   * For a completed project upload: what it brought the project, the
+   * Eingangsbericht (`lib/upload-batches/upload-report.ts`). Counts, document
+   * types and finding keys, never a document's name. Absent, or null, for
+   * every other row, for an upload nothing was read of, and when redacted.
+   */
+  uploadReport?: UploadReport | null
   /**
    * Where the reader may answer the mark an open request is about (a mark's
    * Zuständige, Piloti's Rückfrage, a mention), as the server decides it: `row`
@@ -236,6 +244,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
     tone: 'request',
   },
   'feedback.submitted': { icon: 'megaphone', i18nKey: 'feedbackSubmitted', tone: 'info' },
+  'feedback.replied': { icon: 'message-square', i18nKey: 'feedbackReplied', tone: 'info' },
   'upload.completed': { icon: 'check-circle', i18nKey: 'uploadCompleted', tone: 'info' },
   'document.quarantined': { icon: 'shield-alert', i18nKey: 'documentQuarantined', tone: 'warning' },
   'document.release_requested': { icon: 'shield-alert', i18nKey: 'documentReleaseRequested', tone: 'request' },

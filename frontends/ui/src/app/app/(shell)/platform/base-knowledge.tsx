@@ -20,7 +20,7 @@
  * `platform:settings:manage`).
  */
 
-import { SortableHead } from './sortable-head'
+import { SortableHead } from '@/components/ui/sortable-head'
 import type { JSX } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'

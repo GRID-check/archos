@@ -181,11 +181,29 @@ export const SURFACE_CAPABILITIES = {
     // The review offers its selection to the chat's own turns (`registerCanvasFocusProvider`); the turn sends it as `focus_region`.
     chat: { component: 'features/documents/lib/review-focus.ts' },
   },
+  referenceDocument: {
+    summary: 'Pick a document from the live workspace search into a message, which makes it the question’s subject',
+    operations: ['workspace-search'],
+    canvas: { exempt: 'The canvas shows one document, which is already the subject of what is asked there' },
+    // `#` in the composer: the palette's live results in the composer's picker panel; a pick sets the composer subject.
+    chat: { component: 'features/search/components/composer-search-picker.tsx' },
+  },
   openAtPlace: {
     summary: 'Open a document at a page, with a region glowing',
     canvas: { component: `${REVIEW}/document-review.tsx` },
     // A look card item, a Herleitung look row and a citation with a region open the viewer at the page with the box glowing.
     chat: { card: 'look', component: 'features/knowledge/components/page-place-button.tsx' },
+  },
+  showInViewer: {
+    summary: 'Take the asker to a place: a page, a passage or a box on it, a Fassung comparison, a model element',
+    tool: 'show_in_viewer',
+    // Before the asker's page moves (ADR-0144) it reads the document with `document-get`, the read
+    // Files and every door already use: no second route for the same question (ADR-0055).
+    operations: ['document-get'],
+    // The viewer the action moves: the chat peek, turned to the page with the passage or the boxes marked.
+    canvas: { component: 'features/documents/components/file-preview-pane.tsx' },
+    // The row under the answer: what moved, „Zurück“, or „Anzeigen“ when it did not.
+    chat: { component: 'features/chat/components/ViewerActionRow.tsx' },
   },
 } as const satisfies Readonly<Record<string, SurfaceCapability>>
 

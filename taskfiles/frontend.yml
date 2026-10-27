@@ -53,8 +53,16 @@ tasks:
     cmds:
       - bash scripts/rls-test-db.sh
 
+  fe:search:latency:
+    desc: >-
+      Measure the workspace search's documents SQL over a seeded office (60,000
+      documents, three organizations) as the runtime role under RLS. Prints
+      p50/p95 per query; a measurement, not a gate. Needs PostgreSQL server binaries.
+    cmds:
+      - GRID_SEARCH_LATENCY=1 bash scripts/rls-test-db.sh --only src/lib/search/search-latency.integration.spec.ts
+
   fe:test:shard:
-    desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/6 task fe:test:shard)'
+    desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/8 task fe:test:shard)'
     dir: '{{.UI}}'
     cmds:
       # `--reporter=blob` writes the blob that fe:test:merge stitches into one
@@ -79,10 +87,21 @@ tasks:
       # adds it on its own only while no reporter is named, and this task names
       # two, so without it a failing test is a log line instead of an
       # annotation on the pull request's diff.
-      - bun run test:shard -- --shard={{.SHARD}} --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}} --outputFile=.vitest-reports/blob-{{.SHARD | replace "/" "-"}}.json
+      #
+      # COVERAGE=false leaves the instrumentation out: CI's push runs, whose
+      # blobs nothing merges (the coverage comment is a pull request's).
+      - bun run test:shard -- --shard={{.SHARD}} --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}} --outputFile=.vitest-reports/blob-{{.SHARD | replace "/" "-"}}.json{{if eq .COVERAGE "false"}} --coverage.enabled=false{{end}}
+
+  fe:test:durations:
+    desc: Re-record the per-file times the UI shards split by (tests/vitest-durations.json)
+    dir: '{{.UI}}'
+    cmds:
+      # Re-run when the frontend shards' times in CI drift apart.
+      - TZ=UTC bunx vitest run --reporter=json --outputFile=.vitest-reports/durations.json
+      - node scripts/record-vitest-durations.mjs .vitest-reports/durations.json
 
   fe:test:related:
-    desc: 'One shard of the UI specs that reach the given files (CI on a pull request: SHARD=1/6 FILES="...")'
+    desc: 'One shard of the UI specs that reach the given files (CI on a pull request: SHARD=1/8 FILES="...")'
     dir: '{{.UI}}'
     requires:
       vars: [SHARD, FILES]

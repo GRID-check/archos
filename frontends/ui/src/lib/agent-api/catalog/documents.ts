@@ -8,17 +8,17 @@ import {
   documentSummaryQuerySchema,
   moveDocumentSchema,
   renameDocumentSchema,
-  searchDocumentsSchema,
   updateTagsSchema,
 } from '@/lib/documents/document-wire'
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
+import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema, suggestBodySchema } from '@/lib/search/search-wire'
 import type { AgentOperation } from '../operation'
 import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
 
 const documentParams = z.object({
-  id: z.string().describe('The document id, from document-list or document-search.'),
+  id: z.string().describe('The document id, from document-list or workspace-search.'),
 })
 
 
@@ -247,17 +247,53 @@ export const documentsOperations = [
     load: () => import('@/app/api/documents/[id]/cancel/route'),
   },
   {
-    name: 'document-search',
+    name: 'workspace-search',
     domain: 'documents',
-    summary: 'Search a shelf’s documents by meaning',
+    summary: 'Search everything the person may read, with filters',
     description:
-      'Semantic search over one shelf, a project’s (`projectId`, from project-list) or the office shelf (`scope: office_shelf`), ' +
-      'for a question or phrase `q`. Returns the best matching documents with a snippet, page and score, up to `topK` (1 to 100). Read-only.',
+      'Searches every shelf the person may read, or one project (`projectId`), a folder of it (`folderId`) or the office ' +
+      'shelf (`scope: office_shelf`). Finds documents by name, by what ingestion read (type, parties, facts, references, ' +
+      'drawing number, revision, scale) and by content with the passage and page; also annotations, folders, projects and ' +
+      'conversations (`kinds`). `sort` orders like a drawing register, `facets` counts per value, `cursor` pages one kind. ' +
+      'A passage points at a page: read the document before quoting it.',
     method: 'POST',
-    path: '/api/documents/search',
-    body: searchDocumentsSchema,
+    path: '/api/search',
+    query: searchScopeQuerySchema,
+    body: searchBodySchema,
     readOnly: true,
-    load: () => import('@/app/api/documents/search/route'),
+    spansProjects: 'unlessScoped',
+    load: () => import('@/app/api/search/route'),
+  },
+  {
+    name: 'workspace-search-suggest',
+    domain: 'documents',
+    summary: 'Complete a search filter from document values',
+    description:
+      'Values documents in reach hold for one workspace-search filter, starting as `prefix`, with document ' +
+      'counts, under the same scope and `filters`. `cites` values are tokens.',
+    method: 'POST',
+    path: '/api/search/suggest',
+    query: searchScopeQuerySchema,
+    body: suggestBodySchema,
+    readOnly: true,
+    spansProjects: 'unlessScoped',
+    load: () => import('@/app/api/search/suggest/route'),
+  },
+  {
+    name: 'workspace-search-export',
+    domain: 'documents',
+    summary: 'Export the documents a search finds as a drawing register file',
+    description:
+      'The documents of a search (same scope and body as workspace-search) as a drawing register, csv (semicolon) or xlsx, ' +
+      'one row per document in the search order. Refused above 5000 documents: narrow the filters.',
+    method: 'POST',
+    path: '/api/search/export',
+    query: searchExportQuerySchema,
+    body: searchBodyInputSchema,
+    readOnly: true,
+    spansProjects: 'unlessScoped',
+    binaryResponse: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    load: () => import('@/app/api/search/export/route'),
   },
   {
     name: 'document-summary-get',

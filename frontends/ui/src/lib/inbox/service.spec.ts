@@ -130,6 +130,8 @@ const ALL_TYPES = [
   'task_run.failed',
   'task_run.waiting',
   'document.review_requested',
+  // The team answered your own feedback: every member sends feedback, chat or not.
+  'feedback.replied',
   'upload.completed',
   'document.quarantined',
   'document.release_requested',
@@ -168,6 +170,8 @@ const OPERATIONAL_TYPES = [
   // collaboration still has documents to approve, and gating the one review
   // queue in the product would make it invisible for exactly them.
   'document.review_requested',
+  // The team answered your own feedback (ADR-0118): every member sends feedback, chat or not.
+  'feedback.replied',
   // ADR-0086: an upload being read and a file held back by the content check
   // are about the office's own files, not about working together.
   'upload.completed',
@@ -489,6 +493,39 @@ describe('listInbox — projection', () => {
     expect(byId.get('ok')).toMatchObject({ dueOn: '2026-10-24', openMarks: 4, marksRevision: 2 })
     expect(byId.get('junk')).toMatchObject({ dueOn: null, openMarks: null, marksRevision: null })
     expect(byId.get('gone')).toMatchObject({ dueOn: null, openMarks: null, marksRevision: null })
+  })
+
+  it('carries an upload report only in its shape, and withholds it when redacted', async () => {
+    const report = {
+      projectId: 'proj-1',
+      documents: 3,
+      read: 3,
+      byType: [{ type: 'submission_drawing', count: 3 }],
+      facts: 1,
+      factSamples: [{ key: 'storeys_above_ground', value: '4', unit: null }],
+      newFindings: 1,
+      findings: [{ kind: 'missing_document', key: 'soil_report', label: null, documents: 3 }],
+      resolvedFindings: 0,
+      unresolvedReferences: 1,
+      pagesNotRead: 0,
+      documentsNotFullyRead: 0,
+    }
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', resourceId: 'conv_ok', payload: { report } }),
+      row({ id: 'junk', resourceId: 'conv_ok', payload: { report: { ...report, read: 'zwölf' } } }),
+      row({ id: 'gone', resourceId: 'conv_gone', payload: { report } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    expect(byId.get('ok')?.uploadReport).toEqual(report)
+    expect(byId.get('junk')?.uploadReport).toBeNull()
+    expect(byId.get('gone')?.uploadReport).toBeNull()
   })
 
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {

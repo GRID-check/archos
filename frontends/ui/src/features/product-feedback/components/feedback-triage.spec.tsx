@@ -4,15 +4,33 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type {
   ProductFeedbackListResponse,
   ProductFeedbackReportView,
+  ProductFeedbackTicketView,
   SupportTicketStatus,
 } from '@/lib/product-feedback/types'
 import { FeedbackTriage, type FeedbackTriageClient } from './feedback-triage'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-function ticket(status: SupportTicketStatus, id = 't1', number: number | null = 42) {
-  return { id, number, status, url: `https://eu.posthog.com/project/1/support/tickets/${id}` }
+function ticket(
+  status: SupportTicketStatus,
+  id = 't1',
+  number: number | null = 42,
+  overrides: Partial<ProductFeedbackTicketView> = {}
+): ProductFeedbackTicketView {
+  return {
+    id,
+    number,
+    status,
+    url: `https://eu.posthog.com/project/1/support/tickets/${id}`,
+    assignee: null,
+    lastActivityAt: '2026-09-29T09:00:00Z',
+    awaiting: status === 'resolved' ? null : 'team',
+    ...overrides,
+  }
 }
+
+const ANNA = { type: 'user' as const, name: 'Anna Wallner', email: 'anna@piloti.test', isViewer: false }
+const ME = { type: 'user' as const, name: 'Matthias Bigl', email: 'me@piloti.test', isViewer: true }
 
 function counts(overrides: Partial<Record<SupportTicketStatus, number>> = {}) {
   return { new: 0, open: 0, pending: 0, on_hold: 0, resolved: 0, ...overrides }
@@ -25,6 +43,7 @@ function list(overrides: Partial<ProductFeedbackListResponse> = {}): ProductFeed
     counts: counts({ new: 1 }),
     unticketed: [],
     nextCursor: null,
+    viewerNotInPosthog: false,
     ...overrides,
   }
 }
@@ -71,11 +90,13 @@ beforeEach(() => {
 })
 
 describe('FeedbackTriage', () => {
-  test('opens on what nobody has looked at yet', async () => {
+  test('opens on the active cases, whoever has them', async () => {
     render(<FeedbackTriage canTriage client={client} />)
 
     expect(await screen.findAllByTestId('feedback-report')).toHaveLength(2)
-    expect(client.list).toHaveBeenCalledWith({ status: 'new', kind: undefined })
+    expect(client.list).toHaveBeenCalledWith({ status: 'active', kind: undefined, assignee: undefined })
+    expect(screen.getByRole('button', { name: /^Active/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Everyone' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   test('pins and marks the report an inbox row linked to, without listing it twice', async () => {
@@ -126,7 +147,7 @@ describe('FeedbackTriage', () => {
     await user.click(screen.getByRole('button', { name: /Resolved/ }))
 
     await waitFor(() =>
-      expect(client.list).toHaveBeenLastCalledWith({ status: 'resolved', kind: undefined })
+      expect(client.list).toHaveBeenLastCalledWith({ status: 'resolved', kind: undefined, assignee: undefined })
     )
   })
 
@@ -206,6 +227,7 @@ describe('FeedbackTriage', () => {
 
     const chips = within(screen.getByRole('group', { name: 'Filter by status' }))
     expect(chips.getByRole('button', { name: 'All 15' })).toBeInTheDocument()
+    expect(chips.getByRole('button', { name: 'Active 10' })).toBeInTheDocument()
     expect(chips.getByRole('button', { name: 'Open 2' })).toBeInTheDocument()
     expect(chips.getByRole('button', { name: 'Pending 3' })).toBeInTheDocument()
     expect(chips.getByRole('button', { name: 'On hold 4' })).toBeInTheDocument()
@@ -215,7 +237,8 @@ describe('FeedbackTriage', () => {
     render(<FeedbackTriage canTriage client={client} />)
 
     const [row] = await screen.findAllByTestId('feedback-report')
-    const link = within(row!).getByRole('link', { name: 'Ticket #42 in PostHog' })
+    const link = within(row!).getByRole('link', { name: 'Open in PostHog' })
+    expect(within(row!).getByTestId('feedback-ticket-number')).toHaveTextContent('#42')
     expect(link).toHaveAttribute('href', 'https://eu.posthog.com/project/1/support/tickets/r1')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
@@ -247,13 +270,16 @@ describe('FeedbackTriage', () => {
       )
     })
 
-    test('says so, drops the status filter and offers no status control', async () => {
+    test('says so, drops the filters and offers no status control', async () => {
       render(<FeedbackTriage canTriage client={client} />)
 
       expect(await screen.findByTestId('feedback-local-source')).toHaveTextContent(
         'PostHog Support cannot be read right now.'
       )
       expect(screen.queryByRole('group', { name: 'Filter by status' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('group', { name: 'Filter by assignee' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('feedback-case')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Take it' })).not.toBeInTheDocument()
       const row = screen.getByTestId('feedback-report')
       expect(within(row).queryByRole('combobox', { name: 'Status' })).not.toBeInTheDocument()
     })
@@ -288,5 +314,145 @@ describe('FeedbackTriage', () => {
     render(<FeedbackTriage canTriage client={client} />)
     await screen.findAllByTestId('feedback-report')
     expect(screen.queryByTestId('feedback-unticketed')).not.toBeInTheDocument()
+  })
+})
+
+describe('FeedbackTriage → active support cases', () => {
+  test('says who has each ticket, whose move it is and when it last moved', async () => {
+    client.list.mockResolvedValue(
+      list({
+        reports: [
+          report({ id: 'r1', ticket: ticket('new', 't1', 41) }),
+          report({ id: 'r2', ticket: ticket('pending', 't2', 40, { assignee: ANNA, awaiting: 'reporter' }) }),
+          report({ id: 'r3', ticket: ticket('open', 't3', 39, { assignee: ME }) }),
+        ],
+      })
+    )
+    render(<FeedbackTriage canTriage client={client} />)
+
+    const rows = await screen.findAllByTestId('feedback-report')
+    const [unassigned, colleague, mine] = rows.map((row) => within(row))
+    expect(unassigned!.getByTestId('feedback-assignee')).toHaveTextContent('Unassigned')
+    expect(unassigned!.getByTestId('feedback-awaiting')).toHaveTextContent('We owe an answer')
+    expect(colleague!.getByTestId('feedback-assignee')).toHaveTextContent('With Anna Wallner')
+    expect(colleague!.getByTestId('feedback-awaiting')).toHaveTextContent('Waiting on the reporter')
+    expect(mine!.getByTestId('feedback-assignee')).toHaveTextContent('Assigned to you')
+    expect(unassigned!.getByText('Last activity')).toBeInTheDocument()
+  })
+
+  test('names an assignee PostHog gives no name for by their email', async () => {
+    client.list.mockResolvedValue(
+      list({ reports: [report({ ticket: ticket('open', 't1', 41, { assignee: { ...ANNA, name: null } }) })] })
+    )
+    render(<FeedbackTriage canTriage client={client} />)
+
+    expect(await screen.findByTestId('feedback-assignee')).toHaveTextContent('With anna@piloti.test')
+  })
+
+  test('narrows to the reader’s own tickets and to the unassigned ones', async () => {
+    const user = userEvent.setup()
+    render(<FeedbackTriage canTriage client={client} />)
+    await screen.findAllByTestId('feedback-report')
+
+    await user.click(screen.getByRole('button', { name: 'Mine' }))
+    await waitFor(() =>
+      expect(client.list).toHaveBeenLastCalledWith({ status: 'active', kind: undefined, assignee: 'mine' })
+    )
+    await user.click(screen.getByRole('button', { name: 'Unassigned' }))
+    await waitFor(() =>
+      expect(client.list).toHaveBeenLastCalledWith({ status: 'active', kind: undefined, assignee: 'unassigned' })
+    )
+    await user.click(screen.getByRole('button', { name: /^All/ }))
+    await waitFor(() =>
+      expect(client.list).toHaveBeenLastCalledWith({ status: undefined, kind: undefined, assignee: 'unassigned' })
+    )
+  })
+
+  test('offers „Take it" on unassigned and on others’ open tickets, never on the reader’s own or a resolved one', async () => {
+    client.list.mockResolvedValue(
+      list({
+        reports: [
+          report({ id: 'r1', ticket: ticket('new', 't1', 41) }),
+          report({ id: 'r2', ticket: ticket('pending', 't2', 40, { assignee: ANNA }) }),
+          report({ id: 'r3', ticket: ticket('open', 't3', 39, { assignee: ME }) }),
+          report({ id: 'r4', ticket: ticket('resolved', 't4', 38) }),
+        ],
+      })
+    )
+    const claim = vi.fn<NonNullable<FeedbackTriageClient['claim']>>()
+    render(<FeedbackTriage canTriage client={{ ...client, claim }} />)
+
+    const rows = await screen.findAllByTestId('feedback-report')
+    const offered = rows.map((row) => within(row).queryByRole('button', { name: 'Take it' }) !== null)
+    expect(offered).toEqual([true, true, false, false])
+  })
+
+  test('offers „Take it" to nobody who may only look', async () => {
+    const claim = vi.fn<NonNullable<FeedbackTriageClient['claim']>>()
+    render(<FeedbackTriage canTriage={false} client={{ ...client, claim }} />)
+
+    await screen.findAllByTestId('feedback-report')
+    expect(screen.queryByRole('button', { name: 'Take it' })).not.toBeInTheDocument()
+  })
+
+  test('takes a row’s ticket and shows it as the reader’s', async () => {
+    const { toast } = await import('sonner')
+    const user = userEvent.setup()
+    const claim = vi
+      .fn<NonNullable<FeedbackTriageClient['claim']>>()
+      .mockResolvedValue(report({ ticket: ticket('new', 'r1', 42, { assignee: ME }) }))
+    render(<FeedbackTriage canTriage client={{ ...client, claim }} />)
+    const [row] = await screen.findAllByTestId('feedback-report')
+
+    await user.click(within(row!).getByRole('button', { name: 'Take it' }))
+
+    expect(claim).toHaveBeenCalledWith('r1')
+    await waitFor(() => expect(within(row!).getByTestId('feedback-assignee')).toHaveTextContent('Assigned to you'))
+    expect(within(row!).queryByRole('button', { name: 'Take it' })).not.toBeInTheDocument()
+    expect(toast.success).toHaveBeenCalledWith('Ticket #42 is now assigned to you in PostHog.')
+  })
+
+  test('says so when the take fails, and keeps the row as it was', async () => {
+    const { toast } = await import('sonner')
+    const user = userEvent.setup()
+    const claim = vi.fn<NonNullable<FeedbackTriageClient['claim']>>().mockRejectedValue(new Error('502'))
+    render(<FeedbackTriage canTriage client={{ ...client, claim }} />)
+    const [row] = await screen.findAllByTestId('feedback-report')
+
+    await user.click(within(row!).getByRole('button', { name: 'Take it' }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect(within(row!).getByTestId('feedback-assignee')).toHaveTextContent('Unassigned')
+  })
+
+  test('explains an empty „Mine" when the reader has no PostHog login', async () => {
+    client.list.mockResolvedValue(list({ reports: [], viewerNotInPosthog: true }))
+    render(<FeedbackTriage canTriage client={client} />)
+
+    expect(await screen.findByTestId('feedback-viewer-not-in-posthog')).toHaveTextContent(
+      'Nothing is assigned to you in PostHog.'
+    )
+  })
+})
+
+describe('FeedbackTriage → taking a ticket from the Slack alert', () => {
+  test('assigns the linked ticket to the reader, pins its report and says so', async () => {
+    const { toast } = await import('sonner')
+    const claim = vi.fn<NonNullable<FeedbackTriageClient['claim']>>().mockResolvedValue(
+      report({ id: 'r9', message: 'Claimed from Slack.', ticket: ticket('open', 't9', 77) })
+    )
+    render(<FeedbackTriage canTriage claimTicketId="t9" client={{ ...client, claim }} />)
+
+    await waitFor(() => expect(claim).toHaveBeenCalledWith('t9'))
+    expect(await screen.findByText('Claimed from Slack.')).toBeInTheDocument()
+    expect(toast.success).toHaveBeenCalledWith('Ticket #77 is now assigned to you in PostHog.')
+  })
+
+  test('takes nothing for a reader who may only look', async () => {
+    const claim = vi.fn<NonNullable<FeedbackTriageClient['claim']>>()
+    render(<FeedbackTriage canTriage={false} claimTicketId="t9" client={{ ...client, claim }} />)
+
+    await screen.findAllByText('The upload stops at 99 percent.')
+    expect(claim).not.toHaveBeenCalled()
   })
 })

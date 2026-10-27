@@ -198,7 +198,7 @@ class TestRender:
         block = render_already_read_block(["a.pdf | c | Seiten 1 | Punkte - | Turn 1"])
 
         assert "NOT evidence" in block
-        assert "read_passage" in block
+        assert "by the exact name from the line" in block
         assert str(MAX_DIGEST_DOCS) in block
         assert str(MAX_DIGEST_TOKENS) in block
 

@@ -20,6 +20,8 @@
  * (`@/lib/model-config/openrouter`).
  */
 
+import { createRedisClient } from '@/lib/redis/connect.js'
+
 export interface CacheStore {
   get(key: string): Promise<string | null>
   set(key: string, value: string, ttlMs: number): Promise<void>
@@ -121,19 +123,7 @@ class RedisStore implements CacheStore {
   private client: any
 
   constructor(url: string) {
-    // Lazy require keeps ioredis out of bundles that never set REDIS_URL.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const IORedis = require('ioredis')
-    this.client = new IORedis(url, {
-      connectTimeout: 1000,
-      commandTimeout: 500,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-      lazyConnect: false,
-    })
-    this.client.on('error', (error: unknown) => {
-      console.warn('[cache] redis store error:', error)
-    })
+    this.client = createRedisClient(url, 'cache', { commandTimeout: 500 })
   }
 
   async get(key: string): Promise<string | null> {

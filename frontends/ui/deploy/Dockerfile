@@ -105,6 +105,8 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
+# `patchedDependencies` in package.json: bun applies these while installing.
+COPY patches ./patches
 
 RUN bun install --frozen-lockfile --ignore-scripts
 
@@ -189,6 +191,8 @@ RUN groupadd --system --gid 1001 nodejs \
     && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/bun
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# The MCP Apps views the agent door serves as ui:// resources (ADR-0142), built by `bun run build`.
+COPY --from=builder --chown=nextjs:nodejs /app/mcp-app-views ./mcp-app-views
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
@@ -242,6 +246,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-teardown.js ./sr
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/backend-target.js ./src/lib/proxy/backend-target.js
 # And this one to build a chat turn's headers and signed envelope (ADR-0106).
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/turns/turn-headers.js ./src/lib/turns/turn-headers.js
+# And this one to open the shared rate-limit store's Dragonfly connection.
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/redis/connect.js ./src/lib/redis/connect.js
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 

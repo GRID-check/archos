@@ -363,8 +363,8 @@ export async function removeProjectRoleAssignment(
 }
 
 /** The month the earliest of these assignments was made: when the member joined. */
-function earliestMonth(assignments: ReadonlyArray<{ createdAt: string }>): Month | null {
-  const first = assignments.map((assignment) => assignment.createdAt).sort()[0]
+function earliestMonth(assignments: ReadonlyArray<{ createdAt: Date }>): Month | null {
+  const first = assignments.map((assignment) => assignment.createdAt.toISOString()).sort()[0]
   return dateToMonth(first)
 }
 

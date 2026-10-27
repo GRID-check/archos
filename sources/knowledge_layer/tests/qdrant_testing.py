@@ -7,16 +7,21 @@ runs a Qdrant 1.19 service container and sets it for every step. Locally,
 without the variable, a test that asks for the store skips; on CI it fails
 instead, so the suites cannot quietly stop covering it.
 
-:func:`qdrant_store` gives each test its own physical collections (a unique
-alias suffix, ``schema.ALIASES`` monkeypatched) and points the process-wide
-store at them, so the adapter, the routes and the test all read and write the
-same isolated pair. Both are deleted afterwards. Imported by path
+:func:`qdrant_store` points the process-wide store at a pair of physical
+collections this process shares (a unique alias suffix, ``schema.ALIASES``
+monkeypatched), so the adapter, the routes and the test all read and write the
+same pair, and empties both after every test. Creating a pair is 62 payload
+indexes, one request each: over four seconds, which every test used to pay.
+A test of the collection's own life (created or adopted, its indexes, its
+metadata, its aliases) asks for :func:`fresh_qdrant_store`, a pair of its own
+deleted afterwards. Imported by path
 (``sources.knowledge_layer.tests.qdrant_testing``), as ``sources/AGENTS.md``
-asks, and registered as a fixture by each suite's ``conftest.py``.
+asks, and registered as fixtures by each suite's ``conftest.py``.
 """
 
 from __future__ import annotations
 
+import atexit
 import os
 import random
 import uuid
@@ -30,6 +35,7 @@ from knowledge_layer.qdrant import schema
 from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.qdrant import writes
 from knowledge_layer.qdrant.payload import ChunkRecord
+from qdrant_client import models
 
 #: Dense size of every test vector: small, so a test collection costs nothing.
 DIM = 8
@@ -90,26 +96,118 @@ def chunk_texts(scope: str, filters: dict[str, Any] | None = None) -> dict[str, 
     }
 
 
-@pytest.fixture
-def qdrant_store(monkeypatch) -> Iterator[store_module.QdrantStore]:
-    """The process-wide store, on this test's own physical collections; both deleted afterwards."""
+#: The alias suffix of the pair each test module shares, by module; made on first use.
+_SHARED_SUFFIXES: dict[str, str] = {}
+
+
+def _point_at(monkeypatch, suffix: str) -> store_module.QdrantStore:
     url = server_url()
-    suffix = uuid.uuid4().hex[:10]
     monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"test_corpus_{suffix}")
     monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"test_office_{suffix}")
     monkeypatch.setenv("AIQ_QDRANT_URL", url)
     monkeypatch.delenv("AIQ_QDRANT_API_KEY", raising=False)
     store_module.reset_store()
-    store = store_module.get_store(IDENTITY)
+    return store_module.get_store(IDENTITY)
+
+
+def _collections() -> list[str]:
+    return [schema.ALIASES[physical] + schema.FIRST_VERSION for physical in schema.Physical]
+
+
+def _delete_shared_collections() -> None:
+    """At exit, the shared pair, so a local server does not collect one per run."""
+    if not os.environ.get("AIQ_QDRANT_TEST_URL", "").strip():
+        return
+    try:
+        from qdrant_client import QdrantClient
+
+        client = QdrantClient(url=os.environ["AIQ_QDRANT_TEST_URL"], check_compatibility=False)
+        for suffix in _SHARED_SUFFIXES.values():
+            for prefix in ("test_corpus_", "test_office_"):
+                name = f"{prefix}{suffix}{schema.FIRST_VERSION}"
+                if client.collection_exists(name):
+                    client.delete_collection(name)
+    except Exception:  # noqa: BLE001 - a cleanup at exit must not fail the run
+        pass
+
+
+atexit.register(_delete_shared_collections)
+
+
+#: What the shared pair looked like when a test found it, by collection name.
+_SIGNATURES: dict[str, Any] = {}
+
+
+def _signature(client: Any, name: str) -> Any:
+    """A collection's config, metadata and payload indexes: what a test may change besides points."""
+    if not client.collection_exists(name):
+        return None
+    info = client.get_collection(name)
+    indexes = {field: (index.data_type, index.params) for field, index in (info.payload_schema or {}).items()}
+    return (info.config.model_dump(), indexes)
+
+
+@pytest.fixture
+def qdrant_store(monkeypatch, request) -> Iterator[store_module.QdrantStore]:
+    """The process-wide store, on collections its test module shares; emptied after the test.
+
+    One pair per module, not per process: a module writes with one embedder
+    identity, which the collection then carries. A pair the first test made is
+    held to the indexes the schema asks for; what it left (config, metadata,
+    indexes) is what every later test is held to. A test that changed more
+    than the points leaves a pair the next must not inherit, so the pair is
+    then deleted and the next test makes it again.
+    """
+    suffix = _SHARED_SUFFIXES.setdefault(request.module.__name__, uuid.uuid4().hex[:10])
+    store = _point_at(monkeypatch, suffix)
+    client = store_module.make_client()
+    names = _collections()
+    # Read before the test runs: a test may monkeypatch the list itself.
+    wanted_indexes = set(schema.INDEXED_FIELDS)
+    try:
+        yield store
+    finally:
+        aliases = {alias.alias_name: alias.collection_name for alias in client.get_aliases().aliases}
+        moved = any(aliases.get(name.removesuffix(schema.FIRST_VERSION)) not in (None, name) for name in names)
+        for name in names:
+            before, after = _SIGNATURES.get(name), _signature(client, name)
+            if after is None:
+                _SIGNATURES.pop(name, None)
+                continue
+            reshaped = set(after[1]) != wanted_indexes if before is None else before != after
+            if moved or reshaped:
+                client.delete_collection(name)
+                _SIGNATURES.pop(name, None)
+            else:
+                client.delete(name, points_selector=models.FilterSelector(filter=models.Filter()), wait=True)
+                _SIGNATURES[name] = after
+        store_module.reset_store()
+
+
+@pytest.fixture
+def fresh_qdrant_store(monkeypatch) -> Iterator[store_module.QdrantStore]:
+    """The process-wide store, on collections of this test's own; both deleted afterwards."""
+    store = _point_at(monkeypatch, uuid.uuid4().hex[:10])
     try:
         yield store
     finally:
         client = store_module.make_client()
-        for physical in schema.Physical:
-            name = schema.ALIASES[physical] + schema.FIRST_VERSION
+        for name in _collections():
             if client.collection_exists(name):
                 client.delete_collection(name)
         store_module.reset_store()
+
+
+#: The payload indexes a test of a collection's copy and length tuning filters on.
+FEW_INDEXES = frozenset({"scope", "kind", "file_name", "chunk_id", schema.TEXT_FIELD})
+
+
+@pytest.fixture
+def few_payload_indexes(monkeypatch) -> None:
+    """Collections made with :data:`FEW_INDEXES` instead of all 62: each index is
+    made on the server, about 70 ms, and a rebuild test makes a pair or more. The
+    index set itself is the store's tests' to pin (``test_qdrant_store.py``)."""
+    monkeypatch.setattr(schema, "INDEXED_FIELDS", FEW_INDEXES)
 
 
 def capture_indexed_documents(monkeypatch, into: list[list[Any]] | None = None) -> list[list[Any]]:

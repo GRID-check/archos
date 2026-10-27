@@ -30,9 +30,14 @@ def render_tool_error(exc: Exception) -> str:
     the handler (``langgraph.prebuilt.tool_node._infer_handled_types``) and
     raises on a type that is not an ``Exception`` subclass.
     """
-    if _validation_error(exc) is None:
+    validation = _validation_error(exc)
+    if validation is None:
         return f"Error: {render_error_detail(exc)}"
-    return f"Error: the call was rejected. {render_error_detail(exc)}. Fix the arguments and call again."
+    from aiq_agent.common.retired_calls import retired_hints
+
+    extra = [str(e["loc"][-1]) for e in validation.errors() if e.get("type") == "extra_forbidden" and e.get("loc")]
+    instead = "".join(f" Instead: {hint}." for hint in retired_hints(extra))
+    return f"Error: the call was rejected. {render_error_detail(exc)}.{instead} Fix the arguments and call again."
 
 
 def render_error_detail(exc: BaseException) -> str:

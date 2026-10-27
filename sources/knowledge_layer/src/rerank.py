@@ -288,7 +288,9 @@ async def rerank_chunks(
             if ranked:
                 logger.info("Cross-encoder reranked %d candidate(s)", len(chunks))
                 return _trim(ranked, top_n)
-            logger.warning("Cross-encoder returned no ranking; falling back to the LLM judge")
+            # Info, not warning: cross_encoder already warned with the cause, throttled
+            # to one per cooldown window; a warning per search here undid the throttle.
+            logger.info("Cross-encoder returned no ranking; falling back to the LLM judge")
         except Exception as e:
             logger.warning(
                 "Cross-encoder reranking failed (%s: %s); falling back to the LLM judge", type(e).__name__, e

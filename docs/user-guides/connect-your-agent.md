@@ -89,6 +89,41 @@ write Anmerkungen, create and update Aufgaben, and work through your inbox. It
 sees only what you can see: a project you are not a member of, or a folder
 restricted to other people, does not exist for it.
 
+## Piloti's proposals, as cards in your assistant
+
+When Piloti has proposed a change (a file move, a note to remember, an action
+in a project), your assistant can show it to you as **Piloti's own card**,
+right in your conversation: what the change would do, what it touches, every
+value in full, and **Apply** and **Discard**. Ask it, for example, „Show me
+what Piloti proposes for the Lindengasse project“.
+
+- **You press the button, not the assistant.** In an assistant that shows the
+  card, its buttons are yours: the assistant keeps them from its model, as MCP
+  Apps requires. Applying runs the change as you, with your rights, exactly as
+  the button in Piloti does: if you may not decide it, the card says so and
+  nothing changes.
+- **When the assistant wants to decide it itself.** If your assistant tries to
+  apply or discard a proposal on its own, Piloti asks you first in the
+  assistant's chat, where the assistant supports such questions (MCP's
+  elicitation, in clients on the 2026 protocol). Older clients cannot carry the
+  question; there the assistant applies a proposal only through its own
+  confirmation of a change, so read what it shows you before you agree.
+- **The card looks like your assistant.** It takes your assistant's colours,
+  font, light or dark mode and language, and keeps Piloti's layout and words.
+- **Which assistants show it.** Claude (claude.ai and Claude Desktop), ChatGPT,
+  VS Code and other clients that support MCP Apps. Cursor shows it from
+  version 2.6, with occasional display problems in some versions. Everywhere
+  else the proposal arrives as text, and your assistant can still apply it for
+  you when you say so. An assistant that says it shows MCP Apps gets the card;
+  one on the 2026 protocol that does not say so gets only the text.
+- **An old conversation.** When you reopen a conversation, the card reads the
+  proposal again, so one decided in the meantime shows as decided.
+- **One kind is decided in Piloti.** A change to the project context (its
+  facts) is compared with the current values, which only Piloti can show. The
+  card says so; open the project in Piloti to decide it.
+- **A colleague was faster.** If someone decided the proposal in the meantime,
+  the card shows who decided and when instead of an error.
+
 ## Ask Piloti
 
 Your agent can also ask Piloti itself, the way you would ask a colleague who
@@ -172,4 +207,5 @@ Piloti filed. Agent access (`agent-mcp`) and `piloti-ask` must both be on.
 | **403** „Asking Piloti from another agent is not enabled for this organization“ | Agent access is on, asking Piloti is not | Ask an administrator to switch on `piloti-ask` |
 | An ask ends „rejected“ with „budget“ | Your, the project's or the organization's AI budget is spent | An administrator raises it under Organization → Usage & budgets |
 | An ask ends „rejected“: „Piloti is still answering in this conversation“ | The agent asked again in a conversation where Piloti had not finished | Wait for the first answer (`piloti-ask-get`), then ask again, or ask in a new conversation by leaving out `conversationId`. An ask never interrupts a running answer |
+| A proposal arrives as text, not as a card | Your assistant does not render MCP Apps, or it showed the text first | Ask it to show the proposal with `proposal-get`, or decide it in Piloti |
 | The profile shows no address | Agent access is off for your organization, or the installation is not set up | Read the notice in the section |

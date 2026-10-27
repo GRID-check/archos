@@ -30,6 +30,7 @@ export const nav = {
     /** The tab that leads: work delegated to Piloti, one card per task (ADR-0051). */
     tasks: 'Tasks',
     officeShelf: 'Office filing',
+    search: 'Search',
     settings: 'Overview',
     // The intake wizard, labelled "Setup" in the product (⌘K palette only).
     intake: 'Setup',
@@ -125,6 +126,10 @@ export const nav = {
     profile: 'Profile',
     organization: 'Organization',
     platform: 'Platform',
+    switchOrganization: 'Switch organization',
+    currentOrganization: 'Current organization',
+    switchingOrganization: 'Switching…',
+    switchOrganizationFailed: 'Could not switch. Please try again.',
     settings: 'Settings',
     productTour: 'Product tour',
   },

@@ -125,6 +125,8 @@ const ENTRIES = [
       'lists every distinct matched string with its count, files and pages. `shelf` (`project`, `office` or `base`) reads one shelf ' +
       'only (`base` needs no `projectId`); omitted, every shelf is read, the OIB corpus included, so pass `project` for whether something is in the ' +
       'project’s own documents; an exact or regex answer states per shelf how many documents were searched and how many matched. `context` (0 to 3, exact and regex only) adds the lines around every hit as an index. ' +
+      '`document_type` (a type key such as `fire_safety_concept`) and `refers_to` (a norm, a law, a plan number or a kind of ' +
+      'document) narrow to the documents Piloti read to be that kind or to refer to that, inside the search. ' +
       'A search that stops at its limit says its counts are lower bounds. `group_by: "document"` (ranked search only) returns one ' +
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
       'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
@@ -378,6 +380,13 @@ function build(entry: Entry): BackendOperation {
 
 /** Every read tool of the Python agent offered over MCP, in the contract's order. */
 export const BACKEND_OPERATIONS: readonly BackendOperation[] = ENTRIES.map(build)
+
+/**
+ * The tool Piloti's own chat does an operation's work with, where it is not the tool the door calls.
+ * Piloti reads the estate with the filesystem verbs (ADR-0133 slice 6), while the door keeps calling
+ * the older tools, which deep research and intake still bind.
+ */
+export const PILOTI_TOOL_FOR: Readonly<Record<string, string>> = { read_passage: 'read_file' }
 
 /** The operation each Python tool is over MCP, for the names its answers mention. */
 const OPERATION_NAMES: ToolNames = Object.fromEntries(ENTRIES.map((entry) => [entry.tool, entry.name]))

@@ -1,0 +1,22 @@
+---
+features:
+  - >
+    Piloti now reads each document whole and shows what it is, who and what it
+    names, the facts it states with their page, and which norms, laws, plans and
+    documents it refers to, so a document is understood without opening it.
+  - >
+    A project lists findings from its documents: a referenced document or plan
+    number the project does not hold, and two documents that state the same fact
+    differently, each with the pages it rests on.
+improvements:
+  - >
+    A document says how many of its pages were fully read, and why the rest were
+    not, instead of looking complete when a drawing or scan could not be read.
+  - >
+    A document whose reading failed for a passing reason is read again on its own,
+    and drawing sets are read faster while several offices upload at once.
+fixes:
+  - >
+    Uploaded photos show again when they were taken and with which camera.
+  - >
+    Permit notices with several conditions are remembered in full again.

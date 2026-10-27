@@ -37,7 +37,6 @@ import { AppWiring, PULL_SECRET_NAME, buildRegistryPullSecret, buildScalerSecret
 import { runMigrations } from "./src/app/migrations-job";
 import { reconcileAuditSchemas } from "./src/app/audit-schemas-job";
 import { carryOverFolderGrants, reconcileAuthzCatalog } from "./src/app/workos-authz-jobs";
-import { importLegacyCorpus } from "./src/app/legacy-corpus-import-job";
 import { migrateChromaToQdrant } from "./src/app/chroma-migration-job";
 import { installBackend } from "./src/app/backend";
 import { installBackendScaling } from "./src/app/backend-scaling";
@@ -310,15 +309,6 @@ const backend = installBackend(wiring, cfg, secrets, [
   frontend.deployment,
   ...afterChromaMigration,
 ]);
-
-// The pre-A2 base corpus, carried off the old backend data volume once
-// (ADR-0082 A2). Only where that volume exists: see `storage.legacyCorpusClaim`.
-if (cfg.storage.legacyCorpusClaim) {
-  importLegacyCorpus(wiring, cfg, secrets, cfg.storage.legacyCorpusClaim, [
-    backend.statefulSet,
-    frontend.deployment,
-  ]);
-}
 
 // Landing site + blog (Astro, frontends/web) — static-first, no app secrets,
 // but it pulls from the same registry, so it gets the pull Secret too.

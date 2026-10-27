@@ -179,7 +179,8 @@ export type InternalDocumentRead =
  *   - `shelves`: one person reading two shelves at once (the IFC model list,
  *     a project's models and the Büroablage's), asked per row of its own shelf.
  *   - `projects`: one person reading many projects at once (the project grid's
- *     counts), a reviewer of some of them: held rows of those, and their own.
+ *     counts, the office-wide search), a reviewer of some of them: held rows of
+ *     those, of the office shelf when they review its quarantine, and their own.
  *   - `screened-only`: nobody's own uploads count. What reaches a model, and
  *     every path that serves no particular person.
  *   - `internal`: every row, for a reason {@link InternalDocumentRead} names.
@@ -187,7 +188,13 @@ export type InternalDocumentRead =
 export type DocumentReader =
   | ShelfReader
   | { readonly kind: 'shelves'; readonly project: ShelfReader; readonly officeShelf: ShelfReader }
-  | { readonly kind: 'projects'; readonly userId: string; readonly reviewedProjectIds: readonly string[] }
+  | {
+      readonly kind: 'projects'
+      readonly userId: string
+      readonly reviewedProjectIds: readonly string[]
+      /** Reviews the office shelf's quarantine (ADR-0086). Absent: does not. */
+      readonly reviewsOfficeShelf?: boolean
+    }
   | { readonly kind: 'screened-only' }
   | { readonly kind: 'internal'; readonly why: InternalDocumentRead }
 
@@ -225,7 +232,8 @@ export function mayReadDocument(row: ReadableFacts, reader: DocumentReader): boo
     case 'projects':
       return (
         row.createdBy === reader.userId ||
-        (row.scope === 'project' && row.projectId !== null && reader.reviewedProjectIds.includes(row.projectId))
+        (row.scope === 'project' && row.projectId !== null && reader.reviewedProjectIds.includes(row.projectId)) ||
+        (row.scope === 'office_shelf' && reader.reviewsOfficeShelf === true)
       )
     case 'screened-only':
       return false

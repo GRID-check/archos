@@ -15,6 +15,7 @@ import { projects } from './projects'
 import { chat } from './chat'
 import { collaboration } from './collaboration'
 import { files } from './files'
+import { dossier } from './dossier'
 import { officeShelf } from './office-shelf'
 import { bim } from './bim'
 import { knowledge } from './knowledge'
@@ -35,6 +36,7 @@ import { answerExport } from './answer-export'
 import { diagrams } from './diagrams'
 import { feedback } from './feedback'
 import { feedbackExport } from './feedback-export'
+import { searchExport } from './search-export'
 import { uploadBatches } from './upload-batches'
 import { references } from './references'
 import { projectIntake } from './project-intake'
@@ -45,6 +47,7 @@ import { intakeFilingStep } from './intake-filing-step'
 import { intakeProjectStep } from './intake-project-step'
 import { intakeShell } from './intake-shell'
 import { notifications } from './notifications'
+import { search } from './search'
 import type { Dictionary } from '../index'
 
 export const de: Dictionary = {
@@ -60,6 +63,7 @@ export const de: Dictionary = {
   chat,
   collaboration,
   files,
+  dossier,
   officeShelf,
   bim,
   knowledge,
@@ -77,6 +81,7 @@ export const de: Dictionary = {
   diagrams,
   feedback,
   feedbackExport,
+  searchExport,
   uploadBatches,
   references,
   projectIntake,
@@ -87,4 +92,5 @@ export const de: Dictionary = {
   intakeProjectStep,
   intakeShell,
   notifications,
+  search,
 }

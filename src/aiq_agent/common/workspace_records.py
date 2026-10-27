@@ -33,8 +33,9 @@ model read, so it is all a sentence can have been written from:
   PROPOSAL, whose evidence is the server row the person decides on. Its values
   are the inputs the model proposed;
 - a ``list_files`` LISTING (tree or files view; ADR-0125, amendment of
-  2026-10-22) is read like a capped read: the rendered text the model saw, cut
-  at :data:`LISTING_MAX_CHARS`, one item per line, so „Einreichung: 6
+  2026-10-22), or an ``ls`` or ``glob`` of the estate (ADR-0133 slice 6), is
+  read like a capped read: the rendered text the model saw, cut at
+  :data:`LISTING_MAX_CHARS`, one item per line, so „Einreichung: 6
   Dokumente, aktuell Index B" is a sentence read off the listing. It is
   provenance only: the listing stays an index, never cited, and registers no
   source (``citation_verification``);
@@ -158,7 +159,22 @@ def is_listing_call(tool_name: str) -> bool:
     return name == LISTING_TOOL or name.endswith(f"__{LISTING_TOOL}")
 
 
-def listing_record(text: str) -> WorkspaceRecord | None:
+#: The filesystem verbs that list the estate (ADR-0133 slice 6), read like ``list_files`` was.
+ESTATE_LISTING_TOOLS = ("ls", "glob")
+
+
+def is_estate_listing(tool_name: str, call: dict[str, Any] | None) -> bool:
+    """Whether a result is an ``ls`` or ``glob`` of the estate; one of the drafts or the skills lists no files."""
+    from aiq_agent.common.estate_paths import call_mount
+    from aiq_agent.common.turn_status import tool_basename
+
+    base = tool_basename(tool_name or "")
+    if base not in ESTATE_LISTING_TOOLS or call is None:
+        return False
+    return call_mount(base, call.get("args")) not in (None, "drafts", "skills")
+
+
+def listing_record(text: str, tool: str = LISTING_TOOL) -> WorkspaceRecord | None:
     """The record a ``list_files`` result makes: its rendered text, capped, one item per line.
 
     A listing is rows the knowledge layer computed, not words Piloti wrote, so
@@ -169,7 +185,7 @@ def listing_record(text: str) -> WorkspaceRecord | None:
     if not stripped or _LISTING_REFUSALS.match(stripped):
         return None
     lines = [line.strip().casefold() for line in stripped[:LISTING_MAX_CHARS].splitlines() if line.strip()]
-    return WorkspaceRecord(LISTING_TOOL, "read", "\n".join(lines), frozenset(), tuple(lines))
+    return WorkspaceRecord(tool, "read", "\n".join(lines), frozenset(), tuple(lines))
 
 
 def _piloti_authored(value: dict[str, Any]) -> bool:
@@ -320,8 +336,11 @@ def records_from_messages(messages: Sequence[Any]) -> list[WorkspaceRecord]:
     records: list[WorkspaceRecord] = []
     for message in messages:
         name = getattr(message, "name", "") or ""
-        if is_listing_call(name):
-            listing = listing_record(_content_text(getattr(message, "content", "")))
+        listed = calls.get(str(getattr(message, "tool_call_id", "") or ""))
+        if is_listing_call(name) or is_estate_listing(name, listed):
+            if getattr(message, "status", None) == "error":
+                continue
+            listing = listing_record(_content_text(getattr(message, "content", "")), name.rsplit("__", 1)[-1])
             if listing is not None:
                 records.append(listing)
             continue

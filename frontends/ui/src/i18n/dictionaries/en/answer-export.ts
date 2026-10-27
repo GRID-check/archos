@@ -159,6 +159,7 @@ export const answerExport = {
     fire_access_plan: 'Fire-brigade access',
     document_grid: 'Documents',
     calculation: 'Calculation',
+    formula: 'Formula',
     surface: 'Composition',
     ifc_viewer: 'Model view',
     ifc_compliance: 'Model compliance',
@@ -256,6 +257,29 @@ export const answerExport = {
       straight: 'straight',
       left: 'left',
       right: 'right',
+    },
+    /** `formula.formula.component` — the row of OIB-RL 6 Pkt. 4.4.1 a U-value is held against. */
+    component: {
+      external_wall: 'external wall against outside air',
+      roof_or_ceiling_to_outside_air: 'ceiling or roof slope against outside air',
+      floor_over_outside_air: 'ceiling over outside air',
+    },
+    /** `formula.formula.stair_type` — the row of OIB-RL 4 Tabelle 3. */
+    /** `formula.formula.measure` — new build (OIB-RL 6 Pkt. 4.4.1) or renovation (Pkt. 4.5). */
+    measure: {
+      new_build: 'new build',
+      renovation: 'renovation',
+      major_renovation: 'major renovation',
+    },
+    stair_type: {
+      main: 'main stair',
+      dwelling: 'stair within a dwelling',
+      secondary: 'secondary stair',
+    },
+    /** `formula.formula.start` — where an escape route is measured from (OIB-RL 2 Pkt. 5.1.1, 5.1.2). */
+    start: {
+      room: 'most remote point of the room',
+      dwelling_entrance: 'dwelling entrance door',
     },
   },
   /** Yes/no for the boolean fields a card carries. */
@@ -403,5 +427,24 @@ export const answerExport = {
     // StagingAreaPlan
     length: 'Length',
     distance_to_facade: 'Distance to the facade',
+    // The formula card (ADR-0143). Exported as the source's inputs and limits.
+    formula: 'Rule',
+    name: 'Name',
+    component: 'Component',
+    measure: 'New build or renovation',
+    stair_type: 'Stair type',
+    start: 'Measured from',
+    layers: 'Layers',
+    thickness: 'Thickness d (cm)',
+    conductivity: 'Thermal conductivity λ (W/(m·K))',
+    riser: 'Riser height s (cm)',
+    going: 'Going a (cm)',
+    opening_area: 'Glazing area (m²)',
+    room_depth: 'Room depth (m)',
+    overhang_depth: 'Overhang (m)',
+    floor_area: 'Floor area (m²)',
+    editable: 'Reader may change it',
+    min: 'Lowest value',
+    max: 'Highest value',
   },
 }

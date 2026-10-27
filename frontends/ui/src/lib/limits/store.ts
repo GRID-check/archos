@@ -19,6 +19,7 @@
  */
 
 import 'server-only'
+import { createRedisClient } from '@/lib/redis/connect.js'
 import { consumeLimiter, createLimiter } from './factory.js'
 import type { LimitRule } from './types'
 
@@ -56,22 +57,9 @@ class LimiterStore implements LimitStore {
 }
 
 function createClient(url: string): RedisLike {
-  // Lazy require keeps ioredis out of bundles that never set REDIS_URL — the
-  // same shape `@/lib/cache` uses.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const IORedis = require('ioredis')
-  const client = new IORedis(url, {
-    connectTimeout: 1000,
-    // Tight: this sits in front of a user-visible action, and failing open fast
-    // beats blocking a request on a slow store.
-    commandTimeout: 500,
-    maxRetriesPerRequest: 1,
-    enableOfflineQueue: false,
-  }) as RedisLike
-  client.on('error', (error: unknown) => {
-    console.warn('[limits] store error:', error)
-  })
-  return client
+  // Tight: this sits in front of a user-visible action, and failing open fast
+  // beats blocking a request on a slow store.
+  return createRedisClient(url, 'limits', { commandTimeout: 500 }) as RedisLike
 }
 
 function createDefaultStore(): LimitStore {

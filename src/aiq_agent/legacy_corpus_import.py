@@ -8,12 +8,12 @@ an old data directory, mounted read-only, and stores every PDF the old corpus
 held through :func:`corpus_store.put`, the path an admin upload takes. The
 base-corpus housekeeping cycle then queues their ingestion.
 
-It runs as a one-shot Job (Kubernetes) or service (Compose) on the first deploy
-of A2 and is safe to run again: a file already stored with the same bytes is
-skipped. Once every environment has run it, delete this module, its Job, its
-Compose service and the ``legacyCorpusClaim`` stack key together.
+It ran as a one-shot Job on both Kubernetes stacks, which no longer carry it,
+and runs as a one-shot service on Compose; it is safe to run again: a file
+already stored with the same bytes is skipped. Once every Compose install has
+run it, delete this module with its Compose service.
 
-    python -m aiq_agent.legacy_corpus_import /legacy               # Kubernetes: the old volume
+    python -m aiq_agent.legacy_corpus_import /legacy               # a pod mounting the old volume
     python -m aiq_agent.legacy_corpus_import /legacy/data /legacy/oib  # Compose: the volume and the host's data/oib
 
 Compose bind-mounted the operator PDFs from the host over ``/app/data/oib``, so

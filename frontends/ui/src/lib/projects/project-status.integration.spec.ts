@@ -20,6 +20,7 @@ import { sql } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROJECT_CLOSED_SQLSTATE } from './project-status'
 import { REVIEWER_READER } from '@/lib/documents/document-reader'
+import { PROJECT_PERMISSION_SPECS } from '@/lib/authz/catalog'
 
 vi.mock('server-only', () => ({}))
 
@@ -38,7 +39,7 @@ const contracts = { id: '' }
 vi.mock('@/lib/auth/membership-roles', () => ({
   resolveMembershipRoles: vi.fn(async (_org: string, userId: string) => ROLES[userId] ?? null),
 }))
-vi.mock('@/lib/authz/org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn(async () => false) }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ rolesHoldPermission: vi.fn(async () => false) }))
 vi.mock('@/lib/authz/project-membership', () => ({
   resolveSubjectMembership: vi.fn(async (_org: string, userId: string) => ({
     organizationMembershipId: userId.replace('user_', 'om_'),
@@ -50,6 +51,13 @@ vi.mock('@/lib/workos/client', () => ({
     authorization: {
       check: vi.fn(async ({ organizationMembershipId }: { organizationMembershipId: string }) => ({
         authorized: PROJECT_MEMBERS.has(organizationMembershipId),
+      })),
+      // A project member holds every project permission; anyone else none.
+      listEffectivePermissionsByExternalId: vi.fn(async ({ organizationMembershipId }: { organizationMembershipId: string }) => ({
+        autoPagination: async () =>
+          PROJECT_MEMBERS.has(organizationMembershipId)
+            ? PROJECT_PERMISSION_SPECS.map(({ slug }) => ({ slug }))
+            : [],
       })),
       // `heldFolderLevels`, for real: folder-editor gives folder:read and folder:write.
       listResourcesForMembership: vi.fn(async ({ organizationMembershipId }: { organizationMembershipId: string }) => ({

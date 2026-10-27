@@ -58,7 +58,9 @@ export const collaborationOperations = [
     summary: 'List the person’s inbox',
     description:
       'The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), ' +
-      '`archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`.',
+      '`archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`. An `upload.completed` ' +
+      'item of a project upload carries `uploadReport`: documents read by document type, new findings (read them ' +
+      'with project-document-findings), references the project cannot resolve and pages not read in full.',
     method: 'GET',
     path: '/api/inbox',
     query: inboxListQuerySchema,
@@ -391,6 +393,7 @@ export const collaborationOperations = [
     path: '/api/proposals/[id]/apply',
     params: proposalParams,
     body: applyProposalRequestSchema,
+    personDecides: true,
     load: () => import('@/app/api/proposals/[id]/apply/route'),
   },
   {
@@ -401,6 +404,7 @@ export const collaborationOperations = [
     method: 'POST',
     path: '/api/proposals/[id]/dismiss',
     params: proposalParams,
+    personDecides: true,
     load: () => import('@/app/api/proposals/[id]/dismiss/route'),
   },
   {

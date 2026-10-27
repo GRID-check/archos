@@ -32,12 +32,21 @@ import {
   retractAnswerFeedbackQuerySchema,
   upsertAnswerFeedbackSchema,
 } from '@/lib/feedback/types'
-import { submitProductFeedbackSchema } from '@/lib/product-feedback/types'
+import {
+  listOfficeProductFeedbackQuerySchema,
+  listOwnProductFeedbackQuerySchema,
+  replyToProductFeedbackSchema,
+  submitProductFeedbackSchema,
+} from '@/lib/product-feedback/types'
 import { similarPassagesRequestSchema } from '@/lib/similar-passages/types'
 import type { AgentOperation } from '../operation'
 
 const conversationParams = z.object({
   id: z.string().describe('The conversation id (`s_` plus a UUID with underscores), from conversation-list.'),
+})
+
+const feedbackReportParams = z.object({
+  reportId: z.string().uuid().describe('The feedback report id (a UUID), from feedback-report-list.'),
 })
 
 const messageParams = z.object({
@@ -273,6 +282,61 @@ export const conversationsOperations = [
     path: '/api/feedback/reports',
     body: submitProductFeedbackSchema,
     load: () => import('@/app/api/feedback/reports/route'),
+  },
+  {
+    name: 'feedback-report-list',
+    domain: 'conversations',
+    summary: 'List the person’s own feedback reports',
+    description:
+      'The person’s own product feedback reports, newest first, each with its ticket status (`resolved` is done, every other ' +
+      'status is an active case), ticket number, last activity, and `hasUpdate` when the Piloti team replied or changed the ' +
+      'status since the person last read the thread; `updatedCount` counts those on the page. `canViewOffice` says whether ' +
+      'feedback-office-report-list is open to them. Page with `nextCursor`. Threads: feedback-thread-get.',
+    method: 'GET',
+    path: '/api/feedback/reports',
+    query: listOwnProductFeedbackQuerySchema,
+    load: () => import('@/app/api/feedback/reports/route'),
+  },
+  {
+    name: 'feedback-office-report-list',
+    domain: 'conversations',
+    summary: 'List every feedback report of the organization',
+    description:
+      'Every product feedback report filed by anyone in the organization, newest first, with the reporter’s name, ticket ' +
+      'status (`resolved` is done, every other status is an active case), ticket number and last activity. Needs ' +
+      '`org:settings:manage` (403 otherwise). `mine: false` marks a colleague’s report: its thread reads with ' +
+      'feedback-thread-get but only the reporter can answer it. Page with `nextCursor`.',
+    method: 'GET',
+    path: '/api/feedback/office-reports',
+    query: listOfficeProductFeedbackQuerySchema,
+    load: () => import('@/app/api/feedback/office-reports/route'),
+  },
+  {
+    name: 'feedback-thread-get',
+    domain: 'conversations',
+    summary: 'Read the conversation on one feedback report',
+    description:
+      'The thread on one feedback report, oldest first: the report as written, the Piloti team’s replies (`author: team`) ' +
+      'and the reporter’s answers (`author: reporter`). The person’s own report, or, with `org:settings:manage`, a ' +
+      'colleague’s (read-only, `report.mine: false`). Reading one’s own marks it as read. `live: false` means the ticket ' +
+      'could not be read and only the report is shown.',
+    method: 'GET',
+    path: '/api/feedback/reports/[reportId]/messages',
+    params: feedbackReportParams,
+    load: () => import('@/app/api/feedback/reports/[reportId]/messages/route'),
+  },
+  {
+    name: 'feedback-thread-reply',
+    domain: 'conversations',
+    summary: 'Answer the Piloti team on a feedback report',
+    description:
+      'Posts the person’s answer on one of their own feedback reports; the Piloti team sees it on the ticket. Refused (409) when ' +
+      'the report has no ticket to answer on (`canReply: false` in feedback-report-list). Returns the updated thread.',
+    method: 'POST',
+    path: '/api/feedback/reports/[reportId]/messages',
+    params: feedbackReportParams,
+    body: replyToProductFeedbackSchema,
+    load: () => import('@/app/api/feedback/reports/[reportId]/messages/route'),
   },
   {
     name: 'citation-format',

@@ -3,10 +3,12 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const check = vi.fn()
+/** WorkOS's effective permissions on one project: `project:view`, or nothing. */
+const effective = vi.fn()
 vi.mock('@/lib/workos/client', () => ({
-  getWorkOS: () => ({ authorization: { check } }),
+  getWorkOS: () => ({ authorization: { listEffectivePermissionsByExternalId: effective } }),
 }))
+const page = (views: boolean) => ({ autoPagination: async () => (views ? [{ slug: 'project:view' }] : []) })
 
 const listProjectsInOrg = vi.fn()
 vi.mock('./repository', () => ({
@@ -70,14 +72,14 @@ describe('listProjects', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     listProjectsInOrg.mockResolvedValue([ALPHA, BETA, GAMMA])
-    // These tests are about the listing, not the cache: each mocks `check`
+    // These tests are about the listing, not the cache: each mocks WorkOS
     // differently, so a cached verdict from the previous one would lie.
     process.env.GRID_AUTHZ_CACHE_TTL_MS = '0'
   })
 
   it('returns ONLY the projects the member holds project:view on', async () => {
-    check.mockImplementation(({ resourceExternalId }: { resourceExternalId: string }) =>
-      Promise.resolve({ authorized: resourceExternalId === 'proj_beta' })
+    effective.mockImplementation(({ externalId }: { externalId: string }) =>
+      Promise.resolve(page(externalId === 'proj_beta'))
     )
 
     const visible = await listProjects(session())
@@ -86,7 +88,7 @@ describe('listProjects', () => {
   })
 
   it('does not leak the names of projects the member cannot reach', async () => {
-    check.mockResolvedValue({ authorized: false })
+    effective.mockResolvedValue(page(false))
 
     const visible = await listProjects(session())
 
@@ -98,24 +100,24 @@ describe('listProjects', () => {
   it('lists a closed project for every member, without asking for a grant (ADR-0090)', async () => {
     const closed = makeProject({ id: 'proj_closed', name: 'Closed', status: 'closed', closedAt: new Date(), closedBy: 'u' })
     listProjectsInOrg.mockResolvedValue([ALPHA, closed])
-    check.mockResolvedValue({ authorized: false })
+    effective.mockResolvedValue(page(false))
 
     const visible = await listProjects(session())
 
     expect(visible.map((project) => project.id)).toEqual(['proj_closed'])
-    expect(check).toHaveBeenCalledTimes(1)
+    expect(effective).toHaveBeenCalledTimes(1)
   })
 
-  it('checks project:view against the caller membership, once per project', async () => {
-    check.mockResolvedValue({ authorized: true })
+  it('asks WorkOS once per project, for the caller membership', async () => {
+    effective.mockResolvedValue(page(true))
 
     await listProjects(session())
 
-    expect(check).toHaveBeenCalledTimes(3)
-    expect(check).toHaveBeenCalledWith(
+    expect(effective).toHaveBeenCalledTimes(3)
+    expect(effective).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationMembershipId: 'om_1',
-        permissionSlug: 'project:view',
+        externalId: 'proj_alpha',
         resourceTypeSlug: 'project',
       })
     )
@@ -124,10 +126,10 @@ describe('listProjects', () => {
   it('org admins still see every project in their organization (named bypass)', async () => {
     // A legacy admin session: role slug, no claims. `hasPermission`'s bounded
     // catalog implication carries it, so nobody re-logs-in for the fix.
-    const visible = await listProjects(session({ role: 'admin' }))
+    const visible = await listProjects(session({ role: 'admin', permissions: ['org:projects:administer'] }))
 
     expect(visible).toHaveLength(3)
-    expect(check).not.toHaveBeenCalled()
+    expect(effective).not.toHaveBeenCalled()
   })
 
   it('the bypass is the PERMISSION, not the role slug', async () => {
@@ -138,23 +140,23 @@ describe('listProjects', () => {
       session({ role: 'acme-owner', permissions: ['org:projects:administer'] })
     )
     expect(custom).toHaveLength(3)
-    expect(check).not.toHaveBeenCalled()
+    expect(effective).not.toHaveBeenCalled()
 
     // …and a role that holds org permissions but not THAT one is filtered like
     // anyone else.
-    check.mockResolvedValue({ authorized: false })
+    effective.mockResolvedValue(page(false))
     const auditor = await listProjects(
       session({ role: 'org-auditor', permissions: ['org:audit:view'] })
     )
     expect(auditor).toHaveLength(0)
-    expect(check).toHaveBeenCalled()
+    expect(effective).toHaveBeenCalled()
   })
 
-  it('fails closed per project: one broken check hides that project, not the page', async () => {
-    check.mockImplementation(({ resourceExternalId }: { resourceExternalId: string }) =>
-      resourceExternalId === 'proj_beta'
+  it('fails closed per project: one broken lookup hides that project, not the page', async () => {
+    effective.mockImplementation(({ externalId }: { externalId: string }) =>
+      externalId === 'proj_beta'
         ? Promise.reject(new Error('workos unreachable'))
-        : Promise.resolve({ authorized: true })
+        : Promise.resolve(page(true))
     )
 
     const visible = await listProjects(session())
@@ -163,7 +165,7 @@ describe('listProjects', () => {
   })
 
   it('never reaches outside the caller organization', async () => {
-    check.mockResolvedValue({ authorized: true })
+    effective.mockResolvedValue(page(true))
 
     await listProjects(session({ organizationId: 'org_1' }))
 
@@ -186,7 +188,7 @@ describe('getProjectsGridData', () => {
   })
 
   it('counts only what the viewer may read: the folders hidden from them are passed to the count', async () => {
-    check.mockResolvedValue({ authorized: true })
+    effective.mockResolvedValue(page(true))
     getHiddenFolderIds.mockImplementation(async (_session: unknown, projectId: string) =>
       projectId === 'proj_beta' ? ['folder_hr'] : projectId === 'proj_alpha' ? ['folder_fees', 'folder_pay'] : []
     )
@@ -200,8 +202,8 @@ describe('getProjectsGridData', () => {
   })
 
   it('asks for activity for the caller, and only for the projects they can reach', async () => {
-    check.mockImplementation(({ resourceExternalId }: { resourceExternalId: string }) =>
-      Promise.resolve({ authorized: resourceExternalId === 'proj_beta' })
+    effective.mockImplementation(({ externalId }: { externalId: string }) =>
+      Promise.resolve(page(externalId === 'proj_beta'))
     )
 
     const data = await getProjectsGridData(session())
@@ -218,7 +220,7 @@ describe('getProjectsGridData', () => {
   })
 
   it('returns an empty activity map rather than failing when nobody has worked anywhere', async () => {
-    check.mockResolvedValue({ authorized: true })
+    effective.mockResolvedValue(page(true))
     lastProjectActivityByUser.mockResolvedValue({})
 
     const data = await getProjectsGridData(session())

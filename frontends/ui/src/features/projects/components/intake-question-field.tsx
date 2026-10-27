@@ -270,11 +270,12 @@ export function QuestionHeader({ question, domId }: { question: ProjectIntakeQue
         )}
       </div>
       {question.why && whyOpen && (
-        // The documented quotation rule (`border-l-2 border-border`) on a real
-        // surface, rather than a second differently-alpha'd action ink.
+        // A quiet tinted surface with the card radius, rather than a second
+        // differently-alpha'd action ink, and no side stripe
+        // (grid-design-language.md, "Emphasis without a stripe").
         <p
           id={whyId}
-          className="border-border bg-muted text-muted-foreground max-w-prose border-l-2 px-3 py-2 text-xs"
+          className="bg-muted text-muted-foreground max-w-prose rounded-md px-3 py-2 text-xs"
         >
           {question.why}
         </p>

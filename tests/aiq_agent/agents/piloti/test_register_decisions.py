@@ -2,7 +2,7 @@
 
 The decision itself is mocked; what is pinned is the seam: the facts the
 decider is shown come from the state the gather filled, a model answer
-inlines the IFC skill, the chosen card types become the turn's shapes block,
+pins the IFC skill, the chosen card types become the turn's shapes block,
 and the prefetch calls reach ``TurnConfig`` — while a decision that did not
 run, or a config that switched it off, leaves all three untouched.
 """
@@ -53,7 +53,7 @@ IFC = "ifc-spatial-reasoning"
 
 
 def _runtime() -> SkillRuntime:
-    """Two skills, nothing inlined by budget — the shipped default."""
+    """Two skills, nothing pinned until a decision says so."""
     ifc = Skill(name=IFC, description="Am Modell messen.", body="x" * 5000, origin="platform")
     short = Skill(
         name="fire-safety",
@@ -62,7 +62,7 @@ def _runtime() -> SkillRuntime:
         metadata={"grid-cards": "fire_access_plan,egress_diagram,calculation"},
         origin="platform",
     )
-    return SkillRuntime(skills=(short, ifc))
+    return SkillRuntime.office((short, ifc))
 
 
 class TestTheFacts:
@@ -87,13 +87,13 @@ class TestTheFacts:
 class TestTheEffects:
     def test_the_chosen_skill_rides_the_prompt_whatever_its_size(self):
         runtime = _runtime()
-        assert runtime.inlined == ()
+        assert runtime.pinned == ()
         _apply_decisions(
             TurnDecisions(decided=True, skill=IFC, skill_p=0.9, skill_fit=0.8), ResearchAgentState(messages=[]), runtime
         )
-        assert [s.name for s in runtime.inlined] == [IFC]
+        assert runtime.pinned == (IFC,)
         block = runtime.prompt_block() or ""
-        assert "x" * 100 in block and "- `fire-safety`:" in block
+        assert "x" * 100 in block and "- **fire-safety**:" in block
 
     def test_chosen_cards_become_the_shapes_block(self):
         state = ResearchAgentState(messages=[])
@@ -108,7 +108,7 @@ class TestTheEffects:
         decided = TurnDecisions(decided=True, skill="fire-safety", skill_p=0.8, skill_fit=0.9)
         runtime = _runtime()
         _apply_decisions(decided, state, runtime)
-        assert [s.name for s in runtime.inlined] == ["fire-safety"]
+        assert runtime.pinned == ("fire-safety",)
         block = state.card_shapes_block or ""
         assert "fire_access_plan" in block and "egress_diagram" in block
         # `calculation` is the shape the envelope already teaches.
@@ -124,7 +124,7 @@ class TestTheEffects:
             origin="platform",
         )
         decided = TurnDecisions(decided=True, skill="varianten", skill_p=0.8, skill_fit=0.9)
-        _apply_decisions(decided, state, SkillRuntime(skills=(skill,)))
+        _apply_decisions(decided, state, SkillRuntime.office((skill,)))
         block = state.card_shapes_block or ""
         assert "fire_access_plan" in block and '"surface"' not in block
 
@@ -161,7 +161,7 @@ class TestTheEffects:
         runtime = _runtime()
         _apply_decisions(TurnDecisions.none(), state, runtime)
         assert state.card_shapes_block is None
-        assert runtime.inlined == ()
+        assert runtime.pinned == ()
 
 
 async def _run_turn(config: ResearchAgentConfig, decisions: TurnDecisions, messages=None, on_decide=None):
@@ -380,6 +380,33 @@ class TestTheBuildingModelToolsNeedAProject:
             "ifc_measure",
             "read_passage",
         ]
+
+
+class TestTheViewerToolIsSentOnlyToAPageThatCanRunIt:
+    """``show_in_viewer`` runs on the asking page (ADR-0144): bound only when that page declared it."""
+
+    @staticmethod
+    def _tools():
+        from types import SimpleNamespace
+
+        return [SimpleNamespace(name=n) for n in ("knowledge_search", "show_in_viewer")]
+
+    def test_a_turn_that_declared_nothing_is_not_sent_it(self, monkeypatch):
+        from aiq_agent.agents.piloti import register
+        from aiq_agent.common.client_tools import set_turn_client_tools
+
+        monkeypatch.setattr(register, "get_project_id_from_context", lambda: "proj-1")
+        set_turn_client_tools(None)
+        assert [t.name for t in register._tools_in_scope(self._tools())] == ["knowledge_search"]
+
+    def test_a_turn_whose_page_declared_it_is(self, monkeypatch):
+        from aiq_agent.agents.piloti import register
+        from aiq_agent.common.client_tools import set_turn_client_tools
+
+        monkeypatch.setattr(register, "get_project_id_from_context", lambda: None)
+        set_turn_client_tools(["show_in_viewer"])
+        assert [t.name for t in register._tools_in_scope(self._tools())] == ["knowledge_search", "show_in_viewer"]
+        set_turn_client_tools(None)
 
 
 def test_the_catalog_is_counted_by_its_project_lines_not_its_tail():

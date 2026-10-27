@@ -252,7 +252,8 @@ flowchart LR
 
 ### Confirmation
 
-* `task be:eval:answer-suite -- --set files --arm search|navigate|both`, before and
+* `task be:eval:answer-suite -- --set files --arm semantic|grep|hybrid|all` (named
+  `search|navigate|both` until ADR-0133, and still accepted), before and
   after each slice that changes an answer (the AGENTS.md obligation). Rows live in
   `tests/fixtures/files_eval/files_questions.yaml`; `tests/test_files_eval_rows.py`
   fails a row without `expect.tools`, and a row that names a file the fixture does not
@@ -328,6 +329,21 @@ by the product owner the same day; not kept as an eval arm.
   beside a Python agent.
 * Neutral: outside agents on the MCP door already have their own shells; the door
   stays tools-only.
+
+> **Amended 2026-10-27, in place.** This record is still proposed, so the note sits
+> beside the rejection rather than in a new record, and the rejection above stays as
+> it was written. Its three reasons were properties of `just-bash`: grep
+> materialising every document's text, `cat` without chunk identity, and no
+> isolation. None of them is a property of standard filesystem verbs over a virtual
+> projection as such. [ADR-0133](0133-piloti-reads-the-estate-through-standard-filesystem-tools.md)
+> re-checked them on 2026-10-27 and chose `ls`, `glob`, `grep` and `read_file` over
+> Piloti's own backend: grep runs a Qdrant pre-filter behind the scope filter,
+> every read is a grounding block, and tenancy stays in Python inside the admitted
+> tool node. That changes this record's "no new tool" for the three verbs and
+> the statement under More Information that none of the filesystem design's
+> namespace is built; the rest of this decision (measure first, hybrid, folder
+> cards, the Qdrant work) stands. The case behind the rule that a rejection names
+> its premise is this one ([working style](../contributing/working-style.md#a-rejection-names-its-premise)).
 
 ## Consumers
 

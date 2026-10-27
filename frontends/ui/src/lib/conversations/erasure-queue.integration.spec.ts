@@ -8,8 +8,7 @@
  * row-level security, that `deletion_queue_active_entity_idx` keeps one active
  * row per chat, that closing it leaves the purger's own claim alone, that the
  * claim query (`purger/db.js`) with its `grid_legal_hold_blocks` guard treats a
- * conversation row the way it treats a project, and that migration 0095's
- * backfill queues exactly the chats stuck before it.
+ * conversation row the way it treats a project.
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/conversations/erasure-queue.integration.spec.ts
@@ -17,8 +16,6 @@
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  */
 
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { sql } from 'drizzle-orm'
 import postgres from 'postgres'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -32,7 +29,6 @@ const ORG = `org_erase_${STAMP}`
 const USER = `user_erase_${STAMP}`
 const CHAT = `s_erase_chat_${STAMP}`
 const HELD_CHAT = `s_erase_held_${STAMP}`
-const STUCK_CHAT = `s_erase_stuck_${STAMP}`
 const LIVE_CHAT = `s_erase_live_${STAMP}`
 
 type QueueRow = {
@@ -118,7 +114,6 @@ describe.skipIf(!url)('chat erasure retry queue against live Postgres (migration
         insert into conversations (id, organization_id, created_by, title) values
           (${CHAT}, ${ORG}, ${USER}, 'Brandschutz'),
           (${HELD_CHAT}, ${ORG}, ${USER}, null),
-          (${STUCK_CHAT}, ${ORG}, ${USER}, '  '),
           (${LIVE_CHAT}, ${ORG}, ${USER}, 'Lebendig')
       `),
     )
@@ -207,25 +202,5 @@ describe.skipIf(!url)('chat erasure retry queue against live Postgres (migration
     )
     expect(await inOrg(() => repo.recordConversationErased(CHAT, ORG))).toBe(0)
     expect((await queueRows(CHAT))[0].status).toBe('purging')
-  })
-
-  it('migration 0095 queues the chats stuck deleting before it, and only those', async () => {
-    // Stuck the old way: marked, no queue row.
-    await inOrg(() =>
-      db.execute(sql`update conversations set deleted_at = now() where id = ${STUCK_CHAT}`),
-    )
-    const backfill = readFileSync(
-      path.join(process.cwd(), 'drizzle/0095_conversation_erasure_retry.sql'),
-      'utf8',
-    )
-    await withPlatformAccess('test: re-run the 0095 backfill', () => db.execute(sql.raw(backfill)))
-
-    const stuck = await queueRows(STUCK_CHAT)
-    expect(stuck).toHaveLength(1)
-    expect(stuck[0]).toMatchObject({ status: 'pending', requested_by: USER, display_name: 'Chat' })
-    // A live chat is never queued, and a chat that already has an active row
-    // (CHAT, claimed above) does not get a second one.
-    expect(await queueRows(LIVE_CHAT)).toHaveLength(0)
-    expect(await queueRows(CHAT)).toHaveLength(1)
   })
 })

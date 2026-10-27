@@ -13,6 +13,8 @@ import uuid
 
 import pytest
 
+from aiq_agent.common.budget_guard import RunBudgetExceededError
+from aiq_agent.common.cost_tracking import BudgetExceededError
 from aiq_agent.observability import otlp_logging_method as otlp
 from aiq_agent.observability import posthog_client
 from aiq_agent.observability import posthog_exceptions
@@ -95,6 +97,13 @@ def test_a_logged_exception_is_captured_with_its_context(sent, log, monkeypatch)
     # The client carries these on every event (super properties, $release_id).
     assert {"release", "environment", "service"}.isdisjoint(properties)
     assert properties["$ai_trace_id"] == properties["langfuse_trace_id"] == f"{trace_id:032x}"
+
+
+@pytest.mark.parametrize("error", [BudgetExceededError("organization"), RunBudgetExceededError(100, 120)])
+def test_an_exhausted_budget_is_an_outcome_not_an_issue(sent, log, error):
+    _fail(log, "run failed", error)
+
+    assert sent == []
 
 
 def test_outside_a_traced_run_there_is_no_trace_id(sent, log):

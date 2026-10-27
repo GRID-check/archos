@@ -16,6 +16,7 @@ import { MCP_INSTRUCTIONS, buildMcpServer, createAgentDoorHandler, resolveMode }
 import { BACKEND_OPERATIONS } from './backend-operations'
 import { visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
+import { APP_TOOLS } from './catalog/app-views'
 
 const principal: AgentPrincipal = {
   actor: 'external_agent',
@@ -78,6 +79,8 @@ describe('tools mode over the real catalog', () => {
       ...visibleOperations(principal).map((op) => op.name),
       ...visibleBackendOperations(principal).map((op) => op.name),
       'report-missing-operation',
+      // The proposal card's buttons, app-only (`mcp-apps.ts`): a host keeps them from the model.
+      ...APP_TOOLS.map((tool) => tool.name),
     ])
     expect(new Set(names).size).toBe(names.length)
     expect(AGENT_OPERATIONS.length).toBeGreaterThan(0)
@@ -100,12 +103,15 @@ describe('backend read tools in tools mode', () => {
 })
 
 describe('search mode', () => {
-  it('stays four tools however large the catalog grows', async () => {
+  it('stays four meta-tools however large the catalog grows, beside the proposal card’s read and buttons', async () => {
     expect((await listTools('search')).map((tool) => tool.name)).toEqual([
       'search-operations',
       'describe-operation',
       'call-operation',
       'report-missing-operation',
+      // The card (ADR-0142): its read, linked to the view, and its two app-only buttons (`mcp-apps.spec.ts`).
+      'proposal-get',
+      ...APP_TOOLS.map((tool) => tool.name),
     ])
   })
 })
@@ -169,7 +175,10 @@ describe('the agent door handler', () => {
 
 describe('what a client loads up front', () => {
   it('marks the entry points to load although a Claude client defers MCP tools', async () => {
-    for (const tool of await listTools('search')) expect(tool._meta).toEqual({ 'anthropic/alwaysLoad': true })
+    const meta = ['search-operations', 'describe-operation', 'call-operation', 'report-missing-operation']
+    for (const tool of (await listTools('search')).filter((listed) => meta.includes(listed.name))) {
+      expect(tool._meta).toEqual({ 'anthropic/alwaysLoad': true })
+    }
     const loaded = (await listTools('tools')).filter((tool) => tool._meta?.['anthropic/alwaysLoad']).map((tool) => tool.name)
     expect(loaded.sort()).toEqual(['files-list', 'knowledge-search', 'project-list'])
   })
@@ -193,7 +202,11 @@ describe('what tools mode costs a client', () => {
   // Measured October 2026 (chars of the tools/list result, about four per token): 1,141 per tool before the
   // fix wave (ifMatch on every write, `additionalProperties: true` everywhere, every hint and the title twice),
   // 922 after. A ratchet: an operation that needs more says so in its description, not in schema ballast.
-  const MAX_AVERAGE_CHARS = 1_000
+  // Raised to 1,030 on 2026-10-27 for `workspace-search` (ADR-0136): about 6,100 characters, which are its
+  // filter vocabulary (document types, facts with ranges, references, dates), not ballast; one search tool
+  // with them replaces filter guessing across the list operations. Measured 1,020 with it; lower it again
+  // when the catalog shrinks.
+  const MAX_AVERAGE_CHARS = 1_030
   const MAX_OPERATION_CHARS = 9_000
 
   it(`stays under ${MAX_AVERAGE_CHARS} characters a tool on average, and ${MAX_OPERATION_CHARS} for any catalog operation`, async () => {

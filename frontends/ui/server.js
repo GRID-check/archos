@@ -168,7 +168,7 @@ const { WS_UPGRADE_LIMIT, CHAT_TURN_LIMIT, WS_CONTROL_LIMIT } = require('./src/l
 const { createLimiter, consumeLimiter } = require('./src/lib/limits/factory.js')
 const { createFrameObserver, classifyFrame } = require('./src/lib/limits/ws-frames.js')
 // Inbound x-grid-* / authorization are the proxy's to set, never the client's.
-const { stripClientContextHeaders, findOversizedWsHeader } = require('./src/lib/proxy/ws-upgrade-headers.js')
+const { stripClientContextHeaders, findOversizedWsHeader, withoutSessionCookies } = require('./src/lib/proxy/ws-upgrade-headers.js')
 
 // `GRID_WS_UPGRADE_RATE_LIMIT` predates the catalog and stays honoured: an
 // operator who tuned it should not have it silently reverted by this refactor.
@@ -198,16 +198,8 @@ const WS_MESSAGE_LIMITS_ENABLED = process.env.GRID_WS_MESSAGE_LIMITS !== '0'
 let limitStoreClient = null
 if (process.env.REDIS_URL) {
   try {
-    const IORedis = require('ioredis')
-    limitStoreClient = new IORedis(process.env.REDIS_URL, {
-      connectTimeout: 1000,
-      commandTimeout: 500,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-    })
-    limitStoreClient.on('error', (error) => {
-      console.warn('[Gateway] rate-limit store error:', error.message)
-    })
+    const { createRedisClient } = require('./src/lib/redis/connect.js')
+    limitStoreClient = createRedisClient(process.env.REDIS_URL, 'Gateway', { commandTimeout: 500 })
   } catch (error) {
     console.warn('[Gateway] shared rate limiter unavailable, using per-process buckets:', error.message)
   }
@@ -341,14 +333,18 @@ backendProxy.on('error', (err, req, res) => {
   }
 })
 
-// Forward cookies for backend WebSocket, and watch the pair once it is spliced.
+// Forward cookies for backend WebSocket, less the AuthKit session the backend
+// never reads (`withoutSessionCookies`), and watch the pair once it is spliced.
 // http-proxy emits 'proxyReqWs' before it registers its own 'upgrade' listener
 // on proxyReq (passes/ws-incoming.js), so the one added here runs first: our
 // error and close listeners are in place before the 101 is written and the
 // sockets are piped. 'open' fires later and carries only the upstream socket.
 backendProxy.on('proxyReqWs', (proxyReq, req, socket) => {
-  if (req.headers.cookie) {
-    proxyReq.setHeader('Cookie', req.headers.cookie)
+  const cookie = withoutSessionCookies(req.headers.cookie)
+  if (cookie) {
+    proxyReq.setHeader('Cookie', cookie)
+  } else {
+    proxyReq.removeHeader('Cookie')
   }
   // Check the emitted headers too: http-proxy adds host/forwarded fields.
   const oversized = findOversizedWsHeader(proxyReq.getHeaders())

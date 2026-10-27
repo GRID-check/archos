@@ -137,3 +137,51 @@ def test_an_unreachable_store_raises_rather_than_reading_as_no_chunks(reader, qd
     monkeypatch.setattr(store_module.QdrantStore, "scroll", down)
     with pytest.raises(ConnectionError):
         reader("proj_down", "da.pdf")
+
+
+# ---------------------------------------------------------------------------
+# The text read back is the document's: no breadcrumb, no overlap twice
+# ---------------------------------------------------------------------------
+
+
+def _fixture_hits(name: str):
+    """A fixture file cut by the ingest job's own chunkers, as the structural fetch returns its points."""
+    import sys
+    from pathlib import Path
+
+    from knowledge_layer.qdrant.search import Hit
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "turn_census"))
+    import fixture_files
+
+    project = fixture_files.load_project()
+    file = next(f for f in project.files if f.name == name)
+    return [
+        Hit(spec["chunk_id"], spec["text"], {**spec["metadata"], "chunk_ordinal": spec["ordinal"]}, 0.0, 1.0)
+        for spec in fixture_files.chunk_specs(project, file)
+    ]
+
+
+def test_read_pages_reads_the_overlap_and_the_breadcrumb_once(monkeypatch):
+    from aiq_agent.knowledge import collection_pages
+
+    hits = _fixture_hits("Besprechungsprotokoll_Tragwerk_2026-04-28.pdf")
+    monkeypatch.setattr(collection_pages, "_document_hits", lambda collection, file_name: hits)
+
+    text = "\n".join(page_text for _page, page_text in read_pages("proj", "Besprechungsprotokoll.pdf"))
+
+    # Before: twice (both parts of section 3 hold it) and three times (the heading in every breadcrumb).
+    assert text.count("Kopfbolzendübeln") == 1
+    assert text.count("Verbunddecke") == 1
+    assert "›" not in text
+    assert "3 Holz-Beton-Verbunddecke\nÜber dem obersten Bestandsgeschoß" in text
+    assert "3.1 Schwingungsnachweis\nDer Schwingungsnachweis" in text
+
+
+def test_read_pages_keeps_the_text_of_a_file_without_headings_as_stored(monkeypatch):
+    from aiq_agent.knowledge import collection_pages
+
+    hits = _fixture_hits("Schreiben_MA37_Baubeginn.pdf")
+    monkeypatch.setattr(collection_pages, "_document_hits", lambda collection, file_name: hits)
+
+    assert read_pages("proj", "Schreiben.pdf") == [(hit.payload["page_label"], hit.text.strip()) for hit in hits]

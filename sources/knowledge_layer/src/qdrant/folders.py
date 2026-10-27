@@ -242,9 +242,8 @@ def render_folder_hits(hits: Sequence[FolderHit], query_hint: str = "…") -> st
         abstract = hit.abstract if len(hit.abstract) <= _ABSTRACT_CHARS else hit.abstract[: _ABSTRACT_CHARS - 1] + "…"
         stale = " (card may be out of date)" if hit.status != "fresh" else ""
         lines.append(f"Folder: {hit.folder_path} — {abstract or 'no abstract'}{stale}")
-    first = hits[0].folder_path
     lines.append(
-        f'A folder is a pointer, not a source: look inside with `list_files(folder="{first}", view="tree")` or '
-        f'`knowledge_search(query="{query_hint}", folder="{first}")`, and cite the documents you read there.'
+        f"A folder is a pointer, not a source: list {hits[0].folder_path} or search inside it "
+        f'("{query_hint}"), and cite the documents you read there.'
     )
     return "\n".join(lines)

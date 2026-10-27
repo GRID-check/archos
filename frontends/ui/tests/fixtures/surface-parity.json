@@ -303,6 +303,24 @@
     "step": null
    }
   },
+  "referenceDocument": {
+   "summary": "Pick a document from the live workspace search into a message, which makes it the question’s subject",
+   "tool": null,
+   "annotationOp": null,
+   "operations": [
+    "workspace-search"
+   ],
+   "canvas": {
+    "kind": "exempt",
+    "reason": "The canvas shows one document, which is already the subject of what is asked there"
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/search/components/composer-search-picker.tsx",
+    "card": null,
+    "step": null
+   }
+  },
   "openAtPlace": {
    "summary": "Open a document at a page, with a region glowing",
    "tool": null,
@@ -318,6 +336,26 @@
     "kind": "rendering",
     "component": "features/knowledge/components/page-place-button.tsx",
     "card": "look",
+    "step": null
+   }
+  },
+  "showInViewer": {
+   "summary": "Take the asker to a place: a page, a passage or a box on it, a Fassung comparison, a model element",
+   "tool": "show_in_viewer",
+   "annotationOp": null,
+   "operations": [
+    "document-get"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/file-preview-pane.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/chat/components/ViewerActionRow.tsx",
+    "card": null,
     "step": null
    }
   }

@@ -79,6 +79,8 @@ import { AnnotationRequestError, replyToAnnotation, updateAnnotation } from '@/l
 import type { MarkMention } from '@/lib/annotations/types'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
+import { AttentionDot } from '@/components/ui/attention-dot'
+import { Quote } from '@/components/ui/quote'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { Badge } from '@/components/ui/badge'
@@ -112,6 +114,7 @@ import { useUndoableArchive } from '../hooks/use-undoable-archive'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
 import type { MarksSetBy } from '@/lib/annotations/attention'
 import { MentionText } from './MentionText'
+import { UploadReportLines } from '@/features/uploads/components/upload-report'
 
 /**
  * The ONE place the registry's icon names become components. Keeping the map here
@@ -547,11 +550,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       asChild
       className={cn(
         'relative items-start py-3',
-        // The unread accent: a 3px bar down the row's edge, which survives glare
-        // and a thumb over the title where a 6px dot did not. The list clips
-        // (`overflow-hidden`), so it takes the card's corner.
-        unread &&
-          'before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-foreground before:content-[""]',
         inert && 'bg-muted hover:bg-muted',
         // The keyboard's row (j/k): a ring inside the card and the hover tint,
         // so it reads in both themes without a colour of its own.
@@ -570,6 +568,11 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
         data-focused={focused || undefined}
         tabIndex={-1}
       >
+        {/* Unread: the attention dot in the row's leading gutter, beside the
+            semibold title, rather than a bar down the edge (side stripes are
+            discouraged, grid-design-language.md). 10px, where the 6px dot
+            before the bar was lost under glare. */}
+        <AttentionDot show={unread} className="absolute left-1.5 top-[1.375rem]" />
         {/* Type icon. A live request carries the "needs attention" tint; colour
             never travels alone here — the icon and the title text say the same. */}
         {actorFace ? (
@@ -670,9 +673,10 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
           {/* Three lines when it is the only body: then it is the news, and
               on a phone two lines cut a change off mid-sentence. */}
           {item.excerpt && (
-            <p
+            <Quote
+              as="p"
               className={cn(
-                'mt-1 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground',
+                'mt-1 text-sm leading-relaxed',
                 // Dense on a phone: three rows to a screen is a list nobody can
                 // triage. A row that asks something of the reader keeps its
                 // words; an FYI gets one line, and the item has the rest.
@@ -690,8 +694,12 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 currentUserId={viewerId}
                 className="whitespace-normal"
               />
-            </p>
+            </Quote>
           )}
+
+          {/* A completed project upload's Eingangsbericht: what it brought the
+              project. Keyed on the data, as `href` is: only such a row carries one. */}
+          {item.uploadReport && !inert && <UploadReportLines report={item.uploadReport} />}
 
           {/* The excerpt above is the order once the submit request carries
               one; the open link below is the file behind the decision. A real

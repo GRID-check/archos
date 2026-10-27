@@ -8,7 +8,7 @@ import {
   projectClosedError,
 } from '@/lib/projects/project-status'
 import { hasPermission, ORG_PERMISSIONS } from './permissions'
-import { checkResourcePermission } from './resource-check'
+import { effectiveResourcePermissions } from './resource-check'
 
 export type ProjectPermission =
   | 'project:view'
@@ -29,12 +29,15 @@ export type ProjectPermission =
  * (`ProjectMemberRole` in `lib/projects/members-service.ts`). `project-contributor`
  * is a real, assignable role, but it maps onto the same rung as
  * `project-viewer` everywhere the ladder is consumed — both read, neither
- * writes — and deriving it would cost a third concurrent FGA check on every
- * project access to tell two identical answers apart. Chat access is checked as
+ * writes — so the ladder does not tell them apart. Chat access is checked as
  * the `project:chat` permission where it matters, which is the honest place for
  * it; see {@link requireProjectAccess}.
  */
 export type ProjectRole = 'project-viewer' | 'project-editor' | 'project-admin'
+
+/** Holding any one of these makes a project member an editor. */
+const PROJECT_WRITE_PERMISSIONS: readonly ProjectPermission[] = ['project:edit', 'project:documents:write', 'project:memory:write']
+
 
 /** What {@link requireProjectAccess} grants: the derived role, and how the project's status shaped it. */
 export interface ProjectAccess {
@@ -52,9 +55,9 @@ export interface ProjectAccess {
 /**
  * Authorize a session against a project and derive its effective role.
  *
- * The FGA round-trip (with its optional short-TTL cache and its timing
- * instrumentation) lives in `./resource-check`, shared with the skill tier so
- * the two can never drift apart. See that module for the caching tradeoff.
+ * What the caller holds on the project is one WorkOS call
+ * (`effectiveResourcePermissions` in `./resource-check`, with its short-TTL
+ * cache and timing). See that module for the caching tradeoff.
  *
  * Denials throw {@link NotFoundError} (message "Not found") so responses
  * never confirm the existence of projects the caller may not see.
@@ -118,9 +121,7 @@ export async function requireProjectAccess(
   // never role-name driven" contract broke: a custom role holding every `org:*`
   // permission reached no project at all, while any role that merely happened to
   // be named `admin` administered every project in the tenant while holding
-  // nothing. `hasPermission`'s bounded catalog implication keeps existing admin
-  // sessions working, because the catalog grants Admin this permission — so no
-  // one has to re-log-in for the fix.
+  // nothing. The token's claim answers it (`hasPermission`).
   //
   // Surfaced as the named `org-admin-bypass` rule when routed through
   // `./decide`, so the bypass is visible in a decision rather than implicit.
@@ -128,27 +129,18 @@ export async function requireProjectAccess(
     return { role: 'project-admin', closed, readsBecauseClosed: false }
   }
 
-  const check = (permissionSlug: ProjectPermission) =>
-    checkResourcePermission({
-      organizationMembershipId: session.organizationMembershipId,
-      organizationId: session.organizationId,
-      permissionSlug,
-      resourceExternalId: projectId,
-      resourceTypeSlug: 'project',
-    })
-
-  // One round of concurrent checks rather than three sequential ones: the
-  // requested permission gates access; manage/edit only refine the derived role.
-  // The two extra checks are skipped when the any-of list already covers them —
-  // their answer is then read out of `granted` below instead.
-  const [granted, extraManage, extraEdit] = await Promise.all([
-    Promise.all(accepted.map(check)),
-    accepted.includes('project:manage') ? Promise.resolve(null) : check('project:manage'),
-    accepted.includes('project:edit') ? Promise.resolve(null) : check('project:edit'),
-  ])
+  // Everything the caller holds on this project, in one WorkOS call: the
+  // requested permissions gate access, `project:manage` and `project:edit` only
+  // refine the derived role.
+  const effective = await effectiveResourcePermissions({
+    organizationMembershipId: session.organizationMembershipId,
+    organizationId: session.organizationId,
+    resourceExternalId: projectId,
+    resourceTypeSlug: 'project',
+  })
 
   // Any-of: holding the narrow permission OR the legacy umbrella is enough.
-  if (!granted.some(Boolean)) {
+  if (!accepted.some((permission) => effective.has(permission))) {
     // Every member of the organization reads a closed project and may chat
     // about it (ADR-0090), as a viewer who clears no restricted folder.
     if (readOnly && openToOrganizationWhenClosed(accepted)) {
@@ -157,24 +149,16 @@ export async function requireProjectAccess(
     throw new NotFoundError()
   }
 
-  // Which of the accepted permissions the caller ACTUALLY holds — not merely
-  // which ones were asked about. Deriving the role from `accepted` was wrong the
-  // moment a list had more than one member whose grant differed: with
-  // `['project:members:manage', 'project:manage']` a real project admin came back
-  // as an editor, because the skipped `project:manage` check fell back to
-  // comparing against `accepted[0]`, a different slug.
-  const held = new Set(accepted.filter((_, index) => granted[index]))
-
+  // The derived role reads what the caller holds, not what they asked for.
   const asMember = (role: ProjectRole): ProjectAccess => ({ role, closed, readsBecauseClosed: false })
-  if (extraManage ?? held.has('project:manage')) return asMember('project-admin')
+  if (effective.has('project:manage')) return asMember('project-admin')
 
   // The editor rung is "holds a WRITE permission", not "holds `project:edit`".
   // After the ADR-0038 split the umbrella is one of three ways to write, and a
   // role built the way the catalog now recommends holds only the narrow ones —
   // reading such a caller as a viewer would make them a mere reader on every
   // shared thread in a project whose corpus they can change.
-  const writes = extraEdit ?? held.has('project:edit')
-  if (writes || held.has('project:documents:write') || held.has('project:memory:write')) {
+  if (PROJECT_WRITE_PERMISSIONS.some((permission) => effective.has(permission))) {
     return asMember('project-editor')
   }
   return asMember('project-viewer')

@@ -38,9 +38,12 @@
  *                      screenshot by covering the rail — if the answer card,
  *                      the provenance footer and the meta row do not line up,
  *                      the design's licence to arrive late is void.
- *   • `memory-chip`  — the same answer twice, as two turns of one thread: one
- *                      where the `memory_reflection` stage recorded nothing and
- *                      one where it recorded two things
+ *   • `memory-chip`  — the same answer three times, as turns of one thread: one
+ *                      where the `memory_reflection` stage recorded nothing,
+ *                      one where it recorded two things, and one where an
+ *                      accepted proposal CORRECTED an earlier note (the chip
+ *                      reads „Gedächtnis aktualisiert"). The chip is on the
+ *                      meta row, never inside „Details"
  *                      (`docs/architecture/post-answer-stages.md` §1.7, §5.1).
  *                      The chip is a fact about the TURN now, not a poll of the
  *                      conversation's memory fired by every rendered answer —
@@ -93,6 +96,7 @@ import type { CitationSource } from '@/features/chat/types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import type { GridCard } from '@/shared/cards/schemas'
 import type { MessageStages } from '@/lib/conversations/message-stages'
+import type { CardInteractions } from '@/features/grid-cards/card-decision'
 import type { AnswerMeta } from '@/lib/conversations/message-answer-meta'
 import { useChatStore } from '@/features/chat/store'
 
@@ -273,6 +277,8 @@ const AnswerTurn: FC<{
    * component reads it off the message, so a fixture is a message.
    */
   stages?: MessageStages
+  /** The reader's answers to the turn's interactive cards (a saved memory proposal). */
+  cardInteractions?: CardInteractions
   /** The envelope's native anatomy — rendered flat, never as cards. */
   answerMeta?: AnswerMeta
   /**
@@ -296,6 +302,7 @@ const AnswerTurn: FC<{
   messageId,
   rail,
   stages,
+  cardInteractions,
   answerMeta,
   conversationId,
   isStreaming,
@@ -330,6 +337,7 @@ const AnswerTurn: FC<{
         routingDecision="shallow"
         messageId={messageId}
         stages={stages}
+        cardInteractions={cardInteractions}
         answerMeta={answerMeta}
         isStreaming={isStreaming}
       />
@@ -717,6 +725,40 @@ const memoryStage: MessageStages = {
   },
 }
 
+/**
+ * The third turn: the reader accepted a `memory_proposal` mid-answer that
+ * CORRECTS an earlier note (`supersedes`), and the reflection stage added one
+ * more afterwards. The chip says „Gedächtnis aktualisiert", lists the
+ * correction first and quotes the note it retired, struck through.
+ */
+const memoryCorrectionCards: GridCard[] = [
+  {
+    type: 'memory_proposal',
+    title: 'Korrektur merken?',
+    content: 'Das Fluchtniveau beträgt 11,40 m (Fußboden Dachgeschoß); das Gebäude liegt in Gebäudeklasse 5.',
+    kind: 'derived_fact',
+    confidence: 'high',
+    supersedes: 'Das Fluchtniveau beträgt 9,80 m; das Gebäude liegt in Gebäudeklasse 4.',
+    proposal_id: null,
+  } as GridCard,
+]
+
+const memoryCorrectionDecisions: CardInteractions = {
+  'memory_proposal-0': { decision: 'savedProject', decidedAt: '2024-01-15T14:30:20.000Z' },
+}
+
+const memoryCorrectionStage: MessageStages = {
+  memoryReflection: {
+    items: [
+      {
+        id: 'row-3',
+        kind: 'constraint',
+        content: 'Das Fluchtniveau ist ab Oberkante Fußboden des Dachgeschoßes zu messen.',
+      },
+    ],
+  },
+}
+
 /* --- variant: anatomy ----------------------------------------------------- */
 
 const anatomyQuestion = 'Wie hoch muss das Geländer an der Dachterrasse sein?'
@@ -821,6 +863,33 @@ function SeedRetryAction() {
         messages: [
           { id: 'msg-feedback-down-q', role: 'user', messageType: 'user', content: feedbackQuestion },
           { id: 'msg-feedback-down', role: 'assistant', messageType: 'assistant', content: feedbackAnswer },
+        ],
+      } as never,
+    })
+  }, [])
+  return null
+}
+
+/**
+ * The memory card reads its decision through the chat store (the copy that
+ * survives a reload), so the correction turn's message is seeded there with
+ * the same `cardInteractions` the answer is handed: the card shows itself
+ * saved, and the chip counts the same decision.
+ */
+function SeedMemoryDecision() {
+  useEffect(() => {
+    useChatStore.setState({
+      currentConversation: {
+        id: 'conv-memory-corrected',
+        messages: [
+          {
+            id: 'msg-memory-corrected',
+            role: 'assistant',
+            messageType: 'assistant',
+            content: memoryAnswer,
+            cards: memoryCorrectionCards,
+            cardInteractions: memoryCorrectionDecisions,
+          },
         ],
       } as never,
     })
@@ -1021,6 +1090,7 @@ function AnswerLayer({ variant }: { variant: AnswerVariant }) {
   // the chip: the two footers must line up.
   return (
     <>
+      <SeedMemoryDecision />
       <AnswerTurn
         label="↓ NOTHING WAS RECORDED — the stage ran and declined, which is its most common correct outcome"
         question={memoryQuestion}
@@ -1030,13 +1100,24 @@ function AnswerLayer({ variant }: { variant: AnswerVariant }) {
         messageId="msg-memory-empty"
       />
       <AnswerTurn
-        label="↓ TWO WERE — the same footer, one chip wider; the popover names each item and where it came from"
+        label="↓ TWO WERE — the chip sits on the meta row beside „Details“, not inside it; one tap names each item and where it came from"
         question={memoryQuestion}
         answer={memoryAnswer}
         citations={stairCitations}
         confidenceReason="Definition des Aufenthaltsraums direkt aus OIB-RL 4 belegt"
         messageId="msg-memory-noted"
         stages={memoryStage}
+      />
+      <AnswerTurn
+        label="↓ ONE NOTE CORRECTED — „Gedächtnis aktualisiert“ with its own glyph; the popover lists the correction first, the retired note struck through"
+        question={memoryQuestion}
+        answer={memoryAnswer}
+        cards={memoryCorrectionCards}
+        cardInteractions={memoryCorrectionDecisions}
+        citations={stairCitations}
+        confidenceReason="Definition des Aufenthaltsraums direkt aus OIB-RL 4 belegt"
+        messageId="msg-memory-corrected"
+        stages={memoryCorrectionStage}
       />
     </>
   )

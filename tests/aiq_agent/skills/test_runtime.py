@@ -1,8 +1,9 @@
-"""Per-run SkillRuntime: activation order, prompt blocks, use_skill closure.
+"""Per-run SkillRuntime (ADR-0135): the catalog SkillsMiddleware renders, the
+read that activates, the pinned shortcut, and the events activation emits.
 
-Also the transparency events activation now emits (``aiq_agent.skills.events``)
-— what a reader is told while a skill is shaping the answer, and what is only
-recorded for the details panel.
+A skill is activated when its body reached the model: a ``read_file`` of its
+``SKILL.md`` through the run's backend, or a pinned body the answer envelope
+names in ``skills_applied``. Listing it in the catalog activates nothing.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import pytest
 from aiq_agent.common.wire_v2 import SkillStep
 from aiq_agent.skills.events import emit_skills_offered
 from aiq_agent.skills.models import Skill
+from aiq_agent.skills.runtime import SKILLS_PROMPT
 from aiq_agent.skills.runtime import SkillRuntime
 
 S1 = Skill(name="alpha", description="Erster Skill.", body="alpha body", origin="platform")
@@ -37,7 +39,7 @@ TITLED_TWO = Skill(
     metadata={"grid-title": "Fluchtwegprüfung"},
     origin="org",
 )
-# A hidden skill WITH a title: proves hidden demotes the live line even when a
+# A hidden skill WITH a title: hidden demotes the live line even when a
 # perfectly good title exists — the voice-skill case.
 HIDDEN = Skill(
     name="piloti-voice",
@@ -48,214 +50,214 @@ HIDDEN = Skill(
 )
 
 
-def _use_skill(runtime: SkillRuntime) -> object:
-    return next(t for t in runtime.build_tools() if t.name == "use_skill")
+def _read(runtime: SkillRuntime, name: str, source: str = "office") -> str:
+    """What ``read_file`` hands the model for ``name``: the backend's read, as the tool calls it."""
+    result = runtime.mounted().read(f"/skills/{source}/{name}/SKILL.md", 0, 1000)
+    assert result.error is None, result.error
+    return result.file_data["content"]
 
 
-def _runtime() -> SkillRuntime:
-    return SkillRuntime(skills=(S1, S2))
+def _runtime(*skills: Skill) -> SkillRuntime:
+    return SkillRuntime.office(skills or (S1, S2))
 
 
-def test_no_skills_yields_no_prompt_and_no_tools() -> None:
-    runtime = SkillRuntime(skills=())
-    assert runtime.prompt_block() is None
-    assert runtime.build_tools() == []
-    assert runtime.activated == ()
+class TestTheCatalog:
+    def test_no_skills_yields_no_prompt(self) -> None:
+        runtime = SkillRuntime.office(())
+        assert runtime.prompt_block() is None
+        assert runtime.catalog_block() is None
+        assert runtime.sources == ()
+        assert runtime.activated == ()
+
+    def test_the_catalog_is_skillsmiddlewares_own_rendering(self) -> None:
+        """Name, description and path per skill, under our heading, rendered by the middleware."""
+        block = _runtime().catalog_block() or ""
+        assert block.startswith(SKILLS_PROMPT.split("\n", 1)[0])
+        assert "- **alpha**: Erster Skill." in block
+        assert "Read `/skills/office/alpha/SKILL.md` for full instructions" in block
+        assert "read_file" in block
+        # Progressive disclosure: bodies NEVER leak into the catalog.
+        assert "alpha body" not in block
+        assert "beta body" not in block
+
+    def test_a_stored_auto_invoke_off_no_longer_hides_a_skill(self) -> None:
+        """The catalog is the model's inventory, not a list a person edits (ADR-0060)."""
+        silent = Skill(
+            name="submission-check",
+            description="Was diesem Bauansuchen noch fehlt.",
+            body="body",
+            metadata={"grid-auto-invoke": "false"},
+            origin="platform",
+        )
+        block = _runtime(S1, silent).catalog_block() or ""
+        assert "- **submission-check**: Was diesem Bauansuchen noch fehlt." in block
+
+    def test_preferred_cards_cost_nothing_in_the_catalog(self) -> None:
+        assert "Preferred cards" not in (_runtime(S1, CARDS).prompt_block() or "")
+
+    def test_a_later_source_wins_a_name_clash(self) -> None:
+        """The middleware's own layering: the office's copy of a name shadows a collection's."""
+        office_copy = Skill(name="alpha", description="Die Fassung des Büros.", body="office alpha")
+        runtime = SkillRuntime({"synthesis": (S1,), "office": (office_copy,)})
+        block = runtime.catalog_block() or ""
+        assert "Die Fassung des Büros." in block
+        assert "Erster Skill." not in block
+        assert [s.description for s in runtime.skills] == ["Die Fassung des Büros."]
 
 
-def test_the_runtime_offers_and_cannot_require() -> None:
-    """There is no way to put a skill in front of the model.
+class TestActivation:
+    def test_only_a_read_body_counts_as_activated(self) -> None:
+        runtime = _runtime()
+        runtime.prompt_block()
+        assert runtime.activated == ()
+        assert "beta body" in _read(runtime, "beta")
+        assert runtime.activated == ("beta",)
 
-    The whole surface is the catalog plus ``use_skill``: no constructor
-    argument names a skill, no second prompt block says one is active, and no
-    property reports what was "asked for and ignored". A standing instruction
-    the answer must obey is prompt text, not a tool call the model may skip.
-    """
-    runtime = SkillRuntime(skills=(S1, S2))
-    for gone in ("forced", "forced_block", "forced_not_activated", "standard_count", "force_names"):
-        assert not hasattr(runtime, gone), gone
-    with pytest.raises(TypeError):
-        SkillRuntime(skills=(S1,), force_names=["alpha"])  # type: ignore[call-arg]
+    def test_loading_the_catalog_activates_nothing(self) -> None:
+        """The middleware downloads every SKILL.md to list it; that is not a delivery."""
+        runtime = _runtime()
+        runtime.mounted().download_files(["/skills/office/alpha/SKILL.md", "/skills/office/beta/SKILL.md"])
+        runtime.catalog_block()
+        assert runtime.activated == ()
 
+    def test_what_was_read_is_reported_in_read_order_once(self) -> None:
+        runtime = _runtime()
+        _read(runtime, "alpha")
+        _read(runtime, "beta")
+        _read(runtime, "alpha")
+        assert runtime.activated == ("alpha", "beta")
 
-def test_prompt_block_lists_descriptions_only() -> None:
-    block = _runtime().prompt_block()
-    assert block is not None
-    assert block.startswith("## Available skills")
-    assert "use_skill" in block
-    assert "`alpha`: Erster Skill." in block
-    # Progressive disclosure: bodies NEVER leak into the prompt.
-    assert "alpha body" not in block
-    assert "beta body" not in block
+    def test_a_failed_read_activates_nothing(self) -> None:
+        runtime = _runtime()
+        assert runtime.mounted().read("/skills/office/nope/SKILL.md").error
+        assert runtime.mounted().read("/skills/office/alpha/SKILL.md", offset=5000).error
+        assert runtime.activated == ()
 
+    def test_two_runtimes_share_no_activation_state(self) -> None:
+        first, second = _runtime(), _runtime()
+        _read(first, "alpha")
+        assert first.activated == ("alpha",)
+        assert second.activated == ()
 
-def test_a_stored_auto_invoke_off_no_longer_hides_a_skill() -> None:
-    """The catalog is the model's inventory, not a list a person edits.
-
-    ``grid-auto-invoke: false`` used to cut a row out of L1. Its author-facing
-    switch is gone (ADR-0060: nothing but the model decides which skill runs),
-    so honouring the stored token would now hide a skill from every turn with
-    nobody able to bring it back. The key still parses; it decides nothing.
-    """
-    silent = Skill(
-        name="submission-check",
-        description="Was diesem Bauansuchen noch fehlt.",
-        body="body",
-        metadata={"grid-auto-invoke": "false"},
-        origin="platform",
-    )
-    runtime = SkillRuntime(skills=(S1, silent))
-    block = runtime.prompt_block() or ""
-    assert "`alpha`: Erster Skill." in block
-    assert "`submission-check`: Was diesem Bauansuchen noch fehlt." in block
-    assert runtime.build_tools()
+    def test_the_runtime_offers_and_cannot_require(self) -> None:
+        """No constructor argument or property can put a skill in front of the model as an order."""
+        runtime = _runtime()
+        for gone in ("forced", "forced_block", "force_names", "inline_also", "build_tools"):
+            assert not hasattr(runtime, gone), gone
+        with pytest.raises(TypeError):
+            SkillRuntime({"office": (S1,)}, force_names=["alpha"])  # type: ignore[call-arg]
 
 
-def test_prompt_block_is_none_only_when_there_are_no_skills_at_all() -> None:
-    assert SkillRuntime(skills=()).prompt_block() is None
+class TestPreferredCards:
+    def test_they_are_appended_when_the_body_is_read(self) -> None:
+        body = _read(_runtime(S1, CARDS), "gamma")
+        assert "gamma body" in body
+        assert "## Preferred cards" in body
+        assert "`stair_diagram`, `calculation`" in body
+        assert "not a requirement" in body
+
+    def test_a_skill_without_them_reads_as_its_document(self) -> None:
+        body = _read(_runtime(S1, CARDS), "alpha")
+        assert body.startswith("---\nname: alpha\n")
+        assert "Preferred cards" not in body
+
+    def test_unknown_and_system_card_types_never_reach_the_model(self) -> None:
+        skill = Skill(
+            name="delta",
+            description="Vierter Skill.",
+            body="delta body",
+            metadata={"grid-cards": "calculation,memory_proposal,ganz_erfunden,legal_basis"},
+        )
+        body = _read(_runtime(skill), "delta").split("## Preferred cards", 1)[1]
+        assert "`calculation`" in body
+        assert "`legal_basis`" not in body
+        assert "`memory_proposal`" not in body
+        assert "ganz_erfunden" not in body
 
 
-def test_only_a_delivered_body_counts_as_activated() -> None:
-    """Listing a skill shapes nothing; handing its body over does.
+class TestPinned:
+    """The turn-start decision's pick rides the prompt (ADR-0063, ADR-0064), still an offer."""
 
-    ``activated`` is what the disclosure renders as "this shaped the answer",
-    and the catalog is on every turn. A model that read past `beta`'s line has
-    not been shaped by `beta`.
-    """
-    runtime = _runtime()
-    assert runtime.activated == ()
-    _use_skill(runtime).invoke({"skill_name": "beta"})
-    assert runtime.activated == ("beta",)
+    def test_a_pinned_body_rides_in_the_middlewares_skill_shape(self) -> None:
+        runtime = _runtime(S1, CARDS)
+        assert runtime.pin("gamma")
+        block = runtime.prompt_block() or ""
+        assert '<skill name="gamma" path="/skills/office/gamma/SKILL.md">\ngamma body' in block
+        assert "skills_applied" in block
+        # Names only in the prompt; the full shapes travel with a read.
+        assert "Preferred cards: `stair_diagram`, `calculation`" in block
+        assert "## Preferred cards" not in block
+        # The catalog still lists it, so a read is never refused.
+        assert "- **gamma**" in block
 
+    def test_an_unknown_name_pins_nothing(self) -> None:
+        runtime = _runtime()
+        assert not runtime.pin("nope")
+        assert runtime.pinned_block() is None
 
-def test_what_was_delivered_is_reported_in_call_order() -> None:
-    """One order, and it is the model's own: the order it asked.
+    def test_a_pinned_body_is_not_activated_by_being_there(self) -> None:
+        runtime = _runtime()
+        runtime.pin("alpha")
+        runtime.prompt_block()
+        assert runtime.activated == ()
 
-    There is no second order to reconcile with it any more — no forced list in
-    front, no fleet floor behind — so the list reads as the run happened.
-    """
-    runtime = _runtime()
-    tool = _use_skill(runtime)
-    assert tool.invoke({"skill_name": "alpha"}) == "alpha body"
-    assert tool.invoke({"skill_name": "beta"}) == "beta body"
-    assert runtime.activated == ("alpha", "beta")
-    # Re-invoking the same skill does not duplicate it.
-    tool.invoke({"skill_name": "alpha"})
-    assert runtime.activated == ("alpha", "beta")
+    def test_the_envelope_naming_it_activates_it_once(self) -> None:
+        runtime = _runtime()
+        runtime.pin("alpha")
+        assert runtime.record_applied(["`alpha`", "alpha"]) == ("alpha",)
+        assert runtime.activated == ("alpha",)
 
+    def test_a_name_whose_body_was_not_pinned_activates_nothing(self) -> None:
+        runtime = _runtime()
+        runtime.pin("alpha")
+        assert runtime.record_applied(["beta", "erfunden"]) == ()
+        assert runtime.activated == ()
 
-def test_the_old_name_of_a_renamed_builtin_opens_it_and_records_the_new_one() -> None:
-    """A schedule's stored prompt says `/einreichcheck`; the model may call `use_skill` with it (migration 0169)."""
-    renamed = Skill(
-        name="submission-check",
-        description="Was diesem Bauansuchen noch fehlt.",
-        body="renamed body",
-        metadata={},
-        origin="platform",
-    )
-    runtime = SkillRuntime(skills=(renamed,))
+    def test_a_pinned_skill_that_was_also_read_counts_once(self) -> None:
+        runtime = _runtime()
+        runtime.pin("alpha")
+        _read(runtime, "alpha")
+        assert runtime.record_applied(["alpha"]) == ()
+        assert runtime.activated == ("alpha",)
 
-    assert _use_skill(runtime).invoke({"skill_name": "einreichcheck"}) == "renamed body"
-    assert runtime.activated == ("submission-check",)
-
-
-def test_unknown_skill_message_lists_available_names() -> None:
-    tools = _runtime().build_tools()
-    tool = next(t for t in tools if t.name == "use_skill")
-    result = tool.invoke({"skill_name": "nope"})
-    assert "Unknown skill 'nope'" in result
-    assert "alpha" in result and "beta" in result
-    # A failed load never activates the skill.
-    assert _runtime().activated == ()
-
-
-def test_preferred_cards_are_appended_on_activation_only() -> None:
-    runtime = SkillRuntime(skills=(S1, CARDS))
-    body = _use_skill(runtime).invoke({"skill_name": "gamma"})
-    assert body.startswith("gamma body")
-    assert "## Preferred cards" in body
-    # Author order is preserved, and the types are named verbatim so the model
-    # can copy them into `type` without translating a prose paraphrase.
-    assert "`stair_diagram`, `calculation`" in body
-    # A preference, not a command — the wording must leave an out.
-    assert "not a requirement" in body
-    # The whole point of the feature: it costs nothing until activation.
-    assert "Preferred cards" not in (runtime.prompt_block() or "")
-
-
-def test_skill_without_preferred_cards_returns_the_bare_body() -> None:
-    runtime = SkillRuntime(skills=(S1, CARDS))
-    assert _use_skill(runtime).invoke({"skill_name": "alpha"}) == "alpha body"
-
-
-def test_unknown_and_system_card_types_never_reach_the_model() -> None:
-    # Snapshots persisted before a card type was retired (or a row that slipped
-    # past write-time validation) must not name a card the renderer lacks — and
-    # a SYSTEM card must never be requested by name on any path.
-    skill = Skill(
-        name="delta",
-        description="Vierter Skill.",
-        body="delta body",
-        metadata={"grid-cards": "calculation,memory_proposal,ganz_erfunden,legal_basis"},
-    )
-    body = _use_skill(SkillRuntime(skills=(skill,))).invoke({"skill_name": "delta"})
-    assert "`calculation`" in body
-    assert "legal_basis" not in body
-    assert "memory_proposal" not in body
-    assert "ganz_erfunden" not in body
-
-
-def test_empty_preferred_cards_value_adds_no_block() -> None:
-    skill = Skill(name="eps", description="Fünfter.", body="eps body", metadata={"grid-cards": " , "})
-    assert _use_skill(SkillRuntime(skills=(skill,))).invoke({"skill_name": "eps"}) == "eps body"
-
-
-def test_two_runtimes_share_no_activation_state() -> None:
-    first = _runtime()
-    second = _runtime()
-    first_tool = next(t for t in first.build_tools() if t.name == "use_skill")
-    first_tool.invoke({"skill_name": "alpha"})
-    assert first.activated == ("alpha",)
-    assert second.activated == ()
+    def test_the_old_name_of_a_renamed_builtin_pins_the_new_one(self) -> None:
+        """A schedule's stored prompt says `/einreichcheck` (migration 0169)."""
+        renamed = Skill(name="submission-check", description="Was noch fehlt.", body="renamed body")
+        runtime = _runtime(renamed)
+        assert runtime.pin("einreichcheck")
+        assert runtime.record_applied(["einreichcheck"]) == ("submission-check",)
 
 
 class TestActivationEvents:
     """What leaves the process while the skills are in play: typed ``skill`` steps."""
 
     def test_each_activation_emits_exactly_one_step_for_its_skill(self, emitted) -> None:
-        runtime = SkillRuntime(skills=(S1, S2, TITLED))
-        tool = _use_skill(runtime)
-        tool.invoke({"skill_name": "titel"})
-        # Re-invoking an already-active skill must not say so a second time.
-        tool.invoke({"skill_name": "titel"})
-        tool.invoke({"skill_name": "beta"})
-
-        # One STEP per skill: sharing an id collapses N skills into one row.
+        runtime = _runtime(S1, S2, TITLED)
+        _read(runtime, "titel")
+        _read(runtime, "titel")
+        _read(runtime, "beta")
         assert emitted.steps == [
             SkillStep(id="skill:titel", phase="activated", skill="titel", title="Brandschutznachweis"),
             SkillStep(id="skill:beta", phase="activated", skill="beta", channel="technical"),
         ]
-        # The reported list is the same order the steps came in: call order.
         assert runtime.activated == ("titel", "beta")
 
     def test_a_titled_skill_is_live_and_carries_only_its_title(self, emitted) -> None:
-        """The office's own name for its method, never the id and never a sentence."""
-        runtime = SkillRuntime(skills=(TITLED, TITLED_TWO))
-        _use_skill(runtime).invoke({"skill_name": "titel"})
-        _use_skill(runtime).invoke({"skill_name": "titel-zwei"})
+        runtime = _runtime(TITLED, TITLED_TWO)
+        _read(runtime, "titel")
+        _read(runtime, "titel-zwei")
         assert [(step.channel, step.title) for step in emitted.steps] == [
             ("live", "Brandschutznachweis"),
             ("live", "Fluchtwegprüfung"),
         ]
 
     def test_a_skill_without_a_title_gets_no_live_line(self, emitted) -> None:
-        """An id in a status line is worse than silence; the step still records it."""
-        _use_skill(SkillRuntime(skills=(S1,))).invoke({"skill_name": "alpha"})
+        _read(_runtime(S1), "alpha")
         assert emitted.steps == [SkillStep(id="skill:alpha", phase="activated", skill="alpha", channel="technical")]
 
     def test_a_hidden_skill_is_recorded_but_kept_off_the_live_line(self, emitted) -> None:
-        """Hidden = out of the noisy live line, never concealed: it still names itself."""
-        _use_skill(SkillRuntime(skills=(HIDDEN,))).invoke({"skill_name": "piloti-voice"})
+        runtime = _runtime(HIDDEN)
+        _read(runtime, "piloti-voice")
         assert emitted.steps == [
             SkillStep(
                 id="skill:piloti-voice",
@@ -266,41 +268,22 @@ class TestActivationEvents:
                 channel="technical",
             )
         ]
+        assert runtime.hidden_activated == ("piloti-voice",)
+
+    def test_an_applied_pinned_skill_announces_when_the_envelope_names_it(self, emitted) -> None:
+        runtime = _runtime(TITLED)
+        runtime.pin("titel")
+        assert emitted.steps == []
+        runtime.record_applied(["titel"])
+        assert [step.id for step in emitted.steps] == ["skill:titel"]
 
     def test_offered_reports_the_catalog_but_never_as_activity(self, emitted) -> None:
-        emit_skills_offered(SkillRuntime(skills=(S1, S2)))
-        # Availability is not activity: a catalog size must never be shown live.
+        emit_skills_offered(_runtime(S1, S2))
         assert emitted.steps == [SkillStep(id="skill_selection", phase="offered", count=2, channel="technical")]
 
     def test_a_turn_with_no_skills_says_nothing(self, emitted) -> None:
-        emit_skills_offered(SkillRuntime(skills=()))
+        emit_skills_offered(SkillRuntime.office(()))
         assert emitted == []
-
-
-#: A row the BFF marked ``standard``. The backend does not read that marker any
-#: more — there is no ``Skill.standard`` field — so it is an ordinary skill here,
-#: which is exactly what these two tests pin.
-STANDARD = Skill(
-    name="haus-stil",
-    description="Fleet standard equipment.",
-    body="standard body",
-    origin="org",
-)
-
-
-def test_a_standard_row_is_an_ordinary_catalog_entry() -> None:
-    """The tier's "applied" property is gone, and with it the field behind it.
-
-    ``delivery: standard`` still means "resolved for every organization", and
-    that is all it means to the model: one line in L1 like every other skill.
-    Fleet policy that must hold on every answer is prompt text now.
-    """
-    assert not hasattr(Skill, "standard") or "standard" not in Skill.model_fields
-    runtime = SkillRuntime(skills=(S1, STANDARD))
-    assert "`haus-stil`: Fleet standard equipment." in (runtime.prompt_block() or "")
-    assert runtime.activated == ()
-    _use_skill(runtime).invoke({"skill_name": "haus-stil"})
-    assert runtime.activated == ("haus-stil",)
 
 
 def test_a_standard_marker_on_the_payload_is_ignored() -> None:
@@ -313,28 +296,7 @@ def test_a_standard_marker_on_the_payload_is_ignored() -> None:
     assert not hasattr(skill, "standard")
 
 
-HIDDEN_STD = Skill(
-    name="haus-stimme",
-    description="Die Hausstimme.",
-    body="voice body",
-    metadata={"grid-hidden": "true"},
-    origin="org",
-)
-
-
-def test_hidden_activated_is_the_grid_hidden_subset() -> None:
-    # The disclosure NAMES every activated skill, but a skill that runs on every
-    # answer is noise there too — this subset is what the frontend mutes until
-    # the reasoning view is open. Resolved here because only the runtime holds
-    # each skill's metadata.
-    runtime = SkillRuntime(skills=(S1, HIDDEN_STD))
-    _use_skill(runtime).invoke({"skill_name": "haus-stimme"})
-    assert "haus-stimme" in runtime.activated
-    assert runtime.hidden_activated == ("haus-stimme",)
-
-
 def test_an_ordinary_activated_skill_is_not_hidden() -> None:
-    runtime = SkillRuntime(skills=(S1, STANDARD))  # STANDARD carries no grid-hidden
-    _use_skill(runtime).invoke({"skill_name": "haus-stil"})
-    assert "haus-stil" in runtime.activated
+    runtime = _runtime(S1)
+    _read(runtime, "alpha")
     assert runtime.hidden_activated == ()

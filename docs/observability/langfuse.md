@@ -58,6 +58,7 @@ Trace metadata on the root:
 | `ifc_op`, `ifc_outcome`, `ifc_model`, … | what a building-model tool did (`tools/bim/trace.py`) |
 | `answer_precedent_sources`, `answer_precedent_projects` | cited sources from another project (ADR-0094), and from how many projects: the office's experience reaching the answer |
 | `reference_projects_offered`, `precedent_p`, `reference_prefetch` | the turn's start: how many reference projects the catalog listed, the decision's p(precedent), and whether round 0 searched them on its own (`agents/piloti/register.py`) |
+| `skills_offered`, `skills_pinned` | the turn's skills (ADR-0135): how many the catalog listed, and the one the turn-start decision pinned in full, if any (`agents/piloti/register.py`). `skills_activated` above is what reached the model: a `read_file` of a `SKILL.md`, or a pinned body the envelope named |
 | `reference_fit_scored`, `reference_fit_top`, `reference_fit_fitting` | the reference fit (ADR-0064 use 10): how many catalog lines it scored, the best p(fits), how many moved ahead |
 | `organization_id`, `project_id` | the tenant, only with identity attributes on |
 | `$posthog_session_id` | the asker's PostHog browser session, only with identity attributes on and a UUIDv7 ([PostHog export](#posthog-export)) |
@@ -99,6 +100,24 @@ a chunk, the length of its text and how many collections were searched; its
 output `origin` (`point` or `embedded`), the filter fields (never values) and
 the picks by collection, file, chunk, page and score. Metadata: `origin`,
 `documents`, `candidates`. No passage text either way.
+
+Each workspace search with text (ADR-0136, `POST /api/search`) asks the
+backend's content search (`POST /v1/collections/search` with `purpose:
+"workspace_search"`), and that call is a root trace `workspace-search` holding
+one `retrieve.workspace_search` retriever observation (`observed_retrieval`,
+as above): its input the query's length in `text_chars` and `text_tokens`
+(never the words), how many `collections` were named, `groups` and
+`files_per_group`, the `prefilter` mode (`document_ids`: the BFF's SQL
+candidates named by id; `payload`: too many to name, so what they are and cite;
+`none`), how many `document_ids` and which `filter_fields`; its output
+`candidates` (the passages ranked), `documents` handed back, `with_document_id`,
+`collections_with_hits` and `hits_per_collection` (the 50 collections with most,
+by name: `proj_<uuid>`, `office_shelf_<org>`). Metadata: `prefilter`,
+`collections`, `candidates`, `documents`. A grouped search without the purpose
+(the cross-project lookup) is traced where it runs, as
+`retrieve.project_lookup`, never twice. The browser's side of the same search
+is PostHog's `search_issued`, and the route's `Server-Timing` header splits its
+time into `sql` and `content` ([`posthog-events.md`](posthog-events.md)).
 
 Each canvas tool (the `canvas` function group, `tools/canvas/`) is a tool
 observation of its own (`canvas__room`, `canvas__point`,
@@ -144,7 +163,7 @@ waits are not. A tool call on the platform door at `/api/platform/mcp`
 Metadata on all: `operation`, `domain`, `door`
 (`mcp`, `piloti`, `a2a` or `platform`), `mode` (`search` or `tools`; null on the A2A door), `decision` (`run`, `propose`,
 `refused`, `confirm` when an outside agent's destructive call was put to the person in their own chat, `declined` when they did not
-confirm it), `decision_source` (`elicitation`, only on the round that runs a call the person confirmed), `status` (the route's HTTP status), `duration_ms`, `client_id`.
+confirm it), `decision_source` (`elicitation`, only on the round that runs a call the person confirmed; `app`, a press on Piloti's card inside the person's own assistant, an MCP App's app-only tool, from a client that declared MCP Apps; `app-unverified`, the same tool from a 2025-era client that declared nothing, ADR-0142), `status` (the route's HTTP status), `duration_ms`, `client_id`.
 Level `WARNING` for a 4xx, `ERROR` for a 5xx. Tags: `feature:agent-mcp`,
 `door:<door>`, `decision:<decision>`, `error:<status>` on a refusal, and
 `org:<id>` with identity attributes on. The session is the conversation when
@@ -162,7 +181,7 @@ writes its facts once, when it ends, in `_record_trace`
 
 | Key | Meaning |
 |---|---|
-| `intake_ended` | how the run ended: `model` (the model called `finish_intake`), `model_without_finish` (it stopped without that, and the run finished in code), `step_limit`, `time_budget`, `no_model`, `refused`, `error` or `no_job` |
+| `intake_ended` | how the run ended: `model` (the model called `finish_intake`), `model_without_finish` (it stopped without that, and the run finished in code), `step_limit`, `time_budget`, `llm_budget` (the organization's usage budget is exhausted), `no_model`, `refused`, `error` or `no_job` |
 | `intake_mode` | the mode the intake was read in (`active` unless the intake's needs say otherwise) |
 | `intake_documents_read` | how many documents the run opened |
 | `intake_suggested` | values recorded as suggestions, which a person will check |
@@ -201,6 +220,7 @@ a name is written but not declared, or declared but not listed here.
 | `user-feedback` | numeric 0–1 | BFF, on a vote | 1 helpful, 0 not. The mean is the helpful rate |
 | `user-feedback-reason` | categorical | BFF, on a down-vote | `inaccurate`, `wrong_source`, `too_slow`, `other` |
 | `piloti-decision` | categorical | BFF, on a person's decision | `accepted`, `dismissed`, `undone`: what a person did with a proposal, a proposed mark or an applied change Piloti made in this turn, or with a value a reading of the project's documents suggested (ADR-0111). One score per decision, on the trace of the producing turn (for an intake suggestion, the reading's `research-job` trace); metadata `subject` (`proposal`, `annotation`, `change`, `intake_suggestion`) and `subject_id`. The acceptance rate of Piloti's work |
+| `diagram-filed` | categorical | BFF, when a drawing is filed into a project (ADR-0141) | `as_drawn` (the drawing Piloti made, kept as it was) or `edited` (reworked in the sketch editor first). On the trace of the turn that drew it, through the `answerId` the filing sends; no answer id or no trace on it, no score. Metadata `document_id`, the filed SVG, which is also the score id, so filing the same drawing again upserts. The share `edited` is how often Piloti's drawing was a starting point rather than the result |
 | `revision-notice` | numeric ≥ 0 | BFF, when a notice of a new Fassung ends (ADR-0130) | How many marks Piloti proposed on its own after comparing a new Fassung with the one it replaces; 0 is „compared, nothing visible". On the trace of the first page's `revision-visual-compare` generation (metadata `purpose: notice`), so no score without a traced call; metadata `notice_id`, `pages_compared`, `pages_changed`. Each mark it proposed is recorded against the notice's thread message, so a person's decision on it is a `piloti-decision` on the same trace: the share accepted is the precision of noticing |
 | `document-check` | numeric ≥ 0 | BFF, when a check of a new document ends (ADR-0130) | How many marks Piloti proposed on its own after checking a new document against the project's other documents; 0 is „checked, everything agrees“. On the trace of the headless turn that ran the check (`turn_trigger: new_document`, the check's id as `trigger_event_id`), so no score without a trace; metadata `check_id`. Each mark is a `piloti_changes` row on the turn's answer, so a person's decision on it is a `piloti-decision` on the same trace: the share accepted is the precision of the check |
 | `citation-health` | boolean | agent | nothing removed, patched or flagged on this turn |
@@ -215,7 +235,8 @@ a name is written but not declared, or declared but not listed here.
 | `quotes-verbatim-rate` | numeric 0–1 | agent | checked quote lines held verbatim |
 | `quotes-patched` | numeric | agent | misremembered quotes the repair corrected (ADR-0067) |
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
-| `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
+| `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped`; or `stripped`, a calculation or formula that stated what the card computes (a `result`, a formula's `limits`), with `fields` in metadata |
+| `formula-input-provenance` | numeric 0..1 | agent | per formula card (ADR-0143): the share of its given inputs that say where the value is written (`source` or a norm `reference`); metadata `formula`, `inputs`, `given`, `sourced`, `unknown` |
 | `claims-by-class` | categorical | agent | one score per provenance class present in the answer (`quoted`, `cited`, `cited_dropped`, `record`, `action`, `measured`, `observed`, `reasoning`, `model_knowledge`; `common/claim_provenance.py`, ADR-0125); the comment and `metadata.count` say how many sentences |
 | `claims-normative-uncited` | numeric | agent | sentences about the law with no quoted or cited passage behind them |
 | `look-count` | numeric | agent, at the terminal | looks Piloti made in the turn (ADR-0128), whether or not the answer relies on them; written on every answered chat turn, zero included |

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
+import { refreshSearchRows } from '@/lib/search/refresh-rows'
 
 /**
  * `document_versions` is not this suite's subject (ADR-0054). The upload path
@@ -12,6 +13,7 @@ vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/fol
 // seam the byte-serving functions are held to: which of them call it, with
 // what, and only after the request could no longer be refused.
 vi.mock('@/lib/download-log/service', () => ({ recordDocumentAccess: vi.fn(async () => undefined) }))
+vi.mock('@/lib/search/refresh-rows', () => ({ refreshSearchRows: vi.fn(async () => undefined) }))
 vi.mock('./version-repository', () => ({
   DOCUMENT_VERSION_LIST_LIMIT: 200,
   insertDocumentVersion: vi.fn(async (values: Record<string, unknown>) => ({
@@ -222,10 +224,8 @@ import {
   REINDEX_SLICE_DOCUMENTS,
   REINGEST_SLICE_DOCUMENTS,
   resolveProjectDocumentsByName,
-  searchProjectDocuments,
   fetchGroupedSemanticHits,
   joinHitsToFiles,
-  deriveSearchTopK,
   dispatchDocument,
   getDocumentTextPreview,
   getDocumentThumbnail,
@@ -242,7 +242,6 @@ import {
   reconcileDocumentStatuses,
   describeBackendIngestState,
   type DocumentMetadata,
-  type ReconcilableDocument,
 } from './reconcile-status'
 import type { DocumentListRow } from './repository'
 import {
@@ -1212,25 +1211,6 @@ describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0116)', 
   })
 })
 
-describe('deriveSearchTopK', () => {
-  it('derives the passage budget from top_k_files and holds top_k >= top_k_files', () => {
-    // 20 files → 60 passages (3×), never the old fixed 40 that capped scale.
-    expect(deriveSearchTopK(20)).toBe(60)
-    expect(deriveSearchTopK(1)).toBe(3)
-    // The invariant that makes the aggregation contract hold across the whole
-    // allowed 1..100 range: the chunk budget can never starve top_k_files.
-    for (const files of [1, 10, 20, 33, 50, 99, 100]) {
-      expect(deriveSearchTopK(files)).toBeGreaterThanOrEqual(files)
-    }
-  })
-
-  it('clamps to the backend top_k ceiling (100)', () => {
-    // 100 files × 3 = 300, clamped to the DocumentSearchRequest le=100 bound.
-    expect(deriveSearchTopK(100)).toBe(100)
-    expect(deriveSearchTopK(40)).toBe(100)
-  })
-})
-
 describe('resolveProjectDocumentsByName', () => {
   it('gates on project:view, looks the names up directly, and hydrates like the listing', async () => {
     vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-admin', closed: false, readsBecauseClosed: false })
@@ -1263,238 +1243,6 @@ describe('resolveProjectDocumentsByName', () => {
     vi.mocked(requireProjectAccess).mockRejectedValueOnce(new ForbiddenError())
     await expect(resolveProjectDocumentsByName(session, 'proj-1', ['a.pdf'])).rejects.toBeInstanceOf(ForbiddenError)
     expect(findProjectDocumentsByFilenames).not.toHaveBeenCalled()
-  })
-})
-
-describe('searchProjectDocuments', () => {
-  // `documentListColumns` selects `authoredBy` (repository.ts), so every row
-  // reaching the join carries it. Building these rows without the column would
-  // put the search seam on a shape production never produces — and would hide a
-  // regression in the authorship filter behind the Archiv fallback.
-  const fileRows: Array<ReconcilableDocument & { createdAt: Date; authoredBy: string }> = [
-    {
-      id: 'doc-a',
-      filename: 'plan.pdf',
-      createdAt: new Date('2026-01-01T00:00:00Z'),
-      status: 'completed' as const,
-      collectionName: 'proj_abc',
-      errorMessage: null,
-      authoredBy: 'user',
-      publishedVersionId: null,
-    },
-    {
-      id: 'doc-b',
-      filename: 'permit.pdf',
-      createdAt: new Date('2026-01-02T00:00:00Z'),
-      status: 'completed' as const,
-      collectionName: 'proj_abc',
-      errorMessage: null,
-      authoredBy: 'user',
-      publishedVersionId: null,
-    },
-  ]
-
-  beforeEach(() => {
-    vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-admin', closed: false, readsBecauseClosed: false })
-    vi.mocked(findProjectDocumentsByFilenames).mockResolvedValue([])
-    vi.mocked(reconcileDocumentStatuses).mockResolvedValue(
-      fileRows.map((r) => ({ ...r, metadata: { ingestJobId: 'j' } }))
-    )
-    vi.mocked(findProjectInOrg).mockResolvedValue(makeProject())
-  })
-
-  it('enforces project:view, POSTs to the collection search, and joins hits reordered by score', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve({
-          hits: [
-            {
-              file_name: 'permit.pdf',
-              score: 0.91,
-              snippet: 'permit snippet',
-              page_number: 2,
-              collection: 'proj_abc',
-            },
-            {
-              file_name: 'plan.pdf',
-              score: 0.44,
-              snippet: 'plan snippet',
-              page_number: null,
-              collection: 'proj_abc',
-            },
-          ],
-        }),
-    })
-
-    const { hits } = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20)
-
-    expect(requireProjectAccess).toHaveBeenCalledWith(session, 'proj-1', 'project:view')
-    const call = mockFetch.mock.calls.find(([url]) => String(url).endsWith('/search'))
-    expect(call?.[0]).toBe('http://backend:8000/v1/collections/proj_abc/search')
-    expect(JSON.parse((call?.[1] as RequestInit).body as string)).toEqual({
-      query: 'fire escape',
-      // Derived from top_k_files (20 × 3 = 60), not a fixed 40 that would cap the
-      // achievable file count below top_k_files.
-      top_k: 60,
-      top_k_files: 20,
-    })
-    // Defense-in-depth: the signed request-context envelope is forwarded, scoped
-    // to exactly the collection being searched (decodes back to ['proj_abc']).
-    const headers = (call?.[1] as RequestInit).headers as Record<string, string>
-    const envelope = headers['X-Grid-Request-Context']
-    expect(envelope).toBeTruthy()
-    const payload = JSON.parse(Buffer.from(envelope, 'base64url').toString('utf8'))
-    expect(payload.collectionScope).toEqual(['proj_abc'])
-    // Time-bounded like the other backend calls.
-    expect((call?.[1] as RequestInit).signal).toBeInstanceOf(AbortSignal)
-    // Reordered by score (permit first), each augmented with match evidence.
-    expect(hits.map((h) => h.id)).toEqual(['doc-b', 'doc-a'])
-    expect(hits[0]).toMatchObject({ snippet: 'permit snippet', page: 2, score: 0.91 })
-    // The rows are looked up by the hit names, not read from the paged
-    // listing: a hit on a document past the first page must still resolve.
-    expect(findProjectDocumentsByFilenames).toHaveBeenCalledWith(
-      'proj-1',
-      'org-1',
-      ['permit.pdf', 'plan.pdf'],
-      { hiddenFolderIds: [], reader: { kind: 'reviewer' } }
-    )
-    expect(listProjectDocumentPage).not.toHaveBeenCalled()
-  })
-
-  it('joins only screened rows when the hits go to a model, even for a reviewer (ADR-0086)', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve({
-          hits: [
-            { file_name: 'permit.pdf', score: 0.91, snippet: 'permit snippet', page_number: 2, collection: 'proj_abc' },
-            { file_name: 'plan.pdf', score: 0.44, snippet: 'plan snippet', page_number: null, collection: 'proj_abc' },
-          ],
-        }),
-    })
-    // plan.pdf is held: the query let it through on an earlier pass, the reconcile quarantined it.
-    vi.mocked(reconcileDocumentStatuses).mockResolvedValue(
-      fileRows.map((r) => ({
-        ...r,
-        ...(r.id === 'doc-a' ? { status: 'quarantined' as const } : {}),
-        createdBy: 'user-1',
-        metadata: { ingestJobId: 'j' },
-      }))
-    )
-
-    const forPerson = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20)
-    const forModel = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20, { forModel: true })
-
-    expect(forPerson.hits.map((h) => h.id)).toEqual(['doc-b', 'doc-a'])
-    expect(forModel.hits.map((h) => h.id)).toEqual(['doc-b'])
-    expect(vi.mocked(findProjectDocumentsByFilenames).mock.calls[1][3]).toEqual({
-      hiddenFolderIds: [],
-      reader: { kind: 'screened-only' },
-    })
-  })
-
-  it('hands a model no superseded Fassung, and still shows it to the person who searches (ADR-0099)', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve({
-          hits: [
-            { file_name: 'permit.pdf', score: 0.91, snippet: 'permit snippet', page_number: 2, collection: 'proj_abc' },
-            { file_name: 'plan.pdf', score: 0.44, snippet: 'plan snippet', page_number: null, collection: 'proj_abc' },
-          ],
-        }),
-    })
-    // A person confirmed permit.pdf replaces plan.pdf; the vector copy of that mark may lag.
-    const replaced = () =>
-      new Map([
-        [
-          'doc-a',
-          { supersededBy: { id: 'doc-b', filename: 'permit.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
-        ],
-      ])
-    vi.mocked(loadRevisionLinks).mockResolvedValueOnce(replaced()).mockResolvedValueOnce(replaced())
-
-    const forPerson = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20)
-    const forModel = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20, { forModel: true })
-
-    expect(forPerson.hits.map((h) => h.id)).toEqual(['doc-b', 'doc-a'])
-    expect(forModel.hits.map((h) => h.id)).toEqual(['doc-b'])
-  })
-
-  it('asks for no rows when the search found nothing', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ hits: [] }) })
-
-    const { hits } = await searchProjectDocuments(session, 'proj-1', 'q')
-
-    expect(hits).toEqual([])
-    expect(requireProjectAccess).toHaveBeenCalledWith(session, 'proj-1', 'project:view')
-    expect(findProjectDocumentsByFilenames).not.toHaveBeenCalled()
-  })
-
-  // The end-to-end half of the `joinHitsToFiles` authorship guard: the unit test
-  // pins the function, this pins the seam that actually calls it. A filed report
-  // takes its filename from a title the model wrote, so a collision with a real
-  // Gutachten is reachable by the model — and recency would hand the hit to the
-  // newer generated row, returning the Gutachten's snippet and page under a
-  // „Von Piloti erstellt" label.
-  it('never surfaces a machine-authored row, even when it wins the collision on recency', async () => {
-    vi.mocked(reconcileDocumentStatuses).mockResolvedValue([
-      ...fileRows.map((r) => ({ ...r, metadata: { ingestJobId: 'j' } })),
-      {
-        id: 'doc-generated',
-        filename: 'plan.pdf',
-        createdAt: new Date('2026-06-01T00:00:00Z'),
-        status: 'completed' as const,
-        collectionName: 'proj_abc',
-        errorMessage: null,
-        authoredBy: 'agent',
-        metadata: { ingestJobId: 'j' },
-      },
-    ] as unknown as Awaited<ReturnType<typeof reconcileDocumentStatuses>>)
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve({
-          hits: [
-            {
-              file_name: 'plan.pdf',
-              score: 0.9,
-              snippet: 'plan snippet',
-              page_number: 7,
-              collection: 'proj_abc',
-            },
-          ],
-        }),
-    })
-
-    const { hits } = await searchProjectDocuments(session, 'proj-1', 'fire escape')
-
-    expect(hits.map((h) => h.id)).toEqual(['doc-a'])
-  })
-
-  it('fails open to no hits when the backend errors (non-OK)', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 503, json: () => Promise.resolve({}) })
-    const { hits } = await searchProjectDocuments(session, 'proj-1', 'q')
-    expect(hits).toEqual([])
-  })
-
-  it('fails open to no hits when the backend times out / throws', async () => {
-    mockFetch.mockRejectedValue(new DOMException('The operation timed out.', 'TimeoutError'))
-    const { hits } = await searchProjectDocuments(session, 'proj-1', 'q')
-    expect(hits).toEqual([])
-  })
-
-  it('404s when the project is not in the org (no backend call)', async () => {
-    vi.mocked(findProjectInOrg).mockResolvedValue(null)
-    await expect(searchProjectDocuments(session, 'proj-1', 'q')).rejects.toBeInstanceOf(
-      NotFoundError
-    )
-    expect(mockFetch).not.toHaveBeenCalled()
   })
 })
 
@@ -1882,7 +1630,7 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
     vi.mocked(findFolderPathInOfficeShelf).mockResolvedValue('Normen/Brandschutz')
 
     // An admin holds `org:archiv:manage`, which re-ingesting an Archiv document takes.
-    await reingestDocument({ ...session, role: 'admin' }, 'doc-99')
+    await reingestDocument({ ...session, role: 'admin', permissions: ['org:office_shelf:manage'] }, 'doc-99')
 
     expect(findFolderPathInOfficeShelf).toHaveBeenCalledWith('folder-1', 'org-1')
     expect(findFolderPathInProject).not.toHaveBeenCalled()
@@ -2264,7 +2012,7 @@ describe('renameDocument', () => {
     })
 
     await expect(
-      renameDocument({ ...session, role: 'admin' }, 'doc-1', 'Musterordner.pdf', request())
+      renameDocument({ ...session, role: 'admin', permissions: ['org:office_shelf:manage'] }, 'doc-1', 'Musterordner.pdf', request())
     ).resolves.toMatchObject({ displayName: 'Musterordner.pdf' })
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'office_shelf.document.renamed', filedIn: null })
@@ -2579,6 +2327,25 @@ describe('the authorship gate on the (collection, filename) join', () => {
       })
       const init = documentCalls()[0]?.[1] as RequestInit
       expect(JSON.parse(String(init.body))).toEqual({ tags: ['Gutachten'], topics: ['Fluchtweg'] })
+    })
+
+    it('rewrites the search row of the retagged document once the backend took the tags', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+      vi.mocked(refreshSearchRows).mockClear()
+      mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ tags: ['Gutachten'] }) })
+
+      await updateDocumentTags(session, 'doc-1', ['Gutachten'])
+
+      expect(refreshSearchRows).toHaveBeenCalledWith(session.organizationId, [humanDoc])
+    })
+
+    it('rewrites no search row when the backend refused the tags', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+      vi.mocked(refreshSearchRows).mockClear()
+      mockFetch.mockResolvedValue({ ok: false, status: 400, json: async () => ({}) })
+
+      await expect(updateDocumentTags(session, 'doc-1', ['Gutachten'])).rejects.toThrow()
+      expect(refreshSearchRows).not.toHaveBeenCalled()
     })
 
     it('leaves topics out of the PATCH body and the answer when the edit does not carry them', async () => {
@@ -3751,99 +3518,6 @@ describe('restricted folders (ADR-0087)', () => {
     expect(vi.mocked(listDocumentLevelPage).mock.calls[0][2]).toMatchObject({ hiddenFolderIds: [HIDDEN] })
     expect(vi.mocked(findProjectDocumentsByFilenames).mock.calls[0][3]).toEqual({ hiddenFolderIds: [HIDDEN], reader: { kind: 'reviewer' } })
     expect(vi.mocked(findProjectDocumentsByNames).mock.calls[0][3]).toEqual({ hiddenFolderIds: [HIDDEN], reader: { kind: 'reviewer' } })
-  })
-
-  it('searches the restricted collections this reader is cleared for, and joins only visible rows', async () => {
-    await searchProjectDocuments(session, 'proj-1', 'Honorar', 10)
-
-    const searched = mockFetch.mock.calls
-      .map(([url]) => String(url))
-      .filter((url) => url.endsWith('/search'))
-      .sort()
-    expect(searched).toEqual([
-      'http://backend:8000/v1/collections/proj_abc/search',
-      `http://backend:8000/v1/collections/${RESTRICTED_COLLECTION}/search`,
-    ])
-  })
-
-  it('asks for the longer snippet only when a caller wants it as evidence (ADR-0094)', async () => {
-    await searchProjectDocuments(session, 'proj-1', 'Honorar', 10, { snippetMaxChars: 900 })
-    await searchProjectDocuments(session, 'proj-1', 'Honorar', 10)
-
-    const bodies = mockFetch.mock.calls
-      .filter(([url]) => String(url).endsWith('/search'))
-      .map(([, init]) => JSON.parse(String((init as RequestInit).body)) as Record<string, unknown>)
-    expect(bodies.filter((body) => body.snippet_max_chars === 900)).toHaveLength(2)
-    expect(bodies.filter((body) => !('snippet_max_chars' in body))).toHaveLength(2)
-  })
-
-  // Filenames are unique per collection. This search reads the project's own
-  // collection and every cleared restricted folder's, so the same name in both
-  // must resolve to two rows, each the row of the collection the hit came from,
-  // whichever is newer. The hits are shaped as the backend answers: `collection`
-  // is a chunk's own metadata, the searched collection only its fallback.
-  describe('a name held by both the open and a restricted collection', () => {
-    const rowIn = (id: string, collectionName: string, createdAt: string) => ({
-      id,
-      filename: 'Protokoll.pdf',
-      createdAt: new Date(createdAt),
-      status: 'completed' as const,
-      collectionName,
-      errorMessage: null,
-      authoredBy: 'user',
-      publishedVersionId: null,
-      metadata: {},
-    })
-
-    function backendAnswers(echoedCollection: (searched: string) => string | undefined) {
-      mockFetch.mockImplementation(async (url: string) => {
-        const searched = decodeURIComponent(String(url).split('/collections/')[1].replace('/search', ''))
-        return {
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              hits: [
-                {
-                  file_name: 'Protokoll.pdf',
-                  score: searched === RESTRICTED_COLLECTION ? 0.9 : 0.5,
-                  snippet: `aus ${searched}`,
-                  page_number: 1,
-                  collection: echoedCollection(searched),
-                },
-              ],
-            }),
-        }
-      })
-      vi.mocked(findProjectDocumentsByFilenames).mockResolvedValue([])
-      vi.mocked(reconcileDocumentStatuses).mockResolvedValue([
-        // The open root row is the NEWER one: a join on the name alone takes it for both hits.
-        rowIn('protokoll-gf', RESTRICTED_COLLECTION, '2026-01-01T00:00:00Z'),
-        rowIn('protokoll-root', 'proj_abc', '2026-09-01T00:00:00Z'),
-      ] as unknown as Awaited<ReturnType<typeof reconcileDocumentStatuses>>)
-    }
-
-    it('labels a restricted passage with its restricted document, never the open one', async () => {
-      backendAnswers((searched) => searched)
-
-      const { hits } = await searchProjectDocuments(session, 'proj-1', 'Honorar', 10)
-
-      expect(hits.map((hit) => [hit.id, hit.collectionName, hit.snippet])).toEqual([
-        ['protokoll-gf', RESTRICTED_COLLECTION, `aus ${RESTRICTED_COLLECTION}`],
-        ['protokoll-root', 'proj_abc', 'aus proj_abc'],
-      ])
-    })
-
-    it('trusts the collection that was searched, not the one a chunk’s metadata claims', async () => {
-      // Every hit is stamped with the collection this call was signed for, so a
-      // chunk that says otherwise (or says nothing) cannot move a hit onto
-      // another collection's row.
-      backendAnswers((searched) => (searched === RESTRICTED_COLLECTION ? 'proj_abc' : undefined))
-
-      const { hits } = await searchProjectDocuments(session, 'proj-1', 'Honorar', 10)
-
-      expect(hits.map((hit) => hit.id)).toEqual(['protokoll-gf', 'protokoll-root'])
-    })
   })
 
   it('files an upload into the collection its folder puts it in', async () => {

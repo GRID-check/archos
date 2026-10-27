@@ -1,5 +1,5 @@
 {
- "comment": "Who sees each capability: frontends/ui/src/lib/agent-api/exposure.config.ts, written by exposure.config.spec.ts (UPDATE_FIXTURES=1). `piloti` is true, false or \"native:<tool>\" (Piloti uses that tool; the door hides the operation from it).",
+ "comment": "Who sees each capability: frontends/ui/src/lib/agent-api/exposure.config.ts, written by exposure.config.spec.ts (UPDATE_FIXTURES=1). `piloti` is true, false or \"native:<tool>\" (Piloti uses that tool; the door hides the operation from it). `appTools` are the MCP Apps views’ app-only tools (ADR-0142), each running the operation it names.",
  "operations": {
   "project-cleanup-confirm": {
    "kind": "catalog",
@@ -587,16 +587,6 @@
    "withheld": null,
    "reason": null
   },
-  "document-search": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": "native:knowledge_search",
-   "platform": false,
-   "withheld": null,
-   "reason": "a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages"
-  },
   "document-status": {
    "kind": "catalog",
    "domain": "documents",
@@ -770,6 +760,16 @@
    "withheld": null,
    "reason": null
   },
+  "project-document-findings": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "project-upload-list": {
    "kind": "catalog",
    "domain": "documents",
@@ -781,6 +781,46 @@
    "reason": null
   },
   "quarantine-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-create": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-delete": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-update": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -821,6 +861,36 @@
    "reason": null
   },
   "upload-batch-seal": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search-export": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search-suggest": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -1572,7 +1642,47 @@
    "withheld": null,
    "reason": null
   },
+  "feedback-office-report-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-report-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "feedback-report-submit": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-thread-get": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-thread-reply": {
    "kind": "catalog",
    "domain": "conversations",
    "sensitivity": null,
@@ -2196,7 +2306,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents"
+   "reason": "Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
   },
   "skill-invocable-list": {
    "kind": "catalog",
@@ -2239,7 +2349,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents"
+   "reason": "Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
   },
   "skill-update": {
    "kind": "catalog",
@@ -2968,6 +3078,16 @@
    "withheld": null,
    "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
   },
+  "platform-feedback-claim": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
   "platform-feedback-get": {
    "kind": "catalog",
    "domain": "platform",
@@ -3443,7 +3563,7 @@
    "domain": "knowledge",
    "sensitivity": null,
    "external": true,
-   "piloti": "native:read_passage",
+   "piloti": "native:read_file",
    "platform": false,
    "withheld": null,
    "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
@@ -3497,6 +3617,20 @@
    "platform": false,
    "withheld": null,
    "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  }
+ },
+ "appTools": {
+  "proposal-card-apply": {
+   "view": "ui://piloti/proposal-card",
+   "operation": "proposal-apply",
+   "app": true,
+   "reason": "pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
+  },
+  "proposal-card-dismiss": {
+   "view": "ui://piloti/proposal-card",
+   "operation": "proposal-dismiss",
+   "app": true,
+   "reason": "pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
   }
  }
 }

@@ -78,6 +78,27 @@ def test_a_turn_is_one_ordered_sequence(path: Path) -> None:
     assert all(event["type"] == "CUSTOM" and event["name"] == "stage" for event in after)
 
 
+@pytest.mark.parametrize("path", TURNS, ids=[path.name for path in TURNS])
+def test_a_subagent_s_work_lies_between_its_start_and_its_end(path: Path) -> None:
+    """AG-UI 1.0: a step names an open invocation, a nested one an open parent, and each closes once."""
+    open_runs: set[str] = set()
+    closed: set[str] = set()
+    for event in _lines(path):
+        run = event.get("subagent_run_id")
+        if event["type"] == "SUBAGENT_STARTED":
+            parent = event.get("parent_subagent_run_id")
+            assert run not in open_runs | closed, f"{run} started twice"
+            assert parent is None or parent in open_runs, f"{run}'s parent {parent} is not running"
+            open_runs.add(run)
+        elif event["type"] in {"SUBAGENT_FINISHED", "SUBAGENT_ERROR"}:
+            assert run in open_runs, f"{run} ended without running"
+            open_runs.discard(run)
+            closed.add(run)
+        elif run is not None:
+            assert run in open_runs, f"a step names {run}, which is not running"
+    assert not open_runs, f"never ended: {open_runs}"
+
+
 def test_a_rejection_is_out_of_band() -> None:
     for event in _lines(FIXTURES / "rejected.jsonl"):
         assert event["seq"] == 0
@@ -193,6 +214,11 @@ def test_a_turn_still_ends_only_on_the_terminals_old_tabs_know() -> None:
         "STATE_SNAPSHOT",
         "STEP_STARTED",
         "STEP_FINISHED",
+        # AG-UI 1.0's subagent lifecycle: none of the three ends a turn, and a
+        # SUBAGENT_ERROR is deliberately not RUN_ERROR (the turn goes on).
+        "SUBAGENT_STARTED",
+        "SUBAGENT_FINISHED",
+        "SUBAGENT_ERROR",
         "RUN_FINISHED",
         "RUN_ERROR",
         "CUSTOM",
@@ -227,3 +253,64 @@ class TestFocusRegion:
         from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
 
         assert {"user_message.focus_region", "user_message.reply_in_thread"} <= set(ACCEPTED_CLIENT_FIELDS)
+
+
+class TestViewerAction:
+    """A viewer action (ADR-0144): the allow-list and what each action needs, which the JSON Schema cannot say."""
+
+    def _value(self, name: str, **args) -> dict:
+        return {
+            "tool_call_id": "va_1",
+            "tool_call_name": name,
+            "args": {"document_id": "d", "document_name": "x.pdf", **args},
+        }
+
+    def test_the_allow_list_is_the_five_actions(self) -> None:
+        from aiq_agent.common.wire_v2 import VIEWER_ACTION_REQUIRES
+        from aiq_agent.common.wire_v2 import ViewerActionName
+
+        assert (
+            set(typing_args(ViewerActionName))
+            == set(VIEWER_ACTION_REQUIRES)
+            == {
+                "open_document",
+                "highlight_passage",
+                "highlight_region",
+                "compare_revisions",
+                "focus_ifc_element",
+            }
+        )
+
+    @pytest.mark.parametrize(
+        ("name", "args", "missing"),
+        [
+            ("highlight_passage", {"passage": "Fluchtweg"}, "page"),
+            ("highlight_region", {"page": 2}, "region"),
+            ("compare_revisions", {}, "against_document_id"),
+            ("focus_ifc_element", {}, "element"),
+        ],
+    )
+    def test_an_action_without_its_place_is_refused(self, name: str, args: dict, missing: str) -> None:
+        from aiq_agent.common.wire_v2 import ViewerActionValue
+
+        with pytest.raises(ValidationError, match=missing):
+            ViewerActionValue.model_validate(self._value(name, **args))
+
+    @pytest.mark.parametrize("region", [[0.8, 0.1, 0.3, 0.2], [0.1, 0.1, 0, 0.2], [-0.1, 0, 0.2, 0.2]])
+    def test_a_region_off_the_page_is_refused(self, region: list[float]) -> None:
+        from aiq_agent.common.wire_v2 import ViewerActionValue
+
+        with pytest.raises(ValidationError, match="not a box on the page"):
+            ViewerActionValue.model_validate(self._value("highlight_region", page=1, region=region))
+
+    def test_an_element_is_an_ifc_global_id(self) -> None:
+        from aiq_agent.common.wire_v2 import ViewerActionValue
+
+        with pytest.raises(ValidationError):
+            ViewerActionValue.model_validate(self._value("focus_ifc_element", element="wall-12"))
+
+
+def typing_args(annotation: Any) -> tuple[Any, ...]:
+    import typing
+
+    return typing.get_args(annotation)

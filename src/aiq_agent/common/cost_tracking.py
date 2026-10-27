@@ -84,6 +84,10 @@ _flush_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="grid-usa
 class BudgetExceededError(RuntimeError):
     """Raised before an LLM call would start with the budget already exhausted."""
 
+    #: A limit doing its job, not a fault: PostHog error tracking skips it
+    #: (``observability.posthog_exceptions``) even where a caller logs it at ERROR.
+    expected_outcome = True
+
     def __init__(self, scope: str, message: str | None = None) -> None:
         self.scope = scope
         super().__init__(

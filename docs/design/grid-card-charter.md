@@ -90,7 +90,7 @@ Thirteen distinct sizes, ten of them arbitrary values — and note `text-[12px]`
 
 - **Modality** (binding vs interpretive): NormChainCard.tsx:76–78 uses weight + ink + a word. Correct.
 - **Currency** (applies to you vs hypothetical): the retired `condition_tree` used `border-dashed bg-muted/30` against a solid tinted panel — chrome differing *in kind*. Correct and excellent.
-- **Lifecycle**: ProposalShell.tsx:12 spends `border-l-warning` on "pending", which collides with `warning` meaning "close to a limit" everywhere else. **This is a live role collision.**
+- **Lifecycle**: ProposalShell.tsx:12 spent `border-l-warning` on "pending", which collided with `warning` meaning "close to a limit" everywhere else. Resolved twice over: pending became ink, and on 2026-10-27 the accent edge went altogether (the owner prefers no side stripes); the outcome is now a glyph beside the receipt's words.
 - **Direction** (`change_impact`): ChangeImpactCard.tsx:63–69 chose amber for `tightens` with an explicit note that red would be wrong. Correct, and it arrived at §A3 axis 4 independently — evidence the axis is real and should be written down before a sixth card guesses differently.
 
 ### 0.5 What the frontend cannot do — hard constraints
@@ -184,7 +184,7 @@ Chroma belongs to provenance (`grid-design-language.md` §Principles 2). These a
 
 The retired `norm_chain` and `condition_tree` cards already did this. Codify it so the next card does not invent a fifth hue family.
 
-**3. The binding constraint — "which one decides it?"** In a set of checks, exactly one usually decides the verdict, and nothing marks it today: `LimitBar` (kit.tsx:414–519) draws every check identically. The deciding row gets a **1px `--foreground` left rule and its value at the Figure step**; every other row stays Body with no rule. One per card, or none.
+**3. The binding constraint — "which one decides it?"** In a set of checks, exactly one usually decides the verdict, and nothing marks it today: `LimitBar` (kit.tsx:414–519) draws every check identically. The deciding row gets **its value at the Figure step and its label in `--foreground`**; every other row stays Body in the muted ink. No left rule: side stripes are discouraged since 2026-10-27 (grid-design-language.md, "Emphasis without a stripe"). One per card, or none.
 
 **4. Direction — "which way did it move?"** → glyph + word + a borrowed verdict ink:
 - `tightens` → ↑ + „strenger" in `--text-color-feedback-warning`
@@ -193,7 +193,7 @@ The retired `norm_chain` and `condition_tree` cards already did this. Codify it 
 
 Red is forbidden here: tightening is a cost, not an error, and error red is for errors only. `ChangeImpactCard.tsx:63–69` already reasons its way to exactly this.
 
-**Fix required:** `ProposalShell` `pending` → `border-l-warning` (ProposalShell.tsx:12). Change to ink (`border-l-foreground/40`).
+**Fixed:** `ProposalShell` `pending` no longer spends `--warning`; since 2026-10-27 no state draws an edge at all, and an outcome shows its glyph and its words.
 
 ### A4. Density, spacing, geometry
 
@@ -463,7 +463,7 @@ Rationale beyond aesthetics: this is the one card that is **not evidence** and m
 
 #### `memory_proposal` / `project_profile_patch`
 **Job.** Ask the user to commit something.
-**Grammar.** Correct and already unique — the only cards with buttons and the only ones whose appearance changes after you act (`ProposalShell`, lifecycle-tracking accent). One fix, from §A3: `pending` must stop spending `--warning` (ProposalShell.tsx:12). Use `border-l-foreground/40`.
+**Grammar.** Correct and already unique — the only cards with buttons and the only ones whose appearance changes after you act (`ProposalShell`, lifecycle-tracking accent). The §A3 fix landed: `pending` no longer spends `--warning`, and since 2026-10-27 the lifecycle shows as a glyph beside the receipt rather than an accent edge.
 **Effort: S.**
 
 #### IFC cards (`ifc_viewer`, `ifc_schedule`, `ifc_element`, `ifc_diff`, `ifc_compliance`, `ifc_model_picker`)

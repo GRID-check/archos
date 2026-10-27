@@ -44,6 +44,7 @@ import { runInboxPush } from '@/lib/push/inbox-push-job'
 import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
 import { runDocumentCheckSlice } from '@/lib/document-check/job'
 import { runRevisionNotice } from '@/lib/revision-notice/job'
+import { runSearchFacetsSyncSlice } from '@/lib/search/shelf-projection'
 import { isLastAttempt } from './attempts'
 import {
   annotationDueRemindersPayloadSchema,
@@ -64,6 +65,7 @@ import {
   revisionNoticePayloadSchema,
   documentCheckPayloadSchema,
   rootSortPayloadSchema,
+  searchFacetsSyncPayloadSchema,
   type BffJobKind,
   type JobAttempt,
   type JobRequester,
@@ -201,4 +203,5 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   revision_notice: systemHandler(revisionNoticePayloadSchema, runRevisionNotice),
   // Sliced: start the turn, then wait for its answer; the person is resolved in each slice.
   document_check: systemSliceHandler(documentCheckPayloadSchema, runDocumentCheckSlice),
+  search_facets_sync: systemSliceHandler(searchFacetsSyncPayloadSchema, runSearchFacetsSyncSlice),
 }

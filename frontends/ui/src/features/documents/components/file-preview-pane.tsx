@@ -120,6 +120,7 @@ import {
   setReviewParams,
   type ReviewLinkTool,
 } from '../lib/open-review'
+import { readDocumentLocus } from '../lib/document-locus'
 import { isLive, type MarkTally } from '@/lib/annotations/types'
 import { CountPill } from '@/components/ui/count-pill'
 import { ToolbarTextButton } from '@/components/ui/floating-toolbar'
@@ -744,6 +745,12 @@ export function FilePreviewPane({
    * is `review`, `mark` and `tool` alone, and this pane writes no `doc`.
    */
   const reviewLink = readReviewParams(searchParams)
+  /**
+   * The place a link opened this document at (`?page=` and `?highlight=`,
+   * `lib/document-locus.ts`): a search hit's passage, handed to the viewer as
+   * a citation's page and passage are. Read for the document `doc` names only.
+   */
+  const linkedLocus = readDocumentLocus(searchParams, file.id)
   /** This page's address names this pane's document: Dateien's `doc`, or the chat's peek. Elsewhere the pane writes no address. */
   const addressed = reviewLink.documentId === file.id || (reviewLink.documentId === null && inChat)
   const urlOpen = reviewLink.open && addressed && pdfInWell
@@ -967,6 +974,17 @@ export function FilePreviewPane({
       setShownPage(page)
     })
   }, [])
+  /**
+   * Where Piloti's viewer action asked this document to be (ADR-0144): the
+   * page turns the way a reading turns it, and the passage or the boxes are
+   * marked there until the reader asks for another place.
+   */
+  const viewerTarget = useFilePreviewStore((state) => (state.viewerTarget?.fileId === file.id ? state.viewerTarget : null))
+  const viewerTargetKey = viewerTarget?.key ?? null
+  const viewerTargetPage = viewerTarget?.page ?? null
+  useEffect(() => {
+    if (viewerTargetKey !== null && viewerTargetPage !== null) showPage(viewerTargetPage)
+  }, [viewerTargetKey, viewerTargetPage, showPage])
   const retryDetails = useCallback(() => {
     setDetailsFailed(false)
     setDetails(null)
@@ -1512,8 +1530,12 @@ export function FilePreviewPane({
                     key={file.id}
                     src={documentFileUrl(file.id)}
                     title={actions.name}
-                    page={shownPage === 'turning' ? null : (shownPage ?? shownFinding?.page ?? null)}
-                    highlight={shownPage === null ? (shownFinding?.highlight ?? null) : null}
+                    page={shownPage === 'turning' ? null : (shownPage ?? linkedLocus.page ?? shownFinding?.page ?? null)}
+                    highlight={
+                      viewerTarget?.passage ??
+                      (shownPage === null ? (linkedLocus.highlight ?? shownFinding?.highlight ?? null) : null)
+                    }
+                    regions={viewerTarget?.regions ?? null}
                     onFindSimilar={findSimilar}
                     onLoadError={handlePdfFailed}
                     ground={peeking ? 'host' : 'stage'}
@@ -1837,7 +1859,7 @@ export function FilePreviewPane({
                           correct it — see `piloti-reading.tsx` for why this is
                           no longer an always-open tag form. */}
                       <div className={cn('p-3', file.summary && 'border-border/60 border-t')}>
-                        <PilotiReading file={file} canManage={canManage} onTagsUpdated={onTagsUpdated} />
+                        <PilotiReading file={file} canManage={canManage} onTagsUpdated={onTagsUpdated} projectId={projectId} />
                       </div>
                     </>
                   ) : (

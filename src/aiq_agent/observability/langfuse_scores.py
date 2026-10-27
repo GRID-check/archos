@@ -91,6 +91,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("accepted", "dismissed", "undone"),
     ),
     ScoreDefinition(
+        "diagram-filed",
+        "CATEGORICAL",
+        "A drawing Piloti made in this turn, filed into the project: as drawn, or edited by a person in the "
+        "sketch editor first (ADR-0141). Metadata names the filed SVG's document id. The share edited is how "
+        "often the drawing was a starting point rather than the result.",
+        writer="bff",
+        categories=("as_drawn", "edited"),
+    ),
+    ScoreDefinition(
         "revision-notice",
         "NUMERIC",
         "How many marks Piloti proposed when it compared a new Fassung on its own (ADR-0130); 0 is compared, "
@@ -195,8 +204,9 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "file-tools-used",
         "CATEGORICAL",
         "Which of the office-file moves a turn used (ADR-0127), as the files eval's arms define them: search "
-        "(knowledge_search ranked by meaning, round 0 included), navigate (list_files, read_passage, and "
-        "knowledge_search in a literal mode, exact or regex), both, or none. Written on every turn that called "
+        "(knowledge_search ranked by meaning, round 0 included), navigate (ls, glob, grep and read_file on the "
+        "office's documents, their aliases list_files and read_passage, and knowledge_search in a literal mode, "
+        "exact or regex), both, or none. A file call on the drafts is neither. Written on every turn that called "
         "a tool.",
         categories=("none", "search", "navigate", "both"),
     ),
@@ -212,8 +222,19 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "card-validity",
         "CATEGORICAL",
-        "Each envelope card that missed its schema: repaired, or dropped.",
-        categories=("repaired", "dropped"),
+        "Each envelope card that missed its schema: repaired, or dropped. Also `stripped`: a computing "
+        "card (calculation, formula) that arrived with a field stating what the card computes (a result, "
+        "a formula's limits), which validation removed; the comment counts the fields.",
+        categories=("repaired", "dropped", "stripped"),
+    ),
+    ScoreDefinition(
+        "formula-input-provenance",
+        "NUMERIC",
+        "Per formula card the answer carries (ADR-0143): the share of its inputs with a value that say where "
+        "the value is written (a `source`, or a norm `reference`). Below 1 is a default the reader cannot "
+        "trace before changing it. Metadata names the formula and counts inputs, sourced and unknown.",
+        min_value=0,
+        max_value=1,
     ),
     ScoreDefinition(
         "work-report-matches",
@@ -471,7 +492,10 @@ def quote_patch_scores(patched: int) -> list[RuntimeScore]:
 #: The tool basenames that navigate the office's files (ADR-0127). ``knowledge_search`` is the search
 #: move when it ranks by meaning and a navigate move in a literal mode (``match="exact"`` or ``"regex"``),
 #: as the files eval's ``navigate`` arm defines it (``scripts/turn_census/files_eval.py``).
-NAVIGATE_TOOLS = frozenset({"list_files", "read_passage"})
+#: The filesystem verbs (ADR-0133) are navigate moves on the estate: ``grep`` is the literal search under its
+#: standard name. A file call that stayed in the drafts arrives as ``draft:<tool>`` (``chat_socket.tool_called_by``)
+#: and is neither. ``list_files`` and ``read_passage`` stay for the release their aliases live.
+NAVIGATE_TOOLS = frozenset({"list_files", "read_passage", "ls", "glob", "grep", "read_file"})
 SEARCH_TOOLS = frozenset({"knowledge_search"})
 
 
@@ -508,9 +532,45 @@ def steer_scores(inbox: Any) -> list[RuntimeScore]:
     return [RuntimeScore("steer-count", float(received), comment=f"applied {applied}")]
 
 
-def card_validity_score(*, outcome: str, card_type: str, index: int) -> RuntimeScore:
-    """One envelope card's schema miss, repaired or dropped."""
-    return RuntimeScore("card-validity", outcome, comment=card_type, item=str(index), metadata={"card_type": card_type})
+def formula_provenance_score(card: dict[str, Any], *, index: int) -> RuntimeScore | None:
+    """How many of a formula card's given defaults say where they are written; ``None`` for any other card.
+
+    An input with no value is not counted against the card: it is shown as
+    unknown, which is the honest outcome, and counted in the metadata instead.
+    A card whose inputs are all unknown scores 1 — nothing on it is untraced.
+    """
+    if card.get("type") != "formula":
+        return None
+    from aiq_agent.cards.models import formula_inputs
+
+    inputs = formula_inputs(card)
+    given = [item for item in inputs if item.get("value") is not None]
+    sourced = [item for item in given if (item.get("source") or "").strip() or item.get("reference")]
+    share = round(len(sourced) / len(given), 4) if given else 1.0
+    name = str((card.get("formula") or {}).get("name"))
+    return RuntimeScore(
+        "formula-input-provenance",
+        share,
+        comment=f"{len(sourced)} of {len(given)} given inputs sourced",
+        item=str(index),
+        metadata={
+            "formula": name,
+            "inputs": len(inputs),
+            "given": len(given),
+            "sourced": len(sourced),
+            "unknown": len(inputs) - len(given),
+        },
+    )
+
+
+def card_validity_score(*, outcome: str, card_type: str, index: int, fields: int | None = None) -> RuntimeScore:
+    """One envelope card's schema miss: repaired, dropped, or `stripped` of ``fields`` it may not state."""
+    metadata: dict[str, Any] = {"card_type": card_type}
+    comment = card_type
+    if fields is not None:
+        metadata["fields"] = fields
+        comment = f"{card_type}: {fields} stated field(s) removed"
+    return RuntimeScore("card-validity", outcome, comment=comment, item=str(index), metadata=metadata)
 
 
 def thread_reply_scores(verdict: str) -> list[RuntimeScore]:

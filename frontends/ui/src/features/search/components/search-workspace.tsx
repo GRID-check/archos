@@ -1,0 +1,141 @@
+'use client'
+
+import type { JSX, ReactNode } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+
+import { useTranslations } from '@/i18n'
+import { capturePosthog } from '@/lib/analytics/posthog'
+import { SEARCH_LIMIT_DEFAULT } from '@/lib/search/search-wire'
+import { SuggestSourceProvider, type SuggestSource } from '../hooks/use-filter-suggestions'
+import { useSavedSearches } from '../hooks/use-saved-searches'
+import { SearchReturnProvider } from '../hooks/use-search-return'
+import { useSearchResults, type AnsweredSearch } from '../hooks/use-search-results'
+import { useOpenedHitCapture, useSearchTracker } from '../hooks/use-search-tracker'
+import { useSearchUrlState } from '../hooks/use-search-url-state'
+import { useSuggestedSearchName } from '../hooks/use-suggested-search-name'
+import { exportSearch, postSuggest, type SearchExportFormat } from '../lib/search-client'
+import { captureRefinements, captureSavedSearchRun, filterDimensions, parseServerTiming, telemetrySurface } from '../lib/search-telemetry'
+import { fromSearchBody, toSearchBody, type SearchUrlState } from '../lib/search-url'
+import { projectFromSavedScope, surfaceScope, type SearchSurface } from '../lib/search-surface'
+import { SavedSearchesMenu } from './saved-searches-menu'
+import { SearchInset } from './search-atoms'
+import { SearchWorkspaceView } from './search-workspace-view'
+
+/** The register reads longer pages than a list: it is walked, not skimmed. */
+const REGISTER_LIMIT = 100
+
+/** What a search state narrows by beyond its body's filters: kinds the reader picked, a project picked on the office page. */
+const extraDimensions = (state: SearchUrlState) => ({ kinds: state.view !== 'register' && state.kinds !== null, project: state.projectId !== null })
+
+/** The filter dimensions a search state sets (`search_refined` compares two). */
+const stateDimensions = (state: SearchUrlState): string[] => filterDimensions(toSearchBody(state), extraDimensions(state))
+
+export interface SearchWorkspaceProps {
+  surface: SearchSurface
+  /** Controls before the view switch (the way back to the Dateien). */
+  leading?: ReactNode
+  currentUserId?: string
+  autoFocus?: boolean
+  /** Inside a shelf's frame, which lends no page padding. */
+  inset?: boolean
+}
+
+/**
+ * The search organism, connected: the question lives in the URL, the answer
+ * comes from `POST /api/search` at the surface's scope, the Planliste from
+ * its export, saved searches from `/api/search/saved`. The same component is
+ * the office-wide page, a project's Dateien → Suche and the office shelf's.
+ */
+export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = false, inset = false }: SearchWorkspaceProps): JSX.Element {
+  const t = useTranslations('search')
+  const { state, setState, fieldValue, setFieldValue } = useSearchUrlState()
+  const scope = useMemo(() => surfaceScope(surface, state), [surface, state])
+  const body = useMemo(
+    () => toSearchBody(state, { limit: state.view === 'register' ? REGISTER_LIMIT : SEARCH_LIMIT_DEFAULT, facets: true }),
+    [state]
+  )
+  // The filter fields complete from where this search looks, under its other filters.
+  const filters = body.filters
+  const suggest = useCallback<SuggestSource>(
+    async (question, signal) => (await postSuggest(scope, { ...question, ...(filters ? { filters } : {}) }, signal)).values,
+    [scope, filters]
+  )
+  const tracker = useSearchTracker(telemetrySurface(surface))
+  const onAnswered = useCallback(
+    (answer: AnsweredSearch) =>
+      tracker.answered({ ...answer, serverTiming: parseServerTiming(answer.serverTiming), view: state.view, extraDimensions: extraDimensions(state) }),
+    [tracker, state]
+  )
+  const results = useSearchResults(scope, body, onAnswered)
+  useOpenedHitCapture(tracker, results.sections)
+  const onRemoveFailed = useCallback(() => toast.error(t('saved.deleteFailed')), [t])
+  const saved = useSavedSearches({ onRemoveFailed })
+  const facets = results.response?.facets
+  const projectName = useCallback((id: string) => facets?.project?.find((facet) => facet.value === id)?.label ?? null, [facets])
+  const suggestedName = useSuggestedSearchName(state, projectName)
+  const [exporting, setExporting] = useState(false)
+
+  const onExport = async (format: SearchExportFormat): Promise<void> => {
+    setExporting(true)
+    const outcome = await exportSearch(scope, toSearchBody(state), format, t('export.fileName'))
+    setExporting(false)
+    if (!outcome.saved) toast.error(t('export.failed'))
+    else capturePosthog('report_exported', { kind: 'plan_list', format })
+  }
+
+  const view = (
+    <SearchWorkspaceView
+      surface={surface}
+      state={state}
+      onStateChange={(next) => {
+        captureRefinements(stateDimensions(state), stateDimensions(next))
+        setState(next)
+      }}
+      fieldValue={fieldValue}
+      onFieldChange={setFieldValue}
+      response={results.response}
+      sections={results.sections}
+      loading={results.loading}
+      failed={results.failed}
+      onRetry={results.retry}
+      onLoadMore={results.loadMore}
+      onExport={(format) => void onExport(format)}
+      exporting={exporting}
+      leading={leading}
+      currentUserId={currentUserId}
+      autoFocus={autoFocus}
+      savedSearches={
+        <SavedSearchesMenu
+          items={saved.items}
+          failed={saved.failed}
+          onApply={(item) => {
+            captureSavedSearchRun(item)
+            setState(fromSearchBody(item.query, projectFromSavedScope(surface, item.scope)))
+          }}
+          onToggleShare={(item) => {
+            void saved.toggleShare(item).then((ok) => {
+              if (!ok) toast.error(t('saved.changeFailed'))
+            })
+          }}
+          onRename={saved.rename}
+          onDelete={saved.remove}
+          onUndoDelete={saved.undoRemove}
+          suggestedName={suggestedName}
+          onSave={async ({ name, shared }) => {
+            const created = await saved.save({ name, shared, scope, query: toSearchBody(state) })
+            if (created) toast.success(t('saved.savedToast'))
+            else toast.error(t('saved.saveFailed'))
+            return created !== null
+          }}
+        />
+      }
+    />
+  )
+  // Every hit drawn here returns to this search on closing (`back`).
+  return (
+    <SearchReturnProvider>
+      <SuggestSourceProvider value={suggest}>{inset ? <SearchInset>{view}</SearchInset> : view}</SuggestSourceProvider>
+    </SearchReturnProvider>
+  )
+}

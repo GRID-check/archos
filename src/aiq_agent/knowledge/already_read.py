@@ -271,12 +271,12 @@ def render_already_read_block(digest: Sequence[str] | None) -> str:
             "Documents already opened in THIS conversation — an index, NOT evidence: "
             "a line proves that the document was opened, not that its wording is available now "
             "(the passages of the PREVIOUS turn are still in the transcript; older ones are not). "
-            "Cite or quote verbatim only after opening it again with `read_passage` and the exact "
-            "name from the line; the digest line itself is never cited.",
+            "Cite or quote verbatim only after opening it again by the exact name from the line; "
+            "the digest line itself is never cited.",
             f"Limited to at most {MAX_DIGEST_DOCS} documents / about {MAX_DIGEST_TOKENS} tokens — "
             "older entries drop out; what is missing here is therefore not ruled out, but is to be "
             "searched with `knowledge_search`. Entries can be outdated (a newer Fassung was filed): "
-            "if `read_passage` reports „no passage“/„unknown document“, resolve again with `knowledge_search`.",
+            "if the read finds no such document or passage, resolve again with `knowledge_search`.",
             *[f"- {line}" for line in lines],
         ]
     )

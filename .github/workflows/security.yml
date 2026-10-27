@@ -6,7 +6,7 @@ name: Security
 #
 # The gate for a CHANGE lives in ci.yml, behind `CI OK`, and checks only what
 # the change itself can break:
-#   gitleaks   every pull request and push, full history (repo job)
+#   gitleaks   every pull request (the commits it adds) and push (repo job)
 #   Semgrep    pull requests, diff-aware: findings the change introduces
 #   trivy      the third-party image pins the change adds or moves
 #

@@ -103,17 +103,18 @@ interface TaskEngine {
 const TASK_ENGINES: Record<DelegatableTaskKind, TaskEngine> = {
   /**
    * A norm check run by the general agent.
-   * No skill: the run works from the regulation corpus and project files
-   * with the retrieval tools it already binds.
+   * No skill, and no tool named: the instruction says what the result is, and
+   * the run chooses the tools it binds (English, like everything an agent reads;
+   * the request itself is quoted as the person wrote it).
    */
   compliance_check: {
     instruction: (goal) =>
       [
-        'Führe für dieses Projekt eine Normprüfung durch: arbeite mit `knowledge_search` und `read_passage`',
-        'und arbeite das Ergebnis zu einer Antwort aus, die je Punkt sagt, was erfüllt ist,',
-        'was offen ist und woran das hängt. Nenne für jeden Befund die Fundstelle.',
+        "Run a norm check for this project against the regulation corpus and the project's documents,",
+        'and work the result into an answer that says, for each point, what is met,',
+        'what is open and what it depends on. Name the source of every finding.',
         '',
-        'Der Auftrag, wörtlich:',
+        'The request, verbatim:',
         goal,
       ].join('\n'),
     title: (goal) => `Normprüfung: ${goal}`,

@@ -186,6 +186,12 @@ export interface StoredThinkingStep {
    * before the wire carried it; those rows link to nothing.
    */
   callId?: string
+  /**
+   * The subagent invocation that took this step (AG-UI 1.0 `subagentRunId`).
+   * On a subagent's own row (`subagent:<run id>`) it names the invocation
+   * that spawned it. Absent: the turn's own agent.
+   */
+  subagentRunId?: string
 }
 
 export type StepDetailValue = string | number | boolean | string[]
@@ -354,6 +360,13 @@ const DROP_ORDER: Readonly<Record<StepKind, number>> = {
   action: 2,
   sources: 2,
 }
+/**
+ * A subagent's own row (`subagent:<run id>`, AG-UI 1.0 `SUBAGENT_*`) is a
+ * status by kind, but it holds its group together: dropped with the status
+ * lines, a long deep research would lose its nesting first. It goes last.
+ */
+const dropTier = (step: StoredThinkingStep): number =>
+  step.kind === 'status' && step.id.startsWith('subagent:') ? DROP_ORDER.action : DROP_ORDER[step.kind]
 /** Reasons are one sentence. */
 const MAX_REASON_CHARS = 600
 /** `citationsRemoved.reasons` is a short list of short codes. */
@@ -378,6 +391,8 @@ const MAX_ACTION_TARGET_CHARS = 300
 const MAX_ACTION_PAGES_CHARS = 40
 /** The wire's own bound on `call_id` (`wire_v2.ActionStep`). */
 const MAX_CALL_ID_CHARS = 64
+/** The wire's own bound on `subagent_run_id` (`wire_v2.SubagentRunId`). */
+const MAX_SUBAGENT_RUN_ID_CHARS = 64
 const MAX_DETAIL_ENTRIES = 16
 const MAX_DETAIL_VALUE_CHARS = 200
 
@@ -559,6 +574,8 @@ function sanitizeStep(input: unknown): StoredThinkingStep | null {
   const callId =
     input.kind === 'action' || input.kind === 'sources' ? cap(input.callId, MAX_CALL_ID_CHARS) : undefined
   if (callId) step.callId = callId
+  const subagentRunId = cap(input.subagentRunId, MAX_SUBAGENT_RUN_ID_CHARS)
+  if (subagentRunId) step.subagentRunId = subagentRunId
   return step
 }
 
@@ -590,7 +607,7 @@ export function boundSteps(steps: readonly StoredThinkingStep[]): StoredThinking
   const tiers = [...new Set(Object.values(DROP_ORDER))].sort((a, b) => a - b)
   for (const tier of tiers) {
     for (let index = 0; index < steps.length && excess > 0; index += 1) {
-      if (DROP_ORDER[steps[index].kind] !== tier) continue
+      if (dropTier(steps[index]) !== tier) continue
       dropped.add(index)
       excess -= 1
     }

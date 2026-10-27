@@ -8,10 +8,12 @@
  */
 
 import type { JSX } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { notFound } from 'next/navigation'
+import { FeedbackProvider } from '@/features/product-feedback/components'
 import { PhoneMoreSheet } from '@/components/shell/phone-more-sheet'
+import { feedbackPreviewApi } from '../_fixtures/feedback-threads'
 import { PhoneTabBar } from '@/components/shell/phone-tab-bar'
 import { useShellOverlays } from '@/components/shell/shell-overlays'
 
@@ -22,7 +24,11 @@ export default function PhoneMoreDevPage(): JSX.Element {
   const pathname = org ? '/app/projects' : '/app/projects/demo/settings/members'
   const setOpen = useShellOverlays((s) => s.setMoreSheetOpen)
   useEffect(() => setOpen(true), [setOpen])
+  // The shell's feedback provider with the fake backend: „Mein Feedback" shows
+  // with its count, the tab its dot, and a tap hands over to the real modal.
+  const threadsApi = useMemo(() => feedbackPreviewApi('list'), [])
   return (
+    <FeedbackProvider threadsApi={threadsApi}>
     <div className="bg-background flex h-dvh flex-col">
       <div className="flex h-14 shrink-0 items-center border-b px-4 text-lg font-semibold">Kaiserstraße 43</div>
       <main className="text-muted-foreground min-h-0 flex-1 p-4 text-sm">Page content</main>
@@ -39,5 +45,6 @@ export default function PhoneMoreDevPage(): JSX.Element {
         canManagePlatform
       />
     </div>
+    </FeedbackProvider>
   )
 }

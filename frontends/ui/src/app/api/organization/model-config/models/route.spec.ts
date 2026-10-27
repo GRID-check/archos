@@ -13,7 +13,7 @@ const session = {
   organizationId: 'org-1',
   email: 'admin@grid.com',
   role: 'admin',
-  permissions: [] as string[],
+  permissions: adminPermissions(),
   featureFlags: ['runtime-model-config'] as string[] | null,
 }
 
@@ -45,6 +45,7 @@ import { GET } from './route'
 import { fetchZdrEndpoints, ZdrListUnavailableError, type ZdrIndex } from '@/lib/model-config/openrouter'
 import { getCatalogForOrg } from '@/lib/model-config/org-catalog'
 import { isZdrOnlyForOrg } from '@/lib/organizations/service'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const model = (id: string) => ({
   id,

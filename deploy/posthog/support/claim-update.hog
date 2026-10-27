@@ -1,0 +1,128 @@
+// Marks a Piloti feedback alert in Slack as claimed once its Support ticket is assigned.
+// Trigger: $conversation_ticket_assigned with assignee_type = user.
+// The alerts are found in the channel's history by the ticket id, so every
+// alert of the ticket is rewritten, whichever automation posted it.
+let props := event.properties
+let ticketId := props.ticket_id
+if (empty(ticketId)) {
+  print('No ticket_id on the event; nothing to update')
+  return
+}
+
+let res := postHogGetTicket({'ticket_id': ticketId, 'include_first_customer_message_text': true})
+if (res.status != 200) {
+  throw Error(f'Failed to fetch ticket ({res.status}): {res.body}')
+}
+let ticket := res.body
+
+let kind := null
+for (let tag in (ticket.tags ?? [])) {
+  if (substring(tag, 1, 5) == 'kind:') {
+    kind := substring(tag, 6, 20)
+  }
+}
+
+// The alerts for this ticket, newest first: every top-level message in the
+// channel whose blocks carry the ticket id (the claim link and the PostHog link
+// both do, claimed or not). Thread replies, broadcast ones included, are not
+// alerts. Read from the channel's recent history because PostHog's live runtime
+// does not let a destination write the alert's ts back onto the ticket.
+fun alertsFor(ticketId) {
+  let history := fetch(f'https://slack.com/api/conversations.history?channel={inputs.channel}&limit=200', {
+    'method': 'GET',
+    'headers': {'Authorization': f'Bearer {inputs.slack_workspace.access_token}'}
+  })
+  if (history.status != 200 or history.body.ok == false) {
+    throw Error(f'Slack history unreadable: {history.status}: {history.body}')
+  }
+  let found := []
+  for (let message in (history.body.messages ?? [])) {
+    let isReply := not empty(message.thread_ts) and message.thread_ts != message.ts
+    if (not isReply and like(jsonStringify(message.blocks ?? []), f'%{ticketId}%')) {
+      found := arrayPushBack(found, message.ts)
+    }
+  }
+  return found
+}
+
+let alerts := alertsFor(ticketId)
+if (empty(alerts)) {
+  print(f'No Slack alert links ticket {ticketId}; nothing to update')
+  return
+}
+
+// Who took it: the configured display name, else the PostHog user's first
+// name or email from the ticket itself, so a new teammate needs no config.
+let assignee := ticket.assignee
+let name := inputs.assignee_names[toString(props.assignee_id)]
+if (empty(name) and not empty(assignee) and not empty(assignee.user)) {
+  name := assignee.user.first_name ?? assignee.user.email
+}
+if (empty(name)) {
+  name := inputs.copy.someone
+}
+
+// Every word a person reads comes from the `copy` input, keyed in English, the
+// way the app reads its i18n dictionaries: no German in the code.
+let copy := inputs.copy
+let titles := {
+  'bug': f'🐞 {copy.title_bug}',
+  'idea': f'💡 {copy.title_idea}',
+  'praise': f'❤️ {copy.title_praise}',
+  'question': f'❓ {copy.title_question}'
+}
+let title := titles[kind] ?? f'📝 {copy.title_other}'
+let number := ticket.ticket_number ?? ticket.number ?? props.ticket_number
+
+// The report's first message starts with "[kind] #<report id> <path>" for
+// PostHog's inbox; Slack shows the member's words without it. PostHog hands the
+// first message back with its line breaks folded into spaces, so this works on
+// words: drop "[kind]", "#<id>" and a following "/path".
+fun withoutHeader(text) {
+  if (empty(text) or not match(text, '^\\[[a-z]+\\] #')) {
+    return text ?? ''
+  }
+  let rest := ''
+  let i := 0
+  for (let word in splitByString(' ', text)) {
+    i := i + 1
+    let isPath := i == 3 and substring(word, 1, 1) == '/'
+    if (i > 2 and not isPath) {
+      rest := empty(rest) ? word : f'{rest} {word}'
+    }
+  }
+  return rest
+}
+
+let words := substring(withoutHeader(ticket.first_customer_message_text), 1, 2500)
+let quote := empty(words) ? '' : f'\n>>> {words}'
+
+let blocks := [
+  {'type': 'section', 'text': {'type': 'mrkdwn', 'text': f'*{title} #{number}*{quote}'}},
+  {'type': 'context', 'elements': [{'type': 'mrkdwn', 'text': f'✅ {copy.taken_by} *{name}*'}]},
+  {'type': 'actions', 'elements': [{
+    'type': 'button',
+    'text': {'type': 'plain_text', 'text': copy.open_ticket},
+    'url': f'https://eu.posthog.com/project/{project.id}/support/tickets/{ticketId}'
+  }]}
+]
+
+for (let ts in alerts) {
+  let update := fetch('https://slack.com/api/chat.update', {
+    'method': 'POST',
+    'headers': {
+      'Authorization': f'Bearer {inputs.slack_workspace.access_token}',
+      'Content-Type': 'application/json; charset=utf-8'
+    },
+    'body': {
+      'channel': inputs.channel,
+      'ts': ts,
+      'text': f'{title} #{number}: {copy.taken_by} {name}',
+      'blocks': blocks
+    }
+  })
+  if (update.status != 200 or update.body.ok == false) {
+    throw Error(f'Failed to update the Slack message {ts}: {update.status}: {update.body}')
+  }
+  print(f'Alert {ts} of ticket {ticketId} marked as taken by {name}')
+}

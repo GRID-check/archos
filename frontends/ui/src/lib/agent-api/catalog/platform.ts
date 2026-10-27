@@ -30,7 +30,11 @@ import {
   reingestKnowledgeSchema,
   retrievalSettingsPutSchema,
 } from '@/lib/platform/platform-wire'
-import { listProductFeedbackQuerySchema, triageProductFeedbackSchema } from '@/lib/product-feedback/types'
+import {
+  claimProductFeedbackSchema,
+  listProductFeedbackQuerySchema,
+  triageProductFeedbackSchema,
+} from '@/lib/product-feedback/types'
 import {
   createCategorySchema,
   createPlatformSkillSchema,
@@ -517,8 +521,10 @@ export const platformOperations = [
     domain: 'platform',
     summary: 'List product-feedback reports',
     description:
-      'Product-feedback reports from every organization with the status of their PostHog Support ticket; filter by ticket ' +
-      'status and kind, and page with the returned `nextCursor`. Report ids feed platform-feedback-get and platform-feedback-triage.',
+      'Product-feedback reports from every organization with their PostHog Support ticket: status, assignee, last activity ' +
+      'and whether the team or the reporter owes the next answer. Filter by ticket status (`active` for every unresolved ' +
+      'ticket), assignee (`mine`, `unassigned`) and kind, and page with the returned `nextCursor`. Report ids feed ' +
+      'platform-feedback-get and platform-feedback-triage; ticket ids feed platform-feedback-claim.',
     method: 'GET',
     path: '/api/platform/feedback',
     query: listProductFeedbackQuerySchema,
@@ -547,6 +553,19 @@ export const platformOperations = [
     body: triageProductFeedbackSchema,
     idempotent: true,
     load: () => import('@/app/api/platform/feedback/[reportId]/route'),
+  },
+  {
+    name: 'platform-feedback-claim',
+    domain: 'platform',
+    summary: 'Take a feedback ticket',
+    description:
+      'Assigns a report’s PostHog Support ticket to the person, found in PostHog by their email. Takes the ticket id (the ' +
+      'Slack alert carries it; platform-feedback-list returns it as `ticket.id`). Returns the report.',
+    method: 'POST',
+    path: '/api/platform/feedback/claim',
+    body: claimProductFeedbackSchema,
+    idempotent: true,
+    load: () => import('@/app/api/platform/feedback/claim/route'),
   },
 
   // Answer quality

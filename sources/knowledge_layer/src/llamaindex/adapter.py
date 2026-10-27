@@ -526,6 +526,16 @@ JOB_RETENTION_SECONDS = 3600  # 1 hour
 # call over the document, then the BFF embeds its requirements). Past it the
 # record is skipped, never the file.
 PERMIT_RECORD_TIMEOUT_SECONDS = 90
+#: How long storing a version's page text may take (two presigns, two PUTs).
+PAGE_TEXT_TIMEOUT_SECONDS = 30
+
+#: The Langfuse trace one file's ingest is recorded under (``_file_trace``).
+INGEST_TRACE_NAME = "ingest-file"
+
+#: How long the document's dossier may take (``aiq_agent.knowledge.dossier``). It runs
+#: beside the summary, the tags and the topics, after the vision batch, and writes a
+#: JSON object where they write a line: about twice the summary's 30 s.
+DOSSIER_TIMEOUT_SECONDS = 60
 #: Dropping a record is one internal call, no model: it must never hold up an ingest.
 PERMIT_RECORD_DROP_TIMEOUT_SECONDS = 5
 #: The bound on one file's Fassung step (a suggestion for a new name, a change line for a re-upload).
@@ -1410,6 +1420,22 @@ def indexed_visual_type(content_type: str, *, extract_images: bool, extract_char
     return content_type if extract_images else None
 
 
+def _table_pass_skips(dense_pages: Sequence[int], triage: Any, *, vision_reads: bool) -> list[int]:
+    """The pages the table pass does not look at: the dense ones, and the drawings the vision model reads.
+
+    On a vector drawing, every wall and dimension line is an edge to pdfplumber's
+    table finder: measured at 0.68 s a page on a sheet of 8000 segments, which finds
+    no table, and production's 133-page set spent 125 s here before its first model
+    call. A drawing page within the render cap is read whole by the vision model,
+    a table drawn on the sheet included, so it is skipped here. A drawing past the
+    cap, or any drawing when no vision model reads them, keeps the table pass. Pure.
+    """
+    skip = set(dense_pages)
+    if vision_reads and triage is not None:
+        skip.update(sorted(triage.drawings)[:MAX_RENDERED_PAGES])
+    return sorted(skip)
+
+
 def _extract_tables_from_pdf(
     pdf_path: str, taken: dict[int, list[tuple]] | None = None, skip_pages: Sequence[int] = ()
 ) -> list[dict[str, Any]]:
@@ -1771,6 +1797,39 @@ def _inside_any(obj: dict[str, Any], boxes: list[tuple]) -> bool:
     x = (obj["x0"] + obj.get("x1", obj["x0"])) / 2
     y = (obj["top"] + obj.get("bottom", obj["top"])) / 2
     return any(x0 <= x <= x1 and top <= y <= bottom for x0, top, x1, bottom in boxes)
+
+
+#: The splitter's chunk size and overlap, in tokens, when the job config names none.
+DEFAULT_CHUNK_SIZE = 1024
+DEFAULT_CHUNK_OVERLAP = 128
+
+
+def split_documents(documents: list[Any], *, chunk_size: int, chunk_overlap: int) -> list[Any]:
+    """``documents`` cut into the nodes ingestion stores, in file order: the job's ``SentenceSplitter``. Pure."""
+    from llama_index.core.node_parser import SentenceSplitter
+
+    return SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap).get_nodes_from_documents(documents)
+
+
+def text_chunks_for_pages(
+    text_pages: list[dict[str, Any]],
+    file_name: str,
+    file_size: int,
+    *,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
+    doc_class: Any = None,
+) -> list[Any]:
+    """The text chunks one PDF's pages become, cut the way an ingest job cuts them, before any embedding.
+
+    :func:`text_documents_for_pages`, the job's metadata stamp and :func:`split_documents`, in that
+    order: overlap, breadcrumbs, ``page_end`` and ``section_part`` exactly as stored. A node's index in
+    the list is its ``chunk_ordinal``. What a fixture seeds, so a test sees what production stores
+    (``scripts/turn_census/fixture_files.py``).
+    """
+    documents = text_documents_for_pages(text_pages, file_name, file_size)
+    _stamp_chunk_metadata(documents, doc_class=doc_class, provenance={}, chunk_size=chunk_size, file_name=file_name)
+    return split_documents(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
 
 def text_documents_for_pages(text_pages: list[dict[str, Any]], file_name: str, file_size: int) -> list[Any]:
@@ -2248,7 +2307,14 @@ def _ingest_cost_scope(job_id: str, config: dict[str, Any]):
 
 
 def _vlm_slot():
-    """One of the fleet's ``VLM_FLEET_CONCURRENCY`` vision-call slots, for as long as the call may last."""
+    """One of the fleet's ``VLM_FLEET_CONCURRENCY`` vision-call slots, for as long as the call may last.
+
+    Shared fairly between organisations (``lease_slots.FAIR_ACQUIRE_LUA``): an
+    office's 300-sheet upload takes every slot while it is alone, and gives one
+    up to the next office's first page as soon as that office waits. The lane is
+    the organisation on the job's cost ledger (``_ingest_cost_scope``), which the
+    vision pool's threads inherit; a call outside a job has none and is unlaned.
+    """
     from aiq_agent.common import lease_slots
 
     return lease_slots.hold(
@@ -2256,7 +2322,72 @@ def _vlm_slot():
         VLM_FLEET_CONCURRENCY,
         lease_seconds=VLM_REQUEST_TIMEOUT_SECONDS + 30,
         max_wait_seconds=VLM_REQUEST_TIMEOUT_SECONDS * 3,
+        lane=_vision_lane(),
     )
+
+
+def _vision_lane() -> str | None:
+    """The organisation the running ingest job reads for, or ``None`` outside one."""
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    tracker = grid_cost_tracker_var.get()
+    organization_id = getattr(tracker, "organization_id", None)
+    return str(organization_id) if organization_id else None
+
+
+#: The Langfuse name of one vision call made by an ingest (a drawing page, an image, a raster).
+VISION_GENERATION_NAME = "ingest-vision"
+
+
+def _observed_vlm_call(client: Any, request: dict[str, Any]) -> Any:
+    """One vision call, as a Langfuse generation under the file's trace (images redacted from the span)."""
+    from aiq_agent.observability.direct_trace import observed_generation
+
+    with observed_generation(
+        VISION_GENERATION_NAME, model=request.get("model"), messages=request.get("messages")
+    ) as generation:
+        response = client.chat.completions.create(**request)
+        dump = getattr(response, "model_dump", None)
+        generation.finish(dump() if callable(dump) else {})
+        return response
+
+
+def _file_trace(file_name: str, config: dict[str, Any], job_id: str):
+    """The Langfuse trace one file's ingest runs under: ids and the file type, never its text."""
+    from aiq_agent.observability.direct_trace import observed_span
+
+    return observed_span(
+        INGEST_TRACE_NAME,
+        metadata={
+            "job_id": job_id,
+            "organization_id": config.get("organization_id"),
+            "project_id": config.get("project_id"),
+            "document_id": config.get("document_id"),
+            "file_type": Path(file_name).suffix.lower().lstrip(".") or "none",
+            "priority": config.get("priority") or "interactive",
+        },
+    )
+
+
+def _finish_file_trace(
+    recorder: Any, job: Any, index: int, stages: dict[str, float], coverage: dict[str, Any] | None = None
+) -> None:
+    """Write the file's outcome on its trace: status, every stage's seconds, pages, chunks. Never raises."""
+    try:
+        detail = job.file_details[index] if index < len(job.file_details) else None
+        status = getattr(getattr(detail, "status", None), "value", None)
+        error = getattr(detail, "error_message", None)
+        output: dict[str, Any] = {
+            "status": status,
+            **{f"seconds_{name}": round(value, 3) for name, value in stages.items()},
+        }
+        output["seconds_total"] = round(sum(stages.values()), 3)
+        for key in ("pages", "drawings", "drawings_read", "transcribed", "not_read"):
+            if coverage and key in coverage:
+                output[f"pages_{key}" if key != "pages" else "pages"] = coverage[key]
+        recorder.finish(output, failed=error if status == FileStatus.FAILED.value else None)
+    except Exception:  # noqa: BLE001 - telemetry never fails an ingest
+        logger.debug("Could not finish the ingest trace", exc_info=True)
 
 
 def _rate_limited_for(error: Exception) -> float | None:
@@ -2283,7 +2414,7 @@ def _vlm_create_fairly(client, **request):
     for attempt in range(VLM_RATE_LIMIT_RETRIES + 1):
         try:
             with _vlm_slot():
-                return client.chat.completions.create(**request)
+                return _observed_vlm_call(client, request)
         except Exception as error:
             wait = _rate_limited_for(error)
             if wait is None or attempt == VLM_RATE_LIMIT_RETRIES:
@@ -2562,6 +2693,12 @@ def _parse_drawing_fields(caption: str) -> dict[str, str]:
     return out
 
 
+#: Output budget of one drawing analysis. The schema-v5 JSON of a sheet with five
+#: or more views runs past 3000 tokens, and a truncated reply is asked again from
+#: the start (``_vlm_chat_create``), so the budget covers the dense sheet at once.
+DRAWING_ANALYSIS_MAX_TOKENS = 6000
+
+
 def _analyze_drawing_page_with_vlm(
     image_bytes: bytes,
     vlm_model: str = DEFAULT_VLM_MODEL,
@@ -2618,7 +2755,11 @@ def _analyze_drawing_page_with_vlm(
             # budget sized for that would truncate mid-object and forfeit the
             # whole structure to the fallback parser on every multi-segment
             # sheet. (_vlm_chat_create still doubles this once on truncation.)
-            max_tokens=3000,
+            # The retry starts the reply over, so a sheet over budget paid for
+            # both replies and waited for both: a dense multi-view sheet
+            # measured 56 s with the retry against 25 s for one under budget.
+            # Unused budget costs nothing, so it is sized for the dense sheet.
+            max_tokens=DRAWING_ANALYSIS_MAX_TOKENS,
         ).strip()
         if not reply:
             return ("[Drawing - empty VLM response]", {})
@@ -2677,6 +2818,87 @@ def _future_result(future, what: str, file_name: str, timeout: float = 30):
         logger.warning("%s timed out for %s", what, file_name)
     except Exception as e:  # noqa: BLE001 — an annotation is worth less than the ingestion
         logger.warning("%s failed for %s: %s", what, file_name, e)
+    return None
+
+
+def _digest_passages(documents: list[Any]) -> list[tuple[Any, str, str]]:
+    """``(page, content type, text)`` per document chunk, in reading order: what the dossier digest reads."""
+    return [
+        (doc.metadata.get("page_label"), str(doc.metadata.get("content_type") or "text"), doc.get_content())
+        for doc in documents
+    ]
+
+
+def _page_number(label: Any) -> int | None:
+    try:
+        number = int(str(label).strip())
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def _reading_of(
+    documents: list[Any], dossier: dict[str, Any] | None, predecessor: tuple[str, Any] | None = None
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """The dossier with the facts the drawings printed, and the document's references. Pure over the chunks.
+
+    A drawing's analysis already holds its printed quantities (``drawing_data``); the ones
+    that are project facts join the dossier's own, once per key and value. References are
+    read from every chunk's text, a drawing's annotations included, and a document's
+    references to its own kind are dropped.
+    """
+    from knowledge_layer.references import extract_references
+
+    from aiq_agent.knowledge.dossier import MAX_FACTS
+    from aiq_agent.knowledge.dossier import lifted_drawing_facts
+    from aiq_agent.knowledge.dossier import own_document_type
+
+    references = extract_references(
+        ((doc.get_content(), _page_number(doc.metadata.get("page_label"))) for doc in documents),
+        own_document_type=own_document_type(dossier),
+    )
+    if not dossier:
+        return None, references
+    analyses = []
+    for doc in documents:
+        raw = doc.metadata.get("drawing_data")
+        if not raw:
+            continue
+        try:
+            analyses.append(
+                (_page_number(doc.metadata.get("page_label")), json.loads(raw) if isinstance(raw, str) else raw)
+            )
+        except (TypeError, ValueError):
+            continue
+    facts = list(dossier.get("facts") or [])
+    seen = {(fact["key"], fact["value"]) for fact in facts}
+    for fact in lifted_drawing_facts(analyses):
+        if (fact["key"], fact["value"]) not in seen and len(facts) < MAX_FACTS:
+            seen.add((fact["key"], fact["value"]))
+            facts.append(fact)
+    reading = {**dossier, "facts": facts}
+    # The Fassung this one replaces (a re-upload under the name, or the one a person
+    # linked at upload): what the facts say differently now, without a model.
+    if predecessor is not None:
+        from aiq_agent.knowledge.dossier import fact_changes
+
+        name, before = predecessor
+        changes = fact_changes(before if isinstance(before, dict) else None, reading)
+        if changes:
+            reading["changes"] = changes
+            reading["changed_against"] = name
+    return reading, references
+
+
+def _predecessor_dossier(
+    rows: Sequence[Any], stored_names: Sequence[str], confirmed_older: str | None
+) -> tuple[str, Any] | None:
+    """The Fassung this file replaces and its dossier, from the rows read before this upload overwrote them."""
+    wanted = [*stored_names, *([confirmed_older] if confirmed_older else [])]
+    for name in wanted:
+        row = next((row for row in rows if getattr(row, "file_name", None) == name), None)
+        if row is not None and getattr(row, "dossier", None):
+            return name, row.dossier
     return None
 
 
@@ -2924,7 +3146,18 @@ class _PdfScreen(NamedTuple):
 
 
 #: The order ``[ingest-perf]`` lists a file's stages in, so two lines compare.
-_INGEST_PERF_ORDER = ("text", "tables", "screen", "renders", "rasters", "vision", "summary", "embedding", "write")
+_INGEST_PERF_ORDER = (
+    "text",
+    "tables",
+    "screen",
+    "ocr",
+    "renders",
+    "rasters",
+    "vision",
+    "summary",
+    "embedding",
+    "write",
+)
 
 
 @contextlib.contextmanager
@@ -4511,12 +4744,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         the chunker's output) is its place in the file: what orders the chunks
         of one page, whose node ids are random.
         """
-        from llama_index.core.node_parser import SentenceSplitter
         from llama_index.core.schema import MetadataMode
 
         from ..qdrant.payload import ChunkRecord
 
-        nodes = SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap).get_nodes_from_documents(documents)
+        nodes = split_documents(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         if not nodes:
             return []
         vectors = self._embed_model.get_text_embedding_batch(
@@ -4809,6 +5041,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 source_path = rendition or file_path
                 # ``[ingest-perf]``: this file's stage seconds, logged in the finally below.
                 stages: dict[str, float] = {}
+                # One Langfuse trace per file (ADR-0089): its stages, its coverage, its outcome,
+                # and every model call it makes nested under it. Closed in the finally below.
+                file_trace = _file_trace(file_name, config, job_id)
+                file_recorder = file_trace.__enter__()
+                coverage = None
                 try:
                     file_size = os.path.getsize(file_path)
 
@@ -4869,6 +5106,12 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         elif ext == ".webp":
                             image_format = "webp"
                     is_image = image_format is not None and not is_pdf
+                    # The image branch reads the camera facts; stored with the
+                    # metadata rows after indexing. Reset here, before the branch.
+                    photo = None
+                    # How much of a PDF was read (`knowledge_layer.coverage`), set
+                    # after the vision batch; stored with the metadata rows.
+                    coverage = None
 
                     mode_str = "text"
                     if is_image or (is_pdf and (extract_tables or extract_images)):
@@ -4937,8 +5180,13 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             from knowledge_layer.llamaindex.section_chunking import uncaptioned_table_documents
 
                             taken = {page["page_number"]: page.get("table_boxes") or [] for page in text_pages}
+                            skip = _table_pass_skips(
+                                dense_pages,
+                                screen.triage,
+                                vision_reads=bool(vlm_api_key) and RENDER_VISUAL_PAGES,
+                            )
                             with _stage(stages, "tables"):
-                                tables = _extract_tables_from_pdf(source_path, taken, dense_pages)
+                                tables = _extract_tables_from_pdf(source_path, taken, skip)
                             _log_memory(f"tables:done tables={len(tables)}")
                             table_documents = [
                                 document
@@ -4951,19 +5199,22 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 held = self._screen_tables(job, i, screening_rules, table_documents, screen.checked)
                             if held:
                                 continue
-                        page_routes = _transcription.route_pdf_pages(
-                            source_path,
-                            text_pages,
-                            page_texts_for_visual_heuristic(text_pages),
-                            vlm_api_key=vlm_api_key,
-                            model=ocr_model,
-                            base_url=vlm_base_url,
-                            min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
-                            min_paths=VISUAL_PAGE_MIN_PATHS,
-                            max_ocr_pages=MAX_OCR_PAGES,
-                            max_dim=PAGE_RENDER_MAX_DIM,
-                            **screen.routing(),
-                        )
+                        # Scans and garbled pages are transcribed here, one vision call
+                        # each: on a scanned file this is most of the wall time.
+                        with _stage(stages, "ocr"):
+                            page_routes = _transcription.route_pdf_pages(
+                                source_path,
+                                text_pages,
+                                page_texts_for_visual_heuristic(text_pages),
+                                vlm_api_key=vlm_api_key,
+                                model=ocr_model,
+                                base_url=vlm_base_url,
+                                min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
+                                min_paths=VISUAL_PAGE_MIN_PATHS,
+                                max_ocr_pages=MAX_OCR_PAGES,
+                                max_dim=PAGE_RENDER_MAX_DIM,
+                                **screen.routing(),
+                            )
                         self._record_file_counts(job, i, **page_routes.counts())
                         # What the vision model read off scanned pages is text
                         # too, screened before summaries, captions or embeddings
@@ -5107,10 +5358,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # rendered-page descriptions — not a watermark — feed the
                     # summary. Rendered visual/vector pages accumulate here.
                     summary_future = None
+                    dossier_future = None
                     tags_future = None
                     topics_future = None
                     doc_class_future = None
-                    photo = None
                     executor = None
                     drawing_pages: list[dict[str, Any]] = []
 
@@ -5173,6 +5424,49 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 vlm_base_url=vlm_base_url,
                                 vlm_api_key=vlm_api_key,
                                 extract_charts=extract_charts,
+                            )
+
+                        from knowledge_layer.coverage import reading_coverage
+
+                        coverage = reading_coverage(
+                            page_count=getattr(text_pages, "page_count", 0) or len(text_pages),
+                            text_pages=text_pages,
+                            drawing_pages=page_routes.drawing_pages,
+                            rendered=len(drawing_pages_raw),
+                            read=len(drawing_pages),
+                            transcribed=len(page_routes.outcome.texts),
+                            transcription_failed=len(page_routes.outcome.failed),
+                            transcription_over_cap=len(page_routes.outcome.over_cap),
+                            not_transcribed=len(page_routes.not_transcribed),
+                            vision_configured=bool(vlm_api_key) and RENDER_VISUAL_PAGES,
+                        )
+
+                        # What each page says, stored once per version beside the file
+                        # (ADR-0134): the screen has passed and the drawings are read, so
+                        # this is the page as the pipeline read it. A re-chunk reads it
+                        # instead of the PDF; the agent's file reader serves it. Bounded,
+                        # fail-open, only for a document the BFF dispatched.
+                        if config.get("document_id"):
+                            from knowledge_layer.llamaindex import page_text_store
+
+                            self._bounded(
+                                "Page text",
+                                file_name,
+                                PAGE_TEXT_TIMEOUT_SECONDS,
+                                page_text_store.store_page_text,
+                                page_text_store.pdf_pages(
+                                    text_pages,
+                                    transcribed=page_routes.outcome.texts,
+                                    ocr_model=ocr_model,
+                                    drawings=drawing_pages,
+                                    vision_model=vlm_model,
+                                    tables=tables,
+                                ),
+                                page_count=getattr(text_pages, "page_count", 0) or len(text_pages),
+                                failed_pages=getattr(text_pages, "failed_pages", ()),
+                                document_id=str(config["document_id"]),
+                                collection=collection_name,
+                                organization_id=organization_id,
                             )
 
                         # Keep the rasters the VLM just captioned, beside the
@@ -5291,6 +5585,22 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         summary_future = submit_in_context(
                             executor, _generate_document_summary, llm_input, file_name, self.summary_llm
                         )
+                        # The dossier reads the WHOLE document (a digest of every
+                        # page), beside the one-sentence summary that reads its first
+                        # and last chunk. Not for the base corpus: a Richtlinie is not
+                        # a project document, and its structure is read by the clauses.
+                        if not base_corpus:
+                            from aiq_agent.knowledge.dossier import build_digest
+                            from aiq_agent.knowledge.dossier import write_dossier
+
+                            digest = build_digest(
+                                _digest_passages(all_documents),
+                                file_name=file_name,
+                                title_block=revisions.revision_facts_from_documents(all_documents),
+                            )
+                            dossier_future = submit_in_context(
+                                executor, write_dossier, digest, self.summary_llm, file_name=file_name
+                            )
                         tags_future = submit_in_context(
                             executor,
                             classify_document_tags,
@@ -5354,6 +5664,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 logger.warning("Tag classification failed for %s: %s", file_name, e)
 
                         topics = _future_result(topics_future, "Topic suggestion", file_name)
+                        dossier = _future_result(dossier_future, "Dossier", file_name, timeout=DOSSIER_TIMEOUT_SECONDS)
+                        # Written from every page rather than the first and last chunk.
+                        if dossier and dossier.get("summary"):
+                            summary = dossier["summary"]
 
                         # Clean up executor
                         if executor:
@@ -5556,6 +5870,21 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
                             set_document_capture(collection_name, file_name, photo.as_metadata())
 
+                        # What the ingest read: the dossier, the references, the coverage.
+                        # Written together, so a re-ingest replaces the whole reading.
+                        from aiq_agent.knowledge import set_document_reading
+
+                        reading, references = _reading_of(
+                            all_documents,
+                            dossier,
+                            _predecessor_dossier(
+                                revision_rows, previous.stored_names if previous else (), confirmed_older
+                            ),
+                        )
+                        set_document_reading(
+                            collection_name, file_name, dossier=reading, references=references, coverage=coverage
+                        )
+
                         # Persist the doc_class onto the freshly-created summary
                         # row, but never overwrite a human-set stored value —
                         # only stamp the guess when none was stored. The class
@@ -5692,6 +6021,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # not on the success path, so a held or failed file shows the
                     # stages it did reach: that is where the screening win reads.
                     _log_ingest_perf(file_name, stages)
+                    _finish_file_trace(file_recorder, job, i, stages, coverage)
+                    file_trace.__exit__(None, None, None)
                     _release_memory(file_name)
                     # Still under the replacement lock: a quarantined re-upload
                     # holds its whole document (ADR-0086) until a reviewer
@@ -6137,15 +6468,20 @@ class LlamaIndexRetriever(BaseRetriever):
         if not pattern or limit <= 0:
             return []
         from ..qdrant import retrieval as qdrant_retrieval
+        from ..qdrant.schema import CHUNK_ORDINAL_FIELD
 
         # Every returned chunk matches, so none ranks above another; the
         # caller orders them by document and page (cosine 1.0).
-        return [
-            self._chunk_from_hit(hit)
-            for hit in qdrant_retrieval.find_text(
-                collection_name, pattern, filters, limit, user_regex=user_regex, stem_phrases=stem_phrases
-            )
-        ]
+        hits = qdrant_retrieval.find_text(
+            collection_name, pattern, filters, limit, user_regex=user_regex, stem_phrases=stem_phrases
+        )
+        chunks = [self._chunk_from_hit(hit) for hit in hits]
+        for chunk, hit in zip(chunks, hits, strict=True):
+            # The count finds a chunk's overlap by its place in the file (``chunk_positions``), which
+            # the hit's metadata leaves out as store-only.
+            if isinstance(hit.payload.get(CHUNK_ORDINAL_FIELD), int):
+                chunk.metadata.setdefault(CHUNK_ORDINAL_FIELD, hit.payload[CHUNK_ORDINAL_FIELD])
+        return chunks
 
     def _warm_sync(self, query: str) -> None:
         self._ensure_initialized()

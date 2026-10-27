@@ -4120,9 +4120,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "requestBody": {
@@ -4186,9 +4186,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4319,9 +4319,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4371,9 +4371,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4423,9 +4423,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "requestBody": {
@@ -4504,9 +4504,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4558,9 +4558,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           },
           {
             "name": "versionId",
@@ -4652,9 +4652,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4871,9 +4871,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4925,9 +4925,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "requestBody": {
@@ -5085,9 +5085,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5139,9 +5139,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5193,9 +5193,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5453,84 +5453,6 @@
         }
       }
     },
-    "/api/documents/search": {
-      "post": {
-        "operationId": "document-search",
-        "summary": "Search a shelf’s documents by meaning",
-        "description": "Semantic search over one shelf, a project’s (`projectId`, from project-list) or the office shelf (`scope: office_shelf`), for a question or phrase `q`. Returns the best matching documents with a snippet, page and score, up to `topK` (1 to 100). Read-only.",
-        "tags": [
-          "documents"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "scope": {
-                    "type": "string",
-                    "enum": [
-                      "project",
-                      "office_shelf"
-                    ],
-                    "description": "Default `project` (with `projectId`)."
-                  },
-                  "projectId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "q": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 1000
-                  },
-                  "topK": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "q"
-                ],
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Search a shelf’s documents by meaning",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
     "/api/documents/{id}/status": {
       "get": {
         "operationId": "document-status",
@@ -5546,9 +5468,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5687,9 +5609,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "requestBody": {
@@ -5775,9 +5697,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5829,9 +5751,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5883,9 +5805,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -6031,9 +5953,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -6652,6 +6574,71 @@
         }
       }
     },
+    "/api/projects/{id}/document-findings": {
+      "get": {
+        "operationId": "project-document-findings",
+        "summary": "List what a project’s documents say about each other",
+        "description": "Findings read from the project's documents at ingest: `profile_contradiction` (a current document states a fact, e.g. building_class, that differs from the confirmed project profile; `profileValue` is the profile side), `contradiction` (two current documents state one fact, e.g. storeys_above_ground, with different values), `missing_document` (a document points at a document type the project does not hold), `missing_plan` (a drawing number no document matches) and `incomplete_read` (pages Piloti could not fully read). Each finding names its documents and pages in `sources`; open them with document-get. Pass `documentId` to also get that document’s references resolved to project documents and the documents that point at it.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "documentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "A document id from document-list. With it, `document` carries that document's references resolved to the project's documents and the documents that point at it."
+            },
+            "description": "A document id from document-list. With it, `document` carries that document's references resolved to the project's documents and the documents that point at it."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List what a project’s documents say about each other",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/projects/{id}/uploads": {
       "get": {
         "operationId": "project-upload-list",
@@ -6751,6 +6738,297 @@
         "x-mcp-annotations": {
           "title": "List the quarantine queue",
           "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/search/saved": {
+      "post": {
+        "operationId": "saved-search-create",
+        "summary": "Save a search question",
+        "description": "Saves a search question under a `name` unique among the caller’s own: `scope` and `query` as the search operation takes them (query without `cursor`). `shared: true` shows it to every member of the office; each runs it with their own rights. Stores the question only, never results. Any member may save one, up to 200. Returns `{ savedSearch }`; a name already used answers 409.",
+        "tags": [
+          "documents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "description": "Unique among your own saved searches."
+                  },
+                  "scope": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "office",
+                          "project",
+                          "office_shelf"
+                        ],
+                        "description": "Default `office`: every shelf the person may read."
+                      },
+                      "projectId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "folderId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "A folder of the project or the office shelf, its subfolders included."
+                      }
+                    },
+                    "additionalProperties": true,
+                    "description": "Where to look, as workspace-search takes it in its query; {} is the whole office."
+                  },
+                  "query": {
+                    "type": "object",
+                    "additionalProperties": {},
+                    "description": "The question: the body of workspace-search (text, kinds, filters, annotationFilters, sort, dir, limit, facets), without a cursor."
+                  },
+                  "shared": {
+                    "type": "boolean",
+                    "description": "Every member of the office sees and runs it, each with their own rights."
+                  }
+                },
+                "required": [
+                  "name",
+                  "scope",
+                  "query"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Save a search question",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      "get": {
+        "operationId": "saved-search-list",
+        "summary": "List saved searches",
+        "description": "The caller’s own saved searches and the ones colleagues shared with the office, newest first: `{ savedSearches: [{ id, name, scope, query, shared, ownedByMe, ownerName, createdAt }], nextCursor }`, a page of `limit` (default 50, max 200). To run one, pass its `scope` as the query and its `query` as the body of the search operation; it runs with the caller’s own rights, so a shared one finds only what the caller may read. `ownerName` names the colleague who saved a shared one (null on the caller’s own). Only rows with `ownedByMe` can be changed with saved-search-update or saved-search-delete.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Default 50, max 200."
+            },
+            "description": "Default 50, max 200."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List saved searches",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/search/saved/{id}": {
+      "delete": {
+        "operationId": "saved-search-delete",
+        "summary": "Delete a saved search",
+        "description": "Permanently deletes one of the caller’s own saved searches, by its id from saved-search-list; colleagues it was shared with lose it too. Documents are untouched. A colleague’s answers 404.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The saved search id, from saved-search-list."
+            },
+            "description": "The saved search id, from saved-search-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Delete a saved search",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "patch": {
+        "operationId": "saved-search-update",
+        "summary": "Rename or share a saved search",
+        "description": "Renames (`name`) or shares and unshares (`shared`) one of the caller’s own saved searches, by its id from saved-search-list. A colleague’s answers 404. Returns `{ savedSearch }`; a name already used answers 409.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The saved search id, from saved-search-list."
+            },
+            "description": "The saved search id, from saved-search-list."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "description": "Unique among your own saved searches."
+                  },
+                  "shared": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Rename or share a saved search",
+          "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
@@ -7112,6 +7390,763 @@
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/search": {
+      "post": {
+        "operationId": "workspace-search",
+        "summary": "Search everything the person may read, with filters",
+        "description": "Searches every shelf the person may read, or one project (`projectId`), a folder of it (`folderId`) or the office shelf (`scope: office_shelf`). Finds documents by name, by what ingestion read (type, parties, facts, references, drawing number, revision, scale) and by content with the passage and page; also annotations, folders, projects and conversations (`kinds`). `sort` orders like a drawing register, `facets` counts per value, `cursor` pages one kind. A passage points at a page: read the document before quoting it.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "office",
+                "project",
+                "office_shelf"
+              ],
+              "description": "Default `office`: every shelf the person may read."
+            },
+            "description": "Default `office`: every shelf the person may read."
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "folderId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "A folder of the project or the office shelf, its subfolders included."
+            },
+            "description": "A folder of the project or the office shelf, its subfolders included."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Matches names, what documents are and say (with the page), annotations, folders, projects, conversations. Write it in the language of the documents."
+                  },
+                  "kinds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "document",
+                        "annotation",
+                        "folder",
+                        "project",
+                        "conversation"
+                      ]
+                    },
+                    "maxItems": 5,
+                    "description": "Default: every kind."
+                  },
+                  "filters": {
+                    "type": "object",
+                    "properties": {
+                      "documentTypes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "submission_drawing",
+                            "construction_drawing",
+                            "site_plan",
+                            "zoning_plan",
+                            "building_description",
+                            "fire_safety_concept",
+                            "structural_analysis",
+                            "energy_certificate",
+                            "building_physics",
+                            "soil_report",
+                            "expert_report",
+                            "permit",
+                            "application",
+                            "meeting_minutes",
+                            "correspondence",
+                            "offer",
+                            "invoice",
+                            "contract",
+                            "specification",
+                            "schedule",
+                            "calculation",
+                            "photo",
+                            "legal_text",
+                            "other"
+                          ]
+                        },
+                        "maxItems": 24,
+                        "description": "What the document is, as ingestion read it."
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 20,
+                        "description": "Controlled tags: document kind and OIB discipline."
+                      },
+                      "planNumber": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120,
+                        "description": "Drawing number prefix; spaces, hyphens, case ignored."
+                      },
+                      "planIndex": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "maxItems": 20
+                      },
+                      "planDate": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true,
+                        "description": "YYYY-MM-DD bounds, inclusive."
+                      },
+                      "scale": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "maxItems": 20,
+                        "description": "Scale as the title block writes it, e.g. \"1:100\"."
+                      },
+                      "currentOnly": {
+                        "type": "boolean",
+                        "description": "No newer revision replaces it."
+                      },
+                      "parties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "client",
+                                "architect",
+                                "engineer",
+                                "authority",
+                                "contractor",
+                                "author",
+                                "other"
+                              ]
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120,
+                              "description": "A part of the name, any case."
+                            }
+                          },
+                          "additionalProperties": true
+                        },
+                        "maxItems": 8
+                      },
+                      "place": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120,
+                        "description": "Part of address, municipality or state."
+                      },
+                      "municipalities": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "maxItems": 20,
+                        "description": "Municipality as the facet names it, any case."
+                      },
+                      "projectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "maxItems": 50,
+                        "description": "Only these projects (within the scope)."
+                      },
+                      "facts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "enum": [
+                                "building_class",
+                                "storeys_above_ground",
+                                "storeys_below_ground",
+                                "building_height",
+                                "gross_floor_area",
+                                "usable_floor_area",
+                                "plot_area",
+                                "floor_area_ratio",
+                                "site_coverage_ratio",
+                                "units",
+                                "parking_spaces",
+                                "use",
+                                "construction_method",
+                                "escape_route_length",
+                                "room_height",
+                                "energy_class",
+                                "heating_demand"
+                              ]
+                            },
+                            "equals": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120,
+                              "description": "Folded like the documents: for building_class \"GK 4\", \"IV\" and \"4\" are one value."
+                            },
+                            "min": {
+                              "type": "number"
+                            },
+                            "max": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "key"
+                          ],
+                          "additionalProperties": true
+                        },
+                        "maxItems": 8
+                      },
+                      "cites": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "maxItems": 8,
+                        "description": "Cited norm (\"EN 1992-1-1\"), law (\"§ 33\"), drawing (\"EP-05\") or `kind:key` token."
+                      },
+                      "citedBy": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Documents this document references."
+                      },
+                      "citing": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Documents referencing this document."
+                      },
+                      "documentDate": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true,
+                        "description": "YYYY-MM-DD bounds, inclusive."
+                      },
+                      "uploaded": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true,
+                        "description": "YYYY-MM-DD bounds, inclusive."
+                      },
+                      "photographed": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true,
+                        "description": "YYYY-MM-DD bounds, inclusive."
+                      },
+                      "uploadedBy": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 100
+                        },
+                        "maxItems": 20,
+                        "description": "Uploader user ids."
+                      },
+                      "states": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "readable",
+                            "reading",
+                            "failed",
+                            "held",
+                            "unindexed"
+                          ]
+                        },
+                        "maxItems": 5
+                      },
+                      "incompleteRead": {
+                        "type": "boolean",
+                        "description": "Has unread pages."
+                      },
+                      "factsChanged": {
+                        "type": "boolean",
+                        "description": "States facts differently from the revision it replaced."
+                      },
+                      "changedFacts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "A fact key, as the facts filter names them."
+                        },
+                        "maxItems": 17,
+                        "description": "Facts changed against the replaced revision."
+                      },
+                      "fileTypes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 12,
+                        "description": "Extensions: pdf, dwg, ifc."
+                      },
+                      "pages": {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer"
+                          },
+                          "max": {
+                            "type": "integer"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "includeArchived": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "description": "Narrow documents and their annotations; other kinds are then set aside (`setAside`)."
+                  },
+                  "annotationFilters": {
+                    "type": "object",
+                    "properties": {
+                      "statuses": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "proposed",
+                            "open",
+                            "resolved",
+                            "dismissed"
+                          ]
+                        },
+                        "maxItems": 4,
+                        "description": "Default: open and proposed."
+                      },
+                      "kinds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "hint",
+                            "question",
+                            "defect"
+                          ]
+                        },
+                        "maxItems": 3
+                      },
+                      "assignedToMe": {
+                        "type": "boolean"
+                      },
+                      "createdByMe": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "description": "Narrow annotations; other kinds are then set aside."
+                  },
+                  "sort": {
+                    "type": "string",
+                    "enum": [
+                      "relevance",
+                      "name",
+                      "added",
+                      "plan_number",
+                      "plan_index",
+                      "plan_date",
+                      "document_date",
+                      "document_type",
+                      "page_count",
+                      "project",
+                      "scale",
+                      "folder",
+                      "status",
+                      "author"
+                    ],
+                    "description": "Default: relevance with text, else added."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "enum": [
+                      "asc",
+                      "desc"
+                    ]
+                  },
+                  "limit": {
+                    "type": "integer"
+                  },
+                  "cursor": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "The nextCursor of a previous answer with the same question and one kind."
+                  },
+                  "facets": {
+                    "type": "boolean",
+                    "description": "Count the documents per filter value. Default true."
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Search everything the person may read, with filters",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/search/export": {
+      "post": {
+        "operationId": "workspace-search-export",
+        "summary": "Export the documents a search finds as a drawing register file",
+        "description": "The documents of a search (same scope and body as workspace-search) as a drawing register, csv (semicolon) or xlsx, one row per document in the search order. Refused above 5000 documents: narrow the filters.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "office",
+                "project",
+                "office_shelf"
+              ],
+              "description": "Default `office`: every shelf the person may read."
+            },
+            "description": "Default `office`: every shelf the person may read."
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "folderId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "A folder of the project or the office shelf, its subfolders included."
+            },
+            "description": "A folder of the project or the office shelf, its subfolders included."
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "xlsx"
+              ],
+              "description": "csv for a spreadsheet in a German locale (semicolon), xlsx for Excel."
+            },
+            "description": "csv for a spreadsheet in a German locale (semicolon), xlsx for Excel."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {},
+                "description": "The question: the body of workspace-search (text, kinds, filters, sort, dir); kinds and paging are ignored."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Export the documents a search finds as a drawing register file",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/search/suggest": {
+      "post": {
+        "operationId": "workspace-search-suggest",
+        "summary": "Complete a search filter from document values",
+        "description": "Values documents in reach hold for one workspace-search filter, starting as `prefix`, with document counts, under the same scope and `filters`. `cites` values are tokens.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "office",
+                "project",
+                "office_shelf"
+              ],
+              "description": "Default `office`: every shelf the person may read."
+            },
+            "description": "Default `office`: every shelf the person may read."
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "folderId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "A folder of the project or the office shelf, its subfolders included."
+            },
+            "description": "A folder of the project or the office shelf, its subfolders included."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dimension": {
+                    "type": "string",
+                    "enum": [
+                      "party",
+                      "place",
+                      "cites",
+                      "scale",
+                      "planNumber",
+                      "planIndex",
+                      "fact"
+                    ]
+                  },
+                  "prefix": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "description": "Start of any word; case and accents ignored."
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "client",
+                      "architect",
+                      "engineer",
+                      "authority",
+                      "contractor",
+                      "author",
+                      "other"
+                    ],
+                    "description": "party only."
+                  },
+                  "factKey": {
+                    "type": "string",
+                    "description": "A fact key, as the facts filter names them."
+                  },
+                  "filters": {
+                    "type": "object",
+                    "additionalProperties": {},
+                    "description": "workspace-search filters; the dimension’s own is ignored."
+                  }
+                },
+                "required": [
+                  "dimension"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Complete a search filter from document values",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
           "openWorldHint": false
         }
       }
@@ -8730,9 +9765,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -8910,9 +9945,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -8964,9 +9999,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -9026,9 +10061,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -9088,9 +10123,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -9259,9 +10294,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -9371,9 +10406,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -9443,9 +10478,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -9562,9 +10597,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "format",
@@ -9688,9 +10723,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -9743,9 +10778,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -9797,9 +10832,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -10035,9 +11070,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -10112,9 +11147,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -10190,9 +11225,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -10261,9 +11296,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -10347,9 +11382,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -10409,9 +11444,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -10498,9 +11533,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "from",
@@ -10572,9 +11607,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -10636,9 +11671,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -10690,9 +11725,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -10754,9 +11789,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -10818,9 +11853,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -10910,9 +11945,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -11002,9 +12037,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -11056,9 +12091,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -12981,7 +14016,135 @@
         }
       }
     },
+    "/api/feedback/office-reports": {
+      "get": {
+        "operationId": "feedback-office-report-list",
+        "summary": "List every feedback report of the organization",
+        "description": "Every product feedback report filed by anyone in the organization, newest first, with the reporter’s name, ticket status (`resolved` is done, every other status is an active case), ticket number and last activity. Needs `org:settings:manage` (403 otherwise). `mine: false` marks a colleague’s report: its thread reads with feedback-thread-get but only the reporter can answer it. Page with `nextCursor`.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Reports per page, newest first (1 to 20)."
+            },
+            "description": "Reports per page, newest first (1 to 20)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "`nextCursor` of the previous page."
+            },
+            "description": "`nextCursor` of the previous page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List every feedback report of the organization",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/feedback/reports": {
+      "get": {
+        "operationId": "feedback-report-list",
+        "summary": "List the person’s own feedback reports",
+        "description": "The person’s own product feedback reports, newest first, each with its ticket status (`resolved` is done, every other status is an active case), ticket number, last activity, and `hasUpdate` when the Piloti team replied or changed the status since the person last read the thread; `updatedCount` counts those on the page. `canViewOffice` says whether feedback-office-report-list is open to them. Page with `nextCursor`. Threads: feedback-thread-get.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Reports per page, newest first (1 to 20)."
+            },
+            "description": "Reports per page, newest first (1 to 20)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "`nextCursor` of the previous page."
+            },
+            "description": "`nextCursor` of the previous page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List the person’s own feedback reports",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
       "post": {
         "operationId": "feedback-report-submit",
         "summary": "Send product feedback to the Piloti team",
@@ -13055,17 +14218,6 @@
                       {
                         "type": "object",
                         "properties": {
-                          "widgetSessionId": {
-                            "anyOf": [
-                              {
-                                "type": "string",
-                                "maxLength": 64
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
                           "sessionId": {
                             "anyOf": [
                               {
@@ -13122,6 +14274,135 @@
         },
         "x-mcp-annotations": {
           "title": "Send product feedback to the Piloti team",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/feedback/reports/{reportId}/messages": {
+      "get": {
+        "operationId": "feedback-thread-get",
+        "summary": "Read the conversation on one feedback report",
+        "description": "The thread on one feedback report, oldest first: the report as written, the Piloti team’s replies (`author: team`) and the reporter’s answers (`author: reporter`). The person’s own report, or, with `org:settings:manage`, a colleague’s (read-only, `report.mine: false`). Reading one’s own marks it as read. `live: false` means the ticket could not be read and only the report is shown.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The feedback report id (a UUID), from feedback-report-list."
+            },
+            "description": "The feedback report id (a UUID), from feedback-report-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read the conversation on one feedback report",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "post": {
+        "operationId": "feedback-thread-reply",
+        "summary": "Answer the Piloti team on a feedback report",
+        "description": "Posts the person’s answer on one of their own feedback reports; the Piloti team sees it on the ticket. Refused (409) when the report has no ticket to answer on (`canReply: false` in feedback-report-list). Returns the updated thread.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The feedback report id (a UUID), from feedback-report-list."
+            },
+            "description": "The feedback report id (a UUID), from feedback-report-list."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  }
+                },
+                "required": [
+                  "message"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Answer the Piloti team on a feedback report",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
@@ -14189,7 +15470,7 @@
       "get": {
         "operationId": "inbox-list",
         "summary": "List the person’s inbox",
-        "description": "The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), `archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`.",
+        "description": "The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), `archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`. An `upload.completed` item of a project upload carries `uploadReport`: documents read by document type, new findings (read them with project-document-findings), references the project cannot resolve and pages not read in full.",
         "tags": [
           "collaboration"
         ],
@@ -14229,6 +15510,7 @@
                 "task_run.waiting",
                 "document.review_requested",
                 "feedback.submitted",
+                "feedback.replied",
                 "upload.completed",
                 "document.quarantined",
                 "document.release_requested",
@@ -19279,7 +20561,7 @@
       "post": {
         "operationId": "diagram-file",
         "summary": "File a drawn diagram into a project",
-        "description": "File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, and `runId`, the id of the answer it was drawn in (filing the same diagram twice files nothing twice). Optionally `conversationId` so restricted-folder rules apply. Returns `{ svg, pdf }`, `pdf` null when only the SVG landed. Needs project:documents:write and project:documents:generate.",
+        "description": "File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, and `runId`, an id unique to this diagram: derive it from the answer it was drawn in and the diagram source, so two diagrams in one answer get two ids. Filing again with the same `runId` files nothing twice and returns the existing files. Optionally `answerId`, the answer the diagram came from, which links the filing to that answer's trace; `conversationId` so restricted-folder rules apply; and `edited: true` when a person reworked the drawing, so the files name both authors. Returns `{ svg, pdf }`, `pdf` null when only the SVG landed. Needs project:documents:write and project:documents:generate.",
         "tags": [
           "bim"
         ],
@@ -19305,7 +20587,8 @@
                   "runId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "description": "Unique to this diagram, derived from the answer it was drawn in and its source; the same runId files nothing twice"
                   },
                   "title": {
                     "type": "string",
@@ -19333,6 +20616,15 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 128
+                  },
+                  "answerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "edited": {
+                    "type": "boolean",
+                    "description": "True when a person edited the drawing before filing it; the files then name both authors"
                   }
                 },
                 "required": [
@@ -23309,6 +24601,68 @@
         }
       }
     },
+    "/api/platform/feedback/claim": {
+      "post": {
+        "operationId": "platform-feedback-claim",
+        "summary": "Take a feedback ticket",
+        "description": "Assigns a report’s PostHog Support ticket to the person, found in PostHog by their email. Takes the ticket id (the Slack alert carries it; platform-feedback-list returns it as `ticket.id`). Returns the report.",
+        "tags": [
+          "platform"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ticketId": {
+                    "type": "string",
+                    "description": "The PostHog Support ticket id (a UUID), as the Slack alert or platform-feedback-list names it."
+                  }
+                },
+                "required": [
+                  "ticketId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Take a feedback ticket",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/platform/feedback/{reportId}": {
       "get": {
         "operationId": "platform-feedback-get",
@@ -23445,7 +24799,7 @@
       "get": {
         "operationId": "platform-feedback-list",
         "summary": "List product-feedback reports",
-        "description": "Product-feedback reports from every organization with the status of their PostHog Support ticket; filter by ticket status and kind, and page with the returned `nextCursor`. Report ids feed platform-feedback-get and platform-feedback-triage.",
+        "description": "Product-feedback reports from every organization with their PostHog Support ticket: status, assignee, last activity and whether the team or the reporter owes the next answer. Filter by ticket status (`active` for every unresolved ticket), assignee (`mine`, `unassigned`) and kind, and page with the returned `nextCursor`. Report ids feed platform-feedback-get and platform-feedback-triage; ticket ids feed platform-feedback-claim.",
         "tags": [
           "platform"
         ],
@@ -23461,9 +24815,12 @@
                 "open",
                 "pending",
                 "on_hold",
-                "resolved"
-              ]
-            }
+                "resolved",
+                "active"
+              ],
+              "description": "A PostHog ticket status, or `active` for every ticket that is not resolved. Absent lists every status."
+            },
+            "description": "A PostHog ticket status, or `active` for every ticket that is not resolved. Absent lists every status."
           },
           {
             "name": "kind",
@@ -23480,13 +24837,39 @@
             }
           },
           {
+            "name": "assignee",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mine",
+                "unassigned"
+              ],
+              "description": "`mine`: tickets assigned to the person. `unassigned`: tickets nobody has. Absent lists everyone’s."
+            },
+            "description": "`mine`: tickets assigned to the person. `unassigned`: tickets nobody has. Absent lists everyone’s."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Reports per page (1 to 50, the default)."
+            },
+            "description": "Reports per page (1 to 50, the default)."
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
-              "maxLength": 200
-            }
+              "maxLength": 200,
+              "description": "`nextCursor` of the previous page."
+            },
+            "description": "`nextCursor` of the previous page."
           }
         ],
         "responses": {
@@ -26497,7 +27880,7 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "wos-session",
-        "description": "The Piloti app’s signed-in session (WorkOS AuthKit), as a browser holds it. A bearer token is not accepted here: an agent holds an OAuth token for the MCP server at /api/mcp and calls the operations there."
+        "description": "The Piloti app’s signed-in session (WorkOS AuthKit), as a browser holds it. A session too large for one cookie is split into wos-session.0, wos-session.1 and so on; send every one. A bearer token is not accepted here: an agent holds an OAuth token for the MCP server at /api/mcp and calls the operations there."
       }
     },
     "schemas": {

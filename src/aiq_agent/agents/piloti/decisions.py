@@ -36,7 +36,7 @@ whose answer can only ADD to the turn:
   call for methods most turns never use (ADR-0063, amended); one chosen
   body costs a tenth of that and only when a question calls for it. The
   body stays an offer: the model decides whether to follow it, and the
-  rest stay one catalog line each behind ``use_skill``.
+  rest stay one catalog line each, read with ``read_file`` (ADR-0135).
 - ``self_contained``: whether the message can be searched on its own. A
   follow-up („und in GK 4?") cannot, and searching the fragment would hand
   the model a grounding block about nothing. A follow-up prefetches
@@ -70,6 +70,10 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
+from aiq_agent.common.estate_paths import MOUNT_ROOTS
+from aiq_agent.common.estate_paths import SHELF_MOUNTS
+from aiq_agent.common.estate_paths import estate_path
+
 logger = logging.getLogger(__name__)
 
 #: The slot the technical record is filed under: ``status:decision:turn``.
@@ -77,6 +81,8 @@ SLOT = "turn"
 
 #: The knowledge tool the prefetch calls. A wire name (``configs/*.yml``).
 KNOWLEDGE_SEARCH = "knowledge_search"
+#: The literal search a quoted term or a code is prefetched with.
+GREP = "grep"
 
 #: Below this p(needs_evidence) nothing is prefetched. Deliberately low: a
 #: false "no" costs the model its first round, a false "yes" costs one unread
@@ -429,6 +435,7 @@ def prefetch_calls(
     question: str,
     *,
     focus_file_name: str | None = None,
+    focus_shelf: str | None = None,
     previous_message: str | None = None,
     reference_projects: int = 0,
 ) -> list[dict[str, Any]]:
@@ -436,7 +443,7 @@ def prefetch_calls(
 
     The question itself, when the corpus is one the knowledge tool searches
     and the message can be searched on its own — pinned to the open document
-    (``file_name``) when one is open and the corpus is the project's or the
+    (by its ``path``) when one is open and the corpus is the project's or the
     office's own files, which is the audit's cleanest case: the subject was
     known before the model ran, and a pinned lookup skips the judge. A
     message that cannot be searched on its own (a follow-up) prefetches
@@ -480,7 +487,7 @@ def prefetch_calls(
     query = prefetch_query(question)
     if not query:
         return []
-    calls = _corpus_prefetch(decisions, query, focus_file_name, question)
+    calls = _corpus_prefetch(decisions, query, focus_file_name, question, focus_shelf)
     if reference_projects > 0 and decisions.wants_reference:
         calls.append(
             {
@@ -495,7 +502,7 @@ def prefetch_calls(
 MAX_LITERAL_PREFETCH = 2
 
 #: The shelf an exact prefetch reads, per chosen corpus. The legal base corpus has no literal path here.
-_LITERAL_SHELF = {"projekt": "project", "buero": "office"}
+_LITERAL_SHELF = {"projekt": "project", "buero": "office_shelf"}
 
 _QUOTED = re.compile(r"[„“\"»]([^„“”\"«»\n]{2,60})[“”\"«]|(?<!\w)'([^'\n]{2,60})'(?!\w)")
 _CODE = re.compile(
@@ -522,22 +529,35 @@ def literal_terms(question: str) -> list[str]:
 
 
 def _corpus_prefetch(
-    decisions: TurnDecisions, query: str, focus_file_name: str | None, question: str
+    decisions: TurnDecisions, query: str, focus_file_name: str | None, question: str, focus_shelf: str | None = None
 ) -> list[dict[str, Any]]:
-    """The chosen corpus's own search, and the chosen families' overviews for a law question."""
+    """The chosen corpus's own search, and the chosen families' overviews for a law question.
+
+    Scoped by ``path`` only, the argument every binding of the search takes. A quoted term or a code
+    is a ``grep`` (ADR-0133 slice 6) returning citable passages, as round 0's literal search did; a
+    binding without ``grep`` drops the call. The open document narrows the grep by ``glob``, under
+    its shelf's mount, so a stale folder cannot make the path miss it.
+    """
     if decisions.corpus not in {"baurecht", "projekt", "buero"} or decisions.corpus_p < CORPUS_THRESHOLD:
         return []
     from aiq_agent.common.norm_registry import family_query_number
 
-    args: dict[str, Any] = {"query": query}
-    if focus_file_name and decisions.corpus in {"projekt", "buero"}:
-        args["file_name"] = focus_file_name
-    calls: list[dict[str, Any]] = [{"name": KNOWLEDGE_SEARCH, "args": args}]
     shelf = _LITERAL_SHELF.get(decisions.corpus)
+    focus = focus_file_name if shelf else None
+    focus_shelf = focus_shelf or shelf
+    args: dict[str, Any] = {"query": query}
+    if focus and (path := estate_path(focus_shelf, None, focus)):
+        args["path"] = path
+    calls: list[dict[str, Any]] = [{"name": KNOWLEDGE_SEARCH, "args": args}]
     if shelf:
-        scope = {"file_name": focus_file_name} if focus_file_name else {}
+        scope = {"path": MOUNT_ROOTS.get(SHELF_MOUNTS.get(str(focus_shelf), ""), MOUNT_ROOTS[SHELF_MOUNTS[shelf]])}
+        if focus:
+            from wcmatch import glob as wcglob
+
+            # Deep Agents' own matcher, which `glob` uses with BRACE: every metacharacter escaped.
+            scope["glob"] = wcglob.escape(focus.rsplit("/", 1)[-1])
         calls.extend(
-            {"name": KNOWLEDGE_SEARCH, "args": {"query": term, "match": "exact", "shelf": shelf, **scope}}
+            {"name": GREP, "args": {"pattern": term, "output_mode": "content", **scope}}
             for term in literal_terms(question)
         )
     if decisions.corpus == "baurecht" and family_query_number(query) is None:
@@ -561,8 +581,8 @@ def _undecided_prefetch(question: str) -> list[dict[str, Any]]:
 def attached_card_types(decisions: TurnDecisions, skill_cards: Mapping[str, Sequence[str]]) -> list[str]:
     """The card types whose full shape rides this turn's prompt, in order, capped.
 
-    The chosen skill's preferred cards first — the shapes ``use_skill`` used
-    to hand over with the body — then the types the card nouls picked; each
+    The chosen skill's preferred cards first — the shapes a ``read_file`` of
+    it hands over with the body — then the types the card nouls picked; each
     once, at most ``MAX_ATTACHED_SHAPES``. The caller's lists already leave
     out the shapes the envelope teaches (``ENVELOPE_SHAPE_TYPES``) and
     ``surface`` (``CHAT_ONLY_CARD_TYPES``).

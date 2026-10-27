@@ -408,7 +408,7 @@ class TestTheRoundCostIsStatedAsAFact:
         """
         from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION as description
 
-        assert "every member is then open at the level `read_passage(document=…)` opens it" in description
+        assert "every member is then open at the level a read of one document opens it" in description
         assert "what is left to open is a Punkt by number" in description
 
 
@@ -437,6 +437,7 @@ def test_project_record_names_the_three_file_blocks_and_says_look_before_missing
 
     for key in ("documents:", "documents_missing:", "documents_unreadable:"):
         assert key in record
-    assert "list_files" in record and "knowledge_search" in record
+    # `glob` and `grep` since ADR-0133 slice 6.
+    assert "`glob`" in record and "`grep`" in record
     without = render_prompt_template(system_prompt_template(), **{**PINNED, "project_context": "name: X"})
     assert "documents_missing:" not in without

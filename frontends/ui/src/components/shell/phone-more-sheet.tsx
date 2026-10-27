@@ -16,7 +16,7 @@ import type { JSX } from 'react'
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Check, ChevronRight, Compass, LogOut, MessageSquarePlus } from 'lucide-react'
+import { Check, ChevronRight, Compass, LogOut, MessagesSquare } from 'lucide-react'
 
 import { useAuth } from '@/adapters/auth/use-auth'
 import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
@@ -33,7 +33,12 @@ import {
 import { useLayoutStore } from '@/features/layout/store'
 import type { ThemeMode } from '@/features/layout/types'
 import { useStartProductTour } from '@/features/onboarding/components/product-tour'
-import { useFeedbackAvailable, useOpenFeedback } from '@/features/product-feedback/components'
+import {
+  useFeedbackAvailable,
+  useFeedbackUpdatedCount,
+  useOpenFeedbackThreads,
+} from '@/features/product-feedback/components'
+import { CountPill } from '@/components/ui/count-pill'
 import { locales, useLocale, useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { isCurrentDestination, moreDestinations, type MoreDestination, type MoreFlags } from './phone-more'
@@ -74,7 +79,8 @@ export function PhoneMoreSheet({
   const setTheme = useLayoutStore((s) => s.setTheme)
   const { locale, setLocale, localeNames } = useLocale()
   const startTour = useStartProductTour()
-  const openFeedback = useOpenFeedback()
+  const openFeedbackThreads = useOpenFeedbackThreads()
+  const feedbackUpdatedCount = useFeedbackUpdatedCount()
   const feedbackAvailable = useFeedbackAvailable()
 
   // A navigation closes the sheet, as it does the drawer.
@@ -160,9 +166,14 @@ export function PhoneMoreSheet({
             </li>
             {feedbackAvailable && (
               <li>
-                <button type="button" className={ROW} onClick={act(() => openFeedback())}>
-                  <MessageSquarePlus className="text-muted-foreground size-5 shrink-0" aria-hidden />
-                  <span className="min-w-0 flex-1">{tFeedback('open')}</span>
+                <button type="button" className={ROW} onClick={act(() => openFeedbackThreads())}>
+                  <MessagesSquare className="text-muted-foreground size-5 shrink-0" aria-hidden />
+                  <span className="min-w-0 flex-1">{tFeedback('threads.open')}</span>
+                  {feedbackUpdatedCount > 0 && (
+                    <CountPill tone="attention" aria-label={tFeedback('threads.newCount', { count: feedbackUpdatedCount })}>
+                      {feedbackUpdatedCount}
+                    </CountPill>
+                  )}
                 </button>
               </li>
             )}

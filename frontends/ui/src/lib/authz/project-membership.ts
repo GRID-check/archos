@@ -21,89 +21,74 @@ import 'server-only'
 import { getCached } from '@/lib/cache'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getWorkOS } from '@/lib/workos/client'
-import { rolesOfMembership } from '@/lib/auth/membership-roles'
-import { orgRoleHoldsPermission } from './org-role-permissions'
+import { rolesHoldPermission } from './org-role-permissions'
 import { ORG_PERMISSIONS, type ProjectPermission } from './permissions'
 import { findProjectTenancy } from '@/lib/projects/repository'
 import { CLOSED_PROJECT_KEEPS, CLOSED_PROJECT_OPEN_TO_ORGANIZATION, isProjectClosed } from '@/lib/projects/project-status'
 import { inPool } from '@/lib/utils/in-pool'
 
-/** Matches the membership cache TTL in `@/lib/auth/session`. */
-const MEMBERSHIP_TTL_MS = 10 * 60 * 1000
-const MEMBERSHIP_NEGATIVE_TTL_MS = 30 * 1000
-
 /**
- * The membership age a door accepts when nobody signs in on it and a revocation
- * must bite within a minute rather than ten: the external agent door (ADR-0122),
- * where a token outlives the membership it was issued for. Cached under its own
- * key, so the longer-lived entry never answers for it.
+ * How stale a membership and its roles may be behind an access decision. One
+ * minute everywhere: a revoked role stops opening folders, and a person removed
+ * from the office stops reaching it through an agent's token, within a minute.
  */
-export const FRESH_MEMBERSHIP_TTL_MS = 60 * 1000
+export const MEMBERSHIP_TTL_MS = 60 * 1000
+const MEMBERSHIP_NEGATIVE_TTL_MS = 30 * 1000
 
 export interface SubjectMembership {
   organizationMembershipId: string
-  /** WorkOS role slug for this membership (e.g. `admin`, `member`). */
+  /** Every role slug the membership holds (several with WorkOS's "multiple roles"). */
+  roles: string[]
+  /** The first of {@link roles}, for the readers that know one role. */
   role: string | null
-  /**
-   * Every role slug the membership holds: several with WorkOS's "multiple
-   * roles", else `[role]` (`rolesOfMembership`). A pinned session's permissions
-   * are the union of theirs, as a signed-in session's claim carries them all.
-   */
-  roles: readonly string[]
+}
+
+/** Every role slug the membership holds, else its one role. */
+export function rolesOfMembership(membership: {
+  role?: { slug?: string | null } | null
+  roles?: ReadonlyArray<{ slug?: string | null }> | null
+}): string[] {
+  const listed = (membership.roles ?? []).map((role) => role.slug).filter((slug): slug is string => Boolean(slug))
+  if (listed.length > 0) return [...new Set(listed)]
+  return membership.role?.slug ? [membership.role.slug] : []
 }
 
 /**
- * A user's ACTIVE membership in an organization, with its roles, or `null`
- * when WorkOS ANSWERED that there is none. A lookup that could not be answered
- * throws.
+ * A user's ACTIVE membership in an organization, with its roles, or `null` when
+ * WorkOS ANSWERED that there is none. A lookup that could not be answered throws.
+ *
+ * The one membership lookup: the session's membership id and roles, a third
+ * party's, the acting session's and the platform tier's all come from here,
+ * so they cannot disagree about who is in the organization or what they hold.
+ * "Not a member" is cached for the short negative TTL; a thrown lookup is not
+ * cached at all, so the next request asks again.
  *
  * For a caller whose response to "not a member" cannot be undone (the push job
  * removes the person's devices): a WorkOS hiccup must not read as having left.
  * Callers that only need a fail-closed yes/no take {@link resolveSubjectMembership}.
- *
- * Cached under a key distinct from `membership:` (used by session resolution,
- * which stores only the id) so the two never clobber each other's shape. The
- * key changed from `membership-role:` when `roles` joined the shape, so an
- * entry a running deployment cached without it is never read as having none.
- * "Not a member" is cached for the short negative TTL; a thrown lookup is not
- * cached at all, so the next request asks again.
  */
-export async function lookupSubjectMembership(
-  organizationId: string,
-  userId: string,
-  ttlMs: number = MEMBERSHIP_TTL_MS
-): Promise<SubjectMembership | null> {
-  const key =
-    ttlMs === MEMBERSHIP_TTL_MS
-      ? `subject-membership:${organizationId}:${userId}`
-      : `subject-membership-${ttlMs}:${organizationId}:${userId}`
+export async function lookupSubjectMembership(organizationId: string, userId: string): Promise<SubjectMembership | null> {
   return getCached(
-    key,
-    ttlMs,
+    `org-membership:${organizationId}:${userId}`,
+    MEMBERSHIP_TTL_MS,
     async () => {
       const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
         userId,
         organizationId,
-        // WorkOS lists only active memberships when no status is named; named
-        // here as `membership-roles.ts` and `platform.ts` do, so a deactivated
-        // or pending membership never holds a role should that default move.
         statuses: ['active'],
         limit: 1,
       })
       const membership = memberships.data[0]
       if (!membership) return null
-      return {
-        organizationMembershipId: membership.id,
-        role: membership.role?.slug ?? null,
-        roles: rolesOfMembership(membership),
-      } satisfies SubjectMembership
+      const roles = rolesOfMembership(membership)
+      return { organizationMembershipId: membership.id, roles, role: roles[0] ?? null } satisfies SubjectMembership
     },
     { negativeTtlMs: MEMBERSHIP_NEGATIVE_TTL_MS }
   )
 }
 
 /**
- * A user's membership in an organization, with its role; `null` when there is
+ * A user's membership in an organization, with its roles; `null` when there is
  * none OR when the lookup failed. Fail closed, for the sharing decisions and
  * pickers, where "could not ask" must deny.
  *
@@ -111,15 +96,10 @@ export async function lookupSubjectMembership(
  * inside the loader, a single failed lookup was stored as "not a member", and
  * the colleague vanished from every picker for the negative TTL.
  */
-export async function resolveSubjectMembership(
-  organizationId: string,
-  userId: string,
-  ttlMs: number = MEMBERSHIP_TTL_MS
-): Promise<SubjectMembership | null> {
+export async function resolveSubjectMembership(organizationId: string, userId: string): Promise<SubjectMembership | null> {
   try {
-    return await lookupSubjectMembership(organizationId, userId, ttlMs)
+    return await lookupSubjectMembership(organizationId, userId)
   } catch (error) {
-    // Fail closed, and uncached: an unanswered lookup is not a membership.
     console.warn(`[project-membership] lookup failed for ${userId}:`, error)
     return null
   }
@@ -192,7 +172,7 @@ export async function userHoldsProjectPermission(
   // fallback) rather than guessed from its name — otherwise a custom org role
   // holding `org:projects:administer` would reach every project while this
   // refused to invite them to any of them.
-  if (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.projectsAdminister, session.organizationId)) {
+  if (await rolesHoldPermission(session.organizationId, membership.roles, ORG_PERMISSIONS.projectsAdminister)) {
     return true
   }
 

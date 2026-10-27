@@ -21,9 +21,16 @@ vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
 // shelves a reconciliation announces.
 vi.mock('./shelf-live', () => ({ publishShelfChanged: vi.fn() }))
 
+// The search row's own mapping is `lib/search/facets.spec.ts`'s subject; here
+// it is which readings reconciliation hands over, and when.
+vi.mock('@/lib/search/facets-projector', () => ({ projectReadings: vi.fn().mockResolvedValue(0) }))
+vi.mock('@/lib/search/facets-repository', () => ({ listCollectionDocumentsForProjection: vi.fn().mockResolvedValue([]) }))
+
 import { getDb } from '@/lib/db'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { publishShelfChanged } from './shelf-live'
+import { projectReadings } from '@/lib/search/facets-projector'
+import { listCollectionDocumentsForProjection } from '@/lib/search/facets-repository'
 import { asDb } from '@/test-utils/db-fixtures'
 import {
   reconcileDocumentStatuses,
@@ -32,6 +39,7 @@ import {
   describeBackendIngestState,
   readRevisionLinkNames,
   refreshCollectionFiles,
+  readCollectionReadings,
   type ReconcilableDocument,
 } from './reconcile-status'
 import { collectionFileRef } from './collection-file-ref'
@@ -538,6 +546,49 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
     expect(junk.revisionFacts).toBeUndefined()
   })
 
+  it('merges the dossier, references and coverage, parsed, and drops junk ones', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          dossier: {
+            version: 1,
+            document_type: 'submission_drawing',
+            facts: [{ key: 'storeys_above_ground', value: '4', unit: null, page: 1, quote: '4 oberirdische Geschosse' }],
+          },
+          doc_references: [{ kind: 'plan', key: 'ep-05', label: 'EP-05', pages: [1] }],
+          coverage: { pages: 40, text: 30, transcribed: 5, drawings: 5, drawings_read: 3, not_read: 2, reasons: { render_cap: 2 } },
+        },
+        {
+          file_id: 'f-2',
+          file_name: 'junk.pdf',
+          status: 'success',
+          dossier: { document_type: 'novel' },
+          doc_references: [{ kind: 'rumour', key: 'x' }],
+          coverage: { pages: 0 },
+        },
+      ])
+    )
+
+    const [present, junk] = await reconcileDocumentStatuses(
+      [makeRow({ status: 'completed' }), makeRow({ id: 'doc-2', filename: 'junk.pdf', status: 'completed' })],
+      'org-1'
+    )
+
+    expect(present.dossier?.documentType).toBe('submission_drawing')
+    expect(present.dossier?.facts).toEqual([
+      { key: 'storeys_above_ground', value: '4', unit: null, page: 1, quote: '4 oberirdische Geschosse' },
+    ])
+    expect(present.docReferences).toEqual([{ kind: 'plan', key: 'ep-05', label: 'EP-05', pages: [1] }])
+    expect(present.coverage).toMatchObject({ pages: 40, notRead: 2, drawingsRead: 3, reasons: { render_cap: 2 } })
+    expect(junk.dossier).toBeUndefined()
+    expect(junk.docReferences).toBeUndefined()
+    expect(junk.coverage).toBeUndefined()
+  })
+
   it('reads the Fassung links by file name and keeps them out of the row metadata', async () => {
     makeDbMock()
     mockFetch.mockResolvedValue(
@@ -723,6 +774,32 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
     // The gate runs ahead of the fetch: the row owns nothing in that list either
     // way, so deciding costs no backend round trip.
     expect(mockFetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('readCollectionReadings', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  const ref = collectionFileRef(makeRow())
+  const file = { file_name: 'plan.pdf', status: 'success', summary: 'A plan.', superseded_by: 'plan-b.pdf' }
+
+  it('reads each named file\'s reading and whether a newer Fassung replaces it', async () => {
+    mockFetch.mockResolvedValue(collectionResponse([file]))
+    const readings = await readCollectionReadings('proj_abc', ref ? [ref] : [])
+    expect(readings?.get('plan.pdf')).toEqual({ metadata: { summary: 'A plan.' }, superseded: true })
+  })
+
+  it('says nothing when the backend listed the files without their reading, so nothing is blanked', async () => {
+    mockFetch.mockResolvedValue({ ...collectionResponse([file]), headers: new Headers({ 'X-Grid-Reading-Unavailable': '1' }) })
+    expect(await readCollectionReadings('proj_abc', ref ? [ref] : [])).toBeNull()
   })
 })
 
@@ -912,6 +989,72 @@ describe('reconcileDocumentStatuses enrichment on a status transition', () => {
 
     expect(again.summary).toBe('A ground-floor plan.')
     expect(collectionCalls()).toHaveLength(2)
+  })
+
+  it('hands the reading of a row that came to rest read to the search projection, with its Fassung state', async () => {
+    makeDbMock()
+    routeBackend(
+      { 'job-1': { status: 'completed', file_details: [{ status: 'success' }] } },
+      { current: [{ ...indexedPlan, superseded_by: 'plan-c.pdf' }] }
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(projectReadings).toHaveBeenCalledWith('org-1', [
+      expect.objectContaining({
+        documentId: 'doc-1',
+        superseded: true,
+        metadata: expect.objectContaining({ summary: 'A ground-floor plan.', tags: ['Grundriss'] }),
+      }),
+    ])
+  })
+
+  it('writes the search row of the document a settled Fassung replaces, from the same listing', async () => {
+    makeDbMock()
+    const older = { file_id: 'f-0', file_name: 'plan-a.pdf', status: 'success', summary: 'The earlier plan.', superseded_by: 'plan.pdf' }
+    routeBackend(
+      { 'job-1': { status: 'completed', file_details: [{ status: 'success' }] } },
+      { current: [{ ...indexedPlan, supersedes: ['plan-a.pdf'] }, older] }
+    )
+    vi.mocked(listCollectionDocumentsForProjection).mockResolvedValueOnce([
+      { id: 'doc-a', filename: 'plan-a.pdf', collectionName: 'proj_abc', authoredBy: 'user', publishedVersionId: null },
+      // A machine-written row sharing the name owns nothing over there.
+      { id: 'doc-agent', filename: 'plan-a.pdf', collectionName: 'proj_abc', authoredBy: 'agent', publishedVersionId: null },
+    ])
+    const fetchesBefore = collectionCalls().length
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+    await vi.waitFor(() => expect(projectReadings).toHaveBeenCalledTimes(2))
+
+    expect(listCollectionDocumentsForProjection).toHaveBeenCalledWith('org-1', 'proj_abc', ['plan-a.pdf'])
+    expect(projectReadings).toHaveBeenLastCalledWith('org-1', [
+      expect.objectContaining({ documentId: 'doc-a', superseded: true, metadata: expect.objectContaining({ summary: 'The earlier plan.' }) }),
+    ])
+    expect(collectionCalls().length - fetchesBefore).toBe(1)
+  })
+
+  it('never counts Piloti\'s suggestion as a replaced Fassung', async () => {
+    makeDbMock()
+    routeBackend(
+      { 'job-1': { status: 'completed', file_details: [{ status: 'success' }] } },
+      { current: [{ ...indexedPlan, revision_suggestion: { of: 'plan-a.pdf', confidence: 0.9, reason: 'r', basis: 'title_block' } }] }
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(projectReadings).toHaveBeenCalledTimes(1)
+    expect(projectReadings).toHaveBeenCalledWith('org-1', [expect.objectContaining({ documentId: 'doc-1', superseded: false })])
+    expect(listCollectionDocumentsForProjection).not.toHaveBeenCalled()
+  })
+
+  it('hands nothing to the search projection for a row that failed or was already at rest', async () => {
+    makeDbMock()
+    routeBackend({ 'job-1': { status: 'failed', error: 'kaputt' } }, { current: [indexedPlan] })
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+    await reconcileDocumentStatuses([makeRow({ id: 'doc-2', status: 'completed' })], 'org-1')
+
+    expect(projectReadings).not.toHaveBeenCalled()
   })
 
   it('fetches a collection fresh at most once per read, however many rows transition', async () => {

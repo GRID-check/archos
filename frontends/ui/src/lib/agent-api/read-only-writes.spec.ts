@@ -23,7 +23,10 @@ const READ_ONLY_WRITE_METHODS: Readonly<Record<string, string>> = {
   'bim-model-query': 'queryAccessibleModel answers a query over the stored model; the POST carries the query.',
   'citation-format': 'renderCitations formats the citations in the body; reads no stored data and stores none.',
   'passage-similar-search': 'findSimilarPassages searches the projects the person may read; stores nothing.',
-  'document-search': 'searchProjectDocuments / searchOfficeShelfDocuments search one shelf; the POST carries the query.',
+  'workspace-search':
+    'runSearch reads; the POST carries the question. Its one side effect is queueing a refresh of a derived search projection, which changes no answer the person sees.',
+  'workspace-search-suggest': 'runSuggest reads one grouped count over the search projection; the POST carries the filters. It writes nothing.',
+  'workspace-search-export': 'exportPlanList reads and builds a file; the POST carries the question. It writes only the audit event.',
   'document-by-name-resolve': 'resolveProjectDocumentsByName / resolveOfficeShelfDocumentsByName look documents up by file name.',
   'document-name-match': 'probeProjectDocumentNames / probeOfficeShelfDocumentNames report which names already exist.',
   'platform-norm-verify': 'verifyNormPointer asks RIS whether a norm pointer resolves; the registry is not written.',

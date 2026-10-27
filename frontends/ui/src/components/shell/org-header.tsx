@@ -4,7 +4,7 @@ import type { JSX } from 'react'
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Archive, Bell, MessageSquarePlus } from 'lucide-react'
+import { Archive, Bell, MessageSquarePlus, Search } from 'lucide-react'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils'
 import { ConnectionBand } from './connection-band'
 import { ShellSearchButton } from './shell-search-button'
 import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
+import type { SwitchableOrganization } from '@/lib/organizations/switchable'
+
 
 /**
  * The org-scope chrome: one slim header instead of a rail.
@@ -30,6 +32,9 @@ import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
  *
  * The header carries exactly what must stay one click away: the wordmark (the
  * way home), the two org-wide doorways with the inbox badge, and the avatar.
+ * Someone who works in several offices also gets WorkOS's organization
+ * switcher beside the wordmark, since which office they are in is the scope of
+ * everything below it.
  * Everything account-shaped is behind the avatar — two clicks, deliberately.
  *
  * On a phone the doorways move to the tab bar at the bottom of the screen
@@ -42,6 +47,8 @@ export interface OrgHeaderProps {
   user?: SidebarUser
   organizationName?: string | null
   authRequired: boolean
+  /** The organizations the avatar menu offers to switch to (`switchableOrganizations`); empty for one. */
+  organizations?: readonly SwitchableOrganization[]
   canManageOrganization: boolean
   canViewOrganization: boolean
   canManagePlatform: boolean
@@ -53,6 +60,7 @@ export function OrgHeader({
   user,
   organizationName,
   authRequired,
+  organizations = [],
   canManageOrganization,
   canViewOrganization,
   canManagePlatform,
@@ -74,13 +82,15 @@ export function OrgHeader({
       className="border-border bg-background flex w-full shrink-0 flex-col border-b pt-[env(safe-area-inset-top)]"
     >
       <div className="flex min-h-14 items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] md:pl-6 md:pr-6">
-        <Link
-          href="/app/projects"
-          aria-label={t('allProjects')}
-          className="text-foreground focus-visible:ring-ring/60 rounded-md text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
-        >
-          Piloti
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            href="/app/projects"
+            aria-label={t('allProjects')}
+            className="text-foreground focus-visible:ring-ring/60 rounded-md text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
+          >
+            Piloti
+          </Link>
+        </div>
 
         <div className="flex items-center gap-1">
           {/* On a phone the two doorways live in the tab bar, under the thumb
@@ -95,6 +105,13 @@ export function OrgHeader({
               active={pathname === '/app/office-shelf' || pathname.startsWith('/app/office-shelf/')}
             />
           )}
+          {/* The workspace search (ADR-0136); ⌘K reaches it from anywhere too. */}
+          <OrgHeaderIconLink
+            href="/app/search"
+            label={t('sections.search')}
+            icon={Search}
+            active={pathname === '/app/search' || pathname.startsWith('/app/search/')}
+          />
           {canAccessInbox && (
             <OrgHeaderIconLink
               href="/app/inbox"
@@ -126,6 +143,7 @@ export function OrgHeader({
             canManageOrganization={canManageOrganization}
             canViewOrganization={canViewOrganization}
             canManagePlatform={canManagePlatform}
+            organizations={organizations}
             tourAnchor={TOUR_ANCHORS.account}
           />
         </div>

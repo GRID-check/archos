@@ -1,6 +1,9 @@
 # Document Ingestion Pipeline
 
-End-to-end flow from file upload to vector search.
+End-to-end flow from file upload to vector search, step by step, with the history
+of each fix. For the pipeline drawn as diagrams, with what each stage costs and
+what fails a file, start at
+[`architecture/ingestion-pipeline.md`](../architecture/ingestion-pipeline.md).
 
 ---
 
@@ -464,21 +467,6 @@ After any embedding-model change:
 ### TTL Cleanup
 
 Session-scoped collections (`s_*`) are automatically reaped by a background thread, measured from the newest `indexed_at` on their points. Default TTL is 24 hours (`AIQ_COLLECTION_TTL_HOURS`), checked every 3600 seconds (`AIQ_TTL_CLEANUP_INTERVAL_SECONDS`). Base/project collections are never auto-deleted.
-
-### Backfilling tags for documents ingested before tagging existed
-
-Ingestion now also classifies each document into controlled tags (document type + OIB discipline), stored on the `document_metadata` table alongside the one-sentence summary. Documents ingested **before** this feature shipped have a summary but `tags = NULL`, and OIB sync is hash-gated (an already-ingested, unchanged document is never re-processed), so they will never pick tags up on their own.
-
-Run the classify-only backfill **once** after deploying the tagging feature:
-
-```bash
-python scripts/backfill_document_tags.py --dry-run          # preview, writes nothing
-python scripts/backfill_document_tags.py                    # every collection with summaries
-python scripts/backfill_document_tags.py --collection oib_knowledge
-python scripts/backfill_document_tags.py --force            # re-classify rows that already have tags
-```
-
-It never re-ingests or re-embeds and never touches the summary — it only fills the `tags` column. It is idempotent (rows with tags are skipped unless `--force`) and fail-soft per document. `--force` re-classifies the machine's tags. It cannot undo a correction a person made: the backfill writes through `update_tags`, which skips any row whose tags are a person's (`tags_set_by = 'person'`).
 
 ### Fixed: silent summary-row loss on double LLM failure (2026-07-16)
 

@@ -17,6 +17,8 @@ import type { FolderItem } from '../file-types'
 import { FileWorkspace } from './file-workspace'
 import { MailImportAction } from './mail-import-action'
 import { MailImportDialog } from './mail-import-dialog'
+import { DocumentFindingsPanel } from './document-findings-panel'
+import { SearchWorkspace, ShelfSearchBack, useShelfSearchMode } from '@/features/search'
 
 // The row and folder types live in `../file-types`; they are re-exported here
 // because this is the name every importer already uses.
@@ -102,6 +104,8 @@ export function ProjectFileWorkspace({
   const phone = usePhoneLayout()
   const [mailOpen, setMailOpen] = useState(false)
   const mailOffered = mailImportEnabled && initialRootAccess === 'write'
+  // „Suche“ in place of the listing (`?mode=search`), scoped to the project and the open folder.
+  const search = useShelfSearchMode()
 
   const shelf: FileShelf = {
     source: 'project',
@@ -130,6 +134,17 @@ export function ProjectFileWorkspace({
     lifecyclePermissions,
   }
 
+  if (search.active) {
+    return (
+      <>
+        <ProjectSectionActions>
+          <ShelfSearchBack onClose={search.close} label="backToFiles" />
+        </ProjectSectionActions>
+        <SearchWorkspace surface={{ kind: 'project', projectId, folderId: search.folderId }} currentUserId={currentUserId} inset autoFocus />
+      </>
+    )
+  }
+
   return (
     <>
       <FileWorkspace
@@ -140,11 +155,12 @@ export function ProjectFileWorkspace({
             {mailOffered && !phone && <MailImportAction projectId={projectId} />}
           </ProjectSectionActions>
         )}
-        moreEntries={
-          mailOffered && phone
+        onOpenSearch={search.open}
+        moreEntries={[
+          ...(mailOffered && phone
             ? [
                 {
-                  type: 'item',
+                  type: 'item' as const,
                   id: 'mail-import',
                   label: t('mailImport.action'),
                   icon: Mail,
@@ -152,12 +168,15 @@ export function ProjectFileWorkspace({
                   testId: 'mail-import-trigger',
                 },
               ]
-            : undefined
-        }
+            : []),
+        ]}
         initialFolders={initialFolders}
         initialFiles={initialFiles}
         initialNextCursor={initialNextCursor}
         initialFolderId={initialFolderId}
+        aboveList={({ readyCount }) => (
+          <DocumentFindingsPanel projectId={projectId} refreshKey={String(readyCount)} className="px-4 pt-3" />
+        )}
       />
       {mailOffered && phone && <MailImportDialog projectId={projectId} open={mailOpen} onOpenChange={setMailOpen} />}
     </>

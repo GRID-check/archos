@@ -16,7 +16,7 @@ that fetch returned — not a mutated search caption.
 
 **The agent is built once, at boot.** The prompt is read, the graph compiled
 and the boot tools bound in `register.py`; what a turn varies — model override,
-the org's `use_skill` closure, the data sources this conversation switched off —
+the file verbs over the working directory and the org's skills (ADR-0135), the data sources this conversation switched off —
 travels as a `TurnConfig` into `agent.run`. A switched-off source does NOT
 narrow the binding: the tool stays bound and the call is refused at the
 `ToolNode` boundary, so the tool payload (and the prompt-cache shard keyed on

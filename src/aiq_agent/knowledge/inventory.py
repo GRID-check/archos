@@ -238,6 +238,23 @@ def _topics_of(doc: Any) -> list[str]:
     return _list_of(doc, "topics")
 
 
+def _reading_bit(doc: Any) -> str:
+    """`` · Typ: fire safety concept · 2 von 40 Seiten nicht vollständig gelesen``, from the ingest's reading.
+
+    The type is the dossier's (finer than the tags), the unread pages its coverage: a model
+    that is told a document was not fully read can say so instead of answering from a gap.
+    """
+    dossier = doc.get("dossier") if isinstance(doc, dict) else getattr(doc, "dossier", None)
+    coverage = doc.get("coverage") if isinstance(doc, dict) else getattr(doc, "coverage", None)
+    bits = []
+    document_type = dossier.get("document_type") if isinstance(dossier, dict) else None
+    if isinstance(document_type, str) and document_type not in ("", "other"):
+        bits.append(f"Typ: {document_type.replace('_', ' ')}")
+    if isinstance(coverage, dict) and isinstance(coverage.get("not_read"), int) and coverage["not_read"] > 0:
+        bits.append(f"{coverage['not_read']} von {coverage.get('pages', '?')} Seiten nicht vollständig gelesen")
+    return "".join(f" · {bit}" for bit in bits)
+
+
 def _captured_on_of(doc: Any) -> str | None:
     """The ``YYYY-MM-DD`` a camera gave the photo, or ``None``.
 
@@ -698,8 +715,10 @@ def render_inventory_block(
                 folder_bit = f" (Ordner: {folder})" if folder else ""
                 summary = _summary_of(doc) or "No summary available"
                 revision_bit = _confirmed_revision_bit(doc)
+                reading_bit = _reading_bit(doc)
                 lines.append(
-                    f"- **{_file_name_of(doc)}**{folder_bit}{tag_bit}{topic_bit}{captured_bit}{revision_bit}: {summary}"
+                    f"- **{_file_name_of(doc)}**{folder_bit}{tag_bit}{topic_bit}{captured_bit}{revision_bit}"
+                    f"{reading_bit}: {summary}"
                 )
         # Never a silent cap. Without this line the model reads a truncated
         # shelf as the whole shelf, and the listing instruction above ("answer

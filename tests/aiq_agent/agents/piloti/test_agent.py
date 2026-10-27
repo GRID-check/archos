@@ -2626,7 +2626,7 @@ class TestADirectReplyMayStillEmitACard:
         rules = rendered.split("<rules>")[1].split("</rules>")[0]
         assert "A file you did not open is not described" in rules
         assert "„nicht gelesen“" in rules
-        assert "Abdeckung: unzureichend" in rules
+        assert "Abdeckung: unzureichend" not in rules
         assert "`conclusion`" not in rules
         procedures = (
             "at most two searches",
@@ -2766,7 +2766,9 @@ class TestKnowledgeInventoryIsNotCitable:
     def test_piloti_prompt_teaches_the_four_shelves(self):
         """The shelves themselves are taught where they are listed (the inventory block); the prompt names them."""
         source = self._prompt("piloti/prompts/piloti.j2")
-        assert "Basiswissen, Büroablage, Projektwissen, Private Sitzung" in source
+        for mount, name in (("/project/", "Projektwissen"), ("/office/", "Büroablage"), ("/chat/", "Private Sitzung")):
+            assert f"{mount} is {name}" in source or f"{mount} {name}" in source
+        assert "/law/oib/ Basiswissen" in source
         rendered = self._render(source, self.DOCUMENTS)
         assert "Büroablage is never the OIB corpus" in rendered
 
@@ -3100,7 +3102,7 @@ class TestTheResearchBudgetIsOneNumber:
     It used to have a reserve on top, sized to the skills the deployment forced
     onto every turn: those calls were overhead the question never asked for, and
     charging them shortened every research chain in the product by one per
-    published house skill. Nothing is forced now — a ``use_skill`` call is one
+    published house skill. Nothing is forced now — a skill read is one
     the model chose, exactly like a search — so there is no overhead to
     compensate, and the number the config's traced floors measure is the number
     the turn gets.
@@ -3172,8 +3174,8 @@ class TestTruncationIsObservable:
             AIMessage(
                 content="",
                 tool_calls=[
-                    {"name": "use_skill", "args": {"skill_name": "piloti-voice"}, "id": "s1"},
-                    {"name": "use_skill", "args": {"skill_name": "piloti-cards"}, "id": "s2"},
+                    {"name": "read_file", "args": {"file_path": "/skills/office/piloti-voice/SKILL.md"}, "id": "s1"},
+                    {"name": "read_file", "args": {"file_path": "/skills/office/piloti-cards/SKILL.md"}, "id": "s2"},
                 ],
             ),
             AIMessage(content="", tool_calls=[{"name": "knowledge_search", "args": {}, "id": "k1"}]),
@@ -3207,7 +3209,7 @@ class TestTruncationIsObservable:
         assert "skill_calls=2" in line
         # …and the SHAPE, which is what makes "on which questions" answerable
         # without putting the reader's own words in a log line.
-        assert "shape=use_skill>use_skill>knowledge_search>find_elements>light_incidence" in line
+        assert "shape=read_skill>read_skill>knowledge_search>find_elements>light_incidence" in line
         assert "Lichteinfall" not in line
 
     @pytest.mark.asyncio
@@ -3230,7 +3232,7 @@ class TestTruncationIsObservable:
             "research_budget": 5,
             "spent": 5,
             "rounds": 5,
-            "tools": ["use_skill", "use_skill", "knowledge_search", "find_elements", "light_incidence"],
+            "tools": ["read_skill", "read_skill", "knowledge_search", "find_elements", "light_incidence"],
         }
         # Technical channel, and therefore no `key`: whether the READER is told
         # the answer stopped early is a product decision, and a live key would
@@ -3407,16 +3409,16 @@ class TestTheDraftingRulesLiveInTheTools:
 
     def test_write_file_says_a_commissioned_document_is_written_not_described(self):
         description = self._draft_verbs()["write_file"]
-        for kind in ("Aktenvermerk", "protocol", "checklist", "area schedule", "concept draft"):
+        for kind in ("Aktenvermerk", "Protokoll", "Checkliste", "Flächenaufstellung"):
             assert kind in description
-        assert "described in the answer" in description
+        assert "rather than in the answer" in description
         # And the one sentence the answer owes the reader afterwards.
         assert "in one sentence" in description
 
     def test_a_revision_edits_the_file_it_already_wrote(self):
         verbs = self._draft_verbs()
-        assert "`edit_file` is the tool" in verbs["write_file"]
-        assert "use `write_file`" in verbs["edit_file"]
+        assert "an existing path is refused, and edit_file changes it" in verbs["write_file"]
+        assert verbs["edit_file"].startswith("Changes part of a draft")
 
     def test_read_file_says_the_working_directory_is_not_a_source(self):
         """The one thing that must not blur: a draft cannot ground an answer.
@@ -3879,7 +3881,7 @@ class TestTheTidyingRulesLiveInTheTools:
 
     def test_a_name_is_taken_from_the_overview_and_never_invented(self):
         (description,) = _file_verb_descriptions().values()
-        assert "exactly as the overview or `list_files` shows it" in description
+        assert "exactly as the overview or a listing shows it" in description
 
 
 class TestTheThreeDraftingTurnShapes:

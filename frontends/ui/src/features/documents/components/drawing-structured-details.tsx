@@ -61,7 +61,7 @@ export function DrawingStructuredDetails({ structured }: { structured: DrawingSt
       </button>
 
       {open && (
-        <dl className="border-border/60 mt-1.5 space-y-1 border-l pl-2.5 text-[11px] leading-relaxed">
+        <dl className="mt-1.5 space-y-1 pl-2.5 text-[11px] leading-relaxed">
           {segment.entityGroups.map((group) => (
             <Row key={group.category} label={term('categories', group.category)}>
               {group.entities

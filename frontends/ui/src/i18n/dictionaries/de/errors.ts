@@ -37,6 +37,8 @@ export const errors: typeof en.errors = {
       Configuration: 'Es liegt ein Problem mit der Serverkonfiguration vor.',
       AccessDenied: 'Sie haben keine Berechtigung, auf diese Ressource zuzugreifen.',
       Verification: 'Der Bestätigungslink ist abgelaufen oder wurde bereits verwendet.',
+      SessionExpired:
+        'Die Anmeldung ist abgelaufen oder wurde in einem anderen Tab abgeschlossen. Bitte melden Sie sich erneut an.',
       Default: 'Bei der Authentifizierung ist ein Fehler aufgetreten.',
     },
   },

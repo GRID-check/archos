@@ -30,6 +30,7 @@ written to a temporary name and renamed, so a failed write never leaves a trunca
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import logging
@@ -309,20 +310,34 @@ def _knowledge_retrieval_node(payload: Any) -> dict[str, Any] | None:
     return None
 
 
+def _load_config(config_path: Path) -> Any:
+    """The parsed config, read again only when the file changed.
+
+    A harness run asks for the exclusion list once per query, and parsing the
+    config is 0.13 s each time: 98% of a run, before this cache.
+    """
+    return _parse_config(str(config_path), config_path.stat().st_mtime_ns)
+
+
+@functools.lru_cache(maxsize=8)
+def _parse_config(path: str, _mtime_ns: int) -> Any:
+    import yaml
+
+    with open(path, encoding="utf-8") as handle:
+        return yaml.safe_load(handle)
+
+
 def production_retrieval_settings(config_path: Path | None = None) -> ProductionRetrievalSettings:
     """``top_k``, the diversity cap and the exclusion list, from the production OIB config.
 
     Falls back to the ``KnowledgeRetrievalConfig`` field defaults if the config or the
     block is absent, and the report then says which numbers it measured.
     """
-    import yaml
-
     config_path = repo_root() / "configs" / "config_oib_openrouter.yml" if config_path is None else config_path
     if not config_path.exists():
         logger.warning("Production OIB config not found at %s; using field defaults", config_path)
         return ProductionRetrievalSettings(top_k=5, max_chunks_per_document=2, exclude_file_names=frozenset())
-    with open(config_path, encoding="utf-8") as handle:
-        payload = yaml.safe_load(handle)
+    payload = _load_config(config_path)
     node = _knowledge_retrieval_node(payload) or {}
     return ProductionRetrievalSettings(
         top_k=int(node.get("top_k", 5)),
@@ -343,14 +358,11 @@ def production_excluded_file_names(config_path: Path | None = None) -> frozenset
     the unfiltered index — which is the honest degradation, since an absent filter is
     exactly the failure this guards against.
     """
-    import yaml
-
     config_path = repo_root() / "configs" / "config_oib_openrouter.yml" if config_path is None else config_path
     if not config_path.exists():
         logger.warning("Production OIB config not found at %s; measuring the unfiltered index", config_path)
         return frozenset()
-    with open(config_path, encoding="utf-8") as handle:
-        payload = yaml.safe_load(handle)
+    payload = _load_config(config_path)
 
     def walk(node: Any):
         if isinstance(node, dict):
