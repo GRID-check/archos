@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-10-06
+status: accepted
+date: 2026-10-27
 decision-makers: Grid engineering
 consulted: product owner
 informed: everyone working in this repo

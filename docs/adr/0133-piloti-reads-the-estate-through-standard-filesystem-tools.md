@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-27
 decision-makers: product owner (Matthias), Grid engineering
 consulted: Grid engineering; six research reports of 2026-10-27 (internal audit, Deep Agents 0.7.32 source and changelog, industry survey of agent filesystems, a Deep Agents customisation prototype, the data mapping, extracted text)
@@ -205,8 +205,11 @@ What it decides:
 
 ### Confirmation
 
-Gates that will enforce it. Only the answer-suite gate below exists; each other gate
-lands with the slice that needs it, and until then review is the only gate for it.
+Gates that will enforce it. As of acceptance (2026-10-27) the answer suite, the
+pinned-version test and the draft tests exist (`tests/aiq_agent/test_deepagents_contract.py`,
+`tests/aiq_agent/tools/documents/test_filesystem_tools.py`). The restricted-path,
+chunk-substring and deep-research gates and the schema extension do not exist yet,
+and review is the only gate for them.
 
 * `task be:eval:answer-suite -- --set files` with three arms, grep only, semantic
   only and hybrid, before and after every slice. Exists since slice 0:

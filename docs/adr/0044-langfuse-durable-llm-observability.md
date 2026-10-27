@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # ADR-0044: Langfuse as the durable LLM-observability backend
@@ -440,6 +440,17 @@ writes scores since Amendment 3, but deletes nothing). Its cost is
 that the traces go within the hour, not in the request, and a span exported
 after the stamp waits for the retention sweep. Copies saved into Langfuse
 datasets would survive a trace delete; Piloti creates none.
+
+## Confirmation
+
+Added on acceptance (2026-10-27). `deploy/pulumi/src/platform/langfuse.spec.ts`
+holds the deployment to this record: the whole tier (web, worker, ClickHouse,
+a dedicated queue), the traces pipeline to Langfuse alone, credentials by
+reference and never as literal values, and an S3 identity scoped to its own
+bucket. That nothing configures a licence key is checked by review only. What
+reaches Langfuse is ADR-0089's to enforce
+(`frontends/aiq_api/tests/test_model_calls_are_traced.py`,
+`tests/aiq_agent/observability/test_langfuse_scores.py`).
 
 ## References
 
