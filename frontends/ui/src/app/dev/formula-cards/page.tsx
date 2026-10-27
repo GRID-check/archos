@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Dev preview — the formula card, the what-if on a computing card (ADR-0141).
+ * Dev preview — the formula card, the what-if on a computing card (ADR-0143).
  *
  * Every card goes through the chat's own path (`GridCardItem` → A2UI on the
  * Piloti catalog), so a changed input lands in the surface's data model exactly

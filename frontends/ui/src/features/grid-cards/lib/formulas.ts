@@ -2,7 +2,7 @@
  * The named formulas behind `FormulaCard` — a closed, tested set, evaluated HERE.
  *
  * The model names a rule (`formula.name`) and fills its inputs from cited
- * sources; it never states a result and never writes an expression (ADR-0141).
+ * sources; it never states a result and never writes an expression (ADR-0143).
  * This module turns the inputs, as the source gives them or as the reader has
  * changed them, into the derivation lines the card prints and the quantities its
  * cited limits are checked against. It is pure and deterministic: the same

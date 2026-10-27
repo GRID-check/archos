@@ -1,5 +1,5 @@
 {
-  "about": "Hand-computed cases for the formula card (ADR-0141). Each card validates against cards/models.py (tests/aiq_agent/cards/test_formula_card.py); each is evaluated by frontends/ui/src/features/grid-cards/lib/formulas.ts (formulas.spec.ts). `overrides` are a reader's what-if inputs by slot key; `expect.quantities` were worked out by hand, to the precision `tolerance` allows; `expect.checks` are the verdicts of `card.limits` in order. `targets` is the one list of quantities a limit may name, held equal to FORMULA_TARGETS on both sides.",
+  "about": "Hand-computed cases for the formula card (ADR-0143). Each card validates against cards/models.py (tests/aiq_agent/cards/test_formula_card.py); each is evaluated by frontends/ui/src/features/grid-cards/lib/formulas.ts (formulas.spec.ts). `overrides` are a reader's what-if inputs by slot key; `expect.quantities` were worked out by hand, to the precision `tolerance` allows; `expect.checks` are the verdicts of `card.limits` in order. `targets` is the one list of quantities a limit may name, held equal to FORMULA_TARGETS on both sides.",
   "tolerance": 0.0001,
   "targets": {
     "u_value": ["u_value"],

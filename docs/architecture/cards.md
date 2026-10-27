@@ -80,7 +80,7 @@ answer it has just written.
 |---|---|---|
 | `project_profile_patch` **(interactive)** | A proposed change to the project brief. With `proposal_id` it is the receipt of a stored `project_profile` proposal (`ProposalReceipt`): the server applies the patch in the deciding person's session and the card says who decided when. Without one, the browser applies it, as before | `title`, `rationale`, `patch[]` — JSON-Patch ops restricted to `/facts`, `/goals`, `/unknowns`, `/assumptions` (the before/after rows are built from the patch and the live profile, never from the model) |
 | `calculation` | The derivation behind a computed number — the Schrittmaßregel, a GFZ, a Brandlast, a U-value from its resistances. **There is no result field**: the model supplies operands, an operation from a closed set (`sum`, `product`, `quotient`, `percent_of`, `percent_ratio`) and the limit; the renderer computes, propagates the ± band, rounds and judges | `title`, `steps[]` (`label`, `operation`, `operands[]`, `unit`), `limit`, `reference`, `note` |
-| `formula` | A named rule the reader can ask "what if" of (ADR-0141): `u_value` (ÖNORM EN ISO 6946), `stair_step_rule` (OIB-RL 4 Pkt. 3.2.1), `escape_route_length` (OIB-RL 2 Pkt. 5.1.1), `daylight_ratio` (OIB-RL 3 Pkt. 9.1.1). **No result and no unit on the wire**: the model fills each input with its source's value and where it is written; the renderer computes (`lib/formulas.ts`), recomputes when the reader changes an input, marks a changed value „Ihre Annahme" and judges against limits that must carry their Punkt | `title`, `formula` (`name` + its inputs: `value`, `editable`, `min`, `max`, `step`, `provenance`, `source`, `reference`), `limits[]` (`target`, `comparator`, `value`, `upper`, `label`, `reference`), `note` |
+| `formula` | A named rule the reader can ask "what if" of (ADR-0143): `u_value` (ÖNORM EN ISO 6946), `stair_step_rule` (OIB-RL 4 Pkt. 3.2.1), `escape_route_length` (OIB-RL 2 Pkt. 5.1.1), `daylight_ratio` (OIB-RL 3 Pkt. 9.1.1). **No result and no unit on the wire**: the model fills each input with its source's value and where it is written; the renderer computes (`lib/formulas.ts`), recomputes when the reader changes an input, marks a changed value „Ihre Annahme" and judges against limits that must carry their Punkt | `title`, `formula` (`name` + its inputs: `value`, `editable`, `min`, `max`, `step`, `provenance`, `source`, `reference`), `limits[]` (`target`, `comparator`, `value`, `upper`, `label`, `reference`), `note` |
 | `surface` | Variants the reader picks one of, or cards that read together in one slot (ADR-0065). An A2UI v0.9 component list: a `Row`, `Column` or `Tabs` root whose leaves are content cards or `Text`; see [Every card is drawn through A2UI](#every-card-is-drawn-through-a2ui) | `title`, `components[]` |
 
 **Schematic cards** — eight programmatically-drawn technical diagrams (SVG kit
@@ -150,7 +150,7 @@ persisted on the message; see
 
 `validate_cards()` validates against the union and drops null fields.
 
-### `formula`: the reader's what-if, bound into the surface (ADR-0141)
+### `formula`: the reader's what-if, bound into the surface (ADR-0143)
 
 `formula` is `calculation` with a name instead of operations, and inputs the
 reader may change. The name picks one of a closed set of pure functions in

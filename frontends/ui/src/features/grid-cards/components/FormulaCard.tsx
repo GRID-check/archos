@@ -4,7 +4,7 @@
  * FormulaCard — a named rule the reader can ask "what if" of, on the card.
  *
  * The model names the rule and fills its inputs from cited sources; this card
- * computes, in the browser, with `../lib/formulas` (ADR-0141). Change the
+ * computes, in the browser, with `../lib/formulas` (ADR-0143). Change the
  * Dämmstärke and the U-value, the Rechenweg and the verdict against the cited
  * limit recompute on the spot, with no model call and nothing saved.
  *

@@ -219,7 +219,7 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "formula-input-provenance",
         "NUMERIC",
-        "Per formula card the answer carries (ADR-0141): the share of its inputs with a value that say where "
+        "Per formula card the answer carries (ADR-0143): the share of its inputs with a value that say where "
         "the value is written (a `source`, or a norm `reference`). Below 1 is a default the reader cannot "
         "trace before changing it. Metadata names the formula and counts inputs, sourced and unknown.",
         min_value=0,

@@ -1,4 +1,4 @@
-"""The formula card's contract (ADR-0141), and the fixture both sides compute from.
+"""The formula card's contract (ADR-0143), and the fixture both sides compute from.
 
 The arithmetic lives in the browser (`frontends/ui/src/features/grid-cards/lib/
 formulas.ts`) and is tested there against `shared/cards/formula-cases.json`.

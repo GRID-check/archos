@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Reader inputs, bound into the A2UI surface's data model (ADR-0141).
+ * Reader inputs, bound into the A2UI surface's data model (ADR-0143).
  *
  * A computing card's operands may be changed by the reader for a what-if. Where
  * that state lives is A2UI's standard answer: the surface's data model, at a

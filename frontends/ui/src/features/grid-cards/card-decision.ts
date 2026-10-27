@@ -109,7 +109,7 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // reveals where those numbers came from on click. Nothing is written, and
   // the disclosure is one reader's view of data that already arrived.
   calculation: 'presentational',
-  // A named rule whose inputs the reader may change for a what-if (ADR-0141).
+  // A named rule whose inputs the reader may change for a what-if (ADR-0143).
   // The changed inputs are one reader's view state in the surface's data model,
   // never written to the message or a backend, and gone on reload.
   formula: 'presentational',

@@ -410,7 +410,7 @@ export const answerExport = {
     // StagingAreaPlan
     length: 'Length',
     distance_to_facade: 'Distance to the facade',
-    // The formula card (ADR-0141). Exported as the source's inputs and limits.
+    // The formula card (ADR-0143). Exported as the source's inputs and limits.
     formula: 'Rule',
     name: 'Name',
     heat_flow: 'Heat flow',

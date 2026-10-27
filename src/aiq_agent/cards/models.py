@@ -912,7 +912,7 @@ class CalculationCard(CardModel):
 #
 # `formula` is `calculation`'s sibling for the handful of rules an Austrian
 # architect computes again and again, where the question after the answer is
-# always "and what if?" (ADR-0141): the insulation that would meet the U-value,
+# always "and what if?" (ADR-0143): the insulation that would meet the U-value,
 # the riser that keeps the Schrittmaß, the shorter escape route. The model names
 # the rule from a CLOSED set and fills its inputs from cited sources; the
 # renderer owns the arithmetic (`frontends/ui/src/features/grid-cards/lib/

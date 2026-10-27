@@ -1,5 +1,5 @@
 /**
- * The formula card mounted: what the reader sees and does (ADR-0141).
+ * The formula card mounted: what the reader sees and does (ADR-0143).
  *
  * The arithmetic is `../lib/formulas.spec.ts`'s, against hand-computed cases.
  * What is asserted here is the part only a mounted tree shows:

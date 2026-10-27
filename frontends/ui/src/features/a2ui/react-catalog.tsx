@@ -50,7 +50,7 @@ function cardComponent(schema: CardSchema): ReactComponentImplementation {
     const render = useCardRenderer()
     useReportDrawn()
     // The leaf's reader inputs are bound into this surface's data model
-    // (`reader-inputs.ts`, ADR-0141); a card without inputs never reads them.
+    // (`reader-inputs.ts`, ADR-0143); a card without inputs never reads them.
     const leafId = context.componentModel.id
     const store = useMemo(() => dataModelStore(context.dataContext, leafId), [context.dataContext, leafId])
     if (!render) return null

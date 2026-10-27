@@ -69,7 +69,7 @@ React basic catalog is gone, and what remains is `@a2ui/web_core`'s Web
 Components, which we would restyle wholesale); data binding and
 `updateDataModel` (a card is a statement about retrieved sources, not live
 state; *amended 2026-10-27 by
-[ADR-0141](0141-a-computing-card-takes-reader-inputs-and-never-a-stated-result.md)*:
+[ADR-0143](0143-a-computing-card-takes-reader-inputs-and-never-a-stated-result.md)*:
 an operand a computing card declares editable is a reader input in the
 surface's data model, while every cited statement stays unbound); A2UI actions (the interactive cards keep `useCardDecision`,
 ADR-0030); the Python agent SDK (it requires Google ADK and genai, and its

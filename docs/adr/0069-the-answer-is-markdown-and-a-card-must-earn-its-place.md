@@ -47,7 +47,7 @@ catalogue to "Basic" because front ends "already have a design system".
 No public study compares cards with Markdown for cited professional answers;
 the positions above are practice, not measurement.
 
-*Amended 2026-10-27 ([ADR-0141](0141-a-computing-card-takes-reader-inputs-and-never-a-stated-result.md)):*
+*Amended 2026-10-27 ([ADR-0143](0143-a-computing-card-takes-reader-inputs-and-never-a-stated-result.md)):*
 ChatGPT's GPT-6 "Intelligent UI" (2026-10-07) is no evidence for option 4. Per
 the launch post as quoted by the press, it "runs on a library of native,
 streamable components and a compiler that processes an interface while the

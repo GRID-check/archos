@@ -519,7 +519,7 @@ export const chat: typeof en.chat = {
         'Das Ergebnis wird von dieser Karte aus den obigen Werten berechnet, nicht aus der Antwort übernommen.',
     },
     // Eine benannte Rechenregel, deren Eingangswerte die Lesenden ändern
-    // können (ADR-0141). Gerechnet wird im Browser; eine geänderte Zahl ist
+    // können (ADR-0143). Gerechnet wird im Browser; eine geänderte Zahl ist
     // „Ihre Annahme", nicht die der Quelle, und wird nirgends gespeichert.
     formula: {
       eyebrow: 'Was wäre wenn',

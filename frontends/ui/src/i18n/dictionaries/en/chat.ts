@@ -521,7 +521,7 @@ export const chat = {
       computedNote:
         'The result is computed by this card from the figures above, not copied from the answer.',
     },
-    // A named rule whose inputs the reader can change (ADR-0141). Computed in
+    // A named rule whose inputs the reader can change (ADR-0143). Computed in
     // the browser; a changed figure is "your assumption", not the source's, and
     // is saved nowhere.
     formula: {

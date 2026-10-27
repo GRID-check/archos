@@ -588,7 +588,7 @@ CARD_EXAMPLES: dict[str, dict] = {
 }
 
 
-# The formula card's example is the north-star question (ADR-0141): how much
+# The formula card's example is the north-star question (ADR-0143): how much
 # insulation does the wall need. It shows the three things the model must get
 # right and the renderer cannot: each input's `source`, a reader-adjustable
 # range on the layer the question is about, and a limit that carries its Punkt.
