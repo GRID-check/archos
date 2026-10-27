@@ -16,7 +16,7 @@ click-dummy ``TYPES`` registry:
 
 ``measurement`` is the odd one out and deliberately so. The first four are
 RETRIEVED PASSAGES: a chunk of a document that a citation resolves to, captured
-into :class:`~aiq_agent.common.citation_verification.SourceRegistry` and
+into :class:`~citations.registry.SourceRegistry` and
 verifiable by reading the passage back. A measurement has no passage. It
 carries something else — the GlobalIds it was derived from, the operator
 expression, an absolute tolerance and a provenance

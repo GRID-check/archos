@@ -57,7 +57,7 @@ Herkunft: Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026
 ```
 
 One line, not a sentence: the block is text a model copies. The leading
-`Piloti-Dokument` token is the contract — `citation_verification` reads exactly
+`Piloti-Dokument` token is the contract — `citations/grounding_text.py` reads exactly
 that token back into `SourceEntry.authored_by`, the way a shelf qualifier is
 read out of a citation key — and the machine-readable fields travel structured,
 as `provenance` on the Trace-Lanes source entry. The `knowledge_search` tool

@@ -328,11 +328,12 @@ def _patch_scope(monkeypatch, scope):
 
 def _patch_turn(monkeypatch, *, read=(), rows=(_CONTRACT_ROW,), judge=None):
     """Bind what the turn read and could list, and the judge model it resolves."""
-    from aiq_agent.common import citation_verification as cv
+    from aiq_agent.citations import session
+    from aiq_agent.citations.entries import SourceEntry
     from aiq_agent.knowledge import inventory
 
-    monkeypatch.setattr(cv, "get_turn_captures", lambda: [cv.SourceEntry(collection=name) for name in read])
-    monkeypatch.setattr(cv, "get_session_registry", lambda: None)
+    monkeypatch.setattr(session, "get_turn_captures", lambda: [SourceEntry(collection=name) for name in read])
+    monkeypatch.setattr(session, "get_session_registry", lambda: None)
     monkeypatch.setattr(inventory, "get_turn_documents", lambda: tuple(rows))
     monkeypatch.setattr(register, "_turn_judge_llm", lambda _base: judge)
 

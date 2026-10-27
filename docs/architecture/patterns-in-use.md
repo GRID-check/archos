@@ -70,7 +70,7 @@ cards, resolved citations, cost, traces. Each is a registry created and reset pe
 turn behind a `ContextVar`, never module-level state, because the process serves
 many tenants concurrently and module state leaks across both turns and tenants.
 
-`cards/registry.py` and `common/citation_verification.py` are the reference
+`cards/registry.py` and `citations/session.py` are the reference
 pair; `common/cost_tracking.py`, `common/profiler.py` and
 `tools/bim/measurement_sources.py` follow it. One narrower use of the same
 shape: `turn/answer_stream.py` binds the turn's live prose (`_PROSE`, a

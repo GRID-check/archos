@@ -1,6 +1,6 @@
 """Citation-health telemetry: one ledger row per turn per citation defect.
 
-Citation verification (``citation_verification.verify_citations`` /
+Citation verification (``citations.verification.verify_citations`` /
 ``verify_quoted_spans``) already *repairs* a turn — it drops unverifiable
 citations, annotates fabricated quotes, and caps the surfaced confidence. The
 user sees the outcome ("Ohne Quellenangabe", "3 Quellenangabe(n) entfernt",

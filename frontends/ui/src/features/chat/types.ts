@@ -564,7 +564,7 @@ export interface CitationSource {
   shelf?: Shelf
   /**
    * Identity of the DOCUMENT this source is a passage of, as the backend
-   * registry groups it (`citation_verification.document_key`). Absent on
+   * registry groups it (`citations.binding.document_key`). Absent on
    * messages persisted before the wire carried it, where the client derives an
    * equivalent key from filename/collection instead.
    */

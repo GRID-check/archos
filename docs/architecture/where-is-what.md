@@ -378,11 +378,11 @@ does not exist, so a moved file is caught; a missing row is not.
 | Source kinds, TypeScript mirror | `frontends/ui/src/features/chat/lib/source-kinds.ts` — `KIND_TO_SIGNAL`, `kindForLane` | same | ADR-0026 |
 | `doc_class` (human-set, beats every filename guess) | `src/aiq_agent/knowledge/document_classification.py`; UI in `frontends/ui/src/lib/knowledge/doc-class.ts` | — | ADR-0025 |
 | Norm registry lanes | `src/aiq_agent/common/norm_registry.py` | same | ADR-0025 |
-| Citation verification | `src/aiq_agent/common/citation_verification.py` | [`docs/audit/citation-system-audit-2026-07.md`](../audit/citation-system-audit-2026-07.md) | ADR-0058 (retrieval correctness) |
+| Citation verification | `src/aiq_agent/citations/verification.py` — `verify_citations`; the quote checks `src/aiq_agent/citations/quote_verification.py`; the report hygiene `src/aiq_agent/citations/sanitize.py`; the registry `src/aiq_agent/citations/registry.py` | [`docs/audit/citation-system-audit-2026-07.md`](../audit/citation-system-audit-2026-07.md) | ADR-0058 (retrieval correctness) |
 | The grounding block: the record, and the one renderer | `src/aiq_agent/common/grounding_block.py` — `GroundingHit`, `GroundingBlock`, `render_grounding_block` | [`backend-deep-dive.md`](backend-deep-dive.md) | ADR-0061 |
 | Building hits from retrieved chunks | `sources/knowledge_layer/src/register.py` — `_grounding_hit`, `_format_results` | same | ADR-0061 |
 | Building hits from RIS passages | `sources/ris_adapter/src/lookup/render.py` — `format_passages` | same | ADR-0061 |
-| Reading a tool result back as sources | `src/aiq_agent/common/citation_verification.py` — `extract_sources_from_tool_result`, `_entry_from_hit`; `_parse_knowledge_layer` is the text fallback for cached and replayed turns | same | ADR-0061 |
+| Reading a tool result back as sources | `src/aiq_agent/citations/extraction.py` — `extract_sources_from_tool_result`, `_entry_from_hit`; `src/aiq_agent/citations/grounding_text.py` — `parse_knowledge_layer` is the text fallback for cached and replayed turns | same | ADR-0061 |
 | Citation persistence and export | `frontends/ui/src/lib/citations/service.ts` | same | ADR-0037 |
 | IFC tools for the agent | `src/aiq_agent/tools/bim/register.py` — `ifc_query` | [`docs/user-guides/bim-models.md`](../user-guides/bim-models.md) | ADR-0045 |
 | IFC models in the BFF | `frontends/ui/src/lib/bim/model-service.ts` | same | ADR-0045 |
