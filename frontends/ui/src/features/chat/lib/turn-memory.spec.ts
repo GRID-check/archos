@@ -87,6 +87,23 @@ describe('turnMemoryItems', () => {
     ])
   })
 
+  it('carries the note an accepted proposal corrected, so the chip can say it changed', () => {
+    const correction = {
+      ...proposal('Die Fluchtwegbreite ist mit 1,50 m vorgegeben.'),
+      supersedes: 'Die Fluchtwegbreite ist mit 1,20 m vorgegeben.',
+    } as GridCard
+    const [item] = turnMemoryItems({ cards: [correction], cardInteractions: answered('savedProject') })
+    expect(item?.supersedes).toBe('Die Fluchtwegbreite ist mit 1,20 m vorgegeben.')
+  })
+
+  it('treats a blank or null supersedes as a new note, not a correction', () => {
+    for (const supersedes of [null, '   ']) {
+      const card = { ...proposal('Neu.'), supersedes } as GridCard
+      const [item] = turnMemoryItems({ cards: [card], cardInteractions: answered('savedProject') })
+      expect(item).not.toHaveProperty('supersedes')
+    }
+  })
+
   it('does not claim a proposal the reader dismissed or has not answered', () => {
     // The card's own tool result says it in as many words: "It has NOT been
     // saved yet — do not claim it was saved; the user decides." A chip whose
