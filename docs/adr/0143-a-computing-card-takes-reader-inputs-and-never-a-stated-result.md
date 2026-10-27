@@ -76,7 +76,11 @@ Chosen: **option 3**.
   comparison sign and no symbol. A verdict in words (erfüllt, erfuellt,
   konform, i. O., bestanden, passt, „kleiner als gefordert", „unter dem
   Grenzwert") is refused in both. A deny-list of figure shapes leaked; an
-  allow-list cannot leak a shape nobody listed. One judgement is made on
+  allow-list cannot leak a shape nobody listed. The residual risk is accepted
+  and stated: a figure spelled out in letters („siebzehn Zentimeter"), letters
+  spaced to hide a word („e r f ü l l t") or a look-alike character NFKC does
+  not fold passes the guard, and is left to review and to the card itself,
+  which prints the computed figure beside any text. One judgement is made on
   purpose: an identifier's number is not checked against the card's figures, so
   „AW 20" and „Top 63" pass like „AW 01" and „Top 7", because no rule on the
   text alone tells a code from a figure written as one.

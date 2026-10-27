@@ -499,3 +499,62 @@ class TestTheGuardAllowsProvenanceAndRefusesByClass:
     )
     def test_a_name_inside_its_alphabet_passes(self, title):
         grid_card_adapter.validate_python(_stair(title=title))
+
+
+class TestADocumentReferenceIsNeverADecimal:
+    """Fifth review: a plan word is named, a plan code is a code or an integer, a position has no leading 0."""
+
+    @pytest.mark.parametrize(
+        "text", ["U im Durchschnitt 0.17", "laut Lageplan 0.35", "Detailschnitt 0.17", "Pos. 0.17", "Seite 0.17"]
+    )
+    def test_a_decimal_after_a_document_word_is_refused(self, text):
+        card = _stair(note=text)
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(card)
+        card = _stair()
+        card["formula"]["going"]["source"] = text
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(card)
+
+    @pytest.mark.parametrize(
+        "source",
+        ["Bestand 1960er", "Lageplan A-101", "Detailschnitt 12", "Gemäß Statik Pos. 4.2", "Grundriss EG-03"],
+    )
+    def test_a_code_an_integer_and_a_decade_pass(self, source):
+        card = _stair()
+        card["formula"]["going"]["source"] = source
+        grid_card_adapter.validate_python(card)
+
+    def test_abschnitt_stays_a_citation_word(self):
+        grid_card_adapter.validate_python(_stair(note="Siehe Abschnitt 4.2."))
+
+
+class TestMoreVerdicts:
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "knapp",
+            "kritisch",
+            "grenzwertig",
+            "mangelhaft",
+            "Mangel",
+            "NOK",
+            "iO",
+            "i.O",
+            "zu steil",
+            "zu flach",
+            "zu lang",
+            "zu kurz",
+            "zu schmal",
+            "zu hoch",
+            "zu niedrig",
+            "Stiege A – grün",
+            "Stiege A → rot",
+            "Wand - gelb",
+        ],
+    )
+    def test_is_refused_in_a_note_and_a_title(self, text):
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(_stair(note=text))
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(_stair(title=f"Stiege A {text}"))

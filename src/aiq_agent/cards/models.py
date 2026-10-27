@@ -993,16 +993,29 @@ _IDENTIFIER = re.compile(
 #: Where a text names its documents: a plan code after a plan, section or
 #: elevation, an Index, a revision, a position of the structural analysis, a
 #: page, a date, a year. Allowed in a `source` and a note, never in a name.
+_NOT_A_DECIMAL = r"\b(?![.,]\d)"
+
 _DOCUMENT_REFERENCE = re.compile(
-    r"\b\w*(?:plan|schnitt|ansicht)\s+(?:Nr\.?\s*)?[A-Z]{0,4}-?\d{1,4}(?:[-_./][A-Z0-9]{1,4})*\b"
-    r"|\bIndex\s+[A-Z0-9]{1,3}\b"
-    r"|\bRev\.?\s*\d{1,3}[a-z]?\b"
-    r"|\bPos\.?\s*\d{1,4}(?:\.\d{1,3})*\b"
-    r"|\bSeite\s+\d{1,4}\b"
-    r"|\b\d{1,2}\.\s?\d{1,2}\.\s?(?:\d{4}|\d{2})\b"
+    # a plan code after a NAMED plan word: a letter prefix (EP-01, A-101), or a
+    # bare integer, hyphen groups allowed (04-123); never a decimal, so
+    # „Lageplan 0.35" is a figure. The words are named, so „Durchschnitt" and
+    # „Abschnitt" (a citation word) do not open a plan code.
+    r"\b(?:Einreichplan|Bestandsplan|Lageplan|Polierplan|Werkplan|Grundriss|Schnitt|Detailschnitt|Ansicht|Plan)"
+    r"(?:-?Nr\.?)?\s+(?:[A-Z]{1,4}-?\d{1,4}(?:[-_/][A-Z0-9]{1,4})*|\d{1,4}(?:-\d{1,4})*)"
+    + _NOT_A_DECIMAL
+    + r"|\bIndex\s+[A-Z0-9]{1,3}"
+    + _NOT_A_DECIMAL
+    + r"|\bRev\.?\s*\d{1,3}[a-z]?"
+    + _NOT_A_DECIMAL
+    # a position of the structural analysis: an integer or integer.integer, no leading 0
+    + r"|\bPos\.?\s*[1-9]\d{0,3}(?:\.[1-9]\d{0,2})?"
+    + _NOT_A_DECIMAL
+    + r"|\bSeite\s+\d{1,4}"
+    + _NOT_A_DECIMAL
+    + r"|\b\d{1,2}\.\s?\d{1,2}\.\s?(?:\d{4}|\d{2})\b"
     r"|\b\d{1,2}/\d{4}\b"
-    r"|\b(?:19|20)\d{2}\b",
-    re.I,
+    # a year, or a decade („Bestand 1960er")
+    r"|\b(?:19|20)\d{2}(?:er)?" + _NOT_A_DECIMAL,
 )
 
 #: „OK" is a verdict, unless it is the Oberkante of a floor build-up.
@@ -1014,10 +1027,17 @@ _WORD_END = r"(?![A-Za-zÄÖÜäöüß])"
 #: A verdict in words, in any of the spellings a model writes.
 _VERDICT = re.compile(
     _WORD_START + r"(?:nicht\s+)?(?:erf(?:ü|ue)llt|zul(?:ä|ae)ssig|unzul(?:ä|ae)ssig|eingehalten|(?:ü|ue)berschritten"
-    r"|unterschritten|gen(?:ü|ue)gt|ausreichend|unzureichend|passt|in\s+Ordnung|i\.\s?O\.|okay|ok"
+    r"|unterschritten|gen(?:ü|ue)gt|ausreichend|unzureichend|passt|in\s+Ordnung|i\.\s?O\.?|iO|NOK|okay|ok"
+    r"|knapp|kritisch|grenzwertig|mangelhaft|M(?:a|ä|ae)ngel"
+    r"|zu\s+(?:steil|flach|lang|kurz|schmal|hoch|niedrig)"
     r"|(?:regel|norm)?konform|bestanden|nachgewiesen|entspricht|verfehlt"
-    r"|pass(?:ed|es)?|fail(?:ed|s)?|(?:non-)?compliant)" + _WORD_END + r"|\bh(?:ä|ae)lt\b[^.;]{0,60}?\bein\b"
-    r"|\b(?:unter|(?:ü|ue)ber|unterhalb|oberhalb|innerhalb|au(?:ß|ss)erhalb)\s+(?:dem\s+|des\s+|der\s+)?"
+    r"|pass(?:ed|es)?|fail(?:ed|s)?|(?:non-)?compliant)"
+    + _WORD_END
+    + r"|\bh(?:ä|ae)lt\b[^.;]{0,60}?\bein\b"
+    # a traffic-light colour as the verdict after an arrow or a dash („Stiege A – grün")
+    + r"|[→\-–—]\s*(?:gr(?:ü|ue)n|rot|gelb)"
+    + _WORD_END
+    + r"|\b(?:unter|(?:ü|ue)ber|unterhalb|oberhalb|innerhalb|au(?:ß|ss)erhalb)\s+(?:dem\s+|des\s+|der\s+)?"
     r"(?:Grenzwert|H(?:ö|oe)chstwert|Mindestwert|Anforderung|Limit|Soll)"
     r"|\b(?:kleiner|gr(?:ö|oe)(?:ß|ss)er|besser|schlechter|weniger|mehr|h(?:ö|oe)her|niedriger)\s+als\s+"
     r"(?:gefordert|erlaubt|zul(?:ä|ae)ssig|vorgeschrieben|(?:der|die|das)\s+(?:Grenzwert|Anforderung|Soll))",
