@@ -335,11 +335,13 @@ provenance is the stamp, not a citation marker.
 
 The per-sentence provenance, the claim types and every ceiling above stand. The
 answer's level is no longer the weakest load-bearing sentence's ceiling: it
-counts the load-bearing sentences evidence carries (high only when all are,
-low when most are not or the legal conclusion has no passage), with an uncited
-normative sentence still counting nothing, hedged or not
-([ADR-0139](0139-confidence-is-the-share-of-claims-evidence-carries.md)). The
-hedge exemption of the 2026-10-22 amendment no longer holds for a normative
-sentence. The minimum let one sentence caught by the wide normative net floor
-the nine stored answers of 2026-10. ADR-0139 also stops reading `[N]` as a
-registry position when an answer writes no source list.
+counts the claims evidence carries (high only when all are, low when most are
+not or an uncited verdict has no legal passage beside it)
+([ADR-0139](0139-confidence-counts-the-claims-evidence-carries.md)). Two
+readings of this record change with it: only a normative sentence that
+concludes something about the law (a verdict) needs a passage, and a next step
+bears no load; and a hedge no longer exempts a verdict (the 2026-10-22
+amendment). The confirmed project profile is a record. The minimum let one
+sentence caught by the wide normative net floor the stored answers of 2026-10.
+ADR-0139 also stops reading `[N]` as a registry position when an answer writes
+no source list.

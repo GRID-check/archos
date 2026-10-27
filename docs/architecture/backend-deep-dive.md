@@ -119,14 +119,16 @@ field at its default, and each is reset at the turn boundary in
   uses rule 3 (ADR-0139 over ADR-0125's stamps, `markers.surface_claim_confidence`):
   every sentence of the final text is stamped with a provenance class and a
   claim type (`common/claim_provenance.py`, `TurnResult.claim_stamps`), and the
-  self-report is held under the level the count of backed load-bearing
-  sentences allows (`claim_provenance.claims_ceiling`: high only when every one
-  is backed, low when most have nothing behind them or the legal conclusion has
-  no passage, medium otherwise), plus the quote gate below. Rule 3 travels as
+  self-report is held under the level the count of backed claims allows
+  (`claim_provenance.claims_ceiling`: high only when every claim is backed, low
+  when most have nothing behind them or an uncited verdict has no legal passage
+  beside it, medium otherwise; a next step bears no load, a table under a
+  lead-in is one claim, the confirmed project profile is a record), plus the
+  quote gate below. Rule 3 travels as
   version 2 with `support` on each stamp, so an open tab still parses it. A turn
   stored under rule 2 (the weakest sentence's ceiling) keeps its level. A passage, a workspace record (`common/workspace_records.py`), an
   action or a measurement lets its sentence reach `"high"`; only a passage
-  grounds a normative sentence. Rule 2 names a cap `normative_claim_uncited`
+  grounds a verdict on the law (`claim_provenance.states_verdict`). Rule 2 names a cap `normative_claim_uncited`
   (a statement about the law without a passage) or `ungrounded` (any other
   sentence without evidence). Deep research, and any state without stamps, keep
   rule 1, the answer-level floors described in the rest of this entry.

@@ -36,24 +36,28 @@ to need.
 currency** (ADR-0125, ADR-0139). `finalize_answer` stamps every sentence of the
 final text with a provenance class and a claim type
 (`common/claim_provenance.py`); the surfaced level is the self-report under the
-level the count of backed load-bearing sentences allows
-(`claim_provenance.claims_ceiling`, rule 3: high only when every one is backed,
-low when most are not or the legal conclusion has no passage), and the chip
-leads with that count („12 von 14 Aussagen belegt"). A cited passage, a
-workspace record, an action or a measurement each lets its sentence count
-whole, but only a passage grounds a normative sentence: a record, a measurement
-or a hedge beside a statement about the law leaves that statement counting
-nothing, and an uncited verdict beside them reads `low`. Never
+level the count of backed claims allows (`claim_provenance.claims_ceiling`,
+rule 3: high only when every claim is backed, low when most are not or an
+uncited verdict has no legal passage beside it; a table under a lead-in is one
+claim), and the chip leads with that count („12 von 14 Aussagen belegt"). A
+cited passage, a workspace record, an action or a measurement each lets its
+sentence count whole, but only a passage grounds a verdict on the law: a
+record, a measurement or a hedge beside one leaves it counting nothing, and an
+uncited verdict beside them reads `low`. Never
 aggregate the stamps by their minimum: the normative detector is a wide net
 built as a brake on uncited answers, and the minimum over twenty of its labels
-floored all nine stored answers of 2026-10. Records come from this turn's `workspace__call`
+floored the stored answers of 2026-10. Records come from this turn's `workspace__call`
 and `list_files` results (`common/workspace_records.py`) and never enter the
 `SourceRegistry`; a state without claim stamps (deep research, a stored turn) is
 judged by the old answer-level floors (rule 1), and `answer_confidence_version`
 says which (rule 3 is version 2 on the wire, told apart by `support` on the
-stamps, so an open tab still parses it). An `[N]` with no source list names the
-N-th passage when the turn read exactly one numbered block, and is labelled
-otherwise; never a registry position (`citation_verification.turn_numbering`).
+stamps, so an open tab still parses it). Only a verdict needs a passage
+(`claim_provenance.states_verdict`), a next step bears no load
+(`is_next_step`), and the confirmed project profile in the turn context is a
+record (`workspace_records.profile_record`). A turn numbers its passages on
+across its blocks, so an `[N]` with no source list names one passage of the
+turn; a file the sentence names or its content settles a collision
+(`citation_verification.resolve_unlisted_numbers`); never a registry position.
 
 ## Obligations
 

@@ -2,10 +2,12 @@
 fixes:
   - >
     The chip under an answer now says how many of its statements are backed by
-    a source, a record or a measurement, and names a statement about the law that
-    has no source. Well-sourced answers no longer show low confidence because of
-    a single next-step sentence, and high confidence means every statement is backed.
+    a source, a record or a measurement, and warns only when a conclusion about
+    the law has no source. A listing of your files or an answer drawn from the
+    confirmed project details no longer shows low confidence because of a
+    suggested next step.
   - >
-    A number in an answer that points to no source is marked as unverified
-    instead of being attached to an unrelated source from earlier in the
+    When an answer numbers its sources without listing them, each number now
+    points to the file or passage this answer read, and the source list is
+    added for you, instead of an unrelated source from earlier in the
     conversation.
