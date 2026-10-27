@@ -93,7 +93,7 @@ beforeEach(() => {
   repository.documentFacetCounts.mockResolvedValue({
     documentType: [{ value: 'fire_safety_concept', count: 1 }],
     project: [{ value: PROJECT, count: 1 }],
-    status: [{ value: 'completed', count: 1 }, { value: 'indexed', count: 2 }],
+    status: [{ value: 'completed', count: 1 }, { value: 'failed', count: 2 }, { value: 'COMPLETED', count: 1 }],
     cites: [{ value: 'norm:önorm b 1600', count: 1 }],
   })
   for (const provider of Object.values(providers)) provider.mockResolvedValue({ hits: [], total: 0 })
@@ -133,7 +133,10 @@ describe('runSearch', () => {
 
     expect(answer.facets?.project).toEqual([{ value: PROJECT, label: 'Hubergasse 14', count: 1 }])
     expect(answer.facets?.cites).toEqual([{ value: 'norm:önorm b 1600', label: 'önorm b 1600', count: 1 }])
-    expect(answer.facets?.state).toEqual([{ value: 'readable', label: null, count: 3 }])
+    expect(answer.facets?.state).toEqual([
+      { value: 'readable', label: null, count: 2 },
+      { value: 'failed', label: null, count: 2 },
+    ])
   })
 
   it('answers no documents when a citedBy document is out of reach, without running the query', async () => {
