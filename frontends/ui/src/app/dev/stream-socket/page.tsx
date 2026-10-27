@@ -70,7 +70,7 @@ const config: AppConfig = {
 // `useWebSocketChat` resets any other user id on mount, and the cross-user
 // guard then empties the thread (gotchas.md).
 const USER = 'default-user'
-const HARNESS_STORAGE_KEY = 'grid-chat-store:stream-socket'
+const HARNESS_STORAGE_KEY = 'chat-store:stream-socket'
 const CONVERSATION_ID = 'stream-socket'
 /** The conversation `switch=` opens while the turn runs. */
 const OTHER_CONVERSATION_ID = 'stream-socket-other'

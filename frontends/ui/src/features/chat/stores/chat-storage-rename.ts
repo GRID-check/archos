@@ -2,7 +2,7 @@
  * The chat store's keys under a name it no longer has.
  *
  * The store was `aiq-chat-store`, after the blueprint the platform started from,
- * and is `grid-chat-store` (ADR-0145 row 10d). A browser that last ran the old
+ * and is `chat-store` (ADR-0145 row 10d). A browser that last ran the old
  * name holds its conversation list and drafts only there, so the keys move
  * before the store first reads. Remove this, and the old name in `store.ts`,
  * one release after it ships.

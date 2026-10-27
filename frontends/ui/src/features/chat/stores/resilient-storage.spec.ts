@@ -15,7 +15,7 @@ import type { StorageValue } from 'zustand/middleware'
 import type { ChatMessage, Conversation } from '../types'
 import { chatMessagesKey, createResilientStorage, readStoredChat } from './chat-storage'
 
-const KEY = 'grid-chat-store-spec'
+const KEY = 'chat-store-spec'
 
 const message = (content: string, isStreaming: boolean): ChatMessage => ({
   id: 'a1',

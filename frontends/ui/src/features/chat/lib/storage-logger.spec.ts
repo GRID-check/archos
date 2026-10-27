@@ -65,11 +65,11 @@ describe('storage-logger', () => {
     test('ALWAYS logs a write that could not be stored (even in production)', () => {
       vi.stubEnv('NODE_ENV', 'production')
 
-      logStorageFailure('grid-chat-store:messages:s_huge', 9_000_000, new Error('QuotaExceededError'))
+      logStorageFailure('chat-store:messages:s_huge', 9_000_000, new Error('QuotaExceededError'))
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('nothing left to evict'),
-        expect.objectContaining({ key: 'grid-chat-store:messages:s_huge', error: 'QuotaExceededError' })
+        expect.objectContaining({ key: 'chat-store:messages:s_huge', error: 'QuotaExceededError' })
       )
     })
   })
@@ -93,12 +93,12 @@ describe('storage-logger', () => {
     test('logs storage events in development', () => {
       vi.stubEnv('NODE_ENV', 'development')
 
-      logExternalStorageEvent('grid-chat-store', 'oldValue', null)
+      logExternalStorageEvent('chat-store', 'oldValue', null)
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Storage event detected'),
         expect.objectContaining({
-          key: 'grid-chat-store',
+          key: 'chat-store',
           cleared: true,
         })
       )
@@ -107,7 +107,7 @@ describe('storage-logger', () => {
     test('does not log in production', () => {
       vi.stubEnv('NODE_ENV', 'production')
 
-      logExternalStorageEvent('grid-chat-store', 'old', 'new')
+      logExternalStorageEvent('chat-store', 'old', 'new')
 
       expect(consoleWarnSpy).not.toHaveBeenCalled()
     })

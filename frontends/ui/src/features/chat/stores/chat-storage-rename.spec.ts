@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { moveStoredChat } from './chat-storage-rename'
 
 const OLD = 'aiq-chat-store'
-const NEW = 'grid-chat-store'
+const NEW = 'chat-store'
 
 const keys = (): string[] =>
   Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)!).sort()

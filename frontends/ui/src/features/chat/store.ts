@@ -36,7 +36,7 @@ import {
   logExternalStorageEvent,
 } from './lib/storage-logger'
 
-const CHAT_STORE_NAME = 'grid-chat-store'
+const CHAT_STORE_NAME = 'chat-store'
 /** The store's name before ADR-0145; its keys move once (`chat-storage-rename.ts`). */
 const LEGACY_CHAT_STORE_NAME = 'aiq-chat-store'
 

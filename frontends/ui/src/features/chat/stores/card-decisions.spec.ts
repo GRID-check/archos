@@ -15,7 +15,7 @@ import { useChatStore } from '../store'
 import { readStoredChat } from './chat-storage'
 import type { Conversation } from '../types'
 
-const STORAGE_KEY = 'grid-chat-store'
+const STORAGE_KEY = 'chat-store'
 
 vi.mock('@/features/layout/store', () => ({
   useLayoutStore: {
