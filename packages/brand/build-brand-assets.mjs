@@ -5,7 +5,7 @@
  *   node packages/brand/build-brand-assets.mjs          write everything below
  *   node packages/brand/build-brand-assets.mjs --check  fail if an SVG copy drifted
  *
- * The master is `piloti-mark.svg` beside this file. Each app gets a committed copy,
+ * The master is `mark.svg` beside this file. Each app gets a committed copy,
  * because neither Docker build can see `packages/` (each builds from its own
  * directory). The site's `npm run check` runs the `--check` form, so an edited copy, or a
  * master edited without re-running this, fails CI instead of shipping two marks.
@@ -33,7 +33,7 @@ const brandRoot = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(brandRoot, '../..')
 const siteRoot = resolve(repoRoot, 'apps/site')
 const uiRoot = resolve(repoRoot, 'frontends/ui')
-const MASTER = resolve(brandRoot, 'piloti-mark.svg')
+const MASTER = resolve(brandRoot, 'mark.svg')
 
 const INK = '#2a301f' // --color-accent-900, the tile
 

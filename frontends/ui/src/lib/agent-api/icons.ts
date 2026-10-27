@@ -11,7 +11,7 @@
  * marks follow for clients that take them.
  *
  * Two variants per icon, one per client theme: the ink of the brand tile
- * (`packages/brand/piloti-mark.svg`: `#2a301f` on a light page, `#eef2e4` on a
+ * (`packages/brand/mark.svg`: `#2a301f` on a light page, `#eef2e4` on a
  * dark one). The server's own icon is the Piloti column (`BRAND_MARK`); the
  * others are 24-unit line glyphs, one per meaning (search, describe, call,
  * report; the guide, glossary, catalog and project resources; the workflows).

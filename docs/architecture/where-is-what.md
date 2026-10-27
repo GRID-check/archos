@@ -407,7 +407,7 @@ does not exist, so a moved file is caught; a missing row is not.
 | The BFF's address for the backend, and the service token it sends | `frontends/ui/src/lib/backend-url.ts` — `getBackendUrl`; `frontends/ui/src/lib/internal-auth.ts` — `internalServiceHeaders`, `InternalServiceUnavailableError` (inbound: `requireInternalToken`) | this table | ADR-0084 |
 | BFF proxy to the agent | `frontends/ui/src/lib/backend-proxy.ts` | [`docs/technical-reference/bff-proxy-pattern.md`](../technical-reference/bff-proxy-pattern.md) | ADR-0003 |
 | Collection scope header | `frontends/ui/src/lib/retrieval-scope/collection-scope-request.ts` | [`docs/technical-reference/collection-scoping.md`](../technical-reference/collection-scoping.md) | ADR-0013 |
-| Brand mark and every icon rendered from it (favicons, touch and manifest icons, the inline logos in both apps and PDF exports) | `packages/brand/piloti-mark.svg`, rendered into both apps by `packages/brand/build-brand-assets.mjs` | [`apps/site/AGENTS.md`](../../apps/site/AGENTS.md#head-and-seo) | — |
+| Brand mark and every icon rendered from it (favicons, touch and manifest icons, the inline logos in both apps and PDF exports) | `packages/brand/mark.svg`, rendered into both apps by `packages/brand/build-brand-assets.mjs` | [`apps/site/AGENTS.md`](../../apps/site/AGENTS.md#head-and-seo) | — |
 | Public site head: meta, Open Graph, JSON-LD, sitemap, robots, RSS, llms.txt | `apps/site/src/components/seo/SeoHead.astro`, `apps/site/src/lib/seo.ts` | [`apps/site/AGENTS.md`](../../apps/site/AGENTS.md#head-and-seo) | — |
 
 ## Repo process

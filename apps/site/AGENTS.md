@@ -92,7 +92,7 @@ registration. `/robots.txt`, `/llms.txt`, `/llms-full.txt`, the RSS feeds and
 the manifest are endpoints under `src/pages`, generated from the same sources
 as the pages. `src/lib` is inside the claims lint, so what they say is checked.
 
-Icons are rendered from `packages/brand/piloti-mark.svg` (the column, one master
+Icons are rendered from `packages/brand/mark.svg` (the column, one master
 for every size) by `node packages/brand/build-brand-assets.mjs` (both apps); edit the
 master, re-run it, commit the output. `npm run check` fails when a copy drifted from the master,
 including the inline `currentColor` paths in `Logo.astro` and the app's `lib/brand.ts`.

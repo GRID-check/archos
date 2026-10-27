@@ -19,7 +19,7 @@ The root layout is an async server component that:
 </AppConfigProvider>
 ```
 
-Metadata: title template `%s — Piloti`, `robots: noindex, nofollow` (the app is behind sign-in; `app/robots.ts` explains why crawling stays allowed). Icons and the manifest come from the `app/` file conventions (`favicon.ico`, `icon.svg`, `apple-icon.png`, `manifest.ts`), all rendered from `packages/brand/piloti-mark.svg`.
+Metadata: title template `%s — Piloti`, `robots: noindex, nofollow` (the app is behind sign-in; `app/robots.ts` explains why crawling stays allowed). Icons and the manifest come from the `app/` file conventions (`favicon.ico`, `icon.svg`, `apple-icon.png`, `manifest.ts`), all rendered from `packages/brand/mark.svg`.
 
 ---
 

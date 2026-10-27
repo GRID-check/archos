@@ -128,7 +128,7 @@ packages/                 libraries: a directory that holds a distribution is na
   knowledge-layer/        ingestion and retrieval (was sources/knowledge_layer + tests/knowledge_layer_tests)
   ris-adapter/            (was sources/ris_adapter)
   tavily-web-search/      (was sources/tavily_web_search)
-  brand/                  piloti-mark.svg and the script that renders it into both apps (was shared/brand
+  brand/                  the mark and the script that renders it into both apps (was shared/brand
                           and frontends/web/scripts/build-brand-assets.mjs)
   ifc-spatial/  ifc-spatial-py/   (unchanged)
 contracts/                schemas two languages share

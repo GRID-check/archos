@@ -96,7 +96,7 @@ export const metadata: Metadata = {
     'Workspace for planning offices: projects, files, the building model, tasks and research, with Office filing and building law at hand. Every answer cites its source.',
   // Icons come from the file conventions beside this layout (favicon.ico,
   // icon.svg, apple-icon.png) and manifest.ts; all are rendered from
-  // packages/brand/piloti-mark.svg. The app is behind sign-in: see robots.ts.
+  // packages/brand/mark.svg. The app is behind sign-in: see robots.ts.
   robots: { index: false, follow: false },
   // Added to the home screen, iOS runs the app standalone under this name. The
   // status bar is `default`: dark glyphs on the warm paper, which `themeColor`

@@ -6,7 +6,7 @@ IfcOpenShell). The agent reaches them through
 `aiq_agent/knowledge/ifc_spatial_client.py` (ADR-0045).
 
 `brand/` is the third, and not a library of that kind: the Piloti mark
-(`piloti-mark.svg`) and the script that renders it into both apps
+(`mark.svg`) and the script that renders it into both apps
 (`build-brand-assets.mjs`, which borrows `apps/site`'s sharp). It has no suite
 here: the site's `npm run check` runs its `--check` form, so the site and
 frontend tiers watch it, not the `packages` job.
