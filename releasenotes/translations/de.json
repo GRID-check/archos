@@ -464,6 +464,10 @@
     "de": "Ein Präzedenzfall aus einem anderen Bundesland ist jetzt als nach einer anderen Bauordnung entschieden gekennzeichnet."
   },
   {
+    "en": "A process or outline Piloti drew in a project can now be reworked by hand: „Als Skizze bearbeiten“ opens it on a drawing canvas, and your version is filed into the project as an SVG and a PDF marked as drafted by Piloti and edited by you.",
+    "de": "Eine von Piloti in einem Projekt gezeichnete Prozessdarstellung oder Kontur lässt sich jetzt manuell überarbeiten: „Als Skizze bearbeiten“ öffnet sie auf einer Zeichenfläche, und Ihre Version wird als SVG und PDF im Projekt abgelegt – gekennzeichnet als von Piloti entworfen und von Ihnen bearbeitet."
+  },
+  {
     "en": "A project admin reviewing a colleague's image that is still being checked sees the image.",
     "de": "Ein Projektadministrator, der das Bild eines Kollegen prüft, sieht es, solange dessen Prüfung noch läuft."
   },
