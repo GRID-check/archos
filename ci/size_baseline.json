@@ -229,7 +229,7 @@
     "src/aiq_agent/common/answer_envelope.py": 1384,
     "src/aiq_agent/common/citation_events.py": 627,
     "src/aiq_agent/common/citation_verification.py": 4509,
-    "src/aiq_agent/common/claim_queue.py": 908,
+    "src/aiq_agent/common/claim_queue.py": 906,
     "src/aiq_agent/common/content_screen.py": 1047,
     "src/aiq_agent/common/cost_tracking.py": 988,
     "src/aiq_agent/common/decisions.py": 709,
