@@ -42,6 +42,35 @@ choice: generated files (the card schemas' `shared/cards/generated.ts`,
 specs, fixtures and test helpers, migrations, and copy (the i18n dictionaries,
 the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.
 
+## No brand names
+
+No code or infrastructure name carries the product's name: no `aiq`, `grid`
+or `piloti` in an identifier, file or folder name, environment variable,
+route, header, table, metric, event, resource or tool name. The product was
+AI-Q, then Grid, now Piloti, and the next name is coming; every earlier rename
+was a code change across thousands of lines. Name the thing for what it does:
+`MAX_ACTIVE_JOBS_PER_ORG`, not `GRID_MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
+`piloti_wakes`. The product's name is copy, read from one place.
+
+`scripts/check_brand_names.py`, the `brand-names` hook in `task lint:repo`
+(CI's **Repo checks** job), holds it. It is a ratchet like the size check:
+`ci/brand_names_baseline.json` records the hits each file had when the check
+arrived, a file may not gain one, and a cleanup makes the check fail until
+`--update` lowers the entry. A move re-keys entries: `--rebaseline`, and check
+its diff shows only the move. A directory is its own key (`dir/`), so a new
+file inside `src/aiq_agent/` is fine and a new `piloti_x/` folder is not.
+
+Not a hit: the name as a word in prose (`Piloti` or `Grid` alone, in a
+comment or a string a person reads), `grid` the English word (CSS and Tailwind,
+`grid` as a layout noun at the end of a name, `FileGrid`), URLs, host names and
+the repository's own name. Not checked: ADRs, audits, release notes,
+migrations, the i18n dictionaries and the site's content, published assets,
+lockfiles and Markdown. The list is `EXCLUDED` in the script.
+
+An externally visible name (an MCP tool an outside agent calls, a public
+route, an analytics event) is renamed with the old name kept as an alias for
+one release, never as a hard break.
+
 ## Python
 
 Ruff, line length 120, Python 3.14. New tools use `@register_function` with a
