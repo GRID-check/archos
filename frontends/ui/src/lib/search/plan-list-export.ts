@@ -63,7 +63,7 @@ const COLUMNS: ReadonlyArray<{ key: ColumnKey; value: (hit: DocumentHit, diction
 export function renderPlanListCsv(hits: readonly DocumentHit[], dictionary: Dictionary): string {
   const header = COLUMNS.map((column) => csvCell(dictionary.searchExport.columns[column.key])).join(';')
   const lines = hits.map((hit) => COLUMNS.map((column) => csvCell(column.value(hit, dictionary) ?? '')).join(';'))
-  return `﻿${[header, ...lines].join('\r\n')}\r\n`
+  return `\uFEFF${[header, ...lines].join('\r\n')}\r\n`
 }
 
 /** The rows as a workbook with one sheet. */
