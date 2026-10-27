@@ -7,7 +7,7 @@ import {
 } from './stores/chat-storage'
 import type { Conversation } from './types'
 
-const STORAGE_KEY = 'aiq-chat-store'
+const STORAGE_KEY = 'chat-store'
 const mockLayoutState = vi.hoisted(() => ({
   enabledDataSourceIds: ['web_search'],
   availableDataSources: [{ id: 'web_search' }, { id: 'knowledge_base', requires_auth: true }],
