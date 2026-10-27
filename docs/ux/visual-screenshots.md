@@ -103,6 +103,11 @@ their tops aligned.
 **The Next.js dev indicator is in the shot.** The floating badge in the bottom
 corner is dev-server chrome, not your component. Turn it off in
 `next.config.ts` (`devIndicators: false`) for a capture run, or crop it.
+Next 16.4's devtools also float an orange „1 Insight“ pill (request
+insights) that `devIndicators: false` does not hide; it lives in a
+`<nextjs-portal>` element, so remove it before each shot:
+`agent-browser eval "document.querySelectorAll('nextjs-portal').forEach((e)=>e.remove())"`
+(seen 2026-10-27 in the E-Mail-Eingang captures).
 
 ## Publish
 
