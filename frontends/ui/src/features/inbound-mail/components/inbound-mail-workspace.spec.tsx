@@ -137,6 +137,23 @@ describe('InboundMailWorkspace', () => {
     expect(file).toBeDisabled()
   })
 
+  it('never offers an impersonation for bulk filing: no checkbox, a red label, and X does not select it', async () => {
+    renderWorkspace('many')
+    const row = await screen.findByTestId(`inbound-mail-row-${DETAIL_VARIANTS.impersonation.view.id}`)
+    expect(within(row).queryByTestId('inbound-mail-row-checkbox')).toBeNull()
+    expect(within(row).getByTestId('inbound-mail-row-impersonation')).toHaveTextContent('Poses as Miriam Huber · do not file')
+    const other = screen.getByTestId(`inbound-mail-row-${DETAIL_VARIANTS['member-verified'].view.id}`)
+    expect(within(other).getByTestId('inbound-mail-row-checkbox')).toBeInTheDocument()
+    // Walk to it with J and press X: nothing is selected.
+    for (let step = 0; step < 10 && row.dataset.focused !== 'true'; step += 1) {
+      fireEvent.keyDown(window, { key: 'j' })
+      await waitFor(() => expect(screen.getAllByTestId(/^inbound-mail-row-/).some((candidate) => candidate.dataset.focused === 'true')).toBe(true))
+    }
+    expect(screen.getByTestId(`inbound-mail-row-${DETAIL_VARIANTS.impersonation.view.id}`)).toHaveAttribute('data-focused', 'true')
+    fireEvent.keyDown(window, { key: 'x' })
+    expect(screen.queryByTestId('inbound-mail-selection-bar')).toBeNull()
+  })
+
   it('files a complete selection after a confirmation grouped by destination', async () => {
     const { client } = renderWorkspace('selected')
     const file = vi.spyOn(client, 'file')

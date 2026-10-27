@@ -550,7 +550,7 @@ describe.skipIf(!url)('following an E-Mail-Verlauf against Postgres', () => {
       followId = follow!.id
     })
 
-    const fassungen = () =>
+    const threadVersionCount = () =>
       count(sql`SELECT count(*) FROM document_versions WHERE document_id = ${project.documentId}::uuid`)
     const followJobs = async (mailId: string) =>
       (
@@ -606,11 +606,11 @@ describe.skipIf(!url)('following an E-Mail-Verlauf against Postgres', () => {
         sender_trust: 'member_verified',
       })
       expect(await followJobs(mailId)).toHaveLength(1)
-      expect(await fassungen()).toBe(1)
+      expect(await threadVersionCount()).toBe(1)
 
       expect(await runFollow(mailId)).toMatchObject({ done: true })
 
-      expect(await fassungen()).toBe(2)
+      expect(await threadVersionCount()).toBe(2)
       expect(uploadDocument).toHaveBeenCalledOnce()
       expect(vi.mocked(uploadDocument).mock.calls[0]![0].userId).toBe(MEMBER_ID)
       expect(
@@ -631,15 +631,15 @@ describe.skipIf(!url)('following an E-Mail-Verlauf against Postgres', () => {
       ).toEqual({ entry_count: 2, filed_via: 'follow' })
       // Run again (a retry after a lost answer): nothing more.
       expect(await runFollow(mailId)).toMatchObject({ done: true })
-      expect(await fassungen()).toBe(2)
+      expect(await threadVersionCount()).toBe(2)
     })
 
     it('a reply whose References are outside the signature queues no follow, and the job files nothing for it', async () => {
-      const before = await fassungen()
+      const before = await threadVersionCount()
       const mailId = await receive('unsigned', {}, 'from:to:subject:date:message-id:mime-version:content-type')
       expect(await followJobs(mailId)).toHaveLength(0)
       expect(await runFollow(mailId)).toMatchObject({ done: true })
-      expect(await fassungen()).toBe(before)
+      expect(await threadVersionCount()).toBe(before)
       expect(await count(sql`SELECT count(*) FROM inbound_mail_decisions WHERE mail_id = ${mailId}::uuid`)).toBe(0)
       expect(await one(sql`SELECT state FROM inbound_mail_parts WHERE mail_id = ${mailId}::uuid AND kind = 'message'`)).toEqual({
         state: 'waiting',
@@ -647,11 +647,11 @@ describe.skipIf(!url)('following an E-Mail-Verlauf against Postgres', () => {
     })
 
     it('a reply that brings a new domain into the conversation queues no follow, and the job files nothing for it', async () => {
-      const before = await fassungen()
+      const before = await threadVersionCount()
       const mailId = await receive('newdomain', { Cc: 'neu@fremd-planer.at' }, `${SIGNED}:cc`)
       expect(await followJobs(mailId)).toHaveLength(0)
       expect(await runFollow(mailId)).toMatchObject({ done: true })
-      expect(await fassungen()).toBe(before)
+      expect(await threadVersionCount()).toBe(before)
       expect(await count(sql`SELECT count(*) FROM inbound_mail_decisions WHERE mail_id = ${mailId}::uuid`)).toBe(0)
     })
   })

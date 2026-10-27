@@ -59,7 +59,12 @@ export interface AttachmentDraft {
 
 export type MessageTarget =
   | { kind: 'append'; threadId: string }
-  | { kind: 'create'; name: string; folder: FolderTarget; releaseName: boolean }
+  /**
+   * `folderSuggested`: the folder is Piloti's stored suggestion for the text
+   * (D14), not the rule's correspondence folder (`defaultThreadFolder`) nor the
+   * person's pick. Only then may the folder wear Piloti's mark.
+   */
+  | { kind: 'create'; name: string; folder: FolderTarget; folderSuggested: boolean; releaseName: boolean }
 
 /**
  * What to do with a text the content check found something in (D13): file it
@@ -145,8 +150,9 @@ export function defaultThreadFolder(folders: readonly FolderOption[]): FolderTar
  */
 export function newThreadTarget(view: Pick<InboundMailView, 'subject' | 'parts'>, folders: readonly FolderOption[], copy: DraftCopy): MessageTarget {
   const suggested = readSuggestion(view.parts.find((part) => part.kind === 'message')?.suggestion)
-  const folder = suggested?.folder != null ? targetForPath(suggested.folder, folders, suggested.folderId) : defaultThreadFolder(folders)
-  return { kind: 'create', name: displaySubject(view.subject) ?? copy.untitledThread, folder, releaseName: false }
+  const fromPiloti = suggested?.folder != null
+  const folder = fromPiloti ? targetForPath(suggested.folder ?? '', folders, suggested.folderId) : defaultThreadFolder(folders)
+  return { kind: 'create', name: displaySubject(view.subject) ?? copy.untitledThread, folder, folderSuggested: fromPiloti, releaseName: false }
 }
 
 /** Whether the mail's own text can be filed at all: waiting, read, and the project open. */

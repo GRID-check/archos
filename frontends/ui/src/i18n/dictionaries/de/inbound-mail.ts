@@ -59,6 +59,7 @@ export const inboundMail: typeof en.inboundMail = {
     automatic: 'Automatisch',
     thread: 'E-Mail-Verlauf „{name}“ · wird Fassung {version}',
     select: '„{subject}“ auswählen',
+    impersonation: 'Gibt sich als {name} aus · nicht ablegen',
     restorableUntil: 'wiederherstellbar bis {date}',
     outcome: {
       filed: '{count, plural, one {# Teil abgelegt} other {# Teile abgelegt}}',
@@ -257,6 +258,15 @@ export const inboundMail: typeof en.inboundMail = {
     cancel: 'Abbrechen',
   },
 
+  /** Die Warnung über einer E-Mail, die sich als jemand anderes ausgibt (`riskLevel: 'impersonation'`). */
+  impersonationWarning: {
+    rejectedSignature: 'Vorsicht: Diese E-Mail gibt sich als {name} aus. Ihre Signatur ist ungültig oder wurde von der Domain abgelehnt.',
+    memberName: 'Vorsicht: Der Name {name} gehört einem Mitglied, die Adresse {address} nicht.',
+    consequence:
+      'So beginnen Betrugsversuche mit Kontoänderungen. Piloti macht keinen Vorschlag, nichts ist vorausgewählt. Prüfen Sie Zahlungs- oder Kontoänderungen telefonisch, nicht per Antwort.',
+    fileAnyway: 'Trotzdem ablegen …',
+    fileAnywayHint: 'Nur wenn Sie telefonisch geprüft haben, dass die E-Mail echt ist.',
+  },
   bar: {
     dismiss: 'Verwerfen',
     dismissBusy: 'Wird verworfen …',
@@ -266,6 +276,7 @@ export const inboundMail: typeof en.inboundMail = {
     fileThread: 'In E-Mail-Verlauf „{name}“ ablegen (wird Fassung {version})',
     fileNothing: 'Nichts ablegen',
     busy: 'Wird abgelegt …',
+    acknowledgeImpersonation: 'Ich habe geprüft, dass die E-Mail echt ist. Trotzdem ablegen',
     acknowledgeSender: 'Domain nicht bestätigt. Trotzdem ablegen',
     originalErased: 'Das Original der E-Mail wird nach der Ablage gelöscht',
     blockers: {

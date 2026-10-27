@@ -89,6 +89,8 @@ const REVISION_SUBTREES = [
   // A filed mail adds a Fassung to its E-Mail-Verlauf („wird Fassung 4“), and an
   // attachment may come in as the next Fassung of a document.
   'inboundMail',
+  // The „E-Mails“ tab says „ab Fassung 4“ and names the Fassungen a detach keeps.
+  'mailThread',
 ] as const
 
 const REVISION_FORBIDDEN: Record<'de' | 'en', RegExp> = {

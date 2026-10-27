@@ -5,10 +5,10 @@
  * ADR-0055): this only gathers them, so a component can be handed a fixture
  * client in a spec or a `/dev` preview and render the real thing over it.
  *
- * `follow` and `unfollow` are the calls the typed clients do not have yet: the follow
- * route belongs to the E-Mail-Verlauf (`mail-thread-follow`, D10), whose
- * client is `adapters/api/mail-thread-client.ts` (D16). Until that lands they
- * are the requests written here, against the same route and body schema.
+ * `follow` and `unfollow` belong to the E-Mail-Verlauf (`mail-thread-follow`,
+ * `mail-thread-unfollow`), so they are its client's
+ * (`adapters/api/mail-thread-client.ts`); the E-Mail-Eingang only needs to
+ * know that they happened.
  */
 
 import {
@@ -22,11 +22,10 @@ import {
   inboundMailOriginalUrl,
   inboundMailPartContentUrl,
   listInboundMails,
-  listMailThreads,
   restoreInboundMail,
   rotateInboundMailAddress,
 } from '@/adapters/api/inbound-mail-client'
-import { ApiRequestError } from '@/adapters/api/api-error'
+import { followMailThread, listMailThreads, unfollowMailThread } from '@/adapters/api/mail-thread-client'
 import type {
   DismissInboundMailsBody,
   FileInboundMailsBody,
@@ -63,32 +62,6 @@ export interface InboundMailAddressClient {
   remove(projectId: string): Promise<InboundMailAddressView>
 }
 
-const followUrl = (projectId: string, threadId: string): string =>
-  `/api/projects/${encodeURIComponent(projectId)}/mail-threads/${encodeURIComponent(threadId)}/follow`
-
-async function followRequest(url: string, init: RequestInit): Promise<void> {
-  const response = await fetch(url, init)
-  if (response.ok) return
-  const envelope = ((await response.json().catch(() => null)) ?? {}) as { error?: unknown; details?: { reason?: unknown } }
-  throw new ApiRequestError(
-    typeof envelope.error === 'string' ? envelope.error : `The mail thread follow failed: ${response.status}`,
-    response.status,
-    typeof envelope.details?.reason === 'string' ? envelope.details.reason : null,
-  )
-}
-
-function followMailThread(projectId: string, threadId: string, body: MailThreadFollowBody = {}): Promise<void> {
-  return followRequest(followUrl(projectId, threadId), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-}
-
-function unfollowMailThread(projectId: string, threadId: string): Promise<void> {
-  return followRequest(followUrl(projectId, threadId), { method: 'DELETE' })
-}
-
 export const inboundMailClient: InboundMailClient = {
   list: listInboundMails,
   get: getInboundMail,
@@ -96,8 +69,12 @@ export const inboundMailClient: InboundMailClient = {
   file: fileInboundMails,
   dismiss: dismissInboundMails,
   restore: restoreInboundMail,
-  follow: followMailThread,
-  unfollow: unfollowMailThread,
+  follow: async (projectId, threadId, body) => {
+    await followMailThread(projectId, threadId, body)
+  },
+  unfollow: async (projectId, threadId) => {
+    await unfollowMailThread(projectId, threadId)
+  },
   threadOfDocument: async (projectId, documentId) => (await listMailThreads(projectId, { documentId, limit: 1 })).items[0] ?? null,
   partContentUrl: inboundMailPartContentUrl,
   originalUrl: inboundMailOriginalUrl,

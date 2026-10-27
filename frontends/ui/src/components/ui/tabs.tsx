@@ -70,7 +70,10 @@ const TabsList = React.forwardRef<
       // Under a finger the strip is sized by its triggers (which carry the
       // 44px floor) rather than by a fixed height that a caller's `h-*` could
       // silently undercut — see the Button size comment for why `pointer-coarse`.
-      'bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-1 pointer-coarse:h-auto',
+      // An inactive label is ink at 70%, not `text-muted-foreground`: muted on
+      // the strip's `bg-muted` measured 4.44:1 at 12px (axe, 2026-10-22), under
+      // the 4.5:1 WCAG AA asks.
+      'bg-muted text-foreground/70 inline-flex h-9 w-fit items-center justify-center rounded-lg p-1 pointer-coarse:h-auto',
       className
     )}
     {...props}

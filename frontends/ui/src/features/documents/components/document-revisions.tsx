@@ -106,9 +106,13 @@ import { useRevisionCompare, type SourceLoader } from './revision-compare'
 import type { CompareFile } from './revision-compare/types'
 import { SuggestionNotice } from './revision-notices'
 import { RevisionTimelineRow, RowAction } from './revision-timeline-row'
+import { MailOriginLine, useOpenMailOrigin } from './mail-thread/mail-origin-line'
+import { mailThreadClient } from './mail-thread/client'
 
 export interface DocumentRevisionsProps {
   file: FileItem
+  /** The project, so a Fassung a mail brought links to its E-Mail-Verlauf (D36); absent off a project (the Archiv). */
+  projectId?: string
   /** May this reader link and unlink Fassungen (a write on the folder)? */
   canManage: boolean
   /**
@@ -164,6 +168,7 @@ const STAGE_LABEL_KEYS = [
 
 export function DocumentRevisions({
   file,
+  projectId,
   canManage,
   viewer,
   names,
@@ -199,6 +204,8 @@ export function DocumentRevisions({
   })
 
   const [textComparison, setTextComparison] = useState<TextComparison | null>(null)
+  // Which mail brought a Fassung (D36) opens that mail in its E-Mail-Verlauf.
+  const openMailOrigin = useOpenMailOrigin(projectId ?? '', mailThreadClient)
   // The rows of the last render, for the comparison's callback: it runs after
   // the dialog closes, and needs the numbers the reader has just seen.
   const rowsRef = useRef<readonly TimelineRow[]>([])
@@ -455,6 +462,9 @@ export function DocumentRevisions({
         menu={menu}
         menuLabel={t('preview.revision.rail.rowMenu', { number: row.number })}
       >
+        {version.mailOrigins && version.mailOrigins.length > 0 && (
+          <MailOriginLine origins={version.mailOrigins} onOpen={projectId ? openMailOrigin : undefined} />
+        )}
         {textComparisonRow(row)}
       </RevisionTimelineRow>
     )

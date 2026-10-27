@@ -49,6 +49,8 @@ describe('initialDraft', () => {
       kind: 'create',
       name: 'Baustellenbegehung',
       folder: { kind: 'existing', folderId: FOLDERS[3].id, path: 'Korrespondenz' },
+      // The correspondence folder is the rule's pick, not Piloti's: no mark on it.
+      folderSuggested: false,
       releaseName: false,
     })
   })
@@ -164,6 +166,6 @@ describe('decisionOf', () => {
 describe('newThreadTarget', () => {
   it('takes the folder Piloti suggested for the text (D14)', () => {
     const view = mail({ parts: [messagePart({ id: message.id, suggestion: { folderId: null, folderPath: 'Behörde', newFolder: false, documentType: null, reason: 'x' } })], threadCandidates: [] })
-    expect(initialDraft(view, FOLDERS, copy).message?.target).toMatchObject({ kind: 'create', folder: { kind: 'existing', path: 'Behörde' } })
+    expect(initialDraft(view, FOLDERS, copy).message?.target).toMatchObject({ kind: 'create', folder: { kind: 'existing', path: 'Behörde' }, folderSuggested: true })
   })
 })

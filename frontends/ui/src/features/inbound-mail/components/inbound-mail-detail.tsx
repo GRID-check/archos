@@ -47,6 +47,7 @@ import {
   type MailDraft,
 } from '../lib/draft'
 import { refusalNeedsReload, refusalOf, refusalTerms } from '../lib/refusal'
+import { guardImpersonation, impersonationWarningOf } from '../lib/impersonation'
 import { followOffered } from '../lib/sender'
 import { missingSuggestionReason } from '../lib/suggestion'
 import { AttachmentPreviewDialog } from './attachment-preview-dialog'
@@ -54,6 +55,7 @@ import { AttachmentRow } from './attachment-row'
 import { ContentFindingChoice } from './content-finding-choice'
 import { DecisionBar } from './decision-bar'
 import { FollowOffer } from './follow-offer'
+import { ImpersonationWarning } from './impersonation-warning'
 import { FactLine } from './inbound-mail-atoms'
 import { MailHeader } from './mail-header'
 import { MailText, type MailTextState } from './mail-text'
@@ -134,6 +136,9 @@ export function InboundMailDetail({
   /** The terms a `name_stop` refusal named for the new thread's name; null until one was refused. */
   const [threadNameStop, setThreadNameStop] = useState<string[] | null>(null)
   const [closedNoticeHidden, setClosedNoticeHidden] = useState(false)
+  // An impersonation is a stop: its filing controls stay folded until the person opens „Trotzdem ablegen …“.
+  const [filingOpen, setFilingOpen] = useState(false)
+  useEffect(() => setFilingOpen(false), [mailId])
   const [preview, setPreview] = useState<string | null>(null)
   const [followTarget, setFollowTarget] = useState<{ threadId: string; name: string; followed: boolean } | null>(null)
   const alive = useRef(true)
@@ -144,7 +149,8 @@ export function InboundMailDetail({
     [t]
   )
 
-  const view = state.kind === 'ready' ? state.view : null
+  // An impersonation is drawn with nothing pre-selected and no suggestion, whatever the view says (`guardImpersonation`).
+  const view = useMemo(() => (state.kind === 'ready' ? guardImpersonation(state.view) : null), [state])
 
   const load = useCallback(async () => {
     try {
@@ -332,6 +338,8 @@ export function InboundMailDetail({
   const showBar = view.status === 'waiting' && waitingParts.length > 0 && !anyFiling && draft && summary
   const previewEntry = attachments.find((entry) => entry.part.id === preview)
   const outcome = filingOutcome(view)
+  const impersonation = impersonationWarningOf(view)
+  const stopped = impersonation !== null && !filingOpen
 
   return (
     <article className="flex min-h-full flex-col" data-testid="inbound-mail-detail" data-mail-id={view.id}>
@@ -398,13 +406,16 @@ export function InboundMailDetail({
           </div>
         )}
 
+        {/* Above the header, before anything can be checked: the owner's rule for a mail posing as someone. */}
+        {impersonation && <ImpersonationWarning warning={impersonation} />}
+
         <MailHeader
           view={view}
           forwarded={text.kind === 'ready' ? text.text.forwardedFrom : null}
           originalUrl={client.originalUrl(projectId, view.id)}
         />
 
-        {messagePart?.state === 'waiting' && messagePart.contentFindings.length > 0 && draft?.message?.findingChoice && (
+        {!stopped && messagePart?.state === 'waiting' && messagePart.contentFindings.length > 0 && draft?.message?.findingChoice && (
           <ContentFindingChoice
             findings={messagePart.contentFindings}
             value={draft.message.findingChoice}
@@ -415,7 +426,24 @@ export function InboundMailDetail({
 
         <MailText state={text} onRetry={() => void loadText()} />
 
-        {messagePart && draft?.message && (
+        {/* The forged mail's way to filing is one deliberate press, never the page's default. */}
+        {impersonation && view.status === 'waiting' && waitingParts.length > 0 && (
+          <div className="flex flex-col items-start gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-expanded={filingOpen}
+              onClick={() => setFilingOpen((open) => !open)}
+              data-testid="impersonation-file-anyway"
+            >
+              {t('impersonationWarning.fileAnyway')}
+            </Button>
+            <p className="text-muted-foreground text-xs">{t('impersonationWarning.fileAnywayHint')}</p>
+          </div>
+        )}
+
+        {!stopped && messagePart && draft?.message && (
           <section className="flex flex-col gap-2" aria-label={t('message.label')}>
             <ItemList className="bg-card">
               <MessageRow
@@ -431,7 +459,7 @@ export function InboundMailDetail({
           </section>
         )}
 
-        {(attachments.length > 0 || notStaged.listed.length > 0 || notStaged.layoutImages > 0) && draft && (
+        {!stopped && (attachments.length > 0 || notStaged.listed.length > 0 || notStaged.layoutImages > 0) && draft && (
           <section className="flex flex-col gap-2" aria-label={t('attachments.label')}>
             <SectionLabel as="h3">{t('attachments.label')}</SectionLabel>
             {attachments.length > 0 && (
@@ -497,6 +525,8 @@ export function InboundMailDetail({
         <DecisionBar
           summary={summary}
           acknowledgeSender={draft.acknowledgeSender}
+          impersonation={impersonation !== null}
+          filingOpen={filingOpen}
           onAcknowledgeSender={(value) => setDraft((current) => (current ? { ...current, acknowledgeSender: value } : current))}
           onFile={() => void file()}
           onDismiss={() => void dismiss()}

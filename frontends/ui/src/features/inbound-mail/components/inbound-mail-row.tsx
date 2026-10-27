@@ -17,7 +17,7 @@
 
 import type { JSX } from 'react'
 import Link from 'next/link'
-import { Bot, Paperclip, Repeat2 } from 'lucide-react'
+import { Bot, Paperclip, Repeat2, ShieldAlert } from 'lucide-react'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { Checkbox } from '@/components/ui/checkbox'
 import { TimeAgo } from '@/components/ui/time-ago'
@@ -26,6 +26,7 @@ import type { InboundMailSummaryView } from '@/lib/inbound-mail/inbound-mail-wir
 import { formatCalendarDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { displaySubject } from '@/lib/inbound-mail/subject'
+import { bulkSelectable } from '../lib/impersonation'
 import { SenderTrustGlyph } from './sender-trust'
 
 export interface InboundMailRowProps {
@@ -52,6 +53,8 @@ export function InboundMailRow({ mail, href, open, focused, checked, onCheckedCh
   const outcomes = (['filed', 'dismissed', 'expired'] as const).filter((outcome) => mail.outcomes[outcome] > 0)
   // A follow appended the text; its attachments still wait for a person (D31).
   const textFollowed = waiting && mail.followedBy !== null
+  // A mail posing as someone is said in words on its row, and never joins a bulk decision.
+  const impersonating = mail.riskLevel === 'impersonation'
 
   return (
     <li
@@ -73,17 +76,19 @@ export function InboundMailRow({ mail, href, open, focused, checked, onCheckedCh
         <span aria-hidden className={cn('absolute inset-y-2 left-0 w-0.5 rounded-full', open ? 'bg-foreground' : 'bg-foreground/40')} />
       )}
       {/* Above the link's full-row press area, so a tap on the box selects instead of opening. */}
-      <div className="relative z-10 flex h-8 items-center">
-        <Checkbox
-          checked={checked}
-          onCheckedChange={(value) => onCheckedChange(value === true)}
-          aria-label={t('row.select', { subject })}
-          data-testid="inbound-mail-row-checkbox"
-          className={cn(
-            'transition-opacity duration-quick',
-            !selecting && !checked && 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100'
-          )}
-        />
+      <div className="relative z-10 flex h-8 w-4 shrink-0 items-center">
+        {bulkSelectable(mail) && (
+          <Checkbox
+            checked={checked}
+            onCheckedChange={(value) => onCheckedChange(value === true)}
+            aria-label={t('row.select', { subject })}
+            data-testid="inbound-mail-row-checkbox"
+            className={cn(
+              'transition-opacity duration-quick',
+              !selecting && !checked && 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100'
+            )}
+          />
+        )}
       </div>
       <Link
         href={href}
@@ -118,6 +123,12 @@ export function InboundMailRow({ mail, href, open, focused, checked, onCheckedCh
               </span>
             )}
           </p>
+          {waiting && impersonating && (
+            <p className="text-error flex min-w-0 items-center gap-1 text-xs font-medium" data-testid="inbound-mail-row-impersonation">
+              <ShieldAlert className="size-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0 truncate">{t('row.impersonation', { name: who })}</span>
+            </p>
+          )}
           {waiting && mail.thread && (
             <p
               className="text-muted-foreground min-w-0 truncate text-xs"

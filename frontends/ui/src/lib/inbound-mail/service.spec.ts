@@ -291,7 +291,17 @@ describe('a decision', () => {
     expect(scored).toMatchObject({ organizationId: 'org_1', decidedBy: PERSON, via: 'app', parts: before, decision: body().mails[0] })
     expect(scored.folderPathOf(FOLDER_ID)).toBe('Tragwerk')
     expect(captureServer).toHaveBeenCalledWith(
-      expect.objectContaining({ event: 'inbound_mail_decided', properties: expect.objectContaining({ suggestion_followed: 'all' }) }),
+      expect.objectContaining({ event: 'inbound_mail_decided', properties: expect.objectContaining({ suggestion_followed: 'all', risk_level: 'none' }) }),
+    )
+  })
+
+  it('says on the decision whether the mail posed as someone (risk_level)', async () => {
+    const { dismissMails } = await import('./repository')
+    store.mail = heldMail({ subject: 'Dringend: Kontoänderung Honorarnote', senderTrust: 'member_unverified', senderReason: 'dkim_fail' })
+    vi.mocked(dismissMails).mockResolvedValueOnce({ decisions: [{ mailId: MAIL_ID, action: 'dismiss' }] } as never)
+    await dismissInboundMails(session, PROJECT_ID, { mailIds: [MAIL_ID] })
+    expect(captureServer).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'inbound_mail_decided', properties: expect.objectContaining({ risk_level: 'impersonation' }) }),
     )
   })
 
@@ -302,7 +312,7 @@ describe('a decision', () => {
     await dismissInboundMails(session, PROJECT_ID, { mailIds: [MAIL_ID] })
     expect(vi.mocked(scoreMailDecision).mock.calls[0]![0]).toMatchObject({ decision: null, parts: [textPart(), filePart()] })
     expect(captureServer).toHaveBeenCalledWith(
-      expect.objectContaining({ properties: expect.objectContaining({ suggestion_followed: 'none', files: 0, dismissed: 1 }) }),
+      expect.objectContaining({ properties: expect.objectContaining({ suggestion_followed: 'none', files: 0, dismissed: 1, risk_level: 'none' }) }),
     )
   })
 

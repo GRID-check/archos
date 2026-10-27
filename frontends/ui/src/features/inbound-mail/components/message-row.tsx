@@ -206,11 +206,13 @@ export function MessageRow({ projectId, view, draft, folders, copy, threadNameSt
                 </Button>
               ) : (
                 <FilingChip
+                  suggested={target.folderSuggested}
                   target={folderLeaf(target.folder.path)}
                   title={target.folder.path}
                   newLabel={target.folder.kind === 'new' ? t('suggestion.newFolder') : undefined}
                   onClick={() => setPickerOpen(true)}
                   className="border-solid"
+                  data-testid="detail-new-thread-folder"
                 />
               )}
             </div>
@@ -241,7 +243,7 @@ export function MessageRow({ projectId, view, draft, folders, copy, threadNameSt
           setPickerOpen(false)
           if (target.kind !== 'create') return
           const folder = folderId ? folders.find((option) => option.id === folderId) : null
-          onChange({ target: { ...target, folder: folder ? targetForPath(folder.path, folders, folder.id) : targetForPath('', folders) } })
+          onChange({ target: { ...target, folder: folder ? targetForPath(folder.path, folders, folder.id) : targetForPath('', folders), folderSuggested: false } })
         }}
       />
     </div>

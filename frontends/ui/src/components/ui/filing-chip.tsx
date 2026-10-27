@@ -1,6 +1,7 @@
 'use client'
 
 import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type JSX } from 'react'
+import { Folder } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from './focus-ring'
 import { PRESSABLE } from './press'
@@ -31,11 +32,20 @@ export interface FilingChipProps extends ButtonHTMLAttributes<HTMLButtonElement>
   target: string
   /** „neu", when the move creates the folder. */
   newLabel?: string
+  /**
+   * Whether the target IS Piloti's suggestion (default). False for a folder a
+   * rule or the person chose: the chip then wears a folder glyph, never
+   * Piloti's mark, because the mark claims Piloti stands behind the place
+   * (VISION: traceable; `lib/inbound-mail/suggest.ts` gives no suggestion on
+   * an unconfirmed or forged mail, and a regex default must not look like one).
+   */
+  suggested?: boolean
 }
 
 /**
- * FilingChip — Piloti's suggestion of where something belongs, as a pill that
- * opens the decision: its glyph, „→ Bescheide", and „neu" for a folder the
+ * FilingChip — where something will be filed, as a pill that opens the
+ * decision: Piloti's glyph when it is Piloti's suggestion (a folder glyph when
+ * a rule or the person chose it), „→ Bescheide", and „neu" for a folder the
  * move creates.
  *
  * Calm by default, because after a batch upload ten of these may sit on one
@@ -53,7 +63,7 @@ export interface FilingChipProps extends ButtonHTMLAttributes<HTMLButtonElement>
  * (`PopoverTrigger asChild`), so it forwards its ref and every prop.
  */
 export const FilingChip = forwardRef<HTMLButtonElement, FilingChipProps>(function FilingChip(
-  { target, newLabel, className, type = 'button', ...props },
+  { target, newLabel, suggested = true, className, type = 'button', ...props },
   ref
 ) {
   return (
@@ -62,6 +72,7 @@ export const FilingChip = forwardRef<HTMLButtonElement, FilingChipProps>(functio
       type={type}
       aria-haspopup="dialog"
       data-slot="filing-chip"
+      data-suggested={suggested || undefined}
       className={cn(
         'border-strong bg-card text-foreground -my-1 inline-flex h-6 min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-full border border-dashed pl-[3px] pr-2 text-[11px] font-medium leading-none',
         'hover:bg-accent aria-expanded:bg-accent hover:border-solid aria-expanded:border-solid',
@@ -73,7 +84,11 @@ export const FilingChip = forwardRef<HTMLButtonElement, FilingChipProps>(functio
       )}
       {...props}
     >
-      <PilotiGlyph size="xs" className="size-4" />
+      {suggested ? (
+        <PilotiGlyph size="xs" className="size-4" />
+      ) : (
+        <Folder className="text-muted-foreground ml-[3px] size-3.5 shrink-0" aria-hidden data-testid="filing-chip-folder" />
+      )}
       <span className="min-w-0 truncate">
         <span aria-hidden>→ </span>
         {target}
