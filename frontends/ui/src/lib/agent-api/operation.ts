@@ -97,6 +97,12 @@ export interface AgentOperation {
    * something. Defaults to `method === 'DELETE'`.
    */
   readonly destructive?: boolean
+  /**
+   * The person decides it, whatever it changes: deciding a proposal (ADR-0105).
+   * An outside agent's call is put to the person first, as a destructive write
+   * is (`confirmation.ts`), since a proposal it applies may itself delete.
+   */
+  readonly personDecides?: true
   /** Calling it twice with the same input leaves the same state. Defaults to GET, PUT and DELETE. */
   readonly idempotent?: boolean
   /**

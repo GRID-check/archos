@@ -35,6 +35,8 @@ from aiq_agent.common import unavailable_source_ids
 from aiq_agent.common import validate_tool_availability
 from aiq_agent.common.agent_tools import load_agent_tools
 from aiq_agent.common.citation_verification import EmptySourceRegistryError
+from aiq_agent.common.client_tools import KNOWN_CLIENT_TOOLS
+from aiq_agent.common.client_tools import client_tool_declared
 from aiq_agent.common.data_source_registry import get_all_sources
 from aiq_agent.common.decisions import SKIPPED_TOO_SHORT
 from aiq_agent.common.decisions import record_skipped
@@ -455,14 +457,21 @@ def _tools_in_scope(tools: list[Any]) -> list[Any]:
     """The turn's tools less those that cannot run in its scope.
 
     The tool payload still does not vary with the data-source toggles (the
-    cache shard stays one per org); it varies with one fact the turn cannot
-    change — whether there is a project — so an org has two shards, not one
-    per combination.
+    cache shard stays one per org); it varies with two facts the turn cannot
+    change — whether there is a project, and whether the asking page can run a
+    frontend tool (``common/client_tools``, ADR-0144) — so an org has at most
+    four shards, not one per combination.
     """
-    if get_project_id_from_context():
-        return tools
-    # The BASE name: a grouped or MCP tool arrives as ``bim__ifc_query``.
-    return [tool for tool in tools if tool_basename(getattr(tool, "name", "") or "") not in _PROJECT_MODEL_TOOLS]
+    in_project = bool(get_project_id_from_context())
+
+    def runs_here(tool: Any) -> bool:
+        # The BASE name: a grouped or MCP tool arrives as ``bim__ifc_query``.
+        name = tool_basename(getattr(tool, "name", "") or "")
+        if name in KNOWN_CLIENT_TOOLS:
+            return client_tool_declared(name)
+        return in_project or name not in _PROJECT_MODEL_TOOLS
+
+    return [tool for tool in tools if runs_here(tool)]
 
 
 def _apply_decisions(decisions: TurnDecisions, state: ResearchAgentState, runtime: SkillRuntime | None) -> None:

@@ -28,6 +28,7 @@ import { PROPOSAL_DECISION_OPERATIONS } from '@/lib/proposals/operation-applier'
 import { BACKEND_OPERATIONS, PILOTI_TOOL_FOR } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
 import { EXPOSURE, type Exposure, WITHHELD_CATEGORIES } from './exposure.config'
+import { APP_TOOLS } from './catalog/app-views'
 
 const FIXTURE = join(process.cwd(), 'tests/fixtures/exposure.json')
 const NATIVE = /^native:[a-z][a-z0-9_]*$/
@@ -37,8 +38,12 @@ const entry = (name: string): Exposure => entries[name] as Exposure
 const plainlyOffered = (exposure: Exposure): boolean => exposure.external && exposure.piloti === true
 
 describe('the exposure config', () => {
-  it('has an entry for every operation and the read tools, and for nothing else (no silent default)', () => {
-    const names = [...AGENT_OPERATIONS.map((op) => op.name), ...BACKEND_OPERATIONS.map((op) => op.name)]
+  it('has an entry for every operation, the read tools and the app-only tools, and for nothing else (no silent default)', () => {
+    const names = [
+      ...AGENT_OPERATIONS.map((op) => op.name),
+      ...BACKEND_OPERATIONS.map((op) => op.name),
+      ...APP_TOOLS.map((tool) => tool.name),
+    ]
     expect(names.filter((name) => !Object.hasOwn(entries, name)), 'give each an entry in exposure.config.ts').toEqual([])
     expect(Object.keys(entries).filter((name) => !names.includes(name)), 'no operation has this name').toEqual([])
   })
@@ -83,6 +88,18 @@ describe('the exposure config', () => {
     }
   })
 
+  it('offers an app-only tool to a view and to no model, and names only operations on the door (ADR-0142)', () => {
+    const operations = new Set(AGENT_OPERATIONS.map((op) => op.name))
+    for (const tool of APP_TOOLS) {
+      expect(entry(tool.name), tool.name).toMatchObject({ external: false, piloti: false, app: true })
+      expect(operations.has(tool.name), `${tool.name} must not be an operation name`).toBe(false)
+      expect(entry(tool.operation).external, `${tool.operation} must be on the office door`).toBe(true)
+    }
+    for (const [name, exposure] of Object.entries(entries)) {
+      if (exposure.app) expect(APP_TOOLS.map((tool) => tool.name), name).toContain(name)
+    }
+  })
+
   it('names a native tool by its bound name, and gives each read tool its own', () => {
     for (const [name, exposure] of Object.entries(entries)) {
       if (typeof exposure.piloti === 'string') expect(exposure.piloti, name).toMatch(NATIVE)
@@ -121,11 +138,17 @@ function render(): string {
     ...AGENT_OPERATIONS.map((op) => row(op.name, 'catalog', op.domain, op.sensitivity ?? null)),
     ...BACKEND_OPERATIONS.map((op) => row(op.name, 'backend', op.domain, null)),
   ])
+  // The MCP Apps views' app-only tools (ADR-0142): each runs the operation it names, for a view only.
+  const appTools = Object.fromEntries(
+    APP_TOOLS.map((tool) => [tool.name, { view: tool.view, operation: tool.operation, app: entry(tool.name).app === true, reason: entry(tool.name).reason ?? null }])
+  )
   const fixture = {
     comment:
       'Who sees each capability: frontends/ui/src/lib/agent-api/exposure.config.ts, written by exposure.config.spec.ts ' +
-      '(UPDATE_FIXTURES=1). `piloti` is true, false or "native:<tool>" (Piloti uses that tool; the door hides the operation from it).',
+      '(UPDATE_FIXTURES=1). `piloti` is true, false or "native:<tool>" (Piloti uses that tool; the door hides the operation from it). ' +
+      '`appTools` are the MCP Apps views’ app-only tools (ADR-0142), each running the operation it names.',
     operations,
+    appTools,
   }
   return `${JSON.stringify(fixture, null, 1)}\n`
 }

@@ -50,7 +50,8 @@ const VALUE_LENGTH = 60
 /** Most inputs named in the summary; the rest are counted, never dropped silently. */
 const MAX_FACTS = 4
 
-const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
+/** `text` cut to `max` characters, marked as cut. */
+export const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
 
 /**
  * One input as the summary names it. A scalar is quoted (clipped; the card shows

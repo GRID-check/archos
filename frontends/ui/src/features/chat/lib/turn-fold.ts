@@ -104,7 +104,15 @@ export interface TurnView {
   stoppedLate?: boolean
   /** The asker's steering notes, by `steer_id`, as the server acknowledged them. */
   steers?: Record<string, SteerView>
+  /**
+   * Piloti's viewer actions (ADR-0144), in arrival order, one per `tool_call_id`.
+   * Folded for every reader; only the asker's driver hands them on to be run
+   * (`viewer-actions.ts`), and nothing of them is stored with the answer.
+   */
+  viewerActions?: ViewerActionValue[]
 }
+
+export type ViewerActionValue = Named<'viewer_action'>['value']
 
 export const initialTurnView = (turnId: string, conversationId: string): TurnView => ({
   turnId,
@@ -372,6 +380,8 @@ const CONTENT_EVENTS: ReadonlySet<string> = new Set([
   'card',
   'card_refused',
   'answer_retracted',
+  // A turn the reader stopped does not move their viewer afterwards.
+  'viewer_action',
 ])
 
 /** `next` when it holds the same cards as `cards`, so a cut that kept them all keeps the array. */
@@ -530,6 +540,11 @@ const applyCustom = (view: TurnView, event: Extract<WireEvent, { type: 'CUSTOM' 
     case 'steer_applied': {
       const known = view.steers?.[event.value.steer_id]
       return foldSteer(view, event.value.steer_id, { text: known?.text ?? '', round: event.value.round }, event.ts)
+    }
+    case 'viewer_action': {
+      const known = view.viewerActions ?? []
+      if (known.some((call) => call.tool_call_id === event.value.tool_call_id)) return view
+      return { ...view, viewerActions: [...known, event.value] }
     }
   }
 }

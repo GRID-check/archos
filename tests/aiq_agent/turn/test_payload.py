@@ -25,6 +25,26 @@ def _clear_intent():
     set_turn_intent()
 
 
+class TestTheTurnsClientTools:
+    """``user_message.client_tools`` (AG-UI's RunAgentInput.tools) sets what the turn may offer (ADR-0144)."""
+
+    def test_a_declared_tool_is_the_turns_and_a_plain_question_declares_none(self):
+        from aiq_agent.common.client_tools import client_tool_declared
+
+        extract_turn_inputs(_message(client_tools=["show_in_viewer", "unknown_tool"]))
+        assert client_tool_declared("show_in_viewer") and not client_tool_declared("unknown_tool")
+
+        extract_turn_inputs("eine Frage")
+        assert not client_tool_declared("show_in_viewer")
+
+    def test_a_question_without_the_field_declares_none(self):
+        from aiq_agent.common.client_tools import client_tool_declared
+
+        extract_turn_inputs(_message(client_tools=["show_in_viewer"]))
+        extract_turn_inputs(_message())
+        assert not client_tool_declared("show_in_viewer")
+
+
 class TestExtractTurnInputs:
     """The wire -> state lift.
 

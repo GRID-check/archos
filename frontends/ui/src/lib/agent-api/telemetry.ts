@@ -42,9 +42,25 @@ export interface McpCallContext {
    * every call takes its path unchanged.
    */
   confirmation?: Confirmation | null
-  /** `elicitation` on the round that runs a call the person confirmed in their own chat. */
-  decisionSource?: 'elicitation'
+  /**
+   * `elicitation` on the round that runs a call the person confirmed in their
+   * own chat (bound to a signed `requestState`). `app`: an MCP Apps card's
+   * app-only tool, from a client that declared it renders MCP Apps, whose host
+   * keeps the tool from its model; still the host's word, not a proof.
+   * `app-unverified`: the same tool from a client that declared nothing (the
+   * 2025 era carries no capabilities), so the call may be its model's.
+   */
+  decisionSource?: DecisionSource
+  /**
+   * Whether this caller's client renders MCP Apps (`mcp-apps.ts`): `declared`
+   * on a 2026-07-28 request whose capabilities name the UI extension with the
+   * MCP Apps mime type; `unknown` on a 2025-era request, which carries none;
+   * absent when the client declared it does not, or nothing is offered.
+   */
+  appHost?: 'declared' | 'unknown'
 }
+
+export type DecisionSource = 'elicitation' | 'app' | 'app-unverified'
 
 /**
  * What became of a call: run or proposed (`CallDecision`), refused, put to the

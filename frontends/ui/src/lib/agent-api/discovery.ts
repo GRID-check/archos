@@ -36,6 +36,8 @@ import {
 } from './dispatch'
 import { type BackendOperation, type JsonSchemaObject, callBackendOperation, toMcpContent } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
+import { APP_TOOLS, APP_VIEWS } from './catalog/app-views'
+import { offersAppViews } from './app-host'
 import { layerSchema, resolveField } from './layered-schema'
 import { configuredAppOrigin } from '@/lib/app-origin'
 import { withLinks } from './links'
@@ -110,11 +112,24 @@ function renderText(value: unknown, hint = GENERIC_NARROWING_HINT): { text: stri
   return { text: full.slice(0, MAX_RESULT_CHARS) + note, truncated: true }
 }
 
-function success(value: unknown, hint?: string): CallToolResult {
+/**
+ * The operations an MCP Apps view reads its data from (ADR-0142): the ones a
+ * view draws, and the ones its app-only tools run. For a caller offered the
+ * views (`offersAppViews`) their `structuredContent` is the view's input, so it
+ * is kept whole however long the text is; only the text, which the model
+ * reads, is capped. A proposal is one bounded object. Every other caller gets
+ * the cap as for any operation.
+ */
+const VIEW_DATA_OPERATIONS: ReadonlySet<string> = new Set<string>([
+  ...APP_VIEWS.flatMap((view) => view.drawsResultOf),
+  ...APP_TOOLS.map((tool) => tool.operation),
+])
+
+function success(value: unknown, hint?: string, keepStructured = false): CallToolResult {
   const { text, truncated } = renderText(value, hint)
   const result: CallToolResult = { content: [{ type: 'text', text }] }
-  // structuredContent must be an object; a client that reads it would bypass the cap.
-  if (!truncated) result.structuredContent = isRecord(value) ? value : { result: value }
+  // structuredContent must be an object; a client that reads it would bypass the cap, except a view's own data.
+  if (!truncated || keepStructured) result.structuredContent = isRecord(value) ? value : { result: value }
   return result
 }
 
@@ -210,13 +225,15 @@ export function fromOperationResult(
   result: OperationResult,
   input: OperationInput = {},
   origin: string | null = configuredAppOrigin(),
+  /** The caller draws MCP Apps views: a view's data is kept whole (`VIEW_DATA_OPERATIONS`). */
+  forView = false,
 ): CallToolResult {
   const opName = op.name
   if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
   if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
   if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
-  return success(withLinks(op, input, result.body, origin), narrowingHint(op))
+  return success(withLinks(op, input, result.body, origin), narrowingHint(op), forView && VIEW_DATA_OPERATIONS.has(opName))
 }
 
 /**
@@ -434,7 +451,18 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
     }
   }
   const outcome = await executeOperation(ctx, op, input, startedAt)
-  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result, input)
+  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result, input, undefined, offersAppViews(ctx))
+}
+
+/**
+ * Why a call did not reach the route, or failed in it: what the caller reads,
+ * and the status and code the door answered it with, so a caller that needs
+ * the status (an MCP Apps card telling a 409 apart) never parses it from text.
+ */
+export interface OperationRefusal {
+  refusal: CallToolResult
+  status: number
+  code?: string
 }
 
 /**
@@ -449,7 +477,7 @@ export async function executeOperation(
   op: AgentOperation,
   input: OperationInput,
   startedAt = Date.now(),
-): Promise<{ result: OperationResult } | { refusal: CallToolResult }> {
+): Promise<{ result: OperationResult } | OperationRefusal> {
   const record = (status: number) =>
     recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision: 'run', status, startedAt })
   try {
@@ -457,32 +485,38 @@ export async function executeOperation(
     const refused = await gate.beforeRead(op, input)
     if (refused) {
       record(403)
-      return { refusal: failure(refused) }
+      return { refusal: failure(refused), status: 403, code: 'FORBIDDEN' }
     }
     // An agent reads the answer: a route that words its refusal in the person's locale words it in English.
     const result = await callOperation(op, input, ctx.principal.session, 'agent')
     record(result.status)
     // A link works for whoever holds it, with the requester's access: never into a transcript others read.
-    if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) return { refusal: failure(sharedConversationReadRefusal()) }
+    if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) {
+      return { refusal: failure(sharedConversationReadRefusal()), status: 403, code: 'FORBIDDEN' }
+    }
     return { result }
   } catch (error) {
-    return { refusal: operationFailure(op, error, record) }
+    return failureOf(op, error, record)
   }
 }
 
 /** What the caller reads when running `op` threw, recorded with its status. */
 function operationFailure(op: AgentOperation, error: unknown, record: (status: number) => void): CallToolResult {
+  return failureOf(op, error, record).refusal
+}
+
+function failureOf(op: AgentOperation, error: unknown, record: (status: number) => void): OperationRefusal {
   if (error instanceof OperationInputError) {
     record(400)
-    return failure(inputRefusal(op, error))
+    return { refusal: failure(inputRefusal(op, error)), status: 400, code: 'VALIDATION_ERROR' }
   }
   if (error instanceof ApiError) {
     record(error.status)
-    return failure(`${error.message} (HTTP ${error.status}, ${error.code})`)
+    return { refusal: failure(`${error.message} (HTTP ${error.status}, ${error.code})`), status: error.status, code: error.code }
   }
   console.error('[mcp] operation failed', op.name, error)
   record(500)
-  return failure(`${op.name} failed on the server. Try again; if it persists, report it.`)
+  return { refusal: failure(`${op.name} failed on the server. Try again; if it persists, report it.`), status: 500 }
 }
 
 /** Longest input schema quoted in a refusal; a larger one is a describe-operation away. */

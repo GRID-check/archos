@@ -817,6 +817,12 @@ interface SchematicCardProps {
   eyebrow?: string
   title: string
   verdict?: DimStatus | null
+  /**
+   * Beside the verdict pill: what the verdict rests on, when that is not the
+   * source (a formula card judged with the reader's own figures). A node, so
+   * the card composes its own `Chip` with its icon and word.
+   */
+  verdictNote?: ReactNode
   note?: string | null
   reference?: NormReferenceData | null
   children: ReactNode
@@ -831,6 +837,7 @@ export const SchematicCard: FC<SchematicCardProps> = ({
   eyebrow,
   title,
   verdict,
+  verdictNote,
   note,
   reference,
   children,
@@ -840,12 +847,20 @@ export const SchematicCard: FC<SchematicCardProps> = ({
     // No entrance of its own: the card slot fades it in when the reader
     // watches it arrive, and a root `animate-in` replayed on every remount.
     <Card className={cn(CARD_SHELL, 'gap-3 p-5')}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="card-eyebrow flex items-center gap-1.5 text-muted-foreground">
+      {/* The eyebrow never wraps; where the pills do not fit beside it, they
+          move to a line of their own as one row, right-aligned, rather than
+          stacking one under the other beside a broken eyebrow. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+        <div className="card-eyebrow flex shrink-0 items-center gap-1.5 whitespace-nowrap text-muted-foreground">
           <Icon className="size-3.5" aria-hidden="true" />
           <span>{eyebrow ?? t('cards.kit.eyebrow')}</span>
         </div>
-        {verdict && <StatusBadge status={verdict} />}
+        {(verdict || verdictNote) && (
+          <span className="ml-auto flex flex-wrap items-center justify-end gap-1.5 whitespace-nowrap">
+            {verdictNote}
+            {verdict && <StatusBadge status={verdict} />}
+          </span>
+        )}
       </div>
 
       <p className="card-title text-foreground">{title}</p>

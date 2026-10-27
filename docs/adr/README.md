@@ -199,6 +199,10 @@ Consequences, where a reader looks for them.
 | [0135](0135-skills-run-on-deep-agents-skills-middleware.md) | Skills run on Deep Agents' SkillsMiddleware, in chat and in deep research | Proposed |
 | [0136](0136-search-is-one-query-over-a-projection-beside-the-index.md) | Search is one query over a projection beside the index: the dossier's facts are filtered where authorization lives | Proposed |
 | [0140](0140-a-turn-that-needs-the-person-pauses-and-a-new-run-resumes-it.md) | A turn that needs the person pauses, and a new run resumes it: LangGraph `interrupt()` with the checkpointer, as AG-UI 1.0's interrupt outcome | Proposed |
+| [0141](0141-a-person-reworks-piloti-drawing-as-an-excalidraw-sketch.md) | A person reworks Piloti's drawing as an Excalidraw sketch; the model still writes mermaid | Proposed |
+| [0142](0142-piloti-cards-render-in-the-persons-own-assistant-as-mcp-apps.md) | Piloti's cards render in the person's own assistant as MCP Apps, starting with the proposal card | Accepted |
+| [0143](0143-a-computing-card-takes-reader-inputs-and-never-a-stated-result.md) | A computing card takes reader inputs, and never a stated result: named formulas recompute in the browser, cited limits stay fixed | Proposed |
+| [0144](0144-piloti-moves-the-askers-viewer-through-allow-listed-frontend-tool-calls.md) | Piloti moves the asker's viewer through allow-listed frontend tool calls | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

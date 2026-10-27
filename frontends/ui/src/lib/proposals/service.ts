@@ -336,6 +336,8 @@ async function mayDecide(session: AuthorizedSession, row: ProposedChangeRow): Pr
  * (ADR-0122: a card names each target for its reader). Their apply would run as
  * them, the route would answer 404, and the card would end `failed` for
  * everyone; asked first, the proposal stays open for somebody who can read it.
+ * Their dismiss is refused too: deciding a change to something they cannot see
+ * is deciding blind, and `canDecide` already shows them no button.
  */
 async function requireTargetsOfOperationReadable(session: AuthorizedSession, row: ProposedChangeRow): Promise<void> {
   if (row.kind !== 'operation') return
@@ -475,6 +477,8 @@ export async function dismissProposal(session: AuthorizedSession, id: string): P
   const row = await requireReadableProposal(session, id)
   if (row.status !== 'proposed') throw alreadyDecided(row)
   await requireDecider(session, row)
+  // As for apply, and as `canDecide` says: a decider who cannot read a target decides nothing of it.
+  await requireTargetsOfOperationReadable(session, row)
   const dismissed = await dismissProposedChange(session.organizationId, id, session.userId, staleBefore())
   if (!dismissed) {
     const now = await findProposedChange(session.organizationId, id)
