@@ -64,7 +64,9 @@ A dossier of a new Fassung also carries `changes` and `changed_against` when the
 Fassung it replaces (a re-upload under the same name, or the one a person linked at
 upload) had a dossier: per fact key, `{key, before, after, page}`, where a key only
 one of them states has `before` or `after` null. At most 12, compared folded (case,
-spaces, decimal comma), no model (`dossier.fact_changes`).
+spaces, decimal comma), no model (`dossier.fact_changes`). The search projects them
+(`document_search_facets.changed_facts`, the filters `factsChanged` and
+`changedFacts`; [`document-search.md`](../design/document-search.md#what-changed-and-what-is-not-read-yet)).
 
 | Field | Vocabulary (`dossier.py`, mirrored in `frontends/ui/src/lib/documents/dossier.ts`) |
 |---|---|

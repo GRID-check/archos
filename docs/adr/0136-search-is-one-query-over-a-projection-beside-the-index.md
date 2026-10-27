@@ -86,7 +86,8 @@ that path would add a store without removing one.
 1. **`document_search_facets`** (migration 0185) holds, per document: type,
    tags, topics, title, summary, parties, place, facts (text and numeric),
    references as `kind:key` tokens (the payload's own tokens), Plankopf facts,
-   capture, page count, pages not read, whether a newer Fassung replaces it, a
+   capture, page count, pages not read, whether a newer Fassung replaces it,
+   which facts it changed against the Fassung it replaced (the dossier's `changes`), a
    full-text vector, and the fingerprint of what it was built from. Tenant table
    under `grid_secure_table`. It is never authored: each row is replaced whole.
 2. **A row is written when its document settles.** The status reconciliation
