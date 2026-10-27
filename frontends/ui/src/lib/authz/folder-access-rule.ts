@@ -8,7 +8,7 @@
  * (`@/test-utils/folder-access`).
  */
 
-import { ForbiddenError } from '@/lib/api/errors'
+import { ForbiddenError } from '@/lib/api/api-error'
 
 /** What a folder role lets a person do: read (`folder-reader`), or read and write (`folder-editor`). */
 export type FolderGrantLevel = 'read' | 'write'
