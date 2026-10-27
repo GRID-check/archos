@@ -84,8 +84,8 @@ Chosen option 1.
   fence in the dialect pass (`validate_dialect`), so both the settled and the
   terminal answer carry the verdict: size, element count, types, coordinates,
   texts, points, unique ids, bindings to ids the scene holds. A refused fence
-  is retagged `excalidraw-refused` and the reader sees its source and one quiet
-  line. `lib/diagrams/sketch-fence.ts` applies the same rules in the browser,
+  is retagged `excalidraw-refused` and the reader sees one quiet line
+  asking to draw it again, never the JSON. `lib/diagrams/sketch-fence.ts` applies the same rules in the browser,
   for a fence still streaming and for answers stored before the check, then
   keeps only an allow-list of fields (no `link`, no `customData`) and sets
   every text in Helvetica, the type the filed SVG and PDF can show. Both run

@@ -53,7 +53,7 @@ export const diagrams: typeof en.diagrams = {
     keepEditing: 'Weiter bearbeiten',
     defaultTitle: 'Skizze',
     notToScale: 'Skizze — nicht maßstäblich, ohne Maßangabe.',
-    fallback: 'Diese Skizze konnte nicht gezeichnet werden. Ihr Quelltext steht darüber.',
+    fallback: 'Diese Skizze konnte nicht gezeichnet werden. Bitten Sie Piloti, sie noch einmal zu zeichnen.',
   },
   rejected: {
     empty: 'Das Diagramm war leer.',

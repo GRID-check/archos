@@ -13,7 +13,7 @@
  * browser's. They refuse the same fences with the same word, held together by
  * `__fixtures__/sketch-fences.json`, which both test suites run. The server's
  * verdict is stored in the answer: a refused fence arrives retagged
- * `excalidraw-refused` and is shown as its source. This one exists because a
+ * `excalidraw-refused` and is shown as one quiet line, never as JSON. This one exists because a
  * fence still streaming, and every answer stored before the server checked,
  * arrive without that verdict.
  *

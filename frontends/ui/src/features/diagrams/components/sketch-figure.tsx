@@ -12,9 +12,9 @@
  *     one, the drawing's placeholder.
  *   - **refused** — the server refused the fence (it arrives tagged
  *     `excalidraw-refused`) or the browser's check does (an answer stored
- *     before the server checked). The source, as a code block, and one quiet
- *     line. Never a red box: a sketch that did not work costs the reader
- *     nothing they did not already have.
+ *     before the server checked). One quiet line on the drawing's plane, and
+ *     never the source: a sketch is JSON, and JSON is not something a reader
+ *     of an answer can use. Never a red box either.
  *   - **drawn** — the sketch on a sheet, the line that says it is not to scale,
  *     and inside a project „Im Projekt ablegen" and „Als Skizze bearbeiten".
  *
@@ -35,7 +35,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
-import { CodeBlock } from '@/shared/components/CodeBlock'
 import { useTranslations } from '@/i18n'
 import {
   readSketchFence,
@@ -132,11 +131,14 @@ export function SketchFigure({ source, isStreaming = false, refused = false }: S
   const [editing, setEditing] = useState(false)
 
   if (refused || (fence && !fence.ok) || failed) {
-    const lineCount = source.split('\n').length
     return (
-      <div data-testid="sketch-figure" data-state="refused" className="my-4 [&>div:first-child]:my-0">
-        <CodeBlock value={source} language="json" collapsible={lineCount > 15} maxLines={15} />
-        <p className="text-muted-foreground mt-1 text-xs">{t('sketch.fallback')}</p>
+      <div
+        data-testid="sketch-figure"
+        data-state="refused"
+        className="bg-muted/40 text-muted-foreground my-4 rounded-xl px-4 py-3 text-sm"
+        role="note"
+      >
+        {t('sketch.fallback')}
       </div>
     )
   }

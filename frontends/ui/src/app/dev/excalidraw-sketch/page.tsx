@@ -8,7 +8,7 @@
  * renderer inside a filing target, as an answer in a project is: a room-bubble
  * sketch, a site sketch, an annotated flow, a document wireframe and a
  * comparison board. Then the two other states: a fence the server refused
- * (`excalidraw-refused`, shown as its source) and one still being written,
+ * (`excalidraw-refused`, one quiet line, never the JSON) and one still being written,
  * replayed element by element (`?stream=0` holds it half-written for a
  * capture).
  *
@@ -75,7 +75,7 @@ function Preview() {
         <>
           <Panel
             title="Vom Server abgelehnt"
-            note="Ein Bild-Element ist in einer Skizze nicht erlaubt. Der Server hat den Block als excalidraw-refused gespeichert; die Leserin sieht den Quelltext und eine leise Zeile."
+            note="Ein Bild-Element ist in einer Skizze nicht erlaubt. Der Server hat den Block als excalidraw-refused gespeichert; die Leserin sieht eine leise Zeile, nie den Quelltext."
           >
             <MarkdownRenderer content={REFUSED} />
           </Panel>

@@ -15,7 +15,8 @@ the same rules and name a refusal with the same word;
 ``tests/aiq_agent/common/test_sketch_fence.py`` runs both against one fixture
 file. The server's verdict is what reaches the stored answer: a fence it
 refuses is retagged ``excalidraw-refused`` (:func:`refused_fence_info`), so
-every later reader shows the source with one note instead of trying again.
+every later reader shows one quiet line instead of trying again, and never
+the JSON.
 The browser checks too, because a fence still streaming, and every answer
 stored before this check, reaches it without the server's verdict.
 

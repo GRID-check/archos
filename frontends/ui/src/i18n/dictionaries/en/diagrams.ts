@@ -110,7 +110,7 @@ export const diagrams = {
     defaultTitle: 'Sketch',
     /** Beside a sketch Piloti drew, where the reader is: the doctrine in one line. */
     notToScale: 'Sketch — not to scale, no dimensions.',
-    fallback: 'This sketch could not be drawn. Its source is above.',
+    fallback: 'This sketch could not be drawn. Ask Piloti to draw it again.',
   },
   rejected: {
     empty: 'The diagram was empty.',

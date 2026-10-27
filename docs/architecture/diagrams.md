@@ -571,8 +571,8 @@ subject: a sketch claims no dimension, and says so.
   and the recurring shapes, read on demand (ADR-0135); the static prompt only
   points at it.
 - **Checked twice.** `common/sketch_fence.py` runs in the dialect pass and
-  retags a refused fence `excalidraw-refused` (shown as its source with one
-  line); `lib/diagrams/sketch-fence.ts` applies the same rules in the browser
+  retags a refused fence `excalidraw-refused` (one quiet line, never the
+  JSON; the Word export prints a label, never the scene); `lib/diagrams/sketch-fence.ts` applies the same rules in the browser
   and keeps an allow-list of fields, texts in Helvetica. Both run
   `lib/diagrams/__fixtures__/sketch-fences.json`. Caps: 32 KiB, 150 elements,
   coordinates within ±10 000.

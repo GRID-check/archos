@@ -44,7 +44,7 @@ text, sizes labelled shapes and binds arrows, so write only this:
 | `frame` | `children` (ids), `name` | |
 
 Every field outside this table is dropped. No `image`, `embeddable`, `iframe`
-or `freedraw`: a sketch with one is refused and shown as its source. At most
+or `freedraw`: a sketch with one is refused and the reader gets no picture. At most
 150 elements and 32 KB; every `id` unique; every `start`, `end` and `children`
 id one the scene holds.
 
