@@ -16,7 +16,7 @@ click-dummy ``TYPES`` registry:
 
 ``measurement`` is the odd one out and deliberately so. The first four are
 RETRIEVED PASSAGES: a chunk of a document that a citation resolves to, captured
-into :class:`~aiq_agent.common.citation_verification.SourceRegistry` and
+into :class:`~citations.registry.SourceRegistry` and
 verifiable by reading the passage back. A measurement has no passage. It
 carries something else — the GlobalIds it was derived from, the operator
 expression, an absolute tolerance and a provenance
@@ -69,9 +69,9 @@ class SourceKind:
     css_token: str
 
 
-#: The canonical registry. Extend here (and add the matching ``--source-*`` CSS
-#: tokens + the mirror in ``frontends/ui/.../source-kinds.ts``) to introduce a
-#: new kind — every rendering surface picks it up automatically.
+#: The canonical registry. Extend here, run ``scripts/generate_vocabularies.py``
+#: (the UI's ``SOURCE_KINDS`` is generated from these keys) and give the kind its
+#: ``--source-*`` tint in ``frontends/ui/src/lib/source-kinds.ts``.
 SOURCE_KINDS: dict[str, SourceKind] = {
     "building_law": SourceKind(
         key="building_law",

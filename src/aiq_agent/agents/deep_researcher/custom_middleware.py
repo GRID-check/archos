@@ -17,14 +17,14 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphBubbleUp
 
+from aiq_agent.citations.citation_keys import parse_citation_key
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.entries import normalize_url
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.session import get_session_registry
 from aiq_agent.common import get_source_id_for_tool
 from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import _normalize_url
-from aiq_agent.common.citation_verification import _parse_citation_key
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
-from aiq_agent.common.citation_verification import get_session_registry
 from aiq_agent.common.cost_tracking import BudgetExceededError
 from aiq_agent.common.turn_status import fail_subagent
 from aiq_agent.common.turn_status import subagent_run
@@ -109,7 +109,7 @@ class SelectiveToolRetryMiddleware(ToolRetryMiddleware):
             return super().wrap_tool_call(request, handler)
         except GraphBubbleUp:
             raise
-        except (RunBudgetExceededError, BudgetExceededError):
+        except RunBudgetExceededError, BudgetExceededError:
             raise
         except Exception as exc:  # noqa: BLE001 - converted to an error ToolMessage for the model
             return self._handle_failure(tool_name, request.tool_call["id"], exc, 1)
@@ -123,7 +123,7 @@ class SelectiveToolRetryMiddleware(ToolRetryMiddleware):
             return await super().awrap_tool_call(request, handler)
         except GraphBubbleUp:
             raise
-        except (RunBudgetExceededError, BudgetExceededError):
+        except RunBudgetExceededError, BudgetExceededError:
             raise
         except Exception as exc:  # noqa: BLE001 - converted to an error ToolMessage for the model
             return self._handle_failure(tool_name, request.tool_call["id"], exc, 1)
@@ -439,8 +439,8 @@ class SourceRegistryMiddleware(AgentMiddleware):
         """
         locator = locator.strip()
         if locator.startswith(("http://", "https://")):
-            return _normalize_url(locator)
-        filename, _ = _parse_citation_key(locator)
+            return normalize_url(locator)
+        filename, _ = parse_citation_key(locator)
         return filename.lower()
 
     @classmethod

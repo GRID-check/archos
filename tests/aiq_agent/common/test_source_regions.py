@@ -13,12 +13,12 @@ import dataclasses
 
 import pytest
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import _registry_from_cached_entries
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
-from aiq_agent.common.citation_verification import read_source_to_wire
-from aiq_agent.common.citation_verification import source_entry_to_wire
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.session import _registry_from_cached_entries
+from aiq_agent.citations.wire import read_source_to_wire
+from aiq_agent.citations.wire import source_entry_to_wire
 from aiq_agent.common.grounding_block import GroundingBlock
 from aiq_agent.common.grounding_block import GroundingHit
 from aiq_agent.common.grounding_block import SourceRegion

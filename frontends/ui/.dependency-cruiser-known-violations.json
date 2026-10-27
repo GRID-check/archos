@@ -1217,7 +1217,211 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/chat/components/SourcePreview.tsx",
+    "from": "src/features/chat/components/source-preview/citation-document-dialog.tsx",
+    "to": "src/features/knowledge/components/pdf-viewer-dialog.tsx",
+    "unresolvedTo": "@/features/knowledge/components/pdf-viewer-dialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/citation-document-dialog.tsx",
+    "to": "src/features/layout/components/SourceSignalChip.tsx",
+    "unresolvedTo": "@/features/layout/components/SourceSignalChip",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/citation-document-dialog.tsx",
+    "to": "src/features/similar-passages/components/similar-passages-dialog.tsx",
+    "unresolvedTo": "@/features/similar-passages/components/similar-passages-dialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/citation-document-dialog.tsx",
+    "to": "src/features/similar-passages/components/similar-passages-panel.tsx",
+    "unresolvedTo": "@/features/similar-passages/components/similar-passages-panel",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/citation-document-dialog.tsx",
+    "to": "src/features/similar-passages/lib/use-similar-passages.ts",
+    "unresolvedTo": "@/features/similar-passages/lib/use-similar-passages",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/citation-face.tsx",
+    "to": "src/features/layout/components/SourceSignalChip.tsx",
+    "unresolvedTo": "@/features/layout/components/SourceSignalChip",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/info-preview-chip.tsx",
+    "to": "src/features/layout/components/SourceSignalChip.tsx",
+    "unresolvedTo": "@/features/layout/components/SourceSignalChip",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/locus-rail.tsx",
+    "to": "src/features/layout/components/SourceSignalChip.tsx",
+    "unresolvedTo": "@/features/layout/components/SourceSignalChip",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/ris-preview-chip.tsx",
+    "to": "src/features/knowledge/components/ris-document-dialog.tsx",
+    "unresolvedTo": "@/features/knowledge/components/ris-document-dialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/ris-preview-chip.tsx",
+    "to": "src/features/layout/components/SourceSignalChip.tsx",
+    "unresolvedTo": "@/features/layout/components/SourceSignalChip",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/source-document-dialog.tsx",
+    "to": "src/features/knowledge/components/ris-document-dialog.tsx",
+    "unresolvedTo": "@/features/knowledge/components/ris-document-dialog",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/source-document-dialog.tsx",
+    "to": "src/features/layout/components/SourceSignalChip.tsx",
+    "unresolvedTo": "@/features/layout/components/SourceSignalChip",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/chat/components/source-preview/source-preview-index.ts",
     "to": "src/features/documents/lib/documents-by-name.ts",
     "unresolvedTo": "@/features/documents/lib/documents-by-name",
     "dependencyTypes": [
@@ -1235,93 +1439,8 @@
   {
     "type": "dependency",
     "from": "src/features/chat/components/SourcePreview.tsx",
-    "to": "src/features/knowledge/components/pdf-viewer-dialog.tsx",
-    "unresolvedTo": "@/features/knowledge/components/pdf-viewer-dialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/chat/components/SourcePreview.tsx",
-    "to": "src/features/knowledge/components/ris-document-dialog.tsx",
-    "unresolvedTo": "@/features/knowledge/components/ris-document-dialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/chat/components/SourcePreview.tsx",
     "to": "src/features/layout/components/SourceSignalChip.tsx",
     "unresolvedTo": "@/features/layout/components/SourceSignalChip",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/chat/components/SourcePreview.tsx",
-    "to": "src/features/similar-passages/components/similar-passages-dialog.tsx",
-    "unresolvedTo": "@/features/similar-passages/components/similar-passages-dialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/chat/components/SourcePreview.tsx",
-    "to": "src/features/similar-passages/components/similar-passages-panel.tsx",
-    "unresolvedTo": "@/features/similar-passages/components/similar-passages-panel",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/chat/components/SourcePreview.tsx",
-    "to": "src/features/similar-passages/lib/use-similar-passages.ts",
-    "unresolvedTo": "@/features/similar-passages/lib/use-similar-passages",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

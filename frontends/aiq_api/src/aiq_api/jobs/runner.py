@@ -478,7 +478,7 @@ async def _mark_interrupted(job_store: Any, job_id: str) -> bool:
         return False
     try:
         return await _update_status_if_not_terminal(job_store, job_id, JobStatus.INTERRUPTED, error="cancelled by user")
-    except (ConnectionError, TimeoutError, RuntimeError):
+    except ConnectionError, TimeoutError, RuntimeError:
         return False
 
 
@@ -1102,7 +1102,7 @@ def _model_state(state_cls: type, input_text: str, data_sources, available_docum
 
             state_kwargs["available_documents"] = [AvailableDocument(**doc) for doc in available_documents]
             logger.debug("Research worker passing %d available documents to agent state", len(available_documents))
-        except (ImportError, TypeError):
+        except ImportError, TypeError:
             # The state does not take AvailableDocument entries: run without them.
             pass
     return state_cls(**state_kwargs)
@@ -1184,7 +1184,7 @@ def _get_agent_state_class(agent) -> type | None:
                 if isinstance(cls, type) and hasattr(cls, "model_fields"):
                     if "messages" in cls.model_fields:
                         return cls
-    except (ImportError, AttributeError):
+    except ImportError, AttributeError:
         pass
 
     # Try same module

@@ -10,10 +10,10 @@ from urllib.parse import urlparse
 from langchain_core.tools import BaseTool
 from langchain_core.tools import tool
 
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.entries import normalize_url
 from aiq_agent.common import load_prompt
 from aiq_agent.common import render_prompt_template
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import _normalize_url
 
 if TYPE_CHECKING:
     from ..custom_middleware import SourceRegistryMiddleware
@@ -38,7 +38,7 @@ def dedupe_sources(entries: list[SourceEntry]) -> list[dict[str, str]]:
     seen: set[str] = set()
     rows: list[dict[str, str]] = []
     for entry in entries:
-        key = _normalize_url(entry.url) if entry.url else entry.citation_key
+        key = normalize_url(entry.url) if entry.url else entry.citation_key
         if not key or key in seen:
             continue
         seen.add(key)

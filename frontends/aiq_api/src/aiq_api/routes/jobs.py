@@ -459,7 +459,7 @@ async def internal_job_outcome(
         try:
             parsed = json.loads(job.output) if isinstance(job.output, str) else job.output
             output = parsed if isinstance(parsed, dict) else None
-        except (json.JSONDecodeError, TypeError):
+        except json.JSONDecodeError, TypeError:
             output = None
 
     report = output.get("report") if output and status == "success" else None
@@ -934,7 +934,7 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
                 # Gated the same way, for the same reason: they are the sources
                 # OF this report, numbered as it cites them.
                 sources = _report_sources(output.get("sources")) if report else None
-            except (json.JSONDecodeError, AttributeError):
+            except json.JSONDecodeError, AttributeError:
                 pass
 
         # Only when there is something to file. A poll that finds no report yet
@@ -1403,7 +1403,7 @@ def _int_env(name: str, default: int) -> int:
     try:
         val = int(os.environ.get(name, ""))
         return val if val > 0 else default
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
 
 

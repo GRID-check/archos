@@ -82,7 +82,7 @@ def highlight_payload(page: object, x: object, y: object, w: object, h: object, 
 def _num(value: object) -> str:
     try:
         return f"{float(value):.2f}"  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return "?"
 
 
@@ -93,7 +93,7 @@ def _box_words(box: object) -> str | None:
     x, y, w, h = (box.get(key) for key in ("x", "y", "w", "h"))
     try:
         right, bottom = float(x) + float(w), float(y) + float(h)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return f"p. {box.get('page')}"
     return f"p. {box.get('page')}, x {_num(x)}–{_num(right)}, y {_num(y)}–{_num(bottom)}"
 
@@ -104,7 +104,7 @@ def _viewport_words(viewport: object) -> str | None:
         return None
     try:
         down = round(float(viewport.get("y")) * 100)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return f"p. {viewport['page']}"
     return f"p. {viewport['page']}, about {down} % down"
 

@@ -27,9 +27,9 @@ from langchain_core.tools import tool
 from aiq_agent.agents.piloti.agent import PilotiAgent
 from aiq_agent.agents.piloti.agent import _opened_documents
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import turn_status
-from aiq_agent.common.citation_verification import SourceEntry
 from aiq_agent.common.data_source_registry import populate_from_config
 from aiq_agent.common.data_source_registry import reset_registry
 from aiq_agent.common.norm_registry import oib_families

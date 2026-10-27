@@ -171,12 +171,12 @@ def _capture_identity(entry: Any) -> tuple[str, str, str, str] | None:
     registry's own document identity — while the display keeps first-seen
     spelling, which is what ``read_passage`` resolves verbatim.
     """
-    from aiq_agent.common.citation_verification import _parse_citation_key
+    from aiq_agent.citations.citation_keys import parse_citation_key
 
     citation_key = getattr(entry, "citation_key", None) or ""
     if not citation_key:
         return None
-    file_name, _page = _parse_citation_key(citation_key)
+    file_name, _page = parse_citation_key(citation_key)
     file_name = (file_name or "").strip()
     if not file_name or "." not in file_name.rsplit("/", 1)[-1]:
         return None
@@ -185,9 +185,9 @@ def _capture_identity(entry: Any) -> tuple[str, str, str, str] | None:
 
 
 def _capture_page(entry: Any) -> int | None:
-    from aiq_agent.common.citation_verification import _parse_citation_key
+    from aiq_agent.citations.citation_keys import parse_citation_key
 
-    _file_name, page = _parse_citation_key(getattr(entry, "citation_key", None) or "")
+    _file_name, page = parse_citation_key(getattr(entry, "citation_key", None) or "")
     return page
 
 
