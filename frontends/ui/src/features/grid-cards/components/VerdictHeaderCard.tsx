@@ -153,5 +153,5 @@ export const VerdictHeaderCard: FC<VerdictHeaderCardProps> = ({
     return <div className="flex flex-col gap-2.5">{body}</div>
   }
 
-  return <Card className={cn(CARD_SHELL, 'gap-2.5 border-l-2 border-l-primary/40 p-5')}>{body}</Card>
+  return <Card className={cn(CARD_SHELL, 'gap-2.5 p-5')}>{body}</Card>
 }

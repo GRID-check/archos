@@ -147,14 +147,15 @@ server's `dryRun` is ([servers][mcp-fs]).
 
 **Measured and rejected.** Do not re-propose without new evidence.
 
-- Client BM25 tool narrowing (`src/aiq_agent/agents/piloti/tool_search.py`):
+- Client BM25 tool narrowing (`piloti/tool_search.py`, removed 2026-10-27):
   off, 71 % recall of the answering tool
   ([hobble register](hobble-register-2026-09.md) row 20).
 - A `search_tools` tool: it costs a round.
 - Provider-native deferral ([ADR-0048](../adr/0048-tool-schemas-stay-with-the-provider.md)):
   luna, sol, sonnet-5 and gemini-3.7-flash echoed the flag and billed the
   schemas in full ([turns audit](turns-per-answer-audit-2026-09.md)). Off
-  since 2026-09-25 (`configs/config_oib_openrouter.yml`).
+  since 2026-09-25, code removed 2026-10-27; a standards-based tool search
+  replaces it in its own change.
 - Narrowing tools on a guess about intent:
   [ADR-0052](../adr/0052-one-answering-agent-no-intent-router.md) and
   [ADR-0064](../adr/0064-a-decision-model-decides-and-never-withholds.md)
@@ -207,7 +208,7 @@ LLM events for 30 days, so there is no per-tool usage or error rate.
 | 5 | Truncation notes that name the next call | Grounding hits end in a bare `[truncated]` (`src/aiq_agent/common/grounding_block.py`), BIM lists say "N weitere" (`src/aiq_agent/tools/bim/rendering.py`); `list_files` already names `offset=` | those two, `sources/ris_adapter/src/lookup/grammar.py` | S | Re-fetches of the same document per turn |
 | 6 | Count argument rejections per tool, then `Literal` enums for fixed-value parameters | `is_argument_rejection` only sets a log level (`src/aiq_agent/common/callbacks.py`); NAT drops `Args:`; OpenAI: enums | `src/aiq_agent/common/callbacks.py`, tool input models | S, then M | `status:tool_rejected:<tool>`; schema work above ~2 % |
 | 7 | New `propose_file_change` operations: folder rename/move/delete, retag, archive with warning. **PD** for archive | Routes exist (§4); the BFF stays the single writer | `src/aiq_agent/tools/files/`, UI card executor | S each | Card accept rate; tidy-up fixture rows |
-| 8 | Re-probe `openrouter:tool_search` | Now server-managed and "works on any model and any provider" ([tool search][or-ts]); ADR-0048 measured the provider-native path | `src/aiq_agent/common/deferred_tool_loading.py` | S | Ballast probe tokens; BIM recall; NAT trace parses it (#635). Worth it only if row 2 leaves a cold cost |
+| 8 | ~~Re-probe `openrouter:tool_search`~~ **Closed 2026-10-27**: the self-rolled deferral (`common/deferred_tool_loading.py`) is removed and ADR-0048 superseded; a standards-based tool search is built new in its own change | Now server-managed and "works on any model and any provider" ([tool search][or-ts]); ADR-0048 measured the provider-native path | none | - | The new change measures: ballast probe tokens; BIM recall; NAT trace parses it (#635) |
 | 9 | Title-block metadata (Plannummer, Index, Maßstab, Datum, Geschoss) as `list_files` facets | v4 analysis has none of these; title-block reading is a VLM strength ([visual ingestion](visual-ingestion.md)); a drawing-layout benchmark reports F1 0.911 for Qwen3-VL ([arXiv 2607.18997][aec-layout]); Autodesk extracts them ([Autodesk][adsk]) | `sources/knowledge_layer/src/llamaindex/visual_analysis.py`, `sources/knowledge_layer/src/browse.py` | M | Field exact-match on the fixture |
 | 10 | `list_changes(since)` | "What came in since Monday"; Gemini Drive updates ([Drive][gdrive-updates]); `added_at` is on rows | `sources/knowledge_layer/src/browse.py` | S–M | Fixture row |
 | 11 | `extract_table` across documents, as a background job. **PD** | The dominant multi-document shape ([Harvey][harvey], [NotebookLM][nblm], [Box][box]); one agent holding the grid hallucinated calls ([Hebbia][hebbia]) | new tool, task runner | L | Cell accuracy against the fixture |

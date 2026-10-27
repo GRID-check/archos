@@ -19,6 +19,7 @@ citation. Flattening on the way in removes the markup without ever granting that
 power.
 """
 
+import functools
 import re
 from typing import Annotated
 from typing import Any
@@ -1842,15 +1843,20 @@ _ENVELOPE_FIELD_TYPES: frozenset[str] = frozenset(
     {"summary", "verdict_header", "key_takeaways", "callout", "follow_ups"}
 )
 
-#: Which props of each layout component hold child ids, in `a2ui-core`'s shape:
-#: (single-reference fields, list-reference fields). A tab's `child` is one
-#: level down, so `_tabs_as_references` lifts the tabs' children into
-#: `tabs[].child` for the check.
-_SURFACE_REF_FIELDS: dict[str, tuple[set[str], set[str]]] = {
-    "Row": (set(), {"children"}),
-    "Column": (set(), {"children"}),
-    "Tabs": (set(), {"tabs[].child"}),
-}
+
+@functools.cache
+def _basic_catalog() -> Any:
+    """A2UI's v0.9 basic catalog, whose `Row`, `Column` and `Tabs` the layouts are.
+
+    `a2ui-core` finds a component's child ids from its catalog's schema (a
+    `ChildList` or `ComponentId` reference), so the structure is read through
+    the catalog the layouts take their names and shapes from. Built once: it
+    is the catalog's document, not per-turn state.
+    """
+    from a2ui.core.basic_catalog import BasicCatalog
+
+    return BasicCatalog("0.9")
+
 
 #: Card types that may not be a leaf. System cards are pushed by tools, and an
 #: interactive card's decision is
@@ -1989,11 +1995,25 @@ def _checked_leaf(component: dict[str, Any]) -> dict[str, Any]:
     return {"id": component_id, "component": name, **normalised}
 
 
-def _tabs_as_references(component: dict[str, Any]) -> dict[str, Any]:
-    """Tabs' child ids where `a2ui-core` looks for a list of references (`tabs[].child`)."""
-    if component.get("component") != "Tabs":
-        return component
-    return {**component, "tabs[].child": [tab["child"] for tab in component["tabs"]]}
+def _structural_models(components: list[dict[str, Any]]) -> dict[str, Any]:
+    """The components as `a2ui-core` models, keyed by id, for its integrity and topology checks.
+
+    A leaf is passed without its props: it holds no child, and `a2ui-core`
+    falls back to guessing references from the props of a component its
+    catalog does not know, which would read a card field whose value happens
+    to equal a component id as a reference.
+    """
+    from a2ui.core.state.component_model import ComponentModel
+
+    catalog = _basic_catalog()
+    models: dict[str, Any] = {}
+    for component in components:
+        name = component["component"]
+        props = {key: value for key, value in component.items() if key not in ("id", "component")}
+        models[component["id"]] = ComponentModel(
+            component["id"], name, catalog, props if name in SURFACE_LAYOUTS else {}
+        )
+    return models
 
 
 def _references(component: dict[str, Any]) -> list[str]:
@@ -2049,8 +2069,8 @@ class SurfaceCard(CardModel):
 
     @model_validator(mode="after")
     def _is_a_valid_a2ui_surface(self) -> "SurfaceCard":
-        from a2ui.core.validating.integrity_checker import validate_component_integrity
-        from a2ui.core.validating.topology_analyzer import analyze_topology
+        from a2ui.core.state.validation_helpers import analyze_topology
+        from a2ui.core.state.validation_helpers import validate_component_integrity
 
         for index, component in enumerate(self.components):
             if not isinstance(component.get("id"), str) or not isinstance(component.get("component"), str):
@@ -2078,13 +2098,11 @@ class SurfaceCard(CardModel):
                 checked.append(_check_layout(component))
             else:
                 checked.append(_checked_leaf(component))
-        # `a2ui-core` reads references by field name; a tab's child sits one
-        # level down, so it is lifted into a list field for the check. The
-        # structure is judged first: a cycle is a cycle, whatever the count.
-        structural = [_tabs_as_references(component) for component in checked]
+        # The structure is judged first: a cycle is a cycle, whatever the count.
+        structural = _structural_models(checked)
         try:
-            validate_component_integrity(structural, _SURFACE_REF_FIELDS)
-            analyze_topology(structural, _SURFACE_REF_FIELDS)
+            validate_component_integrity(structural)
+            analyze_topology(structural)
         except Exception as exc:
             raise ValueError(f"The component list is not a valid A2UI surface: {exc}") from exc
         _check_single_parent(checked)

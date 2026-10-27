@@ -579,10 +579,6 @@ body {
   border-color: var(--border-color-base);
 }
 
-@utility border-l-subtle {
-  border-left-color: var(--border-color-base);
-}
-
 @utility border-error {
   border-color: var(--border-color-feedback-danger);
 }
@@ -591,32 +587,16 @@ body {
   border-color: var(--border-color-feedback-success);
 }
 
-@utility border-l-success {
-  border-left-color: var(--border-color-feedback-success);
-}
-
 @utility border-warning {
   border-color: var(--border-color-feedback-warning);
-}
-
-@utility border-l-warning {
-  border-left-color: var(--border-color-feedback-warning);
 }
 
 @utility border-info {
   border-color: var(--border-color-feedback-info);
 }
 
-@utility border-l-info {
-  border-left-color: var(--border-color-feedback-info);
-}
-
 @utility border-danger {
   border-color: var(--border-color-feedback-danger);
-}
-
-@utility border-l-danger {
-  border-left-color: var(--border-color-feedback-danger);
 }
 
 @utility border-brand {

@@ -100,12 +100,12 @@ export const SimilarPassageButton = forwardRef<
       aria-current={current ? 'true' : undefined}
       data-similar-passage=""
       className={cn(
-        'group/passage flex w-full flex-col gap-1.5 rounded-md border-l-2 py-1.5 pl-3 pr-2 text-left outline-none',
+        'group/passage flex w-full flex-col gap-1.5 rounded-md border px-3 py-1.5 text-left outline-none',
         'transition-colors duration-quick ease-out motion-reduce:transition-none',
         FOCUS_RING,
         current
-          ? 'border-foreground bg-accent/70'
-          : 'border-border hover:border-foreground/60 hover:bg-accent/40',
+          ? 'border-border bg-accent/70'
+          : 'border-transparent hover:bg-accent/40',
         className
       )}
       {...props}

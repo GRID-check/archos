@@ -6,8 +6,10 @@
  * The smallest card in the set and the only one with no domain in it: a
  * Land-specific deviation, a Frist, an easily-missed condition. Inside a
  * paragraph such a sentence reads at exactly the weight of the sentence beside
- * it — which is the one weight it must not have — so it gets a frame, an
- * accent edge in its own tone and an icon well to scan to.
+ * it — which is the one weight it must not have — so it gets a frame, its
+ * kind written in its own tone and an icon well to scan to. No accent edge:
+ * side stripes are discouraged (grid-design-language.md, "Emphasis without a
+ * stripe"); the well and the word carry the tone.
  *
  * The kind is ALWAYS written out („Hinweis", „Achtung", „Frist", „Tipp") next
  * to the tint. Colour alone would leave a reader who cannot separate the four
@@ -15,10 +17,9 @@
  * whole point of the card is that this one sentence lands.
  *
  * THREE MUTED TIERS, not four hues (`TONES`): Hinweis is the neutral aside
- * (slate rule, no wash, subdued eyebrow — petrol was considered for the
- * eyebrow and rejected to hold the viewport's hue budget); Frist is the one
- * warm constant (amber wash + rule + clock); Achtung is brick red (wash + rule
- * + triangle). Tipp renders on the neutral tier: a second green would collide
+ * (no wash, subdued eyebrow — petrol was considered for the eyebrow and
+ * rejected to hold the viewport's hue budget); Frist is the one warm constant
+ * (amber wash + clock); Achtung is brick red (wash + triangle). Tipp renders on the neutral tier: a second green would collide
  * with the takeaways' distillation marker, and the bulb + the written word
  * still triple-code it. No new alarm colors beyond these two.
  *
@@ -51,9 +52,8 @@ interface CalloutCardProps {
   title?: string | null
   detail?: string | null
   /**
-   * Render as an ASIDE in the answer's own flow: the accent edge, the icon
-   * well and the kind word stay (they are the identity), the frame and the
-   * ground go. This is how the envelope's native `callout` field renders —
+   * Render as an ASIDE in the answer's own flow: the icon well and the kind
+   * word stay (they are the identity), the frame and the ground go. This is how the envelope's native `callout` field renders —
    * beside the paragraph its `[[callout]]` marker anchors it to, or after the
    * prose — an emphasized remark IN the answer, not a box ON it. The framed
    * default remains for stored threads whose callout arrived as a card.
@@ -69,8 +69,6 @@ interface CalloutTone {
   ink: string
   /** The well behind the icon — the shared `StatCardIcon` tint pair. */
   iconTone: StatCardIconTone
-  /** The 3px accent edge. */
-  edge: string
   /**
    * The muted wash behind the eyebrow pill: the tier's hue at ~6-7% via
    * `color-mix`, never a fill behind running text (the body stays on the
@@ -83,8 +81,6 @@ interface CalloutTone {
 const AMBER_WASH = 'bg-[color-mix(in_oklch,var(--source-office)_7%,transparent)]'
 /** Brick red at 6% — the Achtung wash. */
 const RED_WASH = 'bg-[color-mix(in_oklch,var(--signal-error)_6%,transparent)]'
-/** Slate — the neutral tier's rule (warm-gray ink at 40%, no chromatic hue). */
-const SLATE_EDGE = 'bg-muted-foreground/40'
 
 const TONES: Record<CalloutKind, CalloutTone> = {
   note: {
@@ -92,7 +88,6 @@ const TONES: Record<CalloutKind, CalloutTone> = {
     icon: Info,
     ink: 'text-muted-foreground',
     iconTone: 'muted',
-    edge: SLATE_EDGE,
     wash: '',
   },
   warning: {
@@ -100,7 +95,6 @@ const TONES: Record<CalloutKind, CalloutTone> = {
     icon: AlertTriangle,
     ink: 'text-error',
     iconTone: 'destructive',
-    edge: 'bg-danger',
     wash: RED_WASH,
   },
   deadline: {
@@ -108,7 +102,6 @@ const TONES: Record<CalloutKind, CalloutTone> = {
     icon: CalendarClock,
     ink: 'text-warning',
     iconTone: 'warning',
-    edge: 'bg-warning',
     wash: AMBER_WASH,
   },
   // Deliberately the neutral tier, not a fourth hue: Tipp in success green
@@ -120,7 +113,6 @@ const TONES: Record<CalloutKind, CalloutTone> = {
     icon: Lightbulb,
     ink: 'text-muted-foreground',
     iconTone: 'muted',
-    edge: SLATE_EDGE,
     wash: '',
   },
 }
@@ -181,7 +173,7 @@ export const CalloutCard: FC<CalloutCardProps> = ({ kind, text, title, detail, f
               </CollapsibleTrigger>
 
               <CollapsibleContent>
-                <p className="card-caption mt-1.5 border-l-2 border-border pl-3 text-muted-foreground">
+                <p className="card-caption mt-1.5 text-muted-foreground">
                   {detail}
                 </p>
               </CollapsibleContent>
@@ -193,27 +185,14 @@ export const CalloutCard: FC<CalloutCardProps> = ({ kind, text, title, detail, f
 
   if (flat) {
     return (
-      // The edge alone carries the tone — inset from the block's ends and
-      // rounded, so it reads as an emphasis rule beside the remark rather
-      // than as the border of a missing box. The tier's wash rides the kind
-      // pill above, so the flat register keeps the same marker as the framed
-      // one without filling behind the remark.
-      <div className="relative max-w-[46ch] py-1 pl-5 pr-1">
-        <span aria-hidden="true" className={cn('absolute inset-y-1 left-0 w-[3px] rounded-full', tone.edge)} />
-        {body}
-      </div>
+      // The icon well and the kind word carry the tone; the tier's wash rides
+      // the kind pill, so the flat register keeps the same marker as the
+      // framed one without filling behind the remark.
+      <div className="max-w-[46ch] py-1 pr-1">{body}</div>
     )
   }
 
   return (
-    <Card
-      className={cn(CARD_SHELL, 'relative max-w-[46ch] gap-0 overflow-hidden py-3.5 pl-5 pr-4')}
-    >
-      {/* The accent edge rides the card's own left border rather than being a
-          border-left of its own: `overflow-hidden` clips it to the radius, so
-          the tone reads at full strength without rounding the corner twice. */}
-      <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-[3px]', tone.edge)} />
-      {body}
-    </Card>
+    <Card className={cn(CARD_SHELL, 'max-w-[46ch] gap-0 px-4 py-3.5')}>{body}</Card>
   )
 }
