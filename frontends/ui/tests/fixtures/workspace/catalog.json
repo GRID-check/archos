@@ -564,10 +564,10 @@
    "name": "mail-import-cancel",
    "domain": "documents",
    "summary": "Cancel a mail import",
-   "description": "Cancels an import for good: sent parts and the staged archive are discarded. Filed mails stay (document-bin removes them). Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.",
+   "description": "Cancels an import for good: sent parts and the staged archive are discarded. Filed mails stay (document-bin removes them). Only the person who started it, or an org project administrator, may cancel.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"mail-import-cancel\",\"domain\":\"documents\",\"summary\":\"Cancel a mail import\",\"description\":\"Cancels an import for good: sent parts and the staged archive are discarded. Filed mails stay (document-bin removes them). Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.\",\"annotations\":{\"title\":\"Cancel a mail import\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"importId\":{\"type\":\"string\",\"description\":\"The mail import id, from mail-import-list.\"}},\"required\":[\"id\",\"importId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"mail-import-cancel\",\"domain\":\"documents\",\"summary\":\"Cancel a mail import\",\"description\":\"Cancels an import for good: sent parts and the staged archive are discarded. Filed mails stay (document-bin removes them). Only the person who started it, or an org project administrator, may cancel.\",\"annotations\":{\"title\":\"Cancel a mail import\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"importId\":{\"type\":\"string\",\"description\":\"The mail import id, from mail-import-list.\"}},\"required\":[\"id\",\"importId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "mail-import-get",
