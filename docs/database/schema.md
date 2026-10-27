@@ -1201,7 +1201,7 @@ Indexes: `uniq_mail_threads_document`, `mail_threads_thread_index_idx`,
 | `authentication_results` | `text` | ≤ 4096, no `spf=` | |
 | `participants` (≤ 50), `quoted` (≤ 50), `calendar` (≤ 20), `masked_spans` (≤ 1000 or NULL) | `jsonb` | arrays | `masked_spans` set when the person chose „Unkenntlich ablegen“ |
 | `own_text` | `text` | ≤ 524288 bytes | |
-| `first_version_id` | `uuid` | FK → `document_versions`, SET NULL | The first Fassung that holds it, whoever wrote that Fassung |
+| `first_version_id` | `uuid` | FK `(first_version_id, project_id)` → `document_versions (id, project_id)`, SET NULL on the one column | The first Fassung that holds it, whoever wrote that Fassung; always a Fassung of this project's |
 | `filed_by` | `text` | person-shaped | |
 | `filed_via` | `text` | `app`/`agent`/`piloti_proposal`/`follow`/`archive_import`; `archive_import` exactly for `archive` | |
 | `filed_at`, `created_at` | | | |

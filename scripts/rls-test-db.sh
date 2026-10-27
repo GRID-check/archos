@@ -2564,6 +2564,12 @@ INSERT INTO mail_thread_entry_attachments (id, organization_id, project_id, entr
 UPDATE inbound_mail_parts SET document_version_id = 'f1000000-0000-4000-8000-000000000184'
  WHERE id = '2b000000-0000-4000-8000-000000000184';
 SQL
+# An entry's first Fassung is a Fassung of its own project's (review D,
+# finding 9): the key carries the project, so another tenant's version id is
+# refused even by a writer that names it.
+sql_in grid_inbound <<<"INSERT INTO document_versions (id, organization_id, document_id, project_id, version_number, state, storage_key, created_by) VALUES ('f3000000-0000-4000-8000-000000000184', 'org_0184_b', 'd3000000-0000-4000-8000-000000000184', 'b0000000-0000-4000-8000-000000000184', 1, 'superseded', 'k/0188/b', 'user_01J0MA1LUSERB00000000000B1');"
+refused_in grid_inbound "${V184}UPDATE mail_thread_entries SET first_version_id = 'f3000000-0000-4000-8000-000000000184' WHERE id = 'e1000000-0000-4000-8000-000000000184'" "mail_thread_entries_first_version_fkey" "an entry whose first Fassung is another tenant's"
+sql_in grid_inbound <<<"UPDATE mail_thread_entries SET first_version_id = 'f1000000-0000-4000-8000-000000000184' WHERE id = 'e1000000-0000-4000-8000-000000000184';"
 ATT184="INSERT INTO mail_thread_entry_attachments (organization_id, project_id, entry_id, position, disposition, not_filed_reason, document_id, document_version_id, section_name, section_folder_path) VALUES ($PA184, 'e1000000-0000-4000-8000-000000000184'"
 refused_in grid_inbound "$ATT184, 1, 'not_filed', 'dismissed', NULL, NULL, NULL, NULL)" "mail_thread_entry_attachments_entry_position_key" "two rows for one attachment"
 refused_in grid_inbound "$ATT184, 3, 'kept', NULL, NULL, NULL, NULL, NULL)" "mail_thread_entry_attachments_disposition_known" "an unknown disposition"

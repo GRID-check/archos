@@ -280,6 +280,21 @@ CREATE INDEX IF NOT EXISTS "mail_thread_follows_expiry_idx"
 COMMENT ON TABLE "mail_thread_follows" IS
   'A person''s standing decision to append the text of a thread''s later verified replies as themselves (D31): 60 days by default, at most 180, capped per day, ended with a reason. Never deleted by a tenant session. Tenant data (migration 0188).';
 --> statement-breakpoint
+-- An entry's first Fassung is referenced with its project (the 0067 shape),
+-- so it needs `(id, project_id)` to point at. `id` is the primary key, so this
+-- adds no restriction; it makes the pair referenceable. Added only when absent,
+-- so the migration re-applies over the key the entries already reference.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'document_versions_id_project_id_key' AND conrelid = 'public.document_versions'::regclass
+  ) THEN
+    ALTER TABLE "document_versions"
+      ADD CONSTRAINT "document_versions_id_project_id_key" UNIQUE ("id", "project_id");
+  END IF;
+END $$;
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "mail_thread_entries" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "organization_id" text NOT NULL,
@@ -332,8 +347,10 @@ CREATE TABLE IF NOT EXISTS "mail_thread_entries" (
   CONSTRAINT "mail_thread_entries_in_reply_to_fkey"
     FOREIGN KEY ("in_reply_to_entry_id", "project_id", "organization_id")
     REFERENCES "mail_thread_entries"("id", "project_id", "organization_id") ON DELETE SET NULL ("in_reply_to_entry_id"),
+  -- A Fassung of a document in the SAME project; SET NULL on the one column.
   CONSTRAINT "mail_thread_entries_first_version_fkey"
-    FOREIGN KEY ("first_version_id") REFERENCES "document_versions"("id") ON DELETE SET NULL,
+    FOREIGN KEY ("first_version_id", "project_id")
+    REFERENCES "document_versions"("id", "project_id") ON DELETE SET NULL ("first_version_id"),
   CONSTRAINT "mail_thread_entries_source_known" CHECK ("source" IN ('inbound', 'archive')),
   CONSTRAINT "mail_thread_entries_provenance"
     CHECK (("source" = 'inbound') = ("inbound_mail_id" IS NOT NULL)

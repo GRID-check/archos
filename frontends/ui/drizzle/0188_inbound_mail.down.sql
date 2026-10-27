@@ -97,6 +97,9 @@ DROP TABLE IF EXISTS "mail_thread_follows";
 --> statement-breakpoint
 DROP TABLE IF EXISTS "mail_threads";
 --> statement-breakpoint
+-- Referenced only by `mail_thread_entries`, which is gone.
+ALTER TABLE "document_versions" DROP CONSTRAINT IF EXISTS "document_versions_id_project_id_key";
+--> statement-breakpoint
 -- The archive import's counts of Verläufe (D33). An older build files notes and
 -- never reads them; what they counted stays in the Verläufe themselves.
 ALTER TABLE "mail_imports" DROP CONSTRAINT IF EXISTS "mail_imports_thread_counts_non_negative";

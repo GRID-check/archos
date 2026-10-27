@@ -218,6 +218,8 @@ export const documentVersions = pgTable(
      * constraint exists only in the migration.
      */
     idDocumentKey: unique('document_versions_id_document_id_key').on(table.id, table.documentId),
+    /** Referenceable `(id, project_id)`, so a mail thread entry's first Fassung is its own project's (migration 0188). */
+    idProjectKey: unique('document_versions_id_project_id_key').on(table.id, table.projectId),
     documentProjectFk: foreignKey({
       name: 'document_versions_document_id_project_id_fkey',
       columns: [table.documentId, table.projectId],
