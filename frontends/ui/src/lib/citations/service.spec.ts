@@ -38,7 +38,7 @@ import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import { getKnowledgeBaseStatus } from '@/lib/knowledge/service'
 import { getNormRegistry } from '@/lib/norms/service'
 import { getCitationHealth, recordCitationEvents } from './service'
-import type { CitationEvent } from '@/lib/db/schema'
+import type { CitationEvent } from '@/lib/db/schema/citation-events'
 import type { QualityScope } from '@/lib/quality/scope'
 
 const mocked = {

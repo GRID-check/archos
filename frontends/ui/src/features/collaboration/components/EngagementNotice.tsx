@@ -35,7 +35,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { motion, motionQuick, useMotionToken } from '@/components/motion'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
-import type { ConversationEngagement } from '@/lib/db/schema'
+import type { ConversationEngagement } from '@/lib/db/schema/conversations'
 import { cn } from '@/lib/utils'
 
 export interface EngagementNoticeProps {

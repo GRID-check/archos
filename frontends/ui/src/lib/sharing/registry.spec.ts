@@ -16,7 +16,7 @@ vi.mock('@/lib/authz/folder-access', () => ({
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireFolderWrite } from '@/lib/authz/folder-access'
 import { findDocumentTenancy } from '@/lib/documents/repository'
-import { SHAREABLE_RESOURCE_TYPES } from '@/lib/db/schema'
+import { SHAREABLE_RESOURCE_TYPES } from '@/lib/db/schema/resource-shares'
 import { SHAREABLE_REGISTRY, describeResource } from './registry'
 
 const session = { userId: 'user_me', organizationId: 'org_1' } as unknown as AuthorizedSession

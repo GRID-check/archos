@@ -126,13 +126,10 @@ import {
 } from '@/lib/conversations/repository'
 import { createConversationMessages } from '@/lib/conversations/service'
 import { getDb } from '@/lib/db'
-import type {
-  MentionRequest,
-  Message,
-  NewInboxItem,
-  ResourceRole,
-  ResourceVisibility,
-} from '@/lib/db/schema'
+import type { NewInboxItem } from '@/lib/db/schema/inbox'
+import type { MentionRequest } from '@/lib/db/schema/mention-requests'
+import type { Message } from '@/lib/db/schema/messages'
+import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import { publishToUser, publishToUsers } from '@/lib/events/bus'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { inboxGroupKey } from '@/lib/inbox/registry'

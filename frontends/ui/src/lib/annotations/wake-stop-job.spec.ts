@@ -18,7 +18,7 @@ vi.mock('@/lib/turns/headless-turn', async (importOriginal) => {
   return { ...actual, cancelHeadlessTurn: vi.fn(), chatSocketUrl: vi.fn(() => 'ws://aiq-agent:8000/websocket') }
 })
 
-import type { PilotiWakeRow } from '@/lib/db/schema'
+import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
 import type { PilotiWakeStopPayload } from '@/lib/jobs-queue/types'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
 import { cancelHeadlessTurn, type HeadlessCancelRequest } from '@/lib/turns/headless-turn'

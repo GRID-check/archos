@@ -16,7 +16,7 @@
 
 import 'server-only'
 import { ConflictError, NotFoundError } from '@/lib/api/errors'
-import type { PlatformSkillDelivery, PlatformSkillRow } from '@/lib/db/schema'
+import type { PlatformSkillDelivery, PlatformSkillRow } from '@/lib/db/schema/platform-skills'
 import * as repository from './platform-repository'
 import * as categoryRepository from './skill-category-repository'
 import { findPlatformSkill } from './platform-skills'

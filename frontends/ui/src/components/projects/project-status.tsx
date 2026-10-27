@@ -21,7 +21,7 @@ import type { JSX } from 'react'
 import type { CSSProperties } from 'react'
 import { Activity, Lock, PauseCircle } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { toProjectStatus, type ProjectOutcome, type ProjectStatus } from '@/lib/projects/project-status'
 import { useTranslations } from '@/i18n'
 
