@@ -145,13 +145,13 @@ class TestTheRunnerContract:
     async def test_the_result_is_the_summary_the_runner_reports(
         self, signed_run, route, project, needs_covered_after_record
     ):
-        from aiq_api.jobs.runner import _extract_result
+        from aiq_api.jobs.run_result import extract_result
 
         route(record=recorded_all(), needs=needs_covered_after_record)
         result = await _agent(
             ScriptedModel([*READ_AND_RECORD, _call("finish_intake", summary="Drei Geschoße gefunden.")])
         ).run(_state())
-        assert _extract_result(result) == "Drei Geschoße gefunden."
+        assert extract_result(result) == "Drei Geschoße gefunden."
 
 
 class TestTheLoop:

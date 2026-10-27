@@ -10,12 +10,8 @@ import { and, desc, eq, gte, ilike, inArray, isNotNull, lt, or, sql, type SQL } 
 import { getDb } from '@/lib/db'
 import { withOptionalTenant, withPlatformAccess } from '@/lib/db/tenant-context'
 import { escapeLikePattern } from '@/lib/text/like-pattern'
-import {
-  agentProfilerSpans,
-  conversations,
-  type AgentProfilerSpan,
-  type NewAgentProfilerSpan,
-} from '@/lib/db/schema'
+import { agentProfilerSpans, type AgentProfilerSpan, type NewAgentProfilerSpan } from '@/lib/db/schema/agent-profiler'
+import { conversations } from '@/lib/db/schema/conversations'
 
 const PROFILER_ACCESS_REASON =
   'platform profiler: a deliberately cross-organization operations directory'

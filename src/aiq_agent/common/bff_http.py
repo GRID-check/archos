@@ -131,6 +131,8 @@ class BffResponse:
     status: int
     content_type: str
     body: bytes
+    #: The raw ``Server-Timing`` header, empty when the route sends none.
+    server_timing: str = ""
 
     def json(self) -> Any:
         """The body parsed as JSON. An empty body is not JSON either: raises :class:`BffMalformedResponseError`."""
@@ -208,6 +210,7 @@ def send(
             status = getattr(response, "status", None)
             response_headers = getattr(response, "headers", None)
             content_type = response_headers.get("Content-Type", "") if response_headers is not None else ""
+            server_timing = response_headers.get("Server-Timing", "") if response_headers is not None else ""
     except urllib.error.HTTPError as exc:
         raise BffRefusedError(
             f"{path} refused the call ({exc.code})", status=exc.code, body=_error_envelope(exc)
@@ -221,6 +224,7 @@ def send(
         status=status,
         content_type=content_type if isinstance(content_type, str) else "",
         body=raw if isinstance(raw, bytes) else b"",
+        server_timing=server_timing if isinstance(server_timing, str) else "",
     )
 
 

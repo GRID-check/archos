@@ -156,7 +156,9 @@ class TestCatalogParity:
         import json
         from pathlib import Path
 
-        fixture = Path(__file__).parents[2] / "fixtures" / "retrieval_settings_catalog.json"
+        fixture = (
+            Path(__file__).parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "retrieval_settings_catalog.json"
+        )
         catalog = {entry["key"]: entry for entry in json.loads(fixture.read_text(encoding="utf-8"))}
         assert set(catalog) == set(retrieval_settings._BOUNDS)
         for key, entry in catalog.items():

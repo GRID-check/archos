@@ -34,7 +34,7 @@ import {
   buildGridRequestContextEnvelope,
   REQUEST_CONTEXT_MAX_AGE_MS,
 } from '@/lib/request-context'
-import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema'
+import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema/tasks'
 import { commissionResearchRun, delegateTask } from '@/lib/tasks/delegation'
 import { isDeepResearchEnabledForOrg, isTaskAutomationEnabledForOrg } from '@/lib/workos/feature-flags'
 import { internalTaskRequestSchema, parseTaskDue } from '@/lib/tasks/wire'

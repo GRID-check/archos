@@ -14,7 +14,7 @@ vi.mock('@/lib/jobs/service', () => ({
 
 import { POST } from '@/app/api/internal/skills/fire/route'
 import { loadJobForFire, fireScheduledJob } from '@/lib/jobs/service'
-import type { TaskDefinition } from '@/lib/db/schema'
+import type { TaskDefinition } from '@/lib/db/schema/task-model'
 
 const mockLoad = vi.mocked(loadJobForFire)
 const mockFire = vi.mocked(fireScheduledJob)

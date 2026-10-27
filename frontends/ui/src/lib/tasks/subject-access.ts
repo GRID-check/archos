@@ -28,7 +28,8 @@ import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { atLeast, clearanceOf, effectiveFolderLevel, folderTree } from '@/lib/authz/folder-access'
 import { listProjectFolderTree } from '@/lib/authz/folder-access-repository'
-import type { TaskPlan, TaskRun } from '@/lib/db/schema'
+import type { TaskRun } from '@/lib/db/schema/task-model'
+import type { TaskPlan } from '@/lib/db/schema/tasks'
 import { findSubjectDocumentPlaces, listRunsByIds } from './repository'
 
 /** Anything that carries a task's plan: a run or a definition. */

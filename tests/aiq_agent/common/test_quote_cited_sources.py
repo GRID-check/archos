@@ -7,10 +7,10 @@ sources off those source lines, and picks the closest cited passage
 
 from __future__ import annotations
 
-from aiq_agent.common import citation_verification
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import verify_quoted_spans
+from aiq_agent.citations import quote_verification
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.quote_verification import verify_quoted_spans
+from aiq_agent.citations.registry import SourceRegistry
 
 PASSAGE = (
     "Vorher steht ein Satz über Geländer und Brüstungen. Die lichte Durchgangshöhe von Treppen muss "
@@ -34,9 +34,9 @@ def test_a_cited_link_is_resolved_as_the_source_line_check_resolves_it():
 
 def test_a_verified_quote_never_reads_the_source_lines(monkeypatch):
     calls: list[str] = []
-    real = citation_verification._resolve_source_line
+    real = quote_verification.resolve_source_line
     monkeypatch.setattr(
-        citation_verification, "_resolve_source_line", lambda text, reg: calls.append(text) or real(text, reg)
+        quote_verification, "resolve_source_line", lambda text, reg: calls.append(text) or real(text, reg)
     )
     registry = SourceRegistry()
     registry.add(SourceEntry(citation_key="oib.pdf, p.3", chunk_text=PASSAGE, source_type="knowledge_layer"))
@@ -48,9 +48,9 @@ def test_a_verified_quote_never_reads_the_source_lines(monkeypatch):
 
 def test_quotes_citing_the_same_sources_resolve_them_once(monkeypatch):
     calls: list[str] = []
-    real = citation_verification._resolve_source_line
+    real = quote_verification.resolve_source_line
     monkeypatch.setattr(
-        citation_verification, "_resolve_source_line", lambda text, reg: calls.append(text) or real(text, reg)
+        quote_verification, "resolve_source_line", lambda text, reg: calls.append(text) or real(text, reg)
     )
     registry = SourceRegistry()
     registry.add(SourceEntry(citation_key="oib.pdf, p.3", chunk_text=PASSAGE, source_type="knowledge_layer"))

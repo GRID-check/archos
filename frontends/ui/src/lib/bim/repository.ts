@@ -13,14 +13,8 @@ import { and, asc, count, desc, eq, inArray, isNull, notInArray, or, sql, type S
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
-import {
-  bimCheckConfirmations,
-  bimElements,
-  bimModels,
-  documents,
-  type BimElementRow,
-  type BimModelRow,
-} from '@/lib/db/schema'
+import { bimCheckConfirmations, bimElements, bimModels, type BimElementRow, type BimModelRow } from '@/lib/db/schema/bim'
+import { documents } from '@/lib/db/schema/documents'
 import { ifcTypeVariants } from './rules'
 import { buildSearchKeys, buildStoredRuleInputs } from './rule-inputs'
 import type { StoredRuleInputs } from './rule-inputs'

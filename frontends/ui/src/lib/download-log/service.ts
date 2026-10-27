@@ -64,7 +64,7 @@ import {
   type FolderTree,
 } from '@/lib/authz/folder-access'
 import { hasPermission, ORG_PERMISSIONS } from '@/lib/authz/permissions'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { getOrgSettings, writeDedicatedOrgSetting } from '@/lib/organizations/service'
 import { resolvePeople } from '@/lib/sharing/directory'

@@ -85,7 +85,8 @@ import { requirePinnedSession, requireVerifiedContext } from '@/lib/api/internal
 import { listAnnotationsForAgent, proposeAnnotations, replyToAnnotation } from '@/lib/annotations/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { findConversationInOrg } from '@/lib/conversations/repository'
-import type { Conversation, Document } from '@/lib/db/schema'
+import type { Conversation } from '@/lib/db/schema/conversations'
+import type { Document } from '@/lib/db/schema/documents'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { admitSubjectRead } from '@/lib/documents/version-content'
@@ -104,7 +105,7 @@ import {
   type NewAnnotationsInput,
 } from '@/lib/annotations/repository'
 import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
-import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
+import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema/document-annotations'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import {
   onAssigneeChanged,

@@ -15,7 +15,7 @@ writes one CSV row per question, and `--compare before.csv after.csv` prints wha
 moved.
 
 It is NOT a correctness benchmark. Whether the right passage came back is the
-retrieval golden set's question (`frontends/benchmarks/oib_retrieval`,
+retrieval golden set's question (`evals/oib-retrieval`,
 `task be:eval:retrieval`). This one asks how the turn went looking: how many
 rounds, whether the locator was used, whether the cited Punkt is the one the
 question is about, and whether the budget ran out before the answer.
@@ -408,7 +408,7 @@ def _citation_keys_by_round(payloads: Sequence[tuple[str, dict]]) -> dict[int | 
             continue
         try:
             round_index: int | None = int(inp.get("round")) if inp.get("round") is not None else None
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             round_index = None
         by_round.setdefault(round_index, set()).update(keys)
     return by_round
@@ -569,7 +569,7 @@ def observe(question: Question, steps: Sequence[dict], answer: str, envelope: di
             if isinstance(raw, dict) and raw.get("round") is not None:
                 try:
                     rounds.add(int(raw["round"]))
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     pass
     checkpoints = {
         int(m.group(1)): str(body.get("source") or "none")

@@ -28,7 +28,7 @@ import {
 } from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
 import { deleteBimDerivedObjects } from '@/lib/bim/service'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { UpstreamError } from '@/lib/api/errors'
 import { listDocumentVersionObjects } from './version-repository'
 

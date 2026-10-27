@@ -16,7 +16,7 @@ import { DELETE, PATCH } from '@/app/api/skills/[skillId]/route'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { deleteSkill, updateSkill } from '@/lib/skills/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Skill } from '@/lib/db/schema'
+import type { Skill } from '@/lib/db/schema/jobs'
 
 const mockSession = vi.mocked(requireAuthorizedSession)
 const mockUpdate = vi.mocked(updateSkill)

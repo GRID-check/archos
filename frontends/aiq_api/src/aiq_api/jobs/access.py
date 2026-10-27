@@ -311,7 +311,7 @@ def _make_no_auth_principal(owner: str | None = None) -> Principal:
     job submission); otherwise the caller type is used as a stable subject.
     """
     try:
-        from aiq_api.auth.middleware import get_current_user
+        from aiq_agent.auth.request_identity import get_current_user
 
         current_user = get_current_user()
     except Exception:

@@ -11,10 +11,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
-from aiq_agent.common.citation_verification import is_look_place
-from aiq_agent.common.citation_verification import source_entry_to_wire
+from aiq_agent.citations.entries import is_look_place
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.wire import source_entry_to_wire
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.tools.look.place import place_facts
@@ -140,7 +140,7 @@ class TestTheWireDrawsAPlaceAndNeverLaw:
 
 class TestThePlaceInTheRegistry:
     def test_a_place_on_a_page_that_holds_a_retrieved_caption_merges_without_becoming_that_passage(self, capture):
-        from aiq_agent.common.citation_verification import SourceEntry
+        from aiq_agent.citations.entries import SourceEntry
 
         registry = SourceRegistry()
         registry.add(
@@ -162,7 +162,7 @@ class TestThePlaceInTheRegistry:
     def test_the_reading_survives_the_session_cache(self, capture):
         import dataclasses
 
-        from aiq_agent.common.citation_verification import _registry_from_cached_entries
+        from aiq_agent.citations.session import _registry_from_cached_entries
 
         registry = SourceRegistry()
         [place] = extract_sources_from_tool_result("look", _text())

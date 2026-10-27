@@ -63,7 +63,8 @@ import { deleteAssignmentsForResource } from '@/lib/assignments/repository'
 import { purgeResourceCollaboration } from '@/lib/collaboration/cleanup'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Document, DocumentAuthor, Project } from '@/lib/db/schema'
+import type { Document, DocumentAuthor } from '@/lib/db/schema/documents'
+import type { Project } from '@/lib/db/schema/projects'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import {
   cancelledResolution,

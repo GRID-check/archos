@@ -13,6 +13,7 @@
  * (your values), then `config.ts` (every knob + default), then this file
  * (fixed decisions). The full knob reference lives in README.md.
  */
+import { objectName } from "./names";
 
 /** Container UIDs baked into the images (verified against the Dockerfiles). */
 export const UID = {
@@ -353,7 +354,7 @@ export const LANGFUSE = {
    * HTTPRoute name. The SecurityPolicy attaches to it by name, so the two are
    * one decision.
    */
-  routeName: "grid-langfuse",
+  routeName: objectName("langfuseRoute"),
   /** Gateway listener name for the Langfuse hostname. */
   listenerName: "https-langfuse",
   /**
@@ -606,7 +607,7 @@ export const POSTGRES_TUNING = {
  */
 export const POSTGRES_POOLER = {
   /** The CNPG `Pooler` resource, and the Service the pooled DSNs name. */
-  name: "grid-pg-pooler-rw",
+  name: objectName("pgPoolerRw"),
   /** Client connections one PgBouncer accepts. A few KB each, so far above what every tier opens. */
   maxClientConn: "2000",
   /**
@@ -756,10 +757,10 @@ export const QDRANT = {
    * listener's `certificateRefs`, so each of these is one decision.
    */
   dashboard: {
-    routeName: "grid-qdrant-dashboard",
+    routeName: objectName("qdrantDashboardRoute"),
     listenerName: "https-qdrant",
-    tlsSecret: "grid-qdrant-tls", // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
-    policyName: "grid-qdrant-dashboard-auth",
+    tlsSecret: objectName("qdrantTls"), // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+    policyName: objectName("qdrantDashboardAuth"),
     /** Holds the platform Connect application's client secret, key `client-secret`. */
     oidcSecret: "qdrant-dashboard-oidc", // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
     /** Where the Qdrant server serves the dashboard's static files. */

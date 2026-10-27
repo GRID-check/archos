@@ -153,8 +153,8 @@ The stack runs eight Compose services: `postgres`, `seaweedfs` (+ `seaweedfs-ini
 ├── sources/                # NAT data-source packages (web search, knowledge layer)
 ├── frontends/
 │   ├── ui/                 # Next.js app — UI, BFF API routes, WS proxy (server.js), purger worker
-│   ├── aiq_api/            # FastAPI front-end plugin (REST routes, async jobs, /v1/ingest)
-│   └── benchmarks/         # Piloti's building-law evals (oib_retrieval, oib_compliance)
+│   └── aiq_api/            # FastAPI front-end plugin (REST routes, async jobs, /v1/ingest)
+├── evals/                  # Piloti's evals with their tests (oib-retrieval, turn-shapes)
 ├── configs/                # Workflow configs — config_oib_openrouter.yml is the working one
 ├── deploy/                 # Docker Compose, Dockerfile, env templates
 ├── data/oib/               # A local copy of the OIB PDFs for the evals; the platform does not read it

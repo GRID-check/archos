@@ -8,7 +8,7 @@ are tested separately and each test pinned its own spelling". The lesson got
 written down; the test did not. A fire path has no human on it, so a silent 403
 is indistinguishable from a quiet week.
 
-The contract is `tests/fixtures/job_fire_headers.json`. This module asserts that
+The contract is `frontends/ui/tests/fixtures/job_fire_headers.json`. This module asserts that
 every set the BACKEND requires is a subset of it, reading each set off the
 module that owns it rather than restating the names — a restated list is a
 third thing that agrees with itself. The BFF half
@@ -36,12 +36,7 @@ from aiq_api.routes.internal_auth import _TOKEN_HEADERS
 from aiq_api.routes.internal_auth import _require_internal_token
 
 REPO = Path(__file__).resolve().parents[2]
-FIXTURE_PATH = REPO / "tests" / "fixtures" / "job_fire_headers.json"
-#: The frontend's typecheck/test Docker context is scoped to `frontends/ui` and
-#: cannot COPY from outside it, so the fixture is duplicated there — the same
-#: arrangement `grid_request_context.json` uses. A duplicate nothing compares is
-#: a duplicate that drifts, which is the failure mode this whole file is about.
-TWIN_PATH = REPO / "frontends" / "ui" / "tests" / "fixtures" / "job_fire_headers.json"
+FIXTURE_PATH = REPO / "frontends" / "ui" / "tests" / "fixtures" / "job_fire_headers.json"
 
 
 @pytest.fixture(scope="module")
@@ -51,13 +46,6 @@ def contract() -> dict:
 
 def _lower(names) -> set[str]:
     return {str(name).lower() for name in names}
-
-
-def test_the_frontend_twin_is_byte_identical() -> None:
-    assert TWIN_PATH.read_bytes() == FIXTURE_PATH.read_bytes(), (
-        f"{TWIN_PATH.relative_to(REPO)} has drifted from {FIXTURE_PATH.relative_to(REPO)}. "
-        "Copy the repo-root file over it; the two halves of this contract must read the same names."
-    )
 
 
 def test_the_route_guard_accepts_only_spellings_the_contract_names(contract: dict) -> None:
@@ -162,5 +150,5 @@ def test_every_backend_requirement_is_inside_the_contract(contract: dict) -> Non
     unnamed = sorted(backend_requires - named)
     assert unnamed == [], (
         f"the backend requires headers the contract does not name: {unnamed}. "
-        "Add them to tests/fixtures/job_fire_headers.json AND make the BFF send them."
+        "Add them to frontends/ui/tests/fixtures/job_fire_headers.json AND make the BFF send them."
     )

@@ -2268,3 +2268,45 @@ refused_in grid_shelfscope "INSERT INTO upload_batches (id, organization_id, cre
 apply_in grid_shelfscope 0170_office_shelf_scope.sql
 check_in grid_shelfscope "$SCOPES_0170" "office_shelf,office_shelf,project|office_shelf,project|office_shelf|office_shelf" "0170 re-applies after its down"
 echo "==> 0170/0171 office shelf scope and down migrations verified"
+
+# ---------------------------------------------------------------------------
+# 0187: the office shelf's value inside stored JSON. A message whose citation,
+# answered card and plan fence each name the `archiv` shelf beside a `note` and a
+# `bookshelf` that merely hold the word, a task and a run that froze an `archiv`
+# document, and a message already English. The up rewrites only the `shelf`
+# pairs, a second run changes nothing, the down puts them back.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0187 office shelf in stored JSON and its down migration on shelfjson_0187"
+migrate_before shelfjson_0187 0187_office_shelf_in_stored_json
+sql_in shelfjson_0187 <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000187', 'org_0187', 'Shelf 0187', 'user_1', 'proj_0187');
+INSERT INTO conversations (id, organization_id, created_by, project_id) VALUES ('s_0187', 'org_0187', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000187');
+INSERT INTO messages (id, conversation_id, organization_id, role, content, metadata) VALUES
+  ('a0000000-0000-4000-8000-000000000187', 's_0187', 'org_0187', 'assistant',
+   E'Plan\n```plan_json\n{"documents": [{"name": "norm.pdf", "shelf" : "archiv"}]}\n```\nim archiv',
+   '{"citations": {"sources": [{"kind": "office", "shelf": "archiv"}, {"kind": "project", "shelf": "project"}]}, "note": "archiv", "bookshelf": "archiv", "promptState": {"response": "approve {\"documents\":[{\"shelf\":\"archiv\"}]}"}}'),
+  ('a0000000-0000-4000-8000-000000000188', 's_0187', 'org_0187', 'assistant', 'ok', '{"citations": {"sources": [{"shelf": "office_shelf"}]}}');
+INSERT INTO tasks (id, organization_id, project_id, kind, title, plan, requester_user_id) VALUES
+  ('eeeeeeee-0000-4000-8000-000000000187', 'org_0187', 'aaaaaaaa-0000-4000-8000-000000000187', 'document', 'Dokument',
+   '{"prompt": "x", "skill": {}, "dataSources": null, "documents": {"basis": [{"name": "norm.pdf", "shelf": "archiv"}], "excluded": []}}', 'user_1');
+INSERT INTO task_runs (organization_id, project_id, kind, title, plan, requester_user_id, trigger, status, skill_snapshot) VALUES
+  ('org_0187', 'aaaaaaaa-0000-4000-8000-000000000187', 'document', 'Dokument',
+   '{"prompt": "x", "skill": {}, "dataSources": null, "documents": {"basis": [], "excluded": [{"name": "norm.pdf", "shelf": "archiv"}]}}', 'user_1', 'delegated', 'succeeded', '{}');
+SQL
+SHELF_0187="SELECT md5((SELECT string_agg(content || coalesce(metadata::text, '-'), '|' ORDER BY id) FROM messages) || (SELECT plan::text FROM tasks) || (SELECT plan::text FROM task_runs))"
+BEFORE_0187=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d shelfjson_0187 -tAc "$SHELF_0187")
+apply_in shelfjson_0187 0187_office_shelf_in_stored_json.sql
+check_in shelfjson_0187 "SELECT content FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000187'" $'Plan\n```plan_json\n{"documents": [{"name": "norm.pdf", "shelf" : "office_shelf"}]}\n```\nim archiv' "0187 rewrites the shelf in a plan fence, keeping its spacing, and not the prose"
+check_in shelfjson_0187 "SELECT metadata::text FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000187'" '{"note": "archiv", "bookshelf": "archiv", "citations": {"sources": [{"kind": "office", "shelf": "office_shelf"}, {"kind": "project", "shelf": "project"}]}, "promptState": {"response": "approve {\"documents\":[{\"shelf\":\"office_shelf\"}]}"}}' "0187 rewrites a citation's shelf and the answered card's reply, and nothing that is not a shelf"
+check_in shelfjson_0187 "SELECT (plan #>> '{documents,basis,0,shelf}') || ',' || (SELECT plan #>> '{documents,excluded,0,shelf}' FROM task_runs) FROM tasks" "office_shelf,office_shelf" "0187 rewrites a task's and a run's documents"
+check_in shelfjson_0187 "SELECT count(*) FROM messages WHERE metadata::text ~ '\"shelf\": \"archiv\"' OR content ~ '\"shelf\" ?: \"archiv\"'" "0" "0187 leaves no archiv shelf behind"
+AFTER_0187=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d shelfjson_0187 -tAc "$SHELF_0187")
+apply_in shelfjson_0187 0187_office_shelf_in_stored_json.sql
+check_in shelfjson_0187 "$SHELF_0187" "$AFTER_0187" "0187 re-applied changes nothing"
+apply_in shelfjson_0187 0187_office_shelf_in_stored_json.down.sql
+check_in shelfjson_0187 "SELECT (plan #>> '{documents,basis,0,shelf}') FROM tasks" "archiv" "0187 down puts the old value back"
+apply_in shelfjson_0187 0187_office_shelf_in_stored_json.sql
+check_in shelfjson_0187 "$SHELF_0187" "$AFTER_0187" "0187 re-applies after its down"
+[ "$BEFORE_0187" != "$AFTER_0187" ] || { echo "MIGRATION ASSERTION FAILED: 0187 changed nothing" >&2; exit 1; }
+echo "==> 0187 office shelf in stored JSON and down migration verified"

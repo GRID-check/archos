@@ -35,7 +35,7 @@ vi.mock('@/lib/project-intake/service', () => ({
   settleIntakeOutcome: vi.fn(async () => null),
 }))
 
-import type { TaskRun } from '@/lib/db/schema'
+import type { TaskRun } from '@/lib/db/schema/task-model'
 import { loadRunForOutcome, recordRunOutcome } from '@/lib/tasks/service'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'

@@ -1569,7 +1569,7 @@ def _stored_image_index(metadata: dict) -> int | None:
         return None
     try:
         return int(index)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         logger.warning("Ignoring unreadable stored_image_index %r", index)
         return None
 
@@ -1613,7 +1613,7 @@ def _hit_regions(chunk) -> tuple:
     try:
         segment = json.loads(raw).get("segment") or {}
         coords = [float(part) for part in segment.get("bbox") or ()]
-    except (TypeError, ValueError, AttributeError):
+    except TypeError, ValueError, AttributeError:
         return ()
     # Finite before clamped: ``min(1.0, max(0.0, nan))`` is 0.0 and an infinity
     # clamps to an edge, so either would pass the geometry checks below as a

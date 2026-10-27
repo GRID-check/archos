@@ -113,7 +113,9 @@ import {
 } from '@/lib/authz/project-membership'
 import { requireProjectAccess, type ProjectRole } from '@/lib/authz/projects'
 import { findConversationInOrg, findConversationTenancy } from '@/lib/conversations/repository'
-import type { MentionRequest, NewInboxItem, ResourceRole, ResourceVisibility } from '@/lib/db/schema'
+import type { NewInboxItem } from '@/lib/db/schema/inbox'
+import type { MentionRequest } from '@/lib/db/schema/mention-requests'
+import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { countPendingInboxItems, upsertInboxItems } from '@/lib/inbox/repository'
 import {

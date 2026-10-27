@@ -187,14 +187,7 @@ def get_auth_token() -> str | None:
 
 def get_current_principal() -> Principal | None:
     """Return the verified current request principal from middleware context."""
-    try:
-        from aiq_api.auth.middleware import get_current_user
-    except ImportError:
-        logger.debug("Verified request principal unavailable: aiq_api.auth.middleware not importable")
-        return None
-    except Exception as e:
-        logger.debug("Verified request principal unavailable: %s", e)
-        return None
+    from .request_identity import get_current_user
 
     try:
         current_user = get_current_user()

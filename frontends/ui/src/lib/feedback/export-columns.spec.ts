@@ -1,3 +1,4 @@
+// @disk-inputs: ../../docs/technical-reference/answer-feedback-export.md
 /**
  * @vitest-environment node
  */

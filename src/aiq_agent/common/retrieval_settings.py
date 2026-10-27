@@ -34,7 +34,7 @@ _REQUEST_TIMEOUT_SECONDS = 5.0
 
 # The catalog bounds, mirrored from the BFF's single source of truth
 # (frontends/ui/src/lib/retrieval-settings/catalog.ts, parity-tested via
-# tests/fixtures/retrieval_settings_catalog.json). Bounds exist twice
+# frontends/ui/tests/fixtures/retrieval_settings_catalog.json). Bounds exist twice
 # deliberately: the BFF validates on write, this module validates on read, so a
 # stale/hand-edited row can never push retrieval out of a sane range.
 _BOUNDS: dict[str, tuple[int, int]] = {

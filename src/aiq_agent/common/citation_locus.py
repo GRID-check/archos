@@ -46,7 +46,7 @@ _INLINE_MARKER_RE = re.compile(r"\[(\d+)\]")
 
 
 class LocusEntry(Protocol):
-    """The fields of a registry entry the check reads (``citation_verification.SourceEntry``)."""
+    """The fields of a registry entry the check reads (``citations.entries.SourceEntry``)."""
 
     chunk_text: str | None
     clause: str | None

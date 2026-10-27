@@ -23,12 +23,8 @@ import { countDocumentsByProject } from '@/lib/documents/repository'
 import { computePurgeAfter, projectGraceDays } from '@/lib/deletion/policy'
 import { BadRequestError, ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type {
-  Project,
-  ProjectMemoryConfidence,
-  ProjectMemoryItem,
-  ProjectMemoryKind,
-} from '@/lib/db/schema'
+import type { ProjectMemoryConfidence, ProjectMemoryItem, ProjectMemoryKind } from '@/lib/db/schema/project-memory'
+import type { Project } from '@/lib/db/schema/projects'
 import { getProjectOverviewData, type ProjectOverviewReader } from './overview-query'
 import {
   closingProblem,

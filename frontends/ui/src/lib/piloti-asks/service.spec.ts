@@ -56,7 +56,9 @@ import {
   insertConversation,
   insertMessages,
 } from '@/lib/conversations/repository'
-import type { Conversation, Message, PilotiAskRow } from '@/lib/db/schema'
+import type { Conversation } from '@/lib/db/schema/conversations'
+import type { Message } from '@/lib/db/schema/messages'
+import type { PilotiAskRow } from '@/lib/db/schema/piloti-asks'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
 import { cancelHeadlessTurn, chatSocketUrl, runHeadlessTurn, type HeadlessTurnRequest } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'

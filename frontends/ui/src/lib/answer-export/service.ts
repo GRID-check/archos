@@ -20,7 +20,7 @@
 import 'server-only'
 import { NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Message } from '@/lib/db/schema'
+import type { Message } from '@/lib/db/schema/messages'
 import { findConversationInOrg, listMessagesForConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { requireResourceAccess } from '@/lib/sharing/access'

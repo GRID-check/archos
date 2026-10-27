@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/document-annotations.schema.json
 /**
  * @vitest-environment node
  */

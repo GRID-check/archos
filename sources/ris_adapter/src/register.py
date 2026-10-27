@@ -306,7 +306,7 @@ def _make_planner(llm):
         ]
         try:
             return await structured.ainvoke(messages)
-        except (ValidationError, OutputParserException):
+        except ValidationError, OutputParserException:
             # strict=True is not honored by every OpenRouter-served model, so a
             # garbled JSON payload can still reach the parser. Retry once with an
             # explicit corrective instruction; a second failure propagates to the

@@ -36,10 +36,11 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
 from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
+from aiq_agent.auth.errors import AuthError
+from aiq_agent.citations.entries import EmptySourceRegistryError
 from aiq_agent.common import get_latest_user_query
 from aiq_agent.common.canned_replies import GENERIC_ERROR_MESSAGE
 from aiq_agent.common.canned_replies import ZDR_MODEL_REFUSED_MESSAGE
-from aiq_agent.common.citation_verification import EmptySourceRegistryError
 from aiq_agent.common.job_admission import JobAdmissionError
 from aiq_agent.common.openrouter import is_data_policy_refusal
 from aiq_agent.common.plan_documents import PlanDocuments
@@ -52,7 +53,6 @@ from aiq_agent.common.wire_v2 import EventBody
 from aiq_agent.knowledge.inventory import set_listing_shelf
 from aiq_agent.knowledge.inventory import shelf_hint_from_query
 from aiq_agent.observability.turn_phases import observed_phase
-from aiq_agent.turn.api_seam import AuthError
 from aiq_agent.turn.commission import CommissionedRun
 from aiq_agent.turn.commission import CommissionRefused
 

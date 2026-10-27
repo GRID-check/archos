@@ -24,7 +24,7 @@ import 'server-only'
 import { z } from 'zod'
 import { recordAuditEvent, SYSTEM_ACTORS } from '@/lib/audit/service'
 import { sourceFoldersOfCollections } from '@/lib/authz/folder-access'
-import { PROJECT_MEMORY_JUDGE_VERDICTS, type ProjectMemoryItem } from '@/lib/db/schema'
+import { PROJECT_MEMORY_JUDGE_VERDICTS, type ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 import { findProjectInOrg } from './repository'
 
 /** The `restrictionJudge` body field of `POST /api/internal/memory`. */

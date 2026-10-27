@@ -88,6 +88,8 @@ EXCLUDED = re.compile(
             # The one-release fallback that reads the old, prefixed variable names, and its tests.
             r"^deploy/entrypoint\.py$|^tests/test_(entrypoint_roles|no_legacy_env_names)\.py$",
             r"^frontends/ui/scripts/legacy-env-names\.",
+            # The infrastructure names table: its legacy column holds the old names until ADR-0147's contract step.
+            r"^deploy/pulumi/src/names\.ts$",
         )
     )
 )

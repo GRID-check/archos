@@ -1,4 +1,5 @@
 // @vitest-environment node
+// @disk-inputs: src/app/api/**, src/lib/agent-api/mcp-door-route.ts, src/lib/api/handler.ts, src/lib/api/platform-handler.ts, src/lib/db/tenant-context.ts
 /**
  * The tenant context, and the leak it is built to avoid (ADR-0041).
  *

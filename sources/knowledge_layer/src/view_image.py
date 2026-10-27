@@ -541,7 +541,7 @@ class View:
     #: The Fassung the bytes are, when the document service named one; None for the base corpus.
     version_id: str | None = None
 
-    def with_text(self, text: str) -> "View":
+    def with_text(self, text: str) -> View:
         return replace(self, text=text)
 
     def blocks(self) -> list[dict]:

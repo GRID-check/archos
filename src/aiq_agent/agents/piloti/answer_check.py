@@ -16,13 +16,13 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage
 
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.entries import is_look_place
+from aiq_agent.citations.quote_matching import MIN_QUOTE_LEN
+from aiq_agent.citations.quote_matching import UnverifiedQuote
+from aiq_agent.citations.quote_verification import _answer_body_before_sources
+from aiq_agent.citations.quote_verification import _quoted_spans
 from aiq_agent.common import content_to_text
-from aiq_agent.common.citation_verification import MIN_QUOTE_LEN
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import UnverifiedQuote
-from aiq_agent.common.citation_verification import _answer_body_before_sources
-from aiq_agent.common.citation_verification import _quoted_spans
-from aiq_agent.common.citation_verification import is_look_place
 from aiq_agent.common.claim_judge import Evidence
 from aiq_agent.common.claim_judge import JudgeFn
 from aiq_agent.common.claim_judge import Passage

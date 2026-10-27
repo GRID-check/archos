@@ -1,4 +1,5 @@
 // @vitest-environment node
+// @disk-inputs: tests/fixtures/workspace_mcp_requests.json, tests/fixtures/workspace_mcp_responses.json
 /**
  * The contract between Piloti's Python agent and its own MCP server (ADR-0122).
  *

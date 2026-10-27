@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/citation_pipeline/verified_report.md, ../../tests/fixtures/citation_pipeline/wire_sources.json
 /**
  * @vitest-environment node
  */
@@ -8,8 +9,8 @@
  * exercise both ends:
  *
  *  1. the verified report's sources section with its `[KB]`/`[RIS]`/`[Web]`
- *     origin tokens (`citation_verification.verify_citations`)
- *  2. the wire source payload (`citation_verification.source_entry_to_wire`)
+ *     origin tokens (`citations.verification.verify_citations`)
+ *  2. the wire source payload (`citations.wire.source_entry_to_wire`)
  *
  * The Herleitung's lanes are no longer parsed from tool output: they arrive as
  * typed `sources` steps (chat wire v2), held by `shared/wire/v2`.

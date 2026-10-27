@@ -46,7 +46,7 @@ _REQUEST_TIMEOUT_SECONDS = 5.0
 
 # The accepted levels, mirrored from the BFF's single source of truth
 # (frontends/ui/src/lib/reasoning-settings/catalog.ts, parity-tested via
-# tests/fixtures/reasoning_efforts_catalog.json). The vocabulary exists twice
+# frontends/ui/tests/fixtures/reasoning_efforts_catalog.json). The vocabulary exists twice
 # deliberately: the BFF validates on write, this module validates on read, so a
 # stale or hand-edited row can never push a provider-native tier name (e.g.
 # DeepSeek's "max", which OpenRouter rejects) into a request.

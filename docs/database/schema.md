@@ -612,11 +612,11 @@ pinned, the plan frozen, and review as an axis of its own.
 
 **`kind` has no CHECK, deliberately** (see migration `0075`'s own header), which
 is why the vocabulary lives in one place — `TASK_KINDS` in
-`lib/db/schema/tasks.ts` — rather than in a column and a tuple that can disagree.
+`lib/tasks/task-vocabulary.ts` — rather than in a column and a tuple that can disagree.
 It holds six members: `deep-research` and `chat` are `jobs.output` and describe
 how a JOB delivers its result; `compliance_check`, `submission_check`, `document`
-and `revision` are what a person DELEGATES (`DELEGATABLE_TASK_KINDS`, derived as
-the complement rather than listed again). `status`, `review` and `filing_status`
+and `revision` are what a person DELEGATES (`DELEGATABLE_TASK_KINDS`, generated
+from the agent's `TaskKind` in `cards/models.py` by `scripts/generate_vocabularies.py`). `status`, `review` and `filing_status`
 DO carry CHECKs naming their members.
 
 **`plan` is the frozen statement of what was asked:** `prompt` (as submitted,

@@ -32,7 +32,7 @@
 import 'server-only'
 import { currentRestrictedCollections } from '@/lib/authz/folder-access'
 import { getBackendUrl } from '@/lib/backend-proxy'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { findProjectInOrg, listProjectFactsPage, type ProjectFactsRow } from '@/lib/projects/repository'
 import { toProjectStatus, type ProjectStatus } from '@/lib/projects/project-status'
 import { buildGridRequestContextWireHeaders } from '@/lib/request-context'

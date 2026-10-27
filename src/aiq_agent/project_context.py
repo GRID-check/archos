@@ -11,7 +11,7 @@ are accessed lowercased via ``Context`` metadata.
 reads ALL of them in one place, mirroring the TS builder at
 ``frontends/ui/src/lib/request-context.ts`` (see that module's docstring for
 the full header-inventory table and encodings). The two are pinned together
-by the cross-language contract fixture ``tests/fixtures/grid_request_context.json``::
+by the contract fixture ``frontends/ui/tests/fixtures/grid_request_context.json``::
 
     X-Grid-Project-Context: base64url(<project context string>)
     X-Grid-Org-Instructions: base64url(<the office's standing instructions>)
@@ -496,7 +496,7 @@ class GridRequestContext:
     requester: dict[str, str | None] | None = None
 
     @classmethod
-    def from_context(cls) -> "GridRequestContext":
+    def from_context(cls) -> GridRequestContext:
         """Read every ``X-Grid-*`` header from the current NAT Context in one
         pass. This is the low-level parse the module-level accessor
         functions below (``get_project_id_from_context`` etc.) delegate to —
@@ -541,7 +541,7 @@ class GridRequestContext:
         header_value: str | None,
         sig: str | None,
         secret: str | None,
-    ) -> "GridRequestContext | None":
+    ) -> GridRequestContext | None:
         """Parse + verify the signed ``X-Grid-Request-Context`` envelope.
 
         Returns ``None`` (treated as ABSENT by every caller — ``from_context``
@@ -620,12 +620,12 @@ class GridRequestContext:
         )
 
     @classmethod
-    def from_headers(cls, headers: dict[str, str], *, secret: str | None = None) -> "GridRequestContext":
+    def from_headers(cls, headers: dict[str, str], *, secret: str | None = None) -> GridRequestContext:
         """Parse a ``GridRequestContext`` from an explicit header map instead
         of a live NAT Context.
 
         This is the cross-language contract-test entry point: the fixture at
-        ``tests/fixtures/grid_request_context.json`` carries
+        ``frontends/ui/tests/fixtures/grid_request_context.json`` carries
         ``{name, input, headers}`` cases; the TS side asserts
         ``buildGridRequestContextHeaders(input) == headers`` and the Python
         side (``tests/aiq_agent/test_project_context.py``) asserts

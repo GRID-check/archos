@@ -34,7 +34,7 @@ import { findProjectDocumentsByFilenames, type DocumentListRow } from '@/lib/doc
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import type { TaskDefinition, TaskRun } from '@/lib/db/schema'
+import type { TaskDefinition, TaskRun } from '@/lib/db/schema/task-model'
 import { JobSubmitError } from '@/lib/jobs/backend-client'
 import { AGENT_RUN_INPUT_MAX_CHARS } from '@/lib/jobs/types'
 import { createTaskThread, submitAgentRun } from '@/lib/jobs/service'

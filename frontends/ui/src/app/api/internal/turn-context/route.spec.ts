@@ -158,9 +158,22 @@ describe('POST /api/internal/turn-context', () => {
     expect(requireResourceAccess).toHaveBeenCalledWith(SESSION, 'conversation', 's_text-conversation', 'viewer')
     expect(withPlatformAccess).toHaveBeenCalledWith(expect.stringContaining('existence probe'), expect.any(Function))
     expect(loadProjectPromptView).toHaveBeenCalledWith('proj_1', 'org_1')
-    expect(buildProjectMemoryDigest).toHaveBeenCalledWith('proj_1', 'org_1', { query: 'fire safety' })
+    expect(buildProjectMemoryDigest).toHaveBeenCalledWith('proj_1', 'org_1', expect.objectContaining({ query: 'fire safety' }))
     expect(buildReviewDecisionsBlock).toHaveBeenCalledWith('s_text-conversation', 'org_1')
     expect(resolveOrgInstructions).toHaveBeenCalledWith('org_1')
+  })
+
+  it('says in Server-Timing where the build spent its time, the memory read naming its dense channel', async () => {
+    vi.mocked(buildProjectMemoryDigest).mockImplementationOnce(async (_project, _org, options) => {
+      if (options?.timing) options.timing.dense = 'skipped'
+      return 'Digest'
+    })
+    const response = await call({ query: 'fire safety' })
+    const header = response.headers.get('Server-Timing') ?? ''
+    for (const phase of ['session', 'access', 'profile', 'instructions', 'memory', 'workspace', 'total']) {
+      expect(header).toMatch(new RegExp(`(^|, )${phase};dur=\\d`))
+    }
+    expect(header).toMatch(/memory;dur=[\d.]+;desc="skipped"/)
   })
 
   it('hands the turn the WORKSPACE block: roles, audience, what waits, and every proposal of this conversation', async () => {
@@ -269,7 +282,7 @@ describe('POST /api/internal/turn-context', () => {
     expect(loadProjectPromptView).not.toHaveBeenCalled()
     expect(requireProjectAccess).not.toHaveBeenCalled()
     expect(buildProposalDecisionsBlock).not.toHaveBeenCalled()
-    expect(buildProjectMemoryDigest).toHaveBeenCalledWith(undefined, 'org_1', { query: undefined })
+    expect(buildProjectMemoryDigest).toHaveBeenCalledWith(undefined, 'org_1', expect.objectContaining({ query: undefined }))
   })
 
   it('rejects malformed query types and trimmed queries exceeding 2000 characters', async () => {

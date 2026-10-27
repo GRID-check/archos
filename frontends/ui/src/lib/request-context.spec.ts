@@ -1,3 +1,4 @@
+// @disk-inputs: server.js, src/lib/turns/turn-headers.js
 /**
  * @vitest-environment node
  */
@@ -25,13 +26,11 @@ import {
 
 /**
  * Cross-language contract fixture (backlog T3-9): the canonical wire values
- * this builder must produce. Lives at `frontends/ui/tests/fixtures/` — a
- * byte-identical twin of repo-root `tests/fixtures/grid_request_context.json`
- * (see that file's header comment for why the twin exists: the frontend
- * typecheck/test Docker build context, `frontends/ui/Dockerfile.typecheck`,
- * is scoped to `frontends/ui` and cannot COPY files from outside it). The
- * Python side (`tests/aiq_agent/test_project_context.py`) parses the same
- * cases from the repo-root copy in the opposite direction.
+ * this builder must produce. Lives at `frontends/ui/tests/fixtures/`, inside
+ * the frontend's typecheck/test Docker build context
+ * (`frontends/ui/Dockerfile.typecheck`). The Python side
+ * (`tests/aiq_agent/test_project_context.py`) parses the same file in the
+ * opposite direction.
  */
 interface GridRequestContextFixtureCase {
   name: string

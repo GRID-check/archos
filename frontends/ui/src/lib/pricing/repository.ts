@@ -7,7 +7,7 @@ import 'server-only'
 import { desc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
-import { platformPricingVersions, type PlatformPricingVersion } from '@/lib/db/schema'
+import { platformPricingVersions, type PlatformPricingVersion } from '@/lib/db/schema/platform-pricing'
 
 const ACCESS_REASON = 'the platform price list is fleet-wide configuration, owned by no tenant'
 
