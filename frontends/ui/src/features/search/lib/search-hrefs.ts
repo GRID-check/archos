@@ -77,6 +77,22 @@ export function documentHitHref(
   return withBack(at, back)
 }
 
+/**
+ * The document's own address, absolute, to pass on („Link kopieren“): its
+ * shelf's preview, without the passage this reader was led to and without
+ * `back`, which is this reader's way here and not the recipient's.
+ */
+export function documentLinkHref(hit: Pick<DocumentHit, 'id' | 'shelf' | 'projectId'>, origin: string): string {
+  // Picked, not spread: a whole hit carries its passage, and the link is the document's.
+  return new URL(documentHitHref({ id: hit.id, shelf: hit.shelf, projectId: hit.projectId }), origin).toString()
+}
+
+/** The folder a document lies in, as its shelf lists it („Im Ordner zeigen“); the shelf's top level for one at the root. */
+export function documentFolderHref(hit: Pick<DocumentHit, 'shelf' | 'projectId' | 'folderId'>): string {
+  if (hit.folderId) return folderHitHref({ id: hit.folderId, shelf: hit.shelf, projectId: hit.projectId })
+  return shelfBase(hit.shelf, hit.projectId)
+}
+
 export function annotationHitHref(hit: Pick<AnnotationHit, 'id' | 'documentId' | 'projectId'>, { back }: HitReturn = {}): string {
   const target = { documentId: hit.documentId, annotationId: hit.id }
   if (hit.projectId) return reviewFilesHref(hit.projectId, target, { back })

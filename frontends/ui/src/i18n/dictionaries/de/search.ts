@@ -269,12 +269,18 @@ export const search: typeof en.search = {
     label: 'Aktionen für „{name}“',
     menuLabel: 'Aktionen',
     column: 'Aktionen',
+    // Dieselben Wörter wie das ⋯ einer Datei in Dateien.
+    open: 'Öffnen',
     ask: 'Piloti fragen',
     // Vorbelegt im Eingabefeld, wenn der Treffer eine Fundstelle mit Seite hat; die Person kann ihn ändern.
     askAtPage: 'Was steht auf S. {page} in „{name}“?',
     openCurrent: 'Aktuelle Fassung öffnen',
     openPoints: 'Offene Punkte',
     currentUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
+    showInFolder: 'Im Ordner zeigen',
+    copyLink: 'Link kopieren',
+    linkCopied: 'Link kopiert',
+    linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
   },
   // „#“ im Chat-Eingabefeld: ein Dokument aus der Suche in die Nachricht holen.
   composerPicker: {

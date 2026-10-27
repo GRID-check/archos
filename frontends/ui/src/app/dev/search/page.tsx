@@ -15,7 +15,8 @@
  * with no hits while a shelf's facts are still being read, `?state=loading`
  * the first answer on its way, `?state=error` a search that did not answer.
  * `?scope=project` is the search inside one project's Dateien. Each document
- * hit carries its ⋯ (Piloti fragen, Aktuelle Fassung öffnen, Offene Punkte).
+ * hit carries its ⋯ (Öffnen, Piloti fragen, Aktuelle Fassung öffnen, Offene Punkte,
+ * Im Ordner zeigen, Link kopieren).
  * `?composer=1` is the chat composer's `#` picker (`composer-preview.tsx`).
  *
  * German, pinned: the copy that has to fit is German.

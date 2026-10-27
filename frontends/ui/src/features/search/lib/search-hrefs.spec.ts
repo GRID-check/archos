@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readDocumentLocus } from '@/features/documents/lib/document-locus'
 import { readDocumentBack, readReviewParams } from '@/features/documents/lib/open-review'
 import type { SearchPassage } from '@/lib/search/search-wire'
-import { annotationHitHref, documentHitHref, documentReviewHitHref, folderHitHref, hitHref, searchReturnPath } from './search-hrefs'
+import { annotationHitHref, documentFolderHref, documentHitHref, documentLinkHref, documentReviewHitHref, folderHitHref, hitHref, searchReturnPath } from './search-hrefs'
 
 describe('documentReviewHitHref', () => {
   const SEARCH = '/app/search?q=Brandschutz'
@@ -44,6 +44,18 @@ describe('documentHitHref', () => {
     const url = new URL(documentHitHref(projectHit({ text, page: 2 })), 'https://piloti.test')
     expect((url.searchParams.get('highlight') ?? '').length).toBeLessThanOrEqual(200)
     expect(url.searchParams.get('page')).toBe('2')
+  })
+})
+
+describe('documentLinkHref and documentFolderHref', () => {
+  it('passes on the document itself, absolute, without the passage or a way back', () => {
+    expect(documentLinkHref({ id: 'd1', shelf: 'project', projectId: 'p1' }, 'https://piloti.test')).toBe('https://piloti.test/app/projects/p1/files?doc=d1')
+    expect(documentLinkHref({ id: 'd2', shelf: 'office_shelf', projectId: null }, 'https://piloti.test')).toBe('https://piloti.test/app/office-shelf?doc=d2')
+  })
+
+  it('shows the folder a document lies in, and the shelf’s top level for one at its root', () => {
+    expect(documentFolderHref({ shelf: 'project', projectId: 'p1', folderId: 'f1' })).toBe('/app/projects/p1/files?folder=f1')
+    expect(documentFolderHref({ shelf: 'office_shelf', projectId: null, folderId: null })).toBe('/app/office-shelf')
   })
 })
 
