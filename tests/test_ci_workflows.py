@@ -346,15 +346,51 @@ def test_the_commit_is_tagged_only_after_every_check_on_its_push_passed():
 
 def test_a_push_lints_its_release_notes_and_a_pull_request_must_add_one():
     steps = JOBS["repo"]["steps"]
-    lint = next(step for step in steps if step.get("run") == "task release:lint")
+    lint = next(step for step in steps if step.get("name") == "Release notes (lint)")
     require = next(step for step in steps if "require_release_note.py" in step.get("run", ""))
 
     assert "if" not in lint
+    # The house rules on every run; reno's history-walking lint whenever the
+    # notes, reno's config or its pin change, and on every push.
+    assert "task release:lint:house" in lint["run"]
+    assert "task release:lint\n" in lint["run"]
+    assert "releasenotes/ Taskfile.yml taskfiles/repo.yml" in lint["run"]
     assert evaluate(require["if"], github={"event_name": "pull_request"})
     assert not evaluate(require["if"], github={"event_name": "push"})
     # The label is read live, so labelling and re-running is enough.
     assert "labels.*.name" not in require["if"]
     assert "no-release-note" in require["run"]
+
+
+def test_a_pull_requests_repo_checks_fetch_only_down_to_the_merge_base():
+    """Full history was ~75 s of every PR's critical path (docs/audit/blast-radius-2026-10.md §7)."""
+    steps = JOBS["repo"]["steps"]
+    checkout = steps[0]
+    depth = checkout["with"]["fetch-depth"]
+    assert evaluate(depth.removeprefix("${{").removesuffix("}}"), github={"event_name": "pull_request"}) == 1
+    # A push's gitleaks scan reads its whole history.
+    assert evaluate(depth.removeprefix("${{").removesuffix("}}"), github={"event_name": "push"}) == 0
+
+    fetch = steps[1]
+    assert evaluate(fetch["if"], github={"event_name": "pull_request"})
+    assert 'ci/fetch_merge_base.sh "$BASE_SHA" "$HEAD_SHA"' in fetch["run"]
+    assert ". ci/git_auth.sh" in fetch["run"]
+    # Before every step that reads the merge base.
+    readers = [
+        i
+        for i, step in enumerate(steps)
+        if "require_release_note.py" in step.get("run", "") or "gitleaks" in step.get("run", "")
+    ]
+    assert readers and min(readers) > 1
+
+
+def test_semgrep_finds_its_own_merge_base_from_a_shallow_clone():
+    steps = JOBS["semgrep"]["steps"]
+    checkout = steps[0]
+    assert "fetch-depth" not in checkout.get("with", {})
+    scan = next(step for step in steps if "semgrep ci" in step.get("run", ""))
+    # The API lookup semgrep tries before deepening the clone.
+    assert scan["env"]["GH_TOKEN"] == "${{ github.token }}"
 
 
 # --- Security -----------------------------------------------------------------------

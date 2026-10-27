@@ -103,17 +103,23 @@ tasks:
       - '{{.RENO}} new {{.CLI_ARGS}}'
 
   release:lint:
-    desc: Check the release notes against the house rules (CI runs this on every PR)
+    desc: Check the release notes against the house rules, then reno's own lint (CI runs this on every PR)
     cmds:
       # Ours first: it is the one that reads the notes as published prose.
-      - '{{.RELNOTES}} lint'
+      - task: release:lint:house
       # reno walks each note's commit back to its parent, and a shallow clone
-      # lacks that history (KeyError on the sha). CI checks out full history; a
-      # container's clone is shallow, so deepen it here rather than fail on a sha.
+      # lacks that history (KeyError on the sha). A pull request's Repo checks
+      # job is shallow, and a container's clone is too, so deepen it here
+      # rather than fail on a sha.
       - if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow --quiet; fi
       # reno's own lint catches the structural problems ours does not look for
       # (a note on no branch, a malformed section body).
       - '{{.RENO}} lint .'
+
+  release:lint:house:
+    desc: The house rules alone, on the notes as published prose (needs no git history)
+    cmds:
+      - '{{.RELNOTES}} lint'
 
   release:preview:
     desc: reno's own report — the notes grouped by the release they shipped in
