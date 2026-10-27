@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fixtures from './__fixtures__/sketch-fences.json'
-import { readSketchFence, SKETCH_REFUSALS, sketchFenceKind } from './sketch-fence'
+import { readSketchFence, SKETCH_REFUSALS, sketchFenceKind, streamedSketchElements } from './sketch-fence'
 
 interface Case {
   name: string
@@ -59,5 +59,39 @@ describe('sketchFenceKind', () => {
     expect(sketchFenceKind('language-excalidraw-refused')).toBe('refused')
     expect(sketchFenceKind('language-json')).toBeNull()
     expect(sketchFenceKind(undefined)).toBeNull()
+  })
+})
+
+describe('a sketch still being written', () => {
+  const finished = JSON.stringify({
+    title: 'Zonen',
+    elements: [
+      { type: 'ellipse', id: 'a', x: 0, y: 0, label: { text: 'Wohnen {mit} "Bar"' } },
+      { type: 'arrow', x: 0, y: 0, points: [[0, 0], [100, 0]], start: { id: 'a' }, end: { id: 'b' } },
+      { type: 'ellipse', id: 'b', x: 200, y: 0, label: { text: 'Kochen' } },
+    ],
+  })
+
+  it('draws the elements that have arrived, whole ones only', () => {
+    const cut = finished.indexOf('"Kochen"')
+    const elements = streamedSketchElements(finished.slice(0, cut))
+    expect(elements.map((element) => element.type)).toEqual(['ellipse', 'arrow'])
+  })
+
+  it('leaves a binding off until the element it names has arrived', () => {
+    const cut = finished.indexOf('{"type":"ellipse","id":"b"')
+    const [, arrow] = streamedSketchElements(finished.slice(0, cut))
+    expect(arrow).toMatchObject({ start: { id: 'a' } })
+    expect(arrow).not.toHaveProperty('end')
+    expect(streamedSketchElements(finished)[1]).toMatchObject({ end: { id: 'b' } })
+  })
+
+  it('reads a bare array, and nothing before the array opens', () => {
+    expect(streamedSketchElements('[{"type":"text","x":0,"y":0,"text":"N"},{"type":')).toHaveLength(1)
+    expect(streamedSketchElements('{"title": "Zon')).toEqual([])
+  })
+
+  it('skips an element that would be refused rather than the whole sketch', () => {
+    expect(streamedSketchElements('[{"type":"image","x":0,"y":0},{"type":"text","x":0,"y":0,"text":"ok"}')).toHaveLength(1)
   })
 })

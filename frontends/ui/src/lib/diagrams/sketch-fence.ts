@@ -277,6 +277,78 @@ export function readSketchFence(body: string): SketchFence {
   }
 }
 
+/** Where the element array starts in a fence still being written, or -1. */
+function arrayStart(text: string): number {
+  const first = text.search(/\S/)
+  if (first >= 0 && text[first] === '[') return first
+  const key = /"elements"\s*:\s*\[/.exec(text)
+  return key ? key.index + key[0].length - 1 : -1
+}
+
+/** The complete top-level objects of an array whose closing bracket has not arrived yet. */
+function completeObjects(text: string, from: number): string[] {
+  const objects: string[] = []
+  let depth = 0
+  let start = -1
+  let inString = false
+  for (let i = from + 1; i < text.length; i++) {
+    const char = text[i]
+    if (inString) {
+      if (char === '\\') i++
+      else if (char === '"') inString = false
+    } else if (char === '"') inString = true
+    else if (char === '{' || char === '[') {
+      if (depth === 0) start = i
+      depth++
+    } else if (char === '}' || char === ']') {
+      if (depth === 0) break
+      depth--
+      if (depth === 0 && char === '}') objects.push(text.slice(start, i + 1))
+    }
+    if (objects.length >= MAX_SKETCH_ELEMENTS) break
+  }
+  return objects
+}
+
+/**
+ * The elements of a fence still being written, as far as they have arrived: the
+ * sketch draws itself element by element while Piloti writes it, as Excalidraw's
+ * own MCP app does.
+ *
+ * Lenient where `readSketchFence` refuses, because the fence is not finished: an
+ * element that does not pass on its own is left out, and a binding to an id that
+ * has not arrived yet is left off until it has. The finished fence is judged by
+ * `readSketchFence` as a whole, and that verdict is the one that stays.
+ */
+export function streamedSketchElements(partial: string): SceneSkeleton[] {
+  const at = arrayStart(partial)
+  if (at < 0) return []
+  const elements: Json[] = []
+  const seen = new Set<unknown>()
+  for (const raw of completeObjects(partial, at)) {
+    let element: unknown
+    try {
+      element = JSON.parse(raw)
+      if (!isObject(element)) continue
+      elementTexts(element)
+    } catch {
+      continue
+    }
+    if ('id' in element && (typeof element.id !== 'string' || seen.has(element.id))) continue
+    seen.add(element.id)
+    elements.push(element)
+  }
+  return elements.map((element) => {
+    const bound: Json = { ...element }
+    if (element.type === 'frame') bound.children = (element.children as unknown[]).filter((id) => seen.has(id))
+    for (const end of ['start', 'end'] as const) {
+      const value = element[end]
+      if (value != null && !(isObject(value) && seen.has(value.id))) delete bound[end]
+    }
+    return skeletonOf(bound)
+  })
+}
+
 /** Which kind of sketch fence a code block's class names, if any. */
 export function sketchFenceKind(className: string | undefined): 'sketch' | 'refused' | null {
   if (/(?:^|\s)language-excalidraw-refused(?:$|\s)/i.test(className ?? '')) return 'refused'

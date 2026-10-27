@@ -82,6 +82,13 @@ export const diagrams = {
   markingEdited:
     'Drafted by Piloti, edited by a person — AI-assisted, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
   /**
+   * The same block for a sketch Piloti drew itself (an ```excalidraw fence,
+   * ADR-0145) and the reader filed as drawn. „Sketch: not to scale" rather than
+   * „Schematic": a sketch places things by hand, a site outline included.
+   */
+  markingSketch:
+    'Created by Piloti — AI-generated, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
+  /**
    * The sketch editor: Excalidraw, opened on a drawing Piloti made, so a person
    * can rework it and file their own version. Only flows and Gliederungen have
    * one; the other views are not node graphs.
@@ -101,6 +108,9 @@ export const diagrams = {
     keepEditing: 'Keep editing',
     /** The default file name, when the drawing's source names none. */
     defaultTitle: 'Sketch',
+    /** Beside a sketch Piloti drew, where the reader is: the doctrine in one line. */
+    notToScale: 'Sketch — not to scale, no dimensions.',
+    fallback: 'This sketch could not be drawn. Its source is above.',
   },
   rejected: {
     empty: 'The diagram was empty.',

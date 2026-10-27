@@ -28,6 +28,7 @@ import {
   splitMarkdownBlocks,
 } from './markdown-blocks'
 import { getLanguageFromClassName, headingAnchorId, isMermaidFence } from './utils'
+import { sketchFenceKind } from '@/lib/diagrams/sketch-fence'
 import { isStatusTone, statusTone } from './status-marks'
 import { parseTally, rehypeTableShape, textOf } from './table-shape'
 import { isDelimiterRow } from '@/lib/text/markdown-table'
@@ -146,6 +147,16 @@ const MermaidDiagram = dynamic(
     import('@/features/diagrams/components/mermaid-diagram').then(
       (module) => module.MermaidDiagram
     ),
+  { ssr: false, loading: () => <DiagramPlace /> }
+)
+
+/**
+ * A sketch fence (```excalidraw, ADR-0145), behind the same boundary and for
+ * the same reason: Excalidraw is one more `import()` further in
+ * (`sketch-render.ts`), so an answer without a sketch loads none of it.
+ */
+const SketchFigure = dynamic(
+  () => import('@/features/diagrams/components/sketch-figure').then((module) => module.SketchFigure),
   { ssr: false, loading: () => <DiagramPlace /> }
 )
 
@@ -440,6 +451,15 @@ function MarkdownCode({
         {children}
       </code>
     )
+  }
+
+  // A sketch: drawn element by element while it is written, its source with a
+  // note when the server or the browser refused it.
+  const sketchKind = sketchFenceKind(codeClassName)
+  if (sketchKind) {
+    const at = node?.position
+    const stillWriting = streamingLines !== null && at !== undefined && isOpenFence(streamingLines, at.start.line, at.end.line)
+    return <SketchFigure source={codeContent} isStreaming={stillWriting} refused={sketchKind === 'refused'} />
   }
 
   // A diagram, not a listing. The fence still being written holds its

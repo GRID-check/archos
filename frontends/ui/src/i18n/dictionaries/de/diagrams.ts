@@ -37,6 +37,8 @@ export const diagrams: typeof en.diagrams = {
   // Umriss des Grundstücks. Deshalb zusätzlich „nicht maßstäblich".
   markingEdited:
     'Von Piloti entworfen, von einer Person bearbeitet — KI-unterstützt, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
+  markingSketch:
+    'Von Piloti erstellt — KI-generiert, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
   sketch: {
     action: 'Als Skizze bearbeiten',
     title: 'Skizze bearbeiten',
@@ -50,6 +52,8 @@ export const diagrams: typeof en.diagrams = {
     discard: 'Verwerfen',
     keepEditing: 'Weiter bearbeiten',
     defaultTitle: 'Skizze',
+    notToScale: 'Skizze — nicht maßstäblich, ohne Maßangabe.',
+    fallback: 'Diese Skizze konnte nicht gezeichnet werden. Ihr Quelltext steht darüber.',
   },
   rejected: {
     empty: 'Das Diagramm war leer.',

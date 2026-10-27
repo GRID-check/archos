@@ -126,6 +126,13 @@ describe('POST /api/projects/[id]/diagrams', () => {
     expect(recordDiagramScore).toHaveBeenCalledWith(expect.objectContaining({ answerId: null, edited: false }))
   })
 
+  it('marks a sketch Piloti drew, filed as drawn, as not to scale', async () => {
+    await post(submission({ sourceKind: 'excalidraw', source: '{"type":"excalidraw","elements":[]}' }))
+    expect(fileDiagramDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceKind: 'excalidraw', marking: de.diagrams.markingSketch })
+    )
+  })
+
   it('names the refused rule in the reader’s language', async () => {
     // The message is the only debugging surface a browser has, and the depth
     // rule is the newest member of the tuple it is keyed by.
