@@ -264,8 +264,8 @@ class TestMeasurementDetectionIsScopedToTheMeasuringTool:
         An exact compare against the bare name made measurement grounding a
         function of deployment topology: under function-group or MCP prefixing
         every measured answer silently fell back to the "low" floor this gate
-        exists to lift. Resolved through ``tool_search.tool_basename``, the same
-        way the meta partition and the tool-search pins resolve a name.
+        exists to lift. Resolved through ``turn_status.tool_basename``, the same
+        way the steering hold and the live status line resolve a name.
         """
         result = _render(
             "measure", _answer(value=2.7, unit="m", tolerance=0.005, provenance="computed", decidable=True)

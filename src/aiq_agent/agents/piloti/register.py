@@ -38,13 +38,12 @@ from aiq_agent.common.citation_verification import EmptySourceRegistryError
 from aiq_agent.common.data_source_registry import get_all_sources
 from aiq_agent.common.decisions import SKIPPED_TOO_SHORT
 from aiq_agent.common.decisions import record_skipped
-from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
-from aiq_agent.common.deferred_tool_loading import verify_deferred_tool_loading
 from aiq_agent.common.openrouter import PLATFORM_FIXED
 from aiq_agent.common.openrouter import pin_chat_model
 from aiq_agent.common.reasoning_settings import effort_of
 from aiq_agent.common.request_llm_context import read_request_llm_context
 from aiq_agent.common.tool_validation import format_no_sources_message
+from aiq_agent.common.turn_status import tool_basename
 from aiq_agent.knowledge.restricted_use import current_cross_project_turn
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
@@ -83,8 +82,6 @@ from .reference_fit import FIT_THRESHOLD
 from .reference_fit import MIN_LINES as MIN_FIT_LINES
 from .reference_fit import ReferenceFit
 from .reference_fit import fit_references
-from .tool_search import ToolSearchSettings
-from .tool_search import tool_basename
 
 logger = logging.getLogger(__name__)
 
@@ -182,34 +179,13 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "is the global switch."
         ),
     )
-    tool_search: ToolSearchSettings = Field(
-        default_factory=ToolSearchSettings,
-        description=(
-            "Retrieval-based tool narrowing (default OFF). When enabled, a local lexical ranking over "
-            "tool name + description picks the tools bound for a research turn, BEFORE the LLM call — "
-            "never as a tool the model has to call first, which would spend one of the five tool "
-            "iterations on discovery. Absent from the YAML this validates to enabled=false and the "
-            "agent binds every tool exactly as it always has."
-        ),
-    )
-    deferred_tool_loading: DeferredToolLoadingSettings = Field(
-        default_factory=DeferredToolLoadingSettings,
-        description=(
-            "OpenRouter server-side tool search (default OFF). When enabled, the tool "
-            "schemas are declared deferred and held by the provider instead of being sent "
-            "on every request; the model searches, loads and calls one inside a single "
-            "response, so no tool iteration is spent on discovery. Requires an OpenRouter "
-            "LLM with `api_type: responses` — enabling it against anything else fails the "
-            "workflow build rather than silently sending the schemas anyway."
-        ),
-    )
     prefetch: bool = Field(
         default=True,
         description=(
             "EVAL KNOB, not a product setting: false turns round 0's prefetched fetches off, so the "
             "answer suite can measure the navigation tools (`ls`, `glob`, `grep`, `read_file`) "
             "without a ranked search already in the model's first request (`suite.py --set files "
-            "--arm navigate`, ADR-0127). Production keeps the default."
+            "--arm grep`, ADR-0127, ADR-0133). Production keeps the default."
         ),
     )
     filesystem: FunctionRef | None = Field(
@@ -710,12 +686,6 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
     llm = await get_langchain_llm(builder, config.llm)
     tools = _chat_bound(await _load_tools(config, builder), config, builder)
 
-    # Deferred tool loading is verified HERE, at build time, against the live
-    # endpoint, before a user turn exists to lose. The failure it guards is a
-    # request that looks configured and defers nothing, which is invisible
-    # from the inside: the only symptom is the token bill.
-    await verify_deferred_tool_loading(llm, settings=config.deferred_tool_loading)
-
     provider = LLMProvider()
     provider.set_default(llm, group=AgentGroup.RESEARCH)
     callbacks = [VerboseTraceCallback()] if is_verbose(config.verbose) else []
@@ -726,8 +696,6 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
         max_input_tokens_per_turn=config.max_input_tokens_per_turn,
         max_calls_per_round=config.max_calls_per_round,
         callbacks=callbacks,
-        tool_search=config.tool_search,
-        deferred_tool_loading=config.deferred_tool_loading,
         envelope_json_mode_with_tools=config.envelope_json_mode_with_tools,
         repair_pass=config.repair_pass,
         # No agent group, so no organization chooses it: pinned to

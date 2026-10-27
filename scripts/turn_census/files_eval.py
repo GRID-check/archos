@@ -7,13 +7,26 @@ agent and the real ``list_files``, ``knowledge_search`` and ``read_passage``, in
 (``judge.py``). What it adds is the question the set exists for: did the turn use the move that
 fits (list to orient, search to find, read to read), and was the answer right.
 
-Three arms (``--arm``) change what the agent may do, through ``--override`` pairs on the one config:
+Three arms (``--arm``, ADR-0133's Confirmation) change what the agent may do, through ``--override``
+pairs on the one config, by today's tool names and by the ones ADR-0133 brings (``ls``, ``glob``,
+``grep``, ``read_file``):
 
-- ``search``: ranked search only. ``list_files`` and ``read_passage`` are unbound and
+- ``semantic``: ranked search only. Every listing, reading and literal tool is unbound and
   ``knowledge_search`` accepts ``match=meaning`` alone.
-- ``navigate``: no round-0 prefetch and no ranked search: ``knowledge_search`` is unbound, and the
-  filesystem verbs (``ls``, ``glob``, ``grep``, ``read_file``) are what finds and reads.
-- ``both``: production's configuration.
+- ``grep``: no round-0 prefetch and no ranked search: ``knowledge_search`` is unbound, and the
+  filesystem verbs (``ls``, ``glob``, ``grep``, ``read_file``) are what finds and reads. Piloti's
+  ``knowledge_search`` has no literal mode since ADR-0133 slice 6, so ``match_modes`` no longer narrows it.
+- ``hybrid``: production's configuration.
+
+``--arm all`` runs the three in turn. The names before ADR-0133 (``search``, ``navigate``, ``both``)
+are read as these, so a results.json written with them still compares.
+
+The same rows run before and after the rename: a call counts under its own name and under the
+names it is an alias of, both ways (:func:`aliases`), and a path on the call or in the row's
+expectation is read as the scope it addresses (:func:`path_scope`), so ``{knowledge_search: {match:
+exact}}`` holds for ``grep("Fluchtweg")``, ``list_files`` for ``ls("/project/")`` and ``{grep: {path:
+/project/Behörde/}}`` for ``knowledge_search(match="exact", folder="Behörde")``. A call under
+``/drafts/`` is no file move.
 
 The row's ``needs`` names an argument that exists only after its slice lands. A row whose argument
 the tools do not have yet is "not applicable on this commit": it is not run, so the baseline is
@@ -41,7 +54,11 @@ CHECK_KEYS = frozenset(
     {"tools", "max_research_calls", "mentions", "not_mentions", "at_least", "judge", "no_repeat", "proposals", "marks"}
 )
 TOOL_KEYS = frozenset({"must", "any", "must_not"})
-ARMS = ("search", "navigate", "both")
+ARMS = ("semantic", "grep", "hybrid")
+#: The arm names before ADR-0133, read as the arm each was.
+LEGACY_ARMS = {"search": "semantic", "navigate": "grep", "both": "hybrid"}
+#: The tools that list, read or match literally, by today's names and by ADR-0133's (§8).
+LITERAL_TOOLS = frozenset({"list_files", "read_passage", "ls", "glob", "grep", "read_file"})
 
 #: An argument a slice adds, and where the tools' own schema shows it: ``needs`` -> (tool, argument).
 #: ``regex`` is a value of ``match``, which the schema cannot show; the tool's description says it.
@@ -91,27 +108,47 @@ def split_applicable(rows: list[dict], available: set[str] | None = None) -> tup
 # --- the arms --------------------------------------------------------------------
 
 
-def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
-    """The ``--override`` pairs of an arm. ``tools`` is the agent's configured tool list (the config's own)."""
-    if arm not in ARMS:
+def arm_name(arm: str | None) -> str:
+    """The arm as ADR-0133 names it: a name from before it is read as the arm it was, none as hybrid."""
+    name = LEGACY_ARMS.get(str(arm or "hybrid"), str(arm or "hybrid"))
+    if name not in ARMS:
         raise ValueError(f"unknown arm {arm!r}; one of {', '.join(ARMS)}")
-    if arm == "both":
+    return name
+
+
+def arms_of(arm: str) -> list[str]:
+    """The arms ``--arm`` names: one, or all three for ``all``."""
+    return list(ARMS) if arm == "all" else [arm_name(arm)]
+
+
+_TOOLS_KEY = "functions.shallow_research_agent.tools"
+_MODES_KEY = "functions.knowledge_search.match_modes"
+_PREFETCH_KEY = "functions.shallow_research_agent.prefetch"
+_FILESYSTEM_KEY = "functions.shallow_research_agent.filesystem"
+
+
+def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
+    """The ``--override`` pairs of an arm. ``tools`` is the agent's configured tool list (the config's own).
+
+    The arm restricts what is bound through the knobs the agent already reads: its tool list, the
+    search's ``match_modes``, the round-0 ``prefetch`` and the estate its ``filesystem`` verbs read
+    (``null`` in the semantic arm leaves them the drafts alone). Literal search is a mode of
+    ``knowledge_search`` today; once ``grep`` is configured it is a tool, and the grep arm unbinds the
+    ranked one instead of narrowing its modes.
+    """
+    arm = arm_name(arm)
+    if arm == "hybrid":
         return []
-    if arm == "search":
-        kept = [name for name in tools if name not in ("list_files", "read_passage")]
-        return [
-            ["functions.shallow_research_agent.tools", ",".join(kept)],
-            ["functions.knowledge_search.match_modes", "meaning"],
+    if arm == "semantic":
+        pairs = [
+            [_TOOLS_KEY, ",".join(name for name in tools if name not in LITERAL_TOOLS)],
             # The filesystem verbs over the estate (ADR-0133) are navigation too; the drafts stay.
-            ["functions.shallow_research_agent.filesystem", "null"],
+            [_FILESYSTEM_KEY, "null"],
         ]
-    # Piloti's `knowledge_search` has no literal mode since ADR-0133 slice 6, so the knob no longer narrows
-    # it: the ranked search leaves the binding, and `grep`, `ls`, `glob` and `read_file` are what remains.
-    kept = [name for name in tools if name != "knowledge_search"]
-    return [
-        ["functions.shallow_research_agent.tools", ",".join(kept)],
-        ["functions.shallow_research_agent.prefetch", "false"],
-    ]
+        return [*pairs, [_MODES_KEY, "meaning"]] if "knowledge_search" in tools else pairs
+    # `grep` is a tool of its own (built per turn beside the configured list, ADR-0133), and Piloti's
+    # `knowledge_search` is ranked search only since slice 6: the grep arm unbinds the ranked search.
+    return [[_TOOLS_KEY, ",".join(name for name in tools if name != "knowledge_search")], [_PREFETCH_KEY, "false"]]
 
 
 def configured_tools(config: Path | None = None) -> list[str]:
@@ -153,63 +190,143 @@ def _matches(wanted: Any, actual: Any) -> bool:
     )
 
 
+#: The file tools by today's names: a call by a coming name is read as one of these (:func:`today`).
+TODAY_TOOLS = ("list_files", "knowledge_search", "read_passage")
+
+
 def _is_draft(path: Any) -> bool:
     text = str(path or "").strip().lstrip("/")
     return text.startswith(("drafts", "entwuerfe"))
 
 
-def _stem(file_path: Any) -> str:
-    leaf = str(file_path or "").rstrip("/").rsplit("/", 1)[-1]
-    return leaf[:-3] if leaf.lower().endswith(".md") and "." in leaf[:-3] else leaf
+def path_scope(path: Any) -> dict[str, str]:
+    """What an ADR-0133 path addresses, in today's scope arguments: ``shelf``, ``folder``, ``file_name``.
+
+    ``/project/Gutachten/Brandschutz/Brandschutzkonzept.pdf.md`` is the file ``Brandschutzkonzept.pdf``
+    in ``Gutachten/Brandschutz`` on the ``project`` shelf; ``/project/Behörde/`` is a folder. A last
+    segment with a dot is a file, and the ``.md`` a document's text carries is dropped from its name.
+    ``/law/`` is rooted one level deeper (``/law/oib/``), so its folders start below the corpus.
+    """
+    text = str(path or "")
+    parts = [part for part in text.split("/") if part]
+    if not parts:
+        return {}
+    scope, folders = {"shelf": parts[0]}, parts[2:] if parts[0] == "law" else parts[1:]
+    if folders and "." in folders[-1] and not text.endswith("/"):
+        name = folders.pop()
+        scope["file_name"] = name[: -len(".md")] if name.endswith(".md") and name.count(".") > 1 else name
+    if folders:
+        scope["folder"] = "/".join(folders)
+    return scope
 
 
-def _folder_of(path: Any) -> str | None:
-    """The folder below the mount a filesystem path names (``/project/A/B/`` -> ``A/B``), or None at a root."""
-    parts = [part for part in str(path or "").strip("/").split("/") if part]
-    depth = 2 if parts[:1] == ["law"] else 1
-    return "/".join(parts[depth:]) or None
+def _scoped(value: Any) -> dict[str, Any]:
+    """:func:`path_scope` of a path, or of each option of an expectation's list (a list per argument)."""
+    if not isinstance(value, list):
+        return path_scope(value)
+    scopes = [path_scope(option) for option in value]
+    return {key: [scope[key] for scope in scopes if key in scope] for key in {k for s in scopes for k in s}}
+
+
+def scope_arguments(arguments: dict[str, Any], *, defaults: bool = True) -> dict[str, Any]:
+    """``arguments`` with each ``path`` and ``file_path`` also read as the ``shelf``, ``folder`` and ``file_name``.
+
+    ``defaults`` is False for an expectation: an argument it leaves out matches any value, and a path's
+    mount (its ``shelf``) is not asked of the call, because today's calls seldom name their shelf.
+    """
+    out = {key: value for key, value in arguments.items() if defaults or key not in ("path", "file_path")}
+    for key in ("path", "file_path"):
+        if key not in arguments:
+            continue
+        for scoped_key, scoped_value in _scoped(arguments[key]).items():
+            if defaults or scoped_key != "shelf":
+                out.setdefault(scoped_key, scoped_value)
+    return out
+
+
+def _present(arguments: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in arguments.items() if value is not None}
 
 
 def aliases(call: dict[str, Any]) -> list[dict[str, Any]]:
     """The calls one call also counts as for the release the old names live (ADR-0133 §8).
 
     An estate ``read_file`` is a ``read_passage`` of the same document and pages, ``ls`` and ``glob`` are a
-    ``list_files``, ``grep`` is a literal ``knowledge_search``; and back, so a row written for either name
-    holds for both and the before and after runs compare. A call under ``/drafts/`` is no file move.
+    ``list_files``, ``grep`` is a literal ``knowledge_search`` (``match=exact`` when it names no mode); and
+    back, so a row written for either name holds for both and the before and after runs compare. A path
+    carries its ``folder`` and ``file_name`` across (:func:`path_scope`). A call under ``/drafts/`` is no
+    file move.
     """
     name, args = _basename(call["name"]), call.get("arguments") or {}
     if name == "read_file" and not _is_draft(args.get("file_path")):
-        mapped = {"document": _stem(args.get("file_path")), "pages": args.get("pages"), "clause": args.get("clause")}
-        return [{"name": "read_passage", "arguments": {k: v for k, v in mapped.items() if v is not None}}]
+        scope = path_scope(args.get("file_path"))
+        leaf = str(args.get("file_path") or "").rstrip("/").rsplit("/", 1)[-1]
+        mapped = {
+            "document": scope.get("file_name") or leaf or None,
+            "folder": scope.get("folder") if "file_name" in scope else None,
+            "pages": args.get("pages"),
+            "clause": args.get("clause"),
+        }
+        return [{"name": "read_passage", "arguments": _present(mapped)}]
     if name in ("ls", "glob") and not _is_draft(args.get("path")):
-        listed = {"folder": _folder_of(args.get("path"))}
+        listed = {"folder": path_scope(args.get("path")).get("folder")}
         if name == "ls" and int(args.get("depth") or 1) > 1:
             listed["view"] = "tree"
-        return [{"name": "list_files", "arguments": {k: v for k, v in listed.items() if v is not None}}]
+        return [{"name": "list_files", "arguments": _present(listed)}]
     if name == "grep" and not _is_draft(args.get("path")):
-        searched = {"query": args.get("pattern"), "match": args.get("mode") or "exact", "context": args.get("context")}
-        return [{"name": "knowledge_search", "arguments": {k: v for k, v in searched.items() if v is not None}}]
+        scope = path_scope(args.get("path"))
+        searched = {
+            "query": args.get("pattern"),
+            "match": args.get("mode") or "exact",
+            "context": args.get("context"),
+            "folder": scope.get("folder"),
+            "file_name": scope.get("file_name"),
+        }
+        return [{"name": "knowledge_search", "arguments": _present(searched)}]
     if name == "read_passage":
         return [{"name": "read_file", "arguments": {"pages": args.get("pages"), "clause": args.get("clause")}}]
     if name == "list_files":
         return [{"name": "ls", "arguments": {}}, {"name": "glob", "arguments": {}}]
     match = str(args.get("match") or "").strip().lower()
     if name == "knowledge_search" and match in ("exact", "regex"):
-        return [{"name": "grep", "arguments": {"pattern": args.get("query"), "mode": match}}]
+        found = {"pattern": args.get("query"), "mode": match, **{k: args.get(k) for k in ("folder", "file_name")}}
+        return [{"name": "grep", "arguments": _present(found)}]
     return []
+
+
+def _seen(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Every call as made (its path read as a scope) and as each name it is an alias of."""
+    made = [{"name": call["name"], "arguments": scope_arguments(call.get("arguments") or {})} for call in calls]
+    return [*made, *(alias for call in calls for alias in aliases(call))]
+
+
+def today(call: dict[str, Any]) -> dict[str, Any] | None:
+    """The call by today's file-tool name (``TODAY_TOOLS``) it is or stands for; None for another tool or a draft."""
+    for candidate in _seen([call]):
+        if _basename(candidate["name"]) in TODAY_TOOLS:
+            return {**candidate, "name": _basename(candidate["name"])}
+    return None
+
+
+def _today_name(call: dict[str, Any]) -> str:
+    """The name a call counts under for ``no_repeat``: today's file tool it stands for, else its own."""
+    made = today(call)
+    return made["name"] if made is not None else _basename(str(call.get("name") or ""))
 
 
 def called(item: Any, calls: list[dict[str, Any]]) -> bool:
     """Whether the turn made a call ``item`` names: a tool name, or ``{tool: {argument: value | [values]}}``.
 
-    A call counts under its own name and under the names it is an alias of (:func:`aliases`).
+    A call counts under its own name and under the names it is an alias of (:func:`aliases`), and a path on
+    either side is read as the scope it addresses (:func:`scope_arguments`), so ``{grep: {path:
+    /project/Behörde/}}`` holds for ``knowledge_search(match="exact", folder="Behörde")``.
     """
     tool, wanted = next(iter(item.items())) if isinstance(item, dict) else (str(item), {})
-    seen = [*calls, *(alias for call in calls for alias in aliases(call))]
+    want = scope_arguments(wanted, defaults=False)
     return any(
         tool in (call["name"], _basename(call["name"]))
-        and all(_matches(v, call["arguments"].get(k)) for k, v in wanted.items())
-        for call in seen
+        and all(_matches(v, call["arguments"].get(k)) for k, v in want.items())
+        for call in _seen(calls)
     )
 
 
@@ -296,7 +413,8 @@ def files_checks(
     for item in tools.get("must_not") or []:
         checks[f"must_not:{_label(item)}"] = not called(item, calls)
     for name in expect.get("no_repeat") or []:
-        checks[f"no_repeat:{name}"] = sum(_basename(c["name"]) == name for c in calls) <= 1
+        tool = _today_name({"name": name})
+        checks[f"no_repeat:{name}"] = sum(_today_name(call) == tool for call in calls) <= 1
     if expect.get("max_research_calls"):
         checks[f"rounds<={expect['max_research_calls']}"] = research_calls <= int(expect["max_research_calls"])
     if expect.get("at_least"):
@@ -321,25 +439,40 @@ def _label(item: Any) -> str:
 # --- the report ------------------------------------------------------------------
 
 
+def move(call: dict[str, Any]) -> str | None:
+    """The move one call made: ``list``, ``search`` (meaning), ``grep`` (literal) or ``read``; None for another tool."""
+    made = today(call)
+    if made is None:
+        return None
+    if made["name"] == "knowledge_search":
+        literal = str(made["arguments"].get("match") or "meaning").casefold() in ("exact", "regex")
+        return "grep" if literal else "search"
+    return {"list_files": "list", "read_passage": "read"}.get(made["name"])
+
+
 def moves(run_calls: list[dict[str, Any]]) -> str:
-    """Which moves a run made: ``list``, ``search``, ``read``, joined; ``none`` when it called no file tool."""
-    names = {_basename(call["name"]) for call in run_calls}
-    names |= {alias["name"] for call in run_calls for alias in aliases(call)}
-    found = [
-        word
-        for tool, word in (("list_files", "list"), ("knowledge_search", "search"), ("read_passage", "read"))
-        if tool in names
-    ]
-    return "+".join(found) or "none"
+    """Which moves a run made, in the order list, search, grep, read; ``none`` when it made none of them."""
+    made = {move(call) for call in run_calls}
+    return "+".join(word for word in ("list", "search", "grep", "read") if word in made) or "none"
 
 
 def report_lines(runs: list[Any], meta: dict[str, Any] | None = None) -> list[str]:
     """The set's own totals, per row and over all: pass rate, rounds, tokens, seconds and the budget signals."""
     meta = meta or {}
     ok = [run for run in runs if not run.error]
-    head = [f"## Office files (arm: {meta.get('arm') or 'both'})", ""]
+    head = [f"## Office files (arm: {arm_name(meta.get('arm'))})", ""]
     if not ok:
         return [*head, "No run finished."]
+    from dataclasses import asdict
+
+    from compare import HEADER
+    from compare import RULE
+    from compare import by_row
+    from compare import correct
+    from compare import line
+    from compare import totals
+
+    stored = [asdict(run) for run in runs]
     held = [all(run.checks.values()) for run in ok if run.checks]
     median = statistics.median
     signal_counts = {
@@ -351,21 +484,29 @@ def report_lines(runs: list[Any], meta: dict[str, Any] | None = None) -> list[st
         f"- runs where every check held: {sum(held)}/{len(held)} ({sum(held) / max(1, len(held)):.0%})",
         f"- rounds (research calls to the answer), median: {median([r.research_calls for r in ok]):g}, "
         f"mean {sum(r.research_calls for r in ok) / len(ok):.2f}",
-        f"- input tokens per run, median: {median([r.input_tokens for r in ok]):g}; output "
-        f"{median([r.output_tokens for r in ok]):g}; reasoning {median([r.reasoning_tokens for r in ok]):g}",
-        f"- wall seconds per run, median: {median([r.wall_s for r in ok]):g}",
+        f"- reasoning tokens per run, median: {median([r.reasoning_tokens for r in ok]):g}",
         f"- runs that hit status:budget {signal_counts['budget']}, status:repeat {signal_counts['repeat']}, "
         f"status:width {signal_counts['width']}",
         "",
-        "| row | passed | rounds | moves | seconds |",
-        "|---|---|---|---|---|",
+        HEADER,
+        RULE,
+        line(arm_name(meta.get("arm")), totals(stored)),
+        "",
+        "| row | passed | correct | rounds | tool calls | input tok | output tok | cost | seconds | moves |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
+    per_row = by_row(stored)
     for question_id in dict.fromkeys(run.question_id for run in ok):
         rows = [run for run in ok if run.question_id == question_id]
         passed = sum(all(r.checks.values()) for r in rows if r.checks)
+        graded = [verdict for r in rows if (verdict := correct(asdict(r))) is not None]
+        t = per_row[question_id]
+        cost = "–" if t["cost_usd"] is None else f"${t['cost_usd']:.4f}"
         lines.append(
-            f"| {question_id} | {passed}/{len(rows)} | {median([r.research_calls for r in rows]):g} | "
-            f"{' / '.join(sorted({moves(r.tool_args) for r in rows}))} | {median([r.wall_s for r in rows]):g} |"
+            f"| {question_id} | {passed}/{len(rows)} | {f'{sum(graded)}/{len(graded)}' if graded else 'n/a'} "
+            f"| {median([r.research_calls for r in rows]):g} | {t['tool_calls']:.1f} | {t['input_tokens']:,.0f} "
+            f"| {t['output_tokens']:,.0f} | {cost} | {median([r.wall_s for r in rows]):g} "
+            f"| {' / '.join(sorted({moves(r.tool_args) for r in rows}))} |"
         )
     if meta.get("not_applicable"):
         lines += [
