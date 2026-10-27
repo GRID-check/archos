@@ -36,10 +36,11 @@ import { PilotiAnswerCard } from './piloti-answer-card'
 import { ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { DraftCard, ThreadCard } from './thread-card'
+import { useChatStore } from '@/features/chat/store'
 
-vi.mock('@/features/chat/store', () => ({
-  useChatStore: (selector: (state: { currentUserId: string }) => unknown) => selector({ currentUserId: 'user_me' }),
-}))
+// The real chat store, signed in as `user_me`: the review reads who is looking
+// from it, and `use-canvas-ask` subscribes to it.
+beforeEach(() => useChatStore.setState({ currentUserId: 'user_me' }))
 
 const view = (overrides: Partial<AnnotationView>): AnnotationView => ({
   id: 'ann_1',

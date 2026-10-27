@@ -21,10 +21,11 @@ import { useDocumentReview, type ReviewRevision, type ReviewTool } from '../../h
 import type { RoomTransport } from '../../hooks/use-document-room'
 import { DocumentReviewMode, TOOLS_INTRO_KEY } from './document-review'
 import { REVIEW_TOASTER } from './review-toaster'
+import { useChatStore } from '@/features/chat/store'
 
-vi.mock('@/features/chat/store', () => ({
-  useChatStore: (selector: (state: { currentUserId: string }) => unknown) => selector({ currentUserId: 'user_me' }),
-}))
+// The real chat store, signed in as `user_me`: the review reads who is looking
+// from it, and `use-canvas-ask` subscribes to it.
+beforeEach(() => useChatStore.setState({ currentUserId: 'user_me' }))
 
 const toastMock = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), dismiss: vi.fn() }))
 // The real Toaster, so the review's own mounts; only the calls are watched.
