@@ -41,7 +41,7 @@ export interface ReferenceTargets {
 /** The text part of a search, as the WHERE and the ranking read it. */
 export interface TextMatch {
   text: string
-  /** `collection \0 filename` of the content search's documents, best first. */
+  /** {@link contentKey} of the content search's documents, best first. */
   contentKeys: readonly string[]
 }
 
@@ -52,7 +52,20 @@ export interface DocumentQuery {
   citing: ReferenceTargets | null
 }
 
-const contentKeyOf = sql`(${documents.collectionName} || chr(0) || ${documents.filename})`
+/**
+ * The separator of a content key. Not NUL: Postgres text cannot hold it, so a
+ * NUL-joined key fails as a parameter (`invalid byte sequence for encoding
+ * "UTF8": 0x00`) and `chr(0)` is refused outright. U+001F (unit separator) is
+ * valid text and appears in neither a collection name nor a file name.
+ */
+const CONTENT_KEY_SEPARATOR = '\u001f'
+
+/** How a content search hit names its document: its collection and file name, joined. */
+export function contentKey(collectionName: string, filename: string): string {
+  return `${collectionName}${CONTENT_KEY_SEPARATOR}${filename}`
+}
+
+const contentKeyOf = sql`(${documents.collectionName} || chr(31) || ${documents.filename})`
 
 /** The reach as a predicate over `documents`: the shelves, the hidden folders, the hold. */
 export function reachWhere(reach: SearchReach, includeArchived: boolean): SQL | undefined {
@@ -174,12 +187,20 @@ function pgTextArray(values: readonly string[]): SQL {
   return values.length === 0 ? sql`ARRAY[]::text[]` : sql`ARRAY[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::text[]`
 }
 
-/** The relevance of a row to the text: content rank first, then the reading, then the name. */
+/**
+ * Where the content search placed a row (1 is its best), null when it did not.
+ * It orders before {@link relevance}: a weight inside one sum let a name match
+ * (0.3) outrank the content search's best hit (1/6), so a file merely named
+ * like the words came before the one whose passage answers them.
+ */
+function contentPosition(text: TextMatch): SQL<number | null> {
+  return sql<number | null>`array_position(${pgTextArray(text.contentKeys)}, ${contentKeyOf})`
+}
+
+/** The relevance of a row the content search did not rank, or among equals: the reading, then the name. */
 function relevance(text: TextMatch): SQL<number> {
-  const keys = pgTextArray(text.contentKeys)
   return sql<number>`(
-    coalesce(1.0 / (5 + array_position(${keys}, ${contentKeyOf})), 0)
-    + coalesce(ts_rank(${SEARCH_VECTOR}, ${tsQuery(text.text)}), 0)
+    coalesce(ts_rank(${SEARCH_VECTOR}, ${tsQuery(text.text)}), 0)
     + CASE WHEN ${nameContains(text.text) ?? sql`false`} THEN 0.3 ELSE 0 END
   )`
 }
@@ -197,7 +218,9 @@ const SORT_COLUMNS: Record<Exclude<SearchSort, 'relevance'>, SQL> = {
 }
 
 function orderOf(sort: SearchSort, dir: 'asc' | 'desc', text: TextMatch | null): SQL[] {
-  if (sort === 'relevance' && text) return [desc(relevance(text)), desc(documents.createdAt), asc(documents.id)]
+  if (sort === 'relevance' && text) {
+    return [sql`${contentPosition(text)} ASC NULLS LAST`, desc(relevance(text)), desc(documents.createdAt), asc(documents.id)]
+  }
   const column = SORT_COLUMNS[sort === 'relevance' ? 'added' : sort]
   return [dir === 'asc' ? sql`${column} ASC NULLS LAST` : sql`${column} DESC NULLS LAST`, asc(documents.id)]
 }
