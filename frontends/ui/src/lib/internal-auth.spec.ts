@@ -1,3 +1,4 @@
+// @disk-inputs: server.js, src/**
 /**
  * @vitest-environment node
  */

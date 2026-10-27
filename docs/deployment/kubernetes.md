@@ -373,8 +373,8 @@ Full command list is in [`deploy/pulumi/README.md`](../../deploy/pulumi/README.m
 In short:
 
 ```bash
+task infra:install   # the program and its policy pack, each from its own lockfile
 cd deploy/pulumi
-bun install --frozen-lockfile
 pulumi stack init prod
 # edit Pulumi.prod.yaml placeholders, then set --secret values (kubeconfig,
 # pgAppPassword, seaweedfsSecretKey, tokens, OpenRouter/Tavily/WorkOS keys)
@@ -1248,6 +1248,10 @@ died half way left no record of which half. Both are now jobs:
   interactive before bulk, then oldest), heartbeats, and POSTs each slice to
   its own pod's `/api/internal/jobs/run`. **There is no Service and no
   HTTPRoute**, and the work runs here, never on the pods that proxy chat.
+  With `bffJobsMode: inprocess` (default `http`) the pod spawns no BFF: the
+  loop runs each slice from the services bundled at image build
+  (`dist-jobs/slice.mjs`) and answers the probes' `/api/healthz` itself
+  (ADR-0079 amendment 1).
 - **A drain never costs an attempt; a failure always does.** On SIGTERM the loop stops claiming, lets
   the slice in hand finish (`bffJobsDrainSeconds`, 60), gives every claim back
   without spending an attempt, and only then stops the BFF; the pod's grace
@@ -1834,8 +1838,8 @@ Helm-rendered charts (cert-manager, Envoy Gateway, CNPG) arrive as a single
 opaque `Release` resource and are out of scope by construction.
 
 ```bash
-cd deploy/pulumi/policy && bun install --frozen-lockfile   # once
-cd .. && pulumi preview --policy-pack ./policy
+task infra:install   # once
+cd deploy/pulumi && pulumi preview --policy-pack ./policy
 ```
 
 ## 7d. Protected resources
