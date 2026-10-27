@@ -272,6 +272,22 @@ describe('what a filesystem call found, or did not', () => {
     expect(folded.every((each) => !each.fold)).toBe(true)
   })
 
+  test('folders Piloti opened never fold: each names its own place, and their counts do not add up', () => {
+    const row = (id: string, mount: 'estate' | 'law' | 'chat', files: number): WorkRow => ({
+      id,
+      running: false,
+      callIds: [id],
+      looks: [],
+      action: { verb: 'list', status: 'ok', mount, counts: { files, folders: mount === 'estate' ? 3 : 0 } },
+    })
+    const rows = foldRows([row('a', 'estate', 41), row('b', 'law', 9), row('c', 'chat', 0)])
+    expect(rows.map((each) => sentence(each.action))).toEqual([
+      `Öffnet alle Ablagen: 3${NB}Ablagen, 41${NB}Dateien`,
+      `Öffnet die OIB-Richtlinien: 9${NB}Dateien`,
+      'Öffnet die Dateien dieses Chats: leer',
+    ])
+  })
+
   test('a single call heads the turn in the past', () => {
     expect(
       settledHead(t, {

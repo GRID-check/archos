@@ -104,10 +104,19 @@ const sum = (values: Array<number | undefined>): number | undefined =>
 /**
  * The key same-kind calls share: verb, match mode and whether it named a pattern,
  * settled with a result. Running, empty, failed and incomplete rows never fold:
- * folded, their word would be summed away.
+ * folded, their word would be summed away. Nor do folders Piloti opened: each
+ * names its own place, and „3 Ordner · 50 Dateien“ would add a place's count of
+ * places to a folder's count of files.
  */
+const opensFolder = (action: WorkRow['action']): boolean =>
+  action.verb === 'list' && Boolean(action.mount) && !action.query
+
 const foldKey = (row: WorkRow): string | null =>
-  row.running || row.action.status !== 'ok' || row.action.incomplete || row.looks.length > 0
+  row.running ||
+  row.action.status !== 'ok' ||
+  row.action.incomplete ||
+  row.looks.length > 0 ||
+  opensFolder(row.action)
     ? null
     : `${row.action.verb}:${row.action.mode ?? ''}:${row.action.mount && row.action.query ? 'pattern' : ''}`
 
