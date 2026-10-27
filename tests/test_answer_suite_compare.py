@@ -201,6 +201,8 @@ class TestTheArmsRun:
 
         monkeypatch.setattr(suite, "_preflight", lambda *a, **k: 0)
         monkeypatch.setattr(fixture_files, "seed_problem", lambda: None)
+        # The files set seeds its project before it runs (the E-Mail-Verlauf rows need a fresh seed); no Qdrant here.
+        monkeypatch.setattr(fixture_files, "seed", lambda project=None, **_: {})
         monkeypatch.setattr(suite, "run_set", fake_run_set)
         monkeypatch.setattr(suite, "source_commit", lambda: "abc")
         before = tmp_path / "before"
