@@ -20,7 +20,7 @@ vi.mock('@/lib/cache', () => ({
   invalidateCached: vi.fn(),
 }))
 
-import { belongsToSeveralOrganizations, getOrganizationDisplayName } from './service'
+import { getOrganizationDisplayName, switchableOrganizations } from './service'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -42,24 +42,31 @@ describe('getOrganizationDisplayName', () => {
   })
 })
 
-describe('belongsToSeveralOrganizations', () => {
-  it('asks WorkOS for at most two active memberships, which is enough to answer', async () => {
-    listOrganizationMemberships.mockResolvedValueOnce({ data: [{ id: 'om_1' }, { id: 'om_2' }] })
+describe('switchableOrganizations', () => {
+  const membership = (organizationId: string, organizationName: string) => ({ organizationId, organizationName })
 
-    expect(await belongsToSeveralOrganizations('org_a', 'user_1')).toBe(true)
-    expect(listOrganizationMemberships).toHaveBeenCalledWith({ userId: 'user_1', statuses: ['active'], limit: 2 })
+  it('lists the active memberships by name, the current one marked', async () => {
+    listOrganizationMemberships.mockResolvedValueOnce({
+      data: [membership('org_b', 'GRID Test'), membership('org_a', 'feld72 Architekten')],
+    })
+
+    expect(await switchableOrganizations('org_b', 'user_1')).toEqual([
+      { id: 'org_a', name: 'feld72 Architekten', current: false },
+      { id: 'org_b', name: 'GRID Test', current: true },
+    ])
+    expect(listOrganizationMemberships).toHaveBeenCalledWith({ userId: 'user_1', statuses: ['active'], limit: 50 })
   })
 
-  it('is false for someone in one organization', async () => {
-    listOrganizationMemberships.mockResolvedValueOnce({ data: [{ id: 'om_1' }] })
-    expect(await belongsToSeveralOrganizations('org_a', 'user_1')).toBe(false)
+  it('offers nothing to someone in one organization', async () => {
+    listOrganizationMemberships.mockResolvedValueOnce({ data: [membership('org_a', 'feld72 Architekten')] })
+    expect(await switchableOrganizations('org_a', 'user_1')).toEqual([])
   })
 
   it('never caches an outage as "one organization"', async () => {
     listOrganizationMemberships.mockRejectedValueOnce(new Error('timeout'))
-    expect(await belongsToSeveralOrganizations('org_a', 'user_1')).toBe(false)
+    expect(await switchableOrganizations('org_a', 'user_1')).toEqual([])
 
-    listOrganizationMemberships.mockResolvedValueOnce({ data: [{ id: 'om_1' }, { id: 'om_2' }] })
-    expect(await belongsToSeveralOrganizations('org_a', 'user_1')).toBe(true)
+    listOrganizationMemberships.mockResolvedValueOnce({ data: [membership('org_a', 'A'), membership('org_b', 'B')] })
+    expect(await switchableOrganizations('org_a', 'user_1')).toHaveLength(2)
   })
 })
