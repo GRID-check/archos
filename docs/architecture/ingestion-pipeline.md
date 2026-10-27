@@ -104,6 +104,15 @@ version. IFC models take a side road (`bim_extract`) and come back as a Markdown
 digest. A failure to start is final at once: `markDocumentIngestFailed("Ingestion
 could not be started")` (S:526).
 
+A queue row moves through four statuses, and the database holds it to them
+(`common/claim_queue_schema.py`, a trigger installed with the table): a row is born
+`queued`; a live row (`queued` or `claimed`) may be claimed, given back, cancelled
+or retired `dead`; a retired row (`dead` or `cancelled`) never changes status again
+and leaves only when `purge_retired` deletes it. Any other write fails with
+`check_violation`, whichever code path issued it. The status store's `ingest_jobs`
+has no such guard on purpose: there the owner's late write wins over a row another
+replica settled as interrupted.
+
 ## 3. Inside one file
 
 The order below is the order the code runs, with what each stage costs and what
