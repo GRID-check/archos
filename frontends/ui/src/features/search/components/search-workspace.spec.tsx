@@ -69,6 +69,15 @@ function Harness({ initial, onChange }: { initial: SearchUrlState; onChange: (ne
   )
 }
 
+/** A document hit's link: its shelf preview at the passage's page, the passage to light up there. */
+const atPassage = (base: string, page: number, passage: string): string =>
+  `${base}&${new URLSearchParams({ page: String(page), highlight: passage }).toString()}`
+const CONCEPT_AT_PASSAGE = atPassage(
+  `/app/projects/${PROJECT}/files?doc=d0000000-0000-4000-8000-000000000001`,
+  7,
+  'Die Fluchtweglänge beträgt max. 40 m bis zum nächsten gesicherten Stiegenhaus (GK 4, OIB-RL 2, Pkt. 5.1.1)'
+)
+
 describe('SearchWorkspaceView', () => {
   it('shows each kind with where it lives, and a document’s passage with its page', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
@@ -80,10 +89,11 @@ describe('SearchWorkspaceView', () => {
     expect(concept).toHaveTextContent('S. 7')
     // The words searched for are set apart in the passage.
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
-    expect(concept).toHaveAttribute('href', `/app/projects/${PROJECT}/files?doc=d0000000-0000-4000-8000-000000000001`)
+    // It opens at the passage's page, the passage to light up there.
+    expect(concept).toHaveAttribute('href', CONCEPT_AT_PASSAGE)
     expect(screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000006')).toHaveAttribute(
       'href',
-      '/app/office-shelf?doc=d0000000-0000-4000-8000-000000000006'
+      atPassage('/app/office-shelf?doc=d0000000-0000-4000-8000-000000000006', 9, 'Die Fluchtweglänge darf 40 m nicht überschreiten')
     )
     expect(screen.getByTestId('search-hit-annotation-a0000000-0000-4000-8000-000000000001')).toHaveAttribute(
       'href',
@@ -116,7 +126,7 @@ describe('SearchWorkspaceView', () => {
     await userEvent.keyboard('{ArrowDown}{ArrowDown}')
     expect(screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')).toHaveAttribute('aria-current', 'true')
     await userEvent.keyboard('{ArrowUp}{Enter}')
-    expect(routerPush).toHaveBeenCalledWith(`/app/projects/${PROJECT}/files?doc=d0000000-0000-4000-8000-000000000001`)
+    expect(routerPush).toHaveBeenCalledWith(CONCEPT_AT_PASSAGE)
     await userEvent.keyboard('{Escape}')
     expect(onField).toHaveBeenCalledWith('')
   })

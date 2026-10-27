@@ -232,8 +232,16 @@ a search is a link and Back walks its filters.
 - `/dev/search`: the organism over a fixture answer, list and register.
 
 A hit opens where the workspace already shows it: a document in its shelf's
-preview (`?doc=`), an annotation in the review at the mark. The passage's page
-is not in the link yet: the Dateien preview has no page parameter.
+preview (`?doc=`), an annotation in the review at the mark. A document hit
+with a passage opens at it: `?doc=<id>&page=7&highlight=<passage>`
+(`features/documents/lib/document-locus.ts`). `page` and `highlight` are the
+two things a citation hands the same pdf.js viewer, so the preview opens at the
+passage's page with the passage lit up, matched as fuzzily as a citation's (and
+looked for on the neighbouring pages when the page number is off by a cover
+sheet). The link carries the passage's first 200 characters, cut at a word.
+The place belongs to the document `doc` names: opening another document, or a
+folder, takes `page` and `highlight` off the address with the review's params.
+A preview that is not a PDF (an image, a text file) ignores both.
 
 ### Piloti
 
