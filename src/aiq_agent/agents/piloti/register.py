@@ -84,7 +84,6 @@ from .reference_fit import FIT_THRESHOLD
 from .reference_fit import MIN_LINES as MIN_FIT_LINES
 from .reference_fit import ReferenceFit
 from .reference_fit import fit_references
-from .tool_search import ToolSearchSettings
 
 logger = logging.getLogger(__name__)
 
@@ -180,16 +179,6 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "turn's prompt. Every tool stays bound whatever it says; "
             "a decision that cannot run leaves the turn exactly as before. GRID_DECISIONS_ENABLED=false "
             "is the global switch."
-        ),
-    )
-    tool_search: ToolSearchSettings = Field(
-        default_factory=ToolSearchSettings,
-        description=(
-            "Retrieval-based tool narrowing (default OFF). When enabled, a local lexical ranking over "
-            "tool name + description picks the tools bound for a research turn, BEFORE the LLM call — "
-            "never as a tool the model has to call first, which would spend one of the five tool "
-            "iterations on discovery. Absent from the YAML this validates to enabled=false and the "
-            "agent binds every tool exactly as it always has."
         ),
     )
     deferred_tool_loading: DeferredToolLoadingSettings = Field(
@@ -704,7 +693,6 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
         max_input_tokens_per_turn=config.max_input_tokens_per_turn,
         max_calls_per_round=config.max_calls_per_round,
         callbacks=callbacks,
-        tool_search=config.tool_search,
         deferred_tool_loading=config.deferred_tool_loading,
         envelope_json_mode_with_tools=config.envelope_json_mode_with_tools,
         repair_pass=config.repair_pass,

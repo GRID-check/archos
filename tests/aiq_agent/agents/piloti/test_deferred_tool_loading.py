@@ -2,7 +2,7 @@
 
 The unit rules live in ``tests/aiq_agent/common/test_deferred_tool_loading.py``.
 These tests are about the SEAM: that the agent's research bindings — the
-construction-time full one and the narrowed ones tool search builds — both go
+construction-time one and every per-turn one — go
 through it, that meta turns deliberately do not, and that the whole thing is
 byte-identical to the old code path when nobody asked for it.
 """
@@ -14,7 +14,6 @@ import pytest
 from langchain_core.tools import tool
 
 from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.tool_search import ToolSearchSettings
 from aiq_agent.common import LLMProvider
 from aiq_agent.common.deferred_tool_loading import DeferredToolBinding
 from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
@@ -118,34 +117,6 @@ def test_enabled_the_construction_time_binding_defers_every_tool(provider, llm):
     payload = llm.bind_calls[0]["tools"]
     assert [t["type"] for t in payload] == ["tool_search", "namespace"]
     assert _deferred_names(llm.bind_calls[0]) == [t.name for t in TOOLS]
-
-
-def test_a_narrowed_binding_is_deferred_too(provider, llm):
-    # tool_search decides WHICH tools are bound; deferral decides whether their
-    # schemas travel. A narrowed set that quietly stopped deferring would put
-    # the schemas back on exactly the requests that select sources.
-    agent = PilotiAgent(
-        llm_provider=provider,
-        tools=TOOLS,
-        tool_search=ToolSearchSettings(enabled=True, top_k=1),
-        deferred_tool_loading=DeferredToolLoadingSettings(enabled=True),
-    )
-    llm.bind_calls.clear()
-    from langchain_core.messages import HumanMessage
-
-    messages = [HumanMessage(content="Wie hoch ist die lichte Raumhöhe im Keller? Miss das am Modell.")]
-    bound, tools_info = agent._research_tool_binding(messages, agent.tools_info)
-    assert isinstance(bound, DeferredToolBinding)
-    assert len(llm.bind_calls) == 1
-    deferred = _deferred_names(llm.bind_calls[0])
-    assert deferred == [ti["name"] for ti in tools_info]
-    assert len(deferred) < len(TOOLS)
-    # The question asks for a measurement in so many words, so the narrowing is
-    # only correct if `ifc_measure` survived it. Asserting merely that the set
-    # got SMALLER would pass on a selection that kept `ris_search` and dropped
-    # the one tool that can answer — which is the failure mode narrowing has,
-    # and the one this test exists to catch.
-    assert "ifc_measure" in deferred
 
 
 def test_the_namespace_description_is_the_only_tool_text_sent_up_front(provider, llm):
