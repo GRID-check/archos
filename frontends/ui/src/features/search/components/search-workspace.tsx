@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
 import { SEARCH_LIMIT_DEFAULT } from '@/lib/search/search-wire'
 import { useSavedSearches } from '../hooks/use-saved-searches'
+import { SearchReturnProvider } from '../hooks/use-search-return'
 import { useSearchResults } from '../hooks/use-search-results'
 import { useSearchUrlState } from '../hooks/use-search-url-state'
 import { useSuggestedSearchName } from '../hooks/use-suggested-search-name'
@@ -101,5 +102,6 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
       )}
     />
   )
-  return inset ? <SearchInset>{view}</SearchInset> : view
+  // Every hit drawn here returns to this search on closing (`back`).
+  return <SearchReturnProvider>{inset ? <SearchInset>{view}</SearchInset> : view}</SearchReturnProvider>
 }

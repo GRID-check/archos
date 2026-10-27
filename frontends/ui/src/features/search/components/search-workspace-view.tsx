@@ -32,6 +32,7 @@ import { clearFilters } from '../lib/active-filters'
 import type { SearchExportFormat } from '../lib/search-client'
 import { toggleFacet } from '../lib/search-facets'
 import { hitHref } from '../lib/search-hrefs'
+import { useSearchReturn } from '../hooks/use-search-return'
 import type { SearchSurface } from '../lib/search-surface'
 import { activeFilterCount, filtersByReading, officeSearchHref, withView, type SearchUrlState, type SearchView } from '../lib/search-url'
 import type { SectionView } from '../lib/sections'
@@ -134,6 +135,7 @@ export function SearchWorkspaceView({
 }: SearchWorkspaceViewProps): JSX.Element {
   const t = useTranslations('search')
   const router = useRouter()
+  const from = useSearchReturn()
   const sheetLayout = useIsMobile()
   const phone = useMediaQuery(PHONE_QUERY)
   const [sheetOpen, setSheetOpen] = useState(filtersOpen)
@@ -193,7 +195,7 @@ export function SearchWorkspaceView({
       const hit = order.find((entry) => hitKey(entry) === activeKey)
       if (!hit) return
       event.preventDefault()
-      router.push(hitHref(hit))
+      router.push(hitHref(hit, from))
       return
     }
     if (event.key === 'Escape' && fieldValue !== '') {

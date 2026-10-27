@@ -8,9 +8,19 @@
  * preview's link (`features/documents/lib/document-locus.ts`), the page and
  * passage a citation hands the same viewer, so the matched passage is lit up
  * on the page it came from.
+ *
+ * ## Back to the search
+ *
+ * A document or annotation hit opens in the shelf, often on another page, and
+ * the search would be lost behind it. Such a link carries `back`, the search
+ * as the reader left it (`features/documents/lib/open-review.ts`, the
+ * mechanism Offene Punkte and the Postfach use): closing the preview or the
+ * review returns there. A folder, a project or a conversation has nothing to
+ * close; Back walks to the search, whose URL holds all of it.
  */
 
 import { withDocumentLocus } from '@/features/documents/lib/document-locus'
+import { BACK_PARAM, reviewFilesHref, withBack, withReviewBack } from '@/features/documents/lib/open-review'
 import { documentHref } from '@/features/uploads/lib/upload-summary'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import type { AnnotationHit, ConversationHit, DocumentHit, FolderHit, ProjectHit, SearchHit } from '@/lib/search/search-wire'
@@ -22,14 +32,36 @@ function shelfBase(shelf: 'project' | 'office_shelf', projectId: string | null):
   return '/app/office-shelf'
 }
 
-export function documentHitHref(hit: Pick<DocumentHit, 'id' | 'shelf' | 'projectId'> & Partial<Pick<DocumentHit, 'passage'>>): string {
-  const href = documentHref({ scope: hit.shelf, projectId: hit.projectId }, hit.id) ?? `/app/office-shelf?doc=${encodeURIComponent(hit.id)}`
-  return hit.passage ? withDocumentLocus(href, { page: hit.passage.page, highlight: hit.passage.text }) : href
+/** Where a hit returns to on closing: the search page as the reader left it, or nowhere. */
+export interface HitReturn {
+  back?: string | null
 }
 
-export function annotationHitHref(hit: Pick<AnnotationHit, 'id' | 'documentId' | 'projectId'>): string {
-  const base = shelfBase(hit.projectId ? 'project' : 'office_shelf', hit.projectId)
-  return `${base}?doc=${encodeURIComponent(hit.documentId)}&review=1&mark=${encodeURIComponent(hit.id)}`
+/**
+ * The search page's own address, to return to: path and query, without a
+ * `back` it may itself have been handed (a return is one step, not a chain).
+ */
+export function searchReturnPath(pathname: string, search: string): string {
+  const params = new URLSearchParams(search)
+  params.delete(BACK_PARAM)
+  const query = params.toString()
+  return query ? `${pathname}?${query}` : pathname
+}
+
+export function documentHitHref(
+  hit: Pick<DocumentHit, 'id' | 'shelf' | 'projectId'> & Partial<Pick<DocumentHit, 'passage'>>,
+  { back }: HitReturn = {}
+): string {
+  const href = documentHref({ scope: hit.shelf, projectId: hit.projectId }, hit.id) ?? `/app/office-shelf?doc=${encodeURIComponent(hit.id)}`
+  const at = hit.passage ? withDocumentLocus(href, { page: hit.passage.page, highlight: hit.passage.text }) : href
+  return withBack(at, back)
+}
+
+export function annotationHitHref(hit: Pick<AnnotationHit, 'id' | 'documentId' | 'projectId'>, { back }: HitReturn = {}): string {
+  const target = { documentId: hit.documentId, annotationId: hit.id }
+  if (hit.projectId) return reviewFilesHref(hit.projectId, target, { back })
+  const href = `${shelfBase('office_shelf', null)}?doc=${encodeURIComponent(hit.documentId)}&review=1&mark=${encodeURIComponent(hit.id)}`
+  return withReviewBack(href, back)
 }
 
 export function folderHitHref(hit: Pick<FolderHit, 'id' | 'shelf' | 'projectId'>): string {
@@ -63,12 +95,12 @@ export function savedSearchHref(item: Pick<SavedSearchView, 'scope' | 'query'>):
   return query ? `/app/search?${query}` : '/app/search'
 }
 
-export function hitHref(hit: SearchHit): string {
+export function hitHref(hit: SearchHit, from: HitReturn = {}): string {
   switch (hit.kind) {
     case 'document':
-      return documentHitHref(hit)
+      return documentHitHref(hit, from)
     case 'annotation':
-      return annotationHitHref(hit)
+      return annotationHitHref(hit, from)
     case 'folder':
       return folderHitHref(hit)
     case 'project':
