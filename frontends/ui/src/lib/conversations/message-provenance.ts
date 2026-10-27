@@ -569,7 +569,8 @@ function sanitizeAction(input: unknown): StoredAction | null {
   const mount = oneOf(input.mount, ACTION_MOUNTS)
   if (mount) action.mount = mount
   if (input.incomplete === true) action.incomplete = true
-  if (input.missing === true) action.missing = true
+  // Only an empty call can have missed: on any other status the flag would contradict the row.
+  if (input.missing === true && action.status === 'empty') action.missing = true
   const counts = sanitizeActionCounts(input.counts)
   if (counts) action.counts = counts
   const elapsedMs = nonNegativeInt(input.elapsedMs)

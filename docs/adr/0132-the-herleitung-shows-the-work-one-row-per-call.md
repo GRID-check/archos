@@ -179,14 +179,18 @@ everything looked complete with hits and failed without them. Decided:
   im Projekt nach PDF-Dateien“ (a `glob` is a `list` row with its pattern as
   `query`). A folder outside the project is named under its place, with the
   article the sentence needs („Durchsucht die Büroablage › Vorlagen“, „in der
-  Büroablage › Vorlagen“, „im Chat › Pläne“), and without one inside quotes
-  („der Ordner „Büroablage › Vorlagen““). A path that names no place gives
+  Büroablage › Vorlagen“, „in den Dateien dieses Chats › Pläne“: the place's
+  own phrase, then the breadcrumb), and without one inside quotes („der Ordner
+  „Büroablage › Vorlagen““). A path that names no place gives
   the row no `target` at all („Öffnet einen Ordner · fehlgeschlagen“), never
   the model's `drafts › .. › project`.
 - **Simple patterns read as words.** A glob of one type or one word reads
   „PDF-Dateien“, „Dateien mit „Brandschutz“ im Namen“, „PDF-Dateien mit „Plan“
   im Namen“; a regex of plain words or'ed reads „wörtlich nach „EI 90“ oder
-  „REI 90““. Any other pattern is quoted as written („Dateien „EP-0?_*.pdf““,
+  „REI 90““. „Wörtlich“ holds because the store compiles a person's regex
+  case-insensitively (`compile_user_regex`); it does not fold umlauts as the
+  literal search does, so words with „ä/ö/ü/ß“ read „nach „Tür“ oder „Türe““
+  without it. Any other pattern is quoted as written („Dateien „EP-0?_*.pdf““,
   „nach dem Muster „EI\s?90““), and „Offen“ calls a pattern search „die Suche …
   nach dem Muster“, never „die wörtliche Suche“.
 - **An incomplete search says so.** `ActionStep.incomplete` is set by a `grep`

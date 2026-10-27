@@ -78,7 +78,7 @@ describe('a filesystem row names a place, never a path', () => {
     ).toBe(`Durchsucht die Büroablage ›${NB}Vorlagen wörtlich nach „x“`)
     expect(
       sentence({ verb: 'list', status: 'ok', query: '*.pdf', mount: 'chat', target: 'Pläne' })
-    ).toBe(`Sucht im Chat ›${NB}Pläne nach PDF-Dateien`)
+    ).toBe(`Sucht in den Dateien dieses Chats ›${NB}Pläne nach PDF-Dateien`)
     expect(sentence({ verb: 'list', status: 'ok', mount: 'law' })).toBe('Öffnet die OIB-Richtlinien')
   })
 
@@ -99,6 +99,12 @@ describe('a filesystem row names a place, never a path', () => {
     expect(
       sentence({ verb: 'search', mode: 'regex', status: 'ok', query: 'EI\\s?90', mount: 'estate' })
     ).toBe('Durchsucht alle Ablagen nach dem Muster „EI\\s?90“')
+  })
+
+  test('a regex of words with an umlaut is no „wörtlich“: the pattern search does not fold „ü“', () => {
+    expect(
+      sentence({ verb: 'search', mode: 'regex', status: 'ok', mount: 'project', query: 'Tür|Türe' })
+    ).toBe('Durchsucht das Projekt nach „Tür“ oder „Türe“')
   })
 
   test('a regex of plain words reads as the words, a real pattern as the pattern', () => {
@@ -378,6 +384,22 @@ describe('a row stored before the wire carried `mount`', () => {
     expect(
       legacyPlace({ verb: 'read', status: 'ok', target: '/project/03 Einreichung/README.md' })
     ).toEqual({ verb: 'list', mount: 'project', target: '03 Einreichung' })
+  })
+
+  test('`missing` survives a reload only on an empty call', () => {
+    const stored = (status: 'empty' | 'ok') =>
+      sanitizeThinkingSteps([
+        {
+          id: `action:${status}`,
+          userMessageId: 'm',
+          timestamp: '2026-10-27T10:00:00Z',
+          isComplete: true,
+          kind: 'action',
+          action: { verb: 'list', status, mount: 'project', target: 'Personal', missing: true },
+        },
+      ])![0].action!
+    expect(stored('empty').missing).toBe(true)
+    expect(stored('ok').missing).toBeUndefined()
   })
 
   test('a reload draws it as the wire draws it now', () => {

@@ -1086,13 +1086,8 @@ export const chat = {
         chat: "this chat's files",
         law: 'the OIB guidelines',
         estate: 'every place',
-        // … a folder outside the project, with its place's article: “the office filing › Templates” …
-        folder: {
-          office: 'the office filing ›\u00A0{folder}',
-          chat: 'the chat ›\u00A0{folder}',
-          law: 'the OIB guidelines ›\u00A0{folder}',
-        },
-        // … and as a quoted name, without one: “Office filing › Templates”.
+        // … a folder of another place under its name: as an object “the office filing › Templates”,
+        // after “in” “in the office filing › Templates”, quoted without an article “Office filing › Templates”.
         folderIn: '{place} ›\u00A0{folder}',
         crumb: {
           office: 'Office filing',
@@ -1107,14 +1102,8 @@ export const chat = {
         chat: "in this chat's files",
         law: 'in the OIB guidelines',
         estate: 'in every place',
-        // A folder of the project: “in 03 Einreichung” …
+        // A folder of the project: “in 03 Einreichung”.
         folder: 'in {folder}',
-        // … of another place, with its article: “in the office filing › Templates”.
-        folderOf: {
-          office: 'in the office filing ›\u00A0{folder}',
-          chat: 'in the chat ›\u00A0{folder}',
-          law: 'in the OIB guidelines ›\u00A0{folder}',
-        },
       },
       // The verb sits muted before its object: „Searches for the exact phrase“ „“Brandabschnitt” in the project“.
       verb: {
@@ -1169,6 +1158,8 @@ export const chat = {
         grepExact: '{place} for the exact words “{query}”',
         grepRegex: '{place} for the pattern “{query}”',
         // A pattern that only ORs words: “the project for the exact words “EI 90” or “REI 90””.
+        // The same words with an umlaut: a pattern search does not fold „ü“ as the literal search does.
+        grepWords: '{place} for {words}',
         grepAny: '{place} for the exact words {words}',
         or: 'or',
         names: '{what} {place}',

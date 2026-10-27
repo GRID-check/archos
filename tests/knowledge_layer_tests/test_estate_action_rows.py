@@ -150,6 +150,23 @@ class TestList:
         card = _row(steps)["counts"]["files"]
         assert flat == tree == card == 3
 
+    async def test_a_folder_counts_its_own_subfolders_at_any_depth(self, steps) -> None:
+        """Depth 2 draws a card for every folder below; the row still counts the folder's own subfolders."""
+        rows = [
+            *listing_suite.ROWS,
+            listing_suite.FileRow(
+                file_name="Detail.pdf", shelf="project", collection="proj_a", folder="Einreichung/Pläne/Details"
+            ),
+        ]
+        counts = []
+        for depth in (1, 2, 3):
+            steps.clear()
+            await listing_suite._backend(rows).ls("/project/Einreichung/", depth=depth)
+            counts.append(_row(steps)["counts"]["folders"])
+        steps.clear()
+        await listing_suite._backend(rows).read_file("/project/Einreichung/README.md")
+        assert counts == [1, 1, 1] == [_row(steps)["counts"]["folders"]] * 3
+
     async def test_the_places_count_what_a_grep_everywhere_searches(self, steps) -> None:
         """„3 Ablagen, N Dateien“ and „kein Treffer in N Dateien“ are one N when nothing failed."""
         await grep_suite._backend(grep_suite.Retriever({grep_suite.COLLECTION: grep_suite._chunks()})).ls("/")

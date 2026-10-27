@@ -1087,13 +1087,8 @@ export const chat: typeof en.chat = {
         chat: 'die Dateien dieses Chats',
         law: 'die OIB-Richtlinien',
         estate: 'alle Ablagen',
-        // … ein Ordner, der nicht im Projekt liegt, mit dem Artikel seiner Ablage: „die Büroablage › Vorlagen“ …
-        folder: {
-          office: 'die Büroablage ›\u00A0{folder}',
-          chat: 'den Chat ›\u00A0{folder}',
-          law: 'die OIB-Richtlinien ›\u00A0{folder}',
-        },
-        // … und als Name in Anführungszeichen, ohne Artikel: „Büroablage › Vorlagen“.
+        // … ein Ordner einer anderen Ablage unter ihrem Namen: als Gegenstand „die Büroablage › Vorlagen“,
+        // nach „in“ „in der Büroablage › Vorlagen“, in Anführungszeichen ohne Artikel „Büroablage › Vorlagen“.
         folderIn: '{place} ›\u00A0{folder}',
         crumb: {
           office: 'Büroablage',
@@ -1108,14 +1103,8 @@ export const chat: typeof en.chat = {
         chat: 'in den Dateien dieses Chats',
         law: 'in den OIB-Richtlinien',
         estate: 'in allen Ablagen',
-        // Ein Ordner des Projekts: „in 03 Einreichung“ …
+        // Ein Ordner des Projekts: „in 03 Einreichung“.
         folder: 'in {folder}',
-        // … einer anderen Ablage, mit ihrem Artikel: „in der Büroablage › Vorlagen“.
-        folderOf: {
-          office: 'in der Büroablage ›\u00A0{folder}',
-          chat: 'im Chat ›\u00A0{folder}',
-          law: 'in den OIB-Richtlinien ›\u00A0{folder}',
-        },
       },
       // Das Verb steht gedämpft vor seinem Gegenstand: „Sucht wörtlich“ „„Brandabschnitt“ im Projekt“.
       verb: {
@@ -1171,6 +1160,8 @@ export const chat: typeof en.chat = {
         grepExact: '{place} wörtlich nach „{query}“',
         grepRegex: '{place} nach dem Muster „{query}“',
         // Ein Muster, das nur Wörter verodert: „das Projekt wörtlich nach „EI 90“ oder „REI 90““.
+        // Dieselben Wörter mit Umlaut: die Mustersuche faltet „ü“ nicht wie die wörtliche Suche.
+        grepWords: '{place} nach {words}',
         grepAny: '{place} wörtlich nach {words}',
         or: 'oder',
         names: '{place} nach {what}',

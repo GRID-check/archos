@@ -8,5 +8,6 @@ improvements:
 fixes:
   - >
     A word search that could not search all your documents no longer looks
-    complete in the Herleitung. It is drawn with a dashed ring, says that a
-    missing hit is no proof, and appears under „Offen“.
+    complete in the Herleitung. It is drawn with a dashed ring and says that a
+    missing hit is no proof; an incomplete search without a hit appears under
+    „Offen“.

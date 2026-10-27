@@ -311,10 +311,10 @@ def action_place(path: str | None) -> dict[str, str]:
 
 def asked_document(path: str | None) -> str:
     """The document a ``read_file`` path asks for, as a row names it: the leaf without the ``.md`` its text is
-    served under (``Plan.pdf.md`` -> ``Plan.pdf``); ``""`` for a path that names a folder. The model's own
-    words, so a row of a read that resolved nothing confirms nothing."""
+    served under (``Plan.pdf.md`` -> ``Plan.pdf``, ``Notiz.md`` -> ``Notiz``); ``""`` for a path that names a
+    folder. The model's own words, so a row of a read that resolved nothing confirms nothing."""
     text = nfc((path or "").strip())
     if not text or text.endswith("/"):
         return ""
     leaf = text.rsplit("/", 1)[-1]
-    return file_name_candidates(leaf)[0] if leaf else ""
+    return leaf[:-3] if leaf.lower().endswith(".md") and len(leaf) > 3 else leaf

@@ -232,7 +232,9 @@ def _render_tree(
     if in_flight:
         lines.append(f"Not listed here: files still being read ({len(in_flight)}).")
     lines.append("Restricted folders are not listed. " + INDEX_NOTE)
-    return Listing(text="\n".join(lines), files=len(rows), folders=len(cards))
+    # The folder's own subfolders, as `ls` at depth 1 and its README.md count them: not every card in the tree.
+    own = next((card for card in cards if card.path == (folder or "")), None)
+    return Listing(text="\n".join(lines), files=len(rows), folders=len(own.subfolders) if own else 0)
 
 
 def render_readme(

@@ -131,6 +131,8 @@ class TestTheRowsPlace:
     def test_the_document_a_read_asked_for_is_its_leaf_without_the_text_suffix(self) -> None:
         assert asked_document("/project/Personal/Vertrag.pdf.md") == "Vertrag.pdf"
         assert asked_document("/project/Notiz.txt") == "Notiz.txt"
+        # A stem without an extension is a file served as its text: the row names it without the suffix.
+        assert asked_document("/project/Notiz.md") == "Notiz"
         assert asked_document("/project/Plan.pdf") == "Plan.pdf"
         assert asked_document("/project/Gutachten/") == ""
         assert asked_document("") == ""

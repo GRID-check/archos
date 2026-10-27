@@ -144,8 +144,8 @@ export const actionPlace = (action: StoredAction): ActionPlace | null =>
 /**
  * A project's folders are what an architect means by „the folders“: they go by
  * their breadcrumb alone. A folder of another place is named under that place,
- * with its article where the sentence needs one („in der Büroablage ›
- * Vorlagen“, „im Chat › Pläne“).
+ * in the form the sentence needs: „die Büroablage › Vorlagen“, „in der
+ * Büroablage › Vorlagen“, and in quotes „Büroablage › Vorlagen“.
  */
 const bareFolder = (place: ActionPlace): boolean =>
   place.mount === 'project' || place.mount === 'estate'
@@ -164,18 +164,20 @@ export const placeLabel = (t: Translator, place: ActionPlace): string => {
 
 /** The place as the object of a verb: „das Projekt“, „03 Einreichung › Pläne“, „die Büroablage › Vorlagen“. */
 export const placeName = (t: Translator, place: ActionPlace): string => {
-  if (!place.folder) return t(`thinking.work.place.${place.mount}`)
+  const named = t(`thinking.work.place.${place.mount}`)
+  if (!place.folder) return named
   const folder = breadcrumb(place.folder)
-  return bareFolder(place) ? folder : t(`thinking.work.place.folder.${place.mount}`, { folder })
+  return bareFolder(place) ? folder : t('thinking.work.place.folderIn', { place: named, folder })
 }
 
 /** The place after its preposition: „im Projekt“, „in 03 Einreichung“, „in der Büroablage › Vorlagen“. */
 export const placeIn = (t: Translator, place: ActionPlace): string => {
-  if (!place.folder) return t(`thinking.work.placeIn.${place.mount}`)
+  const named = t(`thinking.work.placeIn.${place.mount}`)
+  if (!place.folder) return named
   const folder = breadcrumb(place.folder)
   return bareFolder(place)
     ? t('thinking.work.placeIn.folder', { folder })
-    : t(`thinking.work.placeIn.folderOf.${place.mount}`, { folder })
+    : t('thinking.work.place.folderIn', { place: named, folder })
 }
 
 /** `*.pdf`, `**\/*.dwg`: files of one type. */
@@ -221,17 +223,29 @@ const wordList = (t: Translator, words: readonly string[]): string => {
   return quoted.length ? `${quoted.join(', ')} ${t('thinking.work.object.or')} ${last}` : last
 }
 
+/**
+ * A regex of words matches as the literal search does only where the literal
+ * search's folding adds nothing: the store compiles a person's regex
+ * case-insensitively (`compile_user_regex`), but never folds „ü“ into „ue“ as
+ * the literal search does. Words with an umlaut or ß are searched for, not
+ * „wörtlich“.
+ */
+const FOLDED_LETTERS = /[äöüÄÖÜß]/
+
 /** A filesystem search's object: wörtlich, by the words a simple regex names, or by its pattern. */
 const grepObject = (t: Translator, action: StoredAction, place: ActionPlace): string => {
   const words = action.mode === 'regex' && action.query ? regexWords(action.query) : null
   const where = placeName(t, place)
-  if (words && words.length > 1)
-    return t('thinking.work.object.grepAny', { place: where, words: wordList(t, words) })
-  const query = words ? words[0] : action.query ? quoteQuery(t, action.query) : ''
+  if (words) {
+    const literal = !words.some((word) => FOLDED_LETTERS.test(word))
+    return t(literal ? 'thinking.work.object.grepAny' : 'thinking.work.object.grepWords', {
+      place: where,
+      words: wordList(t, words),
+    })
+  }
+  const query = action.query ? quoteQuery(t, action.query) : ''
   return t(
-    action.mode === 'regex' && !words
-      ? 'thinking.work.object.grepRegex'
-      : 'thinking.work.object.grepExact',
+    action.mode === 'regex' ? 'thinking.work.object.grepRegex' : 'thinking.work.object.grepExact',
     { place: where, query }
   )
 }
