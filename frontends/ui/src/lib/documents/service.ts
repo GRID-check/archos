@@ -616,14 +616,12 @@ export interface BackendSearchHit {
   snippet: string
   page_number: number | null
   collection: string
-  /**
-   * Position in ONE ranking across several collections (the grouped search,
-   * `fetchGroupedSemanticHits`), 0 = best. Absent on a single-collection
-   * search, whose hits are ordered by `score`.
-   */
+  /** Position in ONE ranking across collections (`fetchGroupedSemanticHits`), 0 = best; absent on one collection's search. */
   rank?: number
   /** The document's id, when the backend states it (the grouped search, from the chunk's payload). */
   grid_document_id?: string
+  /** The grouped search: a passage holds a word of the query (`true`), or it matched by meaning alone (`false`). */
+  lexical?: boolean | null
 }
 
 /**
@@ -736,6 +734,7 @@ export interface GroupedSearchFilters {
   project_status?: Array<'active' | 'paused' | 'closed'>
   /** Only passages of these documents (their ids, `grid_document_id` on the chunks); at most 1000. */
   document_ids?: string[]
+  file_names?: string[] // The same documents' names, for passages without `grid_document_id`: any of the ids or these.
   /** The dossier's `document_type` (`site_plan`, ...), any of; not `document_types`, which reads the tags. */
   reading_types?: string[]
   /** Documents referring to any of these: typed text ("ÖNORM B 1600", "EP-05") or a `kind:key` token; at most 8. */

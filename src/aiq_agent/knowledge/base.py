@@ -106,11 +106,11 @@ def document_position(metadata: Mapping[str, Any] | None, chunk_id: Any) -> Docu
     )
 
 
-#: ``Chunk.metadata`` key under which :meth:`BaseRetriever.search_grouped` puts
-#: each chunk's score in the one fused ranking across every group. Comparable
-#: across groups, unlike ``Chunk.score`` (the chunk's own cosine); the grouped
-#: search route orders documents across projects by it.
+#: ``Chunk.metadata`` keys :meth:`BaseRetriever.search_grouped` sets: the chunk's score in the one fused ranking
+#: across every group (comparable across groups, unlike ``Chunk.score``, its cosine; the route orders documents by
+#: it), and whether a lexical channel ranked it (it holds a query word; absent where a backend cannot tell).
 FUSED_SCORE_KEY = "fused_score"
+LEXICAL_MATCH_KEY = "lexical_match"
 
 
 @dataclass
@@ -328,7 +328,7 @@ class BaseRetriever(ABC):
         ranking. ``boost`` (``{"facts": {...}, "weights": {...}}``: the current
         project's fingerprint and the BFF's similarity weights) lifts passages
         from projects like the current one. Every chunk carries its fused
-        score as ``metadata[FUSED_SCORE_KEY]``.
+        score as ``metadata[FUSED_SCORE_KEY]`` (and ``LEXICAL_MATCH_KEY``).
         """
         raise NotImplementedError(f"{self.backend_name} cannot rank across collections in one query")
 

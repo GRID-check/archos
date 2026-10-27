@@ -683,6 +683,42 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
       expect(await found(officeReach(), query({}, { text: 'Fluchtweg', contentKeys: [] }))).toEqual(keys('A1', 'A3'))
     })
 
+    it('reads ä ö ü ß and ae oe ue ss as one spelling in the reading, the stemmer still folding a plural', async () => {
+      // „Flaechenwidmung“ and „Flächenwidmung“ found different documents (migration 0187).
+      expect(await found(officeReach(), query({}, { text: 'Brandschutzplaene', contentKeys: [] }))).toEqual(keys('A3'))
+      expect(await found(officeReach(), query({}, { text: 'Ingenieurbuero', contentKeys: [] }))).toEqual(keys('A3'))
+      expect(await found(officeReach(), query({}, { text: 'Hauptstrasse', contentKeys: [] }))).toEqual(keys('A1'))
+      expect(await found(officeReach(), query({}, { text: 'Hauptstraße', contentKeys: [] }))).toEqual(keys('A1'))
+    })
+
+    it('reads ä ö ü ß and ae oe ue ss as one spelling in a name, decomposed or not', async () => {
+      const name = 'Abgabepläne_Übersicht.pdf'.normalize('NFD')
+      const [inserted] = Array.from(
+        await inTenant(ORG, () =>
+          db.execute<{ id: string }>(sql`
+            INSERT INTO documents
+              (organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id, content_type)
+            VALUES (${ORG}, ${ME}, ${name}, 'k/umlaut', ${C2}, 'completed', 'project', ${projectIds.p2}::uuid, 'application/pdf')
+            RETURNING id`)
+        )
+      )
+      try {
+        for (const typed of ['abgabeplaene', 'Abgabepläne', 'ABGABEPLÄNE', 'uebersicht']) {
+          const { rows } = await repo.searchDocumentPage(officeReach(), query({}, { text: typed, contentKeys: [] }), ALL)
+          expect(rows.map((row) => row.id), typed).toEqual([String(inserted.id)])
+          expect(rows[0].matchedName, typed).toBe(true)
+        }
+      } finally {
+        await inTenant(ORG, () => db.execute(sql`DELETE FROM documents WHERE id = ${String(inserted.id)}::uuid`))
+      }
+    })
+
+    it('names the candidates of a filter by id and, for a person’s upload, by file name', async () => {
+      const candidates = await repo.listCandidateDocuments(officeReach(), query({ currentOnly: true }), 1000)
+      expect(candidates).toContainEqual({ id: ids.A1, filename: 'EP-05_Grundriss_EG_C.pdf' })
+      expect(candidates.map((candidate) => candidate.id)).not.toContain(ids.A2)
+    })
+
     it('matches a plan number by its prefix, spaces and hyphens ignored', async () => {
       expect(await found(officeReach(), query({}, { text: 'EP05', contentKeys: [] }))).toEqual(keys('A1', 'A2'))
       expect(await found(officeReach(), query({}, { text: 'ap 1', contentKeys: [] }))).toEqual(keys('A13'))
