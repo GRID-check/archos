@@ -35,10 +35,10 @@ from aiq_agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
 from aiq_agent.agents.piloti.agent import PilotiAgent
 from aiq_agent.agents.piloti.answer_pipeline import this_turn
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import turn_status
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.steering import HELD_FOR_STEER
 from aiq_agent.common.steering import SteerInbox
 from aiq_agent.common.steering import SteerNote

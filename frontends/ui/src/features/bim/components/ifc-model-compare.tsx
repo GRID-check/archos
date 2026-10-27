@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { compareBimModel } from '@/adapters/api/bim-client'
 import type { BimComparison } from '@/lib/bim/compare'
 import type { BimModelHeaderView } from '../hooks/use-bim-model'
 import { shortIfcType } from '../lib/model-index'
@@ -139,15 +140,9 @@ export function IfcModelCompare({
     setState('loading')
     setComparison(null)
     try {
-      const response = await fetch(`/api/bim/models/${modelId}/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ op: 'compare', baseModelId: base, limit: 20_000 }),
-      })
-      if (!response.ok) throw new Error(String(response.status))
-      const body = (await response.json()) as { comparison?: BimComparison }
+      const result = await compareBimModel(modelId, { baseModelId: base, limit: 20_000 })
       if (generation.current !== ticket) return
-      setComparison(body.comparison ? { result: body.comparison, baseModelId: base } : null)
+      setComparison(result ? { result, baseModelId: base } : null)
       setState('idle')
     } catch {
       if (generation.current !== ticket) return

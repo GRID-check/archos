@@ -101,7 +101,7 @@ def _degrees(value: Any, ref: Any) -> float | None:
     """A GPS coordinate from EXIF's (degrees, minutes, seconds) rationals and its N/S/E/W ref."""
     try:
         degrees, minutes, seconds = (float(part) for part in value)
-    except (TypeError, ValueError, ZeroDivisionError):
+    except TypeError, ValueError, ZeroDivisionError:
         return None
     decimal = degrees + minutes / 60 + seconds / 3600
     if isinstance(ref, bytes):

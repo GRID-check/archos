@@ -150,7 +150,7 @@ def emit_revision_compare_card(structured: object, call_input: dict[str, Any] | 
         return None
     try:
         page = int(body.get("page") or 1)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     summary = _compare_summary(structured)
     if not summary:

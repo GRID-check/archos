@@ -63,7 +63,9 @@ from .schema import CHUNK_ID_FIELD
 from .schema import EMBED_IDENTITY_KEYS
 from .schema import INDEXED_AT_FIELD
 from .schema import Physical
+from .schema import current_metadata
 from .schema import physical_for_scope
+from .schema import with_legacy_keys
 from .store import QdrantStore
 
 logger = logging.getLogger(__name__)
@@ -85,7 +87,7 @@ PRUNE_BATCH = 512
 #: Collection metadata key an import that verified in step leaves on both
 #: physical collections (:func:`record_import`); its value says which export
 #: and when.
-IMPORT_MARKER_KEY = "aiq:vector_import"
+IMPORT_MARKER_KEY = "vector_import"
 
 
 class InvalidExport(ValueError):
@@ -135,14 +137,15 @@ class CollectionEntry:
     def identity(self, fallback: Mapping[str, str] | None) -> dict[str, str]:
         """The embedder these vectors came from: the collection's own fingerprint, else ``fallback``."""
         fingerprint_key, model_key = EMBED_IDENTITY_KEYS
-        fingerprint = self.metadata.get(fingerprint_key)
+        metadata = current_metadata(self.metadata)
+        fingerprint = metadata.get(fingerprint_key)
         if fingerprint:
-            return {fingerprint_key: str(fingerprint), model_key: str(self.metadata.get(model_key) or "unknown")}
+            return {fingerprint_key: str(fingerprint), model_key: str(metadata.get(model_key) or "unknown")}
         return dict(fallback or {})
 
     @property
     def has_identity(self) -> bool:
-        return bool(self.metadata.get(EMBED_IDENTITY_KEYS[0]))
+        return bool(current_metadata(self.metadata).get(EMBED_IDENTITY_KEYS[0]))
 
 
 def _entry(name: str, raw: Any) -> CollectionEntry:
@@ -538,7 +541,7 @@ def _physical_collections(store: QdrantStore) -> list[str]:
 def recorded_import(store: QdrantStore) -> str | None:
     """What an earlier import that verified in step recorded on either physical collection, or None."""
     for alias in _physical_collections(store):
-        marker = (store.client.get_collection(alias).config.metadata or {}).get(IMPORT_MARKER_KEY)
+        marker = current_metadata(store.client.get_collection(alias).config.metadata).get(IMPORT_MARKER_KEY)
         if marker:
             return str(marker)
     return None
@@ -554,4 +557,4 @@ def record_import(store: QdrantStore, export: Export) -> None:
     verified = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
     marker = f"export of {export.created_at or 'unknown'} verified {verified}"
     for alias in _physical_collections(store):
-        store.client.update_collection(alias, metadata={IMPORT_MARKER_KEY: marker})
+        store.client.update_collection(alias, metadata=with_legacy_keys({IMPORT_MARKER_KEY: marker}))
