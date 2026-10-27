@@ -5,6 +5,7 @@ import { APP_DEFAULTS, KEDA_SCALER_ROLE, LANGFUSE, PORT, QDRANT } from "../const
 import type { Postgres } from "../data/postgres";
 import { FRONTEND_DRAIN_SECONDS, secretChecksum } from "../platform/rollout";
 import { frontendLangfuseEnv, LANGFUSE_SECRETS_NAME, LANGFUSE_SECRET_KEYS } from "../platform/langfuse";
+import { API_TIER, CHAT_TIER } from "./tier-names";
 
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
@@ -237,18 +238,18 @@ function srefAs(name: string, key: string): EnvVar {
 }
 
 /**
- * The `api` role's Service (`aiq-api`, ADR-0082 step B): every backend HTTP call
- * of the BFF, the internal CronJobs and the workers. The chat socket is the one
+ * The `api` role's Service (ADR-0082 step B): every backend HTTP call of the
+ * BFF, the internal CronJobs and the workers. The chat socket is the one
  * exception, and it has its own URL.
  */
-export const BACKEND_URL = `http://aiq-api:${PORT.backend}`;
+export const BACKEND_URL = `http://${API_TIER}:${PORT.backend}`;
 
 /**
- * The `chat` role's Service (`aiq-agent`): the frontend's WebSocket proxy
+ * The `chat` role's Service: the frontend's WebSocket proxy
  * (`server.js`) and nothing else. With chat affinity on the proxy dials the
  * per-pod address (`BACKEND_POD_WS_TEMPLATE`) and only falls back to this.
  */
-export const BACKEND_CHAT_URL = `http://aiq-agent:${PORT.backend}`;
+export const BACKEND_CHAT_URL = `http://${CHAT_TIER}:${PORT.backend}`;
 
 /**
  * The Python tiers' PostHog pair (`POSTHOG_HOST`, `POSTHOG_PROJECT_TOKEN`), or
@@ -447,7 +448,7 @@ function backendQdrantEnv(w: AppWiring): EnvVar[] {
  */
 const CHAT_ONLY_ENV = new Set(["GRID_CHAT_DRAIN_SECONDS", "GRID_CHAT_AFFINITY", "GRID_CONVERSATION_BUS"]);
 
-/** The chat tier's (`aiq-agent` StatefulSet) environment: the backend env and `GRID_ROLE=chat`. */
+/** The chat tier's (StatefulSet) environment: the backend env and `GRID_ROLE=chat`. */
 export function chatEnv(w: AppWiring): EnvVar[] {
   return [...backendEnv(w), { name: "GRID_ROLE", value: "chat" }];
 }
@@ -520,8 +521,8 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // goes to chat, and it has no fallback to the api URL (ADR-0082 step B).
     { name: "BACKEND_URL", value: BACKEND_URL },
     { name: "BACKEND_CHAT_URL", value: BACKEND_CHAT_URL },
-    // Conversation affinity for horizontal aiq-agent scaling (ADR-0028): the
-    // WS proxy pins a conversation to `aiq-agent-<hash>.aiq-agent-headless` so
+    // Conversation affinity for horizontal chat scaling (ADR-0028): the
+    // WS proxy pins a conversation to `chat-<hash>.chat-headless` so
     // its in-process WS/HITL/task state is always on the same replica. With 1
     // replica the proxy falls back to the load-balanced BACKEND_CHAT_URL.
     { name: "BACKEND_REPLICAS", value: String(cfg.backend.replicas) },
@@ -532,7 +533,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // In-cluster headless-service pod address; traffic never leaves the pod
     // network, so the non-TLS ws scheme below is intentional.
     // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
-    { name: "BACKEND_POD_WS_TEMPLATE", value: `ws://aiq-agent-{i}.aiq-agent-headless:${PORT.backend}` },
+    { name: "BACKEND_POD_WS_TEMPLATE", value: `ws://${CHAT_TIER}-{i}.${CHAT_TIER}-headless:${PORT.backend}` },
     // Frontend replica baseline — lets server.js warn if a multi-replica deploy
     // is missing REDIS_URL (shared cache + WS rate limiter would diverge per pod).
     { name: "FRONTEND_REPLICAS", value: String(cfg.frontend.minReplicas) },

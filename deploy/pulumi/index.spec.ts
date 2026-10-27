@@ -122,7 +122,7 @@ describe("the program constructs in the split topology", () => {
       const container = job.inputs.spec?.jobTemplate?.spec.template.spec.containers[0];
       const url = container?.env?.find((e) => e.name === "SWEEP_URL")?.value;
       // The api role serves them (ADR-0082 step B), not the chat tier.
-      expect(url).toBe(`http://aiq-api:8000/v1/maintenance/housekeeping/${job.name.replace("housekeeping-", "")}`);
+      expect(url).toBe(`http://api:8000/v1/maintenance/housekeeping/${job.name.replace("housekeeping-", "")}`);
       expect(job.inputs.spec?.concurrencyPolicy).toBe("Forbid");
     }
     // Suspended only while `chromaMigration` is on (index-chroma-migration.spec.ts);
@@ -173,30 +173,21 @@ describe("the program constructs in the split topology", () => {
     expect(role("kubernetes:apps/v1:Deployment", "aiq-api")).toEqual(["api"]);
   });
 
-  it("runs chat and api under their new names beside the legacy ones, which callers still dial", () => {
-    // ADR-0145 row 10c, the expand step (`src/app/tier-names.ts`). The rename
-    // recreates each object, so the new ones come up beside the old, identical
-    // but for the name, and take no traffic until the switch.
+  it("points every caller at chat and api while the legacy tiers drain beside them", () => {
+    // ADR-0145 row 10c, the switch step (`src/app/tier-names.ts`). The legacy
+    // tiers stay until the contract step, so the turns they hold finish there.
     expect(named("kubernetes:apps/v1:StatefulSet")).toEqual(expect.arrayContaining(["aiq-agent", "chat"]));
     expect(named("kubernetes:apps/v1:Deployment")).toEqual(expect.arrayContaining(["aiq-api", "api"]));
-    expect(named("kubernetes:core/v1:Service")).toEqual(
-      expect.arrayContaining(["aiq-agent", "aiq-agent-headless", "aiq-api", "chat", "chat-headless", "api"]),
-    );
-    expect(named("kubernetes:autoscaling/v2:HorizontalPodAutoscaler")).toEqual(
-      expect.arrayContaining(["aiq-api", "api"]),
-    );
 
     const envOf = (type: string, name: string) =>
       RESOURCES.find((r) => r.type === type && r.name === name)?.inputs.spec?.template?.spec.containers[0].env;
-    expect(envOf("kubernetes:apps/v1:StatefulSet", "chat")).toEqual(envOf("kubernetes:apps/v1:StatefulSet", "aiq-agent"));
-    expect(envOf("kubernetes:apps/v1:Deployment", "api")).toEqual(envOf("kubernetes:apps/v1:Deployment", "aiq-api"));
-
     const frontend = envOf("kubernetes:apps/v1:Deployment", "frontend") as Array<{ name: string; value?: string }>;
     const valueIn = (name: string) => frontend.find((e) => e.name === name)?.value;
-    expect(valueIn("BACKEND_URL")).toBe("http://aiq-api:8000");
-    expect(valueIn("BACKEND_CHAT_URL")).toBe("http://aiq-agent:8000");
-    // The fleet's turn count would size both chat tiers: only the serving one scales on it.
-    expect(named("kubernetes:keda.sh/v1alpha1:ScaledObject")).not.toContain("chat");
+    expect(valueIn("BACKEND_URL")).toBe("http://api:8000");
+    expect(valueIn("BACKEND_CHAT_URL")).toBe("http://chat:8000");
+    expect(valueIn("BACKEND_POD_WS_TEMPLATE")).toBe("ws://chat-{i}.chat-headless:8000");
+    // A draining tier takes no new turns, so it does not scale on the fleet's count.
+    expect(named("kubernetes:keda.sh/v1alpha1:ScaledObject")).not.toContain("aiq-agent");
   });
 
   it("gives every backend tier the frontend's WorkOS posture, with a client id to validate against", () => {
@@ -232,8 +223,8 @@ describe("the program constructs in the split topology", () => {
     const env = frontend?.inputs.spec?.template?.spec.containers[0].env as Array<{ name: string; value?: string }>;
     const value = (name: string) => env.find((e) => e.name === name)?.value;
 
-    expect(value("BACKEND_URL")).toBe("http://aiq-api:8000");
-    expect(value("BACKEND_CHAT_URL")).toBe("http://aiq-agent:8000");
+    expect(value("BACKEND_URL")).toBe("http://api:8000");
+    expect(value("BACKEND_CHAT_URL")).toBe("http://chat:8000");
   });
 
   it("creates the scheduler, because it is the run reconciler's clock", () => {
