@@ -193,6 +193,25 @@ describe('InboundMailDetail', () => {
     expect(screen.queryByTestId('attachment-folder')).toBeNull()
   })
 
+  it('says why the mail text cannot be filed while the mail’s own malware check is not clean', () => {
+    renderDetail('original-infected')
+    expect(screen.getByTestId('message-checkbox')).toBeDisabled()
+    expect(screen.getByTestId('message-scan-infected')).toHaveTextContent('The mail contains malware, so its text cannot be filed.')
+
+    const base = DETAIL_VARIANTS['member-verified']
+    const failed = { ...base.view, rawScan: 'failed' as const }
+    render(
+      <InboundMailDetail projectId={PROJECT_ID} mailId={failed.id} initial={failed} initialText={base.text} folders={FOLDERS} client={fixtureClient({ detail: { ...base, view: failed } })} onChanged={vi.fn()} now={FIXTURE_NOW} pollMs={1} />
+    )
+    expect(screen.getByTestId('message-scan-failed')).toHaveTextContent('The mail’s malware check failed and is being repeated. Its text can be filed once the check passes.')
+  })
+
+  it('gives no scan reason beside a text whose mail scanned clean', () => {
+    renderDetail('member-verified')
+    expect(screen.getByTestId('message-checkbox')).toBeEnabled()
+    expect(screen.queryByTestId(/^message-scan-/)).toBeNull()
+  })
+
   it('warns of nothing for a mail that poses as nobody', () => {
     renderDetail('external-unverified')
     expect(screen.queryByTestId('impersonation-warning')).toBeNull()

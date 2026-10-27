@@ -180,6 +180,12 @@ export const inboundMail = {
     acknowledge: 'It belongs to this mail thread anyway',
     alreadyFiled: 'This text is already in a mail thread.',
     unreadable: 'The text could not be read, so it cannot be filed. The original holds it.',
+    /** Why the text cannot be filed while the whole raw message's malware check is not clean (`scan_not_clean`). */
+    rawScan: {
+      pending: 'The mail is still being checked for malware. Its text can be filed once the check passes.',
+      failed: 'The mail’s malware check failed and is being repeated. Its text can be filed once the check passes.',
+      infected: 'The mail contains malware, so its text cannot be filed.',
+    },
     followed: 'Text added to the mail thread (following)',
     filed: 'Filed in a mail thread',
     filedTo: 'Filed in mail thread “{name}”',

@@ -15,7 +15,7 @@
 
 import type { JSX } from 'react'
 import { useId, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, FolderInput, Mail, MailCheck } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, FolderInput, Loader2, Mail, MailCheck, ShieldAlert, ShieldQuestion } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FilingChip } from '@/components/ui/filing-chip'
@@ -114,6 +114,21 @@ export function MessageRow({ projectId, view, draft, folders, copy, threadNameSt
         {part?.riskFlags.includes('unreadable') && (
           <FactLine icon={AlertTriangle} tone="warning">
             {t('message.unreadable')}
+          </FactLine>
+        )}
+        {view.rawScan === 'infected' && (
+          <FactLine icon={ShieldAlert} tone="danger" testId="message-scan-infected">
+            {t('message.rawScan.infected')}
+          </FactLine>
+        )}
+        {view.rawScan === 'failed' && (
+          <FactLine icon={ShieldQuestion} tone="warning" testId="message-scan-failed">
+            {t('message.rawScan.failed')}
+          </FactLine>
+        )}
+        {view.rawScan === 'pending' && (
+          <FactLine icon={Loader2} testId="message-scan-pending" className="[&>svg]:motion-safe:animate-spin">
+            {t('message.rawScan.pending')}
           </FactLine>
         )}
         {alreadyFiled && <FactLine icon={CheckCircle2}>{t('message.alreadyFiled')}</FactLine>}

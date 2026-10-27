@@ -187,6 +187,12 @@ export const inboundMail: typeof en.inboundMail = {
     acknowledge: 'Gehört trotzdem zu diesem E-Mail-Verlauf',
     alreadyFiled: 'Dieser Text liegt schon in einem E-Mail-Verlauf.',
     unreadable: 'Der Text konnte nicht gelesen werden und lässt sich daher nicht ablegen. Das Original enthält ihn.',
+    /** Warum der Text nicht abgelegt werden kann, solange die Prüfung der ganzen E-Mail nicht bestanden ist (`scan_not_clean`). */
+    rawScan: {
+      pending: 'Die E-Mail wird noch auf Schadsoftware geprüft. Der Text lässt sich ablegen, sobald die Prüfung bestanden ist.',
+      failed: 'Die Prüfung der E-Mail auf Schadsoftware ist fehlgeschlagen und wird wiederholt. Der Text lässt sich ablegen, sobald sie bestanden ist.',
+      infected: 'Die E-Mail enthält Schadsoftware, daher lässt sich ihr Text nicht ablegen.',
+    },
     followed: 'Text dem E-Mail-Verlauf angefügt (Verlauf folgen)',
     filed: 'In einem E-Mail-Verlauf abgelegt',
     filedTo: 'In E-Mail-Verlauf „{name}“ abgelegt',

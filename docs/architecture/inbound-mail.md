@@ -105,7 +105,10 @@ One log line per delivery, ids and codes only; a refusal is a PostHog
 2. **scan the whole raw message** (`ScanMail yes`) and store the verdict; a
    mail is never `waiting` unscanned (CHECK `inbound_mails_waiting_is_scanned`).
    A text whose raw message is not `clean` cannot be filed, by a person or a
-   follow: filing the text keeps that message as the entry's original;
+   follow: filing the text keeps that message as the entry's original. The
+   review offers that text unchecked and disabled, and says why beside it
+   (`message.rawScan` in the dictionaries: still being checked, check failed
+   and repeated, or malware);
 3. drop auto-replies, delivery reports and loops (`dropped`, raw erased); mark
    list and bulk mail `automatic`;
 4. **authenticate the sender** (`sender-auth.ts`, mailauth 8 without an IP, so
