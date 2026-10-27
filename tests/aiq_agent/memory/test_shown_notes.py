@@ -8,7 +8,7 @@ the turn that was shown it.
 
 from __future__ import annotations
 
-from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.memory import shown_notes as S
 from aiq_agent.memory.restriction import RestrictedNote
 from aiq_agent.memory.shown_notes import ShownNotes

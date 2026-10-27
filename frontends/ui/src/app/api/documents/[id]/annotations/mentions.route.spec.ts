@@ -80,7 +80,8 @@ import {
   type AnnotationRecord,
 } from '@/lib/annotations/repository'
 import type { MarkMention } from '@/lib/annotations/types'
-import type { Document, DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
+import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema/document-annotations'
+import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import type { InboxEmission } from '@/lib/inbox/service'

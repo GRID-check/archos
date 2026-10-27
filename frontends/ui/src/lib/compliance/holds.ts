@@ -20,7 +20,7 @@
 
 import 'server-only'
 import { ConflictError } from '@/lib/api/errors'
-import type { DeletionEntityType } from '@/lib/db/schema'
+import type { DeletionEntityType } from '@/lib/db/schema/deletion-queue'
 import { LEGAL_HOLD_MESSAGE, LEGAL_HOLD_REASON } from './legal-hold-codes'
 import { isCoveredByActiveHold } from './repository'
 

@@ -27,9 +27,9 @@ from aiq_agent.agents.piloti.agent import _recursion_limit
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.agents.piloti.register import ResearchAgentConfig
 from aiq_agent.agents.piloti.register import research_agent
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common import LLMProvider
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 

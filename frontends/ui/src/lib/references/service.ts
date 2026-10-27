@@ -34,7 +34,7 @@ import {
   similarityFacts,
   type SimilarityFacts,
 } from '@/lib/cross-project/similarity'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { isProjectClosed } from '@/lib/projects/project-status'
 import { getProjectMemory, listProjects, type ProjectMemoryListItem } from '@/lib/projects/service'

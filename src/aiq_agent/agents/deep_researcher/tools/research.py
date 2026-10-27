@@ -68,7 +68,7 @@ def _positive_int_env(name: str, default: int) -> int:
     """Positive-int env override; falls back to ``default`` when unset/invalid/<=0."""
     try:
         value = int(os.environ.get(name, ""))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
     return value if value > 0 else default
 
@@ -239,7 +239,7 @@ async def _run_research_query(
             result = await researcher_runnable.ainvoke(
                 researcher_invoke_state(query, runtime), config=_worker_config(callbacks)
             )
-        except (RunBudgetExceededError, BudgetExceededError):
+        except RunBudgetExceededError, BudgetExceededError:
             raise
         except GraphRecursionError:
             raise ResearcherExhaustedError(

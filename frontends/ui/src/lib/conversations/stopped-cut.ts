@@ -17,7 +17,7 @@
  */
 
 import { v5 as uuidv5 } from 'uuid'
-import type { Message } from '@/lib/db/schema'
+import type { Message } from '@/lib/db/schema/messages'
 import { ConflictError } from '@/lib/api/errors'
 import { holdsNoMoreThan, sharedPrefixChars, stoppedAnswer } from '@/features/chat/lib/stopped-answer'
 

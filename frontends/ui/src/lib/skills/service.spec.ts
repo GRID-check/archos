@@ -53,7 +53,8 @@ import * as categoryRepository from './skill-category-repository'
 import * as platformRepository from './platform-repository'
 import { findPlatformSkill, listPlatformSkills } from './platform-skills'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
-import type { PlatformSkillRow, Skill } from '@/lib/db/schema'
+import type { Skill } from '@/lib/db/schema/jobs'
+import type { PlatformSkillRow } from '@/lib/db/schema/platform-skills'
 import {
   listSkills,
   createSkill,

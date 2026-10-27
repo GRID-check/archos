@@ -19,7 +19,7 @@
 import 'server-only'
 import { INBOX_TYPE_DEFINITIONS } from '@/lib/inbox/registry'
 import { pruneInboxItemsOlderThan } from '@/lib/inbox/repository'
-import type { InboxItemType } from '@/lib/db/schema'
+import type { InboxItemType } from '@/lib/db/schema/inbox'
 
 /** Cap per invocation so a large backlog is worked off across calls, not in one lock. */
 const PRUNE_BATCH = 1000

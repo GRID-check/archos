@@ -1,3 +1,4 @@
+// @disk-inputs: ../../shared/wire/v2/**, ../../src/aiq_agent/common/turn_status.py, ../../src/aiq_agent/skills/events.py, ../shared/wire/v2, shared/wire/v2
 /**
  * @vitest-environment node
  */

@@ -15,11 +15,7 @@
 import 'server-only'
 import { and, asc, eq, isNull, or } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  skillCategories,
-  type NewSkillCategoryRow,
-  type SkillCategoryRow,
-} from '@/lib/db/schema'
+import { skillCategories, type NewSkillCategoryRow, type SkillCategoryRow } from '@/lib/db/schema/skill-categories'
 
 /** Hard cap for a category list — platform categories plus one org's own. */
 export const CATEGORIES_LIST_LIMIT = 100

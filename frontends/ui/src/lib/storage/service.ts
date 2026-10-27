@@ -27,7 +27,7 @@ import {
 } from './repository'
 import { readKnownOrganizationUsage } from './known-organization'
 import { getEffectiveMaxUploadBytes } from './upload-limit'
-import type { NewDocument } from '@/lib/db/schema'
+import type { NewDocument } from '@/lib/db/schema/documents'
 import { documentShelf } from '@/lib/documents/shelf'
 import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { InsufficientStorageError, UnprocessableError } from '@/lib/api/errors'

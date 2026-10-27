@@ -54,9 +54,11 @@ vi.mock('@/lib/db', () => {
     }),
   }
 })
-vi.mock('@/lib/db/schema', () => ({
-  projectFolders: { id: 'folders.id', projectId: 'folders.project_id', parentId: 'folders.parent_id', path: 'folders.path' },
+vi.mock('@/lib/db/schema/documents', () => ({
   documents: { id: 'documents.id', folderId: 'documents.folder_id', projectId: 'documents.project_id' },
+}))
+vi.mock('@/lib/db/schema/project-folders', () => ({
+  projectFolders: { id: 'folders.id', projectId: 'folders.project_id', parentId: 'folders.parent_id', path: 'folders.path' },
 }))
 
 import { ConflictError } from '@/lib/api/errors'

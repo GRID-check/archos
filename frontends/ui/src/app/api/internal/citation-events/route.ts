@@ -7,11 +7,7 @@
  */
 
 import { z } from 'zod'
-import {
-  CITATION_EVENT_AGENTS,
-  CITATION_EVENT_KINDS,
-  CITATION_EVENT_SEVERITIES,
-} from '@/lib/db/schema'
+import { CITATION_EVENT_AGENTS, CITATION_EVENT_KINDS, CITATION_EVENT_SEVERITIES } from '@/lib/db/schema/citation-events'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { withOptionalTenant } from '@/lib/db/tenant-context'
 import { recordCitationEvents } from '@/lib/citations/service'

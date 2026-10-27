@@ -1,3 +1,4 @@
+// @disk-inputs: src/app/app/(shell)/inbox/inbox-sheet.tsx, src/features/bim/components/viewer/viewer-tool-button.tsx, src/features/chat/components/AgentPrompt.tsx, src/features/chat/components/effort-dial/EffortDial.tsx, src/features/documents/components/file-workspace.tsx
 /**
  * Static ratchets for the phone details that fail without a sound: a list that
  * ends under the home indicator, a caption that ellipsizes, a layout animation

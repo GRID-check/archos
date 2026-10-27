@@ -1,3 +1,4 @@
+// @disk-inputs: src/styles/tokens.css
 /**
  * The diagram's palette, and the three claims it makes.
  *
