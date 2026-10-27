@@ -31,7 +31,6 @@
  */
 
 import { mergePageRegions, type PageRegion } from '@/features/knowledge/lib/page-region'
-import type { SourceTint } from '@/features/layout/lib/source-presets'
 import type { CitationProject, CitationSource } from '../../types'
 import {
   KIND_TO_SIGNAL,
@@ -41,7 +40,8 @@ import {
   kindForLane,
   type Shelf,
   type SourceKind,
-} from '../source-kinds'
+  type SourceTint,
+} from '@/lib/source-kinds'
 import { documentDisplayName } from '../document-names'
 
 /** Origin token the backend stamps on a source line (`[KB]` / `[RIS]` / `[Web]`). */

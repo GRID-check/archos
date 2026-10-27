@@ -320,14 +320,14 @@ config:
 
   # claiming. Peak VLM calls in flight = replicas × concurrency × 4
 
-  # (AIQ_VLM_BATCH_WORKERS), all on the shared OpenRouter key; the
+  # (GRID_VLM_BATCH_WORKERS), all on the shared OpenRouter key; the
 
   # cluster-autoscaler adds nodes for Pending replicas up to the worker group's
 
   # max, so size that group for maxReplicas × the limits below.
   # Wide and small (2026-10-19): eight pods of two files, not three of three.
   # The 8Gi/12Gi sizing paid for a parse that held the whole document; the text
-  # pass now holds one page (AIQ_PDF_PAGE_MAX_OBJECTS, #1095), so a file peaks
+  # pass now holds one page (GRID_PDF_PAGE_MAX_OBJECTS, #1095), so a file peaks
   # at about one raster decode (<= 1 GiB) plus a page and its embeddings, and
   # two files fit 6Gi. Memory request = limit, so the scheduler never places
   # more than a node holds: overcommitted limits took the 16 GB app nodes down

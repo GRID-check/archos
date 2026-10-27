@@ -41,7 +41,7 @@ import { notFound } from 'next/navigation'
 import { ArrowUp, AtSign, ChevronDown, Mic, Paperclip } from 'lucide-react'
 
 import { AddresseeIndicator } from '@/features/collaboration/components/AddresseeIndicator'
-import type { DraftMention } from '@/features/collaboration/lib/mention-text'
+import type { DraftMention } from '@/lib/mentions/mention-text'
 import { I18nProvider, useTranslations } from '@/i18n'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 

@@ -9,6 +9,7 @@
 import 'server-only'
 import { z } from 'zod'
 import { getBackendUrl } from '@/lib/backend-proxy'
+import { internalServiceHeaders } from '@/lib/internal-auth'
 import { MAIL_ARCHIVE_READ_TIMEOUT_MS } from './config'
 
 const addressSchema = z.object({ name: z.string(), address: z.string() })
@@ -109,7 +110,7 @@ async function post(path: string, body: unknown): Promise<Response> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-grid-internal-token': process.env.GRID_INTERNAL_API_TOKEN ?? '',
+      ...internalServiceHeaders(getBackendUrl()),
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(MAIL_ARCHIVE_READ_TIMEOUT_MS),

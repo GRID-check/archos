@@ -1036,20 +1036,20 @@ export interface GridConfig {
     minReplicas: number;
     /**
      * Ceiling. The real ceiling is the model provider's rate limit on the
-     * shared key: replicas × concurrency × `AIQ_VLM_BATCH_WORKERS` is the
+     * shared key: replicas × concurrency × `GRID_VLM_BATCH_WORKERS` is the
      * peak number of VLM calls in flight, and `assertVlmPeakFitsCeiling` fails
      * the deploy when that is more than twice `vlmFleetConcurrency`, which is
      * itself held to the provider ceilings.
      */
     maxReplicas: number;
-    /** Jobs one replica runs at once (`AIQ_INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
+    /** Jobs one replica runs at once (`GRID_INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
     concurrency: number;
     /** SIGTERM budget to finish claimed jobs; an unfinished one is claimed again elsewhere. */
     drainSeconds: number;
     /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
     maxPerOrg: number;
     /**
-     * `AIQ_MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
+     * `GRID_MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
      * refused before it is decoded. pypdfium2 cannot downscale an embedded image
      * on decode, so this is the only bound on one bitmap's allocation; the
      * PDFium lock serialises decodes within a process, so the tier's raster peak
@@ -1106,9 +1106,9 @@ export interface GridConfig {
    * vision model's own `modelLimitCeiling` (a call takes a slot in each pool).
    */
   providerLimits: {
-    /** `AIQ_VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
+    /** `GRID_VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
     vlmFleetConcurrency: number;
-    /** `AIQ_VLM_BATCH_WORKERS`: vision calls one file runs at once. */
+    /** `GRID_VLM_BATCH_WORKERS`: vision calls one file runs at once. */
     vlmBatchWorkers: number;
     /** `GRID_PROVIDER_LIMIT_CEILING`: model calls in flight fleet-wide, all models together. */
     limitCeiling: number;
@@ -2993,7 +2993,7 @@ export function loadConfig(): GridConfig {
         limitsMemory: cfg.get("ingestWorkerLimitsMemory") ?? "6Gi",
       },
       minReplicas: Math.max(0, num(cfg, "ingestWorkerMinReplicas", 1)),
-      // 5 x 3 x `AIQ_VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
+      // 5 x 3 x `GRID_VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
       // most the default budget can feed (`assertVlmPeakFitsCeiling`).
       maxReplicas: Math.max(1, num(cfg, "ingestWorkerMaxReplicas", 5)),
       concurrency: Math.max(1, num(cfg, "ingestWorkerConcurrency", 3)),
@@ -3402,8 +3402,8 @@ export function gotenbergCapacity(cfg: Pick<GridConfig, "gotenberg">): number {
 /**
  * Vision calls the ingest tier can have in flight at its ceiling: replicas, times
  * the jobs one replica runs at once, times the files' own parallelism
- * (`AIQ_VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
- * slot of the fleet pool (`AIQ_VLM_FLEET_CONCURRENCY`).
+ * (`GRID_VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
+ * slot of the fleet pool (`GRID_VLM_FLEET_CONCURRENCY`).
  */
 export function vlmPeakCalls(cfg: Pick<GridConfig, "ingestWorker" | "providerLimits">): number {
   return cfg.ingestWorker.maxReplicas * cfg.ingestWorker.concurrency * cfg.providerLimits.vlmBatchWorkers;
@@ -3414,7 +3414,7 @@ export function vlmPeakCalls(cfg: Pick<GridConfig, "ingestWorker" | "providerLim
  * wait for a slot, which is what the pool is for, so some overshoot is a queue
  * that keeps the pool busy between files; a lot of it is replicas that only hold
  * memory while they wait, and a wait long enough to meet the vision client's
- * timeout (`AIQ_VLM_TIMEOUT_SECONDS`) is a retry for nothing.
+ * timeout (`GRID_VLM_TIMEOUT_SECONDS`) is a retry for nothing.
  */
 export const VLM_OVERSUBSCRIPTION = 2;
 

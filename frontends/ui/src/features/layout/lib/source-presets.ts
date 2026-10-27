@@ -17,33 +17,8 @@
  */
 
 import type { DataSourceFromAPI } from '@/adapters/api'
+import type { SourceSignal } from '@/lib/source-kinds'
 import type { SourcePresetId } from '../types'
-
-/**
- * The provenance signal a source belongs to (spec §4 `--source-*` family).
- * `auto` covers web search / anything unclassified.
- *
- * `model` is the one signal no composer preset selects for and no data source
- * classifies into: it is what the project's BIM model measures, and nothing
- * retrieves it. It belongs here anyway, because a signal is what the
- * `--source-*` token families and the provenance glyphs are keyed on, and a
- * measurement is a provenance family of its own — not a refinement of law,
- * project or office (which is what an accent like `oib` is).
- */
-export type SourceSignal = 'law' | 'project' | 'office' | 'auto' | 'model'
-
-/**
- * A `--source-*` token family name: the four signals plus the lane-level
- * accents that refine one of them.
- *
- * `oib` is not a fifth signal — the OIB corpus is still `law` everywhere the
- * coarse provenance stratum is what matters (icon, presets, trust grouping).
- * It exists because OIB and RIS are the two tiers architects compare most, and
- * painting both the same blue left the authority badge carrying that entire
- * distinction on its own. Resolve it with `accentForLane` in the chat feature,
- * which is the only place a fine lane key is known.
- */
-export type SourceTint = SourceSignal | 'oib'
 
 /** Matches law/regulation sources: RIS, Baurecht, OIB Richtlinien, norms. */
 const LAW_RE = /(^|[^a-z])ris([^a-z]|$)|recht|\blaw\b|richtlin|oib|norm|gesetz/i

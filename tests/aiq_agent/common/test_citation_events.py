@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+from aiq_agent.common import bff_http
 from aiq_agent.common import citation_events
 from aiq_agent.common.citation_events import CitationEvent
 from aiq_agent.common.citation_events import build_turn_events
@@ -329,7 +330,7 @@ class TestEmission:
             captured["token"] = request.headers.get("X-grid-internal-token")
             return _Response()
 
-        with patch("urllib.request.urlopen", _urlopen):
+        with patch.object(bff_http._opener, "open", _urlopen):
             citation_events._post_batch({"events": [], "turnId": "t"})
 
         assert captured["url"] == "http://frontend:3000/api/internal/citation-events"
@@ -344,16 +345,18 @@ class TestTransportHardening:
         monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
         monkeypatch.delenv("GRID_CITATION_EVENTS_ENABLED", raising=False)
 
-    def test_a_non_http_frontend_url_is_never_opened(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A misconfigured base URL must not hand urllib a file:// handler."""
+    def test_a_non_http_frontend_url_is_dropped_not_raised(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A misconfigured base URL reaches no file:// handler (the seam has none) and costs the turn nothing."""
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", "file:///etc")
-        with patch("urllib.request.urlopen") as urlopen:
+        with caplog.at_level("WARNING"):
             citation_events._post_batch({"events": [], "turnId": "t"})
-        urlopen.assert_not_called()
+        assert "Failed to post citation event(s)" in caplog.text
 
     def test_https_is_allowed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", "https://frontend.internal")
-        with patch("urllib.request.urlopen") as urlopen:
+        with patch.object(bff_http._opener, "open") as urlopen:
             urlopen.return_value.__enter__.return_value.status = 202
             citation_events._post_batch({"events": [], "turnId": "t"})
         assert urlopen.call_count == 1
