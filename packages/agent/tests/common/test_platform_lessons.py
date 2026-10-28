@@ -125,7 +125,7 @@ class TestHoldout:
     """The control group both tiers must agree on.
 
     These vectors are pinned on the TypeScript side too
-    (frontends/ui/src/lib/platform-lessons/holdout.spec.ts). The two
+    (apps/workspace/bff/platform-lessons/holdout.spec.ts). The two
     implementations decide different things — this tier whether to INJECT, the
     BFF how to LABEL the resulting vote — so a disagreement would not fail
     anything loudly; it would quietly mislabel every measurement.

@@ -70,7 +70,7 @@ SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 EXCLUDED = re.compile(
     "|".join(
         (
-            r"^frontends/ui/src/shared/cards/generated\.ts$",  # card schemas, rendered from cards/models.py
+            r"^apps/workspace/shared/cards/generated\.ts$",  # card schemas, rendered from cards/models.py
             r"\.generated\.",  # wire-v2.generated.ts and its kind
             r"\.d\.ts$",  # type declarations
             r"(^|/)(tests?|testing|__tests__|e2e|_?fixtures|__fixtures__|test-utils)/",  # suites, their support, data

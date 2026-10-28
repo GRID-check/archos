@@ -73,7 +73,7 @@ _OUTPUT_AGENT_TYPES: dict[str, str] = {
 
 
 #: The longest composed ``input`` a run accepts. The BFF mirrors it as
-#: ``AGENT_RUN_INPUT_MAX_CHARS`` (``frontends/ui/src/lib/jobs/types.ts``) and
+#: ``AGENT_RUN_INPUT_MAX_CHARS`` (``apps/workspace/bff/jobs/types.ts``) and
 #: derives every prompt budget from that copy; ``test_skill_submit.py`` holds
 #: the two equal.
 SUBMIT_INPUT_MAX_CHARS = 48_000

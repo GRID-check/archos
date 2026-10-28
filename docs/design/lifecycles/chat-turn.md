@@ -5,7 +5,7 @@
 [`../chat-wire-v2.md`](../chat-wire-v2.md) (events),
 [`../grid-design-language.md`](../grid-design-language.md) (motion tokens),
 [`../run-block.md`](../run-block.md) (hand-off to a run).
-**Owner area:** `frontends/ui/src/features/chat/` (ChatArea, ChatThinking,
+**Owner area:** `apps/workspace/ui/features/chat/` (ChatArea, ChatThinking,
 ReasoningFlow, SubagentGroups, AgentResponse, InputArea, `lib/turn-fold.ts`,
 `lib/turn-projection.ts`, `hooks/use-paced-text.ts`).
 **Method:** [`../../contributing/lifecycle-matrix.md`](../../contributing/lifecycle-matrix.md).
@@ -33,7 +33,7 @@ shoving another's content.
 - HL = `/dev/derivation?variant=`. CT = `/dev/chat-turn` (static answer
   variants). SR = `/dev/stream-replay`. RB = `/dev/run-block`. SH =
   `/dev/shared-thread`. SA = `/dev/subagents?variant=` (`live`, `phone`).
-- MP = `frontends/ui/scripts/measure-stream-socket.mjs`
+- MP = `apps/workspace/scripts/measure-stream-socket.mjs`
   ([harness](../../contributing/testing-and-verification.md#the-socket-level-streaming-harness)).
   It passes `--scenario`, `--error`, `--drop`, `--reload`, `--switch`,
   `--stop` and `--toggle` to SS unchanged, and adds `--reader scroll`,

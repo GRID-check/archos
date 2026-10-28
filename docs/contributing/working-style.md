@@ -272,14 +272,14 @@ an hour of work, not "the backend half".
 The case: the Anmerkungen canvas was built by three builders each owning a
 large area. Every later piece touched one of those areas and queued behind it,
 so the work ran mostly in series and took far longer than it needed to. The
-fix was a contract file (`frontends/ui/src/lib/proposals/types.ts`) written
+fix was a contract file (`apps/workspace/bff/proposals/types.ts`) written
 first, and five slices started at once, each told which files it owns and which
 it must not touch.
 
 Rules that kept the parallel slices from colliding:
 
 * **Hot files have one owner at a time:** migration bookkeeping
-  (`drizzle/meta/_journal.json`, `rls-coverage.spec.ts`, `scripts/rls-test-db.sh`),
+  (`migrations/meta/_journal.json`, `rls-coverage.spec.ts`, `scripts/rls-test-db.sh`),
   `lib/db/schema/index.ts`, each i18n namespace, a shared service. A slice that
   needs one reports the exact lines instead of editing.
 * **Only the integrator touches git.** Builders make file changes; a shared

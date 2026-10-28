@@ -1,6 +1,6 @@
 /**
  * The intake eval's BFF gate: the real `needs` and `record` logic of
- * `frontends/ui/src/lib/project-intake/`, served over stdin/stdout so the
+ * `apps/workspace/bff/project-intake/`, served over stdin/stdout so the
  * Python harness (`scripts/intake_eval/harness.py`) can fake the route
  * in-process without a database.
  *
@@ -28,23 +28,23 @@
  */
 
 import { createInterface } from 'node:readline'
-import { projectIntakeDefinitionV1 as definition } from '../../frontends/ui/src/lib/project-profile/intake-definition'
-import type { DocumentEvidence } from '../../frontends/ui/src/lib/project-profile/evidence-schema'
-import { emptyProjectProfile } from '../../frontends/ui/src/lib/project-profile/patch-engine'
-import { ProjectProfileSchema, type ProjectProfile } from '../../frontends/ui/src/lib/project-profile/types'
-import { computeNeeds } from '../../frontends/ui/src/lib/project-intake/needs'
+import { projectIntakeDefinitionV1 as definition } from '../../apps/workspace/bff/project-profile/intake-definition'
+import type { DocumentEvidence } from '../../apps/workspace/bff/project-profile/evidence-schema'
+import { emptyProjectProfile } from '../../apps/workspace/bff/project-profile/patch-engine'
+import { ProjectProfileSchema, type ProjectProfile } from '../../apps/workspace/bff/project-profile/types'
+import { computeNeeds } from '../../apps/workspace/bff/project-intake/needs'
 import {
   planRecord,
   planWithdraw,
   staticRefusal,
   type ScreenedValue,
-} from '../../frontends/ui/src/lib/project-intake/record'
+} from '../../apps/workspace/bff/project-intake/record'
 import {
   internalIntakeRequestSchema,
   type DismissedValue,
   type IntakeMode,
   type RecordRefusalReason,
-} from '../../frontends/ui/src/lib/project-intake/types'
+} from '../../apps/workspace/bff/project-intake/types'
 
 interface GateRequest {
   op: 'empty' | 'needs' | 'record' | 'withdraw'

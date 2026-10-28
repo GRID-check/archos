@@ -1,6 +1,6 @@
 """Reading the ``platform_skills`` seeds off disk, as the runtime would see them.
 
-The seeds (``frontends/ui/drizzle/00XX_*_standard_skill.sql``) are the only
+The seeds (``apps/workspace/migrations/00XX_*_standard_skill.sql``) are the only
 place ``piloti-voice`` and ``piloti-cards`` exist in this repo: a row of SQL
 text on one side of the stack and a :class:`~aiq_agent.skills.models.Skill` on
 the other. Two suites need that translation and they must not disagree about
@@ -22,7 +22,7 @@ from pathlib import Path
 from aiq_agent.skills.models import Skill
 
 REPO_ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
-DRIZZLE_DIR = REPO_ROOT / "frontends" / "ui" / "drizzle"
+DRIZZLE_DIR = REPO_ROOT / "apps" / "workspace" / "migrations"
 
 #: The columns the seeds insert, in the order they insert them. Parsing is
 #: anchored on this rather than on each file's formatting so a seed that adds a

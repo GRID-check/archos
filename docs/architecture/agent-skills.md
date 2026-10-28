@@ -35,7 +35,7 @@ surfaces are tabulated in `docs/api/python-endpoints.md` and
 
 Feature gate: `FEATURE_FLAGS.skills` (`skills` in WorkOS), an entitlement with
 no env fallback — `isSkillsEnabled` / `requireSkillsEnabled` in
-`frontends/ui/src/lib/authz/feature-flags.ts`. Jobs
+`apps/workspace/bff/authz/feature-flags.ts`. Jobs
 ride the same flag: the two ship as one feature and are turned on together, so
 a second flag would only add a way for them to disagree.
 
@@ -71,7 +71,7 @@ warning (`resolver._build_org_skills`), never silently half-loaded.
 schedules became jobs. Scheduling is a property of the job, and so is the
 output kind (`jobs.output`). The removed keys are **not rejected** — they are
 simply unreserved (`GRID_METADATA_KEYS` in `packages/agent/src/aiq_agent/skills/models.py`,
-`METADATA_AGENTS`/`METADATA_CARDS` in `frontends/ui/src/lib/skills/types.ts`),
+`METADATA_AGENTS`/`METADATA_CARDS` in `apps/workspace/bff/skills/types.ts`),
 so a stored org row or a pasted SKILL.md still carrying one keeps it as
 ordinary free-form metadata and nothing reads it. Rejecting them would turn a
 deployed row into a read-time validation error and take a working skill out of
@@ -100,7 +100,7 @@ are a parse error for a builtin
   `packages/agent/src/aiq_agent/skills/builtin/<collection>/<name>/SKILL.md`, discovered
   deterministically by `discover_builtin_skills()`. The BFF sees the same
   files through the generated `@/lib/skills/platform-skills` module
-  (`frontends/ui/scripts/sync-platform-skills.mjs`), so both tiers read one
+  (`apps/workspace/scripts/sync-platform-skills.mjs`), so both tiers read one
   source of truth.
 - **Org** (`origin="org"` / `"platform-clone"`): rows in the `skills` table,
   authored in the organization. The backend reads them through the BFF internal
@@ -309,7 +309,7 @@ identically on both tiers:
 | Tier | Function | File |
 |------|----------|------|
 | Backend | `_skill_applies_to_agent` (delegating to `_agent_allows`) | `packages/agent/src/aiq_agent/skills/resolver.py:89` |
-| BFF | `skillTargetsAgent` — **module-private**, called by `resolveSkillsForAgent` | `frontends/ui/src/lib/skills/service.ts:320` |
+| BFF | `skillTargetsAgent` — **module-private**, called by `resolveSkillsForAgent` | `apps/workspace/bff/skills/service.ts:320` |
 
 They are a deliberate contract pair, kept close in shape as well as behaviour,
 and `service.spec.ts` pins the TypeScript against the same cases the Python
@@ -332,7 +332,7 @@ skill from the chat agent, with no error and no log a user could see. The key
 no longer exists on the skill at all; the output kind is now `jobs.output`,
 chosen by the user, and it decides only **which agent runs the job**
 (`routes/skills.py::_OUTPUT_AGENT_TYPES`, mirrored by `AGENT_FOR_OUTPUT` in
-`frontends/ui/src/lib/jobs/types.ts`). The skill picker in the job builder then
+`apps/workspace/bff/jobs/types.ts`). The skill picker in the job builder then
 offers exactly the skills this one gate resolves for that agent — which is the
 payoff of consolidating availability onto a single key.
 
@@ -351,9 +351,9 @@ moving it costs another migration and another alias pair.
 Because the name is author-written and was seeded by ten migrations, both
 resolvers read the old spelling as the new one (`AGENT_ALIASES` in
 `packages/agent/src/aiq_agent/skills/resolver.py`, `SKILL_AGENT_ALIASES` in
-`frontends/ui/src/lib/skills/types.ts`, and the mirror in
+`apps/workspace/bff/skills/types.ts`, and the mirror in
 `features/skills/lib/agent-scope.ts`), and
-`frontends/ui/drizzle/0081_grid_agents_researcher_rename.sql` moved the stored
+`apps/workspace/migrations/0081_grid_agents_researcher_rename.sql` moved the stored
 rows. The alias is not decoration: an unknown name is IGNORED, and an allowlist
 of only ignored names reads as absent — so dropping it would silently offer
 every chat-scoped skill to deep research as well.
@@ -529,7 +529,7 @@ applies.
   ordinary character again. A successful empty answer still opens the panel —
   that panel is where the product explains what a skill is.
 
-Files: `frontends/ui/src/features/skills/lib/slash-command.ts` (pure text
+Files: `apps/workspace/ui/features/skills/lib/slash-command.ts` (pure text
 logic), `hooks/use-slash-command.ts` (composer behaviour),
 `components/SlashCommandPicker.tsx` (the menu, deliberately the same keyboard
 contract and panel as `MentionPicker`) and `components/InvokedSkillChip.tsx`
@@ -595,7 +595,7 @@ own: `task_definitions` (kind, plan, requester, `trigger` = manual | once |
 schedule, and the schedule/due columns live per arm) and `task_runs` (one
 attempt, including skipped/errored fires that never reached the agent; runner
 fields from `job_runs`, lifecycle/filing/review from `tasks`).**
-`frontends/ui/src/lib/db/schema/task-model.ts` declares them; `jobs`,
+`apps/workspace/bff/db/schema/task-model.ts` declares them; `jobs`,
 `job_runs` and `tasks` are LEGACY, read only by the 0086 backfill until
 migration 0087 drops them. `conversations.job_id` was repointed to
 `task_definitions.id` in 0086 (job ids were reused for their definitions).
@@ -603,8 +603,8 @@ The sections below still describe the shipped `skills` table and the pre-0086
 shape of the others.
 
 Five tables. `skills`/`jobs`/`job_runs` live in
-`frontends/ui/src/lib/db/schema/jobs.ts`, created by
-`frontends/ui/drizzle/0041_agent_skills.sql` as `skills`/`skill_schedules`/
+`apps/workspace/bff/db/schema/jobs.ts`, created by
+`apps/workspace/migrations/0041_agent_skills.sql` as `skills`/`skill_schedules`/
 `skill_runs` and reshaped by `0043_jobs.sql`; `0044_conversation_job_provenance.sql`
 adds the link from a conversation back to the job that produced it, and
 `0046_curated_skill_activations.sql` adds `curated_skill_activations`,
@@ -775,7 +775,7 @@ All routes are feature-gated (`requireSkillsEnabled`). Authorization is
 enforced in the service, not the route (ADR-0017); the routes are thin
 adapters. Every query is additionally org-filtered.
 
-Org toolbox (`frontends/ui/src/app/api/skills/…`):
+Org toolbox (`apps/workspace/app/api/skills/…`):
 
 - `GET  /api/skills` — what the organization has: its own rows plus the
   platform's **offers** (each carrying the org's on/off decision), org
@@ -795,7 +795,7 @@ Org toolbox (`frontends/ui/src/app/api/skills/…`):
   fleet's copy. The service 404s any name that is not a published offer, so
   the machinery cannot be switched off by hand-crafting a request.
 
-Platform catalogue (`frontends/ui/src/app/api/platform/skills/…`) — platform
+Platform catalogue (`apps/workspace/app/api/platform/skills/…`) — platform
 owners only (ADR-0016), no per-org feature flag; this is the layer *under*
 every tenant's skill list:
 
@@ -813,7 +813,7 @@ every tenant's skill list:
 - `GET  /api/skills/invocable` — the `/name` picker's list (name +
   description only, chat-executable, enabled). Any org member.
 
-Organization settings (`frontends/ui/src/app/api/organization/instructions`) —
+Organization settings (`apps/workspace/app/api/organization/instructions`) —
 not a skill route, and here because it is where forcing went:
 
 - `GET  /api/organization/instructions` — the org's standing instruction block.
@@ -859,7 +859,7 @@ compose network):
 
 ### The fire path
 
-`fireJob(job, trigger, actor)` (`frontends/ui/src/lib/jobs/service.ts`) is the
+`fireJob(job, trigger, actor)` (`apps/workspace/bff/jobs/service.ts`) is the
 single submission path for both manual and scheduled runs. Tenancy is derived
 from the job row itself, and it never throws for a skip:
 
@@ -1101,7 +1101,7 @@ block on the fire prompt (`previousDecisionsBlock`), so what a person told
 Piloti "no" about reaches the run rather than a log line.
 `GET /api/projects/[id]/tasks` lists a project's tasks, newest first.
 
-## Scheduler worker (`frontends/ui/scheduler/`)
+## Scheduler worker (`apps/workspace/scheduler/`)
 
 Plain-Node worker (purger idiom: CommonJS, `postgres` client, `.spec.mjs`
 tests), compose service `skill-scheduler` (container `grid-skill-scheduler`)

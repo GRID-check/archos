@@ -32,7 +32,7 @@ import pytest
 
 from aiq_agent.stages import iter_stages
 
-_MIRROR = Path("frontends/ui/src/lib/workos/feature-flags.ts")
+_MIRROR = Path("apps/workspace/bff/workos/feature-flags.ts")
 
 
 @pytest.fixture(scope="module")

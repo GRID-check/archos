@@ -1,7 +1,7 @@
 # The precedent eval's questions (docs/roadmap/office-experience.md, step A).
 #
 # Asked in the CURRENT project of the fixture office
-# (frontends/ui/tests/fixtures/precedent/office.json): a four-storey timber
+# (apps/workspace/tests/fixtures/precedent/office.json): a four-storey timber
 # residential building, GK 4, in Perchtoldsdorf, Niederösterreich. Every
 # expectation is a fact read off that fixture office, never a value from memory.
 #

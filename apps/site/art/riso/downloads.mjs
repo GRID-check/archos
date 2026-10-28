@@ -7,7 +7,7 @@
  *   out  LinkedIn, deck, social, postcard and its print separations. Exported
  *        to the gitignored art/riso/out/<work>/, so a deploy never has them;
  *        this copies them in.
- *   app  the product app's vignettes. They live in frontends/ui/public/art/,
+ *   app  the product app's vignettes. They live in apps/workspace/public/art/,
  *        which the site's image (built from apps/site alone) cannot reach.
  *
  *   node art/riso/downloads.mjs              # publish what exists, rewrite src/data/downloads.json

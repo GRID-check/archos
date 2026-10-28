@@ -3,7 +3,7 @@
 The answer suite runs the real agent with no BFF, so it cannot ask a single
 question about another project (docs/roadmap/office-experience.md, step A).
 This serves exactly the routes that question needs, from
-``frontends/ui/tests/fixtures/precedent/``:
+``apps/workspace/tests/fixtures/precedent/``:
 
 - ``POST /api/internal/turn-context``: the current project's PROJECT_CONTEXT
   and the reference catalog, both as the production renderers wrote them
@@ -57,7 +57,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-FIXTURES = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
+FIXTURES = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent"
 
 #: The per-project page the BFF searched before ADR-0116 (8 projects). The BFF now ranks a page of
 #: `CROSS_PROJECT_PAGE_PROJECTS` (40, `lib/cross-project/types.ts`) in one grouped query; kept at 8 so

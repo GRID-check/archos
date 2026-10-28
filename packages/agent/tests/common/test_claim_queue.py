@@ -89,7 +89,7 @@ def _created_at(queue: claim_queue.ClaimQueue, url: str, job_id: str, at: str) -
 
 # The next two scenarios are the lane order every claim shares: the same two run in
 # tests/knowledge_layer_tests/test_ingest_queue.py and in the BFF's
-# frontends/ui/src/lib/jobs-queue/queue.integration.spec.ts. Priority never picks the lane.
+# apps/workspace/bff/jobs-queue/queue.integration.spec.ts. Priority never picks the lane.
 
 
 def test_a_lane_is_ranked_by_its_oldest_job_not_its_best_priority(url):

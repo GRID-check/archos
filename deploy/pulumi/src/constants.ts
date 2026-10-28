@@ -25,7 +25,7 @@ export const UID = {
   qdrant: 1000,
   /** Backend image (`apps/backend/Dockerfile`): `USER 1000:1000`. */
   backend: 1000,
-  /** Frontend image (`frontends/ui/deploy/Dockerfile`): user `nextjs` = 1001. */
+  /** Frontend image (`apps/workspace/deploy/Dockerfile`): user `nextjs` = 1001. */
   frontend: 1001,
   /** Web (landing/blog) image (`apps/site/Dockerfile`): user `piloti` = 1001. */
   web: 1001,
@@ -406,7 +406,7 @@ export const EDGE_RATE_LIMIT = {
     /** Session/login endpoints — the credential-stuffing surface. */
     auth: "/api/auth",
     /**
-     * The chat WebSocket (`frontends/ui/server.js` upgrade handler). One upgrade
+     * The chat WebSocket (`apps/workspace/server.js` upgrade handler). One upgrade
      * here fans out into agent runs — and it is the LAST thing the edge sees of
      * that session, because every later turn rides the open socket (ADR-0009).
      */
@@ -417,7 +417,7 @@ export const EDGE_RATE_LIMIT = {
 /**
  * The geocoder (ADR-0120): a self-hosted Photon over the Austrian OSM extract,
  * behind the project creation dialog's address search (`GEOCODER_URL`,
- * `frontends/ui/src/lib/geocoding/photon.ts`).
+ * `apps/workspace/bff/geocoding/photon.ts`).
  *
  * Upstream publishes no Photon image, and a community one would put a third
  * party's build between client addresses and us. So the pod runs two official,

@@ -16,7 +16,7 @@ way to the wire payload the frontend renders.
 The cross-language seams (Python producer ↔ TypeScript consumer) cannot run in
 one process; they are pinned to shared fixture files instead — see
 ``TestSharedWireFixturesAreCurrent`` and its counterpart
-``frontends/ui/src/features/chat/lib/citation-wire-contract.spec.ts``.
+``apps/workspace/ui/features/chat/lib/citation-wire-contract.spec.ts``.
 """
 
 from __future__ import annotations
@@ -713,7 +713,7 @@ class TestSharedWireFixturesAreCurrent:
     These formats cross a process boundary, so no single test can exercise both
     ends. Each side asserts against the SAME checked-in fixture instead: this
     class proves the fixtures are still what the Python producers emit, and
-    ``frontends/ui/src/features/chat/lib/citation-wire-contract.spec.ts`` proves
+    ``apps/workspace/ui/features/chat/lib/citation-wire-contract.spec.ts`` proves
     the frontend still parses them. Change a format and exactly one of the two
     fails — which is the whole point, because silent drift here is invisible
     until a user sees an unlabelled or mis-tinted source.

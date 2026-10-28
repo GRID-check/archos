@@ -62,7 +62,7 @@ AI-Q, then Grid, now Piloti, and the next name is coming; every earlier rename
 was a code change across thousands of lines. Name the thing for what it does:
 `MAX_ACTIVE_JOBS_PER_ORG`, not `MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
 `piloti_wakes`. The product's name is copy, read from one place:
-`PRODUCT_NAME` in `frontends/ui/src/lib/brand.ts`, which the dictionaries
+`PRODUCT_NAME` in `apps/workspace/bff/brand.ts`, which the dictionaries
 reach as `{productName}`, and `aiq_agent.common.brand.PRODUCT_NAME`, which a
 prompt reaches as `{{ product_name }}`. `tests/test_product_name_parity.py`
 holds the two equal.
@@ -141,7 +141,7 @@ change needs them.
 ### `any` is not a type we accept, in production code or in tests
 
 `no-explicit-any` (typescript-eslint's rule, run by oxlint as
-`typescript/no-explicit-any`) is an **error** in `frontends/ui/.oxlintrc.json`,
+`typescript/no-explicit-any`) is an **error** in `apps/workspace/.oxlintrc.json`,
 and the suite is clean. Reach for the real
 type, a `Partial<T>` or `Pick<T, …>` of it, `unknown`, or a deliberate
 `as unknown as T` at a single documented boundary.

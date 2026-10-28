@@ -58,7 +58,7 @@ class SubjectVersion:
 
 #: The version states in which a document is still being worked on and therefore
 #: has no chunks. Mirrors ``OPEN_DOCUMENT_VERSION_STATES`` in
-#: ``frontends/ui/src/lib/documents/lifecycle-types.ts``; there is no shared
+#: ``apps/workspace/bff/documents/lifecycle-types.ts``; there is no shared
 #: schema between the two, exactly as for the source kinds.
 _OPEN_VERSION_STATES = frozenset({"draft", "in_review", "changes_requested"})
 

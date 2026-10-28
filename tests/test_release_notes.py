@@ -629,7 +629,7 @@ def test_no_public_changelog_string_reads_as_german():
 
 def test_a_product_change_needs_a_note():
     assert require_note.needs_note(["packages/agent/src/aiq_agent/tools/bim/register.py"])
-    assert require_note.needs_note(["frontends/ui/src/app/page.tsx"])
+    assert require_note.needs_note(["apps/workspace/app/page.tsx"])
 
 
 def test_tests_and_docs_do_not_need_a_note():
@@ -637,7 +637,7 @@ def test_tests_and_docs_do_not_need_a_note():
         [
             "tests/test_release_notes.py",
             "packages/agent/src/aiq_agent/tools/bim/tests/test_measure.py",
-            "frontends/ui/src/app/page.spec.tsx",
+            "apps/workspace/app/page.spec.tsx",
             "docs/architecture/overview.md",
             "deploy/pulumi/src/index.ts",
             "apps/site/src/pages/changelog.astro",

@@ -8,13 +8,13 @@
 > [row-level-security.md](row-level-security.md).
 
 
-The `app` database stores application state managed by the Next.js BFF. It uses **Drizzle ORM** (PostgreSQL dialect) with schema definitions in `frontends/ui/src/lib/db/schema/`.
+The `app` database stores application state managed by the Next.js BFF. It uses **Drizzle ORM** (PostgreSQL dialect) with schema definitions in `apps/workspace/bff/db/schema/`.
 
 ---
 
 ## Schema Files
 
-All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `index.ts`:
+All schemas are in `apps/workspace/bff/db/schema/` and barrel-exported from `index.ts`:
 
 | File | Table |
 |------|-------|
@@ -51,7 +51,7 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 ## projects
 
 ```typescript
-// frontends/ui/src/lib/db/schema/projects.ts
+// apps/workspace/bff/db/schema/projects.ts
 import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const projects = pgTable('projects', {
@@ -123,7 +123,7 @@ The down migration drops the table and its rows.
 ## conversations
 
 ```typescript
-// frontends/ui/src/lib/db/schema/conversations.ts
+// apps/workspace/bff/db/schema/conversations.ts
 import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { projects } from './projects'
 
@@ -157,7 +157,7 @@ export const conversations = pgTable('conversations', {
 ## messages
 
 ```typescript
-// frontends/ui/src/lib/db/schema/messages.ts
+// apps/workspace/bff/db/schema/messages.ts
 import { jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { conversations } from './conversations'
 
@@ -208,7 +208,7 @@ on read (`lib/runs/run-ledger.ts`, `server-message-mapper.ts`) — the same
 contract `retrieval_ledger` keeps, and for a stronger reason: the payload is
 produced by a different deployable. The shape is defined once in zod
 (`lib/runs/run-ledger-types.ts`) and exported to
-`frontends/ui/tests/fixtures/run-ledger.schema.json`, which the Python models
+`apps/workspace/tests/fixtures/run-ledger.schema.json`, which the Python models
 (`packages/agent/src/aiq_agent/common/run_ledger.py`) validate against (ADR-0055, ADR-0062).
 
 **English names in the metadata (migrations `0163`, `0164`).** The closed
@@ -244,7 +244,7 @@ spellings (`LEGACY_*`, listed in each migration's header) for one release.
 ## documents
 
 ```typescript
-// frontends/ui/src/lib/db/schema/documents.ts
+// apps/workspace/bff/db/schema/documents.ts
 import { pgTable, uuid, text, timestamp, jsonb, integer, index } from 'drizzle-orm/pg-core'
 import { projects } from './projects'
 
@@ -752,7 +752,7 @@ Folders of a **shelf**: a project's Dateien (`scope = 'project'`) or the org-wid
 > **The name is a deliberate deferral.** `project_folders` is a misnomer for the Archiv half of its rows. Renaming it touches the Python mirror (`document_metadata.folder_path`, ADR-0049) and ten earlier migrations and turns a column change into a table swap, so it waits for something that forces a table swap anyway. Read it as "shelf folders"; the same note sits beside the table in `schema/project-folders.ts`.
 
 ```typescript
-// frontends/ui/src/lib/db/schema/project-folders.ts
+// apps/workspace/bff/db/schema/project-folders.ts
 export const projectFolders = pgTable('project_folders', {
   id: uuid('id').primaryKey().defaultRandom(),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }), // NULL for an Archiv folder
@@ -803,7 +803,7 @@ export const projectFolders = pgTable('project_folders', {
 
 One role's access to a folder with its own list, as ADR-0088 had it. **Nothing
 in the app reads or writes it since migration `0128`.** Its one reader is the
-conversion script `frontends/ui/scripts/migrate-folder-grants-to-workos.ts`
+conversion script `apps/workspace/scripts/migrate-folder-grants-to-workos.ts`
 (`migrate:folder-grants`, run by the deploy Job `grid-app-folder-grants`), which
 turns each role entry into folder roles of the people who hold that role
 ([the rollout](../deployment/workos-provisioning.md#rolling-out-folder-roles-adr-0097)).
@@ -842,7 +842,7 @@ left alone.
 
 ## folder_cards
 
-Migration `0180`, [ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md). The tier-1 card of a folder: what `list_files` shows beside its name so an agent can tell what the folder holds without opening a document. Written only by the BFF (`PUT /api/internal/folder-cards`, `frontends/ui/src/app/api/internal/folder-cards/route.ts`; repository `src/lib/folder-cards/repository.ts`, wire contract `src/lib/folder-cards/types.ts`, JSON Schema `tests/fixtures/folder-cards.schema.json`); the Python builder computes the card and sends it. The Qdrant folder point derived from a card is rebuildable.
+Migration `0180`, [ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md). The tier-1 card of a folder: what `list_files` shows beside its name so an agent can tell what the folder holds without opening a document. Written only by the BFF (`PUT /api/internal/folder-cards`, `apps/workspace/app/api/internal/folder-cards/route.ts`; repository `src/lib/folder-cards/repository.ts`, wire contract `src/lib/folder-cards/types.ts`, JSON Schema `tests/fixtures/folder-cards.schema.json`); the Python builder computes the card and sends it. The Qdrant folder point derived from a card is rebuildable.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -1164,7 +1164,7 @@ audit trail.
 ## user_preferences
 
 ```typescript
-// frontends/ui/src/lib/db/schema/user-preferences.ts
+// apps/workspace/bff/db/schema/user-preferences.ts
 import { jsonb, pgTable, text } from 'drizzle-orm/pg-core'
 
 export const userPreferences = pgTable('user_preferences', {
@@ -1271,7 +1271,7 @@ override still wins). A save replaces the whole set — groups omitted from the
 payload are deleted, which is how a group is handed back to the YAML for those
 organizations. Resolution at
 runtime is per group: org override → platform default → YAML. Schema:
-`frontends/ui/src/lib/db/schema/platform-model-defaults.ts`.
+`apps/workspace/bff/db/schema/platform-model-defaults.ts`.
 
 **Rows are provisioned on first boot, not by a migration.**
 `lib/model-config/bootstrap-defaults.ts` fills the table when it is entirely
@@ -1302,7 +1302,7 @@ spend is not. Read by the backend through `GET /api/internal/reasoning-efforts`
 (TTL-cached, fail-open). A separate table rather than a column on
 `platform_model_defaults` because `model` there is `NOT NULL`: a shared row would
 force an owner to pin a model in order to change the thinking level. Schema:
-`frontends/ui/src/lib/db/schema/platform-reasoning-efforts.ts`.
+`apps/workspace/bff/db/schema/platform-reasoning-efforts.ts`.
 
 ## platform_retrieval_settings (migration 0029)
 
@@ -1320,9 +1320,9 @@ from the payload are deleted, which is how a count is handed back to the
 default. The BFF serves the pinned set to the backend over
 `GET /api/internal/retrieval-settings` (TTL-cached, fail-open); the catalog of
 keys, bounds and boot defaults is the single source of truth at
-`frontends/ui/src/lib/retrieval-settings/catalog.ts` (mirrored in the backend
+`apps/workspace/bff/retrieval-settings/catalog.ts` (mirrored in the backend
 resolver `packages/agent/src/aiq_agent/common/retrieval_settings.py`, parity-tested). Schema:
-`frontends/ui/src/lib/db/schema/platform-retrieval-settings.ts`.
+`apps/workspace/bff/db/schema/platform-retrieval-settings.ts`.
 
 ## org_model_configs / org_model_config_versions (migration 0012)
 
@@ -1334,7 +1334,7 @@ or the workflow YAML where none is pinned) plus `updated_by`.
 (monotonic per org, unique `(organization_id, version)`), `overrides` jsonb
 (`{agentGroup: {model}}`), `model_snapshot` jsonb (OpenRouter catalog
 metadata at validation time), `comment`, `created_by`. Save = insert + repoint;
-rollback = repoint. Schema: `frontends/ui/src/lib/db/schema/org-model-config.ts`.
+rollback = repoint. Schema: `apps/workspace/bff/db/schema/org-model-config.ts`.
 
 ## budget_policies / llm_usage_events (migration 0013)
 
@@ -1360,7 +1360,7 @@ LLM budgets and the usage ledger (ADR-0015).
   (org,project,time), (org,model,time), (org,message). An answer's cost line
   (`GET /api/conversations/:id/messages/:messageId/usage`) sums its frozen
   `credits`. Schema:
-  `frontends/ui/src/lib/db/schema/budgets.ts`.
+  `apps/workspace/bff/db/schema/budgets.ts`.
 - `llm_usage_rollups` (migration 0015, ADR-0019): write-through daily spend
   aggregate — one row per (org, UTC day, user, project; empty string = none),
   `cost_usd`, `events`. Incremented in the same transaction as every ledger
@@ -1379,7 +1379,7 @@ described here.
 
 Jobs and Agent Skills (ADR-0046, `docs/architecture/agent-skills.md`) — the
 successor to the removed Workflows tables. Schema:
-`frontends/ui/src/lib/db/schema/jobs.ts`.
+`apps/workspace/bff/db/schema/jobs.ts`.
 
 **A job is a prompt on a timer**; a skill may be attached on top, exactly as
 typing `/name` before a message would attach it. 0041 created these as
@@ -1452,7 +1452,7 @@ in or out of the boundary.
 The other two tiers of the skills substrate (`docs/architecture/agent-skills.md`).
 `skills` above is what an ORGANIZATION writes; these are what the PLATFORM writes
 and what each organization decided about it. Schema:
-`frontends/ui/src/lib/db/schema/platform-skills.ts`,
+`apps/workspace/bff/db/schema/platform-skills.ts`,
 `.../curated-skill-activations.ts`.
 
 - `platform_skills` (0047): the fleet-wide catalogue written in
@@ -1531,7 +1531,7 @@ claims and runs (project reindex, failed-ingestion rescan, the sort of a shelf's
 `placement_reingest`; and, one step each,
 IFC extraction `bim_extract`, office conversion `office_rendition` and research
 report filing `file_research_report`). The claim is SQL in
-`frontends/ui/workers/job-queue.js`, in the order ADR-0076 proved for
+`apps/workspace/workers/job-queue.js`, in the order ADR-0076 proved for
 ingestion: the lane with the fewest live claims, then the lane served longest
 ago (`bff_job_lane_turns`), then inside a lane `priority` (0 interactive, 1
 bulk), then oldest, with `FOR UPDATE SKIP LOCKED`.
@@ -1729,7 +1729,7 @@ Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6). One row pe
   effectiveness read; and `idx_answer_feedback_created` (plain) serves the
   windowed platform-quality aggregates and the lesson vote-counter refresh,
   which were sequential scans before 0069.
-  Schema: `frontends/ui/src/lib/db/schema/answer-feedback.ts`.
+  Schema: `apps/workspace/bff/db/schema/answer-feedback.ts`.
 
 ---
 
@@ -1738,8 +1738,8 @@ Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6). One row pe
 Citation-quality ledger written **only** by `POST /api/internal/citation-events`
 (the backend emitter `packages/agent/src/aiq_agent/common/citation_events.py`) — the quality
 sibling of the cost ledger (`llm_usage_events`) and the timing ledger
-(`agent_profiler_spans`). Schema: `frontends/ui/src/lib/db/schema/citation-events.ts`;
-migration `drizzle/0025_citation_events.sql`.
+(`agent_profiler_spans`). Schema: `apps/workspace/bff/db/schema/citation-events.ts`;
+migration `migrations/0025_citation_events.sql`.
 
 **One row per `(turn_id, kind)`.** Every observed research turn writes exactly
 one `turn_verified` baseline row — the denominator behind the platform
@@ -1770,7 +1770,7 @@ a retrieved passage. That is what makes it safe to browse cross-organization
 from the platform tier.
 
 Read by the platform-owner-only citation-health surface
-(`frontends/ui/src/lib/citations/*`, `GET /api/platform/citation-health` and its
+(`apps/workspace/bff/citations/*`, `GET /api/platform/citation-health` and its
 `/export` sibling).
 
 **Two counting rules the readers must respect**, because both were violated and
@@ -1846,7 +1846,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `task_run.completed` / `task_run.failed` / `task_run.waiting` (a task run ended, failed or stopped to ask; `job.*` until migration 0177, still read through `LEGACY_INBOX_TYPES` for one release), `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_revision` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`apps/workspace/bff/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `task_run.completed` / `task_run.failed` / `task_run.waiting` (a task run ended, failed or stopped to ask; `job.*` until migration 0177, still read through `LEGACY_INBOX_TYPES` for one release), `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_revision` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |
@@ -2057,4 +2057,4 @@ reaches every tenant) and the anonymization boundary.
   `recall_count` on `project_memory`. See
   `docs/architecture/semantic-notes.md` for why the vector is a column rather
   than a second store, and where that stops being the right call.
-  Schema: `frontends/ui/src/lib/db/schema/platform-lessons.ts`.
+  Schema: `apps/workspace/bff/db/schema/platform-lessons.ts`.

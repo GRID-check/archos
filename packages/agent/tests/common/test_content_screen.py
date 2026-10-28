@@ -1,7 +1,7 @@
 """The content screen: spans, the mask, and the fixture the browser's twin reads too.
 
 ``tests/fixtures/content_screen_cases.json`` is the contract between
-``aiq_agent.common.content_screen`` and ``frontends/ui/src/lib/upload-screening/content-screen.ts``:
+``aiq_agent.common.content_screen`` and ``apps/workspace/bff/upload-screening/content-screen.ts``:
 both read that one file, run every case and must produce the same matches, the
 same masked text and the same findings. It also holds the character tables both
 twins must agree on (whitespace, decimal digits, letter/number/mark classes, the

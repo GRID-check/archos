@@ -206,7 +206,7 @@ def retired_card_markdown(payload: object) -> str | None:
 # docs/adr/0030-interactive-card-decisions-persist-on-the-message.md).
 #
 # Adding a card type here is a contract with the frontend, not a label:
-#   - `frontends/ui/src/features/grid-cards/card-decision.ts` must classify it
+#   - `apps/workspace/ui/features/grid-cards/card-decision.ts` must classify it
 #     `'interactive'` in CARD_INTERACTIVITY (that map is exhaustive, so `tsc`
 #     fails until you do);
 #   - its renderer must drive its lifecycle from `useCardDecision`, never from
@@ -216,7 +216,7 @@ def retired_card_markdown(payload: object) -> str | None:
 #     no message position for its decision to be keyed by. `cards/models.py`
 #     derives that set from this one (and from SYSTEM_CARD_TYPES), so Python
 #     needs no edit; the frontend's copy in
-#     `frontends/ui/src/features/a2ui/catalog.tsx` is kept by hand, and
+#     `apps/workspace/ui/features/a2ui/catalog.tsx` is kept by hand, and
 #     `packages/agent/tests/cards/test_surface_excluded_parity.py` holds it to the
 #     derived set.
 #

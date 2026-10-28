@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 THREAD_REPLY_METADATA_KEY = "thread_reply"
 
 #: The longest reply the BFF takes: ``MAX_ANNOTATION_BODY`` in
-#: ``frontends/ui/src/lib/annotations/types.ts``, as ``canvas__reply`` enforces it.
+#: ``apps/workspace/bff/annotations/types.ts``, as ``canvas__reply`` enforces it.
 MAX_REPLY_CHARS = MAX_BODY
 
 

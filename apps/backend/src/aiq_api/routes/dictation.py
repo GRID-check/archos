@@ -1,6 +1,6 @@
 """Voice dictation: one recorded utterance in, clean composer text out.
 
-Backs the BFF's ``POST /api/dictation`` (``frontends/ui/src/lib/dictation``),
+Backs the BFF's ``POST /api/dictation`` (``apps/workspace/bff/dictation``),
 which authenticates the member, bounds the audio and rate-limits the call
 before it reaches this route. Design and what is still unverified:
 ``docs/architecture/voice-dictation.md``.

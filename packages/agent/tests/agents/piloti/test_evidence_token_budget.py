@@ -31,7 +31,7 @@ PROMPT = Path(__file__).resolve().parents[5] / "packages/agent/src/aiq_agent/age
 MAX_DESCRIPTION_TOKENS = 1_890
 MAX_SCHEMA_TOKENS = 1_260
 #: The shared tools' NAT schemas, as ``scripts/generate_backend_tools_schema.py`` exports them.
-NAT_SCHEMAS = Path(__file__).resolve().parents[5] / "frontends/ui/tests/fixtures/backend-tools.schema.json"
+NAT_SCHEMAS = Path(__file__).resolve().parents[5] / "apps/workspace/tests/fixtures/backend-tools.schema.json"
 _TYPES = {"string": str, "integer": int, "boolean": bool, "object": dict}
 #: The evidence bullets of `<rules>`: 175 (chars / 4) after slice 6, 191 before.
 MAX_EVIDENCE_BULLET_TOKENS = 185

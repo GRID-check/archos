@@ -330,7 +330,7 @@ yet for the same reason.
 
 ### Where the page is
 
-One organism, `frontends/ui/src/features/search` (`SearchWorkspace`), at every
+One organism, `apps/workspace/ui/features/search` (`SearchWorkspace`), at every
 scope; the question lives in the URL (`?q=…&type=…&view=register&sort=…`), so
 a search is a link and Back walks its filters.
 
@@ -535,10 +535,10 @@ Planfred-style "who received which Index" from the version access log.
 
 ## Measured
 
-`task fe:search:latency` seeds a throwaway Postgres migrated with the repo's
+`task workspace:search:latency` seeds a throwaway Postgres migrated with the repo's
 chain and times the repository functions themselves, as `app_rw` under
 row-level security, pool and per-statement `SET LOCAL` included
-(`frontends/ui/src/lib/search/search-latency.integration.spec.ts`; a spec
+(`apps/workspace/bff/search/search-latency.integration.spec.ts`; a spec
 rather than a script, so it measures the SQL the builders make, not a copy).
 The office: three organizations, the measured one with 120 projects and
 20,000 documents (5% held, 3% archived, 10% superseded, 2% in a hidden

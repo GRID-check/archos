@@ -42,7 +42,7 @@ from aiq_agent.turn.response import answer_message_id
 from nat.plugin_api import FunctionInfo
 
 SCHEMA_PATH = (
-    Path(__file__).resolve().parents[5] / "frontends" / "ui" / "tests" / "fixtures" / "cross-project.schema.json"
+    Path(__file__).resolve().parents[5] / "apps" / "workspace" / "tests" / "fixtures" / "cross-project.schema.json"
 )
 
 HEADER, SIGNATURE = "eyJzaWduZWQiOiJ0dXJuIn0", "c0ffee"

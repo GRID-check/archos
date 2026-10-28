@@ -226,7 +226,7 @@ Enablement (two gates):
   or the stage is compiled out entirely (unset by default historically; now set
   to `card_llm` in `config_oib_openrouter.yml`).
 - **Runtime** — each turn is gated by `isMemoryReflectionEnabled`
-  (`frontends/ui/src/lib/workos/feature-flags.ts`), evaluated by the BFF at the
+  (`apps/workspace/bff/workos/feature-flags.ts`), evaluated by the BFF at the
   WS upgrade and forwarded to the backend as the
   `x-grid-feature-memory-reflection` header (fail-closed: absent header → off).
   The per-org `memory-reflection` **WorkOS feature flag** is the source of

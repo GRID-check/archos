@@ -55,7 +55,7 @@ def request_upload_slot(
     """Ask the BFF for a presigned PUT for one raster; ``None`` on any failure.
 
     A 404 is the BFF saying the document is unknown or the index is past
-    ``MAX_STORED_IMAGES_PER_DOCUMENT`` (``frontends/ui/src/lib/s3.ts``) —
+    ``MAX_STORED_IMAGES_PER_DOCUMENT`` (``apps/workspace/bff/s3.ts``) —
     both mean there is nothing more to store for this document.
     """
     base_url = os.environ.get(_FRONTEND_INTERNAL_URL_ENV, "").strip()

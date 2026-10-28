@@ -7,8 +7,8 @@ opened so far (``progress``, for the setup page's live count), and says when
 it is done (``finish``); the BFF decides what a value becomes
 (suggestion, corroboration, contradiction, refusal) and is the single writer of
 the profile (ADR-0003). The body is ``internalIntakeRequestSchema`` in
-``frontends/ui/src/lib/project-intake/types.ts``, exported as
-``frontends/ui/tests/fixtures/project-intake.schema.json``;
+``apps/workspace/bff/project-intake/types.ts``, exported as
+``apps/workspace/tests/fixtures/project-intake.schema.json``;
 ``packages/agent/tests/agents/intake/test_client.py`` validates the bodies built here
 against that file. There is no Pydantic twin.
 

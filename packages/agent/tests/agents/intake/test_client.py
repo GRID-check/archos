@@ -1,6 +1,6 @@
 """The intake API client: the bodies are the contract's, the envelope is echoed, a refusal is text.
 
-The contract is ``frontends/ui/tests/fixtures/project-intake.schema.json``,
+The contract is ``apps/workspace/tests/fixtures/project-intake.schema.json``,
 exported from ``lib/project-intake/types.ts``. There is no Pydantic twin.
 """
 

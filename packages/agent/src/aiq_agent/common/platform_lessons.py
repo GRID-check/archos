@@ -148,7 +148,7 @@ def is_in_holdout_slice(conversation_id: str, holdout_pct: int) -> bool:
     """Whether this conversation is in the lessons control group.
 
     The Python twin of ``isInHoldoutSlice`` in
-    ``frontends/ui/src/lib/platform-lessons/holdout.ts``: sha256 of the
+    ``apps/workspace/bff/platform-lessons/holdout.ts``: sha256 of the
     conversation id, first four bytes, modulo 100. Both tiers must reach the
     same verdict from the same key with no shared state — this tier decides
     whether to INJECT, the BFF decides how to LABEL the resulting vote, and a

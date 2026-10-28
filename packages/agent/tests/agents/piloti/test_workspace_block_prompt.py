@@ -19,7 +19,7 @@ from aiq_agent.agents.piloti.prompt import system_prompt_template
 
 ROOT = Path(__file__).resolve().parents[5]
 #: The block the production renderer writes (`workspace-block.fixture.spec.ts`).
-BLOCK = json.loads((ROOT / "frontends/ui/tests/fixtures/workspace/rendered.json").read_text(encoding="utf-8"))[
+BLOCK = json.loads((ROOT / "apps/workspace/tests/fixtures/workspace/rendered.json").read_text(encoding="utf-8"))[
     "workspace"
 ].replace("{conversation}", "conv-1")
 HEADING = "## Workspace"

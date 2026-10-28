@@ -26,11 +26,11 @@ def test_every_file_a_test_reads_is_in_its_tiers_filter_and_no_more():
 
 
 def test_python_chains_skip_comments_and_docstrings():
-    source = '''"""See frontends/ui/a.ts."""
-UI = ROOT / "frontends" / "ui"  # not "x/y.ts"
+    source = '''"""See apps/workspace/a.ts."""
+UI = ROOT / "apps" / "workspace"  # not "x/y.ts"
 path = UI / "src" / "b.ts"
 '''
-    assert reads.chains(reads.python_tokens(source)) == ["frontends/ui", "src/b.ts"]
+    assert reads.chains(reads.python_tokens(source)) == ["apps/workspace", "src/b.ts"]
 
 
 def test_script_chains_take_either_quote_and_skip_comments():
@@ -38,26 +38,24 @@ def test_script_chains_take_either_quote_and_skip_comments():
 /* `no/block.ts` */
 const label = <p>don't</p>
 read('apps', "backend", 'x.py')
-join(repoRoot, "frontends/ui", 'y.js')
+join(repoRoot, "apps/workspace", 'y.js')
 """
-    assert reads.chains(reads.script_tokens(source)) == ["apps/backend/x.py", "frontends/ui/y.js"]
+    assert reads.chains(reads.script_tokens(source)) == ["apps/backend/x.py", "apps/workspace/y.js"]
 
 
 def test_a_chain_resolves_under_a_directory_the_file_names():
-    files = {"frontends/ui/src/lib/documents/search.ts", "README.md"}
+    files = {"apps/workspace/bff/documents/search.ts", "README.md"}
     directories = {
-        "frontends",
-        "frontends/ui",
-        "frontends/ui/src",
-        "frontends/ui/src/lib",
-        "frontends/ui/src/lib/documents",
+        "apps/workspace",
+        "apps/workspace/bff",
+        "apps/workspace/bff/documents",
     }
     source = (
-        'LIB = ROOT / "frontends" / "ui" / "src" / "lib"\n'
+        'LIB = ROOT / "apps" / "workspace" / "bff"\n'
         'cap = number(LIB / "documents" / "search.ts", "SEARCH_CAP")\n'
         'name = "README.md"\n'
     )
-    assert reads.files_read("t.py", source, files, directories) == {"frontends/ui/src/lib/documents/search.ts"}
+    assert reads.files_read("t.py", source, files, directories) == {"apps/workspace/bff/documents/search.ts"}
 
 
 def test_the_harness_tests_are_exempt():

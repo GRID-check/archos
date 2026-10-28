@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 #: The queue every down-voted answer lands in (the BFF adds it,
-#: ``frontends/ui/src/lib/langfuse/feedback-score.ts`` ``REVIEW_QUEUE_NAME``).
+#: ``apps/workspace/bff/langfuse/feedback-score.ts`` ``REVIEW_QUEUE_NAME``).
 REVIEW_QUEUE_NAME = "answer-review"
 
 

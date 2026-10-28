@@ -80,7 +80,7 @@ EXCLUDED = re.compile(
         (
             r"^docs/(adr|audits)/",  # decisions and audits: history, written once
             r"^releasenotes/",  # what shipped, under the name it shipped with
-            r"(^|/)migrations/|^frontends/ui/drizzle/",  # Alembic and Drizzle history, written once
+            r"(^|/)migrations/|^apps/workspace/migrations/",  # Alembic and Drizzle history, written once
             r"(^|/)i18n/dictionaries/|^apps/site/src/(i18n|data)/",  # copy, where the name belongs
             r"(^|/)public/",  # published assets: their URLs are public
             r"(^|/)(uv\.lock|bun\.lockb?|package-lock\.json|apm\.lock\.yaml)$",  # rendered from manifests
@@ -89,22 +89,22 @@ EXCLUDED = re.compile(
             r"^\.github/filters\.yml$",  # CI path filters: they list paths, not names
             r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
             # The one-release fallback that reads the old, prefixed variable names, and its tests.
-            r"^apps/backend/entrypoint\.py$|^tests/test_(entrypoint_roles|no_legacy_env_names)\.py$|^frontends/ui/scripts/legacy-env-names\.",
+            r"^apps/backend/entrypoint\.py$|^tests/test_(entrypoint_roles|no_legacy_env_names)\.py$|^apps/workspace/scripts/legacy-env-names\.",
             # The infrastructure names table: its legacy column holds the old names until ADR-0147's contract step.
             r"^deploy/pulumi/src/names\.ts$",
             # The one-release fallback that reads the old x-grid-* header names, and its tests.
-            r"^frontends/ui/src/lib/http/legacy-header-names\.|^apps/backend/src/aiq_api/legacy_headers\.py$",
+            r"^apps/workspace/bff/http/legacy-header-names\.|^apps/backend/src/aiq_api/legacy_headers\.py$",
             r"^tests/test_legacy_headers\.py$",
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",
             r"^deploy/pulumi/index-postgres-rename\.spec\.ts$|^tests/test_postgres_rename_legacy_names\.py$",
             # The one-release move of the browser's stored keys off their old names, and its spec.
-            r"^frontends/ui/src/app/storage-rename-boot(\.spec)?\.ts$",
+            r"^apps/workspace/app/storage-rename-boot(\.spec)?\.ts$",
             # The migration harness: it replays the Drizzle history (excluded above) and seeds the tables
             # each migration knew, under the names they had then.
             r"^scripts/rls-test-db\.sh$",
             # The one release the BFF also sends the mode header under its old name, beside `x-chat-mode`.
-            r"^frontends/ui/src/lib/turns/headless-mode\.ts$",
+            r"^apps/workspace/bff/turns/headless-mode\.ts$",
         )
     )
 )

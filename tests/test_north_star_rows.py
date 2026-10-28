@@ -319,7 +319,7 @@ class TestTheSuiteWiring:
         assert "Horizon, not run: ns-learn-office." in text
 
 
-CHECK_TS = REPO_ROOT / "frontends/ui/src/lib/document-check/check.ts"
+CHECK_TS = REPO_ROOT / "apps/workspace/bff/document-check/check.ts"
 
 
 def _check_instruction_lines() -> list[str]:

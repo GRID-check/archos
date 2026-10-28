@@ -1063,7 +1063,7 @@ workflow:
   # decided per TURN by the BFF (`GET /api/internal/stages`) from the
   # `memory-reflection` WorkOS flag, with no env-var fallback. A deployment that
   # signs nobody in (REQUIRE_AUTH not true) gets it, as every rollout flag is on
-  # there (`frontends/ui/src/lib/authz/feature-flags.ts`).
+  # there (`apps/workspace/bff/authz/feature-flags.ts`).
   memory_reflection_llm: card_llm
   # Enables the async post-answer follow-up-questions stage. As above, this only
   # makes the capability AVAILABLE; whether it runs is decided per TURN by the

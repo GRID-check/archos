@@ -9,8 +9,8 @@
  *   - a work has no PRINT.md, or art/riso/LICENSE-NOTICE.md is missing
  *   - a work's JOBS table does not evaluate (bad format, plate, alt text ...)
  *   - a site or app job's file is not exported (public/art/<file> missing in
- *     apps/site or frontends/ui)
- *   - a manifest (src/data/art.json for the site, ../../frontends/ui/src/lib/art/art.json
+ *     apps/site or apps/workspace)
+ *   - a manifest (src/data/art.json for the site, ../../apps/workspace/bff/art/art.json
  *     for the app) differs from what the JOBS tables and the files on disk give
  *     (stale alt text, a re-export whose ?v= hash was not written, a hand
  *     edit): run node art/riso/export.mjs --manifest, or a full export
@@ -23,7 +23,7 @@
  *   - a file in either public/art/ is in no manifest entry (an orphan)
  *   - the site's or the app's src/ names an art id not in its own manifest, or
  *     a /art/ file path at all: the site reaches art by id through
- *     src/lib/art.ts, the app through ../../frontends/ui/src/lib/art/
+ *     src/lib/art.ts, the app through ../../apps/workspace/bff/art/
  *   - public/downloads/ (the out and app files, for the unlisted image page)
  *     lacks a job's file, holds a file no job names, has a file over 1 MB or
  *     of other pixel size, a separation that is not grayscale, or
@@ -79,7 +79,7 @@ async function onPageParity(paperFile, pageFile, paper) {
 }
 
 // ── each destination: its manifest, its files, its orphans, its references ──
-// site is apps/site, app is frontends/ui (kit.mjs DESTS). Both are held to
+// site is apps/site, app is apps/workspace (kit.mjs DESTS). Both are held to
 // the same JOBS tables, so every riso file has one source: a work under art/riso/.
 const workNames = works.map((w) => w.name).join('|');
 const idRe = new RegExp(`['"\`]((?:${workNames || '\\u0000'})/[a-z0-9-]+/[a-z0-9-]+)['"\`]`, 'g');
@@ -156,7 +156,7 @@ for (const [dest, d] of Object.entries(DESTS)) {
 
   // references from this destination's source tree: by id, and only ids it has
   const ids = new Set(Object.keys(manifest.art || {}));
-  for (const file of files(d.src, new Set([d.manifest, DOWNLOADS_MANIFEST]))) {
+  for (const file of d.srcs.flatMap((dir) => [...files(dir, new Set([d.manifest, DOWNLOADS_MANIFEST]))])) {
     const text = fs.readFileSync(file, 'utf8');
     for (const m of text.matchAll(idRe)) if (!ids.has(m[1])) fail(`${rel(file)}: art id "${m[1]}" is not in the ${dest} manifest`);
     for (const m of text.matchAll(pathRe)) fail(`${rel(file)}: names the file ${m[0].slice(1)}; reference art by id`);

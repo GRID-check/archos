@@ -42,7 +42,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     """
     parser = argparse.ArgumentParser(
         description=f"Regenerate {SCHEMA_PATH.relative_to(SCHEMA_PATH.parents[2])} from the Pydantic card models.",
-        epilog="Then run `npm run generate:cards` in frontends/ui.",
+        epilog="Then run `npm run generate:cards` in apps/workspace.",
     )
     parser.parse_args(argv)
     written = write()

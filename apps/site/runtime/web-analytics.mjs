@@ -7,7 +7,7 @@
  * a host or token read in `BaseLayout.astro`'s frontmatter would be baked in as
  * `undefined` and analytics would stay off on every deployed stack while
  * working in `astro dev`. The same trap the app tier avoids by reading
- * `NEXT_PUBLIC_POSTHOG_*` per request (`frontends/ui/src/lib/analytics`), and
+ * `NEXT_PUBLIC_POSTHOG_*` per request (`apps/workspace/bff/analytics`), and
  * the same remedy `src/pages/sign-in.ts` uses for `PUBLIC_APP_URL`: the page
  * carries one relative `<script src="/web-analytics.js">`, and that SSR route
  * answers from `process.env` at request time. One image serves every stack.

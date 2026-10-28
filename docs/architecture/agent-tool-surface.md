@@ -168,7 +168,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 **Pending.**
 
 - `surface_documents` retires from chat (§6). File names in an answer already
-  render as openable chips (`frontends/ui/src/features/chat/lib/file-references.ts`),
+  render as openable chips (`apps/workspace/ui/features/chat/lib/file-references.ts`),
   `list_files` covers discovery, and four tools over one index each spend a
   paragraph saying not to call the others ([hobble register](hobble-register-2026-09.md) row 13).
   The loss is the 1–3 thumbnail grid unless `list_files(show=true)` replaces it.
@@ -179,7 +179,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 | Act | Person's route | Verdict | Effort |
 |---|---|---|---|
 | Read a page range or a whole short document | PDF viewer, `/api/documents/[id]/preview` | Page ranges: built (`read_passage(pages=…, cursor=…)`, ADR-0127). A whole short document: a range over all its pages | M |
-| Archive | `POST /api/documents/[id]/archive` | Propose. The chunks are purged and bytes and versions stay (`frontends/ui/src/lib/documents/version-content.ts`); `POST /api/documents/[id]/unarchive` brings it back and reads it again (`lib/documents/unarchive.ts`) | S |
+| Archive | `POST /api/documents/[id]/archive` | Propose. The chunks are purged and bytes and versions stay (`apps/workspace/bff/documents/version-content.ts`); `POST /api/documents/[id]/unarchive` brings it back and reads it again (`lib/documents/unarchive.ts`) | S |
 | Rename, move or delete a folder | `PATCH`/`DELETE /api/projects/[id]/folders/[folderId]` | Propose. Delete re-files the folder's documents first | S |
 | Retag | `PATCH /api/documents/[id]/tags` | Propose | S |
 | Revise any Markdown project document | `POST /api/documents/[id]/versions` | Build. Today only the conversation's subject (`packages/agent/src/aiq_agent/tools/documents/filing.py`) | M |
@@ -305,7 +305,7 @@ documents with the tool Piloti searches with.
 
 - **One description.** The MCP description and input schema are the ones in this
   document, generated from the functions into
-  `frontends/ui/tests/fixtures/backend-tools.schema.json`
+  `apps/workspace/tests/fixtures/backend-tools.schema.json`
   (`uv run python scripts/generate_backend_tools_schema.py`).
   `packages/agent/tests/common/test_backend_tools_schema.py` fails when it is stale,
   so changing a description here and not regenerating shows an outside agent a
@@ -394,7 +394,7 @@ been uploaded and read).
   three things, followed transitively and only inside the file's own collection: a
   link a person confirmed (`superseded_by`), the same plan number in the Plankopf
   (`revision_facts.document_number`), and the file name's series (the revision grammar
-  in `frontends/ui/src/lib/documents/revision-series.ts` and its Python twin
+  in `apps/workspace/bff/documents/revision-series.ts` and its Python twin
   `packages/knowledge-layer/src/revision_series.py`, same extension; a bare first
   state joins its indexed successors). Order:
   a confirmed replacement always precedes what it replaced; the rest by the

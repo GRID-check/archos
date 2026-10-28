@@ -8,7 +8,7 @@ from pathlib import Path
 from aiq_agent import profile_names
 
 REPO = Path(__file__).resolve().parents[4]
-NAMES_JSON = REPO / "frontends/ui/src/lib/project-profile/legacy-names.json"
+NAMES_JSON = REPO / "apps/workspace/bff/project-profile/legacy-names.json"
 
 
 def _names() -> dict:

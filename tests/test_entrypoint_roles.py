@@ -104,7 +104,7 @@ def test_the_ui_image_adopts_the_same_names():
         "const m = require(process.argv[1]);"
         "process.stdout.write(JSON.stringify({prefixes: m.LEGACY_PREFIXES, renamed: m.RENAMED}))"
     )
-    shim = ENTRYPOINT.parents[2] / "frontends" / "ui" / "scripts" / "legacy-env-names.cjs"
+    shim = ENTRYPOINT.parents[2] / "apps" / "workspace" / "scripts" / "legacy-env-names.cjs"
     node = shutil.which("node")
     if node is None:
         pytest.skip("node is not installed")

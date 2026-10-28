@@ -15,7 +15,7 @@ judgement made worse, so there is none here.
 Only the files the request names are read (``fileNames``). What the pens find becomes a profile
 every member reads and memory rows with no folder restriction, so which files may feed them is the
 BFF's decision, made from the document's live folder and its upload screen
-(``frontends/ui/src/lib/project-experience/readable-files.ts``), not something the collection's
+(``apps/workspace/bff/project-experience/readable-files.ts``), not something the collection's
 inventory can answer: a document moved into a restricted folder, or held by the screen, can still
 sit in it. A file the inventory lists and the request does not is never shown to the chooser.
 

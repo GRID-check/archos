@@ -89,7 +89,7 @@
   --color-hairline: #dcdfd8;
   --color-ok: #0f7a3d;
   /* Provenance signals — the one place this brand allows colour, taken from the
-     product's own tokens (frontends/ui/src/styles/tokens.css) so a mock of the
+     product's own tokens (apps/workspace/ui/styles/tokens.css) so a mock of the
      app is not a drawing of the app in different paint. */
   --color-chip-law: #e6edfb;
   --color-chip-law-ink: #1c47ab;

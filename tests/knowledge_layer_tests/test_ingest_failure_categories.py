@@ -2,7 +2,7 @@
 
 The BFF decides whether reading a failed document again is worth anything from
 ``FileProgress.failure_category`` / ``retryable`` and the job's
-``reader_version`` (``frontends/ui/src/lib/documents/retry-policy.ts``). These
+``reader_version`` (``apps/workspace/bff/documents/retry-policy.ts``). These
 run real jobs through the adapter, with the embedder faked and a real Qdrant
 (the shared ``qdrant_store`` fixture), and read what the job reports: what the
 BFF's reconcile reads.

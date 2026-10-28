@@ -299,7 +299,7 @@ task langfuse:provision -- --apply   # create what is missing (ask first on a sh
 * **Score configs** for every score above, so Langfuse validates values and the
   annotation UI offers the categories.
 * **Annotation queue `answer-review`.** Every down-voted answer's trace is added
-  by the BFF (`frontends/ui/src/lib/langfuse/feedback-score.ts`). Reviewers
+  by the BFF (`apps/workspace/bff/langfuse/feedback-score.ts`). Reviewers
   record `review-correctness` and `review-sources`.
 * **LLM-as-a-judge evaluators** `judge-answers-question`, `judge-uncited-claims`
   and `judge-clarity`, and the rule `chat-turn-judges` that runs them on one in
@@ -385,7 +385,7 @@ never reads a trace's body, so this is the whole cost.
   `langfuse_unknown_user` and joins to no person.
 * `trace.metadata.$posthog_session_id` becomes `$session_id`. Each chat turn
   carries the browser's PostHog session id there:
-  `getPosthogSessionId()` (`frontends/ui/src/lib/analytics/posthog.ts`) is read
+  `getPosthogSessionId()` (`apps/workspace/bff/analytics/posthog.ts`) is read
   per question and sent as `user_message.posthog_session_id`; `_drive` in
   `aiq_api/chat_socket.py` records it with `record_posthog_session`
   (`langfuse_trace_attributes.py`). From a trace, open the same `$session_id`
@@ -449,9 +449,9 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 | Runtime scores | `packages/agent/src/aiq_agent/observability/langfuse_scores.py` |
 | Model calls outside NAT | `packages/agent/src/aiq_agent/observability/direct_trace.py` |
 | Langfuse configuration as code | `packages/agent/src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
-| Votes, reasons, review queue | `frontends/ui/src/lib/langfuse/feedback-score.ts` |
-| Decisions on Piloti's proposals, marks and changes | `frontends/ui/src/lib/langfuse/decision-score.ts` |
-| Tool calls on the agent door (MCP) | `frontends/ui/src/lib/langfuse/tool-call-trace.ts`, called from `lib/agent-api/telemetry.ts` |
-| PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `frontends/ui/src/lib/analytics/posthog.ts` |
-| Retention and erasure | `frontends/ui/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
+| Votes, reasons, review queue | `apps/workspace/bff/langfuse/feedback-score.ts` |
+| Decisions on Piloti's proposals, marks and changes | `apps/workspace/bff/langfuse/decision-score.ts` |
+| Tool calls on the agent door (MCP) | `apps/workspace/bff/langfuse/tool-call-trace.ts`, called from `lib/agent-api/telemetry.ts` |
+| PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `apps/workspace/bff/analytics/posthog.ts` |
+| Retention and erasure | `apps/workspace/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
 | Deployment | `deploy/pulumi/src/platform/langfuse.ts` ([`kubernetes.md`](../deployment/kubernetes.md) § Langfuse) |

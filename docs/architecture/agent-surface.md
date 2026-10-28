@@ -9,7 +9,7 @@ server works, how to add an operation, how to connect a client, and how to set u
 WorkOS. The rule for contributors, in short, is
 [`../contributing/headless-first.md`](../contributing/headless-first.md).
 
-Code: `frontends/ui/src/lib/agent-api/`. The route is `/api/mcp`.
+Code: `apps/workspace/bff/agent-api/`. The route is `/api/mcp`.
 
 ## How it works
 
@@ -439,7 +439,7 @@ the office door's (below), with that URL; a short guide for operators is
 
 ## The exposure config
 
-`frontends/ui/src/lib/agent-api/exposure.config.ts` is the one place that
+`apps/workspace/bff/agent-api/exposure.config.ts` is the one place that
 decides who sees each capability (ADR-0122, amendment of 2026-10-21). Every
 catalog operation and every agent read tool has exactly one entry; a name that
 is no operation, or an operation without an entry, does not compile (the object
@@ -522,7 +522,7 @@ when the person asked for it in the turn (ADR-0122, amendment of 2026-10-21).
 The exposure config says who is offered a capability; the parity registry says
 where it is shown (ADR-0128). The canvas and the chat are mirrors: what a
 person or Piloti does on the review canvas, a reader of the chat sees done, and
-the other way round. [`parity.config.ts`](../../frontends/ui/src/lib/surface-parity/parity.config.ts)
+the other way round. [`parity.config.ts`](../../apps/workspace/bff/surface-parity/parity.config.ts)
 has one entry per capability (look, point, highlight, mark, update, delete,
 reply, compare Fassungen, ask about a box, open at a place, reference a
 document with `#` in the composer, show in the asker's viewer) with its `canvas`
@@ -700,7 +700,7 @@ sequenceDiagram
 
 | Piece | What | Where |
 |---|---|---|
-| The resource | One HTML document, the same for every office: script and styles inline, CSP declared empty (no origin to load, connect to or frame), no permission, `prefersBorder: false`. Listed in `resources/list` and read with `text/html;profile=mcp-app` | built by `scripts/build-mcp-app-views.ts` into `frontends/ui/mcp-app-views/` (`bun run build:mcp-apps`; `build` and `dev:next` run it; gitignored; copied into the image) |
+| The resource | One HTML document, the same for every office: script and styles inline, CSP declared empty (no origin to load, connect to or frame), no permission, `prefersBorder: false`. Listed in `resources/list` and read with `text/html;profile=mcp-app` | built by `scripts/build-mcp-app-views.ts` into `apps/workspace/mcp-app-views/` (`bun run build:mcp-apps`; `build` and `dev:next` run it; gitignored; copied into the image) |
 | The link | `proposal-get` carries `_meta.ui.resourceUri` (and the deprecated flat `ui/resourceUri`). In `search` mode it is listed beside the meta-tools: a host links a view to a tool, and `call-operation` runs every operation | `drawsResultOf` in `APP_VIEWS` |
 | The buttons | `proposal-card-apply`, `proposal-card-dismiss`: `_meta.ui.visibility: ["app"]`, not catalog operations (no search hit, `call-operation` answers unknown). Each runs the operation it names (`proposal-apply`, `proposal-dismiss`) through `executeOperation`, so the route's `authz`, rate limit and schema decide; a refusal carries `{ status, code }` | `APP_TOOLS`; exposure `app: true` |
 | Who gets it | An outside agent on an office door whose client can draw it: on the 2026-07-28 era, one whose request capabilities name `io.modelcontextprotocol/ui` with `text/html;profile=mcp-app` (read off each request's `_meta` before the SDK serves it); on the 2025 era, which carries no capabilities, every outside client, as before. Not Piloti (it draws its own cards and never decides a proposal), not the platform door | `declaresMcpApps`, `appHostOf`, `offersAppViews`, `isAppToolFor` |
@@ -793,7 +793,7 @@ Do this in the same change that adds or changes the route. The exemplar is
 7. **Say who sees it**: its entry in `exposure.config.ts`, `OFFERED` for office
    work, else the columns and a `reason` ([above](#the-exposure-config)). The
    catalog does not compile without it.
-8. **Run the gate**: `cd frontends/ui && bunx vitest run src/lib/agent-api/`. If
+8. **Run the gate**: `cd apps/workspace && bunx vitest run src/lib/agent-api/`. If
    your route was in the baseline, the "baseline only shrinks" test lists it;
    `UPDATE_FIXTURES=1` rewrites it and `tests/fixtures/exposure.json`; commit the diff.
 

@@ -206,7 +206,7 @@ class TestWhatTheCommitCanDo:
         found = files_eval.available_needs()
         assert found <= set(files_eval.NEEDS)
         # Today's tools have none of the S3/S5/S6/S7 arguments; once a slice lands its row starts running.
-        schema = REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "backend-tools.schema.json"
+        schema = REPO_ROOT / "apps" / "workspace" / "tests" / "fixtures" / "backend-tools.schema.json"
         assert schema.exists()
 
 

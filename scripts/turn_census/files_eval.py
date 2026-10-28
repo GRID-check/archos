@@ -73,7 +73,7 @@ NEEDS: dict[str, tuple[str, str]] = {
     "context": ("knowledge_search", "context"),
     "regex": ("knowledge_search", 'match="regex"'),
 }
-TOOL_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "backend-tools.schema.json"
+TOOL_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "backend-tools.schema.json"
 
 
 def load_questions(path: Path = QUESTIONS) -> list[dict]:

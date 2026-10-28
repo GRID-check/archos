@@ -18,7 +18,7 @@ this design says so and builds the version that fits.
 
 | Ticket | Built | Why |
 |---|---|---|
-| Replace the wizard | A second way into the same profile, offered at creation; the wizard stays the editor | The profile has one record and the wizard is its guided editor (`frontends/ui/AGENTS.md`). Two ways to fill one record keep a single truth; a replacement would throw away 2 300 lines of conditions and rationale this design reads from |
+| Replace the wizard | A second way into the same profile, offered at creation; the wizard stays the editor | The profile has one record and the wizard is its guided editor (`apps/workspace/AGENTS.md`). Two ways to fill one record keep a single truth; a replacement would throw away 2 300 lines of conditions and rationale this design reads from |
 | A new Determinanten-Register with rule, threshold, Ampel effect, where found, question | The intake definition **is** the register: its questions already carry conditions, rationale (`why`) and the profile key. This adds where a value is usually found (`foundIn`) and which derivation it feeds. The one derivation built is the Gebäudeklasse, as data with its Fundstelle | `compliance-derivation-graph.md` §2 counts five encodings of one rulebook already. A sixth table beside the wizard's would drift from it the first time someone edits a question |
 | „Nur fragen, was die Einstufung ändert" (C8 logic) | Computed, not listed: a gap is asked only when filling it with each band it could fall in gives different Gebäudeklassen | A hand-kept list of decisive questions is the C8 condition again, written once more. The computation is the rule itself |
 | Regelwerks-Ampel | Not built. The confirmed values feed the existing applicability panel (`applicable-standards.ts`), which says per Richtlinie required / likely / check; it now reads the keys the wizard and the intake write | No Ampel exists anywhere in the code. Inventing one is a product decision of its own; the panel is the shipped answer to "which rules apply" |
@@ -184,7 +184,7 @@ An adversarial review against the code (2026-10-14) changed the first draft:
     failed | completed`, route `/app/projects/[id]/setup`.
 11. **The answer is the wizard's control.** Answering a Rückfrage renders the
     wizard's own question field for that key and writes through the profile's
-    one door; `frontends/ui/AGENTS.md`'s "one editor" rule is amended to say so.
+    one door; `apps/workspace/AGENTS.md`'s "one editor" rule is amended to say so.
 12. **Overlap with ADR-0096.** For a closing intent, the intake's reading
     replaces the experience reading's fingerprint; the experience's decision
     drafting stays where it is.
@@ -300,9 +300,9 @@ readingId?: string                  // on ProjectAssumptionSchema: the reading (
 
 ## Wire contracts
 
-All zod lives in `frontends/ui/src/lib/project-intake/types.ts` (no
+All zod lives in `apps/workspace/bff/project-intake/types.ts` (no
 `server-only`), exported as JSON Schema to
-`frontends/ui/tests/fixtures/project-intake.schema.json` by
+`apps/workspace/tests/fixtures/project-intake.schema.json` by
 `lib/project-intake/intake-schema.ts` (the `proposal-schema.ts` pattern).
 
 ### Person routes (`lib/project-intake/client.ts`, ADR-0055)
@@ -382,7 +382,7 @@ the quote states the value, as ADR-0096 does.
 | 4 Worker hosting | `aiq_api/registry.py`, `aiq_api/jobs/runner.py` |
 | 5 The agent | `packages/agent/src/aiq_agent/agents/intake/`, `pyproject.toml` entry point, `configs/config_oib_openrouter.yml`, `project_context.TOOL_CONTEXT_REQUIREMENTS` |
 | 6 Create flow and UI | `lib/projects/service.ts`, `app/api/projects/route.ts`, `projects/actions.ts`, `create-project-form.tsx`, `app/app/(shell)/projects/[id]/setup/`, `features/project-intake/`, `/dev/project-setup`, i18n |
-| 7 Docs | ADR-0111, this doc, `where-is-what.md`, `CONTEXT.md`, `langfuse.md`, `python-endpoints.md`, `frontends/ui/AGENTS.md` |
+| 7 Docs | ADR-0111, this doc, `where-is-what.md`, `CONTEXT.md`, `langfuse.md`, `python-endpoints.md`, `apps/workspace/AGENTS.md` |
 
 ## Ablage: the files into documented folders
 
@@ -443,7 +443,7 @@ The profile's keys, option tokens and building ids are English: `federal_state`,
 `uses@bldg1@residential`, `construction_method=timber`, `building_class@bldg1`
 (rule `building_class`). Labels and copy stay German; only the stored name changed.
 
-- **One table.** `frontends/ui/src/lib/project-profile/legacy-names.json` maps
+- **One table.** `apps/workspace/bff/project-profile/legacy-names.json` maps
   every old key, the tokens per new key (`offen` is `open` under a zoning, but
   `ja` is only `yes` under `servicing`, so a token is never renamed on its own),
   the derivation rule and the building prefix. `legacy-names.ts` and

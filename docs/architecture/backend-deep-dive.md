@@ -15,7 +15,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
   scheduler/worker; every chunk lives in Qdrant (ADR-0115). Runs the LangGraph workflow and the
   async deep-research jobs.
-- **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`frontends/ui/server.js`).
+- **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`apps/workspace/server.js`).
 - **dragonfly** — Redis-protocol shared cache (ADR-0020): read-through caches
   (membership, flags, prompt view, model overrides, budget limits, model
   catalog), the gateway's WS-upgrade rate limiter, and per-conversation
@@ -37,7 +37,7 @@ only way to run a turn; SSE now serves **only** the deep-research job stream (§
 
 ```
 Browser WebSocket
-  → frontends/ui/server.js  (WS upgrade proxy)
+  → apps/workspace/server.js  (WS upgrade proxy)
       • calls internal /api/websocket-scope?projectId=…  to fetch:
           - projectContext  → sets header  x-grid-project-context
           - collection scope → sets header  x-grid-collection-scope
@@ -62,7 +62,7 @@ Browser WebSocket
   → the turn's wire bodies, stamped and sent by the chat socket (wire v2, ADR-0068)
       apps/backend/src/aiq_api/chat_socket.py
   → the UI's turn socket and fold (docs/api/websocket-protocol.md, "The client")
-  → frontends/ui/src/features/layout/components/ChatArea.tsx → AgentResponse.tsx
+  → apps/workspace/ui/features/layout/components/ChatArea.tsx → AgentResponse.tsx
 ```
 
 Key files:
@@ -195,7 +195,7 @@ be lifted, and the frontend Zod schema (`schemas.ts`) must declare it.
 Every submission path used to hand-roll its own subset of the `x-grid-*`
 context headers (org/user/project id, collection scope, project
 context/memory, model overrides, budget, disabled sources) — one audited case
-(async-job submit, §8b) simply forgot one. `frontends/ui/src/lib/request-context.ts`
+(async-job submit, §8b) simply forgot one. `apps/workspace/bff/request-context.ts`
 is now the single builder: `buildGridRequestContextWireHeaders` returns every
 individual header PLUS one consolidated, signed `X-Grid-Request-Context`
 header (base64url JSON of the same fields, plus the structured `federal_state`
@@ -397,7 +397,7 @@ NOT to bolt on a silently-failing second LLM call.
 
 Cards (`SummaryCard`, `LegalBasisCard`, `ProjectProfilePatchCard`) are defined in
 `packages/agent/src/aiq_agent/cards/models.py` (discriminated union, `validate_cards`); the
-frontend renders them in `frontends/ui/src/features/grid-cards/`.
+frontend renders them in `apps/workspace/ui/features/grid-cards/`.
 
 ### How generation works
 
@@ -1327,7 +1327,7 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
    PUT per raster (`POST /api/internal/document-image-upload-url`; the backend
    holds a read-only object-store credential, so it writes the way the
    thumbnail is written) and stores it as `<doc dir>/_img/<index>.jpg`, at most
-   `MAX_STORED_IMAGES_PER_DOCUMENT` (64, `frontends/ui/src/lib/s3.ts`, enforced
+   `MAX_STORED_IMAGES_PER_DOCUMENT` (64, `apps/workspace/bff/s3.ts`, enforced
    by the presign route; the backend stops at the first refusal). The caption
    chunk records `image_key` and `stored_image_index`; `_format_results` shows
    an `Image: stored (look image_index=N)` line only for such a
@@ -1755,7 +1755,7 @@ run (the runner holds a `run_id`), because then the 404 means the BFF has not
 yet written the backend job id onto the row. The ledger client keeps its single
 short attempt; a lost terminal op is settled by the reconciler below.
 What the retry does not heal the BFF's run reconciler does
-(`frontends/ui/src/lib/runs/reconcile.ts`, driven by the `skill-scheduler`
+(`apps/workspace/bff/runs/reconcile.ts`, driven by the `skill-scheduler`
 tick): it asks the job store for the verdict of every run still active after
 ten minutes without a check (`GET /v1/internal/jobs/{id}/outcome`, service
 token, tenant checked against `job_access`), which also hands back the run
@@ -1950,7 +1950,7 @@ The agent can now persist curated findings across turns. Full design:
 - **Single-writer**: the `app` DB has exactly one writer, the Next.js BFF.
   The backend `remember` tool never touches the DB — it POSTs to the internal
   BFF endpoint `POST /api/internal/memory`
-  (`frontends/ui/src/app/api/internal/memory/route.ts`), authenticated by the
+  (`apps/workspace/app/api/internal/memory/route.ts`), authenticated by the
   shared service token `INTERNAL_API_TOKEN` (`x-grid-internal-token`
   header; the route fails closed with 503 when the token is unconfigured).
   Backend client: `packages/agent/src/aiq_agent/knowledge/project_memory.py`, over
@@ -1961,7 +1961,7 @@ The agent can now persist curated findings across turns. Full design:
   `project` (requires `projectId`) or `organization` (org-wide, requires
   `organizationId`, `projectId` null).
 - **Read path**: `buildProjectMemoryDigest()`
-  (`frontends/ui/src/lib/projects/memory-service.ts`) merges org-wide +
+  (`apps/workspace/bff/projects/memory-service.ts`) merges org-wide +
   project items (active only; pinned first, then most recently updated,
   bounded), tags each line with scope/kind/confidence/verification, and the
   digest rides the WS upgrade as the `x-grid-project-memory` header
@@ -1998,7 +1998,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   `max_results`/`page_size`, `ris_catalog_lookup` `max_matches` — are no
   longer only build-time YAML. The BFF's Platform → Retrieval surface
   (`/api/platform/retrieval-settings`, catalog + bounds in
-  `frontends/ui/src/lib/retrieval-settings/catalog.ts`) pins keys; the backend
+  `apps/workspace/bff/retrieval-settings/catalog.ts`) pins keys; the backend
   resolves them through `packages/agent/src/aiq_agent/common/retrieval_settings.py`
   (`get_retrieval_setting(key, fallback)`), which pulls the pinned set from
   the token-guarded `GET /api/internal/retrieval-settings` just like
@@ -2039,7 +2039,7 @@ The staged OIB Soll-Ist pipeline (`agents/compliance_checker/`, backlog T4-3)
 was retired as a chat tool and then deleted, with its `compliance_llm` role
 and its `compliance_check` model group. A norm check is now a task of kind
 `compliance_check`, run by the general agent with its retrieval tools
-(`TASK_ENGINES` in `frontends/ui/src/lib/tasks/delegation.ts`). The code is in
+(`TASK_ENGINES` in `apps/workspace/bff/tasks/delegation.ts`). The code is in
 git history.
 
 ## 8d. Agent skills (ADR-0046)
@@ -2253,7 +2253,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
 `task verify` is the local gate: host-native, defined once in the root
 `Taskfile.yml`. CI calls the same definitions but schedules them differently, so
 a local pass is strong evidence rather than a guarantee. `task verify:fast`
-skips two production builds, `fe:build` and `site:build`. Full command list, the
+skips two production builds, `workspace:build` and `site:build`. Full command list, the
 checks that sit outside `verify`, and the traps `task --list` does not carry:
 `docs/contributing/testing-and-verification.md`.
 

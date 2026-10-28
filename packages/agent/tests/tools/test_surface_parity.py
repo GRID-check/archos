@@ -1,11 +1,11 @@
 """Every canvas tool and ``look`` has an entry in the surface parity registry (ADR-0128).
 
-``frontends/ui/src/lib/surface-parity/parity.config.ts`` lists each capability
+``apps/workspace/bff/surface-parity/parity.config.ts`` lists each capability
 of the review canvas with its form on the canvas and in the chat: a rendering,
 an exemption with a reason, or a gap that names the slice closing it. The
 TypeScript spec holds it against the annotation ops and the catalog; this file
 holds the Python side: the tools Piloti binds. The registry reaches Python as
-``frontends/ui/tests/fixtures/surface-parity.json``, written and drift-checked
+``apps/workspace/tests/fixtures/surface-parity.json``, written and drift-checked
 by ``parity.config.spec.ts``.
 """
 
@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[4]
-PARITY = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "surface-parity.json"
+PARITY = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "surface-parity.json"
 #: Tools outside the canvas group that are the same capability family.
 STANDALONE_TOOLS = ("look", "show_in_viewer")
 

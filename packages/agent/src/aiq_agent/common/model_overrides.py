@@ -107,7 +107,7 @@ _REQUEST_TIMEOUT_SECONDS = 3.0
 # a provider-native id without a slash (`gpt-4o`, `ft:gpt-4o:acme::abc`,
 # Azure deployment names). Anything else is dropped — defense in depth
 # behind the BFF's catalog validation. Mirrors MODEL_ID_PATTERN in
-# `frontends/ui/src/lib/model-config/agent-groups.ts`.
+# `apps/workspace/bff/model-config/agent-groups.ts`.
 _MODEL_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,64}(/[A-Za-z0-9_.:-]{1,128})?$")
 
 
@@ -120,7 +120,7 @@ class AgentGroup(StrEnum):
     the platform default and the org override meet — an org that pinned only
     ``deep_research`` still follows the platform default everywhere else. The
     registry mirror lives in
-    ``frontends/ui/src/lib/model-config/agent-groups.ts`` (which additionally
+    ``apps/workspace/bff/model-config/agent-groups.ts`` (which additionally
     carries the OpenRouter capability requirements per group) — keep the two
     id sets in sync.
     """

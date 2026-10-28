@@ -12,7 +12,7 @@ storage rules are unchanged by it. Streaming is the default delivery; there is
 no runtime flag beyond the platform switch below.
 **Related:** the per-turn chat path (`agents/piloti/conversation_register.py`,
 `note_settled_replaced`), the chat socket (`apps/backend/src/aiq_api/chat_socket.py`),
-the turn fold (`frontends/ui/src/features/chat/lib/turn-fold.ts`) and the chat
+the turn fold (`apps/workspace/ui/features/chat/lib/turn-fold.ts`) and the chat
 store. Live prose: `common/answer_prose_stream.py` and
 `agents/piloti/answer_pipeline.py` (`LiveAnswer`, `settle_streamed_citations`).
 The events themselves: [`websocket-protocol.md`](../api/websocket-protocol.md).
@@ -24,7 +24,7 @@ check for each: [`lifecycles/chat-turn.md`](lifecycles/chat-turn.md).
 The transport can already carry many chunks, but two layers assume **one content
 frame per turn**:
 
-1. **Rendering** — `frontends/ui/.../messages-store.ts` appends a *brand-new*
+1. **Rendering** — `apps/workspace/.../messages-store.ts` appends a *brand-new*
    assistant bubble for every content frame; it never merges deltas. N streamed
    frames ⇒ N bubbles.
 2. **Persistence** — on a client disconnect, the terminal message is persisted
@@ -101,7 +101,7 @@ its largest at about 2 KB.
 ### The platform switch
 
 Platform → Abruf carries one on/off setting, `chat.answer_streaming` (catalog:
-`frontends/ui/src/lib/retrieval-settings/catalog.ts`, on by default). The
+`apps/workspace/bff/retrieval-settings/catalog.ts`, on by default). The
 backend reads it once per turn through the retrieval-settings pull
 (`answer_streaming_enabled`, TTL 60 s). Off, the answering call is buffered: no
 prose, snapshot, masthead or card event goes out, the Herleitung steps still
@@ -1009,7 +1009,7 @@ as it does on a desk.
 
 - Contract: every recorded turn in `contracts/wire/v2/` is valid and is byte for
   byte the frame the server writes (`packages/agent/tests/common/test_wire_v2.py`,
-  `frontends/ui/src/adapters/api/wire-v2.spec.ts`).
+  `apps/workspace/ui/adapters/api/wire-v2.spec.ts`).
 - Producers and handler: prose deltas are coalesced, the snapshot and the
   retraction are emitted from the streamed call, `RUN_FINISHED` is persisted
   from `TurnResult`, and a cancelled turn persists its partial marked stopped
@@ -1017,7 +1017,7 @@ as it does on a desk.
 - Fold: every fixture turn folds to the expected view; a duplicate `seq` keeps
   identity and a gap is flagged; snapshot, retraction and terminal
   replacement; a card before its marker; a spectator starting mid-turn
-  (`frontends/ui/src/features/chat/lib/turn-fold.spec.ts`).
+  (`apps/workspace/ui/features/chat/lib/turn-fold.spec.ts`).
 - Frontend: the whole-answer affordances (copy, unclaimed cards) wait for
   `isStreaming` to clear (`AgentResponse.spec.tsx`, "a streaming answer");
   `stable-overrides.spec.tsx` (a drawn diagram and an arrived card survive the

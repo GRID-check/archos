@@ -38,7 +38,9 @@ from aiq_api.jobs.run_ledger_fold import PHASE_KEYS
 from aiq_api.jobs.run_ledger_fold import RUN_LEDGER_EVENT_TYPE
 from aiq_api.jobs.run_ledger_fold import RunLedgerFold
 
-SCHEMA_PATH = Path(__file__).resolve().parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "run-ledger.schema.json"
+SCHEMA_PATH = (
+    Path(__file__).resolve().parents[3] / "apps" / "workspace" / "tests" / "fixtures" / "run-ledger.schema.json"
+)
 RUN_ID = "b3f0f0a0-0000-4000-8000-000000000001"
 
 

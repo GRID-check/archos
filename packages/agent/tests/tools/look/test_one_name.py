@@ -25,13 +25,13 @@ RETIRED = re.compile(r"view_knowledge_image|canvas__look|knowledge-image-view")
 #: Files an agent reads, whole: what is bound, what it is told, and what the door offers.
 AGENT_FACING = [
     ROOT / "configs" / "config_oib_openrouter.yml",
-    ROOT / "frontends" / "ui" / "src" / "lib" / "agent-api" / "backend-operations.ts",
-    ROOT / "frontends" / "ui" / "src" / "lib" / "agent-api" / "exposure.config.ts",
-    ROOT / "frontends" / "ui" / "tests" / "fixtures" / "exposure.json",
+    ROOT / "apps" / "workspace" / "bff" / "agent-api" / "backend-operations.ts",
+    ROOT / "apps" / "workspace" / "bff" / "agent-api" / "exposure.config.ts",
+    ROOT / "apps" / "workspace" / "tests" / "fixtures" / "exposure.json",
     *sorted((ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents").glob("*/prompts/**/*.*")),
 ]
 
-EXECUTED_STEPS = ROOT / "frontends" / "ui" / "src" / "features" / "chat" / "lib" / "executed-steps.ts"
+EXECUTED_STEPS = ROOT / "apps" / "workspace" / "ui" / "features" / "chat" / "lib" / "executed-steps.ts"
 
 
 @pytest.mark.parametrize("path", AGENT_FACING, ids=lambda path: str(path.relative_to(ROOT)))

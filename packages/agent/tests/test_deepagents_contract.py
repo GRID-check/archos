@@ -32,7 +32,7 @@ from langchain_core.tools import tool
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-#: Every deepagents name imported anywhere in `src/`, `frontends/` or `tests/`,
+#: Every deepagents name imported anywhere in `src/`, `apps/` or `tests/`,
 #: by module. A name missing after a bump is an ImportError at worker start in
 #: production; here it is a test that says which module moved it.
 _IMPORTED_NAMES = {

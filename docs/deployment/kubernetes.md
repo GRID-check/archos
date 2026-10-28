@@ -1565,11 +1565,11 @@ draining pod is severed, and each re-upgrade resolves the session, runs FGA
 checks and reads budgets (ADR-0020). `WS_UPGRADE_RATE_LIMIT` does not cover
 this: it is keyed on client IP, and the herd arrives from thousands of distinct
 IPs. Three bounds now apply — jittered client backoff
-(`frontends/ui/src/shared/utils/backoff.ts`), per-pod single-flight memoisation
+(`apps/workspace/shared/utils/backoff.ts`), per-pod single-flight memoisation
 of the scope lookup (`WS_SCOPE_CACHE_TTL_MS`), and a global in-flight
 ceiling that sheds with `503` + `Retry-After` rather than queueing
 (`WS_UPGRADE_MAX_INFLIGHT`). Covered by
-`frontends/ui/tests/gateway/ws-upgrade-admission.test.ts`.
+`apps/workspace/tests/gateway/ws-upgrade-admission.test.ts`.
 
 **Known gap — CPU is the wrong signal for two of the three workloads.** Holding
 idle WebSockets is memory/fd/event-loop, not CPU; SSR awaiting the Python
@@ -1756,7 +1756,7 @@ whether the user notices, and that is a client-side budget: the reconnect curve
 of the chat socket used to allow 3 attempts, i.e. it surrendered ~4–7 seconds
 after the drop and put "Unable to connect to the server" in front of every open
 chat on every deploy. It is now sized to outlast a roll of both tiers
-(`frontends/ui/src/adapters/api/turn-socket.ts`: 12 attempts ≈ 2–4 min,
+(`apps/workspace/ui/adapters/api/turn-socket.ts`: 12 attempts ≈ 2–4 min,
 jittered), and the reopened socket re-attaches a running turn from its last
 `seq`. Anything longer than that is a genuinely wedged rollout and should still
 surface as an error.
@@ -2075,14 +2075,14 @@ no trace provider (below); logs from all five tiers - the Python tiers via the
 `otelcollector_logs` NAT logging method
 (`packages/agent/src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
 logger) and the Node tiers (grid-ui, skill-scheduler, purger) via the
-`frontends/ui/observability/otel-logs.js` console bridge. **Metrics, every
+`apps/workspace/observability/otel-logs.js` console bridge. **Metrics, every
 one of them, to PostHog Metrics** ([ADR-0119](../adr/0119-every-metric-goes-to-posthog-through-the-collector.md),
 [`observability/metrics.md`](../observability/metrics.md) for the catalogue):
 
 - *The application meters.* Every Python process installs one meter provider,
   once (`packages/agent/src/aiq_agent/observability/otlp_metrics.py`), so the `grid.queue.*`,
   `grid.provider.*` and `grid.boot.*` instruments report; the Node tiers
-  install theirs at start (`frontends/ui/observability/otel-metrics.js`) with
+  install theirs at start (`apps/workspace/observability/otel-metrics.js`) with
   event loop delay and memory, and the gateway in `server.js` records
   `http.server.request.duration`.
 - *The cluster.* Each node's agent reads its kubelet (node, pod, container and
@@ -2364,7 +2364,7 @@ remove it on the grounds that "Langfuse has its own login".
 ### Giving analysts read-only access
 
 Business analysts and the Fachbereich get Langfuse without the platform-operator
-permission. Who holds what (`frontends/ui/src/lib/authz/catalog.ts`):
+permission. Who holds what (`apps/workspace/bff/authz/catalog.ts`):
 
 | WorkOS role (GRID Platform org) | `platform:observability:view` | Also |
 |---|---|---|
@@ -2375,8 +2375,8 @@ permission. Who holds what (`frontends/ui/src/lib/authz/catalog.ts`):
 **Once per environment, in this order:**
 
 1. Provision the permission and the role. The deploy does this (Job
-   `grid-app-authz-catalog`); by hand, `task fe:provision:authz` shows the drift
-   and `task fe:provision:authz -- --apply` writes it (ask first; it writes to
+   `grid-app-authz-catalog`); by hand, `task workspace:provision:authz` shows the drift
+   and `task workspace:provision:authz -- --apply` writes it (ask first; it writes to
    WorkOS).
 2. Assign `platform:observability:view` to the **Connect application** as a
    scope (WorkOS dashboard → the Connect application → Scopes), next to
@@ -2545,7 +2545,7 @@ them. Traces arrive over OTLP, the Python SDK only reads prompts, score WRITES
 (`POST /api/public/scores`, from the BFF and the agent, ADR-0089) work in every
 write mode (checked against the 4.56.0 source), and the erasure workers list
 through `GET /api/public/v2/observations` and delete through
-`DELETE /api/public/traces`, both v4-safe (`frontends/ui/workers/langfuse-traces.js`).
+`DELETE /api/public/traces`, both v4-safe (`apps/workspace/workers/langfuse-traces.js`).
 Writing one data model instead of two also halves the ClickHouse write load,
 on a disk that has filled once. Langfuse's PostHog export reads this events
 table (its "Enriched observations" source). After the cutover, going back

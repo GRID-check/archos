@@ -56,10 +56,10 @@ class DocumentGridCard(CardModel):
 # ── Draft card (system-emitted) ──────────────────────────────────────────────
 #: The editorial states of a document version, mirrored (not imported) from
 #: ``DOCUMENT_VERSION_STATES`` in
-#: ``frontends/ui/src/lib/documents/lifecycle-types.ts`` — the same
+#: ``apps/workspace/bff/documents/lifecycle-types.ts`` — the same
 #: parse-independently rule the request-context headers follow, since the
 #: contract crosses a language boundary and the JSON Schema at
-#: ``frontends/ui/tests/fixtures/document-lifecycle.schema.json`` is what pins
+#: ``apps/workspace/tests/fixtures/document-lifecycle.schema.json`` is what pins
 #: the two together (``packages/agent/tests/tools/documents/test_wire_contract.py``).
 DocumentVersionState = Literal[
     "draft",
@@ -121,7 +121,7 @@ class DocumentDraftCard(CardModel):
 
 #: The kinds a person may delegate. The one source: `create_task` reads it here,
 #: and `scripts/generate_vocabularies.py` renders it to the UI's
-#: `DELEGATABLE_TASK_KINDS` (`frontends/ui/src/shared/vocabularies.generated.ts`).
+#: `DELEGATABLE_TASK_KINDS` (`apps/workspace/shared/vocabularies.generated.ts`).
 TaskKind = Literal["compliance_check", "submission_check", "document", "revision"]
 
 

@@ -373,7 +373,7 @@ marks it purged. Restore is possible only while the row is un-claimed.
 | **SeaweedFS** (`grid-documents`) | BFF writes, backend/purger read | OIB PDFs + uploaded documents, keyed by org/project |
 | **Qdrant** | backend | two physical collections, `piloti_corpus` (the legal corpus, `oib_knowledge`) and `piloti_office` (everything an office uploads). The logical collections `archiv_<org>`, `proj_<id>`, `<proj>_r<folder>` and `s_<conversation>` are payload fields, and a request's scope is one filter compiled in `scope_filter` (ADR-0116). Memory and lessons are not in Qdrant — they live in `app`, with row-resident embeddings for recall ([semantic-notes.md](./semantic-notes.md)). |
 
-Schema evolves via Drizzle migrations (`frontends/ui/drizzle/`, applied on
+Schema evolves via Drizzle migrations (`apps/workspace/migrations/`, applied on
 frontend start). → `docs/database/`.
 
 ---
@@ -459,7 +459,7 @@ What lives where in the checkout.
 | `.devcontainer/` | VS Code dev container configuration |
 | `packages/agent/src/aiq_agent/` | Backend agent (LangGraph agents, cards, knowledge layer) |
 | `packages/knowledge-layer`, `packages/ris-adapter`, `packages/tavily-web-search` | The Python packages of the uv workspace: the knowledge layer, the RIS adapter and web search, each a NAT plugin |
-| `frontends/ui/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
+| `apps/workspace/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
 | `apps/site/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
 | `apps/backend/` | The backend FastAPI front-end plugin (`_type: aiq_api`): REST routes, async jobs, `/v1/ingest` |
 | `evals/` | Piloti's evals, each with its tests: `oib-retrieval` and the live `turn-shapes` check |

@@ -154,7 +154,7 @@ class TurnTextFold:
         Either way, a settled text keeps its ``[N]`` and its sources, and a
         streamed one drops its pending ``[N]``, whose sources never arrived.
 
-        ``frontends/ui/src/features/chat/lib/stopped-answer.ts`` is the
+        ``apps/workspace/ui/features/chat/lib/stopped-answer.ts`` is the
         TypeScript copy of the rule, for the client's and the BFF's writes of
         the same row; ``contracts/wire/v2/stopped-cases.jsonl`` holds both to it.
         """

@@ -74,7 +74,7 @@ KNOWN_AGENTS = frozenset({"researcher", "deep_researcher"})
 #: ``shallow_researcher`` was renamed to ``researcher``. Skill authors write
 #: this key by hand and ten past migrations seeded it, so rows carrying the old
 #: name outlive the rename: the forward migration
-#: (``frontends/ui/drizzle/0081_grid_agents_researcher_rename.sql``) rewrites the
+#: (``apps/workspace/migrations/0081_grid_agents_researcher_rename.sql``) rewrites the
 #: ones we can see, and this map covers everything else — a row written by an
 #: older BFF mid-deploy, a restored backup, an org skill somebody re-imports.
 #:
@@ -86,8 +86,8 @@ KNOWN_AGENTS = frozenset({"researcher", "deep_researcher"})
 #: set that does not contain ``researcher``, and the skill would vanish from
 #: chat. Normalising is the only reading that keeps the author's intent.
 #:
-#: Mirrored in ``frontends/ui/src/lib/skills/service.ts::skillTargetsAgent`` and
-#: ``frontends/ui/src/features/skills/lib/agent-scope.ts``; the three are a
+#: Mirrored in ``apps/workspace/bff/skills/service.ts::skillTargetsAgent`` and
+#: ``apps/workspace/ui/features/skills/lib/agent-scope.ts``; the three are a
 #: contract set and ``test_resolver.py`` / ``service.spec.ts`` /
 #: ``agent-scope.spec.ts`` pin them against the same case.
 AGENT_ALIASES: dict[str, str] = {"shallow_researcher": "researcher"}
@@ -116,7 +116,7 @@ def _cache_ttl_seconds() -> float:
 #: capability published to organizations; this resolver drops it from
 #: ``always_on`` and only includes it when the BFF payload says the org took
 #: it up. The mirror of
-#: ``frontends/ui/src/lib/skills/types.ts::isCuratedPlatformSkill``, and the
+#: ``apps/workspace/bff/skills/types.ts::isCuratedPlatformSkill``, and the
 #: two are a contract pair — ``test_resolver.py`` and ``service.spec.ts`` pin
 #: them against the same cases.
 METADATA_CATALOG = "grid-catalog"

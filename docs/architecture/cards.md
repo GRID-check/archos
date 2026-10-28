@@ -156,7 +156,7 @@ persisted on the message; see
 
 `formula` is `calculation` with a name instead of operations, and inputs the
 reader may change. The name picks one of four rules in
-`frontends/ui/src/features/grid-cards/lib/formulas.ts`, each of which compiles
+`apps/workspace/ui/features/grid-cards/lib/formulas.ts`, each of which compiles
 to `CalculationStepData`: the same `evaluate`, the same `verdictFor` and the one
 derivation renderer (`components/Derivation.tsx`) serve both cards. The rule's
 bounds are not on the wire at all. They are typed tables in `formulas.ts`,
@@ -430,9 +430,9 @@ The checklist:
    `CARD_EXAMPLES`, the trigger table and any craft or note naming it);
 2. add its name and replacement to `RETIRED_CARD_REPLACEMENTS`;
 3. regenerate: `uv run python scripts/generate_card_schema.py`, then
-   `npm run generate:cards` in `frontends/ui`;
+   `npm run generate:cards` in `apps/workspace`;
 4. remove it from every builtin skill's `grid-cards` and body, then run
-   `node frontends/ui/scripts/sync-platform-skills.mjs`;
+   `node apps/workspace/scripts/sync-platform-skills.mjs`;
 5. remove the renderer, its `CARD_INTERACTIVITY` entry, its export mapping and
    its entry in the frontend's `SURFACE_EXCLUDED_LEAVES` if it had one
    (`test_interactive_card_parity.py` and `test_surface_excluded_parity.py`
@@ -925,7 +925,7 @@ without re-plumbing generation or transport.
    the index, the shapes, the human catalog endpoint and the gallery are all
    derived from the union.
 2. Regenerate the schema: `uv run python scripts/generate_card_schema.py`, then
-   `cd frontends/ui && npm run generate:cards`.
+   `cd apps/workspace && npm run generate:cards`.
 3. **Classify it in `CARD_INTERACTIVITY`** (`features/grid-cards/card-decision.ts`).
    `tsc` fails until you do — see [Interactive cards](#interactive-cards-the-answer-must-be-persisted)
    for how to decide, and for what an `'interactive'` classification obliges.

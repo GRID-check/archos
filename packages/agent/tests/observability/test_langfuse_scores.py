@@ -173,7 +173,7 @@ class TestOneListOfNames:
             assert (definition.data_type == "CATEGORICAL") == bool(definition.categories), definition.name
 
     def test_every_score_the_bff_writes_is_defined(self):
-        source = "\n".join(path.read_text() for path in (REPO / "frontends/ui/src/lib/langfuse").glob("*.ts"))
+        source = "\n".join(path.read_text() for path in (REPO / "apps/workspace/bff/langfuse").glob("*.ts"))
         written = set(
             re.findall(
                 r"""['"](user-feedback[a-z-]*|piloti-decision|revision-notice|document-check|diagram-filed)['"]""",

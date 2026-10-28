@@ -109,7 +109,7 @@ SKIP_COMMANDS = frozenset({"skip", "done", "exit", "quit", "proceed", "continue"
 
 PLAN_REPLIES: dict[str, PlanDecision] = {
     # The three tokens the plan envelope names, and the only three the UI's
-    # buttons send (frontends/ui .../AgentPrompt.tsx).
+    # buttons send (apps/workspace .../AgentPrompt.tsx).
     "approve": "approved",
     "shallow": "shallow",
     "cancel": "cancelled",
@@ -369,7 +369,7 @@ def format_plan_for_user(plan: PlanResponse, inventory: list[dict[str, Any]] | N
     sections_text = "\n".join(f"  {i + 1}. {s}" for i, s in enumerate(plan.sections))
     # The footer sentence is a byte-stable envelope: the UI detects it,
     # strips it, and renders localized action buttons in its place
-    # (frontends/ui .../AgentPrompt.tsx). Changing a byte here requires
+    # (apps/workspace .../AgentPrompt.tsx). Changing a byte here requires
     # changing the regexes there in the same commit.
     # The same plan as data, for the plan card: the client strips the fence
     # and renders the sections, the genre and the depth as controls; a client

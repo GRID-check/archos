@@ -1,5 +1,5 @@
 {
-  "description": "German word stems that must not appear in an identifier (AGENTS.md: every name in code is English, domain words included). Each is matched inside a word of a camelCase or snake_case identifier; strings, comments and JSX text are never checked, so German copy and domain data are fine. Read by tests/test_english_names.py (Python) and frontends/ui/src/english-names.spec.ts (TypeScript).",
+  "description": "German word stems that must not appear in an identifier (AGENTS.md: every name in code is English, domain words included). Each is matched inside a word of a camelCase or snake_case identifier; strings, comments and JSX text are never checked, so German copy and domain data are fine. Read by tests/test_english_names.py (Python) and apps/workspace/tests/english-names.spec.ts (TypeScript).",
   "stems": [
     "absatz",
     "aenderung",
@@ -38,7 +38,7 @@
     "vorhaben",
     "widmung"
   ],
-  "prose_description": "German words that must not appear in anything an agent reads (AGENTS.md, 'Industry standard first': operation names and descriptions, schema descriptions, MCP instructions, refusals). Matched as whole words, case-insensitive, in prose; any word with an umlaut or ß, and any word carrying one of `stems`, counts too. Domain data (document names, addresses, legal citations) is allowed by the allowlist of each check, with a reason. Read by frontends/ui/src/lib/agent-api/english-only.spec.ts and packages/agent/tests/tools/workspace/test_english_only.py.",
+  "prose_description": "German words that must not appear in anything an agent reads (AGENTS.md, 'Industry standard first': operation names and descriptions, schema descriptions, MCP instructions, refusals). Matched as whole words, case-insensitive, in prose; any word with an umlaut or ß, and any word carrying one of `stems`, counts too. Domain data (document names, addresses, legal citations) is allowed by the allowlist of each check, with a reason. Read by apps/workspace/bff/agent-api/english-only.spec.ts and packages/agent/tests/tools/workspace/test_english_only.py.",
   "prose_words": [
     "ablage",
     "abschluss",

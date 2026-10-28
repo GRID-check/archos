@@ -5,7 +5,7 @@ Auth is handled by **WorkOS AuthKit v4** with session cookies. The `REQUIRE_AUTH
 ## Sign-in flow
 
 1. A request for a protected page with no session reaches the Next.js proxy
-   (`frontends/ui/src/proxy.ts`), which asks AuthKit. For an initial document
+   (`apps/workspace/proxy.ts`), which asks AuthKit. For an initial document
    navigation, AuthKit mints the PKCE verifier cookie and redirects to WorkOS in
    the same response.
 2. A client-side (RSC) navigation or a client fetch cannot receive that cookie —
@@ -57,7 +57,7 @@ a user's access token"; the feature-flag runtime client evaluates flags without
 the claim but does not stop WorkOS minting it (workos/authkit-nextjs#404, open).
 
 So the cookie is split, the way Auth.js and `@supabase/ssr` keep theirs: a bun
-patch on AuthKit (`frontends/ui/patches/@workos-inc%2Fauthkit-nextjs@4.6.2.patch`,
+patch on AuthKit (`apps/workspace/patches/@workos-inc%2Fauthkit-nextjs@4.6.2.patch`,
 module `session-cookie.js`) reads and writes the session through every path
 AuthKit has (the proxy's refresh, `saveSession`, `refreshSession` behind the
 client's token refresh and `switchToOrganization`, the callback, sign-out). A
@@ -87,7 +87,7 @@ dropdown also cannot nest in our menu.
 
 ## Session resolution
 
-`getGridSession()` in `frontends/ui/src/lib/auth/session.ts:38` reads the current session using `withAuth()` from AuthKit:
+`getGridSession()` in `apps/workspace/bff/auth/session.ts:38` reads the current session using `withAuth()` from AuthKit:
 
 ```typescript
 export async function getGridSession(): Promise<GridSession | null>
@@ -112,14 +112,14 @@ When no session exists, `getGridSession()` returns `null`.
 
 ### requireGridSession()
 
-`frontends/ui/src/lib/auth/session.ts`
+`apps/workspace/bff/auth/session.ts`
 
 Requires any valid session. Throws `SessionRequiredError` (`lib/api/errors`, an
 `UnauthorizedError`) if no session is present.
 
 ### requireAuthorizedSession()
 
-`frontends/ui/src/lib/auth/require-auth.ts`
+`apps/workspace/bff/auth/require-auth.ts`
 
 Extends `requireGridSession()` and additionally requires an `organizationId`.
 Without one it throws `NoOrganizationError` (a `ForbiddenError`); the page
@@ -143,7 +143,7 @@ server-thrown class does not survive the RSC boundary.
 When `REQUIRE_AUTH=false`:
 
 - **Server-side**: `getGridSession()` still works (returns null if no cookie), but is not called by BFF routes. `resolveSession()` in the v1 proxy returns `null`. No Authorization headers are forwarded.
-- **Client-side**: `useAuth()` in `frontends/ui/src/adapters/auth/use-auth.ts:73` short-circuits and returns `DEFAULT_USER`:
+- **Client-side**: `useAuth()` in `apps/workspace/ui/adapters/auth/use-auth.ts:73` short-circuits and returns `DEFAULT_USER`:
 
 ```typescript
 {

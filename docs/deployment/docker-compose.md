@@ -275,7 +275,7 @@ image, and the compose equivalent of the Kubernetes Job `grid-app-audit-schemas`
 `node scripts/provision-workos-audit-schemas.mjs --apply`, which reads the
 environment first and writes only the actions whose schema is missing or
 different — so re-running it on every `up` writes nothing when the registry
-(`frontends/ui/src/lib/audit/schemas.mjs`) has not changed.
+(`apps/workspace/bff/audit/schemas.mjs`) has not changed.
 
 **`frontend` waits on it** (`service_completed_successfully`), which the
 Kubernetes Job is deliberately not waited on. The reason is
@@ -310,7 +310,7 @@ The Next.js UI application.
 | Property | Value |
 |----------|-------|
 | Image | `frontend:local` (override with `FRONTEND_IMAGE`) |
-| Build context | `../../frontends/ui` |
+| Build context | `../../apps/workspace` |
 | Dockerfile | `apps/backend/Dockerfile` |
 | Container name | (auto-generated) |
 | Ports | `${FRONTEND_PORT:-3000}:3000` |
@@ -328,7 +328,7 @@ The Next.js UI application.
 | `WORKOS_API_KEY` | `${WORKOS_API_KEY}` |
 | `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | `${NEXT_PUBLIC_WORKOS_REDIRECT_URI:-${WORKOS_REDIRECT_URI:-http://localhost:3000/api/auth/callback}}` |
 | `WORKOS_COOKIE_PASSWORD` | `${WORKOS_COOKIE_PASSWORD}` |
-| `FILE_UPLOAD_ACCEPTED_TYPES` | `${FILE_UPLOAD_ACCEPTED_TYPES:-.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx}` — the same list as the code default in `frontends/ui/src/shared/config/file-upload.ts` |
+| `FILE_UPLOAD_ACCEPTED_TYPES` | `${FILE_UPLOAD_ACCEPTED_TYPES:-.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx}` — the same list as the code default in `apps/workspace/shared/config/file-upload.ts` |
 | `GOTENBERG_URL` | `${GOTENBERG_URL-http://gotenberg:3000}`. Required for indexing Word, presentation, `.xls` and `.ods` files (ADR-0071). An empty value disables conversion: those files are then marked failed with a retryable reason, and `.xlsx`/`.xlsm` index without a preview. No colon in the expansion, so an empty value is kept rather than replaced by the default. The Coolify file uses `:-`, so there an empty value falls back to the bundled converter |
 | `SEAWEED_ENDPOINT` | `http://seaweedfs:8333` (hardcoded in compose) |
 | `SEAWEED_ACCESS_KEY` | `seaweedadmin` (hardcoded in compose) |

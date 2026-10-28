@@ -72,7 +72,7 @@ class Image:
 
 IMAGES = (
     Image("backend", context=".", dockerfile="apps/backend/Dockerfile", target="release"),
-    Image("frontend", context="frontends/ui", dockerfile="frontends/ui/deploy/Dockerfile"),
+    Image("frontend", context="apps/workspace", dockerfile="apps/workspace/deploy/Dockerfile"),
     Image("web", context="apps/site", dockerfile="apps/site/Dockerfile"),
 )
 

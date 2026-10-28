@@ -26,7 +26,7 @@ There is even a fallback that mines the last assistant message when the file is
 missing, which is the code saying the file, not the message, was the artifact.
 
 `docs/roadmap/feature-opportunities.md` rates "a deliverable an architect can
-hand to the authority" **very high**. `frontends/ui/src/lib/answer-export/`
+hand to the authority" **very high**. `apps/workspace/bff/answer-export/`
 already renders a saved answer to an authorized `.docx`. The gap is not that the
 deliverable cannot be produced — it is that it lands in *Downloads* instead of
 in the project, where it could be found, assigned, previewed and deleted like
@@ -165,7 +165,7 @@ Cut deliberately, each with the reason:
 > is migrations 0063–0066: `authored_by_run_id` was renamed to `authored_by_ref`
 > and joined by `authored_by_ref_kind` (`agent_run` | `answer_artifact`), because
 > two of the three producers file a reference that is not a job id at all. Read
-> `frontends/ui/drizzle/0066_authored_ref_names_its_kind.sql` for the current
+> `apps/workspace/migrations/0066_authored_ref_names_its_kind.sql` for the current
 > shape and the argument; `docs/database/schema.md` for the table.
 
 Migration `00NN`:

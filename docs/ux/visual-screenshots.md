@@ -8,7 +8,7 @@ repo.
 - **Capture:** the `agent-browser` skill — a native CLI driving a real Chrome.
 - **Publish:** the `before-and-after` skill — formats the media and uploads it
   with `gh --attach`.
-- **Targets:** the `/dev/*` preview routes under `frontends/ui/src/app/dev/`.
+- **Targets:** the `/dev/*` preview routes under `apps/workspace/app/dev/`.
 - **Committed artifacts:** none. That is the point.
 
 Both skills are pinned in [`apm.yml`](../../apm.yml) and deployed by
@@ -17,7 +17,7 @@ Both skills are pinned in [`apm.yml`](../../apm.yml) and deployed by
 
 ## Why it is not a harness any more
 
-The repo used to carry `frontends/ui/visual/`: a registry of 178 targets, a
+The repo used to carry `apps/workspace/visual/`: a registry of 178 targets, a
 capture harness, and 620 committed PNGs. It was removed because of what it cost
 against what it bought.
 
@@ -59,7 +59,7 @@ Start the dev server, then drive it. The preview routes render real components
 from fixtures, so nothing else needs to be running.
 
 ```bash
-cd frontends/ui && bun run dev        # or: npx next dev --turbopack -p 3311
+cd apps/workspace && bun run dev        # or: npx next dev --turbopack -p 3311
 ```
 
 Ask the agent-browser skill for its own command reference before you improvise —
@@ -125,13 +125,13 @@ PNG, JPEG, GIF, WebP, SVG, MP4, MOV and WebM all work.
 
 | Was | Now |
 |---|---|
-| `task fe:screenshots` | `agent-browser screenshot` against a running dev server |
+| `task workspace:screenshots` | `agent-browser screenshot` against a running dev server |
 | `visual/registry.mjs` targets | the `/dev/*` routes themselves; no second list to keep in sync |
 | Committed PNGs under `visual/screenshots/` | attachments on the PR |
 | `visual-coverage` workflow | nothing but a reviewer reading the attachment |
 | `screenshot-preview` workflow and its bot commits | nothing; nobody commits screenshots |
 | `visual/screenshots.manifest.json` staleness gate | nothing. A capture is taken against the branch under review, so it cannot go stale |
-| `task fe:touch-audit` | **nothing.** It imported the registry, so it went with it |
+| `task workspace:touch-audit` | **nothing.** It imported the registry, so it went with it |
 
 That last row is a real loss, not a migration. `touch-audit.mjs` measured every
 `/dev` surface at a phone viewport and reported overflow, scroll traps and

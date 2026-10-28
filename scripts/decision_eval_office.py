@@ -26,7 +26,7 @@ office's experience (ADR-0094, ADR-0096, docs/roadmap/office-experience.md):
     hand-labelled quotes.
 
 Every part reads fixtures that exist for their own sake: the precedent eval's
-fixture office (``frontends/ui/tests/fixtures/precedent/office.json``), its
+fixture office (``apps/workspace/tests/fixtures/precedent/office.json``), its
 catalog as the production renderer writes it (``rendered.json``) and its
 labelled questions (``tests/fixtures/precedent/precedent_questions.yaml``);
 the loop-eval questions (``tests/fixtures/derivation/loop_eval_questions.yaml``)
@@ -73,7 +73,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT))
 
-FIXTURES = REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
+FIXTURES = REPO_ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent"
 QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "precedent" / "precedent_questions.yaml"
 NORM_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.yaml"
 FINGERPRINT_QUOTES = REPO_ROOT / "tests" / "fixtures" / "decisions" / "fingerprint_quotes.yaml"

@@ -17,7 +17,7 @@ FIRST_IMPRESSION = [
     "docs/README.md",
     "docs/architecture/system-overview.md",
     "docs/architecture/overview.md",
-    "frontends/ui/README.md",
+    "apps/workspace/README.md",
 ]
 
 PROMPTS = sorted(

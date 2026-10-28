@@ -21,7 +21,7 @@ A process boundary cannot be crossed inside one test, so both sides assert
 against the SAME checked-in fixture — the device
 ``tests/fixtures/citation_pipeline`` already uses for the citation formats. The
 TypeScript counterpart,
-``frontends/ui/src/lib/skills/resolve-payload-contract.spec.ts``, proves the
+``apps/workspace/bff/skills/resolve-payload-contract.spec.ts``, proves the
 fixture is still a faithful sample of what the real ``resolveSkillsForAgent``
 emits; this file proves the real :class:`SkillResolver` still reads it as fleet
 policy. Rename or drop a field and exactly one of the two fails.

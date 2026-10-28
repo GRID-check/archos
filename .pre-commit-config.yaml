@@ -34,10 +34,10 @@ repos:
         # Scoped to the two inputs rather than run always: the generator stamps
         # a timestamp into its output, so running it on every commit would make
         # the file dirty on every commit.
-        entry: node frontends/ui/scripts/sync-platform-skills.mjs --check
+        entry: node apps/workspace/scripts/sync-platform-skills.mjs --check
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent/skills/builtin/.*/SKILL\.md|frontends/ui/src/lib/skills/platform-skills\.ts|frontends/ui/scripts/sync-platform-skills\.mjs)$
+        files: ^(packages/agent/src/aiq_agent/skills/builtin/.*/SKILL\.md|apps/workspace/bff/skills/platform-skills\.ts|apps/workspace/scripts/sync-platform-skills\.mjs)$
 
       - id: card-schemas
         name: the card schemas are generated from the card models (cards/models.py and its card modules)
@@ -58,20 +58,20 @@ repos:
         # langchain_core.
         # On Windows this path is .venv/Scripts/python.exe.
         #
-        # The Zod stage needs `json-schema-to-zod` from frontends/ui/node_modules,
+        # The Zod stage needs `json-schema-to-zod` from apps/workspace/node_modules,
         # which CI's repo-lint job does not install — it failed every run until
         # this guard existed. It is skipped where the modules are absent and
-        # covered instead by `task fe:cards:check`, which the frontend CI job
-        # runs after `task fe:install`.
+        # covered instead by `task workspace:cards:check`, which the frontend CI job
+        # runs after `task workspace:install`.
         entry: >-
           bash -c 'PYTHONPATH=packages/agent/src .venv/bin/python scripts/generate_card_schema.py
-          && if [ -d frontends/ui/node_modules ];
-          then node frontends/ui/scripts/generate-card-schemas.mjs;
-          else echo "skipping the Zod stage, frontends/ui/node_modules is absent
-          (task fe:cards:check covers it)"; fi'
+          && if [ -d apps/workspace/node_modules ];
+          then node apps/workspace/scripts/generate-card-schemas.mjs;
+          else echo "skipping the Zod stage, apps/workspace/node_modules is absent
+          (task workspace:cards:check covers it)"; fi'
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent/cards/(models|card_model|proposal_cards|schematic_cards|calculation_card|formula_card|workspace_cards|file_operation_card|canvas_activity_card|look_card|revision_compare_card|ifc_cards|surface_card)\.py|contracts/cards/schemas\.json|scripts/generate_card_schema\.py|frontends/ui/scripts/generate-card-schemas\.mjs|frontends/ui/src/shared/cards/generated\.ts)$
+        files: ^(packages/agent/src/aiq_agent/cards/(models|card_model|proposal_cards|schematic_cards|calculation_card|formula_card|workspace_cards|file_operation_card|canvas_activity_card|look_card|revision_compare_card|ifc_cards|surface_card)\.py|contracts/cards/schemas\.json|scripts/generate_card_schema\.py|apps/workspace/scripts/generate-card-schemas\.mjs|apps/workspace/shared/cards/generated\.ts)$
 
       - id: wire-schemas
         name: the chat wire v2 schemas are generated from common/wire_v2.py
@@ -81,22 +81,22 @@ repos:
         # (scripts/generate-wire-schemas.spec.mjs covers it in the UI suite).
         entry: >-
           bash -c 'PYTHONPATH=packages/agent/src .venv/bin/python scripts/generate_wire_schema.py
-          && if [ -d frontends/ui/node_modules ];
-          then node frontends/ui/scripts/generate-wire-schemas.mjs;
-          else echo "skipping the Zod stage, frontends/ui/node_modules is absent"; fi'
+          && if [ -d apps/workspace/node_modules ];
+          then node apps/workspace/scripts/generate-wire-schemas.mjs;
+          else echo "skipping the Zod stage, apps/workspace/node_modules is absent"; fi'
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent/common/wire_v2\.py|contracts/wire/v2\.schema\.json|scripts/generate_wire_schema\.py|frontends/ui/scripts/generate-(wire|card)-schemas\.mjs|frontends/ui/src/adapters/api/wire-v2\.generated\.ts)$
+        files: ^(packages/agent/src/aiq_agent/common/wire_v2\.py|contracts/wire/v2\.schema\.json|scripts/generate_wire_schema\.py|apps/workspace/scripts/generate-(wire|card)-schemas\.mjs|apps/workspace/ui/adapters/api/wire-v2\.generated\.ts)$
 
       - id: vocabularies
         name: the UI's shared vocabularies are generated from their Python sources
-        # One stage: each tuple in frontends/ui/src/shared/vocabularies.generated.ts
+        # One stage: each tuple in apps/workspace/shared/vocabularies.generated.ts
         # is rendered straight from a Python source (scripts/generate_vocabularies.py).
         # Running the generator is the check; a changed file fails the commit.
         entry: bash -c 'PYTHONPATH=packages/agent/src .venv/bin/python scripts/generate_vocabularies.py'
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent/cards/workspace_cards\.py|packages/agent/src/aiq_agent/common/source_kinds\.py|scripts/generate_vocabularies\.py|frontends/ui/src/shared/vocabularies\.generated\.ts)$
+        files: ^(packages/agent/src/aiq_agent/cards/workspace_cards\.py|packages/agent/src/aiq_agent/common/source_kinds\.py|scripts/generate_vocabularies\.py|apps/workspace/shared/vocabularies\.generated\.ts)$
 
       - id: agent-docs
         name: every AGENTS.md is reachable by the agents that need it
@@ -197,7 +197,7 @@ repos:
         entry: python3 scripts/check_env_docs.py
         language: system
         pass_filenames: false
-        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^apps/backend/src/aiq_api/jobs/.*\.py$|^packages/agent/src/aiq_agent/knowledge/ingest_.*\.py$|^frontends/ui/(workers|purger|scheduler)/.*\.js$|^frontends/ui/src/lib/(jobs-queue|mail-import)/.*\.ts$
+        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^apps/backend/src/aiq_api/jobs/.*\.py$|^packages/agent/src/aiq_agent/knowledge/ingest_.*\.py$|^apps/workspace/(workers|purger|scheduler)/.*\.js$|^apps/workspace/bff/(jobs-queue|mail-import)/.*\.ts$
 
       - id: validate-skills
         name: skill bundles are well-formed

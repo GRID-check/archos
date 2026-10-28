@@ -106,7 +106,7 @@ MIN_IMAGE_HEIGHT_PX = 100
 # @required false
 # Most embedded rasters per PDF sent to the VLM. Each one is a paid call, and a
 # photo catalogue or a scanned folder can hold hundreds. 64 is the BFF's
-# `MAX_STORED_IMAGES_PER_DOCUMENT` (frontends/ui/src/lib/s3.ts), so every raster
+# `MAX_STORED_IMAGES_PER_DOCUMENT` (apps/workspace/bff/s3.ts), so every raster
 # that is analysed can also be stored for `look`. The largest
 # are kept (see `cap_images`); the count left out is recorded on the file's
 # job status as `images_over_cap`. 0 analyses none.

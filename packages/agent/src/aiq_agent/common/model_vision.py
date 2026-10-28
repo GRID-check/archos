@@ -5,7 +5,7 @@ text only cannot read one: OpenRouter refuses the NEXT model call of the turn
 ("no endpoints found that support image input"), so a single look would end the
 turn with an error instead of an answer. The admin
 picker only requires image input of the ingestion VLM group
-(``frontends/ui/src/lib/model-config/agent-groups.ts``); the chat group stays
+(``apps/workspace/bff/model-config/agent-groups.ts``); the chat group stays
 open to text-only models on purpose, because an office that chose one should
 still get answers. So the two tools ask here first and, for a model that cannot
 see, answer with a sentence that says so.

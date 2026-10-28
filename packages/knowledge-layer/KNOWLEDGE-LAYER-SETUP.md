@@ -191,7 +191,7 @@ nat serve --config_file configs/config_oib_openrouter.yml --host 0.0.0.0 --port 
 ### Start Frontend
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 npm run dev
 ```
 
@@ -291,7 +291,7 @@ Summaries are generated for the following file types:
 
 Other file types are ingested normally but do not receive summaries.
 
-> **Frontend file types:** The frontend file picker defaults to `.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx` (`frontends/ui/src/shared/config/file-upload.ts`). Leave `FILE_UPLOAD_ACCEPTED_TYPES` unset to keep that default; a value that lists fewer types narrows what users can upload. Word and PowerPoint files also need Gotenberg (`GOTENBERG_URL`). Where to set it:
+> **Frontend file types:** The frontend file picker defaults to `.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx` (`apps/workspace/shared/config/file-upload.ts`). Leave `FILE_UPLOAD_ACCEPTED_TYPES` unset to keep that default; a value that lists fewer types narrows what users can upload. Word and PowerPoint files also need Gotenberg (`GOTENBERG_URL`). Where to set it:
 >
 > | Deployment | Where to set |
 > |-----------|-------------|

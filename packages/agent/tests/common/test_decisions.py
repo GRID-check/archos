@@ -29,7 +29,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 
 def _bff_cost_sources() -> set[str]:
     """`COST_SOURCES` as the BFF declares it, the vocabulary its internal usage route accepts."""
-    schema = (_REPO_ROOT / "frontends/ui/src/lib/db/schema/budgets.ts").read_text()
+    schema = (_REPO_ROOT / "apps/workspace/bff/db/schema/budgets.ts").read_text()
     declared = re.search(r"export const COST_SOURCES = \[([^\]]*)\]", schema)
     assert declared is not None
     return set(re.findall(r"'([a-z_]+)'", declared.group(1)))

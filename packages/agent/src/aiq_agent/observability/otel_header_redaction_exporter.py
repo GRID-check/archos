@@ -88,7 +88,7 @@ class _DisabledSpanExporter(BaseExporter):
     derived here from the dependency (ADR-0029 "availability = flag AND
     capability"): no endpoint means nothing to export to, so spans are dropped
     at the source instead of being queued and retried forever against an
-    address that does not exist. Mirrors `frontends/ui/src/instrumentation.ts`,
+    address that does not exist. Mirrors `apps/workspace/instrumentation.ts`,
     which no-ops on the same missing env var.
     """
 

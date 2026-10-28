@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-UI_DIR="$PROJECT_ROOT/frontends/ui"
+UI_DIR="$PROJECT_ROOT/apps/workspace"
 
 # Default config file
 CONFIG_FILE="configs/config_oib_openrouter.yml"
@@ -220,7 +220,7 @@ main() {
         echo ""
         echo "WARNING: Frontend will NOT be started."
         echo "   Reason: UI dependencies not available (missing npm or node_modules)"
-        echo "   To fix: install Node.js 22+ and run 'npm ci' in frontends/ui/"
+        echo "   To fix: install Node.js 22+ and run 'npm ci' in apps/workspace/"
         echo "   The backend will still run at http://localhost:8000"
         echo ""
     fi

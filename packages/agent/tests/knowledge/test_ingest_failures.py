@@ -1,7 +1,7 @@
 """A failed file's category, from its reason and the exception that ended it.
 
 The category decides whether reading the file again is worth anything
-(``frontends/ui/src/lib/documents/retry-policy.ts``). The reasons the adapter
+(``apps/workspace/bff/documents/retry-policy.ts``). The reasons the adapter
 writes on purpose are pinned in ``test_ingest_failure_prefix_parity.py``; these
 pin what the per-file catch meets: an exception and ``str(e)``.
 """

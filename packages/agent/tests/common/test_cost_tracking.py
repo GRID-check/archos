@@ -29,7 +29,7 @@ from aiq_agent.common.cost_tracking import extract_usage_event
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var
 from aiq_agent.common.cost_tracking import track_llm_costs
 
-_ROUTE = Path(__file__).resolve().parents[4] / "frontends/ui/src/app/api/internal/usage/route.ts"
+_ROUTE = Path(__file__).resolve().parents[4] / "apps/workspace/app/api/internal/usage/route.ts"
 
 
 def _route_keys(schema_name: str) -> set[str]:

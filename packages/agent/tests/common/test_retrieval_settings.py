@@ -150,14 +150,14 @@ class TestResolution:
 
 class TestCatalogParity:
     """The backend bounds must match the BFF catalog exactly (fixture exported
-    from frontends/ui/src/lib/retrieval-settings/catalog.ts)."""
+    from apps/workspace/bff/retrieval-settings/catalog.ts)."""
 
     def test_bounds_match_frontend_catalog(self):
         import json
         from pathlib import Path
 
         fixture = (
-            Path(__file__).parents[4] / "frontends" / "ui" / "tests" / "fixtures" / "retrieval_settings_catalog.json"
+            Path(__file__).parents[4] / "apps" / "workspace" / "tests" / "fixtures" / "retrieval_settings_catalog.json"
         )
         catalog = {entry["key"]: entry for entry in json.loads(fixture.read_text(encoding="utf-8"))}
         assert set(catalog) == set(retrieval_settings._BOUNDS)

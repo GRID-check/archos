@@ -8,8 +8,8 @@ Two ratchets on the layout ADR-0145 sets out:
   list in the PR that empties it, and a listed name that is gone fails too, so
   the list cannot keep a stale entry.
 - A path a finished move left behind is never tracked again, and nothing but
-  history names it. History is the ADRs, `releasenotes/` and `docs/audit/`,
-  which say what was true then. A one-segment old path (`plans/`) only gets
+  history names it. History is the ADRs, `releasenotes/`, `docs/audit/` and the Drizzle
+  migrations, which say what was true then. A one-segment old path (`plans/`) only gets
   the first half: as a word it turns up in prose and test data.
 
 A move adds its old path to `MOVED` and removes its legacy name in the same PR.
@@ -47,9 +47,7 @@ TARGET = frozenset(
 )
 
 #: Still waiting for their move, and the ADR-0145 row that empties each.
-LEGACY = {
-    "frontends": "row 9 (ui)",
-}
+LEGACY = {}
 
 #: Finished moves: the old path, and where its contents went.
 MOVED = {
@@ -68,12 +66,20 @@ MOVED = {
     "src/aiq_agent/": "packages/agent/src/aiq_agent (row 8)",
     "tests/aiq_agent/": "packages/agent/tests (row 8)",
     "frontends/aiq_api/": "apps/backend (row 7)",
+    "frontends/ui/": "apps/workspace (row 9)",
     "deploy/entrypoint.py": "apps/backend/entrypoint.py (row 7)",
     "deploy/start_web.py": "apps/backend/start_web.py (row 7)",
 }
 
 #: Where an old path may still be named: the record of what was true then.
-HISTORY = (":!docs/adr/", ":!releasenotes/", ":!docs/audit/", ":!frontends/ui/drizzle/")
+HISTORY = (
+    ":!docs/adr/",
+    ":!releasenotes/",
+    ":!docs/audit/",
+    ":!apps/workspace/migrations/",
+    # Baselines and duration tables key their entries by path from the app root (`shared/cards/...`).
+    ":(exclude,glob)apps/workspace/**/*.json",
+)
 
 
 def _at_path_start(path: str) -> str:

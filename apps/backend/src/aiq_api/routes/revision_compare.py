@@ -2,7 +2,7 @@
 
 ``POST /v1/collections/{collection}/revision-compare`` is the AI-native half of the
 compare view (CONTEXT.md, „Fassung"). The BFF
-(``frontends/ui/src/lib/documents/revision-compare-service.ts``) has already
+(``apps/workspace/bff/documents/revision-compare-service.ts``) has already
 decided that the caller may read both documents and that neither is held; this
 route gets two file names of ONE collection and a page number.
 

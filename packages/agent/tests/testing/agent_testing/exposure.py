@@ -11,7 +11,7 @@ import yaml
 
 ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
 CONFIG = ROOT / "configs" / "config_oib_openrouter.yml"
-EXPOSURE = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "exposure.json"
+EXPOSURE = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "exposure.json"
 #: Piloti in chat: the agent whose tool list the door's `native:` names point at.
 PILOTI_AGENT = "shallow_research_agent"
 

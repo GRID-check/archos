@@ -55,7 +55,7 @@ from .test_job_submit_data_sources import submit_app  # noqa: F401 - the public 
 
 SECRET = "internal-test-token"  # noqa: S105  # pragma: allowlist secret
 REPO = Path(__file__).resolve().parents[3]
-SCHEMA_PATH = REPO / "frontends" / "ui" / "tests" / "fixtures" / "run-envelope.schema.json"
+SCHEMA_PATH = REPO / "apps" / "workspace" / "tests" / "fixtures" / "run-envelope.schema.json"
 IDENTITY = {"organization_id": "org-1", "user_id": "user-1", "project_id": "proj-1"}
 SCOPE = [{"collection": "oib_knowledge", "shelf": "base"}, {"collection": "proj_1", "shelf": "project"}]
 HOUR_MS = 60 * 60 * 1000
@@ -499,7 +499,7 @@ class TestTheWireContract:
 
     def test_the_renewal_age_is_the_bffs(self):
         """One decision in two languages: when the worker asks is when the BFF expects to be asked."""
-        source = (REPO / "frontends/ui/src/lib/runs/run-envelope-types.ts").read_text(encoding="utf-8")
+        source = (REPO / "apps/workspace/bff/runs/run-envelope-types.ts").read_text(encoding="utf-8")
         match = re.search(r"export const RUN_ENVELOPE_RENEW_AFTER_MS = ([\d *]+)\n", source)
         assert match, "RUN_ENVELOPE_RENEW_AFTER_MS moved; point this test at it"
         assert math.prod(int(factor) for factor in match.group(1).split("*")) == RUN_ENVELOPE_RENEW_AFTER_MS

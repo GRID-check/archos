@@ -38,7 +38,7 @@ from aiq_agent.knowledge.permit_extraction import pages_with_markers
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
-FIXTURES = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
+FIXTURES = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent"
 OFFICE = FIXTURES / "office.json"
 OUTPUT = FIXTURES / "permits.json"
 COMMENT = (

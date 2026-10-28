@@ -4,7 +4,7 @@
 (``configs/config_oib_openrouter.yml``) binds them; the functions themselves say
 what the model sees. This script builds exactly those functions, with nothing
 else of the workflow, and writes each one's name, description, input JSON Schema
-and annotations to ``frontends/ui/tests/fixtures/backend-tools.schema.json``.
+and annotations to ``apps/workspace/tests/fixtures/backend-tools.schema.json``.
 The BFF's ``lib/agent-api/backend-operations.ts`` reads that file, so an MCP
 client sees the description the chat model sees, and a change to a tool without
 this file regenerated fails ``packages/agent/tests/common/test_backend_tools_schema.py``.
@@ -28,7 +28,7 @@ from aiq_agent.common.backend_tools import describe_backend_tool
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "configs" / "config_oib_openrouter.yml"
-SCHEMA_PATH = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "backend-tools.schema.json"
+SCHEMA_PATH = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "backend-tools.schema.json"
 
 #: Building a function constructs its clients but calls nothing. Its model
 #: clients want a key present, and this one is never sent anywhere.

@@ -101,8 +101,8 @@ def test_a_new_directory_is_a_hit_and_a_new_file_in_an_old_one_is_not(checker, r
 def test_history_and_copy_are_not_checked(checker, repo):
     _add(repo, "docs/adr/0001-piloti.md", "piloti_wakes\n")
     _add(repo, "releasenotes/notes/piloti-x.yaml", "piloti_wakes\n")
-    _add(repo, "frontends/ui/src/i18n/dictionaries/en/chat.ts", "pilotiWakes: 'Piloti'\n")
-    _add(repo, "frontends/ui/drizzle/0001_piloti.sql", "CREATE TABLE piloti_wakes ();\n")
+    _add(repo, "apps/workspace/i18n/dictionaries/en/chat.ts", "pilotiWakes: 'Piloti'\n")
+    _add(repo, "apps/workspace/migrations/0001_piloti.sql", "CREATE TABLE piloti_wakes ();\n")
     assert checker.main([]) == 0
 
 

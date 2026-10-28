@@ -63,5 +63,5 @@ def test_no_pin_without_an_id():
 
 
 def test_the_metadata_key_is_the_one_the_bff_reads():
-    """`frontends/ui/src/lib/feedback/repository.ts` reads `metadata->>'trace_id'`; the spelling is a contract."""
+    """`apps/workspace/bff/feedback/repository.ts` reads `metadata->>'trace_id'`; the spelling is a contract."""
     assert TRACE_ID_METADATA_KEY == "trace_id"

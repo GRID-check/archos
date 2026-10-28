@@ -23,7 +23,7 @@ from aiq_agent.knowledge.schema import AvailableDocument
 from scripts.intake_eval.bff import FakeIntakeRoute as _IntakeRoute
 
 ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
-INTAKE_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "project-intake.schema.json"
+INTAKE_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "project-intake.schema.json"
 
 HEADER, SIGNATURE = "eyJzaWduZWQiOiJydW4ifQ", "c0ffee"
 TOKEN = "internal-token"

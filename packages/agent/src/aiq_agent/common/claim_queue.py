@@ -18,7 +18,7 @@ organisation's thousand-document reindex takes every worker while it is alone,
 and the next organisation's upload takes the next worker that frees up,
 whatever the backlog ahead of it. PRIORITY decides inside a lane only: an
 office's single upload goes before its own reindex, and never before another
-office. The BFF's queue (``frontends/ui/workers/job-queue.js``) claims in the
+office. The BFF's queue (``apps/workspace/workers/job-queue.js``) claims in the
 same order.
 
 The optional per-lane cap is hard: two claims racing past it both commit, then

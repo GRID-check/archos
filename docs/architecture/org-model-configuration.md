@@ -163,7 +163,7 @@ NOT the level `none`, which actively disables reasoning. Both sides encode the
 vocabulary — the BFF validates on write, `aiq_agent/common/reasoning_settings.py`
 on read — so a hand-edited row can never push a provider-native tier name (e.g.
 DeepSeek's `max`, which OpenRouter rejects) into a request. Parity is pinned by
-`frontends/ui/tests/fixtures/reasoning_efforts_catalog.json` from both languages.
+`apps/workspace/tests/fixtures/reasoning_efforts_catalog.json` from both languages.
 
 Applied at the same two seams as the model. Every user-facing agent (chat,
 the clarifier agent, deep research) resolves its LLMs
@@ -190,7 +190,7 @@ fail-open to the YAML value). Grep the backend for
 `Reasoning effort active` to see the dial fire per group.
 
 The merge happens **BFF-side**, in `getEffectiveModelOverrides()`
-(`frontends/ui/src/lib/model-config/service.ts`). Every submission path already
+(`apps/workspace/bff/model-config/service.ts`). Every submission path already
 forwards whatever that function returns, so the Python backend keeps its single
 contract — "the header is model selection only" — and needs no notion of a
 platform layer at all.
@@ -218,7 +218,7 @@ still fail open to the YAML models.
 ## Agent groups
 
 The override points sit *above* the YAML LLM names, so the YAML can reshuffle
-freely. Registry: `frontends/ui/src/lib/model-config/agent-groups.ts` (with
+freely. Registry: `apps/workspace/bff/model-config/agent-groups.ts` (with
 capability requirements) mirrored by `AgentGroup` in
 `packages/agent/src/aiq_agent/common/model_overrides.py` (**keep in sync**).
 
@@ -367,7 +367,7 @@ one you get depends on which question is being asked:
 
 Both are cached for five minutes and fail soft per layer to a generic label.
 
-OpenRouter catalog client: `frontends/ui/src/lib/model-config/openrouter.ts`
+OpenRouter catalog client: `apps/workspace/bff/model-config/openrouter.ts`
 — `GET {OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}/models`, 5-minute
 in-memory cache, optional `OPENROUTER_API_KEY` bearer.
 
@@ -396,7 +396,7 @@ server.js  ──  envelope.modelOverrides (signed) + x-grid-model-overrides  �
 ```
 
 The `{group: modelId}` map read on the WS upgrade
-(`getEffectiveModelOverrides`, `frontends/ui/src/lib/model-config/service.ts`)
+(`getEffectiveModelOverrides`, `apps/workspace/bff/model-config/service.ts`)
 merges two independently cached layers — the org's own choices
 (`OVERRIDES_CACHE_TTL_MS`, keyed per org) and the platform defaults
 (`DEFAULTS_CACHE_TTL_MS`, one global key) — both 5 minutes and both
@@ -465,8 +465,8 @@ them up:
 | Path | How overrides reach the backend | Overrides applied? |
 |---|---|---|
 | Interactive WS chat | `server.js` resolves the org's **effective** overrides at WS upgrade (`GET /api/auth/websocket-scope` → `getEffectiveModelOverrides`: platform defaults with the org's own choices layered over them) and forwards `x-grid-model-overrides`. When the turn kicks off an async deep-research job, that job is submitted **in-process** by `piloti/conversation_register.py`, which captures the map from the live WS request context (`get_model_overrides_from_context()`) rather than re-resolving it. | Yes |
-| Scheduled / manual job runs (ADR-0046) | `fireJob()` (`frontends/ui/src/lib/jobs/service.ts`) resolves the org's **effective** overrides (`getEffectiveModelOverrides`) and passes them explicitly as `model_overrides` in the `POST /v1/internal/skills/submit` payload. | Yes |
-| Generic REST async-job proxy: `POST /api/jobs/async/submit` → backend `POST /v1/jobs/async/submit` | **Fixed 2026-07-16** (`0bdfb72`, `a78f5d4`). `frontends/ui/src/app/api/jobs/async/[...path]/route.ts` now resolves the caller's effective overrides (`getEffectiveModelOverrides`) and forwards them — via the shared `GridRequestContext` builder, so both the legacy `x-grid-model-overrides` header and the signed `X-Grid-Request-Context` envelope carry them. Belt-and-suspenders on the backend: `get_model_overrides_from_context()` (`common/model_overrides.py`) reads the header/envelope first; when neither is present it falls back to a **just-in-time resolution of the effective selection** — `resolve_org_model_overrides()` calls the BFF's internal `GET /api/internal/model-overrides` endpoint, which itself returns the merged platform-plus-org map (the org's own choices win per group) (`INTERNAL_API_TOKEN`-guarded), cached in two tiers — a 10 s in-process memo and the shared cache key `modelconfig:{org}` (ADR-0020, 60 s), which the BFF deletes on a config save or rollback, a ZDR toggle, and a platform-defaults save (`lib/model-config/backend-key.ts`), so a save reaches every backend replica within ~10 s — and fail-open to `{}` (YAML defaults) on any error while the ZDR bit resolved in the same lookup fails closed (pinned, ADR-0074), with errors negative-cached for 1 s in-process only, never written to the shared tier — mirroring the BYOK credential-resolution pattern. | **Yes**, via header-first-then-org-resolution precedence. See also `docs/api/bff-routes.md` and `docs/api/python-endpoints.md`. |
+| Scheduled / manual job runs (ADR-0046) | `fireJob()` (`apps/workspace/bff/jobs/service.ts`) resolves the org's **effective** overrides (`getEffectiveModelOverrides`) and passes them explicitly as `model_overrides` in the `POST /v1/internal/skills/submit` payload. | Yes |
+| Generic REST async-job proxy: `POST /api/jobs/async/submit` → backend `POST /v1/jobs/async/submit` | **Fixed 2026-07-16** (`0bdfb72`, `a78f5d4`). `apps/workspace/app/api/jobs/async/[...path]/route.ts` now resolves the caller's effective overrides (`getEffectiveModelOverrides`) and forwards them — via the shared `GridRequestContext` builder, so both the legacy `x-grid-model-overrides` header and the signed `X-Grid-Request-Context` envelope carry them. Belt-and-suspenders on the backend: `get_model_overrides_from_context()` (`common/model_overrides.py`) reads the header/envelope first; when neither is present it falls back to a **just-in-time resolution of the effective selection** — `resolve_org_model_overrides()` calls the BFF's internal `GET /api/internal/model-overrides` endpoint, which itself returns the merged platform-plus-org map (the org's own choices win per group) (`INTERNAL_API_TOKEN`-guarded), cached in two tiers — a 10 s in-process memo and the shared cache key `modelconfig:{org}` (ADR-0020, 60 s), which the BFF deletes on a config save or rollback, a ZDR toggle, and a platform-defaults save (`lib/model-config/backend-key.ts`), so a save reaches every backend replica within ~10 s — and fail-open to `{}` (YAML defaults) on any error while the ZDR bit resolved in the same lookup fails closed (pinned, ADR-0074), with errors negative-cached for 1 s in-process only, never written to the shared tier — mirroring the BYOK credential-resolution pattern. | **Yes**, via header-first-then-org-resolution precedence. See also `docs/api/bff-routes.md` and `docs/api/python-endpoints.md`. |
 
 The JIT fallback (`resolve_org_model_overrides` / `/api/internal/model-overrides`)
 also covers any future endpoint the BFF doesn't front, or a turn where the
@@ -548,12 +548,12 @@ This environment cannot reach openrouter.ai (network policy), so:
 
 - The catalog client + capability filter + save validation are covered by
   vitest specs replaying the documented `GET /api/v1/models` response shape
-  (`frontends/ui/src/lib/model-config/openrouter.spec.ts`).
+  (`apps/workspace/bff/model-config/openrouter.spec.ts`).
 - The platform/org merge (per-group precedence, fail-open on a platform-side
   error) is covered by
-  `frontends/ui/src/lib/model-config/effective-overrides.spec.ts`; the
+  `apps/workspace/bff/model-config/effective-overrides.spec.ts`; the
   platform-owner gate, catalog revalidation and clear-by-omission by
-  `frontends/ui/src/app/api/platform/model-defaults/route.spec.ts`. The
+  `apps/workspace/app/api/platform/model-defaults/route.spec.ts`. The
   replace-not-patch write semantics need a real database
   (`platform-defaults.integration.spec.ts`, opt-in via
   `TEST_DATABASE_URL`).

@@ -50,7 +50,7 @@ Rules the models carry
   travel as a ``sources`` step, built from the records, not scraped from the
   tool's text).
 
-The TypeScript mirror is ``frontends/ui/src/adapters/api/wire-v2.ts``. Both are
+The TypeScript mirror is ``apps/workspace/ui/adapters/api/wire-v2.ts``. Both are
 held to ``contracts/wire/v2.schema.json`` (generated from this module by
 ``scripts/generate_wire_schema.py``) and to the recorded turns under
 ``contracts/wire/v2/``: ``packages/agent/tests/common/test_wire_v2.py`` and
@@ -1211,7 +1211,7 @@ class UserMessage(_ClientBase):
     """A question (or, with ``context_only``, a colleague's line the agent must see but not answer).
 
     ``type`` stays ``user_message``: the gateway's per-socket turn limiter
-    (``frontends/ui/src/lib/limits/ws-frames.js``) counts turns by it.
+    (``apps/workspace/bff/limits/ws-frames.js``) counts turns by it.
     """
 
     type: Literal["user_message"] = "user_message"

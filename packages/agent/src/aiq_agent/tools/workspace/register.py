@@ -79,7 +79,7 @@ _NO_ENVELOPE = (
 )
 
 #: The meta-tools' words, written once by the server (``metaToolsFor`` in
-#: ``frontends/ui/src/lib/agent-api/discovery.ts``) and exported here by
+#: ``apps/workspace/bff/agent-api/discovery.ts``) and exported here by
 #: ``meta-tools.spec.ts`` (``UPDATE_FIXTURES=1``): the in-product variant, which
 #: never offers the ``platform`` domain. This file keeps no copy of its own.
 META_TOOLS_PATH = Path(__file__).with_name("meta_tools.json")

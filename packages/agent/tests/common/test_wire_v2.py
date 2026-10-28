@@ -1,7 +1,7 @@
 """The chat wire v2 contract, read from this side (``docs/design/chat-wire-v2.md``).
 
 The fixtures under ``contracts/wire/v2/`` are recorded turns, one event per line.
-``frontends/ui/src/adapters/api/wire-v2.spec.ts`` reads the same files with the
+``apps/workspace/ui/adapters/api/wire-v2.spec.ts`` reads the same files with the
 generated zod schemas, so a field the two sides disagree on fails one of the two
 suites. What this side adds: the frame the server would write for a fixture is
 the fixture itself (defaults omitted, discriminators kept), the ordering rules
@@ -159,7 +159,7 @@ def test_the_committed_schema_is_the_one_the_models_generate() -> None:
 
     assert SCHEMA.read_text(encoding="utf-8") == render(), (
         "contracts/wire/v2.schema.json is stale: run `uv run python scripts/generate_wire_schema.py`, "
-        "then `npm run generate:wire` in frontends/ui, and commit both."
+        "then `npm run generate:wire` in apps/workspace, and commit both."
     )
 
 

@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 GENERATION_NAME = "folder-card"
 
-#: The wire contract's bounds (``frontends/ui/src/lib/folder-cards/types.ts``).
+#: The wire contract's bounds (``apps/workspace/bff/folder-cards/types.ts``).
 MAX_ABSTRACT_CHARS = 600
 MAX_ABSTRACT_SENTENCES = 3
 MAX_KEY_FACTS = 8

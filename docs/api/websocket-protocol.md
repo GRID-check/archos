@@ -8,7 +8,7 @@ messages. The design, and why it replaced NAT's step stream, is
 
 **The contract is code, not this page.** `packages/agent/src/aiq_agent/common/wire_v2.py`
 (Pydantic) is the source. `contracts/wire/v2.schema.json` is its JSON Schema,
-`frontends/ui/src/adapters/api/wire-v2.generated.ts` the Zod module generated
+`apps/workspace/ui/adapters/api/wire-v2.generated.ts` the Zod module generated
 from that (`npm run generate:wire`; the `wire-schemas` pre-commit hook fails a
 commit that leaves either stale), and `contracts/wire/v2/*.jsonl` the recorded
 turns both sides test against, byte for byte. When this page and the models
@@ -77,7 +77,7 @@ ws://<host>/websocket?v=2&projectId=<uuid>&conversationId=<session_id>
 
 ## Gateway Handling
 
-**File:** `frontends/ui/server.js`
+**File:** `apps/workspace/server.js`
 
 The `server.js` gateway handles WebSocket upgrade requests:
 
@@ -110,7 +110,7 @@ carriers and sign `contextTransport: "bff"`. Remaining context headers have an
 encoded-byte budget so an oversized capsule is refused explicitly. The envelope is minted by
 every submission path (WS upgrade, the async-jobs REST proxy, the skill-run
 internal-submit path) via the shared builder
-(`frontends/ui/src/lib/request-context.ts`'s `buildGridRequestContextWireHeaders`,
+(`apps/workspace/bff/request-context.ts`'s `buildGridRequestContextWireHeaders`,
 duplicated with a pinning comment in `server.js` since it is plain CommonJS).
 
 For compact WebSocket mode, the agent calls `POST /api/internal/turn-context`
@@ -228,7 +228,7 @@ carries a tool's input or output.**
 | `look` | `round?`, `document_name`, `document_id?`, `revision_id?`, `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`, shares of the page), `image_index?`, `where?`, `question?`, `reading?`: one look that rendered (ADR-0128), an address and never pixels |
 
 The UI stores a folded step in a compact form, `StoredThinkingStep`
-(`frontends/ui/src/lib/conversations/message-provenance.ts`): `id`,
+(`apps/workspace/bff/conversations/message-provenance.ts`): `id`,
 `userMessageId`, `timestamp`, `isComplete`, `kind`, `scope?`, and per kind
 `turnEvent?`, `traceLanes?`, `round?`, `tool?`, `skill?`, `slot?`, `detail?`. A
 `look` step keeps its address in `detail` (`document`, `page`, `x`/`y`/`w`/`h`, …).
@@ -514,7 +514,7 @@ three absent is every ordinary turn.
 
 ## The client
 
-`frontends/ui/src/adapters/api/turn-socket.ts` connects with `?v=2`, waits for
+`apps/workspace/ui/adapters/api/turn-socket.ts` connects with `?v=2`, waits for
 the server's `hello`, sends client messages, reconnects with jittered backoff and
 an auth refresh before each attempt, and sends `attach` for every open turn once
 the hello has arrived. Every event is parsed with `parseWireEvent`
@@ -555,11 +555,11 @@ agent callbacks emit, and one more:
 | `run.ledger` | `{"ledger": RunLedger}` | The run's WHOLE account of itself, as of this moment |
 
 `RunLedger` is the contract in
-[`frontends/ui/src/lib/runs/run-ledger-types.ts`](../../frontends/ui/src/lib/runs/run-ledger-types.ts)
+[`apps/workspace/bff/runs/run-ledger-types.ts`](../../apps/workspace/bff/runs/run-ledger-types.ts)
 (`runId`, `status`, `phases[]`, `steps[]` with the intent the runner stated and
 the documents each step reached, `result` or `error`) — the same shape stored on
 the run's message as `metadata.run_ledger`, and the same one the JSON Schema
-fixture `frontends/ui/tests/fixtures/run-ledger.schema.json` pins.
+fixture `apps/workspace/tests/fixtures/run-ledger.schema.json` pins.
 
 Two properties a client should rely on:
 
@@ -577,13 +577,13 @@ Two properties a client should rely on:
 into, and the status pill still reads them directly.
 
 **How the browser consumes it.** The block in the thread
-(`frontends/ui/src/features/runs/hooks/use-run-ledger.ts`) does exactly what the
+(`apps/workspace/ui/features/runs/hooks/use-run-ledger.ts`) does exactly what the
 two properties above allow and nothing more. It starts from the ledger stored on
 the run's message (`metadata.run_ledger`, read back sanitised by the message
 mapper); if that ledger is not terminal it reads
 `GET /api/projects/[id]/runs/[runId]?include=stream` for `backendJobId`, opens the stream
 through the same-origin proxy (`/api/jobs/async/job/[jobId]/stream`, the SSE
-client in `frontends/ui/src/adapters/api/deep-research-client.ts`) with **no**
+client in `apps/workspace/ui/adapters/api/deep-research-client.ts`) with **no**
 `last_event_id`, so the replay runs from the first flush and the newest snapshot
 lands last, and wires only `onLedger`. Every snapshot goes through
 `sanitizeRunLedger` and **replaces** what is held, unless its `updatedAt` is older

@@ -224,11 +224,11 @@ where the actual defect was.
 
 | Concern | Path |
 |---|---|
-| Embedding client (fail-open) | `frontends/ui/src/lib/knowledge/embeddings.ts` |
-| Scoring, decay, reinforcement | `frontends/ui/src/lib/knowledge/recall-scoring.ts` |
-| Consolidation primitives (Jaccard, polarity) | `frontends/ui/src/lib/knowledge/consolidation.ts` |
-| Bounded injection-safe digests | `frontends/ui/src/lib/knowledge/digest-format.ts` |
-| Memory recall + semantic dedup | `frontends/ui/src/lib/projects/memory-service.ts` |
-| Lesson semantic matching | `frontends/ui/src/lib/platform-lessons/repository.ts` |
+| Embedding client (fail-open) | `apps/workspace/bff/knowledge/embeddings.ts` |
+| Scoring, decay, reinforcement | `apps/workspace/bff/knowledge/recall-scoring.ts` |
+| Consolidation primitives (Jaccard, polarity) | `apps/workspace/bff/knowledge/consolidation.ts` |
+| Bounded injection-safe digests | `apps/workspace/bff/knowledge/digest-format.ts` |
+| Memory recall + semantic dedup | `apps/workspace/bff/projects/memory-service.ts` |
+| Lesson semantic matching | `apps/workspace/bff/platform-lessons/repository.ts` |
 | Backend embedding endpoint | `apps/backend/src/aiq_api/routes/note_embeddings.py` |
-| Cosine in SQL + columns | `frontends/ui/drizzle/0069_semantic_notes.sql` |
+| Cosine in SQL + columns | `apps/workspace/migrations/0069_semantic_notes.sql` |

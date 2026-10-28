@@ -2,7 +2,7 @@
 
 The controlled tag vocabulary lives canonically in the Python backend
 (``document_classification``). The Files tag editor keeps a hand-written
-TypeScript mirror in ``frontends/ui/src/lib/documents/tag-vocabulary.ts`` to
+TypeScript mirror in ``apps/workspace/bff/documents/tag-vocabulary.ts`` to
 render its chips. This test fails if the two ever drift — so the backend stays
 the single source of truth and a stale TS copy is caught in CI.
 """
@@ -14,7 +14,7 @@ from aiq_agent.knowledge.document_classification import DISCIPLINE_TAGS
 from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TS_VOCAB = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "documents" / "tag-vocabulary.ts"
+TS_VOCAB = REPO_ROOT / "apps" / "workspace" / "bff" / "documents" / "tag-vocabulary.ts"
 
 
 def _extract_ts_array(source: str, const_name: str) -> list[str]:

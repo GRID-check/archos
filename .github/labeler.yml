@@ -16,7 +16,7 @@ backend:
 frontend:
   - changed-files:
       - any-glob-to-any-file:
-          - "frontends/ui/**"
+          - "apps/workspace/**"
           - "apps/site/**"
 
 ci:
@@ -38,7 +38,7 @@ deploy:
 database:
   - changed-files:
       - any-glob-to-any-file:
-          - "**/drizzle/**"
+          - "**/migrations/**"
           - "**/db/schema/**"
 
 tests:

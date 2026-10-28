@@ -694,7 +694,7 @@ properties and a card legitimately overrides one of them. In the utilities layer
 which of `card-title` and `font-semibold` wins depends on Tailwind's internal
 ordering; in the components layer the ramp is a base every utility beats, by layer
 order rather than by luck. Enforced by a new `grid/card-type-scale` lint rule,
-switched on per file through its override in `frontends/ui/.oxlintrc.json` — the
+switched on per file through its override in `apps/workspace/.oxlintrc.json` — the
 compliant set is real project state and belongs in config, not in an exemption list
 inside the rule, which would report "clean" with eleven cards still off the ramp.
 

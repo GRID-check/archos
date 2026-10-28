@@ -298,7 +298,7 @@ def test_priority_does_not_let_one_office_pass_another(db):
 
 # The next two scenarios are the lane order every claim shares: the same two run in
 # packages/agent/tests/common/test_claim_queue.py and in the BFF's
-# frontends/ui/src/lib/jobs-queue/queue.integration.spec.ts. Priority never picks the lane.
+# apps/workspace/bff/jobs-queue/queue.integration.spec.ts. Priority never picks the lane.
 
 
 def test_an_older_bulk_job_goes_before_a_newer_interactive_one_of_another_office(db):

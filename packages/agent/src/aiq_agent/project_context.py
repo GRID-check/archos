@@ -9,9 +9,9 @@ are accessed lowercased via ``Context`` metadata.
 
 ``GridRequestContext`` (below) is the single dataclass + parse function that
 reads ALL of them in one place, mirroring the TS builder at
-``frontends/ui/src/lib/request-context.ts`` (see that module's docstring for
+``apps/workspace/bff/request-context.ts`` (see that module's docstring for
 the full header-inventory table and encodings). The two are pinned together
-by the contract fixture ``frontends/ui/tests/fixtures/grid_request_context.json``::
+by the contract fixture ``apps/workspace/tests/fixtures/grid_request_context.json``::
 
     X-Grid-Project-Context: base64url(<project context string>)
     X-Grid-Org-Instructions: base64url(<the office's standing instructions>)
@@ -90,7 +90,7 @@ USER_ID_HEADER = "x-grid-user-id"
 # deliberately out of scope — see the module docstring), and
 # `X-Grid-Request-Context-Sig` carries the hex HMAC-SHA256 of the raw JSON
 # keyed on INTERNAL_API_TOKEN. Minted in one place on the TS side
-# (`buildGridRequestContextEnvelope` in `frontends/ui/src/lib/request-context.ts`,
+# (`buildGridRequestContextEnvelope` in `apps/workspace/bff/request-context.ts`,
 # duplicated with a pinning comment in `server.js` because it is plain
 # CommonJS). Producers DUAL-WRITE: the envelope is sent ALONGSIDE the
 # individual headers during the transition; `from_context`/`from_headers`
@@ -185,7 +185,7 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 # instead of being re-parsed out of the `project_context` prompt text. This
 # is ENVELOPE-ONLY by design — unlike the headers above there never was an
 # individual `X-Grid-Federal-State` header to dual-write (see
-# `frontends/ui/src/lib/request-context.ts`'s module docstring for the TS
+# `apps/workspace/bff/request-context.ts`'s module docstring for the TS
 # side of this decision), so `from_context`/`from_headers`'s legacy
 # individual-header fallback path simply has no source for it and leaves it
 # `None` — a pre-envelope caller falls through to
@@ -194,7 +194,7 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 #
 # Vocabulary mirrored (not imported) from `ris_catalog.py`'s
 # `_FEDERAL_STATE_TOKENS` / the intake wizard's `federal_state` question options
-# (`frontends/ui/src/lib/project-profile/intake-definition.ts`) — same
+# (`apps/workspace/bff/project-profile/intake-definition.ts`) — same
 # "parse independently, don't import" rationale as the headers above. An
 # unrecognized token is treated as absent (debug-logged, not raised): a
 # forward-incompatible token from a newer frontend must degrade to "no
@@ -437,7 +437,7 @@ def _read_memory_reflection_flag() -> bool:
 class GridRequestContext:
     """Every ``X-Grid-*`` cross-cutting context header for one request,
     parsed in one place. See the module docstring for scope/ownership notes
-    and the TS twin (``frontends/ui/src/lib/request-context.ts``).
+    and the TS twin (``apps/workspace/bff/request-context.ts``).
     """
 
     organization_id: str | None = None
@@ -625,7 +625,7 @@ class GridRequestContext:
         of a live NAT Context.
 
         This is the cross-language contract-test entry point: the fixture at
-        ``frontends/ui/tests/fixtures/grid_request_context.json`` carries
+        ``apps/workspace/tests/fixtures/grid_request_context.json`` carries
         ``{name, input, headers}`` cases; the TS side asserts
         ``buildGridRequestContextHeaders(input) == headers`` and the Python
         side (``packages/agent/tests/test_project_context.py``) asserts

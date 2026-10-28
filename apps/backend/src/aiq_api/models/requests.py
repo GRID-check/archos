@@ -571,7 +571,7 @@ class GenerateConversationTitleResponse(BaseModel):
 #: Ceiling on one dictation's audio, in bytes before base64. 45 seconds of the
 #: browser's Opus or AAC at 64 kbit/s is about 360 KB; the bound leaves room for
 #: a browser that ignores the requested bitrate. Mirrored by the BFF
-#: (``frontends/ui/src/lib/dictation/limits.ts``), which refuses first.
+#: (``apps/workspace/bff/dictation/limits.ts``), which refuses first.
 MAX_DICTATION_AUDIO_BYTES = 4 * 1024 * 1024
 
 #: The container formats a browser's MediaRecorder produces, named the way the

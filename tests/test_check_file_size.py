@@ -173,21 +173,21 @@ def test_an_added_import_does_not_grow_a_baselined_file(checker, repo):
 
 def test_generated_test_and_copy_files_are_not_checked(checker):
     for path in (
-        "frontends/ui/src/shared/cards/generated.ts",
-        "frontends/ui/src/adapters/api/wire-v2.generated.ts",
-        "frontends/ui/src/features/chat/ChatArea.spec.tsx",
-        "frontends/ui/scheduler/index.spec.mjs",
+        "apps/workspace/shared/cards/generated.ts",
+        "apps/workspace/ui/adapters/api/wire-v2.generated.ts",
+        "apps/workspace/ui/features/chat/ChatArea.spec.tsx",
+        "apps/workspace/scheduler/index.spec.mjs",
         "packages/agent/tests/test_runner.py",
-        "frontends/ui/src/app/dev/_fixtures/stream-frames.ts",
-        "frontends/ui/src/i18n/dictionaries/de/chat.ts",
-        "frontends/ui/src/lib/db/migrations/0001.ts",
+        "apps/workspace/app/dev/_fixtures/stream-frames.ts",
+        "apps/workspace/i18n/dictionaries/de/chat.ts",
+        "apps/workspace/bff/db/migrations/0001.ts",
         "README.md",
     ):
         assert not checker.is_checked(path), path
     for path in (
-        "frontends/ui/src/features/layout/components/InputArea.tsx",
-        "frontends/ui/src/lib/documents/generated.ts",  # hand-written: documents nobody wrote, not generated code
-        "frontends/ui/server.js",
+        "apps/workspace/ui/features/layout/components/InputArea.tsx",
+        "apps/workspace/bff/documents/generated.ts",  # hand-written: documents nobody wrote, not generated code
+        "apps/workspace/server.js",
         "packages/agent/src/aiq_agent/common/x.py",
     ):
         assert checker.is_checked(path), path

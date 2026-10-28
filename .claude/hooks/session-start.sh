@@ -60,7 +60,7 @@ fi
 uv sync --group dev
 
 # Bun, pinned where CI pins it (.github/actions/setup-bun). The container's own
-# Bun is whatever its image shipped, and `bun check` (`task fe:types`) reports
+# Bun is whatever its image shipped, and `bun check` (`task workspace:types`) reports
 # what the pinned version reports, so a different one is a different gate.
 BUN_VERSION="$(awk -F'"' '/default:/ {print $2; exit}' .github/actions/setup-bun/action.yml)"
 if [ "$(bun --version 2>/dev/null || true)" != "$BUN_VERSION" ]; then
@@ -69,9 +69,9 @@ if [ "$(bun --version 2>/dev/null || true)" != "$BUN_VERSION" ]; then
 fi
 
 step "UI dependencies (bun)"
-# Bun is the toolchain, never the runtime (ADR-0103) — see `fe:install`.
+# Bun is the toolchain, never the runtime (ADR-0103) — see `workspace:install`.
 # Do not add `--bun`.
-(cd frontends/ui && bun install --frozen-lockfile)
+(cd apps/workspace && bun install --frozen-lockfile)
 
 step "site dependencies (bun)"
 bun install --frozen-lockfile --cwd apps/site
