@@ -13,7 +13,7 @@ Unified API plugin for the AI-Q blueprint: **Knowledge API** (collections, docum
 GRID_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_openrouter.yml
 ```
 
-`GRID_ROLE` is required and has no default (ADR-0082): `api` serves the HTTP routes, `chat` the chat socket (run it on another port beside the `api` process when the UI is in use, as `scripts/start_e2e.sh` does). Ingestion is claimed by `GRID_ROLE=ingest-worker python deploy/entrypoint.py`; without one, set `GRID_INGEST_QUEUE=off` and `api` runs ingest jobs itself.
+`GRID_ROLE` is required and has no default (ADR-0082): `api` serves the HTTP routes, `chat` the chat socket (run it on another port beside the `api` process when the UI is in use, as `scripts/start_e2e.sh` does). Ingestion is claimed by `GRID_ROLE=ingest-worker python apps/backend/entrypoint.py`; without one, set `GRID_INGEST_QUEUE=off` and `api` runs ingest jobs itself.
 
 ### Production (PostgreSQL)
 
@@ -41,7 +41,7 @@ GRID_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_op
 ┌─────────────────────────────────────────────────────────────────┐
 │                    AI-Q API (extension layer)                   │
 │                                                                 │
-│   frontends/aiq_api/src/aiq_api/                                │
+│   apps/backend/src/aiq_api/                                │
 │   ├── jobs/                                                     │
 │   │   ├── agent_job.py        # run_agent_job, in phases        │
 │   │   ├── submit.py           # submit_agent_job                │

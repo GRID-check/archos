@@ -22,7 +22,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
   citation-registry snapshots. Cache-only semantics; both tiers fail open to
   in-process fallbacks when it is down or `REDIS_URL` is unset.
 
-The **real** backend front-end plugin is `frontends/aiq_api` (`_type: aiq_api`).
+The **real** backend front-end plugin is `apps/backend` (`_type: aiq_api`).
 (The old `src/aiq_agent/fastapi_extensions/` duplicate was deleted 2026-07-03,
 commit `2570b1b`; its one live route, `/v1/ingest`, was ported into `aiq_api`.)
 
@@ -60,7 +60,7 @@ Browser WebSocket
     neutrally as "Assistant" (getDisplayName in intermediate-step-parser.ts),
     not "Research Agent" — a greeting is not a research run.
   → the turn's wire bodies, stamped and sent by the chat socket (wire v2, ADR-0068)
-      frontends/aiq_api/src/aiq_api/chat_socket.py
+      apps/backend/src/aiq_api/chat_socket.py
   → the UI's turn socket and fold (docs/api/websocket-protocol.md, "The client")
   → frontends/ui/src/features/layout/components/ChatArea.tsx → AgentResponse.tsx
 ```
@@ -231,7 +231,7 @@ invalid/missing signature is treated as an ABSENT envelope (logged as a
 WARNING tamper signal), falling back to the individual headers exactly as
 before the envelope existed.
 
-`frontends/aiq_api/src/aiq_api/context_envelope.py`'s
+`apps/backend/src/aiq_api/context_envelope.py`'s
 `GridContextEnvelopeMiddleware` (raw ASGI, same pattern as `AuthMiddleware` —
 never buffers the response body, so SSE routes are unaffected) fail-closed
 rejects (403 / WS policy-violation close) a workflow-invoking request when
@@ -413,7 +413,7 @@ config key any more. The result rides `ChatResponse.cards` → `message.cards`
 
 With `use_async_deep_research: true` (the working config), any query routed to
 deep research returns the stub `"Deep research job submitted. Job ID: …"`. The
-**real** answer is produced later by `frontends/aiq_api/src/aiq_api/jobs/agent_job.py`
+**real** answer is produced later by `apps/backend/src/aiq_api/jobs/agent_job.py`
 (`run_agent_job`), which now generates cards post-hoc from the final report
 (`_generate_grid_cards` → `aiq_agent.cards.generate_cards`), re-emits the
 report artifact with cards attached over the job SSE stream, and stores
@@ -513,7 +513,7 @@ Accept is live wherever the card renders.
 
 Summary generation: the intake wizard fires
 `POST /api/projects/{id}/generate-summary` → backend `/v1/generate-summary`
-(`frontends/aiq_api/.../routes/generate_summary.py`, registered in `plugin.py`)
+(`apps/backend/.../routes/generate_summary.py`, registered in `plugin.py`)
 → result stored into `profile_display.summary`.
 
 ### The bug that was fixed (summary wiped on every save)
@@ -1085,7 +1085,7 @@ The text parsers in `citations/text_parsers.py`
 (`_parse_knowledge_layer` and the eleven `_KL_*` regexes) stay for the callers
 that hold the bytes without the records: a registry hydrated from the shared
 cache, a turn replayed out of Postgres, and the job runner's callback in
-`frontends/aiq_api/src/aiq_api/jobs/callbacks.py`. A text those parsers find no
+`apps/backend/src/aiq_api/jobs/callbacks.py`. A text those parsers find no
 `Citation:` line in carries no sources at all; the generic URL extractor beneath
 them reads the tools with no registered parser (web search), never a passage
 body. Nothing reads a FAILED call either: both capture loops skip a
@@ -1772,7 +1772,7 @@ runner). And the research tab can 403 — see §9.
 `f8093a0`)**: the `X-Grid-Collection-Scope` header is captured once at submit
 time (`piloti/conversation_register.py`) and threaded into the async job payload
 as `collection_scope`. The research worker only re-injects it into its own
-request context conditionally — `frontends/aiq_api/src/aiq_api/jobs/agent_job_setup.py`
+request context conditionally — `apps/backend/src/aiq_api/jobs/agent_job_setup.py`
 (`_inject_scope_headers`) does `if collection_scope is not None:` before base64url-encoding it back
 onto the header. When the scope is absent, `knowledge_retrieval` inside the
 worker falls back to legacy config-based resolution (base collection +
@@ -2259,4 +2259,4 @@ checks that sit outside `verify`, and the traps `task --list` does not carry:
 
 Runtime-behavioural changes (deep-research cards, agent refactor, research 403)
 still need a running stack before merge: the `.devcontainer` (VS Code,
-`deploy/Dockerfile` target `dev-builder`) or `docker compose … up -d --build`.
+`apps/backend/Dockerfile` target `dev-builder`) or `docker compose … up -d --build`.

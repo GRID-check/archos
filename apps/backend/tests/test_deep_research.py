@@ -1,7 +1,7 @@
 """
 Tests for the async job API routes.
 
-Module under test: frontends/aiq_api/src/aiq_api/routes/jobs.py
+Module under test: apps/backend/src/aiq_api/routes/jobs.py
 
 API endpoints tested:
     GET  /v1/jobs/async/agents                         - List available agent types

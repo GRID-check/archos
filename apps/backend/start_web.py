@@ -81,12 +81,12 @@ USAGE
 This script is the main entry point for the Docker container:
 
     # In Dockerfile
-    CMD ["python", "/app/deploy/start_web.py"]
+    CMD ["python", "/app/apps/backend/start_web.py"]
 
 Or run directly for local development:
 
     export CONFIG_FILE=/app/configs/config_oib_openrouter.yml
-    python deploy/start_web.py
+    python apps/backend/start_web.py
 
 =============================================================================
 """

@@ -10,7 +10,7 @@ import pytest
 from aiq_api.jobs import lease_policy
 from aiq_api.jobs import worker as worker_mod
 
-_BFF_RUNNER = Path(__file__).resolve().parents[2] / "ui" / "workers" / "jobs" / "index.js"
+_BFF_RUNNER = Path(__file__).resolve().parents[3] / "frontends" / "ui" / "workers" / "jobs" / "index.js"
 
 
 @pytest.mark.parametrize(

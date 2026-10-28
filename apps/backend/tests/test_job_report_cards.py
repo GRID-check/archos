@@ -1,6 +1,6 @@
 """The report endpoint hands back the run's Grid cards, not only its prose.
 
-Module under test: ``frontends/aiq_api/src/aiq_api/routes/jobs.py``
+Module under test: ``apps/backend/src/aiq_api/routes/jobs.py``
     GET /v1/jobs/async/job/{job_id}/report
 
 These are ROUTE-level rather than model-level on purpose. The gap this closes

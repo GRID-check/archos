@@ -3,8 +3,8 @@
 # =============================================================================
 #
 # Build targets:
-#   docker build --target dev -t aiq:dev .     # Development (includes CLI)
-#   docker build --target release -t aiq:prod . # Production (web only, validates env)
+#   docker build -f apps/backend/Dockerfile --target dev -t aiq:dev .     # Development (includes CLI)
+#   docker build -f apps/backend/Dockerfile --target release -t aiq:prod . # Production (web only, validates env)
 #
 # Base images are public (Debian 12 "bookworm" slim) so the stack builds on any
 # Docker host — no NVIDIA NGC registry credentials required. All LLM/embedding
@@ -76,7 +76,9 @@ COPY src/ ./src/
 COPY packages/knowledge-layer/ ./packages/knowledge-layer/
 COPY packages/ris-adapter/ ./packages/ris-adapter/
 COPY packages/tavily-web-search/ ./packages/tavily-web-search/
-COPY frontends/aiq_api/ ./frontends/aiq_api/
+# The backend app, with its entrypoint.py and start_web.py; .dockerignore keeps
+# this Dockerfile out.
+COPY apps/backend/ ./apps/backend/
 COPY configs/ ./configs/
 COPY scripts/ ./scripts/
 # The spatial engine behind `ifc_measure` (ADR-0045 amendment / roadmap §13b).
@@ -84,9 +86,6 @@ COPY scripts/ ./scripts/
 # has nothing to do with the rest of the backend — so it is copied and installed
 # on its own below.
 COPY packages/ifc-spatial-py/ ./packages/ifc-spatial-py/
-# Only copy runtime scripts from deploy/ — never copy the full directory
-# to avoid leaking .env, Helm charts, compose files, or other dev artifacts.
-COPY deploy/entrypoint.py deploy/start_web.py ./deploy/
 
 # Install dependencies using uv sync. `--all-packages` takes each workspace
 # member's own runtime dependencies from the lock too: the members are only in
@@ -100,7 +99,7 @@ RUN uv pip install --no-deps -e . \
     && uv pip install --no-deps -e ./packages/tavily-web-search \
     && uv pip install --no-deps -e ./packages/ris-adapter \
     && uv pip install --no-deps -e "./packages/knowledge-layer[all]" \
-    && uv pip install --no-deps -e ./frontends/aiq_api \
+    && uv pip install --no-deps -e ./apps/backend \
     && uv pip install "psycopg[binary]>=3.0.0"
 
 # The spatial engine, installed WITH its dependencies (unlike the workspace
@@ -125,11 +124,11 @@ RUN /app/.venv/bin/python -c "import aiq_api; import knowledge_layer; import ris
 # The workspace packages are installed editable, so UV_COMPILE_BYTECODE above
 # compiled their dependencies but not them: compile their sources here. Then
 # fetch the BPE table into TIKTOKEN_CACHE_DIR, so no process downloads it.
-RUN /app/.venv/bin/python -m compileall -q -j 0 /app/src /app/packages /app/frontends/aiq_api \
+RUN /app/.venv/bin/python -m compileall -q -j 0 /app/src /app/packages /app/apps/backend \
     && /app/.venv/bin/python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" \
     && test -n "$(ls -A /app/tiktoken-cache)"
 
-RUN chmod +x /app/deploy/start_web.py \
+RUN chmod +x /app/apps/backend/start_web.py \
     && mkdir -p /app/data \
     && chown -R 1000:1000 /app/data
 
@@ -180,7 +179,7 @@ ENV GRID_GIT_SHA=$GRID_GIT_SHA
 
 EXPOSE 8000
 
-ENTRYPOINT ["python", "/app/deploy/entrypoint.py"]
+ENTRYPOINT ["python", "/app/apps/backend/entrypoint.py"]
 
 # =============================================================================
 # Stage 4: Release (production - no CLI)
@@ -219,4 +218,4 @@ ENV GRID_GIT_SHA=$GRID_GIT_SHA
 
 EXPOSE 8000
 
-ENTRYPOINT ["python", "/app/deploy/entrypoint.py"]
+ENTRYPOINT ["python", "/app/apps/backend/entrypoint.py"]
