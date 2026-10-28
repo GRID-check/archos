@@ -25,7 +25,10 @@
   "dependencies": {
     "@pulumi/cloudflare": "^6.23.1",
     "@pulumi/kubernetes": "^4.34.2",
-    "@pulumi/pulumi": "^3.270.0",
+    "@pulumi/pulumi": "^3.272.0",
     "js-yaml": "^5.5.0"
+  },
+  "overrides": {
+    "@pulumi/pulumi": "$@pulumi/pulumi"
   }
 }
