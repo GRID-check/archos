@@ -1,4 +1,4 @@
-"""NAT register function for deep research agent."""
+"""Agent-runtime register function for deep research agent."""
 
 import asyncio
 import logging
@@ -192,7 +192,7 @@ async def _explicit_tools(builder: Builder, config: DeepResearchAgentConfig) -> 
     """Eagerly resolved tools for an explicit ``config.tools``; None when inheriting.
 
     When tools are inherited (``config.tools`` empty) the data_source_registry
-    may not be populated at BUILD time — NAT adds no build-order dependency in
+    may not be populated at BUILD time — the agent runtime adds no build-order dependency in
     that case — so eager resolution would capture an empty list. Those are
     resolved lazily on the first request instead (:class:`LazyTools`).
     """
@@ -344,7 +344,7 @@ def _agent_for_request(
     means "nothing to apply" keeps the prebuilt agent. There is deliberately no
     ``data_sources is not None`` guard: org-disabled sources narrow
     ``selected_tools`` even on "all tools" requests. A sandbox is scoped to the
-    async job_id NAT carries (set by ``agent_host/jobs/agent_job.py``; a per-request
+    async job_id the agent runtime carries (set by ``agent_host/jobs/agent_job.py``; a per-request
     uuid in ``DeepAgentsRuntime`` when None), so it is always rebuilt.
     """
     provider = llm_context.apply(blueprint.provider)

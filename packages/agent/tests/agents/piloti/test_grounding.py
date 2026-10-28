@@ -248,7 +248,7 @@ class TestMeasurementDetectionIsScopedToTheMeasuringTool:
         assert tool_result_is_measurement("ifc_measure", refusal) is False
 
     def test_a_group_qualified_name_still_grants_grounding(self):
-        """NAT delivers a grouped/MCP tool as ``bim__ifc_measure``.
+        """The agent runtime delivers a grouped/MCP tool as ``bim__ifc_measure``.
 
         An exact compare against the bare name made measurement grounding a
         function of deployment topology: under function-group or MCP prefixing

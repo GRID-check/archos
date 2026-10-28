@@ -452,7 +452,7 @@ def clear_active_retriever() -> None:
 # ingestion; agents call get_available_documents() for prompt context.
 #
 # Back-compat: the DB *file* (default ``summaries.db``), the ``SUMMARY_DB``
-# env var, and the NAT ``summary_db`` config field keep their names so existing
+# env var, and the agent-runtime ``summary_db`` config field keep their names so existing
 # databases/deployments are not orphaned — only the misnamed TABLE and store
 # CLASS were renamed to ``document_metadata`` (see document_metadata_store.py).
 
@@ -491,7 +491,7 @@ def _get_document_metadata_store() -> DocumentMetadataStore:
             # waited for the lock.
             if _document_metadata_store is None:
                 # configure_summary_db() may not have run in this process (e.g. an
-                # ingestion thread/worker that never executed the NAT registration
+                # ingestion thread/worker that never executed the agent-runtime registration
                 # in packages/knowledge-layer/src/register.py). Resolve the DB from
                 # the environment the same way ingest_status_store/leader_lock do,
                 # instead of silently falling back to a local SQLite file that in a

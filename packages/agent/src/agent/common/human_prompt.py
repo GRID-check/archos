@@ -1,13 +1,13 @@
-"""NAT human-in-the-loop (HITL) prompts, and how they travel on the chat wire.
+"""Agent-runtime human-in-the-loop (HITL) prompts, and how they travel on the chat wire.
 
 Two places stop a run to ask the user something, the clarification step
 (`agents/piloti/clarify.py`) and Piloti's `ask_user` tool, and both go through
-NAT's ``prompt_user_input``. Four halves have to agree, so all four live here:
+the agent runtime's ``prompt_user_input``. Four halves have to agree, so all four live here:
 
 1. build the prompt (:func:`build_human_prompt`): a ``HumanPromptText``, or a
    ``HumanPromptRadio`` when there are options, since only the multiple-choice
    prompts have an options field;
-2. put it on the wire (:func:`interaction_request`): the prompt's own NAT id is
+2. put it on the wire (:func:`interaction_request`): the prompt's own agent-runtime id is
    the ``interaction_id``, and only these two prompt shapes have a wire shape;
 3. read the client's answer back (:func:`human_response`): ``{text}`` becomes a
    ``HumanResponseText``, ``{option_id}`` the ``HumanResponseRadio`` for that
@@ -48,7 +48,7 @@ def build_human_prompt(
     placeholder: str = DEFAULT_TEXT_PLACEHOLDER,
 ) -> HumanPrompt:
     """
-    Build the NAT prompt for a question, with a picker when options exist.
+    Build the agent-runtime prompt for a question, with a picker when options exist.
 
     With options it returns a ``HumanPromptRadio``. The question text is carried
     unchanged either way: the radio adds the picker, it does not replace the
@@ -83,7 +83,7 @@ def build_human_prompt(
 
 
 def interaction_request(prompt: InteractionPrompt, *, expires_at: int) -> InteractionRequestValue:
-    """The ``interaction_request`` for a NAT prompt; its id is NAT's own prompt id.
+    """The ``interaction_request`` for an agent-runtime prompt; its id is the runtime's own prompt id.
 
     A choice keeps the free-text box: the question tells the user they may
     type instead of picking, and "skip" is only ever typed.
@@ -114,7 +114,7 @@ def interaction_request(prompt: InteractionPrompt, *, expires_at: int) -> Intera
 
 
 def human_response(prompt: HumanPrompt, answer: TextAnswer | OptionAnswer) -> HumanResponse:
-    """NAT's response for the client's answer to ``prompt``.
+    """The agent runtime's response for the client's answer to ``prompt``.
 
     Raises:
         ValueError: for an ``option_id`` the prompt did not offer.

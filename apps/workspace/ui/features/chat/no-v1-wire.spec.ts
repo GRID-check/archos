@@ -7,7 +7,7 @@
  * The old wire is gone from the chat and the socket adapter
  * (docs/design/chat-wire-v2.md, definition of done 5).
  *
- * NAT's "Function Start/Complete" frames, the `## Trace-Lanes` text block and
+ * The agent runtime's "Function Start/Complete" frames, the `## Trace-Lanes` text block and
  * the function-name parser were the v1 reading of the stream. v2 steps are
  * typed, so none of them has a reader left; a match here is a reader somebody
  * brought back.

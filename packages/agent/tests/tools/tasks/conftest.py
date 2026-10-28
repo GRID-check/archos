@@ -53,7 +53,7 @@ class _Metadata:
 
 
 class _Context:
-    """The half of NAT's Context this tool reads."""
+    """The half of the agent runtime's Context this tool reads."""
 
     def __init__(self, headers: dict[str, str], conversation_id: str | None) -> None:
         self.metadata = _Metadata(headers)

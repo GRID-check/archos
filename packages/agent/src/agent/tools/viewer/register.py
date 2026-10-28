@@ -232,7 +232,7 @@ class ShowInViewerConfig(FunctionBaseConfig, name="show_in_viewer"):
 
 @register_function(config_type=ShowInViewerConfig)
 async def show_in_viewer(config: ShowInViewerConfig, _builder: Builder):
-    """NAT function: ``show_in_viewer``, bound to Piloti in chat only."""
+    """Agent-runtime function: ``show_in_viewer``, bound to Piloti in chat only."""
 
     async def _show_in_viewer(
         action: str,

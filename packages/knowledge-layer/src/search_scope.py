@@ -79,7 +79,7 @@ def resolve_scoped_collections(
 
     Layers (in order): base corpus, per-session collection, project collections.
 
-    - When the ``X-Grid-Collection-Scope`` header is present via NAT context,
+    - When the ``X-Grid-Collection-Scope`` header is present via agent-runtime context,
       it takes precedence and is returned directly regardless of legacy flags.
       Its entries carry the shelf the BFF stated (ADR-0047); a legacy
       bare-string entry states none, and that is left UNKNOWN rather than

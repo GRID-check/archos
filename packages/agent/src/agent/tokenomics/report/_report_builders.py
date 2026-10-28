@@ -245,7 +245,7 @@ def _build_report_data(
     tool_pricing_snapshot = {name: pricing.get_tool(name).cost_per_call for name in pricing.known_tools()}
 
     # ── Predicted vs actual OSL (from NOVA-Predicted-OSL in CSV) ─────────
-    # NOTE: in current NAT traces, NOVA-Predicted-OSL is filled post-hoc with
+    # NOTE: in current agent-runtime traces, NOVA-Predicted-OSL is filled post-hoc with
     # the actual completion tokens, so predicted == actual on every call.
     # The list is populated here for forward-compatibility; the chart is hidden
     # when all errors are zero (trivially perfect, not informative).

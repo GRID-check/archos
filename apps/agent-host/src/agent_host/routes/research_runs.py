@@ -53,7 +53,7 @@ def find_research_runs(
     offset: int,
 ) -> tuple[list[dict], int]:
     """
-    Sync helper to query research runs (job_access joined with NAT's job_info).
+    Sync helper to query research runs (job_access joined with the agent runtime's job_info).
 
     Runs in a thread via run_in_executor to avoid blocking the event loop with DB I/O.
     Mirrors the raw-SQL, sync-engine query pattern used by ``job_reaper._find_stale_jobs``.
@@ -72,7 +72,7 @@ def find_research_runs(
     EventStore._ensure_table_exists(db_url)
     engine = EventStore._get_or_create_sync_engine(db_url)
 
-    # job_info is created by NAT's JobStore; on a fresh database where no job
+    # job_info is created by the agent runtime's JobStore; on a fresh database where no job
     # has ever been submitted it may not exist yet, and the JOIN below would
     # 500 the listing instead of returning an empty page (same guard as
     # _find_stale_jobs uses for job_events).

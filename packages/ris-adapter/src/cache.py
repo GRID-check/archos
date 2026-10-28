@@ -1,4 +1,4 @@
-"""Shared-cache facade for the RIS tools (the NAT/register layer).
+"""Shared-cache facade for the RIS tools (the agent-runtime/register layer).
 
 Wraps the agent's fail-open Dragonfly/Redis cache (``agent.common.cache``,
 ADR-0020) so RIS document fetches and live searches are cached across chat

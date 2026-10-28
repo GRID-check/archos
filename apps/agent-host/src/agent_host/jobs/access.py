@@ -43,9 +43,9 @@ _JOB_ACCESS_CLEANUP_SQL = text(
 _JOB_INFO_DELETE_SQL = text("DELETE FROM job_info WHERE job_id = :job_id")
 _JOB_EVENTS_DELETE_SQL = text("DELETE FROM job_events WHERE job_id = :job_id")
 
-# Terminal (non-active) job statuses. Mirrors nat's JobStatus terminal set
+# Terminal (non-active) job statuses. Mirrors the agent runtime's JobStatus terminal set
 # (SUCCESS/FAILURE/INTERRUPTED); hard-coded here — as it already is in
-# jobs/submit.py and routes/jobs.py — to keep this module free of the heavy nat
+# jobs/submit.py and routes/jobs.py — to keep this module free of the heavy agent-runtime
 # import on the admission hot path.
 _TERMINAL_STATUSES = ("SUCCESS", "FAILURE", "INTERRUPTED")
 
@@ -137,7 +137,7 @@ def job_exists(job_id: str, db_url: str) -> bool:
     """Return True if a job with this ID already exists (job_access OR job_info row).
 
     Used by the submit path to reject caller-supplied job IDs that collide with
-    an existing job: both NAT's job_info write and the ``job_access`` upsert are
+    an existing job: both the agent runtime's job_info write and the ``job_access`` upsert are
     unconditional, so without this check a re-submitted ID would rewrite the
     original job's ownership (hijack) and a failed re-submission would delete
     the original job via ``rollback_job_submission``.
@@ -149,7 +149,7 @@ def job_exists(job_id: str, db_url: str) -> bool:
         row = conn.execute(text("SELECT 1 FROM job_access WHERE job_id = :job_id"), {"job_id": job_id}).first()
         if row is not None:
             return True
-        # job_info is created lazily by NAT's JobStore; on a fresh database it
+        # job_info is created lazily by the agent runtime's JobStore; on a fresh database it
         # may not exist yet (same guard as research_runs.find_research_runs).
         if inspect(conn.engine).has_table("job_info"):
             row = conn.execute(text("SELECT 1 FROM job_info WHERE job_id = :job_id"), {"job_id": job_id}).first()
@@ -194,7 +194,7 @@ def expire_terminal_jobs(
     deployment always shows its last run:
 
     1. **Mark** terminal rows ``is_expired = true`` once ``updated_at +
-       expiry_seconds`` has passed (the per-row expiry NAT itself honors). It
+       expiry_seconds`` has passed (the per-row expiry the agent runtime itself honors). It
        is the only job_info expiry (ADR-0082 A1: the
        job-events housekeeping route runs it). Marking re-arms the
        access/event cleanup, which keys off ``is_expired``.
@@ -225,7 +225,7 @@ def _expire_terminal_jobs(conn: Connection, db_url: str, delete_grace_seconds: i
     is_pg = _is_postgres(db_url)
     status_params: dict[str, Any] = {f"s{i}": s for i, s in enumerate(_TERMINAL_STATUSES)}
     placeholders = ", ".join(f":s{i}" for i in range(len(_TERMINAL_STATUSES)))
-    # Never touch the newest finished job (matches NAT's "always keep the most
+    # Never touch the newest finished job (matches the agent runtime's "always keep the most
     # recent finished job"); COALESCE guards the empty-table case.
     keep_newest = (
         f"job_id <> COALESCE((SELECT job_id FROM job_info WHERE status IN ({placeholders}) "
@@ -282,10 +282,10 @@ def _expire_terminal_jobs(conn: Connection, db_url: str, delete_grace_seconds: i
 
 
 def rollback_job_submission(job_id: str, db_url: str) -> None:
-    """Best-effort rollback when ownership persistence fails after NAT job creation.
+    """Best-effort rollback when ownership persistence fails after agent-runtime job creation.
 
     The submit path must not return an ownerless job ID. If job submission creates
-    NAT metadata but `job_access` cannot be written, remove the partial job state.
+    the agent runtime's metadata but `job_access` cannot be written, remove the partial job state.
 
     DESTRUCTIVE: deletes job_access, job_events AND job_info rows for the job.
     Callers must only invoke this for a job ID that was positively verified not

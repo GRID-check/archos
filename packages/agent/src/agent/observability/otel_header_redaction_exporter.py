@@ -74,7 +74,7 @@ class OtelCollectorRedactionTelemetryExporter(
     resource_attributes: dict[str, str] = Field(default_factory=dict, description="Resource attributes to attach.")
     # The parent mixin declares `endpoint: str`, but the config interpolates
     # `${OTEL_EXPORTER_OTLP_ENDPOINT:-}` to None (not "") when the
-    # observability tier is not deployed, which crashed NAT startup with a
+    # observability tier is not deployed, which crashed agent-runtime startup with a
     # pydantic str-validation error before the no-op path below could run.
     endpoint: str | None = Field(default=None, description="The endpoint of the telemetry collector service.")
 
@@ -83,7 +83,7 @@ class _DisabledSpanExporter(BaseExporter):
     """
     No-op exporter yielded when no OTLP endpoint is configured.
 
-    NAT has no way to conditionally declare a `general.telemetry.tracing`
+    The agent runtime has no way to conditionally declare a `general.telemetry.tracing`
     entry, so the exporter is always constructed. Availability is therefore
     derived here from the dependency (ADR-0029 "availability = flag AND
     capability"): no endpoint means nothing to export to, so spans are dropped
@@ -93,7 +93,7 @@ class _DisabledSpanExporter(BaseExporter):
     """
 
     def export(self, event: Any) -> None:
-        # Synchronous, like BaseExporter.export: NAT calls it without awaiting
+        # Synchronous, like BaseExporter.export: the agent runtime calls it without awaiting
         # (base_exporter's on_next_wrapper), so an `async def` here made an
         # unawaited coroutine per trace event in every deployment without a
         # collector ("RuntimeWarning: coroutine ... was never awaited").
@@ -209,11 +209,11 @@ async def otelcollector_redaction_telemetry_exporter(
     # only where the Langfuse tier exists, so a stack without it builds the
     # identical pipeline it did before.
     #
-    # `position=0` puts it AHEAD of NAT's redaction processor — see the
+    # `position=0` puts it AHEAD of the agent runtime's redaction processor — see the
     # processor's docstring; attributes added after redaction could never be
     # redacted, which would quietly make `redaction_attributes` a lie for
     # exactly the fields that identify a person.
-    # NAT 1.9 names the session's user on every span; with identity attributes
+    # The agent runtime 1.9 names the session's user on every span; with identity attributes
     # off, that must not reach the trace store either.
     if not identity_attributes_enabled() and UserIdentityStripProcessor is not None:
         exporter.add_processor(UserIdentityStripProcessor(), name="strip_user_identity", position=0)

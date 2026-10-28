@@ -1,4 +1,4 @@
-"""The chat workflow driven the way NAT drives it, for the tests that need a whole turn."""
+"""The chat workflow driven the way the agent runtime drives it, for the tests that need a whole turn."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ class _Fn:
 
 
 class _Builder:
-    """Just enough of NAT's Builder for the chat workflow to wire itself."""
+    """Just enough of the agent runtime's Builder for the chat workflow to wire itself."""
 
     def __init__(self, shallow):
         self._shallow = shallow
@@ -99,7 +99,7 @@ def workflow_harness(monkeypatch):
             await gen.aclose()
 
     async def single(query, shallow=None):
-        """What `nat run` and `nat eval` get: NAT's own fold of the stream."""
+        """What `nat run` and `nat eval` get: the agent runtime's own fold of the stream."""
         gen, info = await workflow(shallow or seen["shallow"])
         try:
             return await info.single_fn(query)

@@ -4,7 +4,7 @@
  * **An allowlist, by method and shape.** The proxy used to forward every
  * `/v1/*` path except `admin` and `maintenance`, with the member's bearer and
  * the collection scope and nothing else. That made the agent service's whole
- * surface reachable from a browser cookie — NAT's `/v1/chat/completions` and
+ * surface reachable from a browser cookie — the agent runtime's `/v1/chat/completions` and
  * `/v1/workflow` among it, which ran full agent turns outside the signed
  * context envelope: no organization, no budget, no disabled sources, no model
  * policy. A member refused at the WebSocket upgrade could chat through here.

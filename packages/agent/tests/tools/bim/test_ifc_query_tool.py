@@ -852,7 +852,7 @@ class TestTheDescriptionDescribesTheRealTool:
 
     @staticmethod
     def _description_and_parameters() -> tuple[str, list[str]]:
-        # `IfcQueryInput` IS the wire schema: NAT hands it to LangChain as the
+        # `IfcQueryInput` IS the wire schema: the agent runtime hands it to LangChain as the
         # tool's `args_schema`, so its fields are the arguments the model can set.
         from agent.tools.bim.register import _TOOL_DESCRIPTION
         from agent.tools.bim.register import IfcQueryInput
@@ -1133,7 +1133,7 @@ class TestWhatTheTraceRecords:
 
 
 class TestTheToolBody:
-    """`_query` is the tool minus NAT: the context guards, the post, and the failure table.
+    """`_query` is the tool minus the agent runtime: the context guards, the post, and the failure table.
 
     Nothing here reaches a frontend. `run_bim_query` is replaced per test, so
     what is asserted is which sentence the agent reads for which outcome, and

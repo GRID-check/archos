@@ -478,7 +478,7 @@ _REQUERY_TURN_ID: ContextVar[str | None] = ContextVar("knowledge_requery_turn", 
 
 
 def _current_turn_id() -> str | None:
-    """This turn's id when the NAT context states one, else ``None``.
+    """This turn's id when the agent-runtime context states one, else ``None``.
 
     Prefers the per-turn user message id and falls back to the workflow run
     id. The conversation id alone is per-conversation, not per-turn, so it

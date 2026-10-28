@@ -3,7 +3,7 @@
 The knowledge tool formats every hit as ``"{file_name}, p.{page}"`` (see
 ``_format_results`` in ``knowledge_layer.register``) and the answer's References section
 repeats that shape, so this is the one place the harness has to know about the citation
-string. Kept in a NAT-free module so it can be unit-tested offline and so the NAT
+string. Kept in a module free of the agent runtime so it can be unit-tested offline and so the agent-runtime
 evaluator stays a thin wrapper.
 
 An answer's citations are NOT the same thing as retrieval's top-k: the model sees k chunks

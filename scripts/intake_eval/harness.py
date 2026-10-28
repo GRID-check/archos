@@ -2,7 +2,7 @@
 
 The agent is the production graph (``ProjectIntakeAgent``: its prompt, its own
 tools, its middleware and its budgets), and its model is built the way the
-research worker builds it: the config's ``research_llm`` through NAT and
+research worker builds it: the config's ``research_llm`` through the agent runtime and
 ``get_langchain_llm`` (``runner._create_llm_provider``), pinned to zero data
 retention with ``openrouter.pin_chat_model`` (ADR-0074), so every call takes a
 provider-limiter slot (ADR-0081). The decision model the record tool consults
@@ -51,7 +51,7 @@ MAX_TRANSCRIPT_OUTPUT = 6000
 
 
 def _expand(value: Any) -> Any:
-    """``${NAME:-default}`` as NAT expands it."""
+    """``${NAME:-default}`` as the agent runtime expands it."""
     if not isinstance(value, str):
         return value
     return re.sub(r"\$\{(\w+)(?::-([^}]*))?\}", lambda m: os.environ.get(m.group(1)) or (m.group(2) or ""), value)
@@ -247,7 +247,7 @@ def fixture_world(fixture: Fixture, bff: FakeIntakeBff) -> Iterator[None]:
 
 async def _model(builder: Any, llm_config: dict[str, Any], model: str) -> Any:
     """``research_llm`` as the worker builds it, on ``model``, pinned to zero data retention."""
-    import nat.plugins.langchain.llm  # noqa: F401 — registers NAT's LangChain wrapper for the OpenAI provider
+    import nat.plugins.langchain.llm  # noqa: F401 — registers the agent runtime's LangChain wrapper for the OpenAI provider
     from agent.common import get_langchain_llm
     from agent.common.openrouter import ZERO_DATA_RETENTION
     from agent.common.openrouter import pin_chat_model

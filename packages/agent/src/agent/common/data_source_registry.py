@@ -2,11 +2,11 @@
 
 Data source display metadata and tool→source mappings are loaded from
 a ``data_source_registry`` function in the YAML config.  Each source
-entry declares its display name, description, and which NAT functions
+entry declares its display name, description, and which agent-runtime functions
 or function groups belong to it.
 
 Individual functions are matched by exact name.  Function groups are
-matched by prefix using NAT's group separators (``__`` and legacy ``.``).
+matched by prefix using the agent runtime's group separators (``__`` and legacy ``.``).
 The register function auto-detects which refs are groups by checking
 the builder at startup.
 
@@ -67,7 +67,7 @@ _group_source_map: dict[str, str] = {}  # group prefix → source ID
 # matching. Exact refs participate in prefix matching too so that MCP-style
 # child tools (``foo__bar``) resolve to their parent source even when the
 # ref was declared without being marked as a function group — matches the
-# behavior the NAT auto-detection would give in production but is robust
+# behavior the agent runtime's auto-detection would give in production but is robust
 # to tests and configs that forget to pass ``group_names``.
 _sorted_prefix_refs: list[tuple[str, str]] = []
 
@@ -88,7 +88,7 @@ class DataSourceEntry(BaseModel):
 
 
 class DataSourceRegistryConfig(FunctionBaseConfig, name="data_source_registry"):
-    """Config-driven data source registry with NAT function references."""
+    """Config-driven data source registry with agent-runtime function references."""
 
     sources: list[DataSourceEntry] = Field(
         default_factory=list,
@@ -99,7 +99,7 @@ class DataSourceRegistryConfig(FunctionBaseConfig, name="data_source_registry"):
 def _populate(sources: list[dict], group_names: set[str] | None = None) -> None:
     """Shared logic for populating the registry and maps.
 
-    Used by both the NAT register function and the test helper.
+    Used by both the agent-runtime register function and the test helper.
 
     Args:
         sources: List of dicts with keys: id, name, description, tools.
@@ -158,7 +158,7 @@ async def data_source_registry_fn(config: DataSourceRegistryConfig, builder: Any
         len(_group_source_map),
     )
 
-    # NAT requires yielding a FunctionInfo; this is a config-only function
+    # The agent runtime requires yielding a FunctionInfo; this is a config-only function
     async def _noop(query: str) -> str:
         """Data source registry (config-only, not a tool)."""
         return "This is a config-only function."
@@ -191,7 +191,7 @@ def get_source_id_for_tool(tool_name: str) -> str | None:
     """Look up source ID for a tool.
 
     Tries exact match first (individual functions), then prefix match
-    against any registered ref (group or exact) using NAT's function
+    against any registered ref (group or exact) using the agent runtime's function
     group separators (``__`` and legacy ``.``). Prefix candidates are
     matched longest-first for deterministic results with overlapping
     refs.
@@ -235,7 +235,7 @@ def set_group_source_map(mapping: dict[str, str]) -> None:
 
 # ── Test helpers ──
 def populate_from_config(sources: list[dict], group_names: set[str] | None = None) -> None:
-    """Populate registry and maps directly (for testing without NAT startup).
+    """Populate registry and maps directly (for testing without agent-runtime startup).
 
     Args:
         sources: List of dicts with keys: id, name, description, tools (list of str).

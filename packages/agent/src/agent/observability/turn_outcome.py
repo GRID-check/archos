@@ -2,7 +2,7 @@
 
 A turn's root observation was the least useful row in Langfuse. Its name was
 the workflow's config type (``chat_deepresearcher_agent``), and its output was
-NAT's ``output_preview``: the first fifty streamed bodies, which are step
+the agent runtime's ``output_preview``: the first fifty streamed bodies, which are step
 events and text deltas, not the answer. Everything an analyst slices by
 (answered or refused, shallow or deep, the confidence, how many sources) lived
 only in the ``TurnResult`` the socket persists, so none of it could be charted,

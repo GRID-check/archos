@@ -8,7 +8,7 @@ reader reaches it, so the property is held here, on the routes the real worker
 mounts for each role, and not on the lists the plugin keeps.
 
 The baseline is built from the ingredients instead of from the plugin: every
-router registrar found under ``agent_host/routes/`` by name, NAT's own routes, the
+router registrar found under ``agent_host/routes/`` by name, the agent runtime's own routes, the
 job routes and the chat socket, mounted on one app the way
 the single process did. A router added under ``routes/`` and assigned to no role
 is in the baseline and in neither role; one assigned to both is in both roles.
@@ -50,7 +50,7 @@ from nat.front_ends.fastapi.fastapi_front_end_config import FastApiFrontEndConfi
 from nat.front_ends.fastapi.fastapi_front_end_plugin_worker import FastApiFrontEndPluginWorker
 from nat.runtime.session import SessionManager
 
-#: What both roles answer: `/health` (NAT's own handler, mounted on each) and FastAPI's documentation routes.
+#: What both roles answer: `/health` (the runtime's own handler, mounted on each) and FastAPI's documentation routes.
 SHARED = {
     ("GET", "/health"),
     ("GET", "/openapi.json"),
@@ -76,7 +76,7 @@ class _RecordingBootClock:
 
 
 class _Schema(BaseModel):
-    """What a NAT session manager answers for its workflow's input and output."""
+    """What an agent-runtime session manager answers for its workflow's input and output."""
 
     text: str = ""
 
@@ -260,9 +260,9 @@ def test_every_router_registrar_under_routes_is_assigned_to_exactly_one_role():
 # A turn runs on the chat socket alone (ADR-0068)
 # ---------------------------------------------------------------------------
 
-#: NAT's HTTP turn routes, read off its own defaults rather than listed here, so
-#: a path NAT adds to the defaults is covered the day the pin moves. Each base
-#: path is also served with the suffixes NAT's generate routes add.
+#: The agent runtime's HTTP turn routes, read off its own defaults rather than listed here, so
+#: a path the runtime adds to the defaults is covered the day the pin moves. Each base
+#: path is also served with the suffixes the runtime's generate routes add.
 _NAT_DEFAULTS = FastApiFrontEndConfig()
 _TURN_BASES = [
     getattr(_NAT_DEFAULTS.workflow, name) for name in plugin.WORKFLOW_ROUTE_FIELDS if name != "websocket_path"
@@ -301,7 +301,7 @@ def test_the_chat_socket_is_the_one_websocket(route_sets):
 
 
 async def test_no_http_turn_route_is_mounted_even_with_a_dask_scheduler(monkeypatch, tmp_path):
-    # NAT's own add_default_route mounts its async generate route whenever Dask
+    # The agent runtime's own add_default_route mounts its async generate route whenever Dask
     # is reachable, whatever the config says: as `None/async` with no path.
     config_file = tmp_path / "config.yml"
     config_file.write_text("{}")

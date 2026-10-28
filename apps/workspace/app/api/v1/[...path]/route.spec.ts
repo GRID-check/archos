@@ -49,7 +49,7 @@ describe('/api/v1/[...path] proxy — control-plane path blocking', () => {
     ['POST', POST, ['maintenance', 'purge-project-resources']],
     ['POST', POST, ['maintenance', 'reconcile-summaries']],
     ['POST', POST, ['maintenance', 'refresh-document-facts']],
-    // NAT's agent-turn endpoints ran outside the signed envelope: an agent turn
+    // The agent runtime's agent-turn endpoints ran outside the signed envelope: an agent turn
     // with no organization, budget or source policy, for a browser cookie.
     ['POST', POST, ['chat', 'completions']],
     ['POST', POST, ['chat', 'stream']],

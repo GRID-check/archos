@@ -189,7 +189,7 @@ def is_data_policy_refusal(exc: BaseException) -> bool:
     OpenRouter answers 404 "No endpoints found matching your data policy" when
     no endpoint of the model satisfies the request's ZDR routing. It is not a
     fault to retry: the model has to change. Walks ``__cause__`` /
-    ``__context__`` because LangChain and NAT's retry wrappers re-raise.
+    ``__context__`` because LangChain and the agent runtime's retry wrappers re-raise.
     """
     seen: set[int] = set()
     current: BaseException | None = exc
@@ -207,7 +207,7 @@ def pin_chat_model(llm: object, policy: DataPolicy) -> object:
 
     Returns ``llm`` itself when there is nothing to do (no ZDR, not OpenRouter,
     already pinned). Otherwise a ``model_copy`` with the merged ``extra_body``,
-    sharing the HTTP client and with NAT's retry wrappers rebound to the copy,
+    sharing the HTTP client and with the agent runtime's retry wrappers rebound to the copy,
     so the shared build-time instance is never mutated.
 
     Raises :class:`ZdrRoutingError` when a ZDR policy cannot be applied to an

@@ -1,7 +1,7 @@
 """``workspace``: everything a person can do in Piloti, reached through Piloti's own MCP server.
 
 Four tools (``workspace__search``, ``workspace__describe``, ``workspace__call``,
-``workspace__report_missing``), one NAT function group, because they share the
+``workspace__report_missing``), one agent-runtime function group, because they share the
 client and the refusal. They are the SAME four meta-tools an external agent
 (Claude, Cursor) gets from the server in ``search`` mode (ADR-0122): the
 model finds an operation by what it wants to do, reads its schema, then calls
@@ -13,7 +13,7 @@ here changes the workspace on its own authority (ADR-0105).
 The envelope is read HERE, at call time, in the turn's own async context, and
 echoed (``client.py``). Nothing is connected at build time and nothing is
 cached between calls, so a call can only carry the identity of the turn that
-made it. Why NAT's ``mcp_client`` group was not used is in ``client.py``.
+made it. Why the agent runtime's ``mcp_client`` group was not used is in ``client.py``.
 """
 
 from __future__ import annotations

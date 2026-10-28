@@ -61,7 +61,7 @@ from agent.tools.bim.measurement_evidence import result_carries_measurement
 #: grounding surface that deserves its own review, not a name added to a
 #: frozenset.
 #:
-#: Matched on the tool's BASE name (``tool_calls.tool_basename``): NAT delivers
+#: Matched on the tool's BASE name (``tool_calls.tool_basename``): the agent runtime delivers
 #: a function-group or MCP tool as ``group__ifc_measure``, and an exact compare
 #: against the bare name silently switched measurement grounding off for every
 #: deployment that uses grouping — reinstating the "low" floor this whole gate

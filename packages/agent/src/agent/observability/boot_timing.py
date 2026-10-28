@@ -7,7 +7,7 @@ the cluster rather than a laptop:
 
 - ``ready``: the process's age when it can do its work, interpreter start
   included (read from ``/proc``, so the imports before any code here ran count).
-- ``load_config`` and ``workflow_build``: NAT's config load and
+- ``load_config`` and ``workflow_build``: the agent runtime's config load and
   ``WorkflowBuilder.from_config``, the two steps every role pays.
 - Under the role ``research-job``, the same two phases once per job: the
   research worker builds a workflow for every job it runs, not once per process.

@@ -1646,7 +1646,7 @@ export const chat: typeof en.chat = {
     showThinking: 'Denkschritte anzeigen ({count})',
     showThinkingSteps: 'Denkschritte anzeigen ({count})',
     // Die Kopfzeile der Herleitung. Keine Schrittzahl: gezählt wurden rohe
-    // NAT-Ereignisnamen, nicht Züge oder Aufrufe (siehe ChatThinking). Die
+    // Ereignisnamen der Agent-Laufzeit, nicht Züge oder Aufrufe (siehe ChatThinking). Die
     // Quellen-Klausel FEHLT, wenn es keine gibt: „0 Quellen“ ist eine wahre
     // Zahl, die sich wie ein Fehlschlag liest, und eine Antwort aus einer
     // Messung am Modell hat zu Recht keine Zitate.

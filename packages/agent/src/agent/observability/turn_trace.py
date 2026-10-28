@@ -1,6 +1,6 @@
 """Which trace an answer was produced in, written down where the BFF can read it.
 
-Langfuse identifies a trace by its OTel trace id, and NAT picks that id when a
+Langfuse identifies a trace by its OTel trace id, and the agent runtime picks that id when a
 workflow run starts: ``Runner.result_stream`` adopts ``workflow_trace_id`` from
 the context when one is set and otherwise draws ``uuid4().int``
 (``nat/runtime/runner.py``), and every span with no parent takes it
@@ -45,7 +45,7 @@ def trace_id_for_message(message_id: str | None) -> int | None:
     """The trace id a turn answering as ``message_id`` runs in: the UUID's own 128 bits.
 
     ``None`` when the id is not a UUID (or is the nil UUID, which OTel reserves
-    as "invalid"), so the caller leaves NAT to draw its own.
+    as "invalid"), so the caller leaves the agent runtime to draw its own.
     """
     if not message_id:
         return None
@@ -63,7 +63,7 @@ def trace_id_hex(trace_id: int | None) -> str | None:
     return f"{trace_id:032x}"
 
 
-def _context_state():  # noqa: ANN202 — NAT's type, imported lazily like everywhere else here
+def _context_state():  # noqa: ANN202 — the agent runtime's type, imported lazily like everywhere else here
     from nat.plugin_api import ContextState
 
     return ContextState.get()
@@ -73,7 +73,7 @@ def _context_state():  # noqa: ANN202 — NAT's type, imported lazily like every
 def pinned_trace(trace_id: int | None) -> Iterator[None]:
     """Run the enclosed workflow in trace ``trace_id``; a no-op for None.
 
-    Sets NAT's ``workflow_trace_id`` for this context and restores the previous
+    Sets the agent runtime's ``workflow_trace_id`` for this context and restores the previous
     value on exit, the token discipline every per-turn binding here follows.
     Tasks created inside (the workflow producer in ``workflow_stream``) copy
     the context and so see the pin.
@@ -93,8 +93,8 @@ def pinned_trace(trace_id: int | None) -> Iterator[None]:
 
 
 def current_trace_id_hex() -> str | None:
-    """The trace id NAT's current workflow run is in, as 32 hex digits, or None."""
+    """The trace id the agent runtime's current workflow run is in, as 32 hex digits, or None."""
     try:
         return trace_id_hex(_context_state().workflow_trace_id.get())
-    except Exception:  # noqa: BLE001 — outside a NAT context there is simply no trace
+    except Exception:  # noqa: BLE001 — outside an agent-runtime context there is simply no trace
         return None

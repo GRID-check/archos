@@ -56,7 +56,7 @@ def _verified_collection_scope(http_request: Request) -> list[str] | None:
     """Return the caller's collection scope from the SIGNED request-context envelope.
 
     Defense-in-depth for cross-tenant reads (PB-SYNTH-4). This route is a plain
-    FastAPI route, not a NAT workflow endpoint, so NAT's ``Context.metadata.headers``
+    FastAPI route, not an agent-runtime workflow endpoint, so the agent runtime's ``Context.metadata.headers``
     is never populated for it (verified empirically) — ``get_collection_scope_from_context()``
     used by the chat retrieval path would always read ``None`` here. We therefore
     parse the caller's actual HTTP headers with the SAME verified-envelope parser
@@ -465,7 +465,7 @@ def add_document_search_routes(router: APIRouter):
 
         The workspace search (``purpose="workspace_search"``) is a root trace
         ``workspace-search`` holding one ``retrieve.workspace_search``
-        retriever observation; no NAT run sees this route. Other callers are
+        retriever observation; no agent-runtime run sees this route. Other callers are
         traced where they run (``retrieve.project_lookup``).
         """
         collections = list(dict.fromkeys(request.collections))

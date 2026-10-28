@@ -51,7 +51,7 @@ THE SDK, NOT A HAND-WRITTEN CLIENT
 the library's shape does not answer our question. Here it does, once one
 question is settled: **can the Langfuse SDK be constructed without installing
 its own global OpenTelemetry tracer provider?** This process already exports
-spans to Langfuse through NAT's pipeline and an OTel collector; a second
+spans to Langfuse through the agent runtime's pipeline and an OTel collector; a second
 provider — or a second span processor on ours — is the failure to avoid.
 
 Verified against langfuse 4.15.3, not remembered. ``LangfuseResourceManager``
@@ -344,7 +344,7 @@ _STORE: PromptStore | None = None
 def prompt_store() -> PromptStore:
     """The process's store, built on first use.
 
-    Module-level like the registries NAT populates at boot, and for the same
+    Module-level like the registries the agent runtime populates at boot, and for the same
     reason: the SDK client, its TTL cache and its threads are per-process, not
     per-turn. :func:`reset_prompt_store` is how a test gets a blank slate.
     """

@@ -22,7 +22,7 @@ automatically:
   stream lasts. A 429 gives the slot back and waits its Retry-After outside it.
 - ``use_previous_response_id=False`` on the Responses path (see
   :func:`disable_previous_response_id`): OpenRouter's Responses API is
-  stateless and rejects the field, while NAT turns it on for every
+  stateless and rejects the field, while the agent runtime turns it on for every
   ``api_type: responses`` client.
 - the reasoning floor (see :func:`_needs_reasoning_floor`): a role configured
   with ``reasoning_effort: none`` that a model override points at a model which
@@ -71,7 +71,7 @@ _CONTRACT_SUBCLASSES: dict[type, type] = {}
 
 #: A rate limit that arrives INSIDE a Responses stream, as an ``error`` event.
 #: langchain-openai raises it as a bare ``ValueError("rate_limit_exceeded: …")``
-#: that carries no status code and no "429", so NAT's default filters (status
+#: that carries no status code and no "429", so the agent runtime's default filters (status
 #: codes, "Too Many Requests", "429") let it through and the turn ends on the
 #: generic error (GRID-check/grid-oib-agent#826). Matched on the provider's
 #: error code, which is what OpenRouter puts in front of the message.
@@ -145,7 +145,7 @@ def apply_openrouter_structured_defaults(llm: Any) -> Any:
     """Force OpenRouter structured-output routing + JSON healing on an LLM.
 
     No-op for non-OpenRouter models. Mutates the resolved instance in place so
-    NAT's retry-patched bound methods are preserved (a ``model_copy`` would risk
+    The agent runtime's retry-patched bound methods are preserved (a ``model_copy`` would risk
     dropping them); the defaults are identical for every caller, so sharing a
     resolved instance is safe.
     """
@@ -167,7 +167,7 @@ def apply_openrouter_structured_defaults(llm: Any) -> Any:
 def disable_previous_response_id(llm: Any) -> Any:
     """Stop an OpenRouter-bound Responses-API client from sending ``previous_response_id``.
 
-    NAT builds every ``api_type: responses`` client with
+    The agent runtime builds every ``api_type: responses`` client with
     ``use_previous_response_id=True`` (``nat/plugins/langchain/llm.py``), and
     langchain-openai then fills the field in from the most recent ``AIMessage``
     whose id starts with ``resp_`` and truncates the request to the messages
@@ -181,7 +181,7 @@ def disable_previous_response_id(llm: Any) -> Any:
     that shape; its own documented examples are ``resp_…``, so the day it does,
     every follow-up call inside a turn 400s at once.
 
-    Flipping the flag off does not leave the Responses path: NAT sets
+    Flipping the flag off does not leave the Responses path: the agent runtime sets
     ``use_responses_api=True`` explicitly alongside it. No-op off OpenRouter,
     where the field is the provider's own state handle and works as documented.
     """
@@ -305,7 +305,7 @@ def _contract_subclass(base: type) -> type:
     where the failures actually happened.
 
     It is also the one seam every chat call passes, so it is where the call takes
-    its fleet slot (``provider_limiter``): inside NAT's retry wrapper, so each
+    its fleet slot (``provider_limiter``): inside the agent runtime's retry wrapper, so each
     retry queues up again after the 429 that caused it has been waited out.
     """
     cached = _CONTRACT_SUBCLASSES.get(base)
@@ -432,11 +432,11 @@ async def get_langchain_llm(builder: Any, ref: Any) -> Any:
     the instance), never here.
     """
     wrapped = await builder.get_llm(ref, wrapper_type=LLMFrameworkEnum.LANGCHAIN)
-    # NAT 1.9 returns the chat model inside a `RunnableConfigurableFields` (its
+    # The agent runtime 1.9 returns the chat model inside a `RunnableConfigurableFields` (its
     # per-call `model_name` switch) and retry-patches that wrapper. Every
     # hardening here, and every per-request copy in `model_overrides`, needs the
     # chat model itself: on the wrapper they fail or no-op silently. So take it
-    # out and retry-patch it with the same settings NAT used.
+    # out and retry-patch it with the same settings the agent runtime used.
     config = builder.get_llm_config(ref)
     llm = patch_with_retry(
         wrapped.default,

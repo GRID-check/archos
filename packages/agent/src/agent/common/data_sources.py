@@ -36,7 +36,7 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 
 logger = logging.getLogger(__name__)
 
-#: The filesystem tools that read the office's documents (ADR-0133). They are not NAT functions, so the
+#: The filesystem tools that read the office's documents (ADR-0133). They are not agent-runtime functions, so the
 #: data-source registry does not list them; they belong to the source the ranked search belongs to, because
 #: they read its scope.
 FILESYSTEM_READ_TOOLS = frozenset({"ls", "glob", "grep", "read_file"})
@@ -95,7 +95,7 @@ def parse_disabled_sources(raw: str | None) -> set[str]:
 
 
 def get_disabled_sources_from_context() -> set[str]:
-    """Read the current request's org-disabled sources from NAT context.
+    """Read the current request's org-disabled sources from agent-runtime context.
 
     From the signed envelope when one arrived, never from the unsigned header
     beside it: a client that could set the header could switch the org's

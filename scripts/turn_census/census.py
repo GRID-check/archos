@@ -114,7 +114,7 @@ def run_stamp() -> str:
     return f"{time.strftime('%H%M%S')}-{os.getpid()}"
 
 
-# The NAT plugin a run loads from ``frontends/``: installed editable from ONE
+# The agent-runtime plugin a run loads from ``frontends/``: installed editable from ONE
 # checkout like the workspace packages, and loaded by every ``nat run`` through their entry
 # points. From a worktree of another commit the main checkout's ``agent_host`` met
 # the worktree's ``agent`` and every turn died (``Unknown field name
@@ -127,7 +127,7 @@ def source_packages() -> dict[str, Path]:
 
     Every Python workspace member (``[tool.uv.workspace]`` in the root
     ``pyproject.toml``; their package dirs are called ``src``) and the
-    NAT plugins under ``frontends/`` (``FRONTEND_PACKAGES``).
+    agent-runtime plugins under ``frontends/`` (``FRONTEND_PACKAGES``).
     """
     import tomllib
 
@@ -148,7 +148,7 @@ def tree_pythonpath(out: Path) -> str:
     """A PYTHONPATH that imports THIS checkout's code, whatever the venv installed.
 
     The venv installs ``agent``, the workspace packages under ``packages/`` and the
-    ``frontends/`` NAT plugins editable from ONE checkout. From a ``git worktree`` without its own venv, a run used to
+    ``frontends/`` plugins editable from ONE checkout. From a ``git worktree`` without its own venv, a run used to
     import the main checkout's code while the report named the worktree's
     commit. So ``packages/agent/src/`` goes first, and each workspace package is linked under
     its import name (their package dirs are called ``src``), ahead of the

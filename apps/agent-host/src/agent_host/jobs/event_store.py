@@ -569,8 +569,8 @@ class EventStore:
     #    to prevent unbounded table growth. Runs periodically based on
     #    expiry_seconds from config.
     #
-    # NAT's JobStore handles job metadata expiry separately. These methods
-    # handle our custom job_events table which NAT doesn't know about.
+    # The agent runtime's JobStore handles job metadata expiry separately. These methods
+    # handle our custom job_events table which the agent runtime doesn't know about.
     # -------------------------------------------------------------------------
 
     @classmethod

@@ -1,6 +1,6 @@
 """Golden-set schema, loader, and the Punkt -> ``(file_name, page)`` expansion. PURE.
 
-No NAT, no chroma, no network: this module reads two JSON files and returns dataclasses.
+No agent runtime, no chroma, no network: this module reads two JSON files and returns dataclasses.
 
 WHY THE GOLDEN SET IS LABELLED IN PUNKTE BUT SCORED IN PAGES
 ------------------------------------------------------------

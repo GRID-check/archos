@@ -124,14 +124,14 @@ async def test_an_admitted_result_reaches_the_model_and_confines_the_conversatio
 
 
 # ---------------------------------------------------------------------------
-# The side channel, through NAT's real tool wrapper and the compiled graph
+# The side channel, through the agent runtime's real tool wrapper and the compiled graph
 # ---------------------------------------------------------------------------
 #
 # A tool reports what it read (`note_collections_read`); the ToolNode's call
 # wrapper stamps it onto the result; the tools node admits it. Each half has a
 # unit test, and each would pass with the join broken: a wrapper the ToolNode
-# never runs, or a note the wrapper's context never sees because NAT ran the
-# tool in a context of its own. Only a call through NAT's LangChain wrapper and
+# never runs, or a note the wrapper's context never sees because the agent runtime ran the
+# tool in a context of its own. Only a call through the agent runtime's LangChain wrapper and
 # the compiled graph can fail on that (docs/contributing/gotchas.md).
 
 

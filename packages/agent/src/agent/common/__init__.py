@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 # What this package re-exports, and from where. Loaded on first use (PEP 562),
 # not when the package is: importing `agent.common.turn_status` executes
 # this file first, and the eager form made every such import pay for LangGraph's
-# checkpointers, psycopg's pool, NAT and LangChain, ~1.7 s of a 2.0 s import
+# checkpointers, psycopg's pool, the agent runtime and LangChain, ~1.7 s of a 2.0 s import
 # (docs/audit/blast-radius-2026-10.md). `tests/test_import_weight.py` keeps it
 # that way.
 _LAZY: dict[str, str] = {

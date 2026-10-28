@@ -1,4 +1,4 @@
-"""``canvas``: Piloti's hands on a document, as a NAT function group.
+"""``canvas``: Piloti's hands on a document, as an agent-runtime function group.
 
 Eight tools, the way a person works a document on the review canvas: see who
 is in the ``room`` and where, ``point`` and ``highlight`` to show what is meant,
@@ -10,7 +10,7 @@ ADR-0128); it shares this group's target resolution and makes the box glow
 through ``presence.show_reading``. The model calls these as ``canvas__room`` and
 so on; one group,
 because they share the client,
-the target resolution and the restricted-folder rule, and because NAT can serve
+the target resolution and the restricted-folder rule, and because the agent runtime can serve
 a function group over MCP as it stands, so a second client never means a second
 implementation (ADR-0055).
 

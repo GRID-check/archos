@@ -31,7 +31,7 @@ class PricingRegistryConfig(BaseModel):
     """
     Pricing table read from the ``tokenomics.pricing`` section of the eval
     config YAML.  ``models`` is keyed by the exact model name that appears in
-    NAT traces (e.g. ``"azure/openai/gpt-5.2"``).  ``default`` is used as a
+    agent-runtime traces (e.g. ``"azure/openai/gpt-5.2"``).  ``default`` is used as a
     fallback when no model key matches.  ``tools`` is keyed by tool name as it
     appears in the trace.
     """

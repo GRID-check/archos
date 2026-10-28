@@ -5,9 +5,9 @@ builder (e.g. the skills submit route, wired next to the maintenance routes)
 can reuse builder-dependent helpers such as
 ``routes.job_data_sources.validate_data_sources_for_agent``.
 
-Kept in its own tiny module — deliberately free of NAT imports — so a
+Kept in its own tiny module — deliberately free of agent-runtime imports — so a
 consumer that only needs to *check whether* a builder exists does not pay the
-cost of importing ``routes.jobs`` (which imports NAT at module load).
+cost of importing ``routes.jobs`` (which imports the agent runtime at module load).
 """
 
 from __future__ import annotations

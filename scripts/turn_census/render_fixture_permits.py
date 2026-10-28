@@ -49,7 +49,7 @@ COMMENT = (
 
 
 def build_extraction_llm():
-    """The platform-fixed chat model the ingest's summary step uses, built outside NAT.
+    """The platform-fixed chat model the ingest's summary step uses, built outside the agent runtime.
 
     Wrapped in the request contract (``enforce_chat_request_contract``), the seam
     where every chat call takes its provider slot (ADR-0081).

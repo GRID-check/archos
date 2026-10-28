@@ -12,7 +12,7 @@ the code constants below. Only two things are code: the applicability resolver
 and the corpus filename classifier — behavior that genuinely differs per legal
 system. The country's legal-database access (RIS for Austria) is deliberately
 NOT part of this contract: it is a source adapter (``packages/ris-adapter``)
-registered through the normal NAT tool mechanism; the profile only *names* the
+registered through the normal agent-runtime tool mechanism; the profile only *names* the
 tools so prompts and docs can reference them.
 
 Adding a country therefore means:

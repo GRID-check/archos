@@ -152,7 +152,7 @@ def fetch_memory_digest(
     ``PROPOSAL_DECISIONS`` and — when this turn belongs to a conversation —
     ``REVIEW_DECISIONS``, what a person decided about the drafts that
     conversation filed. ``conversation_id`` defaults to the ACTIVE conversation
-    read off the NAT context rather than to nothing, so a caller that has one
+    read off the agent runtime's context rather than to nothing, so a caller that has one
     need not thread it through: the digest fetch is per turn and the turn always
     knows which conversation it is. Pass it explicitly to override, or pass
     ``""`` to ask for no review block at all.
@@ -180,7 +180,7 @@ def fetch_memory_digest(
     if conversation_id is None:
         # Imported here rather than at module scope: `project_context` is the
         # header layer and this module is a knowledge one, and the four other
-        # readers of the NAT context in this package do the same.
+        # readers of the agent runtime's context in this package do the same.
         from agent.project_context import get_conversation_id_from_context
 
         conversation_id = get_conversation_id_from_context()

@@ -206,7 +206,7 @@ def _collection_is_empty(ingestor) -> bool:
 def _get_oib_ingestor():
     """The ingestor this module prepares jobs with and reads the collection through. It runs nothing."""
     # Register the LlamaIndex backend lazily so tests can import this module
-    # without importing the full NAT/LlamaIndex stack.
+    # without importing the full agent-runtime/LlamaIndex stack.
     import knowledge_layer.llamaindex.adapter  # noqa: F401
 
     return get_ingestor("llamaindex")

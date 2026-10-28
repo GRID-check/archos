@@ -1,4 +1,4 @@
-"""The NAT function: config, description, and the stages in order.
+"""The agent-runtime function: config, description, and the stages in order.
 
 Nothing is decided here. Every bound, every fallback and every sentence the
 model reads lives in the stage that owns it; this module says what the tool is

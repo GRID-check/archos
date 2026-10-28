@@ -908,7 +908,7 @@ class TestAuthMiddlewareHelpers:
         "path", ["/chat", "/chat/stream", "/v1/chat", "/v1/chat/completions", "/generate", "/v1/workflow"]
     )
     def test_no_http_turn_route_is_reachable_from_outside(self, path: str) -> None:
-        # A turn runs on the chat socket alone (ADR-0068); these are NAT's HTTP turn routes.
+        # A turn runs on the chat socket alone (ADR-0068); these are the agent runtime's HTTP turn routes.
         mw = AuthMiddleware(MagicMock(), external_hostnames=set())
         assert mw._path_allowed(path) is False
 

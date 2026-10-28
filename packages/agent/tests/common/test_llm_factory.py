@@ -74,10 +74,10 @@ def test_base_url_falls_back_to_client():
 
 @pytest.mark.asyncio
 async def test_get_langchain_llm_resolves_and_hardens_the_chat_model_itself():
-    """NAT 1.9 hands back a `RunnableConfigurableFields` wrapper. Hardening that
+    """The agent runtime 1.9 hands back a `RunnableConfigurableFields` wrapper. Hardening that
     lands on the wrapper fails or no-ops, and a per-request `model_copy` of it
     keeps sending the original model, so the seam must return the chat model,
-    still retry-patched the way NAT patched the wrapper."""
+    still retry-patched the way the agent runtime patched the wrapper."""
     from langchain_openai import ChatOpenAI
 
     from agent.common.model_overrides import override_model
@@ -273,14 +273,14 @@ def test_a_model_override_changes_the_key():
 
 # -- previous_response_id on the OpenRouter Responses path ---------------------
 #
-# NAT hands every `api_type: responses` client `use_previous_response_id=True`,
+# The agent runtime hands every `api_type: responses` client `use_previous_response_id=True`,
 # which langchain-openai fills from the last `resp_…` AIMessage id. OpenRouter
 # rejects the field outright, so `get_langchain_llm` must turn it off — and only
 # for OpenRouter, where a direct OpenAI endpoint keeps the feature it supports.
 
 
 async def _resolved_responses_client(base_url):
-    """An `api_type: responses` client, built by NAT."""
+    """An `api_type: responses` client, built by the agent runtime."""
     return await _resolved_through_nat(base_url=base_url, api_type="responses")
 
 
@@ -331,7 +331,7 @@ async def test_a_non_openrouter_responses_client_is_untouched():
 #
 # OpenRouter reports an upstream rate limit on the Responses path as an `error`
 # event mid-stream; langchain-openai turns it into a bare ValueError with no
-# status code and no "429" in it. NAT's default filters missed it, so the turn
+# status code and no "429" in it. The agent runtime's default filters missed it, so the turn
 # ended on the generic error instead of waiting a moment (#826).
 
 _STREAMED_RATE_LIMIT = (

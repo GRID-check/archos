@@ -8,10 +8,10 @@ routes that need it. ``sha`` is the one the ``[boot]`` line prints
 over HTTP after that line has rotated out of the logs; the BFF's own
 ``/api/health`` passes the body through.
 
-NAT mounts its own ``/health`` (``{"status": "healthy"}``) in ``add_routes`` of
+The agent runtime mounts its own ``/health`` (``{"status": "healthy"}``) in ``add_routes`` of
 the ``chat`` role, and FastAPI answers with the first route that matches, so a
 second handler behind it would never run. ``install_health_route`` removes
-NAT's and mounts this one, leaving exactly one ``/health`` per app.
+the agent runtime's and mounts this one, leaving exactly one ``/health`` per app.
 """
 
 from __future__ import annotations

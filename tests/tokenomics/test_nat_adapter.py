@@ -1,4 +1,4 @@
-"""Tests for NAT trace parsing and phase inference.
+"""Tests for agent-runtime trace parsing and phase inference.
 
 Module under test: packages/agent/src/agent/tokenomics/nat_adapter.py
 """

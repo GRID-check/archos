@@ -2340,7 +2340,7 @@ class TestWorkflowReflectionLlmRef:
 
 
 class _LiveAttrs:
-    """Mirrors NAT's request attributes: ``headers`` reads through to the request."""
+    """Mirrors the agent runtime's request attributes: ``headers`` reads through to the request."""
 
     def __init__(self, request):
         self._request = request

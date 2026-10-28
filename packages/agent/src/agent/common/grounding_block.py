@@ -523,7 +523,7 @@ def _doc_class_label(doc_class: str) -> str:
 # reach the tools node. The container is set at the top of the run and only
 # ever mutated.
 #
-# NAT's tool wrapper is the reason the records travel this way rather than on
+# The agent runtime's tool wrapper is the reason the records travel this way rather than on
 # ``ToolMessage.artifact``: it rebuilds the message from the string a tool
 # returned and drops the artifact, so a structured payload put there never
 # reaches the middleware. See docs/contributing/gotchas.md.

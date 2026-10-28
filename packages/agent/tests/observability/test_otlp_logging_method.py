@@ -29,7 +29,7 @@ def _provider_already_installed(monkeypatch):
 async def test_missing_endpoint_yields_a_null_handler():
     # `${OTEL_EXPORTER_OTLP_ENDPOINT:-}` interpolates to None when the
     # observability tier is not deployed — this must not raise (regression:
-    # the tracing exporter crashed NAT startup on exactly this).
+    # the tracing exporter crashed agent-runtime startup on exactly this).
     async with otlp_logging_method(OtlpLoggingMethodConfig(), None) as handler:
         assert isinstance(handler, logging.NullHandler)
 
@@ -100,7 +100,7 @@ def test_shipped_config_wires_the_otlp_logging_method():
 
 
 def test_a_failed_build_exports_its_cause_not_its_itemization(caplog):
-    # NAT's own logger, driven for real, so a change in how it reports a failed
+    # The agent runtime's own logger, driven for real, so a change in how it reports a failed
     # build shows up here rather than as eleven issues again (#742-#752).
     from agent.observability.otlp_logging_method import _NatBuildFailureItemizationFilter
     from nat.builder.workflow_builder import _log_build_failure

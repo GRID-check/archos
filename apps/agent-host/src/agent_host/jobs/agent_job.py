@@ -80,7 +80,7 @@ class JobRequest:
 
     # The job store's and the event store's database.
     db_url: str
-    # The NAT config, the agent class's module path, and its function in that config.
+    # The agent-runtime config, the agent class's module path, and its function in that config.
     config_file_path: str
     job_id: str
     # The query the job runs.
@@ -257,7 +257,7 @@ def _prepare_process(scope: JobScope, request: JobRequest, configure_logging: bo
             setup_logging(log_level)
         except ImportError:
             logging.basicConfig(level=log_level)
-    # Quiet NAT's per-parallel-step span-stack warnings (deep research's fan-out
+    # Quiet the agent runtime's per-parallel-step span-stack warnings (deep research's fan-out
     # triggers them on every parallel call) and keep LangGraph's steps parented,
     # or their spans never reach Langfuse.
     suppress_noisy_dependency_logs()
@@ -282,7 +282,7 @@ async def _execute(scope: JobScope, request: JobRequest) -> None:
     from nat.runtime.loader import load_config
 
     # Same JOIN as apps/agent-host/start_web.py: Grid telemetry `_type`s register at import
-    # and are not in NAT's stock registry, so load_config fails without it.
+    # and are not in the agent runtime's stock registry, so load_config fails without it.
     register_telemetry()
     clock = BootClock("research-job")  # paid by every job, not once per process
     with clock.phase("load_config"):

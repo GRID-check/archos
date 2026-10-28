@@ -16,7 +16,7 @@ def get_request_trace_tags() -> dict[str, str]:
 
 @contextmanager
 def request_trace_tag_context(tags: dict[str, str]):
-    """Bind request trace tags while NAT emits spans for this request."""
+    """Bind request trace tags while the agent runtime emits spans for this request."""
     token = _current_request_trace_tags.set(dict(tags))
     try:
         yield
@@ -38,7 +38,7 @@ def _inject_request_trace_attributes(span) -> None:
 
 
 def install_request_trace_span_injection() -> None:
-    """Patch NAT's span exporter so exported spans inherit request trace attributes."""
+    """Patch the agent runtime's span exporter so exported spans inherit request trace attributes."""
     from nat.observability.exporter.span_exporter import SpanExporter
 
     process_start_event = SpanExporter._process_start_event

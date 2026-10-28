@@ -1,4 +1,4 @@
-"""NAT tools for the Austrian RIS (Rechtsinformationssystem des Bundes).
+"""Agent-runtime tools for the Austrian RIS (Rechtsinformationssystem des Bundes).
 
 Two tools built on the OGD-RIS API:
 

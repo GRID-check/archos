@@ -1,6 +1,6 @@
 """A blank string for a numeric tool argument is an omitted argument, for every tool (#656).
 
-Driven through NAT's real builder and LangChain tool wrapper, because that is
+Driven through the agent runtime's real builder and LangChain tool wrapper, because that is
 where the ``InputArgsSchema`` that rejected ``page=''`` is made.
 """
 
@@ -46,7 +46,7 @@ async def builder():
 
 
 async def test_nat_alone_rejects_a_blank_page(builder):
-    # The failure #656 filed, reproduced on NAT's own tool.
+    # The failure #656 filed, reproduced on the agent runtime's own tool.
     raw = (await builder.get_tools(tool_names=["paged_search"], wrapper_type=LLMFrameworkEnum.LANGCHAIN))[0]
     with pytest.raises(Exception, match="InputArgsSchema"):
         await raw.ainvoke({"query": "q", "page": ""})

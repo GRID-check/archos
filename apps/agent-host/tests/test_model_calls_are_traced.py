@@ -1,6 +1,6 @@
 """Every model call a route makes itself is a Langfuse generation (ADR-0089).
 
-A route under ``routes/`` runs outside any NAT workflow, so NAT's span exporter
+A route under ``routes/`` runs outside any agent-runtime workflow, so the runtime's span exporter
 never sees a ``/chat/completions`` POST it makes: six such calls once cost money
 and seconds with no trace anywhere. The ratchet is a source scan: every call
 that names the endpoint must sit inside an ``async with observed_generation(...)``

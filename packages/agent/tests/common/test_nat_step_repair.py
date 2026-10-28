@@ -1,6 +1,6 @@
 """Tests for SpanClosingProfilerHandler (packages/agent/src/agent/common/nat_step_repair.py).
 
-Module under test fixes an upstream NAT gap: LangchainProfilerHandler pushes an
+Module under test fixes an upstream agent-runtime gap: LangchainProfilerHandler pushes an
 IntermediateStepManager START event from on_llm_start/on_tool_start but never
 pushes the matching END when the call errors (no on_llm_error/on_tool_error
 override), leaking a frame on the shared active_span_id_stack that corrupts
@@ -9,7 +9,7 @@ the fix against the REAL nat.builder.intermediate_step_manager.IntermediateStepM
 and nat.builder.context.ContextState (a process-wide singleton), resetting the
 span stack ContextVar directly before each test for isolation rather than
 faking the manager, since there is no existing precedent in this repo for
-mocking NAT's context/step-manager internals.
+mocking the agent runtime's context/step-manager internals.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from nat.plugin_api import ContextState
 
 @pytest.fixture
 def context_state() -> ContextState:
-    """The (singleton) NAT ContextState, with its span stack reset to a clean root.
+    """The (singleton) agent-runtime ContextState, with its span stack reset to a clean root.
 
     ContextState is process-wide (Singleton metaclass), so tests must reset the
     relevant ContextVars themselves rather than constructing a "fresh" instance.

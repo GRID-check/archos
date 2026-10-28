@@ -1,10 +1,10 @@
 """The workflow entry point: its config, and the per-turn ``_run`` it composes.
 
-``_run`` is driven the way NAT drives it — through the registered builder with
+``_run`` is driven the way the agent runtime drives it — through the registered builder with
 a fake ``Builder`` — with the three database reads and the stage scheduler
 replaced. Everything else on the path (the request-context parse, the focus
 ContextVars, admission, the registries, the profiler, the result lift, the
-wire bodies and NAT's fold of them) is real.
+wire bodies and the agent runtime's fold of them) is real.
 """
 
 from __future__ import annotations

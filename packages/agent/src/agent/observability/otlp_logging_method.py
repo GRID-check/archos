@@ -41,7 +41,7 @@ class _NatBuildFailureItemizationFilter(logging.Filter):
     traceback. Each record is an ERROR, so err2issue filed one startup failure
     as eleven issues (#742-#752), none of which carried the cause. Only the
     ``Original error`` record is exported; the itemization still reaches stdout
-    through the other handlers. If NAT renames the function, nothing matches
+    through the other handlers. If the agent runtime renames the function, nothing matches
     and every line is exported again: this fails towards reporting.
     """
 
@@ -55,7 +55,7 @@ class OtlpLoggingMethodConfig(LoggingBaseConfig, name="otelcollector_logs"):
     """Ships runtime logs to the OTLP collector (ADR-0029), which forwards WARN and above to PostHog Logs.
 
     It is also the seam that installs the process's ``MeterProvider``
-    (``otlp_metrics``): every NAT process passes it, and the ``grid.queue.*``,
+    (``otlp_metrics``): every agent-runtime process passes it, and the ``grid.queue.*``,
     ``grid.provider.*`` and ``grid.boot.*`` instruments then reach the
     collector, which forwards them to PostHog Metrics. The provider outlives
     this workflow on purpose; see ``otlp_metrics``.
@@ -75,7 +75,7 @@ class OtlpLoggingMethodConfig(LoggingBaseConfig, name="otelcollector_logs"):
 async def otlp_logging_method(config: OtlpLoggingMethodConfig, _builder: Builder):
     # PostHog error tracking (ADR-0100) does not depend on the collector, so it
     # is installed before the no-endpoint early return below. This is the seam
-    # every NAT process passes (the agent and any worker running a workflow
+    # every agent-runtime process passes (the agent and any worker running a workflow
     # config); the API plugin installs the same handler for its own start-up
     # path, and the install is idempotent. No-op while PostHog is off.
     posthog_exceptions.install()

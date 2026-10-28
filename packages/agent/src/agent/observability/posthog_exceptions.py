@@ -129,7 +129,7 @@ def _current_trace_id() -> str | None:
         from agent.observability.turn_trace import current_trace_id_hex
 
         return current_trace_id_hex()
-    except Exception:  # noqa: BLE001 - no NAT context is not an error
+    except Exception:  # noqa: BLE001 - no agent-runtime context is not an error
         return None
 
 
@@ -184,7 +184,7 @@ def install(logger: logging.Logger | None = None) -> PosthogExceptionHandler | N
     """Attach the handler to ``logger`` (root by default); None while PostHog is off.
 
     Idempotent: a second call finds the handler the first left and returns it,
-    which is what lets the NAT logging method and the API plugin both call it.
+    which is what lets the agent-runtime logging method and the API plugin both call it.
     """
     if not posthog_client.posthog_enabled():
         return None

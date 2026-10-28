@@ -14,7 +14,7 @@ its input JSON Schema and its annotations. The BFF reads the result from
 ``scripts/generate_backend_tools_schema.py`` writes from these functions, so the
 tool contract is written once and a stale copy fails a test.
 
-The names are the NAT function names the workflow config binds, which are what
+The names are the agent-runtime function names the workflow config binds, which are what
 the chat model sees. Only reads belong here. A write stays a BFF route, because
 the BFF is the single writer of ``app`` (ADR-0003) and a person gates it.
 """
@@ -54,7 +54,7 @@ def is_backend_read_tool(name: str) -> bool:
 def describe_backend_tool(name: str, description: str, input_schema: type[Any]) -> dict[str, Any]:
     """One tool as the contract fixture records it.
 
-    ``input_schema`` is the pydantic model NAT built from the function's
+    ``input_schema`` is the pydantic model the agent runtime built from the function's
     signature, the same one it hands LangChain as the tool's ``args_schema``.
     """
     return {

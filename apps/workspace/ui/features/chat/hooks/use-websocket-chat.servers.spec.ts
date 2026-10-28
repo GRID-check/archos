@@ -1,6 +1,6 @@
 /**
  * The chat socket's driver over the REAL socket client, against servers that
- * do not behave: the one the dev deploy rolled back to (NAT's stock socket,
+ * do not behave: the one the dev deploy rolled back to (the agent runtime's stock socket,
  * which accepts the upgrade, ignores `?v=2`, never says hello and answers a
  * `user_message` with a frame of its own dialect), and a v2 server that says
  * hello and then never answers. In both the page used to show „Denkt nach…"
@@ -150,7 +150,7 @@ const ask = async () => {
 
 describe('a server that does not speak wire v2 (NAT stock socket)', () => {
   beforeEach(() => {
-    // Silent on open; a user_message gets NAT's error frame back.
+    // Silent on open; a user_message gets the agent runtime's error frame back.
     FakeSocket.behave = (socket) => {
       socket.onSend = (message) =>
         socket.receive({ type: 'error_message', id: message.message_id, status: 'complete', content: { code: 'invalid_message' } })

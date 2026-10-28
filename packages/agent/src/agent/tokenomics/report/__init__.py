@@ -1,5 +1,5 @@
 """
-Generate a self-contained tokenomics HTML report from a NAT profiler trace.
+Generate a self-contained tokenomics HTML report from an agent-runtime profiler trace.
 
 Single-run
 ----------

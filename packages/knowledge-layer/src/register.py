@@ -1,4 +1,4 @@
-"""NAT function for knowledge retrieval."""
+"""Agent-runtime function for knowledge retrieval."""
 
 import asyncio
 import logging

@@ -1,10 +1,10 @@
 """A workflow stream that stops early tears down in the task that built it (#334, #337, #338, #759).
 
-The fixture is NAT's shape, not a mock of our own code: a runner whose
+The fixture is the agent runtime's shape, not a mock of our own code: a runner whose
 ``result_stream`` nests generators with plain ``async for``, each setting a
 ContextVar before its ``yield`` and resetting it in its ``finally``, and a step
-subject that publishes while the run tears down, as NAT's FUNCTION_END and
-WORKFLOW_END steps do. NAT's own ``generate_streaming_response`` is run through
+subject that publishes while the run tears down, as the runtime's FUNCTION_END and
+WORKFLOW_END steps do. The agent runtime's own ``generate_streaming_response`` is run through
 the same fixture as the oracle: it has to produce the production errors, or the
 fixture proves nothing about the fix. Our stream subscribes to no steps (the
 chat wire carries only what the turn yields), so the step subject matters to
@@ -37,7 +37,7 @@ class _Chunk:
 
 
 class _Steps:
-    """NAT's step subject, reduced to subscribe / publish / complete."""
+    """The agent runtime's step subject, reduced to subscribe / publish / complete."""
 
     def __init__(self) -> None:
         self.observers: list[SimpleNamespace] = []
@@ -58,7 +58,7 @@ class _Steps:
 
 
 class _Workflow:
-    """A session whose run nests three generators the way NAT's runner does, and records their teardown."""
+    """A session whose run nests three generators the way the runtime's runner does, and records their teardown."""
 
     def __init__(self, *, items: int | None = None) -> None:
         self.items = items
@@ -89,7 +89,7 @@ class _Workflow:
             self.torn_down.append((name, asyncio.current_task()))
 
     async def _result_stream(self):
-        # NAT's runner signals the step stream complete where the result
+        # The agent runtime's runner signals the step stream complete where the result
         # stream ends, not where the session does.
         async for item in self._level("result_stream", self._level("astream", self._leaf())):
             yield item
@@ -164,7 +164,7 @@ class _Adapter:
 async def test_nat_s_own_helper_reproduces_the_production_errors(workflow):
     with _loop_errors() as loop_errors:
         # The oracle. If this stops failing the way production did, the fixture
-        # no longer models NAT and the test below proves nothing.
+        # no longer models the agent runtime and the test below proves nothing.
         def reported() -> str:
             return " ".join(f"{context.get('message')} {context.get('exception')!r}" for context in loop_errors)
 

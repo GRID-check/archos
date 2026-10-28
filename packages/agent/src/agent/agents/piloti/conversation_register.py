@@ -1,7 +1,7 @@
-"""NAT registration for the chat workflow: the conversation graph as a turn.
+"""Agent-runtime registration for the chat workflow: the conversation graph as a turn.
 
 Beside the graph it registers (:mod:`agent.agents.piloti.conversation`)
-and nothing else: the config, the wiring of the sibling NAT functions into that
+and nothing else: the config, the wiring of the sibling agent-runtime functions into that
 graph, and a ``_run`` that composes the per-turn harness from
 :mod:`agent.turn`. The answering agent, the escalation edge and the
 conversation state are Piloti's, which is why this lives here rather
@@ -220,7 +220,7 @@ async def _build_clarifier(config: ChatDeepResearcherConfig, builder: Builder):
 
 
 async def _build_agent(config: ChatDeepResearcherConfig, builder: Builder) -> ConversationGraph:
-    """Resolve the sibling NAT functions into Piloti's conversation graph.
+    """Resolve the sibling agent-runtime functions into Piloti's conversation graph.
 
     ``enable_clarifier`` decides HERE whether a clarifier is resolved at all: a
     deployment that runs without one hands the graph ``None`` and the escalation
@@ -234,8 +234,8 @@ async def _build_agent(config: ChatDeepResearcherConfig, builder: Builder) -> Co
     about the turn, and collapsing them would make a per-request signal depend on
     a build-time one.
     """
-    # The NAT function NAME, not its `_type` (which is `research_agent`). The
-    # name is what NAT emits as `Function Start: …` and what every stored turn
+    # The agent-runtime function NAME, not its `_type` (which is `research_agent`). The
+    # name is what the agent runtime emits as `Function Start: …` and what every stored turn
     # keeps as `functionName`, so it is a persisted identifier and stays put —
     # see the comment on the block in `configs/config_oib_openrouter.yml`.
     research_fn_impl = await builder.get_function("shallow_research_agent")
@@ -366,7 +366,7 @@ async def _load_setup(
             "setup.subject_document",
             load_subject_document(
                 inputs.subject,
-                # NAT's conversation id, not the thread id: the working directory
+                # The agent runtime's conversation id, not the thread id: the working directory
                 # is namespaced by the former, and `file_draft` resolves the same
                 # one when it goes looking for the file this write leaves behind.
                 conversation_id=conversation_id,
@@ -498,7 +498,7 @@ async def _answer(turn: _Turn, *, message_id: str, stream: bool) -> AsyncIterato
 
 
 def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, stage_llms: dict):
-    """The per-turn entry point NAT calls, composed from ``agent.turn``."""
+    """The per-turn entry point the agent runtime calls, composed from ``agent.turn``."""
     any_stage_llm = any(llm is not None for llm in stage_llms.values())
 
     async def _run(query: object) -> Annotated[AsyncGenerator[EventBody], Streaming(convert=fold_turn)]:

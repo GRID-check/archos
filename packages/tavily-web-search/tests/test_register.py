@@ -1,4 +1,4 @@
-"""Tests for the tavily_web_search NAT registration."""
+"""Tests for the tavily_web_search agent-runtime registration."""
 
 import re
 import sys

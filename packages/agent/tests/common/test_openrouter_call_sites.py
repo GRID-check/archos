@@ -15,7 +15,7 @@ The adapters, one per call-site shape:
 - an OpenAI SDK client: ``openrouter.openai_client``;
 - the embedding client: ``knowledge_layer.llamaindex.embedding.make_embed_model``;
 - a LangChain chat model: ``pin_chat_model`` / ``apply_model_override`` /
-  ``RequestLLMContext.apply`` (not scanned here: those models are built by NAT,
+  ``RequestLLMContext.apply`` (not scanned here: those models are built by the agent runtime,
   and ``test_model_overrides`` / ``test_llm_provider`` cover them).
 """
 

@@ -8,7 +8,7 @@ share: compact per-type shapes, shared building blocks defined once, and worked
 examples for the hard-to-nest types. Each surface adds only its own framing
 (tool-call vs batch), so the schema description can never drift between them.
 
-Deliberately free of NAT/tooling imports so it can be imported from either
+Deliberately free of agent-runtime/tooling imports so it can be imported from either
 surface without triggering tool registration side effects.
 """
 
