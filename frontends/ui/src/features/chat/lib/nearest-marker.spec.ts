@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { distanceToBox, NEAREST_MARKER_REACH_PX, nearestMarkerIndex, type MarkerBox } from './nearest-marker'
 

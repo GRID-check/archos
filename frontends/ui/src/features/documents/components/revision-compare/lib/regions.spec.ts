@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import type { CompareRegion } from '../types'
 import { centeredScroll, groupByPage, mergeAnswers, numberRegions, regionToPixels, regionsOnPage } from './regions'
