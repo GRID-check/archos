@@ -9,7 +9,7 @@ metadata:
 
 # Prediction Report Writer Skill
 
-Write a clear, actionable prediction report from the planned answer strategy and ResearchNotes artifacts. This skill adapts prediction-system synthesis patterns for the agent's broader research tasks.
+Write a clear, actionable prediction report from the planned answer strategy and ResearchNotes artifacts. This skill adapts prediction-system synthesis patterns for AIQ's broader research tasks.
 
 Use this skill for probabilistic predictions, point forecasts, ranges, price targets, threshold forecasts, event likelihoods, and forecast-style decision reports. This skill is for final synthesis only; do not perform new research.
 

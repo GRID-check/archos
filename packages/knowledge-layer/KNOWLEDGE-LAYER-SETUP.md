@@ -18,7 +18,7 @@ Document ingestion and retrieval for Piloti, on one backend: `llamaindex`.
 - [The Backend](#the-backend)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
-  - [With YAML Config](#with-nemo-agent-toolkit-yaml-config---recommended)
+  - [With YAML Config](#with-the-agent-runtime-yaml-config---recommended)
   - [Programmatic Usage](#programmatic-usage)
 - [Web UI Mode](#web-ui-mode)
 - [Adding a Backend](#adding-a-backend)
