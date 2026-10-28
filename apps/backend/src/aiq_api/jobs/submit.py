@@ -259,6 +259,161 @@ class DuplicateJobIdError(ValueError):
     """
 
 
+def _job_store_settings() -> tuple[str, str, int]:
+    """The job database, the worker's config file and its log level, from the environment."""
+    # @environment_variable NAT_JOB_STORE_DB_URL
+    # @category Server
+    # @type str
+    # @default sqlite:///./data/jobs.db
+    # @required false
+    # Database URL for job persistence (SQLite or PostgreSQL).
+    db_url = os.environ.get("NAT_JOB_STORE_DB_URL", "sqlite:///./data/jobs.db")
+
+    # @environment_variable NAT_CONFIG_FILE
+    # @category Server
+    # @type str
+    # @required false
+    # Path to the NAT workflow config file the research worker loads.
+    config_path = os.environ.get("NAT_CONFIG_FILE", "")
+
+    # @environment_variable NAT_FASTAPI_LOG_LEVEL
+    # @category Server
+    # @type int
+    # @default 20
+    # @required false
+    # Python logging level for FastAPI workers (10=DEBUG, 20=INFO, 30=WARNING).
+    log_level = int(os.environ.get("NAT_FASTAPI_LOG_LEVEL", "20"))
+    return db_url, config_path, log_level
+
+
+def _captured_request_context(
+    auth_token: str | None,
+    collection_scope: list[str] | None,
+    project_context: str | None,
+    model_overrides: dict[str, str] | None,
+) -> tuple[str | None, list[str] | None, str | None, dict[str, str] | None]:
+    """Fill each value the caller did not pass from the request the job is submitted in."""
+    # Auto-capture auth token if not explicitly provided
+    if auth_token is None:
+        from aiq_agent.auth import get_auth_token
+
+        auth_token = get_auth_token()
+
+    # Auto-detect collection scope from NAT context if not explicitly provided.
+    # When the request arrives via HTTP/WS the NAT middleware populates
+    # Context.metadata.headers with the BFF-supplied X-Grid-Collection-Scope.
+    if collection_scope is None:
+        from aiq_agent.knowledge.scoping import get_collection_scope_from_context
+
+        collection_scope = get_collection_scope_from_context()
+
+    # Auto-detect project context from NAT context if not explicitly provided.
+    if project_context is None:
+        from aiq_agent.project_context import get_project_context_from_context
+
+        project_context = get_project_context_from_context()
+
+    # Auto-detect per-org runtime model overrides if not explicitly provided.
+    if model_overrides is None:
+        from aiq_agent.common import get_model_overrides_from_context
+
+        model_overrides = get_model_overrides_from_context() or None
+    return auth_token, collection_scope, project_context, model_overrides
+
+
+def _effective_data_sources(data_sources: list[str] | None) -> list[str] | None:
+    """The data sources the worker may use: the request's, less what the organization turned off."""
+    # Org-disabled data sources (ADR-0022): subtracted HERE, at submit time,
+    # so research workers need no live flag lookup — the effective data_sources
+    # list they receive already excludes anything the organization turned
+    # off. A None ("all sources") request is materialized first so the
+    # subtraction can apply.
+    disabled_sources = _get_disabled_sources()
+    if disabled_sources:
+        if data_sources is None:
+            from aiq_agent.common.data_source_registry import get_all_sources
+
+            data_sources = [source.id for source in get_all_sources()]
+        data_sources = [source for source in data_sources if source.strip().lower() not in disabled_sources]
+    return data_sources
+
+
+def _verified_principal(principal: Principal | None, owner: str) -> Principal:
+    """The principal that owns the job: the one passed in, else the current request's verified one."""
+    if principal is None:
+        principal = _resolve_submission_principal(owner)
+    if principal is None:
+        raise MissingPrincipalError("Verified current principal required for async job submission")
+    return principal
+
+
+async def _verify_job_id_is_new(
+    job_id: str | None,
+    resolved_job_id: str,
+    db_url: str,
+    loop: asyncio.AbstractEventLoop,
+) -> bool:
+    """Refuse a caller-supplied job ID that exists. Returns whether the ID's pre-existence was verified."""
+    # Duplicate-ID guard: job_id is caller-supplied, and both NAT's job_info
+    # write and the job_access upsert below are unconditional — without this
+    # check, re-submitting an existing ID would rewrite the original job's
+    # ownership (hijack), and a failed re-submission would delete the original
+    # job via rollback_job_submission. Auto-generated UUIDs skip the check.
+    # Fails open on DB errors (like admission control), but an unverified
+    # pre-existence also suppresses the destructive rollback below.
+    preexistence_verified = job_id is None
+    if job_id is not None:
+        try:
+            if await loop.run_in_executor(None, job_exists, resolved_job_id, db_url):
+                raise DuplicateJobIdError(f"Job ID already exists: {resolved_job_id}")
+            preexistence_verified = True
+        except DuplicateJobIdError:
+            raise
+        except Exception:
+            logger.warning(
+                "Failed to check whether job %s already exists; proceeding without rollback safety",
+                resolved_job_id,
+                exc_info=True,
+            )
+    return preexistence_verified
+
+
+async def _discard_failed_submission(
+    resolved_job_id: str,
+    db_url: str,
+    preexistence_verified: bool,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Undo a submission that failed part-way: its queue row, and its job rows when they were ours to delete."""
+    # Drop any partial queue row so a half-submitted job is never run.
+    try:
+        await loop.run_in_executor(None, queue.mark_done, db_url, resolved_job_id, None)
+    except Exception:
+        logger.warning("Failed to clean up queue row for %s during rollback", resolved_job_id, exc_info=True)
+    if not preexistence_verified:
+        # rollback_job_submission deletes job_access, job_events AND
+        # job_info. Without positive proof the job ID did not exist before
+        # this request, rolling back could wipe a pre-existing job.
+        logger.warning(
+            "Skipping rollback for job %s after submission failure: pre-existence of the "
+            "job ID could not be verified, and rollback must never delete a pre-existing job.",
+            resolved_job_id,
+        )
+        return
+    try:
+        await loop.run_in_executor(None, rollback_job_submission, resolved_job_id, db_url)
+        logger.warning(
+            "Rolled back partial async job submission for %s after access persistence failure.",
+            resolved_job_id,
+        )
+    except Exception as cleanup_error:
+        logger.warning(
+            "Failed to roll back partial async job submission for %s after access persistence failure: %s",
+            resolved_job_id,
+            cleanup_error,
+        )
+
+
 async def submit_agent_job(
     agent_type: str,
     input_text: str,
@@ -363,68 +518,11 @@ async def submit_agent_job(
 
     # Get agent configuration from registry
     agent_config = get_agent_config(agent_type)
-
-    # @environment_variable NAT_JOB_STORE_DB_URL
-    # @category Server
-    # @type str
-    # @default sqlite:///./data/jobs.db
-    # @required false
-    # Database URL for job persistence (SQLite or PostgreSQL).
-    db_url = os.environ.get("NAT_JOB_STORE_DB_URL", "sqlite:///./data/jobs.db")
-
-    # @environment_variable NAT_CONFIG_FILE
-    # @category Server
-    # @type str
-    # @required false
-    # Path to the NAT workflow config file the research worker loads.
-    config_path = os.environ.get("NAT_CONFIG_FILE", "")
-
-    # @environment_variable NAT_FASTAPI_LOG_LEVEL
-    # @category Server
-    # @type int
-    # @default 20
-    # @required false
-    # Python logging level for FastAPI workers (10=DEBUG, 20=INFO, 30=WARNING).
-    log_level = int(os.environ.get("NAT_FASTAPI_LOG_LEVEL", "20"))
-
-    # Auto-capture auth token if not explicitly provided
-    if auth_token is None:
-        from aiq_agent.auth import get_auth_token
-
-        auth_token = get_auth_token()
-
-    # Auto-detect collection scope from NAT context if not explicitly provided.
-    # When the request arrives via HTTP/WS the NAT middleware populates
-    # Context.metadata.headers with the BFF-supplied X-Grid-Collection-Scope.
-    if collection_scope is None:
-        from aiq_agent.knowledge.scoping import get_collection_scope_from_context
-
-        collection_scope = get_collection_scope_from_context()
-
-    # Auto-detect project context from NAT context if not explicitly provided.
-    if project_context is None:
-        from aiq_agent.project_context import get_project_context_from_context
-
-        project_context = get_project_context_from_context()
-
-    # Auto-detect per-org runtime model overrides if not explicitly provided.
-    if model_overrides is None:
-        from aiq_agent.common import get_model_overrides_from_context
-
-        model_overrides = get_model_overrides_from_context() or None
-
-    # Org-disabled data sources (ADR-0022): subtracted HERE, at submit time,
-    # so research workers need no live flag lookup — the effective data_sources
-    # list they receive already excludes anything the organization turned
-    # off. A None ("all sources") request is materialized first so the
-    # subtraction can apply.
-    disabled_sources = _get_disabled_sources()
-    if disabled_sources:
-        if data_sources is None:
-            from aiq_agent.common.data_source_registry import get_all_sources
-
-            data_sources = [source.id for source in get_all_sources()]
-        data_sources = [source for source in data_sources if source.strip().lower() not in disabled_sources]
+    db_url, config_path, log_level = _job_store_settings()
+    auth_token, collection_scope, project_context, model_overrides = _captured_request_context(
+        auth_token, collection_scope, project_context, model_overrides
+    )
+    data_sources = _effective_data_sources(data_sources)
 
     # Capture caller identity + remaining budget for cost tracking in the worker.
     if usage_context is None:
@@ -432,11 +530,7 @@ async def submit_agent_job(
 
         usage_context = capture_usage_context()
 
-    if principal is None:
-        principal = _resolve_submission_principal(owner)
-    if principal is None:
-        raise MissingPrincipalError("Verified current principal required for async job submission")
-
+    principal = _verified_principal(principal, owner)
     organization_id = ((usage_context or {}).get("identity") or {}).get("organization_id")
 
     # Admission control: nothing else bounds how many concurrent jobs the
@@ -450,28 +544,7 @@ async def submit_agent_job(
     job_store = JobStore(scheduler_address="", db_url=db_url)
     resolved_job_id = job_store.ensure_job_id(job_id)
     loop = asyncio.get_running_loop()
-
-    # Duplicate-ID guard: job_id is caller-supplied, and both NAT's job_info
-    # write and the job_access upsert below are unconditional — without this
-    # check, re-submitting an existing ID would rewrite the original job's
-    # ownership (hijack), and a failed re-submission would delete the original
-    # job via rollback_job_submission. Auto-generated UUIDs skip the check.
-    # Fails open on DB errors (like admission control), but an unverified
-    # pre-existence also suppresses the destructive rollback below.
-    preexistence_verified = job_id is None
-    if job_id is not None:
-        try:
-            if await loop.run_in_executor(None, job_exists, resolved_job_id, db_url):
-                raise DuplicateJobIdError(f"Job ID already exists: {resolved_job_id}")
-            preexistence_verified = True
-        except DuplicateJobIdError:
-            raise
-        except Exception:
-            logger.warning(
-                "Failed to check whether job %s already exists; proceeding without rollback safety",
-                resolved_job_id,
-                exc_info=True,
-            )
+    preexistence_verified = await _verify_job_id_is_new(job_id, resolved_job_id, db_url, loop)
 
     parent_trace_context = _get_parent_trace_context()
     # An EXPLICIT conversation wins over the ambient one.
@@ -537,33 +610,7 @@ async def submit_agent_job(
         # whose ownership/rollback state is still incomplete.
         await loop.run_in_executor(None, queue.enqueue, db_url, resolved_job_id, payload, organization_id, priority)
     except Exception:
-        # Drop any partial queue row so a half-submitted job is never run.
-        try:
-            await loop.run_in_executor(None, queue.mark_done, db_url, resolved_job_id, None)
-        except Exception:
-            logger.warning("Failed to clean up queue row for %s during rollback", resolved_job_id, exc_info=True)
-        if not preexistence_verified:
-            # rollback_job_submission deletes job_access, job_events AND
-            # job_info. Without positive proof the job ID did not exist before
-            # this request, rolling back could wipe a pre-existing job.
-            logger.warning(
-                "Skipping rollback for job %s after submission failure: pre-existence of the "
-                "job ID could not be verified, and rollback must never delete a pre-existing job.",
-                resolved_job_id,
-            )
-            raise
-        try:
-            await loop.run_in_executor(None, rollback_job_submission, resolved_job_id, db_url)
-            logger.warning(
-                "Rolled back partial async job submission for %s after access persistence failure.",
-                resolved_job_id,
-            )
-        except Exception as cleanup_error:
-            logger.warning(
-                "Failed to roll back partial async job submission for %s after access persistence failure: %s",
-                resolved_job_id,
-                cleanup_error,
-            )
+        await _discard_failed_submission(resolved_job_id, db_url, preexistence_verified, loop)
         raise
 
     logger.info(
