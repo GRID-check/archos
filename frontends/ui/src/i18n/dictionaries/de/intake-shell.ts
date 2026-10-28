@@ -5,7 +5,7 @@ export const intakeShell: typeof en.intakeShell = {
   head: {
     eyebrow: 'Einrichtung',
     later: 'Später fortsetzen',
-    laterAria: 'Die Einrichtung verlassen und zur Projektübersicht gehen. Piloti liest weiter, die Einrichtung wartet dort.',
+    laterAria: 'Die Einrichtung verlassen und zur Projektübersicht gehen. {productName} liest weiter, die Einrichtung wartet dort.',
     stepMenu: 'Schritt {current} von {total}: {step}. Anderen Schritt wählen',
   },
   steps: {
@@ -30,7 +30,7 @@ export const intakeShell: typeof en.intakeShell = {
     done: 'abgeschlossen',
   },
   overview: {
-    reading: 'Piloti liest noch',
+    reading: '{productName} liest noch',
     questions: '{count, plural, one {# Rückfrage offen} other {# Rückfragen offen}}',
     contradictions: '{count, plural, one {# Widerspruch offen} other {# Widersprüche offen}}',
     review: 'Steckbrief zu prüfen',

@@ -21,7 +21,7 @@ export const shortcuts = {
   },
   cheatsheet: {
     title: 'Keyboard shortcuts',
-    description: 'Navigate Piloti without leaving the keyboard.',
+    description: 'Navigate {productName} without leaving the keyboard.',
     thenSeparator: 'then',
     /** The control key as the keyboard prints it; `⌘` on a Mac. */
     controlKey: 'Ctrl',
@@ -48,7 +48,7 @@ export const shortcuts = {
       chooseOption: 'Pick a numbered option',
       reviewPoint: 'Annotate',
       reviewRegion: 'Annotate an area',
-      reviewAsk: 'Ask Piloti about an area',
+      reviewAsk: 'Ask {productName} about an area',
       reviewStep: 'Next or previous annotation',
       reviewSettle: 'Take over a proposal or resolve an annotation',
       reviewDismiss: 'Dismiss a proposal',

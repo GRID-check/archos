@@ -8,9 +8,9 @@ import type { en } from '../en'
 export const notifications: typeof en.notifications = {
   title: 'Benachrichtigungen',
   description:
-    'Piloti meldet sich auf diesem Gerät, sobald etwas in Ihrem Postfach landet, auch wenn Piloti nicht geöffnet ist.',
+    '{productName} meldet sich auf diesem Gerät, sobald etwas in Ihrem Postfach landet, auch wenn {productName} nicht geöffnet ist.',
   push: {
-    genericTitle: 'Neue Nachricht in Piloti',
+    genericTitle: 'Neue Nachricht in {productName}',
   },
   device: {
     label: 'Auf diesem Gerät benachrichtigen',
@@ -28,12 +28,12 @@ export const notifications: typeof en.notifications = {
       body: 'Verwenden Sie eine aktuelle Version von Chrome, Edge, Firefox oder Safari, um hier benachrichtigt zu werden.',
     },
     denied: {
-      title: 'Benachrichtigungen sind für Piloti blockiert',
+      title: 'Benachrichtigungen sind für {productName} blockiert',
       body: 'Erlauben Sie sie im Browser: Öffnen Sie neben der Adresse die Website-Einstellungen (Schloss-Symbol), stellen Sie „Benachrichtigungen“ auf „Zulassen“ und laden Sie diese Seite neu.',
     },
     needsInstall: {
       title: 'Zuerst zum Home-Bildschirm hinzufügen',
-      body: 'Auf iPhone und iPad funktionieren Benachrichtigungen nur für eine installierte App. Tippen Sie in Safari auf „Teilen“ und wählen Sie „Zum Home-Bildschirm“. Öffnen Sie Piloti von dort und schalten Sie sie hier ein.',
+      body: 'Auf iPhone und iPad funktionieren Benachrichtigungen nur für eine installierte App. Tippen Sie in Safari auf „Teilen“ und wählen Sie „Zum Home-Bildschirm“. Öffnen Sie {productName} von dort und schalten Sie sie hier ein.',
     },
   },
   devices: {
@@ -46,10 +46,10 @@ export const notifications: typeof en.notifications = {
     removeLabel: '{device} entfernen',
   },
   categories: {
-    title: 'Worüber Piloti Sie benachrichtigt',
+    title: 'Worüber {productName} Sie benachrichtigt',
     requests: {
       label: 'Anfragen an Sie',
-      hint: 'Jemand bittet um Ihre Einschätzung, Piloti hat eine Rückfrage, etwas wartet auf Ihre Entscheidung.',
+      hint: 'Jemand bittet um Ihre Einschätzung, {productName} hat eine Rückfrage, etwas wartet auf Ihre Entscheidung.',
     },
     results: {
       label: 'Ergebnisse',
@@ -75,7 +75,7 @@ export const notifications: typeof en.notifications = {
   preferencesFailed: 'Ihre Auswahl konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
   prompt: {
     title: 'Bei Neuem benachrichtigt werden?',
-    body: 'Piloti meldet sich auf diesem Gerät, wenn jemand Sie braucht.',
+    body: '{productName} meldet sich auf diesem Gerät, wenn jemand Sie braucht.',
     turnOn: 'Einschalten',
     dismiss: 'Nicht jetzt',
     // Der Browser hat Nein gesagt: ein Satz, der dorthin führt, wo steht, wie
@@ -86,10 +86,10 @@ export const notifications: typeof en.notifications = {
   // wartet: für alle, die das Postfach nie öffnen.
   offer: {
     mentioned: '{actor} hat Sie erwähnt. Möchten Sie auf diesem Gerät benachrichtigt werden?',
-    actor: '{actor} braucht Sie in Piloti. Möchten Sie auf diesem Gerät benachrichtigt werden?',
-    someone: 'Jemand braucht Sie in Piloti. Möchten Sie auf diesem Gerät benachrichtigt werden?',
+    actor: '{actor} braucht Sie in {productName}. Möchten Sie auf diesem Gerät benachrichtigt werden?',
+    someone: 'Jemand braucht Sie in {productName}. Möchten Sie auf diesem Gerät benachrichtigt werden?',
     // Die neueste Anfrage ist eine Rückfrage von Piloti: Piloti fragt, nicht „jemand“.
-    piloti: 'Piloti hat eine Rückfrage an Sie. Möchten Sie auf diesem Gerät benachrichtigt werden?',
+    piloti: '{productName} hat eine Rückfrage an Sie. Möchten Sie auf diesem Gerät benachrichtigt werden?',
     turnOn: 'Einschalten',
     notNow: 'Nicht jetzt',
   },

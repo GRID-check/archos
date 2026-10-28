@@ -289,9 +289,9 @@ def get_scoped_collections_from_context_or(
     scope = get_scoped_collections_from_context()
     if scope:
         return scope
-    from knowledge_layer.register import _resolve_scoped_collections
+    from knowledge_layer.search_scope import resolve_scoped_collections
 
-    return _resolve_scoped_collections(config, session_id)
+    return resolve_scoped_collections(config, session_id)
 
 
 def get_collection_scope_from_context_or(

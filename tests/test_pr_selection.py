@@ -69,7 +69,7 @@ def test_without_a_recorded_database_everything_runs(mod):
         "tests/fixtures/drafting_turns.py",
         "uv.lock",
         "pyproject.toml",
-        "frontends/aiq_api/pyproject.toml",
+        "apps/backend/pyproject.toml",
         "Taskfile.yml",
         "taskfiles/backend.yml",
         ".github/workflows/ci.yml",

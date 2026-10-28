@@ -28,7 +28,7 @@
 # what a tier's jobs use: a new backend task does not run the UI suite.
 backend:
   - 'src/**'
-  - 'frontends/aiq_api/**'
+  - 'apps/backend/**'
   # The eval harnesses and their tests: `be:test:ci` runs `evals/` beside
   # `tests/`, so a harness-only change must still run the backend suite.
   # It used to arrive here via the `retrieval` filter; that filter is gone

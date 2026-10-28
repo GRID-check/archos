@@ -114,7 +114,7 @@ _DATA_SOURCES = [
 ]
 _DATA_SOURCE_TOOL_NAMES = frozenset(name for source in _DATA_SOURCES for name in source["tools"])
 
-# One plausible hit, in the exact layout ``knowledge_layer/src/register.py::_format_results``
+# One plausible hit, in the exact layout ``knowledge_layer/src/search_results.py::format_results``
 # emits, so the citation parser registers it as a real source and the answer
 # on the control case has something to cite.
 _KNOWLEDGE_HIT = """\

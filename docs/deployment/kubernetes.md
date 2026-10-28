@@ -1133,7 +1133,7 @@ The token-heavy workload (deep research) now scales out:
 
 - **Research runs on DB-claimed workers** (ADR-0021): submission writes a
   `SUBMITTED` `job_info` row and enqueues a claimable `research_job_queue` row
-  (`frontends/aiq_api/src/aiq_api/jobs/queue.py`); dedicated **`agent-worker`**
+  (`apps/backend/src/aiq_api/jobs/queue.py`); dedicated **`agent-worker`**
   replicas (same image, `GRID_ROLE=worker`) claim rows with `FOR UPDATE SKIP
   LOCKED`, run the same `run_agent_job` body, and heartbeat the claim so a crash
   is reclaimed. The claim is fair (below) and KEDA scales the tier on the queue,
@@ -1412,7 +1412,7 @@ without waiting on a chat turn. What follows is the `aiq-agent` chat tier.
 
 The api tier's work mostly waits on model calls and SSE streams, so CPU can stay
 low while it is saturated. `grid.http.requests_in_flight{role="api",kind="request"}`
-(`frontends/aiq_api/src/aiq_api/inflight.py`) is the candidate scaling signal: the
+(`apps/backend/src/aiq_api/inflight.py`) is the candidate scaling signal: the
 requests a replica is serving now. Job SSE streams are counted apart as
 `kind="stream"`, since a research run keeps one open for its whole length. The api
 HPA stays on CPU until a week of readings shows how in-flight requests and CPU

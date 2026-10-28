@@ -1537,7 +1537,7 @@ describe('reingestDocument', () => {
  * retrying a failed document silently un-files it.
  *
  * The backend twin asserting the same `folder_path` key is
- * `frontends/aiq_api/tests/test_ingest_folder_path.py`.
+ * `apps/backend/tests/test_ingest_folder_path.py`.
  */
 describe('the folder a document is filed in reaches the ingest dispatch', () => {
   const ingestBody = (): Record<string, unknown> => {

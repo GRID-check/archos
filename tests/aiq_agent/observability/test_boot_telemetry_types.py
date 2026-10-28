@@ -21,8 +21,8 @@ import tomllib
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-START_WEB = REPO / "deploy" / "start_web.py"
-AGENT_JOB = REPO / "frontends" / "aiq_api" / "src" / "aiq_api" / "jobs" / "agent_job.py"
+START_WEB = REPO / "apps" / "backend" / "start_web.py"
+AGENT_JOB = REPO / "apps" / "backend" / "src" / "aiq_api" / "jobs" / "agent_job.py"
 
 
 def _clean_env() -> dict[str, str]:
@@ -51,7 +51,7 @@ def test_start_web_registers_grid_telemetry_before_load_config():
 
 def test_the_web_boot_readings_are_named_after_the_role_not_after_web():
     """`chat` and `api` scale on different things, so one `web` series would average two cold starts."""
-    for path in (START_WEB, REPO / "frontends" / "aiq_api" / "src" / "aiq_api" / "plugin.py"):
+    for path in (START_WEB, REPO / "apps" / "backend" / "src" / "aiq_api" / "plugin.py"):
         assert 'BootClock("web")' not in path.read_text(encoding="utf-8"), path
 
 

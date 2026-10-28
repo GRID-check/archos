@@ -24,7 +24,9 @@ import { storedSteps } from '@/test-utils/wire-v2-steps'
 import { translatorFor } from '@/i18n/namespace'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { placedLookIds, workRounds } from '../../lib/work-list'
-import { planFan, ReasoningFlow, buildGraph } from './ReasoningFlow'
+import { ReasoningFlow } from './ReasoningFlow'
+import { planFan } from './flow/flow-layout'
+import { buildGraph } from './flow/build-graph'
 import { RoundCalls, placeOfAction } from './WorkList'
 
 const state = vi.hoisted((): FakePdfState => ({

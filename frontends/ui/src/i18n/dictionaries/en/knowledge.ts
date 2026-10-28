@@ -2,7 +2,7 @@
 export const knowledge = {
   title: 'Knowledge base',
   subtitle:
-    'The documents Piloti works from in this project: the shared OIB Richtlinien and the files uploaded to it.',
+    'The documents {productName} works from in this project: the shared OIB Richtlinien and the files uploaded to it.',
   summary: {
     documents: 'Documents',
     indexed: 'Indexed',
@@ -43,7 +43,7 @@ export const knowledge = {
   },
   stateHints: {
     ingested: 'Fully searchable by the assistant.',
-    stale: 'The file was replaced since it was indexed; until the next sync, Piloti answers from the previous revision.',
+    stale: 'The file was replaced since it was indexed; until the next sync, {productName} answers from the previous revision.',
     pending: 'Uploaded but not processed yet — the assistant cannot use it until an ingest worker has finished it.',
     failed: 'Processing did not finish. It is not retried until the file changes; select it and use Re-index to try again.',
     removed: 'The corpus no longer lists this document, but its indexed content is still searchable. Delete it to clear it.',
@@ -116,14 +116,14 @@ export const knowledge = {
     foundWithOfficeShelf:
       '{count, plural, one {Found in # project and the Büroablage} other {Found in # projects and the Büroablage}}',
     foundOnlyOfficeShelf: 'Found in the Büroablage',
-    loading: 'Piloti is checking your projects…',
+    loading: '{productName} is checking your projects…',
     emptyTitle: 'Not handled in your office yet',
     emptyBody:
       'Checked this project, {count, plural, one {# other project} other {# other projects}} and the Büroablage.',
     failedTitle: 'That did not work just now',
     failedBody: 'Please try again in a moment.',
     heldTitle: 'This document is still being screened',
-    heldBody: 'Once screening is done, Piloti can check your projects.',
+    heldBody: 'Once screening is done, {productName} can check your projects.',
     retry: 'Try again',
     groupCurrent: 'This project',
     groupOfficeShelf: 'Büroablage',
@@ -140,7 +140,7 @@ export const knowledge = {
     openAtRis: 'Open at RIS',
     loading: 'Loading legal source…',
     failed:
-      'This legal source cannot be shown in Piloti right now. “Open at RIS” still reaches the document.',
+      'This legal source cannot be shown in {productName} right now. “Open at RIS” still reaches the document.',
     busy: 'Too many requests in a row. Wait a moment, then open the source again.',
     truncated: 'Shortened — the full text is at RIS.',
   },

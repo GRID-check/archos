@@ -4,13 +4,13 @@
  */
 export const intakeFilingStep = {
   head: {
-    title: 'Which folders should Piloti read?',
+    title: 'Which folders should {productName} read?',
     choose:
-      'Choose the project folder on the office server. Before anything is uploaded you see it as a tree and decide, folder by folder, what Piloti reads.',
+      'Choose the project folder on the office server. Before anything is uploaded you see it as a tree and decide, folder by folder, what {productName} reads.',
     chosen: '{name} · {count, plural, one {# file} other {# files}}. What is switched off stays on the office server.',
     other: 'Choose another folder',
     uploadingTitle: 'The documents are on their way',
-    uploading: 'Check in the dialog where each file goes. Piloti starts reading as soon as they have arrived.',
+    uploading: 'Check in the dialog where each file goes. {productName} starts reading as soon as they have arrived.',
     inProjectTitle: 'The documents are in the project',
     inProject:
       '{count, plural, one {# document is} other {# documents are}} in the project. You can add more folders at any time.',
@@ -45,7 +45,7 @@ export const intakeFilingStep = {
   },
   summary: {
     label: 'Summary',
-    reads: 'Piloti reads',
+    reads: '{productName} reads',
     files: '{count, plural, one {# file} other {# files}}',
     left: '{size} · {what} left out',
     leftFolders: '{count, plural, one {# folder} other {# folders}}',
@@ -82,7 +82,7 @@ export const intakeFilingStep = {
     ahead: 'Every further file is checked against {list} before it leaves your computer.',
     aheadTitle: 'Sensitive files stay on the server',
     listOffice: "your office's list",
-    listSuggested: 'the list Piloti suggested',
+    listSuggested: 'the list {productName} suggested',
     listProject: "this project's list",
     term: '“{term}”',
     offTitle: 'The check is switched off',
@@ -96,7 +96,7 @@ export const intakeFilingStep = {
     added: 'Also for this project',
     addedPlaceholder: 'Type a term, press Enter',
     removeTerm: 'Remove “{term}”',
-    contentNote: "When reading, Piloti still checks contents against the office's list.",
+    contentNote: "When reading, {productName} still checks contents against the office's list.",
     preview: 'With this list, {count, plural, one {# file stays} other {# files stay}} on the server.',
     previewNone: 'With this list, nothing is held back.',
     save: 'Save for the project',
@@ -112,7 +112,7 @@ export const intakeFilingStep = {
   access: {
     heading: 'Who may open which folder',
     description:
-      'Everyone in the project opens a folder by their project role, unless the folder has its own list. Restrict a folder before uploading if you can: then Piloti reads it for those people only from the start.',
+      'Everyone in the project opens a folder by their project role, unless the folder has its own list. Restrict a folder before uploading if you can: then {productName} reads it for those people only from the start.',
     everyoneTitle: 'Everyone in the project sees every folder',
     everyone: 'Reading or editing, by project role',
     restrictedTitle: '{count, plural, one {# folder is} other {# folders are}} restricted',
