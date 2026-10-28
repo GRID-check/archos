@@ -495,7 +495,7 @@ The agent keeps the brief current by emitting a `project_profile_patch` card
 (via `emit_card`) whenever the conversation establishes a durable hard fact —
 Piloti's prompt has an explicit "Keeping the Project Brief
 current" policy, and the card model carries the canonical fact-key vocabulary
-(`PROFILE_FACT_VOCABULARY` in `cards/models.py`, mirroring the intake
+(`PROFILE_FACT_VOCABULARY` in `cards/proposal_cards.py`, mirroring the intake
 definition). The card only proposes. At the end of the turn the patch is
 stored as a `project_profile` proposal (`register_envelope_card`,
 [`proposed-changes.md`](proposed-changes.md), ADR-0105) and the card carries its

@@ -211,7 +211,6 @@
     "src/aiq_agent/agents/piloti/conversation.py": 719,
     "src/aiq_agent/agents/piloti/register.py": 671,
     "src/aiq_agent/cards/catalog.py": 1109,
-    "src/aiq_agent/cards/models.py": 2666,
     "src/aiq_agent/cards/surface_documents.py": 770,
     "src/aiq_agent/common/answer_envelope.py": 1359,
     "src/aiq_agent/common/claim_queue.py": 883,

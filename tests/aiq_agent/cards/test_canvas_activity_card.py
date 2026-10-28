@@ -9,9 +9,9 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from aiq_agent.cards.canvas_activity_card import MAX_CANVAS_ACTIVITY_ITEMS
 from aiq_agent.cards.catalog import INTERACTIVE_CARD_TYPES
 from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.models import MAX_CANVAS_ACTIVITY_ITEMS
 from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry

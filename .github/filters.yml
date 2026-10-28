@@ -89,12 +89,24 @@ frontend:
   # row-level-security harness merges unverified. It is the only root
   # script the frontend jobs run (the UI's own are under frontends/ui).
   - 'scripts/rls-test-db.sh'
-  # The card schema is generated from these two into the Zod module
+  # The card schema is generated from the card models and the JSON schema into the Zod module
   # the UI validates with, and `task fe:cards:check` is the only gate
   # that sees the Zod half (repo-lint has no node_modules). Without
   # these lines a models-only PR skips this job and ships a stale
   # `generated.ts`, which type-checks.
   - 'src/aiq_agent/cards/models.py'
+  - 'src/aiq_agent/cards/card_model.py'
+  - 'src/aiq_agent/cards/proposal_cards.py'
+  - 'src/aiq_agent/cards/schematic_cards.py'
+  - 'src/aiq_agent/cards/calculation_card.py'
+  - 'src/aiq_agent/cards/formula_card.py'
+  - 'src/aiq_agent/cards/workspace_cards.py'
+  - 'src/aiq_agent/cards/file_operation_card.py'
+  - 'src/aiq_agent/cards/canvas_activity_card.py'
+  - 'src/aiq_agent/cards/look_card.py'
+  - 'src/aiq_agent/cards/revision_compare_card.py'
+  - 'src/aiq_agent/cards/ifc_cards.py'
+  - 'src/aiq_agent/cards/surface_card.py'
   - 'shared/cards/schemas.json'
   # The same wire v2 recordings, read by the UI's store and socket specs
   # (frontends/ui/src/test-utils/wire-v2-fixtures.ts).
