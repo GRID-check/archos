@@ -2741,7 +2741,7 @@ def bff(monkeypatch, persisted) -> _Bff:
         if request.url.path != "/api/internal/turns/outcome":
             return httpx.Response(404, json={})
         seen.attempts += 1
-        assert request.headers["x-grid-internal-token"] == _SECRET
+        assert request.headers["x-internal-token"] == _SECRET
         if isinstance(seen.answer, Exception):
             raise seen.answer
         seen.outcomes.append(json.loads(request.content))

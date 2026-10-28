@@ -3,7 +3,7 @@
  *
  * Inbound (backend → BFF over the compose network): `requireInternalToken`,
  * the guard every `/api/internal/*` route goes through. Requests authenticate
- * with GRID_INTERNAL_API_TOKEN via the `x-grid-internal-token` header; the
+ * with GRID_INTERNAL_API_TOKEN via the `x-internal-token` header (or its old name); the
  * well-known dev default is refused outside dev environments; an unconfigured
  * token disables the endpoint.
  *
@@ -18,10 +18,8 @@ import { NextResponse } from 'next/server'
 import { ServiceUnavailableError } from '@/lib/api/errors'
 import { readHeader } from '@/lib/http/legacy-header-names'
 
-export const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
-
-/** The token header's name without the product's: read beside the old one now, sent from the next release. */
-export const CURRENT_INTERNAL_TOKEN_HEADER = 'x-internal-token'
+/** The service token's header. `readHeader` also takes its old name, `x-grid-internal-token`, until the contract step. */
+export const INTERNAL_TOKEN_HEADER = 'x-internal-token'
 
 /**
  * Which secret a route checks. The service token authorizes backend → BFF
@@ -79,7 +77,7 @@ export function requireInternalToken(
     )
     return NextResponse.json({ error: 'Internal API disabled' }, { status: 503 })
   }
-  if (!tokensMatch(readHeader(request.headers, CURRENT_INTERNAL_TOKEN_HEADER), expectedToken)) {
+  if (!tokensMatch(readHeader(request.headers, INTERNAL_TOKEN_HEADER), expectedToken)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   return null
@@ -143,7 +141,7 @@ export class InternalServiceUnavailableError extends ServiceUnavailableError {
 
 /**
  * The service-token header for one call to the backend at `destination` (the
- * base URL the call is sent to). The one producer of `x-grid-internal-token`.
+ * base URL the call is sent to). The one producer of `x-internal-token`.
  *
  * One policy for every caller: no token, or a destination the token must not
  * travel to (`isTokenSafeDestination`), throws `InternalServiceUnavailableError`

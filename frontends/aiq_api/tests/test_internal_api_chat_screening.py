@@ -54,7 +54,7 @@ async def test_the_office_s_content_terms_and_detectors_are_read_with_the_servic
 
     (request,) = bff
     assert str(request.url) == "http://frontend:3000/api/internal/chat-screening?organizationId=org_1"
-    assert request.headers["x-grid-internal-token"] == "service-token"
+    assert request.headers["x-internal-token"] == "service-token"
     assert screening.from_office
     assert screening.rules is not None
     assert (screening.rules.terms, screening.rules.detectors) == (("Gehaltsabrechnung",), ("iban",))

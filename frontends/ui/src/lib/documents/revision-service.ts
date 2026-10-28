@@ -73,8 +73,8 @@ async function putLink(session: AuthorizedSession, newer: Document, older: Docum
         // credential, data policy (BYOK, ZDR) and spend ledger it runs under.
         // Without it the backend falls back to the deployment's key and default
         // policy, and the spend is booked to nobody.
-        'x-grid-organization-id': session.organizationId,
-        'x-grid-user-id': session.userId,
+        'x-organization-id': session.organizationId,
+        'x-user-id': session.userId,
       },
       body: JSON.stringify({ newer: newer.filename, older: older.filename, linked }),
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),

@@ -47,7 +47,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { FEATURE_FLAGS, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
 import { getPlatformOrganizationId, isPlatformStaff } from '@/lib/authz/platform'
 import { isUuid } from '@/lib/ids'
-import { CURRENT_INTERNAL_TOKEN_HEADER, requireInternalToken } from '@/lib/internal-auth'
+import { INTERNAL_TOKEN_HEADER, requireInternalToken } from '@/lib/internal-auth'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { type DoorResource, acceptedAudiences, authkitDomain, authkitIssuer, doorOf, doorResourceUrl } from './mcp-config'
 import { SENSITIVITIES, type Sensitivity } from './operation'
@@ -336,7 +336,7 @@ export async function resolvePrincipal(
   request: Request,
   deps: PrincipalDeps = {},
 ): Promise<AgentPrincipal | AuthChallenge> {
-  if (hasHeader(request.headers, CURRENT_INTERNAL_TOKEN_HEADER)) {
+  if (hasHeader(request.headers, INTERNAL_TOKEN_HEADER)) {
     if (doorOf(request) === 'platform') return refuse(403, 'Piloti does not use the platform door.')
     return pilotiPrincipal(request)
   }

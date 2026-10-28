@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from aiq_agent import project_context as pc
+from aiq_api.legacy_headers import with_legacy_names
 
 FIXTURE_PATH = (
     Path(__file__).resolve().parents[2] / "frontends" / "ui" / "tests" / "fixtures" / "grid_request_context.json"
@@ -239,10 +240,17 @@ class TestGridRequestContextContractFixture:
         fixture = self._load_fixture()
         assert len(fixture["cases"]) >= 2
 
+    @staticmethod
+    def _as_received(headers: dict[str, str]) -> dict[str, str]:
+        """The headers as a reader here sees them: through `LegacyHeaderNamesMiddleware`, which
+        copies each new name onto the old one the readers still read (until the contract step)."""
+        pairs = [(name.lower().encode("ascii"), value.encode("utf-8")) for name, value in headers.items()]
+        return {name.decode("ascii"): value.decode("utf-8") for name, value in with_legacy_names(pairs)}
+
     def test_each_case_round_trips(self):
         fixture = self._load_fixture()
         for case in fixture["cases"]:
-            ctx = pc.GridRequestContext.from_headers(case["headers"])
+            ctx = pc.GridRequestContext.from_headers(self._as_received(case["headers"]))
             expected_input = case["input"]
 
             for json_field, attr_name in _INPUT_FIELD_MAP.items():

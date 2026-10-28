@@ -59,9 +59,9 @@ DEFAULT_BASE_URL = "http://frontend:3000"
 
 #: The shared service secret (the BFF signs request-context envelopes with it too).
 INTERNAL_TOKEN_ENV = "GRID_INTERNAL_API_TOKEN"
-INTERNAL_TOKEN_HEADER = "X-Grid-Internal-Token"
-REQUEST_CONTEXT_HEADER = "X-Grid-Request-Context"
-REQUEST_CONTEXT_SIGNATURE_HEADER = "X-Grid-Request-Context-Sig"
+INTERNAL_TOKEN_HEADER = "X-Internal-Token"
+REQUEST_CONTEXT_HEADER = "X-Request-Context"
+REQUEST_CONTEXT_SIGNATURE_HEADER = "X-Request-Context-Sig"
 
 
 def internal_base_url() -> str:

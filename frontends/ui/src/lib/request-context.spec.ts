@@ -76,17 +76,17 @@ describe('buildGridRequestContextHeaders — omission rules', () => {
     expect(buildGridRequestContextHeaders({})).toEqual({})
   })
 
-  it('omits X-Grid-Collection-Scope for an empty array, not an empty-array-encoded header', () => {
+  it('omits X-Collection-Scope for an empty array, not an empty-array-encoded header', () => {
     const headers = buildGridRequestContextHeaders({ collectionScope: [] })
     expect(headers[GRID_HEADER_NAMES.COLLECTION_SCOPE]).toBeUndefined()
   })
 
-  it('omits X-Grid-Model-Overrides for an empty object, mirroring "use YAML defaults"', () => {
+  it('omits X-Model-Overrides for an empty object, mirroring "use YAML defaults"', () => {
     const headers = buildGridRequestContextHeaders({ modelOverrides: {} })
     expect(headers[GRID_HEADER_NAMES.MODEL_OVERRIDES]).toBeUndefined()
   })
 
-  it('omits X-Grid-Model-Overrides for null/undefined', () => {
+  it('omits X-Model-Overrides for null/undefined', () => {
     expect(
       Object.prototype.hasOwnProperty.call(
         buildGridRequestContextHeaders({ modelOverrides: null }),
@@ -95,7 +95,7 @@ describe('buildGridRequestContextHeaders — omission rules', () => {
     ).toBe(false)
   })
 
-  it('omits X-Grid-Budget for null, but includes it (even a zeroed snapshot) when present', () => {
+  it('omits X-Budget for null, but includes it (even a zeroed snapshot) when present', () => {
     expect(buildGridRequestContextHeaders({ budget: null })).toEqual({})
     const headers = buildGridRequestContextHeaders({
       budget: { remainingOrgUsd: 0, remainingUserUsd: 0, remainingProjectUsd: 0 },
@@ -103,11 +103,11 @@ describe('buildGridRequestContextHeaders — omission rules', () => {
     expect(headers[GRID_HEADER_NAMES.BUDGET]).toBeDefined()
   })
 
-  it('omits X-Grid-Disabled-Sources for an empty array', () => {
+  it('omits X-Disabled-Sources for an empty array', () => {
     expect(buildGridRequestContextHeaders({ disabledSources: [] })).toEqual({})
   })
 
-  it('omits X-Grid-Feature-Memory-Reflection only when undefined, not when explicitly false', () => {
+  it('omits X-Feature-Memory-Reflection only when undefined, not when explicitly false', () => {
     expect(buildGridRequestContextHeaders({})[GRID_HEADER_NAMES.MEMORY_REFLECTION]).toBeUndefined()
     expect(buildGridRequestContextHeaders({ memoryReflectionEnabled: false })[GRID_HEADER_NAMES.MEMORY_REFLECTION]).toBe(
       'false',
@@ -121,20 +121,20 @@ describe('buildGridRequestContextHeaders — omission rules', () => {
 })
 
 /**
- * `X-Grid-Org-Instructions` — the organization's standing instruction block.
+ * `X-Org-Instructions` — the organization's standing instruction block.
  *
  * What replaced forcing a skill onto a turn. The composer no longer sends a
  * `skills` array and the platform no longer has a `standard` delivery tier; a
  * standing preference is a property of the ORGANIZATION, so it rides the
  * context headers with the rest of them, encoded exactly as
- * `X-Grid-Project-Context` is.
+ * `X-Project-Context` is.
  *
  * Three things are asserted, and each answers a question the backend has to be
  * able to answer from the wire alone: is it there, is it absent when there is
  * nothing to say, and does an over-length block reach the wire (it must not,
  * and the wire is not where that is decided).
  */
-describe('X-Grid-Org-Instructions', () => {
+describe('X-Org-Instructions', () => {
   const BLOCK = 'Zuerst das Ergebnis, dann die Begründung.\nWien annehmen, wenn nichts genannt ist.'
 
   it('is base64url(utf-8 text), the encoding a multi-line header needs', () => {
@@ -305,7 +305,7 @@ describe('buildGridRequestContextEnvelope — signing', () => {
 })
 
 describe('buildGridRequestContextEnvelopeHeaders', () => {
-  it('always sets X-Grid-Request-Context, only sets -Sig when signed', () => {
+  it('always sets X-Request-Context, only sets -Sig when signed', () => {
     const unsigned = buildGridRequestContextEnvelopeHeaders({ organizationId: 'org_1' }, undefined)
     expect(unsigned[GRID_HEADER_NAMES.REQUEST_CONTEXT]).toBeDefined()
     expect(unsigned[GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]).toBeUndefined()
@@ -519,7 +519,7 @@ describe('server.js mints the same envelope payload this module does', () => {
       { header: 'scope', organizationId: 'org_1', userId: 'user_1', conversationId: 's_conv_1' },
       { issuedAt: 1789430400000, secret: 'fixture-secret' },
     )
-    const payload = JSON.parse(Buffer.from(headers['x-grid-request-context'], 'base64url').toString('utf8'))
+    const payload = JSON.parse(Buffer.from(headers['x-request-context'], 'base64url').toString('utf8'))
     expect(payload).toMatchObject({ conversationId: 's_conv_1', issuedAt: 1789430400000, contextTransport: 'bff' })
   })
 
@@ -527,8 +527,8 @@ describe('server.js mints the same envelope payload this module does', () => {
     const serverBuilder = (input: GridRequestContextInput) => commonJsEnvelopeHeaders(input, 'fixture-secret')
     for (const testCase of fixture.envelopeCases) {
       expect(commonJsEnvelopeHeaders(testCase.input as GridRequestContextInput, testCase.secret)).toEqual({
-        'x-grid-request-context': testCase.header,
-        'x-grid-request-context-sig': testCase.signature,
+        'x-request-context': testCase.header,
+        'x-request-context-sig': testCase.signature,
       })
     }
     const input: GridRequestContextInput = {
@@ -539,8 +539,8 @@ describe('server.js mints the same envelope payload this module does', () => {
     }
     const canonical = buildGridRequestContextEnvelope(input, 'fixture-secret')
     const serverHeaders = serverBuilder(input)
-    expect(serverHeaders['x-grid-request-context']).toBe(canonical.header)
-    expect(serverHeaders['x-grid-request-context-sig']).toBe(canonical.signature)
+    expect(serverHeaders['x-request-context']).toBe(canonical.header)
+    expect(serverHeaders['x-request-context-sig']).toBe(canonical.signature)
     const payload = JSON.parse(Buffer.from(canonical.header, 'base64url').toString('utf8'))
     expect(payload.contextTransport).toBe('bff')
     expect(Object.keys(payload).at(-1)).toBe('contextTransport')

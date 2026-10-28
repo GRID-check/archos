@@ -78,7 +78,7 @@ describe('GET /api/conversations/[id]/draft', () => {
     // segment, so neither can widen the read beyond this draft.
     expect(url).toBe('http://backend:8000/v1/drafts/conv-1/entwuerfe/a.md')
     expect(init.method).toBe('GET')
-    expect(init.headers['x-grid-internal-token']).toBe('test-token')
+    expect(init.headers['x-internal-token']).toBe('test-token')
   })
 
   it('answers 404 without addressing the backend when the reader may not see the conversation', async () => {

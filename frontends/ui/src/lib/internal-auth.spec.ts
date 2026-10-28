@@ -32,7 +32,7 @@ afterEach(() => {
 describe('internalServiceHeaders', () => {
   it('carries the token to an internal destination', () => {
     vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'secret')
-    expect(internalServiceHeaders('http://aiq-api:8000')).toEqual({ 'x-grid-internal-token': 'secret' })
+    expect(internalServiceHeaders('http://aiq-api:8000')).toEqual({ 'x-internal-token': 'secret' })
     expect(internalServiceHeaders('https://backend.example.com')).toEqual({ [INTERNAL_TOKEN_HEADER]: 'secret' })
   })
 
@@ -59,7 +59,9 @@ describe('internalServiceHeaders', () => {
 
 const UI_ROOT = path.resolve(__dirname, '../..')
 const PRODUCER = 'src/lib/internal-auth.ts'
-const HEADER = 'x-grid-internal-token'
+/** Files that name the header only to strip it from what a browser sends, never to send it. */
+const STRIPS_IT = new Set(['src/lib/proxy/ws-upgrade-headers.js'])
+const HEADER = 'x-internal-token'
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -91,7 +93,7 @@ describe('the header has one producer', () => {
     const files = [...sourceFiles(path.join(UI_ROOT, 'src')), path.join(UI_ROOT, 'server.js')]
     const offenders = files
       .map((file) => path.relative(UI_ROOT, file).split(path.sep).join('/'))
-      .filter((file) => file !== PRODUCER && headerLiterals(path.join(UI_ROOT, file)) > 0)
+      .filter((file) => file !== PRODUCER && !STRIPS_IT.has(file) && headerLiterals(path.join(UI_ROOT, file)) > 0)
     expect(
       offenders,
       'Send the service token with internalServiceHeaders(baseUrl) from @/lib/internal-auth; read it inbound with requireInternalToken or INTERNAL_TOKEN_HEADER.'

@@ -40,7 +40,7 @@ def _mock_bff(monkeypatch, payload: object = None, error: Exception | None = Non
     def fake_get(url, **kwargs):
         calls["n"] += 1
         calls["url"] = url
-        calls["token"] = kwargs.get("headers", {}).get("x-grid-internal-token")
+        calls["token"] = kwargs.get("headers", {}).get("x-internal-token")
         if error is not None:
             raise error
         return FakeResponse(payload)

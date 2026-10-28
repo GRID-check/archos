@@ -50,7 +50,7 @@ SEARCH_MODE = "search"
 #: The answer the turn is writing (``turn_answer_message_id``), as the other internal tools send it in
 #: their bodies (``answerMessageId``): the BFF marks it in ``message_restricted_use`` when a read runs in
 #: a conversation that drew on a restricted folder (ADR-0093). A header, because the MCP body is JSON-RPC.
-ANSWER_MESSAGE_HEADER = "X-Grid-Answer-Message-Id"
+ANSWER_MESSAGE_HEADER = "X-Answer-Message-Id"
 
 #: A routed operation runs a BFF route in-process, some of them a search.
 REQUEST_TIMEOUT_SECONDS = 30

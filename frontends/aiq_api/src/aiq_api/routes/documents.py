@@ -67,7 +67,7 @@ BATCH_STATUS_MAX_IDS = 200
 
 
 #: Set on a listing whose metadata (summaries, dossiers, references, coverage) could not be read.
-READING_UNAVAILABLE_HEADER = "X-Grid-Reading-Unavailable"
+READING_UNAVAILABLE_HEADER = "X-Reading-Unavailable"
 
 
 def _merge_summaries(

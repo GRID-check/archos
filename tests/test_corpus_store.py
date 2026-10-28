@@ -316,7 +316,7 @@ class TestWireDetails:
         corpus_store._delete_object("Brand schutz #1 äö.pdf")
 
         assert seen["url"] == "http://frontend:3000/api/internal/base-corpus/Brand%20schutz%20%231%20%C3%A4%C3%B6.pdf"
-        assert seen["headers"] == {"x-grid-internal-token": "tok"}
+        assert seen["headers"] == {"x-internal-token": "tok"}
 
     def test_the_upload_url_request_carries_the_name_and_the_token(self, monkeypatch):
         seen: dict = {}
@@ -334,7 +334,7 @@ class TestWireDetails:
         assert corpus_store._request_upload_url("a.pdf") == ("https://s3.invalid/put?x=1", "base-corpus/a.pdf")
         assert seen["url"] == "http://frontend:3000/api/internal/base-corpus/upload-url"
         assert seen["json"] == {"fileName": "a.pdf"}
-        assert seen["headers"] == {"x-grid-internal-token": "tok"}
+        assert seen["headers"] == {"x-internal-token": "tok"}
 
     def test_a_refused_upload_url_request_is_an_error(self, monkeypatch):
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")

@@ -44,7 +44,7 @@ describe('discardConversationDrafts', () => {
     // path segment.
     expect(url).toBe('http://backend:8000/v1/drafts/s_conv%201')
     expect(init.method).toBe('DELETE')
-    expect(init.headers['x-grid-internal-token']).toBe('test-token')
+    expect(init.headers['x-internal-token']).toBe('test-token')
     expect(init.signal).toBeDefined()
   })
 

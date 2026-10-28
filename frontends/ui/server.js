@@ -50,7 +50,7 @@ function bootLogLine(env) {
 
 // ── The turn's headers, and the signed context envelope (ADR-0054, ADR-0106) ──
 // Every x-grid-* header this file forwards on a chat upgrade, and the one
-// consolidated, signed `X-Grid-Request-Context` envelope beside them, are built
+// consolidated, signed `X-Request-Context` envelope beside them, are built
 // by `turnContextHeaders` in `src/lib/turns/turn-headers.js` from the turn
 // context `/api/auth/websocket-scope` resolved. The BFF's wake job builds the
 // headers of the socket it opens as a person with the same function, so the

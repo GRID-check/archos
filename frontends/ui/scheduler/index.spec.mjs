@@ -422,7 +422,7 @@ describe('sweepAnnotationDue (the daily Frist reminder)', () => {
     expect(await sweepAnnotationDue(config, fetchImpl, annotationDue, annotationDueClock, now)).toEqual(counts)
     expect(fetchImpl).toHaveBeenCalledWith(
       'http://frontend:3000/api/internal/annotations/due-reminders',
-      expect.objectContaining({ method: 'POST', headers: { 'x-grid-internal-token': 't' } }),
+      expect.objectContaining({ method: 'POST', headers: { 'x-internal-token': 't' } }),
     )
     expect(new Date(annotationDueClock.nextRunAt).toISOString()).toBe('2026-10-18T04:45:00.000Z')
 
@@ -493,7 +493,7 @@ describe('sweepUsageExport (the PostHog usage export, every ten minutes)', () =>
     expect(await sweepUsageExport(config, fetchImpl, usageExport, usageExportClock, now)).toEqual(counts)
     expect(fetchImpl).toHaveBeenCalledWith(
       'http://frontend:3000/api/internal/analytics/usage-export',
-      expect.objectContaining({ method: 'POST', headers: { 'x-grid-internal-token': 't' } }),
+      expect.objectContaining({ method: 'POST', headers: { 'x-internal-token': 't' } }),
     )
     expect(usageExportClock.nextRunAt).toBe(now.getTime() + 10 * 60 * 1000)
     expect(await sweepUsageExport(config, fetchImpl, usageExport, usageExportClock, new Date(now.getTime() + 60_000))).toBeNull()

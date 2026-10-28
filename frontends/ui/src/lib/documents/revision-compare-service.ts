@@ -68,8 +68,8 @@ async function postToBackend(session: AuthorizedSession, url: string, body: obje
         'Content-Type': 'application/json',
         ...internalServiceHeaders(getBackendUrl()),
         // Whose vision credential and data policy the comparison runs under.
-        'x-grid-organization-id': session.organizationId,
-        'x-grid-user-id': session.userId,
+        'x-organization-id': session.organizationId,
+        'x-user-id': session.userId,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),

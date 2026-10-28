@@ -179,9 +179,9 @@ describe('setRevisionLink', () => {
     await setRevisionLink(session, 'doc-b', 'doc-a', true, request)
 
     const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>
-    expect(headers['x-grid-organization-id']).toBe('org-1')
-    expect(headers['x-grid-user-id']).toBe('user-1')
-    expect(headers['x-grid-internal-token']).toBe('tok-1')
+    expect(headers['x-organization-id']).toBe('org-1')
+    expect(headers['x-user-id']).toBe('user-1')
+    expect(headers['x-internal-token']).toBe('tok-1')
     vi.unstubAllEnvs()
   })
 

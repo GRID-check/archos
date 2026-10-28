@@ -318,7 +318,7 @@ describe('reconcileOrphanedVectors', () => {
     await reconcileOrphanedVectors()
 
     const headers = summaryCall().init.headers as Record<string, string>
-    expect(headers['x-grid-internal-token']).toBe('real-secret')
+    expect(headers['x-internal-token']).toBe('real-secret')
     vi.unstubAllEnvs()
   })
 
@@ -402,7 +402,7 @@ describe('reconcileOrphanedVectors: the document facts half', () => {
     const calls = documentFactsCalls()
     expect(calls.map((call) => JSON.parse(call[1].body).collections.length)).toEqual([DOCUMENT_FACTS_BATCH, 3])
     expect(calls.flatMap((call) => JSON.parse(call[1].body).collections)).toEqual(live(DOCUMENT_FACTS_BATCH + 3).map((row) => row.collectionName))
-    expect(calls[0][1].headers['x-grid-internal-token']).toBe('real-secret')
+    expect(calls[0][1].headers['x-internal-token']).toBe('real-secret')
     expect(calls[0][1].signal).toBeInstanceOf(AbortSignal)
   })
 

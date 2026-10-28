@@ -250,7 +250,7 @@ def test_fetch_sends_the_snake_case_organization_id(monkeypatch: pytest.MonkeyPa
     assert "organizationId" not in query
     assert query["agent"] == "researcher"
     assert query["__url"] == "http://frontend:3000/api/internal/skills/resolve"
-    assert query["__token_header"] == "x-grid-internal-token"
+    assert query["__token_header"] == "x-internal-token"
 
 
 def test_fetch_omits_agent_entirely_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:

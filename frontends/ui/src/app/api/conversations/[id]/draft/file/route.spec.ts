@@ -138,7 +138,7 @@ describe('POST /api/conversations/[id]/draft/file', () => {
     // and this conversation's own namespace.
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('http://backend:8000/v1/drafts/conv-1/entwuerfe/aktenvermerk.md')
-    expect(init.headers['x-grid-internal-token']).toBe('test-token')
+    expect(init.headers['x-internal-token']).toBe('test-token')
     // The create goes through the existing filing op — the reference the agent
     // tier mints for this path, the card's title, the fetched bytes, and this
     // conversation as the origin a later review decision returns to. No

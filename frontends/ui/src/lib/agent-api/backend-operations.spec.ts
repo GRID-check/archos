@@ -182,10 +182,10 @@ describe('callBackendOperation', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('http://aiq-api:8000/v1/internal/tools/knowledge_search')
     const headers = init.headers as Record<string, string>
-    expect(headers['x-grid-internal-token']).toBe(SECRET)
+    expect(headers['x-internal-token']).toBe(SECRET)
     const verified = verifyGridRequestContextEnvelope(
-      headers['x-grid-request-context'],
-      headers['x-grid-request-context-sig'],
+      headers['x-request-context'],
+      headers['x-request-context-sig'],
       SECRET
     )
     expect(verified).toMatchObject({
@@ -196,9 +196,9 @@ describe('callBackendOperation', () => {
     })
     expect(Object.keys(headers).sort()).toEqual([
       'content-type',
-      'x-grid-internal-token',
-      'x-grid-request-context',
-      'x-grid-request-context-sig',
+      'x-internal-token',
+      'x-request-context',
+      'x-request-context-sig',
     ])
   })
 

@@ -32,7 +32,7 @@ vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({
 }))
 
 // Org model overrides lookup used by the POST handler to build
-// X-Grid-Model-Overrides — controlled per-test below.
+// X-Model-Overrides — controlled per-test below.
 vi.mock('@/lib/model-config/service', () => ({
   getEffectiveModelOverrides: vi.fn(),
 }))
@@ -213,7 +213,7 @@ describe('/api/jobs/async/[...path] proxy — POST org model overrides', () => {
     }
   })
 
-  it('forwards X-Grid-Model-Overrides with the base64url payload when the org has overrides', async () => {
+  it('forwards X-Model-Overrides with the base64url payload when the org has overrides', async () => {
     vi.mocked(getEffectiveModelOverrides).mockResolvedValue({ deep_research: 'openrouter/model-x' })
 
     const res = await POST(
@@ -225,8 +225,8 @@ describe('/api/jobs/async/[...path] proxy — POST org model overrides', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
-    expect(headers['X-Grid-Model-Overrides']).toBeDefined()
-    expect(decodeModelOverridesHeader(headers['X-Grid-Model-Overrides'])).toEqual({
+    expect(headers['X-Model-Overrides']).toBeDefined()
+    expect(decodeModelOverridesHeader(headers['X-Model-Overrides'])).toEqual({
       deep_research: 'openrouter/model-x',
     })
   })
@@ -242,7 +242,7 @@ describe('/api/jobs/async/[...path] proxy — POST org model overrides', () => {
     expect(res.status).toBe(200)
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
-    expect(headers['X-Grid-Model-Overrides']).toBeUndefined()
+    expect(headers['X-Model-Overrides']).toBeUndefined()
   })
 
   it('still proxies the submission without the header when override resolution throws', async () => {
@@ -257,11 +257,11 @@ describe('/api/jobs/async/[...path] proxy — POST org model overrides', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
-    expect(headers['X-Grid-Model-Overrides']).toBeUndefined()
+    expect(headers['X-Model-Overrides']).toBeUndefined()
   })
 })
 
-describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context envelope', () => {
+describe('/api/jobs/async/[...path] proxy — signed X-Request-Context envelope', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>
 
   const session = {
@@ -325,11 +325,11 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     expect(res.status).toBe(200)
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
-    expect(headers['X-Grid-Request-Context']).toBeDefined()
-    expect(headers['X-Grid-Request-Context-Sig']).toBeUndefined()
+    expect(headers['X-Request-Context']).toBeDefined()
+    expect(headers['X-Request-Context-Sig']).toBeUndefined()
 
     const decoded = JSON.parse(
-      Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
+      Buffer.from(headers['X-Request-Context'], 'base64url').toString('utf8')
     )
     // `collectionScope` carries the SHELF-BEARING entries, not bare names.
     // `scoping.py` prefers this signed envelope and reads the raw header only
@@ -361,7 +361,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     expect(res.status).toBe(200)
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
-    expect(headers['X-Grid-Request-Context-Sig']).toMatch(/^[0-9a-f]{64}$/)
+    expect(headers['X-Request-Context-Sig']).toMatch(/^[0-9a-f]{64}$/)
   })
 
   it('still attaches the envelope when model-overrides resolution throws (envelope is not best-effort)', async () => {
@@ -375,7 +375,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     expect(res.status).toBe(200)
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
-    expect(headers['X-Grid-Request-Context']).toBeDefined()
+    expect(headers['X-Request-Context']).toBeDefined()
   })
 
   it('carries the resolved federal-state fact structurally on the envelope (backlog T3-9 follow-up, 2026-07-16)', async () => {
@@ -391,7 +391,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
     const decoded = JSON.parse(
-      Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
+      Buffer.from(headers['X-Request-Context'], 'base64url').toString('utf8')
     )
     expect(decoded.federalState).toBe('tyrol')
   })
@@ -408,7 +408,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
     const decoded = JSON.parse(
-      Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
+      Buffer.from(headers['X-Request-Context'], 'base64url').toString('utf8')
     )
     expect(decoded.federalState).toBeUndefined()
   })
@@ -424,9 +424,9 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     expect(res.status).toBe(200)
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
-    expect(headers['X-Grid-Request-Context']).toBeDefined()
+    expect(headers['X-Request-Context']).toBeDefined()
     const decoded = JSON.parse(
-      Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
+      Buffer.from(headers['X-Request-Context'], 'base64url').toString('utf8')
     )
     expect(decoded.federalState).toBeUndefined()
   })
@@ -592,8 +592,8 @@ describe('/api/jobs/async/[...path] proxy — every method carries the signed en
   const verifiedEnvelope = (call = 0) => {
     const headers = sentHeaders(call)
     return verifyGridRequestContextEnvelope(
-      headers['X-Grid-Request-Context'],
-      headers['X-Grid-Request-Context-Sig'],
+      headers['X-Request-Context'],
+      headers['X-Request-Context-Sig'],
       SECRET
     )
   }
@@ -647,7 +647,7 @@ describe('/api/jobs/async/[...path] proxy — every method carries the signed en
       projectId: 'proj-1',
       conversationId: 'conv-1',
     })
-    const payload = JSON.parse(Buffer.from(sentHeaders()['X-Grid-Request-Context'], 'base64url').toString('utf8'))
+    const payload = JSON.parse(Buffer.from(sentHeaders()['X-Request-Context'], 'base64url').toString('utf8'))
     expect(payload.collectionScope).toContainEqual({ collection: 'proj_abc', shelf: 'project' })
     expect(sentHeaders().Authorization).toBe('Bearer token-abc')
   })

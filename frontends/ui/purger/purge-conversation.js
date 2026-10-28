@@ -32,7 +32,7 @@ const { LEGAL_HOLD_CODE, assertNoHold } = require('./purge-project')
 
 // Must match src/lib/internal-auth.ts INTERNAL_TOKEN_HEADER, the header
 // `internalApiRoute` reads.
-const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
+const INTERNAL_TOKEN_HEADER = 'x-internal-token'
 
 // Well under the 15-minute stale-claim window (`purger/db.js`), so a hung call
 // is abandoned and recorded as a failed attempt long before another purger

@@ -115,8 +115,8 @@ def _envelope() -> SignedEnvelope:
 
 def _redacted(headers: dict[str, str]) -> dict[str, str]:
     swaps = {
-        "x-grid-internal-token": TOKEN_PLACEHOLDER,
-        "x-grid-request-context-sig": SIGNATURE_PLACEHOLDER,
+        "x-internal-token": TOKEN_PLACEHOLDER,
+        "x-request-context-sig": SIGNATURE_PLACEHOLDER,
     }
     out = {name.lower(): swaps.get(name.lower(), value) for name, value in headers.items()}
     return dict(sorted(out.items()))

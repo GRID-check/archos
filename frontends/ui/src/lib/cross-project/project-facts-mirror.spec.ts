@@ -143,7 +143,7 @@ describe('syncProjectFacts', () => {
       body: JSON.parse(init.body),
       scope: JSON.parse(
         Buffer.from(
-          String(Object.entries(init.headers as Record<string, string>).find(([name]) => name.toLowerCase() === 'x-grid-request-context')?.[1]),
+          String(Object.entries(init.headers as Record<string, string>).find(([name]) => name.toLowerCase() === 'x-request-context')?.[1]),
           'base64url'
         ).toString()
       ).collectionScope,

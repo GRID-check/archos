@@ -240,7 +240,7 @@ async function requestIngestJob(
       method: 'POST',
       // Forward the org id so the backend resolves the org's BYOK vision
       // credential + runtime model override for VLM captioning during ingestion.
-      headers: { 'Content-Type': 'application/json', 'x-grid-organization-id': organizationId },
+      headers: { 'Content-Type': 'application/json', 'x-organization-id': organizationId },
       body,
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
@@ -1729,7 +1729,7 @@ async function requestIngestCancel(jobId: string, organizationId: string): Promi
       method: 'POST',
       // Forward the org id, as the dispatch does: the backend resolves the
       // organization's queue from it.
-      headers: { 'x-grid-organization-id': organizationId },
+      headers: { 'x-organization-id': organizationId },
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
   } catch (error) {

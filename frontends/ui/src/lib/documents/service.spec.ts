@@ -806,7 +806,7 @@ describe('uploadDocument ingest dispatch — backend fetch is time-bounded', () 
     // The org id is forwarded so the backend can resolve the org's BYOK vision
     // credential + runtime model override for VLM captioning during ingestion.
     expect((ingestCall?.[1] as RequestInit).headers).toMatchObject({
-      'x-grid-organization-id': 'org-1',
+      'x-organization-id': 'org-1',
     })
   })
 

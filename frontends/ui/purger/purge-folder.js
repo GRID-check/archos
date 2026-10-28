@@ -29,7 +29,7 @@ const { PERMANENT_FAILURE_CODE } = require('./purge-conversation')
 /** @typedef {import('./types').PurgeDeps} PurgeDeps */
 
 // Must match src/lib/internal-auth.ts INTERNAL_TOKEN_HEADER.
-const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
+const INTERNAL_TOKEN_HEADER = 'x-internal-token'
 
 // Under the 15-minute stale-claim window (`purger/db.js`). A large folder is
 // many documents, each a few store calls; a purge that does not finish here

@@ -95,7 +95,7 @@ const LOG = '[job-scheduler]'
 
 // Must match src/lib/internal-auth.ts INTERNAL_TOKEN_HEADER — the header the
 // `internalApiRoute` factory guarding /api/internal/skills/fire expects.
-const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
+const INTERNAL_TOKEN_HEADER = 'x-internal-token'
 const FIRE_TIMEOUT_MS = 30000
 // One sweep claims at most 25 runs and asks the backend about 5 at a time, each
 // with a 10 s timeout: about a minute in the worst case. The reentrancy guard in

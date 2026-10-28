@@ -287,7 +287,7 @@ async def _submit_and_replay(client: TestClient, db_url: str, headers: dict[str,
     response = client.post(
         "/v1/internal/skills/submit",
         json=_skill_body(),
-        headers={"x-grid-internal-token": SECRET, **headers},
+        headers={"x-internal-token": SECRET, **headers},
     )
     assert response.status_code == 200, response.text
     claim = queue.claim_next(db_url, "worker-1", stale_seconds=30, max_attempts=3)
@@ -392,7 +392,7 @@ class TestRenewal:
         }
         (call,) = bff.calls
         assert call["url"] == "http://frontend:3000/api/internal/runs/run-1/envelope"
-        assert call["headers"]["X-Grid-Internal-Token"] == SECRET
+        assert call["headers"]["X-Internal-Token"] == SECRET
         _validator(schema, "RunEnvelopeRequest").validate(call["json"])
         assert REQUEST_CONTEXT_ENVELOPE_HEADER not in call["headers"], "the renewal names the run, not a person"
 

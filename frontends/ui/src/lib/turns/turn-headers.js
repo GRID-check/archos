@@ -94,7 +94,7 @@ function requesterOf(value) {
  */
 
 /**
- * The signed `X-Grid-Request-Context` envelope (and its signature when
+ * The signed `X-Request-Context` envelope (and its signature when
  * `secret` is set). Field list, omission rules and key order are those of
  * `buildGridRequestContextEnvelopePayload` in `request-context.ts`: every
  * field added since `memoryReflectionEnabled` was appended LAST so earlier
@@ -135,10 +135,10 @@ function buildGridRequestContextEnvelopeHeaders(input, secret) {
   const json = JSON.stringify(payload)
   /** @type {Record<string, string>} */
   const headers = {
-    'x-grid-request-context': Buffer.from(json, 'utf8').toString('base64url'),
+    'x-request-context': Buffer.from(json, 'utf8').toString('base64url'),
   }
   if (secret) {
-    headers['x-grid-request-context-sig'] = crypto.createHmac('sha256', secret).update(json, 'utf8').digest('hex')
+    headers['x-request-context-sig'] = crypto.createHmac('sha256', secret).update(json, 'utf8').digest('hex')
   }
   return headers
 }
@@ -166,35 +166,35 @@ const base64urlJson = (value) => Buffer.from(JSON.stringify(value), 'utf8').toSt
 function turnContextHeaders(data, { issuedAt, secret }) {
   /** @type {Record<string, string>} */
   const headers = {}
-  if (data.header) headers['x-grid-collection-scope'] = data.header
+  if (data.header) headers['x-collection-scope'] = data.header
   const authenticated = Boolean(data.organizationId && data.userId)
   // Who the caller is, so the backend knows without a token lookup.
   if (data.organizationId) {
-    headers['x-grid-organization-id'] = data.organizationId
-    if (data.userId) headers['x-grid-user-id'] = data.userId
+    headers['x-organization-id'] = data.organizationId
+    if (data.userId) headers['x-user-id'] = data.userId
   }
   if (data.accessToken) headers.authorization = `Bearer ${data.accessToken}`
   if (!authenticated) {
     for (const [field, header] of /** @type {const} */ ([
-      ['projectContext', 'x-grid-project-context'],
-      ['projectMemory', 'x-grid-project-memory'],
-      ['orgInstructions', 'x-grid-org-instructions'],
+      ['projectContext', 'x-project-context'],
+      ['projectMemory', 'x-project-memory'],
+      ['orgInstructions', 'x-org-instructions'],
     ])) {
       const value = data[field]
       if (value) headers[header] = Buffer.from(value, 'utf8').toString('base64url')
     }
   }
-  if (data.projectId) headers['x-grid-project-id'] = data.projectId
+  if (data.projectId) headers['x-project-id'] = data.projectId
   // Always sent, so the backend fails closed when it is absent.
-  headers['x-grid-feature-memory-reflection'] = data.memoryReflectionEnabled ? 'true' : 'false'
+  headers['x-feature-memory-reflection'] = data.memoryReflectionEnabled ? 'true' : 'false'
   // Per-org model overrides and the remaining budget, JSON then base64url;
   // decoded in aiq_agent (model_overrides.py, cost_tracking.py). Absent is the
   // workflow defaults and no cap.
-  if (data.modelOverrides) headers['x-grid-model-overrides'] = base64urlJson(data.modelOverrides)
-  if (data.budget) headers['x-grid-budget'] = base64urlJson(data.budget)
+  if (data.modelOverrides) headers['x-model-overrides'] = base64urlJson(data.modelOverrides)
+  if (data.budget) headers['x-budget'] = base64urlJson(data.budget)
   // Sources the organization switched off (web search, ADR-0022).
   if (Array.isArray(data.disabledSources) && data.disabledSources.length > 0) {
-    headers['x-grid-disabled-sources'] = base64urlJson(data.disabledSources)
+    headers['x-disabled-sources'] = base64urlJson(data.disabledSources)
   }
   Object.assign(
     headers,

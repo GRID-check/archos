@@ -210,8 +210,8 @@ describe('askPiloti', () => {
     expect(request.headers['x-chat-mode']).toBe('headless')
     expect(request.headers['x-aiq-mode']).toBe('headless')
     const context = verifyGridRequestContextEnvelope(
-      request.headers['x-grid-request-context'],
-      request.headers['x-grid-request-context-sig'],
+      request.headers['x-request-context'],
+      request.headers['x-request-context-sig'],
       SECRET,
     )
     expect(context).toMatchObject({ userId: USER, organizationId: ORG, conversationId: row.conversationId })
@@ -452,7 +452,7 @@ describe('getAsk and cancelAsk', () => {
     expect(request?.turnId).toBe(row.id)
     const headers = request?.headers ?? {}
     expect(
-      verifyGridRequestContextEnvelope(headers['x-grid-request-context'], headers['x-grid-request-context-sig'], SECRET),
+      verifyGridRequestContextEnvelope(headers['x-request-context'], headers['x-request-context-sig'], SECRET),
     ).toMatchObject({ userId: USER, conversationId: THREAD })
     expect(endAsk).toHaveBeenCalledWith(ORG, row.id, { state: 'canceled' })
     expect(view.state).toBe('canceled')

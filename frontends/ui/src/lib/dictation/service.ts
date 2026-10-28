@@ -80,8 +80,8 @@ async function postToBackend(session: AuthorizedSession, body: object): Promise<
         'Content-Type': 'application/json',
         ...serviceHeaders,
         // Whose credential and data policy, and whose ledger row.
-        'x-grid-organization-id': session.organizationId,
-        'x-grid-user-id': session.userId,
+        'x-organization-id': session.organizationId,
+        'x-user-id': session.userId,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),

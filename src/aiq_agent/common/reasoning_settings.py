@@ -116,7 +116,7 @@ def _fetch_efforts() -> dict[str, str]:
     base_url = (os.environ.get("FRONTEND_INTERNAL_URL") or "http://frontend:3000").rstrip("/")
     response = httpx.get(
         f"{base_url}/api/internal/reasoning-efforts",
-        headers={"x-grid-internal-token": token},
+        headers={"x-internal-token": token},
         timeout=_REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()

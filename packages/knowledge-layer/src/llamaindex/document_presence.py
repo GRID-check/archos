@@ -59,7 +59,7 @@ def document_still_exists(document_id: str, collection: str, organization_id: st
         response = httpx.get(
             f"{base_url.rstrip('/')}{_EXISTS_PATH}",
             params=params,
-            headers={"x-grid-internal-token": token},
+            headers={"x-internal-token": token},
             timeout=_HTTP_TIMEOUT_SECONDS,
         )
         if response.status_code != 200:

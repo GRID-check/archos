@@ -34,7 +34,7 @@ def internal_base_url() -> str | None:
     return os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL")
 
 
-INTERNAL_TOKEN_HEADER = "X-Grid-Internal-Token"
+INTERNAL_TOKEN_HEADER = "X-Internal-Token"
 
 
 def internal_headers() -> dict[str, str] | None:

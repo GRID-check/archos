@@ -139,7 +139,7 @@ class TestResolution:
 
         def fake_get(url, **kwargs):
             seen["url"] = url
-            seen["token"] = kwargs["headers"]["x-grid-internal-token"]
+            seen["token"] = kwargs["headers"]["x-internal-token"]
             return FakeResponse()
 
         monkeypatch.setattr(httpx, "get", fake_get)

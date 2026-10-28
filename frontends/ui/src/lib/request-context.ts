@@ -7,7 +7,7 @@
  * own subset of these headers — the WS-upgrade block in `server.js`, the
  * `/api/auth/websocket-scope` route, the async-jobs REST proxy, and the
  * workflows submission path all independently remembered (or, in one
- * audited case, forgot) to forward `x-grid-model-overrides`. This module is
+ * audited case, forgot) to forward `x-model-overrides`. This module is
  * the wire contract: build the input once, get back every header with the
  * exact encoding the Python side (`src/aiq_agent/project_context.py`,
  * `common/model_overrides.py`, `common/cost_tracking.py`,
@@ -70,14 +70,14 @@ export interface GridBudgetSnapshot {
 }
 
 export interface GridRequestContextInput {
-  /** → `X-Grid-Organization-Id` (raw). Omitted when falsy (anonymous mode). */
+  /** → `X-Organization-Id` (raw). Omitted when falsy (anonymous mode). */
   organizationId?: string | null
-  /** → `X-Grid-User-Id` (raw). Omitted when falsy. */
+  /** → `X-User-Id` (raw). Omitted when falsy. */
   userId?: string | null
-  /** → `X-Grid-Project-Id` (raw). Omitted when falsy (no active project). */
+  /** → `X-Project-Id` (raw). Omitted when falsy (no active project). */
   projectId?: string | null
   /**
-   * → `X-Grid-Collection-Scope` (base64url JSON array). Omitted when empty —
+   * → `X-Collection-Scope` (base64url JSON array). Omitted when empty —
    * callers that always want a scope header should pass at least the base
    * collection (`computeCollectionScope` never returns an empty array).
    *
@@ -90,12 +90,12 @@ export interface GridRequestContextInput {
    * passes bare names degrades to "unknown shelf", never to a wrong one.
    */
   collectionScope?: ReadonlyArray<string | ScopedCollection> | null
-  /** → `X-Grid-Project-Context` (base64url text). Omitted when falsy/blank. */
+  /** → `X-Project-Context` (base64url text). Omitted when falsy/blank. */
   projectContext?: string | null
-  /** → `X-Grid-Project-Memory` (base64url text). Omitted when falsy/blank. */
+  /** → `X-Project-Memory` (base64url text). Omitted when falsy/blank. */
   projectMemory?: string | null
   /**
-   * → `X-Grid-Org-Instructions` (base64url text). Omitted when falsy/blank.
+   * → `X-Org-Instructions` (base64url text). Omitted when falsy/blank.
    *
    * The organization's standing instruction block
    * (`organization_instructions`, migration 0087) — one bounded text an org
@@ -117,20 +117,20 @@ export interface GridRequestContextInput {
    */
   orgInstructions?: string | null
   /**
-   * → `X-Grid-Model-Overrides` (base64url JSON object). Omitted when
+   * → `X-Model-Overrides` (base64url JSON object). Omitted when
    * null/undefined/empty — "no header" means "use the YAML defaults"
    * (fail-open), matching `common/model_overrides.py`.
    */
   modelOverrides?: Record<string, string> | null
-  /** → `X-Grid-Budget` (base64url JSON object). Omitted when null/undefined. */
+  /** → `X-Budget` (base64url JSON object). Omitted when null/undefined. */
   budget?: GridBudgetSnapshot | null
   /**
-   * → `X-Grid-Disabled-Sources` (base64url JSON array). Omitted when
+   * → `X-Disabled-Sources` (base64url JSON array). Omitted when
    * null/undefined/empty, mirroring server.js's `.length > 0` guard.
    */
   disabledSources?: string[] | null
   /**
-   * → `X-Grid-Feature-Memory-Reflection` (`"true"`/`"false"`). Only omitted
+   * → `X-Feature-Memory-Reflection` (`"true"`/`"false"`). Only omitted
    * when `undefined` — pass an explicit boolean to preserve the fail-closed
    * contract (`get_memory_reflection_enabled_from_context` treats an absent
    * header as `false`).
@@ -221,17 +221,17 @@ export function requesterOf(
 
 /** Canonical header names, exact casing as sent on the wire. */
 export const GRID_HEADER_NAMES = {
-  ORGANIZATION_ID: 'X-Grid-Organization-Id',
-  USER_ID: 'X-Grid-User-Id',
-  PROJECT_ID: 'X-Grid-Project-Id',
-  COLLECTION_SCOPE: 'X-Grid-Collection-Scope',
-  PROJECT_CONTEXT: 'X-Grid-Project-Context',
-  PROJECT_MEMORY: 'X-Grid-Project-Memory',
-  ORG_INSTRUCTIONS: 'X-Grid-Org-Instructions',
-  MODEL_OVERRIDES: 'X-Grid-Model-Overrides',
-  BUDGET: 'X-Grid-Budget',
-  DISABLED_SOURCES: 'X-Grid-Disabled-Sources',
-  MEMORY_REFLECTION: 'X-Grid-Feature-Memory-Reflection',
+  ORGANIZATION_ID: 'X-Organization-Id',
+  USER_ID: 'X-User-Id',
+  PROJECT_ID: 'X-Project-Id',
+  COLLECTION_SCOPE: 'X-Collection-Scope',
+  PROJECT_CONTEXT: 'X-Project-Context',
+  PROJECT_MEMORY: 'X-Project-Memory',
+  ORG_INSTRUCTIONS: 'X-Org-Instructions',
+  MODEL_OVERRIDES: 'X-Model-Overrides',
+  BUDGET: 'X-Budget',
+  DISABLED_SOURCES: 'X-Disabled-Sources',
+  MEMORY_REFLECTION: 'X-Feature-Memory-Reflection',
   /**
    * Consolidated, signed context envelope (backlog T3-9 follow-up,
    * 2026-07-16, user-mandated): base64url(JSON) of every field above (minus
@@ -241,9 +241,9 @@ export const GRID_HEADER_NAMES = {
    * `aiq_agent.project_context.GridRequestContext.from_envelope` for the
    * Python-side verify+parse counterpart.
    */
-  REQUEST_CONTEXT: 'X-Grid-Request-Context',
+  REQUEST_CONTEXT: 'X-Request-Context',
   /** HMAC-SHA256 (hex) of the envelope's raw JSON, keyed on `GRID_INTERNAL_API_TOKEN`. */
-  REQUEST_CONTEXT_SIG: 'X-Grid-Request-Context-Sig',
+  REQUEST_CONTEXT_SIG: 'X-Request-Context-Sig',
 } as const
 
 /** base64url(JSON.stringify(value)) — the scheme every structured header uses. */
@@ -261,7 +261,7 @@ export function encodeGridTextHeader(value: string): string {
 }
 
 /**
- * `X-Grid-Model-Overrides` encoder, kept as a named export so callers that
+ * `X-Model-Overrides` encoder, kept as a named export so callers that
  * only need this one header's wire value (not the full context) don't have
  * to build a whole `GridRequestContextInput`.
  * `@/lib/model-config/header-encoding` re-exports this for back-compat.
@@ -271,7 +271,7 @@ export function encodeModelOverridesHeader(overrides: Record<string, string>): s
 }
 
 /**
- * `X-Grid-Budget` encoder. Same shape/encoding
+ * `X-Budget` encoder. Same shape/encoding
  * `get_budget_status`/`cost_tracking.py`'s `BUDGET_HEADER` consumer expects.
  */
 export function encodeGridBudgetHeader(snapshot: GridBudgetSnapshot): string {
@@ -334,8 +334,8 @@ export function buildGridRequestContextHeaders(input: GridRequestContextInput): 
 // overrides the organization — without it, it is just not a valid request."
 //
 // One consolidated, signed envelope carrying every field above (minus the
-// internal token) as a single `X-Grid-Request-Context` header, plus an
-// integrity signature (`X-Grid-Request-Context-Sig`, HMAC-SHA256 hex over
+// internal token) as a single `X-Request-Context` header, plus an
+// integrity signature (`X-Request-Context-Sig`, HMAC-SHA256 hex over
 // the raw JSON, keyed on `GRID_INTERNAL_API_TOKEN`). This is the ONE place
 // that builds it — every producer (this module's own callers, the
 // async-jobs proxy route, the workflows service, and `server.js`'s WS-upgrade
@@ -351,10 +351,10 @@ export function buildGridRequestContextHeaders(input: GridRequestContextInput): 
 
 /** Signed envelope wire values for one request. */
 export interface GridRequestContextEnvelope {
-  /** → `X-Grid-Request-Context`: base64url(JSON) of the envelope payload. */
+  /** → `X-Request-Context`: base64url(JSON) of the envelope payload. */
   header: string
   /**
-   * → `X-Grid-Request-Context-Sig`: hex HMAC-SHA256 of the raw JSON, or
+   * → `X-Request-Context-Sig`: hex HMAC-SHA256 of the raw JSON, or
    * `null` when no secret was supplied (dev only — see
    * `buildGridRequestContextEnvelope`'s docstring for the fail-open note).
    */
@@ -474,7 +474,7 @@ export function buildGridRequestContextEnvelope(
 
 /**
  * The envelope as a ready-to-spread header map: always sets
- * `X-Grid-Request-Context`; sets `X-Grid-Request-Context-Sig` only when
+ * `X-Request-Context`; sets `X-Request-Context-Sig` only when
  * `secret` was supplied. Called by `buildGridRequestContextWireHeaders`
  * below — most producers should call that instead so they dual-write the
  * individual headers and the envelope in one call.
