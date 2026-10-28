@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "./src/test-support/stack-config";
@@ -10,6 +11,9 @@ import { baseStackConfig } from "./src/test-support/stack-config";
  * admit the tier it polls.
  */
 
+// The project name is the config namespace; read it from `Pulumi.yaml` rather than spell it here.
+const PROJECT = /^name:\s*(\S+)/m.exec(readFileSync(new URL("./Pulumi.yaml", import.meta.url), "utf8"))![1];
+
 const NAMED: Array<{ type: string; name: string; inputs: Record<string, any> }> = [];
 
 pulumi.runtime.setMocks(
@@ -20,7 +24,7 @@ pulumi.runtime.setMocks(
     },
     call: () => ({}),
   },
-  "grid-oib",
+  PROJECT,
   "test",
   false,
 );
@@ -31,10 +35,10 @@ describe("the chat tier's scale-out after the switch", () => {
   beforeAll(async () => {
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      "grid-oib:observabilityEnabled": "false",
-      "grid-oib:chatAffinity": "false",
-      "grid-oib:conversationBus": "true",
-      "grid-oib:backendMaxReplicas": "3",
+      [`${PROJECT}:observabilityEnabled`]: "false",
+      [`${PROJECT}:chatAffinity`]: "false",
+      [`${PROJECT}:conversationBus`]: "true",
+      [`${PROJECT}:backendMaxReplicas`]: "3",
     });
     const stack = (await import("./index")) as Record<string, unknown>;
     await Promise.all(
