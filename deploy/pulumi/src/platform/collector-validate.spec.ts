@@ -17,7 +17,7 @@ import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-conf
  * it every export in the cluster, and none of them fails a plan.
  *
  * Needs `OTELCOL_BIN`, the `otelcol-contrib` binary of the version the image
- * digest in `config.ts` pins; CI's infra job installs it. Without it the suite
+ * digest in `config/observability.ts` pins; CI's infra job installs it. Without it the suite
  * is reported as skipped.
  */
 

@@ -12,7 +12,7 @@ import sys
 import threading
 
 from knowledge_layer import register
-from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
 
 class _Retriever:
@@ -54,12 +54,13 @@ async def test_a_retriever_without_the_hook_is_left_alone():
 
 
 def test_warm_components_leaves_the_retriever_initialised(monkeypatch):
-    from knowledge_layer.llamaindex import adapter
+    from knowledge_layer.llamaindex import dependencies
+    from knowledge_layer.llamaindex import embedding
 
     built: list[str] = []
-    monkeypatch.setattr(adapter, "ensure_retrieval_dependencies", lambda: None)
-    monkeypatch.setattr(adapter, "_resolve_embed_api_key", lambda base_url, model: "key")
-    monkeypatch.setattr(adapter, "make_embed_model", lambda **kwargs: built.append(kwargs["model"]) or object())
+    monkeypatch.setattr(dependencies, "ensure_retrieval_dependencies", lambda: None)
+    monkeypatch.setattr(embedding, "resolve_embed_api_key", lambda base_url, model: "key")
+    monkeypatch.setattr(embedding, "make_embed_model", lambda **kwargs: built.append(kwargs["model"]) or object())
     retriever = LlamaIndexRetriever(config={})
 
     retriever.warm_components()

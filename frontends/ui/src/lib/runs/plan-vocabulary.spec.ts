@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { planDocumentsSchema, sanitizePlanDocuments } from './plan-documents'
 import { modernizePlan } from './plan-vocabulary'

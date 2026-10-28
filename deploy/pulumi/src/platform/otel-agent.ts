@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { commonLabels } from "./namespaces";
 import { ROLLOUT, gracefulShutdown, secretChecksum, secretChecksumAnnotations } from "./rollout";
 import { NODE_AGENT_RULES, installCollectorIdentity } from "./collector-identity";

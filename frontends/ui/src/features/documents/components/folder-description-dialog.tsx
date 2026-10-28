@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { FOLDER_DESCRIPTION_MAX_LENGTH, normalizeFolderDescription } from '@/lib/projects/folders'
 import type { FolderItem } from '../file-types'
 
@@ -35,7 +36,7 @@ export interface FolderDescriptionDialogProps {
 }
 
 export function FolderDescriptionDialog({ folder, onOpenChange, onSave }: FolderDescriptionDialogProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const folderId = folder?.id ?? null
@@ -116,7 +117,7 @@ export function FolderDescriptionLine({
   canEdit: boolean
   onEdit: () => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const description = folder.description ?? null
   if (!description && !canEdit) return null
   return (

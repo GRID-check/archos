@@ -22,6 +22,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { RaisedCard, RaisedCardBody, RaisedCardFooter } from '@/components/ui/raised-card'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
+import { referencesCopy } from '@/i18n/namespaces/references'
 import type { FingerprintKey } from '@/lib/cross-project/fingerprint'
 import type { ReferenceBasis, SimilarProject, SimilarProjectsPage } from '@/lib/references/types'
 import {
@@ -42,8 +44,8 @@ export function askHref(projectId: string, question: string): string {
 
 /** What the ranking compared: this project's fingerprint, open facts named, and where to add them. */
 function ComparedBy({ projectId, basis }: { projectId: string; basis: ReferenceBasis }): JSX.Element {
-  const t = useTranslations('references')
-  const tp = useTranslations('projects')
+  const t = useTranslations(referencesCopy)
+  const tp = useTranslations(projectsCopy)
   const facts = basis.facts.filter((fact) => fact.applies)
   return (
     <section aria-labelledby="references-basis" className="grid max-w-prose gap-2">
@@ -82,7 +84,7 @@ function ComparedBy({ projectId, basis }: { projectId: string; basis: ReferenceB
 }
 
 function SimilarProjectCard({ projectId, project }: { projectId: string; project: SimilarProject }): JSX.Element {
-  const t = useTranslations('references')
+  const t = useTranslations(referencesCopy)
   return (
     <RaisedCard interactive className="h-full">
       {/* The body takes the row's height: cards of one row differ a lot, and a short one would leave an empty tray. */}
@@ -175,7 +177,7 @@ function ProjectGrid({ projectId, projects }: { projectId: string; projects: rea
 }
 
 export function SimilarProjects({ projectId, page }: { projectId: string; page: SimilarProjectsPage }): JSX.Element {
-  const t = useTranslations('references')
+  const t = useTranslations(referencesCopy)
   const alike = page.projects.filter((project) => project.alike)
   const others = page.projects.filter((project) => !project.alike)
   return (

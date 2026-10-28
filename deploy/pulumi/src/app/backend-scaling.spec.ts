@@ -114,7 +114,7 @@ describe("the chat tier's scale-out", () => {
   });
 
   it("autoscales only with affinity off, a database-claimed tier and room between floor and ceiling", async () => {
-    const { backendAutoscaled } = await import("../config");
+    const { backendAutoscaled } = await import("../config/chat-tier");
     const { loadConfig } = await import("../config");
     expect(backendAutoscaled(cfg)).toBe(true);
 

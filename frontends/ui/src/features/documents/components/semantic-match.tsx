@@ -2,6 +2,7 @@
 
 import { Quote } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 
 /**
  * Match-evidence block for a search result card — the transparent "why it
@@ -14,7 +15,7 @@ import { useTranslations } from '@/i18n'
  * always knows they are seeing search results.
  */
 export function SemanticMatch({ snippet, page }: { snippet: string; page: number | null }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   if (snippet === '' && page === null) return null
 
   return (

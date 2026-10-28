@@ -63,6 +63,8 @@ import type { ConsistencyFinding } from '@/lib/project-profile/intake-consistenc
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import { useLocale, useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 interface ProjectIntakeWizardProps {
   projectId: string
@@ -171,7 +173,7 @@ export function ProjectIntakeWizard({
   definitionOverride,
   initialStep = 0,
 }: ProjectIntakeWizardProps) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const router = useRouter()
   const [definition, setDefinition] = useState<ProjectIntakeDefinition | null>(null)
@@ -1336,7 +1338,7 @@ function ModulePicker({
   onSelect: (step: number) => void
   t: Translator
 }) {
-  const tCommon = useTranslations('common')
+  const tCommon = useTranslations(commonCopy)
   const [open, setOpen] = useState(false)
   const stage = stages[currentStep]
   if (!stage) return null
@@ -1490,7 +1492,7 @@ function BuildingStage({
   onRenameBuilding: (id: string, name: string) => void
   validationMessageFor: (q: ProjectIntakeQuestion) => string
 }) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   // Only module C owns the add/remove building affordance.
   const canManage = stage.id === 'C'
 
@@ -1795,7 +1797,7 @@ function ReviewStep({
   buildings: BuildingInstance[]
   onEditStage: (stageIndex: number) => void
 }) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
 
   const projectStages = definition.stages
     .map((stage, index) => ({ stage, index }))
@@ -1909,7 +1911,7 @@ function ConflictFindings({
   onRevise: (stageIndex: number) => void
   onProceed: () => void
 }) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   return (
     <section
       aria-label={t('intake.consistency.title')}
@@ -2047,7 +2049,7 @@ function UploadField({
   question: ProjectIntakeQuestion
   projectId: string
 }) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm font-medium">{question.label}</span>
@@ -2064,7 +2066,7 @@ function UploadField({
 
 /** Confirmed-brief facts that look derived. The class is not computed here. */
 function InfoPlaceholder({ question }: { question: ProjectIntakeQuestion }) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   return (
     <div className="bg-muted/30 rounded-xl border border-dashed px-4 py-3.5">
       <div className="flex items-start gap-2.5">

@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch'
 import { PHONE_QUERY } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SAVED_SEARCH_NAME_MAX } from '@/lib/search/saved-search-wire'
 import { SAVED_SEARCH_UNDO_MS, type SavedSearchRenameOutcome } from '../hooks/use-saved-searches'
@@ -55,7 +56,7 @@ export interface SavedSearchesMenuProps {
  * sheet, where the thumb is.
  */
 export function SavedSearchesMenu(props: SavedSearchesMenuProps): JSX.Element {
-  const t = useTranslations('search.saved')
+  const t = useTranslations(searchCopy, 'saved')
   const phone = useMediaQuery(PHONE_QUERY)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -132,7 +133,7 @@ function SavedSearchesBody({
   onSaveRequested,
   onRenameRequested,
 }: SavedSearchesMenuProps & { onApplied: () => void; onSaveRequested: () => void; onRenameRequested: (item: SavedSearchView) => void }): JSX.Element {
-  const t = useTranslations('search.saved')
+  const t = useTranslations(searchCopy, 'saved')
   const summary = useSavedSearchSummary()
   const remove = (item: SavedSearchView): void => {
     onDelete(item)
@@ -204,7 +205,7 @@ function SavedSearchItemMenu({
   onRename: () => void
   onDelete: () => void
 }): JSX.Element {
-  const t = useTranslations('search.saved')
+  const t = useTranslations(searchCopy, 'saved')
   const entries: ActionMenuEntry[] = [
     {
       type: 'item',
@@ -257,7 +258,7 @@ function RenameSearchForm({
   onRename: (item: SavedSearchView, name: string) => Promise<SavedSearchRenameOutcome>
   onDone: () => void
 }): JSX.Element {
-  const t = useTranslations('search.saved')
+  const t = useTranslations(searchCopy, 'saved')
   const id = useId()
   const [name, setName] = useState(item.name)
   const [busy, setBusy] = useState(false)
@@ -352,7 +353,7 @@ function SaveSearchForm({
   onSave: (draft: { name: string; shared: boolean }) => Promise<boolean>
   onDone: () => void
 }): JSX.Element {
-  const t = useTranslations('search.saved')
+  const t = useTranslations(searchCopy, 'saved')
   const id = useId()
   const [name, setName] = useState(suggestedName.slice(0, SAVED_SEARCH_NAME_MAX))
   const [shared, setShared] = useState(false)

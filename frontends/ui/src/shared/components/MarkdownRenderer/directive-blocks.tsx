@@ -17,6 +17,7 @@ import { Chip } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Quote } from '@/components/ui/quote'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 import {
   CompareStackFrame,
   CompareVariantCard,
@@ -111,7 +112,7 @@ function DetailsBlock({ node, children }: NodeProps) {
 }
 
 const DefaultSummary: FC = () => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return <>{t('markdown.details')}</>
 }
 
@@ -218,7 +219,7 @@ export function Figure({ node, children }: NodeProps) {
 
 /** A marker no list item, row or header took: its word, so nothing is lost. */
 export function AnswerMarker({ node }: NodeProps) {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const cases = useCasesDecision()
   const marker = prop(node, 'dataMarker')
   // In a `by=` cases block the renderer marks the case; the model's own mark is overruled.
@@ -279,7 +280,7 @@ function stampLocus(stamp: { page?: number; clause?: string }): string | undefin
 
 /** The trailing cell of an actions row: „Als Aufgabe", which only fills the composer. */
 export function TaskCellContent({ node }: NodeProps) {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const { prefill } = useAnswerData()
   const what = prop(node, 'dataTaskWhat') ?? ''
   if (!prefill || what.trim().length < 3) return null
@@ -320,7 +321,7 @@ export function NotFound({ children }: NodeProps) {
 }
 
 export function Pane({ node, children }: NodeProps) {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const { notRegulated, searched } = useAnswerData()
   const pane = prop(node, 'dataPane') ?? ''
   if (notRegulated === false) return pane === 'searched' ? null : <>{children}</>
@@ -345,7 +346,7 @@ export function Pane({ node, children }: NodeProps) {
 // ---------------------------------------------------------------------------
 
 export function Subsumption({ node, children }: NodeProps) {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const parts = (node?.children ?? []).filter((child): child is Element => child.type === 'element')
   const rendered = Children.toArray(children)
   const present = parts

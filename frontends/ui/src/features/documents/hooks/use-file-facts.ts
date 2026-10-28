@@ -1,6 +1,7 @@
 'use client'
 
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatBytes } from '@/lib/format'
 import { fileFormatMessage } from '../document-kind'
 import type { FileItem } from '../file-types'
@@ -17,7 +18,7 @@ import type { FileItem } from '../file-types'
  * state the format and the size as two rows of a Properties list instead.
  */
 export function useFileFacts(file: FileItem): string {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const format = fileFormatMessage(file)
   const paged = format?.key !== 'image' && format?.key !== 'ifc'

@@ -1,5 +1,8 @@
 // @disk-inputs: src/features/skills/components/markdown-editor.css
 /**
+ * @vitest-environment node
+ */
+/**
  * The skill body editor's stylesheet, held to the two phone rules a desktop
  * browser can never show.
  *

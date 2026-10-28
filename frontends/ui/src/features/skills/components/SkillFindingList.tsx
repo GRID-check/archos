@@ -17,6 +17,7 @@
 import type { FC } from 'react'
 import { AlertTriangle, Lightbulb, XCircle } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import type { SkillReviewFinding } from '@/adapters/api/skills-client'
 
@@ -54,7 +55,7 @@ export const SkillFindingList: FC<SkillFindingListProps> = ({
   className,
   'data-testid': testId,
 }) => {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   if (findings.length === 0) return null
 
   return (

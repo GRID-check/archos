@@ -13,7 +13,7 @@ The adapters, one per call-site shape:
 - a JSON body built by hand: ``ResolvedCredential.request_body`` or
   ``PLATFORM_FIXED.apply`` / ``DataPolicy.apply``;
 - an OpenAI SDK client: ``openrouter.openai_client``;
-- the embedding client: ``knowledge_layer.llamaindex.adapter.make_embed_model``;
+- the embedding client: ``knowledge_layer.llamaindex.embedding.make_embed_model``;
 - a LangChain chat model: ``pin_chat_model`` / ``apply_model_override`` /
   ``RequestLLMContext.apply`` (not scanned here: those models are built by NAT,
   and ``test_model_overrides`` / ``test_llm_provider`` cover them).
@@ -40,7 +40,7 @@ SCANNED = [
 RAW_CLIENT = re.compile(r"\b(?:Async)?OpenAI\(|\bNVIDIAEmbedding\(")
 RAW_CLIENT_HOMES = {
     "src/aiq_agent/common/openrouter.py",  # openai_client
-    "packages/knowledge-layer/src/llamaindex/adapter.py",  # make_embed_model
+    "packages/knowledge-layer/src/llamaindex/embedding.py",  # make_embed_model
 }
 
 #: Talking to a model endpoint directly. The module must also use an adapter.
@@ -87,7 +87,7 @@ def test_no_model_client_is_built_outside_the_seam(path: Path):
     match = RAW_CLIENT.search(path.read_text(encoding="utf-8"))
     assert match is None, (
         f"{_rel(path)} builds {match.group(0)!r} by hand. Build it through common/openrouter.py "
-        "(openai_client, pinned_http_client) or adapter.make_embed_model, so its requests carry "
+        "(openai_client, pinned_http_client) or embedding.make_embed_model, so its requests carry "
         "the organization's zero-data-retention policy."
     )
 

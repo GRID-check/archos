@@ -25,6 +25,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { ProjectInitialsTile } from '@/components/projects/project-atoms'
 import { useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import type {
   SimilarDocument,
   SimilarGroup,
@@ -82,7 +83,7 @@ const inPlaceOrder = (groups: SimilarGroup[]): SimilarGroup[] =>
 const TILE = 'size-8 text-[11px]'
 
 const GroupHead: FC<{ group: SimilarGroup }> = ({ group }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   if (group.kind === 'office_shelf' || !group.project) {
     return (
       <SimilarGroupHeading
@@ -124,7 +125,7 @@ const Results: FC<{
   opened: OpenedPassage | null
   onOpen: (passage: OpenedPassage) => void
 }> = ({ response, opened, onOpen }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const documents = similarDocumentsOf(response)
   const groupLabelOf = (group: SimilarGroup): string => {
     if (group.kind === 'office_shelf') return t('similar.groupOfficeShelf')
@@ -206,7 +207,7 @@ export const SimilarPassagesPanel: FC<SimilarPassagesPanelProps> = ({
   onClose,
   load = loadSimilarPassages,
 }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const { state, retry } = useSimilarPassages(request, load)
 
   return (

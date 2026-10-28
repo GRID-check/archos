@@ -8,6 +8,7 @@ import { DEFAULT_ACCEPTED_FILE_TYPES } from '@/features/documents/constants'
 import { useFileDragDrop, type DropInfo } from '@/features/documents/hooks/use-file-drag-drop'
 import { withZipAccepted } from '@/features/documents/lib/zip-types'
 import { useTranslations } from '@/i18n'
+import { intakeQuestionsStepCopy } from '@/i18n/namespaces/intake-questions-step'
 import { cn } from '@/lib/utils'
 import { useAppConfig } from '@/shared/context'
 
@@ -32,7 +33,7 @@ export function HandInRow({
   onHandedIn?: () => void
   disabled?: boolean
 }): JSX.Element {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   const input = useRef<HTMLInputElement>(null)
   const accepted = withZipAccepted(useAppConfig().fileUpload?.acceptedTypes ?? DEFAULT_ACCEPTED_FILE_TYPES)
   const take = (files: File[], info?: DropInfo): void => {

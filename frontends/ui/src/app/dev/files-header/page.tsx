@@ -38,9 +38,10 @@ import { DEFAULT_FILE_SORT, type FileSort } from '@/features/documents/lib/file-
 import { FilesHeaderControls } from '@/features/documents/components/files-header-controls'
 import { ProjectUppyUpload } from '@/features/documents/components/project-uppy-upload'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
 
 function Header() {
-  const tNav = useTranslations('nav')
+  const tNav = useTranslations(navCopy)
   const phone = usePhoneLayout()
   const [view, setView] = useState<FileView>('cards')
   const [filters, setFilters] = useState<FileFilters>(NO_FILE_FILTERS)

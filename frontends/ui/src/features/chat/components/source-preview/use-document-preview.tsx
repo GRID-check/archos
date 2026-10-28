@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { openAtLocus, type CitationLocus, type CitationRef } from '../../lib/citations'
 import {
@@ -35,7 +36,7 @@ import { CitationDocumentDialog } from './citation-document-dialog'
 export type PreviewOutcome = 'opened' | 'downloaded' | 'failed'
 
 export const useDocumentPreview = (target: DocumentTarget, citation?: CitationRef) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [isOpen, setIsOpen] = useState(false)
   const [isResolving, setIsResolving] = useState(false)
   const [src, setSrc] = useState<string | null>(null)

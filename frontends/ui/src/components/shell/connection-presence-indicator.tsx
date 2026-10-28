@@ -20,6 +20,7 @@
  */
 
 import { useTranslations } from '@/i18n'
+import { presenceCopy } from '@/i18n/namespaces/presence'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -50,7 +51,7 @@ export function ConnectionPresenceIndicator({
   className,
   presence: presenceOverride,
 }: ConnectionPresenceIndicatorProps) {
-  const t = useTranslations('presence')
+  const t = useTranslations(presenceCopy)
   const detected = useConnectionPresence()
   const presence = presenceOverride ?? detected
 

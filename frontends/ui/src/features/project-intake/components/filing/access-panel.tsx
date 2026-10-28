@@ -11,6 +11,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemMedia, I
 import { FolderAccessDialog } from '@/features/documents/components/folder-access-dialog'
 import type { FolderItem } from '@/features/documents/file-types'
 import { useLocale, useTranslations } from '@/i18n'
+import { intakeFilingStepCopy } from '@/i18n/namespaces/intake-filing-step'
 import { folderPathKey } from '@/lib/projects/folders'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { SummaryBlock } from './filing-atoms'
@@ -67,7 +68,7 @@ export interface AccessSummaryProps {
  */
 export function AccessSummary(props: AccessSummaryProps): JSX.Element {
   const { rows, canManage, loadFailed } = props
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   const { locale } = useLocale()
   const [open, setOpen] = useState(false)
   const restricted = rows.filter((row) => row.folder?.ownAccess)
@@ -112,7 +113,7 @@ function AccessSheet({
   open,
   onOpenChange,
 }: AccessSummaryProps & { open: boolean; onOpenChange: (open: boolean) => void }): JSX.Element {
-  const t = useTranslations('intakeFilingStep')
+  const t = useTranslations(intakeFilingStepCopy)
   const [dialogFolder, setDialogFolder] = useState<FolderItem | null>(null)
   const [creating, setCreating] = useState<string | null>(null)
 

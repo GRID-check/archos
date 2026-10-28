@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import {
   DOWNLOAD_LOG_MAX_RETENTION_DAYS,
   DOWNLOAD_LOG_MIN_RETENTION_DAYS,
@@ -26,7 +27,7 @@ interface DownloadLogRetentionFormProps {
 }
 
 export const DownloadLogRetentionForm: FC<DownloadLogRetentionFormProps> = ({ initialDays }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const [text, setText] = useState(String(initialDays))
   const [saved, setSaved] = useState(initialDays)
   const [saving, setSaving] = useState(false)

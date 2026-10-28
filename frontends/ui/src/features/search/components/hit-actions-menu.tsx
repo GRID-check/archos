@@ -18,6 +18,7 @@ import { MoreHorizontal } from 'lucide-react'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import type { DocumentHit } from '@/lib/search/search-wire'
 import { useDocumentHitActions } from '../hooks/use-document-hit-actions'
 
@@ -40,7 +41,7 @@ export function useHitMenus(): boolean {
 
 export function DocumentHitMenu({ hit }: { hit: DocumentHit }): JSX.Element | null {
   const state = useContext(HitMenuContext)
-  const t = useTranslations('search.hitActions')
+  const t = useTranslations(searchCopy, 'hitActions')
   const entries = useDocumentHitActions(hit)
   if (!state) return null
   const key = `document:${hit.id}`

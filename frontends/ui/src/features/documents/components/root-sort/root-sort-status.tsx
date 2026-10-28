@@ -27,6 +27,7 @@ import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import { StageTrack, type StageTrackTone } from '@/components/ui/stage-track'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatCount, formatDurationElapsed, formatDurationShort } from '@/lib/format'
 import type { RootSortRunStatus } from '@/lib/filing/root-sort-types'
 import type { WorkingRootSortStatus } from '../../lib/root-sort-phase'
@@ -60,7 +61,7 @@ export interface RootSortStagesProps {
 
 /** The sort's four steps, with the one it is in. Hidden for an undo and for a run that ended early. */
 export function RootSortStages({ status }: RootSortStagesProps): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const position = stagePosition(status)
   if (!position) return null
   return (
@@ -99,7 +100,7 @@ export function RootSortProgress({
   remainingSeconds,
   elapsedSeconds,
 }: RootSortProgressProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const counted = status !== 'grouping'
   const percent = total === 0 ? 0 : (done / total) * 100
@@ -169,7 +170,7 @@ export interface RootSortOutcomeProps {
 }
 
 export function RootSortOutcome({ moved, failedCount, failedNames }: RootSortOutcomeProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p className="flex items-center gap-2 font-medium">

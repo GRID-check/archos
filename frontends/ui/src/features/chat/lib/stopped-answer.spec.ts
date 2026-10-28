@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The stop rule, held to the agent tier's copy (`TurnTextFold.stopped`) by
  * the cases both suites read: `shared/wire/v2/stopped-cases.jsonl`, which
  * `tests/aiq_agent/turn/test_streaming.py` folds through the Python fold.

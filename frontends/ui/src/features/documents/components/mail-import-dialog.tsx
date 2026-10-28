@@ -34,6 +34,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { StatCardIcon } from '@/components/ui/stat-card'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatBytes } from '@/lib/format'
 import { MAIL_ARCHIVE_EXTENSIONS } from '@/lib/mail-import/config'
 import type { MailImportView } from '@/lib/mail-import/types'
@@ -71,7 +72,7 @@ export function MailImportDialogView({
   onOpenChange,
   state,
 }: MailImportDialogProps & { state: UseMailImports }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const inputRef = useRef<HTMLInputElement>(null)
   const [resumeTarget, setResumeTarget] = useState<MailImportView | null>(null)

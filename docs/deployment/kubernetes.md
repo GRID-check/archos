@@ -1120,7 +1120,7 @@ below lands.
 ### 6.2 The highest-impact code change (do this first)
 
 Per scaling-review §6.2, the single biggest capacity defect is that
-`LlamaIndexRetriever.retrieve` (`packages/knowledge-layer/src/llamaindex/adapter.py`)
+`LlamaIndexRetriever.retrieve` (`packages/knowledge-layer/src/llamaindex/retriever.py`)
 does a **synchronous** embedding call + vector query on the only event loop —
 one user's retrieval stalls every other user's chat stream. Wrapping it in
 `asyncio.to_thread` (hours of work, no behaviour change) is the difference
@@ -1556,7 +1556,7 @@ one node — and `topologySpreadConstraints` is `ScheduleAnyway` (soft), so it
 would not have stopped that, defeating what the PDB and spread policy assume.
 
 Requests are now `500m` (trigger ≈ 350m, ~35% of the limit).
-`assertHpaTargetIsProportional` in `deploy/pulumi/src/config.ts` fails the
+`assertHpaTargetIsProportional` in `deploy/pulumi/src/config/resources.ts` fails the
 preview if this ratio regresses. Tune from `kubectl top pods` — the invariant is
 `requests ≈ steady state`, `limits ≈ 2× requests`.
 

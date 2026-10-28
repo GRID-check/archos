@@ -56,6 +56,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { tasksCopy } from '@/i18n/namespaces/tasks'
 import { useSwapFade } from '@/hooks/use-swap-fade'
 import {
   TASK_FILTERS,
@@ -89,7 +90,7 @@ export function TaskList({
   onSelectTask,
   onRetry,
 }: TaskListProps): JSX.Element {
-  const t = useTranslations('tasks')
+  const t = useTranslations(tasksCopy)
   const counts = filterCounts(tasks)
   const visible = tasks.filter((task) => matchesFilter(task, filter))
   const groups = groupByRecency(visible)

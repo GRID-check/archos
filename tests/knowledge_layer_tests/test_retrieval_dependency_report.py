@@ -16,9 +16,9 @@ from __future__ import annotations
 import builtins
 
 import pytest
-from knowledge_layer.llamaindex.adapter import _retrieval_dependency_error
-from knowledge_layer.llamaindex.adapter import ensure_retrieval_dependencies
-from knowledge_layer.llamaindex.adapter import retrieval_dependency_report
+from knowledge_layer.llamaindex.dependencies import ensure_retrieval_dependencies
+from knowledge_layer.llamaindex.dependencies import retrieval_dependency_error
+from knowledge_layer.llamaindex.dependencies import retrieval_dependency_report
 
 #: The exact failure production hit: the namespace package resolves, the piece
 #: we need does not, and the error is an ImportError rather than a
@@ -104,7 +104,7 @@ def test_the_error_carries_the_triggering_cause_and_the_module_status(break_impo
     """The message a developer actually reads when retrieval fails."""
     break_import("llama_index.core", _BROKEN_CORE)
 
-    message = str(_retrieval_dependency_error(_BROKEN_CORE))
+    message = str(retrieval_dependency_error(_BROKEN_CORE))
 
     # The cause that was previously discarded, and the per-module truth.
     assert "cannot import name 'core'" in message
@@ -116,7 +116,7 @@ def test_the_error_carries_the_triggering_cause_and_the_module_status(break_impo
 
 def test_the_error_is_still_useful_when_no_module_faults(break_import) -> None:
     """A healthy probe must not produce an empty, contentless error."""
-    message = str(_retrieval_dependency_error(ImportError("something else entirely")))
+    message = str(retrieval_dependency_error(ImportError("something else entirely")))
 
     assert "no per-module fault found" in message
     assert "something else entirely" in message
@@ -125,12 +125,12 @@ def test_the_error_is_still_useful_when_no_module_faults(break_import) -> None:
 def test_the_retriever_raise_site_chains_the_original_import_error(break_import) -> None:
     """The chain has to survive at the place that actually raises.
 
-    Asserting on `_retrieval_dependency_error`'s formatting only proves the
+    Asserting on `retrieval_dependency_error`'s formatting only proves the
     helper builds a nice string. What an operator debugging a broken image gets
     is whatever `_initialize_components` raises, so that is what this pins --
     including `__cause__`, which is the frame naming the import that broke.
     """
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
     break_import("llama_index.core", _BROKEN_CORE)
 

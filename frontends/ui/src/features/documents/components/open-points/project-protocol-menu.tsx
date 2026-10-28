@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { downloadFetched } from '@/lib/browser-download'
 import { ANNOTATION_EXPORT_FORMATS, type AnnotationExportFormat } from '@/lib/annotations/export-request'
@@ -52,7 +53,7 @@ export function ProjectProtocolMenu({
   /** The list's answer: the selection quotes a document not every member may open. Null while unknown. */
   restricted?: boolean | null
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   /** What this tab filed, by name: a second filing of the same name the same day is a new Fassung of it. */

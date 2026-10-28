@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, test } from 'vitest'
 import { splitForMiddleTruncation } from '@/lib/text/middle-truncate'
 import { projectNameTail } from './project-name'

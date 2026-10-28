@@ -7,6 +7,8 @@ import { Chip } from '@/components/ui/chip'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import { useLocale, useTranslations } from '@/i18n'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ApplicableStatus } from '@/lib/oib/applicable-standards'
 import type { IntakeView } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
@@ -41,7 +43,7 @@ function StatusDot({ status }: { status: ApplicableStatus }): JSX.Element {
  * question to Piloti about it.
  */
 export function RulesCard({ view }: { view: IntakeView }): JSX.Element | null {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const standards = view.applicableStandards
   if (!standards || standards.length === 0) return null
   const shown = byStatus(standards)
@@ -72,8 +74,8 @@ export function RulesCard({ view }: { view: IntakeView }): JSX.Element | null {
 }
 
 function RuleChip({ projectId, standard }: { projectId: string; standard: Standard }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
-  const tProjects = useTranslations('projects')
+  const t = useTranslations(intakeProfileStepCopy)
+  const tProjects = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const peek = useHoverPopover()
   const shortId = standardShortId(standard.code)

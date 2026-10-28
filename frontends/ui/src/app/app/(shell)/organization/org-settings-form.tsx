@@ -25,6 +25,9 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations, locales, localeNames, type Locale } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { CHAT_EFFORT_SETTING, CHAT_EFFORTS, type ChatEffort } from '@/lib/reasoning-settings/catalog'
 
 /** The select's value for "no office default": each member's browser decides. */
@@ -45,9 +48,9 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
   initialWebSearchEnabled,
   initialChatEffort,
 }) => {
-  const t = useTranslations('organization')
-  const tChat = useTranslations('chat')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tChat = useTranslations(chatCopy)
+  const tCommon = useTranslations(commonCopy)
 
   const [displayName, setDisplayName] = useState(initialDisplayName ?? '')
   const [defaultLocaleValue, setDefaultLocaleValue] = useState<Locale | null>(initialDefaultLocale)

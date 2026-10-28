@@ -16,8 +16,9 @@
 import 'server-only'
 // Default import: exceljs is CommonJS (see `lib/feedback/export-workbook.ts`).
 import ExcelJS from 'exceljs'
-import { getDictionary } from '@/i18n/dictionaries'
-import type { Dictionary } from '@/i18n/dictionaries'
+import type { Dictionary as FullDictionary } from '@/i18n/dictionaries'
+import { dossierCopy } from '@/i18n/namespaces/dossier'
+import { searchExportCopy } from '@/i18n/namespaces/search-export'
 import { getLocale } from '@/i18n/server'
 import { interpolate } from '@/i18n/translate'
 import { recordAuditEvent } from '@/lib/audit/service'
@@ -31,6 +32,9 @@ export const PLAN_LIST_MAX_ROWS = 5000
 
 export const PLAN_LIST_FORMATS = ['csv', 'xlsx'] as const
 export type PlanListFormat = (typeof PLAN_LIST_FORMATS)[number]
+
+/** The two namespaces the export reads. */
+export type Dictionary = Pick<FullDictionary, 'dossier' | 'searchExport'>
 
 type ColumnKey = keyof Dictionary['searchExport']['columns']
 type Cell = string | number | null
@@ -96,7 +100,8 @@ export async function exportPlanList(
   now: Date = new Date()
 ): Promise<ExportedPlanList> {
   const { scope, hits } = await listSearchDocumentsForExport(session, scopeQuery, body, PLAN_LIST_MAX_ROWS)
-  const dictionary = getDictionary(await getLocale())
+  const locale = await getLocale()
+  const dictionary = { dossier: dossierCopy.messages[locale], searchExport: searchExportCopy.messages[locale] }
   const bytes =
     format === 'csv'
       ? new TextEncoder().encode(renderPlanListCsv(hits, dictionary))

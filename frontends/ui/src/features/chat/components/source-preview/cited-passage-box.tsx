@@ -2,12 +2,13 @@
 
 import type { CSSProperties, FC } from 'react'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { SectionLabel } from '@/components/ui/section-label'
 import type { SourceTint } from '@/lib/source-kinds'
 
 /** Tinted "Fundstelle" / cited-passage box shown above the document frame. */
 export const CitedPassageBox: FC<{ snippet: string; signal: SourceTint }> = ({ snippet, signal }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const style: CSSProperties = {
     backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
     borderColor: `color-mix(in oklch, var(--source-${signal}, var(--foreground)) 25%, transparent)`,

@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button'
 import { AnimatePresence } from '@/components/motion'
 import { HeightArrival } from '@/components/motion/height-arrival'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { commonCopy } from '@/i18n/namespaces/common'
 import { formatTime } from '@/shared/utils/format-time'
 import { shortRequestId } from '@/shared/utils/request-id'
 import type { ErrorCode } from '../types'
@@ -68,8 +70,8 @@ export const ErrorBanner: FC<ErrorBannerProps> = ({
   onRetry,
   requestId,
 }) => {
-  const t = useTranslations('chat')
-  const tc = useTranslations('common')
+  const t = useTranslations(chatCopy)
+  const tc = useTranslations(commonCopy)
   // Same reason AgentResponse threads it: without the locale `formatTime` uses
   // the RUNTIME default, so a German user on an en-US browser read "03:35 PM"
   // under this card while every answer beside it said "15:35".
@@ -181,7 +183,7 @@ export const ErrorBanner: FC<ErrorBannerProps> = ({
  * notices until the search comes back empty.
  */
 const RequestReference: FC<{ requestId: string }> = ({ requestId }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async (): Promise<void> => {

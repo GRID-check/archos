@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Pairing the server's change record with the card's rows (ADR-0109): per mark
  * and kind of change, in the order the turn made them; deletions only when the
  * card and the record agree on how many there were.

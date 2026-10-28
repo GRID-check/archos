@@ -29,6 +29,7 @@ import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-selec
 import { SearchField } from '@/components/ui/search-field'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { CONVERSATION_TAG_KEYS } from '@/lib/conversations/tags'
 import {
   FEEDBACK_CONFIDENCE_FILTERS,
@@ -64,7 +65,7 @@ function counted<Key extends string>(
 }
 
 export function FeedbackFilterRow({ filters, onFiltersChange, options }: FeedbackFilterRowProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const commentId = useId()
   const expectedId = useId()

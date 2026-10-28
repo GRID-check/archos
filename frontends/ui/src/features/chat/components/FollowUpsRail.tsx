@@ -56,6 +56,7 @@ import {
   type FollowUpAction,
 } from '@/features/grid-cards/components/FollowUpChips'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { StoredFollowUp } from '@/lib/conversations/message-stages'
 
 /** No stage output yet, as one array rather than a new `[]` per render. */
@@ -88,7 +89,7 @@ export const FollowUpsRail: FC<FollowUpsRailProps> = ({
   offerFileNote = false,
   animateIn = true,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const actions = useMemo<FollowUpAction[]>(
     () =>
       offerFileNote

@@ -5,6 +5,7 @@ import { Gauge } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { ConfidenceCheck } from '@/lib/conversations/confidence-check'
 import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
 
@@ -75,7 +76,7 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   version,
   check,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
 
   if (check?.status === 'unavailable') {
     return (
@@ -161,7 +162,7 @@ const CheckedChip: FC<{ confidence: AnswerConfidence; check: ConfidenceCheck; qu
   check,
   quoteCapped,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const levelLabel = t(`confidence.levels.${confidence}`)
   return (
     <Tooltip>

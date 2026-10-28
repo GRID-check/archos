@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 import { baseStackConfig } from "../test-support/stack-config";
 import { makeProvider } from "./providers";
 

@@ -1,5 +1,8 @@
 // @disk-inputs: ../../packages/ris-adapter/src/client.py
 /**
+ * @vitest-environment node
+ */
+/**
  * The in-app RIS reader's host promise, pinned to the backend's enforcement.
  *
  * `isRisUrl` decides whether a citation chip OFFERS the in-app reader;

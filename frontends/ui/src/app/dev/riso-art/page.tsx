@@ -18,12 +18,15 @@ import { StatusScreen } from '@/components/brand/status-screen'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useTranslations } from '@/i18n'
+import { errorsCopy } from '@/i18n/namespaces/errors'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 function Preview(): JSX.Element {
   const show = useSearchParams()?.get('show')
-  const errors = useTranslations('errors')
-  const projects = useTranslations('projects')
-  const files = useTranslations('files')
+  const errors = useTranslations(errorsCopy)
+  const projects = useTranslations(projectsCopy)
+  const files = useTranslations(filesCopy)
 
   if (show === 'not-found') {
     return (

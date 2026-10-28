@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
-from aiq_agent.cards.models import DocumentVersionState
+from aiq_agent.cards.workspace_cards import DocumentVersionState
 from aiq_agent.tools.documents import register as filing_tools
 
 from .conftest import DRAFT

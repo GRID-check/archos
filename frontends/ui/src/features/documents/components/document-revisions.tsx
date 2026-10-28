@@ -57,6 +57,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { StageTrack } from '@/components/ui/stage-track'
 import { useLocale, useTranslations, type Translator } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatDate } from '@/lib/format'
 import { distinguishingTailLength } from '@/lib/text/middle-truncate'
 import { cn } from '@/lib/utils'
@@ -175,7 +176,7 @@ export function DocumentRevisions({
   openMarks,
   className,
 }: DocumentRevisionsProps): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
 
   // The rail is reused across files; a decision just made belongs to one.
@@ -722,7 +723,7 @@ function RevisionHeader({
   person: (userId: string | null) => ReturnType<typeof resolvePerson>
   headerAct: string | null
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const stageLabels = STAGE_LABEL_KEYS.map((key) => t(key))
   const { progress, stage } = standing
@@ -863,7 +864,7 @@ function rowHasContent(row: TimelineRow, hasChange: boolean): boolean {
 
 /** The line comparison of two Fassungen, under the row it was asked from, numbered as the timeline numbers them. */
 function TextComparisonView({ comparison }: { comparison: TextComparison }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   if (comparison.status === 'loading') {
     return (
       <p className="text-muted-foreground flex items-center gap-2 text-xs">

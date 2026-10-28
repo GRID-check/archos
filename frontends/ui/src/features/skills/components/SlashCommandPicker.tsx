@@ -57,6 +57,7 @@ import {
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import { filterSlashCommands } from '../lib/slash-command'
 
@@ -128,7 +129,7 @@ export const SlashCommandPicker = forwardRef<SlashCommandPickerHandle, SlashComm
     { query, skills, loading = false, onSelect, onAriaChange, className },
     ref,
   ) {
-    const t = useTranslations('skills')
+    const t = useTranslations(skillsCopy)
     const resultsAria = t('composer.picker.resultsAria')
 
     const visible = useMemo(() => filterSlashCommands(skills, query), [skills, query])

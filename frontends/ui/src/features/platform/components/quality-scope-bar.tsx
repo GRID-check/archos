@@ -32,6 +32,7 @@ import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-selec
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatDayRange } from '@/lib/format'
 import {
   isIsoDay,
@@ -110,7 +111,7 @@ export function useQualityScopeOptions(scope: QualityScope): QualityScopeOptions
 }
 
 export function QualityScopeBar({ scope, onScopeChange, options: state }: QualityScopeBarProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const { options, loading, failed } = state
 
@@ -246,7 +247,7 @@ function CustomRange({
   label: string
   onApply: (range: { from: string; to: string }) => void
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const [open, setOpen] = useState(false)
   const [from, setFrom] = useState(scope.from)
   const [to, setTo] = useState(scope.to)

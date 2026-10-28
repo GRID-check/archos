@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { StatCardIcon, type StatCardIconTone } from '@/components/ui/stat-card'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import {
   countNewRevisions,
@@ -139,7 +140,7 @@ export function FolderUploadDialog({
   onReleaseChange,
   onRevisionChange,
 }: FolderUploadDialogProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const contentRef = useRef<HTMLDivElement>(null)
   /**
    * Default ON.
@@ -425,7 +426,7 @@ function DialogBody({ children }: { children: JSX.Element }): JSX.Element {
  * because the new Fassung stays out of sight with it.
  */
 function SingleNotes({ single, destination }: { single: PlannedFile; destination: string }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const moves = single.refiledFromFolderId !== undefined
   if (!moves && !single.existingArchived) return null
   return (
@@ -481,7 +482,7 @@ function SoleFooter({
   canChange: boolean
   onAnswer: (asRevision: boolean) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { chosen, newer, candidates } = file.revisionOf
   const needsPick = candidates.length > 1 && !chosen
   // Without a handler the answer cannot change, so only the outcome already chosen can be confirmed.
@@ -532,7 +533,7 @@ function BatchPlan({
   onReleaseChange?: (file: File, released: boolean) => void
   onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div className="space-y-4 pb-4">
       {/* Two by two at every width: stacked one per row on a phone, the four
@@ -710,7 +711,7 @@ function RevisionSection({
   destination: string
   onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const proposals = useMemo(() => groupRevisionProposals(plan.files), [plan.files])
   const { detected, unclear } = proposals
   if (updates === 0 && detected.length === 0 && unclear.length === 0) return null
@@ -787,7 +788,7 @@ function DetectedProposals({
   destination: string
   onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { detected, master, ticked } = proposals
   const runs = groupByFolder(detected)
   const masterLabel =
@@ -856,7 +857,7 @@ function ProposalBox({
   disabled: boolean
   onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <Checkbox
       checked={file.revisionOf.chosen}
@@ -882,7 +883,7 @@ function CandidatePick({
   disabled: boolean
   onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { candidates, of, chosen } = file.revisionOf
   const describe = (candidate: RevisionTarget) => (candidate.label ? `${candidate.name} · ${candidate.label}` : candidate.name)
   return (
@@ -922,7 +923,7 @@ function ScreeningSection({
   pending: boolean
   onReleaseChange?: (file: File, released: boolean) => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const screened = plan.files.filter((file) => file.action === 'excluded' || file.screeningReleased)
   if (screened.length === 0) return null
   const excludedCount = screened.filter((file) => file.action === 'excluded').length
@@ -961,7 +962,7 @@ function ScreeningSection({
 
 /** Names, because a count nobody can check is a number to be believed. */
 function FileNameList({ files }: { files: readonly PlannedFile[] }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <ul className="mt-1 space-y-0.5 text-xs">
       {files.slice(0, 6).map((file, index) => (
@@ -995,7 +996,7 @@ function PlanDetails({
   plan: FolderUploadPlan
   includeUpdates: boolean
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const rows = plan.files
   if (rows.length === 0) return null
 
@@ -1043,7 +1044,7 @@ function effectiveAction(file: PlannedFile, includeUpdates: boolean): EffectiveA
 
 /** What this row will do, in one word. */
 function ActionTag({ file, includeUpdates }: { file: PlannedFile; includeUpdates: boolean }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const effective = effectiveAction(file, includeUpdates)
   return (
     <CountPill

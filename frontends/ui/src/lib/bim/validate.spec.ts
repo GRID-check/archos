@@ -1,5 +1,8 @@
 // @disk-inputs: tests/fixtures/ifc/sample-building.ifc
 /**
+ * @vitest-environment node
+ */
+/**
  * The validator, against the real fixture and against models built to be
  * broken in one specific way each.
  *

@@ -3,7 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "../test-support/stack-config";
 import { parseCollectorConfig, pipeline } from "../test-support/collector";
 import type { CollectorConfig } from "./collector-config";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 
 /**
  * Every metric to PostHog Metrics, through the gateway collector.

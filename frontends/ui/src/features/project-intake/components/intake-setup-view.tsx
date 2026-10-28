@@ -14,6 +14,8 @@ import {
 import { useFileDragDrop, type DropInfo } from '@/features/documents/hooks/use-file-drag-drop'
 import type { FilingFolderSuggestion } from '@/features/documents/lib/filing-suggestions'
 import { useTranslations, type Translator } from '@/i18n'
+import { intakeShellCopy } from '@/i18n/namespaces/intake-shell'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import type { IntakeDecision, IntakeView } from '@/lib/project-intake/types'
 import { usePressed } from '../hooks/use-pressed'
 import { CompletedNote } from './completed-note'
@@ -189,8 +191,8 @@ export function IntakeSetupView({
   children,
   participantsClient,
 }: IntakeSetupViewProps): JSX.Element {
-  const tShell = useTranslations('intakeShell')
-  const t = useTranslations('projectIntake')
+  const tShell = useTranslations(intakeShellCopy)
+  const t = useTranslations(projectIntakeCopy)
   const finished = view.status === 'completed'
   const dropping = canUpload && !finished
   const [step, go] = useSetupStep(view)
@@ -328,7 +330,7 @@ function FailedReading({
   busy: boolean
   onReread: () => void | Promise<void>
 }): JSX.Element {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   const [retrying, retry] = usePressed()
   return (
     <Alert variant="destructive" data-testid="intake-failed">

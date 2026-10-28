@@ -1274,7 +1274,7 @@ services:
     # v4 with its default write mode, events_only: a local volume left from v3
     # is cut over on first start. Local traces are disposable; the cluster
     # migrates in stages (kubernetes.md §9b, "Upgrading to Langfuse v4").
-    # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config.ts);
+    # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config/langfuse.ts);
     # web and worker must stay on the same one, so bump the two lines together.
     image: ghcr.io/langfuse/langfuse:4.71.0
     profiles: [langfuse]

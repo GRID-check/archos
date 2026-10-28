@@ -7,6 +7,7 @@ import { Chip } from '@/components/ui/chip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useLocale, useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n/translate'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { MarkTally } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import { reviewHrefAt } from '../lib/open-review'
@@ -103,7 +104,7 @@ function OpenMarksButton({
   marks: MarkTally
   className?: string
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const router = useRouter()
   const label = openMarksLabel(t, locale, marks)

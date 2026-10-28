@@ -43,6 +43,9 @@ import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
 import { useFeedbackUpdatedCount } from '@/features/product-feedback/components'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { feedbackCopy } from '@/i18n/namespaces/feedback'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { cn } from '@/lib/utils'
 import { useShellOverlays } from './shell-overlays'
 import { orgPhoneTabs, projectPhoneTabs, type PhoneTab, type PhoneTabLabel } from './phone-tabs'
@@ -69,8 +72,8 @@ export function PhoneTabBar({
 }: PhoneTabBarProps): JSX.Element {
   const currentPathname = usePathname() ?? ''
   const pathname = pinnedPathname ?? currentPathname
-  const t = useTranslations('nav')
-  const tCollaboration = useTranslations('collaboration')
+  const t = useTranslations(navCopy)
+  const tCollaboration = useTranslations(collaborationCopy)
   // The badge subscription only where the bar is seen: at `md` and up the rail
   // or the org header already holds one, and the bar is `display: none`.
   const isMobile = useIsMobile()
@@ -79,7 +82,7 @@ export function PhoneTabBar({
   const setMoreOpen = useShellOverlays((s) => s.setMoreSheetOpen)
   // „Mein Feedback" lives in the „Mehr" sheet: a team reply marks the tab.
   const feedbackNews = useFeedbackUpdatedCount() > 0
-  const tFeedback = useTranslations('feedback')
+  const tFeedback = useTranslations(feedbackCopy)
   // One shared-layout id per mounted bar, never a module constant: the scopes
   // preview mounts two bars at once, and a constant would fly the chip
   // between them.

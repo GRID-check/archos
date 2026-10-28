@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Discarding an abandoned upload-only chat is ONE server call: the conversation
  * delete, which erases the attachments and the `s_` collection itself.
  *

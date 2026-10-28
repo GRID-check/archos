@@ -20,6 +20,8 @@ import { GitCompareArrows } from 'lucide-react'
 import { BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { Chip } from '@/components/ui/chip'
 import { useTranslations } from '@/i18n'
+import { referencesCopy } from '@/i18n/namespaces/references'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import type { SimilarProjectsPage } from '@/lib/references/types'
 import { periodYears } from '@/features/references/components/reference-atoms'
 
@@ -37,8 +39,8 @@ export function SimilarProjectsTile({
   href: string
   span?: BentoSpan
 }): JSX.Element {
-  const t = useTranslations('settings')
-  const tRefs = useTranslations('references')
+  const t = useTranslations(settingsCopy)
+  const tRefs = useTranslations(referencesCopy)
   const alike = page.projects.filter((project) => project.alike)
   const anyClosed = page.projects.length > 0
   // The ranking is by score, so a listed project that is not alike means none

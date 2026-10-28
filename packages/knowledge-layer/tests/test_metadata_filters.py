@@ -8,7 +8,7 @@ pinned in ``test_qdrant_store.py`` and ``test_page_chunk_exclusion.py``.
 """
 
 import pytest
-from knowledge_layer.llamaindex.adapter import _filters_fingerprint
+from knowledge_layer.llamaindex.retriever import _filters_fingerprint
 from knowledge_layer.qdrant.scope import translate
 from qdrant_client import models
 

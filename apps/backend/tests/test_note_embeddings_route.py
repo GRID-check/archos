@@ -47,25 +47,26 @@ async def _post(app: FastAPI, texts: list[str]) -> dict:
 
 
 async def test_it_embeds_with_the_deployments_model_and_says_which(app, monkeypatch) -> None:
-    from knowledge_layer.llamaindex import adapter
+    from knowledge_layer.llamaindex import embedding
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
-    monkeypatch.setattr(adapter, "_resolve_embed_api_key", lambda base_url, model: "key")
-    monkeypatch.setattr(adapter, "make_embed_model", lambda **_: _FakeModel())
+    monkeypatch.setattr(embedding, "resolve_embed_api_key", lambda base_url, model: "key")
+    monkeypatch.setattr(embedding, "make_embed_model", lambda **_: _FakeModel())
 
     body = await _post(app, ["Stiegenhaus in Stahlbeton", "Kapselung"])
 
     assert body.get("error") is None
     assert body["vectors"] == [[25.0, 1.0], [9.0, 1.0]]
     assert body["dimensions"] == 2
-    assert body["fingerprint"] == adapter.embed_fingerprint(
-        adapter.LlamaIndexRetriever.DEFAULT_EMBED_MODEL, adapter.LlamaIndexRetriever.DEFAULT_EMBED_BASE_URL
+    assert body["fingerprint"] == embedding.embed_fingerprint(
+        LlamaIndexRetriever.DEFAULT_EMBED_MODEL, LlamaIndexRetriever.DEFAULT_EMBED_BASE_URL
     )
 
 
 async def test_without_a_key_it_says_so_rather_than_failing(app, monkeypatch) -> None:
-    from knowledge_layer.llamaindex import adapter
+    from knowledge_layer.llamaindex import embedding
 
-    monkeypatch.setattr(adapter, "_resolve_embed_api_key", lambda base_url, model: "")
+    monkeypatch.setattr(embedding, "resolve_embed_api_key", lambda base_url, model: "")
 
     body = await _post(app, ["Stiegenhaus"])
 

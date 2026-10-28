@@ -46,6 +46,7 @@ import { SearchField } from '@/components/ui/search-field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import {
   createSkillCategory,
@@ -109,7 +110,7 @@ export function SkillToolbox({
   reloadKey = 0,
   onCategoriesChanged,
 }: SkillToolboxProps): JSX.Element {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   const [skills, setSkills] = useState<SkillListItem[] | null>(null)
   const [categories, setCategories] = useState<SkillCategoryListItem[]>([])
   const [error, setError] = useState(false)
@@ -456,7 +457,7 @@ function CategorySection({
   onToggle,
   onDelete,
 }: CategorySectionProps): JSX.Element {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   return (
     <section aria-label={group.category?.name ?? t('toolbox.category.unsortedHeading')}>
       <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">

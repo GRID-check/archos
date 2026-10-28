@@ -28,6 +28,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Textarea } from '@/components/ui/textarea'
 import { useProjectPeriodText, useProjectRecordFormat } from '@/features/projects/components/project-record-editor'
 import { useTranslations } from '@/i18n'
+import { intakeProjectStepCopy } from '@/i18n/namespaces/intake-project-step'
 import { MAX_INTAKE_DESCRIPTION_LENGTH, type IntakeDecision, type IntakeView } from '@/lib/project-intake/types'
 import type { ProjectBasics } from '@/lib/projects/participants-client'
 import { createSameAddressClient, type SameAddressClient } from '@/lib/projects/same-address-client'
@@ -79,7 +80,7 @@ function sameAddressExcept(projectId: string): SameAddressClient {
 }
 
 export function DialogFactsSection({ view, projectId, project, peopleRecord, canDecide, busy, onDecide }: DialogFactsSectionProps): JSX.Element {
-  const t = useTranslations('intakeProjectStep')
+  const t = useTranslations(intakeProjectStepCopy)
   const facts = dialogFacts(view)
   const [editing, setEditing] = useState(false)
   const status = useStatusText(view, project, peopleRecord)
@@ -157,7 +158,7 @@ export function DialogFactsSection({ view, projectId, project, peopleRecord, can
 
 /** „Aktiv · seit März 2026", „Fertiggestellt, wird nach der Prüfung abgeschlossen · März 2024 – Juni 2026". */
 function useStatusText(view: IntakeView, project: ProjectBasics | null, peopleRecord: ProjectRecordView | null): string {
-  const t = useTranslations('intakeProjectStep')
+  const t = useTranslations(intakeProjectStepCopy)
   const { span } = useProjectRecordFormat()
   const period = useProjectPeriodText(peopleRecord ?? { startedOn: null, endedOn: null })
   const closing = view.closing && project?.status !== 'closed' ? view.closing : null
@@ -181,7 +182,7 @@ function FactsForm({
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
   onDone: () => void
 }): JSX.Element {
-  const t = useTranslations('intakeProjectStep')
+  const t = useTranslations(intakeProjectStepCopy)
   const sameAddress = useMemo(() => sameAddressExcept(projectId), [projectId])
   const [addressValue, setAddressValue] = useState<AddressValue>({ text: address ?? '', place: null })
   const [text, setText] = useState(description ?? '')

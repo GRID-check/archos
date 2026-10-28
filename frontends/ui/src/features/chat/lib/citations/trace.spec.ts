@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'vitest'
-import { de } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { TraceLaneCard } from '@/lib/conversations/message-provenance'
 import { deriveTraceLanes } from '../trace-lanes'
 import { storedStep } from '@/test-utils/wire-v2-steps'
@@ -54,7 +54,7 @@ const kbSources = storedStep({
 const t = (key: string): string =>
   key
     .split('.')
-    .reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], de.chat) as string
+    .reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], chatCopy.messages.de) as string
 
 describe('the fan-out is the model, grouped by document', () => {
   test('several pages of one document are one card with a Treffer count', () => {

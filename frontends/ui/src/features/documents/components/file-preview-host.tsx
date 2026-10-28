@@ -14,6 +14,7 @@ import { usePathname } from 'next/navigation'
 import { usePanelRef } from 'react-resizable-panels'
 import { AlertCircle, Download, FileText, Maximize2, PanelRight, X } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { cn } from '@/lib/utils'
@@ -56,7 +57,7 @@ export function FilePreviewHost({
 }: {
   presentation?: 'split'
 } = {}): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const pathname = usePathname()
   const isMobile = useIsMobile()
   const file = useFilePreviewStore((state) => state.file)
@@ -480,7 +481,7 @@ function FilePreviewSplit({
   split: boolean
   children: ReactNode
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const peekWidth = useFilePreviewStore((state) => state.peekWidth)
   const setPeekWidth = useFilePreviewStore((state) => state.setPeekWidth)
   const restorePeekWidth = useFilePreviewStore((state) => state.restorePeekWidth)
@@ -714,7 +715,7 @@ function PeekToolbar({
   onExpand: () => void
   onHide: () => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const actions = useDocumentActions({ document: file, scope })
   const facts = useFileFacts(file)
   return (

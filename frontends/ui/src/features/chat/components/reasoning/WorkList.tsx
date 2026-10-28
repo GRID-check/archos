@@ -45,6 +45,7 @@ import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { PagePlaceDialog } from '@/features/knowledge/components/page-place-dialog'
 import type { PagePlace } from '@/features/knowledge/lib/page-place'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import type { ActionVerb, StoredAction } from '@/lib/conversations/message-provenance'
 import { lookStepGroups } from '../../lib/look-steps'
@@ -173,7 +174,7 @@ export const WorkRowView: FC<{
   linking?: RowLinking
   eager?: boolean
 }> = ({ row, compact = false, linking, eager }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [open, setOpen] = useState(false)
   const { action } = row
   const Icon = VERB_ICONS[action.verb]
@@ -326,7 +327,7 @@ export const RoundCalls: FC<{
    */
   ruled?: boolean
 }> = ({ round, compact, linking, eager, ruled = true }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [showMore, setShowMore] = useState(false)
   const strays = useMemo(() => lookStepGroups(round.strayLooks), [round.strayLooks])
   const rows = showMore ? [...round.rows, ...round.more] : round.rows

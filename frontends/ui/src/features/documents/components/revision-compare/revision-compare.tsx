@@ -51,6 +51,7 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useRevisionVisualChanges } from '../../hooks/use-revision-visual-changes'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { ChangeList } from './change-list'
 import { StageBar, SwatchLabel } from './compare-atoms'
@@ -121,7 +122,7 @@ export function RevisionCompare({
   initialMode,
   onOpenTextCompare,
 }: RevisionCompareProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const stacked = useIsMobile()
   const wide = useMediaQuery(WIDE_QUERY)
   const phone = useMediaQuery(PHONE_QUERY)

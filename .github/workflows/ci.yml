@@ -818,7 +818,7 @@ jobs:
       # credentials and run in deploy.yml.
       - run: task infra:types
       # The collector build the image digest pins (`collectorImage` in
-      # deploy/pulumi/src/config.ts): `collector-validate.spec.ts` runs every
+      # deploy/pulumi/src/config/observability.ts): `collector-validate.spec.ts` runs every
       # rendered config through its `validate`, which is what refuses an
       # unknown component or key before the collector would at start. Bump the
       # version and checksum together with that digest.

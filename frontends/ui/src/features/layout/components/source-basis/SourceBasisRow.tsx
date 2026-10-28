@@ -28,6 +28,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle }
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { iconForTint } from '../SourceSignalChip'
 import type { SourceBasisEntry } from './source-basis-model'
 
@@ -39,7 +40,7 @@ export interface SourceBasisRowProps {
 }
 
 export const SourceBasisRow: FC<SourceBasisRowProps> = ({ entry, isBusy = false, onToggle }) => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const Icon = iconForTint(entry.signal)
   const isSwitchable = entry.state === 'on' || entry.state === 'off'
 

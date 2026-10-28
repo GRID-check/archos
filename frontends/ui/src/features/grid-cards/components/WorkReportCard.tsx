@@ -21,6 +21,7 @@
 import type { FC } from 'react'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { AnswerMetaWorkItem } from '@/lib/conversations/message-answer-meta'
 
 interface WorkReportCardProps {
@@ -34,7 +35,7 @@ interface WorkReportCardProps {
 const ORDER = ['proposed', 'blocked', 'next', 'done'] as const
 
 const WorkLine: FC<{ item: AnswerMetaWorkItem }> = ({ item }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const meta = [
     item.who ? t('cards.workReport.who', { who: item.who }) : null,
     item.due ? t('cards.workReport.due', { due: item.due }) : null,
@@ -48,7 +49,7 @@ const WorkLine: FC<{ item: AnswerMetaWorkItem }> = ({ item }) => {
 }
 
 export const WorkReportCard: FC<WorkReportCardProps> = (props) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const sections = ORDER.map((section) => ({ section, items: (props[section] ?? []).filter((item) => item?.text) })).filter(
     ({ items }) => items.length > 0
   )

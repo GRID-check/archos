@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { StatusScreen } from '@/components/brand/status-screen'
 import { useTranslations } from '@/i18n'
+import { errorsCopy } from '@/i18n/namespaces/errors'
 import { capturePosthogException } from '@/lib/analytics/posthog'
 
 /**
@@ -20,7 +21,7 @@ export default function RouteError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  const t = useTranslations('errors')
+  const t = useTranslations(errorsCopy)
 
   // Classified by message, because this is a client boundary: a server-thrown
   // `ApiError` crosses the RSC boundary as a plain `Error`, so the typed check
