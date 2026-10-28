@@ -4,7 +4,7 @@
  * The estate tree's SQL against a REAL Postgres, through the restricted runtime
  * role (`task db:test:rls`):
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     bunx vitest run src/lib/estate-tree/repository.integration.spec.ts
  *
  * Under the reach a conversation's shared audience gets (`screenedOnly`, the

@@ -15,7 +15,7 @@
 #   esc env init matthiasbigl/grid-oib/dev
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:kubeconfig            "$(cat /path/to/kubeconfig)" --secret
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:pgAppPassword         "$(openssl rand -base64 24)" --secret
-#   # Password for the least-privilege `grid_app_rw` runtime role (ADR-0041).
+#   # Password for the least-privilege `app_rw` runtime role (ADR-0041).
 #   # Required, no fallback — a stack without it fails at `pulumi preview`:
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:pgRuntimePassword     "$(openssl rand -base64 32)" --secret
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:seaweedfsSecretKey    "$(openssl rand -base64 24)" --secret
@@ -67,7 +67,7 @@ config:
   # ── Postgres ──
   grid-oib:pgInstances: "1"
   grid-oib:pgStorageSize: 10Gi
-  # Password for `grid_app_rw`, the least-privilege RLS role (ADR-0041).
+  # Password for `app_rw`, the least-privilege RLS role (ADR-0041).
   # Distinct from pgAppPassword — see src/config/postgres.ts (`runtimePassword`).
   grid-oib:pgRuntimePassword:
     secure: AAABAP+0FzCMfjSbTI4yV5tfwQm7hUmPVKhdCgc0z5GaOc37WV51A2FHivbTrBWNpLHmMg4AsX4=

@@ -27,7 +27,7 @@ their own namespaces.
 | KEDA (`keda` namespace) | Helm release, chart pinned to the release the plan's CRDs are validated against | 1 operator | — | n/a; what it may read and reach is §6.3d |
 | `purger` | Deployment | 1 | — | n/a (SKIP LOCKED-safe) |
 | `skill-scheduler` | Deployment (always; fires every due schedule — the BFF skips one whose organization lacks the `skills` flag — and drives the run reconciler) | 1 | — | n/a (DB-claimed ticks) |
-| `postgres` (`jobs`, `checkpoints`, `grid_app`) | CloudNativePG `Cluster` | 1 (→3 HA) | RWO PVC | Add replicas |
+| `postgres` (`jobs`, `checkpoints`, `app`) | CloudNativePG `Cluster` | 1 (→3 HA) | RWO PVC | Add replicas |
 | `dragonfly` (Redis-proto cache) | Deployment | 1 | — (cache) | — |
 | `gotenberg` (office → PDF, ADR-0070; required to index Word, presentation, `.xls` and `.ods` files, ADR-0071; `gotenbergEnabled`, default on) | Deployment | `gotenbergReplicas` (sized to the `bff-jobs` pool's conversion ceiling, prod 2; §6.3c) | — | n/a (stateless. A conversion it drops fails that ingest retryably, so a rollout drains for up to 120s) |
 | `geocoder` (Photon, the project dialog's address search, ADR-0120; `geocoderEnabled`, default off) | StatefulSet | 1 | RWO PVC `/data` (the jar and the Austrian index, a download), `Retain` | n/a (the frontend fails open to a plain text field while it restarts) |
@@ -66,21 +66,21 @@ Internet ──▶ Envoy Gateway ──┬─▶ app.<domain> (HTTPRoute) ──
 
 ## Row-level security roles (ADR-0041)
 
-The `grid_app` database enforces tenant isolation in Postgres, and the app tier
-connects as `grid_app_rw` — DML only, no DDL, and subject to every policy.
+The `app` database enforces tenant isolation in Postgres, and the app tier
+connects as `app_rw` — DML only, no DDL, and subject to every policy.
 
 Two credentials, and they are not interchangeable:
 
 | Role | Used by | Can do |
 |------|---------|--------|
 | `aiq` (the application user, `pgAppUser`) | the migration Job only | owns the schema; DDL and backfills. Row-level security does **not** apply to a table's owner — that is what makes a backfill touch rows instead of silently touching none. |
-| `grid_app_rw` | every serving container: frontend, purger, scheduler | DML only. No DDL, no `CREATEROLE`, no `BYPASSRLS`, and subject to every policy. |
+| `app_rw` | every serving container: frontend, purger, scheduler | DML only. No DDL, no `CREATEROLE`, no `BYPASSRLS`, and subject to every policy. |
 
 The three roles are declared on the CloudNativePG `Cluster` under
 `spec.managed.roles`, not created by a migration. That is not a preference:
-creating `grid_app_platform` requires the creator to hold `BYPASSRLS`, which
+creating `app_platform` requires the creator to hold `BYPASSRLS`, which
 neither credential above has. The operator reconciles them as superuser on every
-pass, including `grid_app_rw`'s password from the `pg-runtime-credentials`
+pass, including `app_rw`'s password from the `pg-runtime-credentials`
 Secret.
 
 That password comes from Pulumi config `pgRuntimePassword`, which is **required
@@ -93,7 +93,7 @@ owner is exempt from every policy. Set it per stack:
 pulumi config set --secret pgRuntimePassword "$(openssl rand -base64 32)"
 ```
 
-A fourth login, `grid_keda_scaler`, is declared the same way and is not an
+A fourth login, `keda_scaler`, is declared the same way and is not an
 application role: it is what KEDA's `postgresql` scaler counts the queue tables
 with, SELECT on the `status` column of three tables and nothing else, with no
 `BYPASSRLS` (§6.3d). Its
@@ -642,7 +642,7 @@ metadata dump and the object copy lands in neither.
 
    ```shell
    # Source: every bucket the ledger records, not just grid-documents.
-   for b in $(psql -At -d grid_app -c \
+   for b in $(psql -At -d `app` -c \
      "SELECT DISTINCT coalesce(storage_bucket, 'grid-documents') FROM documents"); do
      aws --endpoint-url http://seaweedfs:8333 s3api list-objects-v2 --bucket "$b" \
        --query 'Contents[].[Key,Size]' --output text | sed "s|^|$b/|"
@@ -730,7 +730,7 @@ metadata dump and the object copy lands in neither.
    ledger is what knows (ADR-0043):
 
    ```shell
-   BUCKETS=$(psql -At -d grid_app -c \
+   BUCKETS=$(psql -At -d `app` -c \
      "SELECT DISTINCT coalesce(storage_bucket, 'grid-documents') FROM documents")
 
    for b in $BUCKETS; do
@@ -837,9 +837,9 @@ carries.
 ## 5. Postgres (CloudNativePG)
 
 A single `Cluster` hosts all three logical databases. `jobs` is the
-bootstrapped app DB; `checkpoints` and `grid_app` are created (owned by the
+bootstrapped app DB; `checkpoints` and `app` are created (owned by the
 `aiq` role) at bootstrap via `postInitSQL`. An idempotent Job creates the job +
-checkpoint tables; the frontend's `drizzle-kit migrate` Job owns `grid_app`'s
+checkpoint tables; the frontend's `drizzle-kit migrate` Job owns `app`'s
 schema.
 
 - **HA:** `grid-oib:pgInstances: 3` (the prod default) runs one primary + two
@@ -1030,7 +1030,7 @@ schema.
      present in the ledger but absent from the mirror is a gap you want to know
      about before declaring the restore done:
      ```shell
-     psql -At -d grid_app -c \
+     psql -At -d `app` -c \
        "SELECT DISTINCT coalesce(storage_bucket, 'grid-documents') FROM documents" \
        | sort > /tmp/ledger.buckets
      comm -23 /tmp/ledger.buckets <(echo "$BUCKETS")
@@ -1273,7 +1273,7 @@ died half way left no record of which half. Both are now jobs:
   TriggerAuthentication, on the app database) counts the rows whose status is
   not `dead` and asks for ceil(jobs / `bffJobsConcurrency`) replicas between
   `bffJobsMinReplicas` and `bffJobsMaxReplicas` (prod 1 to 4, dev 0 to 2).
-  Out at once, in a pod a minute. The scaler connects as `grid_keda_scaler`, a
+  Out at once, in a pod a minute. The scaler connects as `keda_scaler`, a
   read-only login that sees every lane of the row-level secured queue through a
   policy of its own (§6.3d).
 
@@ -1349,13 +1349,13 @@ parts that are not about their own signal, and `keda-scaling.spec.ts` holds it.
   floor is 1 (prod). Every step from N down to 1 is the HPA's `scaleDown`: a pod a
   minute after a five-minute stabilisation window, because each pod that leaves
   drains for up to its tier's budget.
-- **The scaler cannot write.** KEDA reads the queues as `grid_keda_scaler`
+- **The scaler cannot write.** KEDA reads the queues as `keda_scaler`
   (declared with the other roles on the Cluster, `data/postgres.ts`), a login with
   nothing but `LOGIN` whose rights are SELECT on the `status` column (the one its
   `COUNT(*) … WHERE status NOT IN ('dead', 'cancelled')` reads, so a leaked DSN cannot read a
   payload) of `ingest_job_queue` and `research_job_queue` in `jobs` and of
-  `bff_job_queue` in `grid_app`. That last table is secured per organisation, so the role reads it through a policy of
-  its own (`FOR SELECT TO grid_keda_scaler`), not through `BYPASSRLS`. Its password
+  `bff_job_queue` in `app`. That last table is secured per organisation, so the role reads it through a policy of
+  its own (`FOR SELECT TO keda_scaler`), not through `BYPASSRLS`. Its password
   is `pgScalerPassword`, or an HMAC of `pgAppPassword` when unset, and its DSNs sit
   in the `grid-keda-scaler` Secret, which no pod references: rotating it restarts
   nothing. Before this, the operator held the owner's DSN for both databases.
@@ -1901,9 +1901,9 @@ Three things are true of this whole table and are easy to miss:
 | DB-claimed job payloads | **Yes** | AES-256-GCM under `GRID_JOB_PAYLOAD_KEK`; they carry the user auth token. The deploy refuses to run without the KEK unless `allowPlaintextJobPayloads` opts out. |
 | SeaweedFS chunk data | **Yes — and what it protects depends on the topology** | `-filer.encryptVolumeData` (`seaweedfsEncryptVolumeData`, default **on**). Per-chunk AES-256-GCM, **new writes only** — objects written before it was enabled stay plaintext, and there is no bulk-encrypt tool. The per-chunk keys live in the **filer metadata store**, so where that store is decides what the feature is worth. Under `seaweedfsTopology: single` (and under `split` with `seaweedfsFilerStore: leveldb`) the store sits on a PVC in the same cluster — on `single`, the *same* PVC as the volume data — so anyone who obtains the volume obtains the keys beside it: this is crypto-erasure, not disk-theft protection. Under `split` with the Postgres store the keys move to a separate database on separate disks reachable with a different credential, which is what makes it at-rest protection. `pulumi up` warns in the configurations where it is not. ADR-0042, ADR-0043. |
 | Postgres data files (tables, indexes, WAL on disk) | **No** | Postgres has no native TDE. Confidentiality at rest here is entirely the PVC's (see below). |
-| **Postgres PITR archive** (`pgBackupsEnabled`) | **No by default** | The archive is a byte-for-byte copy of all three databases — every conversation, every LangGraph checkpoint, the whole `grid_app` schema, WAL included. `pgBackupEncryption` (`AES256` \| `aws:kms`) sets CloudNativePG's `barmanObjectStore.{wal,data}.encryption`, which becomes an SSE request header. **It is refused when the destination is the in-cluster SeaweedFS**, because SeaweedFS has no SSE at all on the pinned 3.80 image (SSE-S3/KMS/C first appear in 3.97, and this program configures no KMS for them on any image): it would answer `200` and store plaintext while the Cluster spec read `encryption: AES256`. So the archive is encrypted **only** when it goes to an external S3 destination that documents SSE support *and* `pgBackupEncryption` is set. With the default in-cluster destination it is as protected as the SeaweedFS volumes under it, and no more. `pulumi up` warns on every deploy in that state. |
+| **Postgres PITR archive** (`pgBackupsEnabled`) | **No by default** | The archive is a byte-for-byte copy of all three databases — every conversation, every LangGraph checkpoint, the whole `app` schema, WAL included. `pgBackupEncryption` (`AES256` \| `aws:kms`) sets CloudNativePG's `barmanObjectStore.{wal,data}.encryption`, which becomes an SSE request header. **It is refused when the destination is the in-cluster SeaweedFS**, because SeaweedFS has no SSE at all on the pinned 3.80 image (SSE-S3/KMS/C first appear in 3.97, and this program configures no KMS for them on any image): it would answer `200` and store plaintext while the Cluster spec read `encryption: AES256`. So the archive is encrypted **only** when it goes to an external S3 destination that documents SSE support *and* `pgBackupEncryption` is set. With the default in-cluster destination it is as protected as the SeaweedFS volumes under it, and no more. `pulumi up` warns on every deploy in that state. |
 | SeaweedFS offsite documents backup (`seaweedfsBackupEnabled`) | **Destination's problem** | The mirror is pushed over `https://` (enforced at config load), so it is encrypted in transit. Whether the target bucket encrypts at rest is a property of that bucket, which this program does not configure. |
-| **SeaweedFS filer namespace** (`split` + `seaweedfsFilerStore: postgres`) | **No — and it is the key store** | The `seaweedfs_filer` database holds a decryption key for every encrypted chunk in the object store, in ordinary Postgres rows with no application-level encryption. Confidentiality at rest is the PVC's, exactly as for the three application databases. It is separated by *credential* rather than by encryption: its own role, its own database, `CONNECT` revoked from `PUBLIC`, so the application logins cannot reach it and it cannot reach `grid_app`. Its inclusion in the PITR archive is the reason the `pgBackupEncryption` row above matters more than it used to. ADR-0043. |
+| **SeaweedFS filer namespace** (`split` + `seaweedfsFilerStore: postgres`) | **No — and it is the key store** | The `seaweedfs_filer` database holds a decryption key for every encrypted chunk in the object store, in ordinary Postgres rows with no application-level encryption. Confidentiality at rest is the PVC's, exactly as for the three application databases. It is separated by *credential* rather than by encryption: its own role, its own database, `CONNECT` revoked from `PUBLIC`, so the application logins cannot reach it and it cannot reach `app`. Its inclusion in the PITR archive is the reason the `pgBackupEncryption` row above matters more than it used to. ADR-0043. |
 | Qdrant vector store | **No** | Persisted on a PVC per peer, no application-level encryption. It holds every office's chunk text beside the embeddings, so treat it as sensitive as the documents. Its shard snapshots in the `qdrant-snapshots` bucket inherit SeaweedFS's chunk encryption. |
 | Retained Chroma volume (`data-chroma-0`, until deleted after the migration) | **No** | The retired store's PVC, kept unmounted after the release that removed Chroma: the same chunk text and embeddings, until the runbook's last step deletes it. |
 | Kubernetes Secrets in etcd | **Unknown to this repo — operator action** | Every credential above (DSNs, S3 keys, the KEKs themselves, the Dragonfly passwords) is a Kubernetes Secret, which is **base64, not encryption**. Encrypting them at rest needs an `EncryptionConfiguration` on the API server, which is a control-plane file on a managed cluster and is not reachable from this program. **Ask the provider whether etcd encryption-at-rest is enabled**, and treat the answer as the ceiling on every "encrypted" row in this table — the KEKs are stored there. |

@@ -1,6 +1,6 @@
 /**
  * INTERNAL service endpoint — the backend's fail-soft persist path for a
- * finished assistant turn whose client dropped mid-turn. Keeps grid_app
+ * finished assistant turn whose client dropped mid-turn. Keeps `app`
  * single-writer: the Python backend never touches the database; it POSTs here
  * over the compose network, authenticated by the shared service token
  * (GRID_INTERNAL_API_TOKEN on both services) instead of replaying the browser's

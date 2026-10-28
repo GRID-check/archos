@@ -12,6 +12,7 @@
 set -euo pipefail
 
 UI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../frontends/ui" && pwd)"
+REPO_ROOT="$(cd "$UI_DIR/../.." && pwd)"
 # A port nobody holds, unless the caller names one. Parallel runs in one
 # container (two agents, two worktrees) each get their own: a fixed default made
 # the second die at `pg_ctl: could not start server` before any migration ran.
@@ -115,6 +116,28 @@ node -e '
   }
 done
 
+# The deploy renames the row-level-security roles once the migrations have run
+# (ADR-0145 row 10d): the migrations written before the rename grant to their
+# old names, which is why the chain above ran under those. The app steps up to
+# the NEW platform name, so the suites run after the same rename the deploy
+# does, with the deploy's own script. The per-migration checks further down
+# replay old migrations into fresh databases, so they get the old names back.
+RLS_RENAMES="grid_app_owner:app_owner grid_app_platform:app_platform grid_app_rw:app_rw"
+OWNER=grid_app_owner  # the schema owner's current name, for the helpers below
+rename_rls_roles() {
+  PATH="$PGBIN:$PATH" PGHOST="$WORKDIR" PGPORT="$PORT" PGUSER=postgres RUNTIME_PASSWORD="$RUNTIME_PASSWORD" \
+    sh "$REPO_ROOT/deploy/postgres/rename-legacy-names.sh" after-migrate >/dev/null
+  OWNER=app_owner
+}
+restore_rls_role_names() {
+  local pair
+  for pair in $RLS_RENAMES; do
+    $PSQL -q -v ON_ERROR_STOP=1 -c "ALTER ROLE ${pair#*:} RENAME TO ${pair%%:*};"
+  done
+  $PSQL -q -v ON_ERROR_STOP=1 -c "ALTER ROLE grid_app_rw PASSWORD '$RUNTIME_PASSWORD';"
+  OWNER=grid_app_owner
+}
+
 # `--only <spec…>`: the migrated cluster and the restricted role, for the specs
 # named and nothing else. For one suite while you work on it, and for the
 # measurements that are not part of the gate (`task fe:search:latency`). The
@@ -122,9 +145,10 @@ done
 # the runtime role may not, and production's statistics are autovacuum's.
 if [ "${1:-}" = "--only" ]; then
   shift
-  echo "==> running $* as grid_app_rw"
-  GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
-  GRID_TEST_OWNER_DATABASE_URL="postgres://grid_app_owner@127.0.0.1:$PORT/grid_app" \
+  rename_rls_roles
+  echo "==> running $* as app_rw"
+  GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+  GRID_TEST_OWNER_DATABASE_URL="postgres://app_owner@127.0.0.1:$PORT/grid_app" \
     npx vitest run "$@"
   exit 0
 fi
@@ -136,8 +160,10 @@ fi
 # cosine query — and a mocked drizzle handle cannot disagree with the fixture
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
-echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers and workspace search suites as grid_app_rw"
-GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+echo "==> renaming the row-level-security roles as the deploy does, after the migrations"
+rename_rls_roles
+echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers and workspace search suites as app_rw"
+GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
     src/lib/bim/query.integration.spec.ts \
@@ -200,13 +226,13 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
 # subfolder, and a Papierkorb delete queues its purge takeover and a refused
 # one its restore. The job-queue suites claim from the whole table and expect
 # only their own seeds, so they start from an empty one.
-$MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
+$PSQL -d grid_app -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
 
 # The job-queue suites claim from ONE table, whichever lane a job is in, so run
 # in parallel they claim each other's seeded jobs. One file at a time. The
 # scheduler's due-scan is the same shape over task_definitions, every tenant's.
-echo "==> running the job-queue and scheduler-claim suites one file at a time as grid_app_rw"
-GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+echo "==> running the job-queue and scheduler-claim suites one file at a time as app_rw"
+GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
     src/lib/jobs-queue/queue.integration.spec.ts \
     src/lib/jobs-queue/repository.integration.spec.ts \
@@ -220,6 +246,9 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
 # script, and they are ~60% of this script's time. CI's Plan sets
 # GRID_RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
 # .github/filters.yml); unset, as locally, they run.
+echo "==> the old role names again, for the migrations replayed below"
+restore_rls_role_names
+
 if [ "${GRID_RLS_MIGRATION_CHECKS:-1}" = "0" ]; then
   echo "==> per-migration backfill and down checks skipped: no migration and not this script changed"
   exit 0
@@ -301,15 +330,15 @@ migrate_before() {
 # ---------------------------------------------------------------------------
 # Run a migration file (or its down) against <db>, failing loudly.
 apply_in() {
-  $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -v ON_ERROR_STOP=1 -q -f "drizzle/$2" >/dev/null || {
+  $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q -f "drizzle/$2" >/dev/null || {
     echo "MIGRATION $2 FAILED on $1 — re-run without -q to see the error" >&2
     exit 1
   }
 }
-sql_in() { $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -v ON_ERROR_STOP=1 -q >/dev/null; }
+sql_in() { $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q >/dev/null; }
 check_in() {
   local got
-  got=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -tAc "$2")
+  got=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -tAc "$2")
   if [ "$got" != "$3" ]; then
     echo "MIGRATION ASSERTION FAILED on $1: $4" >&2
     echo "  query: $2" >&2
@@ -321,7 +350,7 @@ check_in() {
 # Run SQL that must be REFUSED on <db>, and check the refusal names the rule ($3).
 refused_in() {
   local out
-  if out=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -v ON_ERROR_STOP=1 -q 2>&1 <<<"$2"); then
+  if out=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q 2>&1 <<<"$2"); then
     echo "MIGRATION ASSERTION FAILED on $1: $4 (the statement was accepted)" >&2
     exit 1
   fi
@@ -2396,3 +2425,49 @@ check_in functions_0190 "SELECT count(*) FROM pg_proc WHERE pronamespace = 'publ
 apply_in functions_0190 0190_brand_free_functions.sql
 check_in functions_0190 "$SHAPE_0190" "$AFTER_0190" "0190 re-applies after its down to the same functions"
 echo "==> 0190 function names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# 0191: the policies lose `grid_`, and nothing the database runs names a role by
+# its old name. On a database migrated to just before it, with a document access
+# log row: the up renames every `grid_` policy (one `tenant_isolation` per secured
+# table, the write guards), a second run changes nothing, and the down puts the
+# old names back. Then the deploy's rename of the roles, after which
+# `secure_table` grants to `app_rw` and the access log's guard still lets the
+# platform role delete, now under its new name. The old names come back at the
+# end, for nothing after this, as for the suites above.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0191 policy names and their down migration on policies_0191"
+migrate_before policies_0191 0191_brand_free_policies
+OLD_POLICIES_0191="SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND left(policyname, 5) = 'grid_'"
+SHAPE_0191="SELECT string_agg(tablename || ':' || policyname, ',' ORDER BY tablename, policyname) FROM pg_policies WHERE schemaname = 'public'"
+BEFORE_0191=$($PSQL -d policies_0191 -tAc "SELECT count(*) FROM pg_policies WHERE schemaname = 'public'")
+apply_in policies_0191 0191_brand_free_policies.sql
+check_in policies_0191 "$OLD_POLICIES_0191" "0" "0191 leaves no policy under a grid_ name"
+check_in policies_0191 "SELECT count(*) FROM pg_policies WHERE schemaname = 'public'" "$BEFORE_0191" "0191 renames policies and adds none"
+check_in policies_0191 "SELECT count(*) FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relrowsecurity AND (SELECT count(*) FROM pg_policies p WHERE p.tablename = c.relname AND p.policyname = 'tenant_isolation') <> 1" "0" "0191: every table under row-level security has exactly one tenant_isolation policy"
+check_in policies_0191 "SELECT count(*) FROM pg_policies WHERE tablename = 'skill_categories' AND policyname LIKE 'tenant_write_guard%'" "3" "0191 renames the restrictive write guards"
+check_in policies_0191 "SELECT count(*) FROM pg_proc WHERE proname IN ('document_access_log_guard', 'document_quarantine_decisions_guard') AND prosrc LIKE '%rls_role(''platform'')%'" "2" "0191 has the delete guards ask rls_role()"
+AFTER_0191=$($PSQL -d policies_0191 -tAc "$SHAPE_0191")
+apply_in policies_0191 0191_brand_free_policies.sql
+check_in policies_0191 "$SHAPE_0191" "$AFTER_0191" "0191 re-applied changes nothing"
+apply_in policies_0191 0191_brand_free_policies.down.sql
+check_in policies_0191 "SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND policyname = 'tenant_isolation'" "0" "0191 down puts the grid_ policy names back"
+check_in policies_0191 "SELECT count(*) FROM pg_proc WHERE proname = 'rls_role'" "0" "0191 down drops rls_role"
+apply_in policies_0191 0191_brand_free_policies.sql
+check_in policies_0191 "$SHAPE_0191" "$AFTER_0191" "0191 re-applies after its down"
+
+echo "==> renaming the roles as the deploy does, then securing a table and deleting a log row as the platform role"
+sql_in policies_0191 <<<"INSERT INTO document_access_log (organization_id, user_id, kind, scope, document_id, document_name) VALUES ('org_0191', 'user_1', 'download', 'session', gen_random_uuid(), 'a.pdf');"
+rename_rls_roles
+check_in policies_0191 "SELECT rls_role('rw') || ',' || rls_role('platform')" "app_rw,app_platform" "after the rename rls_role() answers the new names"
+sql_in policies_0191 <<<"CREATE TABLE t_0191 (organization_id text); SELECT secure_table('t_0191', 'organization_id = current_org()');"
+check_in policies_0191 "SELECT has_table_privilege('app_rw', 't_0191', 'INSERT')::text || ',' || (SELECT count(*) FROM pg_policies WHERE tablename = 't_0191' AND policyname = 'tenant_isolation')" "true,1" "secure_table grants to app_rw and installs one tenant_isolation after the rename"
+RW191=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U app_rw -d policies_0191 -qtA -v ON_ERROR_STOP=1 \
+  -c "BEGIN" -c "SET LOCAL ROLE app_platform" -c "DELETE FROM document_access_log" -c "SELECT current_user" -c "COMMIT")
+check_in policies_0191 "SELECT count(*) FROM document_access_log" "0" "the platform role deleted the log row under its new name"
+if [ "$RW191" != "app_platform" ]; then
+  echo "MIGRATION ASSERTION FAILED on policies_0191: the platform role under its new name was refused by the access log's guard (got: $RW191)" >&2
+  exit 1
+fi
+restore_rls_role_names
+echo "==> 0191 policy names, the role rename and down migration verified"

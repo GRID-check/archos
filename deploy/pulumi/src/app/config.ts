@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig } from '../config'
 import { APP_DEFAULTS, KEDA_SCALER_ROLE, LANGFUSE, PORT, QDRANT } from "../constants";
-import { CHECKPOINTS_DB, JOBS_DB, type Postgres } from "../data/postgres";
+import { APP_DB, CHECKPOINTS_DB, JOBS_DB, RUNTIME_ROLE, type Postgres } from "../data/postgres";
 import { FRONTEND_DRAIN_SECONDS, secretChecksum } from "../platform/rollout";
 import { frontendLangfuseEnv, LANGFUSE_SECRETS_NAME, LANGFUSE_SECRET_KEYS } from "../platform/langfuse";
 import { logicalName, objectName } from "../names";
@@ -91,7 +91,7 @@ export const SCALER_SECRET_NAME = objectName("kedaScalerSecret"); // pragma: all
 
 /**
  * The Secret key of the DSN KEDA reads the Python claim queues (`jobs`)
- * through, and the one for the BFF queue (`grid_app`).
+ * through, and the one for the BFF queue (`app`).
  */
 export const JOBS_QUEUE_DSN_KEY = "KEDA_JOBS_QUEUE_DB_URL";
 export const BFF_QUEUE_DSN_KEY = "KEDA_BFF_QUEUE_DB_URL";
@@ -130,7 +130,7 @@ export function buildScalerSecret(w: AppWiring): k8s.core.v1.Secret {
       metadata: { name: SCALER_SECRET_NAME, namespace: w.namespace },
       stringData: {
         [JOBS_QUEUE_DSN_KEY]: dsn(JOBS_DB),
-        ...(w.cfg.bffJobs.enabled ? { [BFF_QUEUE_DSN_KEY]: dsn("grid_app") } : {}),
+        ...(w.cfg.bffJobs.enabled ? { [BFF_QUEUE_DSN_KEY]: dsn(APP_DB) } : {}),
       },
     },
     { provider: w.provider },
@@ -198,11 +198,11 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     // applies to it (ADR-0041). Migrations get the owner credential below —
     // RLS does not apply to a table's owner, so DDL and backfills still work.
     GRID_APP_DATABASE_URL: w.dsn({
-      db: "grid_app",
+      db: APP_DB,
       via: "pooler",
-      as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
+      as: { user: RUNTIME_ROLE, password: cfg.postgres.runtimePassword },
     }),
-    GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
+    GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: APP_DB, via: "direct" }),
     // The read-write key (ADR-0115): the ingest tier writes, and the backend
     // tiers share one env.
     GRID_QDRANT_API_KEY: cfg.qdrant.apiKey,

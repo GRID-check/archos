@@ -166,7 +166,7 @@ describe('purgeProject', () => {
     expect(body.collection_name).toBe('proj_fallback')
   })
 
-  it('propagates backend failure without touching grid_app rows', async () => {
+  it('propagates backend failure without touching `app` rows', async () => {
     const { tx, executed } = makeTx({
       projectRow: { id: 'p1', collection_name: 'proj_abc' },
       conversationRows: [],
@@ -192,7 +192,7 @@ describe('purgeProject', () => {
     })
 
     // No destructive step ran: no backend call, no SeaweedFS delete, no WorkOS
-    // delete, no grid_app row deletes.
+    // delete, no `app` row deletes.
     expect(deps.fetchImpl).not.toHaveBeenCalled()
     expect(deps.deleteStoragePrefix).not.toHaveBeenCalled()
     expect(deps.workos.authorization.deleteResourceByExternalId).not.toHaveBeenCalled()
@@ -412,7 +412,7 @@ describe('session attachments', () => {
       (call) => JSON.parse(call[1].body).collection_name,
     )
     expect(collections).toEqual(['proj_abc', 's_c1', 's_c2'])
-    // Every backend call happened before the first grid_app row delete: the
+    // Every backend call happened before the first `app` row delete: the
     // rows are what name these collections, so losing them first would leave
     // nothing to retry from.
     expect(executed.filter((q) => q.text.startsWith('DELETE'))).not.toHaveLength(0)

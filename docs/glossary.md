@@ -113,7 +113,7 @@ replaced `agent_capability_missing`.
 
 | Term | Meaning | Defined in |
 |---|---|---|
-| BFF | The Next.js server in `frontends/ui` (API routes plus the `server.js` WebSocket gateway). It owns identity, authorization, tenancy and the `grid_app` database; the Python agent is stateless and trusts what the BFF sends it | [`frontends/ui/AGENTS.md`](../frontends/ui/AGENTS.md) |
+| BFF | The Next.js server in `frontends/ui` (API routes plus the `server.js` WebSocket gateway). It owns identity, authorization, tenancy and the `app` database; the Python agent is stateless and trusts what the BFF sends it | [`frontends/ui/AGENTS.md`](../frontends/ui/AGENTS.md) |
 | NAT | NVIDIA NeMo Agent Toolkit, the framework the Python agent runs on. Tools register with `@register_function`, are discovered through a `nat.plugins` entry point, and agents are `_type` entries in `configs/*.yml` | [`src/aiq_agent/AGENTS.md`](../src/aiq_agent/AGENTS.md) |
 | Signed request context | The `X-Grid-Request-Context` envelope the BFF mints for every agent request, HMAC-signed, carrying the scope, project context and memory the agent may use | [`frontends/ui/src/lib/request-context.ts`](../frontends/ui/src/lib/request-context.ts) |
 | Workspace primitive, typed client | A workspace capability exposed as one HTTP API with a typed client, which the UI, the agent's tools and tasks all call as equal clients (ADR-0055) | [`docs/adr/0055-api-first-workspace-primitives.md`](adr/0055-api-first-workspace-primitives.md) |

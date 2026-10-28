@@ -26,7 +26,7 @@ filed, not indexed, not citable, and it does not appear in the Files explorer.
 A draft becomes a document only through the **document lifecycle API**, which a
 person gates — the agent may propose, never publish. The Python tier holds no
 second path to that API and must not grow one: the BFF is the single writer of
-`grid_app` (ADR-0003).
+`app` (ADR-0003).
 
 The card the working directory emits (`document_draft`) reports a file. Once
 `file_draft` has run it also names the project document, and its two controls —

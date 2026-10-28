@@ -99,7 +99,7 @@ describe('contextStatement', () => {
   it('steps a platform scope up first and still sets the statement timeout', () => {
     const batch = contextStatement({ kind: 'platform', reason: 'test' })
 
-    expect(batch).toBe(`SET LOCAL ROLE grid_app_platform; ${TIMEOUT}`)
+    expect(batch).toBe(`SET LOCAL ROLE app_platform; ${TIMEOUT}`)
     expect(batch.startsWith('SET LOCAL ROLE')).toBe(true)
   })
 
@@ -112,7 +112,7 @@ describe('contextStatement', () => {
 
 describe('the BFF client behind a transaction pooler', () => {
   beforeEach(async () => {
-    vi.stubEnv('GRID_APP_DATABASE_URL', 'postgresql://grid_app_rw:pw@grid-pg-pooler-rw:5432/grid_app?sslmode=require')  // pragma: allowlist secret
+    vi.stubEnv('GRID_APP_DATABASE_URL', 'postgresql://app_rw:pw@grid-pg-pooler-rw:5432/app?sslmode=require')  // pragma: allowlist secret
     await closeDb()
     driver.calls.transactions.length = 0
     driver.postgres.mockClear()
@@ -150,7 +150,7 @@ describe('the BFF client behind a transaction pooler', () => {
     await withPlatformAccess('test', () => db.$client.unsafe('select 1', []))
 
     expect(driver.calls.transactions).toEqual([
-      [`SET LOCAL ROLE grid_app_platform; SET LOCAL statement_timeout = '30000'`, 'select 1'],
+      [`SET LOCAL ROLE app_platform; SET LOCAL statement_timeout = '30000'`, 'select 1'],
     ])
   })
 

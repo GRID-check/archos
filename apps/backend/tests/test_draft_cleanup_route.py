@@ -1,6 +1,6 @@
 """``DELETE /v1/drafts/{conversation_id}``: the working directory's cleanup door.
 
-A conversation's drafts are the one thing it owns that live outside ``grid_app``
+A conversation's drafts are the one thing it owns that live outside ``app``
 — in the LangGraph store, under a namespace the BFF cannot reach. So its
 conversation deletion calls this route, and the two properties that matter are
 that it is internal-token only (the maintenance.py pattern) and that it is

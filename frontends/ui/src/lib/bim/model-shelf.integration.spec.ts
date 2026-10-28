@@ -21,7 +21,7 @@
  * against the real migration chain, through the restricted runtime role, like
  * the rest of the BIM SQL suite (ADR-0041, `task db:test:rls`).
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/bim/model-shelf.integration.spec.ts
  */
 

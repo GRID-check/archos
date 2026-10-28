@@ -11,7 +11,7 @@
  * says, so the unit specs pin the statements and this suite runs the races.
  * It runs under `task db:test:rls`, through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/documents/document-versions.integration.spec.ts
  */
 

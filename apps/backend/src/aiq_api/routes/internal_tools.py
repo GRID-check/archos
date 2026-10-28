@@ -22,7 +22,7 @@ would otherwise run with no person and no scope. This tier verifies and forwards
 builds or signs an envelope (ADR-0108).
 
 Only an allowlisted READ runs. A write is a BFF route, because the BFF is the
-single writer of ``grid_app`` (ADR-0003) and a person gates it.
+single writer of ``app`` (ADR-0003) and a person gates it.
 """
 
 from __future__ import annotations

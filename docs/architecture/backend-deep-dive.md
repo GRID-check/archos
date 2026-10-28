@@ -9,7 +9,7 @@
 
 Docker Compose (`deploy/compose/docker-compose.yaml`):
 
-- **postgres** — 3 logical DBs: `jobs`, `checkpoints`, `grid_app`.
+- **postgres** — 3 logical DBs: `jobs`, `checkpoints`, `app`.
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
@@ -1797,7 +1797,7 @@ job, so after a reclaim they are the new owner's resume point.
 **Agent Skills and Jobs (ADR-0046)**: project-level **jobs** — a prompt on a
 timer, with a skill optionally attached — can fire this same async pipeline on
 a cron schedule. A dedicated `skill-scheduler` container claims due `jobs` rows
-in `grid_app` (`FOR UPDATE SKIP LOCKED`) and fires through the BFF's internal
+in `app` (`FOR UPDATE SKIP LOCKED`) and fires through the BFF's internal
 endpoint into `POST /v1/internal/skills/submit` (internal-token-guarded wrapper
 around `submit_agent_job`, so admission control and cost tracking apply
 unchanged). The agent follows the job's `output` (`chat` →
@@ -1947,7 +1947,7 @@ loads and renders it. Which model each role runs on is config:
 The agent can now persist curated findings across turns. Full design:
 `docs/architecture/project-memory-design.md`. Key facts:
 
-- **Single-writer**: the `grid_app` DB has exactly one writer, the Next.js BFF.
+- **Single-writer**: the `app` DB has exactly one writer, the Next.js BFF.
   The backend `remember` tool never touches the DB — it POSTs to the internal
   BFF endpoint `POST /api/internal/memory`
   (`frontends/ui/src/app/api/internal/memory/route.ts`), authenticated by the

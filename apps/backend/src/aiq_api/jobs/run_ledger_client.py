@@ -5,7 +5,7 @@ runner — and STORED where the reader is, on the run's message in the BFF's
 database. This module is the crossing between the two, and it is an HTTP call
 with a typed body rather than a database write for the reason every other
 backend→BFF write in this tier is one: the BFF is the single writer of
-``grid_app`` (ADR-0003), and a workspace primitive is one HTTP API every
+``app`` (ADR-0003), and a workspace primitive is one HTTP API every
 consumer is an equal client of (ADR-0055).
 
 Three rules, and they are the same three ``conversation_output`` keeps.

@@ -1,7 +1,7 @@
 /**
  * INTERNAL service endpoint — the single write path into the `llm_usage_events`
  * ledger. The backend's unified cost tracker
- * (src/aiq_agent/common/cost_tracking.py) POSTs one batch per flush; grid_app
+ * (src/aiq_agent/common/cost_tracking.py) POSTs one batch per flush; `app`
  * stays single-writer. Token-guarded; not user-facing.
  */
 

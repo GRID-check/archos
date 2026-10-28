@@ -42,7 +42,7 @@
  * See ADR-0046 and docs/architecture/agent-skills.md ("Scheduler worker").
  *
  * Environment:
- *   GRID_APP_DATABASE_URL              - grid_app Postgres DSN (required)
+ *   GRID_APP_DATABASE_URL              - `app` Postgres DSN (required)
  *   FRONTEND_INTERNAL_URL              - BFF base URL (default http://frontend:3000)
  *   GRID_INTERNAL_API_TOKEN            - shared token for the internal fire endpoint
  *   GRID_SKILL_SCHEDULER_POLL_MS       - tick interval (default 30000)
