@@ -1550,7 +1550,7 @@ class TaskCreatedCard(CardModel):
 # alternative is four cards that differ in one field and share every line of
 # their chrome, their decision lifecycle and their i18n. The one write-side
 # workspace tool (`tools/files/`) emits this card and NEVER performs the
-# operation: the Python tier holds no path into `grid_app` (ADR-0003), so
+# operation: the Python tier holds no path into `app` (ADR-0003), so
 # accepting it is what executes. With `proposal_id` the server applies the
 # stored proposal in the accepting person's session (ADR-0105); without one the
 # browser runs it through the routes the Files pane uses, in the reader's own

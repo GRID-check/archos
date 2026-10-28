@@ -102,7 +102,7 @@ The CHECKs hold the lifecycle, so no code path can break it:
 `scripts/rls-test-db.sh` refuses each CHECK and each cross-tenant foreign key
 against a real PostgreSQL, applies the down migrations, and re-applies the up
 migrations twice. `src/lib/proposals/repository.integration.spec.ts` runs the
-repository as `grid_app_rw`. The down migration of 0143 is lossy: it deletes the
+repository as `app_rw`. The down migration of 0143 is lossy: it deletes the
 proposals of the two newer kinds, which the older build cannot read (their cards
 fall back to deciding in the browser), and forgets which card made which
 proposal.

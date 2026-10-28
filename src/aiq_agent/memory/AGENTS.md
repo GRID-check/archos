@@ -12,7 +12,7 @@ declares when the stage runs. This package holds only what a memory *is*.
 ## The invariants
 
 **The backend never writes the app database.** Every write goes through the
-token-guarded internal BFF endpoint, so `grid_app` stays single-writer
+token-guarded internal BFF endpoint, so `app` stays single-writer
 (ADR-0003). A new write path is a new call to that endpoint, not a new
 connection.
 

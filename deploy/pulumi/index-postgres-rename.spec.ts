@@ -15,6 +15,7 @@ const JOB = "kubernetes:batch/v1:Job";
 const CLUSTER = "kubernetes:postgresql.cnpg.io/v1:Cluster";
 const STATEFULSET = "kubernetes:apps/v1:StatefulSet";
 const DEPLOYMENT = "kubernetes:apps/v1:Deployment";
+const MIGRATE_JOB = "grid-app-migrate";
 
 const INPUTS = new Map<string, Record<string, unknown>>();
 let graph: DependencyGraph;
@@ -70,6 +71,7 @@ describe("the rename of the AI-Q databases and role", () => {
     expect(env.PGPASSWORD).toBe("grid-pg-superuser");
     expect(env.ROLE_PASSWORD).toBeDefined();
     expect(container.command).toEqual(["sh", "/script/rename-legacy-names.sh"]);
+    expect(env.ENSURE_RLS_ROLES).toBe("1");
   });
 
   it("bootstraps a fresh cluster with the new names", () => {
@@ -77,5 +79,23 @@ describe("the rename of the AI-Q databases and role", () => {
     expect(initdb.database).toBe("jobs");
     expect(initdb.owner).toBe("agent");
     expect(initdb.postInitSQL[0]).toBe("CREATE DATABASE checkpoints OWNER agent");
+    expect(initdb.postInitSQL[1]).toBe("CREATE DATABASE app OWNER agent");
+  });
+
+  it("renames the row-level-security roles after the migrations, ahead of everything that logs in as them", () => {
+    // The migrations written before the rename grant to the old names, so a
+    // fresh cluster migrates with those; the rename comes after (ADR-0145 row 10d).
+    expect(graph.waitsOn(JOB, "pg-rename-rls-roles", JOB, MIGRATE_JOB)).toBe(true);
+    expect(graph.waitsOn(JOB, MIGRATE_JOB, JOB, "pg-rename-legacy-names")).toBe(true);
+    expect(graph.waitsOn(DEPLOYMENT, "frontend", JOB, "pg-rename-rls-roles")).toBe(true);
+    const container = inputs(JOB, "pg-rename-rls-roles").spec.template.spec.containers[0];
+    expect(container.command).toEqual(["sh", "/script/rename-legacy-names.sh", "after-migrate"]);
+  });
+
+  it("leaves no row-level-security role to the operator, which would create the new name beside the old", () => {
+    const managed = (inputs(CLUSTER, "grid-pg").spec.managed.roles as Array<{ name: string }>).map((r) => r.name);
+    for (const name of ["app_rw", "app_platform", "app_owner", "keda_scaler", "grid_app_rw", "grid_app_platform"]) {
+      expect(managed).not.toContain(name);
+    }
   });
 });

@@ -1,7 +1,7 @@
 """The working directory's doors: ``DELETE`` to sweep it, ``GET`` to read it.
 
 A conversation's drafts are the one thing it owns that deleting the
-conversation does not remove. Everything else is a row in ``grid_app`` and goes
+conversation does not remove. Everything else is a row in ``app`` and goes
 with the parent; the working directory lives in the LangGraph store, under a
 namespace keyed by conversation id (``draft_store.draft_namespace``), which the
 BFF cannot reach — the Python tier is the only side that speaks to that store.
@@ -30,7 +30,7 @@ bytes, version}`` without content, and the same URL with ``?path=`` — or ``GET
 content, version}``, plus its ``filing`` record when the draft has been filed.
 
 Read-only is literal: these routes call ``asearch``/``aget`` and nothing else,
-so they cannot write the store, and they never touch ``grid_app``
+so they cannot write the store, and they never touch ``app``
 (single-writer rule, ADR-0003). What they refuse:
 
 - anything but the internal token, exactly as the ``DELETE`` door does;

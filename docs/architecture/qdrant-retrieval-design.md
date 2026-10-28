@@ -128,7 +128,7 @@ alias switch.
 | `office_documents_v1` | One point per document Fassung: a summary vector plus document metadata | Document-level search, `with_lookup` joins for grouped results, "similar documents", facets |
 
 What does *not* move: project memory, platform lessons and permit records keep
-their `real[]` vectors in `grid_app`. They are small, transactional and
+their `real[]` vectors in `app`. They are small, transactional and
 RLS-bound ([`semantic-notes.md`](semantic-notes.md)). The trigger to revisit is
 any of them passing about 50k rows per office, or needing to be fused with
 document hits in one ranking.
@@ -663,7 +663,7 @@ in the product (ADR-0115):
   so a re-run inserts only what is missing and a point ingestion already wrote
   keeps its ids (§12). It refuses a collection whose fingerprint differs from
   the Qdrant collection's before writing anything, merges the person-set facts
-  from `grid_app`, compares the id sets (`--verify`), and deletes what the
+  from `app`, compares the id sets (`--verify`), and deletes what the
   export lacks (`--prune`).
 
 What the export cannot carry stays as it was for the backfill before it: each

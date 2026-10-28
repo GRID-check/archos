@@ -1,7 +1,7 @@
 """The one call this tier makes to the task API.
 
 ``POST /api/internal/tasks``, op ``create``. Nothing here writes a row: the BFF
-is the single writer of ``grid_app`` (ADR-0003) and this module is a CLIENT of
+is the single writer of ``app`` (ADR-0003) and this module is a CLIENT of
 the route (ADR-0055), exactly as ``tools/documents/filing.py`` is a client of the
 document-versions route.
 

@@ -243,7 +243,7 @@ export async function sweepOrphanedCollaborationRows(
  *   - it runs as `node purger/index.js` with no bundler and no TS step, so a
  *     `'server-only'` TypeScript module behind `@/…` path aliases is not
  *     reachable from it at all;
- *   - it does its grid_app deletes inside ONE postgres.js transaction so a
+ *   - it does its `app` deletes inside ONE postgres.js transaction so a
  *     mid-purge crash rolls back. This module's repositories open their own
  *     drizzle connection, so its writes would land outside that transaction;
  *   - `purgeConversationCollaboration` is best-effort and never throws. The

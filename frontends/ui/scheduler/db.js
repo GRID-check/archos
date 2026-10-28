@@ -1,5 +1,5 @@
 /**
- * grid_app SQL helpers for the job scheduler (purger idiom: pure functions
+ * `app` SQL helpers for the job scheduler (purger idiom: pure functions
  * that take a postgres.js tagged-template so they are trivially unit-testable
  * with a fake; the client is `workers/app-database.js`).
  */

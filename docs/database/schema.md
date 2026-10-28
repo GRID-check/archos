@@ -1,14 +1,14 @@
-# Database Schema — grid_app
+# Database Schema — `app`
 
 > **Every table below sits inside a row-level-security boundary** (ADR-0041).
-> The application connects as `grid_app_rw`, which sees only rows belonging to
+> The application connects as `app_rw`, which sees only rows belonging to
 > the active organization, so a query that loses its `organization_id` filter
 > returns nothing rather than another tenant's data. Adding a table means
 > adding one `secure_table()` line to its migration — see
 > [row-level-security.md](row-level-security.md).
 
 
-The `grid_app` database stores application state managed by the Next.js BFF. It uses **Drizzle ORM** (PostgreSQL dialect) with schema definitions in `frontends/ui/src/lib/db/schema/`.
+The `app` database stores application state managed by the Next.js BFF. It uses **Drizzle ORM** (PostgreSQL dialect) with schema definitions in `frontends/ui/src/lib/db/schema/`.
 
 ---
 
@@ -795,7 +795,7 @@ export const projectFolders = pgTable('project_folders', {
 - `project_folders_parent_id_organization_id_scope_fkey` — a folder's parent is on its own **shelf and tenant** (migration `0102`). Skipped for a root folder (NULL parent).
 - `project_folders_scope_check` — `scope IN ('project', 'office_shelf')`; `project_folders_scope_owner_check` — `(scope = 'project') = (project_id IS NOT NULL)`, so the three columns tell one story.
 - `uniq_project_folders_parent_name` — UNIQUE on (`organization_id`, `COALESCE(project_id, nil uuid)`, `COALESCE(parent_id, nil uuid)`, `name`) (migration `0063`, widened by `0102` from (`project_id`, `COALESCE(parent_id, …)`, `name`)). **PARTIAL** `WHERE deleted_at IS NULL` since `0111`, so a tombstone does not hold its name. One living folder per name per parent **on a shelf**. The `COALESCE`s are load-bearing: `parent_id` is `NULL` at a root and `project_id` is `NULL` for the whole Archiv, `NULL` never equals `NULL` in a unique index, so a plain index would police nested project folders and leave **root** folders — where a fixed, created-on-first-use destination like `Berichte` lands — and every Archiv folder uncontrolled. The nil UUID cannot collide with a real id (`gen_random_uuid()` is v4). Get-or-create is not a transaction, and before this index two runs finishing at once produced two `Berichte` folders with no way to say which was real. Case- and whitespace-sensitive on purpose: it stops a race between identical writes, it does not police folder naming. An EXPRESSION index, so it lives only in the migration; `documents.spec.ts` pins it. Within one tenant a project id determines the organization, so for every row that predates `0109` the widened index rejects exactly what the old one did.
-- **RLS:** `grid_tenant_isolation` on `organization_id = current_org()` (`0102`; `0031` joined `projects`). No table read, so no recursion, and cheaper per row.
+- **RLS:** `tenant_isolation` on `organization_id = current_org()` (`0102`; `0031` joined `projects`). No table read, so no recursion, and cheaper per row.
 
 **Why a row has to state its tenant (ADR-0078).** Before the Archiv had folders, "same project" implied "same organization". An Archiv folder has no project, so the tenant is a column and `documents` references the folder through it: see `documents_folder_id_organization_id_scope_fkey`.
 
@@ -1231,7 +1231,7 @@ conversations ──1:N──→ messages (CASCADE delete)
 
 **File:** `deploy/compose/init-db.sql`
 
-This PostgreSQL entrypoint script runs on first container startup and creates two additional databases alongside `grid_app`:
+This PostgreSQL entrypoint script runs on first container startup and creates two additional databases alongside `app`:
 
 ### jobs database
 
@@ -1565,14 +1565,14 @@ the reaper) and `(dead_at)` over dead rows (the retention purge). `bff_job_lane_
 RLS: both are tenant tables whose predicate compares `lane` (not an
 `organization_id` column) to `current_org()`, so a request enqueues and
 reads only its own organization's jobs. The runner is cross-tenant by nature
-and steps up to `grid_app_platform` per transaction
+and steps up to `app_platform` per transaction
 (`workers/platform-scope.js`), as the purger and the scheduler do. KEDA counts
-the table as `grid_keda_scaler`, a login with SELECT on this table's `status`
+the table as `keda_scaler`, a login with SELECT on this table's `status`
 column and nothing else (a leaked scaler DSN cannot read a payload); it crosses the tenant boundary by a second policy,
-`grid_keda_scaler_count` (`FOR SELECT TO grid_keda_scaler USING (true)`), which
+`grid_keda_scaler_count` (`FOR SELECT TO keda_scaler USING (true)`), which
 the Pulumi grants Job (`deploy/pulumi/src/app/queue-scaler-grants.ts`) creates
 after the migrations, not a migration: the role exists only where CloudNativePG
-declares it. `grid_tenant_isolation` is untouched.
+declares it. `tenant_isolation` is untouched.
 
 ---
 
@@ -1651,7 +1651,7 @@ the same of a vote at read time: marked, or either conversation answers yes.
 | `conversation_id` | `text` | NOT NULL | The conversation that answered yes when the mark was written, never a client's claim alone; `''` when unknown (marks read back from 0120's column). The rule asks it, which is what makes marks sticky. Index `message_restricted_use_conversation_idx` (`organization_id`, `conversation_id`) |
 | `marked_at` | `timestamptz` | NOT NULL, `defaultNow()` | |
 
-The runtime role `grid_app_rw` may insert and select, and may neither update nor
+The runtime role `app_rw` may insert and select, and may neither update nor
 delete: no tenant-path bug can lift a mark. Every cross-tenant reader of answer
 feedback asks `feedback_restricted_use` of the vote
 (`OUTSIDE_RESTRICTED_USE`), and the staff profiler withholds the title of a

@@ -4,7 +4,7 @@
  * Read/write folder access against a REAL Postgres (ADR-0088, migrations 0111
  * and 0128), through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/authz/folder-access.integration.spec.ts
  *
  * The unit specs prove the rule and that every read path passes the hidden

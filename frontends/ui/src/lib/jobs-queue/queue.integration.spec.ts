@@ -1,6 +1,6 @@
 /**
  * Opt-in integration test: the `bff_job_queue` claim (ADR-0079), against a REAL
- * Postgres with every migration applied, connected as `grid_app_rw` — the role
+ * Postgres with every migration applied, connected as `app_rw` — the role
  * the BFF and the runner actually run as.
  *
  * The scenarios are the Python claim's (`tests/knowledge_layer_tests/
@@ -9,7 +9,7 @@
  * algorithm. The extra ones are what this queue adds: priority inside a lane,
  * release without spending an attempt, and dead rows that keep their reason.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/jobs-queue/queue.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

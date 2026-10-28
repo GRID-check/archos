@@ -1,4 +1,4 @@
-// @disk-inputs: ../../deploy/compose/init-db.sql, ../../deploy/pulumi/src/data/postgres.ts, ../../scripts/rls-test-db.sh, drizzle/0031_row_level_security.sql, drizzle/0032_messages_organization_id.sql, drizzle/0034_bim_models.sql, drizzle/0035_bim_check_confirmations.sql, drizzle/0041_agent_skills.sql, drizzle/0042_drop_workflows.sql, drizzle/0043_jobs.sql, drizzle/0046_curated_skill_activations.sql, drizzle/0047_platform_skills.sql, drizzle/0051_file_native_ownership.sql, drizzle/0067_document_roles.sql, drizzle/0068_platform_lessons.sql, drizzle/0075_tasks.sql, drizzle/0079_pricing_and_credits.sql, drizzle/0082_document_versions.sql, drizzle/0086_task_definitions.sql, drizzle/0087_organization_instructions.sql, drizzle/0089_skill_categories.sql, drizzle/0100_product_feedback.sql, drizzle/0102_archiv_folders.sql, drizzle/0104_bff_job_queue.sql, drizzle/0108_mail_imports.sql, drizzle/0110_upload_batches.sql, drizzle/0111_project_folder_grants.sql, drizzle/0112_conversation_restricted_folders.sql, drizzle/0114_document_access_log.sql, drizzle/0117_project_steckbrief.sql, drizzle/0119_document_quarantine_decisions.sql, drizzle/0124_message_restricted_use.sql, drizzle/0125_conversation_source_projects.sql, drizzle/0126_permit_records.sql, drizzle/0130_document_fassung_announcements.sql, drizzle/0136_document_version_reviews.sql, drizzle/0138_document_annotations.sql, drizzle/0139_piloti_wakes.sql, drizzle/0140_proposed_changes.sql, drizzle/0142_piloti_changes.sql, drizzle/0144_project_intakes.sql, drizzle/0146_proposal_shelves.sql, drizzle/0147_push_subscriptions.sql, drizzle/0154_analytics_export_cursors.sql, drizzle/0158_project_upload_screening.sql, drizzle/0165_revision_names.sql, drizzle/0173_root_sort_runs.sql, drizzle/0179_piloti_asks.sql, drizzle/0180_folder_cards.sql, drizzle/0181_office_conventions.sql, drizzle/0182_office_convention_decisions.sql, drizzle/0185_document_search.sql, drizzle/0186_saved_searches.sql, drizzle/0188_agent_tables.sql
+// @disk-inputs: ../../deploy/compose/init-db.sql, ../../deploy/postgres/rename-legacy-names.sh, ../../scripts/rls-test-db.sh, drizzle/0031_row_level_security.sql, drizzle/0032_messages_organization_id.sql, drizzle/0034_bim_models.sql, drizzle/0035_bim_check_confirmations.sql, drizzle/0041_agent_skills.sql, drizzle/0042_drop_workflows.sql, drizzle/0043_jobs.sql, drizzle/0046_curated_skill_activations.sql, drizzle/0047_platform_skills.sql, drizzle/0051_file_native_ownership.sql, drizzle/0067_document_roles.sql, drizzle/0068_platform_lessons.sql, drizzle/0075_tasks.sql, drizzle/0079_pricing_and_credits.sql, drizzle/0082_document_versions.sql, drizzle/0086_task_definitions.sql, drizzle/0087_organization_instructions.sql, drizzle/0089_skill_categories.sql, drizzle/0100_product_feedback.sql, drizzle/0102_archiv_folders.sql, drizzle/0104_bff_job_queue.sql, drizzle/0108_mail_imports.sql, drizzle/0110_upload_batches.sql, drizzle/0111_project_folder_grants.sql, drizzle/0112_conversation_restricted_folders.sql, drizzle/0114_document_access_log.sql, drizzle/0117_project_steckbrief.sql, drizzle/0119_document_quarantine_decisions.sql, drizzle/0124_message_restricted_use.sql, drizzle/0125_conversation_source_projects.sql, drizzle/0126_permit_records.sql, drizzle/0130_document_fassung_announcements.sql, drizzle/0136_document_version_reviews.sql, drizzle/0138_document_annotations.sql, drizzle/0139_piloti_wakes.sql, drizzle/0140_proposed_changes.sql, drizzle/0142_piloti_changes.sql, drizzle/0144_project_intakes.sql, drizzle/0146_proposal_shelves.sql, drizzle/0147_push_subscriptions.sql, drizzle/0154_analytics_export_cursors.sql, drizzle/0158_project_upload_screening.sql, drizzle/0165_revision_names.sql, drizzle/0173_root_sort_runs.sql, drizzle/0179_piloti_asks.sql, drizzle/0180_folder_cards.sql, drizzle/0181_office_conventions.sql, drizzle/0182_office_convention_decisions.sql, drizzle/0185_document_search.sql, drizzle/0186_saved_searches.sql, drizzle/0188_agent_tables.sql, drizzle/0190_brand_free_policies.sql
 /**
  * The guard that keeps the tenant boundary complete (ADR-0041).
  *
@@ -205,6 +205,10 @@ const BOUNDARY_MIGRATIONS = [
   // Renames piloti_wakes, piloti_changes and piloti_asks to agent_* (ADR-0145
   // rule 5) and secures each again under its new name, predicates unchanged.
   '0188_agent_tables.sql',
+  // Renames every `grid_` policy (`grid_tenant_isolation` -> `tenant_isolation`)
+  // and redefines `secure_table` and `secure_platform_table` to grant through
+  // `rls_role()`, ahead of the deploy renaming the roles (ADR-0145 rule 5).
+  '0190_brand_free_policies.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>
@@ -432,24 +436,31 @@ describe('settings parity between the app and the policies', () => {
   it('names the same bypass role the migration requires', () => {
     // The migration no longer CREATES roles — creating a BYPASSRLS role needs
     // the creator to hold BYPASSRLS, which no migration credential should. It
-    // asserts them instead, and the name it asserts must be the one the app
-    // steps up to.
-    expect(MIGRATION).toContain(`'${PLATFORM_ROLE}'`)
-    expect(MIGRATION).not.toContain(`CREATE ROLE ${PLATFORM_ROLE}`)
+    // asserts them instead, under the name a fresh database creates; the
+    // deploy renames that one, after the migrations, to the one the app steps
+    // up to (`rename-legacy-names.sh`, ADR-0145 rule 5).
+    const rename = readFileSync(join(process.cwd(), '..', '..', 'deploy/postgres/rename-legacy-names.sh'), 'utf8')
+    expect(MIGRATION).toContain(`'grid_app_platform'`)
+    expect(MIGRATION).not.toContain('CREATE ROLE grid_app_platform')
+    expect(rename).toContain(`grid_app_platform:${PLATFORM_ROLE}`)
   })
 
   it('is provisioned by every deployment that has to run the migration', () => {
     // Roles moved out of the migration, so "who creates them" became a thing
     // that can be forgotten per deployment — and forgetting it fails the whole
     // deploy at migration time. Each place that migrates must also provision.
+    //
+    // A fresh database creates them under the names the earlier migrations
+    // grant to; the deploy renames them once the migrations have run
+    // (`rename-legacy-names.sh after-migrate`, migration 0190).
     const provisioners = [
       'deploy/compose/init-db.sql',
       'scripts/rls-test-db.sh',
-      'deploy/pulumi/src/data/postgres.ts',
+      'deploy/postgres/rename-legacy-names.sh',
     ]
     for (const file of provisioners) {
       const source = readFileSync(join(process.cwd(), '..', '..', file), 'utf8')
-      for (const role of ['grid_app_owner', 'grid_app_rw', PLATFORM_ROLE]) {
+      for (const role of ['grid_app_owner', 'grid_app_rw', 'grid_app_platform']) {
         expect(source, `${file} must provision ${role}`).toContain(role)
       }
     }
@@ -460,20 +471,23 @@ describe('settings parity between the app and the policies', () => {
     // writes, so a bug cannot rewrite platform-wide config even in its own
     // transaction.
     //
-    // Scoped to `grid_secure_platform_table`'s body rather than the whole file.
-    // Tenant tables legitimately grant INSERT/UPDATE/DELETE to `grid_app_rw`, so
-    // a file-wide "no write grant" regex is only ever one edit away from either
+    // Scoped to the platform helper's body rather than a whole file. Tenant
+    // tables legitimately grant INSERT/UPDATE/DELETE to the runtime role, so a
+    // file-wide "no write grant" regex is only ever one edit away from either
     // matching the tenant helper or being written so narrowly that it stops
-    // matching anything. Read the one function this claim is about.
-    const platformHelper = MIGRATION.match(
-      /CREATE OR REPLACE FUNCTION grid_secure_platform_table\([\s\S]*?\n\$\$;/
-    )?.[0]
+    // matching anything. Read the one function this claim is about, as the
+    // last migration that defines it left it (0031, renamed by 0189, redefined
+    // by 0190 to name its roles through `rls_role()`).
+    const definitions = MIGRATION_SOURCES.flatMap((source) => [
+      ...source.matchAll(/CREATE OR REPLACE FUNCTION (?:grid_)?secure_platform_table\([\s\S]*?\n\$\$;/g),
+    ]).map((match) => match[0])
+    const platformHelper = definitions.at(-1)
 
-    expect(platformHelper, 'grid_secure_platform_table is gone from the migration').toBeDefined()
-    expect(platformHelper).toContain('GRANT SELECT ON %I TO grid_app_rw')
+    expect(platformHelper, 'the platform helper is gone from the migrations').toBeDefined()
+    expect(platformHelper).toContain("format('GRANT SELECT ON %I TO %I', target, rls_role('rw'))")
     expect(
       platformHelper,
       'the platform helper grants the runtime role a write it must not have'
-    ).not.toMatch(/GRANT[^;']*(INSERT|UPDATE|DELETE)[^;']*grid_app_rw/)
+    ).not.toMatch(/GRANT[^;']*(INSERT|UPDATE|DELETE)[^;]*rls_role\('rw'\)/)
   })
 })

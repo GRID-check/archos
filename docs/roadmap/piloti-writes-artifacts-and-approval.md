@@ -76,7 +76,7 @@ a library for first. The prior exploration reached the same verdict
 
 **Storage.** `langgraph.store.postgres.PostgresStore` on `GRID_CHECKPOINT_DB`
 (the Python service's own Postgres database, `checkpoints`, already
-pooled in `common/__init__.py`). No table in `grid_app`; the single-writer
+pooled in `common/__init__.py`). No table in `app`; the single-writer
 rule holds. Namespace `("conversation", <id>, "drafts")`. A byte ceiling per
 conversation. Cleanup rides the conversation's deletion cascade through one
 internal call.

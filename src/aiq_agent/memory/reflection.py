@@ -6,7 +6,7 @@ what the exchange actually established. This module reads the just-finished
 exchange and the project's EXISTING memory digest (the ``x-grid-project-memory``
 the BFF injects), asks a small LLM whether the turn established any NEW durable
 finding the in-turn tool missed, and writes each qualifying item through the same
-token-guarded internal endpoint the ``remember`` tool uses (``grid_app`` stays
+token-guarded internal endpoint the ``remember`` tool uses (``app`` stays
 single-writer).
 
 **Scheduling does not live here.** Reflection is a *post-answer stage*, and how a

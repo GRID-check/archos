@@ -10,7 +10,7 @@
  * System-emitted (`aiq_agent/tools/files/`): the model cannot author one, so
  * every file named here is a file the tool resolved against the reader's own
  * inventory. What it must not claim is the change itself — the backend has no
- * path into `grid_app` (ADR-0003), so until a person applies it nothing has
+ * path into `app` (ADR-0003), so until a person applies it nothing has
  * happened at all, and the tool result told the model so in those words.
  *
  * ## A card is the receipt of a proposed change the server holds

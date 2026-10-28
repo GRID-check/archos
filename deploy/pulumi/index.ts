@@ -218,15 +218,20 @@ const wiring: AppWiring = {
 // (src/platform/rollout.ts).
 const secrets = buildSecrets(wiring);
 
-// grid_app DB is created at cluster bootstrap; run drizzle migrations before
+// The `app` DB is created at cluster bootstrap; run drizzle migrations before
 // the frontend/workers that read it. The migrations themselves go straight to
 // the primary; the pooler is listed so everything ordered after them (the BFF
 // tiers, which connect through it) is created after it too (ADR-0083).
-const migrations = runMigrations(wiring, cfg, secrets, [
+const migratedSchema = runMigrations(wiring, cfg, secrets, [
   postgres.cluster,
   postgres.initJob,
   postgres.pooler,
 ]);
+// Then the row-level-security roles take their names without a brand
+// (ADR-0145 row 10d, `src/data/postgres-rename.ts`): the migrations written
+// before the rename grant to the old ones. Everything that waits on the
+// migrations logs in as one of these roles, so it waits on the rename too.
+const migrations = postgres.renameRlsRoles([migratedSchema]);
 
 // WorkOS must know every audit action the code emits, or it rejects the events
 // and the trail silently thins out (issues #255/#256). Reconciled per deploy so

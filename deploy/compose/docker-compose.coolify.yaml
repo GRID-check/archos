@@ -31,7 +31,7 @@
 #                                   domain; readable as ${SERVICE_FQDN_SEAWEEDFS}
 #   SERVICE_PASSWORD_POSTGRES / _SEAWEEDFS / _SEAWEEDTENANT / _INTERNALTOKEN
 #                                   -> generated secrets
-#   SERVICE_PASSWORD_GRIDRUNTIME -> login for grid_app_rw, the least-privilege
+#   SERVICE_PASSWORD_GRIDRUNTIME -> login for app_rw, the least-privilege
 #     role the app connects as under row-level security (ADR-0041). The
 #     frontend container synchronises the role's password from its own
 #     GRID_APP_DATABASE_URL at startup, so nothing else needs to know it.
@@ -492,10 +492,10 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
-      # Read only so `ensure-rls-roles` can keep grid_app_rw's login in step
+      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/app
+      # Read only so `ensure-rls-roles` can keep app_rw's login in step
       # with the credential the app actually uses.
-      - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
+      - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -574,7 +574,7 @@ services:
       # Least-privilege runtime role: DML only, subject to row-level security
       # (ADR-0041). The container's CMD synchronises this role's login from
       # this very URL before starting, so there is one source of truth.
-      - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
+      - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
       # No GRID_APP_MIGRATION_DATABASE_URL here, deliberately: the owner
       # credential belongs to `grid-migrate` above and nowhere else.
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
@@ -665,7 +665,7 @@ services:
     expose:
       - "3000"
     depends_on:
-      grid-migrate:
+      postgres-rename-roles:
         condition: service_completed_successfully
       # A rejected `document.generated` unfiles the document it was about, so
       # the schemas are reconciled before this container serves.
@@ -731,7 +731,7 @@ services:
     # 10 s would kill it first.
     stop_grace_period: 60s
     depends_on:
-      grid-migrate:
+      postgres-rename-roles:
         condition: service_completed_successfully
       aiq-api:
         condition: service_healthy
@@ -774,7 +774,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
       - GRID_PLATFORM_ORG_EXTERNAL_ID=${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/app
     depends_on:
       frontend:
         condition: service_healthy
@@ -787,7 +787,7 @@ services:
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
       # it steps up to grid_app_platform per transaction.
-      - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
+      - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
       - BACKEND_URL=http://aiq-api:8000
       # A chat erasure the delete request could not finish is retried through
       # the BFF, which owns its steps.
@@ -805,7 +805,7 @@ services:
     depends_on:
       # Reaches Postgres directly rather than through the frontend, so it needs
       # the migration to have finished on its own account.
-      grid-migrate:
+      postgres-rename-roles:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
@@ -835,7 +835,7 @@ services:
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
       # it steps up to grid_app_platform per transaction.
-      - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
+      - GRID_APP_DATABASE_URL=postgresql://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/app
       - FRONTEND_INTERNAL_URL=http://frontend:3000
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       - GRID_SKILL_SCHEDULER_POLL_MS=${GRID_SKILL_SCHEDULER_POLL_MS:-30000}
@@ -951,7 +951,7 @@ services:
   # binds the published host port on the server regardless of Traefik routing,
   # which would expose Postgres (5432) publicly. In-cluster access only.
   postgres:
-    # Custom image bakes in init-db.sql (creates checkpoints + grid_app on
+    # Custom image bakes in init-db.sql (creates checkpoints + app on
     # first boot) and the rename script `postgres-rename` runs. Not a bind mount: Coolify pre-creates bind-mount sources as
     # directories, which breaks single-file mounts. See postgres.Dockerfile.
     build:
@@ -993,6 +993,24 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Renames the row-level-security roles (grid_app_rw -> app_rw and the rest,
+  # ADR-0145 row 10d) once the migrations have run: the ones written before the
+  # rename grant to the old names, which a fresh volume creates (init-db.sql).
+  # Everything that logs in as app_rw waits on this.
+  postgres-rename-roles:
+    build:
+      context: ./deploy
+      dockerfile: compose/postgres.Dockerfile
+    command: ["sh", "/rename-legacy-names.sh", "after-migrate"]
+    environment:
+      PGHOST: postgres
+      PGUSER: agent
+      PGPASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+    depends_on:
+      grid-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   # Transaction pooler in front of the pooled DSNs (ADR-0083): the same
   # PgBouncer parameters Kubernetes runs through the CloudNativePG `Pooler`
   # (`deploy/pulumi/src/data/postgres.ts`), so a session feature that only works
@@ -1011,7 +1029,7 @@ services:
   pgbouncer:
     image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
     environment:
-      DATABASE_URLS: postgres://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs,postgres://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/checkpoints,postgres://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@postgres:5432/grid_app
+      DATABASE_URLS: postgres://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs,postgres://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/checkpoints,postgres://app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@postgres:5432/app
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "2000"

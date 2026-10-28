@@ -3,7 +3,7 @@ import { defineConfig } from "drizzle-kit";
 /**
  * Migrations connect as the SCHEMA OWNER, not as the runtime role (ADR-0041).
  *
- * `GRID_APP_DATABASE_URL` now points at `grid_app_rw`, which holds DML only and
+ * `GRID_APP_DATABASE_URL` now points at `app_rw`, which holds DML only and
  * is subject to row-level security — correct for serving requests, useless for
  * DDL, and actively dangerous for a data backfill, which would silently touch
  * zero rows. `GRID_APP_MIGRATION_DATABASE_URL` carries the owner credential and

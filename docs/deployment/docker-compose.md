@@ -323,7 +323,7 @@ The Next.js UI application.
 | `REQUIRE_AUTH` | `${REQUIRE_AUTH:-false}` |
 | `BACKEND_URL` | `${BACKEND_URL:-http://aiq-api:8000}` (the api role: every HTTP call) |
 | `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://aiq-agent:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
-| `GRID_APP_DATABASE_URL` | `${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `GRID_APP_MIGRATION_DATABASE_URL`, set only on `grid-migrate`, straight to `postgres`. |
+| `GRID_APP_DATABASE_URL` | `${GRID_APP_DATABASE_URL:-postgresql://app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `GRID_APP_MIGRATION_DATABASE_URL`, set only on `grid-migrate`, straight to `postgres`. |
 | `WORKOS_CLIENT_ID` | `${WORKOS_CLIENT_ID}` |
 | `WORKOS_API_KEY` | `${WORKOS_API_KEY}` |
 | `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | `${NEXT_PUBLIC_WORKOS_REDIRECT_URI:-${WORKOS_REDIRECT_URI:-http://localhost:3000/api/auth/callback}}` |

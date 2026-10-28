@@ -192,7 +192,7 @@ track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
   degrade to "not metered"; the endpoint being down loses telemetry, not
   answers.
 
-## Storage (grid_app, migration `0013_budgets.sql`)
+## Storage (`app`, migration `0013_budgets.sql`)
 
 **`budget_policies`** — append-only limit configuration, supersede idiom:
 `(organization_id, scope['organization'|'member'|'project'], subject_id,

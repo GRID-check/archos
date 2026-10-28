@@ -36,7 +36,7 @@ export interface StoredFollowUpsStage {
  * One `project_memory` row the post-answer reflection stage wrote for this turn.
  *
  * A NOTIFICATION, not the record: the row itself lives in `project_memory`,
- * where `grid_app` is the single writer and the memory panel is where a reader
+ * where `app` is the single writer and the memory panel is where a reader
  * curates it. What is stored on the message is the fact that THIS TURN produced
  * it — the identity the row has never had (§1.6), and the reason the chip could
  * only ever say the same „Piloti hat sich gemerkt 5" against every answer in

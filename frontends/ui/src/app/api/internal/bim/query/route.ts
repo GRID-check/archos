@@ -2,7 +2,7 @@
  * INTERNAL service endpoint — the agent's deterministic read path into a
  * project's BIM models (the `ifc_query` tool).
  *
- * Keeps `grid_app` single-writer and single-owner: the Python backend never
+ * Keeps `app` single-writer and single-owner: the Python backend never
  * opens a connection to it, it calls this route over the compose network with
  * the shared service token (`GRID_INTERNAL_API_TOKEN`), exactly like the
  * `remember` tool's `POST /api/internal/memory`.

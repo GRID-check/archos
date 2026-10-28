@@ -69,7 +69,7 @@ holding every `org:*` permission, and grants any role that shares the name.
 
 **Stepping up is not authorization.** Row-level security guards application
 bugs, the missing `WHERE` and the widened join. Anything running arbitrary SQL as
-`grid_app_rw` can name any tenant, so every platform-scope caller keeps its own
+`app_rw` can name any tenant, so every platform-scope caller keeps its own
 check. RLS is the backstop, never the plan.
 
 **Put the organization in every cache key.** `getCached` returns before the
