@@ -292,7 +292,7 @@ export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
  * §4, §6). `chatEnv`, `apiEnv` and the worker envs add `GRID_ROLE`.
  */
 
-export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): EnvVar[] {
+export function backendEnv(w: AppWiring, otelServiceName = "backend-chat"): EnvVar[] {
   const { cfg } = w;
   const env: EnvVar[] = [
     { name: "APP_ENV", value: "production" },
@@ -459,7 +459,7 @@ export function chatEnv(w: AppWiring): EnvVar[] {
  */
 export function apiEnv(w: AppWiring): EnvVar[] {
   return [
-    ...backendEnv(w, "grid-aiq-api").filter((e) => !(typeof e.name === "string" && CHAT_ONLY_ENV.has(e.name))),
+    ...backendEnv(w, "backend-api").filter((e) => !(typeof e.name === "string" && CHAT_ONLY_ENV.has(e.name))),
     { name: "GRID_ROLE", value: "api" },
   ];
 }
