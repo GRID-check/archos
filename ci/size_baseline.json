@@ -128,7 +128,6 @@
     "frontends/ui/src/lib/documents/lifecycle-types.ts": 773,
     "frontends/ui/src/lib/documents/lifecycle.ts": 1506,
     "frontends/ui/src/lib/documents/reconcile-status.ts": 1205,
-    "frontends/ui/src/lib/documents/repository.ts": 2371,
     "frontends/ui/src/lib/documents/service.ts": 3148,
     "frontends/ui/src/lib/documents/shelf-folders.ts": 749,
     "frontends/ui/src/lib/documents/version-content.ts": 703,
