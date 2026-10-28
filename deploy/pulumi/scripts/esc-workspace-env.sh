@@ -55,7 +55,7 @@ fi
 for key in $(node "${here}/workspace-stack-file.mjs" --secure-keys "$legacy_file"); do
   have="$(pulumi env get "$dst" "pulumiConfig.workspace:${key}" 2>/dev/null || true)"
   [ -n "$have" ] && continue
-  value="$(pulumi config get --show-secrets "grid-oib:${key}" --stack "$src" --cwd "$(dirname "$legacy_file")" 2>/dev/null)" ||
+  value="$(pulumi config get "grid-oib:${key}" --stack "$src" --cwd "$(dirname "$legacy_file")" 2>/dev/null)" ||
     refuse "the legacy stack could not decrypt grid-oib:${key}"
   echo "::add-mask::${value}"
   out="$(pulumi env set "$dst" "pulumiConfig.workspace:${key}" "$value" --secret 2>&1)" ||

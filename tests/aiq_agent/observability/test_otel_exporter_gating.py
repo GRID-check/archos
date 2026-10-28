@@ -19,7 +19,7 @@ CONFIG_PATH = "configs/config_oib_openrouter.yml"
 
 def _make_config(endpoint: str | None) -> OtelCollectorRedactionTelemetryExporter:
     return OtelCollectorRedactionTelemetryExporter(
-        _type="otelcollector_redaction", project="grid-aiq-agent", endpoint=endpoint
+        _type="otelcollector_redaction", project="backend-chat", endpoint=endpoint
     )
 
 

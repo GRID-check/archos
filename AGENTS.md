@@ -5,7 +5,7 @@ every process, and Piloti, the agent, is a colleague in that office. Building la
 among many. [`VISION.md`](VISION.md) says what the product is; read it before you describe Piloti
 anywhere. The code: a Next.js UI and BFF (`frontends/ui`), a Python agent on the NeMo Agent Toolkit
 (`src/aiq_agent`), and the knowledge layer that reads the office's documents and the legal corpus
-(`sources/knowledge_layer`).
+(`packages/knowledge-layer`).
 
 ## Setup
 
@@ -172,7 +172,7 @@ ones that will fail your PR.
 | Name anything in code: a file, folder, identifier, type, enum token, test id, route, API or schema field | **English only, no exceptions for domain words.** `profile-review.ts`, never `steckbrief.ts`; `buildingClass`, never `gebaeudeklasse`. German lives in the i18n dictionaries and in domain data (document names, addresses, legal citations), nowhere else. A German name you meet is a rename in your change; a persisted German key (a profile key such as `standort_adresse`, a stored JSON field) is renamed with its migration and the agent's side in the same change, never by adding a second name beside it German domain term to English code name: [`docs/glossary.md`](docs/glossary.md#german-domain-term-english-code-name) | `tests/test_english_names.py` (Python) and `frontends/ui/src/english-names.spec.ts` (UI), a per-file ratchet on identifiers with German stems (`ci/german_stems.json`); review for file names, routes and string tokens |
 | Name anything in code or infrastructure | **No product name**: no `aiq`, `grid` or `piloti` in an identifier, file, folder, environment variable, route, header, table, event or tool name. Name it for what it does; the product's name is copy, read from one place. [`code-conventions.md`](docs/contributing/code-conventions.md#no-brand-names) | The `brand-names` hook (`scripts/check_brand_names.py` against `ci/brand_names_baseline.json`) in `task lint:repo` and CI's **Repo checks** job |
 | Write a file or a function | A source file (Python, TypeScript or JavaScript) stays at or under 600 lines and a Python function at or under 60; one already over may not grow, and when it shrinks you lower its entry with `--update`. Generated files, tests, fixtures, migrations and copy are exempt. [`code-conventions.md`](docs/contributing/code-conventions.md#size-limits) | The `file-size` hook (`scripts/check_file_size.py` against `ci/size_baseline.json`) in `task lint:repo` and CI's **Repo checks** job |
-| Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `tests/aiq_agent/test_product_framing.py` (agent prompts), `frontends/web/scripts/lint-claims.mjs` (the site); review elsewhere |
+| Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `tests/aiq_agent/test_product_framing.py` (agent prompts), `apps/site/scripts/lint-claims.mjs` (the site); review elsewhere |
 | Describe what Piloti is, in a doc, a prompt or copy | Lead with the workspace for architects; building law is one capability, never the frame ([`VISION.md`](VISION.md)) | `tests/aiq_agent/test_product_framing.py` on the first-impression docs and every agent prompt; review elsewhere |
 | Add an environment variable | Add its row to [`docs/deployment/environment-variables.md`](docs/deployment/environment-variables.md) in the same change | The `env-docs` pre-commit hook (`scripts/check_env_docs.py`) for the queue-worker files; review elsewhere |
 | Change what a customer can notice | `task release:note -- <slug>` | The `release-notes` pre-commit hook (house rules), then CI's **Repo checks** job (its release-note step) |
@@ -187,7 +187,7 @@ ones that will fail your PR.
 `task verify` is the local gate: host-native, defined once in `Taskfile.yml`. CI
 calls the same definitions but schedules them differently, so a local pass is
 strong evidence rather than a guarantee. `task verify:fast` skips two production
-builds, `fe:build` and `web:build`.
+builds, `fe:build` and `site:build`.
 
 Three gates sit outside `task verify` and are still required: `task db:test:rls`
 whenever you touch the tenant boundary, `task be:test:postgres` whenever you touch

@@ -9,7 +9,7 @@ This script tests all abstract methods implemented in the LlamaIndex adapter:
 
 Prerequisites:
     - OPENROUTER_API_KEY environment variable (via export or .env file)
-    - LlamaIndex dependencies: uv pip install -e "sources/knowledge_layer[llamaindex]"
+    - LlamaIndex dependencies: uv pip install -e "packages/knowledge-layer[llamaindex]"
 
 Usage:
     # Option 1: Export env var

@@ -1,19 +1,18 @@
 /**
  * Single source of truth for the user-facing product brand.
  *
- * Decision (2026-07-17, click-dummy-overhaul-spec §8): the product ships
- * user-facing as **Piloti**. The internal / repo / platform name stays
- * **GRID** — env vars (`GRID_*`), headers (`x-grid-*`), CSS variables,
- * localStorage keys, DB identifiers and the "GRID Platform" organization are
- * NOT renamed. Use this constant for every user-visible brand mention
- * (wordmark, tab titles, aria labels); never for internal identifiers.
+ * The product ships user-facing as **Piloti**, and the name will change again.
+ * Use this constant for every user-visible brand mention (wordmark, tab
+ * titles, aria labels). No internal identifier carries a product name at all
+ * (env vars, headers, CSS variables, storage keys, DB identifiers): the
+ * `brand-names` ratchet holds that (docs/contributing/code-conventions.md#no-brand-names).
  */
 export const PRODUCT_NAME = 'Piloti'
 
 /**
  * The Piloti mark (the column) for every place that draws it inline: the app's
  * logo and the PDF exports. `path` is the master's, character for character
- * (`shared/brand/piloti-mark.svg`); `npm run check` in `frontends/web` fails when
+ * (`packages/brand/mark.svg`); `npm run check` in `apps/site` fails when
  * it drifts. `viewBox` crops the master's 32-unit tile to the column itself, so
  * the mark sits flush against a wordmark. Plain data, no DOM: the PDF renderer
  * imports it too.

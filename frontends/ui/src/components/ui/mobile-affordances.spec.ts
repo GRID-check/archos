@@ -359,7 +359,7 @@ describe('the soft keyboard is told what the action key does', () => {
    */
   it.each([
     ['components/ui/search-field.tsx', 'search'],
-    ['features/layout/components/InputArea.tsx', 'send'],
+    ['features/layout/components/input-area/composer-field.tsx', 'send'],
     ['components/ui/type-to-confirm-dialog.tsx', 'done'],
   ])('%s declares enterKeyHint="%s"', (file, hint) => {
     const source = readCode(join(SRC, ...file.split('/')))
