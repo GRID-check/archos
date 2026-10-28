@@ -4,7 +4,7 @@
  * The draft lives in the agent service's LangGraph store, namespaced by
  * conversation id — the BFF cannot reach that store, so this service proxies
  * the Python tier's read door (`GET /v1/drafts/{conversation_id}/{path...}`,
- * `apps/backend/src/agent_host/routes/drafts.py`) with the internal
+ * `apps/agent-host/src/agent_host/routes/drafts.py`) with the internal
  * service token, exactly as `discardConversationDrafts` does for the delete
  * door (`./working-directory`).
  *

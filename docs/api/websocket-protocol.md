@@ -147,7 +147,7 @@ policy. Those routes are no longer mounted at all: this socket is the only way
 a turn runs (`agent_host.plugin.AgentHostConfig`). Always exempt: anonymous mode (`REQUIRE_AUTH=false`) and
 internal-token-authenticated service calls.
 See `docs/architecture/backend-deep-dive.md` and
-`apps/backend/src/agent_host/context_envelope.py`'s module docstring for the
+`apps/agent-host/src/agent_host/context_envelope.py`'s module docstring for the
 full design.
 
 ### Environment Variables
@@ -309,7 +309,7 @@ does not matter which write lands first.
 
 A running turn heartbeats, and the client trusts the heartbeat, so a turn the
 server never ends is a spinner that never stops. Four things make sure it
-ends, each pinned by a test in `apps/backend/tests/test_chat_socket.py`:
+ends, each pinned by a test in `apps/agent-host/tests/test_chat_socket.py`:
 
 - **One terminal, structurally.** `run_turn`'s `finally` sends a `RUN_ERROR` if
   no terminal went out, whatever escaped (a `BaseExceptionGroup` from a task

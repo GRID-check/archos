@@ -1,7 +1,7 @@
 """
 Tests for the async job API routes.
 
-Module under test: apps/backend/src/agent_host/routes/jobs.py
+Module under test: apps/agent-host/src/agent_host/routes/jobs.py
 
 API endpoints tested:
     GET  /v1/jobs/async/agents                         - List available agent types

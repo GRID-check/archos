@@ -40,8 +40,8 @@ COPY pyproject.toml uv.lock ./
 COPY --chown=app:app src/ ./src/
 COPY --from=builder /app /app
 ADD scripts/*.sh /usr/local/bin/
-COPY apps/backend/entrypoint.py \\
-     apps/backend/start_web.py ./deploy/
+COPY apps/agent-host/entrypoint.py \\
+     apps/agent-host/start_web.py ./deploy/
 COPY ["configs/a.yml", "/etc/a.yml"]
 copy lower/ ./lower/
 """
@@ -50,8 +50,8 @@ copy lower/ ./lower/
         "uv.lock",
         "src/",
         "scripts",
-        "apps/backend/entrypoint.py",
-        "apps/backend/start_web.py",
+        "apps/agent-host/entrypoint.py",
+        "apps/agent-host/start_web.py",
         "configs/a.yml",
         "lower/",
     ]
@@ -69,7 +69,7 @@ def test_the_backend_image_watches_what_its_dockerfile_copies(mod):
     inputs = mod.inputs(backend)
 
     assert "packages/ifc-spatial-py" in inputs
-    assert {"apps/backend/Dockerfile", "apps/backend", "packages/agent", "uv.lock"} <= set(inputs)
+    assert {"apps/agent-host/Dockerfile", "apps/agent-host", "packages/agent", "uv.lock"} <= set(inputs)
     assert "tests" not in inputs and "docs" not in inputs
 
 
@@ -107,7 +107,7 @@ def repo(mod, tmp_path, monkeypatch):
     write(
         tmp_path,
         {
-            "apps/backend/Dockerfile": "FROM debian\nCOPY src/ ./src/\nCOPY pyproject.toml ./\n",
+            "apps/agent-host/Dockerfile": "FROM debian\nCOPY src/ ./src/\nCOPY pyproject.toml ./\n",
             "src/app.py": "print(1)\n",
             "pyproject.toml": "[project]\n",
             "apps/workspace/deploy/Dockerfile": "FROM node\nCOPY . .\n",
@@ -140,7 +140,7 @@ def test_a_new_week_renames_every_image_so_base_images_are_refreshed(mod, repo):
 
 
 def test_a_copied_path_the_commit_does_not_track_fails_loudly(mod, repo):
-    write(repo, {"apps/backend/Dockerfile": "FROM debian\nCOPY generated/ ./generated/\n"})
+    write(repo, {"apps/agent-host/Dockerfile": "FROM debian\nCOPY generated/ ./generated/\n"})
 
     with pytest.raises(ValueError, match="does not track"):
         mod.hashes("HEAD", week=WEEK)

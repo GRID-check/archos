@@ -13,7 +13,7 @@ ADR-0076 (the queue), ADR-0117 (the page pipeline, proposed, not built).
 
 Short forms: **A** is `packages/knowledge-layer/src/llamaindex/adapter.py`, **S** is
 `apps/workspace/bff/documents/service.ts` as it stood before it was split (its `S:N` line references are from then; `dispatchDocument` is now in `document-dispatch.ts`, `dispatchIngest` in `ingest-dispatch.ts`), **D** is
-`apps/backend/src/agent_host/jobs/ingest_dispatch.py`.
+`apps/agent-host/src/agent_host/jobs/ingest_dispatch.py`.
 
 ## 1. The whole thing on one page
 

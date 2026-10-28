@@ -1,7 +1,7 @@
 """
 Tests for async job components.
 
-Module under test: apps/backend/src/agent_host/jobs/
+Module under test: apps/agent-host/src/agent_host/jobs/
 
 Test coverage:
     TestIntermediateStepEvent:

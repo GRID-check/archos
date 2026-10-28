@@ -63,7 +63,7 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
     const roles = Object.values(compose(file).services)
       .map((service) => env(service).PROCESS_ROLE)
       .filter((role): role is string => role !== undefined);
-    const accepted = read("apps", "backend", "entrypoint.py").match(/^ROLES = \((.*)\)$/m)?.[1];
+    const accepted = read("apps", "agent-host", "entrypoint.py").match(/^ROLES = \((.*)\)$/m)?.[1];
 
     expect(accepted).toBeDefined();
     expect(new Set(roles)).toEqual(new Set([...accepted!.matchAll(/"([a-z-]+)"/g)].map((m) => m[1])));
@@ -139,7 +139,7 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
 describe("the retired role and claim switch", () => {
   const files = [
     ...COMPOSE_FILES.map((f) => join("deploy", "compose", f)),
-    join("apps", "backend", "entrypoint.py"),
+    join("apps", "agent-host", "entrypoint.py"),
     join("deploy", "pulumi", "src", "app", "config.ts"),
     join("deploy", "pulumi", "src", "app", "api.ts"),
     join("deploy", "pulumi", "src", "app", "backend.ts"),
@@ -153,9 +153,9 @@ describe("the retired role and claim switch", () => {
   });
 
   it("is no longer read anywhere under the Python image sources", () => {
-    const python = readdirSync(join(repoRoot, "apps", "backend", "src", "agent_host"), { recursive: true })
+    const python = readdirSync(join(repoRoot, "apps", "agent-host", "src", "agent_host"), { recursive: true })
       .filter((f): f is string => typeof f === "string" && f.endsWith(".py"))
-      .map((f) => read("apps", "backend", "src", "agent_host", f))
+      .map((f) => read("apps", "agent-host", "src", "agent_host", f))
       .join("\n");
 
     expect(python).not.toContain("INGEST_QUEUE_CLAIM");
@@ -168,7 +168,7 @@ describe("the research queue is the only execution path", () => {
   const files = [
     ...COMPOSE_FILES.map((f) => join("deploy", "compose", f)),
     join("deploy", ".env.example"),
-    join("apps", "backend", "entrypoint.py"),
+    join("apps", "agent-host", "entrypoint.py"),
     join("deploy", "pulumi", "src", "config.ts"),
     ...readdirSync(join(repoRoot, "deploy", "pulumi", "src", "config"))
       .filter((f) => f.endsWith(".ts"))
@@ -183,7 +183,7 @@ describe("the research queue is the only execution path", () => {
   });
 
   it("the Python sources read none of them either", () => {
-    const python = [join("apps", "backend", "src", "agent_host"), join("packages", "agent", "src", "agent")]
+    const python = [join("apps", "agent-host", "src", "agent_host"), join("packages", "agent", "src", "agent")]
       .flatMap((dir) =>
         readdirSync(join(repoRoot, dir), { recursive: true })
           .filter((f): f is string => typeof f === "string" && f.endsWith(".py"))

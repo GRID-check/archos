@@ -754,7 +754,7 @@ class TestGuessDisplayTitle:
 class TestNormsDirResolution:
     """The YAML seed must be found from any working directory of the checkout.
 
-    Every package suite that boots the registry (``apps/backend`` included)
+    Every package suite that boots the registry (``apps/agent-host`` included)
     used to see an empty registry when run from its own directory: the default
     ``configs/norms`` is cwd-relative, and nothing said so. It failed four route
     tests for weeks and read as a test bug.

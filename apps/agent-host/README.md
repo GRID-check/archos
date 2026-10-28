@@ -13,7 +13,7 @@ Unified API plugin for the AI-Q blueprint: **Knowledge API** (collections, docum
 PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_openrouter.yml
 ```
 
-`PROCESS_ROLE` is required and has no default (ADR-0082): `api` serves the HTTP routes, `chat` the chat socket (run it on another port beside the `api` process when the UI is in use, as `scripts/start_e2e.sh` does). Ingestion is claimed by `PROCESS_ROLE=ingest-worker python apps/backend/entrypoint.py`; without one, set `INGEST_QUEUE=off` and `api` runs ingest jobs itself.
+`PROCESS_ROLE` is required and has no default (ADR-0082): `api` serves the HTTP routes, `chat` the chat socket (run it on another port beside the `api` process when the UI is in use, as `scripts/start_e2e.sh` does). Ingestion is claimed by `PROCESS_ROLE=ingest-worker python apps/agent-host/entrypoint.py`; without one, set `INGEST_QUEUE=off` and `api` runs ingest jobs itself.
 
 ### Production (PostgreSQL)
 
@@ -41,7 +41,7 @@ PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib
 ┌─────────────────────────────────────────────────────────────────┐
 │                    AI-Q API (extension layer)                   │
 │                                                                 │
-│   apps/backend/src/agent_host/                                │
+│   apps/agent-host/src/agent_host/                                │
 │   ├── jobs/                                                     │
 │   │   ├── agent_job.py        # run_agent_job, in phases        │
 │   │   ├── submit.py           # submit_agent_job                │

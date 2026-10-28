@@ -3,7 +3,7 @@
 Both queues use these defaults. The BFF's claim loop
 (``apps/workspace/workers/jobs/index.js``) shares max attempts and dead retention,
 and drains for 60 s instead of 600 because a slice is short;
-``apps/backend/tests/test_lease_policy.py`` holds both sides to that. Each
+``apps/agent-host/tests/test_lease_policy.py`` holds both sides to that. Each
 caller keeps its own floors, and its own values where the queues differ on
 purpose: the stale window (research 90 s, ingest 180 s) and the per-organization
 cap are product choices, not drift.

@@ -30,7 +30,7 @@ ENVELOPE = (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 #: Everything the worker can put on a run's tool context. The envelope counts
 #: only because the worker injects it whenever the run CARRIES one the BFF
 #: signed for its requester; it never makes one up (see the tests below, and
-#: `apps/backend/tests/test_run_envelope.py`).
+#: `apps/agent-host/tests/test_run_envelope.py`).
 WORKER_SUPPLIED_HEADERS = WORKER_IDENTITY_HEADERS + WORKER_ENVELOPE_HEADERS
 
 CONFIG = Path(__file__).resolve().parents[3] / "configs" / "config_oib_openrouter.yml"

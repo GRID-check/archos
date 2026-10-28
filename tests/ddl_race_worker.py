@@ -173,7 +173,7 @@ def worker(index: int, barrier, tasks: list[tuple[str, str]], results) -> None:
     Puts ``(site, url, index, error, ensured)`` on ``results``: ``error`` is the
     exception that escaped, ``ensured`` whether the site marked ``url`` as ensured.
     """
-    sys.path[:0] = [str(_REPO / "src"), str(_REPO / "apps" / "backend" / "src")]
+    sys.path[:0] = [str(_REPO / "src"), str(_REPO / "apps" / "agent-host" / "src")]
     _track_engines()
     for site, url in tasks:
         barrier.wait(timeout=_TIMEOUT_SECONDS)

@@ -337,7 +337,7 @@ offers exactly the skills this one gate resolves for that agent — which is the
 payoff of consolidating availability onto a single key.
 
 The agent vocabulary is the `AGENT_REGISTRY` identifiers
-(`apps/backend/src/agent_host/registry.py`): **`researcher`** and
+(`apps/agent-host/src/agent_host/registry.py`): **`researcher`** and
 **`deep_researcher`**. There is one spelling; the older `deep_research_agent`
 name is gone from the skills path entirely, because two vocabularies for one
 agent meant a `grid-agents` value that was correct in one file and inert in

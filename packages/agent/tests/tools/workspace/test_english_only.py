@@ -35,7 +35,7 @@ MODULES = [
     ROOT / "packages" / "agent" / "src" / "agent" / "tools" / "workspace" / "client.py",
     ROOT / "packages" / "agent" / "src" / "agent" / "tools" / "workspace" / "register.py",
     ROOT / "packages" / "agent" / "src" / "agent" / "tools" / "workspace" / "cards.py",
-    ROOT / "apps" / "backend" / "src" / "agent_host" / "routes" / "internal_tools.py",
+    ROOT / "apps" / "agent-host" / "src" / "agent_host" / "routes" / "internal_tools.py",
 ]
 
 #: German that is domain data, not a word the model is taught: (text, reason). None yet.

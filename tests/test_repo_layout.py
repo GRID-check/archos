@@ -65,10 +65,11 @@ MOVED = {
     "sources/tavily_web_search/": "packages/tavily-web-search (row 6)",
     "src/aiq_agent/": "packages/agent/src/aiq_agent (row 8)",
     "tests/aiq_agent/": "packages/agent/tests (row 8)",
-    "frontends/aiq_api/": "apps/backend (row 7)",
+    "frontends/aiq_api/": "apps/agent-host (row 7)",
+    "apps/backend/": "apps/agent-host (the API package is agent_host)",
     "frontends/ui/": "apps/workspace (row 9)",
-    "deploy/entrypoint.py": "apps/backend/entrypoint.py (row 7)",
-    "deploy/start_web.py": "apps/backend/start_web.py (row 7)",
+    "deploy/entrypoint.py": "apps/agent-host/entrypoint.py (row 7)",
+    "deploy/start_web.py": "apps/agent-host/start_web.py (row 7)",
 }
 
 #: Where an old path may still be named: the record of what was true then.

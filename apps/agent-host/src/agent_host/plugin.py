@@ -11,7 +11,7 @@ One plugin, two web roles (``PROCESS_ROLE``, ``roles.WebRole``, ADR-0082 step B)
   closes its SSE streams at shutdown.
 
 Both mount ``/health`` and the same auth and context-envelope middleware. A
-route belongs to exactly one role; ``apps/backend/tests/test_roles.py``
+route belongs to exactly one role; ``apps/agent-host/tests/test_roles.py``
 holds that.
 
 Knowledge Layer Configuration:

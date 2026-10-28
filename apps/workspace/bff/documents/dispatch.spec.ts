@@ -415,7 +415,7 @@ describe('dispatchDocument', () => {
  * folder crosses — and a field that one side spells and the other does not is
  * exactly the failure two green suites do not catch.
  *
- * The backend twin is `apps/backend/tests/test_ingest_folder_path.py`,
+ * The backend twin is `apps/agent-host/tests/test_ingest_folder_path.py`,
  * which asserts the same `folder_path` key reaches the ingest job config.
  */
 describe('the ingest dispatch sends the document folder path', () => {
@@ -469,7 +469,7 @@ describe('the ingest dispatch sends the document folder path', () => {
   })
 
   it('sends the four provenance keys for a published Piloti document', async () => {
-    // The backend twin is `apps/backend/tests/test_ingest_provenance.py`,
+    // The backend twin is `apps/agent-host/tests/test_ingest_provenance.py`,
     // which asserts the same four keys reach the ingest job config. They are
     // spelled in `packages/agent/src/agent/common/provenance.py` and nowhere else.
     vi.mocked(findDocumentInOrg).mockResolvedValue(
@@ -514,7 +514,7 @@ describe('the ingest dispatch sends the document folder path', () => {
   })
 
   it('sends the older file’s name when the upload was filed as its new Fassung (ADR-0099)', async () => {
-    // The backend twin is `apps/backend/tests/test_ingest_fassung_of.py`: the same `revision_of` key.
+    // The backend twin is `apps/agent-host/tests/test_ingest_fassung_of.py`: the same `revision_of` key.
     await dispatchDocument({ ...input('Grundriss_EG_Index_C.pdf'), revisionOf: 'Grundriss_EG_Index_B.pdf' })
 
     expect(bodyOf(0).revision_of).toBe('Grundriss_EG_Index_B.pdf')
@@ -805,7 +805,7 @@ describe('an office file is converted, by a job, before it is ingested', () => {
  * duplicate once someone retried. `/v1/ingest` is idempotent per document and
  * object, so the dispatch sends the same request once more and takes whichever
  * job id comes back. The backend twin is the idempotency block at the end of
- * `apps/backend/tests/test_ingest.py`.
+ * `apps/agent-host/tests/test_ingest.py`.
  */
 describe('the ingest dispatch after a timeout', () => {
   const timeout = () =>

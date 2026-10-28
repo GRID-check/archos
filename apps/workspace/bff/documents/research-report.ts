@@ -77,7 +77,7 @@ export interface FileResearchReportInput {
    * reasons. It is UNKNOWN because these are jsonb that crossed a process
    * boundary and `@/lib/pdf/legal-basis` is the module that narrows them. It is
    * OPTIONAL because a run need not have produced any — `JobReportResponse`
-   * (`apps/backend/src/agent_host/routes/job_models.py`) now returns `cards`
+   * (`apps/agent-host/src/agent_host/routes/job_models.py`) now returns `cards`
    * alongside the report, but returns it null when the run generated none, and
    * a scheduled or replayed run may pass none at all. A section that cannot be
    * built prints nothing rather than an empty heading, so absent is a

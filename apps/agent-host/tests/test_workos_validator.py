@@ -1,6 +1,6 @@
 """Tests for WorkOS JWT validator configuration.
 
-Module under test: apps/backend/src/agent_host/auth/workos_validator.py
+Module under test: apps/agent-host/src/agent_host/auth/workos_validator.py
 """
 
 import os

@@ -470,7 +470,7 @@ an earlier upload's bytes is kept on its version: `document_versions.screened_ha
 | Change summary at confirmation | `PUT /v1/collections/{c}/revision` | Generation `change-summary` |
 | Visual compare | `POST /v1/collections/{c}/revision-compare` | Generation `revision-visual-compare`, pixels left out |
 
-`apps/backend/tests/test_model_calls_are_traced.py` keeps both route calls
+`apps/agent-host/tests/test_model_calls_are_traced.py` keeps both route calls
 observable. The catalogue of trace names is in
 [`langfuse.md`](../observability/langfuse.md).
 

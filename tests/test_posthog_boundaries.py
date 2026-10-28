@@ -33,7 +33,7 @@ PYTHON_ROOTS = (
     "packages/knowledge-layer",
     "packages/ris-adapter",
     "packages/tavily-web-search",
-    "apps/backend/src",
+    "apps/agent-host/src",
     "scripts",
 )
 TS_ROOTS = tuple(

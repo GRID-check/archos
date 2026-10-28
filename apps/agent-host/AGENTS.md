@@ -1,14 +1,14 @@
-# The API plugin: `apps/backend`
+# The API plugin: `apps/agent-host`
 
 The backend's FastAPI front end, loaded by NAT as a front-end plugin
 (`_type: agent_host`): REST routes, the async job API with SSE streaming, and
 `/v1/ingest`. A uv workspace member, installed into the same venv as the agent.
 
 The backend image is built here too (ADR-0145 rule 2): `Dockerfile` (context
-the repo root, `docker build -f apps/backend/Dockerfile .`), `entrypoint.py`,
+the repo root, `docker build -f apps/agent-host/Dockerfile .`), `entrypoint.py`,
 which starts the role `PROCESS_ROLE` names (ADR-0082), and `start_web.py`, the
 uvicorn launcher of the `chat` and `api` roles. The image copies this directory
-whole and runs them from `/app/apps/backend/`.
+whole and runs them from `/app/apps/agent-host/`.
 
 ## Obligations
 

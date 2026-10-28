@@ -42,8 +42,8 @@ pulumi.runtime.setMocks(
 // src/app -> src -> deploy/pulumi -> deploy -> repo root
 const repoRoot = join(__dirname, "..", "..", "..", "..");
 const read = (...parts: string[]) => readFileSync(join(repoRoot, ...parts), "utf8");
-const route = read("apps", "backend", "src", "agent_host", "routes", "chat_occupancy.py");
-const chatSocket = read("apps", "backend", "src", "agent_host", "chat_socket.py");
+const route = read("apps", "agent-host", "src", "agent_host", "routes", "chat_occupancy.py");
+const chatSocket = read("apps", "agent-host", "src", "agent_host", "chat_socket.py");
 
 function find(type: string, name: string) {
   const hit = RESOURCES.find((r) => r.type === type && r.name === name);
@@ -146,7 +146,7 @@ describe("the chat tier's scale-out", () => {
     // Both sides, as source: the route's path, the JSON field it answers, the header it guards on.
     expect(route).toContain(`CHAT_OCCUPANCY_PATH = "${new URL(trigger.metadata.url).pathname}"`);
     expect(route).toContain(`"${trigger.metadata.valueLocation}": active`);
-    expect(read("apps", "backend", "src", "agent_host", "routes", "internal_auth.py")).toContain(
+    expect(read("apps", "agent-host", "src", "agent_host", "routes", "internal_auth.py")).toContain(
       `"${trigger.metadata.keyParamName}"`,
     );
     expect(trigger.metadata).toMatchObject({ authMode: "apiKey", method: "header" });

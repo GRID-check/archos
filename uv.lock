@@ -31,7 +31,7 @@ overrides = [
 [manifest.dependency-groups]
 dev = [
     { name = "agent", editable = "packages/agent" },
-    { name = "agent-host", editable = "apps/backend" },
+    { name = "agent-host", editable = "apps/agent-host" },
     { name = "fakeredis", extras = ["lua"], specifier = ">=2.40.0" },
     { name = "import-linter", specifier = ">=2.15" },
     { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
@@ -188,7 +188,7 @@ provides-extras = ["dev", "docs", "viz"]
 [[package]]
 name = "agent-host"
 version = "0.1.0"
-source = { editable = "apps/backend" }
+source = { editable = "apps/agent-host" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "asyncpg" },

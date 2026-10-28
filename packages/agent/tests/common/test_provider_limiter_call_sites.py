@@ -49,7 +49,7 @@ SCANNED = [
     ROOT / "packages" / "knowledge-layer",
     ROOT / "packages" / "ris-adapter",
     ROOT / "packages" / "tavily-web-search",
-    ROOT / "apps" / "backend" / "src",
+    ROOT / "apps" / "agent-host" / "src",
     ROOT / "scripts",
 ]
 
