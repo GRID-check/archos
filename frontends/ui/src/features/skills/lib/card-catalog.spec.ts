@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { discriminatedOptions } from '@/lib/api/zod-union'
 import { describe, expect, test } from 'vitest'
 import { gridCardSchema } from '@/shared/cards/schemas'

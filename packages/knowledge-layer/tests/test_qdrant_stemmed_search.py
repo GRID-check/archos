@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 import pytest
 from knowledge_layer.browse import inflection_stem
 from knowledge_layer.browse import stemmed_pattern
-from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 from knowledge_layer.qdrant import retrieval
 from knowledge_layer.qdrant import schema
 from knowledge_layer.qdrant.payload import ChunkRecord

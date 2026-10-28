@@ -14,7 +14,7 @@ The seams that carry the limiter, one per call-site shape:
 - an OpenAI SDK client, which is every embedding, vision and rerank call:
   ``openrouter.openai_client`` / ``pinned_http_client``, whose transport takes the
   slot;
-- the embedding client: ``knowledge_layer.llamaindex.adapter.make_embed_model``,
+- the embedding client: ``knowledge_layer.llamaindex.embedding.make_embed_model``,
   which hands those transports to llama-index.
 
 - a utility call that shapes its own JSON body (a title, a summary, the decision
@@ -49,7 +49,7 @@ SCANNED = [
     ROOT / "packages" / "knowledge-layer",
     ROOT / "packages" / "ris-adapter",
     ROOT / "packages" / "tavily-web-search",
-    ROOT / "frontends" / "aiq_api" / "src",
+    ROOT / "apps" / "backend" / "src",
     ROOT / "scripts",
 ]
 
@@ -69,7 +69,7 @@ CHAT_MODEL_HOMES = {
 #: Building an embedding client by hand. Its HTTP client must come from the seam.
 EMBEDDING_CLIENT = re.compile(r"\b[A-Za-z]*Embeddings?\(|\.embeddings\.create\(")
 EMBEDDING_CLIENT_HOMES = {
-    "packages/knowledge-layer/src/llamaindex/adapter.py": "make_embed_model hands llama-index the limited transports",
+    "packages/knowledge-layer/src/llamaindex/embedding.py": "make_embed_model hands llama-index the limited transports",
     "src/aiq_agent/common/openrouter.py": "mentions `.embeddings` in a docstring only",
 }
 #: A match that is not a client: a class that merely has "Embedding" in its name.
@@ -139,7 +139,7 @@ def test_no_embedding_client_is_built_outside_the_limited_seam(path: Path):
     match = EMBEDDING_CLIENT.search(code)
     assert match is None, (
         f"{_rel(path)} builds an embedding client with {match.group(0)!r}. Build it through "
-        "knowledge_layer.llamaindex.adapter.make_embed_model (or openrouter.openai_client), whose HTTP "
+        "knowledge_layer.llamaindex.embedding.make_embed_model (or openrouter.openai_client), whose HTTP "
         "transport takes a provider slot (ADR-0081). A client built by hand calls the provider ungated."
     )
 
@@ -192,7 +192,7 @@ def _seen_while_serving(client, pool) -> list[int]:
 
 
 def test_the_embedding_client_holds_a_slot_for_every_call_it_makes(pool):
-    from knowledge_layer.llamaindex.adapter import make_embed_model
+    from knowledge_layer.llamaindex.embedding import make_embed_model
 
     model = make_embed_model(
         base_url="https://openrouter.ai/api/v1",
@@ -208,7 +208,7 @@ def test_the_embedding_client_holds_a_slot_for_every_call_it_makes(pool):
 
 
 async def test_the_embedding_clients_async_side_holds_a_slot_too(pool):
-    from knowledge_layer.llamaindex.adapter import make_embed_model
+    from knowledge_layer.llamaindex.embedding import make_embed_model
 
     model = make_embed_model(
         base_url="https://openrouter.ai/api/v1",

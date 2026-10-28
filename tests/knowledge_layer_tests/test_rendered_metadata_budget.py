@@ -14,10 +14,10 @@ from __future__ import annotations
 import logging
 
 import pytest
-from knowledge_layer.llamaindex.adapter import _apply_metadata_exclusions
-from knowledge_layer.llamaindex.adapter import _fit_rendered_metadata
-from knowledge_layer.llamaindex.adapter import _rendered_metadata_tokens
-from knowledge_layer.llamaindex.adapter import _stamp_chunk_metadata
+from knowledge_layer.llamaindex.chunk_metadata import _fit_rendered_metadata
+from knowledge_layer.llamaindex.chunk_metadata import _rendered_metadata_tokens
+from knowledge_layer.llamaindex.chunk_metadata import apply_metadata_exclusions
+from knowledge_layer.llamaindex.chunk_metadata import stamp_chunk_metadata
 from llama_index.core import Document
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import MetadataMode
@@ -40,7 +40,7 @@ def _drawing_chunk() -> Document:
             "clause_path": f"3.OG - Neubau + Bestand M 1 : 100 › {LEGEND}",
         },
     )
-    _apply_metadata_exclusions(document)
+    apply_metadata_exclusions(document)
     return document
 
 
@@ -69,7 +69,7 @@ def test_a_normal_header_is_left_alone():
         text="Die Wände sind in REI 90 auszuführen.",
         metadata={"file_name": "brandschutz.pdf", "page_label": "3", "clause_id": "3.2", "clause_title": "Wände"},
     )
-    _apply_metadata_exclusions(document)
+    apply_metadata_exclusions(document)
 
     assert _fit_rendered_metadata(document, 512) == []
     assert "Wände" in document.get_metadata_str(mode=MetadataMode.EMBED)
@@ -81,7 +81,7 @@ def test_a_budget_that_is_not_positive_is_refused_outright():
 
 
 def _stamp(documents: list[Document], chunk_size: int) -> None:
-    _stamp_chunk_metadata(documents, doc_class="Statik", provenance={}, chunk_size=chunk_size, file_name=FILE)
+    stamp_chunk_metadata(documents, doc_class="Statik", provenance={}, chunk_size=chunk_size, file_name=FILE)
 
 
 def test_the_header_is_budgeted_against_the_chunk_size_the_job_splits_with():

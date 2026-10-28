@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * How the Word export treats a fence it cannot draw.
  *
  * Piloti draws mermaid on two surfaces — the chat answer and the filed

@@ -43,7 +43,7 @@ NOTES_PREFIX = "releasenotes/notes/"
 PRODUCT_PATTERNS = [
     re.compile(r"^src/aiq_agent/"),
     re.compile(r"^sources/[^/]+/src/"),
-    re.compile(r"^frontends/aiq_api/src/"),
+    re.compile(r"^apps/backend/src/"),
     re.compile(r"^frontends/ui/src/"),
 ]
 

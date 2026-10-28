@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { EXTRACTOR_VERSION, type OfficeConventions } from './extract'
 import { conventionLines, linesForAgent, resolveLines, type StoredDecision } from './lines'

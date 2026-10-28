@@ -51,6 +51,10 @@ from aiq_agent.common.prompt_store import ResolvedPrompt
 from aiq_agent.common.prompt_store import git_blob_version
 from aiq_agent.common.prompt_store import prompt_store
 from aiq_agent.common.prompt_utils import PromptError
+from aiq_agent.common.question_language import answer_language_line
+from aiq_agent.common.question_language import question_language
+from aiq_agent.common.question_language import trace_metadata as question_language_metadata
+from aiq_agent.common.question_language import warm as warm_language_detector
 from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
 from aiq_agent.common.source_kinds import parse_shelf
 from aiq_agent.common.steering import AppliedSteer
@@ -94,6 +98,9 @@ def system_prompt_template() -> str:
     its traces will name already resolved.
     """
     resolve_static_block()
+    # The language detector reads its model here for the same reason: a second
+    # of numpy at boot, not on the first turn's event loop.
+    warm_language_detector()
     return load_prompt(PROMPTS_DIR, PROMPT_NAME)
 
 
@@ -146,8 +153,8 @@ def resolve_static_block() -> ResolvedPrompt:
     return resolved
 
 
-async def stamp_static_prompt_for_turn() -> str:
-    """Resolve the static half for THIS turn, then name a fallback in its trace.
+async def stamp_static_prompt_for_turn(messages: Sequence[BaseMessage] = ()) -> str:
+    """Resolve the static half for THIS turn, then name a fallback and the question's language in its trace.
 
     Awaited on the event loop at the start of a turn. The resolution runs in a
     worker thread because the store may fetch; the stamp runs on the loop
@@ -165,6 +172,10 @@ async def stamp_static_prompt_for_turn() -> str:
     """
     static_text = await asyncio.to_thread(_render_resolved_static_block)
     record_static_prompt_metadata()
+    # The question's language and whether the context names it: the call
+    # :func:`with_answer_language` makes in the render thread, recorded here on
+    # the loop, where a ContextVar write survives.
+    record_trace_metadata(**question_language_metadata(question_language(messages)))
     return static_text
 
 
@@ -377,8 +388,21 @@ def render_turn_prompt(template: str, state: ResearchAgentState, tools_info: Seq
     """The system prompt (the static half, resolved through the store) and this turn's context."""
     return TurnPrompt(
         system=render_static_block(resolve_static_block().text),
-        context=render_turn_context(template, state, tools_info),
+        context=with_answer_language(render_turn_context(template, state, tools_info), state.messages),
     )
+
+
+def with_answer_language(context: str, messages: Sequence[BaseMessage]) -> str:
+    """The turn context, ended by the line naming the question's language when it is confidently not German.
+
+    The context is mostly German and reaches the model as the human-role
+    message right before the question, so it outweighed the static rule „write
+    in the language of the newest message" (#1336, measured on dev 2026-10-28).
+    The line goes after ``</turn_context>``, the last text before the question;
+    ``common/question_language.py`` decides whether there is one.
+    """
+    line = answer_language_line(question_language(messages))
+    return context if line is None else f"{context.rstrip()}\n\n{line}"
 
 
 def request_messages(

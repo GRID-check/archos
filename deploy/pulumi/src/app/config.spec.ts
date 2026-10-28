@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { purgerEnv, schedulerEnv, type AppWiring } from "./config";
-import type { GridConfig } from "../config";
+import type { GridConfig } from '../config'
 
 const here = __dirname;
 // src/app -> src -> deploy/pulumi -> deploy -> repo root

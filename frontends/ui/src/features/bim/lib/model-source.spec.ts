@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * What the geometry kernel is handed.
  *
  * `@ifc-lite/geometry` parses STEP and reports nothing at all for anything

@@ -1,7 +1,7 @@
 """The ``[N]`` in a surface's ``Text`` leaves, held to the answer's own citations.
 
 A ``Text`` leaf is Markdown the answer would otherwise have written in its prose
-(``models.SURFACE_TEXT``), so it cites the way the prose does. But citation
+(``surface_card.SURFACE_TEXT``), so it cites the way the prose does. But citation
 verification and the renumbering that closes the gaps it leaves run over the
 prose alone: without this pass a tab would keep a ``[3]`` that now means a
 different source, or one the check removed.
@@ -24,10 +24,10 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from aiq_agent.cards.models import SURFACE_LAYOUTS
-from aiq_agent.cards.models import SURFACE_TEXT
-from aiq_agent.cards.models import SurfaceCard
 from aiq_agent.cards.models import grid_card_adapter
+from aiq_agent.cards.surface_card import SURFACE_LAYOUTS
+from aiq_agent.cards.surface_card import SURFACE_TEXT
+from aiq_agent.cards.surface_card import SurfaceCard
 from aiq_agent.citations.markdown_code import map_outside_code
 from aiq_agent.citations.references import expand_grouped_citations
 

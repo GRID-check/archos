@@ -5,7 +5,7 @@ backend:
   - changed-files:
       - any-glob-to-any-file:
           - "src/**"
-          - "frontends/aiq_api/**"
+          - "apps/backend/**"
           - "packages/knowledge-layer/**"
           - "packages/ris-adapter/**"
           - "packages/tavily-web-search/**"

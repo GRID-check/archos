@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Voice dictation needs the microphone, and the browser asks the
  * Permissions-Policy header before it asks the member. A policy of
  * `microphone=()` refuses `getUserMedia` with the same NotAllowedError a member

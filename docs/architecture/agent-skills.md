@@ -337,7 +337,7 @@ offers exactly the skills this one gate resolves for that agent — which is the
 payoff of consolidating availability onto a single key.
 
 The agent vocabulary is the `AGENT_REGISTRY` identifiers
-(`frontends/aiq_api/src/aiq_api/registry.py`): **`researcher`** and
+(`apps/backend/src/aiq_api/registry.py`): **`researcher`** and
 **`deep_researcher`**. There is one spelling; the older `deep_research_agent`
 name is gone from the skills path entirely, because two vocabularies for one
 agent meant a `grid-agents` value that was correct in one file and inert in
@@ -407,7 +407,7 @@ skill onto a turn: not the request, not the deployment, not a job.
   their skills the deepagents-native way (see Config).
 - Standing instructions are not skills. What must hold on every answer is
   prompt text: the platform prompt, and the office's own bounded block
-  (`X-Grid-Org-Instructions` → `## Anweisungen des Büros`, rendered in the
+  (`X-Grid-Org-Instructions` → `## Office instructions`, rendered in the
   turn context, never a source and never above the rules it may not
   override).
 

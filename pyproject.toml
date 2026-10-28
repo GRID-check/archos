@@ -57,6 +57,10 @@ dependencies = [
     "langchain-openai>=1.6.6",
     # 7.59 reads POSTHOG_RELEASE_ID, which links an exception to its release.
     "posthog>=7.59,<8",
+    # The language of the person's newest message (`common/question_language.py`).
+    # Pure Python on numpy, a 4 MB wheel with its model inside: lingua's wheel is
+    # 160 MB and fast-langdetect downloads its model at runtime.
+    "py3langid>=0.4.0,<0.5",
 ]
 
 [project.optional-dependencies]
@@ -88,7 +92,7 @@ viz = [
 
 # -----------------------------------------------------------------------------
 # Workspace members are installed via: uv sync
-# Individual packages: uv pip install -e ./frontends/aiq_api
+# Individual packages: uv pip install -e ./apps/backend
 # See [tool.uv.workspace] below for auto-discovered packages
 # -----------------------------------------------------------------------------
 
@@ -187,7 +191,7 @@ addopts = "--import-mode=importlib -m 'not live'"
 # whichever checkout ran `uv sync`, so a bare `pytest` in a worktree without its
 # own venv tested the MAIN checkout's code while everything passed. This puts
 # the checkout's own `src/` ahead of that install (the editable `.pth` is
-# appended to sys.path, so it loses). `frontends/aiq_api/src` is the same guard
+# appended to sys.path, so it loses). `apps/backend/src` is the same guard
 # for `aiq_api`, which `tests/aiq_agent` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
 # those tests against the MAIN checkout's `aiq_api`. `evals/oib-retrieval/src`
@@ -197,7 +201,7 @@ addopts = "--import-mode=importlib -m 'not live'"
 # The test-support packages come last: `<distribution>_testing`, one per suite
 # family, so a suite imports its helpers by a name that no directory move changes
 # (ADR-0145 row 5; tests/test_test_imports.py holds it).
-pythonpath = [".", "src", "frontends/aiq_api/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "tests/aiq_agent/testing"]
+pythonpath = [".", "src", "apps/backend/src", "evals/oib-retrieval/src", "packages/knowledge-layer/testing", "packages/ris-adapter/testing", "tests/aiq_agent/testing"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
@@ -379,7 +383,7 @@ indent_dictionary_value = true
 #   uv sync                              # Install root + all workspace members
 #   uv sync --package aiq-agent  # Install only the root package
 #   uv pip install -e ./packages/ris-adapter  # Install a specific package
-#   uv pip install -e "./frontends/aiq_api[postgres]"  # With extras
+#   uv pip install -e "./apps/backend[postgres]"  # With extras
 # -----------------------------------------------------------------------------
 [dependency-groups]
 dev = [
@@ -441,7 +445,7 @@ members = [
     "packages/knowledge-layer",
     "packages/ris-adapter",
     "packages/tavily-web-search",
-    "frontends/aiq_api",
+    "apps/backend",
 ]
 
 [tool.uv.sources]
