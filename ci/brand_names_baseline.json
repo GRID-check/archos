@@ -818,7 +818,6 @@
   "frontends/ui/src/features/projects/components/intake-question-field.tsx": 1,
   "frontends/ui/src/features/projects/components/overview/project-overview.tsx": 1,
   "frontends/ui/src/features/projects/components/overview/usage-tile.tsx": 1,
-  "frontends/ui/src/features/projects/components/project-intake-wizard.tsx": 1,
   "frontends/ui/src/features/projects/components/settings/usage-settings.tsx": 2,
   "frontends/ui/src/features/realtime/use-channel.spec.tsx": 1,
   "frontends/ui/src/features/search/lib/recent-searches.ts": 1,

@@ -90,7 +90,7 @@
     "frontends/ui/src/features/platform/components/norm-entry-editor.tsx": 1095,
     "frontends/ui/src/features/product-feedback/components/feedback-threads.tsx": 822,
     "frontends/ui/src/features/product-feedback/components/feedback-triage.tsx": 748,
-    "frontends/ui/src/features/projects/components/project-intake-wizard.tsx": 2019,
+    "frontends/ui/src/features/projects/components/project-intake-wizard.tsx": 1005,
     "frontends/ui/src/features/projects/components/project-memory-panel.tsx": 614,
     "frontends/ui/src/features/runs/components/RunBlock.tsx": 1046,
     "frontends/ui/src/features/search/components/search-atoms.tsx": 1176,
