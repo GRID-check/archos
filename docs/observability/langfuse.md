@@ -111,9 +111,11 @@ as above): its input the query's length in `text_chars` and `text_tokens`
 candidates named by id; `payload`: too many to name, so what they are and cite;
 `none`), how many `document_ids` and which `filter_fields`; its output
 `candidates` (the passages ranked), `documents` handed back, `with_document_id`,
-`collections_with_hits` and `hits_per_collection` (the 50 collections with most,
-by name: `proj_<uuid>`, `office_shelf_<org>`). Metadata: `prefilter`,
-`collections`, `candidates`, `documents`. A grouped search without the purpose
+`collections_with_hits`, `hits_per_collection` (the 50 collections with most,
+by name: `proj_<uuid>`, `office_shelf_<org>`) and `below_meaning_floor` (the
+documents dropped because they matched by meaning alone below the floor).
+Metadata: `prefilter`, `collections`, `candidates`, `documents`,
+`below_meaning_floor`. A grouped search without the purpose
 (the cross-project lookup) is traced where it runs, as
 `retrieve.project_lookup`, never twice. The browser's side of the same search
 is PostHog's `search_issued`, and the route's `Server-Timing` header splits its
