@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    The Herleitung draws its graph again: the sources sit side by side under
+    the question and the lines join them, instead of sliding down the page in
+    a staircase that the panel cut off.
