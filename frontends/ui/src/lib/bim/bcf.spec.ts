@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The BCF export.
  *
  * The archive leaves this product and is opened by software nobody here

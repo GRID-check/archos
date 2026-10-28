@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * A member-scope budget policy must name a member of the organization.
  *
  * The failure this pins is the quiet kind: an admin types (or pastes, or
