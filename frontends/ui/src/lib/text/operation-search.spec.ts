@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { foldSearchText, operationScorer, searchWordGroups, stemSearchWord } from './operation-search'
 
