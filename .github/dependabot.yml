@@ -41,6 +41,11 @@ updates:
         versions: [">=0.7"]
       - dependency-name: "langchain-modal"
         versions: [">=0.0.6"]
+      # langfuse 5 pairs with the Langfuse server at 4.59 or later and changes
+      # the score API; it moves with the JS client in one migration (ADR-0044
+      # follow-ups). Minor and patch bumps stay allowed.
+      - dependency-name: "langfuse"
+        update-types: ["version-update:semver-major"]
 
   # Frontend (Next.js UI). bun.lock is its only lockfile; the Docker build and
   # CI install from it.
@@ -120,6 +125,19 @@ updates:
       # crash at runtime. Lift this when the runtime moves to a new major, and
       # move @types/node with it.
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # OpenTelemetry JS 3.x and @langfuse/client 6 are one coordinated
+      # migration: the Langfuse server must be at least 4.59, the score API
+      # changes, and @opentelemetry/api must be at least 1.10. Minor and patch
+      # bumps stay allowed. Lift these in the change that does the migration
+      # (ADR-0044 follow-ups).
+      - dependency-name: "@opentelemetry/sdk-metrics"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@opentelemetry/sdk-logs"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@opentelemetry/resources"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@langfuse/client"
         update-types: ["version-update:semver-major"]
 
   # Landing site (Astro microservice). bun.lock, like the UI's (ADR-0103).
