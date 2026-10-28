@@ -264,8 +264,6 @@
     "apps/backend/src/aiq_api/routes/revision_compare.py::add_revision_compare_routes": 75,
     "apps/backend/src/aiq_api/routes/skill_review.py::add_skill_review_routes": 105,
     "apps/backend/src/aiq_api/routes/skill_review.py::add_skill_review_routes.skill_review": 90,
-    "apps/backend/src/aiq_api/routes/skills.py::add_skill_routes": 160,
-    "apps/backend/src/aiq_api/routes/skills.py::add_skill_routes.submit_skill": 135,
     "apps/backend/start_web.py::main": 131,
     "evals/oib-retrieval/src/oib_retrieval/evaluator.py::OIBRetrievalEvaluator.evaluate_item": 61,
     "evals/oib-retrieval/src/oib_retrieval/overview.py::load_golden": 69,
