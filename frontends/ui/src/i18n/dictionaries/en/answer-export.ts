@@ -38,7 +38,7 @@ export const answerExport = {
    */
   aiNotice: {
     title: 'AI-generated — not reviewed',
-    body: 'Piloti wrote this document; no person has reviewed it. It is a draft, not proof of compliance — check every statement before you pass the document on or submit it.',
+    body: '{productName} wrote this document; no person has reviewed it. It is a draft, not proof of compliance — check every statement before you pass the document on or submit it.',
   },
   /**
    * Printed where a ```mermaid fence stood, in a document rendered from an
@@ -60,7 +60,7 @@ export const answerExport = {
    *     where it is. Anything longer competes with the finding it interrupts.
    */
   diagramPlaceholder:
-    'Diagram — not reproduced in this file. The answer in Piloti shows it as a drawing.',
+    'Diagram — not reproduced in this file. The answer in {productName} shows it as a drawing.',
   question: 'Question',
   answer: 'Answer',
   project: 'Project',
@@ -143,7 +143,7 @@ export const answerExport = {
    * missing from an exported file reads as a finding the answer never made.
    */
   liveCard:
-    'This card reads the project’s model live — a document cannot carry the values it shows. Open the answer in Piloti to see them.',
+    'This card reads the project’s model live — a document cannot carry the values it shows. Open the answer in {productName} to see them.',
   /** Heading for a card that carries no title of its own. */
   cardTypes: {
     project_profile_patch: 'Proposed change to the project brief',

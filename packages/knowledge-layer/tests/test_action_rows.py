@@ -157,7 +157,7 @@ class TestKnowledgeSearchRow:
         def _boom(*args, **kwargs):
             raise RuntimeError("boom")
 
-        monkeypatch.setattr("knowledge_layer.register._merge_results", _boom)
+        monkeypatch.setattr("knowledge_layer.fusion.merge_results", _boom)
 
         await _search(query="Fluchtweglänge")
 

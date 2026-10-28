@@ -3,11 +3,34 @@
  *
  * The product ships user-facing as **Piloti**, and the name will change again.
  * Use this constant for every user-visible brand mention (wordmark, tab
- * titles, aria labels). No internal identifier carries a product name at all
+ * titles, aria labels); the dictionaries say `{productName}` and get it from
+ * here (`withProductName` below), and the agent's prompts carry the same string
+ * (`aiq_agent.common.brand`, held equal by `tests/test_product_name_parity.py`).
+ * No internal identifier carries a product name at all
  * (env vars, headers, CSS variables, storage keys, DB identifiers): the
  * `brand-names` ratchet holds that (docs/contributing/code-conventions.md#no-brand-names).
  */
 export const PRODUCT_NAME = 'Piloti'
+
+const PRODUCT_NAME_TOKEN = /\{productName\}/g
+
+/**
+ * `dictionary` with `{productName}` replaced by the product's name in every
+ * string. The copy never spells the name: the dictionary registry
+ * (`i18n/dictionaries/index.ts`) applies this to both locales once, and a
+ * module that carries only some namespaces (the MCP Apps view) applies it
+ * itself. Here, beside the constant, so the module stays a leaf.
+ */
+export function withProductName<T>(dictionary: T): T {
+  if (typeof dictionary === 'string') return dictionary.replace(PRODUCT_NAME_TOKEN, PRODUCT_NAME) as T
+  if (Array.isArray(dictionary)) return dictionary.map(withProductName) as T
+  if (dictionary && typeof dictionary === 'object') {
+    return Object.fromEntries(
+      Object.entries(dictionary).map(([key, value]) => [key, withProductName(value)]),
+    ) as T
+  }
+  return dictionary
+}
 
 /**
  * The Piloti mark (the column) for every place that draws it inline: the app's

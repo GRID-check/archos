@@ -25,7 +25,7 @@ WHAT EACH SECTION IS WORTH
      ``openai/text-embedding-3-large`` via OpenRouter; nothing here is a claim about its
      absolute recall.
 4. **Hybrid** — dense fused with lexical through the production
-   ``reciprocal_rank_fusion``, then through the production ``_merge_results`` so the
+   ``reciprocal_rank_fusion``, then through the production ``merge_results`` so the
    diversity cap that actually shapes what the agent sees is in the measured path.
 
 Every dense and hybrid line is printed with its embedder name attached, so no number can
@@ -101,9 +101,9 @@ class Scores:
 
 
 def _to_schema_chunks(chunks: list[corpus.Chunk]):
-    """Adapt harness chunks to the production ``Chunk`` model so ``_merge_results`` applies.
+    """Adapt harness chunks to the production ``Chunk`` model so ``merge_results`` applies.
 
-    The score is a rank-derived stand-in, not a cosine: ``_merge_results`` never ranks on
+    The score is a rank-derived stand-in, not a cosine: ``merge_results`` never ranks on
     it (that is the whole point of the rank fusion inside it) and only ``_apply_diversity_cap``
     consumes the order, so a monotone placeholder changes nothing it does. Setting a real
     cosine here would be worse — it would imply the two channels' scores are comparable,
@@ -136,7 +136,7 @@ def _hybrid(
     """Fuse and merge through the PRODUCTION helpers, then collapse to ranked units.
 
     ``reciprocal_rank_fusion`` from ``knowledge_layer.llamaindex.hybrid`` with the vector
-    channel first (the order ``adapter.py`` uses, so it wins ties), then ``_merge_results``
+    channel first (the order ``adapter.py`` uses, so it wins ties), then ``merge_results``
     from ``knowledge_layer.register`` so the per-document diversity cap that decides what
     the agent actually sees is inside the measured path rather than downstream of it.
 
@@ -146,11 +146,11 @@ def _hybrid(
     entries are identical whether it is called with 16 or with 120. Only the fill pass
     beyond production's cutoff differs, and nothing is reported from there.
     """
+    from knowledge_layer.fusion import merge_results
     from knowledge_layer.llamaindex.hybrid import reciprocal_rank_fusion
-    from knowledge_layer.register import _merge_results
 
     fused = reciprocal_rank_fusion([dense_hits, lexical_hits], top_n=top_k)
-    merged = _merge_results(
+    merged = merge_results(
         [
             type(
                 "_Result",

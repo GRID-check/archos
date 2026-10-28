@@ -4,7 +4,7 @@ import type { en } from '../en'
 export const knowledge: typeof en.knowledge = {
   title: 'Wissensbasis',
   subtitle:
-    'Die Dokumente, mit denen Piloti in diesem Projekt arbeitet: die gemeinsamen OIB-Richtlinien und die hochgeladenen Dateien des Projekts.',
+    'Die Dokumente, mit denen {productName} in diesem Projekt arbeitet: die gemeinsamen OIB-Richtlinien und die hochgeladenen Dateien des Projekts.',
   summary: {
     documents: 'Dokumente',
     indexed: 'Indexiert',
@@ -45,7 +45,7 @@ export const knowledge: typeof en.knowledge = {
   },
   stateHints: {
     ingested: 'Für den Assistenten vollständig durchsuchbar.',
-    stale: 'Die Datei wurde seit der Indexierung ersetzt; bis zur nächsten Synchronisierung antwortet Piloti aus der vorherigen Fassung.',
+    stale: 'Die Datei wurde seit der Indexierung ersetzt; bis zur nächsten Synchronisierung antwortet {productName} aus der vorherigen Fassung.',
     pending: 'Hochgeladen, aber noch nicht verarbeitet — der Assistent kann sie erst verwenden, wenn ein Ingest-Worker sie fertig verarbeitet hat.',
     failed: 'Die Verarbeitung wurde nicht abgeschlossen. Ein neuer Versuch erfolgt erst, wenn sich die Datei ändert; mit „Neu indexieren“ lässt er sich auslösen.',
     removed: 'Der Korpus führt dieses Dokument nicht mehr, seine indexierten Inhalte sind aber noch durchsuchbar. Zum Bereinigen löschen.',
@@ -119,14 +119,14 @@ export const knowledge: typeof en.knowledge = {
     foundWithOfficeShelf:
       '{count, plural, one {In # Projekt und der Büroablage gefunden} other {In # Projekten und der Büroablage gefunden}}',
     foundOnlyOfficeShelf: 'In der Büroablage gefunden',
-    loading: 'Piloti sieht in Ihren Projekten nach…',
+    loading: '{productName} sieht in Ihren Projekten nach…',
     emptyTitle: 'Im Büro noch nicht behandelt',
     emptyBody:
       'Durchgesehen: dieses Projekt, {count, plural, one {# weiteres Projekt} other {# weitere Projekte}} und die Büroablage.',
     failedTitle: 'Das hat gerade nicht geklappt',
     failedBody: 'Bitte gleich noch einmal versuchen.',
     heldTitle: 'Dieses Dokument wird noch geprüft',
-    heldBody: 'Sobald die Prüfung abgeschlossen ist, sieht Piloti im Büro nach.',
+    heldBody: 'Sobald die Prüfung abgeschlossen ist, sieht {productName} im Büro nach.',
     retry: 'Erneut versuchen',
     groupCurrent: 'Dieses Projekt',
     groupOfficeShelf: 'Büroablage',
@@ -145,7 +145,7 @@ export const knowledge: typeof en.knowledge = {
     openAtRis: 'Im RIS öffnen',
     loading: 'Rechtsquelle wird geladen…',
     failed:
-      'Diese Rechtsquelle lässt sich gerade nicht in Piloti anzeigen. Über „Im RIS öffnen" erreichen Sie das Dokument weiterhin.',
+      'Diese Rechtsquelle lässt sich gerade nicht in {productName} anzeigen. Über „Im RIS öffnen" erreichen Sie das Dokument weiterhin.',
     busy: 'Zu viele Anfragen kurz hintereinander. Bitte einen Moment warten und die Quelle erneut öffnen.',
     truncated: 'Gekürzt — der vollständige Text steht im RIS.',
   },

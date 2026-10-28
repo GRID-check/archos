@@ -31,7 +31,7 @@ export const projects = {
     empty: {
       title: 'Start your first project',
       description:
-        'Piloti is the workspace in which a planning office runs a building project. Create a project to bring its documents, members, and chat together. Piloti works in it and cites every source.',
+        '{productName} is the workspace in which a planning office runs a building project. Create a project to bring its documents, members, and chat together. {productName} works in it and cites every source.',
       action: 'Create your first project',
     },
     filter: {
@@ -65,7 +65,7 @@ export const projects = {
     range: '{start} – {end}',
     periodOpen: 'Start open',
     startedOn: 'Start',
-    startedOnDefault: 'The month the project was created in Piloti. Change it if the work began earlier.',
+    startedOnDefault: 'The month the project was created in {productName}. Change it if the work began earlier.',
     endedOn: 'Completion',
     endedOnRunning: 'Ongoing. The completion is set when the project is closed.',
     month: 'Month',
@@ -78,9 +78,9 @@ export const projects = {
     more: '{count, plural, one {# more person} other {# more people}}',
     noPeople: 'Nobody entered yet.',
     peopleHint:
-      "The project's members are listed here on their own. Add whoever worked on it without a Piloti account: external planners, the client, former staff.",
+      "The project's members are listed here on their own. Add whoever worked on it without a {productName} account: external planners, the client, former staff.",
     rosterUnknown: "The project's members could not be loaded just now. Only what was entered is shown.",
-    privacy: 'Only name, function, company and period are stored. Piloti does not use these details in answers.',
+    privacy: 'Only name, function, company and period are stored. {productName} does not use these details in answers.',
     member: 'Member',
     former: 'former',
     functionMissing: 'Function open',
@@ -105,18 +105,18 @@ export const projects = {
     closing: {
       heading: 'Who was involved',
       description:
-        'Check who worked on the project and add whoever was involved without a Piloti account. Once closed, the record is read-only.',
+        'Check who worked on the project and add whoever was involved without a {productName} account. Once closed, the record is read-only.',
       loadFailed: 'The project record could not be loaded. You can still close the project.',
     },
   },
   cleanup: {
-    loading: 'Piloti is going through the files …',
+    loading: '{productName} is going through the files …',
     aiNotice:
-      'AI proposal: made by Piloti from file names, folders, types and the existing summaries, without reading the files again. Check every item.',
+      'AI proposal: made by {productName} from file names, folders, types and the existing summaries, without reading the files again. Check every item.',
     aiUnavailable:
       'The AI check was not available just now. The proposals come from fixed rules only, such as lock files, “Copy of …” or an older index in the file name.',
     considered: '{count} files checked that you may edit.',
-    none: 'Piloti proposes nothing to remove.',
+    none: '{productName} proposes nothing to remove.',
     unavailable: 'The proposals could not be loaded. You can still close the project.',
     binNote: 'What you select goes to the bin for 14 days and can be restored from there.',
     aiChip: 'AI proposal',
@@ -137,7 +137,7 @@ export const projects = {
       'old-name': 'Marked as old (name)',
       'same-content': 'Same content as an older file',
       'older-version': 'Older revision; a newer one is in the same folder',
-      'unpublished-draft': 'Draft by Piloti, never published',
+      'unpublished-draft': 'Draft by {productName}, never published',
     },
   },
   lifecycle: {
@@ -150,7 +150,7 @@ export const projects = {
     banner: {
       title: 'Closed project · read-only',
       endedIn: 'Completed {month}.',
-      closedOn: 'Closed in Piloti on {date}.',
+      closedOn: 'Closed in {productName} on {date}.',
       cancelled: 'It was not realized.',
       body: 'Files, folders, the brief and project memory can no longer be changed. You can still ask about it in chat.',
       outsider:
@@ -168,7 +168,7 @@ export const projects = {
       closedDescription:
         'Read-only and readable by the whole office, as a reference for future projects. Folders with their own access list stay restricted. Reopened, it is editable again and visible only to its members.',
       closedFacts: '{outcome} · completion {month}',
-      closedOn: 'Closed in Piloti on {date}',
+      closedOn: 'Closed in {productName} on {date}',
       pausedOn: 'Paused since {date}',
       whichOne: 'Pause when the project is waiting and will go on. Close when the work is over, built or not.',
       pause: 'Pause',
@@ -194,7 +194,7 @@ export const projects = {
         cleanup: {
           label: 'Clear out',
           description:
-            'Piloti proposes what the finished project no longer needs: working copies, superseded versions, duplicates, temporary files and drafts that were never published. You decide about every item.',
+            '{productName} proposes what the finished project no longer needs: working copies, superseded versions, duplicates, temporary files and drafts that were never published. You decide about every item.',
         },
       },
       outcome: {
@@ -219,11 +219,11 @@ export const projects = {
     },
     debrief: {
       intro:
-        'What this project learned can serve every future project in the office: Piloti offers it when a similar question comes up. Take a moment before closing to check what stays.',
+        'What this project learned can serve every future project in the office: {productName} offers it when a similar question comes up. Take a moment before closing to check what stays.',
       fingerprint: {
-        heading: 'How Piloti finds it again',
+        heading: 'How {productName} finds it again',
         description:
-          'Piloti finds comparable projects by these facts, and your office finds this one under “Similar projects”. Add missing ones in the brief.',
+          '{productName} finds comparable projects by these facts, and your office finds this one under “Similar projects”. Add missing ones in the brief.',
         missing: '{count, plural, one {# fact missing} other {# facts missing}}',
         complete: 'Complete',
         open: 'open',
@@ -244,12 +244,12 @@ export const projects = {
       },
       extract: {
         action: 'Read from the documents',
-        pending: 'Piloti is reading the documents …',
+        pending: '{productName} is reading the documents …',
         result:
           '{suggested, plural, one {# fact} other {# facts}} suggested, {drafted, plural, one {# decision} other {# decisions}} drafted from {documents, plural, one {# document} other {# documents}}.',
-        none: 'Piloti found nothing new in the documents.',
+        none: '{productName} found nothing new in the documents.',
         errors: {
-          backendUnavailable: 'Piloti could not read the documents just now. Please try again later.',
+          backendUnavailable: '{productName} could not read the documents just now. Please try again later.',
           noDocuments: 'There are no readable documents in the open folders yet.',
           failed: 'The reading did not work. Please try again later.',
         },
@@ -257,13 +257,13 @@ export const projects = {
       decisions: {
         heading: 'What the office should keep',
         description:
-          'Decisions and constraints from the project memory. Piloti cites confirmed ones in other projects as “confirmed by a person”.',
-        empty: 'Piloti has not recorded any decisions for this project yet.',
+          'Decisions and constraints from the project memory. {productName} cites confirmed ones in other projects as “confirmed by a person”.',
+        empty: '{productName} has not recorded any decisions for this project yet.',
         confirm: 'Confirm',
         confirmed: 'Confirmed',
         dismiss: 'Dismiss',
         grounded: 'Drawn from the documents',
-        noted: 'Noted by Piloti',
+        noted: 'Noted by {productName}',
         evidencePage: '{file}, p. {page}',
         kind: { decision: 'Decision', constraint: 'Constraint' },
       },
@@ -297,7 +297,7 @@ export const projects = {
   },
   card: {
     summaryFallback:
-      'Planning-office workspace. Add documents and a brief so Piloti can work from this project.',
+      'Planning-office workspace. Add documents and a brief so {productName} can work from this project.',
     status: {
       active: 'Active',
       paused: 'Paused',
@@ -323,7 +323,7 @@ export const projects = {
   dialog: {
     newProject: 'New project',
     title: 'New project',
-    description: 'Next you add the documents. Piloti does the rest.',
+    description: 'Next you add the documents. {productName} does the rest.',
   },
   form: {
     nameRequired: 'Project name is required.',
@@ -341,14 +341,14 @@ export const projects = {
       optional: 'optional',
       clearStartedOn: 'Clear start',
       endedOnBeforeStart: 'The completion lies before the start.',
-      readOnlyPiloti: 'The project stays open while Piloti reads its documents. It closes when you finish the review.',
+      readOnlyPiloti: 'The project stays open while {productName} reads its documents. It closes when you finish the review.',
     },
     addressLabel: 'Address',
     addressPlaceholder: 'Street and number, or the town',
     address: {
       searching: 'Searching…',
       suggestions: 'Address suggestions',
-      keepTyped: 'Or leave it as it is: Piloti takes the address as you type it.',
+      keepTyped: 'Or leave it as it is: {productName} takes the address as you type it.',
     },
     sameAddress: {
       heading: 'There is already a project at this address',
@@ -360,12 +360,12 @@ export const projects = {
       open: 'Briefly describe what it is about',
       label: 'What is it about?',
       placeholder: 'e.g. Adding two storeys to a Gründerzeit building, attic conversion with 6 flats',
-      help: 'One or two sentences help Piloti read the documents.',
+      help: 'One or two sentences help {productName} read the documents.',
     },
     drop: {
       title: 'Drag the project folder here',
       titleTouch: 'Add the project documents',
-      help: 'Optional. In the next step you choose which folders Piloti reads.',
+      help: 'Optional. In the next step you choose which folders {productName} reads.',
       choose: 'Choose',
       overlay: 'Drop the project folder',
       held: 'Folder “{name}”: {count, plural, one {# file} other {# files}} will be filed once the project exists.',
@@ -388,12 +388,12 @@ export const projects = {
     source: 'Source',
     sourceAria: 'Open the source for {code}',
     sourceTitle: 'Open the OIB source',
-    askGrid: 'Ask Piloti',
-    askGridAria: 'Ask Piloti about {code}',
-    askGridTitle: 'Ask Piloti about this Richtlinie',
+    askGrid: 'Ask {productName}',
+    askGridAria: 'Ask {productName} about {code}',
+    askGridTitle: 'Ask {productName} about this Richtlinie',
     emptyTitle: 'No applicable standards yet',
     emptyDescription:
-      'Complete the project brief so Piloti can work out which OIB-Richtlinien apply to this building.',
+      'Complete the project brief so {productName} can work out which OIB-Richtlinien apply to this building.',
     disclaimer:
       'Orientation only — not legal advice. Confirm applicability against the current Bauordnung and the authority having jurisdiction.',
   },
@@ -439,7 +439,7 @@ export const projects = {
     tryAgain: 'Try again',
     emptyTitle: 'No research runs yet',
     emptyDescription:
-      'Deep research runs appear here once you ask Piloti an involved question in Chat. It works through the project’s files, Office filing and building law, and returns a cited report you can revisit.',
+      'Deep research runs appear here once you ask {productName} an involved question in Chat. It works through the project’s files, Office filing and building law, and returns a cited report you can revisit.',
     emptyAction: 'Start a run in Chat',
     viewReport: 'View report',
     viewProgress: 'View progress',
@@ -466,9 +466,9 @@ export const projects = {
     },
     eyebrowEdit: 'Edit project brief',
     eyebrowCreate: 'Project setup',
-    titleFallback: 'Tell Piloti about this project',
+    titleFallback: 'Tell {productName} about this project',
     subtitle:
-      'About 2 minutes. Piloti uses this brief to work on your building and to show which OIB guidelines apply.',
+      'About 2 minutes. {productName} uses this brief to work on your building and to show which OIB guidelines apply.',
     moduleNav: 'Modules',
     moduleNavAria: 'Wizard modules',
     documentRole: {
@@ -510,7 +510,7 @@ export const projects = {
     progressAria: 'Progress',
     reviewTitle: 'Review & confirm',
     reviewStep: 'Review',
-    reviewDescription: 'Confirm what Piloti understood about this project before saving.',
+    reviewDescription: 'Confirm what {productName} understood about this project before saving.',
     back: 'Back',
     stepCounter: 'Step {current} of {total}',
     saving: 'Saving…',
@@ -521,9 +521,9 @@ export const projects = {
     saveChanges: 'Save changes',
     saveAndSee: 'Save & see my standards',
     next: 'Next',
-    unknownsTitle: "Piloti still won't know",
+    unknownsTitle: "{productName} still won't know",
     unknownsHint:
-      'You can save now and fill these in later — Piloti will flag them as open questions.',
+      'You can save now and fill these in later — {productName} will flag them as open questions.',
     edit: 'Edit',
     optional: '(optional)',
     yes: 'Yes',
@@ -551,7 +551,7 @@ export const projects = {
     classification: {
       title: 'What this brief is for',
       description:
-        'The building class is confirmed here when you know it. If it is still open, Piloti asks in chat before an answer that hangs on it. The brief is the working basis for which rules apply and which points are still open.',
+        'The building class is confirmed here when you know it. If it is still open, {productName} asks in chat before an answer that hangs on it. The brief is the working basis for which rules apply and which points are still open.',
     },
     consistency: {
       checking: 'Checking your answers…',
@@ -591,12 +591,12 @@ export const projects = {
     },
     provenance: {
       user: 'added by you',
-      grid: 'noted by Piloti',
+      grid: 'noted by {productName}',
     },
     conflict: {
       badge: 'Conflicts with a confirmed note',
       title:
-        'Conflicts with “{note}” — Piloti was not allowed to replace that note. Confirm or remove one of the two.',
+        'Conflicts with “{note}” — {productName} was not allowed to replace that note. Confirm or remove one of the two.',
       titleUnknown: 'Conflicts with a confirmed note that is no longer in this list.',
     },
     restricted: {
@@ -627,7 +627,7 @@ export const projects = {
     updated: 'Memory updated.',
     deleted: 'Memory removed.',
     heading: 'Project memory',
-    description: 'What Piloti has learned about this project — editable.',
+    description: 'What {productName} has learned about this project — editable.',
     addMemory: 'Add memory',
     kindAria: 'Memory kind',
     scopeAria: 'Memory scope',
@@ -638,7 +638,7 @@ export const projects = {
     add: 'Add',
     emptyTitle: 'Nothing recorded yet',
     emptyDescription:
-      "Piloti hasn't recorded anything about this project yet. It will as you chat — or add something yourself.",
+      "{productName} hasn't recorded anything about this project yet. It will as you chat — or add something yourself.",
     orgWide: 'org-wide',
     confidence: '{confidence} confidence',
     save: 'Save',
@@ -661,7 +661,7 @@ export const projects = {
   overview: {
     workspaceCreated: 'Project workspace · created {date}',
     workspace: 'Project workspace',
-    askGrid: 'Ask Piloti',
+    askGrid: 'Ask {productName}',
     uploadFiles: 'Upload files',
     rename: {
       action: 'Rename project',
@@ -682,7 +682,7 @@ export const projects = {
       summaryGenerate: 'Generate summary',
       summaryRegenerate: 'Regenerate',
       summaryGenerating: 'Generating…',
-      summaryWriting: 'Piloti is writing the project summary…',
+      summaryWriting: '{productName} is writing the project summary…',
       summarySuccess: 'Summary updated.',
       summaryError: 'Could not generate a summary. Please try again.',
       summaryLlmNotConfigured:
@@ -694,9 +694,9 @@ export const projects = {
       focus: 'Focus',
       startedNoDetailsBefore: 'The brief has been started but no details are captured yet. ',
       completeBrief: 'Complete the brief',
-      startedNoDetailsAfter: ' so Piloti can ground its answers.',
-      missingHeading: "Piloti still doesn't know",
-      assumptionsHeading: 'Suggested by Piloti — confirm to make it a project fact',
+      startedNoDetailsAfter: ' so {productName} can ground its answers.',
+      missingHeading: "{productName} still doesn't know",
+      assumptionsHeading: 'Suggested by {productName} — confirm to make it a project fact',
       assumptionConfirm: 'Confirm',
       assumptionDismiss: 'Dismiss',
       assumptionError: 'Could not update the brief. Please try again.',
@@ -709,7 +709,7 @@ export const projects = {
       },
       emptyTitle: 'Set up the project brief',
       emptyDescription:
-        "Tell Piloti about this building — use, class, storeys and goals. A complete brief lets Piloti ground every answer in your project's real context.",
+        "Tell {productName} about this building — use, class, storeys and goals. A complete brief lets {productName} ground every answer in your project's real context.",
       emptyAction: 'Set up project context',
     },
     stats: {
@@ -722,7 +722,7 @@ export const projects = {
       viewAll: 'View all',
       emptyTitle: 'No files yet',
       emptyDescription:
-        'Upload building documents — drawings, reports, the Bauordnung excerpts — so Piloti can cite your project when it answers.',
+        'Upload building documents — drawings, reports, the Bauordnung excerpts — so {productName} can cite your project when it answers.',
       emptyAction: 'Upload files',
     },
   },

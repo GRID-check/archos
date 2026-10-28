@@ -55,7 +55,7 @@ export const search = {
     /** No match yet while shelves are still being read. */
     readingTitle: 'Nothing found yet',
     reading:
-      '{count, plural, one {Piloti is still reading one shelf, so matches can still appear there.} other {Piloti is still reading # shelves, so matches can still appear there.}}',
+      '{count, plural, one {{productName} is still reading one shelf, so matches can still appear there.} other {{productName} is still reading # shelves, so matches can still appear there.}}',
     includeArchived: 'Include archived',
     wholeOffice: 'Search the whole office',
     withFilters: 'The filters exclude everything that matched. Take one off, or clear them all.',
@@ -210,7 +210,7 @@ export const search = {
     },
   },
   register: {
-    caption: 'One row per document, as Piloti read it.',
+    caption: 'One row per document, as {productName} read it.',
     sortBy: 'Sort by {column}',
     currentOnly: 'Current version only',
     columnsMenu: 'Columns',
@@ -292,7 +292,7 @@ export const search = {
     menuLabel: 'Actions',
     column: 'Actions',
     open: 'Open',
-    ask: 'Ask Piloti',
+    ask: 'Ask {productName}',
     askAtPage: 'What does page {page} of “{name}” say?',
     openCurrent: 'Open current version',
     openPoints: 'Open points',

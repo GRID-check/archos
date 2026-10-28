@@ -23,7 +23,7 @@ export const shortcuts: typeof en.shortcuts = {
   },
   cheatsheet: {
     title: 'Tastaturkürzel',
-    description: 'Piloti bedienen, ohne die Tastatur zu verlassen.',
+    description: '{productName} bedienen, ohne die Tastatur zu verlassen.',
     thenSeparator: 'dann',
     /** The control key as a German keyboard prints it; `⌘` on a Mac. */
     controlKey: 'Strg',
@@ -50,7 +50,7 @@ export const shortcuts: typeof en.shortcuts = {
       chooseOption: 'Nummerierte Option wählen',
       reviewPoint: 'Anmerken',
       reviewRegion: 'Bereich anmerken',
-      reviewAsk: 'Piloti nach einem Bereich fragen',
+      reviewAsk: '{productName} nach einem Bereich fragen',
       reviewStep: 'Nächste oder vorige Anmerkung',
       reviewSettle: 'Vorschlag übernehmen oder Anmerkung erledigen',
       reviewDismiss: 'Vorschlag verwerfen',

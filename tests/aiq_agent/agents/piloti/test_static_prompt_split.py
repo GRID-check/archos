@@ -35,6 +35,7 @@ from aiq_agent.agents.piloti.prompt import render_static_block
 from aiq_agent.agents.piloti.prompt import resolve_static_block
 from aiq_agent.agents.piloti.prompt import stamp_static_prompt_for_turn
 from aiq_agent.agents.piloti.prompt import system_prompt_template
+from aiq_agent.common.brand import PRODUCT_NAME
 from aiq_agent.common.prompt_store import PromptStore
 from aiq_agent.common.prompt_store import ResolvedPrompt
 from aiq_agent.common.prompt_utils import render_prompt_template
@@ -118,15 +119,17 @@ class TestByteIdentity:
     def test_the_static_half_is_where_the_cacheable_text_lives(self):
         """
         The split is only worth anything if the static file really is static:
-        one Jinja variable (the envelope schema, rendered from the models) and
-        no conditionals. A `{% if %}` that drifted up here would be re-rendered
-        per turn inside a block the whole design assumes is constant.
+        two Jinja variables, both constant for the process (the envelope schema,
+        rendered from the models, and the product's name), and no conditionals.
+        A `{% if %}` that drifted up here would be re-rendered per turn inside a
+        block the whole design assumes is constant.
         """
         committed = (PROMPTS_DIR / STATIC_PROMPT_FILE).read_text(encoding="utf-8")
 
         assert "{%" not in committed
-        assert committed.count("{{") == 1
+        assert committed.count("{{") == 2
         assert "{{ answer_envelope_schema }}" in committed
+        assert "{{ product_name }}" in committed
 
     def test_the_static_prompt_stays_within_its_budget(self):
         """
@@ -136,8 +139,10 @@ class TestByteIdentity:
         that does not pass it is what grows the file back.
         """
         committed = (PROMPTS_DIR / STATIC_PROMPT_FILE).read_text(encoding="utf-8")
+        # What a call pays for is the name, not the placeholder that spells it.
+        paid = committed.replace("{{ product_name }}", PRODUCT_NAME)
 
-        assert len(committed) // 4 <= 5_000
+        assert len(paid) // 4 <= 5_000
 
 
 class TestTheRulesThePolishMustNotInvert:

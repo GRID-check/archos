@@ -1,6 +1,6 @@
 """Every path the image installs must exist in the tree.
 
-`deploy/Dockerfile` names workspace packages one by one rather than globbing,
+`apps/backend/Dockerfile` names workspace packages one by one rather than globbing,
 which is deliberate — the install order is the dependency order and a glob
 would hide it. The cost is that deleting a package leaves a line behind, and
 **nothing else in the repo catches that**: `task verify` never builds an image,
@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DOCKERFILE = REPO_ROOT / "deploy" / "Dockerfile"
+DOCKERFILE = REPO_ROOT / "apps" / "backend" / "Dockerfile"
 
 # `uv pip install --no-deps -e ./sources/foo` and `-e "./sources/foo[all]"`.
 # The quotes and the extras marker are both optional; the path is what matters.
@@ -47,8 +47,8 @@ def test_the_dockerfile_installs_something() -> None:
 def test_every_installed_path_exists(path: str) -> None:
     target = REPO_ROOT / path
     assert target.is_dir(), (
-        f"deploy/Dockerfile installs {path}, which does not exist. Delete the line or restore the package."
+        f"apps/backend/Dockerfile installs {path}, which does not exist. Delete the line or restore the package."
     )
     assert (target / "pyproject.toml").is_file(), (
-        f"deploy/Dockerfile installs {path}, which has no pyproject.toml, so `uv pip install -e` will fail."
+        f"apps/backend/Dockerfile installs {path}, which has no pyproject.toml, so `uv pip install -e` will fail."
     )

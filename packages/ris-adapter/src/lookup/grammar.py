@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from knowledge_layer.register import _CHUNK_TRUNCATE_CHARS as PASSAGE_MAX_CHARS
+from knowledge_layer.grounding_hits import _CHUNK_TRUNCATE_CHARS as PASSAGE_MAX_CHARS
 
 #: The bound for a § the caller NAMED. A § is what a lawyer cites and what the
 #: agent asked for; cut at the corpus chunk bound above, § 63 BO Wien arrived

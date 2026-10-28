@@ -412,7 +412,7 @@ class TestGetCollectionScopeFromContextOr:
         with (
             patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx),
             patch(
-                "knowledge_layer.register._resolve_scoped_collections",
+                "knowledge_layer.search_scope.resolve_scoped_collections",
                 return_value=[ScopedCollection("oib_knowledge", Shelf.BASE)],
             ),
         ):
@@ -434,7 +434,7 @@ class TestGetCollectionScopeFromContextOr:
         with (
             patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx),
             patch(
-                "knowledge_layer.register._resolve_scoped_collections",
+                "knowledge_layer.search_scope.resolve_scoped_collections",
                 return_value=[
                     ScopedCollection("oib_knowledge", Shelf.BASE),
                     ScopedCollection("s_abc", Shelf.SESSION),

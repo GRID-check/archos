@@ -8,9 +8,9 @@ export const chat = {
     trigger: 'Effort: {level}',
     faster: 'Faster',
     smarter: 'Smarter',
-    help: 'How long Piloti thinks before it answers. More effort helps with tricky questions but costs time and tokens. Applies to this chat.',
+    help: 'How long {productName} thinks before it answers. More effort helps with tricky questions but costs time and tokens. Applies to this chat.',
     maximumWarning:
-      'Rarely smarter than High. Piloti thinks far longer, costs far more tokens and tends to overthink.',
+      'Rarely smarter than High. {productName} thinks far longer, costs far more tokens and tends to overthink.',
     levels: {
       minimal: 'Minimal',
       low: 'Low',
@@ -118,16 +118,16 @@ export const chat = {
       office: 'Office filing',
       session: 'Attachment in this chat',
     },
-    notIndexed: 'Filed, not read. You can open it, but Piloti does not cite it.',
-    failed: 'Reading failed. Piloti cannot cite this file.',
+    notIndexed: 'Filed, not read. You can open it, but {productName} does not cite it.',
+    failed: 'Reading failed. {productName} cannot cite this file.',
     // Held back by the content check (ADR-0086); never "release".
-    held: 'Held back: the content check keeps this file from Piloti. Piloti cites it only once someone allows it through.',
+    held: 'Held back: the content check keeps this file from {productName}. {productName} cites it only once someone allows it through.',
   },
   composer: {
     /** Shown when the reader holds project:view but not project:chat. */
     noProjectChatPermission:
-      'Piloti is unavailable in this project for you right now. If you have read-only access, a project admin can grant you the Contributor role.',
-    placeholder: 'Ask Piloti about this project …',
+      '{productName} is unavailable in this project for you right now. If you have read-only access, a project admin can grant you the Contributor role.',
+    placeholder: 'Ask {productName} about this project …',
     sources: 'Data basis',
     sourcesAria: 'Data basis — {enabled} of {total} sources enabled. Opens the data sources panel.',
     scopeAria: 'Search scope: {project}',
@@ -142,14 +142,14 @@ export const chat = {
   // Voice dictation in the composer (features/dictation).
   dictation: {
     start: 'Dictate',
-    startHint: 'Speak, and Piloti writes it into your message. Stops after {seconds} seconds.',
+    startHint: 'Speak, and {productName} writes it into your message. Stops after {seconds} seconds.',
     stop: 'Stop and insert',
     recording: 'Recording, {elapsed}',
     transcribing: 'Transcribing …',
     unavailable: {
       unsupported: 'This browser cannot record from a microphone.',
       insecure: 'Voice input needs a secure (https) connection.',
-      noFormat: 'This browser records no audio format Piloti can transcribe.',
+      noFormat: 'This browser records no audio format {productName} can transcribe.',
       denied: 'Microphone access is blocked. Allow it in the browser’s site settings, then reload.',
     },
     errors: {
@@ -193,7 +193,7 @@ export const chat = {
       building_law_ordinance: 'Ordinance',
       authority: 'Official information',
       external_standard: 'External standard',
-      office_piloti: 'Piloti document',
+      office_piloti: '{productName} document',
       measurement: 'Model measurement',
     },
   },
@@ -218,7 +218,7 @@ export const chat = {
     // Project-only, because without a project there is nowhere for a draft to
     // be filed.
     projectWrites:
-      'Piloti does more than answer — ask, and it writes file notes, memos and drafts straight into the project files.',
+      '{productName} does more than answer — ask, and it writes file notes, memos and drafts straight into the project files.',
   },
   // Thread role tabs (click-dummy overhaul, WS-3).
   roles: {
@@ -380,7 +380,7 @@ export const chat = {
     downloadFailed: 'The Word document could not be created.',
     // The system share sheet on a phone: the button's name and the shared message's title.
     share: 'Share answer',
-    shareTitle: 'Answer from Piloti',
+    shareTitle: 'Answer from {productName}',
   },
   // The section list of a long answer (a report): on a phone, the way to a
   // section without scrolling back to the top.
@@ -398,11 +398,11 @@ export const chat = {
     thumbnailLoading: 'Drawing the page',
     wholeDocument: 'Whole document',
     openAtPage: 'Open at this passage',
-    notOpenable: 'No file for this source is available in Piloti.',
+    notOpenable: 'No file for this source is available in {productName}.',
     sheetTitle: 'Source {number}',
     sheetDescription: 'The cited passage and the way into the document.',
     noInlineViewer:
-      'This file format cannot be shown inside Piloti. Download the document and open it in your own application.',
+      'This file format cannot be shown inside {productName}. Download the document and open it in your own application.',
     download: 'Download document',
     downloading: 'Preparing…',
     copyLink: 'Copy link',
@@ -719,7 +719,7 @@ export const chat = {
       wholePage: 'whole page',
       // A reading is what Piloti read off the page, never a measurement (ADR-0125).
       reading: 'Read: {reading}',
-      readingNote: 'Read off the page by Piloti, not measured.',
+      readingNote: 'Read off the page by {productName}, not measured.',
       embeddedImage: 'image {index}',
       open: 'Open {document} at p. {page}',
     },
@@ -777,7 +777,7 @@ export const chat = {
       // A card with no stored proposal (an answer from before them, or one the
       // agent could not file). Nothing runs in the browser any more: the
       // proposal still reads, it cannot be applied, and this says why.
-      notStored: 'Could not be created as a proposal. Ask Piloti to propose the change again.',
+      notStored: 'Could not be created as a proposal. Ask {productName} to propose the change again.',
     },
     // A proposal the server holds (ADR-0105), whatever its kind: a file change,
     // a note or a change to the project context. Its status, its result and who
@@ -910,12 +910,12 @@ export const chat = {
     // drawn as an MCP App from Piloti's MCP server (ADR-0142). The same receipt
     // as in Piloti; these are the lines only that frame needs.
     mcpApp: {
-      source: 'From Piloti',
+      source: 'From {productName}',
       fileTitle: '{count, plural, one {A change to one file} other {# changes to files}}',
-      memoryTitle: 'A note for Piloti to remember',
+      memoryTitle: 'A note for {productName} to remember',
       // A profile change shows before and after against the live profile, which
       // the frame cannot read: it is decided in Piloti.
-      decideInPiloti: 'This proposal changes the project context. Open the project in Piloti to compare it with the current values and decide.',
+      decideInPiloti: 'This proposal changes the project context. Open the project in {productName} to compare it with the current values and decide.',
       unreadable: 'This proposal could not be shown.',
       waiting: 'Loading the proposal…',
     },
@@ -1118,16 +1118,16 @@ export const chat = {
       frame: 'Sources',
       frameNote: 'The sources selected in the composer. Change them there before approving.',
     },
-    needsInput: 'Piloti needs your input',
-    receivedInput: 'Piloti received your input',
+    needsInput: '{productName} needs your input',
+    receivedInput: '{productName} received your input',
     /**
      * Shown to a colleague in a shared thread instead of the buttons: the agent
      * asked one person, and the agent tier refuses an answer from anybody else, so
      * a button here would be offering a refusal. Without this line the card reads
      * as broken rather than as somebody else's turn.
      */
-    awaitingOther: 'Piloti is waiting for {name}',
-    awaitingSomeone: 'Piloti is waiting for another participant',
+    awaitingOther: '{productName} is waiting for {name}',
+    awaitingSomeone: '{productName} is waiting for another participant',
     approvePlan: 'Approve plan',
     // The current three-way plan decision (start / answer briefly / cancel).
     startResearch: 'Start research',
@@ -1447,7 +1447,7 @@ export const chat = {
     // fetch is in flight, so a turn that only LOOKS interrupted does not flash
     // the "lost" copy before we have confirmed the answer is really gone.
     recovering: 'Fetching the answer',
-    recoveringNotice: 'Piloti is still working — the answer appears here as soon as it is ready …',
+    recoveringNotice: '{productName} is still working — the answer appears here as soon as it is ready …',
     done: 'Done',
     // The reader stopped the answer: no green check, no „Done“ — the same
     // word a cancelled run carries.
@@ -1875,11 +1875,11 @@ export const chat = {
       message: 'Unable to connect to the server. Please check your network connection.',
     },
     clientOutdated: {
-      title: 'Piloti was updated',
+      title: '{productName} was updated',
       message: 'Reload the page to continue.',
     },
     serverIncompatible: {
-      title: 'Piloti is not reachable right now',
+      title: '{productName} is not reachable right now',
       message:
         'The server runs a different version than this page, which happens briefly during an update. Try again in a few minutes; if it persists, tell support.',
     },
@@ -1902,11 +1902,11 @@ export const chat = {
     // Only once the server has confirmed it has no answer.
     responseInterrupted: {
       title: 'Response Interrupted',
-      message: 'Piloti did not finish this answer, and the server has none. Please send the question again.',
+      message: '{productName} did not finish this answer, and the server has none. Please send the question again.',
     },
     noResponse: {
       title: 'No response',
-      message: 'Piloti did not respond to your question, not even to a second attempt. Send it again.',
+      message: '{productName} did not respond to your question, not even to a second attempt. Send it again.',
     },
     zdrRefused: {
       title: 'Model not available under zero data retention',
@@ -1974,7 +1974,7 @@ export const chat = {
       'No data sources selected and no files are available. Responses are more likely to be inaccurate or outdated unless external data sources are added.',
   },
   viewerActions: {
-    region: 'What Piloti showed you in the viewer',
+    region: 'What {productName} showed you in the viewer',
     place: '{name}, p. {page}',
     what: {
       open_document: '{place}',
@@ -1991,8 +1991,8 @@ export const chat = {
       failed: 'Could not be opened',
     },
     shown: {
-      beside: 'Piloti opened it beside the chat',
-      over: 'Piloti opened it over the chat',
+      beside: '{productName} opened it beside the chat',
+      over: '{productName} opened it over the chat',
       compare: 'Comparison opened',
       model: 'Model view opened',
     },
@@ -2002,28 +2002,28 @@ export const chat = {
       notRevisions: 'Not opened: not two revisions of one document',
     },
     offered: {
-      off: 'Piloti suggests this place',
+      off: '{productName} suggests this place',
       typing: 'Not opened while you were typing',
       leaves: 'Opens over the chat',
       model: 'Opens the model view',
       noRoom: 'No room beside the chat: opens over it',
-      unavailable: 'Piloti suggests this place',
-      another: 'Another place Piloti suggests',
+      unavailable: '{productName} suggests this place',
+      another: 'Another place {productName} suggests',
     },
     undo: 'Undo',
     undoAria: 'Undo “{what}”',
     show: 'Show',
     showAria: 'Show {what}',
     auto: 'Open automatically',
-    autoHint: 'Piloti may open the places it cites beside the chat. Off: it only suggests them here.',
+    autoHint: '{productName} may open the places it cites beside the chat. Off: it only suggests them here.',
   },
   memory: {
-    noted: 'Piloti noted',
-    notedAria: 'Piloti noted {count, plural, one {# item} other {# items}}',
+    noted: '{productName} noted',
+    notedAria: '{productName} noted {count, plural, one {# item} other {# items}}',
     addedToMemory: 'Added to project memory',
     updated: 'Memory updated',
     updatedAria:
-      'Piloti updated its memory: {count, plural, one {# item} other {# items}}, {corrected} of them corrected',
+      '{productName} updated its memory: {count, plural, one {# item} other {# items}}, {corrected} of them corrected',
     updatedInMemory: 'Project memory updated',
     correctedLabel: 'Corrected',
     replaced: 'Replaces:',
@@ -2100,7 +2100,7 @@ export const chat = {
       quoteUnverified: 'A quotation could not be confirmed word for word in its source, so the level is capped.',
       unavailable: 'Evidence check unavailable',
       unavailableTooltip:
-        'The evidence check could not run for this answer, so Piloti shows no level; the answer itself is unchanged.',
+        'The evidence check could not run for this answer, so {productName} shows no level; the answer itself is unchanged.',
     },
     // The assessment since ADR-0125: computed per statement, not per answer.
     // Older answers keep the copy above, under which they were computed.
@@ -2170,7 +2170,7 @@ export const chat = {
   },
   screening: {
     title: 'Contains {items} (Sensitive data).',
-    body: 'Piloti does not send this to the answering model.',
+    body: '{productName} does not send this to the answering model.',
     preview: 'The model sees: “{text}”',
     iban: '{count, plural, one {an IBAN} other {# IBANs}}',
     at_svnr: '{count, plural, one {a social security number} other {# social security numbers}}',

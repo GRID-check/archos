@@ -88,7 +88,7 @@ export const skills = {
     instructionHeading: 'Instruction',
     detailHeading: 'About this skill',
     originOrg: 'Written in this organization',
-    originPlatform: 'Curated by Piloti',
+    originPlatform: 'Curated by {productName}',
     originClone: 'Cloned from “{name}”',
     goneTitle: 'Not found',
     gone: 'This skill is not on this page. The link may be stale, or the skill was deleted.',
@@ -100,11 +100,11 @@ export const skills = {
   // switching one of ours on beats starting from a blank editor.
   curated: {
     heading: 'Featured skills',
-    origin: 'Curated by Piloti',
+    origin: 'Curated by {productName}',
     count: '{active} of {total} on',
-    hint: 'Skills Piloti maintains for your organization. Switch one on and the agent may use it; switch it off and it disappears from the “/” menu and from what the agent can pick.',
+    hint: 'Skills {productName} maintains for your organization. Switch one on and the agent may use it; switch it off and it disappears from the “/” menu and from what the agent can pick.',
     actions: {
-      enabledAria: 'Use the Piloti skill “{name}” in this organization',
+      enabledAria: 'Use the {productName} skill “{name}” in this organization',
     },
   },
 
@@ -239,7 +239,7 @@ export const skills = {
       applied: 'Document applied.',
       ready: 'The document is valid. “Apply” writes it into the fields above.',
       unchanged: 'Unchanged — identical to the fields above.',
-      ignored: 'Piloti cannot store these fields and drops them on apply: {keys}.',
+      ignored: '{productName} cannot store these fields and drops them on apply: {keys}.',
       errors: {
         'missing-frontmatter':
           'The document does not start with a “---” block. A SKILL.md always opens with YAML frontmatter.',
@@ -303,7 +303,7 @@ export const skills = {
       // FORCED onto the turn; since ADR-0060 the name is just text Piloti
       // reads, and it decides. A chip that promises loading is the UI
       // asserting an affordance the product no longer has.
-      hint: 'Piloti sees this name and decides whether to load the skill.',
+      hint: '{productName} sees this name and decides whether to load the skill.',
       remove: 'Remove the {name} skill from this message',
     },
     // How an activated skill is reported on the answer.
