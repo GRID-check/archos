@@ -56,7 +56,7 @@ def current_span_round() -> int | None:
     Fail-open: instrumentation never breaks the search.
     """
     try:
-        from aiq_agent.common.turn_status import current_retrieval_round
+        from agent.common.turn_status import current_retrieval_round
 
         return current_retrieval_round()
     except Exception:
@@ -65,9 +65,9 @@ def current_span_round() -> int | None:
 
 def emit(search: Any, merged: Any, overview: Any, coverage: Any) -> None:
     """Emit the span for a finished ranked search (``ranked_search.RankedSearch``)."""
-    from aiq_agent.observability.retrieval_trace import build_retrieval_input
-    from aiq_agent.observability.retrieval_trace import build_retrieval_output
-    from aiq_agent.observability.retrieval_trace import emit_retrieval_span
+    from agent.observability.retrieval_trace import build_retrieval_input
+    from agent.observability.retrieval_trace import build_retrieval_output
+    from agent.observability.retrieval_trace import emit_retrieval_span
 
     try:
         search_input = build_retrieval_input(

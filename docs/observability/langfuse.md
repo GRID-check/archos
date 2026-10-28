@@ -66,7 +66,7 @@ Trace metadata on the root:
 | `turn_trigger`, `trigger_event_id` | on a turn an event woke, not typed (`user_message.trigger`, the BFF's wake job; ADR-0106): the kind (`thread_mention`, `thread_reply`, `assigned`) and the id of the reply or assignment that woke it. Recorded by the socket (`record_turn_trigger`) with the tag `trigger:<kind>`; absent on a typed turn The trace id's turn is `wakeTurnId(<event id>)`, the same id as the `agent_wakes` row and the job. A wake that started no turn (a cap, the switch, rights lost, a spent budget) has no model call and so no trace: it is on its `agent_wakes` row and in the WorkOS audit trail, as `piloti.wake.suppressed` when it was held (`lib/annotations/wake.ts`), as `piloti.wake.ended` when the job was refused or gave up (`lib/annotations/wake-audit.ts`) |
 | `question_language`, `question_language_confidence`, `answer_language_instructed` | the language py3langid calls the person's newest message (ISO 639-1, or `undetermined` for one too short to call), its probability, and whether the turn context ended with the line telling the model to answer in it: only for a confident call that is not German (`common/question_language.py`, recorded by `agent.run`). A turn answered in German with `answer_language_instructed: true` is the model ignoring the line |
 | `steer_count` | on a turn the asker steered: how many of their notes (`steer`, typed while the turn ran) it has read so far, recorded by the agent node each time it reads one (`agent._announce_steer`). With the tag `steered` |
-| `thread_reply` | on a turn asked to answer in an Anmerkung's thread (`reply_in_thread`): `replied` (the model called `canvas__reply` on that mark), `skipped` (it did not, so the socket posts the answer in the thread after the turn, `aiq_agent.turn.annotation_reply`), or `skipped_withheld` (it did not, and the conversation drew on a restricted folder, so nothing is posted). Recorded when the turn leaves the canvas (`settle_thread_reply`). The fallback's own post runs after the trace closes and is not an observation; this value is what keeps a model that stops replying in threads visible |
+| `thread_reply` | on a turn asked to answer in an Anmerkung's thread (`reply_in_thread`): `replied` (the model called `canvas__reply` on that mark), `skipped` (it did not, so the socket posts the answer in the thread after the turn, `agent.turn.annotation_reply`), or `skipped_withheld` (it did not, and the conversation drew on a restricted folder, so nothing is posted). Recorded when the turn leaves the canvas (`settle_thread_reply`). The fallback's own post runs after the trace closes and is not an observation; this value is what keeps a model that stops replying in threads visible |
 | `focus_region_viewed` | on a turn with a box only: whether a region view (`look` with `region`) ran, read off the turn's image budget (`conversation_register._finished`). `false` is a turn that answered about a drawing it never looked at |
 
 Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
@@ -201,7 +201,7 @@ answer. Posted best-effort through the ingestion API, never awaited by the call
 The reading of a new project's documents (ADR-0111) is a `research-job` trace of
 agent type `project_intake` (ADR-0108), not a trace of its own name. The run
 writes its facts once, when it ends, in `_record_trace`
-(`packages/agent/src/aiq_agent/agents/intake/agent.py`):
+(`packages/agent/src/agent/agents/intake/agent.py`):
 
 | Key | Meaning |
 |---|---|
@@ -236,7 +236,7 @@ batch is one generation, its usage summed.
 ## Scores
 
 Every score Piloti, a reviewer or a judge writes is declared once in
-`aiq_agent.observability.langfuse_scores.SCORE_DEFINITIONS`. A test fails when
+`agent.observability.langfuse_scores.SCORE_DEFINITIONS`. A test fails when
 a name is written but not declared, or declared but not listed here.
 
 | Score | Type | Written by | Meaning |
@@ -289,7 +289,7 @@ agree.
 
 ## What Langfuse is configured with
 
-Declared in `aiq_agent.observability.langfuse_catalog`, provisioned by:
+Declared in `agent.observability.langfuse_catalog`, provisioned by:
 
 ```bash
 task langfuse:provision              # check: prints what is missing or has drifted
@@ -387,7 +387,7 @@ never reads a trace's body, so this is the whole cost.
   carries the browser's PostHog session id there:
   `getPosthogSessionId()` (`apps/workspace/bff/analytics/posthog.ts`) is read
   per question and sent as `user_message.posthog_session_id`; `_drive` in
-  `aiq_api/chat_socket.py` records it with `record_posthog_session`
+  `agent_host/chat_socket.py` records it with `record_posthog_session`
   (`langfuse_trace_attributes.py`). From a trace, open the same `$session_id`
   in PostHog's replay list.
 * It is **identity-gated**, on the rule in that module's header ("no span names a
@@ -433,7 +433,7 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 | When you | You must |
 |---|---|
 | Add a model call inside a NAT run | Nothing: the exporter's processors cover it. Check the generation shows usage in Langfuse |
-| Add a model call outside one (a route, a script, a worker) | Wrap it in `observed_generation("<feature>", …)` and add the feature to the trace-name table above. `test_model_calls_are_traced.py` covers `aiq_api` routes |
+| Add a model call outside one (a route, a script, a worker) | Wrap it in `observed_generation("<feature>", …)` and add the feature to the trace-name table above. `test_model_calls_are_traced.py` covers `agent_host` routes |
 | Add or change a quality check | Emit a score through `langfuse_scores.emit_scores`, declare it in `SCORE_DEFINITIONS`, add its row here, run `task langfuse:provision` |
 | Add a dimension an analyst should slice by | Trace metadata through `record_trace_metadata` (tools) or `turn_outcome` (turn results); a tag only if it is a low-cardinality label |
 | Change a judge, the queue or the dataset | Edit `langfuse_catalog.py`, then `task langfuse:provision -- --apply` once it is merged |
@@ -443,15 +443,15 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 
 | Concern | Module |
 |---|---|
-| Environment, release, types, trace names | `packages/agent/src/aiq_agent/observability/trace_context.py` |
-| The processors on NAT's exporter | `packages/agent/src/aiq_agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
-| A turn's outcome on its root | `packages/agent/src/aiq_agent/observability/turn_outcome.py`, bound in `aiq_api/chat_socket.py` `_drive` |
-| Runtime scores | `packages/agent/src/aiq_agent/observability/langfuse_scores.py` |
-| Model calls outside NAT | `packages/agent/src/aiq_agent/observability/direct_trace.py` |
-| Langfuse configuration as code | `packages/agent/src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
+| Environment, release, types, trace names | `packages/agent/src/agent/observability/trace_context.py` |
+| The processors on NAT's exporter | `packages/agent/src/agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
+| A turn's outcome on its root | `packages/agent/src/agent/observability/turn_outcome.py`, bound in `agent_host/chat_socket.py` `_drive` |
+| Runtime scores | `packages/agent/src/agent/observability/langfuse_scores.py` |
+| Model calls outside NAT | `packages/agent/src/agent/observability/direct_trace.py` |
+| Langfuse configuration as code | `packages/agent/src/agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
 | Votes, reasons, review queue | `apps/workspace/bff/langfuse/feedback-score.ts` |
 | Decisions on Piloti's proposals, marks and changes | `apps/workspace/bff/langfuse/decision-score.ts` |
 | Tool calls on the agent door (MCP) | `apps/workspace/bff/langfuse/tool-call-trace.ts`, called from `lib/agent-api/telemetry.ts` |
-| PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `apps/workspace/bff/analytics/posthog.ts` |
+| PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `agent_host/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `apps/workspace/bff/analytics/posthog.ts` |
 | Retention and erasure | `apps/workspace/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
 | Deployment | `deploy/pulumi/src/platform/langfuse.ts` ([`kubernetes.md`](../deployment/kubernetes.md) § Langfuse) |

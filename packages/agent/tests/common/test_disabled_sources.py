@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.common.data_sources import filter_tools_by_sources
-from aiq_agent.common.data_sources import parse_disabled_sources
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from agent.common.data_sources import filter_tools_by_sources
+from agent.common.data_sources import parse_disabled_sources
 
 
 @pytest.fixture(autouse=True)

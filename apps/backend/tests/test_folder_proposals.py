@@ -13,16 +13,16 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_api.routes import folder_proposals as module
-from aiq_api.routes.folder_proposals import MAX_DOCUMENTS
-from aiq_api.routes.folder_proposals import REDUCE_PROMPT
-from aiq_api.routes.folder_proposals import SYSTEM_PROMPT
-from aiq_api.routes.folder_proposals import FolderProposal
-from aiq_api.routes.folder_proposals import FolderProposalsRequest
-from aiq_api.routes.folder_proposals import add_folder_proposals_routes
-from aiq_api.routes.folder_proposals import parse_proposals
+from agent.common import provider_limiter
+from agent.common.openrouter import limited_async_http_client
+from agent_host.routes import folder_proposals as module
+from agent_host.routes.folder_proposals import MAX_DOCUMENTS
+from agent_host.routes.folder_proposals import REDUCE_PROMPT
+from agent_host.routes.folder_proposals import SYSTEM_PROMPT
+from agent_host.routes.folder_proposals import FolderProposal
+from agent_host.routes.folder_proposals import FolderProposalsRequest
+from agent_host.routes.folder_proposals import add_folder_proposals_routes
+from agent_host.routes.folder_proposals import parse_proposals
 
 BODY = {
     "locale": "de",
@@ -200,7 +200,7 @@ def decided(monkeypatch):
         calls.append({"states": list(states), "questions": questions, **kwargs})
         return [_Answer({"f0": 0.8, "f1": 0.3, "none": 0.1}) for _ in states]
 
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", fake_decide_many)
+    monkeypatch.setattr("agent.common.decisions.decide_many", fake_decide_many)
     return calls
 
 
@@ -374,7 +374,7 @@ async def test_a_verification_over_its_budget_keeps_the_proposals_without_confid
         await asyncio.sleep(0.5)
         return [_Answer({"f0": 0.8, "none": 0.1}) for _ in states]
 
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", slow)
+    monkeypatch.setattr("agent.common.decisions.decide_many", slow)
     monkeypatch.setattr(module, "VERIFY_BUDGET_S", 0.05)
     fake, _post = _fake_http(_route([("d1", json.dumps(PROPOSAL))]))
     body = (await _propose(app, fake)).json()
@@ -388,7 +388,7 @@ async def test_a_jev_failure_keeps_the_proposals_with_empty_confidences(app, mon
         # How `decide_many` fails: one None per call it could not make, never a raise.
         return [None] * len(states)
 
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", broken)
+    monkeypatch.setattr("agent.common.decisions.decide_many", broken)
     fake, _post = _fake_http(_route([("d1", json.dumps(PROPOSAL))]))
     body = (await _propose(app, fake)).json()
     assert body["error"] is None

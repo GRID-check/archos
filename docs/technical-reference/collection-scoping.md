@@ -166,7 +166,7 @@ share and an admission cannot both go through:
 - at turn start the agent offers the restricted collections of its signed
   scope and gets back the ones it may draw on (`drawable`) and whether the
   conversation already recorded a folder (`recorded`). It binds the answer per
-  turn (`aiq_agent.knowledge.restricted_use`), and
+  turn (`agent.knowledge.restricted_use`), and
   `get_scoped_collections_from_context` keeps only the drawable ones, so every
   read path searches only what everyone reading the conversation may read. A
   thread shared since the socket was signed loses those collections from the
@@ -240,7 +240,7 @@ The pattern is used in:
 
 ## Python: `scoping.py`
 
-**File**: `packages/agent/src/aiq_agent/knowledge/scoping.py`
+**File**: `packages/agent/src/agent/knowledge/scoping.py`
 
 ### `get_collection_scope_from_context()`
 
@@ -310,7 +310,7 @@ read **once, at job submit time**, in `piloti/conversation_register.py`, and
 carried through as a `collection_scope` field on the job payload rather than
 as a live header.
 
-When the research worker later runs the job, `apps/backend/src/aiq_api/jobs/runner.py:641`
+When the research worker later runs the job, `apps/backend/src/agent_host/jobs/runner.py:641`
 re-injects it into the worker's own request context **only when present**:
 
 ```python

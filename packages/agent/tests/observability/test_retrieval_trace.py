@@ -18,14 +18,14 @@ import json
 
 import pytest
 
-from aiq_agent.observability.retrieval_trace import PICK_LIMIT
-from aiq_agent.observability.retrieval_trace import build_retrieval_input
-from aiq_agent.observability.retrieval_trace import build_retrieval_output
-from aiq_agent.observability.retrieval_trace import emit_retrieval_span
+from agent.observability.retrieval_trace import PICK_LIMIT
+from agent.observability.retrieval_trace import build_retrieval_input
+from agent.observability.retrieval_trace import build_retrieval_output
+from agent.observability.retrieval_trace import emit_retrieval_span
 
 
 class _Shelf:
-    """Stands in for ``aiq_agent.common.source_kinds.Shelf`` (a StrEnum)."""
+    """Stands in for ``agent.common.source_kinds.Shelf`` (a StrEnum)."""
 
     def __init__(self, value):
         self.value = value
@@ -38,7 +38,7 @@ class _ScopedCollection:
 
 
 class _Chunk:
-    """Stands in for ``aiq_agent.knowledge.schema.Chunk`` (attribute access)."""
+    """Stands in for ``agent.knowledge.schema.Chunk`` (attribute access)."""
 
     def __init__(self, *, chunk_id="c1", file_name="oib-rl-2.pdf", page_number=12, score=0.87, metadata=None):
         self.chunk_id = chunk_id

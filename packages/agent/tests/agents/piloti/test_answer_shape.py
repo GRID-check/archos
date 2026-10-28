@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aiq_agent.agents.piloti.answer_shape import drop_restated_mindmaps
+from agent.agents.piloti.answer_shape import drop_restated_mindmaps
 
 TABLE = "| Teil | Gilt für |\n|---|---|\n| RL 2.1 | Betriebsbauten |\n| RL 2.2 | Garagen |"
 FLAT = '```mermaid\nmindmap\n  root(("OIB-RL 2"))\n    "Betriebsbauten"\n    "Garagen"\n```'

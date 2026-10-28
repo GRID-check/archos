@@ -1,4 +1,4 @@
-"""Tests for aiq_api.context_envelope (signed X-Grid-Request-Context envelope enforcement).
+"""Tests for agent_host.context_envelope (signed X-Grid-Request-Context envelope enforcement).
 
 Follows the same raw-ASGI-middleware testing pattern as test_auth.py
 (TestAuthMiddleware*): call the middleware's __call__ directly with a
@@ -18,10 +18,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from aiq_api.context_envelope import ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES
-from aiq_api.context_envelope import ENVELOPE_EXEMPT_WEBSOCKET_PATH_PREFIXES
-from aiq_api.context_envelope import GridContextEnvelopeMiddleware
-from aiq_api.context_envelope import _path_matches
+from agent_host.context_envelope import ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES
+from agent_host.context_envelope import ENVELOPE_EXEMPT_WEBSOCKET_PATH_PREFIXES
+from agent_host.context_envelope import GridContextEnvelopeMiddleware
+from agent_host.context_envelope import _path_matches
 
 SECRET = "envelope-test-secret"  # noqa: S105 - test fixture value, not a real credential
 

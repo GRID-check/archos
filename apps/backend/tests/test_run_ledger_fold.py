@@ -26,17 +26,17 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
-from aiq_agent.common.run_ledger import RUN_PHASES
-from aiq_api.jobs.phase_events import JOB_PHASE_EVENT_TYPE
-from aiq_api.jobs.phase_events import PHASE_CITATION_VERIFICATION_STARTED
-from aiq_api.jobs.phase_events import PHASE_DONE
-from aiq_api.jobs.phase_events import PHASE_PLANNING_STARTED
-from aiq_api.jobs.phase_events import PHASE_RESEARCH_STARTED
-from aiq_api.jobs.phase_events import PHASE_WRITING_STARTED
-from aiq_api.jobs.run_ledger_fold import JOB_DEGRADED_EVENT_TYPE
-from aiq_api.jobs.run_ledger_fold import PHASE_KEYS
-from aiq_api.jobs.run_ledger_fold import RUN_LEDGER_EVENT_TYPE
-from aiq_api.jobs.run_ledger_fold import RunLedgerFold
+from agent.common.run_ledger import RUN_PHASES
+from agent_host.jobs.phase_events import JOB_PHASE_EVENT_TYPE
+from agent_host.jobs.phase_events import PHASE_CITATION_VERIFICATION_STARTED
+from agent_host.jobs.phase_events import PHASE_DONE
+from agent_host.jobs.phase_events import PHASE_PLANNING_STARTED
+from agent_host.jobs.phase_events import PHASE_RESEARCH_STARTED
+from agent_host.jobs.phase_events import PHASE_WRITING_STARTED
+from agent_host.jobs.run_ledger_fold import JOB_DEGRADED_EVENT_TYPE
+from agent_host.jobs.run_ledger_fold import PHASE_KEYS
+from agent_host.jobs.run_ledger_fold import RUN_LEDGER_EVENT_TYPE
+from agent_host.jobs.run_ledger_fold import RunLedgerFold
 
 SCHEMA_PATH = (
     Path(__file__).resolve().parents[3] / "apps" / "workspace" / "tests" / "fixtures" / "run-ledger.schema.json"
@@ -140,7 +140,7 @@ class TestTheMapping:
     def test_it_listens_for_the_spelling_the_runner_writes(self) -> None:
         """The fold names the event types itself (the runner imports it, not the
         other way round), so this is what keeps the two spellings one spelling."""
-        from aiq_api.jobs.runner import JOB_DEGRADED_EVENT_TYPE as runner_degraded
+        from agent_host.jobs.runner import JOB_DEGRADED_EVENT_TYPE as runner_degraded
 
         assert JOB_DEGRADED_EVENT_TYPE == runner_degraded
 
@@ -300,7 +300,7 @@ class TestTheBasis:
         fold.observe(phase_event(PHASE_RESEARCH_STARTED, batch_index=1))
         await fold.flush(force=True)
 
-        from aiq_agent.common.plan_documents import PlanDocument
+        from agent.common.plan_documents import PlanDocument
 
         fold.add_basis(PlanDocument(name="Brandschutzkonzept.pdf", shelf="project"))
         fold.add_basis({"name": "brandschutzkonzept.pdf"})
@@ -318,7 +318,7 @@ class TestTheBasis:
         fold.observe(phase_event(PHASE_PLANNING_STARTED))
         await fold.flush(force=True)
 
-        from aiq_agent.common.run_ledger import to_wire
+        from agent.common.run_ledger import to_wire
 
         validator(schema, "runLedger").validate(snapshots(store)[-1])
         for body in client.appends:
@@ -455,7 +455,7 @@ class TestTheContract:
         fold.note_result(report_message_id="8f1a0f7e-2b1f-4a4e-9a4e-2f0f1a6d9c31")
         await fold.close()
 
-        from aiq_agent.common.run_ledger import to_wire
+        from agent.common.run_ledger import to_wire
 
         request = validator(schema, "runLedgerRequest")
         assert client.appends and client.finishes
@@ -476,8 +476,8 @@ class TestTheContract:
 
 
 def test_a_repeated_claim_is_not_a_change() -> None:
-    from aiq_api.jobs.run_ledger_fold import _add_findings
-    from aiq_api.jobs.run_ledger_fold import _Step
+    from agent_host.jobs.run_ledger_fold import _add_findings
+    from agent_host.jobs.run_ledger_fold import _Step
 
     step = _Step(id="s1", phase="research", intent="Brandschutz", started_at="t")
     notes = json.dumps({"findings": [{"claim": "REI 60 gefordert."}]})

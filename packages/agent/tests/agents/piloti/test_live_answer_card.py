@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import copy
 
-from aiq_agent.agents.piloti.answer_pipeline import LiveAnswer
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
+from agent.agents.piloti.answer_pipeline import LiveAnswer
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
 
 _BASIS = {"id": "a", "component": "ifc_model_picker", "title": "Haus A", "note": "GK 4."}
 
@@ -98,8 +98,8 @@ def test_the_tool_cards_are_read_once_per_call():
 
 async def test_the_live_positions_are_the_terminals():
     """``place`` and the finished answer's renumbering read the model's numbers the same way."""
-    from aiq_agent.agents.piloti.answer_pipeline import _register_envelope_cards
-    from aiq_agent.common.answer_envelope import AnswerMeta
+    from agent.agents.piloti.answer_pipeline import _register_envelope_cards
+    from agent.common.answer_envelope import AnswerMeta
 
     prose = "Die Tabelle:\n\n[[card:1]]\n\nDie Karte:\n\n[[card:2]]"
     envelope = [

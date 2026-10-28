@@ -19,11 +19,11 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.common import norm_registry
-from aiq_agent.knowledge import norm_store
-from aiq_agent.knowledge.norm_store import NormRegistryStore
-from aiq_api.routes import norms as norms_module
-from aiq_api.routes.norms import add_norm_routes
+from agent.common import norm_registry
+from agent.knowledge import norm_store
+from agent.knowledge.norm_store import NormRegistryStore
+from agent_host.routes import norms as norms_module
+from agent_host.routes.norms import add_norm_routes
 
 
 @pytest.fixture

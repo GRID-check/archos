@@ -2,7 +2,7 @@
  * An organization's decision about a platform-CURATED skill: on, or off.
  *
  * Platform skills are files, not rows — they ship under
- * `packages/agent/src/aiq_agent/skills/builtin/<collection>/` and reach the BFF through the
+ * `packages/agent/src/agent/skills/builtin/<collection>/` and reach the BFF through the
  * generated `@/lib/skills/platform-skills` module. There are two kinds, and
  * only one of them has anything to do with this table:
  *

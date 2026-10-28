@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.cost_tracking import USAGE_ROLE_INGEST_TRANSCRIPTION
+from agent.common.cost_tracking import USAGE_ROLE_INGEST_TRANSCRIPTION
 
 logger = logging.getLogger(__name__)
 

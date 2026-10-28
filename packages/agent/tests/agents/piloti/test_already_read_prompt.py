@@ -7,11 +7,11 @@ locator-first rule names its tools — never the model's wording.
 
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_turn_context
-from aiq_agent.agents.piloti.prompt import system_prompt_template
-from aiq_agent.knowledge.already_read import DIGEST_HEADING
-from aiq_agent.knowledge.schema import AvailableDocument
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.prompt import render_turn_context
+from agent.agents.piloti.prompt import system_prompt_template
+from agent.knowledge.already_read import DIGEST_HEADING
+from agent.knowledge.schema import AvailableDocument
 
 DIGEST = ["oib-rl_2_ausgabe_mai_2023.pdf | oib_knowledge | Seiten 12 | Punkte 3.5.2 | Turn 1"]
 TOOLS = [

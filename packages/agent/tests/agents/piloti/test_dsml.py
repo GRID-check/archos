@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.agents.piloti.dsml import strip_and_salvage_dsml_tool_calls
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
+from agent.agents.piloti.dsml import strip_and_salvage_dsml_tool_calls
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
 
 # Fullwidth vertical bar (U+FF5C) — the DSML delimiter.
 BAR = "｜"

@@ -19,9 +19,9 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.routes import ris as ris_module
-from aiq_api.routes.ris import MAX_DOCUMENT_TEXT_CHARS
-from aiq_api.routes.ris import add_ris_routes
+from agent_host.routes import ris as ris_module
+from agent_host.routes.ris import MAX_DOCUMENT_TEXT_CHARS
+from agent_host.routes.ris import add_ris_routes
 
 TOKEN = "test-internal-token"
 URL = "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000006"

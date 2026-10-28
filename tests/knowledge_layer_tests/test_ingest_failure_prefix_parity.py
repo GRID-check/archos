@@ -7,7 +7,7 @@ write a failed document's ``error_message`` as ``reason: text``
 * the UI maps it to a sentence in the reader's language with
   ``INGEST_FAILURE_PREFIXES`` in ``apps/workspace/ui/features/documents/lib/ingest-failure.ts``;
 * the backend maps it to a failure category (``PREFIX_CATEGORIES`` in
-  ``aiq_agent/knowledge/ingest_failures.py``), which decides whether reading
+  ``agent/knowledge/ingest_failures.py``), which decides whether reading
   the file again is worth anything, and the BFF holds the categories and the
   reader version in ``apps/workspace/bff/documents/retry-policy.ts``.
 
@@ -29,17 +29,17 @@ from knowledge_layer.llamaindex.transcription import SCAN_NEEDS_VLM
 from knowledge_layer.reader_version import INGEST_READER_VERSION
 from knowledge_layer.renditions import OFFICE_RENDITION_REQUIRED
 
-from aiq_agent.knowledge.ingest_failures import FAILURE_CATEGORIES
-from aiq_agent.knowledge.ingest_failures import PREFIX_CATEGORIES
-from aiq_agent.knowledge.ingest_failures import classify_failure
-from aiq_agent.knowledge.ingest_status_store import INTERRUPTED_MESSAGE
+from agent.knowledge.ingest_failures import FAILURE_CATEGORIES
+from agent.knowledge.ingest_failures import PREFIX_CATEGORIES
+from agent.knowledge.ingest_failures import classify_failure
+from agent.knowledge.ingest_status_store import INTERRUPTED_MESSAGE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TS_MAPPER = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "documents" / "lib" / "ingest-failure.ts"
 TS_RETRY_POLICY = REPO_ROOT / "apps" / "workspace" / "bff" / "documents" / "retry-policy.ts"
 BACKEND_ROOTS = (
     REPO_ROOT / "packages" / "knowledge-layer" / "src",
-    REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "knowledge",
+    REPO_ROOT / "packages" / "agent" / "src" / "agent" / "knowledge",
     # The ingest worker settles a job whose queued payload it cannot read
     # (`unreadable_job:`, `jobs/ingest_dispatch.py`). It was outside the scan,
     # and its reason reached the UI unmapped.

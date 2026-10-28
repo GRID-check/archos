@@ -188,7 +188,7 @@ function turnContextHeaders(data, { issuedAt, secret }) {
   // Always sent, so the backend fails closed when it is absent.
   headers['x-grid-feature-memory-reflection'] = data.memoryReflectionEnabled ? 'true' : 'false'
   // Per-org model overrides and the remaining budget, JSON then base64url;
-  // decoded in aiq_agent (model_overrides.py, cost_tracking.py). Absent is the
+  // decoded in agent (model_overrides.py, cost_tracking.py). Absent is the
   // workflow defaults and no cap.
   if (data.modelOverrides) headers['x-grid-model-overrides'] = base64urlJson(data.modelOverrides)
   if (data.budget) headers['x-grid-budget'] = base64urlJson(data.budget)

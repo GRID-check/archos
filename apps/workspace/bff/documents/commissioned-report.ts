@@ -110,7 +110,7 @@ function readCommissioningCollection(data: unknown): string | null {
  * The run's cards off the same body, for the filed PDF's „Rechtsgrundlagen".
  *
  * Only shape is checked, not card identity: the backend already validated these
- * at generation (`aiq_agent.cards.validate_cards`) and `legalBasisSection`
+ * at generation (`agent.cards.validate_cards`) and `legalBasisSection`
  * narrows them again at render, so a third opinion here could only reject a
  * card both of those accept. What it does do is refuse a non-array, so a
  * malformed body cannot reach `fileResearchReport` as something to iterate.

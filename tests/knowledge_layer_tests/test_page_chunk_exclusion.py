@@ -28,7 +28,7 @@ from knowledge_layer.search_scope import base_collection_filters
 from knowledge_layer_testing.qdrant import record
 from knowledge_layer_testing.qdrant import write
 
-from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
+from agent.common.retrieval_settings import reset_retrieval_settings_cache
 
 BASE = "oib_knowledge"
 PROJECT = "proj_abc"
@@ -101,7 +101,7 @@ class _StoreBackedRetriever:
 
 
 def _chunk(chunk_id: str, content: str, metadata: dict, collection_name: str):
-    from aiq_agent.knowledge.schema import Chunk
+    from agent.knowledge.schema import Chunk
 
     return Chunk(
         chunk_id=chunk_id,
@@ -122,8 +122,8 @@ def search_harness(monkeypatch, qdrant_store):
     def install(retriever):
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 

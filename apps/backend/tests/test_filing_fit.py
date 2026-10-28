@@ -12,15 +12,15 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.routes.filing_fit import MAX_SCORED_FOLDERS
-from aiq_api.routes.filing_fit import SORT_INSTRUCTIONS
-from aiq_api.routes.filing_fit import SYSTEM_PROMPT
-from aiq_api.routes.filing_fit import FilingFitRequest
-from aiq_api.routes.filing_fit import FilingMove
-from aiq_api.routes.filing_fit import add_filing_fit_routes
-from aiq_api.routes.filing_fit import build_user_content
-from aiq_api.routes.filing_fit import parse_moves
-from aiq_api.routes.filing_fit import score_moves
+from agent_host.routes.filing_fit import MAX_SCORED_FOLDERS
+from agent_host.routes.filing_fit import SORT_INSTRUCTIONS
+from agent_host.routes.filing_fit import SYSTEM_PROMPT
+from agent_host.routes.filing_fit import FilingFitRequest
+from agent_host.routes.filing_fit import FilingMove
+from agent_host.routes.filing_fit import add_filing_fit_routes
+from agent_host.routes.filing_fit import build_user_content
+from agent_host.routes.filing_fit import parse_moves
+from agent_host.routes.filing_fit import score_moves
 
 BODY = {
     "basis": "content",
@@ -203,7 +203,7 @@ def decided(monkeypatch):
         calls.append({"states": list(states), "questions": questions, **kwargs})
         return [_Answer(distribution) for _ in states]
 
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", fake_decide_many)
+    monkeypatch.setattr("agent.common.decisions.decide_many", fake_decide_many)
     return calls
 
 
@@ -239,7 +239,7 @@ async def test_a_failed_score_keeps_every_move_unscored(app, monkeypatch):
         # How `decide_many` fails: one None per call it could not make, never a raise.
         return [None] * len(states)
 
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", broken)
+    monkeypatch.setattr("agent.common.decisions.decide_many", broken)
     fake, _post = _client_returning(SORT_ANSWER)
     response = await _judge(app, fake, {**BODY, "purpose": "sort"})
     assert response.status_code == 200
@@ -249,7 +249,7 @@ async def test_a_failed_score_keeps_every_move_unscored(app, monkeypatch):
 @pytest.mark.asyncio
 async def test_an_upload_is_never_scored_and_keeps_the_upload_budget(app, monkeypatch):
     spy = AsyncMock(return_value=[])
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", spy)
+    monkeypatch.setattr("agent.common.decisions.decide_many", spy)
     fake, post = _client_returning(SORT_ANSWER)
     body = (await _judge(app, fake, BODY)).json()
     assert [move["confidence"] for move in body["moves"]] == [None, None]
@@ -262,7 +262,7 @@ async def test_an_upload_is_never_scored_and_keeps_the_upload_budget(app, monkey
 @pytest.mark.asyncio
 async def test_too_many_folders_to_offer_are_not_scored(monkeypatch):
     spy = AsyncMock(return_value=[])
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", spy)
+    monkeypatch.setattr("agent.common.decisions.decide_many", spy)
     request = _request(folders=[{"path": f"Ordner {index}"} for index in range(MAX_SCORED_FOLDERS + 1)])
     scores = await score_moves(request, [FilingMove(id="d1", folder="Ordner 0", reason="x")], None)
     assert scores == [None]

@@ -17,13 +17,13 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import configure_summary_db
-from aiq_agent.knowledge.factory import get_document_person_tags
-from aiq_agent.knowledge.factory import get_document_person_topics
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_api.routes.documents import add_document_routes
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import configure_summary_db
+from agent.knowledge.factory import get_document_person_tags
+from agent.knowledge.factory import get_document_person_topics
+from agent.knowledge.factory import set_active_ingestor
+from agent_host.routes.documents import add_document_routes
 
 
 @pytest.fixture
@@ -148,7 +148,7 @@ async def test_patch_too_many_tags_400(app, store):
     Mirrors the ingestion cap; the BFF zod already blocks this, so a normal user
     never reaches it, but the route enforces it defensively.
     """
-    from aiq_agent.knowledge.document_classification import MAX_TAGS
+    from agent.knowledge.document_classification import MAX_TAGS
 
     store.register("proj_a", "plan.pdf", "A floor plan.", tags=["Grundriss"])
 
@@ -283,7 +283,7 @@ async def test_patch_invalid_topics_400_lists_them_and_writes_nothing(app, store
 
 @pytest.mark.asyncio
 async def test_patch_too_many_topics_400(app, store):
-    from aiq_agent.knowledge.document_classification import MAX_TOPICS
+    from agent.knowledge.document_classification import MAX_TOPICS
 
     store.register("proj_a", "plan.pdf", "A floor plan.")
     seven = [f"Thema {index}" for index in range(MAX_TOPICS + 1)]

@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.knowledge.base import BaseIngestor
-from aiq_agent.knowledge.factory import _INGESTOR_REGISTRY
-from aiq_agent.knowledge.factory import is_ingestor_registered
-from aiq_agent.knowledge.factory import list_ingestors
+from agent.knowledge.base import BaseIngestor
+from agent.knowledge.factory import _INGESTOR_REGISTRY
+from agent.knowledge.factory import is_ingestor_registered
+from agent.knowledge.factory import list_ingestors
 
 
 @pytest.fixture(autouse=True)

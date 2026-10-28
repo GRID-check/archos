@@ -25,21 +25,21 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.agents.piloti import prompt as prompt_module
-from aiq_agent.agents.piloti.prompt import PROMPTS_DIR
-from aiq_agent.agents.piloti.prompt import STATIC_PROMPT_FILE
-from aiq_agent.agents.piloti.prompt import STATIC_PROMPT_NAME
-from aiq_agent.agents.piloti.prompt import bundled_static_block
-from aiq_agent.agents.piloti.prompt import record_static_prompt_metadata
-from aiq_agent.agents.piloti.prompt import render_static_block
-from aiq_agent.agents.piloti.prompt import resolve_static_block
-from aiq_agent.agents.piloti.prompt import stamp_static_prompt_for_turn
-from aiq_agent.agents.piloti.prompt import system_prompt_template
-from aiq_agent.common.brand import PRODUCT_NAME
-from aiq_agent.common.prompt_store import PromptStore
-from aiq_agent.common.prompt_store import ResolvedPrompt
-from aiq_agent.common.prompt_utils import render_prompt_template
-from aiq_agent.observability import langfuse_trace_attributes as lta
+from agent.agents.piloti import prompt as prompt_module
+from agent.agents.piloti.prompt import PROMPTS_DIR
+from agent.agents.piloti.prompt import STATIC_PROMPT_FILE
+from agent.agents.piloti.prompt import STATIC_PROMPT_NAME
+from agent.agents.piloti.prompt import bundled_static_block
+from agent.agents.piloti.prompt import record_static_prompt_metadata
+from agent.agents.piloti.prompt import render_static_block
+from agent.agents.piloti.prompt import resolve_static_block
+from agent.agents.piloti.prompt import stamp_static_prompt_for_turn
+from agent.agents.piloti.prompt import system_prompt_template
+from agent.common.brand import PRODUCT_NAME
+from agent.common.prompt_store import PromptStore
+from agent.common.prompt_store import ResolvedPrompt
+from agent.common.prompt_utils import render_prompt_template
+from agent.observability import langfuse_trace_attributes as lta
 
 FIXTURE = Path(__file__).parent / "fixtures" / "piloti_prompt_rendered.txt"
 
@@ -265,8 +265,8 @@ class TestPromptLink:
         must be exactly the system prompt the turn sends: a byte of drift
         between the two would key every turn on a prefix nobody sends.
         """
-        from aiq_agent.agents.piloti.models import ResearchAgentState
-        from aiq_agent.agents.piloti.prompt import render_turn_prompt
+        from agent.agents.piloti.models import ResearchAgentState
+        from agent.agents.piloti.prompt import render_turn_prompt
 
         monkeypatch.setattr(prompt_module, "prompt_store", lambda: PromptStore(enabled=False))
 

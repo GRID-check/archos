@@ -1,7 +1,7 @@
 """The office's documents as a read-only filesystem: Piloti's estate backend (ADR-0133).
 
 ``ls``, ``glob``, ``grep`` and ``read_file`` serve one namespace
-(``aiq_agent.common.estate_paths``): ``/project/``, ``/office/``, ``/chat/`` and
+(``agent.common.estate_paths``): ``/project/``, ``/office/``, ``/chat/`` and
 ``/law/oib/`` are the shelves the turn's scope names, and ``/drafts/`` is the
 conversation's working directory, which the tool layer routes to the draft store
 before anything here is asked. This module is everything below the tool layer
@@ -46,12 +46,12 @@ from deepagents.backends.protocol import LsResult
 from deepagents.backends.protocol import ReadResult
 from deepagents.backends.protocol import WriteResult
 
-from aiq_agent.common.estate_paths import EstatePath
-from aiq_agent.common.estate_paths import Mount
-from aiq_agent.common.estate_paths import PathRefused
-from aiq_agent.common.estate_paths import action_place
-from aiq_agent.common.estate_paths import asked_document
-from aiq_agent.common.estate_paths import parse_estate_path
+from agent.common.estate_paths import EstatePath
+from agent.common.estate_paths import Mount
+from agent.common.estate_paths import PathRefused
+from agent.common.estate_paths import action_place
+from agent.common.estate_paths import asked_document
+from agent.common.estate_paths import parse_estate_path
 
 from . import stored_pages
 from .browse import FileRow
@@ -192,7 +192,7 @@ class EstateBackend(BackendProtocol):
 
     async def _load_rows(self) -> list[FileRow]:
         """The turn's inventory rows, with the base corpus added when the inventory does not carry it."""
-        from aiq_agent.knowledge.restricted_collections import is_restricted_collection
+        from agent.knowledge.restricted_collections import is_restricted_collection
 
         from .browse import _turn_rows
         from .browse import restrict_rows_to_turn
@@ -213,8 +213,8 @@ class EstateBackend(BackendProtocol):
 
     async def _load_restricted_rows(self) -> list[FileRow]:
         """Rows of the restricted folders in scope that this turn may already name (:func:`may_name`)."""
-        from aiq_agent.knowledge.restricted_collections import is_restricted_collection
-        from aiq_agent.knowledge.restricted_use import may_name
+        from agent.knowledge.restricted_collections import is_restricted_collection
+        from agent.knowledge.restricted_use import may_name
 
         admitted = [
             entry
@@ -248,8 +248,8 @@ class EstateBackend(BackendProtocol):
         limit: int = DEFAULT_LINE_LIMIT,
     ) -> ToolOutput:
         """``read_file`` on the estate: grounding blocks, one per page (agent-filesystem.md §3)."""
-        from aiq_agent.common.action_rows import ActionRow
-        from aiq_agent.common.turn_status import lane_tool_scope
+        from agent.common.action_rows import ActionRow
+        from agent.common.turn_status import lane_tool_scope
 
         # Running, the row says what the model asked to read, in its own words; settled, what it may name.
         row = ActionRow("read", target=asked_document(file_path))
@@ -266,7 +266,7 @@ class EstateBackend(BackendProtocol):
         self, file_path: str, pages: Any, clause: Any, offset: int, limit: int
     ) -> tuple[ToolOutput, ReadRowFacts]:
         """The read, and what its row may say: the resolved document only when ``may_name`` (ADR-0088)."""
-        from aiq_agent.knowledge.restricted_use import may_name
+        from agent.knowledge.restricted_use import may_name
 
         try:
             parsed = parse_estate_path(file_path)
@@ -428,7 +428,7 @@ class EstateBackend(BackendProtocol):
 
     async def _abstracts(self, files: Sequence[EstateFile], mount: Mount | None) -> dict[str, list[str]]:
         """The written folder abstracts (tier 1) of ``mount``'s collections; empty off a chat turn or on any error."""
-        from aiq_agent.knowledge.folder_cards import listing_abstracts
+        from agent.knowledge.folder_cards import listing_abstracts
 
         from .estate_listing import abstracts_by_folder
         from .estate_listing import collections_of
@@ -456,7 +456,7 @@ class EstateBackend(BackendProtocol):
 
     async def ls(self, path: str | None, *, depth: int = 1, drafts: bool = False) -> ToolOutput:
         """``ls`` on the estate (agent-filesystem.md §3): a folder, or the tree as folder cards. An index."""
-        from aiq_agent.common.action_rows import ActionRow
+        from agent.common.action_rows import ActionRow
 
         from .estate_listing import render_folder
         from .estate_listing import render_root
@@ -488,7 +488,7 @@ class EstateBackend(BackendProtocol):
 
     async def glob(self, pattern: str, path: str | None = None) -> ToolOutput:
         """``glob`` on the estate: file names, ``* ** ? [abc] {a,b}``, folded. An index."""
-        from aiq_agent.common.action_rows import ActionRow
+        from agent.common.action_rows import ActionRow
 
         from .estate_listing import render_glob
 
@@ -619,7 +619,7 @@ async def _rows_of(entries: Sequence[Any]) -> list[FileRow]:
     """The documents registered for ``entries``' collections, as rows with their shelves; a failed one gives none."""
     if not entries:
         return []
-    from aiq_agent.knowledge import get_available_documents_async
+    from agent.knowledge import get_available_documents_async
 
     listings = await asyncio.gather(
         *(get_available_documents_async(entry.collection) for entry in entries), return_exceptions=True

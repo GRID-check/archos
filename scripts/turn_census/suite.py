@@ -309,7 +309,7 @@ def last_envelope(research: list[dict]) -> tuple[dict | None, int | None]:
     wanted the fence reported a bare-JSON answer, which the pipeline accepts
     and the reader got whole, as a turn without an envelope.
     """
-    from aiq_agent.common.answer_envelope import extract_answer_envelope
+    from agent.common.answer_envelope import extract_answer_envelope
 
     found, at = None, None
     for position, entry in enumerate(research):
@@ -822,8 +822,8 @@ def corpus_families() -> set[str] | None:
     and reported the agent as wrong. None when the table cannot be read, which
     skips nothing.
     """
-    from aiq_agent import corpus_store
-    from aiq_agent.common.norm_registry import oib_family_member
+    from agent import corpus_store
+    from agent.common.norm_registry import oib_family_member
 
     try:
         names = corpus_store.list_files()
@@ -860,9 +860,9 @@ def _ingest_corpus(poll_seconds: float = 5.0, timeout_seconds: float = 3600.0) -
     ingestor, then syncs until no file waits on a job. A file whose job failed is reported,
     not retried: the sync does not queue it again.
     """
-    from aiq_agent import corpus_store
-    from aiq_agent import oib_sync
-    from aiq_api.jobs import ingest_dispatch
+    from agent import corpus_store
+    from agent import oib_sync
+    from agent_host.jobs import ingest_dispatch
 
     print("queueing the corpus:", oib_sync.sync(enqueue=ingest_dispatch.enqueue_only))
     if not ingest_dispatch.attach(oib_sync._get_oib_ingestor()):
@@ -899,7 +899,7 @@ def use_local_corpus(directory: Path) -> int:
     import hashlib
     import shutil
 
-    from aiq_agent import corpus_store
+    from agent import corpus_store
 
     prefix = "base-corpus/"
 
@@ -938,7 +938,7 @@ def _corpus_ready() -> bool:
     try:
         from knowledge_layer.qdrant.store import get_store
 
-        from aiq_agent.oib_sync import COLLECTION_NAME
+        from agent.oib_sync import COLLECTION_NAME
 
         return get_store().count(COLLECTION_NAME) > 0
     except Exception as exc:  # noqa: BLE001 - any failure is "not ready", said out loud
@@ -972,7 +972,7 @@ def foreign_imports(out: Path) -> list[str]:
     """
     import subprocess
 
-    names = ("aiq_agent", *source_packages())
+    names = ("agent", *source_packages())
     probe = f"import {', '.join(names)}; print({', '.join(f'{name}.__file__' for name in names)}, sep=chr(10))"
     env = {**os.environ, "PYTHONPATH": tree_pythonpath(out)}
     shown = subprocess.run(

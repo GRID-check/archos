@@ -1,0 +1,1102 @@
+"""
+Factory pattern for Knowledge Layer adapters.
+
+This module provides a registry-based factory for creating retriever and
+ingestor instances. New backends are registered using decorators and can
+be instantiated by name at runtime.
+
+Configuration:
+    The default backend is configured via environment variables at startup:
+    - KNOWLEDGE_RETRIEVER_BACKEND: Default retriever (e.g., "llamaindex")
+    - KNOWLEDGE_INGESTOR_BACKEND: Default ingestor (e.g., "llamaindex")
+
+    This ensures the backend is set up BEFORE any API calls are made.
+    Users don't need to specify the backend in each request.
+"""
+
+import json
+import logging
+import os
+import threading
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+from typing import Any
+
+from agent.common.db_utils import redact_db_url
+
+from .base import BaseIngestor
+from .base import BaseRetriever
+from .document_classification import MAX_TOPIC_VOCABULARY
+from .schema import FileStatus
+
+if TYPE_CHECKING:
+    from .document_metadata_store import DocumentMetadataStore
+    from .document_metadata_store import LinkOutcome
+    from .schema import AvailableDocument
+
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Default Backend Configuration (Set at Startup)
+# =============================================================================
+# These are read from environment variables at module load time.
+# The API layer uses these defaults - users don't need to specify per-request.
+#
+# NOTE: Backend-specific configuration (the Qdrant URL, the embedder) is
+# defined in each adapter, NOT here. The factory is backend-agnostic.
+
+# @environment_variable KNOWLEDGE_RETRIEVER_BACKEND
+# @category Knowledge Layer
+# @type str
+# @default llamaindex
+# @required false
+# Default retriever backend. Set at startup by knowledge_retrieval function.
+DEFAULT_RETRIEVER_BACKEND = os.environ.get("KNOWLEDGE_RETRIEVER_BACKEND", "llamaindex")
+
+# @environment_variable KNOWLEDGE_INGESTOR_BACKEND
+# @category Knowledge Layer
+# @type str
+# @default llamaindex
+# @required false
+# Default ingestor backend. Set at startup by knowledge_retrieval function.
+DEFAULT_INGESTOR_BACKEND = os.environ.get("KNOWLEDGE_INGESTOR_BACKEND", "llamaindex")
+
+# =============================================================================
+# Registry
+# =============================================================================
+
+# Registry for retriever adapters (class registry)
+_RETRIEVER_REGISTRY: dict[str, type[BaseRetriever]] = {}
+
+# Registry for ingestor adapters (class registry)
+_INGESTOR_REGISTRY: dict[str, type[BaseIngestor]] = {}
+
+# Singleton instances (cached for job state persistence)
+#
+# Retrievers are keyed on (backend, config fingerprint), NOT on backend alone:
+# two callers asking for the same backend with different persist dirs or embed
+# models must get different adapters, or one of them silently queries the wrong
+# store. See get_retriever.
+_RETRIEVER_INSTANCES: dict[tuple[str, str], BaseRetriever] = {}
+_retriever_instances_lock = threading.Lock()
+_INGESTOR_INSTANCES: dict[str, BaseIngestor] = {}
+
+# Active ingestor for the Knowledge API (set by knowledge_retrieval function)
+_ACTIVE_INGESTOR: BaseIngestor | None = None
+
+# Active retriever for the Knowledge API (lazily built from the active ingestor's
+# backend/config on first use — see get_active_retriever). Cached so a fresh
+# process serving /v1/collections/{c}/search initializes the retriever once and
+# reuses it (no per-request embed-client re-init).
+_ACTIVE_RETRIEVER: BaseRetriever | None = None
+_active_retriever_lock = threading.Lock()
+
+
+def register_retriever(name: str) -> Callable[[type[BaseRetriever]], type[BaseRetriever]]:
+    """
+    Decorator to register a retriever adapter.
+
+    Usage:
+        @register_retriever("llamaindex")
+        class LlamaIndexRetriever(BaseRetriever):
+            ...
+
+    Args:
+        name: The name to register this adapter under.
+
+    Returns:
+        Decorator function.
+    """
+
+    def decorator(cls: type[BaseRetriever]) -> type[BaseRetriever]:
+        if name in _RETRIEVER_REGISTRY:
+            logger.warning(f"Overwriting existing retriever adapter: {name}")
+        _RETRIEVER_REGISTRY[name] = cls
+        logger.debug(f"Registered retriever adapter: {name}")
+        return cls
+
+    return decorator
+
+
+def register_ingestor(name: str) -> Callable[[type[BaseIngestor]], type[BaseIngestor]]:
+    """
+    Decorator to register an ingestor adapter.
+
+    Usage:
+        @register_ingestor("llamaindex")
+        class LlamaIndexIngestor(BaseIngestor):
+            ...
+
+    Args:
+        name: The name to register this adapter under.
+
+    Returns:
+        Decorator function.
+    """
+
+    def decorator(cls: type[BaseIngestor]) -> type[BaseIngestor]:
+        if name in _INGESTOR_REGISTRY:
+            logger.warning(f"Overwriting existing ingestor adapter: {name}")
+        _INGESTOR_REGISTRY[name] = cls
+        logger.debug(f"Registered ingestor adapter: {name}")
+        return cls
+
+    return decorator
+
+
+def _retriever_identity(backend: str, config: dict[str, Any]) -> tuple[str, str]:
+    """Stable cache key for "the same retriever, configured the same way".
+
+    Backend alone is the wrong key: the same adapter class pointed at a
+    different persist dir or a different embedding model is a different
+    retriever, and handing back the first one would silently query the wrong
+    store (or serve vectors from the wrong model). The fingerprint is a
+    canonical JSON dump; ``default=repr`` keeps a non-serializable config value
+    (a client object, a Path) from turning an identity check into an exception.
+    """
+    try:
+        fingerprint = json.dumps(config, sort_keys=True, default=repr)
+    except TypeError, ValueError:
+        # Exotic config (non-string keys). Fall back to a repr — coarser, but a
+        # key that always exists beats a factory that raises.
+        fingerprint = repr(sorted(config.items(), key=lambda item: str(item[0])))
+    return backend, fingerprint
+
+
+def get_retriever(
+    backend: str | None = None,
+    config: dict[str, Any] | None = None,
+) -> BaseRetriever:
+    """
+    Factory function to get a configured retriever adapter (cached per identity).
+
+    Lifetime: ONE instance per resolved ``(backend, config)`` identity, for the
+    life of the process. This function used to construct a fresh adapter on
+    every call, which quietly defeated everything the adapter caches: its index
+    cache, its query-embedding LRU and its static-result cache are instance
+    state, and ``_get_retriever`` runs once per ``WorkflowBuilder`` build — that
+    is, once per agent run. Every run therefore started with empty caches and
+    dropped them at the end, so the 1-hour result-cache TTL was unreachable and
+    the cross-conversation hit rate was exactly zero.
+
+    Memory: the instance is now long-lived, so its caches are too. The
+    query-embedding LRU dominates — at 3072 dimensions one cached embedding is
+    ~97 KiB, so a full ``QUERY_EMBED_CACHE_SIZE`` (512) is ~49 MiB. That
+    ~49 MiB is now per distinct configuration (in practice one, sometimes two)
+    instead of per concurrent agent run, which is a reduction, not a new cost —
+    but it is resident rather than transient, and ``QUERY_EMBED_CACHE_SIZE``
+    is the knob if a replica's footprint needs trimming.
+
+    Correctness: a long-lived result cache is only safe because cache entries
+    are keyed on the collection write-version from
+    ``agent.knowledge.collection_version``, which is shared across replicas.
+    Without that, caching an adapter here would extend a same-process
+    invalidation window into a fleet-wide staleness window bounded only by the
+    TTL. The two changes are one change; do not revert either alone.
+
+    Thread-safe: retrieval runs under ``asyncio.to_thread``, so several worker
+    threads can reach a cold factory at once. Construction is double-checked
+    under a lock so exactly one instance per identity is built and published.
+
+    Configuration Precedence (highest to lowest):
+        1. Explicit ``backend`` parameter passed to this function
+        2. KNOWLEDGE_RETRIEVER_BACKEND environment variable
+        3. Default: "llamaindex"
+
+    Args:
+        backend: The registered backend name ('llamaindex', or a test fake).
+                 If None, uses the environment variable or default.
+        config: Backend-specific configuration. Passed directly to the adapter.
+                Each adapter defines its own defaults internally. A differing
+                config yields a DIFFERENT cached instance — it is part of the
+                cache key, never ignored.
+
+    Returns:
+        Configured retriever adapter instance (cached per backend + config).
+
+    Raises:
+        ValueError: If backend is not registered.
+
+    Example:
+        >>> retriever = get_retriever("llamaindex", {"embed_model": "openai/text-embedding-3-large"})
+        >>> result = await retriever.retrieve("What is RAG?", "my_collection")
+    """
+    # Use configured default if not specified
+    backend = backend or DEFAULT_RETRIEVER_BACKEND
+
+    if backend not in _RETRIEVER_REGISTRY:
+        available = list(_RETRIEVER_REGISTRY.keys())
+        raise ValueError(f"Unknown retriever backend: {backend}. Available backends: {available}")
+
+    config = config or {}
+    identity = _retriever_identity(backend, config)
+
+    cached = _RETRIEVER_INSTANCES.get(identity)
+    if cached is not None:
+        return cached
+
+    with _retriever_instances_lock:
+        # Double-checked: another thread may have built it while we waited.
+        cached = _RETRIEVER_INSTANCES.get(identity)
+        if cached is not None:
+            return cached
+
+        # Pass config directly to adapter - each adapter handles its own defaults
+        adapter_cls = _RETRIEVER_REGISTRY[backend]
+        instance = adapter_cls(config=config)
+        _RETRIEVER_INSTANCES[identity] = instance
+        logger.info(
+            "Created retriever instance for backend %s (%d cached configuration(s))",
+            backend,
+            len(_RETRIEVER_INSTANCES),
+        )
+        return instance
+
+
+def get_ingestor(
+    backend: str | None = None,
+    config: dict[str, Any] | None = None,
+) -> BaseIngestor:
+    """
+    Factory function to get a configured ingestor adapter.
+
+    Uses singleton pattern to preserve job state across requests.
+
+    Configuration Precedence (highest to lowest):
+        1. Explicit ``backend`` parameter passed to this function
+        2. KNOWLEDGE_INGESTOR_BACKEND environment variable
+        3. Default: "llamaindex"
+
+    Args:
+        backend: The registered backend name ('llamaindex', or a test fake).
+                 If None, uses the environment variable or default.
+        config: Backend-specific configuration. Passed directly to the adapter.
+                Each adapter defines its own defaults internally.
+                Note: config is only used on first instantiation (singleton).
+
+    Returns:
+        Configured ingestor adapter instance (singleton per backend).
+
+    Raises:
+        ValueError: If backend is not registered.
+
+    Example:
+        >>> ingestor = get_ingestor("llamaindex", {"embed_model": "openai/text-embedding-3-large"})
+        >>> job_id = ingestor.submit_job(["/path/to/file.pdf"], "my_collection")
+    """
+    # Use configured default if not specified
+    backend = backend or DEFAULT_INGESTOR_BACKEND
+
+    if backend not in _INGESTOR_REGISTRY:
+        available = list(_INGESTOR_REGISTRY.keys())
+        raise ValueError(f"Unknown ingestor backend: {backend}. Available backends: {available}")
+
+    # Return cached instance if available (singleton pattern for job persistence)
+    if backend in _INGESTOR_INSTANCES:
+        if config:
+            logger.debug(f"Returning cached {backend} ingestor (config parameter ignored)")
+        return _INGESTOR_INSTANCES[backend]
+
+    # Pass config directly to adapter - each adapter handles its own defaults
+    adapter_cls = _INGESTOR_REGISTRY[backend]
+    instance = adapter_cls(config=config or {})
+
+    # Cache the instance
+    _INGESTOR_INSTANCES[backend] = instance
+    logger.info(f"Created singleton ingestor instance for backend: {backend}")
+
+    return instance
+
+
+def list_retrievers() -> list[str]:
+    """Return list of registered retriever backends."""
+    return list(_RETRIEVER_REGISTRY.keys())
+
+
+def list_ingestors() -> list[str]:
+    """Return list of registered ingestor backends."""
+    return list(_INGESTOR_REGISTRY.keys())
+
+
+def set_active_ingestor(ingestor: BaseIngestor) -> None:
+    """
+    Set the active ingestor for the Knowledge API.
+
+    Called by the knowledge_retrieval function during initialization to make
+    the configured ingestor available to API routes.
+
+    Args:
+        ingestor: The ingestor instance to activate.
+    """
+    global _ACTIVE_INGESTOR
+    _ACTIVE_INGESTOR = ingestor
+    logger.info("Set active ingestor: %s", ingestor.backend_name)
+
+
+def get_active_ingestor() -> BaseIngestor | None:
+    """
+    Get the active ingestor for the Knowledge API.
+
+    Returns:
+        The active BaseIngestor instance, or None if not configured.
+    """
+    return _ACTIVE_INGESTOR
+
+
+def clear_active_ingestor() -> None:
+    """Clear the active ingestor (for testing)."""
+    global _ACTIVE_INGESTOR
+    _ACTIVE_INGESTOR = None
+
+
+def _retriever_config_from_ingestor(ingestor: BaseIngestor) -> dict[str, Any]:
+    """Mirror the active ingestor's embedding config for the retriever.
+
+    The retriever and ingestor MUST embed with the same model, or every search
+    is refused as an embedding mismatch against the vectors that were ingested.
+    The ingestor exposes its resolved settings as attributes
+    (``embed_base_url``/``embed_model_name``); we copy the ones that resolve
+    into the retriever's config-key names. Read defensively via
+    ``getattr`` so a backend that does not expose an attribute simply falls back
+    to the retriever adapter's own default for that key.
+    """
+    attr_to_key = {
+        "embed_base_url": "embed_base_url",
+        "embed_model_name": "embed_model",
+    }
+    config: dict[str, Any] = {}
+    for attr, key in attr_to_key.items():
+        value = getattr(ingestor, attr, None)
+        if value is not None:
+            config[key] = value
+    return config
+
+
+def set_active_retriever(retriever: BaseRetriever) -> None:
+    """
+    Set the active retriever for the Knowledge API.
+
+    Mirrors :func:`set_active_ingestor`. Optional wiring hook: callers that want
+    to inject a pre-built retriever (e.g. tests, or explicit startup) can do so;
+    otherwise :func:`get_active_retriever` builds one lazily from the active
+    ingestor's config.
+
+    Args:
+        retriever: The retriever instance to activate.
+    """
+    global _ACTIVE_RETRIEVER
+    _ACTIVE_RETRIEVER = retriever
+    logger.info("Set active retriever: %s", retriever.backend_name)
+
+
+def get_active_retriever() -> BaseRetriever:
+    """
+    Get (or lazily build) the cached retriever singleton for the Knowledge API.
+
+    Mirrors the active-ingestor singleton. The first caller in a fresh process
+    builds ONE retriever from the same backend + store/embedding config the
+    active ingestor was created with (see :func:`_retriever_config_from_ingestor`),
+    so both embed with the same model. The instance is cached and reused for
+    every subsequent request — no per-request embed-client re-init. (The adapter itself still lazy-initializes its
+    heavy components on the first ``retrieve`` call.)
+
+    If no active ingestor is set, falls back to the factory default backend/config
+    (env-driven) so the retriever is still usable.
+
+    Returns:
+        The cached BaseRetriever instance.
+    """
+    global _ACTIVE_RETRIEVER
+    if _ACTIVE_RETRIEVER is not None:
+        return _ACTIVE_RETRIEVER
+
+    with _active_retriever_lock:
+        # Double-checked: another caller may have built it while we waited.
+        if _ACTIVE_RETRIEVER is not None:
+            return _ACTIVE_RETRIEVER
+
+        ingestor = _ACTIVE_INGESTOR
+        if ingestor is not None:
+            backend: str | None = ingestor.backend_name
+            config: dict[str, Any] | None = _retriever_config_from_ingestor(ingestor)
+        else:
+            # No configured ingestor — fall back to env-driven factory defaults.
+            backend = None
+            config = None
+
+        _ACTIVE_RETRIEVER = get_retriever(backend, config)
+        logger.info("Built active retriever: %s", _ACTIVE_RETRIEVER.backend_name)
+        return _ACTIVE_RETRIEVER
+
+
+def clear_active_retriever() -> None:
+    """Drop every cached retriever — the active one AND the per-identity cache (for testing).
+
+    Both, deliberately. ``get_retriever`` now caches an instance per
+    ``(backend, config)`` for the life of the process, so clearing only
+    ``_ACTIVE_RETRIEVER`` would leave the next lazy build handing back the very
+    instance (and the very warm caches) the previous test had populated. This is
+    the single reset hook tests already call; it has to actually reset.
+    """
+    global _ACTIVE_RETRIEVER
+    _ACTIVE_RETRIEVER = None
+    with _retriever_instances_lock:
+        _RETRIEVER_INSTANCES.clear()
+
+
+# =============================================================================
+# Document metadata store (SQLAlchemy-backed, Backend-Agnostic)
+# =============================================================================
+# Persistent per-document metadata (summary, tags, doc_class, display_title)
+# using configurable SQLite/PostgreSQL. Backends call register_summary() after
+# ingestion; agents call get_available_documents() for prompt context.
+#
+# Back-compat: the DB *file* (default ``summaries.db``), the ``SUMMARY_DB``
+# env var, and the NAT ``summary_db`` config field keep their names so existing
+# databases/deployments are not orphaned — only the misnamed TABLE and store
+# CLASS were renamed to ``document_metadata`` (see document_metadata_store.py).
+
+_document_metadata_store: DocumentMetadataStore | None = None
+# Guards lazy init of _document_metadata_store. The default-init path is now
+# reachable from thread-pool workers (knowledge_search formats results via
+# asyncio.to_thread), so double-check under this lock to prevent two concurrent
+# cold-start callers each constructing a store/engine and one clobbering the
+# other. Steady state re-checks without contention.
+_document_metadata_store_lock = threading.Lock()
+
+# Default DB URL (used if configure_summary_db not called). The file keeps its
+# historical name so a default-path deployment's existing rows are migrated in
+# place, not orphaned.
+_DEFAULT_METADATA_DB = "sqlite+aiosqlite:///./summaries.db"
+
+
+def configure_summary_db(db_url: str) -> None:
+    """Initialize the document metadata store with the given DB URL."""
+    global _document_metadata_store
+    from .document_metadata_store import DocumentMetadataStore
+
+    with _document_metadata_store_lock:
+        _document_metadata_store = DocumentMetadataStore(db_url)
+    logger.info("Document metadata store configured: %s", redact_db_url(db_url))
+
+
+def _get_document_metadata_store() -> DocumentMetadataStore:
+    """Get or create the document metadata store (lazy init with default)."""
+    global _document_metadata_store
+    if _document_metadata_store is None:
+        from .document_metadata_store import DocumentMetadataStore
+
+        with _document_metadata_store_lock:
+            # Double-checked: another caller may have initialized it while we
+            # waited for the lock.
+            if _document_metadata_store is None:
+                # configure_summary_db() may not have run in this process (e.g. an
+                # ingestion thread/worker that never executed the NAT registration
+                # in packages/knowledge-layer/src/register.py). Resolve the DB from
+                # the environment the same way ingest_status_store/leader_lock do,
+                # instead of silently falling back to a local SQLite file that in a
+                # container often isn't writable ("unable to open database file")
+                # and, worse, would split summaries away from the real Postgres.
+                db_url = os.environ.get("SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL") or _DEFAULT_METADATA_DB
+                _document_metadata_store = DocumentMetadataStore(db_url)
+                logger.info("Document metadata store initialized (lazy env fallback): %s", redact_db_url(db_url))
+    return _document_metadata_store
+
+
+def _mirror_facts(collection: str, file_names: list[str] | None = None, *, folders_only: bool = False) -> None:
+    """Copy the facts just changed here onto the file's points in Qdrant (ADR-0116).
+
+    This store stays the authority; the vector store carries a copy so a
+    search can filter on a tag, a Dokumentart or a Fassung before ranking
+    instead of after. It never raises (``knowledge_layer.qdrant.writes.refresh_facts``).
+    ``folders_only`` copies just the folder, all a folder move changed.
+    """
+    # The folders these files sit in are dirty for their written card (ADR-0127); never raises.
+    from .folder_cards import mark_files
+
+    mark_files(collection, file_names)
+    try:
+        from knowledge_layer.qdrant import writes
+    except ImportError:  # the knowledge layer's store extra is not installed here
+        return
+    writes.refresh_facts(collection, file_names, fields=writes.FOLDER_FACTS if folders_only else None)
+
+
+def register_summary(
+    collection: str,
+    filename: str,
+    summary: str | None,
+    tags: list[str] | None = None,
+    topics: list[str] | None = None,
+) -> None:
+    """Store a summary, its controlled tags and its open topics in the database.
+
+    The ``summary`` column is NOT NULL, so a file with no summary is skipped
+    entirely — tags and topics ride along with the summary in a single upsert
+    per file.
+    """
+    if not summary:
+        return
+    store = _get_document_metadata_store()
+    store.register(collection, filename, summary, tags, topics)
+    # A row linked to this one reads as replaced again now that it is back.
+    _mirror_facts(collection, [filename, *store.files_linked_to(collection, filename)])
+
+
+def update_document_tags(collection: str, filename: str, tags: list[str] | None) -> bool:
+    """Replace the MACHINE's controlled tags on an existing summary row.
+
+    The seam behind the classify-only backfill script. Never touches the
+    summary, and never overwrites tags a person chose
+    (:func:`set_document_tags_by_person`); returns ``False`` when no summary row
+    exists or its tags are a person's. Tag-vocabulary validation is the
+    caller's responsibility — the store persists whatever it is given, so every
+    caller MUST validate against ``document_classification.ALLOWED_TAGS`` first.
+    """
+    changed = _get_document_metadata_store().update_tags(collection, filename, tags)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
+
+
+def set_document_tags_by_person(collection: str, filename: str, tags: list[str] | None) -> bool:
+    """Store the tags a PERSON chose for a document, so no re-ingest replaces them.
+
+    The seam behind the user-facing tag edit. Same contract as
+    :func:`update_document_tags` otherwise: validated by the caller, never
+    touches the summary, ``False`` when no summary row exists (callers 404).
+    """
+    changed = _get_document_metadata_store().set_tags_by_person(collection, filename, tags)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
+
+
+def get_document_person_tags(collection: str, filenames: list[str]) -> dict[str, list[str]]:
+    """The tags a person chose, for those of ``filenames`` that have them (``[]`` = chose none)."""
+    return _get_document_metadata_store().get_person_tags_batch(collection, filenames)
+
+
+def set_document_topics_by_person(collection: str, filename: str, topics: list[str] | None) -> bool:
+    """Store the topics a PERSON chose for a document, so no re-ingest replaces them.
+
+    The topic twin of :func:`set_document_tags_by_person`: validated by the
+    caller (:func:`normalize_topic`), never touches the summary, ``False`` when
+    no summary row exists (callers 404). Marks the row as a person's, which
+    freezes its tags as well as its topics.
+    """
+    changed = _get_document_metadata_store().set_topics_by_person(collection, filename, topics)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
+
+
+def get_document_person_topics(collection: str, filenames: list[str]) -> dict[str, list[str]]:
+    """The topics a person chose, for those of ``filenames`` that have them (``[]`` = chose none)."""
+    return _get_document_metadata_store().get_person_topics_batch(collection, filenames)
+
+
+def get_topic_vocabulary(collection: str, limit: int = MAX_TOPIC_VOCABULARY) -> list[str]:
+    """The topics a collection already uses, most frequent first: what ingestion offers the model to reuse."""
+    return _get_document_metadata_store().get_topic_vocabulary(collection, limit)
+
+
+def set_document_capture(collection: str, filename: str, capture: dict[str, Any] | None) -> bool:
+    """Set the camera facts of a photo on an existing metadata row (UPDATE-only, like :func:`set_document_provenance`).
+
+    ``latitude``/``longitude`` are stored for the BFF and must never be printed
+    into anything a model reads; the readers take only ``captured_at`` and ``camera``.
+    """
+    return _get_document_metadata_store().set_capture(collection, filename, capture or None)
+
+
+def set_document_revision_facts(collection: str, filename: str, facts: dict[str, Any] | None) -> bool:
+    """Set the title-block facts (Plankopf: number, Index, date, scale, title) of a document; ``None`` clears them.
+
+    ``facts`` is read by the vision model during ingestion and normalised by the store
+    (:func:`~agent.knowledge.title_block.normalise_revision_facts`). UPDATE-only, like
+    :func:`set_document_capture`: ``False`` when the document has no metadata row.
+    """
+    return _get_document_metadata_store().set_revision_facts(collection, filename, facts or None)
+
+
+def set_document_reading(
+    collection: str,
+    filename: str,
+    *,
+    dossier: dict[str, Any] | None,
+    references: list[dict[str, Any]] | None,
+    coverage: dict[str, Any] | None,
+) -> bool:
+    """Set what the ingest read of a document: its dossier, its references, its coverage (UPDATE-only).
+
+    Written together by the ingest that read the file, so a re-ingest replaces the whole reading.
+    ``False`` when the document has no metadata row.
+    """
+    written = _get_document_metadata_store().set_reading(
+        collection, filename, dossier=dossier, references=references, coverage=coverage
+    )
+    # The chunks were written before the reading existed; their copy of it is set here.
+    if written:
+        _mirror_facts(collection, [filename])
+    return written
+
+
+def set_document_page_count(collection: str, filename: str, page_count: int | None) -> bool:
+    """Set how many pages a document has (UPDATE-only, like :func:`set_document_capture`); ``None`` when it has none.
+
+    The ingest that read the file calls this after :func:`register_summary`, so a re-ingest overwrites the count.
+    ``False`` when the document has no metadata row.
+    """
+    return _get_document_metadata_store().set_page_count(collection, filename, page_count)
+
+
+def set_document_superseded_by(collection: str, older: str, newer: str | None) -> bool:
+    """Record that a PERSON confirmed ``newer`` replaces ``older`` in this collection; ``None`` lifts it.
+
+    A NEW link goes through :func:`link_document_revision`, which refuses a loop in the same
+    transaction; this one lifts a link (``None``) and carries an existing one onto another spelling.
+    A model's reading of two documents goes through :func:`set_document_revision_suggestion`, which
+    hides nothing. UPDATE-only: ``False`` when ``older`` has no metadata row.
+    """
+    changed = _get_document_metadata_store().set_superseded_by(collection, older, newer)
+    if changed:
+        _mirror_facts(collection, [older])
+    return changed
+
+
+def link_document_revision(collection: str, older: str, newer: str) -> LinkOutcome:
+    """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop in the same transaction.
+
+    The writer of a NEW link, for the ``PUT /v1/collections/{collection}/revision`` route and for a
+    link a person chose at upload (``revision_of``). ``LOOP`` and ``MISSING`` write nothing. Also
+    clears a suggestion on ``newer`` that named ``older``, and the change line of the file ``older``
+    was replaced by until now when it was told against ``older``.
+    """
+    outcome = _get_document_metadata_store().link_revision(collection, older, newer)
+    _mirror_facts(collection, [older, newer])
+    return outcome
+
+
+def dismiss_document_revision_suggestion(collection: str, filename: str, older: str) -> bool:
+    """Record that a person refused ``older`` as the Fassung ``filename`` replaces; earlier refusals stay."""
+    return _get_document_metadata_store().dismiss_revision_suggestion(collection, filename, older)
+
+
+def get_document_superseded_by(collection: str, filenames: list[str]) -> dict[str, str]:
+    """The confirmed ``superseded_by`` of those of ``filenames`` that have one (carried across a re-ingest)."""
+    return _get_document_metadata_store().get_superseded_by_batch(collection, filenames)
+
+
+def get_superseded_files(collection: str) -> dict[str, str]:
+    """Files of ``collection`` a person replaced, mapped to the file that replaced them (read at search time)."""
+    return _get_document_metadata_store().get_superseded_files(collection)
+
+
+def set_document_revision_suggestion(collection: str, filename: str, suggestion: dict[str, Any] | None) -> bool:
+    """Store (or clear) Piloti's open suggestion that ``filename`` is a newer Fassung of another document.
+
+    ``suggestion`` is ``{"of", "confidence", "reason", "basis", "dismissed"}``; an invalid one is
+    refused (``False``). A suggestion is advice to a person, never a link. The files a person
+    refused (``dismissed_of``) are kept across every write, and a suggestion naming one is stored
+    dismissed (:func:`dismiss_document_revision_suggestion` adds a refusal).
+    """
+    return _get_document_metadata_store().set_revision_suggestion(collection, filename, suggestion)
+
+
+def get_document_revision_suggestions(collection: str, filenames: list[str]) -> dict[str, str]:
+    """The stored suggestion JSON of those of ``filenames`` that have one (carried across a re-ingest)."""
+    return _get_document_metadata_store().get_revision_suggestions_batch(collection, filenames)
+
+
+def set_document_change_summary(collection: str, filename: str, summary: str | None, basis: str | None) -> bool:
+    """Store what changed in ``filename`` against the Fassung named ``basis``; ``None`` clears it."""
+    return _get_document_metadata_store().set_change_summary(collection, filename, summary, basis)
+
+
+def set_document_doc_class(collection: str, filename: str, doc_class: str | None) -> bool:
+    """Set the explicit ``doc_class`` ("Dokumentart") on an existing summary row.
+
+    UPDATE-only (never creates a row): returns ``False`` when no summary row
+    exists for ``(collection, filename)``. The single factory seam behind the
+    ingestion pre-fill and any future doc_class-edit endpoint.
+    """
+    changed = _get_document_metadata_store().set_doc_class(collection, filename, doc_class)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
+
+
+def get_document_doc_class(collection: str, filename: str) -> str | None:
+    """Return the stored explicit ``doc_class`` for a document, or ``None``."""
+    return _get_document_metadata_store().get_doc_class(collection, filename)
+
+
+def set_document_doc_class_suggestion(collection: str, filename: str, doc_class: str | None) -> bool:
+    """Store or clear the decided Dokumentart suggestion (ADR-0064, use 8). UPDATE-only."""
+    return _get_document_metadata_store().set_doc_class_suggestion(collection, filename, doc_class)
+
+
+def get_document_doc_class_suggestions(collection: str, filenames: list[str]) -> dict[str, str]:
+    """Stored Dokumentart suggestions for many documents in one query."""
+    return _get_document_metadata_store().get_doc_class_suggestions_batch(collection, filenames)
+
+
+def get_document_doc_classes(collection: str, filenames: list[str]) -> dict[str, str]:
+    """Return stored ``doc_class`` values for many documents in one query.
+
+    Batched equivalent of :func:`get_document_doc_class`; only documents with a
+    truthy stored ``doc_class`` appear in the map (same coercion).
+    """
+    return _get_document_metadata_store().get_doc_classes_batch(collection, filenames)
+
+
+def set_document_display_title(collection: str, filename: str, display_title: str | None) -> bool:
+    """Set the user-facing ``display_title`` on an existing metadata row.
+
+    UPDATE-only (never creates a row): returns ``False`` when no metadata row
+    exists for ``(collection, filename)``. The single factory seam behind the
+    ingestion default-seed and the admin rename endpoint. A ``None`` clears the
+    override so the derived default (:func:`guess_display_title`) applies again.
+    """
+    return _get_document_metadata_store().set_display_title(collection, filename, display_title)
+
+
+def get_document_display_title(collection: str, filename: str) -> str | None:
+    """Return the stored ``display_title`` for a document, or ``None``."""
+    return _get_document_metadata_store().get_display_title(collection, filename)
+
+
+def get_document_display_titles(collection: str, filenames: list[str]) -> dict[str, str]:
+    """Return stored ``display_title`` values for many documents in one query.
+
+    Batched equivalent of :func:`get_document_display_title`; only documents with
+    a truthy stored title appear in the map (same coercion).
+    """
+    return _get_document_metadata_store().get_display_titles_batch(collection, filenames)
+
+
+def set_document_folder_path(collection: str, filename: str, folder_path: str | None) -> bool:
+    """Set the materialised ``folder_path`` on an existing metadata row (ADR-0049).
+
+    UPDATE-only (never creates a row), like :func:`set_document_display_title`:
+    returns ``False`` when no metadata row exists for ``(collection, filename)``.
+    ``None``/blank clears it, which is what "filed at the project root" means.
+    The single seam behind BOTH ingestion (which stamps the folder the BFF sent
+    with the file) and the folder mirror endpoint.
+    """
+    from .folder_cards import enabled_for_collection as folder_cards_enabled
+    from .folder_cards import mark_folders
+
+    store = _get_document_metadata_store()
+    # The folder it leaves is dirty too; read before the move overwrites it.
+    left = (
+        store.get_folder_paths_batch(collection, [filename]).get(filename) if folder_cards_enabled(collection) else None
+    )
+    changed = store.set_folder_path(collection, filename, (folder_path or "").strip() or None)
+    if changed:
+        mark_folders(collection, [left])
+        _mirror_facts(collection, [filename])
+    return changed
+
+
+def get_document_folder_paths(collection: str, filenames: list[str]) -> dict[str, str]:
+    """Return stored ``folder_path`` values for many documents in one query.
+
+    Only documents with a truthy stored path appear in the map (the same
+    coercion as the doc_class and display_title batches). This is what
+    retrieval's folder filter and the ``Ordner:`` citation line read, so a folder
+    rename applies WITHOUT re-ingest.
+    """
+    return _get_document_metadata_store().get_folder_paths_batch(collection, filenames)
+
+
+def find_tmp_upload_names(collection: str, filenames: list[str]) -> list[str]:
+    """Stored names that are one of ``filenames`` behind a ``tmp[8]_`` upload prefix.
+
+    What a re-upload asks to find a legacy spelling of its predecessor that the
+    vector store cannot match by filter (``_find_previous_versions``).
+    """
+    return _get_document_metadata_store().find_tmp_upload_names(collection, filenames)
+
+
+def set_document_provenance(collection: str, filename: str, provenance: dict[str, str] | None) -> bool:
+    """Set the provenance of a document Piloti wrote and a person released (ADR-0054).
+
+    UPDATE-only (never creates a row), like :func:`set_document_folder_path`:
+    returns ``False`` when no metadata row exists for ``(collection, filename)``.
+    ``None``/empty clears it, which is what "a human wrote this" means.
+
+    The row is deleted with the chunks (:func:`unregister_summary`, called by
+    every ``delete_file`` path), so a superseded or archived version's
+    provenance never outlives the passages it described.
+    """
+    return _get_document_metadata_store().set_provenance(collection, filename, provenance or None)
+
+
+def get_document_provenance(collection: str, filename: str) -> dict[str, str] | None:
+    """Return the stored provenance for one document, or ``None`` when unmarked.
+
+    The row-level twin of the four keys every chunk carries. Retrieval reads
+    the CHUNK, because that is what a hit is; this is for the surfaces that
+    have a filename and no chunk — a collection listing, an inventory row.
+    """
+    return _get_document_metadata_store().get_provenance(collection, filename)
+
+
+def rewrite_document_folder_paths(collection: str, from_path: str, to_path: str | None) -> int:
+    """Re-file every document under ``from_path`` onto ``to_path`` (ADR-0049).
+
+    The backend mirror of the BFF's materialised-path rewrite: one call moves a
+    renamed / re-parented / deleted folder's whole subtree. Returns the number of
+    documents re-filed.
+    """
+    count, moved = _get_document_metadata_store().rewrite_folder_paths_moved(collection, from_path, to_path)
+    if moved:
+        from .folder_cards import mark_folders
+
+        mark_folders(collection, [from_path])
+        _mirror_facts(collection, moved, folders_only=True)
+    return count
+
+
+def list_summary_collections() -> list[str]:
+    """List every collection that has at least one persisted summary."""
+    return _get_document_metadata_store().list_collections()
+
+
+def get_available_documents(collection: str) -> list[AvailableDocument]:
+    """Get documents with summaries (sync)."""
+    return _get_document_metadata_store().get_all(collection)
+
+
+def get_documents(collection: str, filenames: list[str]) -> list[AvailableDocument]:
+    """The metadata rows of ``filenames`` only (sync); ``supersedes`` is not derived (see ``get_many``)."""
+    return _get_document_metadata_store().get_many(collection, filenames)
+
+
+async def get_available_documents_async(collection: str) -> list[AvailableDocument]:
+    """Get documents with summaries (async)."""
+    return await _get_document_metadata_store().get_all_async(collection)
+
+
+def reconcile_collection_summaries(
+    ingestor: BaseIngestor,
+    collection: str,
+    file_names: list[str] | None = None,
+) -> int:
+    """Backfill fallback summary rows for documents the vector index has but the summaries table doesn't.
+
+    Structural backstop for "ingested ⇒ visible": ``available_documents`` (the
+    per-turn prompt line agents rely on to know what's searchable) is sourced
+    SOLELY from the summaries table, while search itself works off the vector
+    index. If the primary summary path (LLM summary + tag classification, both
+    fail-open) ever produces no row for a document that nonetheless ingested
+    successfully, that document becomes silently unusable in chat even though
+    it is fully searchable. This diffs the ingestor's indexed, successfully-
+    ingested file names (``BaseIngestor.list_files``, part of every backend's
+    interface) against the summaries table (``get_available_documents``) and
+    registers a deterministic, LLM-free fallback summary for every gap.
+
+    Backend-agnostic by design: only calls the required ``BaseIngestor``
+    interface. Backends that can supply a representative text sample for a
+    document expose an optional ``get_document_text_sample(collection,
+    file_name) -> str | None`` method (duck-typed via ``getattr`` — deliberately
+    not part of the abstract ``BaseIngestor`` interface, so this stays opt-in
+    per backend); see ``LlamaIndexIngestor.get_document_text_sample`` for the
+    reference implementation, which reads chunk text back out of Qdrant. When a
+    backend has no such method, or the sample comes back empty, the filename
+    itself becomes the fallback summary — a row that exists beats no row at
+    all.
+
+    Intended to run at the end of every ingestion job (wired into
+    ``LlamaIndexIngestor._run_ingestion``) so every caller — the Knowledge API,
+    ``oib_sync.sync()`` (the base-corpus housekeeping), and any future caller —
+    gets this backstop automatically.
+
+    Args:
+        ingestor: The backend ingestor to reconcile against.
+        collection: Collection/index name to reconcile.
+        file_names: Optional scope. When given (the job's successfully ingested
+            files), only those names are checked — the caller already knows
+            they indexed successfully, so the full ``list_files`` metadata scan
+            (O(collection size) on every job) is skipped. When omitted, the
+            whole collection is diffed as before.
+
+    Returns:
+        The number of documents backfilled (0 when already consistent, or on
+        any lookup failure — this never raises).
+    """
+    if file_names is not None:
+        indexed_names = set(file_names)
+    else:
+        try:
+            indexed_files = ingestor.list_files(collection)
+        except Exception as e:
+            logger.warning("Reconciliation: failed to list indexed files for %s: %s", collection, e)
+            return 0
+        indexed_names = {f.file_name for f in indexed_files if f.status == FileStatus.SUCCESS}
+
+    if not indexed_names:
+        return 0
+
+    existing_names = {doc.file_name for doc in get_available_documents(collection)}
+    missing_names = indexed_names - existing_names
+    if not missing_names:
+        return 0
+
+    from .document_classification import fallback_summary_from_text
+
+    sample_fn = getattr(ingestor, "get_document_text_sample", None)
+
+    backfilled = 0
+    for file_name in sorted(missing_names):
+        text_sample = None
+        if callable(sample_fn):
+            try:
+                text_sample = sample_fn(collection, file_name)
+            except Exception as e:
+                logger.warning("Reconciliation: failed to sample text for %s in %s: %s", file_name, collection, e)
+
+        summary = fallback_summary_from_text(text_sample) if text_sample else None
+        if not summary:
+            # No usable text sample (no sampler on this backend, or the indexed
+            # chunks came back empty) — fall back to the filename itself so a
+            # row exists at all. Visibility beats a perfect summary here.
+            summary = f"Indexed document: {file_name}"
+
+        register_summary(collection, file_name, summary)
+        backfilled += 1
+        logger.warning(
+            "Reconciliation: backfilled missing summary for %s in %s "
+            "(primary summary path silently produced no row for an ingested document)",
+            file_name,
+            collection,
+        )
+
+    logger.warning(
+        "Reconciliation: backfilled %d/%d document(s) missing summaries in %s",
+        backfilled,
+        len(indexed_names),
+        collection,
+    )
+    return backfilled
+
+
+def unregister_summary(collection: str, filename: str, *, permanent: bool = False) -> None:
+    """Delete a file's metadata row; the Fassung facts a person made are kept for its return unless ``permanent``.
+
+    See :meth:`DocumentMetadataStore.unregister`. ``permanent`` is a delete nobody undoes.
+    Every row this one replaced reads as current once it is gone, so their
+    ``superseded`` is copied again: left ``true`` on the points, the pre-filter
+    would hide the Fassung that is now the current one from every search.
+    """
+    from .folder_cards import enabled_for_collection as folder_cards_enabled
+    from .folder_cards import mark_folders
+
+    store = _get_document_metadata_store()
+    linked = store.files_linked_to(collection, filename)
+    left = (
+        store.get_folder_paths_batch(collection, [filename]).get(filename) if folder_cards_enabled(collection) else None
+    )
+    store.unregister(collection, filename, permanent=permanent)
+    # The folder it left is dirty for its written card (ADR-0127).
+    mark_folders(collection, [left])
+    if linked:
+        _mirror_facts(collection, linked)
+
+
+def clear_collection_summaries(collection: str) -> None:
+    """Delete all summaries in a collection."""
+    _get_document_metadata_store().clear_collection(collection)
+
+
+def clear_all_summaries() -> None:
+    """Delete all summaries."""
+    _get_document_metadata_store().clear_all()
+
+
+def is_retriever_registered(name: str) -> bool:
+    """Check if a retriever backend is registered."""
+    return name in _RETRIEVER_REGISTRY
+
+
+def is_ingestor_registered(name: str) -> bool:
+    """Check if an ingestor backend is registered."""
+    return name in _INGESTOR_REGISTRY
+
+
+# =============================================================================
+# Configuration Helpers
+# =============================================================================
+
+
+def get_default_retriever_backend() -> str:
+    """Get the configured default retriever backend."""
+    return DEFAULT_RETRIEVER_BACKEND
+
+
+def get_default_ingestor_backend() -> str:
+    """Get the configured default ingestor backend."""
+    return DEFAULT_INGESTOR_BACKEND
+
+
+def get_knowledge_layer_config() -> dict[str, Any]:
+    """
+    Get the complete knowledge layer configuration.
+
+    Useful for debugging and displaying current setup.
+    Note: Backend-specific config is defined in each adapter, not here.
+    """
+    return {
+        "retriever": {
+            "default_backend": DEFAULT_RETRIEVER_BACKEND,
+            "available_backends": list(_RETRIEVER_REGISTRY.keys()),
+        },
+        "ingestor": {
+            "default_backend": DEFAULT_INGESTOR_BACKEND,
+            "available_backends": list(_INGESTOR_REGISTRY.keys()),
+        },
+    }
+
+
+# The retriever the knowledge search tool was built with. It can differ from
+# the active retriever (another config identity, another instance, another
+# embedding LRU), and a warm-up is only worth anything in the cache the search
+# will read. Set by the knowledge tool at build time; with two knowledge tools
+# of different config the last built wins, which wastes a warm-up on the other
+# one's turns but can serve nothing wrong: the embedding cache is keyed by model.
+# The tool clears it at teardown (``clear_search_retriever``), so a torn-down
+# tool's retriever is neither kept alive nor warmed.
+_SEARCH_RETRIEVER: BaseRetriever | None = None
+
+
+def set_search_retriever(retriever: BaseRetriever | None) -> None:
+    """Record the retriever the knowledge search tool reads through."""
+    global _SEARCH_RETRIEVER
+    _SEARCH_RETRIEVER = retriever
+
+
+def clear_search_retriever(retriever: BaseRetriever) -> None:
+    """Forget ``retriever`` as the search retriever, if it still is; a later tool's stays."""
+    global _SEARCH_RETRIEVER
+    if _SEARCH_RETRIEVER is retriever:
+        _SEARCH_RETRIEVER = None
+
+
+async def warm_search_query(query: str) -> None:
+    """Warm the knowledge search's caches for ``query`` as the tool will send it; never raises.
+
+    The tool searches the query after ``augmented_query`` (the cross-lingual
+    bridge), so that is the string warmed. No search retriever, no warm-up.
+    The glossary-miss line is left to the search, which logs it once.
+    """
+    retriever = _SEARCH_RETRIEVER
+    if retriever is None or not query:
+        return
+    try:
+        from agent.common.query_expansion import augmented_query
+
+        await retriever.warm_query(augmented_query(query, log_miss=False))
+    except Exception:  # noqa: BLE001 - a warm-up is worth less than the turn
+        logger.debug("Search warm-up failed", exc_info=True)

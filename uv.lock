@@ -1,11 +1,11 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.14.1, <3.15"
 
 [manifest]
 members = [
-    "aiq-agent",
-    "aiq-api",
+    "agent",
+    "agent-host",
     "knowledge-layer",
     "ris-adapter",
     "tavily-web-search",
@@ -30,8 +30,8 @@ overrides = [
 
 [manifest.dependency-groups]
 dev = [
-    { name = "aiq-agent", editable = "packages/agent" },
-    { name = "aiq-api", editable = "apps/backend" },
+    { name = "agent", editable = "packages/agent" },
+    { name = "agent-host", editable = "apps/backend" },
     { name = "fakeredis", extras = ["lua"], specifier = ">=2.40.0" },
     { name = "import-linter", specifier = ">=2.15" },
     { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
@@ -78,6 +78,162 @@ sdist = { url = "https://files.pythonhosted.org/packages/bc/c1/bbac6a50d02774f91
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8d/3f/95338030883d8c8b91223b4e21744b04d11b161a3ef117295d8241f50ab4/accessible_pygments-0.0.5-py3-none-any.whl", hash = "sha256:88ae3211e68a1d0b011504b2ffc1691feafce124b845bd072ab6f9f66f34d4b7", size = 1395903, upload-time = "2024-05-10T11:23:08.421Z" },
 ]
+
+[[package]]
+name = "agent"
+version = "2.0.0"
+source = { editable = "packages/agent" }
+dependencies = [
+    { name = "a2ui-core" },
+    { name = "aiofiles" },
+    { name = "aiosqlite" },
+    { name = "asyncpg" },
+    { name = "cryptography" },
+    { name = "deepagents" },
+    { name = "knowledge-layer", extra = ["all"] },
+    { name = "langchain-modal" },
+    { name = "langchain-openai" },
+    { name = "langfuse" },
+    { name = "langgraph-checkpoint-postgres" },
+    { name = "langgraph-checkpoint-sqlite" },
+    { name = "nvidia-nat", extra = ["async-endpoints", "mcp", "phoenix"] },
+    { name = "nvidia-nat-core" },
+    { name = "nvidia-nat-eval" },
+    { name = "nvidia-nat-langchain", extra = ["openai"] },
+    { name = "nvidia-nat-profiler" },
+    { name = "pillow" },
+    { name = "posthog" },
+    { name = "psycopg", extra = ["binary"] },
+    { name = "py3langid" },
+    { name = "pygments" },
+    { name = "python-multipart" },
+    { name = "redis" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "fakeredis", extra = ["lua"] },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-env" },
+    { name = "ruff" },
+    { name = "yapf" },
+]
+docs = [
+    { name = "myst-parser" },
+    { name = "nvidia-sphinx-theme" },
+    { name = "sphinx" },
+    { name = "sphinx-autobuild" },
+    { name = "sphinx-copybutton" },
+    { name = "sphinx-design" },
+    { name = "sphinx-mermaid" },
+    { name = "sphinx-rtd-theme" },
+    { name = "sphinxcontrib-mermaid" },
+]
+viz = [
+    { name = "pygraphviz" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "a2ui-core", specifier = "==0.4.0" },
+    { name = "aiofiles", specifier = ">=23.0.0" },
+    { name = "aiosqlite", specifier = ">=0.19.0" },
+    { name = "asyncpg", specifier = ">=0.29.0" },
+    { name = "cryptography", specifier = ">=50.0.0,<51" },
+    { name = "deepagents", specifier = "==0.7.32" },
+    { name = "fakeredis", extras = ["lua"], marker = "extra == 'dev'", specifier = ">=2.40.0" },
+    { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
+    { name = "langchain-modal", specifier = "==0.0.7" },
+    { name = "langchain-openai", specifier = ">=1.6.6" },
+    { name = "langfuse", specifier = ">=4.15.3,<5" },
+    { name = "langgraph-checkpoint-postgres", specifier = ">=3.2.0" },
+    { name = "langgraph-checkpoint-sqlite", specifier = ">=2.0.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.3.0" },
+    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=3.0" },
+    { name = "nvidia-nat", extras = ["async-endpoints", "phoenix", "mcp"], specifier = "==1.9.0" },
+    { name = "nvidia-nat-core", specifier = "==1.9.0" },
+    { name = "nvidia-nat-eval", specifier = "==1.9.0" },
+    { name = "nvidia-nat-langchain", extras = ["openai"], specifier = "==1.9.0" },
+    { name = "nvidia-nat-profiler", specifier = "==1.9.0" },
+    { name = "nvidia-sphinx-theme", marker = "extra == 'docs'", specifier = ">=0.0.9.post1" },
+    { name = "pillow", specifier = ">=12.2.0,<14" },
+    { name = "posthog", specifier = ">=7.59,<8" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
+    { name = "py3langid", specifier = ">=0.4.0,<0.5" },
+    { name = "pygments", specifier = ">=2.20.0,<3" },
+    { name = "pygraphviz", marker = "extra == 'viz'", specifier = ">=2.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
+    { name = "pytest-env", marker = "extra == 'dev'", specifier = ">=1.8.1" },
+    { name = "python-multipart", specifier = ">=0.0.27,<0.1" },
+    { name = "redis", specifier = ">=5.0.0,<9" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = "~=0.17.0" },
+    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
+    { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2025.8.25" },
+    { name = "sphinx-copybutton", marker = "extra == 'docs'", specifier = ">=0.5" },
+    { name = "sphinx-design", marker = "extra == 'docs'", specifier = ">=0.7.0" },
+    { name = "sphinx-mermaid", marker = "extra == 'docs'", specifier = ">=0.0.8" },
+    { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=2.0" },
+    { name = "sphinxcontrib-mermaid", marker = "extra == 'docs'", specifier = ">=2.0.3" },
+    { name = "yapf", marker = "extra == 'dev'", specifier = ">=0.40.0" },
+]
+provides-extras = ["dev", "docs", "viz"]
+
+[[package]]
+name = "agent-host"
+version = "0.1.0"
+source = { editable = "apps/backend" }
+dependencies = [
+    { name = "aiosqlite" },
+    { name = "asyncpg" },
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "langchain-core" },
+    { name = "libpff-python" },
+    { name = "lxml" },
+    { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
+    { name = "python-multipart" },
+    { name = "sqlalchemy" },
+    { name = "striprtf" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "psycopg", extra = ["binary"] },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+postgres = [
+    { name = "psycopg", extra = ["binary"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiosqlite", specifier = ">=0.19.0" },
+    { name = "asyncpg", specifier = ">=0.29.0" },
+    { name = "fastapi", specifier = ">=0.156.8" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "langchain-core", specifier = ">=1.3.3,<2" },
+    { name = "libpff-python", specifier = "==20260926" },
+    { name = "lxml", specifier = ">=6.1.0,<7" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'dev'", specifier = ">=3.3.6" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.3.6" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.15.1" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
+    { name = "python-multipart", specifier = ">=0.0.27,<0.1" },
+    { name = "sqlalchemy", specifier = ">=2.0.51" },
+    { name = "striprtf", specifier = "==0.0.33" },
+]
+provides-extras = ["postgres", "dev"]
 
 [[package]]
 name = "aiofiles"
@@ -185,162 +341,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/4e/8a/64761f4005f178097
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/b7/e3bf5133d697a08128598c8d0abc5e16377b51465a33756de24fa7dee953/aiosqlite-0.22.1-py3-none-any.whl", hash = "sha256:21c002eb13823fad740196c5a2e9d8e62f6243bd9e7e4a1f87fb5e44ecb4fceb", size = 17405, upload-time = "2025-12-23T19:25:42.139Z" },
 ]
-
-[[package]]
-name = "aiq-agent"
-version = "2.0.0"
-source = { editable = "packages/agent" }
-dependencies = [
-    { name = "a2ui-core" },
-    { name = "aiofiles" },
-    { name = "aiosqlite" },
-    { name = "asyncpg" },
-    { name = "cryptography" },
-    { name = "deepagents" },
-    { name = "knowledge-layer", extra = ["all"] },
-    { name = "langchain-modal" },
-    { name = "langchain-openai" },
-    { name = "langfuse" },
-    { name = "langgraph-checkpoint-postgres" },
-    { name = "langgraph-checkpoint-sqlite" },
-    { name = "nvidia-nat", extra = ["async-endpoints", "mcp", "phoenix"] },
-    { name = "nvidia-nat-core" },
-    { name = "nvidia-nat-eval" },
-    { name = "nvidia-nat-langchain", extra = ["openai"] },
-    { name = "nvidia-nat-profiler" },
-    { name = "pillow" },
-    { name = "posthog" },
-    { name = "psycopg", extra = ["binary"] },
-    { name = "py3langid" },
-    { name = "pygments" },
-    { name = "python-multipart" },
-    { name = "redis" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "fakeredis", extra = ["lua"] },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-env" },
-    { name = "ruff" },
-    { name = "yapf" },
-]
-docs = [
-    { name = "myst-parser" },
-    { name = "nvidia-sphinx-theme" },
-    { name = "sphinx" },
-    { name = "sphinx-autobuild" },
-    { name = "sphinx-copybutton" },
-    { name = "sphinx-design" },
-    { name = "sphinx-mermaid" },
-    { name = "sphinx-rtd-theme" },
-    { name = "sphinxcontrib-mermaid" },
-]
-viz = [
-    { name = "pygraphviz" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "a2ui-core", specifier = "==0.4.0" },
-    { name = "aiofiles", specifier = ">=23.0.0" },
-    { name = "aiosqlite", specifier = ">=0.19.0" },
-    { name = "asyncpg", specifier = ">=0.29.0" },
-    { name = "cryptography", specifier = ">=50.0.0,<51" },
-    { name = "deepagents", specifier = "==0.7.32" },
-    { name = "fakeredis", extras = ["lua"], marker = "extra == 'dev'", specifier = ">=2.40.0" },
-    { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
-    { name = "langchain-modal", specifier = "==0.0.7" },
-    { name = "langchain-openai", specifier = ">=1.6.6" },
-    { name = "langfuse", specifier = ">=4.15.3,<5" },
-    { name = "langgraph-checkpoint-postgres", specifier = ">=3.2.0" },
-    { name = "langgraph-checkpoint-sqlite", specifier = ">=2.0.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.3.0" },
-    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=3.0" },
-    { name = "nvidia-nat", extras = ["async-endpoints", "phoenix", "mcp"], specifier = "==1.9.0" },
-    { name = "nvidia-nat-core", specifier = "==1.9.0" },
-    { name = "nvidia-nat-eval", specifier = "==1.9.0" },
-    { name = "nvidia-nat-langchain", extras = ["openai"], specifier = "==1.9.0" },
-    { name = "nvidia-nat-profiler", specifier = "==1.9.0" },
-    { name = "nvidia-sphinx-theme", marker = "extra == 'docs'", specifier = ">=0.0.9.post1" },
-    { name = "pillow", specifier = ">=12.2.0,<14" },
-    { name = "posthog", specifier = ">=7.59,<8" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
-    { name = "py3langid", specifier = ">=0.4.0,<0.5" },
-    { name = "pygments", specifier = ">=2.20.0,<3" },
-    { name = "pygraphviz", marker = "extra == 'viz'", specifier = ">=2.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
-    { name = "pytest-env", marker = "extra == 'dev'", specifier = ">=1.8.1" },
-    { name = "python-multipart", specifier = ">=0.0.27,<0.1" },
-    { name = "redis", specifier = ">=5.0.0,<9" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = "~=0.17.0" },
-    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
-    { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2025.8.25" },
-    { name = "sphinx-copybutton", marker = "extra == 'docs'", specifier = ">=0.5" },
-    { name = "sphinx-design", marker = "extra == 'docs'", specifier = ">=0.7.0" },
-    { name = "sphinx-mermaid", marker = "extra == 'docs'", specifier = ">=0.0.8" },
-    { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=2.0" },
-    { name = "sphinxcontrib-mermaid", marker = "extra == 'docs'", specifier = ">=2.0.3" },
-    { name = "yapf", marker = "extra == 'dev'", specifier = ">=0.40.0" },
-]
-provides-extras = ["dev", "docs", "viz"]
-
-[[package]]
-name = "aiq-api"
-version = "0.1.0"
-source = { editable = "apps/backend" }
-dependencies = [
-    { name = "aiosqlite" },
-    { name = "asyncpg" },
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "langchain-core" },
-    { name = "libpff-python" },
-    { name = "lxml" },
-    { name = "pydantic" },
-    { name = "pyjwt", extra = ["crypto"] },
-    { name = "python-multipart" },
-    { name = "sqlalchemy" },
-    { name = "striprtf" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "psycopg", extra = ["binary"] },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-postgres = [
-    { name = "psycopg", extra = ["binary"] },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiosqlite", specifier = ">=0.19.0" },
-    { name = "asyncpg", specifier = ">=0.29.0" },
-    { name = "fastapi", specifier = ">=0.156.8" },
-    { name = "httpx", specifier = ">=0.28" },
-    { name = "langchain-core", specifier = ">=1.3.3,<2" },
-    { name = "libpff-python", specifier = "==20260926" },
-    { name = "lxml", specifier = ">=6.1.0,<7" },
-    { name = "psycopg", extras = ["binary"], marker = "extra == 'dev'", specifier = ">=3.3.6" },
-    { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.3.6" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.15.1" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
-    { name = "python-multipart", specifier = ">=0.0.27,<0.1" },
-    { name = "sqlalchemy", specifier = ">=2.0.51" },
-    { name = "striprtf", specifier = "==0.0.33" },
-]
-provides-extras = ["postgres", "dev"]
 
 [[package]]
 name = "alabaster"

@@ -24,13 +24,13 @@ import pytest
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.grounding_block import get_grounding_block
-from aiq_agent.common.norm_registry import oib_families
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.grounding_block import get_grounding_block
+from agent.common.norm_registry import oib_families
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
 
 rp = importlib.import_module("knowledge_layer.read_passage")
 
@@ -131,15 +131,15 @@ def corpus(monkeypatch):
 
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: store)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: store)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: store)
+        monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         # The formatter's three store lookups are not what these tests are
         # about; an empty map is the documented fail-open and keeps the run
         # database-free.
         for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-            monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+            monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
         monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         return store
 
@@ -246,9 +246,9 @@ class TestTheMembersAreOpened:
 
     @staticmethod
     async def _captured(query: str) -> list[dict]:
-        from aiq_agent.common.turn_status import begin_lane_capture
-        from aiq_agent.common.turn_status import end_lane_capture
-        from aiq_agent.common.turn_status import get_lane_captures
+        from agent.common.turn_status import begin_lane_capture
+        from agent.common.turn_status import end_lane_capture
+        from agent.common.turn_status import get_lane_captures
 
         token = begin_lane_capture()
         try:
@@ -281,14 +281,14 @@ class TestWhereMembershipComesFrom:
         """The production path. The list is derived from the base shelf BEFORE
         the inventory cap can drop a member, so it is the complete one; the
         listing below it is what a run with no turn around it has."""
-        from aiq_agent.knowledge.inventory import set_norm_families
+        from agent.knowledge.inventory import set_norm_families
 
         store = corpus(MEMBERS)
 
         async def _no_listing(collection: str):
             raise AssertionError("the bound family list already knows the members")
 
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _no_listing)
+        monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _no_listing)
         set_norm_families(oib_families(MEMBERS.values()))
         try:
             out = await _search()
@@ -523,7 +523,7 @@ class TestTheOverviewIsNotBuriedInRankedHits:
         def _capture(*, tool_name, search_input, picks):
             span.update(search_input)
 
-        monkeypatch.setattr("aiq_agent.observability.retrieval_trace.emit_retrieval_span", _capture)
+        monkeypatch.setattr("agent.observability.retrieval_trace.emit_retrieval_span", _capture)
         await _search()
 
         # Ten ranked, eight past the top-k cap, four of those beside the overview.
@@ -537,7 +537,7 @@ class TestTheOverviewIsNotBuriedInRankedHits:
         def _capture(*, tool_name, search_input, picks):
             span.update(search_input)
 
-        monkeypatch.setattr("aiq_agent.observability.retrieval_trace.emit_retrieval_span", _capture)
+        monkeypatch.setattr("agent.observability.retrieval_trace.emit_retrieval_span", _capture)
         await _search()
         assert span["family_read"] == "retrieve"
 
@@ -557,7 +557,7 @@ class TestTheOverviewIsNotBuriedInRankedHits:
         def _capture(*, tool_name, search_input, picks):
             span.update(search_input)
 
-        monkeypatch.setattr("aiq_agent.observability.retrieval_trace.emit_retrieval_span", _capture)
+        monkeypatch.setattr("agent.observability.retrieval_trace.emit_retrieval_span", _capture)
         await _search(query=TOPIC_QUERY)
 
         assert "dropped_by_family" not in span
@@ -584,13 +584,13 @@ class TestAnOverviewQuestionIsNotJudged:
         async def _resolve(_builder, _name):
             return _Judge()
 
-        monkeypatch.setattr("aiq_agent.common.get_langchain_llm", _resolve)
+        monkeypatch.setattr("agent.common.get_langchain_llm", _resolve)
         span: dict = {}
 
         def _capture(*, tool_name, search_input, picks):
             span.update(search_input)
 
-        monkeypatch.setattr("aiq_agent.observability.retrieval_trace.emit_retrieval_span", _capture)
+        monkeypatch.setattr("agent.observability.retrieval_trace.emit_retrieval_span", _capture)
         async with knowledge_retrieval(_config(requery_llm="judge"), MagicMock()) as info:
             out = await info.single_fn(info.input_schema(query=FAMILY_QUERY))
 
@@ -612,7 +612,7 @@ class TestAnOverviewQuestionIsNotJudged:
         async def _resolve(_builder, _name):
             return _Judge()
 
-        monkeypatch.setattr("aiq_agent.common.get_langchain_llm", _resolve)
+        monkeypatch.setattr("agent.common.get_langchain_llm", _resolve)
         return calls
 
     async def test_a_corpus_without_the_family_keeps_the_judge(self, corpus, monkeypatch):

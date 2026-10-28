@@ -5,7 +5,7 @@
  * project access. This tier does, and signs what it decided: the project it
  * checked `CHAT_PERMISSIONS` on and the conversation it checked `viewer` on. The
  * backend then lets the caller reach a job that lies inside that scope, in the
- * same organization (`aiq_api/jobs/access.py`): read and steer it through the
+ * same organization (`agent_host/jobs/access.py`): read and steer it through the
  * project, only read it through the conversation.
  *
  * Every producer of such a request builds its envelope here: the async-job proxy

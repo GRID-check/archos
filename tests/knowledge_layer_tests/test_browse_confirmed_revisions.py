@@ -16,8 +16,8 @@ from knowledge_layer.browse import file_rows
 from knowledge_layer.browse import render_listing
 from knowledge_layer.browse import select_files
 
-from aiq_agent.knowledge.inventory import render_inventory_block
-from aiq_agent.knowledge.schema import AvailableDocument
+from agent.knowledge.inventory import render_inventory_block
+from agent.knowledge.schema import AvailableDocument
 
 
 def _doc(name: str, folder: str | None = None, **extra) -> AvailableDocument:

@@ -18,21 +18,21 @@ from knowledge_layer.browse import FileRow
 from knowledge_layer.estate import EstateBackend
 from langgraph.store.memory import InMemoryStore
 
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.common import action_rows
-from aiq_agent.common import data_sources
-from aiq_agent.common import tool_calls
-from aiq_agent.common import turn_status
-from aiq_agent.common.citation_collector import hits_from_artifact
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.tool_calls import fetch_signature
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.tools.documents.draft_store import draft_namespace
-from aiq_agent.tools.documents.filesystem import NO_DRAFTS
-from aiq_agent.tools.documents.filesystem import PilotiFilesystem
-from aiq_agent.tools.documents.filesystem import composite_backend
-from aiq_agent.tools.documents.tools import filesystem_tools
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.common import action_rows
+from agent.common import data_sources
+from agent.common import tool_calls
+from agent.common import turn_status
+from agent.common.citation_collector import hits_from_artifact
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.tool_calls import fetch_signature
+from agent.tools.documents.draft_store import DraftBackend
+from agent.tools.documents.draft_store import draft_namespace
+from agent.tools.documents.filesystem import NO_DRAFTS
+from agent.tools.documents.filesystem import PilotiFilesystem
+from agent.tools.documents.filesystem import composite_backend
+from agent.tools.documents.tools import filesystem_tools
 
 PATH = "/project/Gutachten/Brandschutzkonzept.pdf.md"
 ROW = FileRow(file_name="Brandschutzkonzept.pdf", shelf="project", collection="proj_a", folder="Gutachten")
@@ -227,8 +227,8 @@ class TestTheSkillsRoute:
     """``/skills/`` (ADR-0135) sits beside ``/drafts/`` and the estate on one composite."""
 
     def _tools(self, drafts: DraftBackend | None) -> dict:
-        from aiq_agent.skills.backend import SkillsBackend
-        from aiq_agent.skills.models import Skill
+        from agent.skills.backend import SkillsBackend
+        from agent.skills.models import Skill
 
         skill = Skill(
             name="fire-safety", description="Brandschutz.", body="# Brandschutz\n\nErst die GK.", origin="org"

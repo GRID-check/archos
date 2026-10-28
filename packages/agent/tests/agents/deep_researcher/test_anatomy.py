@@ -5,7 +5,7 @@ import json
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.agents.deep_researcher.anatomy import extract_report_anatomy
+from agent.agents.deep_researcher.anatomy import extract_report_anatomy
 
 REPORT = (
     "REI 60 gilt für tragende Bauteile in GK 4 [1].\n\n## Brandschutz\n\n"

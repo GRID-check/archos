@@ -19,14 +19,14 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.knowledge.base import FUSED_SCORE_KEY
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import clear_active_retriever
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_agent.knowledge.factory import set_active_retriever
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_api.routes.document_search import add_document_search_routes
+from agent.knowledge.base import FUSED_SCORE_KEY
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import clear_active_retriever
+from agent.knowledge.factory import set_active_ingestor
+from agent.knowledge.factory import set_active_retriever
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import RetrievalResult
+from agent_host.routes.document_search import add_document_search_routes
 
 
 def _chunk(
@@ -553,8 +553,8 @@ def test_the_reading_filters_compile_in_the_one_scope_filter():
     """Every field is one the scope filter accepts (indexed, keyword), so Qdrant applies it, not a post-filter."""
     from knowledge_layer.qdrant.scope import scope_filter
 
-    from aiq_api.models.requests import GroupedSearchFilters
-    from aiq_api.routes.document_search import grouped_filters
+    from agent_host.models.requests import GroupedSearchFilters
+    from agent_host.routes.document_search import grouped_filters
 
     filters = grouped_filters(
         GroupedSearchFilters(document_ids=[DOC_A], reading_types=["permit"], refers_to=["ÖNORM B 1600"])
@@ -661,7 +661,7 @@ async def _traced_spans(app, body: dict) -> list:
     """The spans one grouped search leaves, with tracing on."""
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-    from aiq_agent.observability import direct_trace
+    from agent.observability import direct_trace
 
     exporter = InMemorySpanExporter()
     direct_trace.reset_tracer_provider()
@@ -720,7 +720,7 @@ async def test_a_grouped_search_without_a_purpose_is_not_traced_here(app):
 
 
 def _lexical(chunk: Chunk, holds_the_words: bool) -> Chunk:
-    from aiq_agent.knowledge.base import LEXICAL_MATCH_KEY
+    from agent.knowledge.base import LEXICAL_MATCH_KEY
 
     chunk.metadata[LEXICAL_MATCH_KEY] = holds_the_words
     return chunk
@@ -733,7 +733,7 @@ async def test_the_workspace_search_drops_meaning_only_documents_below_the_floor
     A document whose passage holds a query word stays at any cosine; one that
     only means the same stays above the floor and says so (`lexical: false`).
     """
-    from aiq_api.routes.document_search import MEANING_ONLY_MIN_COSINE
+    from agent_host.routes.document_search import MEANING_ONLY_MIN_COSINE
 
     groups = [
         (
@@ -812,8 +812,8 @@ async def test_a_document_filter_names_the_files_whose_passages_carry_no_id(app)
 
 
 def test_the_prefilter_mode_names_how_the_bff_narrowed_the_query():
-    from aiq_api.models.requests import GroupedSearchFilters
-    from aiq_api.routes.document_search import prefilter_mode
+    from agent_host.models.requests import GroupedSearchFilters
+    from agent_host.routes.document_search import prefilter_mode
 
     assert prefilter_mode(None) == "none"
     assert prefilter_mode(GroupedSearchFilters()) == "none"

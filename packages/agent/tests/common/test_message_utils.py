@@ -1,6 +1,6 @@
 """Tests for the shared message-content normalization helper."""
 
-from aiq_agent.common import content_to_text
+from agent.common import content_to_text
 
 
 class _TextBlock:
@@ -60,14 +60,14 @@ class TestResponseText:
     def test_a_block_list_yields_the_text_blocks_joined(self):
         from langchain_core.messages import AIMessage
 
-        from aiq_agent.common.message_utils import response_text
+        from agent.common.message_utils import response_text
 
         assert response_text(AIMessage(content=self.BLOCKS)) == '{"items": ["a"]}'
 
     def test_every_shape_a_caller_meets(self):
         from langchain_core.messages import AIMessage
 
-        from aiq_agent.common.message_utils import response_text
+        from agent.common.message_utils import response_text
 
         assert response_text(AIMessage(content="plain")) == "plain"
         assert response_text({"content": "from a dict"}) == "from a dict"

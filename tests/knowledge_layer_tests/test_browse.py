@@ -33,13 +33,13 @@ from knowledge_layer.browse import split_alternatives
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.scoping import ScopedCollection
 
 
 def _doc(name: str, folder: str | None = None, *, shelf: str = "project", **extra) -> AvailableDocument:
@@ -139,16 +139,16 @@ def _builder() -> MagicMock:
 @pytest.fixture
 def scope(monkeypatch):
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [
             ScopedCollection("oib_knowledge", Shelf.BASE),
             ScopedCollection("proj_1", Shelf.PROJECT),
             ScopedCollection("archiv_1", Shelf.OFFICE_SHELF),
         ],
     )
-    monkeypatch.setattr("aiq_agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
+    monkeypatch.setattr("agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     set_turn_documents(PROJECT)
     yield
     set_turn_documents(None)
@@ -170,7 +170,7 @@ class TestListFilesTool:
         async def _documents(collection: str):
             return [AvailableDocument(file_name=f"{collection}.pdf")]
 
-        monkeypatch.setattr("aiq_agent.knowledge.get_available_documents_async", _documents)
+        monkeypatch.setattr("agent.knowledge.get_available_documents_async", _documents)
         text = await self._call()
         assert "proj_1.pdf" in text and "archiv_1.pdf" in text
         assert "oib_knowledge.pdf" not in text
@@ -250,8 +250,8 @@ def search_with(monkeypatch, scope):
     def install(retriever):
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         return retriever
 
     return install
@@ -318,7 +318,7 @@ class TestExactSearch:
 
 
 def test_the_exact_mode_is_never_withheld_as_a_repeat_of_the_ranked_one():
-    from aiq_agent.common.tool_calls import fetch_signature
+    from agent.common.tool_calls import fetch_signature
 
     ranked = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03"}})
     exact = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03", "match": "exact"}})
@@ -357,7 +357,7 @@ def turn_shelves(monkeypatch):
     """Restrict the turn to some shelves, as ``focus_file.set_turn_intent`` does for a focused turn."""
 
     def install(shelves):
-        monkeypatch.setattr("aiq_agent.common.focus_file.get_turn_shelves", lambda: frozenset(shelves))
+        monkeypatch.setattr("agent.common.focus_file.get_turn_shelves", lambda: frozenset(shelves))
 
     return install
 
@@ -396,7 +396,7 @@ class TestExactSearchReadsTheBaseCorpusLikeTheRankedSearch:
         )
         _seed(project, [("Notiz.docx", "Firma Müller, EI 90", 1, {})])
         monkeypatch.setattr(
-            "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+            "agent.knowledge.scoping.get_scoped_collections_from_context",
             lambda: [ScopedCollection(base, Shelf.BASE), ScopedCollection(project, Shelf.PROJECT)],
         )
         search_with(retriever)

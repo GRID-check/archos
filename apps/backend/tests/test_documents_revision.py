@@ -22,17 +22,17 @@ from httpx import ASGITransport
 from httpx import AsyncClient
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.document_revisions import NO_CHANGE_TEXT
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import configure_summary_db
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import FileInfo
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.observability import direct_trace
-from aiq_api.routes.documents import _merge_summaries
-from aiq_api.routes.documents import add_document_routes
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.document_revisions import NO_CHANGE_TEXT
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import configure_summary_db
+from agent.knowledge.factory import set_active_ingestor
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import FileInfo
+from agent.knowledge.schema import FileStatus
+from agent.observability import direct_trace
+from agent_host.routes.documents import _merge_summaries
+from agent_host.routes.documents import add_document_routes
 
 COLLECTION = "proj_a"
 OLDER = "Grundriss_EG_Index_B.pdf"
@@ -176,7 +176,7 @@ class TestLinking:
         snapshot = store.get_all(COLLECTION)
         store.link_revision(COLLECTION, NEWER, OLDER)
 
-        with patch("aiq_api.routes.documents.get_available_documents_async", AsyncMock(return_value=snapshot)):
+        with patch("agent_host.routes.documents.get_available_documents_async", AsyncMock(return_value=snapshot)):
             res = await _put(app, LINK)
 
         assert res.status_code == 409
@@ -248,10 +248,10 @@ class TestLinking:
         assert docs[NEWER].supersedes is None
 
     async def test_the_call_queues_for_an_interactive_provider_slot(self, app, store):
-        from aiq_agent.common import provider_limiter
+        from agent.common import provider_limiter
 
         fake, post = _gateway()
-        with patch("aiq_api.routes.documents.limited_async_http_client", fake):
+        with patch("agent_host.routes.documents.limited_async_http_client", fake):
             async with _client(app) as client:
                 await client.put(f"/v1/collections/{COLLECTION}/revision", json=LINK)
 
@@ -259,7 +259,7 @@ class TestLinking:
         post.assert_called_once()
 
     async def test_the_organization_header_reaches_the_credential_resolution(self, app, store):
-        with patch("aiq_api.routes.documents._llm_settings") as settings:
+        with patch("agent_host.routes.documents._llm_settings") as settings:
             settings.return_value = MagicMock(api_key="")
             await _put(app, LINK, headers={"x-grid-organization-id": "org_1"})
         settings.assert_called_once_with("org_1")
@@ -354,7 +354,7 @@ class TestThePurge:
     """``DELETE …/documents`` says whether the delete can be undone; the ingestor gets it as ``permanent``."""
 
     async def _delete(self, app, body):
-        from aiq_agent.knowledge.factory import get_active_ingestor
+        from agent.knowledge.factory import get_active_ingestor
 
         ingestor = get_active_ingestor()
         ingestor.get_collection.return_value = object()

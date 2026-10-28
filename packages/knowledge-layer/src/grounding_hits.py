@@ -11,7 +11,7 @@ from knowledge_layer.hit_metadata import resolve_display_titles
 from knowledge_layer.hit_metadata import resolve_doc_classes
 from knowledge_layer.hit_metadata import resolve_folder_paths
 
-from aiq_agent.common.estate_paths import estate_path
+from agent.common.estate_paths import estate_path
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +25,13 @@ def _hit_provenance(chunk):
     """The agent provenance stated in a hit's chunk metadata, or ``None``.
 
     The keys are stamped at ingest by the publish path and read back by
-    ``aiq_agent.common.provenance``; a human-authored document has none, and
+    ``agent.common.provenance``; a human-authored document has none, and
     every line below that depends on this is simply not emitted for it. Chunk
     metadata is the only carrier — unlike doc_class and the display title there
     is no store-resolved override, because authorship is decided once, at
     publish, and cannot be edited afterwards.
     """
-    from aiq_agent.common.provenance import parse_agent_provenance
+    from agent.common.provenance import parse_agent_provenance
 
     return parse_agent_provenance(chunk.metadata or {})
 
@@ -43,7 +43,7 @@ def _chunk_shelf(chunk):
     collection id: an unknown shelf is unknown, and a citation for it stays
     unqualified rather than claiming a shelf the pipeline guessed.
     """
-    from aiq_agent.common.source_kinds import parse_shelf
+    from agent.common.source_kinds import parse_shelf
 
     return parse_shelf((chunk.metadata or {}).get("shelf"))
 
@@ -80,7 +80,7 @@ def _citation_key_for(file_name: str, shelf, page: int | None, ambiguous: set[st
     is qualified: ``Plan.pdf (Projektwissen), p.3``. The qualifier is
     rendering, not transport, and an unknown shelf gets none.
     """
-    from aiq_agent.common.source_kinds import shelf_qualifier
+    from agent.common.source_kinds import shelf_qualifier
 
     name = file_name
     qualifier = shelf_qualifier(shelf) if name and name.lower() in ambiguous else None
@@ -137,7 +137,7 @@ def _hit_regions(chunk) -> tuple:
     at the page, which is what it did before, while a wrong one points the
     reader at the wrong drawing.
     """
-    from aiq_agent.common.grounding_block import SourceRegion
+    from agent.common.grounding_block import SourceRegion
 
     metadata = chunk.metadata or {}
     raw = metadata.get("drawing_data")
@@ -178,7 +178,7 @@ def grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambiguo
     ``folder_path``): the store is authoritative and a folder rename must take
     effect with no re-ingest (ADR-0049).
     """
-    from aiq_agent.common.grounding_block import GroundingHit
+    from agent.common.grounding_block import GroundingHit
 
     metadata = chunk.metadata or {}
     shelf = _chunk_shelf(chunk)

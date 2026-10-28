@@ -1,7 +1,7 @@
 /**
  * Platform card catalog — the agent's presentation vocabulary, read from the backend.
  *
- * The card union lives in Pydantic (`packages/agent/src/aiq_agent/cards/models.py`) and every
+ * The card union lives in Pydantic (`packages/agent/src/agent/cards/models.py`) and every
  * other surface is derived from it (the `emit_card` tool description, the
  * generated Zod schema, the renderers). This service keeps that property for
  * the platform surface too: it READS `GET /v1/platform/cards` rather than

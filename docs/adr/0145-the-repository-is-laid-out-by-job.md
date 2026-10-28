@@ -188,8 +188,8 @@ Every category found on 39f8628, what replaces it, and the row that does it:
 
 | Category | Today | Target | Row |
 |---|---|---|---|
-| Python imports and distributions | `aiq_agent`/`aiq-agent`, `aiq_api`/`aiq-api` | `agent`/`agent`, `backend`/`backend` | 10a |
-| Python symbols | `AIQAPIConfig`, `AIQAPIWorker`, `register_aiq_api`, … | `Backend…`, `register_backend` | 10a |
+| Python imports and distributions | `aiq_agent`/`aiq-agent`, `aiq_api`/`aiq-api` | `agent`/`agent`, `agent_host`/`agent-host` | 10a |
+| Python symbols | `AIQAPIConfig`, `AIQAPIWorker`, `register_aiq_api`, … | `AgentHost…`, `register_agent_host` | 10a |
 | Entry points | group `aiq_api.validators`; NAT plugins `aiq_*` | `backend.validators`; the plugin's job (`research`, `chat`, …). No `NAT_PLUGIN_*` list exists in `deploy/` or `configs/`; re-check before renaming | 10a |
 | Environment variables | 87 `AIQ_*`, renamed to `GRID_*` by #1270 (192 variables in all) | no prefix at all (`GRID_MAX_ACTIVE_JOBS_PER_ORG` → `MAX_ACTIVE_JOBS_PER_ORG`), and a descriptive name only where a bare one would collide with a platform or library variable (`SERVICE_ROLE`, not `ROLE`). Decided by the owner on 2026-10-27. Read both for one release, warn on the old one, then drop it | 10b |
 | Wire names | headers `X-AIQ-Mode`, `x-aiq-access-channel` | brand-free names with no `X-Grid-` prefix (`x-organization-id`, `x-user-id`, `x-internal-token`), decided by the owner on 2026-10-27. The BFF and the backend deploy separately, so the receiver accepts both for one release | 10b |
@@ -203,6 +203,8 @@ Every category found on 39f8628, what replaces it, and the row that does it:
 | Deploy names | `grid-app-*` Kubernetes objects and Jobs (`grid-app-authz-catalog`, `grid-app-migrate`, `grid-app-folder-grants`, …) | role names, as in the Kubernetes row | 10c |
 | Other paths | 124 path names, most of them the site's art and downloads, the UI's card modules (`grid-cards`), docs and fixtures (`grid_request_context.json`), counted with every other brand name by `scripts/check_brand_names.py` (#1302) | renamed with the code around them; the count only falls | each row |
 | Docs and tests | prose and test names | follow the row that renames the thing they describe | each row |
+
+The API package is `agent_host`, not `backend` (decided by the owner on 2026-10-28): the repository has many backends, and this one is the process that hosts `agent`: its chat socket, job API, queues and workers. The name says the job; `agent` never imports `agent_host`.
 
 ### Inside `apps/workspace`
 

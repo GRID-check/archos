@@ -10,16 +10,16 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 
-from aiq_agent.common.prompt_caching import CACHE_CONTROL_FIELD
-from aiq_agent.common.prompt_caching import PROMPT_CACHE_KEY_FIELD
-from aiq_agent.common.prompt_caching import SESSION_ID_FIELD
-from aiq_agent.common.prompt_caching import begin_stable_prefix
-from aiq_agent.common.prompt_caching import end_stable_prefix
-from aiq_agent.common.prompt_caching import needs_cache_marker
-from aiq_agent.common.prompt_caching import prompt_cache_extra_body
-from aiq_agent.common.prompt_caching import prompt_cache_key
-from aiq_agent.common.prompt_caching import with_cache_marker
-from aiq_agent.common.prompt_caching import with_prompt_cache_routing
+from agent.common.prompt_caching import CACHE_CONTROL_FIELD
+from agent.common.prompt_caching import PROMPT_CACHE_KEY_FIELD
+from agent.common.prompt_caching import SESSION_ID_FIELD
+from agent.common.prompt_caching import begin_stable_prefix
+from agent.common.prompt_caching import end_stable_prefix
+from agent.common.prompt_caching import needs_cache_marker
+from agent.common.prompt_caching import prompt_cache_extra_body
+from agent.common.prompt_caching import prompt_cache_key
+from agent.common.prompt_caching import with_cache_marker
+from agent.common.prompt_caching import with_prompt_cache_routing
 
 TOOLS = [{"type": "function", "name": "knowledge_search", "parameters": {"type": "object"}}]
 

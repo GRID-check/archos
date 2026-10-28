@@ -36,7 +36,7 @@ def _older_revision_notice(targets: Sequence[PassageTarget]) -> str:
     it is what „Index B“ and „die alte Fassung“ ask for. The line only keeps the answer from presenting it
     as the document's current state. A file in a restricted collection nobody admitted is never named.
     """
-    from aiq_agent.knowledge.restricted_use import may_name
+    from agent.knowledge.restricted_use import may_name
 
     older = {(target.file_name, target.current) for target in targets if target.current and may_name(target.collection)}
     if not older:

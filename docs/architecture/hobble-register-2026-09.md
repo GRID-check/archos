@@ -53,7 +53,7 @@ Static prompt weight, measured (`piloti.j2`, 57 007 chars ≈ 14 250 tokens):
 `<source_priority>` 509 · `<citation_format>` 367 · `<clarification>` 310 ·
 `<query_rewriting>` 114. Plus the `emit_card` schema, whose doctrine renders
 at **918 tokens** and whose index renders at **942**
-(`aiq_agent.cards.catalog.render_card_doctrine` / `render_card_index`,
+(`agent.cards.catalog.render_card_doctrine` / `render_card_index`,
 measured through the venv).
 
 **Resolved since.** The static prefix is 8,503 tokens (`0e89484`), the card

@@ -48,24 +48,24 @@ from pathlib import Path
 from typing import Any
 from typing import NamedTuple
 
-from aiq_agent.common.cost_tracking import USAGE_ROLE_INGEST_VISION
-from aiq_agent.common.cost_tracking import meter_openai_client
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.base import BaseIngestor
-from aiq_agent.knowledge.base import PreparedIngestJob
-from aiq_agent.knowledge.base import TTLCleanupMixin
-from aiq_agent.knowledge.factory import register_ingestor
-from aiq_agent.knowledge.ingest_scheduler import FairIngestScheduler
-from aiq_agent.knowledge.ingest_scheduler import JobSource
-from aiq_agent.knowledge.ingest_scheduler import per_org_cap_from_env
-from aiq_agent.knowledge.schema import CollectionInfo
-from aiq_agent.knowledge.schema import FileInfo
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_agent.knowledge.schema import QuarantineVerdict
-from aiq_agent.knowledge.schema import stable_file_id
+from agent.common.cost_tracking import USAGE_ROLE_INGEST_VISION
+from agent.common.cost_tracking import meter_openai_client
+from agent.knowledge import ingest_status_store
+from agent.knowledge.base import BaseIngestor
+from agent.knowledge.base import PreparedIngestJob
+from agent.knowledge.base import TTLCleanupMixin
+from agent.knowledge.factory import register_ingestor
+from agent.knowledge.ingest_scheduler import FairIngestScheduler
+from agent.knowledge.ingest_scheduler import JobSource
+from agent.knowledge.ingest_scheduler import per_org_cap_from_env
+from agent.knowledge.schema import CollectionInfo
+from agent.knowledge.schema import FileInfo
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from agent.knowledge.schema import QuarantineVerdict
+from agent.knowledge.schema import stable_file_id
 
 from . import dependencies
 from . import embedding
@@ -324,7 +324,7 @@ PAGE_TEXT_TIMEOUT_SECONDS = 30
 #: The Langfuse trace one file's ingest is recorded under (``_file_trace``).
 INGEST_TRACE_NAME = "ingest-file"
 
-#: How long the document's dossier may take (``aiq_agent.knowledge.dossier``). It runs
+#: How long the document's dossier may take (``agent.knowledge.dossier``). It runs
 #: beside the summary, the tags and the topics, after the vision batch, and writes a
 #: JSON object where they write a line: about twice the summary's 30 s.
 DOSSIER_TIMEOUT_SECONDS = 60
@@ -361,7 +361,7 @@ FILE_TRACKING_RETENTION_SECONDS = env_int("FILE_TRACKING_RETENTION_SECONDS", 864
 _PRUNE_EVERY_BEATS = 120
 
 # Document summarization + tag-classification input limits live in the shared
-# aiq_agent.knowledge.document_classification module (CLASSIFY_MAX_INPUT_CHARS).
+# agent.knowledge.document_classification module (CLASSIFY_MAX_INPUT_CHARS).
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +376,7 @@ _PRUNE_EVERY_BEATS = 120
 # ---------------------------------------------------------------------------
 def bump_collection_version(collection_name: str) -> None:
     """Record a write so every replica's cached results for this collection stop matching."""
-    from aiq_agent.knowledge import collection_version as _collection_version
+    from agent.knowledge import collection_version as _collection_version
 
     _collection_version.bump(collection_name)
 
@@ -399,7 +399,7 @@ def resolve_vlm_credential(organization_id: str | None = None):
     tenant's own key + endpoint; the org-agnostic paths (base OIB corpus sync)
     pass ``None`` and get the deployment default, unchanged.
     """
-    from aiq_agent.common.credential_resolution import resolve_llm_credential
+    from agent.common.credential_resolution import resolve_llm_credential
 
     return resolve_llm_credential(
         primary_env="VLM_API_KEY",
@@ -423,8 +423,8 @@ def _resolve_vlm_model_override(organization_id: str | None) -> str | None:
     if not organization_id:
         return None
     try:
-        from aiq_agent.common.model_overrides import AgentGroup
-        from aiq_agent.common.model_overrides import resolve_org_model_overrides
+        from agent.common.model_overrides import AgentGroup
+        from agent.common.model_overrides import resolve_org_model_overrides
 
         return resolve_org_model_overrides(organization_id).get(AgentGroup.INGEST_VLM.value)
     except Exception:  # noqa: BLE001 - model selection must never take ingestion down
@@ -1343,7 +1343,7 @@ def text_documents_for_pages(text_pages: list[dict[str, Any]], file_name: str, f
     from knowledge_layer.llamaindex.section_chunking import section_documents
     from llama_index.core import Document
 
-    from aiq_agent.common.norm_registry import oib_doc_class
+    from agent.common.norm_registry import oib_doc_class
 
     sectioned = None if oib_doc_class(file_name) else section_documents(text_pages, file_name, file_size)
     if sectioned is not None:
@@ -1773,9 +1773,9 @@ def _table_to_markdown(table: list[list[str]]) -> str:
 
 def _ingest_cost_scope(job_id: str, config: dict[str, Any]):
     """The cost tracker an ingestion job's model calls are recorded under (``activity = ingest``)."""
-    from aiq_agent.common.cost_tracking import USAGE_ACTIVITY_INGEST
-    from aiq_agent.common.cost_tracking import BudgetSnapshot
-    from aiq_agent.common.cost_tracking import track_llm_costs
+    from agent.common.cost_tracking import USAGE_ACTIVITY_INGEST
+    from agent.common.cost_tracking import BudgetSnapshot
+    from agent.common.cost_tracking import track_llm_costs
 
     return track_llm_costs(
         job_id=job_id,
@@ -1801,7 +1801,7 @@ def _vlm_slot():
     the organisation on the job's cost ledger (``_ingest_cost_scope``), which the
     vision pool's threads inherit; a call outside a job has none and is unlaned.
     """
-    from aiq_agent.common import lease_slots
+    from agent.common import lease_slots
 
     return lease_slots.hold(
         _VLM_SLOT_KEY,
@@ -1814,7 +1814,7 @@ def _vlm_slot():
 
 def _vision_lane() -> str | None:
     """The organisation the running ingest job reads for, or ``None`` outside one."""
-    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+    from agent.common.cost_tracking import grid_cost_tracker_var
 
     tracker = grid_cost_tracker_var.get()
     organization_id = getattr(tracker, "organization_id", None)
@@ -1827,7 +1827,7 @@ VISION_GENERATION_NAME = "ingest-vision"
 
 def _observed_vlm_call(client: Any, request: dict[str, Any]) -> Any:
     """One vision call, as a Langfuse generation under the file's trace (images redacted from the span)."""
-    from aiq_agent.observability.direct_trace import observed_generation
+    from agent.observability.direct_trace import observed_generation
 
     with observed_generation(
         VISION_GENERATION_NAME, model=request.get("model"), messages=request.get("messages")
@@ -1840,7 +1840,7 @@ def _observed_vlm_call(client: Any, request: dict[str, Any]) -> Any:
 
 def _file_trace(file_name: str, config: dict[str, Any], job_id: str):
     """The Langfuse trace one file's ingest runs under: ids and the file type, never its text."""
-    from aiq_agent.observability.direct_trace import observed_span
+    from agent.observability.direct_trace import observed_span
 
     return observed_span(
         INGEST_TRACE_NAME,
@@ -1919,8 +1919,8 @@ def _vlm_client(base_url: str, api_key: str, *, role: str = USAGE_ROLE_INGEST_VI
     lost the context) is pinned to zero-data-retention endpoints. Each call's
     usage is recorded under ``role`` in the job's tracker (``_ingest_cost_scope``).
     """
-    from aiq_agent.common.openrouter import openai_client
-    from aiq_agent.common.openrouter import scoped_data_policy
+    from agent.common.openrouter import openai_client
+    from agent.common.openrouter import scoped_data_policy
 
     return meter_openai_client(
         openai_client(
@@ -2335,9 +2335,9 @@ def _reading_of(
     """
     from knowledge_layer.references import extract_references
 
-    from aiq_agent.knowledge.dossier import MAX_FACTS
-    from aiq_agent.knowledge.dossier import lifted_drawing_facts
-    from aiq_agent.knowledge.dossier import own_document_type
+    from agent.knowledge.dossier import MAX_FACTS
+    from agent.knowledge.dossier import lifted_drawing_facts
+    from agent.knowledge.dossier import own_document_type
 
     references = extract_references(
         ((doc.get_content(), _page_number(doc.metadata.get("page_label"))) for doc in documents),
@@ -2366,7 +2366,7 @@ def _reading_of(
     # The Fassung this one replaces (a re-upload under the name, or the one a person
     # linked at upload): what the facts say differently now, without a model.
     if predecessor is not None:
-        from aiq_agent.knowledge.dossier import fact_changes
+        from agent.knowledge.dossier import fact_changes
 
         name, before = predecessor
         changes = fact_changes(before if isinstance(before, dict) else None, reading)
@@ -2405,7 +2405,7 @@ def _generate_document_summary(text_content: str, file_name: str, llm=None) -> s
     Returns:
         One-sentence summary or None if no LLM provided or generation failed.
     """
-    from aiq_agent.knowledge.document_classification import summarize_document_text
+    from agent.knowledge.document_classification import summarize_document_text
 
     return summarize_document_text(text_content, file_name, llm)
 
@@ -2464,7 +2464,7 @@ def _stored_spellings(name: str) -> set[str]:
     before ``/v1/ingest`` decoded it: Python's ``quote`` (the S3 presigner's
     encoding) and the lighter one ``encodeURIComponent`` writes. The random
     ``tmp[8]_`` prefix cannot be enumerated; the metadata rows supply it
-    (:func:`aiq_agent.knowledge.find_tmp_upload_names`).
+    (:func:`agent.knowledge.find_tmp_upload_names`).
     """
     from urllib.parse import quote
 
@@ -2488,7 +2488,7 @@ class _PreviousVersion:
 
 def _tmp_upload_names(collection_name: str, spellings: list[str]) -> list[str]:
     """The legacy ``tmp…_`` names the metadata rows know for ``spellings``; none when that store fails (logged)."""
-    from aiq_agent.knowledge import find_tmp_upload_names
+    from agent.knowledge import find_tmp_upload_names
 
     try:
         return list(find_tmp_upload_names(collection_name, spellings))
@@ -2510,13 +2510,13 @@ def _read_human_set_fields(collection_name: str, found: dict[str, _PreviousVersi
     keeps a dismissal a person made.
     """
     try:
-        from aiq_agent.knowledge import get_document_display_titles
-        from aiq_agent.knowledge import get_document_doc_classes
-        from aiq_agent.knowledge import get_document_folder_paths
-        from aiq_agent.knowledge import get_document_person_tags
-        from aiq_agent.knowledge import get_document_person_topics
-        from aiq_agent.knowledge import get_document_revision_suggestions
-        from aiq_agent.knowledge import get_document_superseded_by
+        from agent.knowledge import get_document_display_titles
+        from agent.knowledge import get_document_doc_classes
+        from agent.knowledge import get_document_folder_paths
+        from agent.knowledge import get_document_person_tags
+        from agent.knowledge import get_document_person_topics
+        from agent.knowledge import get_document_revision_suggestions
+        from agent.knowledge import get_document_superseded_by
 
         stored_names = [stored for version in found.values() for stored in version.stored_names]
         person_tags = {
@@ -3019,7 +3019,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         place for every failure the adapter writes, so no call site can fail a
         file without saying whether retrying it is worth anything.
         """
-        from aiq_agent.knowledge.ingest_failures import classify_failure
+        from agent.knowledge.ingest_failures import classify_failure
 
         with self._lock:
             if file_index < len(job.file_details):
@@ -3277,7 +3277,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         status, so a caller that chooses ids looks the status up first.
 
         What runs it is the caller's choice: ``submit_prepared`` queues it in
-        this process, and the durable queue (``aiq_api.jobs.ingest_queue``)
+        this process, and the durable queue (``agent_host.jobs.ingest_queue``)
         stores it for whichever worker claims it, on any replica. So a pending
         job is NOT registered in this process here: the process that runs it
         is the one that vouches for it (``_beat``). A job that fails validation
@@ -3576,7 +3576,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 self._jobs = {jid: job for jid, job in self._jobs.items() if job.collection_name != name}
             ingest_status_store.forget_collection(name)
 
-            from aiq_agent.knowledge import clear_collection_summaries
+            from agent.knowledge import clear_collection_summaries
 
             clear_collection_summaries(name)
             bump_collection_version(name)
@@ -3732,7 +3732,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             # docstring above).
             chunk_ids = [chunk_id for chunk_id, _ in self._chunk_ids_of(collection_name, spellings)]
 
-            from aiq_agent.knowledge import unregister_summary
+            from agent.knowledge import unregister_summary
 
             if not chunk_ids:
                 # No chunks. Whatever else the document left behind — the job
@@ -3844,7 +3844,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         """Return representative text for an already-indexed file (fail-open).
 
         Used exclusively by the reconciliation backfill (see
-        ``aiq_agent.knowledge.factory.reconcile_collection_summaries``) to derive
+        ``agent.knowledge.factory.reconcile_collection_summaries``) to derive
         a deterministic fallback summary for a document that is present in the
         vector index but missing from the summaries table. Reads the file's
         first chunks in reading order (a structural fetch: no embedding) and
@@ -3855,7 +3855,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         backends can opt in without a forced interface change. Returns ``None``
         on any lookup failure or when the file has no indexed text chunks.
         """
-        from aiq_agent.knowledge.base import READING_ORDER
+        from agent.knowledge.base import READING_ORDER
 
         from ..qdrant import reads as qdrant_reads
 
@@ -4028,7 +4028,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             # the org/project/document ids in the key are, so whether the
             # signature survived was luck, and the tenant path leaked in full for
             # short keys. Same rule as the download side in
-            # apps/backend/src/aiq_api/routes/ingest.py.
+            # apps/backend/src/agent_host/routes/ingest.py.
             logger.info("Uploaded thumbnail (%d bytes)", len(thumbnail_bytes))
         except Exception as error:
             # The class only: an httpx error's text, and so its traceback,
@@ -4128,7 +4128,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         if previous is None or not previous.chunk_ids:
             return
         try:
-            from aiq_agent.knowledge import unregister_summary
+            from agent.knowledge import unregister_summary
 
             self._store().delete_chunks(collection_name, previous.chunk_ids)
             bump_collection_version(collection_name)
@@ -4295,10 +4295,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         re-ingests on every move, so dropping on any of them would erase a real Bescheid's
         record whenever the tagger was slow or unsure (docs/design/permitting-memory.md).
         """
-        from aiq_agent.knowledge.permit_extraction import extract_and_store_permit_record
-        from aiq_agent.knowledge.permit_extraction import is_permit_decision
-        from aiq_agent.knowledge.permit_extraction import typed_as_something_else
-        from aiq_agent.knowledge.permit_records_client import store_permit_record
+        from agent.knowledge.permit_extraction import extract_and_store_permit_record
+        from agent.knowledge.permit_extraction import is_permit_decision
+        from agent.knowledge.permit_extraction import typed_as_something_else
+        from agent.knowledge.permit_records_client import store_permit_record
 
         organization_id, document_id = config.get("organization_id"), config.get("document_id")
         if not (organization_id and document_id):
@@ -4340,7 +4340,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
         Positional-only, so ``work``'s own keywords (``file_name``) pass through untouched.
         """
-        from aiq_agent.common.cost_tracking import submit_in_context
+        from agent.common.cost_tracking import submit_in_context
 
         pool = ThreadPoolExecutor(max_workers=1)
         try:
@@ -4374,10 +4374,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         provider limiter (ADR-0081): a reindex yields to an office's own upload,
         and both yield to a person waiting on an answer.
         """
-        from aiq_agent.common.openrouter import ZERO_DATA_RETENTION
-        from aiq_agent.common.openrouter import data_policy_for
-        from aiq_agent.common.openrouter import data_policy_scope
-        from aiq_agent.common.provider_limiter import priority_scope
+        from agent.common.openrouter import ZERO_DATA_RETENTION
+        from agent.common.openrouter import data_policy_for
+        from agent.common.openrouter import data_policy_scope
+        from agent.common.provider_limiter import priority_scope
 
         organization_id = config.get("organization_id")
         policy = data_policy_for(organization_id) if organization_id else ZERO_DATA_RETENTION
@@ -4480,7 +4480,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             from knowledge_layer.llamaindex.screening import ScreeningRules
             from knowledge_layer.llamaindex.screening import document_pages
 
-            from aiq_agent.common.content_screen import screening_config_unusable
+            from agent.common.content_screen import screening_config_unusable
 
             screening_rules = ScreeningRules.from_config(config.get("screening"))
             screening_unusable = screening_config_unusable(config.get("screening"))
@@ -4538,7 +4538,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # name, this collection) once the new version is indexed —
                     # see _find_previous_versions for why versions must not
                     # coexist, and why the old one is kept until then.
-                    from aiq_agent.knowledge.leader_lock import keyed_lock
+                    from agent.knowledge.leader_lock import keyed_lock
 
                     file_scope.enter_context(keyed_lock(_replacement_lock_key(collection_name, file_name)))
                     previous = self._find_previous_versions(collection_name, [file_name]).get(
@@ -4552,9 +4552,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # base corpus only: on a project, session or Büroablage
                     # upload a guessed "sonstiges" is not harmless — it labelled
                     # every user document a "Basisdokument" in the Herleitung.
-                    from aiq_agent.common.norm_registry import guess_doc_class
-                    from aiq_agent.common.source_kinds import legacy_shelf_for_collection_name
-                    from aiq_agent.knowledge import get_document_doc_class
+                    from agent.common.norm_registry import guess_doc_class
+                    from agent.common.source_kinds import legacy_shelf_for_collection_name
+                    from agent.knowledge import get_document_doc_class
 
                     # What a person set on the replaced version's row: a row
                     # under another spelling of the name is dropped when that
@@ -4565,7 +4565,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     base_corpus = legacy_shelf_for_collection_name(collection_name) is None
                     # The Dokumentart an admin chose at upload (`config["doc_class"]`, validated
                     # by the route) beats a stored one and the guess: choosing is the point.
-                    from aiq_agent.knowledge.document_classification import canonical_doc_class
+                    from agent.knowledge.document_classification import canonical_doc_class
 
                     # A job queued before the English keys carries the German one.
                     explicit_doc_class = canonical_doc_class(config.get("doc_class"))
@@ -5052,7 +5052,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # LLM calls run concurrently on a 2-worker pool and are fully
                     # fail-open below.
                     if self.generate_summary_enabled and (text_documents or drawing_pages):
-                        from aiq_agent.knowledge.document_classification import classify_document_tags
+                        from agent.knowledge.document_classification import classify_document_tags
 
                         first = text_documents[0].get_content() if text_documents else ""
                         last = text_documents[-1].get_content() if len(text_documents) > 1 else ""
@@ -5065,7 +5065,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         executor = ThreadPoolExecutor(max_workers=4)
                         # In the job's context, so the summary and the tags
                         # land on its cost ledger (`_ingest_cost_scope`).
-                        from aiq_agent.common.cost_tracking import submit_in_context
+                        from agent.common.cost_tracking import submit_in_context
 
                         summary_future = submit_in_context(
                             executor, _generate_document_summary, llm_input, file_name, self.summary_llm
@@ -5075,8 +5075,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # and last chunk. Not for the base corpus: a Richtlinie is not
                         # a project document, and its structure is read by the clauses.
                         if not base_corpus:
-                            from aiq_agent.knowledge.dossier import build_digest
-                            from aiq_agent.knowledge.dossier import write_dossier
+                            from agent.knowledge.dossier import build_digest
+                            from agent.knowledge.dossier import write_dossier
 
                             digest = build_digest(
                                 _digest_passages(all_documents),
@@ -5096,8 +5096,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         )
                         # The model's own topics beside the controlled tags, told the
                         # project's existing ones first so its spellings hold.
-                        from aiq_agent.knowledge import get_topic_vocabulary
-                        from aiq_agent.knowledge.document_classification import suggest_topics
+                        from agent.knowledge import get_topic_vocabulary
+                        from agent.knowledge.document_classification import suggest_topics
 
                         topics_future = submit_in_context(
                             executor,
@@ -5110,7 +5110,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # A base-corpus file whose name gives no OIB hint lands in
                         # `sonstiges`; the decision model proposes a Dokumentart
                         # for the platform owner to accept (ADR-0064, use 8).
-                        from aiq_agent.knowledge.document_classification import DEFAULT_DOC_CLASS
+                        from agent.knowledge.document_classification import DEFAULT_DOC_CLASS
 
                         if (
                             stored_doc_class is None
@@ -5118,7 +5118,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             and base_corpus
                             and doc_class == DEFAULT_DOC_CLASS
                         ):
-                            from aiq_agent.knowledge.document_classification import suggest_doc_class
+                            from agent.knowledge.document_classification import suggest_doc_class
 
                             doc_class_future = submit_in_context(
                                 executor, suggest_doc_class, llm_input, file_name, organization_id=organization_id
@@ -5161,7 +5161,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # The vision model saw the pixels; the classifier only read
                     # its caption. A photograph is a Foto whatever it shows.
                     if is_image and text_documents:
-                        from aiq_agent.knowledge.document_classification import reconcile_image_tags
+                        from agent.knowledge.document_classification import reconcile_image_tags
 
                         tags = reconcile_image_tags(
                             tags,
@@ -5293,7 +5293,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # independently and may still be None. Standalone images
                     # already fell back to their VLM caption above.
                     if not summary and text_documents:
-                        from aiq_agent.knowledge.document_classification import fallback_summary_from_text
+                        from agent.knowledge.document_classification import fallback_summary_from_text
 
                         first_text = text_documents[0].get_content()
                         last_text = text_documents[-1].get_content() if len(text_documents) > 1 else ""
@@ -5328,15 +5328,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         )
                         # Register in centralized summary registry (backend-agnostic).
                         # Tags ride along in the same upsert (may be None).
-                        from aiq_agent.knowledge import register_summary
-                        from aiq_agent.knowledge import set_document_doc_class
-                        from aiq_agent.knowledge import set_document_folder_path
+                        from agent.knowledge import register_summary
+                        from agent.knowledge import set_document_doc_class
+                        from agent.knowledge import set_document_folder_path
 
                         register_summary(collection_name, file_name, summary, tags=tags, topics=topics)
                         # The page count the listing and the tree show: the highest page
                         # any chunk reaches. A text file has none, which clears an old count.
-                        from aiq_agent.knowledge import set_document_page_count
-                        from aiq_agent.knowledge.page_count import largest_page
+                        from agent.knowledge import set_document_page_count
+                        from agent.knowledge.page_count import largest_page
 
                         set_document_page_count(
                             collection_name, file_name, largest_page(doc.metadata for doc in all_documents)
@@ -5347,17 +5347,17 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # without one clears the old sheet's facts.
                         revision_facts = revisions.revision_facts_from_documents(all_documents)
                         if revision_facts or previous is not None:
-                            from aiq_agent.knowledge import set_document_revision_facts
+                            from agent.knowledge import set_document_revision_facts
 
                             set_document_revision_facts(collection_name, file_name, revision_facts)
                         if photo is not None and not photo.empty:
-                            from aiq_agent.knowledge import set_document_capture
+                            from agent.knowledge import set_document_capture
 
                             set_document_capture(collection_name, file_name, photo.as_metadata())
 
                         # What the ingest read: the dossier, the references, the coverage.
                         # Written together, so a re-ingest replaces the whole reading.
-                        from aiq_agent.knowledge import set_document_reading
+                        from agent.knowledge import set_document_reading
 
                         reading, references = _reading_of(
                             all_documents,
@@ -5382,7 +5382,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # name, so its old suggestion is cleared rather than
                         # left standing for a document it no longer describes.
                         if suggestion or previous is not None:
-                            from aiq_agent.knowledge import set_document_doc_class_suggestion
+                            from agent.knowledge import set_document_doc_class_suggestion
 
                             set_document_doc_class_suggestion(collection_name, file_name, suggestion)
 
@@ -5401,22 +5401,22 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # carries them from a row under another spelling, which
                         # retiring the previous version removed.
                         if "tags" in preserved:
-                            from aiq_agent.knowledge import set_document_tags_by_person
+                            from agent.knowledge import set_document_tags_by_person
 
                             set_document_tags_by_person(collection_name, file_name, json.loads(preserved["tags"]))
                         if "topics" in preserved:
-                            from aiq_agent.knowledge import set_document_topics_by_person
+                            from agent.knowledge import set_document_topics_by_person
 
                             set_document_topics_by_person(collection_name, file_name, json.loads(preserved["topics"]))
                         if preserved.get("display_title"):
-                            from aiq_agent.knowledge import set_document_display_title
+                            from agent.knowledge import set_document_display_title
 
                             set_document_display_title(collection_name, file_name, preserved["display_title"])
                         elif base_corpus:
                             # The starting name an admin can override: derived from the OIB file
                             # name convention, nothing for a name that gives no confident default.
-                            from aiq_agent.common.norm_registry import guess_display_title
-                            from aiq_agent.knowledge import set_document_display_title
+                            from agent.common.norm_registry import guess_display_title
+                            from agent.knowledge import set_document_display_title
 
                             default_title = guess_display_title(file_name)
                             if default_title:
@@ -5432,7 +5432,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # it overwrites the provenance, clearing it for a
                         # version a person wrote.
                         if provenance or previous is not None:
-                            from aiq_agent.knowledge import set_document_provenance
+                            from agent.knowledge import set_document_provenance
 
                             set_document_provenance(collection_name, file_name, provenance)
 
@@ -5441,11 +5441,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # them by itself, this carries them from another spelling.
                         carried_link, carried_suggestion = revisions.carried_links(preserved)
                         if carried_link:
-                            from aiq_agent.knowledge import set_document_superseded_by
+                            from agent.knowledge import set_document_superseded_by
 
                             set_document_superseded_by(collection_name, file_name, carried_link)
                         if carried_suggestion:
-                            from aiq_agent.knowledge import set_document_revision_suggestion
+                            from agent.knowledge import set_document_revision_suggestion
 
                             set_document_revision_suggestion(collection_name, file_name, carried_suggestion)
 
@@ -5557,7 +5557,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             # single-file upload, painful on the large oib_knowledge corpus.
             if successful_files:
                 try:
-                    from aiq_agent.knowledge.factory import reconcile_collection_summaries
+                    from agent.knowledge.factory import reconcile_collection_summaries
 
                     reconcile_collection_summaries(
                         self,

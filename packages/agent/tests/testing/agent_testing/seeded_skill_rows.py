@@ -2,7 +2,7 @@
 
 The seeds (``apps/workspace/migrations/00XX_*_standard_skill.sql``) are the only
 place ``piloti-voice`` and ``piloti-cards`` exist in this repo: a row of SQL
-text on one side of the stack and a :class:`~aiq_agent.skills.models.Skill` on
+text on one side of the stack and a :class:`~agent.skills.models.Skill` on
 the other. Two suites need that translation and they must not disagree about
 it — ``test_seeded_platform_skills.py`` checks the rows parse and validate, and
 ``agents/piloti/test_standard_skills_reach_the_model.py`` runs the
@@ -19,7 +19,7 @@ import json
 import re
 from pathlib import Path
 
-from aiq_agent.skills.models import Skill
+from agent.skills.models import Skill
 
 REPO_ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
 DRIZZLE_DIR = REPO_ROOT / "apps" / "workspace" / "migrations"

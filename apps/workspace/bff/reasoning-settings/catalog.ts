@@ -3,7 +3,7 @@
  * per agent group (Platform → Models).
  *
  * Source of truth for the accepted values. Mirrored by `_EFFORTS` in the
- * backend's `packages/agent/src/aiq_agent/common/reasoning_settings.py`; parity is pinned from
+ * backend's `packages/agent/src/agent/common/reasoning_settings.py`; parity is pinned from
  * both sides by `apps/workspace/tests/fixtures/reasoning_efforts_catalog.json`, so a value
  * added here without the backend counterpart fails in CI.
  *
@@ -14,7 +14,7 @@
  * group's model changing underneath it — and why provider-native tier names
  * (DeepSeek's `max`) must never appear: OpenRouter rejects them. See
  * https://openrouter.ai/docs/guides/best-practices/reasoning-tokens and the
- * NOTE in `aiq_agent/common/llm_factory.py`.
+ * NOTE in `agent/common/llm_factory.py`.
  */
 
 /** Ordered cheapest → most expensive; the UI renders them in this order. */
@@ -48,7 +48,7 @@ export function validateReasoningEffort(effort: unknown): string | null {
  *
  * `none` is not a stop. The chat answer's envelope is a contract the model has
  * to reason its way into, and without reasoning it loses it. Mirrored by
- * `CHAT_EFFORTS` in `aiq_agent/common/reasoning_settings.py`; the wire schema
+ * `CHAT_EFFORTS` in `agent/common/reasoning_settings.py`; the wire schema
  * (`UserMessage.reasoning_effort`) refuses anything else.
  */
 export const CHAT_EFFORTS = ['minimal', 'low', 'medium', 'high', 'xhigh'] as const

@@ -38,10 +38,10 @@ import fakeredis
 import httpx
 import pytest
 
-from aiq_agent.common import provider_limiter as pl
-from aiq_agent.common.openrouter import openai_client
-from aiq_agent.common.openrouter import pinned_async_http_client
-from aiq_agent.common.openrouter import pinned_http_client
+from agent.common import provider_limiter as pl
+from agent.common.openrouter import openai_client
+from agent.common.openrouter import pinned_async_http_client
+from agent.common.openrouter import pinned_http_client
 
 ROOT = Path(__file__).resolve().parents[4]
 SCANNED = [
@@ -60,7 +60,7 @@ CHAT_MODEL = re.compile(
     r"|ChatLiteLLM|ChatBedrock|ChatBedrockConverse|ChatDeepSeek|ChatOpenRouter)\(|\binit_chat_model\(|\.get_llm\("
 )
 CHAT_MODEL_HOMES = {
-    "packages/agent/src/aiq_agent/common/llm_factory.py": (
+    "packages/agent/src/agent/common/llm_factory.py": (
         "get_langchain_llm, the one place a chat model is taken from NAT"
     ),
     "scripts/turn_census/render_fixture_permits.py": (
@@ -72,7 +72,7 @@ CHAT_MODEL_HOMES = {
 EMBEDDING_CLIENT = re.compile(r"\b[A-Za-z]*Embeddings?\(|\.embeddings\.create\(")
 EMBEDDING_CLIENT_HOMES = {
     "packages/knowledge-layer/src/llamaindex/embedding.py": "make_embed_model hands llama-index the limited transports",
-    "packages/agent/src/aiq_agent/common/openrouter.py": "mentions `.embeddings` in a docstring only",
+    "packages/agent/src/agent/common/openrouter.py": "mentions `.embeddings` in a docstring only",
 }
 #: A match that is not a client: a class that merely has "Embedding" in its name.
 NOT_A_CLIENT = re.compile(r"\b(?:Mock|Fake|Stub|Noop)\w*Embedding|\bQueryEmbedding\(|\b_InflightEmbedding\(")
@@ -86,7 +86,7 @@ MODEL_TRAFFIC = re.compile(
     r"|openrouter\.ai|\brequest_body\(|\bPLATFORM_FIXED\.apply\(|\bZERO_DATA_RETENTION\b"
 )
 RAW_HTTPX_HOMES = {
-    "packages/agent/src/aiq_agent/common/openrouter.py": "the seam builds the clients that take the slot",
+    "packages/agent/src/agent/common/openrouter.py": "the seam builds the clients that take the slot",
     "packages/knowledge-layer/src/llamaindex/adapter.py": "its httpx.Client PUTs a thumbnail to a presigned URL",
     "scripts/release_notes.py": "sends the public changelog from a dev script",
     "scripts/smoke_card_generation.py": "a dev smoke test on fixed sample text",
@@ -115,9 +115,9 @@ def _code(path: Path) -> str:
 def test_the_scan_sees_the_known_call_sites():
     """Guards the test itself: a glob that silently matched nothing would pass everything."""
     scanned = {_rel(p) for p in _python_files()}
-    assert "packages/agent/src/aiq_agent/common/llm_factory.py" in scanned
+    assert "packages/agent/src/agent/common/llm_factory.py" in scanned
     assert "packages/knowledge-layer/src/llamaindex/adapter.py" in scanned
-    assert "packages/agent/src/aiq_agent/agents/piloti/register.py" in scanned
+    assert "packages/agent/src/agent/agents/piloti/register.py" in scanned
 
 
 @pytest.mark.parametrize("path", _python_files(), ids=_rel)
@@ -248,14 +248,14 @@ def test_a_vision_or_rerank_client_from_the_seam_holds_a_slot(pool):
 
 
 def pl_policy():
-    from aiq_agent.common.openrouter import PLATFORM_FIXED
+    from agent.common.openrouter import PLATFORM_FIXED
 
     return PLATFORM_FIXED
 
 
 @pytest.mark.parametrize("make", [pinned_http_client, pinned_async_http_client], ids=["sync", "async"])
 def test_every_pinned_client_is_built_on_the_limited_transport(make):
-    from aiq_agent.common import openrouter
+    from agent.common import openrouter
 
     transport = make()._transport
     assert isinstance(transport, (openrouter._PinningTransport, openrouter._AsyncPinningTransport))
@@ -266,7 +266,7 @@ async def test_a_chat_model_from_the_seam_holds_a_slot_for_every_call(pool, monk
     from langchain_openai import ChatOpenAI
 
     import nat.plugins.langchain.llm  # noqa: F401 - registers NAT's LangChain clients
-    from aiq_agent.common.llm_factory import get_langchain_llm
+    from agent.common.llm_factory import get_langchain_llm
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.llm.openai_llm import OpenAIModelConfig
 
@@ -299,7 +299,7 @@ async def test_a_per_request_copy_of_a_seam_model_still_holds_a_slot(pool):
     """The model-override and ZDR seams `model_copy` the model; the copy must keep the limiter."""
     from agent_testing.llm_factory import _resolved_through_nat
 
-    from aiq_agent.common.model_overrides import override_model
+    from agent.common.model_overrides import override_model
 
     llm = await _resolved_through_nat(base_url="https://openrouter.ai/api/v1")
     copy = override_model(llm, "x-ai/grok-4.5")
@@ -321,7 +321,7 @@ def _serving(monkeypatch, pool, sent: list[tuple[int, dict]]) -> None:
 
 async def test_the_limited_client_holds_a_slot_and_leaves_the_body_alone(pool, monkeypatch):
     """An organization that switched ZDR off keeps its choice: the transport only takes the slot."""
-    from aiq_agent.common.openrouter import limited_async_http_client
+    from agent.common.openrouter import limited_async_http_client
 
     sent: list[tuple[int, dict]] = []
     _serving(monkeypatch, pool, sent)
@@ -332,7 +332,7 @@ async def test_the_limited_client_holds_a_slot_and_leaves_the_body_alone(pool, m
 
 
 async def test_the_limited_client_takes_no_slot_for_another_host(pool, monkeypatch):
-    from aiq_agent.common.openrouter import limited_async_http_client
+    from agent.common.openrouter import limited_async_http_client
 
     sent: list[tuple[int, dict]] = []
     _serving(monkeypatch, pool, sent)
@@ -342,7 +342,7 @@ async def test_the_limited_client_takes_no_slot_for_another_host(pool, monkeypat
 
 
 async def test_the_limited_clients_class_is_its_own_not_the_tasks(pool, monkeypatch):
-    from aiq_agent.common.openrouter import limited_async_http_client
+    from agent.common.openrouter import limited_async_http_client
 
     asked: list[str] = []
     acquire = pl.aacquire
@@ -361,14 +361,14 @@ async def test_the_limited_clients_class_is_its_own_not_the_tasks(pool, monkeypa
 
 
 def test_the_limited_client_refuses_an_unknown_class():
-    from aiq_agent.common.openrouter import limited_async_http_client
+    from agent.common.openrouter import limited_async_http_client
 
     with pytest.raises(ValueError, match="unknown provider class"):
         limited_async_http_client(cls="urgent")
 
 
 async def test_the_decision_models_client_holds_a_slot(pool, monkeypatch):
-    from aiq_agent.common import decisions
+    from agent.common import decisions
 
     sent: list[tuple[int, dict]] = []
     _serving(monkeypatch, pool, sent)

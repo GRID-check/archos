@@ -22,7 +22,7 @@ import os
 import urllib.error
 import urllib.request
 
-from aiq_agent.common.openrouter import PLATFORM_FIXED
+from agent.common.openrouter import PLATFORM_FIXED
 
 JUDGE_MODEL = os.environ.get("SUITE_JUDGE_MODEL", "openai/gpt-6-luna")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"

@@ -63,7 +63,7 @@ was a code change across thousands of lines. Name the thing for what it does:
 `MAX_ACTIVE_JOBS_PER_ORG`, not `MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
 `piloti_wakes`. The product's name is copy, read from one place:
 `PRODUCT_NAME` in `apps/workspace/bff/brand.ts`, which the dictionaries
-reach as `{productName}`, and `aiq_agent.common.brand.PRODUCT_NAME`, which a
+reach as `{productName}`, and `agent.common.brand.PRODUCT_NAME`, which a
 prompt reaches as `{{ product_name }}`. `tests/test_product_name_parity.py`
 holds the two equal.
 
@@ -73,13 +73,13 @@ holds the two equal.
 arrived, a file may not gain one, and a cleanup makes the check fail until
 `--update` lowers the entry. A move re-keys entries: `--rebaseline`, and check
 its diff shows only the move. A directory is its own key (`dir/`), so a new
-file inside `packages/agent/src/aiq_agent/` is fine and a new `piloti_x/` folder is not.
+file inside `packages/agent/src/agent/` is fine and a new `piloti_x/` folder is not.
 
 Not a hit: the name as a word in prose (`Piloti` or `Grid` alone, in a
 comment or a string a person reads), `grid` the English word (CSS and Tailwind,
 `grid` as a layout noun at the end of a name, `FileGrid`), URLs, host names and
-the repository's own name, and the Python package names `aiq_agent` and
-`aiq_api` until their scripted rename (ADR-0145 row 10a). Not checked: ADRs, audits, release notes,
+the repository's own name, and the Python package names `agent` and
+`agent_host` until their scripted rename (ADR-0145 row 10a). Not checked: ADRs, audits, release notes,
 migrations, the i18n dictionaries and the site's content, published assets,
 lockfiles and Markdown. The list is `EXCLUDED` in the script.
 
@@ -90,7 +90,7 @@ one release, never as a hard break.
 A name two deployed tiers exchange (the `x-grid-*` service headers between
 the BFF and the backend) moves by expand, switch, contract, because the tiers
 roll out side by side: first every receiver reads the new name beside the old
-(`lib/http/legacy-header-names.ts`, `aiq_api.legacy_headers`), the next
+(`lib/http/legacy-header-names.ts`, `agent_host.legacy_headers`), the next
 release the senders switch, the release after the old name goes.
 
 ## Python
@@ -104,7 +104,7 @@ The agent tier grew to nineteen thousand lines with functions that ran two
 hundred lines deep and four `if`s wide, and the cost was not aesthetic: a fix
 in the middle of one of them could not be tested on its own, and a reader had
 to hold the whole thing to know which branch they were in. These rules are the
-floor for anything under `packages/agent/src/aiq_agent`, the Python packages under `packages/` and `apps/backend`,
+floor for anything under `packages/agent/src/agent`, the Python packages under `packages/` and `apps/backend`,
 new or touched:
 
 - **Two levels of nesting inside a function, at most.** A third `if`/`for`/

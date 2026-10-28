@@ -20,8 +20,8 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.tools.workspace import client
-from aiq_agent.tools.workspace import register
+from agent.tools.workspace import client
+from agent.tools.workspace import register
 
 ROOT = Path(__file__).resolve().parents[5]
 WORDS = json.loads((ROOT / "ci" / "german_stems.json").read_text(encoding="utf-8"))
@@ -32,10 +32,10 @@ UMLAUT = re.compile(r"[äöüÄÖÜß]")
 #: What the model reads from the workspace: the client, the tool group, the card, and the backend's
 #: read-tool route whose messages reach an outside agent through the BFF.
 MODULES = [
-    ROOT / "packages" / "agent" / "src" / "aiq_agent" / "tools" / "workspace" / "client.py",
-    ROOT / "packages" / "agent" / "src" / "aiq_agent" / "tools" / "workspace" / "register.py",
-    ROOT / "packages" / "agent" / "src" / "aiq_agent" / "tools" / "workspace" / "cards.py",
-    ROOT / "apps" / "backend" / "src" / "aiq_api" / "routes" / "internal_tools.py",
+    ROOT / "packages" / "agent" / "src" / "agent" / "tools" / "workspace" / "client.py",
+    ROOT / "packages" / "agent" / "src" / "agent" / "tools" / "workspace" / "register.py",
+    ROOT / "packages" / "agent" / "src" / "agent" / "tools" / "workspace" / "cards.py",
+    ROOT / "apps" / "backend" / "src" / "agent_host" / "routes" / "internal_tools.py",
 ]
 
 #: German that is domain data, not a word the model is taught: (text, reason). None yet.

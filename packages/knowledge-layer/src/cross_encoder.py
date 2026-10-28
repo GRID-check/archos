@@ -262,7 +262,7 @@ def _resolve_credential(base_url: str, model: str, organization_id: str | None) 
     BYOK hit replaces the key AND the base URL, never the model (ADR-0022).
     """
     try:
-        from aiq_agent.common.credential_resolution import resolve_llm_credential
+        from agent.common.credential_resolution import resolve_llm_credential
 
         resolved = resolve_llm_credential(
             primary_env="RERANKER_API_KEY",
@@ -278,7 +278,7 @@ def _resolve_credential(base_url: str, model: str, organization_id: str | None) 
                 byok=resolved.source == "byok",
             )
     except ImportError:
-        # knowledge_layer is usable without the aiq_agent package.
+        # knowledge_layer is usable without the agent package.
         logger.debug("credential_resolution unavailable; falling back to a direct env read")
     except Exception as e:
         # Type only, never the message. This is the credential-resolution path, so the
@@ -303,14 +303,14 @@ def _pinned_body(body: dict[str, Any], base_url: str) -> dict[str, Any] | None:
     The reranker is the platform's, not an organization's choice, so an
     OpenRouter rerank is always pinned (``openrouter.PLATFORM_FIXED``, ADR-0074)
     and its model must have a ZDR endpoint (the default does). Imported here,
-    not at module level, because this package imports without ``aiq_agent``;
+    not at module level, because this package imports without ``agent``;
     without the seam the rerank is skipped rather than sent unpinned.
     """
     try:
-        from aiq_agent.common.openrouter import PLATFORM_FIXED
-        from aiq_agent.common.openrouter import targets_openrouter
+        from agent.common.openrouter import PLATFORM_FIXED
+        from agent.common.openrouter import targets_openrouter
     except ImportError:
-        _throttled_warning("Cross-encoder skipped: the zero-data-retention seam (aiq_agent) is not installed")
+        _throttled_warning("Cross-encoder skipped: the zero-data-retention seam (agent) is not installed")
         return None
     return PLATFORM_FIXED.apply(body) if targets_openrouter(base_url) else body
 
@@ -324,10 +324,10 @@ def _organization_id_in_scope() -> str | None:
     search — not the construction — is where it can be asked for.
     """
     try:
-        from aiq_agent.project_context import get_organization_id_from_context
+        from agent.project_context import get_organization_id_from_context
 
         return get_organization_id_from_context()
-    except Exception:  # noqa: BLE001 - no aiq_agent, or no request context: platform key
+    except Exception:  # noqa: BLE001 - no agent, or no request context: platform key
         return None
 
 
@@ -372,8 +372,8 @@ def _record_usage(model: str, query: str, documents: list[str], payload: Any, *,
     Never raises: accounting is not allowed to cost a search its ranking.
     """
     try:
-        from aiq_agent.common.cost_tracking import USAGE_ROLE_RERANK
-        from aiq_agent.common.cost_tracking import record_usage_event
+        from agent.common.cost_tracking import USAGE_ROLE_RERANK
+        from agent.common.cost_tracking import record_usage_event
     except ImportError:  # knowledge_layer without the agent package
         return
 
@@ -530,7 +530,7 @@ class CrossEncoderReranker:
         try:
             # Imported inside the guard: httpx is an optional transitive dependency, and
             # an ImportError here must degrade to "no opinion" like every other failure.
-            from aiq_agent.common.openrouter import limited_async_http_client
+            from agent.common.openrouter import limited_async_http_client
 
             # The body is pinned above; the client only queues for a provider slot (ADR-0081),
             # in the class of the task that searches (chat for an answer, bulk for ingestion).

@@ -4,7 +4,7 @@ Status: Active (2026-07-18). Companion to ADR-0025 v2 and `backend-deep-dive.md`
 
 Piloti ships Austria-first, but the product goal is multi-jurisdiction. This
 document is the honest map of what that takes: the binding contract that already
-exists (`packages/agent/src/aiq_agent/common/country_profile.py`, Austria = implementation #1),
+exists (`packages/agent/src/agent/common/country_profile.py`, Austria = implementation #1),
 and the complete inventory of remaining Austria/German couplings a second
 country must address — so "add Germany" is a checklist, not archaeology.
 

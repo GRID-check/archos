@@ -27,7 +27,7 @@ import tracemalloc
 
 import pytest
 
-from aiq_agent.common.answer_prose_stream import AnswerProseStream
+from agent.common.answer_prose_stream import AnswerProseStream
 
 _CHUNK = 4  # characters per token, about what a provider streams
 _GROWTH = 4

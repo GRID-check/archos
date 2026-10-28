@@ -198,16 +198,16 @@ def _precedent_cases() -> list[tuple[str, str, str, bool, bool]]:
 
 
 async def evaluate_precedent() -> dict[str, Any]:
-    from aiq_agent.agents.piloti.decisions import PRECEDENT_THRESHOLD
-    from aiq_agent.agents.piloti.decisions import PRECEDENT_THRESHOLD_LAW
-    from aiq_agent.agents.piloti.decisions import TurnFacts
-    from aiq_agent.agents.piloti.decisions import decide_turn
-    from aiq_agent.cards.catalog import card_index_entries
-    from aiq_agent.cards.envelope import ENVELOPE_SHAPE_TYPES
-    from aiq_agent.common.applicability import facts_from_project_context
-    from aiq_agent.common.norm_registry import oib_families
-    from aiq_agent.skills.builtin import discover_builtin_skills
-    from aiq_agent.skills.resolver import _skill_applies_to_agent
+    from agent.agents.piloti.decisions import PRECEDENT_THRESHOLD
+    from agent.agents.piloti.decisions import PRECEDENT_THRESHOLD_LAW
+    from agent.agents.piloti.decisions import TurnFacts
+    from agent.agents.piloti.decisions import decide_turn
+    from agent.cards.catalog import card_index_entries
+    from agent.cards.envelope import ENVELOPE_SHAPE_TYPES
+    from agent.common.applicability import facts_from_project_context
+    from agent.common.norm_registry import oib_families
+    from agent.skills.builtin import discover_builtin_skills
+    from agent.skills.resolver import _skill_applies_to_agent
     from scripts.decision_eval import CORPUS_FILES
 
     _, rendered = _office()
@@ -305,12 +305,12 @@ class FitRow:
 
 
 async def evaluate_fit() -> dict[str, Any]:
-    from aiq_agent.agents.piloti.reference_fit import FITS_QUESTION
-    from aiq_agent.agents.piloti.reference_fit import SLOT
-    from aiq_agent.agents.piloti.reference_fit import line_state
-    from aiq_agent.agents.piloti.reference_fit import parse_catalog
-    from aiq_agent.agents.piloti.reference_fit import reorder
-    from aiq_agent.common.decisions import decide_many
+    from agent.agents.piloti.reference_fit import FITS_QUESTION
+    from agent.agents.piloti.reference_fit import SLOT
+    from agent.agents.piloti.reference_fit import line_state
+    from agent.agents.piloti.reference_fit import parse_catalog
+    from agent.agents.piloti.reference_fit import reorder
+    from agent.common.decisions import decide_many
 
     office, rendered = _office()
     names = {project["id"]: project["name"] for project in office["projects"]}
@@ -396,8 +396,8 @@ def _hit_of(project: dict[str, Any], document: dict[str, Any]) -> dict[str, Any]
 
 
 async def evaluate_hits() -> dict[str, Any]:
-    from aiq_agent.tools.cross_project.hit_judge import INJECTION_THRESHOLD
-    from aiq_agent.tools.cross_project.hit_judge import judge_hits
+    from agent.tools.cross_project.hit_judge import INJECTION_THRESHOLD
+    from agent.tools.cross_project.hit_judge import judge_hits
 
     office, _ = _office()
     by_doc = {
@@ -466,10 +466,10 @@ async def evaluate_hits() -> dict[str, Any]:
 
 
 async def evaluate_verify() -> dict[str, Any]:
-    from aiq_agent.common.decisions import decide_many
-    from aiq_agent.knowledge.fingerprint_verify import SLOT
-    from aiq_agent.knowledge.fingerprint_verify import STATED_QUESTION
-    from aiq_agent.knowledge.fingerprint_verify import token_state
+    from agent.common.decisions import decide_many
+    from agent.knowledge.fingerprint_verify import SLOT
+    from agent.knowledge.fingerprint_verify import STATED_QUESTION
+    from agent.knowledge.fingerprint_verify import token_state
 
     rows = list((_load_yaml(FINGERPRINT_QUOTES) or {}).get("quotes") or [])
     states = [token_state(row["fact"], str(row["value"]), [row["quote"]]) for row in rows]

@@ -15,18 +15,18 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from aiq_agent.common.canned_replies import GENERIC_ERROR_MESSAGE
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.stages import get_stage
-from aiq_agent.stages.follow_ups import FOLLOW_UPS
-from aiq_agent.stages.follow_ups import FOLLOW_UPS_SYSTEM_PROMPT
-from aiq_agent.stages.follow_ups import FollowUpQuestion
-from aiq_agent.stages.follow_ups import FollowUpsPayload
-from aiq_agent.stages.follow_ups import build_user_prompt
-from aiq_agent.stages.follow_ups import sanitize_items
-from aiq_agent.stages.spec import StageContext
-from aiq_agent.stages.spec import StageEmpty
-from aiq_agent.stages.spec import TurnFacts
+from agent.common.canned_replies import GENERIC_ERROR_MESSAGE
+from agent.common.model_overrides import AgentGroup
+from agent.stages import get_stage
+from agent.stages.follow_ups import FOLLOW_UPS
+from agent.stages.follow_ups import FOLLOW_UPS_SYSTEM_PROMPT
+from agent.stages.follow_ups import FollowUpQuestion
+from agent.stages.follow_ups import FollowUpsPayload
+from agent.stages.follow_ups import build_user_prompt
+from agent.stages.follow_ups import sanitize_items
+from agent.stages.spec import StageContext
+from agent.stages.spec import StageEmpty
+from agent.stages.spec import TurnFacts
 
 # A real-shaped Austrian building-code answer: long enough to pass the gate's
 # length floor, and carrying the terms an anchored question can name.
@@ -124,7 +124,7 @@ class TestDeclaration:
         could not be pointed at different models, and unsetting one stage's LLM
         would silently switch the other off too. follow_ups is the first stage
         that makes this invariant non-trivial."""
-        from aiq_agent.stages import iter_stages
+        from agent.stages import iter_stages
 
         groups = [spec.agent_group for spec in iter_stages()]
         assert len(set(groups)) == len(groups)

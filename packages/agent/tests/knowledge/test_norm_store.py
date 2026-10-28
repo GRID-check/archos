@@ -10,10 +10,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy import text
 
-from aiq_agent.common import norm_registry
-from aiq_agent.common.norm_registry import NormEntry
-from aiq_agent.common.norm_registry import NormsFile
-from aiq_agent.knowledge.norm_store import NormRegistryStore
+from agent.common import norm_registry
+from agent.common.norm_registry import NormEntry
+from agent.common.norm_registry import NormsFile
+from agent.knowledge.norm_store import NormRegistryStore
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ def test_corrupted_json_row_fails_open(store, db_url):
 
 
 def test_configure_registers_loader_and_falls_back_to_yaml(db_url):
-    from aiq_agent.knowledge import norm_store
+    from agent.knowledge import norm_store
 
     try:
         store = norm_store.configure_norm_store(db_url)

@@ -84,7 +84,7 @@ def main() -> int:
         os.execvp(sys.argv[1], sys.argv[1:])
 
     # One image, one process type per job (ADR-0082): `chat` and `api` are the web
-    # roles (the plugin mounts what each serves, `aiq_api.roles`), `worker` and
+    # roles (the plugin mounts what each serves, `agent_host.roles`), `worker` and
     # `ingest-worker` claim jobs from the database. There is no default: a
     # process that does not say what it is stops here rather than guess.
     role = os.getenv("PROCESS_ROLE", "").strip().lower()
@@ -94,12 +94,12 @@ def main() -> int:
     # server (ADR-0021).
     if role == "worker":
         print("Starting DB-claimed research worker (PROCESS_ROLE=worker)...", flush=True)
-        os.execvp("python", ["python", "-m", "aiq_api.jobs.worker"])
+        os.execvp("python", ["python", "-m", "agent_host.jobs.worker"])
     # The ingestion tier (ADR-0076): claims from the durable ingest queue, fairly
     # across organisations. No web server; scaled on the queue's depth.
     if role == "ingest-worker":
         print("Starting DB-claimed ingest worker (PROCESS_ROLE=ingest-worker)...", flush=True)
-        os.execvp("python", ["python", "-m", "aiq_api.jobs.ingest_worker"])
+        os.execvp("python", ["python", "-m", "agent_host.jobs.ingest_worker"])
 
     config_file = os.getenv(
         "CONFIG_FILE",

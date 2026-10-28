@@ -38,12 +38,12 @@ from unittest import mock
 
 import pytest
 
-from aiq_agent.common import cache as shared_cache
-from aiq_agent.skills.models import Skill
-from aiq_agent.skills.models import preferred_cards
-from aiq_agent.skills.models import skill_hidden
-from aiq_agent.skills.models import skill_title
-from aiq_agent.skills.resolver import SkillResolver
+from agent.common import cache as shared_cache
+from agent.skills.models import Skill
+from agent.skills.models import preferred_cards
+from agent.skills.models import skill_hidden
+from agent.skills.models import skill_title
+from agent.skills.resolver import SkillResolver
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "skills_resolve" / "resolve_payload.json"

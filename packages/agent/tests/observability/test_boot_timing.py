@@ -8,8 +8,8 @@ import pytest
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
-from aiq_agent.observability import boot_timing
-from aiq_agent.observability.boot_timing import BootClock
+from agent.observability import boot_timing
+from agent.observability.boot_timing import BootClock
 
 
 @pytest.fixture

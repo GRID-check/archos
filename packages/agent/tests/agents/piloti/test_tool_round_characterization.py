@@ -33,33 +33,33 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.agents.piloti.agent import _FAILED_FETCH_REPEAT_MESSAGE
-from aiq_agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
-from aiq_agent.agents.piloti.agent import _WIDTH_CAP_MESSAGE
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.agent import TurnConfig
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.common.data_sources import disabled_source_notice
-from aiq_agent.common.steering import HELD_FOR_STEER
-from aiq_agent.common.steering import SteerInbox
-from aiq_agent.common.steering import SteerNote
-from aiq_agent.common.steering import bind_steer_inbox
-from aiq_agent.common.steering import unbind_steer_inbox
-from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
-from aiq_agent.knowledge import restricted_use as ru
-from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.piloti.agent import _FAILED_FETCH_REPEAT_MESSAGE
+from agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
+from agent.agents.piloti.agent import _WIDTH_CAP_MESSAGE
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import TurnConfig
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common import turn_status
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from agent.common.data_sources import disabled_source_notice
+from agent.common.steering import HELD_FOR_STEER
+from agent.common.steering import SteerInbox
+from agent.common.steering import SteerNote
+from agent.common.steering import bind_steer_inbox
+from agent.common.steering import unbind_steer_inbox
+from agent.common.tool_calls import FETCH_FAILED_MARKER
+from agent.knowledge import restricted_use as ru
+from agent.knowledge.restricted_use import WITHHELD_NOTICE
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import reset_restricted_use
 
 _PROMPT = "Du bist Piloti."
 _ANSWER = AIMessage(content='```answer_json\n{"answer": "Fertig.", "kind": "walkthrough"}\n```')
@@ -119,8 +119,8 @@ def _clean_slate():
 def _bypass_citation_pipeline():
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]

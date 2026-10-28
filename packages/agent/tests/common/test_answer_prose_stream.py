@@ -7,8 +7,8 @@ import re
 
 import pytest
 
-from aiq_agent.citations.references import expand_grouped_citations
-from aiq_agent.common.answer_prose_stream import AnswerProseStream
+from agent.citations.references import expand_grouped_citations
+from agent.common.answer_prose_stream import AnswerProseStream
 
 PROSE = (
     "In GK 4 darf der Fluchtweg höchstens **40 m** lang sein [1], gemessen bis zum Treppenhaus [2, 3].\n\n"

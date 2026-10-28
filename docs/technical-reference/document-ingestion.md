@@ -144,7 +144,7 @@ with no job gets a new one, a row whose job is dead is failed with its reason.
 
 ## Step 3: Python Ingest Route
 
-**File**: `apps/backend/src/aiq_api/routes/ingest.py` (moved from the deleted `packages/agent/src/aiq_agent/fastapi_extensions/` package on 2026-07-03)
+**File**: `apps/backend/src/agent_host/routes/ingest.py` (moved from the deleted `packages/agent/src/agent/fastapi_extensions/` package on 2026-07-03)
 
 ```python
 POST /v1/ingest
@@ -189,7 +189,7 @@ header (a release date carries no retrieval signal, and embedding an approver's
 name would shift every chunk of the document toward whoever signed it) and
 stored regardless, because retrieval reads them off `Chunk.metadata`.
 
-The names are spelled once, in `packages/agent/src/aiq_agent/common/provenance.py`, which is
+The names are spelled once, in `packages/agent/src/agent/common/provenance.py`, which is
 also what reads them back. Nothing is inferred: a document with no provenance is
 a human document, which is what every unmarked chunk already means. Only a
 published version is ever dispatched, so a draft has no chunks at all — see
@@ -257,7 +257,7 @@ Each file of a screened job gets `file_details[].screening` on its job status: `
 
 ### Fassungen across file names (ADR-0099)
 
-Two steps run per file after its summary row is written, on the same `summary_llm` (`packages/knowledge-layer/src/llamaindex/revisions.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `REVISION_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/revision` writes `superseded_by`.
+Two steps run per file after its summary row is written, on the same `summary_llm` (`packages/knowledge-layer/src/llamaindex/revisions.py`, the prompts and parsers in `agent/knowledge/document_revisions.py`). Both are bounded by `REVISION_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/revision` writes `superseded_by`.
 
 | The file's name is | Step | Stored on the file's own row |
 |---|---|---|
@@ -358,7 +358,7 @@ timing out halfway through a long PDF) takes those chunks back out:
 They are fresh node ids, so the kept version's chunks are never among them. Left in, they sat
 beside the kept version as part of a version nobody published.
 
-The lock (`keyed_lock` in `aiq_agent/knowledge/leader_lock.py`) is held from
+The lock (`keyed_lock` in `agent/knowledge/leader_lock.py`) is held from
 the find until the file is retired or discarded. Without it two jobs uploading
 one name at once both collected the same predecessor, both retired it, and both
 new versions stayed. With it the second job waits, finds the first job's new
@@ -372,7 +372,7 @@ is marked failed (it does not replace its predecessor unguarded across replicas)
 so the failed-ingestion rescan picks it up. An ingest worker on Postgres with no
 `LOCK_DB_URL` refuses to start.
 
-The base corpus (`packages/agent/src/aiq_agent/oib_sync.py`) relies on the same step: its ingest
+The base corpus (`packages/agent/src/agent/oib_sync.py`) relies on the same step: its ingest
 jobs run on the queue like any other and nothing deletes a file before it is ingested again.
 
 ### A document deleted while it indexed takes its chunks back out
@@ -581,7 +581,7 @@ list while the row is being read. Both send one request,
 forwards `POST /v1/documents/{job_id}/cancel` to the backend.
 
 The stop is expressed through the ingest claim, not a second control channel:
-`cancel` (`packages/agent/src/aiq_agent/common/claim_queue.py`) marks the job's queue row
+`cancel` (`packages/agent/src/agent/common/claim_queue.py`) marks the job's queue row
 `cancelled` — a terminal status that is never claimed again and is not counted
 by KEDA — and blanks its payload. A worker reading the file then finds its
 heartbeat refused (the lease renews only while the row is `claimed`) and stops
@@ -607,7 +607,7 @@ settle the job terminal `cancelled` (`settle_cancelled`,
 
 ### Which failures are read again
 
-A terminal job also says *why* each file failed (`aiq_agent/knowledge/ingest_failures.py`):
+A terminal job also says *why* each file failed (`agent/knowledge/ingest_failures.py`):
 `FileProgress.failure_category` and `retryable`, and the job's `reader_version`
 (`packages/knowledge-layer/src/reader_version.py`). Step 2 writes them onto the row
 (`ingest_failure_category`, `ingest_retryable`, `ingest_reader_version`, migration 0134),

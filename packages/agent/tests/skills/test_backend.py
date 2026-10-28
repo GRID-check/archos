@@ -13,15 +13,15 @@ from unittest import mock
 import pytest
 from deepagents.middleware.skills import SkillsMiddleware
 
-from aiq_agent.common import cache as shared_cache
-from aiq_agent.skills.backend import SkillsBackend
-from aiq_agent.skills.backend import skill_document
-from aiq_agent.skills.builtin import discover_builtin_skills
-from aiq_agent.skills.models import Skill
-from aiq_agent.skills.models import parse_skill_md
-from aiq_agent.skills.resolver import SkillResolver
-from aiq_agent.skills.resolver import _is_curated
-from aiq_agent.skills.runtime import SkillRuntime
+from agent.common import cache as shared_cache
+from agent.skills.backend import SkillsBackend
+from agent.skills.backend import skill_document
+from agent.skills.builtin import discover_builtin_skills
+from agent.skills.models import Skill
+from agent.skills.models import parse_skill_md
+from agent.skills.resolver import SkillResolver
+from agent.skills.resolver import _is_curated
+from agent.skills.runtime import SkillRuntime
 
 RICH = Skill(
     name="fire-safety",
@@ -118,7 +118,7 @@ class TestAMissSaysWhatExists:
     async def test_the_model_reads_it_through_read_file(self) -> None:
         from types import SimpleNamespace
 
-        from aiq_agent.tools.documents.tools import draft_tools
+        from agent.tools.documents.tools import draft_tools
 
         runtime = SkillRuntime.office((self._skill("building-class"),))
         (read,) = draft_tools(None, skills=runtime.backend)

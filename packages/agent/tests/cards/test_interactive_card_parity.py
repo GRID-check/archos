@@ -6,7 +6,7 @@ answer exists nowhere but in that click, so the frontend must persist it on the
 message. See ``docs/adr/0030-interactive-card-decisions-persist-on-the-message.md``.
 
 The classification is declared twice on purpose — once for the emission side
-(``aiq_agent.cards.catalog.INTERACTIVE_CARD_TYPES``) and once for the rendering
+(``agent.cards.catalog.INTERACTIVE_CARD_TYPES``) and once for the rendering
 side (``CARD_INTERACTIVITY`` in ``card-decision.ts``, whose exhaustive typing
 makes a NEW card type fail ``tsc`` until someone classifies it). These tests
 fail if the two ever disagree, so the obligation cannot be quietly dropped on
@@ -21,8 +21,8 @@ not have to run the frontend tests to learn what they owe.
 import re
 from pathlib import Path
 
-from aiq_agent.cards.catalog import INTERACTIVE_CARD_TYPES
-from aiq_agent.cards.models import GridCard
+from agent.cards.catalog import INTERACTIVE_CARD_TYPES
+from agent.cards.models import GridCard
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 TS_CARD_DECISION = REPO_ROOT / "apps" / "workspace" / "ui" / "features" / "grid-cards" / "card-decision.ts"

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.source_kinds import canonical_shelf_value
+from agent.common.source_kinds import canonical_shelf_value
 
 from .browse_text import _pages_label
 from .browse_text import _shorten

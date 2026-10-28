@@ -16,9 +16,9 @@ strings are emitted verbatim by backend code and are always English:
 
 | String | Source |
 | --- | --- |
-| Budget exhausted (`BudgetExceededError` default message) | `packages/agent/src/aiq_agent/common/cost_tracking.py` (~L82-88), turned into the refused turn's response by `packages/agent/src/aiq_agent/turn/admission.py` |
-| Job-cap / admission messages (`JobAdmissionError`) | `apps/backend/src/aiq_api/jobs/submit.py` (~L61-89) |
-| "No response generated." | `packages/agent/src/aiq_agent/turn/response.py` (`NO_RESPONSE_TEXT`) |
+| Budget exhausted (`BudgetExceededError` default message) | `packages/agent/src/agent/common/cost_tracking.py` (~L82-88), turned into the refused turn's response by `packages/agent/src/agent/turn/admission.py` |
+| Job-cap / admission messages (`JobAdmissionError`) | `apps/backend/src/agent_host/jobs/submit.py` (~L61-89) |
+| "No response generated." | `packages/agent/src/agent/turn/response.py` (`NO_RESPONSE_TEXT`) |
 
 These reach the user directly, without passing through any LLM, so no prompt
 change can localize them.
@@ -39,10 +39,10 @@ found that **no locale/language signal currently reaches the backend**:
   (TypeScript) route/BFF layer. There is no `locale` field in that payload
   today, and that layer is owned by other concurrent workstreams.
 - The backend reads these headers via `Context.get().metadata.headers.get(...)`
-  (see `packages/agent/src/aiq_agent/project_context.py`, `cost_tracking.py`). There is no
-  locale parsing anywhere in `packages/agent/src/aiq_agent` or `apps/backend`.
+  (see `packages/agent/src/agent/project_context.py`, `cost_tracking.py`). There is no
+  locale parsing anywhere in `packages/agent/src/agent` or `apps/backend`.
 - The async-job path (deep research) does **not** transparently forward
-  request headers. `apps/backend/src/aiq_api/jobs/agent_job_setup.py` manually
+  request headers. `apps/backend/src/agent_host/jobs/agent_job_setup.py` manually
   re-threads a **whitelist** of headers onto the reconstructed request
   (collection scope, project context, model overrides, budget). A new locale
   header would have to be added to that whitelist too, or async-job bubbles
@@ -74,16 +74,16 @@ decision rather than implemented ad hoc.
    `req.headers['x-grid-locale'] = result.data.locale` (a short BCP-47 tag,
    e.g. `de`, `en`). Absent header ⇒ default to `en` (fail-open).
 3. **Thread through async jobs.** Add `x-grid-locale` to the header whitelist
-   reconstructed in `apps/backend/src/aiq_api/jobs/agent_job_setup.py` (`_inject_scope_headers`) so deep-
+   reconstructed in `apps/backend/src/agent_host/jobs/agent_job_setup.py` (`_inject_scope_headers`) so deep-
    research/job bubbles localize consistently with chat.
 4. **Parse in one place.** Add a small helper next to the existing header
-   readers in `packages/agent/src/aiq_agent/project_context.py`, e.g.
+   readers in `packages/agent/src/agent/project_context.py`, e.g.
    `get_request_locale() -> str` returning a normalized 2-letter code with an
    `en` fallback. `submit.py` (which is upstream of the agent context) can read
    the header directly from its request.
 5. **Message-code table.** Replace the inline English literals above with a
    tiny message table keyed by message code and locale, e.g.
-   `packages/agent/src/aiq_agent/common/messages.py`:
+   `packages/agent/src/agent/common/messages.py`:
 
    ```python
    MESSAGES = {

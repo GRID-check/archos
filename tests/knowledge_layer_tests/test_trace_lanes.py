@@ -8,13 +8,13 @@ import pytest
 from knowledge_layer.search_results import format_results
 from knowledge_layer.trace_lanes import _trace_lanes_for_chunks
 
-from aiq_agent.common.wire_v2 import TraceLane
-from aiq_agent.common.wire_v2 import TraceLaneSource
+from agent.common.wire_v2 import TraceLane
+from agent.common.wire_v2 import TraceLaneSource
 
 
 @pytest.fixture(autouse=True)
 def _reset_retrieval_round():
-    from aiq_agent.common.turn_status import _retrieval_round
+    from agent.common.turn_status import _retrieval_round
 
     _retrieval_round.set(None)
     yield
@@ -106,7 +106,7 @@ def test_trace_lanes_omit_title_when_it_would_repeat_the_filename():
 
 def test_trace_lanes_sources_carry_the_retrieval_round():
     """The Herleitung assigns files by this stamp."""
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.turn_status import retrieval_round_scope
 
     with retrieval_round_scope(1):
         (lane,) = _trace_lanes_for_chunks(
@@ -117,10 +117,10 @@ def test_trace_lanes_sources_carry_the_retrieval_round():
 
 def test_emitted_hits_are_captured_for_the_per_round_ledger():
     """The ledger reads the capture, never the prose: same emission, both ships."""
-    from aiq_agent.common.turn_status import begin_lane_capture
-    from aiq_agent.common.turn_status import end_lane_capture
-    from aiq_agent.common.turn_status import get_lane_captures
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.turn_status import begin_lane_capture
+    from agent.common.turn_status import end_lane_capture
+    from agent.common.turn_status import get_lane_captures
+    from agent.common.turn_status import retrieval_round_scope
 
     token = begin_lane_capture()
     try:
@@ -139,9 +139,9 @@ def test_emitted_hits_are_captured_for_the_per_round_ledger():
 
 def test_a_search_result_is_one_sources_step_built_from_its_records(emitted):
     """Through the real producer: the step carries the lanes the records made, and the tool that ran."""
-    from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
-    from aiq_agent.common.turn_status import lane_tool_scope
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.tool_calls import READ_PASSAGE_TOOL
+    from agent.common.turn_status import lane_tool_scope
+    from agent.common.turn_status import retrieval_round_scope
 
     chunks = [_chunk(file_name="OIB-RL_4.pdf", page=3, collection="oib_knowledge")]
     with retrieval_round_scope(2), lane_tool_scope(READ_PASSAGE_TOOL):

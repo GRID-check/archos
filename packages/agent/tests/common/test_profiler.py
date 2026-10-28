@@ -9,11 +9,11 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common.profiler import AgentProfiler
-from aiq_agent.common.profiler import agent_profiler_var
-from aiq_agent.common.profiler import current_span_var
-from aiq_agent.common.profiler import profiled_node
-from aiq_agent.common.profiler import track_agent_profile
+from agent.common.profiler import AgentProfiler
+from agent.common.profiler import agent_profiler_var
+from agent.common.profiler import current_span_var
+from agent.common.profiler import profiled_node
+from agent.common.profiler import track_agent_profile
 
 
 class TestAgentProfilerSpans:
@@ -37,7 +37,7 @@ class TestAgentProfilerSpans:
         profiler.end_span(child_id, status="ok")
         profiler.end_span(root_id, status="ok")
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             profiler.flush(wait=True)
         payload = post.call_args.args[0]
         spans = {span["spanId"]: span for span in payload["spans"]}
@@ -48,7 +48,7 @@ class TestAgentProfilerSpans:
         profiler = self._profiler()
         span_id = profiler.start_span("llm", "vendor/model")
         profiler.end_span(span_id, status="error", error="boom")
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             profiler.flush(wait=True)
         span = post.call_args.args[0]["spans"][0]
         assert span["status"] == "error"
@@ -71,7 +71,7 @@ class TestAgentProfilerSpans:
         profiler = self._profiler()
         profiler.on_chat_model_start({}, [], run_id="A")
         profiler.on_llm_error(RuntimeError("rate limited"), run_id="A")
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             profiler.flush(wait=True)
         span = post.call_args.args[0]["spans"][0]
         assert span["status"] == "error"
@@ -87,7 +87,7 @@ class TestAgentProfilerSpans:
         profiler = self._profiler()
         span_id = profiler.start_span("node", "clarifier")
         profiler.end_span(span_id)
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             profiler.flush(wait=True)
         assert post.call_count == 1
         payload = post.call_args.args[0]
@@ -98,7 +98,7 @@ class TestAgentProfilerSpans:
 
     def test_flush_is_idempotent_when_empty(self):
         profiler = self._profiler()
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             profiler.flush(wait=True)
         assert post.call_count == 0
 
@@ -129,7 +129,7 @@ class TestProfiledNode:
             raise ValueError("node failed")
 
         wrapped = profiled_node("failing_node", fn)
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with pytest.raises(ValueError):
                 with track_agent_profile(agent_name="test_agent", identity={"organization_id": "org_1"}):
                     await wrapped()
@@ -154,7 +154,7 @@ class TestTrackAgentProfile:
         assert current_span_var.get() is None
 
     def test_flushes_root_span_on_exit(self):
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                 pass
         assert post.call_count == 1
@@ -168,7 +168,7 @@ class TestTrackAgentProfile:
         """A post-answer stage only knows its outcome once the block is done, so
         the metadata dict it hands in has to be read at teardown, not at open."""
         metadata = {"stage": "memory_reflection", "outcome": "pending"}
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(
                 agent_name="stage:memory_reflection",
                 identity={"organization_id": "org_1"},
@@ -192,9 +192,9 @@ class TestProfiledSpan:
     """Setup work that is not a graph node still gets a row in the waterfall."""
 
     def test_nests_under_the_root_span(self):
-        from aiq_agent.common.profiler import profiled_span
+        from agent.common.profiler import profiled_span
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                 with profiled_span("setup.project_context"):
                     pass
@@ -206,16 +206,16 @@ class TestProfiledSpan:
         assert setup["status"] == "ok"
 
     def test_noop_without_active_profiler(self):
-        from aiq_agent.common.profiler import profiled_span
+        from agent.common.profiler import profiled_span
 
         assert agent_profiler_var.get() is None
         with profiled_span("setup.project_context"):
             assert current_span_var.get() is None
 
     def test_records_the_error_and_propagates(self):
-        from aiq_agent.common.profiler import profiled_span
+        from agent.common.profiler import profiled_span
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with pytest.raises(ValueError):
                 with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                     with profiled_span("setup.ingest_wait"):
@@ -228,13 +228,13 @@ class TestProfiledSpan:
         so two concurrent spans both parent on the root, never on each other."""
         import asyncio
 
-        from aiq_agent.common.profiler import profiled_span
+        from agent.common.profiler import profiled_span
 
         async def branch(name: str):
             with profiled_span(name):
                 await asyncio.sleep(0)
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                 await asyncio.gather(branch("setup.a"), branch("setup.b"))
         spans = post.call_args.args[0]["spans"]
@@ -248,9 +248,9 @@ class TestCancellationStatus:
     async def test_profiled_span_marks_cancelled_not_error(self):
         import asyncio
 
-        from aiq_agent.common.profiler import profiled_span
+        from agent.common.profiler import profiled_span
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with pytest.raises(asyncio.CancelledError):
                 with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                     with profiled_span("setup.project_context"):
@@ -266,7 +266,7 @@ class TestCancellationStatus:
             raise asyncio.CancelledError()
 
         wrapped = profiled_node("cancelled_node", fn)
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with pytest.raises(asyncio.CancelledError):
                 with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                     await wrapped()
@@ -275,9 +275,9 @@ class TestCancellationStatus:
         assert node["errorMessage"] is None
 
     def test_generator_exit_is_not_marked_error(self):
-        from aiq_agent.common.profiler import profiled_span
+        from agent.common.profiler import profiled_span
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with pytest.raises(GeneratorExit):
                 with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                     with profiled_span("setup.ingest_wait"):
@@ -293,9 +293,9 @@ class TestCancellationStatus:
 
     @pytest.mark.parametrize("exc", [KeyboardInterrupt, SystemExit], ids=["keyboard-interrupt", "system-exit"])
     def test_a_non_exception_unwind_still_closes_the_span(self, exc):
-        from aiq_agent.common.profiler import profiled_span
+        from agent.common.profiler import profiled_span
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with pytest.raises(exc):
                 with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                     with profiled_span("setup.ingest_wait"):
@@ -309,7 +309,7 @@ class TestDeferredFlush:
     between the finished answer and its first delta."""
 
     def test_inline_flush_false_leaves_the_batch_pending(self):
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(
                 agent_name="chat_researcher", identity={"organization_id": "org_1"}, inline_flush=False
             ) as profiler:
@@ -320,11 +320,11 @@ class TestDeferredFlush:
         assert post.call_count == 1
 
     def test_flush_without_wait_returns_the_workers_future(self):
-        from aiq_agent.common.profiler import _flush_executor
+        from agent.common.profiler import _flush_executor
 
         profiler = AgentProfiler(organization_id="org_1", conversation_id="conv_1", turn_id="turn_1")
         profiler.end_span(profiler.start_span("node", "x"))
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             future = profiler.flush(wait=False)
             assert future is not None
             future.result(timeout=5)
@@ -335,8 +335,8 @@ class TestDeferredFlush:
     async def test_flush_after_answer_posts_every_ledger_off_the_loop(self):
         import threading
 
-        from aiq_agent.common.cost_tracking import track_llm_costs
-        from aiq_agent.common.profiler import flush_after_answer
+        from agent.common.cost_tracking import track_llm_costs
+        from agent.common.profiler import flush_after_answer
 
         loop_thread = threading.current_thread().name
         posting_threads: list[str] = []
@@ -345,8 +345,8 @@ class TestDeferredFlush:
             posting_threads.append(threading.current_thread().name)
 
         with (
-            patch("aiq_agent.common.profiler._post_profiler_spans", side_effect=record),
-            patch("aiq_agent.common.cost_tracking._post_usage_events", side_effect=record),
+            patch("agent.common.profiler._post_profiler_spans", side_effect=record),
+            patch("agent.common.cost_tracking._post_usage_events", side_effect=record),
         ):
             with (
                 track_agent_profile(
@@ -362,7 +362,7 @@ class TestDeferredFlush:
         assert posting_threads[0] != loop_thread
 
     async def test_flush_after_answer_tolerates_nothing_to_post(self):
-        from aiq_agent.common.profiler import flush_after_answer
+        from agent.common.profiler import flush_after_answer
 
         await flush_after_answer(None, None)
 
@@ -370,9 +370,9 @@ class TestDeferredFlush:
         """Per-turn dollars finalize with the ledgers: the tracker in, a rollup out."""
         from unittest.mock import patch
 
-        from aiq_agent.common.cost_tracking import GridCostTracker
-        from aiq_agent.common.cost_tracking import UsageEvent
-        from aiq_agent.common.profiler import flush_after_answer
+        from agent.common.cost_tracking import GridCostTracker
+        from agent.common.cost_tracking import UsageEvent
+        from agent.common.profiler import flush_after_answer
 
         tracker = GridCostTracker(organization_id="org_1")
         tracker.record(
@@ -391,9 +391,9 @@ class TestDeferredFlush:
             )
         )
         with (
-            patch("aiq_agent.common.cost_tracking._post_usage_events"),
+            patch("agent.common.cost_tracking._post_usage_events"),
             patch(
-                "aiq_agent.observability.usage_rollup.record_usage_turn",
+                "agent.observability.usage_rollup.record_usage_turn",
                 return_value={"rollup": {}},
             ) as record,
         ):
@@ -407,14 +407,14 @@ class TestDeferredFlush:
         """Telemetry must never take the turn down — not even the usage rollup."""
         from unittest.mock import patch
 
-        from aiq_agent.common.cost_tracking import GridCostTracker
-        from aiq_agent.common.profiler import flush_after_answer
+        from agent.common.cost_tracking import GridCostTracker
+        from agent.common.profiler import flush_after_answer
 
         tracker = GridCostTracker(organization_id="org_1")
         with (
-            patch("aiq_agent.common.cost_tracking._post_usage_events"),
+            patch("agent.common.cost_tracking._post_usage_events"),
             patch(
-                "aiq_agent.observability.usage_rollup.record_usage_turn",
+                "agent.observability.usage_rollup.record_usage_turn",
                 side_effect=RuntimeError("trace store is gone"),
             ),
         ):
@@ -425,10 +425,10 @@ class TestAnnotateCurrentSpan:
     """A TTL-cached reader says whether it hit, on the span that was open."""
 
     def test_facts_land_on_the_innermost_open_span(self):
-        from aiq_agent.common.profiler import annotate_current_span
-        from aiq_agent.common.profiler import profiled_span
+        from agent.common.profiler import annotate_current_span
+        from agent.common.profiler import profiled_span
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                 with profiled_span("setup.project_context"):
                     annotate_current_span(cache_model_config="miss")
@@ -440,7 +440,7 @@ class TestAnnotateCurrentSpan:
         assert root["metadata"] is None
 
     def test_noop_without_a_profiler(self):
-        from aiq_agent.common.profiler import annotate_current_span
+        from agent.common.profiler import annotate_current_span
 
         assert agent_profiler_var.get() is None
         annotate_current_span(cache_model_config="miss")  # must not raise
@@ -448,9 +448,9 @@ class TestAnnotateCurrentSpan:
     async def test_a_reader_on_a_worker_thread_still_reaches_the_turn_span(self):
         import asyncio
 
-        from aiq_agent.common.profiler import annotate_current_span
+        from agent.common.profiler import annotate_current_span
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                 await asyncio.to_thread(annotate_current_span, cache_model_config="hit")
         root = next(s for s in post.call_args.args[0]["spans"] if s["kind"] == "turn")
@@ -468,11 +468,11 @@ class TestTheRootSpanCarriesTheCacheCounters:
         return post.call_args.args[0]["spans"][0]
 
     def test_a_turn_that_read_the_cache_reports_hits_and_misses(self, monkeypatch):
-        from aiq_agent.common import cache
+        from agent.common import cache
 
         monkeypatch.delenv("REDIS_URL", raising=False)
         cache.reset_local_store()
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                 cache.get_json("cold")
                 cache.set_json("warm", {"a": 1}, ttl_seconds=60)
@@ -482,7 +482,7 @@ class TestTheRootSpanCarriesTheCacheCounters:
         assert metadata["cache_local_misses"] == 1
 
     def test_a_turn_that_never_touched_the_cache_says_nothing_about_it(self):
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                 pass
         assert not self._span(post)["metadata"]
@@ -490,11 +490,11 @@ class TestTheRootSpanCarriesTheCacheCounters:
     def test_two_turns_do_not_count_each_other(self, monkeypatch):
         """One replica answers several turns at once; the scope is a ContextVar
         so a turn's row is its own traffic, not the replica's."""
-        from aiq_agent.common import cache
+        from agent.common import cache
 
         monkeypatch.delenv("REDIS_URL", raising=False)
         cache.reset_local_store()
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
                 cache.get_json("a")
                 cache.get_json("b")

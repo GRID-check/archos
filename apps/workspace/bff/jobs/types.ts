@@ -29,7 +29,7 @@ export const MAX_JOB_NAME_LENGTH = 200
 /**
  * The longest prompt one agent run can be submitted with: the backend's ceiling
  * on the composed `input` (`SUBMIT_INPUT_MAX_CHARS` in
- * `apps/backend/src/aiq_api/routes/skills.py`), which answers anything
+ * `apps/backend/src/agent_host/routes/skills.py`), which answers anything
  * longer with a 422. Every budget a composed prompt is cut to derives from this
  * one number; `test_skill_submit.py` fails when the two sides disagree.
  *

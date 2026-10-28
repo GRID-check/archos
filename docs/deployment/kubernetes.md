@@ -1133,7 +1133,7 @@ The token-heavy workload (deep research) now scales out:
 
 - **Research runs on DB-claimed workers** (ADR-0021): submission writes a
   `SUBMITTED` `job_info` row and enqueues a claimable `research_job_queue` row
-  (`apps/backend/src/aiq_api/jobs/queue.py`); dedicated **`agent-worker`**
+  (`apps/backend/src/agent_host/jobs/queue.py`); dedicated **`agent-worker`**
   replicas (same image, `PROCESS_ROLE=worker`) claim rows with `FOR UPDATE SKIP
   LOCKED`, run the same `run_agent_job` body, and heartbeat the claim so a crash
   is reclaimed. The claim is fair (below) and KEDA scales the tier on the queue,
@@ -1412,7 +1412,7 @@ without waiting on a chat turn. What follows is the `aiq-agent` chat tier.
 
 The api tier's work mostly waits on model calls and SSE streams, so CPU can stay
 low while it is saturated. `grid.http.requests_in_flight{role="api",kind="request"}`
-(`apps/backend/src/aiq_api/inflight.py`) is the candidate scaling signal: the
+(`apps/backend/src/agent_host/inflight.py`) is the candidate scaling signal: the
 requests a replica is serving now. Job SSE streams are counted apart as
 `kind="stream"`, since a research run keeps one open for its whole length. The api
 HPA stays on CPU until a week of readings shows how in-flight requests and CPU
@@ -1424,7 +1424,7 @@ In `db` mode the `aiq-agent` chat tier now runs `backendReplicas` replicas
 - **Vectors** are shared (Qdrant, §6.3); **job/checkpoint state** is in
   Postgres; **caches + citation registry** are in Dragonfly.
 - **Ingestion status is persisted** to a shared `ingest_jobs` table
-  (`packages/agent/src/aiq_agent/knowledge/ingest_status_store.py`), so a
+  (`packages/agent/src/agent/knowledge/ingest_status_store.py`), so a
   `GET /v1/documents/{job_id}/status` poll resolves from any replica instead of
   404-ing on the replica that didn't accept the upload. The job itself runs
   on the accepting replica, which stamps itself as the row's `owner` and
@@ -1463,11 +1463,11 @@ ingestion in the web process. See [`oib-sync.md`](../technical-reference/oib-syn
 tier). The old `data-aiq-agent-*` claims are retained by Kubernetes and nothing
 the new pods mount them. A one-shot `legacy-corpus-import` Job carried the
 corpus off `data-aiq-agent-0` into the corpus store
-(`aiq_agent.legacy_corpus_import`). It ran on staging and on production
+(`agent.legacy_corpus_import`). It ran on staging and on production
 (2026-10-11) and has been removed from this program with its
 `grid-oib:legacyCorpusClaim` key. A stack that still holds a pre-A2 claim
 runs the importer by hand, from a pod that mounts the claim read-only:
-`python -m aiq_agent.legacy_corpus_import <mount>`. Deleting the old
+`python -m agent.legacy_corpus_import <mount>`. Deleting the old
 `data-aiq-agent-*` claims stays an operator step, once the knowledge view lists
 the corpus.
 
@@ -1692,7 +1692,7 @@ reasoning; the tier modules only pick a profile.
 | `terminationGracePeriodSeconds: 30` | SIGKILL mid-drain | per-tier grace budgets, and for research workers an operator knob (below) |
 
 **The one that mattered most.** The research worker stops claiming on SIGTERM
-and then *awaits its in-flight jobs* (`aiq_api/jobs/worker.py`). Deep-research
+and then *awaits its in-flight jobs* (`agent_host/jobs/worker.py`). Deep-research
 runs take minutes, so the 30s default killed them — every deploy, every node
 drain, silently. `grid-oib:agentWorkerDrainSeconds` (default 600, staging 180)
 is now that budget, and the pod's grace period is that plus 30 s to give back
@@ -2073,14 +2073,14 @@ the binary).
 backend-chat and grid-agent-worker (NAT tracing exporter); the BFF registers
 no trace provider (below); logs from all five tiers - the Python tiers via the
 `otelcollector_logs` NAT logging method
-(`packages/agent/src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
+(`packages/agent/src/agent/observability/otlp_logging_method.py`, attaches to the root
 logger) and the Node tiers (grid-ui, skill-scheduler, purger) via the
 `apps/workspace/observability/otel-logs.js` console bridge. **Metrics, every
 one of them, to PostHog Metrics** ([ADR-0119](../adr/0119-every-metric-goes-to-posthog-through-the-collector.md),
 [`observability/metrics.md`](../observability/metrics.md) for the catalogue):
 
 - *The application meters.* Every Python process installs one meter provider,
-  once (`packages/agent/src/aiq_agent/observability/otlp_metrics.py`), so the `grid.queue.*`,
+  once (`packages/agent/src/agent/observability/otlp_metrics.py`), so the `grid.queue.*`,
   `grid.provider.*` and `grid.boot.*` instruments report; the Node tiers
   install theirs at start (`apps/workspace/observability/otel-metrics.js`) with
   event loop delay and memory, and the gateway in `server.js` records

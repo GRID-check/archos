@@ -1,4 +1,4 @@
-"""Tests for request-context header getters in aiq_agent.project_context."""
+"""Tests for request-context header getters in agent.project_context."""
 
 import base64
 import json
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent import project_context as pc
+from agent import project_context as pc
 
 FIXTURE_PATH = (
     Path(__file__).resolve().parents[3] / "apps" / "workspace" / "tests" / "fixtures" / "grid_request_context.json"
@@ -172,7 +172,7 @@ class TestGridRequestContextFromContext:
         """A blank name authorizes nothing, so it is skipped — and the payload
         around it survives. Emitting ``""`` here would put an entry in
         ``collection_scope`` that the resolver
-        (``aiq_agent.knowledge.scoping._parse_scope_payload``) skips, which is
+        (``agent.knowledge.scoping._parse_scope_payload``) skips, which is
         exactly the seam disagreement this rule removes.
         """
         scope = [{"collection": "proj_proj_1", "shelf": "project"}, {"collection": "  "}, ""]
@@ -299,7 +299,7 @@ class TestGridRequestContextEnvelopeContractFixture:
 class TestGridRequestContextFromEnvelope:
     """Unit tests for `GridRequestContext.from_envelope` — the single
     verify+parse function the enforcement middleware in
-    `aiq_api.context_envelope` and `from_context`/`from_headers` (envelope
+    `agent_host.context_envelope` and `from_context`/`from_headers` (envelope
     precedence) all delegate to.
     """
 
@@ -348,7 +348,7 @@ class TestGridRequestContextFromEnvelope:
     def test_tamper_logs_a_warning(self, caplog):
         header, sig = self._envelope({"organizationId": "org_1"})
         tampered_sig = ("0" if sig[0] != "0" else "1") + sig[1:]
-        with caplog.at_level("WARNING", logger="aiq_agent.project_context"):
+        with caplog.at_level("WARNING", logger="agent.project_context"):
             pc.GridRequestContext.from_envelope(header, tampered_sig, self.SECRET)
         assert any("signature" in record.message.lower() for record in caplog.records)
 
@@ -550,7 +550,7 @@ class TestFederalStateField:
 
     def test_unknown_token_treated_as_absent(self, caplog):
         header, sig = self._envelope({"organizationId": "org_1", "federalState": "atlantis"})
-        with caplog.at_level("DEBUG", logger="aiq_agent.project_context"):
+        with caplog.at_level("DEBUG", logger="agent.project_context"):
             ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.federal_state is None

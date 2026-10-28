@@ -39,8 +39,8 @@ def capabilities() -> dict[str, dict]:
 
 
 def _canvas_tools() -> set[str]:
-    from aiq_agent.tools.canvas.register import DESCRIPTIONS
-    from aiq_agent.tools.canvas.register import GROUP
+    from agent.tools.canvas.register import DESCRIPTIONS
+    from agent.tools.canvas.register import GROUP
 
     return {f"{GROUP}__{member}" for member in DESCRIPTIONS} | set(STANDALONE_TOOLS)
 
@@ -71,7 +71,7 @@ def test_a_named_step_kind_exists_on_the_wire(capabilities: dict[str, dict]) -> 
     """A rendering's step is a real Herleitung step kind; a gap's is the one its slice will add."""
     from pydantic import TypeAdapter
 
-    from aiq_agent.common.wire_v2 import Step
+    from agent.common.wire_v2 import Step
 
     schema = TypeAdapter(Step).json_schema()
     wire_kinds = set(schema["discriminator"]["mapping"])

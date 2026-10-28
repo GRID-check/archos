@@ -7,9 +7,9 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common.callbacks import ResearchLogger
-from aiq_agent.common.callbacks import VerboseTraceCallback
-from aiq_agent.common.callbacks import is_verbose_enabled
+from agent.common.callbacks import ResearchLogger
+from agent.common.callbacks import VerboseTraceCallback
+from agent.common.callbacks import is_verbose_enabled
 
 
 class TestIsVerboseEnabled:
@@ -324,7 +324,7 @@ class TestVerboseTraceCallback:
             InputArgsSchema.model_validate({"page": ""})
         callback = VerboseTraceCallback()
         callback.on_tool_start(serialized={"name": "ris_search"}, input_str="{}", run_id="r1")
-        with caplog.at_level(logging.WARNING, logger="aiq_agent.common.callbacks"):
+        with caplog.at_level(logging.WARNING, logger="agent.common.callbacks"):
             callback.on_tool_error(error=refused.value, run_id="r1")
         (record,) = caplog.records
         assert record.levelno == logging.WARNING
@@ -333,7 +333,7 @@ class TestVerboseTraceCallback:
     def test_a_tool_that_raised_is_still_an_error(self, caplog):
         callback = VerboseTraceCallback()
         callback.on_tool_start(serialized={"name": "ris_search"}, input_str="{}", run_id="r2")
-        with caplog.at_level(logging.WARNING, logger="aiq_agent.common.callbacks"):
+        with caplog.at_level(logging.WARNING, logger="agent.common.callbacks"):
             callback.on_tool_error(error=RuntimeError("RIS unreachable"), run_id="r2")
         (record,) = caplog.records
         assert record.levelno == logging.ERROR

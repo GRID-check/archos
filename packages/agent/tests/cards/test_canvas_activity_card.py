@@ -9,14 +9,14 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from aiq_agent.cards.canvas_activity_card import MAX_CANVAS_ACTIVITY_ITEMS
-from aiq_agent.cards.catalog import INTERACTIVE_CARD_TYPES
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.tools.canvas.cards import record_canvas_activity
+from agent.cards.canvas_activity_card import MAX_CANVAS_ACTIVITY_ITEMS
+from agent.cards.catalog import INTERACTIVE_CARD_TYPES
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.tools.canvas.cards import record_canvas_activity
 
 DOCUMENT = {"id": "11111111-0000-4000-8000-000000000001", "name": "Grundriss_EG.pdf"}
 OTHER = {"id": "22222222-0000-4000-8000-000000000002", "name": "Grundriss_OG.pdf"}

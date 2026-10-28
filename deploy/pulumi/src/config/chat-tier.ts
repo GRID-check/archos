@@ -89,7 +89,7 @@ export interface AgentWorkerConfig {
    *
    * This is the single most consequential rollout knob in the stack. On
    * SIGTERM the worker stops claiming and awaits its in-flight jobs
-   * (`aiq_api/jobs/worker.py`); Kubernetes' 30s default kills that drain
+   * (`agent_host/jobs/worker.py`); Kubernetes' 30s default kills that drain
    * part-way. A job still running when the budget ends is given back to the
    * queue without costing an attempt and another worker starts it over, so the
    * budget now decides how much work is repeated, not whether any is lost. Set

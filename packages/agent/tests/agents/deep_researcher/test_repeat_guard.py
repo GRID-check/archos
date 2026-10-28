@@ -20,9 +20,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.agents.deep_researcher.models import ResearchQuery
-from aiq_agent.agents.deep_researcher.tools.research import RetrievalRounds
-from aiq_agent.agents.deep_researcher.tools.research import build_research_batch_tool
+from agent.agents.deep_researcher.models import ResearchQuery
+from agent.agents.deep_researcher.tools.research import RetrievalRounds
+from agent.agents.deep_researcher.tools.research import build_research_batch_tool
 
 
 def _query(text: str, *, tool: str = "knowledge_search", rationale: str = "coverage") -> ResearchQuery:

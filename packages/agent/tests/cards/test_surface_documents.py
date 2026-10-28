@@ -3,21 +3,21 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.surface_documents import _BRIEF_SNIPPET_MAX
-from aiq_agent.cards.surface_documents import _CHUNK_TOP_K
-from aiq_agent.cards.surface_documents import _TOOL_DESCRIPTION
-from aiq_agent.cards.surface_documents import MAX_SURFACED_FILES
-from aiq_agent.cards.surface_documents import MIN_SURFACE_SCORE
-from aiq_agent.cards.surface_documents import SurfaceDocumentsConfig
-from aiq_agent.cards.surface_documents import _aggregate_surfaced
-from aiq_agent.cards.surface_documents import _briefing_for_agent
-from aiq_agent.cards.surface_documents import _filename_mentioned_in_query
-from aiq_agent.cards.surface_documents import _match_known_filename
-from aiq_agent.cards.surface_documents import _source_for_collection
-from aiq_agent.cards.surface_documents import _source_for_target
-from aiq_agent.cards.surface_documents import _target_collections
-from aiq_agent.cards.surface_documents import surface_documents
+from agent.cards.models import grid_card_adapter
+from agent.cards.surface_documents import _BRIEF_SNIPPET_MAX
+from agent.cards.surface_documents import _CHUNK_TOP_K
+from agent.cards.surface_documents import _TOOL_DESCRIPTION
+from agent.cards.surface_documents import MAX_SURFACED_FILES
+from agent.cards.surface_documents import MIN_SURFACE_SCORE
+from agent.cards.surface_documents import SurfaceDocumentsConfig
+from agent.cards.surface_documents import _aggregate_surfaced
+from agent.cards.surface_documents import _briefing_for_agent
+from agent.cards.surface_documents import _filename_mentioned_in_query
+from agent.cards.surface_documents import _match_known_filename
+from agent.cards.surface_documents import _source_for_collection
+from agent.cards.surface_documents import _source_for_target
+from agent.cards.surface_documents import _target_collections
+from agent.cards.surface_documents import surface_documents
 
 
 def _chunk(file_name, score, content="passage", page=1):
@@ -52,8 +52,8 @@ class TestTargetCollections:
 
     def test_a_restricted_folders_collection_is_never_listed(self):
         """ADR-0088: listing is not use; a card naming its files would skip the admission."""
-        from aiq_agent.common.source_kinds import Shelf
-        from aiq_agent.knowledge.scoping import ScopedCollection
+        from agent.common.source_kinds import Shelf
+        from agent.knowledge.scoping import ScopedCollection
 
         scope = ["proj_a", "proj_a_r0123456789ab", "archiv_o"]
         assert _target_collections(scope) == ["proj_a", "archiv_o"]
@@ -72,8 +72,8 @@ class TestTargetCollections:
         assert _target_collections(scope, shelf="project") == ["proj_a"]
 
     def test_scoped_entries_use_the_stated_shelf_not_the_name(self):
-        from aiq_agent.common.source_kinds import Shelf
-        from aiq_agent.knowledge.scoping import ScopedCollection
+        from agent.common.source_kinds import Shelf
+        from agent.knowledge.scoping import ScopedCollection
 
         scoped = [
             ScopedCollection("custom_project_store", Shelf.PROJECT),
@@ -208,7 +208,7 @@ class TestDocumentGridCardSchema:
             grid_card_adapter.validate_python(card)
 
     def test_validate_cards_drops_model_fabricated_system_cards(self):
-        from aiq_agent.cards.models import validate_cards
+        from agent.cards.models import validate_cards
 
         raw = [
             {"type": "ifc_model_picker", "title": "ok"},
@@ -221,7 +221,7 @@ class TestDocumentGridCardSchema:
 
 class TestPlatformCounts:
     def _make_env(self, monkeypatch, names=("plan.pdf", "schnitt.pdf", "ansicht.pdf")):
-        import aiq_agent.cards.surface_documents as surface_module
+        import agent.cards.surface_documents as surface_module
 
         chunks = [_chunk(name, 0.9 - i * 0.02, content=name) for i, name in enumerate(names)]
         retriever = SimpleNamespace(calls=[], chunks=chunks)
@@ -236,9 +236,9 @@ class TestPlatformCounts:
         async def fake_meta(_collections):
             return {name: {"summary": name, "tags": []} for name in names}
 
-        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_collection_scope_from_context", lambda: ["proj_test"])
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
-        monkeypatch.setattr("aiq_agent.cards.registry.get_card_registry", lambda: registry)
+        monkeypatch.setattr("agent.knowledge.scoping.get_collection_scope_from_context", lambda: ["proj_test"])
+        monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: retriever)
+        monkeypatch.setattr("agent.cards.registry.get_card_registry", lambda: registry)
         monkeypatch.setattr(surface_module, "_fetch_document_metadata", fake_meta)
         return retriever, registry
 
@@ -261,7 +261,7 @@ class TestPlatformCounts:
         layer drew as a search that found nothing. The file put on screen is
         that document, on the shelf it came from.
         """
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         self._make_env(monkeypatch)
         token = turn_status.begin_lane_capture()
@@ -301,7 +301,7 @@ class TestPlatformCounts:
         def fake_get(key, fallback):
             return {"surface.chunk_top_k": 6, "surface.max_files": 1}[key]
 
-        monkeypatch.setattr("aiq_agent.common.retrieval_settings.get_retrieval_setting", fake_get)
+        monkeypatch.setattr("agent.common.retrieval_settings.get_retrieval_setting", fake_get)
         retriever, registry = self._make_env(monkeypatch)
 
         async with surface_documents(SurfaceDocumentsConfig(), MagicMock()) as info:
@@ -313,7 +313,7 @@ class TestPlatformCounts:
         assert len(card["documents"]) == 1
 
     async def test_bff_outage_falls_back_to_constants(self, monkeypatch):
-        from aiq_agent.common import retrieval_settings
+        from agent.common import retrieval_settings
 
         def boom():
             raise RuntimeError("BFF unreachable")
@@ -497,8 +497,8 @@ class TestBrowseThroughWorkspaceSearch:
         return {"sections": {"document": {"hits": hits, "total": len(hits) if total is None else total}}}
 
     def _make_env(self, monkeypatch, answers):
-        import aiq_agent.cards.surface_documents as surface_module
-        from aiq_agent.common.source_kinds import Shelf
+        import agent.cards.surface_documents as surface_module
+        from agent.common.source_kinds import Shelf
 
         calls = []
 
@@ -522,12 +522,12 @@ class TestBrowseThroughWorkspaceSearch:
             SimpleNamespace(collection="proj_test", shelf=Shelf.PROJECT),
             SimpleNamespace(collection="archiv_o", shelf=Shelf.OFFICE_SHELF),
         ]
-        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scoped)
-        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_collection_scope_from_context", lambda: None)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
-        monkeypatch.setattr("aiq_agent.cards.registry.get_card_registry", lambda: registry)
-        monkeypatch.setattr("aiq_agent.project_context.get_project_id_from_context", lambda: self.PROJECT_ID)
-        monkeypatch.setattr("aiq_agent.tools.workspace.register.read_operation", read_operation)
+        monkeypatch.setattr("agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scoped)
+        monkeypatch.setattr("agent.knowledge.scoping.get_collection_scope_from_context", lambda: None)
+        monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: retriever)
+        monkeypatch.setattr("agent.cards.registry.get_card_registry", lambda: registry)
+        monkeypatch.setattr("agent.project_context.get_project_id_from_context", lambda: self.PROJECT_ID)
+        monkeypatch.setattr("agent.tools.workspace.register.read_operation", read_operation)
         monkeypatch.setattr(surface_module, "_fetch_document_metadata", fake_meta)
         return calls, retriever, registry
 

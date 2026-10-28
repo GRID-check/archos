@@ -7,10 +7,10 @@ sources off those source lines, and picks the closest cited passage
 
 from __future__ import annotations
 
-from aiq_agent.citations import quote_verification
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.quote_verification import verify_quoted_spans
-from aiq_agent.citations.registry import SourceRegistry
+from agent.citations import quote_verification
+from agent.citations.entries import SourceEntry
+from agent.citations.quote_verification import verify_quoted_spans
+from agent.citations.registry import SourceRegistry
 
 PASSAGE = (
     "Vorher steht ein Satz über Geländer und Brüstungen. Die lichte Durchgangshöhe von Treppen muss "

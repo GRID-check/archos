@@ -20,22 +20,22 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphRecursionError
 
-from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-from aiq_agent.agents.deep_researcher.custom_middleware import _evictions
-from aiq_agent.agents.deep_researcher.cutoff import classify_cutoff
-from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
-from aiq_agent.agents.deep_researcher.finalize import _apply_renumbering
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.agents.deep_researcher.tools.research import _batch_failure_message
-from aiq_agent.agents.deep_researcher.tools.research import _largest_string_leaf
-from aiq_agent.agents.deep_researcher.tools.source_registry import dedupe_sources
-from aiq_agent.agents.deep_researcher.tools.source_registry import render_source_list
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.turn_notices import CUTOFF_RUN_BUDGET
-from aiq_agent.common.turn_notices import CUTOFF_STEP_LIMIT
-from aiq_agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
-from aiq_agent.common.turn_notices import CUTOFF_WALL_CLOCK
+from agent.agents.deep_researcher.agent import DeepResearcherAgent
+from agent.agents.deep_researcher.custom_middleware import _evictions
+from agent.agents.deep_researcher.cutoff import classify_cutoff
+from agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
+from agent.agents.deep_researcher.finalize import _apply_renumbering
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.deep_researcher.tools.research import _batch_failure_message
+from agent.agents.deep_researcher.tools.research import _largest_string_leaf
+from agent.agents.deep_researcher.tools.source_registry import dedupe_sources
+from agent.agents.deep_researcher.tools.source_registry import render_source_list
+from agent.citations.entries import SourceEntry
+from agent.common.budget_guard import RunBudgetExceededError
+from agent.common.turn_notices import CUTOFF_RUN_BUDGET
+from agent.common.turn_notices import CUTOFF_STEP_LIMIT
+from agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
+from agent.common.turn_notices import CUTOFF_WALL_CLOCK
 
 
 @pytest.mark.asyncio
@@ -50,7 +50,7 @@ async def test_the_skill_resolver_never_runs_on_the_event_loop_thread():
         return ()
 
     state = DeepResearchAgentState(messages=[HumanMessage(content="q")], organization_id="org-1")
-    with patch("aiq_agent.agents.deep_researcher.agent.resolve_served_skills", side_effect=_resolver):
+    with patch("agent.agents.deep_researcher.agent.resolve_served_skills", side_effect=_resolver):
         owner = SimpleNamespace(deepagents_runtime=DeepAgentsRuntime())
         runtime = await DeepResearcherAgent._build_skill_runtime(owner, state)  # type: ignore[arg-type]
 
@@ -122,7 +122,7 @@ def test_dedupe_sources_keys_urls_and_citation_keys_once():
 def test_render_source_list_raises_on_a_broken_template_instead_of_claiming_no_sources():
     entries = [SourceEntry(url="https://example.com/a", title="A")]
     with patch(
-        "aiq_agent.agents.deep_researcher.tools.source_registry._source_registry_template",
+        "agent.agents.deep_researcher.tools.source_registry._source_registry_template",
         MagicMock(side_effect=OSError("gone")),
     ):
         with pytest.raises(OSError):

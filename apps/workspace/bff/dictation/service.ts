@@ -2,7 +2,7 @@
  * Voice dictation, server side: one recording in, the composer's text out.
  *
  * The BFF owns who may dictate and how much; the Python route
- * (`apps/backend/src/aiq_api/routes/dictation.py`) owns the provider call,
+ * (`apps/backend/src/agent_host/routes/dictation.py`) owns the provider call,
  * because that is where the organization's credential, its data policy and the
  * provider limiter already live. Nothing here touches a budget: dictation is
  * booked on the ledger by the backend as an unbilled activity, and the

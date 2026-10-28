@@ -12,12 +12,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from aiq_agent.cards.catalog import INTERACTIVE_CARD_TYPES
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.look_card import MAX_LOOK_ITEMS
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.models import validate_cards
-from aiq_agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
+from agent.cards.catalog import INTERACTIVE_CARD_TYPES
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.look_card import MAX_LOOK_ITEMS
+from agent.cards.models import grid_card_adapter
+from agent.cards.models import validate_cards
+from agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
 
 DOCUMENT = {"id": "11111111-0000-4000-8000-000000000001", "name": "Grundriss_EG.pdf"}
 REGION = {"page": 2, "scope": "region", "region": [0.6, 0.0, 0.4, 0.3], "where": "oben rechts"}

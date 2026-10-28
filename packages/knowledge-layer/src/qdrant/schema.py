@@ -29,8 +29,8 @@ from typing import Any
 from qdrant_client import QdrantClient
 from qdrant_client import models
 
-from aiq_agent.common.source_kinds import OFFICE_SHELF_COLLECTION_PREFIXES
-from aiq_agent.knowledge.base import READING_ORDER
+from agent.common.source_kinds import OFFICE_SHELF_COLLECTION_PREFIXES
+from agent.knowledge.base import READING_ORDER
 
 from .config import replication_factor
 from .config import shard_number

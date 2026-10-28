@@ -7,11 +7,11 @@ import inspect
 import pytest
 from sqlalchemy import text
 
-from aiq_api.jobs import agent_job
-from aiq_api.jobs import queue
-from aiq_api.jobs.event_store import EventStore
-from aiq_api.jobs.runner import _purge_deep_checkpoint
-from aiq_api.jobs.runner import _purge_deep_checkpoint_unless_reclaimed
+from agent_host.jobs import agent_job
+from agent_host.jobs import queue
+from agent_host.jobs.event_store import EventStore
+from agent_host.jobs.runner import _purge_deep_checkpoint
+from agent_host.jobs.runner import _purge_deep_checkpoint_unless_reclaimed
 
 _TABLES = ("checkpoints", "checkpoint_blobs", "checkpoint_writes")
 

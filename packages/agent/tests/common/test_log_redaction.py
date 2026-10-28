@@ -18,10 +18,10 @@ import logging
 
 import pytest
 
-from aiq_agent.common.log_redaction import PRESIGNED_REDACTED
-from aiq_agent.common.log_redaction import PresignedUrlFilter
-from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
-from aiq_agent.common.log_redaction import scrub_presigned_urls
+from agent.common.log_redaction import PRESIGNED_REDACTED
+from agent.common.log_redaction import PresignedUrlFilter
+from agent.common.log_redaction import install_presigned_url_scrubbing
+from agent.common.log_redaction import scrub_presigned_urls
 
 SIGNED = (
     "http://seaweedfs:8333/grid-documents/org/org_01H8/project/p1/doc/report.pdf"

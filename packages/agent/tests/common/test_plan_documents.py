@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from aiq_agent.common.plan_documents import MAX_PLAN_DOCUMENTS
-from aiq_agent.common.plan_documents import PlanDocument
-from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.common.plan_documents import documents_from_plan
-from aiq_agent.common.plan_documents import resolve_documents
-from aiq_agent.common.plan_documents import sanitize_plan_documents
-from aiq_agent.common.plan_documents import unread_basis
+from agent.common.plan_documents import MAX_PLAN_DOCUMENTS
+from agent.common.plan_documents import PlanDocument
+from agent.common.plan_documents import PlanDocuments
+from agent.common.plan_documents import documents_from_plan
+from agent.common.plan_documents import resolve_documents
+from agent.common.plan_documents import sanitize_plan_documents
+from agent.common.plan_documents import unread_basis
 
 
 class TestSanitize:
@@ -71,7 +71,7 @@ class TestUnread:
 
 
 def test_a_checkpointed_state_or_an_old_pod_still_says_grundlage():
-    from aiq_agent.common.plan_documents import PlanDocuments
+    from agent.common.plan_documents import PlanDocuments
 
     stored = PlanDocuments.model_validate({"grundlage": [{"name": "a.pdf"}], "ausgeschlossen": [{"name": "b.pdf"}]})
     assert [d.name for d in stored.basis] == ["a.pdf"]

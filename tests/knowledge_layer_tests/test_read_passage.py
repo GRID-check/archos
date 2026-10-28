@@ -31,11 +31,11 @@ from knowledge_layer.read_passage import _passage_filters
 from knowledge_layer.read_passage import read_passage
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 OIB = "oib-rl_2_ausgabe_mai_2023.pdf"
 
@@ -94,16 +94,16 @@ def store(monkeypatch):
     async def _documents(collection: str):
         return list(handle.documents)
 
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: handle)
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+    monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: handle)
+    monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection("oib_knowledge", Shelf.BASE)],
     )
     # The formatter's three store lookups are not what these tests are about;
     # an empty map is the documented fail-open and keeps the run database-free.
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     return handle
 
 
@@ -388,7 +388,7 @@ class TestLaneToolStamp:
     """
 
     async def test_the_captured_hit_names_read_passage_as_its_tool(self, store):
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         token = turn_status.begin_lane_capture()
         try:
@@ -412,7 +412,7 @@ class TestLaneToolStamp:
         assert '"tool"' not in out
 
     async def test_the_scope_does_not_outlive_the_call(self, store):
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         await _read(document=OIB, clause="3.5.2")
 

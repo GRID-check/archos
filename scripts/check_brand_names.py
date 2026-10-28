@@ -38,8 +38,9 @@ What is not a hit
   layout noun (`FileGrid`, `document_grid`, `stat-grid`).
 - The repository's own name and URLs (``REPOSITORY``), which only the
   repository's owners rename.
-- The Python package names `aiq_agent` and `aiq_api` (``PENDING_RENAMES``),
-  until the scripted package rename (ADR-0145 row 10a) moves them at once.
+- The Kubernetes and Compose tier names `aiq-agent` and `aiq-api`
+  (``PENDING_INFRA_NAMES``), until the deploy rename (ADR-0145 row 10c) moves
+  them in its three operator-applied deploys.
 - History and copy (``EXCLUDED``): ADRs, audits, release notes, migrations,
   the i18n dictionaries and the site's content, published assets, lockfiles,
   and Markdown, whose paths and names follow the code they describe.
@@ -88,12 +89,14 @@ EXCLUDED = re.compile(
             r"^ci/[^/]*baseline[^/]*\.json$",  # ratchet baselines: they list paths, not names
             r"^\.github/filters\.yml$",  # CI path filters: they list paths, not names
             r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
+            # The layout test names the old directories it forbids; the import test plants one in a fixture.
+            r"^tests/test_(repo_layout|test_imports)\.py$",
             # The one-release fallback that reads the old, prefixed variable names, and its tests.
             r"^apps/backend/entrypoint\.py$|^tests/test_(entrypoint_roles|no_legacy_env_names)\.py$|^apps/workspace/scripts/legacy-env-names\.",
             # The infrastructure names table: its legacy column holds the old names until ADR-0147's contract step.
             r"^deploy/pulumi/src/names\.ts$",
             # The one-release fallback that reads the old x-grid-* header names, and its tests.
-            r"^apps/workspace/bff/http/legacy-header-names\.|^apps/backend/src/aiq_api/legacy_headers\.py$",
+            r"^apps/workspace/bff/http/legacy-header-names\.|^apps/backend/src/agent_host/legacy_headers\.py$",
             r"^tests/test_legacy_headers\.py$",
             # The legacy Postgres rename (database and role names): it names the old names by design.
             r"^deploy/postgres/rename-legacy-names\.sh$|^deploy/pulumi/src/data/postgres-rename\.ts$",
@@ -111,11 +114,10 @@ EXCLUDED = re.compile(
 
 URL = re.compile(r"\b(?:https?|git|ssh)://\S+|\bgit@[\w.-]+:\S+")
 HOST = re.compile(r"\.(?:at|ai|app|com|de|dev|eu|io|net|org)$")  # a host name, or an email address's
-# The Python packages `aiq_agent` and `aiq_api`, as import, module and path
-# names, are not counted: the scripted package rename (ADR-0145 row 10a) moves
-# them all at once, and until then a file split or move would count every
-# import line it carries as new. Delete this set with that rename.
-PENDING_RENAMES = re.compile(r"(?<![A-Za-z0-9])(?:aiq_agent|aiq_api|aiq-agent|aiq-api)(?![A-Za-z0-9])")
+# The Kubernetes and Compose tier names `aiq-agent` and `aiq-api` are not
+# counted: renaming them recreates resources and an operator applies it (ADR-0145
+# row 10c). Delete this set with that rename.
+PENDING_INFRA_NAMES = re.compile(r"(?<![A-Za-z0-9])(?:aiq-agent|aiq-api)(?![A-Za-z0-9])")
 REPOSITORY = re.compile(r"\bgrid-check/grid-oib-agent\b|\bgrid-oib-agent\b|\bgrid-check\b", re.IGNORECASE)
 BRAND = re.compile("|".join(BRANDS), re.IGNORECASE)
 TOKEN_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
@@ -168,7 +170,7 @@ def count_text(text: str) -> int:
     """The brand hits in ``text``, URLs and the repository's own name left out."""
     if not BRAND.search(text):
         return 0
-    text = PENDING_RENAMES.sub(" ", REPOSITORY.sub(" ", URL.sub(" ", text)))
+    text = PENDING_INFRA_NAMES.sub(" ", REPOSITORY.sub(" ", URL.sub(" ", text)))
     return sum(len(brand_words(token)) for token in branded_tokens(text))
 
 

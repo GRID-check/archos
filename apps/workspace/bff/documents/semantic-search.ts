@@ -118,8 +118,8 @@ const GROUPED_SEARCH_MAX_FILES_PER_GROUP = 20
 /**
  * The most collections one backend search may name: `collections` is
  * `max_length=500` on both `GroupedDocumentSearchRequest`
- * (`aiq_api/models/requests.py`) and `SimilarPassagesRequest`
- * (`aiq_api/models/similar.py`). Past it the backend answers 422. A project
+ * (`agent_host/models/requests.py`) and `SimilarPassagesRequest`
+ * (`agent_host/models/similar.py`). Past it the backend answers 422. A project
  * brings its own collection and every restricted folder's the reader is
  * cleared for, so a page of projects can pass it.
  */

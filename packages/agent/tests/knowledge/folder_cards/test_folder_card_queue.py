@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from aiq_agent.knowledge.folder_cards import queue
+from agent.knowledge.folder_cards import queue
 
 T0 = 1_800_000_000.0
 

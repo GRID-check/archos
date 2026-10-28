@@ -26,7 +26,7 @@ The title block (Plankopf) read during ingestion outranks the name: two document
 ``document_number`` are Fassungen of one another whatever their file names share, and the Index
 (else the date) printed on the sheet says which is newer. When the title blocks decide, the
 suggestion is written with ``basis="title_block"`` and no model is called
-(:func:`~aiq_agent.knowledge.document_revisions.settle_by_title_block`). :func:`revision_facts_from_documents`
+(:func:`~agent.knowledge.document_revisions.settle_by_title_block`). :func:`revision_facts_from_documents`
 picks the facts a document stores from its analysed pages.
 
 A third path needs no model to decide: a person who dropped the file onto the upload dialog
@@ -49,18 +49,18 @@ from collections.abc import Callable
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.knowledge.document_metadata_store import dismissed_revisions
-from aiq_agent.knowledge.document_revisions import TITLE_BLOCK_CONFIDENCE
-from aiq_agent.knowledge.document_revisions import RevisionDocument
-from aiq_agent.knowledge.document_revisions import judge_revision
-from aiq_agent.knowledge.document_revisions import summarize_change
-from aiq_agent.knowledge.document_revisions import title_block_reason
-from aiq_agent.knowledge.title_block import compare_revisions
-from aiq_agent.knowledge.title_block import document_key
-from aiq_agent.knowledge.title_block import identifies_document
-from aiq_agent.knowledge.title_block import newest_first
-from aiq_agent.knowledge.title_block import normalise_revision_facts
-from aiq_agent.knowledge.title_block import same_document
+from agent.knowledge.document_metadata_store import dismissed_revisions
+from agent.knowledge.document_revisions import TITLE_BLOCK_CONFIDENCE
+from agent.knowledge.document_revisions import RevisionDocument
+from agent.knowledge.document_revisions import judge_revision
+from agent.knowledge.document_revisions import summarize_change
+from agent.knowledge.document_revisions import title_block_reason
+from agent.knowledge.title_block import compare_revisions
+from agent.knowledge.title_block import document_key
+from agent.knowledge.title_block import identifies_document
+from agent.knowledge.title_block import newest_first
+from agent.knowledge.title_block import normalise_revision_facts
+from agent.knowledge.title_block import same_document
 
 from ..revision_series import find_revision_series
 from ..revision_series import parse_revision_name
@@ -258,7 +258,7 @@ def held_file_names(collection: str) -> set[str] | None:
     and the caller must then send no name to a model.
     """
     try:
-        from aiq_agent.knowledge import ingest_status_store
+        from agent.knowledge import ingest_status_store
 
         in_flight = ingest_status_store.in_flight_files([collection]).get(collection, [])
         jobs = ingest_status_store.collection_jobs(collection, HELD_LOOKBACK_SECONDS)
@@ -275,7 +275,7 @@ def held_file_names(collection: str) -> set[str] | None:
 def read_rows(collection: str) -> list[Any]:
     """The collection's metadata rows (``AvailableDocument``), or none when they cannot be read."""
     try:
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         return list(get_available_documents(collection))
     except Exception:  # noqa: BLE001 — without rows there is nothing to compare, not a failed ingest
@@ -346,7 +346,7 @@ def suggest_revision(
     )
     if verdict is None:
         return None
-    from aiq_agent.knowledge import set_document_revision_suggestion
+    from agent.knowledge import set_document_revision_suggestion
 
     suggestion = verdict.as_suggestion()
     set_document_revision_suggestion(collection, file_name, suggestion)
@@ -367,7 +367,7 @@ def record_change(
     upload, which the UI labels „vorige Fassung". The old line described an
     older upload and is replaced either way.
     """
-    from aiq_agent.knowledge import set_document_change_summary
+    from agent.knowledge import set_document_change_summary
 
     change = None
     if previous:
@@ -408,7 +408,7 @@ def confirm_revision(
     """Write the link a person chose at upload: ``file_name`` replaces ``older``. ``False`` when it cannot be made.
 
     The same writes as ``PUT /v1/collections/{c}/revision`` with ``linked=true``, through the same
-    store step (:func:`~aiq_agent.knowledge.link_document_revision`): ``superseded_by`` on ``older``
+    store step (:func:`~agent.knowledge.link_document_revision`): ``superseded_by`` on ``older``
     and a suggestion on the new file that pointed at ``older`` cleared, with the loop check in the
     same transaction; then what changed, told by the summary model onto the new file with ``older``
     as its basis. A failed or absent model (``llm=None``) leaves the link in place and the change
@@ -417,9 +417,9 @@ def confirm_revision(
     """
     if older == file_name:
         return False
-    from aiq_agent.knowledge import link_document_revision
-    from aiq_agent.knowledge import set_document_change_summary
-    from aiq_agent.knowledge.document_metadata_store import LinkOutcome
+    from agent.knowledge import link_document_revision
+    from agent.knowledge import set_document_change_summary
+    from agent.knowledge.document_metadata_store import LinkOutcome
 
     outcome = link_document_revision(collection, older, file_name)
     if outcome is not LinkOutcome.LINKED:

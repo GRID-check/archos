@@ -2,10 +2,10 @@
 
 import json
 
-from aiq_agent.observability.decision_trace import decision_observation
-from aiq_agent.observability.decision_trace import decision_usage
-from aiq_agent.observability.decision_trace import is_decision_span
-from aiq_agent.observability.trace_context import observation_type
+from agent.observability.decision_trace import decision_observation
+from agent.observability.decision_trace import decision_usage
+from agent.observability.decision_trace import is_decision_span
+from agent.observability.trace_context import observation_type
 
 
 def test_a_decision_step_is_a_generation_whatever_nat_calls_it():

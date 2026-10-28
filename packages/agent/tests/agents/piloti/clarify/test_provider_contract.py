@@ -26,12 +26,12 @@ import pytest
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.clarify import ClarifierSettings
-from aiq_agent.agents.piloti.clarify import build_deps
-from aiq_agent.agents.piloti.clarify import clarify
-from aiq_agent.agents.piloti.models import ClarificationResponse
-from aiq_agent.agents.piloti.models import ClarifyRequest
-from aiq_agent.common import LLMProvider
+from agent.agents.piloti.clarify import ClarifierSettings
+from agent.agents.piloti.clarify import build_deps
+from agent.agents.piloti.clarify import clarify
+from agent.agents.piloti.models import ClarificationResponse
+from agent.agents.piloti.models import ClarifyRequest
+from agent.common import LLMProvider
 from tests.provider_doubles import ProviderContractError
 
 #: The window the conversation graph hands the step on an escalated turn: the

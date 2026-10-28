@@ -20,12 +20,12 @@ from unittest import mock
 
 import pytest
 
-from aiq_api.jobs.conversation_output import _TRANSPARENCY_METADATA_KEYS
-from aiq_api.jobs.conversation_output import FAILURE_NOTICE
-from aiq_api.jobs.conversation_output import _transparency_metadata
-from aiq_api.jobs.conversation_output import report_message_id
-from aiq_api.jobs.conversation_output import write_job_notice
-from aiq_api.jobs.conversation_output import write_job_turn
+from agent_host.jobs.conversation_output import _TRANSPARENCY_METADATA_KEYS
+from agent_host.jobs.conversation_output import FAILURE_NOTICE
+from agent_host.jobs.conversation_output import _transparency_metadata
+from agent_host.jobs.conversation_output import report_message_id
+from agent_host.jobs.conversation_output import write_job_notice
+from agent_host.jobs.conversation_output import write_job_turn
 
 USAGE = {"identity": {"organization_id": "org_1", "user_id": "u1"}}
 
@@ -44,7 +44,7 @@ def _no_run_message():
     means. The run-message path has its own class at the end.
     """
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_run_report",
+        "agent_host.jobs.conversation_output.post_internal_run_report",
         new_callable=mock.AsyncMock,
         return_value=None,
     ) as report:
@@ -54,7 +54,7 @@ def _no_run_message():
 @pytest.mark.asyncio
 async def test_writes_the_question_then_the_answer() -> None:
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         new_callable=mock.AsyncMock,
     ) as post:
         await write_job_turn(
@@ -81,7 +81,7 @@ async def test_writes_the_question_then_the_answer() -> None:
 @pytest.mark.asyncio
 async def test_ids_are_deterministic_so_a_retry_is_a_no_op() -> None:
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         new_callable=mock.AsyncMock,
     ) as post:
         for _ in range(2):
@@ -103,7 +103,7 @@ async def test_ids_are_deterministic_so_a_retry_is_a_no_op() -> None:
 @pytest.mark.asyncio
 async def test_no_conversation_means_no_call() -> None:
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         new_callable=mock.AsyncMock,
     ) as post:
         await write_job_turn(conversation_id=None, job_id="job-1", usage_context=USAGE, prompt="q", answer="a")
@@ -115,7 +115,7 @@ async def test_no_conversation_means_no_call() -> None:
 async def test_a_failed_write_never_propagates() -> None:
     """The whole point: a conversation write must not unmake a good run."""
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         new_callable=mock.AsyncMock,
         side_effect=RuntimeError("bff down"),
     ):
@@ -126,7 +126,7 @@ async def test_a_failed_write_never_propagates() -> None:
 @pytest.mark.asyncio
 async def test_a_run_that_produced_nothing_says_so() -> None:
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         new_callable=mock.AsyncMock,
     ) as post:
         await write_job_notice(
@@ -144,7 +144,7 @@ async def test_a_run_that_produced_nothing_says_so() -> None:
 @pytest.mark.asyncio
 async def test_no_organization_id_skips_rather_than_posting_a_doomed_write() -> None:
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         new_callable=mock.AsyncMock,
     ) as post:
         await write_job_turn(conversation_id="s_abc", job_id="job-1", usage_context={}, prompt="q", answer="a")
@@ -161,7 +161,7 @@ async def test_a_job_that_ran_under_a_skill_says_so_in_the_thread() -> None:
     not the office's own working method had shaped the answer.
     """
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         new_callable=mock.AsyncMock,
     ) as post:
         await write_job_turn(
@@ -180,7 +180,7 @@ async def test_a_job_that_ran_under_a_skill_says_so_in_the_thread() -> None:
 async def test_a_job_without_skills_writes_no_skills_key() -> None:
     """Absent means absent — an empty list would render as a claim of nothing."""
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+        "agent_host.jobs.conversation_output.post_internal_conversation_message",
         new_callable=mock.AsyncMock,
     ) as post:
         await write_job_turn(
@@ -207,7 +207,7 @@ class TestTransparencyReachesTheThread:
     @pytest.mark.asyncio
     async def test_a_cut_off_run_says_so_in_the_thread(self) -> None:
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -237,7 +237,7 @@ class TestTransparencyReachesTheThread:
     async def test_the_answers_self_assessment_travels_whole(self) -> None:
         """Level and reasons together — a level with no reason is not actionable."""
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -262,7 +262,7 @@ class TestTransparencyReachesTheThread:
     async def test_a_clean_run_writes_no_transparency_keys_at_all(self) -> None:
         """Absent, not false: no ``research_truncated: false`` on a complete run."""
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -289,7 +289,7 @@ class TestTransparencyReachesTheThread:
     async def test_empty_values_are_not_claims(self) -> None:
         """``degraded_reasons: []`` would read as "we checked and found none"."""
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -315,7 +315,7 @@ class TestTransparencyReachesTheThread:
     async def test_only_the_known_keys_travel(self) -> None:
         """An allowlist, so no caller can seed new keys in a public contract."""
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -335,7 +335,7 @@ class TestTransparencyReachesTheThread:
     async def test_a_malformed_payload_costs_the_caveat_not_the_message(self) -> None:
         """Transparency is bookkeeping ABOUT an answer; it may never unmake one."""
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -375,7 +375,7 @@ class TestTheRunWritesIntoItsOwnMessage:
     async def test_the_report_fills_in_the_run_message_and_writes_no_question(self, _no_run_message) -> None:
         _no_run_message.return_value = "msg-run-1"
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -406,7 +406,7 @@ class TestTheRunWritesIntoItsOwnMessage:
         """The ledger's ``result.reportMessageId`` is whatever the writer returns, never a second derivation."""
         _no_run_message.return_value = "msg-run-1"
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ):
             landed = await write_job_turn(
@@ -416,7 +416,7 @@ class TestTheRunWritesIntoItsOwnMessage:
 
         _no_run_message.return_value = None
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ):
             fallback = await write_job_turn(
@@ -432,7 +432,7 @@ class TestTheRunWritesIntoItsOwnMessage:
     async def test_a_failure_is_stated_in_the_run_message_too(self, _no_run_message) -> None:
         _no_run_message.return_value = "msg-run-1"
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_notice(
@@ -449,7 +449,7 @@ class TestTheRunWritesIntoItsOwnMessage:
     async def test_a_run_without_a_message_still_gets_its_question_and_answer(self) -> None:
         """The fallback, which is the whole reason the 404 is not an error."""
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -473,7 +473,7 @@ class TestTheRunWritesIntoItsOwnMessage:
         """
         _no_run_message.return_value = "msg-run-1"
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -496,7 +496,7 @@ class TestTheRunWritesIntoItsOwnMessage:
         """
         _no_run_message.side_effect = RuntimeError("bff down")
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=mock.AsyncMock,
         ) as post:
             await write_job_turn(
@@ -542,7 +542,7 @@ class TestTransparencyMetadataFilter:
 async def test_the_report_row_names_the_trace_the_run_ran_in():
     """A vote on the report is scored on this trace; a run with no trace writes no key."""
     with mock.patch(
-        "aiq_api.jobs.conversation_output.post_internal_run_report", new=mock.AsyncMock(return_value="run-msg")
+        "agent_host.jobs.conversation_output.post_internal_run_report", new=mock.AsyncMock(return_value="run-msg")
     ) as report:
         await write_job_turn(
             conversation_id="s_abc",

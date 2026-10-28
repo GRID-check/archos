@@ -1,6 +1,6 @@
 """Generate the contract of the agent's read tools that other agents reach over MCP.
 
-``aiq_agent.common.backend_tools`` lists the tools; the workflow config
+``agent.common.backend_tools`` lists the tools; the workflow config
 (``configs/config_oib_openrouter.yml``) binds them; the functions themselves say
 what the model sees. This script builds exactly those functions, with nothing
 else of the workflow, and writes each one's name, description, input JSON Schema
@@ -23,8 +23,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from aiq_agent.common.backend_tools import BACKEND_READ_TOOLS
-from aiq_agent.common.backend_tools import describe_backend_tool
+from agent.common.backend_tools import BACKEND_READ_TOOLS
+from agent.common.backend_tools import describe_backend_tool
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "configs" / "config_oib_openrouter.yml"

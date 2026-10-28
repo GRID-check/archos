@@ -5,7 +5,7 @@ describes the image but the model never sees it. :func:`view_image` returns the
 source visual as a multimodal content block (``image_url`` with a data URL), so
 vision-capable models can inspect drawings, sections, elevations and charts
 directly at answer time. The tool the model calls is ``look``
-(``aiq_agent.tools.look``, ADR-0128), which resolves WHICH file and collection
+(``agent.tools.look``, ADR-0128), which resolves WHICH file and collection
 and hands them here; this module is no NAT function of its own any more.
 
 Three source shapes are covered, without re-ingest:
@@ -39,7 +39,7 @@ signed envelope, and the BFF answers only inside the scope it signs. An image
 returned from a collection is reported (``note_collections_read``), so the tools
 node admits a restricted folder's image before the model sees it.
 
-Bounded per turn: :mod:`aiq_agent.common.image_view_budget` caps how many
+Bounded per turn: :mod:`agent.common.image_view_budget` caps how many
 looks one turn may take, and how many of them may be whole pages; past either
 cap the tool answers with a short text block instead of an image, and every
 image it does return says how many looks are left.
@@ -57,15 +57,15 @@ from dataclasses import replace
 from knowledge_layer.llamaindex.pdfium_lock import detached_pil
 from knowledge_layer.llamaindex.pdfium_lock import pdfium_lock
 
-from aiq_agent.common import seaweed_s3
-from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
-from aiq_agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
-from aiq_agent.common.image_view_budget import get_image_view_budget
-from aiq_agent.common.image_view_budget import note_region_viewed
-from aiq_agent.common.image_view_budget import remaining_views_text
-from aiq_agent.common.image_view_budget import try_consume_image_view
-from aiq_agent.common.source_kinds import office_shelf_organization_id
-from aiq_agent.knowledge.restricted_use import note_collections_read
+from agent.common import seaweed_s3
+from agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
+from agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
+from agent.common.image_view_budget import get_image_view_budget
+from agent.common.image_view_budget import note_region_viewed
+from agent.common.image_view_budget import remaining_views_text
+from agent.common.image_view_budget import try_consume_image_view
+from agent.common.source_kinds import office_shelf_organization_id
+from agent.knowledge.restricted_use import note_collections_read
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", "
 # BFF internal lookup + SeaweedFS (S3) fetch. FRONTEND_INTERNAL_URL +
 # INTERNAL_API_TOKEN are already present on the aiq-agent tier; the
 # SEAWEED_* set is injected by the same tier once the backend fetches bytes
-# directly (the client itself is `aiq_agent.common.seaweed_s3`, shared with the
+# directly (the client itself is `agent.common.seaweed_s3`, shared with the
 # base-corpus store). All are read lazily so a base-corpus-only deployment (no
 # project uploads) needs none of them.
 _FRONTEND_INTERNAL_URL_ENV = "FRONTEND_INTERNAL_URL"
@@ -118,7 +118,7 @@ def _find_pdf(file_name: str) -> str | None:
     goes on to the project/Archiv lookup.
     """
     try:
-        from aiq_agent import corpus_store
+        from agent import corpus_store
 
         cached = corpus_store.ensure_local(file_name)
     except Exception:  # noqa: BLE001 - fail-open contract
@@ -440,9 +440,9 @@ def _envelope_headers() -> dict[str, str]:
     never sign (ADR-0054 §4): the two strings go out exactly as they arrived.
     """
     try:
-        from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-        from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-        from aiq_agent.project_context import get_request_envelope_from_context
+        from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+        from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+        from agent.project_context import get_request_envelope_from_context
 
         header, signature = get_request_envelope_from_context()
     except Exception:  # noqa: BLE001 - no envelope is a legitimate state off a chat turn
@@ -457,15 +457,15 @@ def _may_read(collection: str) -> bool:
     """Whether this turn may read ``collection``: the turn's scope, as every read path takes it.
 
     The scope is the signed one, narrowed to the restricted collections the
-    turn may draw on (:func:`aiq_agent.knowledge.scoping.get_collection_scope_from_context`).
+    turn may draw on (:func:`agent.knowledge.scoping.get_collection_scope_from_context`).
     A restricted folder's collection needs more than its name in a scope: a
     restricted use bound for the turn that lets it be drawn on, which only a
     verified envelope gets (ADR-0088). A run with no scope at all (a CLI run, an
     eval) reads no restricted collection and keeps reaching the others by name.
     """
-    from aiq_agent.knowledge.restricted_collections import is_restricted_collection
-    from aiq_agent.knowledge.restricted_use import current_restricted_use
-    from aiq_agent.knowledge.scoping import get_collection_scope_from_context
+    from agent.knowledge.restricted_collections import is_restricted_collection
+    from agent.knowledge.restricted_use import current_restricted_use
+    from agent.knowledge.scoping import get_collection_scope_from_context
 
     try:
         scope = get_collection_scope_from_context()
@@ -570,7 +570,7 @@ async def turn_sees() -> bool | None:
     Unknown is not "no": the image is then sent, as before the check existed.
     """
     try:
-        from aiq_agent.common.model_vision import turn_model_accepts_images
+        from agent.common.model_vision import turn_model_accepts_images
 
         return await asyncio.to_thread(turn_model_accepts_images)
     except Exception:  # noqa: BLE001 - unknown means the image is sent, as before the check

@@ -14,16 +14,16 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.agents.piloti.decisions import TurnDecisions
-from aiq_agent.agents.piloti.decisions import TurnFacts
-from aiq_agent.agents.piloti.decisions import attached_card_types
-from aiq_agent.agents.piloti.decisions import decide_turn
-from aiq_agent.agents.piloti.decisions import literal_terms
-from aiq_agent.agents.piloti.decisions import prefetch_calls
-from aiq_agent.agents.piloti.decisions import prefetch_query
-from aiq_agent.agents.piloti.decisions import questions_for
-from aiq_agent.common.decisions import Decision
-from aiq_agent.common.norm_registry import oib_families
+from agent.agents.piloti.decisions import TurnDecisions
+from agent.agents.piloti.decisions import TurnFacts
+from agent.agents.piloti.decisions import attached_card_types
+from agent.agents.piloti.decisions import decide_turn
+from agent.agents.piloti.decisions import literal_terms
+from agent.agents.piloti.decisions import prefetch_calls
+from agent.agents.piloti.decisions import prefetch_query
+from agent.agents.piloti.decisions import questions_for
+from agent.common.decisions import Decision
+from agent.common.norm_registry import oib_families
 
 FAMILIES = oib_families(
     ["oib-rl_2_ausgabe_mai_2023.pdf", "oib-rl_2.1_ausgabe_mai_2023.pdf", "oib-rl_4_ausgabe_mai_2023.pdf"]
@@ -197,7 +197,7 @@ class TestTheReferenceProjects:
             },
             latency_ms=300,
         )
-        with patch("aiq_agent.common.decisions.decide", new_callable=AsyncMock, return_value=decision):
+        with patch("agent.common.decisions.decide", new_callable=AsyncMock, return_value=decision):
             decided = await decide_turn(_facts("Gutachten nötig?", reference_projects=3))
         assert decided.precedent == 0.82 and decided.wants_reference
 
@@ -215,7 +215,7 @@ class TestWhatTheAnswersBecome:
             },
             latency_ms=210,
         )
-        with patch("aiq_agent.common.decisions.decide", new_callable=AsyncMock, return_value=decision):
+        with patch("agent.common.decisions.decide", new_callable=AsyncMock, return_value=decision):
             decided = await decide_turn(_facts("Brandabschnitte in GK 4?"))
         assert decided.decided and decided.wants_evidence
         assert decided.corpus == "baurecht" and decided.corpus_p == 0.8
@@ -225,7 +225,7 @@ class TestWhatTheAnswersBecome:
         assert decided.latency_ms == 210
 
     async def test_no_decision_is_none_and_none_does_nothing(self):
-        with patch("aiq_agent.common.decisions.decide", new_callable=AsyncMock, return_value=None):
+        with patch("agent.common.decisions.decide", new_callable=AsyncMock, return_value=None):
             decided = await decide_turn(_facts("Hallo"))
         assert decided == TurnDecisions.none()
         assert not decided.wants_evidence and decided.chosen_cards() == [] and decided.chosen_families() == []
@@ -385,7 +385,7 @@ class TestTheSkillsShapes:
                 "self_contained": {"type": "noul", "noul": 0.2},
             }
         )
-        with patch("aiq_agent.common.decisions.decide", new_callable=AsyncMock, return_value=decision):
+        with patch("agent.common.decisions.decide", new_callable=AsyncMock, return_value=decision):
             decided = await decide_turn(TurnFacts(question="und in GK 4?", skills=[("fire-safety", "b")]))
         assert decided.chosen_skill == "fire-safety" and decided.skill_fit == 0.85
         assert decided.self_contained == 0.2 and not decided.searchable

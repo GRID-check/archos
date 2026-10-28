@@ -22,7 +22,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from aiq_api import workflow_stream
+from agent_host import workflow_stream
 from nat.front_ends.fastapi import intermediate_steps_subscriber
 from nat.front_ends.fastapi.response_helpers import generate_streaming_response
 

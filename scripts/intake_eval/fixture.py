@@ -94,7 +94,7 @@ def load_answer_key(path: Path = FIXTURE_DIR / "answer_key.yaml") -> dict[str, A
 
 
 def available_document(fixture: Fixture, file: FixtureFile) -> Any:
-    from aiq_agent.knowledge.schema import AvailableDocument
+    from agent.knowledge.schema import AvailableDocument
 
     return AvailableDocument(
         file_name=file.name,
@@ -108,7 +108,7 @@ def available_document(fixture: Fixture, file: FixtureFile) -> Any:
 
 def project_documents_for(fixture: Fixture):
     """``reading.project_documents``, answered from the fixture."""
-    from aiq_agent.agents.intake.reading import ProjectDocument
+    from agent.agents.intake.reading import ProjectDocument
 
     async def project_documents() -> list[Any]:
         return [ProjectDocument(fixture.collection, available_document(fixture, f)) for f in fixture.files]
@@ -206,10 +206,10 @@ class PassageIndex:
 
 def render_passages(fixture: Fixture, hits: list[tuple[Passage, float]], tool: str, trailer: str = "") -> str:
     """Hits as ``knowledge_search`` renders them (``_format_results``), filed for the read log."""
-    from aiq_agent.common.grounding_block import GroundingBlock
-    from aiq_agent.common.grounding_block import GroundingHit
-    from aiq_agent.common.grounding_block import render_grounding_block
-    from aiq_agent.common.source_kinds import Shelf
+    from agent.common.grounding_block import GroundingBlock
+    from agent.common.grounding_block import GroundingHit
+    from agent.common.grounding_block import render_grounding_block
+    from agent.common.source_kinds import Shelf
 
     records = tuple(
         GroundingHit(

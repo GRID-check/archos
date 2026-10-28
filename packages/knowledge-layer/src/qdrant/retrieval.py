@@ -60,7 +60,7 @@ def bm25_candidates(query: str, extra_terms: Sequence[str] = ()) -> list[str]:
     the index folds „ä“ to „a“ but keeps „ae“, so „Flaechenwidmung“ found none
     of the passages „Flächenwidmung“ found. Pricing drops the spelling no chunk holds.
     """
-    from aiq_agent.common import german_text
+    from agent.common import german_text
 
     prose = _FILE_NAME.sub(" ", query)
     spellings = (german_text.umlaut_spellings(term) for term in german_text.query_terms(prose, extra_terms=extra_terms))

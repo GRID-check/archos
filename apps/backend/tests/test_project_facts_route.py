@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.routes.project_facts import add_project_facts_routes
+from agent_host.routes.project_facts import add_project_facts_routes
 
 BODY = {
     "facts": {"federal_state": "vienna", "building_class": [4], "construction_method": ["timber"]},

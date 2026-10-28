@@ -3,7 +3,7 @@ import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-o
 /**
  * Agent execution profiler ledger: one row per span (turn / graph node / LLM
  * call / tool call) captured by the backend's unified profiler
- * (packages/agent/src/aiq_agent/common/profiler.py — the timing sibling of the LLM cost
+ * (packages/agent/src/agent/common/profiler.py — the timing sibling of the LLM cost
  * ledger in budgets.ts). Append-only, written only via the token-guarded
  * internal endpoint POST /api/internal/agent-profiler-spans; `app` stays
  * single-writer.

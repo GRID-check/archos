@@ -304,7 +304,7 @@ carries the source FOLDERS it depends on (`restricted_folder_ids`, migration
 0112; the agent decides in collections and the BFF maps each to its folder),
 and only a session that may read **all** of them now is served it or shown it.
 
-**Deciding the restriction** — one module, `aiq_agent/memory/restriction.py`.
+**Deciding the restriction** — one module, `agent/memory/restriction.py`.
 The `remember` tool and the reflection stage both call `restriction_decisions`,
 which returns each memory's restriction together with the judge's verdict when
 the judge was asked; the writers send the verdict with every write, stored or
@@ -364,7 +364,7 @@ would write the finding open past the trail. A failure to assemble the audit lin
 decide („von KI mitbestimmt"); an open note never does (CHECK), because its
 readers may not know a restricted folder exists.
 
-**What earlier turns were shown** — `aiq_agent/memory/shown_notes.py`. The
+**What earlier turns were shown** — `agent/memory/shown_notes.py`. The
 digest is re-ranked per turn and capped at 1,800 characters, so a restricted
 note can leave the prompt while what it said stays in the history. Every turn
 with restricted collections in its signed scope adds its digest's `restricted`
@@ -488,7 +488,7 @@ autonomously — no confirm-gate interrupts the conversation and there is no inl
 
 **(a) Live, in traces.** Every `remember(...)` call is emitted as an intermediate
 trace event on the WS stream (same channel as tool calls / thinking steps) and as
-an observability span (`packages/agent/src/aiq_agent/observability`). So you *watch* memory form
+an observability span (`packages/agent/src/agent/observability`). So you *watch* memory form
 in the trace/Thinking view in real time — you just aren't asked to approve it.
 
 **(b) Managed in the Project Overview.** The overview page gains a "What Grid knows

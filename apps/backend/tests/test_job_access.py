@@ -20,21 +20,21 @@ from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from aiq_agent.auth import Principal
-from aiq_api.auth.middleware import AuthMiddleware
-from aiq_api.context_envelope import GridContextEnvelopeMiddleware
-from aiq_api.jobs import access as job_access
-from aiq_api.jobs.access import JOB_ENVELOPE_MAX_AGE_MS
-from aiq_api.jobs.access import JobCaller
-from aiq_api.jobs.access import authorize_job_access
-from aiq_api.jobs.access import cleanup_job_access
-from aiq_api.jobs.access import create_job_access
-from aiq_api.jobs.access import ensure_job_access_table
-from aiq_api.jobs.access import get_job_access
-from aiq_api.jobs.access import get_job_project_collection
-from aiq_api.jobs.access import signed_job_scope
-from aiq_api.jobs.event_store import EventStore
-from aiq_api.routes import jobs as jobs_routes
+from agent.auth import Principal
+from agent_host.auth.middleware import AuthMiddleware
+from agent_host.context_envelope import GridContextEnvelopeMiddleware
+from agent_host.jobs import access as job_access
+from agent_host.jobs.access import JOB_ENVELOPE_MAX_AGE_MS
+from agent_host.jobs.access import JobCaller
+from agent_host.jobs.access import authorize_job_access
+from agent_host.jobs.access import cleanup_job_access
+from agent_host.jobs.access import create_job_access
+from agent_host.jobs.access import ensure_job_access_table
+from agent_host.jobs.access import get_job_access
+from agent_host.jobs.access import get_job_project_collection
+from agent_host.jobs.access import signed_job_scope
+from agent_host.jobs.event_store import EventStore
+from agent_host.routes import jobs as jobs_routes
 
 SECRET = "internal-test-token"  # noqa: S105  # pragma: allowlist secret
 

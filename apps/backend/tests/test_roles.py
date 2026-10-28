@@ -8,7 +8,7 @@ reader reaches it, so the property is held here, on the routes the real worker
 mounts for each role, and not on the lists the plugin keeps.
 
 The baseline is built from the ingredients instead of from the plugin: every
-router registrar found under ``aiq_api/routes/`` by name, NAT's own routes, the
+router registrar found under ``agent_host/routes/`` by name, NAT's own routes, the
 job routes and the chat socket, mounted on one app the way
 the single process did. A router added under ``routes/`` and assigned to no role
 is in the baseline and in neither role; one assigned to both is in both roles.
@@ -37,13 +37,13 @@ from fastapi.routing import APIWebSocketRoute
 from pydantic import BaseModel
 from starlette.routing import Route
 
-from aiq_agent.observability import boot_timing
-from aiq_api import plugin
-from aiq_api import routes as routes_package
-from aiq_api.roles import ROLE_ENV
-from aiq_api.roles import WebRole
-from aiq_api.roles import web_role
-from aiq_api.routes.chat_occupancy import CHAT_OCCUPANCY_PATH
+from agent.observability import boot_timing
+from agent_host import plugin
+from agent_host import routes as routes_package
+from agent_host.roles import ROLE_ENV
+from agent_host.roles import WebRole
+from agent_host.roles import web_role
+from agent_host.routes.chat_occupancy import CHAT_OCCUPANCY_PATH
 from nat.data_models.config import Config
 from nat.data_models.config import GeneralConfig
 from nat.front_ends.fastapi.fastapi_front_end_config import FastApiFrontEndConfig
@@ -113,17 +113,17 @@ def _session_manager() -> MagicMock:
 POSTHOG_INSTALLS: list[int] = []
 
 
-def _worker(role: str) -> plugin.AIQAPIWorker:
+def _worker(role: str) -> plugin.AgentHostWorker:
     with pytest.MonkeyPatch.context() as env:
         env.setenv(ROLE_ENV, role)
-        return plugin.AIQAPIWorker(Config(general=GeneralConfig(front_end=plugin.AIQAPIConfig())))
+        return plugin.AgentHostWorker(Config(general=GeneralConfig(front_end=plugin.AgentHostConfig())))
 
 
 def _discovered_registrars() -> dict[str, object]:
     """Every public ``add_*_routes`` / ``register_*_routes`` function a module under ``routes/`` defines."""
     found: dict[str, object] = {}
     for info in pkgutil.iter_modules(routes_package.__path__):
-        module = importlib.import_module(f"aiq_api.routes.{info.name}")
+        module = importlib.import_module(f"agent_host.routes.{info.name}")
         for name, function in inspect.getmembers(module, inspect.isroutine):
             if _REGISTRAR.match(name) and function.__module__ == module.__name__:
                 found[f"{info.name}.{name}"] = function
@@ -134,14 +134,14 @@ def _unwrapped(function):
     return function.func if isinstance(function, functools.partial) else function
 
 
-async def _build(worker: plugin.AIQAPIWorker) -> FastAPI:
+async def _build(worker: plugin.AgentHostWorker) -> FastAPI:
     app = worker.build_app()
     with patch.object(SessionManager, "create", AsyncMock(return_value=_session_manager())):
         await worker.add_routes(app, MagicMock())
     return app
 
 
-async def _baseline(worker: plugin.AIQAPIWorker) -> FastAPI:
+async def _baseline(worker: plugin.AgentHostWorker) -> FastAPI:
     """The routes the single process mounted, from the registrars and the pieces and not from the plugin's lists."""
     app = FastAPI()
     router = APIRouter()
@@ -175,8 +175,8 @@ def apps(tmp_path_factory: pytest.TempPathFactory) -> dict[str, FastAPI]:
         env.setenv("NAT_CONFIG_FILE", str(config_file))
         env.setenv("REQUIRE_AUTH", "false")
         # No handshake with a BFF, no handlers installed on the test process.
-        stack.enter_context(patch.object(plugin.AIQAPIWorker, "_schedule_internal_api_check", lambda self: None))
-        stack.enter_context(patch.object(plugin.AIQAPIWorker, "_install_signal_handlers", lambda self: None))
+        stack.enter_context(patch.object(plugin.AgentHostWorker, "_schedule_internal_api_check", lambda self: None))
+        stack.enter_context(patch.object(plugin.AgentHostWorker, "_install_signal_handlers", lambda self: None))
         stack.enter_context(patch.object(plugin, "install_presigned_url_scrubbing", lambda: None))
         stack.enter_context(patch.object(plugin.posthog_exceptions, "install", lambda: POSTHOG_INSTALLS.append(1)))
         stack.enter_context(patch.object(boot_timing, "BootClock", _RecordingBootClock))
@@ -317,7 +317,7 @@ async def test_no_http_turn_route_is_mounted_even_with_a_dask_scheduler(monkeypa
 
 
 def test_the_default_config_puts_no_nat_route_in_front_of_the_workflow():
-    config = plugin.AIQAPIConfig()
+    config = plugin.AgentHostConfig()
 
     assert [name for name in plugin.WORKFLOW_ROUTE_FIELDS if getattr(config.workflow, name)] == []
     assert config.evaluate.path is None
@@ -340,7 +340,7 @@ def test_the_default_config_puts_no_nat_route_in_front_of_the_workflow():
 )
 def test_a_config_that_puts_a_route_in_front_of_the_workflow_is_refused(override, named):
     with pytest.raises(ValueError, match=re.escape(named)):
-        plugin.AIQAPIConfig(**override)
+        plugin.AgentHostConfig(**override)
 
 
 @pytest.mark.parametrize("raw", ["chat", "api", " API ", "Chat"])
@@ -360,7 +360,7 @@ def test_a_worker_built_without_a_web_role_fails_before_it_connects_to_anything(
     monkeypatch.delenv(ROLE_ENV, raising=False)
 
     with pytest.raises(ValueError, match="PROCESS_ROLE"):
-        plugin.AIQAPIWorker(Config(general=GeneralConfig(front_end=plugin.AIQAPIConfig())))
+        plugin.AgentHostWorker(Config(general=GeneralConfig(front_end=plugin.AgentHostConfig())))
 
 
 @pytest.fixture

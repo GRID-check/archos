@@ -111,10 +111,10 @@ export interface JobSubmitPayload {
   priority?: JobPriority
 }
 
-/** The agents a background run may name instead of its output kind's (`aiq_api/registry.py`). */
+/** The agents a background run may name instead of its output kind's (`agent_host/registry.py`). */
 export type BackgroundAgentType = 'project_intake'
 
-/** The two priorities the research queue knows (`aiq_agent.common.claim_queue`). */
+/** The two priorities the research queue knows (`agent.common.claim_queue`). */
 export type JobPriority = 'interactive' | 'bulk'
 
 /**
@@ -252,7 +252,7 @@ export interface JobControlCaller {
  * Same endpoint, same credentials: the caller's WorkOS access token and the
  * signed envelope, because the backend lets the job's owner steer it and anyone
  * else only inside the project the envelope signs (`authorize_job_access` in
- * `aiq_api/jobs/access.py`, ADR-0084). The internal token would name nobody.
+ * `agent_host/jobs/access.py`, ADR-0084). The internal token would name nobody.
  *
  * Resolves on a 2xx and throws `JobCancelError` for everything else; a network
  * failure is a 503.

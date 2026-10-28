@@ -23,20 +23,20 @@ from httpx import AsyncClient
 from knowledge_layer.llamaindex import screening as job_screening
 from pydantic import ValidationError
 
-from aiq_agent.knowledge.base import PreparedIngestJob
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_api.jobs import ingest_dispatch
-from aiq_api.models import requests as request_models
-from aiq_api.models.requests import IngestRequest
-from aiq_api.models.requests import ScreeningPolicy
-from aiq_api.routes.ingest import DeferredObjectDownload
-from aiq_api.routes.ingest import _job_config
-from aiq_api.routes.ingest import add_ingest_routes
+from agent.knowledge.base import PreparedIngestJob
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import set_active_ingestor
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from agent_host.jobs import ingest_dispatch
+from agent_host.models import requests as request_models
+from agent_host.models.requests import IngestRequest
+from agent_host.models.requests import ScreeningPolicy
+from agent_host.routes.ingest import DeferredObjectDownload
+from agent_host.routes.ingest import _job_config
+from agent_host.routes.ingest import add_ingest_routes
 
 _FILE_REF = "http://seaweedfs.test/bucket/doc/gehalt.pdf?X-Amz-Signature=abc"
 _POLICY = {"content_terms": ["Gehaltsabrechnung", "Honorarvereinbarung"], "detectors": ["iban", "at_svnr"]}

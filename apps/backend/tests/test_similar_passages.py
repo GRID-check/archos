@@ -25,9 +25,9 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.knowledge.factory import clear_active_retriever
-from aiq_agent.knowledge.factory import set_active_retriever
-from aiq_api.routes.similar_passages import add_similar_passages_routes
+from agent.knowledge.factory import clear_active_retriever
+from agent.knowledge.factory import set_active_retriever
+from agent_host.routes.similar_passages import add_similar_passages_routes
 
 DIM = 8
 #: The real resolver, taken before the conftest stubs every name to a private IP for the SSRF guard.
@@ -357,7 +357,7 @@ async def test_a_chunk_id_that_names_nothing_and_no_text_is_404(stack):
 async def test_the_search_is_one_retriever_observation_carrying_no_passage_text(stack):
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-    from aiq_agent.observability import direct_trace
+    from agent.observability import direct_trace
 
     app, store, _ = stack
     ids = _seed(store)

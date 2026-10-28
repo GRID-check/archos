@@ -1,0 +1,246 @@
+"""``create_task``: the chat turn's way of handing work over instead of pretending.
+
+## The failure this exists to stop
+
+„Mach den Einreichcheck bis Freitag" is not a question, and until now the only
+thing a turn could do with it was answer as though it were one — or, worse,
+answer „mache ich" about work that would never happen, because a chat turn ends
+when the answer ships and nothing outlives it. ADR-0051 built the row that does
+outlive it, and named a chat handoff as one of the triggers that should create
+one. This is that trigger.
+
+## Two triggers, one row
+
+„prüf das jeden Montag" is the same entity as „prüf das bis Freitag", with a
+recurring trigger instead of a one-off one (migration 0086 collapsed jobs and
+delegated tasks into `task_definitions` + `task_runs` for exactly this). The
+optional ``cadence`` argument is where a chat turn says „jeden Montag": the BFF
+creates a ``schedule`` definition and the scheduler fires it, instead of
+dispatching one run now. A cadence is gated on ``project:skills:manage`` — the
+recurrence is the repeated-spend act — and the refusal comes back as text the
+model can relay.
+
+## What it does and does not decide
+
+It decides WHICH KIND of work and WHAT was asked. It decides nothing about
+identity, permission or budget: the BFF reads the acting person out of the
+signed envelope this tool echoes, resolves that person's pinned session, checks
+`project:edit` (plus `project:skills:manage` for a cadence) against the named
+project and pins them as the task's requester (ADR-0054 §4, ADR-0055). A run
+with no envelope — a CLI call, an eval, a background run that carries none
+(ADR-0108) — has no acting person, and the tool refuses rather than falling
+back to the unsigned individual headers.
+
+The task then costs the requester's budget and runs under their permissions,
+which is why creating one is a real act and why the prompt tells the model to
+SAY it created one, in one sentence, and never to claim the work is done.
+
+## Why the kinds are closed
+
+Four members, `TaskKind` in `cards/workspace_cards.py` (the BFF's `DELEGATABLE_TASK_KINDS`
+is generated from it), because
+each one names an ENGINE that already exists — a norm check by the general
+agent, the Einreichcheck skill, the drafting tools, the revision path. An open `kind` string
+would let the model delegate „Kostenschätzung" to a queue that has nothing to run
+it with, and the failure would arrive hours later as a task that did nothing.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import Any
+from typing import get_args
+
+from agent import project_context
+from agent.cards.workspace_cards import TaskKind
+from agent.common.bff_http import SignedEnvelope
+from nat.plugin_api import Builder
+from nat.plugin_api import FunctionBaseConfig
+from nat.plugin_api import FunctionInfo
+from nat.plugin_api import register_function
+
+from .cards import emit_task_card
+from .client import DelegationError
+from .client import post_task
+
+logger = logging.getLogger(__name__)
+
+#: The BFF's own ceiling (`TASK_GOAL_MAX_CHARS`). Checked here so an over-long
+#: goal comes back where the model can shorten it, rather than as a 400 after the
+#: reader has been told the task is being created.
+MAX_GOAL_CHARS = 500
+
+#: The BFF's cron ceiling (`internalTaskRequestSchema.cadence`). A 5-field cron
+#: is at most a few dozen characters; a longer one is REFUSED, never truncated,
+#: because slicing a comma list can leave a different, still-valid schedule.
+MAX_CADENCE_CHARS = 120
+
+#: The kinds, read from `TaskKind`, the set the BFF's `DELEGATABLE_TASK_KINDS` is generated from.
+TASK_KINDS: tuple[str, ...] = get_args(TaskKind)
+
+#: Kinds as they were stored before migration 0167. A conversation that already holds a
+#: ``create_task(kind="einreichcheck")`` call invites the model to repeat it, so the tool
+#: maps the old name; the request it sends carries the new one. Remove after one release.
+LEGACY_TASK_KINDS: dict[str, str] = {"einreichcheck": "submission_check"}
+
+#: What each kind is called when the refusal has to name the set.
+_KIND_LIST = ", ".join(f"`{kind}`" for kind in TASK_KINDS)
+
+_NO_PROJECT = (
+    "Error: There is no project in this conversation, so there is no task that could belong to a "
+    "project. Nothing was created. Do not retry."
+)
+
+_NO_ENVELOPE = (
+    "Error: This run has no signed session credential, so no task can be created in a "
+    "person's name. Nothing was created. Do not retry."
+)
+
+
+class _Refused(Exception):
+    """A model-facing refusal, raised where it is discovered."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+def _envelope() -> SignedEnvelope:
+    header, signature = project_context.get_request_envelope_from_context()
+    if not header or not signature:
+        raise _Refused(_NO_ENVELOPE)
+    return SignedEnvelope(header=header, signature=signature)
+
+
+def _project_or_refuse() -> str:
+    project_id = project_context.get_project_id_from_context()
+    if not project_id:
+        raise _Refused(_NO_PROJECT)
+    return project_id
+
+
+def _kind_or_refuse(kind: str) -> str:
+    normalized = (kind or "").strip().lower()
+    normalized = LEGACY_TASK_KINDS.get(normalized, normalized)
+    if normalized not in TASK_KINDS:
+        raise _Refused(f"Error: `{kind}` is not a task kind. The possible kinds are {_KIND_LIST}. Nothing was created.")
+    return normalized
+
+
+def _goal_or_refuse(goal: str) -> str:
+    text = " ".join((goal or "").split())
+    if not text:
+        raise _Refused("Error: A task needs a description of what is to be done. Nothing was created.")
+    return text[:MAX_GOAL_CHARS]
+
+
+def _cadence_or_refuse(cadence: str) -> str:
+    """The recurrence, as the 5-field cron the scheduler claims."""
+    text = " ".join((cadence or "").split())
+    if not text:
+        raise _Refused("Error: A recurring task needs a schedule. Nothing was created.")
+    if len(text) > MAX_CADENCE_CHARS:
+        raise _Refused("Error: The schedule is too long. Nothing was created.")
+    return text
+
+
+async def _post(payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str, Any]:
+    """The blocking call, off the event loop, with the refusal already worded."""
+    try:
+        return await asyncio.to_thread(post_task, payload, envelope)
+    except DelegationError as exc:
+        raise _Refused(
+            f"Error creating the task: {exc}. Nothing was created; tell the user that the task was not accepted."
+        ) from exc
+
+
+#: How the answer is told to talk about what just happened. It leads with the
+#: thing the model gets wrong — „ich habe den Einreichcheck gemacht" about work
+#: that has been QUEUED — because that sentence is the reason the tool exists.
+_QUEUED = (
+    "The task is created and running; it is NOT done. Say in one sentence that Piloti is "
+    "taking care of it and will get back — do not claim the result is already available."
+)
+
+#: The scheduled arm. Nothing runs now: the definition exists and the scheduler
+#: owns every fire, so the answer must not claim a first result is coming before
+#: the cadence fires — and must name WHEN it will first run when the route said.
+_SCHEDULED = (
+    "The task is created as a recurring schedule; the first run starts at the given "
+    "time, not now. Say in one sentence that the schedule is set and when it first "
+    "runs — do not claim anything is already done."
+)
+
+_CREATE_TASK_DESCRIPTION = (
+    "Creates a task that Piloti carries out on its own after this conversation, and reports back "
+    "when it is done. Call it when the user asks for work that takes longer than this "
+    "answer („mach den Einreichcheck bis Freitag“, „@Piloti prüf das“, „schreib mir bis Montag den "
+    "Aktenvermerk“) — not for a question that can be answered now. "
+    "`kind` is one of " + _KIND_LIST + ": `compliance_check` is the norm check of a document "
+    "against the OIB guidelines, `submission_check` checks the completeness of the "
+    "submission (Einreichung), `document` "
+    "writes a document and files it as a draft, `revision` revises a returned "
+    "draft. "
+    "`goal` is the task in the user's words. `due` is optionally the desired date as "
+    "`YYYY-MM-DD` — convert „bis Freitag“ to a date yourself, do not pass text. "
+    "`cadence` is optionally a 5-field cron for recurring tasks („jeden Montag“ → "
+    "`0 8 * * 1`, UTC): it creates a schedule instead of a single run; it needs the "
+    "permission `project:skills:manage`, and without it it is refused. "
+    "The task runs with the user's rights and costs their budget. After the call the "
+    "work is CREATED, not done. "
+    "A task belongs to a project: without a project in this conversation none is created; tell "
+    "the user so instead of retrying."
+)
+
+
+class CreateTaskConfig(FunctionBaseConfig, name="create_task"):
+    """Configuration for the ``create_task`` tool."""
+
+
+async def _create(kind: str, goal: str, due: str, cadence: str) -> str:
+    """The whole of ``create_task``, with every refusal raised where it is found."""
+    project_id = _project_or_refuse()
+    envelope = _envelope()
+    chosen_kind = _kind_or_refuse(kind)
+    chosen_goal = _goal_or_refuse(goal)
+
+    payload: dict[str, Any] = {
+        "op": "create",
+        "projectId": project_id,
+        "kind": chosen_kind,
+        "goal": chosen_goal,
+    }
+    # Only when the model gave one. The BFF's schema is strict, and an empty
+    # string is not a date — it would be a 400 for a field nobody asked for.
+    if (due or "").strip():
+        payload["due"] = due.strip()
+    if (cadence or "").strip():
+        payload["cadence"] = _cadence_or_refuse(cadence)
+
+    body = await _post(payload, envelope)
+    emit_task_card(body, goal=chosen_goal, kind=chosen_kind)
+    title = str(body.get("title") or chosen_goal)
+    if body.get("scheduled"):
+        next_run = str(body.get("nextRunAt") or "").strip()
+        first_run = f" The first run is planned for {next_run}." if next_run else ""
+        return f"Schedule created: „{title}“.{first_run} {_SCHEDULED}"
+    return f"Task created: „{title}“. {_QUEUED}"
+
+
+async def run_create_task(kind: str, goal: str, due: str = "", cadence: str = "") -> str:
+    """Delegate one piece of work to a task row.
+
+    Module-level, and the tool below is a one-line wrapper around it, so the
+    refusal paths are reachable by a test without going through NAT's generator —
+    the refusals are most of what this tool is.
+    """
+    try:
+        return await _create(kind, goal, due, cadence)
+    except _Refused as refused:
+        return refused.message
+
+
+@register_function(config_type=CreateTaskConfig)
+async def create_task(tool_config: CreateTaskConfig, builder: Builder):
+    yield FunctionInfo.from_fn(run_create_task, description=_CREATE_TASK_DESCRIPTION)

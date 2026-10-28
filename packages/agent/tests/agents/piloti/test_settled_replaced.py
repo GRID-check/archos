@@ -14,18 +14,18 @@ import types
 
 import pytest
 
-from aiq_agent.agents.piloti import conversation_register as cr
-from aiq_agent.common.wire_v2 import AnswerRetractedBody
-from aiq_agent.common.wire_v2 import AnswerSnapshot
-from aiq_agent.common.wire_v2 import EmptyValue
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import StateSnapshotBody
-from aiq_agent.common.wire_v2 import TextMessageContentBody
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.turn import answer_stream
-from aiq_agent.turn.admission import TurnOutcome
-from aiq_agent.turn.payload import TurnInputs
-from aiq_agent.turn.streaming import note_settled_replaced
+from agent.agents.piloti import conversation_register as cr
+from agent.common.wire_v2 import AnswerRetractedBody
+from agent.common.wire_v2 import AnswerSnapshot
+from agent.common.wire_v2 import EmptyValue
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import StateSnapshotBody
+from agent.common.wire_v2 import TextMessageContentBody
+from agent.common.wire_v2 import TurnResult
+from agent.turn import answer_stream
+from agent.turn.admission import TurnOutcome
+from agent.turn.payload import TurnInputs
+from agent.turn.streaming import note_settled_replaced
 
 
 def _snapshot(text: str) -> StateSnapshotBody:

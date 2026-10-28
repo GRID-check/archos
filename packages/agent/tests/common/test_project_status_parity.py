@@ -10,7 +10,7 @@ from the parser as a label nobody maps.
 import re
 from pathlib import Path
 
-from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
+from agent.common.grounding_block import PROJECT_STATUS_LABELS
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 TS_STATUS = REPO_ROOT / "apps" / "workspace" / "bff" / "projects" / "project-status.ts"

@@ -17,7 +17,7 @@ PILOTI_AGENT = "shallow_research_agent"
 
 
 def _canvas_members() -> set[str]:
-    from aiq_agent.tools.canvas.register import DESCRIPTIONS
+    from agent.tools.canvas.register import DESCRIPTIONS
 
     return set(DESCRIPTIONS)
 
@@ -35,7 +35,7 @@ def piloti_tool_names() -> set[str]:
     agent = config["functions"][PILOTI_AGENT]
     if agent.get("filesystem"):
         # Built per turn, not listed: the estate's readers (ADR-0133).
-        from aiq_agent.tools.documents.tools import ESTATE_TOOL_NAMES
+        from agent.tools.documents.tools import ESTATE_TOOL_NAMES
 
         names.update(ESTATE_TOOL_NAMES)
     for tool in agent["tools"]:

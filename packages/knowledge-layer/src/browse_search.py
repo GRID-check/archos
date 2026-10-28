@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.common.source_kinds import canonical_shelf_value
+from agent.common.source_kinds import canonical_shelf_value
 
 from .browse_turn import _entry_shelf
 

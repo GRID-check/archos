@@ -12,7 +12,7 @@ import os
 
 import pytest
 
-from aiq_api.jobs import payload_crypto
+from agent_host.jobs import payload_crypto
 
 _PAYLOAD = {"auth_token": "secret-bearer", "input_text": "hi", "usage_context": {"organization_id": "org"}}
 

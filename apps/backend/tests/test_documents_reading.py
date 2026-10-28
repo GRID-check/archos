@@ -7,10 +7,10 @@ as the other per-document metadata: a stored value fills an empty field and neve
 
 import json
 
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import FileInfo
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_api.routes.documents import _merge_summaries
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import FileInfo
+from agent.knowledge.schema import FileStatus
+from agent_host.routes.documents import _merge_summaries
 
 DOSSIER = {"version": 1, "document_type": "fire_safety_concept", "summary": "Brandschutzkonzept.", "facts": []}
 REFERENCES = [{"kind": "plan", "key": "ep-05", "label": "EP-05", "pages": [3]}]
@@ -47,9 +47,9 @@ async def test_a_listing_read_without_the_metadata_store_says_so(monkeypatch):
     from httpx import ASGITransport
     from httpx import AsyncClient
 
-    from aiq_agent.knowledge.factory import clear_active_ingestor
-    from aiq_agent.knowledge.factory import set_active_ingestor
-    from aiq_api.routes import documents as routes
+    from agent.knowledge.factory import clear_active_ingestor
+    from agent.knowledge.factory import set_active_ingestor
+    from agent_host.routes import documents as routes
 
     async def present(*args, **kwargs):
         return None

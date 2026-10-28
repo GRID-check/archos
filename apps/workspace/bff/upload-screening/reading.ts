@@ -6,7 +6,7 @@
  * The content screen (`./content-screen`) reads prose with these; the name gate
  * (`./name-screen`) reads file and folder names with them. One definition, so a
  * zero-width space or a `Gehalts-Abrechnung` gets past neither gate where it is
- * caught by the other. Python's `aiq_agent.common.content_screen` mirrors the
+ * caught by the other. Python's `agent.common.content_screen` mirrors the
  * content side, held to it by the shared fixture.
  *
  * Pure and client-safe.

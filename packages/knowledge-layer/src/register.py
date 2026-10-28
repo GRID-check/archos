@@ -11,8 +11,8 @@ from knowledge_layer.knowledge_search import KnowledgeSearch
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.common.tool_calls import CONCLUSION_ARG
-from aiq_agent.common.tool_calls import CONCLUSION_DESCRIPTION
+from agent.common.tool_calls import CONCLUSION_ARG
+from agent.common.tool_calls import CONCLUSION_DESCRIPTION
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -367,7 +367,7 @@ _SEARCH_PATH_MODULES = (
     "knowledge_layer.folder_channel",
     "knowledge_layer.read_passage",
     "knowledge_layer.requery",
-    "aiq_agent.observability.retrieval_trace",
+    "agent.observability.retrieval_trace",
 )
 
 
@@ -380,7 +380,7 @@ def _warm_search_path_sync(retriever: Any) -> None:
     import knowledge_layer.read_passage  # noqa: F401 - warm-up import
     import knowledge_layer.requery  # noqa: F401 - warm-up import
 
-    import aiq_agent.observability.retrieval_trace  # noqa: F401 - warm-up import
+    import agent.observability.retrieval_trace  # noqa: F401 - warm-up import
 
 
 async def _warm_search_path(retriever: Any) -> None:
@@ -406,7 +406,7 @@ async def _warm_search_path(retriever: Any) -> None:
 
 def _get_retriever(config: KnowledgeRetrievalConfig):
     """Get the retriever singleton from the factory."""
-    from aiq_agent.knowledge.factory import get_retriever
+    from agent.knowledge.factory import get_retriever
 
     backend, backend_config = _setup_backend(config)
     retriever = get_retriever(backend, backend_config)
@@ -426,8 +426,8 @@ def _initialize_ingestor(config: KnowledgeRetrievalConfig, summary_llm_obj=None)
         config: Knowledge retrieval configuration
         summary_llm_obj: Optional resolved LLM object for summarization
     """
-    from aiq_agent.knowledge.factory import get_ingestor
-    from aiq_agent.knowledge.factory import set_active_ingestor
+    from agent.knowledge.factory import get_ingestor
+    from agent.knowledge.factory import set_active_ingestor
 
     backend, backend_config = _setup_backend(config, summary_llm_obj)
     ingestor = get_ingestor(backend, backend_config)
@@ -445,9 +445,9 @@ async def _platform_llm(builder: Builder, ref):
     (``openrouter.PLATFORM_FIXED``); a model that cannot carry the pin fails
     here rather than send unpinned.
     """
-    from aiq_agent.common import get_langchain_llm
-    from aiq_agent.common.openrouter import PLATFORM_FIXED
-    from aiq_agent.common.openrouter import pin_chat_model
+    from agent.common import get_langchain_llm
+    from agent.common.openrouter import PLATFORM_FIXED
+    from agent.common.openrouter import pin_chat_model
 
     return pin_chat_model(await get_langchain_llm(builder, ref), PLATFORM_FIXED)
 
@@ -499,9 +499,9 @@ def _cross_encoder(config: KnowledgeRetrievalConfig):
 
 async def _bound_retriever(config: KnowledgeRetrievalConfig, summary_llm_obj) -> Any:
     """The stores configured, the search retriever built and warmed, and the ingestor initialized."""
-    from aiq_agent.knowledge.factory import configure_summary_db
-    from aiq_agent.knowledge.factory import set_search_retriever
-    from aiq_agent.knowledge.norm_store import configure_norm_store
+    from agent.knowledge.factory import configure_summary_db
+    from agent.knowledge.factory import set_search_retriever
+    from agent.knowledge.norm_store import configure_norm_store
 
     configure_summary_db(config.summary_db)
     # The admin-managed norm registry store shares the summary DB URL (one
@@ -666,6 +666,6 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             description=f"{knowledge_search_description(config.match_modes)} {result_budget(top_k, max_per_document)}",
         )
     finally:
-        from aiq_agent.knowledge.factory import clear_search_retriever
+        from agent.knowledge.factory import clear_search_retriever
 
         clear_search_retriever(retriever)

@@ -177,7 +177,7 @@ describe("the api tier", () => {
   });
 
   it("names exactly the web roles the Python image knows", () => {
-    const python = read("apps", "backend", "src", "aiq_api", "roles.py");
+    const python = read("apps", "backend", "src", "agent_host", "roles.py");
     const entrypoint = read("apps", "backend", "entrypoint.py");
     const known = [...python.matchAll(/^\s+[A-Z]+ = "([a-z]+)"$/gm)].map((m) => m[1]).sort();
 

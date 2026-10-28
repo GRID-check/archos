@@ -20,11 +20,11 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import configure_summary_db
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_api.routes.documents import add_document_routes
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import configure_summary_db
+from agent.knowledge.factory import set_active_ingestor
+from agent_host.routes.documents import add_document_routes
 
 
 @pytest.fixture

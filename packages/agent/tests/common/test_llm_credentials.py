@@ -5,13 +5,13 @@ from unittest.mock import patch
 import pytest
 from pydantic import BaseModel
 
-from aiq_agent.common import llm_credentials
-from aiq_agent.common.llm_credentials import OrgLLMCredential
-from aiq_agent.common.llm_credentials import apply_org_credential
-from aiq_agent.common.llm_credentials import reset_credential_cache
-from aiq_agent.common.llm_credentials import resolve_org_llm_credential
-from aiq_agent.common.llm_provider import LLMProvider
-from aiq_agent.common.llm_provider import LLMRole
+from agent.common import llm_credentials
+from agent.common.llm_credentials import OrgLLMCredential
+from agent.common.llm_credentials import apply_org_credential
+from agent.common.llm_credentials import reset_credential_cache
+from agent.common.llm_credentials import resolve_org_llm_credential
+from agent.common.llm_provider import LLMProvider
+from agent.common.llm_provider import LLMRole
 
 CREDENTIAL = OrgLLMCredential(
     credential_id="cred-1",

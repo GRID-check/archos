@@ -7,7 +7,7 @@ import 'server-only'
  * dismissed, `./decision-score.ts`), it is the precision of noticing: of the
  * marks proposed, how many a person stood behind.
  *
- * Declared in `aiq_agent.observability.langfuse_scores.SCORE_DEFINITIONS`.
+ * Declared in `agent.observability.langfuse_scores.SCORE_DEFINITIONS`.
  * The id is derived from the notice, so a retried job upserts. Best-effort:
  * never throws into the job, and without a trace (a cached comparison, tracing
  * off) there is no score, because a score on a guessed trace attaches to

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_api import turn_fence
-from aiq_api.turn_fence import TurnFence
-from aiq_api.turn_fence import fence_margin
-from aiq_api.turn_fence import validate_running_ttl
+from agent_host import turn_fence
+from agent_host.turn_fence import TurnFence
+from agent_host.turn_fence import fence_margin
+from agent_host.turn_fence import validate_running_ttl
 
 
 class Clock:
@@ -107,8 +107,8 @@ def test_a_ttl_the_margin_does_not_fit_in_is_refused():
 
 def test_the_default_ttl_leaves_a_window_longer_than_a_renewal_interval():
     """The shipped defaults, not a test's: a blip of a couple of renewal rounds must not cancel an answer."""
-    from aiq_api import chat_socket
-    from aiq_api import conversation_bus
+    from agent_host import chat_socket
+    from agent_host import conversation_bus
 
     ttl = conversation_bus.RUNNING_TTL_SECONDS
     window = ttl - fence_margin()

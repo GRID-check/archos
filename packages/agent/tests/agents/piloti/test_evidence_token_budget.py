@@ -20,10 +20,10 @@ from langgraph.store.memory import InMemoryStore
 from pydantic import BaseModel
 from pydantic import create_model
 
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.tools.documents.tools import filesystem_tools
+from agent.tools.documents.draft_store import DraftBackend
+from agent.tools.documents.tools import filesystem_tools
 
-PROMPT = Path(__file__).resolve().parents[5] / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md"
+PROMPT = Path(__file__).resolve().parents[5] / "packages/agent/src/agent/agents/piloti/prompts/piloti_static.md"
 
 #: The slice-6 counts in characters / 4 (1,719 and 1,144 when written; o200k 1,712 and 1,399), plus about
 #: 10 % slack. Descriptions: the eight evidence tools of the chat binding; schemas: their JSON Schemas

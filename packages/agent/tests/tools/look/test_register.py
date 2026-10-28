@@ -19,12 +19,12 @@ from agent_testing.canvas import OTHER_DOCUMENT
 from agent_testing.canvas import answering
 from agent_testing.look import _pdf
 
-from aiq_agent import project_context
-from aiq_agent.common import image_view_budget
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.tools.look import resolve
-from aiq_agent.tools.look.register import DESCRIPTION
-from aiq_agent.tools.look.register import run_look
+from agent import project_context
+from agent.common import image_view_budget
+from agent.common.focus_file import set_turn_intent
+from agent.tools.look import resolve
+from agent.tools.look.register import DESCRIPTION
+from agent.tools.look.register import run_look
 
 # The look suites' fixtures, under the names these tests ask for.
 stored = look.stored
@@ -207,7 +207,7 @@ class TestTheRoom:
         assert (glow["page"], glow["x"], glow["y"], glow["w"], glow["h"]) == (2, 0.1, 0.2, 0.3, 0.25)
 
     async def test_a_room_that_cannot_be_told_never_stops_the_look(self, stored, monkeypatch, calls) -> None:
-        from aiq_agent.tools.canvas.client import CanvasRequestError
+        from agent.tools.canvas.client import CanvasRequestError
 
         answering(monkeypatch, calls, CanvasRequestError("down", status=503))
         set_turn_intent(file_name="Grundriss_EG.pdf", document_id=DOCUMENT)
@@ -218,7 +218,7 @@ class TestTheRoom:
 
     async def test_a_look_outside_a_chat_turn_never_glows(self, stored, monkeypatch, calls) -> None:
         """The door and a background run send no ``leave``: a glow from them would stay on the canvas."""
-        from aiq_agent.tools.look import register
+        from agent.tools.look import register
 
         monkeypatch.setattr(register, "current_canvas_presence", lambda: None)
         set_turn_intent(file_name="Grundriss_EG.pdf", document_id=DOCUMENT)
@@ -292,9 +292,9 @@ class TestTheRow:
         self, stored, monkeypatch, emitted, lookups
     ) -> None:
         """Once the turn admitted the folder, the row and the `look` step name the file and its id."""
-        from aiq_agent.knowledge.restricted_use import RestrictedUse
-        from aiq_agent.knowledge.restricted_use import bind_restricted_use
-        from aiq_agent.knowledge.restricted_use import reset_restricted_use
+        from agent.knowledge.restricted_use import RestrictedUse
+        from agent.knowledge.restricted_use import bind_restricted_use
+        from agent.knowledge.restricted_use import reset_restricted_use
 
         restricted = "proj_1_r0123456789ab"
         monkeypatch.setattr(resolve, "probe_collections", lambda: [restricted])
@@ -320,7 +320,7 @@ class TestTheRow:
         async def boom(_document):
             raise RuntimeError("boom")
 
-        monkeypatch.setattr("aiq_agent.tools.look.register.resolve_document", boom)
+        monkeypatch.setattr("agent.tools.look.register.resolve_document", boom)
 
         with pytest.raises(RuntimeError):
             await run_look("Grundriss_EG.pdf", page=1)

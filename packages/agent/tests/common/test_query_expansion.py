@@ -21,15 +21,15 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.query_expansion import augmented_query
-from aiq_agent.common.query_expansion import detect_language
-from aiq_agent.common.query_expansion import expansion_terms
+from agent.common.query_expansion import augmented_query
+from agent.common.query_expansion import detect_language
+from agent.common.query_expansion import expansion_terms
 
 
 @pytest.fixture(autouse=True)
 def _fresh_vocabulary():
     """The glossary is parsed once per process; tests must not inherit each other's."""
-    from aiq_agent.common.query_expansion import reset_vocabulary_cache
+    from agent.common.query_expansion import reset_vocabulary_cache
 
     reset_vocabulary_cache()
     yield
@@ -73,7 +73,7 @@ def test_a_miss_is_logged_once_per_query_and_not_by_a_second_expansion(caplog) -
     """The miss line is the coverage metric; a caller that expands the query
     again (the warm-up) passes ``log_miss=False`` so the rate stays per query."""
     question = "What is the quarterly revenue forecast?"
-    with caplog.at_level("INFO", logger="aiq_agent.common.query_expansion"):
+    with caplog.at_level("INFO", logger="agent.common.query_expansion"):
         augmented_query(question)
         augmented_query(question, log_miss=False)
     assert len([r for r in caplog.records if "no glossary concept" in r.getMessage()]) == 1
@@ -169,7 +169,7 @@ def test_a_missing_glossary_disables_expansion_rather_than_retrieval(monkeypatch
     """Expansion is an enhancement; retrieval is not. It must fail open."""
     from pathlib import Path
 
-    from aiq_agent.common import query_expansion
+    from agent.common import query_expansion
 
     monkeypatch.setattr(query_expansion, "VOCABULARY_PATH", Path("/nonexistent/vocabulary.yml"))
     query_expansion.reset_vocabulary_cache()

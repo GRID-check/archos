@@ -79,7 +79,7 @@ CHECK, a unique index, a guard trigger) unless a suite on the full chain
 already covers it.
 
 **Backend tests run against this checkout's `packages/agent/src/`.** Without a guard, pytest
-resolves `aiq_agent` from whatever the venv has installed, possibly another
+resolves `agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
 `pythonpath` puts `packages/agent/src/` first, so a bare `pytest` is safe as well as the Taskfile.
 

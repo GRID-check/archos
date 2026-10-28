@@ -7,16 +7,16 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common import bff_http
-from aiq_agent.common import citation_events
-from aiq_agent.common.citation_events import CitationEvent
-from aiq_agent.common.citation_events import build_turn_events
-from aiq_agent.common.citation_events import extract_citation_target
-from aiq_agent.common.citation_events import normalize_removal_reason
-from aiq_agent.common.citation_events import record_empty_registry
-from aiq_agent.common.citation_events import record_turn
-from aiq_agent.common.citation_events import summarize_removal_reasons
-from aiq_agent.common.citation_events import summarize_removed_targets
+from agent.common import bff_http
+from agent.common import citation_events
+from agent.common.citation_events import CitationEvent
+from agent.common.citation_events import build_turn_events
+from agent.common.citation_events import extract_citation_target
+from agent.common.citation_events import normalize_removal_reason
+from agent.common.citation_events import record_empty_registry
+from agent.common.citation_events import record_turn
+from agent.common.citation_events import summarize_removal_reasons
+from agent.common.citation_events import summarize_removed_targets
 
 
 def _kinds(events: list[CitationEvent]) -> list[str]:

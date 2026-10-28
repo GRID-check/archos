@@ -84,7 +84,7 @@ def _parse_pages(raw: Any, document: str = "<document>") -> tuple[int, int] | No
 class ReadCursor:
     """Where a ranged read stopped: the last chunk it returned, and the page the whole read ends on.
 
-    ``position`` is that chunk's whole :func:`~aiq_agent.knowledge.base.document_position`, the key the
+    ``position`` is that chunk's whole :func:`~agent.knowledge.base.document_position`, the key the
     chunks are sorted and cut by, so the continuation compares the same key. ``filters`` is the filter
     family the read used (:data:`ORDER_FILTERS` or :data:`LABEL_FILTERS`). ``collection`` is empty when
     the read spanned more than one collection, and the continuation then reads every one it resolves to.

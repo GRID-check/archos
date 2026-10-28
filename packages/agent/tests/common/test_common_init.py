@@ -8,14 +8,14 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common import DEFAULT_DATA_SOURCES
-from aiq_agent.common import extract_messages_and_sources
-from aiq_agent.common import filter_tools_by_sources
-from aiq_agent.common import format_data_source_tools
-from aiq_agent.common import get_checkpointer
-from aiq_agent.common import is_postgres_dsn
-from aiq_agent.common import is_verbose
-from aiq_agent.common import parse_data_sources
+from agent.common import DEFAULT_DATA_SOURCES
+from agent.common import extract_messages_and_sources
+from agent.common import filter_tools_by_sources
+from agent.common import format_data_source_tools
+from agent.common import get_checkpointer
+from agent.common import is_postgres_dsn
+from agent.common import is_verbose
+from agent.common import parse_data_sources
 
 
 class TestIsVerbose:
@@ -122,13 +122,13 @@ class TestDataSourcesExports:
 
     def test_get_all_tool_refs_exported(self):
         """Test get_all_tool_refs is exported."""
-        from aiq_agent.common import get_all_tool_refs
+        from agent.common import get_all_tool_refs
 
         assert callable(get_all_tool_refs)
 
     def test_get_source_id_for_tool_exported(self):
         """Test get_source_id_for_tool is exported."""
-        from aiq_agent.common import get_source_id_for_tool
+        from agent.common import get_source_id_for_tool
 
         assert callable(get_source_id_for_tool)
 
@@ -174,7 +174,7 @@ class TestGetCheckpointer:
     @pytest.fixture(autouse=True)
     def clear_checkpointer_cache(self):
         """Clear the checkpointer cache before each test."""
-        import aiq_agent.common as common_module
+        import agent.common as common_module
 
         common_module._checkpointers.clear()
         common_module._postgres_pools.clear()
@@ -187,7 +187,7 @@ class TestGetCheckpointer:
         """Close cached SQLite connections so temp files can be deleted on Windows."""
         from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
-        import aiq_agent.common as common_module
+        import agent.common as common_module
 
         for checkpointer in common_module._checkpointers.values():
             if isinstance(checkpointer, AsyncSqliteSaver):
@@ -252,8 +252,8 @@ class TestGetCheckpointer:
         mock_checkpointer.setup = AsyncMock()
 
         with (
-            patch("aiq_agent.common.AsyncConnectionPool", return_value=mock_pool),
-            patch("aiq_agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
+            patch("agent.common.AsyncConnectionPool", return_value=mock_pool),
+            patch("agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
         ):
             checkpointer = await get_checkpointer(postgres_dsn)
 
@@ -268,8 +268,8 @@ class TestGetCheckpointer:
         mock_checkpointer = MagicMock()
         mock_checkpointer.setup = AsyncMock()
         with (
-            patch("aiq_agent.common.AsyncConnectionPool", return_value=MagicMock()) as mock_pool_class,
-            patch("aiq_agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
+            patch("agent.common.AsyncConnectionPool", return_value=MagicMock()) as mock_pool_class,
+            patch("agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
         ):
             await get_checkpointer("postgresql://user:pass@localhost:5432/testdb")
         kwargs = mock_pool_class.call_args.kwargs
@@ -284,8 +284,8 @@ class TestGetCheckpointer:
         mock_checkpointer = MagicMock()
         mock_checkpointer.setup = AsyncMock()
         with (
-            patch("aiq_agent.common.AsyncConnectionPool", return_value=MagicMock()) as mock_pool_class,
-            patch("aiq_agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
+            patch("agent.common.AsyncConnectionPool", return_value=MagicMock()) as mock_pool_class,
+            patch("agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
         ):
             await get_checkpointer("postgresql://user:pass@localhost:5432/testdb")
         kwargs = mock_pool_class.call_args.kwargs
@@ -302,12 +302,12 @@ class TestGetCheckpointer:
         mock_checkpointer.setup = AsyncMock()
 
         with (
-            patch("aiq_agent.common.AsyncConnectionPool", return_value=mock_pool) as mock_pool_class,
-            patch("aiq_agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
+            patch("agent.common.AsyncConnectionPool", return_value=mock_pool) as mock_pool_class,
+            patch("agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
         ):
             await get_checkpointer(postgres_dsn)
 
-            import aiq_agent.common as common_module
+            import agent.common as common_module
 
             common_module._checkpointers.clear()
 
@@ -329,9 +329,9 @@ class TestGetCheckpointer:
         from langgraph.checkpoint.base import empty_checkpoint
         from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
-        from aiq_agent.agents.piloti.models import ConversationState
-        from aiq_agent.common import _build_checkpointer_serde
-        from aiq_agent.knowledge.schema import AvailableDocument
+        from agent.agents.piloti.models import ConversationState
+        from agent.common import _build_checkpointer_serde
+        from agent.knowledge.schema import AvailableDocument
 
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
@@ -391,8 +391,8 @@ class TestGetCheckpointer:
         from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
         from pydantic import BaseModel
 
-        from aiq_agent.agents.piloti.models import ConversationState
-        from aiq_agent.common import _build_checkpointer_serde
+        from agent.agents.piloti.models import ConversationState
+        from agent.common import _build_checkpointer_serde
 
         class RetiredStateType(BaseModel):
             answer: str

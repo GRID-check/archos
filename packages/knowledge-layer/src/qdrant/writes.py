@@ -20,7 +20,7 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.common.source_kinds import office_shelf_organization_id
+from agent.common.source_kinds import office_shelf_organization_id
 
 from .payload import ChunkRecord
 from .payload import document_facts
@@ -39,11 +39,11 @@ def facts_by_file(scope: str, file_names: Iterable[str] | None = None) -> dict[s
     every document of the scope.
     """
     if file_names is None:
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         documents = get_available_documents(scope)
     else:
-        from aiq_agent.knowledge import get_documents
+        from agent.knowledge import get_documents
 
         documents = get_documents(scope, sorted(set(file_names)))
     return {document.file_name: document_facts(document) for document in documents}

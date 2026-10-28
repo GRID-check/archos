@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from aiq_agent.agents.piloti import answer_pipeline
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
+from agent.agents.piloti import answer_pipeline
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
 
 PASSAGE = (
     "Vorher steht ein Satz über Geländer und Brüstungen. Die lichte Durchgangshöhe von Treppen muss "

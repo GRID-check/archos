@@ -5,11 +5,11 @@ from __future__ import annotations
 import asyncio
 import unicodedata
 
-from aiq_agent.agents.intake.read_log import NOT_FOUND
-from aiq_agent.agents.intake.read_log import IntakeReadLog
-from aiq_agent.agents.intake.read_log import bind_read_log
-from aiq_agent.agents.intake.read_log import current_read_log
-from aiq_agent.agents.intake.read_log import reset_read_log
+from agent.agents.intake.read_log import NOT_FOUND
+from agent.agents.intake.read_log import IntakeReadLog
+from agent.agents.intake.read_log import bind_read_log
+from agent.agents.intake.read_log import current_read_log
+from agent.agents.intake.read_log import reset_read_log
 
 
 def _log() -> IntakeReadLog:

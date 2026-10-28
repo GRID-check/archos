@@ -3,7 +3,7 @@
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.deep_researcher.models import DeepResearchAgentState
 
 
 class TestDeepResearchAgentState:

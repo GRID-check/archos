@@ -28,21 +28,21 @@ from httpx import AsyncClient
 from sqlalchemy import delete
 from sqlalchemy import text
 
-from aiq_agent import corpus_store
-from aiq_agent import oib_sync
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.base import PreparedIngestJob
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.factory import configure_summary_db
-from aiq_agent.knowledge.factory import register_summary
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_api.jobs import ingest_dispatch
-from aiq_api.routes import oib as oib_routes
-from aiq_api.routes.oib import add_oib_routes
+from agent import corpus_store
+from agent import oib_sync
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.base import PreparedIngestJob
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.factory import configure_summary_db
+from agent.knowledge.factory import register_summary
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from agent_host.jobs import ingest_dispatch
+from agent_host.routes import oib as oib_routes
+from agent_host.routes.oib import add_oib_routes
 
 _COLLECTION = "oib_knowledge"
 
@@ -221,7 +221,7 @@ async def test_upload_explicit_doc_class_persists(app, ingestor, bucket, cache_d
 
 @pytest.mark.asyncio
 async def test_upload_without_doc_class_uses_guess(app, ingestor):
-    from aiq_agent.common.norm_registry import guess_doc_class
+    from agent.common.norm_registry import guess_doc_class
 
     name = "oib-rl_2_brandschutz.pdf"
     expected = guess_doc_class(name)
@@ -771,7 +771,7 @@ class TestCorpusExport:
 
     @pytest.fixture
     def corpus(self, monkeypatch, cache_dir, bucket):
-        from aiq_api.routes import oib as oib_routes
+        from agent_host.routes import oib as oib_routes
 
         corpus_store.put("oib-rl_2_ausgabe_mai_2023.pdf", b"%PDF first")
         corpus_store.put("oib-rl_4_ausgabe_mai_2023.pdf", b"%PDF second")
@@ -807,7 +807,7 @@ class TestCorpusExport:
 
     @pytest.mark.asyncio
     async def test_no_configured_token_fails_closed(self, app, corpus, monkeypatch):
-        from aiq_api.routes import oib as oib_routes
+        from agent_host.routes import oib as oib_routes
 
         monkeypatch.setattr(oib_routes, "_ADMIN_TOKEN", None)
         async with _client(app) as client:
@@ -815,7 +815,7 @@ class TestCorpusExport:
         assert res.status_code == 503
 
     def test_a_failed_build_leaves_no_partial_archive(self, corpus, tmp_path, monkeypatch):
-        from aiq_api.routes import oib as oib_routes
+        from agent_host.routes import oib as oib_routes
 
         scratch = tmp_path / "tmp"
         scratch.mkdir()
@@ -832,7 +832,7 @@ class TestCorpusExport:
     def test_a_file_that_cannot_be_fetched_fails_the_export_instead_of_shipping_half_a_corpus(
         self, corpus, bucket, tmp_path, monkeypatch
     ):
-        from aiq_api.routes import oib as oib_routes
+        from agent_host.routes import oib as oib_routes
 
         scratch = tmp_path / "tmp"
         scratch.mkdir()

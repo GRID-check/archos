@@ -238,8 +238,8 @@ def test_the_document_frequency_ceiling_is_not_applied_to_a_collection_this_smal
     # ceiling below DEFAULT_DF_CEILING_MIN_TOTAL rows: in a ten-chunk collection every
     # content word looks too frequent, and dropping them all would silence the channel for
     # a project collection. The harness measures the shipped rule, so it must show it.
-    from aiq_agent.common.german_text import DEFAULT_DF_CEILING_MIN_TOTAL
-    from aiq_agent.common.german_text import select_terms
+    from agent.common.german_text import DEFAULT_DF_CEILING_MIN_TOTAL
+    from agent.common.german_text import select_terms
 
     assert lexical_corpus.total < DEFAULT_DF_CEILING_MIN_TOTAL
     assert lexical.search(lexical_corpus, "Richtlinie", 5) != []

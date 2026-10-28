@@ -14,17 +14,17 @@ from datetime import datetime
 
 import pytest
 
-from aiq_agent.common import claim_queue
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.base import PreparedIngestJob
-from aiq_agent.knowledge.ingest_scheduler import PLATFORM_LANE
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_api.jobs import ingest_dispatch
-from aiq_api.routes.ingest import DeferredObjectDownload
+from agent.common import claim_queue
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.base import PreparedIngestJob
+from agent.knowledge.ingest_scheduler import PLATFORM_LANE
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from agent_host.jobs import ingest_dispatch
+from agent_host.routes.ingest import DeferredObjectDownload
 
 _ORIGINAL = "http://seaweedfs.test/bucket/doc/plan.pdf?X-Amz-Signature=secret-original"
 _RENDITION = "http://seaweedfs.test/bucket/doc/plan.rendition.pdf?X-Amz-Signature=secret-rendition"
@@ -125,7 +125,7 @@ def test_a_worker_refuses_what_the_route_would_have_refused(forged):
     """Without a KEK a row is plaintext anyone who can write the table can forge."""
     import json
 
-    from aiq_api.jobs import payload_crypto
+    from agent_host.jobs import payload_crypto
 
     data = payload_crypto.deserialize(ingest_dispatch.encode(_prepared()))
     if "thumbnail_upload_url" in forged:
@@ -282,8 +282,8 @@ async def test_the_ingest_worker_claims_until_told_to_stop_then_drains(db, monke
     import asyncio
     import contextlib
 
-    from aiq_agent.knowledge import factory
-    from aiq_api.jobs import ingest_worker
+    from agent.knowledge import factory
+    from agent_host.jobs import ingest_worker
     from nat.builder import workflow_builder
     from nat.runtime import loader
 
@@ -323,7 +323,7 @@ async def test_the_ingest_worker_claims_until_told_to_stop_then_drains(db, monke
 def test_the_runs_guard_says_no_once_another_worker_holds_the_claim(db):
     from sqlalchemy import text
 
-    from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+    from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
     ingest_dispatch.dispatch(FakeIngestor(), _prepared())
     worker = FakeIngestor()
@@ -374,7 +374,7 @@ def test_a_waiting_status_says_how_many_of_its_offices_jobs_are_ahead(db):
 def _queue_rows(db) -> dict[str, tuple]:
     from sqlalchemy import text
 
-    from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+    from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
     with DocumentMetadataStore._get_or_create_sync_engine(db).connect() as conn:
         rows = conn.execute(text("SELECT job_id, status, attempts, priority FROM ingest_job_queue")).all()
@@ -469,8 +469,8 @@ async def test_the_ingest_worker_gives_back_what_it_still_runs_when_the_drain_en
     import asyncio
     import contextlib
 
-    from aiq_agent.knowledge import factory
-    from aiq_api.jobs import ingest_worker
+    from agent.knowledge import factory
+    from agent_host.jobs import ingest_worker
     from nat.builder import workflow_builder
     from nat.runtime import loader
 
@@ -648,7 +648,7 @@ def test_a_failed_count_leaves_the_statuses_alone(db, monkeypatch):
 
 
 def _corpus_job(job_id: str = "oib-1") -> PreparedIngestJob:
-    from aiq_agent.corpus_store import CorpusObjectDownload
+    from agent.corpus_store import CorpusObjectDownload
 
     prepared = _prepared(job_id, files=[CorpusObjectDownload("base-corpus/plan.pdf", "ab" * 32)], org=None)
     prepared.config.pop("extraction_paths")
@@ -669,7 +669,7 @@ def test_a_corpus_object_download_is_a_durable_file_and_round_trips_without_a_ur
 
 
 def test_a_worker_refuses_a_corpus_download_for_something_that_is_not_a_corpus_object(db):
-    from aiq_api.jobs import payload_crypto
+    from agent_host.jobs import payload_crypto
 
     data = payload_crypto.deserialize(ingest_dispatch.encode(_corpus_job()))
     data["file_paths"][0]["__corpus_object__"]["storage_key"] = "elsewhere/plan.pdf"

@@ -1,7 +1,7 @@
 """
 Tests for async job components.
 
-Module under test: apps/backend/src/aiq_api/jobs/
+Module under test: apps/backend/src/agent_host/jobs/
 
 Test coverage:
     TestIntermediateStepEvent:
@@ -50,12 +50,12 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_api.jobs.callbacks import ArtifactType
-from aiq_api.jobs.callbacks import DeepResearchEventCallback
-from aiq_api.jobs.callbacks import EventCategory
-from aiq_api.jobs.callbacks import EventData
-from aiq_api.jobs.callbacks import EventState
-from aiq_api.jobs.callbacks import IntermediateStepEvent
+from agent_host.jobs.callbacks import ArtifactType
+from agent_host.jobs.callbacks import DeepResearchEventCallback
+from agent_host.jobs.callbacks import EventCategory
+from agent_host.jobs.callbacks import EventData
+from agent_host.jobs.callbacks import EventState
+from agent_host.jobs.callbacks import IntermediateStepEvent
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -63,7 +63,7 @@ from tests.provider_doubles import nat_langchain_client
 @pytest.fixture(name="event_store_cache_guard", autouse=True)
 def fixture_event_store_cache_guard():
     """Reset EventStore caches to avoid cross-test leakage."""
-    from aiq_api.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     EventStore.dispose_all_engines()
     yield
@@ -345,8 +345,8 @@ class TestRunAgentStateFields:
     @pytest.mark.asyncio
     async def test_run_agent_sets_deep_research_state_fields(self):
         """user_info, clarifier_result, and project_context land on the deep state."""
-        from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-        from aiq_api.jobs.runner import _run_agent
+        from agent.agents.deep_researcher.models import DeepResearchAgentState
+        from agent_host.jobs.runner import _run_agent
 
         captured: dict = {}
 
@@ -355,7 +355,7 @@ class TestRunAgentStateFields:
                 captured["state"] = state
                 return state
 
-        FakeDeepAgent.__module__ = "aiq_agent.agents.deep_researcher.agent"
+        FakeDeepAgent.__module__ = "agent.agents.deep_researcher.agent"
         FakeDeepAgent.__name__ = "DeepResearcherAgent"
 
         monitor = MagicMock()
@@ -388,8 +388,8 @@ class TestRunAgentStateFields:
         run resolves no organization skills at all, which is how the platform's
         own standard skills came to be silently absent from every report.
         """
-        from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-        from aiq_api.jobs.runner import _run_agent
+        from agent.agents.deep_researcher.models import DeepResearchAgentState
+        from agent_host.jobs.runner import _run_agent
 
         captured: dict = {}
 
@@ -398,7 +398,7 @@ class TestRunAgentStateFields:
                 captured["state"] = state
                 return state
 
-        FakeDeepAgent.__module__ = "aiq_agent.agents.deep_researcher.agent"
+        FakeDeepAgent.__module__ = "agent.agents.deep_researcher.agent"
         FakeDeepAgent.__name__ = "DeepResearcherAgent"
 
         monitor = MagicMock()
@@ -420,8 +420,8 @@ class TestRunAgentStateFields:
     @pytest.mark.asyncio
     async def test_run_agent_skips_unsupported_state_fields(self):
         """Fields absent from a state model are not passed (no validation errors)."""
-        from aiq_agent.agents.piloti.models import ResearchAgentState
-        from aiq_api.jobs.runner import _run_agent
+        from agent.agents.piloti.models import ResearchAgentState
+        from agent_host.jobs.runner import _run_agent
 
         captured: dict = {}
 
@@ -430,7 +430,7 @@ class TestRunAgentStateFields:
                 captured["state"] = state
                 return state
 
-        FakePilotiAgent.__module__ = "aiq_agent.agents.piloti.agent"
+        FakePilotiAgent.__module__ = "agent.agents.piloti.agent"
         FakePilotiAgent.__name__ = "PilotiAgent"
         FakePilotiAgent.state_model = ResearchAgentState
 
@@ -464,8 +464,8 @@ class TestRunAgentStateFields:
         """
         import importlib
 
-        from aiq_api.jobs.runner import _get_agent_state_class
-        from aiq_api.registry import AGENT_REGISTRY
+        from agent_host.jobs.runner import _get_agent_state_class
+        from agent_host.registry import AGENT_REGISTRY
 
         assert AGENT_REGISTRY, "no agents registered"
         for agent_type, config in AGENT_REGISTRY.items():
@@ -488,32 +488,32 @@ class TestResolveWorkerToolRefs:
         inheritance and built a tool-less worker whose researcher sub-agents got
         no source tools.
         """
-        from aiq_api.jobs.runner import _resolve_worker_tool_refs
+        from agent_host.jobs.runner import _resolve_worker_tool_refs
 
         class FakeConfig:
             tools = []
 
-        with patch("aiq_agent.common.get_all_tool_refs", return_value=["ris_search_tool", "knowledge_search"]):
+        with patch("agent.common.get_all_tool_refs", return_value=["ris_search_tool", "knowledge_search"]):
             assert _resolve_worker_tool_refs(FakeConfig()) == ["ris_search_tool", "knowledge_search"]
 
     def test_none_tools_inherits_registry(self):
         """A missing tools attribute also inherits the registry."""
-        from aiq_api.jobs.runner import _resolve_worker_tool_refs
+        from agent_host.jobs.runner import _resolve_worker_tool_refs
 
         class FakeConfig:
             pass
 
-        with patch("aiq_agent.common.get_all_tool_refs", return_value=["web_search_tool"]):
+        with patch("agent.common.get_all_tool_refs", return_value=["web_search_tool"]):
             assert _resolve_worker_tool_refs(FakeConfig()) == ["web_search_tool"]
 
     def test_explicit_tools_are_used_verbatim_without_inheriting(self):
         """A non-empty explicit list is used as-is; the registry is never consulted."""
-        from aiq_api.jobs.runner import _resolve_worker_tool_refs
+        from agent_host.jobs.runner import _resolve_worker_tool_refs
 
         class FakeConfig:
             tools = ["web_search_tool"]
 
-        with patch("aiq_agent.common.get_all_tool_refs", side_effect=AssertionError("must not inherit")):
+        with patch("agent.common.get_all_tool_refs", side_effect=AssertionError("must not inherit")):
             assert _resolve_worker_tool_refs(FakeConfig()) == ["web_search_tool"]
 
 
@@ -522,7 +522,7 @@ class TestEventStore:
 
     def test_store_event(self, tmp_path):
         """Test storing an event."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -536,7 +536,7 @@ class TestEventStore:
 
     def test_get_events_empty(self, tmp_path):
         """Test get_events returns empty list for unknown job."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -547,7 +547,7 @@ class TestEventStore:
 
     def test_get_events_with_after_id(self, tmp_path):
         """Test get_events with after_id cursor."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -567,7 +567,7 @@ class TestEventStore:
     @pytest.mark.asyncio
     async def test_get_events_async(self, tmp_path):
         """Test async get_events."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -581,7 +581,7 @@ class TestEventStore:
 
     def test_cleanup_job_events(self, tmp_path):
         """Test cleanup_job_events deletes events."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -598,7 +598,7 @@ class TestEventStore:
 
     def test_engine_caching(self, tmp_path):
         """Test that engines are cached and reused."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -615,7 +615,7 @@ class TestEventStore:
 
     def test_dispose_all_engines(self, tmp_path):
         """Test dispose_all_engines clears cache."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "test.db"
         db_url = f"sqlite:///{db_path}"
@@ -629,7 +629,7 @@ class TestEventStore:
     @pytest.mark.asyncio
     async def test_dispose_all_engines_async_disposes_all(self):
         """Test dispose_all_engines_async disposes sync and async engines."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         sync_engine = MagicMock()
         async_engine = MagicMock()
@@ -649,7 +649,7 @@ class TestEventStore:
 
     def test_dispose_all_engines_schedules_async_cleanup(self):
         """Test dispose_all_engines schedules async dispose with running loop."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         sync_engine = MagicMock()
         async_engine = MagicMock()
@@ -680,8 +680,8 @@ class TestEventStore:
 
     def test_cleanup_stale_engines_disposes_async_engine(self):
         """Test stale async engines are disposed with a running loop."""
-        from aiq_api.jobs.event_store import ENGINE_CACHE_TTL_SECONDS
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import ENGINE_CACHE_TTL_SECONDS
+        from agent_host.jobs.event_store import EventStore
 
         async_engine = MagicMock()
         async_engine.dispose = AsyncMock()
@@ -708,8 +708,8 @@ class TestEventStore:
 
     def test_cleanup_stale_engines_uses_asyncio_run_without_loop(self):
         """Test stale async engines use asyncio.run without a loop."""
-        from aiq_api.jobs.event_store import ENGINE_CACHE_TTL_SECONDS
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import ENGINE_CACHE_TTL_SECONDS
+        from agent_host.jobs.event_store import EventStore
 
         async_engine = MagicMock()
         async_engine.dispose = AsyncMock()
@@ -742,7 +742,7 @@ class TestToolArtifactMapping:
 
     def test_default_mappings(self):
         """Test default tool mappings are registered."""
-        from aiq_api.jobs.callbacks import ToolArtifactMapping
+        from agent_host.jobs.callbacks import ToolArtifactMapping
 
         mapping = ToolArtifactMapping()
 
@@ -752,8 +752,8 @@ class TestToolArtifactMapping:
 
     def test_get_mapping(self):
         """Test get_mapping returns correct mapping."""
-        from aiq_api.jobs.callbacks import ArtifactType
-        from aiq_api.jobs.callbacks import ToolArtifactMapping
+        from agent_host.jobs.callbacks import ArtifactType
+        from agent_host.jobs.callbacks import ToolArtifactMapping
 
         mapping = ToolArtifactMapping()
         todo_mapping = mapping.get_mapping("write_todos")
@@ -763,8 +763,8 @@ class TestToolArtifactMapping:
 
     def test_register_custom_mapping(self):
         """Test registering a custom tool mapping."""
-        from aiq_api.jobs.callbacks import ArtifactType
-        from aiq_api.jobs.callbacks import ToolArtifactMapping
+        from agent_host.jobs.callbacks import ArtifactType
+        from agent_host.jobs.callbacks import ToolArtifactMapping
 
         mapping = ToolArtifactMapping()
         mapping.register(
@@ -895,7 +895,7 @@ class TestCancellationMonitor:
 
     def test_init(self):
         """Test CancellationMonitor initialization."""
-        from aiq_api.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(
             db_url="sqlite:///test.db",
@@ -907,7 +907,7 @@ class TestCancellationMonitor:
 
     def test_is_cancelled_initially_false(self):
         """Test is_cancelled is initially False."""
-        from aiq_api.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(
             db_url="sqlite:///test.db",
@@ -920,7 +920,7 @@ class TestCancellationMonitor:
         """Test check() raises CancelledError when cancelled."""
         import asyncio
 
-        from aiq_api.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(
             db_url="sqlite:///test.db",
@@ -933,7 +933,7 @@ class TestCancellationMonitor:
 
     def test_stop_cancels_monitor_task(self):
         """Test stop() cancels the monitor task."""
-        from aiq_api.jobs.runner import CancellationMonitor
+        from agent_host.jobs.runner import CancellationMonitor
 
         monitor = CancellationMonitor(
             db_url="sqlite:///test.db",
@@ -954,7 +954,7 @@ class TestDataSourceModel:
 
     def test_data_source_basic_creation(self):
         """Test creating DataSource with required fields."""
-        from aiq_api.routes.job_models import DataSource
+        from agent_host.routes.job_models import DataSource
 
         source = DataSource(id="web_search", name="Web Search")
 
@@ -964,7 +964,7 @@ class TestDataSourceModel:
 
     def test_data_source_with_description(self):
         """Test creating DataSource with description."""
-        from aiq_api.routes.job_models import DataSource
+        from agent_host.routes.job_models import DataSource
 
         source = DataSource(
             id="confluence",
@@ -978,7 +978,7 @@ class TestDataSourceModel:
 
     def test_data_source_serialization(self):
         """Test DataSource serialization to dict."""
-        from aiq_api.routes.job_models import DataSource
+        from agent_host.routes.job_models import DataSource
 
         source = DataSource(
             id="sharepoint",
@@ -998,7 +998,7 @@ class TestJobErrorEventEmission:
     @pytest.mark.asyncio
     async def test_exception_emits_job_error_event(self, tmp_path):
         """Test that exceptions emit job.error events to event store."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "error_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1025,7 +1025,7 @@ class TestJobErrorEventEmission:
 
     def test_job_error_event_structure(self, tmp_path):
         """Test job.error event has correct structure."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "structure_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1055,7 +1055,7 @@ class TestJobErrorEventEmission:
 
     def test_job_error_preserves_error_type(self, tmp_path):
         """Test that different error types are preserved correctly."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "types_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1089,7 +1089,7 @@ class TestJobErrorEventEmission:
 
     def test_job_error_with_long_message(self, tmp_path):
         """Test job.error handles long error messages."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "long_error_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1116,7 +1116,7 @@ class TestJobErrorEventEmission:
     @pytest.mark.asyncio
     async def test_job_error_async_retrieval(self, tmp_path):
         """Test job.error events can be retrieved asynchronously."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "async_error_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1146,7 +1146,7 @@ class TestJobCancelledEventComparison:
 
     def test_cancelled_and_error_events_coexist(self, tmp_path):
         """Test that cancelled and error events can coexist for same job."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "coexist_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1165,7 +1165,7 @@ class TestJobCancelledEventComparison:
 
     def test_job_error_follows_status_event_pattern(self, tmp_path):
         """Test job.error follows same pattern as job.cancelled."""
-        from aiq_api.jobs.event_store import EventStore
+        from agent_host.jobs.event_store import EventStore
 
         db_path = tmp_path / "pattern_test.db"
         db_url = f"sqlite:///{db_path}"
@@ -1197,7 +1197,7 @@ class TestSQLAlchemyPoolFilter:
         """Test filter passes normal error messages."""
         import logging
 
-        from aiq_api.jobs.event_store import SQLAlchemyPoolFilter
+        from agent_host.jobs.event_store import SQLAlchemyPoolFilter
 
         filter_obj = SQLAlchemyPoolFilter()
         record = logging.LogRecord(
@@ -1216,7 +1216,7 @@ class TestSQLAlchemyPoolFilter:
         """Test filter blocks CancelledError messages."""
         import logging
 
-        from aiq_api.jobs.event_store import SQLAlchemyPoolFilter
+        from agent_host.jobs.event_store import SQLAlchemyPoolFilter
 
         filter_obj = SQLAlchemyPoolFilter()
         record = logging.LogRecord(
@@ -1235,7 +1235,7 @@ class TestSQLAlchemyPoolFilter:
         """Test filter passes INFO level messages."""
         import logging
 
-        from aiq_api.jobs.event_store import SQLAlchemyPoolFilter
+        from agent_host.jobs.event_store import SQLAlchemyPoolFilter
 
         filter_obj = SQLAlchemyPoolFilter()
         record = logging.LogRecord(
@@ -1257,9 +1257,9 @@ class TestAsyncJobRunnerAgentFactory:
     @pytest.mark.asyncio
     async def test_create_llm_provider_configures_deep_research_roles(self):
         """Async workers honor all deep-research role-specific LLM config fields."""
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_agent.common import LLMRole
-        from aiq_api.jobs.runner import _create_llm_provider
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.common import LLMRole
+        from agent_host.jobs.runner import _create_llm_provider
 
         llms = {
             "orchestrator": MagicMock(name="orchestrator_llm"),
@@ -1297,8 +1297,8 @@ class TestAsyncJobRunnerAgentFactory:
         """Shared role/default LLM refs should initialize one wrapper instance."""
         from types import SimpleNamespace
 
-        from aiq_agent.common import LLMRole
-        from aiq_api.jobs.runner import _create_llm_provider
+        from agent.common import LLMRole
+        from agent_host.jobs.runner import _create_llm_provider
 
         shared_llm = MagicMock(name="shared_llm")
 
@@ -1327,10 +1327,10 @@ class TestAsyncJobRunnerAgentFactory:
 
     def test_create_agent_instance_passes_deep_research_config_as_explicit_args(self):
         """Async workers pass DeepResearchAgentConfig fields through the explicit constructor surface."""
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_api.jobs.runner import _create_agent_instance
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent_host.jobs.runner import _create_agent_instance
 
         class FakeDeepResearcherAgent:
             def __init__(
@@ -1408,11 +1408,11 @@ class TestAsyncJobRunnerAgentFactory:
 
     def test_async_deep_researcher_constructor_applies_config_tuning(self):
         """Async construction preserves catalog and concurrency settings."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_agent.common import LLMProvider
-        from aiq_agent.common import LLMRole
-        from aiq_api.jobs.runner import _create_agent_instance
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.common import LLMProvider
+        from agent.common import LLMRole
+        from agent_host.jobs.runner import _create_agent_instance
 
         mock_llm = MagicMock()
         provider = LLMProvider()
@@ -1449,14 +1449,14 @@ class TestAsyncJobRunnerAgentFactory:
         from langchain_core.messages import HumanMessage
         from langchain_core.tools import tool
 
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
-        from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_agent.common import LLMProvider
-        from aiq_agent.common import LLMRole
-        from aiq_api.jobs.runner import _create_agent_instance
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+        from agent.agents.deep_researcher.models import DeepResearchAgentState
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.common import LLMProvider
+        from agent.common import LLMRole
+        from agent_host.jobs.runner import _create_agent_instance
 
         @tool
         def async_test_search(query: str) -> str:
@@ -1480,19 +1480,19 @@ class TestAsyncJobRunnerAgentFactory:
 
         with (
             patch(
-                "aiq_agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend",
+                "agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend",
                 return_value=MagicMock(),
             ) as create_backend,
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+                "agent.agents.deep_researcher.factory.create_deep_agent",
                 return_value=mock_deep_agent,
             ) as create,
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_summarization_middleware",
+                "agent.agents.deep_researcher.factory.create_summarization_middleware",
                 return_value=MagicMock(),
             ),
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_agent",
+                "agent.agents.deep_researcher.factory.create_agent",
                 return_value=MagicMock(),
             ),
         ):
@@ -1537,12 +1537,12 @@ class TestAsyncJobRunnerAgentFactory:
         """Explicit empty data_sources disables source tools but keeps DeepResearcher helpers."""
         from langchain_core.messages import HumanMessage
 
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_agent.common import LLMProvider
-        from aiq_agent.common import LLMRole
-        from aiq_api.jobs.runner import _create_agent_instance
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.models import DeepResearchAgentState
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.common import LLMProvider
+        from agent.common import LLMRole
+        from agent_host.jobs.runner import _create_agent_instance
 
         mock_llm = MagicMock()
         provider = LLMProvider()
@@ -1555,13 +1555,13 @@ class TestAsyncJobRunnerAgentFactory:
         mock_deep_agent.with_config.return_value = mock_deep_agent
 
         with (
-            patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_deep_agent) as create,
+            patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_deep_agent) as create,
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_summarization_middleware",
+                "agent.agents.deep_researcher.factory.create_summarization_middleware",
                 return_value=MagicMock(),
             ),
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_agent",
+                "agent.agents.deep_researcher.factory.create_agent",
                 return_value=MagicMock(),
             ),
         ):
@@ -1590,10 +1590,10 @@ class TestAsyncJobRunnerAgentFactory:
 
     def test_create_agent_instance_does_not_swallow_deep_research_constructor_type_error(self):
         """Constructor bugs must not silently fall back to another construction pattern."""
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_api.jobs.runner import _create_agent_instance
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent_host.jobs.runner import _create_agent_instance
 
         class BrokenDeepResearcherAgent:
             def __init__(
@@ -1654,7 +1654,7 @@ class TestDeepResearchReflection:
         """Enabled + ref + project in scope → reflection runs over the report."""
         from contextlib import nullcontext
 
-        from aiq_api.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock(return_value=MagicMock())
@@ -1662,11 +1662,11 @@ class TestDeepResearchReflection:
 
         with (
             patch(
-                "aiq_agent.memory.reflection.run_memory_reflection",
+                "agent.memory.reflection.run_memory_reflection",
                 new=AsyncMock(return_value=["mem-1"]),
             ) as mock_reflect,
             patch(
-                "aiq_agent.common.cost_tracking.track_llm_costs",
+                "agent.common.cost_tracking.track_llm_costs",
                 side_effect=lambda **_: nullcontext(),
             ),
         ):
@@ -1696,13 +1696,13 @@ class TestDeepResearchReflection:
     @pytest.mark.asyncio
     async def test_skips_when_disabled(self):
         """Feature flag off → no LLM built, no reflection."""
-        from aiq_api.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock()
 
         with patch(
-            "aiq_agent.memory.reflection.run_memory_reflection",
+            "agent.memory.reflection.run_memory_reflection",
             new=AsyncMock(),
         ) as mock_reflect:
             await _run_deep_research_reflection(
@@ -1724,13 +1724,13 @@ class TestDeepResearchReflection:
     @pytest.mark.asyncio
     async def test_skips_without_llm_ref(self):
         """No reflection LLM configured → no-op."""
-        from aiq_api.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock()
 
         with patch(
-            "aiq_agent.memory.reflection.run_memory_reflection",
+            "agent.memory.reflection.run_memory_reflection",
             new=AsyncMock(),
         ) as mock_reflect:
             await _run_deep_research_reflection(
@@ -1752,13 +1752,13 @@ class TestDeepResearchReflection:
     @pytest.mark.asyncio
     async def test_skips_without_project_scope(self):
         """Org-only job (no project) → reflection has nothing it may write."""
-        from aiq_api.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock()
 
         with patch(
-            "aiq_agent.memory.reflection.run_memory_reflection",
+            "agent.memory.reflection.run_memory_reflection",
             new=AsyncMock(),
         ) as mock_reflect:
             await _run_deep_research_reflection(
@@ -1782,18 +1782,18 @@ class TestDeepResearchReflection:
         """A reflection failure is swallowed — job outcome is unaffected."""
         from contextlib import nullcontext
 
-        from aiq_api.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock(return_value=MagicMock())
 
         with (
             patch(
-                "aiq_agent.memory.reflection.run_memory_reflection",
+                "agent.memory.reflection.run_memory_reflection",
                 new=AsyncMock(side_effect=RuntimeError("boom")),
             ),
             patch(
-                "aiq_agent.common.cost_tracking.track_llm_costs",
+                "agent.common.cost_tracking.track_llm_costs",
                 side_effect=lambda **_: nullcontext(),
             ),
         ):
@@ -1819,7 +1819,7 @@ class TestDeepResearchReflection:
         import asyncio
         from contextlib import nullcontext
 
-        from aiq_api.jobs.runner import _run_deep_research_reflection
+        from agent_host.jobs.runner import _run_deep_research_reflection
 
         builder = MagicMock(get_llm_config=MagicMock(return_value=NAT_LLM_CONFIG))
         builder.get_llm = AsyncMock(return_value=MagicMock())
@@ -1831,14 +1831,14 @@ class TestDeepResearchReflection:
 
         with (
             patch(
-                "aiq_agent.memory.reflection.run_memory_reflection",
+                "agent.memory.reflection.run_memory_reflection",
                 new=AsyncMock(side_effect=never_finishes),
             ),
             patch(
-                "aiq_agent.common.cost_tracking.track_llm_costs",
+                "agent.common.cost_tracking.track_llm_costs",
                 side_effect=lambda **_: nullcontext(),
             ),
-            patch("aiq_agent.stages.memory_reflection.REFLECTION_TIMEOUT_S", 0.05),
+            patch("agent.stages.memory_reflection.REFLECTION_TIMEOUT_S", 0.05),
         ):
             await asyncio.wait_for(
                 _run_deep_research_reflection(
@@ -1869,8 +1869,8 @@ class TestCitedSourceEmission:
     """
 
     def _registry(self):
-        from aiq_agent.citations.entries import SourceEntry
-        from aiq_agent.citations.registry import SourceRegistry
+        from agent.citations.entries import SourceEntry
+        from agent.citations.registry import SourceRegistry
 
         registry = SourceRegistry()
         registry.add(
@@ -1886,8 +1886,8 @@ class TestCitedSourceEmission:
         return registry
 
     def _cited_artifacts(self, report: str) -> list[dict]:
-        from aiq_agent.citations.session import reset_session_registry
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import reset_session_registry
+        from agent.citations.session import set_session_registry
 
         callback = DeepResearchEventCallback()
         emitted: list[dict] = []
@@ -1958,8 +1958,8 @@ class TestCitedSourceEmission:
         assert any(item.get("url") == "https://example.com/a" for item in cited)
 
     def test_emission_is_idempotent_across_repeated_outputs(self):
-        from aiq_agent.citations.session import reset_session_registry
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import reset_session_registry
+        from agent.citations.session import set_session_registry
 
         callback = DeepResearchEventCallback()
         emitted: list[dict] = []
@@ -2015,8 +2015,8 @@ class _StubLLMResult:
 
 def _kb_registry():
     """A registry holding one OIB document and one web page, as a run would."""
-    from aiq_agent.citations.entries import SourceEntry
-    from aiq_agent.citations.registry import SourceRegistry
+    from agent.citations.entries import SourceEntry
+    from agent.citations.registry import SourceRegistry
 
     registry = SourceRegistry()
     registry.add(
@@ -2110,8 +2110,8 @@ class TestCitedSourceRegistryResolution:
 
     def test_a_broken_provider_falls_back_to_the_session_registry(self):
         """Transparency artifacts never fail a job — not even on bad wiring."""
-        from aiq_agent.citations.session import reset_session_registry
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import reset_session_registry
+        from agent.citations.session import set_session_registry
 
         def provider():
             raise RuntimeError("registry handle went away")
@@ -2218,7 +2218,7 @@ class TestVerifiedCitedSourceStream:
         code announced. (An unbacked URL on the line no longer does this: the
         document's key now carries the line and only the link is dropped.)
         """
-        from aiq_agent.citations.verification import verify_citations
+        from agent.citations.verification import verify_citations
 
         registry = _kb_registry()
         draft = (
@@ -2254,7 +2254,7 @@ class TestVerifiedCitedSourceStream:
         those as cited marked sources the finished answer never carries — and
         with `isCited` sticky in the frontend, permanently.
         """
-        from aiq_agent.citations.entries import SourceEntry
+        from agent.citations.entries import SourceEntry
 
         registry = _kb_registry()
         registry.add(SourceEntry(url="https://example.com/b", source_type="generic", tool_name="web_search_tool"))
@@ -2309,7 +2309,7 @@ class TestWorkerHeaderInjection:
         return SimpleNamespace(metadata=_Slot(_LiveAttrs(request)))
 
     def test_layers_headers_and_keeps_existing_ones(self):
-        from aiq_api.jobs.runner import _inject_worker_headers
+        from agent_host.jobs.runner import _inject_worker_headers
 
         state = self._context_state()
         _inject_worker_headers(state, {"x-grid-project-id": "proj-1"})
@@ -2322,7 +2322,7 @@ class TestWorkerHeaderInjection:
 
 class TestWorkflowReflectionLlmRef:
     def test_reads_the_workflow_ref_as_a_plain_string(self):
-        from aiq_api.jobs.runner import _workflow_reflection_llm_ref
+        from agent_host.jobs.runner import _workflow_reflection_llm_ref
 
         class _Ref(str):
             pass
@@ -2333,7 +2333,7 @@ class TestWorkflowReflectionLlmRef:
         assert type(ref) is str
 
     def test_none_when_the_workflow_declares_no_ref(self):
-        from aiq_api.jobs.runner import _workflow_reflection_llm_ref
+        from agent_host.jobs.runner import _workflow_reflection_llm_ref
 
         assert _workflow_reflection_llm_ref(SimpleNamespace(workflow=SimpleNamespace())) is None
         assert _workflow_reflection_llm_ref(SimpleNamespace()) is None

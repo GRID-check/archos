@@ -162,7 +162,7 @@ UI_INPUTS = (
     "configs/**",
     "contracts/**",
     "scripts/**",
-    "packages/agent/src/aiq_agent/cards/**",
+    "packages/agent/src/agent/cards/**",
     "tests/fixtures/**",
 )
 

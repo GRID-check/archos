@@ -180,7 +180,7 @@ useful answer, not a failure, and it is the one the market's tools cannot produc
 
 ### Task 2.2 — Wire into the existing agent path
 
-- [ ] `packages/agent/src/aiq_agent/knowledge/plan_measure_client.py`, following
+- [ ] `packages/agent/src/agent/knowledge/plan_measure_client.py`, following
       `ifc_spatial_client.py` — same presigned-source pattern, same cache-on-source-identity,
       **widens no scope**
 - [ ] The Bestimmung still comes from the knowledge base and is bound at point of use.

@@ -33,10 +33,10 @@ async function load() {
 }
 
 const pythonSources = [
-  read("apps", "backend", "src", "aiq_api", "jobs", "ingest_dispatch.py"),
-  read("apps", "backend", "src", "aiq_api", "jobs", "ingest_worker.py"),
+  read("apps", "backend", "src", "agent_host", "jobs", "ingest_dispatch.py"),
+  read("apps", "backend", "src", "agent_host", "jobs", "ingest_worker.py"),
   // The per-organisation cap is read where the in-process pool and the queue share it.
-  read("packages", "agent", "src", "aiq_agent", "knowledge", "ingest_scheduler.py"),
+  read("packages", "agent", "src", "agent", "knowledge", "ingest_scheduler.py"),
   // The in-process pool's size, read by the knowledge layer's adapter.
   read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py"),
 ].join("\n");
@@ -60,11 +60,11 @@ describe("the ingest-worker tier", () => {
   });
 
   it("scales on the table the queue actually writes", () => {
-    const table = read("packages", "agent", "src", "aiq_agent", "knowledge", "ingest_queue.py").match(/^TABLE = "([a-z_]+)"$/m)?.[1];
+    const table = read("packages", "agent", "src", "agent", "knowledge", "ingest_queue.py").match(/^TABLE = "([a-z_]+)"$/m)?.[1];
     expect(table).toBeDefined();
-    const dead = read("packages", "agent", "src", "aiq_agent", "common", "claim_queue.py").match(/^DEAD = "([a-z_]+)"$/m)?.[1];
+    const dead = read("packages", "agent", "src", "agent", "common", "claim_queue.py").match(/^DEAD = "([a-z_]+)"$/m)?.[1];
     expect(dead).toBeDefined();
-    const cancelled = read("packages", "agent", "src", "aiq_agent", "common", "claim_queue.py").match(
+    const cancelled = read("packages", "agent", "src", "agent", "common", "claim_queue.py").match(
       /^CANCELLED = "([a-z_]+)"$/m,
     )?.[1];
     expect(cancelled).toBeDefined();

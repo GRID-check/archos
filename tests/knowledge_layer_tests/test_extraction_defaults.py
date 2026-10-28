@@ -19,7 +19,7 @@ from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer_testing.qdrant import FakeEmbedder
 from knowledge_layer_testing.qdrant import capture_indexed_documents
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
+from agent.common.credential_resolution import ResolvedCredential
 
 _SWITCHES = ("EXTRACT_TABLES", "EXTRACT_IMAGES", "EXTRACT_CHARTS")
 
@@ -65,7 +65,7 @@ def test_an_ingestor_built_without_config_extracts_everything(tmp_path, monkeypa
 def test_the_corpus_sync_leaves_the_switches_to_the_adapter(monkeypatch):
     """oib_sync used to pass its own off-by-default reading of the flags, which
     overrode the adapter's defaults for the whole corpus."""
-    from aiq_agent import oib_sync
+    from agent import oib_sync
 
     for name in _SWITCHES:
         monkeypatch.delenv(name, raising=False)
@@ -200,8 +200,8 @@ def test_rasters_on_rendered_pages_are_not_extracted(monkeypatch):
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")

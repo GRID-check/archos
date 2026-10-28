@@ -8,15 +8,15 @@ the turn that was shown it.
 
 from __future__ import annotations
 
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.memory import shown_notes as S
-from aiq_agent.memory.restriction import RestrictedNote
-from aiq_agent.memory.shown_notes import ShownNotes
-from aiq_agent.memory.shown_notes import load_shown_notes
-from aiq_agent.memory.shown_notes import merged
-from aiq_agent.memory.shown_notes import persist_shown_notes
-from aiq_agent.memory.shown_notes import turn_shown_notes
-from aiq_agent.turn.registries import turn_registries
+from agent.citations.registry import SourceRegistry
+from agent.memory import shown_notes as S
+from agent.memory.restriction import RestrictedNote
+from agent.memory.shown_notes import ShownNotes
+from agent.memory.shown_notes import load_shown_notes
+from agent.memory.shown_notes import merged
+from agent.memory.shown_notes import persist_shown_notes
+from agent.memory.shown_notes import turn_shown_notes
+from agent.turn.registries import turn_registries
 
 A = "proj_1_r0123456789ab"
 B = "proj_1_rba9876543210"
@@ -56,7 +56,7 @@ class TestTheRecord:
 
 class TestTheTurnWritesWhatItWasShown:
     async def test_the_digest_s_restricted_lines_and_restricted_writes_are_recorded_on_exit(self):
-        from aiq_agent.knowledge.project_memory import record_turn_memory_write
+        from agent.knowledge.project_memory import record_turn_memory_write
 
         digest = (
             "PROJECT_MEMORY v1\n"

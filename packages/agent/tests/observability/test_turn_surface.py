@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
-from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
-from aiq_agent.observability.langfuse_trace_attributes import record_turn_surface
-from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+from agent.observability.langfuse_trace_attributes import begin_trace_contributions
+from agent.observability.langfuse_trace_attributes import end_trace_contributions
+from agent.observability.langfuse_trace_attributes import record_turn_surface
+from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
 
 @pytest.mark.parametrize(

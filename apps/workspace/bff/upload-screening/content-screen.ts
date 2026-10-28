@@ -6,7 +6,7 @@
  * The composer runs it before a chat message leaves the browser, and the BFF
  * runs it on every user message it stores, so what a person typed reaches
  * neither a model nor the stored history with an IBAN in it. It is the twin of
- * `aiq_agent.common.content_screen`, which the ingest job and the chat socket
+ * `agent.common.content_screen`, which the ingest job and the chat socket
  * run. Both read the ONE shared fixture, `tests/fixtures/content_screen_cases.json`
  * at the repository root, and must give the same matches, masked text and
  * findings for every case. Change one and the other's spec fails.

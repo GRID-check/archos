@@ -8,11 +8,11 @@ which the chat agent never calls, so a platform owner dialling
 import pytest
 from pydantic import BaseModel
 
-from aiq_agent.agents.piloti import register
-from aiq_agent.common import AgentGroup
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common import request_llm_context
+from agent.agents.piloti import register
+from agent.common import AgentGroup
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common import request_llm_context
 
 
 class _ChatModel(BaseModel):

@@ -16,12 +16,12 @@ from datetime import datetime
 import pytest
 from sqlalchemy import text
 
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
+from agent.knowledge import ingest_status_store
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
 
 DAY = 86400
 LONG_AGO = "2000-01-01 00:00:00"
@@ -87,7 +87,7 @@ class TestRetention:
         assert ingest_status_store.get("running") is not None
 
     def test_a_job_the_queue_still_holds_is_never_pruned(self, sqlite_db):
-        from aiq_agent.knowledge import ingest_queue
+        from agent.knowledge import ingest_queue
 
         ingest_status_store.put(_job("queued", JobState.PENDING, {"wait.pdf": FileStatus.UPLOADING}))
         ingest_queue.enqueue("queued", None, "payload")

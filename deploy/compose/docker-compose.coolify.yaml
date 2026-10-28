@@ -165,7 +165,7 @@ services:
       # user's token and envelope, or the internal token, so they keep working.
       - REQUIRE_AUTH=${REQUIRE_AUTH:-true}
       # The validator REQUIRE_AUTH needs: without it the backend refuses to start
-      # (aiq_api.plugin), because the WorkOS validator loads only when this is set.
+      # (agent_host.plugin), because the WorkOS validator loads only when this is set.
       - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID:-}
       # The commit this deployment is running. Stamped into the image as a
       # build arg by CI's image build, so it is normally already set inside
@@ -252,7 +252,7 @@ services:
   # Same backend image and env as chat (via `extends`, so the two can never
   # drift — critically, they share EMBED_MODEL, so ingest- and query-side
   # vectors always match), but launched with PROCESS_ROLE=worker: the entrypoint
-  # then execs `python -m aiq_api.jobs.worker` instead of the web server. Workers
+  # then execs `python -m agent_host.jobs.worker` instead of the web server. Workers
   # claim jobs from Postgres (FOR UPDATE SKIP LOCKED) and read/write the shared
   # Qdrant — no web port.
   agent-worker:
@@ -374,11 +374,11 @@ services:
     # data/oib (operator PDFs), both read-only, and stores what the corpus does
     # not hold yet; the base-corpus housekeeping route then queues ingestion. A
     # fresh install has an empty volume, and the run stores nothing. Remove this
-    # service, the `aiq-data` volume and aiq_agent/legacy_corpus_import.py
+    # service, the `aiq-data` volume and agent/legacy_corpus_import.py
     # together once every installation has run it.
     extends:
       service: chat
-    entrypoint: ["python", "-m", "aiq_agent.legacy_corpus_import"]
+    entrypoint: ["python", "-m", "agent.legacy_corpus_import"]
     command: ["/legacy/data", "/legacy/oib"]
     volumes:
       - aiq-data:/legacy/data:ro

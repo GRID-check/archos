@@ -31,20 +31,20 @@ from langgraph.graph import END
 from langgraph.graph import START
 from langgraph.graph import StateGraph
 
-from aiq_agent.agents.piloti import conversation_register as register_mod
-from aiq_agent.agents.piloti.answer_pipeline import SettledStream
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common import turn_status
-from aiq_agent.common.wire_v2 import WIRE_EVENT
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import RunStartedBody
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import TextMessageStartBody
-from aiq_agent.common.wire_v2 import UserMessage
-from aiq_agent.common.wire_v2 import stamp
-from aiq_agent.common.wire_v2 import to_frame
-from aiq_agent.turn import answer_stream
-from aiq_agent.turn.answer_stream import streaming_call
+from agent.agents.piloti import conversation_register as register_mod
+from agent.agents.piloti.answer_pipeline import SettledStream
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common import turn_status
+from agent.common.wire_v2 import WIRE_EVENT
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import RunStartedBody
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import TextMessageStartBody
+from agent.common.wire_v2 import UserMessage
+from agent.common.wire_v2 import stamp
+from agent.common.wire_v2 import to_frame
+from agent.turn import answer_stream
+from agent.turn.answer_stream import streaming_call
 from nat.plugin_api import Context
 
 GOLDEN = Path(__file__).resolve().parents[6] / "tests" / "fixtures" / "wire_v2" / "golden_turn.jsonl"

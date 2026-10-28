@@ -14,12 +14,12 @@ rather than re-sending the whole array over cards that already registered.
 import json
 from unittest.mock import MagicMock
 
-from aiq_agent.cards.catalog import CARD_EXAMPLES
-from aiq_agent.cards.register import EmitCardConfig
-from aiq_agent.cards.register import emit_card
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
+from agent.cards.catalog import CARD_EXAMPLES
+from agent.cards.register import EmitCardConfig
+from agent.cards.register import emit_card
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
 
 #: Two cards the model may emit, filled the way it would fill them.
 PICKER = {"type": "ifc_model_picker", "title": "Treppe"}

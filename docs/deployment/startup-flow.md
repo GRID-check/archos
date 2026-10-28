@@ -56,7 +56,7 @@ docker compose up -d --build
          │      │      • Validates with Pydantic
          │      │   3. Sets NAT_CONFIG_FILE env var for NAT's FastAPI app
          │      │   4. Reads runner_class from config.general.front_end
-         │      │      • Sets NAT_FRONT_END_WORKER (e.g., aiq_api.plugin.AIQAPIWorker)
+         │      │      • Sets NAT_FRONT_END_WORKER (e.g., agent_host.plugin.AgentHostWorker)
          │      │   5. Runs uvicorn directly:
          │      │      • App: nat.front_ends.fastapi.main:get_app (factory)
          │      │      • Host: 0.0.0.0, Port: 8000

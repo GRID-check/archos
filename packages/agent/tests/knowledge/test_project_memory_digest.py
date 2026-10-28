@@ -6,8 +6,8 @@ import json
 
 import pytest
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge import project_memory as pm
+from agent.common import bff_http
+from agent.knowledge import project_memory as pm
 
 
 class _FakeResponse(io.BytesIO):
@@ -125,9 +125,9 @@ def test_no_restricted_collections_no_param(monkeypatch):
 
 def test_the_asker_travels_and_served_restricted_notes_confine_the_turn(monkeypatch):
     """ADR-0088: restricted notes in the digest are use of their folders, recorded by the BFF."""
-    from aiq_agent.knowledge.restricted_use import RestrictedUse
-    from aiq_agent.knowledge.restricted_use import bind_restricted_use
-    from aiq_agent.knowledge.restricted_use import reset_restricted_use
+    from agent.knowledge.restricted_use import RestrictedUse
+    from agent.knowledge.restricted_use import bind_restricted_use
+    from agent.knowledge.restricted_use import reset_restricted_use
 
     monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     use = RestrictedUse(
@@ -154,9 +154,9 @@ def test_the_asker_travels_and_served_restricted_notes_confine_the_turn(monkeypa
 
 
 def test_a_digest_without_restricted_notes_leaves_the_turn_open(monkeypatch):
-    from aiq_agent.knowledge.restricted_use import RestrictedUse
-    from aiq_agent.knowledge.restricted_use import bind_restricted_use
-    from aiq_agent.knowledge.restricted_use import reset_restricted_use
+    from agent.knowledge.restricted_use import RestrictedUse
+    from agent.knowledge.restricted_use import bind_restricted_use
+    from agent.knowledge.restricted_use import reset_restricted_use
 
     monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
     use = RestrictedUse(organization_id="o1", user_id="u1", conversation_id="c1", project_id="p1")

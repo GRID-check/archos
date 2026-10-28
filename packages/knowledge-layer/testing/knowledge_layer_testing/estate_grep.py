@@ -14,11 +14,11 @@ from knowledge_layer.browse import FileRow
 from knowledge_layer.estate import EstateBackend
 from knowledge_layer.qdrant.retrieval import PatternTooCostly
 
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.scoping import ScopedCollection
 
 # The repository, found by what it holds, so moving this package moves nothing here.
 REPO_ROOT = next(path for path in Path(__file__).resolve().parents if (path / "scripts" / "turn_census").is_dir())

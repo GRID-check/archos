@@ -2,11 +2,11 @@
 
 from types import SimpleNamespace
 
-from aiq_agent.common.canned_replies import NO_SOURCES_MESSAGE
-from aiq_agent.common.canned_replies import SCOPED_NO_SOURCES_MESSAGE
-from aiq_agent.common.canned_replies import TOOLS_UNAVAILABLE_MESSAGE
-from aiq_agent.common.tool_validation import format_no_sources_message
-from aiq_agent.common.tool_validation import validate_tool_availability
+from agent.common.canned_replies import NO_SOURCES_MESSAGE
+from agent.common.canned_replies import SCOPED_NO_SOURCES_MESSAGE
+from agent.common.canned_replies import TOOLS_UNAVAILABLE_MESSAGE
+from agent.common.tool_validation import format_no_sources_message
+from agent.common.tool_validation import validate_tool_availability
 
 
 def _tool(name: str, description: str) -> SimpleNamespace:

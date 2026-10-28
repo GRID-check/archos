@@ -12,29 +12,29 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.deep_researcher.custom_middleware import DeferredStructuredOutputMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import SelectiveToolRetryMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import ToolNameSanitizationMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import ToolResultPruningMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import ToolVisibilityMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import is_retryable_tool_error
-from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
-from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
-from aiq_agent.agents.deep_researcher.factory import DeepResearchGraphContext
-from aiq_agent.agents.deep_researcher.factory import build_deep_research_graph
-from aiq_agent.agents.deep_researcher.factory import build_deep_research_middleware_set
-from aiq_agent.agents.deep_researcher.factory import build_deep_research_subagents
-from aiq_agent.agents.deep_researcher.factory import build_deep_research_tool_set
-from aiq_agent.agents.deep_researcher.factory import build_researcher_runnable
-from aiq_agent.agents.deep_researcher.factory import runtime_visibility_middleware
-from aiq_agent.agents.deep_researcher.factory import skill_filesystem_permissions
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.agents.deep_researcher.models import ResearchNotes
-from aiq_agent.agents.deep_researcher.models import ResearchPlan
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.skills import SkillRuntime
+from agent.agents.deep_researcher.custom_middleware import DeferredStructuredOutputMiddleware
+from agent.agents.deep_researcher.custom_middleware import SelectiveToolRetryMiddleware
+from agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
+from agent.agents.deep_researcher.custom_middleware import ToolNameSanitizationMiddleware
+from agent.agents.deep_researcher.custom_middleware import ToolResultPruningMiddleware
+from agent.agents.deep_researcher.custom_middleware import ToolVisibilityMiddleware
+from agent.agents.deep_researcher.custom_middleware import is_retryable_tool_error
+from agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
+from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+from agent.agents.deep_researcher.factory import DeepResearchGraphContext
+from agent.agents.deep_researcher.factory import build_deep_research_graph
+from agent.agents.deep_researcher.factory import build_deep_research_middleware_set
+from agent.agents.deep_researcher.factory import build_deep_research_subagents
+from agent.agents.deep_researcher.factory import build_deep_research_tool_set
+from agent.agents.deep_researcher.factory import build_researcher_runnable
+from agent.agents.deep_researcher.factory import runtime_visibility_middleware
+from agent.agents.deep_researcher.factory import skill_filesystem_permissions
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.deep_researcher.models import ResearchNotes
+from agent.agents.deep_researcher.models import ResearchPlan
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.skills import SkillRuntime
 
 
 @tool
@@ -254,9 +254,9 @@ def test_graph_uses_researcher_config_key_for_researcher_skills():
     fake_graph.with_config.return_value = fake_graph
 
     with (
-        patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=fake_graph),
-        patch("aiq_agent.agents.deep_researcher.factory.create_agent", return_value=MagicMock()) as create_researcher,
-        patch("aiq_agent.agents.deep_researcher.factory.create_summarization_middleware", return_value=MagicMock()),
+        patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=fake_graph),
+        patch("agent.agents.deep_researcher.factory.create_agent", return_value=MagicMock()) as create_researcher,
+        patch("agent.agents.deep_researcher.factory.create_summarization_middleware", return_value=MagicMock()),
     ):
         build_deep_research_graph(
             llm_provider=_llm_provider(),
@@ -284,7 +284,7 @@ def _skills_sources(middleware) -> list[str] | None:
 
 def test_the_office_skills_go_to_the_writer_alone():
     """An office skill is an instruction about the answer, and the writer writes it (ADR-0135)."""
-    from aiq_agent.skills.models import Skill
+    from agent.skills.models import Skill
 
     runtime = DeepAgentsRuntime(
         skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",), "researcher-agent": ("oib",)})
@@ -318,9 +318,9 @@ def test_graph_passes_checkpointer_through_alongside_inmemory_store():
     fake_checkpointer = MagicMock(name="fake_checkpointer")
 
     with (
-        patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=fake_graph) as create,
-        patch("aiq_agent.agents.deep_researcher.factory.create_agent", return_value=MagicMock()),
-        patch("aiq_agent.agents.deep_researcher.factory.create_summarization_middleware", return_value=MagicMock()),
+        patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=fake_graph) as create,
+        patch("agent.agents.deep_researcher.factory.create_agent", return_value=MagicMock()),
+        patch("agent.agents.deep_researcher.factory.create_summarization_middleware", return_value=MagicMock()),
     ):
         build_deep_research_graph(
             llm_provider=_llm_provider(),
@@ -354,9 +354,9 @@ def test_graph_defaults_checkpointer_to_none():
     fake_graph.with_config.return_value = fake_graph
 
     with (
-        patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=fake_graph) as create,
-        patch("aiq_agent.agents.deep_researcher.factory.create_agent", return_value=MagicMock()),
-        patch("aiq_agent.agents.deep_researcher.factory.create_summarization_middleware", return_value=MagicMock()),
+        patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=fake_graph) as create,
+        patch("agent.agents.deep_researcher.factory.create_agent", return_value=MagicMock()),
+        patch("agent.agents.deep_researcher.factory.create_summarization_middleware", return_value=MagicMock()),
     ):
         build_deep_research_graph(
             llm_provider=_llm_provider(),
@@ -408,11 +408,11 @@ def test_researcher_runnable_uses_rendered_prompt_and_runtime_middleware():
 
     with (
         patch(
-            "aiq_agent.agents.deep_researcher.factory.create_summarization_middleware",
+            "agent.agents.deep_researcher.factory.create_summarization_middleware",
             return_value=FakeSummarizationMiddleware(),
         ),
         patch(
-            "aiq_agent.agents.deep_researcher.factory.create_agent",
+            "agent.agents.deep_researcher.factory.create_agent",
             return_value=researcher_agent,
         ) as create,
     ):

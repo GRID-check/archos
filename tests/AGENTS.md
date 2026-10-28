@@ -1,7 +1,7 @@
 # The backend suite: `tests/`
 
 Repo-level tests: guards, CI, deploy and cross-service contract fixtures. The agent's own
-suite lives in `packages/agent/tests`, mirroring `packages/agent/src/aiq_agent`; `task be:test`
+suite lives in `packages/agent/tests`, mirroring `packages/agent/src/agent`; `task be:test`
 runs both, and the pair carries CI's 65% coverage gate.
 
 ## The trap
@@ -25,7 +25,7 @@ CI's 65% coverage gate.
 | Shared doubles | `tests/provider_doubles.py` holds the provider-contract double and NAT's client shape. Extend it rather than re-mocking a provider per file |
 | `tests/conftest.py` | Every test under `tests/` loads it (`packages/agent/tests/conftest.py` registers its shared fixtures by name), so it imports only what every test needs; a fixture imports a heavy package in its body. `tests/test_import_weight.py` fails a conftest that loads LangChain, NAT, Qdrant or a whole package again (docs/audit/blast-radius-2026-10.md) |
 | Fixtures on disk | `tests/fixtures/<area>/`, real captured payloads rather than hand-written approximations |
-| Coverage | 65% floor on `packages/agent/src/aiq_agent`. It is a floor, not a target; a new module arriving untested spends everyone else's headroom |
+| Coverage | 65% floor on `packages/agent/src/agent`. It is a floor, not a target; a new module arriving untested spends everyone else's headroom |
 
 ## Obligations
 

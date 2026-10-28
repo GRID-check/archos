@@ -5,18 +5,18 @@ import uuid
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.common.canned_replies import NO_RESPONSE_TEXT
-from aiq_agent.common.wire_v2 import RunHandoff
-from aiq_agent.common.wire_v2 import card_key
-from aiq_agent.common.wire_v2 import stamp
-from aiq_agent.common.wire_v2 import to_frame
-from aiq_agent.stages import TurnFacts
-from aiq_agent.turn.response import answer_message_id
-from aiq_agent.turn.response import answer_text
-from aiq_agent.turn.response import build_result
-from aiq_agent.turn.response import finished
-from aiq_agent.turn.response import post_answer_turn_facts
+from agent.agents.piloti.models import ConversationState
+from agent.common.canned_replies import NO_RESPONSE_TEXT
+from agent.common.wire_v2 import RunHandoff
+from agent.common.wire_v2 import card_key
+from agent.common.wire_v2 import stamp
+from agent.common.wire_v2 import to_frame
+from agent.stages import TurnFacts
+from agent.turn.response import answer_message_id
+from agent.turn.response import answer_text
+from agent.turn.response import build_result
+from agent.turn.response import finished
+from agent.turn.response import post_answer_turn_facts
 
 
 def _state(**fields) -> ConversationState:
@@ -122,8 +122,8 @@ class TestAnswerMessageId:
 
     def test_the_running_turn_names_its_answer_before_it_exists(self, monkeypatch):
         """ADR-0093: the BFF marks this id at admission; it must be the id the answer is streamed under."""
-        from aiq_agent import project_context
-        from aiq_agent.turn.response import turn_answer_message_id
+        from agent import project_context
+        from agent.turn.response import turn_answer_message_id
 
         monkeypatch.setattr(project_context, "get_user_message_id_from_context", lambda: "turn")
         assert turn_answer_message_id("conv") == answer_message_id("conv", "turn")
@@ -157,9 +157,9 @@ class TestPostAnswerTurnFacts:
 
     def test_a_conversation_that_drew_on_another_project_crosses(self):
         """Read while the turn is bound, because reflection runs after it is gone (ADR-0094)."""
-        from aiq_agent.knowledge.restricted_use import CrossProjectTurn
-        from aiq_agent.knowledge.restricted_use import bind_cross_project_turn
-        from aiq_agent.knowledge.restricted_use import reset_cross_project_turn
+        from agent.knowledge.restricted_use import CrossProjectTurn
+        from agent.knowledge.restricted_use import bind_cross_project_turn
+        from agent.knowledge.restricted_use import reset_cross_project_turn
 
         assert self._facts(_state()).drew_on_other_projects is False
         token = bind_cross_project_turn(CrossProjectTurn(drew_on_others=True))
@@ -237,8 +237,8 @@ class TestPostAnswerTurnFacts:
 
     def test_notes_earlier_turns_were_shown_cross_with_their_own_collections(self):
         """ADR-0087: a restricted note gone from this turn's digest is still evidence."""
-        from aiq_agent.memory.restriction import RestrictedNote
-        from aiq_agent.memory.shown_notes import ShownNotes
+        from agent.memory.restriction import RestrictedNote
+        from agent.memory.shown_notes import ShownNotes
 
         earlier_folder = "proj_1_rba9876543210"
         overflowed = "proj_1_r00000000000f"

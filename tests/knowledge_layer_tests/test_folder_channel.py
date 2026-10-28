@@ -18,16 +18,16 @@ from knowledge_layer.qdrant.folders import render_folder_hits
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.grounding_block import get_grounding_block
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.grounding_block import get_grounding_block
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 PROJECT = "proj_1"
 BASE = "oib_knowledge"
@@ -83,14 +83,14 @@ def _chunk(file_name: str) -> Chunk:
 @pytest.fixture
 def channel(monkeypatch):
     """A project and the base corpus in scope, one passage, and the channel's store read stood in for."""
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-    monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", lambda collection: {})
+    monkeypatch.setattr("agent.knowledge.get_superseded_files", lambda collection: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection(BASE, Shelf.BASE), ScopedCollection(PROJECT, Shelf.PROJECT)],
     )
     set_turn_documents(
@@ -102,11 +102,11 @@ def channel(monkeypatch):
     )
     retriever = _Retriever([_chunk("Grundriss_EG.pdf")])
     monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
-    from aiq_agent.knowledge.folder_cards import gate
+    from agent.knowledge.folder_cards import gate
 
     gate.forget()
     monkeypatch.setattr(gate, "_fetch", lambda organization_id: True)
-    monkeypatch.setattr("aiq_agent.project_context.get_organization_id_from_context", lambda: "org_1")
+    monkeypatch.setattr("agent.project_context.get_organization_id_from_context", lambda: "org_1")
     asked: list[dict] = []
 
     def routes(retriever_, scopes, query_text, folder, hint):
@@ -154,7 +154,7 @@ class TestThroughTheTool:
         assert "Folder:" not in out
 
     async def test_off_without_the_organizations_flag(self, channel, monkeypatch):
-        from aiq_agent.knowledge.folder_cards import gate
+        from agent.knowledge.folder_cards import gate
 
         gate.forget()
         monkeypatch.setattr(gate, "_fetch", lambda organization_id: False)

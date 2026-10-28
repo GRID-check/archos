@@ -2,7 +2,7 @@
  * INTERNAL service endpoint — the office's chat screening (ADR-0086, "Chat
  * messages are screened too").
  *
- * The chat socket (`aiq_api.chat_socket`) reads it once per connection and
+ * The chat socket (`agent_host.chat_socket`) reads it once per connection and
  * masks every question, colleague line and typed HITL answer with it before the
  * agent sees one, so a client that skipped the composer's check gets the same
  * result. `GET ?organizationId=` → `{ enabled, content_terms, detectors }`: the

@@ -19,13 +19,13 @@ from unittest import mock
 import pytest
 from fastapi import HTTPException
 
-from aiq_api.internal_api import post_internal_conversation_message
-from aiq_api.internal_api import post_internal_run_report
-from aiq_api.jobs.conversation_output import FAILURE_NOTICE
-from aiq_api.jobs.conversation_output import INTERRUPTED_NOTICE
-from aiq_api.jobs.conversation_output import run_message_for_outcome
-from aiq_api.jobs.conversation_output import write_job_notice
-from aiq_api.jobs.conversation_output import write_job_turn
+from agent_host.internal_api import post_internal_conversation_message
+from agent_host.internal_api import post_internal_run_report
+from agent_host.jobs.conversation_output import FAILURE_NOTICE
+from agent_host.jobs.conversation_output import INTERRUPTED_NOTICE
+from agent_host.jobs.conversation_output import run_message_for_outcome
+from agent_host.jobs.conversation_output import write_job_notice
+from agent_host.jobs.conversation_output import write_job_turn
 
 USAGE = {"identity": {"organization_id": "org_1", "user_id": "u1"}}
 
@@ -66,7 +66,7 @@ class TestTheRunReportIsRetried:
     @pytest.mark.asyncio
     async def test_a_run_not_recorded_yet_lands_on_a_later_attempt(self) -> None:
         _Sequence.answers = [404, (200, {"messageId": "msg-1"})]
-        with mock.patch("aiq_api.internal_api.httpx.AsyncClient", _Sequence):
+        with mock.patch("agent_host.internal_api.httpx.AsyncClient", _Sequence):
             landed = await post_internal_run_report(job_id="job-1", text="# Bericht", expect_run=True)
         assert landed == "msg-1"
         assert len(_Sequence.calls) == 2
@@ -75,14 +75,14 @@ class TestTheRunReportIsRetried:
     async def test_without_a_run_the_404_is_the_answer_at_once(self) -> None:
         """An interactive job has no run message; the caller falls back without waiting."""
         _Sequence.answers = [404]
-        with mock.patch("aiq_api.internal_api.httpx.AsyncClient", _Sequence):
+        with mock.patch("agent_host.internal_api.httpx.AsyncClient", _Sequence):
             assert await post_internal_run_report(job_id="job-1", text="# Bericht") is None
         assert len(_Sequence.calls) == 1
 
     @pytest.mark.asyncio
     async def test_a_bff_that_never_answers_costs_three_attempts_and_no_exception(self) -> None:
         _Sequence.answers = [ConnectionError("down")] * 3
-        with mock.patch("aiq_api.internal_api.httpx.AsyncClient", _Sequence):
+        with mock.patch("agent_host.internal_api.httpx.AsyncClient", _Sequence):
             assert await post_internal_run_report(job_id="job-1", text="x", expect_run=True) is None
         assert len(_Sequence.calls) == 3
 
@@ -91,7 +91,7 @@ class TestTheThreadTurnIsRetried:
     @pytest.mark.asyncio
     async def test_a_5xx_is_asked_again(self) -> None:
         _Sequence.answers = [503, 201]
-        with mock.patch("aiq_api.internal_api.httpx.AsyncClient", _Sequence):
+        with mock.patch("agent_host.internal_api.httpx.AsyncClient", _Sequence):
             ok = await post_internal_conversation_message(
                 conversation_id="s_1",
                 organization_id="org_1",
@@ -106,7 +106,7 @@ class TestTheThreadTurnIsRetried:
     @pytest.mark.asyncio
     async def test_a_missing_conversation_is_final(self) -> None:
         _Sequence.answers = [404]
-        with mock.patch("aiq_api.internal_api.httpx.AsyncClient", _Sequence):
+        with mock.patch("agent_host.internal_api.httpx.AsyncClient", _Sequence):
             ok = await post_internal_conversation_message(
                 conversation_id="s_gone",
                 organization_id="org_1",
@@ -127,7 +127,7 @@ class TestTheThreadTurnIsRetried:
         """No base URL, no service token, or no organization to scope by: no doomed POST, and no raise."""
         if missing:
             monkeypatch.delenv(missing)
-        with mock.patch("aiq_api.internal_api.httpx.AsyncClient", _Sequence):
+        with mock.patch("agent_host.internal_api.httpx.AsyncClient", _Sequence):
             ok = await post_internal_conversation_message(
                 conversation_id="s_1",
                 organization_id=organization_id,
@@ -144,7 +144,7 @@ class TestTheWritersPassOnWhetherARunIsExpected:
     @pytest.mark.asyncio
     async def test_the_turn_and_the_notice_forward_expect_run(self) -> None:
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_run_report",
+            "agent_host.jobs.conversation_output.post_internal_run_report",
             new_callable=mock.AsyncMock,
             return_value="msg-1",
         ) as report:
@@ -159,7 +159,7 @@ class TestTheWritersPassOnWhetherARunIsExpected:
     @pytest.mark.asyncio
     async def test_the_default_expects_no_run(self) -> None:
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_run_report",
+            "agent_host.jobs.conversation_output.post_internal_run_report",
             new_callable=mock.AsyncMock,
             return_value="msg-1",
         ) as report:
@@ -183,7 +183,7 @@ class TestTheRunMessageRebuiltFromTheJobStore:
         rebuilt = run_message_for_outcome(job_id="job-1", status="SUCCESS", output=output)
 
         with mock.patch(
-            "aiq_api.jobs.conversation_output.post_internal_run_report",
+            "agent_host.jobs.conversation_output.post_internal_run_report",
             new_callable=mock.AsyncMock,
             return_value="msg-1",
         ) as report:
@@ -224,7 +224,7 @@ class _Store:
 
 @pytest.fixture
 def access_db_url(tmp_path):
-    from aiq_api.jobs import access as job_access
+    from agent_host.jobs import access as job_access
 
     job_access._job_access_schema_initialized.clear()
     yield f"sqlite+aiosqlite:///{tmp_path / 'access.db'}"
@@ -238,9 +238,9 @@ def _job(status: str, *, output: dict | None = None, error: str | None = None):
 class TestTheInternalOutcomeRoute:
     @pytest.mark.asyncio
     async def test_a_finished_job_hands_back_everything_the_run_would_have_written(self, access_db_url) -> None:
-        from aiq_agent.auth import Principal
-        from aiq_api.jobs.access import create_job_access
-        from aiq_api.routes.job_handlers import internal_job_outcome
+        from agent.auth import Principal
+        from agent_host.jobs.access import create_job_access
+        from agent_host.routes.job_handlers import internal_job_outcome
 
         create_job_access("job-1", Principal(type="jwt", sub="u1"), access_db_url, None, None, "org_1")
         store = _Store(_job("success", output={"report": "# Bericht", "cards": [{"type": "x"}]}))
@@ -256,9 +256,9 @@ class TestTheInternalOutcomeRoute:
 
     @pytest.mark.asyncio
     async def test_a_failed_job_carries_its_error_and_its_notice(self, access_db_url) -> None:
-        from aiq_agent.auth import Principal
-        from aiq_api.jobs.access import create_job_access
-        from aiq_api.routes.job_handlers import internal_job_outcome
+        from agent.auth import Principal
+        from agent_host.jobs.access import create_job_access
+        from agent_host.routes.job_handlers import internal_job_outcome
 
         create_job_access("job-1", Principal(type="jwt", sub="u1"), access_db_url, None, None, "org_1")
         answer = await internal_job_outcome(_Store(_job("failure", error="boom")), access_db_url, "job-1", "org_1")
@@ -268,9 +268,9 @@ class TestTheInternalOutcomeRoute:
 
     @pytest.mark.asyncio
     async def test_a_running_job_has_no_message_yet(self, access_db_url) -> None:
-        from aiq_agent.auth import Principal
-        from aiq_api.jobs.access import create_job_access
-        from aiq_api.routes.job_handlers import internal_job_outcome
+        from agent.auth import Principal
+        from agent_host.jobs.access import create_job_access
+        from agent_host.routes.job_handlers import internal_job_outcome
 
         create_job_access("job-1", Principal(type="jwt", sub="u1"), access_db_url, None, None, "org_1")
         answer = await internal_job_outcome(_Store(_job("running")), access_db_url, "job-1", "org_1")
@@ -278,9 +278,9 @@ class TestTheInternalOutcomeRoute:
 
     @pytest.mark.asyncio
     async def test_another_organizations_job_is_not_found(self, access_db_url) -> None:
-        from aiq_agent.auth import Principal
-        from aiq_api.jobs.access import create_job_access
-        from aiq_api.routes.job_handlers import internal_job_outcome
+        from agent.auth import Principal
+        from agent_host.jobs.access import create_job_access
+        from agent_host.routes.job_handlers import internal_job_outcome
 
         create_job_access("job-1", Principal(type="jwt", sub="u1"), access_db_url, None, None, "org_1")
         with pytest.raises(HTTPException) as refused:
@@ -289,7 +289,7 @@ class TestTheInternalOutcomeRoute:
 
     @pytest.mark.asyncio
     async def test_an_unknown_job_is_not_found(self, access_db_url) -> None:
-        from aiq_api.routes.job_handlers import internal_job_outcome
+        from agent_host.routes.job_handlers import internal_job_outcome
 
         with pytest.raises(HTTPException) as refused:
             await internal_job_outcome(_Store(None), access_db_url, "job-gone", "org_1")

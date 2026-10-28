@@ -5,11 +5,11 @@ from __future__ import annotations
 from agent_testing.settle_streamed import SOURCES
 from agent_testing.settle_streamed import _registry
 
-from aiq_agent.agents.piloti.answer_pipeline import settle_streamed_citations
-from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
-from aiq_agent.citations.entries import UNVERIFIED_QUOTE_MARKER
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
+from agent.agents.piloti.answer_pipeline import settle_streamed_citations
+from agent.citations.entries import DROPPED_CITATION_MARKER
+from agent.citations.entries import UNVERIFIED_QUOTE_MARKER
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
 
 
 def test_an_unbacked_marker_is_labelled_and_the_rest_take_the_numbers_the_terminal_will_give():
@@ -98,8 +98,8 @@ def test_the_settled_label_is_the_terminal_frame_byte_for_byte(monkeypatch):
     from langchain_core.messages import HumanMessage
     from langchain_core.messages import ToolMessage
 
-    from aiq_agent.agents.piloti import answer_pipeline
-    from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
+    from agent.agents.piloti import answer_pipeline
+    from agent.agents.piloti.answer_pipeline import finalize_answer
 
     monkeypatch.setattr(answer_pipeline, "get_source_id_for_tool", {"knowledge_search": "knowledge_layer"}.get)
 

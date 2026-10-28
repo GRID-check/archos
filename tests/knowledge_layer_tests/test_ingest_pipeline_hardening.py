@@ -34,7 +34,7 @@ import pytest
 from knowledge_layer.llamaindex import adapter
 from knowledge_layer.llamaindex import processing
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
 # =============================================================================
 # is_failed_caption / vlm_cache_key
@@ -739,7 +739,7 @@ class TestScopedReconcile:
 
     @pytest.fixture(autouse=True)
     def reset_summary_store(self):
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         factory._document_metadata_store = None
         yield
@@ -757,9 +757,9 @@ class TestScopedReconcile:
             raise AssertionError("scoped reconcile must not scan the collection")
 
     def test_scoped_mode_never_calls_list_files(self, temp_db_url):
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import reconcile_collection_summaries
 
         configure_summary_db(temp_db_url)
 
@@ -774,9 +774,9 @@ class TestScopedReconcile:
         assert docs == {"a.pdf", "b.pdf"}
 
     def test_scoped_mode_skips_existing_rows(self, temp_db_url):
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("coll", "a.pdf", "Already summarized.")
@@ -790,8 +790,8 @@ class TestScopedReconcile:
         assert backfilled == 1
 
     def test_empty_scope_is_a_noop(self, temp_db_url):
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge.factory import reconcile_collection_summaries
 
         configure_summary_db(temp_db_url)
 

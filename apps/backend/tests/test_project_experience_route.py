@@ -15,9 +15,9 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.knowledge import factory
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_api.routes.project_experience import add_project_experience_routes
+from agent.knowledge import factory
+from agent.knowledge.schema import AvailableDocument
+from agent_host.routes.project_experience import add_project_experience_routes
 
 TOKEN = "project-experience-test-token"
 PATH = "/v1/internal/project-experience"
@@ -73,7 +73,7 @@ def app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
 
 
 def _patch_knowledge(monkeypatch: pytest.MonkeyPatch, llm: Any) -> None:
-    from aiq_agent.knowledge import collection_pages
+    from agent.knowledge import collection_pages
 
     monkeypatch.setattr(factory, "get_active_ingestor", lambda: _FakeIngestor(llm))
     monkeypatch.setattr(factory, "get_active_retriever", lambda: _FakeRetriever())

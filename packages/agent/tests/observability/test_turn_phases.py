@@ -13,9 +13,9 @@ import json
 
 import pytest
 
-from aiq_agent.observability.retrieval_trace import emit_step_span
-from aiq_agent.observability.turn_phases import observed_phase
-from aiq_agent.turn.admission import spanned
+from agent.observability.retrieval_trace import emit_step_span
+from agent.observability.turn_phases import observed_phase
+from agent.turn.admission import spanned
 
 
 @pytest.fixture
@@ -125,7 +125,7 @@ class TestObservedPhase:
 
 class TestDecisionSpanLatency:
     def test_a_decision_spans_its_call_not_a_point(self, steps):
-        from aiq_agent.observability.decision_trace import emit_decision_span
+        from agent.observability.decision_trace import emit_decision_span
 
         emit_decision_span("turn", {"questions": ["q"], "states": 1}, {"decided": 1, "latency_ms": 540})
 
@@ -133,7 +133,7 @@ class TestDecisionSpanLatency:
         assert abs((end.payload.event_timestamp - start.payload.event_timestamp) - 0.54) < 0.01
 
     def test_without_a_latency_it_stays_a_point(self, steps):
-        from aiq_agent.observability.decision_trace import emit_decision_span
+        from agent.observability.decision_trace import emit_decision_span
 
         emit_decision_span("turn", {}, {"decided": 0, "skipped": "too_short"})
 

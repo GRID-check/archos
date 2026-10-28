@@ -10,14 +10,14 @@ every role the owner never touched.
 import httpx
 import pytest
 
-from aiq_agent.common import reasoning_settings
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.common.model_overrides import apply_model_override
-from aiq_agent.common.model_overrides import override_reasoning_effort
-from aiq_agent.common.reasoning_settings import get_reasoning_effort
-from aiq_agent.common.reasoning_settings import get_reasoning_efforts
-from aiq_agent.common.reasoning_settings import reset_reasoning_settings_cache
-from aiq_agent.common.reasoning_settings import sanitize_reasoning_efforts
+from agent.common import reasoning_settings
+from agent.common.model_overrides import AgentGroup
+from agent.common.model_overrides import apply_model_override
+from agent.common.model_overrides import override_reasoning_effort
+from agent.common.reasoning_settings import get_reasoning_effort
+from agent.common.reasoning_settings import get_reasoning_efforts
+from agent.common.reasoning_settings import reset_reasoning_settings_cache
+from agent.common.reasoning_settings import sanitize_reasoning_efforts
 
 
 @pytest.fixture(autouse=True)

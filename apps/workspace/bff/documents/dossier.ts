@@ -11,7 +11,7 @@
  * outside its vocabulary is dropped, never kept as free text, because two
  * documents can only contradict each other on a key both use.
  *
- * The vocabularies mirror `aiq_agent.knowledge.dossier` and
+ * The vocabularies mirror `agent.knowledge.dossier` and
  * `knowledge_layer.references`; the contract doc is where both sides read them.
  */
 

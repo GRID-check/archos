@@ -7,11 +7,11 @@ import pytest
 from langchain_core.messages import HumanMessage
 from pydantic import ValidationError
 
-from aiq_agent.agents.piloti.models import ClarificationResponse
-from aiq_agent.agents.piloti.models import ClarifyRequest
-from aiq_agent.agents.piloti.models import ClarifyResult
-from aiq_agent.agents.piloti.models import PlanResponse
-from aiq_agent.common import strict_json_response_format
+from agent.agents.piloti.models import ClarificationResponse
+from agent.agents.piloti.models import ClarifyRequest
+from agent.agents.piloti.models import ClarifyResult
+from agent.agents.piloti.models import PlanResponse
+from agent.common import strict_json_response_format
 
 
 class TestClarificationResponse:

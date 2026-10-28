@@ -19,7 +19,7 @@ from knowledge_layer_testing.qdrant import chunk_texts
 from knowledge_layer_testing.qdrant import record
 from knowledge_layer_testing.qdrant import write
 
-import aiq_agent.knowledge as knowledge_pkg
+import agent.knowledge as knowledge_pkg
 
 
 class _Collection:

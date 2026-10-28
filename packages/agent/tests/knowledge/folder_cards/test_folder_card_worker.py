@@ -6,10 +6,10 @@ import pytest
 from agent_testing.folder_cards import FakeModel
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from aiq_agent.knowledge import factory
-from aiq_agent.knowledge.folder_cards import queue
-from aiq_agent.knowledge.folder_cards import worker
-from aiq_agent.observability import direct_trace
+from agent.knowledge import factory
+from agent.knowledge.folder_cards import queue
+from agent.knowledge.folder_cards import worker
+from agent.observability import direct_trace
 
 ORG = "org_1"
 
@@ -78,8 +78,8 @@ class TestHooks:
         assert _paths() == ["Alt", "Neu", "Neu/Sub"]
 
     def test_an_ingest_names_the_organization(self, agent_db, quiet):
-        from aiq_agent.common.cost_tracking import BudgetSnapshot
-        from aiq_agent.common.cost_tracking import track_llm_costs
+        from agent.common.cost_tracking import BudgetSnapshot
+        from agent.common.cost_tracking import track_llm_costs
 
         with track_llm_costs(identity={"organization_id": ORG}, budget=BudgetSnapshot(), inline_flush=False):
             _file("Bescheid.pdf", "Behörde")
@@ -95,7 +95,7 @@ class TestHooks:
         assert _paths() == []
 
     def test_no_known_organization_marks_nothing(self, agent_db, folder_cards_flag, monkeypatch):
-        monkeypatch.setattr("aiq_agent.knowledge.folder_cards.organization_for", lambda collection: None)
+        monkeypatch.setattr("agent.knowledge.folder_cards.organization_for", lambda collection: None)
 
         _file("Bescheid.pdf", "Behörde")
 
@@ -135,7 +135,7 @@ class TestRunOnce:
         assert project.cards == {}
 
     async def test_flag_lookup_failure_keeps_the_claim_for_a_retry(self, project, monkeypatch):
-        from aiq_agent.knowledge.folder_cards import gate
+        from agent.knowledge.folder_cards import gate
 
         def down(organization_id):
             raise OSError("BFF down")
@@ -268,7 +268,7 @@ class TestRunOnce:
 
 class TestFreshnessScore:
     async def test_a_pass_that_built_writes_the_share_on_its_generations_trace(self, project, monkeypatch):
-        from aiq_agent.observability import langfuse_scores
+        from agent.observability import langfuse_scores
 
         direct_trace.reset_tracer_provider()
         direct_trace.install_tracer_provider(None, env={}, exporter=InMemorySpanExporter())
@@ -317,7 +317,7 @@ class TestTheQdrantPoint:
         assert ("proj", "Gutachten/Behörde") not in {(c, p) for _op, c, p, _d in project.points}
 
     def test_a_point_that_cannot_be_written_never_fails_the_card(self, monkeypatch, caplog):
-        from aiq_agent.knowledge import factory as knowledge_factory
+        from agent.knowledge import factory as knowledge_factory
 
         def broken():
             raise RuntimeError("no embedder")

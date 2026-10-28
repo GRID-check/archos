@@ -24,12 +24,12 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.source_kinds import _LANE_KIND_PREFIXES
-from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE
-from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
-from aiq_agent.common.source_kinds import DEFAULT_SOURCE_KIND
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import shelf_for_qualifier
+from agent.common.source_kinds import _LANE_KIND_PREFIXES
+from agent.common.source_kinds import AGENT_AUTHORED_LANE
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
+from agent.common.source_kinds import DEFAULT_SOURCE_KIND
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import shelf_for_qualifier
 
 _MIRROR = Path("apps/workspace/bff/source-kinds.ts")
 

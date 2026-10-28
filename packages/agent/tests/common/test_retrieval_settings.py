@@ -3,10 +3,10 @@
 import httpx
 import pytest
 
-from aiq_agent.common import retrieval_settings
-from aiq_agent.common.retrieval_settings import get_retrieval_setting
-from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
-from aiq_agent.common.retrieval_settings import sanitize_retrieval_settings
+from agent.common import retrieval_settings
+from agent.common.retrieval_settings import get_retrieval_setting
+from agent.common.retrieval_settings import reset_retrieval_settings_cache
+from agent.common.retrieval_settings import sanitize_retrieval_settings
 
 
 @pytest.fixture(autouse=True)

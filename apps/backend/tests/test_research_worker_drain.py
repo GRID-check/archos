@@ -16,9 +16,9 @@ from datetime import datetime
 import pytest
 from sqlalchemy import text
 
-from aiq_api.jobs import queue
-from aiq_api.jobs import worker as worker_mod
-from aiq_api.jobs.event_store import EventStore
+from agent_host.jobs import queue
+from agent_host.jobs import worker as worker_mod
+from agent_host.jobs.event_store import EventStore
 
 
 def _seed_job_info(db_url: str, job_id: str, status: str) -> None:

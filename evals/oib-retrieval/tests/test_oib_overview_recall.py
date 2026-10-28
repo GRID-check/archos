@@ -29,7 +29,7 @@ A lift on the deterministic side is therefore a claim, not a pass. It has to
 beat 0.933, and it has to answer six sibling questions differently.
 
 ``oib_retrieval`` is installed into the dev environment by ``uv sync`` (the
-root pyproject's dev group). ``aiq_agent`` resolves via ``PYTHONPATH=packages/agent/src`` (set by ``Taskfile.yml`` —
+root pyproject's dev group). ``agent`` resolves via ``PYTHONPATH=packages/agent/src`` (set by ``Taskfile.yml`` —
 never invoke pytest here without it, or the assertions below validate whatever the
 venv installed instead of this worktree).
 """
@@ -108,7 +108,7 @@ def test_the_golden_set_has_thirty_entries_ten_per_cohort(entries):
 
 
 def test_every_expected_file_is_a_real_oib_corpus_name(entries):
-    from aiq_agent.common.norm_registry import oib_doc_class
+    from agent.common.norm_registry import oib_doc_class
 
     fixture_files = set(overview.FIXTURE_TEXTS)
     assert len(fixture_files) == 39, "fixture must cover all 39 data/oib files"

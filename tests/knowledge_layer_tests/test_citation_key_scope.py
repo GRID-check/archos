@@ -19,10 +19,10 @@ from types import SimpleNamespace
 from knowledge_layer.grounding_hits import _ambiguous_file_names
 from knowledge_layer.search_results import format_results
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common.source_kinds import Shelf
+from agent.citations.entries import SourceEntry
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.registry import SourceRegistry
+from agent.common.source_kinds import Shelf
 
 
 def _chunk(*, file_name: str, collection: str, shelf: str | None = None, page: int | None = 3):
@@ -198,7 +198,7 @@ def test_a_legacy_entry_without_a_shelf_still_resolves_by_collection_name():
 
 
 def test_the_wire_payload_carries_the_shelf_and_omits_an_unknown_one():
-    from aiq_agent.citations.wire import source_entry_to_wire
+    from agent.citations.wire import source_entry_to_wire
 
     stated = SourceEntry(
         citation_key="Plan.pdf, p.3",

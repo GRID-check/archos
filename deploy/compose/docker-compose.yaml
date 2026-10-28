@@ -53,7 +53,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # PostHog for the Python roles (fail-open: both empty means no events leave
-      # the backend, see packages/agent/src/aiq_agent/observability/posthog_client.py). The pair
+      # the backend, see packages/agent/src/agent/observability/posthog_client.py). The pair
       # the frontend reads as NEXT_PUBLIC_POSTHOG_* below; the Kubernetes mirror
       # is posthogEnv() in deploy/pulumi/src/app/config.ts.
       POSTHOG_HOST: ${POSTHOG_HOST:-}
@@ -96,7 +96,7 @@ services:
       SEAWEED_ENDPOINT: ${SEAWEED_ENDPOINT:-http://seaweedfs:8333}
       # Browser-facing host: the BFF signs presigned URLs against this, so the
       # ingest endpoint must accept file_refs pointing at it too (SSRF
-      # allowlist in aiq_api.routes.ingest).
+      # allowlist in agent_host.routes.ingest).
       SEAWEED_PUBLIC_ENDPOINT: ${SEAWEED_PUBLIC_ENDPOINT:-http://localhost:8333}
       # READ-ONLY. `look` (ADR-0039) only ever calls get_object,
       # and this tier used to carry the `grid` credential — which holds
@@ -314,7 +314,7 @@ services:
     # data/oib (operator PDFs), both read-only, and stores what the corpus does
     # not hold yet; the base-corpus housekeeping route then queues ingestion.
     # A fresh stack has an empty volume, and the run stores nothing. Remove this
-    # service, the `aiq-data` volume and aiq_agent/legacy_corpus_import.py
+    # service, the `aiq-data` volume and agent/legacy_corpus_import.py
     # together once every installation has run it.
     image: ${BACKEND_IMAGE:-backend:local}
     env_file:
@@ -323,7 +323,7 @@ services:
       - SUMMARY_DB=${SUMMARY_DB:-${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://agent:aiq_dev@pgbouncer:5432/jobs}}}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
-    entrypoint: ["python", "-m", "aiq_agent.legacy_corpus_import"]
+    entrypoint: ["python", "-m", "agent.legacy_corpus_import"]
     command: ["/legacy/data", "/legacy/oib"]
     volumes:
       - aiq-data:/legacy/data:ro

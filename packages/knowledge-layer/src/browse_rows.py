@@ -11,11 +11,11 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.source_kinds import canonical_shelf_value
-from aiq_agent.knowledge.page_count import page_number
-from aiq_agent.knowledge.title_block import display_date
-from aiq_agent.knowledge.title_block import document_key
-from aiq_agent.knowledge.title_block import newest_first
+from agent.common.source_kinds import canonical_shelf_value
+from agent.knowledge.page_count import page_number
+from agent.knowledge.title_block import display_date
+from agent.knowledge.title_block import document_key
+from agent.knowledge.title_block import newest_first
 
 from .browse_text import _words
 from .browse_text import fold
@@ -250,7 +250,7 @@ def _type_profile(rows: Sequence[FileRow]) -> tuple[list[tuple[str, int]], int]:
     reads any of them (and what the folder brief in Dateien shows a person).
     „Sonstiges“ is counted last whatever its size: it says nothing about the folder.
     """
-    from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+    from agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
 
     known = set(DOCUMENT_TYPE_TAGS)
     counts: dict[str, int] = {}

@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.turn_admission import TurnAdmissionError
-from aiq_agent.common.wire_v2 import AnswerRetractedBody
-from aiq_agent.common.wire_v2 import EmptyValue
-from aiq_agent.turn import admission as admission_mod
-from aiq_agent.turn.admission import TurnLedgers
-from aiq_agent.turn.admission import TurnOutcome
-from aiq_agent.turn.admission import TurnRefusal
-from aiq_agent.turn.admission import answer_turn
-from aiq_agent.turn.admission import refused
-from aiq_agent.turn.admission import spanned
+from agent.common.cost_tracking import BudgetExceededError
+from agent.common.turn_admission import TurnAdmissionError
+from agent.common.wire_v2 import AnswerRetractedBody
+from agent.common.wire_v2 import EmptyValue
+from agent.turn import admission as admission_mod
+from agent.turn.admission import TurnLedgers
+from agent.turn.admission import TurnOutcome
+from agent.turn.admission import TurnRefusal
+from agent.turn.admission import answer_turn
+from agent.turn.admission import refused
+from agent.turn.admission import spanned
 
 BODY = AnswerRetractedBody(value=EmptyValue())
 
@@ -140,7 +140,7 @@ class TestAnswerTurn:
         assert await spanned("setup.anything", value()) == 42
 
     async def test_spanned_records_what_the_result_says_on_the_phase(self, monkeypatch):
-        from aiq_agent.observability import turn_phases
+        from agent.observability import turn_phases
 
         emitted: list[tuple[str, dict]] = []
         monkeypatch.setattr(

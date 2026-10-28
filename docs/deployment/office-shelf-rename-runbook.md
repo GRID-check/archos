@@ -91,7 +91,7 @@ no delete):
    Then look for other holders of the name: `SELECT table_name, column_name FROM information_schema.columns WHERE column_name LIKE '%collection%'` and update each that carries the old value for this organization (jobs' scope lists are history and are left).
 6. **Flip the writer**, once every organization is done: set
    `OFFICE_SHELF_COLLECTION_PREFIX` to `'office_shelf_'` in
-   `lib/office-shelf/collection-prefix.ts` and `aiq_agent/common/source_kinds.py`
+   `lib/office-shelf/collection-prefix.ts` and `agent/common/source_kinds.py`
    (the parity spec fails if only one changes), and in a following release delete
    the `archiv_` entries from `OFFICE_SHELF_COLLECTION_PREFIXES`.
 

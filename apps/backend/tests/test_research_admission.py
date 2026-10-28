@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.job_admission import JobAdmissionError
-from aiq_api.jobs import queue
-from aiq_api.jobs import submit
+from agent.common.job_admission import JobAdmissionError
+from agent_host.jobs import queue
+from agent_host.jobs import submit
 
 
 @pytest.fixture

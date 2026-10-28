@@ -131,11 +131,11 @@ async def test_ranking_parse_drops_dup_out_of_range_and_string_scores(monkeypatc
 
 
 async def test_without_the_zdr_seam_the_rerank_is_skipped_not_sent_unpinned(monkeypatch) -> None:
-    """The package imports without aiq_agent; then no rerank goes out, rather than an unpinned one."""
+    """The package imports without agent; then no rerank goes out, rather than an unpinned one."""
     import sys
 
     seen = _serve(monkeypatch, lambda request: _ok({"results": []}))
-    monkeypatch.setitem(sys.modules, "aiq_agent.common.openrouter", None)
+    monkeypatch.setitem(sys.modules, "agent.common.openrouter", None)
 
     assert await _reranker().rerank("query", [_chunk("a"), _chunk("b")], top_n=2) is None
     assert seen == []
@@ -281,7 +281,7 @@ class _Tracker:
 @pytest.fixture()
 def tracker(monkeypatch):
     """Install a tracker in the ambient ContextVar, as a turn does."""
-    from aiq_agent.common import cost_tracking
+    from agent.common import cost_tracking
 
     sink = _Tracker()
     token = cost_tracking.grid_cost_tracker_var.set(sink)
@@ -344,7 +344,7 @@ async def test_an_org_with_its_own_key_reranks_on_it(monkeypatch, tracker) -> No
     """BYOK, per search. The handle is built at startup where no org exists, so
     resolving the key at construction is what made every org's rerank the
     platform's bill."""
-    from aiq_agent.common import credential_resolution
+    from agent.common import credential_resolution
 
     seen = _serve(monkeypatch, _ranked)
     monkeypatch.setattr(ce, "_organization_id_in_scope", lambda: "org_byok")
@@ -379,7 +379,7 @@ async def test_without_an_org_the_platform_key_is_used(monkeypatch, tracker) -> 
 
 async def test_an_org_with_no_key_of_its_own_still_reranks(monkeypatch, tracker) -> None:
     """A BYOK lookup that resolves nothing must not take reranking down."""
-    from aiq_agent.common import credential_resolution
+    from agent.common import credential_resolution
 
     # The platform key is the one the reranker was built with; a key in the
     # environment (a cloud dev session carries a real one) must not stand in.

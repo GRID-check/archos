@@ -36,17 +36,17 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.tools.bim.measure_register import DISTANCE_MODES
-from aiq_agent.tools.bim.measure_register import ENVELOPE_ASPECTS
-from aiq_agent.tools.bim.measure_register import FIRE_ASPECTS
-from aiq_agent.tools.bim.measure_register import KINDS
-from aiq_agent.tools.bim.measure_register import MEASURES
-from aiq_agent.tools.bim.measure_register import PROFILE_KINDS
-from aiq_agent.tools.bim.measure_register import RELATIONS
-from aiq_agent.tools.bim.measure_register import ROOM_KINDS
-from aiq_agent.tools.bim.measure_register import VALID_OPERATIONS
-from aiq_agent.tools.bim.measure_register import VIEW_MODES
-from aiq_agent.tools.bim.register import VALID_OPERATIONS as QUERY_OPERATIONS
+from agent.tools.bim.measure_register import DISTANCE_MODES
+from agent.tools.bim.measure_register import ENVELOPE_ASPECTS
+from agent.tools.bim.measure_register import FIRE_ASPECTS
+from agent.tools.bim.measure_register import KINDS
+from agent.tools.bim.measure_register import MEASURES
+from agent.tools.bim.measure_register import PROFILE_KINDS
+from agent.tools.bim.measure_register import RELATIONS
+from agent.tools.bim.measure_register import ROOM_KINDS
+from agent.tools.bim.measure_register import VALID_OPERATIONS
+from agent.tools.bim.measure_register import VIEW_MODES
+from agent.tools.bim.register import VALID_OPERATIONS as QUERY_OPERATIONS
 
 #: The two tool names the skill is allowed to name, and the operations each one
 #: really has. `ifc_measure` is this skill's subject; `ifc_query` is the sibling
@@ -76,7 +76,7 @@ SKILL = (
     / "packages"
     / "agent"
     / "src"
-    / "aiq_agent"
+    / "agent"
     / "skills"
     / "builtin"
     / "bim"
@@ -115,7 +115,7 @@ def test_the_parameter_list_is_the_tool_s_own_signature() -> None:
     as an invention when it is a real field of a real call. `IfcMeasureInput`
     is the wire schema, so its fields are exactly what a call can carry.
     """
-    from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+    from agent.tools.bim.measure_register import IfcMeasureInput
 
     assert PARAMETERS == set(IfcMeasureInput.model_fields)
 
@@ -130,7 +130,7 @@ def test_the_kind_union_still_covers_the_schema() -> None:
     tests later as „the skill invented `kind: <the new value>`" — a message that
     points at the skill for being right.
     """
-    from aiq_agent.tools.bim.measure_register import _ALL_KINDS
+    from agent.tools.bim.measure_register import _ALL_KINDS
 
     assert EVERY_KIND == set(_ALL_KINDS)
 
@@ -147,7 +147,7 @@ def _card_field_names() -> set[str]:
     Read from the card MODELS rather than written out, so a renamed card field
     fails here the same way a renamed operator does.
     """
-    from aiq_agent.cards import ifc_cards as card_models
+    from agent.cards import ifc_cards as card_models
 
     names: set[str] = set()
     for card in (
@@ -356,9 +356,9 @@ def test_the_description_survives_the_level_one_catalog_intact(text: str) -> Non
     every turn of every agent that resolves the skill — which is the reason to
     check that it is spent on triggering and not on prose.
     """
-    from aiq_agent.skills.models import MAX_DESCRIPTION_CHARS
-    from aiq_agent.skills.models import parse_skill_md
-    from aiq_agent.skills.runtime import SkillRuntime
+    from agent.skills.models import MAX_DESCRIPTION_CHARS
+    from agent.skills.models import parse_skill_md
+    from agent.skills.runtime import SkillRuntime
 
     skill = parse_skill_md(text, expected_dir_name="ifc-spatial-reasoning")
     assert "\n" not in skill.description

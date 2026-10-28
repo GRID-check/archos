@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aiq_agent.common.llm_factory import get_langchain_llm
+from agent.common.llm_factory import get_langchain_llm
 
 
 async def _resolved_through_nat(**llm_config):

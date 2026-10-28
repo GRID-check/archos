@@ -16,12 +16,12 @@ from langgraph.graph import START
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
 
-from aiq_agent.common.fenced_checkpointer import FencedCheckpointer
-from aiq_agent.common.write_fence import TurnFenced
-from aiq_agent.common.write_fence import _follow_the_deadline
-from aiq_agent.common.write_fence import bind_write_fence
-from aiq_agent.common.write_fence import guarded_write
-from aiq_agent.common.write_fence import unbind_write_fence
+from agent.common.fenced_checkpointer import FencedCheckpointer
+from agent.common.write_fence import TurnFenced
+from agent.common.write_fence import _follow_the_deadline
+from agent.common.write_fence import bind_write_fence
+from agent.common.write_fence import guarded_write
+from agent.common.write_fence import unbind_write_fence
 
 THREAD = {"configurable": {"thread_id": "t", "checkpoint_ns": ""}}
 

@@ -10,9 +10,9 @@ backend job at all.
 import pytest
 import yaml
 
-from aiq_agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
-from aiq_agent.observability.otel_header_redaction_exporter import _DisabledSpanExporter
-from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
+from agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
+from agent.observability.otel_header_redaction_exporter import _DisabledSpanExporter
+from agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 
 CONFIG_PATH = "configs/config_oib_openrouter.yml"
 

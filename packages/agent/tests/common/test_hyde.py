@@ -1,4 +1,4 @@
-"""Tests for aiq_agent.common.hyde — the HyDE-as-channel experiment (backlog item 14).
+"""Tests for agent.common.hyde — the HyDE-as-channel experiment (backlog item 14).
 
 The contract under test: the channel fires ONLY for queries with no exact
 identifier SHAPE (never vocabulary), the draft prompt carries no entities,
@@ -10,11 +10,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from aiq_agent.common.hyde import HYDE_MAX_DRAFT_CHARS
-from aiq_agent.common.hyde import build_draft_messages
-from aiq_agent.common.hyde import draft_passage
-from aiq_agent.common.hyde import has_exact_identifier
-from aiq_agent.common.hyde import should_draft
+from agent.common.hyde import HYDE_MAX_DRAFT_CHARS
+from agent.common.hyde import build_draft_messages
+from agent.common.hyde import draft_passage
+from agent.common.hyde import has_exact_identifier
+from agent.common.hyde import should_draft
 
 
 class _FakeLLM:

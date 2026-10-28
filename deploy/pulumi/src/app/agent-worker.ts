@@ -18,7 +18,7 @@ import { JOBS_QUEUE_AUTH } from "./jobs-queue-auth";
 import { installQueueScaledObject, queueDepthQuery } from "./keda-scaling";
 import { UID } from "../constants";
 
-/** The durable queue the tier drains (`aiq_api.jobs.queue.TABLE`). */
+/** The durable queue the tier drains (`agent_host.jobs.queue.TABLE`). */
 export const QUEUE_TABLE = "research_job_queue";
 
 /**
@@ -48,7 +48,7 @@ export const RESEARCH_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  * does not make the tier scale past what any single office may use of it.
  *
  * ROLLOUT NOTE — on SIGTERM the worker stops claiming and awaits its in-flight
- * research jobs (`aiq_api/jobs/worker.py`), which routinely run for minutes; the
+ * research jobs (`agent_host/jobs/worker.py`), which routinely run for minutes; the
  * Kubernetes default `terminationGracePeriodSeconds` of 30 SIGKILLs it long
  * before that drain finishes. The drain budget is `agentWorkerDrainSeconds`; the
  * grace period is that plus time to give back what is still running
@@ -125,7 +125,7 @@ export function installAgentWorker(
                   failureThreshold: 3,
                 },
                 // The marker only appears on the FIRST claim-loop tick, which is
-                // gated behind importing the full aiq_api stack + connecting to
+                // gated behind importing the full agent_host stack + connecting to
                 // Postgres/Qdrant. On a cold node that can exceed the liveness
                 // window and crash-loop the pod before it ever works. A startup
                 // probe holds liveness off until first boot completes (up to

@@ -18,7 +18,7 @@ async def superseded_files(collections: Sequence[str]) -> dict[str, dict[str, st
     not on its chunks, and a link made or lifted a minute ago must apply to the
     next search. Fail-open: a collection that cannot be read hides nothing.
     """
-    from aiq_agent.knowledge import get_superseded_files
+    from agent.knowledge import get_superseded_files
 
     answers = await asyncio.gather(
         *(asyncio.to_thread(get_superseded_files, collection) for collection in collections),
@@ -41,7 +41,7 @@ def named_older_revision_notice(file_name: str | None, superseded: dict[str, dic
     """
     if not file_name:
         return ""
-    from aiq_agent.knowledge.restricted_use import may_name
+    from agent.knowledge.restricted_use import may_name
 
     from .read_passage import older_revision_line
 

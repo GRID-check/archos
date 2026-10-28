@@ -18,8 +18,8 @@ from ris_adapter.register import ris_catalog_lookup
 from ris_adapter.register import ris_fetch_document
 from ris_adapter.register import ris_search
 
-from aiq_agent.common.norm_registry import NormEntry
-from aiq_agent.common.norm_registry import NormRegistry
+from agent.common.norm_registry import NormEntry
+from agent.common.norm_registry import NormRegistry
 from nat.builder.function import LambdaFunction  # noqa: TID251
 from nat.plugin_api import FunctionBaseConfig
 
@@ -870,7 +870,7 @@ def _override_setting(monkeypatch, values):
     """Patch the platform retrieval-settings resolver: only the listed keys are
     overridden, every other key falls through to its config fallback — exactly
     what the real resolver does for unpinned keys."""
-    from aiq_agent.common import retrieval_settings
+    from agent.common import retrieval_settings
 
     def fake_get(key, fallback):
         return values.get(key, fallback)
@@ -906,7 +906,7 @@ class TestPlatformRetrievalSettings:
         fake_client.search_result = RisSearchResult(hits=[_sample_hit()], total=1, page=1, page_size=20)
         # The real failure mode is an unreachable BFF: the resolver swallows it
         # (it is contractually never-raising), so the config value stays in force.
-        from aiq_agent.common import retrieval_settings
+        from agent.common import retrieval_settings
 
         def boom():
             raise RuntimeError("BFF unreachable")
@@ -964,7 +964,7 @@ class TestLaneCapture:
 
     async def test_search_hits_are_captured_with_the_round(self, fake_client):
         """Shown search hits are captured with the active round."""
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         fake_client.search_result = RisSearchResult(hits=[_sample_hit()], total=1, page=1, page_size=20)
         token = turn_status.begin_lane_capture()
@@ -986,7 +986,7 @@ class TestLaneCapture:
 
     async def test_catalog_shortcut_hits_are_captured(self, fake_client, fake_catalog):
         """Catalog shortcut hits are captured like live hits."""
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         token = turn_status.begin_lane_capture()
         try:
@@ -1007,7 +1007,7 @@ class TestLaneCapture:
 
     async def test_fetch_captures_the_document_url(self, fake_client):
         """A fetched document is captured by URL."""
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         fake_client.fetch_result = RisDocument(
             url="https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR1/NOR1.html",
@@ -1043,7 +1043,7 @@ class TestLaneCapture:
         round with `docs: []` while the model received the full hit list — the
         ledger lying on exactly the repeats it should be counting.
         """
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         fake_client.search_result = RisSearchResult(hits=[_sample_hit()], total=1, page=1, page_size=20)
         config = RisSearchToolConfig()

@@ -5,12 +5,12 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from aiq_agent.observability.turn_trace import TRACE_ID_METADATA_KEY
-from aiq_agent.observability.turn_trace import current_trace_id_hex
-from aiq_agent.observability.turn_trace import pinned_trace
-from aiq_agent.observability.turn_trace import trace_id_for_message
-from aiq_agent.observability.turn_trace import trace_id_hex
-from aiq_agent.turn.response import answer_message_id
+from agent.observability.turn_trace import TRACE_ID_METADATA_KEY
+from agent.observability.turn_trace import current_trace_id_hex
+from agent.observability.turn_trace import pinned_trace
+from agent.observability.turn_trace import trace_id_for_message
+from agent.observability.turn_trace import trace_id_hex
+from agent.turn.response import answer_message_id
 from nat.plugin_api import ContextState
 
 

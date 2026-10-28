@@ -12,8 +12,8 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.routes.cleanup_proposal import add_cleanup_proposal_routes
-from aiq_api.routes.cleanup_proposal import parse_candidates
+from agent_host.routes.cleanup_proposal import add_cleanup_proposal_routes
+from agent_host.routes.cleanup_proposal import parse_candidates
 
 DOCUMENTS = [
     {"id": "d1", "filename": "Einreichplan EG_v3.pdf", "folder_path": "Pläne/Einreichung", "summary": "Grundriss EG"},
@@ -112,7 +112,7 @@ async def test_fails_soft_on_an_answer_that_is_not_json(app):
 async def test_says_when_no_model_is_configured(app, monkeypatch):
     for name in ("SUMMARY_LLM_API_KEY", "LLM_API_KEY", "OPENROUTER_API_KEY"):
         monkeypatch.delenv(name, raising=False)
-    with patch("aiq_agent.common.credential_resolution.resolve_llm_credential") as resolve:
+    with patch("agent.common.credential_resolution.resolve_llm_credential") as resolve:
         resolve.return_value = MagicMock(api_key=None)
         fake, post = _client_returning("{}")
         body = (await _propose(app, fake)).json()

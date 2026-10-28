@@ -1,6 +1,6 @@
 """Tests for Piloti's conversation graph."""
 
-from aiq_agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ConversationState
 
 
 async def turn(graph, state: ConversationState, thread_id: str | None = None) -> ConversationState:

@@ -11,7 +11,7 @@ WHAT IT MEASURES
 Which of the CURRENT retrieval's deterministic channels fire for each query
 shape, and whether the expected corpus files are among what fired:
 
-* the exact channel: ``aiq_agent.common.legal_terms.extract_exact_terms``,
+* the exact channel: ``agent.common.legal_terms.extract_exact_terms``,
   then ``knowledge_layer.llamaindex.hybrid.selective_terms`` (the retriever's
   document-frequency ceiling), then a case-sensitive substring match over
   ``file_name + text`` — the offline mirror of Chroma
@@ -98,7 +98,7 @@ HYDE (backlog item 14) — WHAT THE ON-MODE MEASURES, AND WHAT IT CANNOT
 ----------------------------------------------------------------------
 ``run(..., hyde_drafter=...)`` fuses a draft channel beside the original one:
 for a query where the production gate fires
-(``aiq_agent.common.hyde.should_draft``, shape-only, no vocabulary), the
+(``agent.common.hyde.should_draft``, shape-only, no vocabulary), the
 drafter's passage is ranked through the SAME deterministic halves a
 production ``retrieve(draft)`` would run — exact terms extracted from the
 draft plus sparse search on the draft — and fused with the original channels
@@ -513,7 +513,7 @@ def build_index(docs: list[FixtureDoc]):
 
 def exact_terms_for(query: str) -> list[str]:
     """Production exact-term extraction, unchanged."""
-    from aiq_agent.common.legal_terms import extract_exact_terms
+    from agent.common.legal_terms import extract_exact_terms
 
     return extract_exact_terms(query)
 
@@ -646,7 +646,7 @@ def hyde_fires(query: str) -> bool:
     The production shape gate, imported — never reimplemented — so a change
     to the gating moves these numbers.
     """
-    from aiq_agent.common.hyde import should_draft
+    from agent.common.hyde import should_draft
 
     return should_draft(query, enabled=True)
 

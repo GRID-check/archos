@@ -12,18 +12,18 @@ import asyncio
 
 import pytest
 
-from aiq_api import conversation_bus
-from aiq_api.conversation_bus import CANCEL
-from aiq_api.conversation_bus import FRAME
-from aiq_api.conversation_bus import HITL_ANSWER
-from aiq_api.conversation_bus import BusUnavailable
-from aiq_api.conversation_bus import ConversationBus
-from aiq_api.conversation_bus import Envelope
-from aiq_api.conversation_bus import InMemoryTransport
-from aiq_api.conversation_bus import RunningMarker
-from aiq_api.conversation_bus import get_bus
-from aiq_api.conversation_bus import is_multi_replica_bus
-from aiq_api.conversation_bus import reset_bus_for_tests
+from agent_host import conversation_bus
+from agent_host.conversation_bus import CANCEL
+from agent_host.conversation_bus import FRAME
+from agent_host.conversation_bus import HITL_ANSWER
+from agent_host.conversation_bus import BusUnavailable
+from agent_host.conversation_bus import ConversationBus
+from agent_host.conversation_bus import Envelope
+from agent_host.conversation_bus import InMemoryTransport
+from agent_host.conversation_bus import RunningMarker
+from agent_host.conversation_bus import get_bus
+from agent_host.conversation_bus import is_multi_replica_bus
+from agent_host.conversation_bus import reset_bus_for_tests
 
 CONV = "conv-123"
 
@@ -130,7 +130,7 @@ async def test_a_turn_is_read_back_by_its_own_turn_id_in_seq_order():
 
 @pytest.mark.asyncio
 async def test_stream_buffer_is_bounded(monkeypatch):
-    import aiq_api.conversation_bus as bus_mod
+    import agent_host.conversation_bus as bus_mod
 
     monkeypatch.setattr(bus_mod, "_STREAM_MAXLEN", 10)
     owner, relay = _two_replicas()
@@ -143,7 +143,7 @@ async def test_stream_buffer_is_bounded(monkeypatch):
 @pytest.mark.asyncio
 async def test_the_in_process_stream_keeps_a_bounded_number_of_conversations(monkeypatch):
     """It has no TTL, so a long-lived single node would otherwise keep every conversation it served."""
-    import aiq_api.conversation_bus as bus_mod
+    import agent_host.conversation_bus as bus_mod
 
     monkeypatch.setattr(bus_mod, "_IN_MEMORY_STREAMS", 2)
     owner, _ = _two_replicas()

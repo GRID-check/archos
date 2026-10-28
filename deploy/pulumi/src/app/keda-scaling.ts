@@ -35,10 +35,10 @@ export const SCALER_FALLBACK_FAILURES = 3;
  */
 export const SCALER_COOLDOWN_SECONDS = 300;
 
-/** The status of a row a queue gave up on (`aiq_agent.common.claim_queue.DEAD`, `bff_job_queue`). */
+/** The status of a row a queue gave up on (`agent.common.claim_queue.DEAD`, `bff_job_queue`). */
 export const DEAD_STATUS = "dead";
 
-/** The status of a row a person stopped (`aiq_agent.common.claim_queue.CANCELLED`). */
+/** The status of a row a person stopped (`agent.common.claim_queue.CANCELLED`). */
 export const CANCELLED_STATUS = "cancelled";
 
 /**

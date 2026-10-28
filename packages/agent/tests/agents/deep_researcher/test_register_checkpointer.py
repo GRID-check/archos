@@ -13,9 +13,9 @@ from unittest.mock import patch
 import pytest
 from langchain_core.tools import tool
 
-from aiq_agent.agents.deep_researcher import register as register_module
-from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-from aiq_agent.agents.deep_researcher.register import deep_research_agent
+from agent.agents.deep_researcher import register as register_module
+from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+from agent.agents.deep_researcher.register import deep_research_agent
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 

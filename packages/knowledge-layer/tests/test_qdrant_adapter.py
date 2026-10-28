@@ -275,7 +275,7 @@ def test_an_ingest_job_stamps_the_projects_facts_on_its_chunks(retriever):
 
 
 async def test_search_grouped_carries_each_chunks_fused_score(retriever):
-    from aiq_agent.knowledge.base import FUSED_SCORE_KEY
+    from agent.knowledge.base import FUSED_SCORE_KEY
 
     _ingest(retriever, "proj_a", [_row("Fluchttreppe aus Holz", "a.pdf")])
     _ingest(retriever, "proj_b", [_row("Fluchttreppe", "b.pdf")])
@@ -445,8 +445,8 @@ def test_literal_tokens_only_names_words_every_match_holds_whole():
 @pytest.fixture
 def metadata_store(tmp_path, monkeypatch):
     """A real SQLite metadata store, with ``facts_by_file`` reading it (the module fixture stubs it out)."""
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     monkeypatch.setattr(writes, "facts_by_file", FACTS_BY_FILE)
     factory._document_metadata_store = None
@@ -456,9 +456,9 @@ def metadata_store(tmp_path, monkeypatch):
 
 
 def test_refreshing_one_file_reads_only_its_row(retriever, metadata_store, monkeypatch):
-    from aiq_agent import knowledge
-    from aiq_agent.knowledge import register_summary
-    from aiq_agent.knowledge import set_document_tags_by_person
+    from agent import knowledge
+    from agent.knowledge import register_summary
+    from agent.knowledge import set_document_tags_by_person
 
     _ingest(retriever, "proj_a", [_row("eins", "a.pdf"), _row("zwei", "b.pdf")])
     register_summary("proj_a", "a.pdf", "A")
@@ -473,9 +473,9 @@ def test_refreshing_one_file_reads_only_its_row(retriever, metadata_store, monke
 
 
 def test_a_folder_rename_mirrors_in_one_batch_not_one_request_per_file(retriever, metadata_store, monkeypatch):
-    from aiq_agent.knowledge import register_summary
-    from aiq_agent.knowledge import rewrite_document_folder_paths
-    from aiq_agent.knowledge import set_document_folder_path
+    from agent.knowledge import register_summary
+    from agent.knowledge import rewrite_document_folder_paths
+    from agent.knowledge import set_document_folder_path
 
     names = [f"{index}.pdf" for index in range(5)]
     _ingest(retriever, "proj_a", [_row(f"Text {name}", name) for name in names])
@@ -502,8 +502,8 @@ def test_a_folder_rename_mirrors_in_one_batch_not_one_request_per_file(retriever
 
 
 def test_clearing_a_dokumentart_puts_the_chunks_own_back(retriever, metadata_store):
-    from aiq_agent.knowledge import register_summary
-    from aiq_agent.knowledge import set_document_doc_class
+    from agent.knowledge import register_summary
+    from agent.knowledge import set_document_doc_class
 
     _ingest(retriever, "proj_a", [_row("Plan", "plan.pdf", doc_class="einreichplan"), _row("Brief", "brief.pdf")])
     register_summary("proj_a", "plan.pdf", "P")
@@ -524,8 +524,8 @@ def test_clearing_a_dokumentart_puts_the_chunks_own_back(retriever, metadata_sto
 
 
 async def test_a_hit_carries_the_chunks_own_dokumentart(retriever, metadata_store):
-    from aiq_agent.knowledge import register_summary
-    from aiq_agent.knowledge import set_document_doc_class
+    from agent.knowledge import register_summary
+    from agent.knowledge import set_document_doc_class
 
     _ingest(retriever, "proj_a", [_row("Plan", "plan.pdf", doc_class="einreichplan")])
     register_summary("proj_a", "plan.pdf", "P")
@@ -696,9 +696,9 @@ def test_removing_the_newer_revision_makes_the_older_one_findable_again(retrieve
     Left ``superseded: true``, the ``superseded != true`` pre-filter hid the
     Fassung that had become the current one from every search.
     """
-    from aiq_agent.knowledge import link_document_revision
-    from aiq_agent.knowledge import register_summary
-    from aiq_agent.knowledge import unregister_summary
+    from agent.knowledge import link_document_revision
+    from agent.knowledge import register_summary
+    from agent.knowledge import unregister_summary
 
     _ingest(retriever, "proj_a", [_row("Alte Statik", "alt.pdf"), _row("Neue Statik", "neu.pdf")])
     register_summary("proj_a", "alt.pdf", "A")

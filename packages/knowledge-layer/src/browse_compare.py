@@ -81,8 +81,8 @@ def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
 
     None when the index holds no chunk of the file; raises when the store cannot be read.
     """
-    from aiq_agent.knowledge.collection_pages import read_chunks
-    from aiq_agent.knowledge.revision_diff import chunk_from_store
+    from agent.knowledge.collection_pages import read_chunks
+    from agent.knowledge.revision_diff import chunk_from_store
 
     stored = read_chunks(collection, file_name)
     if stored is None:
@@ -92,10 +92,10 @@ def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
 
 async def compare_revisions(older: FileRow, newer: FileRow) -> str:
     """The compare of two Fassungen the turn may list, from their stored chunks and title blocks (ADR-0104)."""
-    from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
-    from aiq_agent.knowledge.restricted_use import note_collections_read
-    from aiq_agent.knowledge.revision_diff import diff_revisions
-    from aiq_agent.knowledge.revision_diff import render_diff
+    from agent.common.tool_calls import FETCH_FAILED_MARKER
+    from agent.knowledge.restricted_use import note_collections_read
+    from agent.knowledge.revision_diff import diff_revisions
+    from agent.knowledge.revision_diff import render_diff
 
     try:
         older_chunks, newer_chunks = await asyncio.gather(

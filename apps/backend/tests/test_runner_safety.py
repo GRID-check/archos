@@ -16,31 +16,31 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_api.jobs.conversation_output import write_job_turn
-from aiq_api.jobs.run_result import ANSWER_CONFIDENCE_FIELDS
-from aiq_api.jobs.run_result import build_job_output
-from aiq_api.jobs.run_result import extract_answer_transparency
-from aiq_api.jobs.run_result import extract_skills_activated
-from aiq_api.jobs.run_result import mark_degraded
-from aiq_api.jobs.runner import _DEGRADED_EVENT_FIELDS
-from aiq_api.jobs.runner import _GRAPH_RECURSION_ERROR_MSG
-from aiq_api.jobs.runner import _WALL_CLOCK_TIMEOUT_MSG
-from aiq_api.jobs.runner import JOB_DEGRADED_EVENT_TYPE
-from aiq_api.jobs.runner import CancellationMonitor
-from aiq_api.jobs.runner import _b64url_encode_text
-from aiq_api.jobs.runner import _create_agent_instance
-from aiq_api.jobs.runner import _generate_grid_cards
-from aiq_api.jobs.runner import _purge_deep_checkpoint
-from aiq_api.jobs.runner import _resolve_deep_research_checkpointer
-from aiq_api.jobs.runner import _update_status_if_not_terminal
-from aiq_api.jobs.runner import sanitize_job_error
+from agent_host.jobs.conversation_output import write_job_turn
+from agent_host.jobs.run_result import ANSWER_CONFIDENCE_FIELDS
+from agent_host.jobs.run_result import build_job_output
+from agent_host.jobs.run_result import extract_answer_transparency
+from agent_host.jobs.run_result import extract_skills_activated
+from agent_host.jobs.run_result import mark_degraded
+from agent_host.jobs.runner import _DEGRADED_EVENT_FIELDS
+from agent_host.jobs.runner import _GRAPH_RECURSION_ERROR_MSG
+from agent_host.jobs.runner import _WALL_CLOCK_TIMEOUT_MSG
+from agent_host.jobs.runner import JOB_DEGRADED_EVENT_TYPE
+from agent_host.jobs.runner import CancellationMonitor
+from agent_host.jobs.runner import _b64url_encode_text
+from agent_host.jobs.runner import _create_agent_instance
+from agent_host.jobs.runner import _generate_grid_cards
+from agent_host.jobs.runner import _purge_deep_checkpoint
+from agent_host.jobs.runner import _resolve_deep_research_checkpointer
+from agent_host.jobs.runner import _update_status_if_not_terminal
+from agent_host.jobs.runner import sanitize_job_error
 
 
 def _ensure_job_info_table(db_url: str) -> None:
     """Create NAT's job_info table (mock stores cannot represent the race)."""
     from sqlalchemy import text
 
-    from aiq_api.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     engine = EventStore._get_or_create_sync_engine(db_url)
     with engine.connect() as conn:
@@ -72,7 +72,7 @@ def _seed_job(db_url: str, job_id: str, status: str) -> None:
 
     from sqlalchemy import text
 
-    from aiq_api.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     _ensure_job_info_table(db_url)
     engine = EventStore._get_or_create_sync_engine(db_url)
@@ -102,7 +102,7 @@ def job_db(tmp_path):
 
 @pytest.fixture(autouse=True)
 def clear_event_store_caches():
-    from aiq_api.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     EventStore._tables_initialized.clear()
     yield
@@ -364,7 +364,7 @@ class TestSanitizeJobError:
 
     def test_a_zdr_refusal_is_named_not_generic(self):
         """The one provider error only an admin can fix says so (ADR-0074)."""
-        from aiq_agent.common.canned_replies import ZDR_MODEL_REFUSED_MESSAGE
+        from agent.common.canned_replies import ZDR_MODEL_REFUSED_MESSAGE
 
         class FakeProviderError(Exception):
             pass
@@ -391,7 +391,7 @@ class TestSanitizeJobError:
         ("run exceeded the configured completion-token budget of N") -- it
         must be persisted as-is instead of falling through to the generic
         internal-error classification other unclassified exceptions get."""
-        from aiq_agent.common import RunBudgetExceededError
+        from agent.common import RunBudgetExceededError
 
         message = sanitize_job_error(RunBudgetExceededError(ceiling=50_000, used=50_123))
 
@@ -402,7 +402,7 @@ class TestBudgetMessagesSurvive:
     """The one failure a person can act on themselves must say so."""
 
     def test_organization_budget_exhaustion_keeps_its_actionable_message(self) -> None:
-        from aiq_agent.common.cost_tracking import BudgetExceededError
+        from agent.common.cost_tracking import BudgetExceededError
 
         message = sanitize_job_error(BudgetExceededError("organization"))
 
@@ -439,8 +439,8 @@ class TestResolveDeepResearchCheckpointer:
 
     @pytest.mark.asyncio
     async def test_builds_checkpointer_via_get_checkpointer_when_configured(self):
-        """A configured checkpoint_db resolves through aiq_agent.common.get_checkpointer (shared cache)."""
-        import aiq_agent.common as common_module
+        """A configured checkpoint_db resolves through agent.common.get_checkpointer (shared cache)."""
+        import agent.common as common_module
 
         fn_config = SimpleNamespace(type="deep_research_agent", checkpoint_db="./deep_research_checkpoints.db")
         fake_checkpointer = MagicMock(name="fake_checkpointer")
@@ -457,7 +457,7 @@ class TestCreateAgentInstanceForwardsCheckpointer:
     """_create_agent_instance threads the resolved checkpointer into DeepResearcherAgent (T3-8)."""
 
     def test_deep_research_agent_receives_checkpointer(self):
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
 
         fn_config = DeepResearchAgentConfig(orchestrator_llm="llm")
         fake_checkpointer = MagicMock(name="fake_checkpointer")
@@ -483,7 +483,7 @@ class TestCreateAgentInstanceForwardsCheckpointer:
 
     def test_deep_research_agent_defaults_checkpointer_to_none(self):
         """Omitting checkpointer at the call site preserves current behavior."""
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
 
         fn_config = DeepResearchAgentConfig(orchestrator_llm="llm")
         captured_kwargs = {}
@@ -507,7 +507,7 @@ class TestCreateAgentInstanceForwardsCheckpointer:
 
     def test_deep_research_agent_receives_max_run_seconds(self):
         """F5: max_run_seconds from fn_config is forwarded to DeepResearcherAgent."""
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
 
         fn_config = DeepResearchAgentConfig(orchestrator_llm="llm", max_run_seconds=999)
         captured_kwargs = {}
@@ -531,7 +531,7 @@ class TestCreateAgentInstanceForwardsCheckpointer:
 
     def test_deep_research_agent_receives_max_run_seconds_zero(self):
         """F5: max_run_seconds=0 (disabled guard) is also forwarded."""
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
 
         fn_config = DeepResearchAgentConfig(orchestrator_llm="llm", max_run_seconds=0)
         captured_kwargs = {}
@@ -652,7 +652,7 @@ class TestCardFailureIsADegradedReason:
     @pytest.mark.asyncio
     async def test_generate_grid_cards_reports_a_lost_attempt(self) -> None:
         with patch(
-            "aiq_agent.cards.generate.generate_cards_result",
+            "agent.cards.generate.generate_cards_result",
             AsyncMock(side_effect=RuntimeError("the worker has no card model")),
         ):
             result = await _generate_grid_cards(MagicMock(), "q", "report")
@@ -850,7 +850,7 @@ class TestTransparencyReachesBothSurfaces:
         output = build_job_output("# Report", cards=None, transparency=transparency)
 
         with patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=AsyncMock,
         ) as post:
             await write_job_turn(
@@ -873,7 +873,7 @@ class TestTransparencyReachesBothSurfaces:
         assert build_job_output("# Report", cards=None, transparency=transparency) == {"report": "# Report"}
 
         with patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=AsyncMock,
         ) as post:
             await write_job_turn(
@@ -897,7 +897,7 @@ class TestTransparencyReachesBothSurfaces:
         still leave the reader with the answer.
         """
         with patch(
-            "aiq_api.jobs.conversation_output.post_internal_conversation_message",
+            "agent_host.jobs.conversation_output.post_internal_conversation_message",
             new_callable=AsyncMock,
         ) as post:
             await write_job_turn(
@@ -934,7 +934,7 @@ class TestWorkerHeaderTextEncoding:
         """The runner's encoding reaches the reader with the text intact."""
         from starlette.datastructures import Headers
 
-        from aiq_agent.project_context import GridRequestContext
+        from agent.project_context import GridRequestContext
 
         encoded = _b64url_encode_text(self.GERMAN_CONTEXT)
         assert encoded.isascii()
@@ -950,7 +950,7 @@ class TestTheReportsOwnAccountReachesTheMessage:
     def test_the_retrieval_ledger_and_the_hidden_skills_are_lifted(self) -> None:
         from types import SimpleNamespace
 
-        from aiq_api.jobs.run_result import extract_answer_transparency
+        from agent_host.jobs.run_result import extract_answer_transparency
 
         state = SimpleNamespace(retrieval_ledger=[{"round": 0}], skills_hidden=["house-voice", 3, ""])
         assert extract_answer_transparency(state) == {
@@ -961,7 +961,7 @@ class TestTheReportsOwnAccountReachesTheMessage:
     def test_an_empty_ledger_or_list_writes_nothing(self) -> None:
         from types import SimpleNamespace
 
-        from aiq_api.jobs.run_result import extract_answer_transparency
+        from agent_host.jobs.run_result import extract_answer_transparency
 
         assert extract_answer_transparency(SimpleNamespace(retrieval_ledger=[], skills_hidden=[])) == {}
 
@@ -971,10 +971,10 @@ class TestReportFollowUps:
     async def test_the_org_flag_gates_the_stage_like_a_chat_turn(self, monkeypatch) -> None:
         from unittest.mock import AsyncMock
 
-        from aiq_api.jobs import runner
+        from agent_host.jobs import runner
 
         monkeypatch.setattr(
-            "aiq_agent.stages.flags.resolve_enabled_stages", AsyncMock(return_value=frozenset({"memory_reflection"}))
+            "agent.stages.flags.resolve_enabled_stages", AsyncMock(return_value=frozenset({"memory_reflection"}))
         )
         llm = AsyncMock()
         assert await runner._propose_report_follow_ups(llm, query="q", report="r", organization_id="org") is None
@@ -984,14 +984,14 @@ class TestReportFollowUps:
     async def test_the_stages_handler_payload_rides_the_message(self, monkeypatch) -> None:
         from unittest.mock import AsyncMock
 
-        from aiq_api.jobs import runner
+        from agent_host.jobs import runner
 
         monkeypatch.setattr(
-            "aiq_agent.stages.flags.resolve_enabled_stages", AsyncMock(return_value=frozenset({"follow_ups"}))
+            "agent.stages.flags.resolve_enabled_stages", AsyncMock(return_value=frozenset({"follow_ups"}))
         )
         import dataclasses
 
-        from aiq_agent.stages import follow_ups as follow_ups_module
+        from agent.stages import follow_ups as follow_ups_module
 
         stage = dataclasses.replace(
             follow_ups_module.FOLLOW_UPS, handler=AsyncMock(return_value={"items": [{"question": "Und in GK 5?"}]})
@@ -1003,7 +1003,7 @@ class TestReportFollowUps:
 
 class TestTheFindingsRideIntoMemory:
     def test_each_finding_is_one_line_after_the_report(self) -> None:
-        from aiq_api.jobs.runner import _reflection_text
+        from agent_host.jobs.runner import _reflection_text
 
         text = _reflection_text(
             "Bericht.",
@@ -1020,13 +1020,13 @@ class TestTheFindingsRideIntoMemory:
 
     def test_a_row_without_a_status_states_none(self) -> None:
         """``exclude_none`` drops an absent status; it must not come back as „offen"."""
-        from aiq_api.jobs.runner import _reflection_text
+        from agent_host.jobs.runner import _reflection_text
 
         text = _reflection_text("Bericht.", {"items": [{"requirement": "Stellplätze", "value": "12"}]})
         assert text == "Bericht.\n\n## Befunde\n- Stellplätze — 12"
 
     def test_no_findings_leaves_the_report_as_it_was(self) -> None:
-        from aiq_api.jobs.runner import _reflection_text
+        from agent_host.jobs.runner import _reflection_text
 
         assert _reflection_text("Bericht.", None) == "Bericht."
         assert _reflection_text("Bericht.", {"items": []}) == "Bericht."
@@ -1045,14 +1045,14 @@ class TestReportReflectionHasNoScopeCheck:
     def test_the_reflection_takes_no_collection_scope(self) -> None:
         import inspect
 
-        from aiq_api.jobs import runner
+        from agent_host.jobs import runner
 
         assert "collection_scope" not in inspect.signature(runner._run_deep_research_reflection).parameters
 
     @pytest.mark.asyncio
     async def test_a_report_still_reflects(self, monkeypatch) -> None:
-        from aiq_agent import common
-        from aiq_api.jobs import runner
+        from agent import common
+        from agent_host.jobs import runner
 
         get_llm = AsyncMock(side_effect=RuntimeError("stop before the model call"))
         monkeypatch.setattr(common, "get_langchain_llm", get_llm)

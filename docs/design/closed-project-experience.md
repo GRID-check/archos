@@ -14,7 +14,7 @@ project's own documents, once, as suggestions a person confirms.
 close dialog ──POST /api/projects/{id}/experience──▶ BFF (lib/project-experience)
                                                       │  vocabulary from the intake definition
                                                       ▼
-                         POST {backend}/v1/internal/project-experience   (aiq_api)
+                         POST {backend}/v1/internal/project-experience   (agent_host)
                                                       │  the ingest's summary model, the project's collection
                          choose documents ─▶ fingerprint pen ─▶ decision pen
                                                       │

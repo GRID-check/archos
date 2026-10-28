@@ -33,23 +33,23 @@ from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 from starlette.datastructures import Headers
 
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from aiq_agent.project_context import GridRequestContext
-from aiq_api.jobs import access as job_access
-from aiq_api.jobs import queue
-from aiq_api.jobs import run_envelope
-from aiq_api.jobs import worker as worker_mod
-from aiq_api.jobs.agent_job import run_agent_job
-from aiq_api.jobs.event_store import EventStore
-from aiq_api.jobs.run_envelope import RUN_ENVELOPE_RENEW_AFTER_MS
-from aiq_api.jobs.run_envelope import capture_request_envelope
-from aiq_api.jobs.run_envelope import envelope_headers_for_run
-from aiq_api.jobs.run_envelope import parse_renewal
-from aiq_api.jobs.run_envelope import refusal_reason
-from aiq_api.jobs.runner import WORKER_ENVELOPE_HEADERS
-from aiq_api.jobs.runner import _inject_worker_headers
-from aiq_api.jobs.runner import _run_user_info
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+from agent.project_context import GridRequestContext
+from agent_host.jobs import access as job_access
+from agent_host.jobs import queue
+from agent_host.jobs import run_envelope
+from agent_host.jobs import worker as worker_mod
+from agent_host.jobs.agent_job import run_agent_job
+from agent_host.jobs.event_store import EventStore
+from agent_host.jobs.run_envelope import RUN_ENVELOPE_RENEW_AFTER_MS
+from agent_host.jobs.run_envelope import capture_request_envelope
+from agent_host.jobs.run_envelope import envelope_headers_for_run
+from agent_host.jobs.run_envelope import parse_renewal
+from agent_host.jobs.run_envelope import refusal_reason
+from agent_host.jobs.runner import WORKER_ENVELOPE_HEADERS
+from agent_host.jobs.runner import _inject_worker_headers
+from agent_host.jobs.runner import _run_user_info
 
 from .test_job_submit_data_sources import submit_app  # noqa: F401 - the public submit route, built once
 
@@ -108,7 +108,7 @@ def _no_retry_pause(monkeypatch):
     async def _skip(_seconds: float) -> None:
         return None
 
-    monkeypatch.setattr("aiq_api.internal_retry._sleep", _skip)
+    monkeypatch.setattr("agent_host.internal_retry._sleep", _skip)
 
 
 @pytest.fixture(scope="module")
@@ -157,7 +157,7 @@ class _BFF:
 def bff():
     _BFF.calls = []
     _BFF.answers = [(500, None)]
-    with mock.patch("aiq_api.jobs.run_envelope.httpx.AsyncClient", _BFF):
+    with mock.patch("agent_host.jobs.run_envelope.httpx.AsyncClient", _BFF):
         yield _BFF
 
 
@@ -233,7 +233,7 @@ def db_url(tmp_path, monkeypatch):
 
 @pytest.fixture
 def skills_client():
-    from aiq_api.routes.skills import add_skill_routes
+    from agent_host.routes.skills import add_skill_routes
 
     router = APIRouter()
     add_skill_routes(router)
@@ -517,9 +517,9 @@ class TestTheWireContract:
 #: Every place in this tier that computes an HMAC, and why it may. A new one is a
 #: new answer to "who signs here?", and the answer for an envelope is: nobody.
 _HMAC_SITES = {
-    ("packages/agent/src/aiq_agent/project_context.py", "from_envelope"),  # verifies, compare_digest
-    ("apps/backend/src/aiq_api/auth/utils.py", "_build_pseudonymous_trace_user_id"),  # trace ids
-    ("apps/backend/src/aiq_api/auth/utils.py", "_build_pseudonymous_trace_client_id"),  # trace ids
+    ("packages/agent/src/agent/project_context.py", "from_envelope"),  # verifies, compare_digest
+    ("apps/backend/src/agent_host/auth/utils.py", "_build_pseudonymous_trace_user_id"),  # trace ids
+    ("apps/backend/src/agent_host/auth/utils.py", "_build_pseudonymous_trace_client_id"),  # trace ids
 }
 
 
@@ -544,7 +544,7 @@ def _hmac_sites(root: Path) -> set[tuple[str, str]]:
 
 class TestNothingIsSignedInPython:
     def test_no_hmac_is_computed_anywhere_it_has_not_been_justified(self):
-        sites = _hmac_sites(REPO / "packages" / "agent" / "src" / "aiq_agent") | _hmac_sites(
+        sites = _hmac_sites(REPO / "packages" / "agent" / "src" / "agent") | _hmac_sites(
             REPO / "apps" / "backend" / "src"
         )
         assert sites == _HMAC_SITES

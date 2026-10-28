@@ -77,13 +77,13 @@ EMBED_EXCLUDED_METADATA_KEYS = (
 def provenance_from_config(config: dict) -> dict[str, str]:
     """The provenance keys a job config carries, or an empty dict.
 
-    Read through ``aiq_agent.common.provenance`` rather than by picking four
+    Read through ``agent.common.provenance`` rather than by picking four
     strings out of ``config``, so the ingest side and the retrieval side spell
     the keys once. Empty for every human document, which is what makes the
     stamping loop a no-op for them.
     """
-    from aiq_agent.common.provenance import parse_agent_provenance
-    from aiq_agent.common.provenance import provenance_metadata
+    from agent.common.provenance import parse_agent_provenance
+    from agent.common.provenance import provenance_metadata
 
     provenance = parse_agent_provenance(config)
     return provenance_metadata(provenance) if provenance else {}

@@ -15,7 +15,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy import text
 
-from aiq_agent.common import claim_queue
+from agent.common import claim_queue
 
 CLAIM = {"stale_seconds": 180, "max_attempts": 3}
 _POSTGRES = os.environ.get("TEST_POSTGRES_URL")

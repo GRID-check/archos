@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.citations.citation_keys import citation_key_of_path
-from aiq_agent.citations.citation_keys import parse_citation_ref
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.verification import verify_citations
-from aiq_agent.common.source_kinds import Shelf
+from agent.citations.citation_keys import citation_key_of_path
+from agent.citations.citation_keys import parse_citation_ref
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.citations.verification import verify_citations
+from agent.common.source_kinds import Shelf
 
 
 def _registry(*keys: str, shelf: str = "project") -> SourceRegistry:

@@ -18,12 +18,12 @@ from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration
 from langchain_core.outputs import LLMResult
 
-from aiq_agent.common.budget_guard import BudgetGuardCallback
-from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.budget_guard import _BudgetTracker
-from aiq_agent.common.budget_guard import _extract_completion_tokens
-from aiq_agent.common.budget_guard import _parse_completion_token_ceiling
-from aiq_agent.common.budget_guard import create_budget_guard_callback
+from agent.common.budget_guard import BudgetGuardCallback
+from agent.common.budget_guard import RunBudgetExceededError
+from agent.common.budget_guard import _BudgetTracker
+from agent.common.budget_guard import _extract_completion_tokens
+from agent.common.budget_guard import _parse_completion_token_ceiling
+from agent.common.budget_guard import create_budget_guard_callback
 
 
 def _result_with_usage_metadata(output_tokens: int) -> LLMResult:

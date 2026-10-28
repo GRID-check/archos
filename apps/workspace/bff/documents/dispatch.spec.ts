@@ -471,7 +471,7 @@ describe('the ingest dispatch sends the document folder path', () => {
   it('sends the four provenance keys for a published Piloti document', async () => {
     // The backend twin is `apps/backend/tests/test_ingest_provenance.py`,
     // which asserts the same four keys reach the ingest job config. They are
-    // spelled in `packages/agent/src/aiq_agent/common/provenance.py` and nowhere else.
+    // spelled in `packages/agent/src/agent/common/provenance.py` and nowhere else.
     vi.mocked(findDocumentInOrg).mockResolvedValue(
       makeDocument({
         authoredBy: 'agent',

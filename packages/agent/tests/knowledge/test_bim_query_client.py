@@ -15,11 +15,11 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge import bim_query
-from aiq_agent.knowledge.bim_query import BimQueryRejectedError
-from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
-from aiq_agent.knowledge.bim_query import run_bim_query
+from agent.common import bff_http
+from agent.knowledge import bim_query
+from agent.knowledge.bim_query import BimQueryRejectedError
+from agent.knowledge.bim_query import BimQueryUnavailableError
+from agent.knowledge.bim_query import run_bim_query
 
 
 def http_error(status: int, body: Any) -> urllib.error.HTTPError:
@@ -120,7 +120,7 @@ class TestWhichErrorTheCallerGets:
         def opener(_request, timeout=None):  # noqa: ANN001, ARG001
             raise error
 
-        monkeypatch.setattr("aiq_agent.common.bff_http._opener", type("O", (), {"open": staticmethod(opener)})())
+        monkeypatch.setattr("agent.common.bff_http._opener", type("O", (), {"open": staticmethod(opener)})())
 
     def test_a_correctable_400_is_a_rejection(self, monkeypatch):
         self._raise(monkeypatch, http_error(400, {"error": 'groupBy "property" needs groupProperty {set, name}'}))

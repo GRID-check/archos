@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from aiq_api.routes.config_info import add_config_info_routes
+from agent_host.routes.config_info import add_config_info_routes
 
 
 @pytest.fixture

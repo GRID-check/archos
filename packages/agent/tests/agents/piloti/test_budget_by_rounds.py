@@ -36,19 +36,19 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import _DEFAULT_MAX_CALLS_PER_ROUND
-from aiq_agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
-from aiq_agent.agents.piloti.agent import _WIDTH_CAP_MESSAGE
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.agent import _recursion_limit
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
-from aiq_agent.common.cost_tracking import GridCostTracker
-from aiq_agent.common.cost_tracking import UsageEvent
-from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+from agent.agents.piloti.agent import _DEFAULT_MAX_CALLS_PER_ROUND
+from agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
+from agent.agents.piloti.agent import _WIDTH_CAP_MESSAGE
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import _recursion_limit
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common import turn_status
+from agent.common.cost_tracking import GridCostTracker
+from agent.common.cost_tracking import UsageEvent
+from agent.common.cost_tracking import grid_cost_tracker_var
 
 #: A prompt the template cannot break. What is under test is the budget.
 _PROMPT = "Du bist Piloti."
@@ -101,8 +101,8 @@ def _bypass_citation_pipeline():
     """The answer pipeline is not what these tests are about."""
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]

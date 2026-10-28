@@ -454,7 +454,7 @@ transition touches is still drawn.
    caches it at module level keyed by the source text (`MODEL_CACHE_LIMIT`,
    64). A model that depends on anything else is served stale.
 5. **A new grammar**, not only a new view, also needs `DiagramGrammar` in
-   `packages/agent/src/aiq_agent/cards/models.py`, the grammar list in the prompt
+   `packages/agent/src/agent/cards/models.py`, the grammar list in the prompt
    (`piloti_static.md` `<formatting>`), and a browser capture in
    `lib/diagrams/__fixtures__/` that prints through `svg-to-pdf.spec.tsx`
    (next section).
@@ -567,7 +567,7 @@ spatial or free-form; flows and hierarchies stay mermaid. The doctrine holds by
 subject: a sketch claims no dimension, and says so.
 
 - **Taught by a skill.** `excalidraw-sketch`
-  (`packages/agent/src/aiq_agent/skills/builtin/drawing/`) holds the format, the layout rules
+  (`packages/agent/src/agent/skills/builtin/drawing/`) holds the format, the layout rules
   and the recurring shapes, read on demand (ADR-0135); the static prompt only
   points at it.
 - **Checked twice.** `common/sketch_fence.py` runs in the dialect pass and

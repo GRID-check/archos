@@ -3,8 +3,8 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from aiq_agent.common import feedback_causes
-from aiq_agent.common.decisions import Decision
+from agent.common import feedback_causes
+from agent.common.decisions import Decision
 
 
 def _sample(question="Wie hoch?", reason="inaccurate", comment=None):
@@ -28,7 +28,7 @@ def _deciding(answers):
 
 async def test_each_vote_is_asked_with_its_comment_reason_and_question():
     fake, seen = _deciding([("wrong_value", 1.0), ("slow", 0.89)])
-    with patch("aiq_agent.common.decisions.decide_many", fake):
+    with patch("agent.common.decisions.decide_many", fake):
         labels = await feedback_causes.label_causes([_sample(comment="R 60, nicht R 90"), _sample(reason="too_slow")])
     assert labels == ["wrong_value", "slow"]
     assert seen["states"][0] == {"question": "Wie hoch?", "reason": "inaccurate", "comment": "R 60, nicht R 90"}
@@ -38,7 +38,7 @@ async def test_each_vote_is_asked_with_its_comment_reason_and_question():
 
 async def test_an_unsure_unknown_or_missing_label_is_not_guessed():
     fake, _ = _deciding([("form", 0.4), ("erfunden", 1.0), None])
-    with patch("aiq_agent.common.decisions.decide_many", fake):
+    with patch("agent.common.decisions.decide_many", fake):
         assert await feedback_causes.label_causes([_sample()] * 3) == [None, None, None]
 
 

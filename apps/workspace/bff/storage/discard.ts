@@ -30,7 +30,7 @@ export async function discardObject(bucket: string, storageKey: string): Promise
     console.error(
       '[storage] failed to remove an object nothing references',
       // The bucket and key, never the presigned URL — see
-      // aiq_agent.common.log_redaction for the same rule on the Python side.
+      // agent.common.log_redaction for the same rule on the Python side.
       { bucket, storageKey, cause: error instanceof Error ? error.name : 'unknown' },
     )
   }

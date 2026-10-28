@@ -9,21 +9,21 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.agents.deep_researcher.custom_middleware import DeferredStructuredOutputMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import SelectiveToolRetryMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import ToolNameSanitizationMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import ToolVisibilityMiddleware
-from aiq_agent.agents.deep_researcher.custom_middleware import _request_tool_name
-from aiq_agent.agents.deep_researcher.custom_middleware import is_retryable_tool_error
-from aiq_agent.agents.deep_researcher.models import ResearchNotes
-from aiq_agent.agents.deep_researcher.tools.source_registry import build_get_verified_sources_tool
-from aiq_agent.agents.deep_researcher.tools.source_registry import render_source_list
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
+from agent.agents.deep_researcher.custom_middleware import DeferredStructuredOutputMiddleware
+from agent.agents.deep_researcher.custom_middleware import SelectiveToolRetryMiddleware
+from agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
+from agent.agents.deep_researcher.custom_middleware import ToolNameSanitizationMiddleware
+from agent.agents.deep_researcher.custom_middleware import ToolVisibilityMiddleware
+from agent.agents.deep_researcher.custom_middleware import _request_tool_name
+from agent.agents.deep_researcher.custom_middleware import is_retryable_tool_error
+from agent.agents.deep_researcher.models import ResearchNotes
+from agent.agents.deep_researcher.tools.source_registry import build_get_verified_sources_tool
+from agent.agents.deep_researcher.tools.source_registry import render_source_list
+from agent.citations.entries import SourceEntry
+from agent.common.budget_guard import RunBudgetExceededError
+from agent.common.cost_tracking import BudgetExceededError
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
 
 
 class TestToolNameSanitizationMiddleware:
@@ -859,9 +859,9 @@ class TestExcludedDocumentsNeverBecomeSources:
     @pytest.mark.asyncio
     async def test_a_document_read_in_an_earlier_turn_is_not_read_by_this_run(self):
         """In conversation mode the active registry is the session's, which spans turns."""
-        from aiq_agent.citations.registry import SourceRegistry
-        from aiq_agent.citations.session import reset_session_registry
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.registry import SourceRegistry
+        from agent.citations.session import reset_session_registry
+        from agent.citations.session import set_session_registry
 
         session = SourceRegistry()
         session.add(SourceEntry(citation_key="frueher.pdf, p.1", title="frueher.pdf"))

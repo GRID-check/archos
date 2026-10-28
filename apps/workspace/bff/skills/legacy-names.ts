@@ -6,7 +6,7 @@
  * activated, so the old names keep resolving. `canonicalSkillName` is the one
  * place that maps them; nothing writes an old name again.
  *
- * Mirrored in `packages/agent/src/aiq_agent/skills/builtin.py::LEGACY_SKILL_NAMES`;
+ * Mirrored in `packages/agent/src/agent/skills/builtin.py::LEGACY_SKILL_NAMES`;
  * `legacy-names.spec.ts` reads the Python file and fails when the two differ.
  * Pure data, so a client component can import it. Remove after one release.
  */

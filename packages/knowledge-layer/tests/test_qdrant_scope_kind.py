@@ -223,8 +223,8 @@ class TestThroughTheCallers:
     def test_the_builder_writes_the_point_the_search_channel_finds(self, qdrant_store, monkeypatch):
         from knowledge_layer import folder_channel
 
-        from aiq_agent.knowledge import factory
-        from aiq_agent.knowledge.folder_cards import worker
+        from agent.knowledge import factory
+        from agent.knowledge.folder_cards import worker
 
         write(PROJECT, [record("Statik Bewehrung Decke", "Statik.pdf", folder_path="Gutachten")])
         monkeypatch.setattr(factory, "get_active_retriever", _Embedder)

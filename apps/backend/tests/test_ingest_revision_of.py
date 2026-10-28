@@ -16,10 +16,10 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_api.models.requests import IngestRequest
-from aiq_api.routes.ingest import add_ingest_routes
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import set_active_ingestor
+from agent_host.models.requests import IngestRequest
+from agent_host.routes.ingest import add_ingest_routes
 
 BODY = {
     "file_ref": "http://seaweedfs.test/bucket/Grundriss_EG_Index_C.pdf?X-Amz-Signature=abc",

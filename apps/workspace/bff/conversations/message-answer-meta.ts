@@ -4,7 +4,7 @@
  * A research answer is generated as one JSON envelope whose optional fields —
  * the headline verdict, the takeaways, the single callout — are the answer's
  * own RHETORICAL structure. The backend validates and GATES them
- * (`packages/agent/src/aiq_agent/common/answer_envelope.py`: a verdict is a copyable ≤60-char
+ * (`packages/agent/src/agent/common/answer_envelope.py`: a verdict is a copyable ≤60-char
  * VALUE, a takeaway block is earned by answer length, one callout at most) and
  * ships the survivors as the `answer_meta` wire field, versioned under `v`.
  * They are native answer fields — never cards, never in the `cards` array —

@@ -22,7 +22,7 @@ from typing import Any
 from qdrant_client import QdrantClient
 from qdrant_client import models
 
-from aiq_agent.profile_names import normalize_profile_token
+from agent.profile_names import normalize_profile_token
 
 from .schema import FACT_KEYS
 from .schema import INDEXED_FIELDS

@@ -6,7 +6,7 @@ reaped (FAILURE) job finishing late still wrote its answer into the thread
 while the status stayed FAILURE, and a losing worker wrote INTERRUPTED_NOTICE
 beside the winner's answer. Thread vs Report vs status diverged.
 
-The gate (``aiq_api.jobs.runner``): a run publishes thread/notice output only
+The gate (``agent_host.jobs.runner``): a run publishes thread/notice output only
 when it still owns the job — a positively lost queue claim publishes nothing
 at all, and otherwise the notice must agree with the standing terminal
 verdict. The conditional status write itself is item 6's; this item owns the
@@ -23,12 +23,12 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy import text
 
-from aiq_api.jobs import queue
-from aiq_api.jobs.event_store import EventStore
-from aiq_api.jobs.runner import _current_job_status
-from aiq_api.jobs.runner import _lost_claim
-from aiq_api.jobs.runner import _should_write_notice
-from aiq_api.jobs.runner import _update_status_if_not_terminal
+from agent_host.jobs import queue
+from agent_host.jobs.event_store import EventStore
+from agent_host.jobs.runner import _current_job_status
+from agent_host.jobs.runner import _lost_claim
+from agent_host.jobs.runner import _should_write_notice
+from agent_host.jobs.runner import _update_status_if_not_terminal
 
 
 @pytest.fixture
@@ -385,7 +385,7 @@ class TestWorkerPassesClaimOwnership:
 
     @pytest.mark.asyncio
     async def test_run_claimed_hands_worker_id_to_runner(self, tmp_path, monkeypatch):
-        from aiq_api.jobs import worker as worker_mod
+        from agent_host.jobs import worker as worker_mod
 
         qdb = f"sqlite:///{tmp_path}/worker.db"
         queue.ensure_research_queue_table(qdb)

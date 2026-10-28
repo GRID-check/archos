@@ -25,7 +25,7 @@ import { submitBackgroundRun } from '@/lib/jobs/background-run'
 import type { JobPriority } from '@/lib/jobs/backend-client'
 import { resolveRunContext, type RunContext } from '@/lib/jobs/run-context'
 
-/** The research worker's agent for a reading (`aiq_api/registry.py`). */
+/** The research worker's agent for a reading (`agent_host/registry.py`). */
 export const INTAKE_AGENT_TYPE = 'project_intake'
 
 /** What started a reading: a finished upload is `bulk`, a person's click `interactive` (ADR-0079). */

@@ -188,7 +188,7 @@ def test_generated_test_and_copy_files_are_not_checked(checker):
         "apps/workspace/ui/features/layout/components/InputArea.tsx",
         "apps/workspace/bff/documents/generated.ts",  # hand-written: documents nobody wrote, not generated code
         "apps/workspace/server.js",
-        "packages/agent/src/aiq_agent/common/x.py",
+        "packages/agent/src/agent/common/x.py",
     ):
         assert checker.is_checked(path), path
 

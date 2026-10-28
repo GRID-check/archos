@@ -149,7 +149,7 @@ class ModelCallRecorder:
 
 
 def _text(content: Any) -> str:
-    from aiq_agent.common.message_utils import content_to_text
+    from agent.common.message_utils import content_to_text
 
     return content_to_text(getattr(content, "content", content))
 
@@ -219,9 +219,9 @@ class Transcript(AsyncCallbackHandler):
 @contextlib.contextmanager
 def fixture_world(fixture: Fixture, bff: FakeIntakeBff) -> Iterator[None]:
     """The fixture's pages behind ``read_document``, the fake route behind the client, a placeholder envelope."""
-    from aiq_agent import project_context
-    from aiq_agent.agents.intake import client
-    from aiq_agent.agents.intake import reading
+    from agent import project_context
+    from agent.agents.intake import client
+    from agent.agents.intake import reading
 
     route = FakeIntakeRoute(**bff.answers())
     patches = [
@@ -248,9 +248,9 @@ def fixture_world(fixture: Fixture, bff: FakeIntakeBff) -> Iterator[None]:
 async def _model(builder: Any, llm_config: dict[str, Any], model: str) -> Any:
     """``research_llm`` as the worker builds it, on ``model``, pinned to zero data retention."""
     import nat.plugins.langchain.llm  # noqa: F401 — registers NAT's LangChain wrapper for the OpenAI provider
-    from aiq_agent.common import get_langchain_llm
-    from aiq_agent.common.openrouter import ZERO_DATA_RETENTION
-    from aiq_agent.common.openrouter import pin_chat_model
+    from agent.common import get_langchain_llm
+    from agent.common.openrouter import ZERO_DATA_RETENTION
+    from agent.common.openrouter import pin_chat_model
     from nat.llm.openai_llm import OpenAIModelConfig
 
     fields = {key: value for key, value in llm_config.items() if key != "_type"}
@@ -262,10 +262,10 @@ async def run_once(fixture: Fixture, model: str) -> dict[str, Any]:
     """One reading of the fixture project: what the route took, the profile after it, the transcript and the bill."""
     from langchain_core.messages import HumanMessage
 
-    from aiq_agent.agents.intake.agent import ProjectIntakeAgent
-    from aiq_agent.agents.intake.models import IntakeAgentState
-    from aiq_agent.common import AgentGroup
-    from aiq_agent.common import LLMProvider
+    from agent.agents.intake.agent import ProjectIntakeAgent
+    from agent.agents.intake.models import IntakeAgentState
+    from agent.common import AgentGroup
+    from agent.common import LLMProvider
     from nat.builder.workflow_builder import WorkflowBuilder
 
     function, llm_config = intake_config()

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.cards.models import grid_card_adapter
+from agent.cards.models import grid_card_adapter
 
 REF = {"document": "Bebauungsplan", "section": "§ 3"}
 GFZ = {"label": "GFZ", "required": 1.5, "comparator": "<=", "status": "needs_input"}

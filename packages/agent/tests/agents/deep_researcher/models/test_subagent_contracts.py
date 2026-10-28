@@ -3,13 +3,13 @@
 import pytest
 from pydantic import ValidationError
 
-from aiq_agent.agents.deep_researcher.models import AnswerStrategy
-from aiq_agent.agents.deep_researcher.models import Constraint
-from aiq_agent.agents.deep_researcher.models import EvidenceJudgment
-from aiq_agent.agents.deep_researcher.models import ResearchNotes
-from aiq_agent.agents.deep_researcher.models import ResearchPlan
-from aiq_agent.agents.deep_researcher.models import ResearchQuery
-from aiq_agent.agents.deep_researcher.models import SourceRoutingPlan
+from agent.agents.deep_researcher.models import AnswerStrategy
+from agent.agents.deep_researcher.models import Constraint
+from agent.agents.deep_researcher.models import EvidenceJudgment
+from agent.agents.deep_researcher.models import ResearchNotes
+from agent.agents.deep_researcher.models import ResearchPlan
+from agent.agents.deep_researcher.models import ResearchQuery
+from agent.agents.deep_researcher.models import SourceRoutingPlan
 
 
 def _answer_strategy() -> dict:

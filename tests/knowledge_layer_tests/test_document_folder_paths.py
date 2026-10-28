@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
 
 @pytest.fixture

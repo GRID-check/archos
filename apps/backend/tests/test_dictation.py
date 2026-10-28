@@ -18,11 +18,11 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.openrouter import NO_RETENTION_LIMITS
-from aiq_agent.common.openrouter import ZERO_DATA_RETENTION
-from aiq_api.routes import dictation as route
-from aiq_api.routes._dictation_text import clean_transcript
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.openrouter import NO_RETENTION_LIMITS
+from agent.common.openrouter import ZERO_DATA_RETENTION
+from agent_host.routes import dictation as route
+from agent_host.routes._dictation_text import clean_transcript
 
 TOKEN = "test-internal-token"
 AUDIO = b"\x1aE\xdf\xa3 fake webm bytes"
@@ -146,7 +146,7 @@ def provider(monkeypatch):
     monkeypatch.setattr(route, "limited_async_http_client", client)
     monkeypatch.setattr(route, "_credential", lambda _org: Provider.credential)
     booked: list[dict] = []
-    monkeypatch.setattr("aiq_agent.common.cost_tracking._post_usage_events", booked.append)
+    monkeypatch.setattr("agent.common.cost_tracking._post_usage_events", booked.append)
     Provider.booked = booked
     return Provider
 
@@ -166,7 +166,7 @@ async def _post(app, body: dict | None = None, headers: dict | None = None) -> h
 
 async def _drain_ledger():
     # The cost is flushed on the tracker's background executor.
-    from aiq_agent.common import cost_tracking
+    from agent.common import cost_tracking
 
     cost_tracking._flush_executor.submit(lambda: None).result(timeout=5)
 

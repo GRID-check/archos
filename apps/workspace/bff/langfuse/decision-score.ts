@@ -8,7 +8,7 @@ import 'server-only'
  * ## The score
  *
  * `piloti-decision`, `CATEGORICAL`, value `accepted | dismissed | undone`,
- * declared in `aiq_agent.observability.langfuse_scores.SCORE_DEFINITIONS`.
+ * declared in `agent.observability.langfuse_scores.SCORE_DEFINITIONS`.
  * Categorical because Langfuse charts it as a distribution, and the share of
  * `accepted` among the decisions is how often Piloti's work was right to
  * propose. `metadata` names the subject (`proposal`, `annotation`, `change`,

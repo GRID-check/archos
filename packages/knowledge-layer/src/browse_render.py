@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from aiq_agent.knowledge.title_block import title_block_label
+from agent.knowledge.title_block import title_block_label
 
 from .browse_rows import _SHELF_LABELS
 from .browse_rows import MAX_FOLDER_LINES

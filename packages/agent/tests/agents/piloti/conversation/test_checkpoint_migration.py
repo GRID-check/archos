@@ -22,10 +22,10 @@ from langgraph.graph import END
 from langgraph.graph import StateGraph
 from pydantic import BaseModel
 
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common import _build_checkpointer_serde
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common import _build_checkpointer_serde
 
 THREAD = "conversation-across-the-deploy"
 
