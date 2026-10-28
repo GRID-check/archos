@@ -98,6 +98,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useLocale, useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { LimitEditor, readLimit, type PolicyDto } from '@/features/budgets/components/limit-editor'
 import {
   Stat,
@@ -133,7 +134,7 @@ const policyLimitLabel = (
 }
 
 export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
   const [usage, setUsage] = useState<UsageResponse | null>(null)
   const [policies, setPolicies] = useState<PolicyDto[]>([])

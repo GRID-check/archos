@@ -20,6 +20,7 @@ import type { FC } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import { Chip, ChipLabel } from '@/components/ui/chip'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import {
   describeQuarantineReason,
@@ -59,7 +60,7 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
   className,
   testId = 'quarantine-findings',
 }) => {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const reasons = verdict?.reasons ?? []
   // How the check came to each reason is said as text after the last reason of
   // its kind (the job lists a kind's reasons together), never only in a tooltip:

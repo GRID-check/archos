@@ -35,6 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useLocale, useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { DOWNLOAD_LOG_KINDS } from '@/lib/download-log/kinds'
 import { formatAbsoluteTime } from '@/lib/format'
 
@@ -53,7 +54,7 @@ interface DownloadLogViewProps {
 const ANY = '__any__'
 
 export const DownloadLogView: FC<DownloadLogViewProps> = ({ people }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
   const [draft, setDraft] = useState<DownloadLogFilters>(NO_FILTERS)
   const [applied, setApplied] = useState<DownloadLogFilters>(NO_FILTERS)

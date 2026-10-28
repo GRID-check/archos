@@ -16,6 +16,7 @@ import { BentoFigure, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { Chip } from '@/components/ui/chip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 
 type Load<T> = { state: 'loading' } | { state: 'error' } | { state: 'ready'; value: T }
 
@@ -74,7 +75,7 @@ export function MemoryTile({
   href: string
   span?: BentoSpan
 }): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
   const load = useMemoryNotes(projectId)
 
   return (
@@ -96,7 +97,7 @@ export function MemoryTile({
 }
 
 function MemoryBody({ notes }: { notes: readonly ProjectMemoryEntry[] }): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
   if (notes.length === 0) {
     return <p className="text-muted-foreground text-sm">{t('project.overview.memory.empty')}</p>
   }
@@ -159,7 +160,7 @@ export function MembersTile({
   href: string
   span?: BentoSpan
 }): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
   const load = useRoster(projectId)
 
   return (

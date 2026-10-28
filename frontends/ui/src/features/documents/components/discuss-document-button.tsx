@@ -51,6 +51,7 @@ import { Sparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import type { FileItem } from './project-file-workspace'
 import { askAboutFile } from '../lib/ask-about-file'
@@ -95,7 +96,7 @@ export function DiscussDocumentButton({
   onNavigate,
   className,
 }: DiscussDocumentButtonProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const router = useRouter()
 
   return (

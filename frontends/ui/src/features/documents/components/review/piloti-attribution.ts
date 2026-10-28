@@ -1,4 +1,5 @@
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 
 /**
  * How the Prüfansicht names Piloti's own marks and replies: always with the
@@ -9,7 +10,7 @@ import { useTranslations } from '@/i18n'
  * inventing a person; a proposal keeps saying it is one.
  */
 export function usePilotiByline(): (forName: string | null | undefined, options?: { proposal?: boolean }) => string {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (forName, options) => {
     const name = forName?.trim()
     if (!name) return 'Piloti'

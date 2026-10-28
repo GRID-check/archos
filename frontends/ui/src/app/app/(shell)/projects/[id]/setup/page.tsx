@@ -8,6 +8,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { isProjectClosed } from '@/lib/projects/project-status'
 import { getIntakeView } from '@/lib/project-intake/service'
 import { getTranslations } from '@/i18n/server'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { IntakeSetup } from '@/features/project-intake/components/intake-setup'
 import { isNewProjectDropKey } from '@/features/documents/lib/dropped-file-handover'
 
@@ -17,7 +18,7 @@ interface SetupPageProps {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
+  const t = await getTranslations(navCopy)
   return { title: t('tabTitle.setup') }
 }
 

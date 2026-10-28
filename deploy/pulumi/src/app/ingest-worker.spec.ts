@@ -38,7 +38,7 @@ const pythonSources = [
   // The per-organisation cap is read where the in-process pool and the queue share it.
   read("src", "aiq_agent", "knowledge", "ingest_scheduler.py"),
   // The in-process pool's size, read by the knowledge layer's adapter.
-  read("sources", "knowledge_layer", "src", "llamaindex", "adapter.py"),
+  read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py"),
 ].join("\n");
 const configSource = read("deploy", "pulumi", "src", "app", "config.ts");
 
@@ -110,7 +110,7 @@ describe("the ingest-worker tier", () => {
     // source, the Pulumi side from the loaded config, like the provider-budget
     // tests' `cfg.providerLimits`.
     const cfg = await load();
-    const python = read("sources", "knowledge_layer", "src", "llamaindex", "adapter.py").match(
+    const python = read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py").match(
       /MAX_IMAGE_PIXELS = _env_int\("MAX_IMAGE_PIXELS", ([\d_]+)/,
     )?.[1];
     expect(python).toBeDefined();

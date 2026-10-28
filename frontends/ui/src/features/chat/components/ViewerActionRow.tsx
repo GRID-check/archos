@@ -26,6 +26,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import {
   autoPreference,
   setViewerActionsAuto,
@@ -79,7 +80,7 @@ export const viewerActionStatusText = (t: T, entry: ViewerActionEntry): string =
 }
 
 const Row: FC<{ entry: ViewerActionEntry }> = ({ entry }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const Icon = ICONS[entry.call.tool_call_name]
   const what = describeViewerAction(t, entry)
   const id = entry.call.tool_call_id
@@ -122,7 +123,7 @@ const Row: FC<{ entry: ViewerActionEntry }> = ({ entry }) => {
 
 /** The person's choice whether Piloti opens places on its own: here, and on the profile page. */
 export const ViewerActionsSwitch: FC<{ className?: string }> = ({ className }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const switchId = useId()
   const auto = useViewerActionStore(autoPreference)
   return (
@@ -139,7 +140,7 @@ export const ViewerActionsSwitch: FC<{ className?: string }> = ({ className }) =
 }
 
 export const ViewerActionRow: FC<{ messageId: string }> = ({ messageId }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const entries = useViewerActionStore(useShallow((state) => viewerActionsOf(state, messageId)))
   const carriesSwitch = useViewerActionStore((state) => state.latestAnswer === messageId)
   if (entries.length === 0) return null

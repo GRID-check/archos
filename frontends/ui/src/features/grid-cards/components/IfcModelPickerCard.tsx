@@ -25,6 +25,7 @@ import { ArrowRight, Boxes } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { buildModelHref } from '@/features/bim/lib/model-link'
 import { useProjectBimModels } from '@/features/bim/hooks/use-bim-model'
@@ -40,7 +41,7 @@ export function IfcModelPickerCard({
   note,
   projectId,
 }: IfcModelPickerCardProps): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { data: models, isLoading, error } = useProjectBimModels(projectId)
 
   // Only models that can actually be opened. A `pending`/`extracting`/`failed`

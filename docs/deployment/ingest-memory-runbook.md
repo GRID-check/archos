@@ -26,7 +26,7 @@ The behaviour itself is pinned by
 [`tests/knowledge_layer_tests/test_heavy_document_memory.py`](../../tests/knowledge_layer_tests/test_heavy_document_memory.py)
 and by `test_image_extraction_memory.py`, which run against the real `pypdfium2`.
 The generated plan set they use is in
-[`pdf_fixtures.py`](../../sources/knowledge_layer/testing/knowledge_layer_testing/pdf_fixtures.py)
+[`pdf_fixtures.py`](../../packages/knowledge-layer/testing/knowledge_layer_testing/pdf_fixtures.py)
 (`write_plan_set`, also runnable from a shell with `--plan-set`).
 
 ## 0. Setup
@@ -49,7 +49,7 @@ kubectl -n grid get deploy ingest-worker \
 The tag is `sha-<commit>`. Two ways to tell whether that commit carries the fix:
 
 ```bash
-git log --oneline <commit> -- sources/knowledge_layer/src/llamaindex/adapter.py
+git log --oneline <commit> -- packages/knowledge-layer/src/llamaindex/adapter.py
 git merge-base --is-ancestor <commit> origin/develop && echo "on develop"
 ```
 

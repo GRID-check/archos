@@ -24,6 +24,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { SectionLabel } from '@/components/ui/section-label'
 import { PlatformAccessProvider } from '@/features/platform/platform-access'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { AGENT_GROUPS as REGISTRY } from '@/lib/model-config/agent-groups'
 
@@ -160,7 +161,7 @@ function installShim(): void {
 installShim()
 
 export default function PlatformModelsDevPage(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   if (process.env.NODE_ENV !== 'development') {
     notFound()
   }

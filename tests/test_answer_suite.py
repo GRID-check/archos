@@ -333,7 +333,7 @@ def test_the_runs_import_this_checkout(tmp_path):
     shim = Path(path[1])
     assert path[0] == str(census.HERE) and path[2] == str(census.ROOT / "src")
     assert shim.parent == tmp_path and shim.name.startswith(".tree-")
-    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "sources/knowledge_layer/src").resolve()
+    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
     assert suite.foreign_imports(tmp_path) == []
 
 
@@ -555,7 +555,7 @@ def test_the_startup_probe_reexecutes_into_this_checkout(monkeypatch, tmp_path):
     assert seen["env"][startup_probe._IN_TREE] == "1" and "REC_OUT" not in seen["env"]
     shim = Path(seen["env"]["PYTHONPATH"].split(os.pathsep)[1])
     assert shim.is_relative_to(tmp_path)
-    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "sources/knowledge_layer/src").resolve()
+    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
 
     # The re-executed process does not re-execute.
     monkeypatch.setenv(startup_probe._IN_TREE, "1")

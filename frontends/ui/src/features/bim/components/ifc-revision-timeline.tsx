@@ -27,6 +27,7 @@ import { GitBranch, GitCompare } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import type { BimModelHeaderView } from '../hooks/use-bim-model'
 import type { BimRevision, BimRevisionDelta, BimRevisionSeries } from '../lib/revisions'
 
@@ -55,7 +56,7 @@ function useSigned(): (value: number | null) => string {
 }
 
 function DeltaRow({ delta }: { delta: BimRevisionDelta }): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const signed = useSigned()
   /**
    * `judged` marks the one metric that has a direction.
@@ -103,7 +104,7 @@ export function IfcRevisionTimeline({
   onOpen,
   onCompareWithPrevious,
 }: IfcRevisionTimelineProps): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
 
   // One revision is not a timeline — the compare panel below already covers

@@ -22,7 +22,7 @@
  * Every deploy runs it with `--apply`, in this order: the `folder:*`
  * permissions and folder roles (`provision:authz`, Job
  * `grid-app-authz-catalog`), the frontend that reads folder roles, then this
- * (Job `grid-app-folder-grants`, compose service `grid-workos-authz`). The
+ * (Job `grid-app-folder-grants`, compose service `workos-authz`). The
  * `folder` resource type itself is a dashboard step. Until it has run, a folder with
  * its own list is readable only by organization admins and, when everyone
  * reads it, by every project member: the narrow direction, not a leak. Run

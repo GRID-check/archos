@@ -182,7 +182,7 @@ missing (checked in the 1.9.0 wheel). So `workflow_stream.py` and
   still `[all]`. The narrowing in gain 2 is our choice, and S0 makes it.
 - **Tavily moved out of `nvidia-nat-langchain`** (1.8, migration guide
   "Tavily Internet Search Package Migration (Breaking)"; #2015). Our
-  `sources/tavily_web_search` has its own `_type: tavily_web_search` and
+  `packages/tavily-web-search` has its own `_type: tavily_web_search` and
   declares `langchain-tavily` itself, so there is no config change. S0 checks the
   lock still resolves it.
 - **Only braced `${VAR}` is interpolated** (1.8, migration guide "Workflow YAML
@@ -445,8 +445,8 @@ where it emits in v2:
 | `emit_documents_waiting` | `turn/inventory.py`, **setup phase**, before waiting on indexing | `load_inventory` is split: `pending_uploads()` returns what is pending, `_run` yields the waiting step, then awaits `wait_for_uploads()` |
 | Skill events (`SELECTION_STEP_NAME`, `skill:<name>`) | `skills/events.py` | `SkillStep` through `emit_step` |
 | Clarification trace row | `agents/piloti/clarify.py:676` | `ClarificationStep` |
-| Decision records (`status:decision:*`) | `common/decisions.py:478`, `sources/knowledge_layer/src/decisions.py:167` | technical `StatusStep` |
-| The Trace-Lanes fan-out, which the UI regex-read out of the NAT TOOL_END payload (`## Trace-Lanes` + JSON) | `sources/knowledge_layer/src/register.py` `_trace_lanes_for_hits`, `read_passage.py`, `ris_adapter/lookup/render.py`, rendered by `common/grounding_block.render_grounding_block` | `render_grounding_block` emits one `SourcesStep` from `block.lanes`, which becomes typed `TraceLane` models rather than a JSON string. That is one producer site for every evidence tool. The `## Trace-Lanes` line in the tool text is left for now; see F2 |
+| Decision records (`status:decision:*`) | `common/decisions.py:478`, `packages/knowledge-layer/src/decisions.py:167` | technical `StatusStep` |
+| The Trace-Lanes fan-out, which the UI regex-read out of the NAT TOOL_END payload (`## Trace-Lanes` + JSON) | `packages/knowledge-layer/src/register.py` `_trace_lanes_for_hits`, `read_passage.py`, `ris_adapter/lookup/render.py`, rendered by `common/grounding_block.render_grounding_block` | `render_grounding_block` emits one `SourcesStep` from `block.lanes`, which becomes typed `TraceLane` models rather than a JSON string. That is one producer site for every evidence tool. The `## Trace-Lanes` line in the tool text is left for now; see F2 |
 | Tool calls (NAT TOOL steps that the executed-steps chips read) | NAT's LangChain profiler, through the step adaptor | One `AsyncCallbackHandler` (`action_rows.ToolStepCallback`: `on_tool_start/end/error` → `ToolStep`, basename only), added once to the conversation graph's run config. NAT's profiler still bills and traces through its own handler |
 | Live prose: `_ProseTokenHandler` → `AnswerStreamSink.push/put/retract` (deltas, `Masthead`, `Snapshot`, `Cards`) | `turn/answer_stream.py`, with `common/answer_prose_stream.py` and `agents/piloti/answer_pipeline.LiveAnswer` | The handler writes bodies: `TEXT_MESSAGE_START`, coalesced `_CONTENT` (flushed when 50 ms have passed since the last flush, before any other body, and at `on_llm_end`), `_END` when the `answer` string closes, `STATE_SNAPSHOT` from `LiveAnswer.settle` (still in `to_thread`, where the writer works), `masthead`, one `card`/`card_refused` per card (the tools' cards first, then the envelope's, as today), and `answer_retracted`. `LiveAnswer` and the verifier are unchanged |
 | The terminal `ChatResponseChunk` with its extras on `model_extra`, lifted by name in `websocket_reconnect.py` (`_TRANSPARENCY_EXTRA_FIELDS`, `_SKILLS_EXTRA_FIELDS`, `_PERSISTED_EXTRA_FIELDS`) | `turn/response.py` `build_response`, `conversation_register._answer_chunks` | `build_result(state, cards, message_id) -> TurnResult`, a typed model, and `_run` yields `RunFinishedBody`. The lift tables, the `setattr` loops and `common/nat_converters.py` are deleted. A refusal is `RunFinishedBody(outcome="refused")` |
@@ -843,10 +843,10 @@ separately. The exit criterion in the definition of done is the measured diff.
 
 **S1 · Backend producers → writer.**
 - **Owns:** `common/turn_status.py`, `skills/events.py`, `common/decisions.py`,
-  `sources/knowledge_layer/src/decisions.py`, `sources/knowledge_layer/src/register.py`
+  `packages/knowledge-layer/src/decisions.py`, `packages/knowledge-layer/src/register.py`
   (lanes as models), `common/grounding_block.py`, `turn/inventory.py`,
   `turn/subject_document.py`, and the one-line call sites in
-  `agents/piloti/clarify.py`, `agents/deep_researcher/*` and `sources/*`
+  `agents/piloti/clarify.py`, `agents/deep_researcher/*` and the Python packages under `packages/`
   (`emit_*` names unchanged).
 - **Adds:** `emit`, `emit_step`, `ToolStepCallback`, `StatusStep` builders
   (~+110).

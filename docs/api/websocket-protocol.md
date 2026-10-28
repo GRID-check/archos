@@ -461,7 +461,7 @@ version nobody has published there are no chunks to prefer.
 
 Only a published version reaches the retrieval index (ADR-0054), so a draft has
 no chunks, the focus filter matches nothing, and it falls open to the whole
-corpus (`sources/knowledge_layer/src/register.py`) — the reader asks about the
+corpus (`packages/knowledge-layer/src/register.py`) — the reader asks about the
 Befund Piloti filed a minute ago and gets an answer sourced from everything
 except that Befund. Told which version the subject is, the backend reads that
 version's own bytes through

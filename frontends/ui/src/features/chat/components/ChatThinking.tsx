@@ -56,6 +56,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { useLayoutStore } from '@/features/layout/store'
 import type { CitationSource } from '../types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
@@ -284,7 +285,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   defaultOpen = false,
   autoOpen,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const reducedMotion = useReducedMotion()
   // With the technical steps switched on, every turn keeps its panel: they live in it.
   const showTechnicalSteps = useLayoutStore((s) => s.showTechnicalReasoning)

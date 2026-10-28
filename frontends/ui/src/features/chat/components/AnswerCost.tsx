@@ -15,6 +15,7 @@
 import { type FC, useEffect, useState } from 'react'
 
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { formatCredits } from '@/lib/format'
 
 interface AnswerUsageDto {
@@ -32,7 +33,7 @@ interface AnswerCostProps {
 }
 
 export const AnswerCost: FC<AnswerCostProps> = ({ conversationId, messageId }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   const [usage, setUsage] = useState<AnswerUsageDto | null>(null)
 

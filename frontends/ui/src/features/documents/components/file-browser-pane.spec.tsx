@@ -9,6 +9,7 @@ import { useFileSearch } from '../hooks/use-file-search'
 import { projectSearchScope } from '../lib/file-shelf'
 import { documentSearchAnswer, fileSearchHit } from '@/test-utils/search-answers'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { FileItem, FolderItem } from './project-file-workspace'
 
 const files: FileItem[] = [
@@ -63,7 +64,7 @@ type HarnessProps = Omit<Partial<PaneProps>, 'search'> & {
  * arrangement the app uses rather than reaching into the pane.
  */
 function Harness({ projectId, ...paneProps }: HarnessProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const search = useFileSearch(projectId ? projectSearchScope(projectId) : undefined)
   return (
     <>

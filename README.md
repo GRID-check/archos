@@ -18,7 +18,7 @@ other documents describe Piloti the same way.
 |---|---|---|
 | **UI and BFF** | [`frontends/ui`](frontends/ui) | Next.js 16 app: projects, files, the building model, chat, tasks. Its API routes are the backend-for-frontend: auth, the Postgres database, and the WebSocket gateway (`server.js`). |
 | **Agent** | [`src/aiq_agent`](src/aiq_agent) | Python service on the NeMo Agent Toolkit and LangGraph. It answers chat turns, runs research jobs and calls the models. |
-| **Knowledge layer** | [`sources/knowledge_layer`](sources/knowledge_layer) | Reads the office's documents and the legal corpus, chunks and embeds them into Qdrant, and searches them with the scope of each request. |
+| **Knowledge layer** | [`packages/knowledge-layer`](packages/knowledge-layer) | Reads the office's documents and the legal corpus, chunks and embeds them into Qdrant, and searches them with the scope of each request. |
 
 Each part has its own `AGENTS.md` next to the code. Read it before you change
 that area.

@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/note-list'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import type { TurnMemoryItem } from '../lib/turn-memory'
 
@@ -72,7 +73,7 @@ const KIND_META: Record<string, { icon: LucideIcon; labelKey: string }> = {
  * 44px (`touch-target`) while the pill stays chip-sized.
  */
 export const MemoryNotedChip: FC<MemoryNotedChipProps> = ({ items }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const titleId = useId()
   const hintId = useId()
   // The reflection stage lands seconds after the answer settled. A chip that

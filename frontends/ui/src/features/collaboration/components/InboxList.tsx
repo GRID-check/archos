@@ -45,6 +45,7 @@ import { AlertCircle, Archive, Bell, CheckCheck, CheckCircle2, MailOpen } from '
 import { toast } from 'sonner'
 
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { useInboxList } from '../hooks/use-inbox'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '../hooks/use-undoable-archive'
 import type { InboxItemView, InboxListFilter } from '@/lib/inbox/types'
@@ -134,7 +135,7 @@ export function InboxList({
   viewerId = null,
   className,
 }: InboxListProps): JSX.Element {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [filter, setFilter] = useState<InboxFilter>(() => filterOf(searchParams, initialFilter))

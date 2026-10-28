@@ -24,6 +24,7 @@ import {
 } from '@/lib/documents/surface-state'
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { IngestionGlyph } from './ingestion-atoms'
 
@@ -180,7 +181,7 @@ interface DocumentStatusBadgeProps {
 }
 
 export function DocumentStatusBadge({ status, className, title, queueAhead }: DocumentStatusBadgeProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   // One state for the word, the colour and the glyph, so they cannot disagree.
   const state = surfaceStateOf(status)
   const variant = surfaceStateVariant(state)

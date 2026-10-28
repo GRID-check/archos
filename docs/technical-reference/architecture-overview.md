@@ -75,7 +75,7 @@ The NAT framework is extended with:
 |-----------|------|---------|
 | Knowledge API routes | `frontends/aiq_api/src/aiq_api/routes/` (collections, documents, ingest; mounted by `plugin.py`) | Collection CRUD, document management, file ingestion. (The old `src/aiq_agent/fastapi_extensions/` duplicate was deleted 2026-07-03.) |
 | AIQ API worker | `frontends/aiq_api/` | Async job processing with SSE streaming |
-| Knowledge layer | `sources/knowledge_layer/` | LlamaIndex-backed RAG with Qdrant (ADR-0115) |
+| Knowledge layer | `packages/knowledge-layer/` | LlamaIndex-backed RAG with Qdrant (ADR-0115) |
 | Custom auth utils | `src/aiq_agent/auth/` | JWT extraction, WorkOS token validation |
 | OIB sync | `src/aiq_agent/oib_sync.py`, `src/aiq_agent/corpus_store.py` | Base corpus in object storage + the `oib_corpus_files` table; queues one ingest-queue job for each file the index was not built from (SHA-256, chunk-format version); the ingest workers run it |
 

@@ -56,7 +56,7 @@ htmlcov/
 tests/
 evals/
 # The suites' support packages (ADR-0145 row 5); no package lists them.
-sources/*/testing/
+packages/*/testing/
 
 # ---- Documentation (not needed at runtime) ----
 *.md

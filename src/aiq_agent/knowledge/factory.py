@@ -492,7 +492,7 @@ def _get_document_metadata_store() -> DocumentMetadataStore:
             if _document_metadata_store is None:
                 # configure_summary_db() may not have run in this process (e.g. an
                 # ingestion thread/worker that never executed the NAT registration
-                # in sources/knowledge_layer/src/register.py). Resolve the DB from
+                # in packages/knowledge-layer/src/register.py). Resolve the DB from
                 # the environment the same way ingest_status_store/leader_lock do,
                 # instead of silently falling back to a local SQLite file that in a
                 # container often isn't writable ("unable to open database file")

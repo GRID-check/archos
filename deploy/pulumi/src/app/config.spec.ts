@@ -159,7 +159,7 @@ describe("frontendEnv", () => {
  */
 describe("backendEnv extraction switches", () => {
   const adapterSource = readFileSync(
-    join(repoRoot, "sources", "knowledge_layer", "src", "llamaindex", "adapter.py"),
+    join(repoRoot, "packages", "knowledge-layer", "src", "llamaindex", "adapter.py"),
     "utf8",
   );
   const switches = ["EXTRACT_TABLES", "EXTRACT_IMAGES", "EXTRACT_CHARTS"];

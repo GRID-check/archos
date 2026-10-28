@@ -27,6 +27,8 @@ import { Item, ItemActions, ItemContent, ItemList, ItemTitle } from '@/component
 import { BudgetMeter } from '@/features/budgets/components/budget-meter'
 import { LimitEditor } from '@/features/budgets/components/limit-editor'
 import { useLocale, useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { formatCredits, formatTokens } from '@/lib/format'
 import { SettingsPanel } from './settings-panel'
 
@@ -68,8 +70,8 @@ function effectiveLimit(project: number | null, org: number | null): number | nu
 }
 
 export function UsageSettings({ projectId, usage, canEditLimit }: UsageSettingsProps): JSX.Element {
-  const t = useTranslations('settings')
-  const tOrg = useTranslations('organization')
+  const t = useTranslations(settingsCopy)
+  const tOrg = useTranslations(organizationCopy)
   const { locale } = useLocale()
   const router = useRouter()
 

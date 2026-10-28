@@ -38,6 +38,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { TagInput } from '@/components/ui/tag-input'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import {
   normalizeTermList,
   SCREENING_DETECTORS,
@@ -64,8 +66,8 @@ const samePolicy = (a: UploadScreeningPolicy, b: UploadScreeningPolicy): boolean
 
 /** Loads the policy, then hands it to the form. */
 export const UploadScreeningCard: FC<{ canEdit: boolean }> = ({ canEdit }) => {
-  const t = useTranslations('organization')
-  const tc = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tc = useTranslations(commonCopy)
   const [state, setState] = useState<UploadScreeningState | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -113,8 +115,8 @@ export const UploadScreeningForm: FC<{ initial: UploadScreeningState; canEdit: b
   initial,
   canEdit,
 }) => {
-  const t = useTranslations('organization')
-  const tc = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tc = useTranslations(commonCopy)
   const [draft, setDraft] = useState<UploadScreeningPolicy>(initial.policy)
   const [baseline, setBaseline] = useState<UploadScreeningPolicy>(initial.policy)
   const [suggested, setSuggested] = useState(initial.suggested)

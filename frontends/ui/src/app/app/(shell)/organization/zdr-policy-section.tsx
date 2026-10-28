@@ -28,6 +28,8 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import type { ZdrBlockedGroup, ZdrCoverage } from '@/lib/model-config/zdr-coverage'
 import { isKnownProvider } from './llm-credentials-card'
 
@@ -43,8 +45,8 @@ export const ZdrPolicySection: FC<{
   /** Re-read the configuration after a toggle, so coverage and the picker follow. */
   onChanged: () => Promise<void>
 }> = ({ zdrOnly, zdrApplicable, provider, coverage, onChanged }) => {
-  const t = useTranslations('organization')
-  const tc = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tc = useTranslations(commonCopy)
   const providerLabel = (id: string | null): string =>
     isKnownProvider(id) ? t(`byok.providers.${id}`) : (id ?? 'BYOK')
   const [saving, setSaving] = useState(false)
@@ -175,7 +177,7 @@ export const ZdrPolicySection: FC<{
 
 /** Under one task's row: why its requests are refused while ZDR is on, or that its status is unknown. */
 export const ZdrGroupNotice: FC<{ groupId: string; coverage: ZdrCoverage | null }> = ({ groupId, coverage }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   if (!coverage) return null
   const blocked = coverage.blockedGroups.filter((entry) => entry.group === groupId)
   const unresolved = coverage.unresolvedGroups.includes(groupId)

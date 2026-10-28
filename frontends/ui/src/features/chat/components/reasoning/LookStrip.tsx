@@ -9,6 +9,7 @@
 import type { FC } from 'react'
 import { PagePlaceButton } from '@/features/knowledge/components/page-place-button'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { LookStepGroup, LookStepPlace } from '../../lib/look-steps'
 import { regionWords } from '../../lib/work-sentence'
 
@@ -31,7 +32,7 @@ export const LookStrip: FC<{ group: LookStepGroup; eager?: boolean; className?: 
   eager,
   className,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const color = colorOf(group)
   return (
     <div className={className ?? 'flex gap-2 overflow-x-auto pb-1 pl-5'}>

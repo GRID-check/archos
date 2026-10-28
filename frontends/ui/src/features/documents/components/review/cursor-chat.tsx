@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { identityInk } from '@/components/ui/avatar-identity'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { CURSOR_CHAT_MAX } from '@/lib/annotations/room-types'
 import { cn } from '@/lib/utils'
 import { restoreFocus } from './focus-return'
@@ -70,7 +71,7 @@ export function CursorChat({
   onChat: (text: string | null) => void
   onClose: () => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [text, setText] = useState('')
   const [at, setAt] = useState<{ x: number; y: number } | null>(from)
   /** Closed once, by Enter, Esc or leaving the field: the rest is the linger's or nothing. */

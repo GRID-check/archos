@@ -47,7 +47,7 @@ enforced them, through collection names:
 
 These are the full findings of the 2026-10-13 audit of the Chroma-era layer,
 condensed; the line numbers are that code's. Paths are
-relative to `sources/knowledge_layer/src/` unless they are absolute.
+relative to `packages/knowledge-layer/src/` unless they are absolute.
 
 **Domain needs we keep**, whatever store sits underneath:
 - the signed scope envelope (ADR-0047/0084)
@@ -416,7 +416,7 @@ What this enables:
    (`docs/audit/upload-and-filing-retriage-2026-10-06.md` l. 228).
 5. **Counts.** `facet(project_id)` and `facet(project_facts.federal_state)` on the
    same filter give "6 von 8 Projekten in Mödling" without fetching passages.
-6. **A cheap catalog.** The `<referenzprojekte>` list (ADR-0094 l. 134) can be
+6. **A cheap catalog.** The `<reference_projects>` list (ADR-0094 l. 134) can be
    ranked by a `recommend` over project-level vectors (the mean of a project's
    document summaries in `office_documents`). Today it uses the fingerprint
    alone.
@@ -695,7 +695,7 @@ change took Chroma out. What was built:
 | A collection's `updated_at` (what the reaper of conversation uploads reads) is the newest `indexed_at` on its points, an ordered scroll | `schema.INDEXED_AT_FIELD`, `store.newest` |
 | A fact copy follows the rows a register or unregister changes the meaning of: the rows whose `superseded_by` names the file are copied again, so a Fassung that became current is not hidden by `superseded != true` | `factory.register_summary`, `unregister_summary`; `DocumentMetadataStore.files_linked_to` |
 | Deleted: Chroma's client and collections, `VECTOR_BACKEND`, `qdrant/mirror.py` and `ordered_delete`, the Postgres `chunk_text` mirror, the `$contains` channel and its pricing, `exp(-d)` score recovery, `embed_fingerprint_mismatch` (the identity lives in Qdrant's collection metadata only), the Chroma backfill (`backfill_qdrant.py`, `backfill_chunk_text.py`), and `chromadb` plus `llama-index-vector-stores-chroma` from the dependencies | — |
-| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `QDRANT_TEST_URL`, fails on CI | `sources/knowledge_layer/testing/knowledge_layer_testing/qdrant.py` |
+| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `QDRANT_TEST_URL`, fails on CI | `packages/knowledge-layer/testing/knowledge_layer_testing/qdrant.py` |
 | The import boundary forbids `chromadb` everywhere but the migration tool | `test_qdrant_import_boundary.py` |
 | The gate harness runs Qdrant alone: the corpus written through `write_chunks`, read through the production retriever, every number printed beside the Chroma path's from the gate run (fixed, `baseline.py`); exact mode held to a full regex scan, which is what Chroma's `$regex` was | `task be:eval:qdrant-parity`, `qdrant_parity/` |
 
@@ -712,7 +712,7 @@ itself.
 
 | Part | Where |
 |---|---|
-| The store: two collections behind aliases, dense + German BM25, TurboQuant, strict mode, payload indexes created before data | `sources/knowledge_layer/src/qdrant/schema.py`, `store.py` |
+| The store: two collections behind aliases, dense + German BM25, TurboQuant, strict mode, payload indexes created before data | `packages/knowledge-layer/src/qdrant/schema.py`, `store.py` |
 | Every read filter from one function, refusing an empty scope | `qdrant/scope.py` |
 | Hybrid search in one Query API call (dense, BM25 with per-scope IDF, exact-term phrase channels, RRF k=60) and the true cosine per hit | `qdrant/search.py` — `hybrid_search` |
 | Retrieval, exact search (`find_text`) and the health check reading Qdrant under `VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/adapter.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |

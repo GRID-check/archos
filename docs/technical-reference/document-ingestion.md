@@ -202,7 +202,7 @@ The ingestion route delegates to the active ingestor singleton, which is set up 
 
 ## Step 4: Background Ingestion (`LlamaIndex`)
 
-**File**: `sources/knowledge_layer/src/llamaindex/adapter.py`
+**File**: `packages/knowledge-layer/src/llamaindex/adapter.py`
 
 The `LlamaIndexIngestor.submit_job()` creates a job with `JobState.PENDING` and hands `_run_ingestion()` to the bounded ingest pool. An entry of `file_paths` is a local path (the multipart upload, the OIB sync) or a deferred download (`/v1/ingest`); the latter is kept unchecked, since nothing is on disk yet.
 
@@ -236,7 +236,7 @@ For each file:
 
 ### Upload screening, before the first model call
 
-A job whose config carries `screening` (the organization's policy, sent by the BFF on `POST /v1/ingest`; see the [endpoint contract](../api/python-endpoints.md)) checks each file's locally extracted text, read as a person reads it (invisible characters left out, a hyphen at a line break joined, a PDF's pages also joined without their running headers and footers), against the office's terms and detectors (`sources/knowledge_layer/src/llamaindex/screening.py`) before any of it is sent to a model. A match fails the file with its typed verdict on `file_details[].quarantine` (`{"reasons":[…],"checked":…}`, plus `"omitted":N` when the verdict leaves N reasons out; `QuarantineVerdict`, ADR-0113), the same verdict in the legacy `error_message` `quarantined:{…}` for one release, and the loop moves to the next file; nothing of a quarantined file is transcribed, captioned, summarised or embedded. The job without a policy (the OIB corpus sync) runs exactly as before. A policy that is present but cannot be applied (malformed, or naming no rule this build knows; `content_screen.screening_config_unusable`) fails closed: every file of the job fails with `screening_unavailable:` before it is read, category `configuration` (retryable, the next dispatch sends the policy afresh), and waits held like any file without a verdict. A PDF whose scanned pages were transcribed is screened again on the transcript before anything else reads it; a match there is held with `after_transcription: true`, since the vision model saw those pages.
+A job whose config carries `screening` (the organization's policy, sent by the BFF on `POST /v1/ingest`; see the [endpoint contract](../api/python-endpoints.md)) checks each file's locally extracted text, read as a person reads it (invisible characters left out, a hyphen at a line break joined, a PDF's pages also joined without their running headers and footers), against the office's terms and detectors (`packages/knowledge-layer/src/llamaindex/screening.py`) before any of it is sent to a model. A match fails the file with its typed verdict on `file_details[].quarantine` (`{"reasons":[…],"checked":…}`, plus `"omitted":N` when the verdict leaves N reasons out; `QuarantineVerdict`, ADR-0113), the same verdict in the legacy `error_message` `quarantined:{…}` for one release, and the loop moves to the next file; nothing of a quarantined file is transcribed, captioned, summarised or embedded. The job without a policy (the OIB corpus sync) runs exactly as before. A policy that is present but cannot be applied (malformed, or naming no rule this build knows; `content_screen.screening_config_unusable`) fails closed: every file of the job fails with `screening_unavailable:` before it is read, category `configuration` (retryable, the next dispatch sends the policy afresh), and waits held like any file without a verdict. A PDF whose scanned pages were transcribed is screened again on the transcript before anything else reads it; a match there is held with `after_transcription: true`, since the vision model saw those pages.
 
 Where it sits, per file, against the five places ingestion sends content out:
 
@@ -257,7 +257,7 @@ Each file of a screened job gets `file_details[].screening` on its job status: `
 
 ### Fassungen across file names (ADR-0099)
 
-Two steps run per file after its summary row is written, on the same `summary_llm` (`sources/knowledge_layer/src/llamaindex/revisions.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `REVISION_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/revision` writes `superseded_by`.
+Two steps run per file after its summary row is written, on the same `summary_llm` (`packages/knowledge-layer/src/llamaindex/revisions.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `REVISION_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/revision` writes `superseded_by`.
 
 | The file's name is | Step | Stored on the file's own row |
 |---|---|---|
@@ -471,7 +471,7 @@ Session-scoped collections (`s_*`) are automatically reaped by a background thre
 ### Fixed: silent summary-row loss on double LLM failure (2026-07-16)
 
 The summary and tag-classification calls in Step 4 above run concurrently
-against the same `summary_llm` (`sources/knowledge_layer/src/llamaindex/adapter.py`,
+against the same `summary_llm` (`packages/knowledge-layer/src/llamaindex/adapter.py`,
 ~lines 1795–1965) and both fail open (log a warning, return `None`) on
 error/timeout. `register_summary()` — the only call that writes a row into
 the `document_metadata` table — only runs when a summary value exists. Previously the
@@ -609,7 +609,7 @@ settle the job terminal `cancelled` (`settle_cancelled`,
 
 A terminal job also says *why* each file failed (`aiq_agent/knowledge/ingest_failures.py`):
 `FileProgress.failure_category` and `retryable`, and the job's `reader_version`
-(`sources/knowledge_layer/src/reader_version.py`). Step 2 writes them onto the row
+(`packages/knowledge-layer/src/reader_version.py`). Step 2 writes them onto the row
 (`ingest_failure_category`, `ingest_retryable`, `ingest_reader_version`, migration 0134),
 and `lib/documents/retry-policy.ts` (`canRetry`) decides from them whether reading the
 file again can come out differently:

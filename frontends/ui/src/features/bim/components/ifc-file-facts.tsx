@@ -32,6 +32,7 @@ import { useMemo } from 'react'
 import { Boxes, Layers3, Ruler, ScrollText, Square } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import { useDocumentBimModel, useProjectBimModels } from '../hooks/use-bim-model'
 import { formatMeasure } from '../lib/format-value'
@@ -49,7 +50,7 @@ interface IfcFileFactsProps {
 }
 
 export function IfcFileFacts({ documentId, projectId, className }: IfcFileFactsProps): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   // Shares the in-flight request with the viewport beside it — the project list
   // (see `fetchProjectModels`) or the document lookup (`fetchDocumentModel`),

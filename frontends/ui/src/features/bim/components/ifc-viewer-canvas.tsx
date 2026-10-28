@@ -80,6 +80,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
  */
 import type { Camera, RenderOptions, Renderer, SceneContents } from '@ifc-lite/renderer'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 import { capturePosthog } from '@/lib/analytics/posthog'
@@ -370,7 +371,7 @@ export function IfcViewerCanvas({
   onCapture,
   className,
 }: IfcViewerCanvasProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   const keysId = useId()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

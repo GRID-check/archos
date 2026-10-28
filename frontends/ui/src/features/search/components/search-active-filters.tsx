@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { activeFilters, clearFilters } from '../lib/active-filters'
 import type { SearchUrlState } from '../lib/search-url'
@@ -24,7 +25,7 @@ export function SearchActiveFilters({
   onChange: (next: SearchUrlState) => void
   projectName: (id: string) => string | null
 }): JSX.Element | null {
-  const t = useTranslations('search.filters')
+  const t = useTranslations(searchCopy, 'filters')
   const labels = useSearchLabels()
   // The register says „Nur aktuelle Fassung“ with its own switch above the
   // table; a chip beside it would be the one setting shown twice.

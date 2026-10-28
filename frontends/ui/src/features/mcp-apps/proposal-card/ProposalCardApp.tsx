@@ -28,6 +28,7 @@ import {
 } from '@modelcontextprotocol/ext-apps/react-with-deps'
 import type { CallToolResult } from '@modelcontextprotocol/client'
 import { I18nProvider, resolveLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { A2uiCard } from '@/features/a2ui/A2uiCard'
 import { ProposalTransportProvider, type ProposalTransport } from '@/features/grid-cards/hooks/proposal-transport'
 import type { ProposalResponse } from '@/lib/proposals/types'
@@ -72,7 +73,7 @@ function reportingTransport(app: HostApp, initial: ProposalResponse | null): Pro
 }
 
 function CardBody({ result, app }: { result: CallToolResult | null; app: HostApp }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const initial = useMemo(() => proposalOfResult(result), [result])
   // One transport per proposal shown: the seed is the result the host handed over.
   const transport = useMemo(() => reportingTransport(app, initial), [app, initial])
@@ -96,7 +97,7 @@ function CardBody({ result, app }: { result: CallToolResult | null; app: HostApp
 }
 
 function Unreadable() {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return <p className="text-muted-foreground text-sm" data-testid="mcp-app-unreadable">{t('cards.mcpApp.unreadable')}</p>
 }
 

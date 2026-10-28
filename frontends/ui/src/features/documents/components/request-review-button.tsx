@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import { requestQuarantineRelease } from '@/adapters/api/upload-screening-client'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { uploadBatchesCopy } from '@/i18n/namespaces/upload-batches'
 
 export interface RequestReviewButtonProps {
   documentId: string
@@ -32,7 +33,7 @@ export function RequestReviewButton({
   className,
   testId = `request-review-${documentId}`,
 }: RequestReviewButtonProps): JSX.Element {
-  const t = useTranslations('uploadBatches')
+  const t = useTranslations(uploadBatchesCopy)
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle')
 
   const ask = async (): Promise<void> => {

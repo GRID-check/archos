@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/floating-toolbar'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { cn } from '@/lib/utils'
 import { isFitted, MIN_ZOOM, type FitMode } from '../lib/pdf-zoom'
 
@@ -86,7 +87,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
   hasRail = true,
   lead,
 }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const ready = pageCount !== null
   const percent = Math.round(zoom * 100)
   return (
@@ -224,7 +225,7 @@ const PageField: FC<{ current: number; count: number; onPage: (page: number) => 
   count,
   onPage,
 }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const [draft, setDraft] = useState(String(current))
   const [shown, setShown] = useState(current)
   if (shown !== current) {
@@ -293,7 +294,7 @@ export const PdfSearchBar: FC<PdfSearchBarProps> = ({
   onClose,
   tooShort,
 }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const inputRef = useRef<HTMLInputElement | null>(null)
   useEffect(() => {
     inputRef.current?.focus()

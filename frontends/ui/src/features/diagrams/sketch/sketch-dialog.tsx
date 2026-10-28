@@ -25,6 +25,7 @@ import { useCallback, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useLocale, useTranslations } from '@/i18n'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { useDiagramFiling } from '../use-diagram-filing'
 import { useDiagramTheme } from '../use-diagram-theme'
 import { DiagramFilingControls } from '../components/diagram-filing-controls'
@@ -32,7 +33,7 @@ import type { SketchCanvasHandle } from './sketch-canvas'
 
 /** While the canvas chunk loads, and in its place when it could not be loaded (offline, a stale deploy). */
 function CanvasLoading({ error }: { error?: Error | null }) {
-  const t = useTranslations('diagrams')
+  const t = useTranslations(diagramsCopy)
   return (
     <div className="text-muted-foreground flex h-full items-center justify-center text-sm" role="status">
       {error ? t('sketch.loadFailed') : t('sketch.loading')}
@@ -57,7 +58,7 @@ export interface SketchDialogProps {
 }
 
 export function SketchDialog({ open, onOpenChange, source, elements, title }: SketchDialogProps) {
-  const t = useTranslations('diagrams')
+  const t = useTranslations(diagramsCopy)
   const { locale } = useLocale()
   const theme = useDiagramTheme()
   const handle = useRef<SketchCanvasHandle | null>(null)

@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import type { MeterTone } from '@/components/ui/segment-meter'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { formatCalendarDate, formatCredits, formatTimeOfDay, formatTokens } from '@/lib/format'
 import type { ChatUsageNotice, UsageNoticeLevel } from '@/lib/budgets/usage-notice'
 
@@ -42,7 +43,7 @@ export interface UsageNoticeProps {
 }
 
 export const UsageNotice: FC<UsageNoticeProps> = ({ notice, onDismiss }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   const look = LOOK[notice.level]
   const Icon = look.icon

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { isProjectClosedBody } from '@/lib/projects/project-status'
 import { formatCalendarDate } from '@/lib/format'
 import type { FileItem, FolderItem } from '../file-types'
@@ -65,7 +66,7 @@ export function useFolderTree({
   reloadFiles,
   binHref,
 }: FolderTreeOptions) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const router = useRouter()
   const [folders, setFolders] = useState<FolderItem[]>(() => [...(initialFolders ?? [])])

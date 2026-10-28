@@ -101,6 +101,6 @@ def test_every_service_that_connects_through_the_pooler_waits_for_it(name):
     for service, definition in services.items():
         env = _environment(services, service)
         pooled = [k for k, v in env.items() if "@pgbouncer:" in v]
-        if pooled and service != "grid-migrate":
+        if pooled and service != "migrate":
             depends = definition.get("depends_on") or {}
             assert "pgbouncer" in depends, f"{name}: {service} uses the pooler ({pooled[0]}) but does not wait for it"

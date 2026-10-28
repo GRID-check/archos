@@ -28,6 +28,7 @@ import type { ReactNode } from 'react'
 import { useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
 import { handOverDroppedFiles } from '../lib/dropped-file-handover'
 import type { FolderAccessLevel } from '../lib/file-shelf'
@@ -58,7 +59,7 @@ export function ProjectFileDrop({
 }) {
   const pathname = usePathname() ?? ''
   const router = useRouter()
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const active = !disabled && routesDropToFiles(pathname, projectId)
 
   const sendToFiles = useCallback(

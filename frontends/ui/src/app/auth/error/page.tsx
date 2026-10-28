@@ -17,6 +17,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useAppConfig } from '@/shared/context'
 import { useAuth } from '@/adapters/auth'
 import { useTranslations } from '@/i18n'
+import { errorsCopy } from '@/i18n/namespaces/errors'
 
 /**
  * Error content that uses useSearchParams (requires Suspense wrapper)
@@ -26,7 +27,7 @@ const ErrorContent = (): ReactNode => {
   const { authRequired } = useAppConfig()
   const { signIn } = useAuth()
   const searchParams = useSearchParams()
-  const t = useTranslations('errors')
+  const t = useTranslations(errorsCopy)
   const error = searchParams?.get('error') || 'Default'
   const knownKeys = ['Configuration', 'AccessDenied', 'Verification', 'SessionExpired', 'Default']
   const messageKey = knownKeys.includes(error) ? error : 'Default'
@@ -82,7 +83,7 @@ const ErrorContent = (): ReactNode => {
  * Auth Error Page
  */
 const AuthErrorPage = (): ReactNode => {
-  const t = useTranslations('errors')
+  const t = useTranslations(errorsCopy)
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-muted p-4 sm:p-8">
       <Card className="w-full max-w-md">

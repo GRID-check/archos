@@ -31,6 +31,7 @@ import { SectionCard } from '@/features/platform/components/section-card'
 import { GridCards } from '@/features/grid-cards'
 import { PREVIEW_EXCLUDED, previewFixtureFor } from '@/features/grid-cards/preview-fixtures'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 
 interface CardFieldDto {
   name: string
@@ -73,7 +74,7 @@ const InertPreview: FC<{ children: React.ReactNode }> = ({ children }) => (
 
 /** The external "request a card" link, saying it leaves Piloti for a new tab. */
 const RequestCardLink: FC<{ url: string; variant: 'default' | 'outline' }> = ({ url, variant }) => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   return (
     <Button asChild variant={variant} size="sm" className="shrink-0">
       <a href={url} target="_blank" rel="noopener noreferrer">
@@ -86,7 +87,7 @@ const RequestCardLink: FC<{ url: string; variant: 'default' | 'outline' }> = ({ 
 }
 
 const CatalogEntry: FC<{ card: CatalogCardDto }> = ({ card }) => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const [open, setOpen] = useState(false)
   const fixture = useMemo(() => previewFixtureFor(card.type), [card.type])
   const excluded = PREVIEW_EXCLUDED[card.type]
@@ -162,7 +163,7 @@ const CatalogEntry: FC<{ card: CatalogCardDto }> = ({ card }) => {
 }
 
 export const PlatformCards: FC = () => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const [payload, setPayload] = useState<CatalogDto | null>(null)
   const [error, setError] = useState(false)
 

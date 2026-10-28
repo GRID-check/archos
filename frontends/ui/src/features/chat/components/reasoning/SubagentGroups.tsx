@@ -19,6 +19,7 @@ import { CountPill } from '@/components/ui/count-pill'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { subagentStepId } from '../../lib/turn-fold'
@@ -131,7 +132,7 @@ export const SubagentGroups: FC<{ steps: readonly StoredThinkingStep[]; classNam
   steps,
   className,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const roots = subagentGroups(steps)
   if (roots.length === 0) return null
   return (

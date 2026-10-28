@@ -31,6 +31,8 @@ import { Kbd } from '@/components/ui/kbd'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatDayRange, localCalendarDay } from '@/lib/format'
 import { AnnotationRequestError } from '@/lib/annotations/client'
 import {
@@ -103,7 +105,7 @@ function Message({
   /** What its author may do with it (`ReplyActions`), at the end of the byline. */
   actions?: React.ReactNode
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const byline = usePilotiByline()
   const wokenTitle = woken
@@ -212,7 +214,7 @@ const MetaChip = forwardRef<
 
 /** The reader as the Zuständige picker offers them („Mir zuweisen"), or null while nobody knows who reads. */
 function useSelfAssignee(review: DocumentReview): FileAssignee | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   if (!review.me) return null
   const name = review.room.self?.userId === review.me ? review.room.self.name : null
   return { userId: review.me, name: name || t('review.assigneeYou'), email: null, profilePictureUrl: null }
@@ -244,7 +246,7 @@ function ResponsibilityRow({
   onAssignee: (person: FileAssignee | null) => void
   onDueOn: (day: string | null) => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const dateRef = useRef<HTMLInputElement | null>(null)
   const overdue = dueOn !== null && dueOn < localCalendarDay()
@@ -319,7 +321,7 @@ function ResponsibilityRow({
  * pressed, each reached by Tab (a radio group would owe arrow keys).
  */
 function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kind: AnnotationKind) => void }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div role="group" aria-label={t('annotations.kind')} className="bg-muted inline-flex rounded-md p-0.5">
       {ANNOTATION_KINDS.map((kind) => {
@@ -440,8 +442,8 @@ export function ReviewCard({
  * here, to be added to the thread by hand.
  */
 function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentReview }): JSX.Element {
-  const t = useTranslations('files')
-  const tChat = useTranslations('chat')
+  const t = useTranslations(filesCopy)
+  const tChat = useTranslations(chatCopy)
   const [adopting, setAdopting] = useState(false)
   const [adoptFailed, setAdoptFailed] = useState(false)
   const line = liveLine(stepsOf(ask.view), tChat) ?? t('review.piloti.replying')
@@ -517,7 +519,7 @@ function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevi
  * ended is said here.
  */
 function PilotiWorkRow({ annotation }: { annotation: AnnotationView }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const work = annotation.pilotiWork
   if (!work) return null
   const delegated = work.trigger === 'assigned'
@@ -559,7 +561,7 @@ export function DraftCard({
   placement: CardPlacement
   canPickAssignee: boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [kind, setKind] = useState<AnnotationKind>('hint')
   const [assignee, setAssignee] = useState<FileAssignee | null>(null)
   const [dueOn, setDueOn] = useState<string | null>(null)
@@ -626,7 +628,7 @@ function RevisionLines({
   busy: boolean
   onCarry: () => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const replacedBy = review.revision?.replacedBy ?? null
   const target = annotation.carryTarget ?? null
   const earlier = !annotation.onCurrentRevision
@@ -731,7 +733,7 @@ function ReplyEntry({
   annotation: AnnotationView
   reply: AnnotationReplyView
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
@@ -865,7 +867,7 @@ export function ThreadCard({
   /** Going through Piloti's proposals: where this one stands among them, and the way to the next. */
   walk?: { index: number; total: number; onNext: () => void } | null
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)

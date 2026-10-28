@@ -16,6 +16,7 @@
 import type { JSX } from 'react'
 import { PageHeader } from '@/components/ui/page-header'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PlatformLessons } from '@/app/app/(shell)/platform/lessons/platform-lessons'
 
 const LESSONS = [
@@ -164,7 +165,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
 }
 
 function Preview(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   return (
     <main
       className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8 md:px-8"

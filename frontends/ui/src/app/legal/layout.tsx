@@ -10,13 +10,14 @@ import { type ReactNode } from 'react'
 import Link from 'next/link'
 import { Logo } from '@/components/brand/logo'
 import { getTranslations } from '@/i18n/server'
+import { legalCopy } from '@/i18n/namespaces/legal'
 
 interface LegalLayoutProps {
   children: ReactNode
 }
 
 const LegalLayout = async ({ children }: LegalLayoutProps): Promise<ReactNode> => {
-  const t = await getTranslations('legal')
+  const t = await getTranslations(legalCopy)
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="border-b border-border">

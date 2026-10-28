@@ -253,7 +253,7 @@ task be:eval:qdrant-parity -- --variants all         # adds the ranking sweep
 
 Its own tests: `evals/oib-retrieval/tests/test_qdrant_parity.py` (offline: fixture, scores,
 gate bounds, the reference numbers against the gate report, the regex scan) and
-`sources/knowledge_layer/tests/test_qdrant_parity_harness.py` (the whole run on a
+`packages/knowledge-layer/tests/test_qdrant_parity_harness.py` (the whole run on a
 synthetic corpus against `QDRANT_TEST_URL`, which CI provides). The last run's
 numbers: [`docs/audit/qdrant-gates-2026-10.md`](../../docs/audit/qdrant-gates-2026-10.md).
 

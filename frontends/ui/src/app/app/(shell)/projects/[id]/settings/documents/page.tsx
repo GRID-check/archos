@@ -6,13 +6,14 @@ import { isProjectKnowledgePageEnabled } from '@/lib/authz/feature-flags'
 import { resolveProjectSettingsAccess } from '@/lib/projects/settings-access'
 import { DocumentsSettings } from '@/features/projects/components/settings/documents-settings'
 import { getTranslations } from '@/i18n/server'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('settings')
+  const t = await getTranslations(settingsCopy)
   return { title: t('project.nav.documents') }
 }
 

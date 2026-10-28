@@ -67,6 +67,9 @@ import { Spinner } from '@/components/ui/spinner'
 import { SectionCard } from '@/features/platform/components/section-card'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { formatTokens, formatUsd } from '@/lib/format'
 import {
@@ -141,7 +144,7 @@ const ModelPicker: FC<{
   current: string | null
   onPick: (modelId: string) => void
 }> = ({ groupId, current, onPick }) => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const [query, setQuery] = useState('')
   const [models, setModels] = useState<ModelDto[] | null>(null)
@@ -274,10 +277,10 @@ const ModelPicker: FC<{
 }
 
 export const PlatformModelDefaults: FC = () => {
-  const t = useTranslations('platform')
-  const tc = useTranslations('common')
+  const t = useTranslations(platformCopy)
+  const tc = useTranslations(commonCopy)
   // Rejection reasons share one vocabulary with the organization surface.
-  const to = useTranslations('organization')
+  const to = useTranslations(organizationCopy)
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.settingsManage)
   const [payload, setPayload] = useState<PayloadDto | null>(null)
   const [draft, setDraft] = useState<Record<string, string>>({})

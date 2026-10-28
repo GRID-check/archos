@@ -116,14 +116,14 @@ PY_TRACKED = (
     "tests/**",
     "frontends/aiq_api/src/**",
     "frontends/aiq_api/tests/**",
-    "sources/*/src/**",
-    "sources/*/tests/**",
-    "sources/*/testing/**",
+    "packages/*/src/**",
+    "packages/*/tests/**",
+    "packages/*/testing/**",
     "evals/**",
 )
 
 # Where a test reads a non-Python file it does not import.
-PY_TEST_ROOTS = ("tests", "frontends/aiq_api/tests", "sources", "evals")
+PY_TEST_ROOTS = ("tests", "frontends/aiq_api/tests", "packages", "evals")
 
 # Test data. A test reads a fixture by name or a whole directory of them, so one
 # no test names, directly or by a directory, forces a full run.
@@ -131,7 +131,7 @@ PY_FIXTURES = "tests/fixtures/"
 
 # A non-Python file under these that no test names is code testmon cannot see
 # (package data read at runtime), so it forces a full run rather than none.
-PY_PACKAGE_SRC = ("src/**", "frontends/aiq_api/src/**", "sources/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
+PY_PACKAGE_SRC = ("src/**", "frontends/aiq_api/src/**", "packages/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
 
 # What every UI spec loads before its own imports, so no graph sees it.
 UI_FULL = (
@@ -219,7 +219,7 @@ def _reads(path: str, file: str, text: str) -> bool:
     A test file names it by its path or file name anywhere. A helper or conftest
     names it only as code reads a file, in a string literal that ends in its
     name (`"…/folder-cards.schema.json"`, `"stored_answers.json"`). Prose in a
-    docstring (``sources/AGENTS.md``) is not a read, and counting it would run
+    docstring (``packages/AGENTS.md``) is not a read, and counting it would run
     every test for each edit of a document. A fixture is named by its
     directories too, since tests read whole fixture directories (`rglob`).
     """
@@ -345,7 +345,7 @@ def _python_test_files() -> dict[str, str]:
     for root in PY_TEST_ROOTS:
         for path in (ROOT / root).rglob("*.py"):
             relative = path.relative_to(ROOT).as_posix()
-            if root == "sources" and "/tests/" not in f"/{relative}" and "/testing/" not in f"/{relative}":
+            if root == "packages" and "/tests/" not in f"/{relative}" and "/testing/" not in f"/{relative}":
                 continue
             files[relative] = path.read_text(encoding="utf-8", errors="ignore")
     return files

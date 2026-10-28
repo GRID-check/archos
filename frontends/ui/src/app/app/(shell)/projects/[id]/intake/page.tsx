@@ -7,6 +7,7 @@ import { FEATURE_FLAGS, isFeatureEnabled } from '@/lib/authz/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { deriveIntakeEntry } from '@/lib/project-profile/salvage'
 import { getTranslations } from '@/i18n/server'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { ProjectIntakeWizard } from '@/features/projects/components/project-intake-wizard'
 
 interface IntakePageProps {
@@ -14,7 +15,7 @@ interface IntakePageProps {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
+  const t = await getTranslations(navCopy)
   return { title: t('tabTitle.intake') }
 }
 
