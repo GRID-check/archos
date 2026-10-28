@@ -408,7 +408,7 @@ export const collaborationOperations = [
     load: () => import('@/app/api/proposals/[id]/dismiss/route'),
   },
   {
-    name: 'piloti-change-undo',
+    name: 'agent-change-undo',
     domain: 'collaboration',
     summary: 'Undo a change Piloti made',
     description:

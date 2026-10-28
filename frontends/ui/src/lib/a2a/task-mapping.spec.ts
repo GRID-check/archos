@@ -5,7 +5,7 @@
 
 import { Role, TaskState, type Message } from '@a2a-js/sdk'
 import { describe, expect, it } from 'vitest'
-import { ASK_STATES, type AskView } from '@/lib/piloti-asks/ask-wire'
+import { ASK_STATES, type AskView } from '@/lib/agent-asks/ask-wire'
 import { askInputOf, taskOf, TASK_STATE_OF } from './task-mapping'
 
 const THREAD = 's_11111111_1111_4111_8111_111111111111'

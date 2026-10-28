@@ -1,13 +1,13 @@
 /**
  * One ask (ADR-0124): `GET ?waitSeconds=` → the ask as `AskView`, waiting up
  * to `waitSeconds` (at most `ASK_WAIT_SECONDS`) for it to end. The poll behind
- * `piloti-ask-get` and the A2A door's `GetTask`. Only the person the ask was
- * made for reads it. Thin handler; the rules live in `@/lib/piloti-asks/service`.
+ * `agent-ask-get` and the A2A door's `GetTask`. Only the person the ask was
+ * made for reads it. Thin handler; the rules live in `@/lib/agent-asks/service`.
  */
 
 import { apiRoute, parseQuery } from '@/lib/api/handler'
-import { getAskQuerySchema } from '@/lib/piloti-asks/ask-wire'
-import { getAsk } from '@/lib/piloti-asks/service'
+import { getAskQuerySchema } from '@/lib/agent-asks/ask-wire'
+import { getAsk } from '@/lib/agent-asks/service'
 
 export const dynamic = 'force-dynamic'
 

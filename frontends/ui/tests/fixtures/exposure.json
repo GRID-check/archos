@@ -1440,6 +1440,36 @@
    "withheld": null,
    "reason": null
   },
+  "agent-ask-cancel": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+  },
+  "agent-ask-create": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+  },
+  "agent-ask-get": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+  },
   "answer-feedback-list": {
    "kind": "catalog",
    "domain": "conversations",
@@ -1702,35 +1732,15 @@
    "withheld": null,
    "reason": null
   },
-  "piloti-ask-cancel": {
+  "agent-change-undo": {
    "kind": "catalog",
-   "domain": "conversations",
+   "domain": "collaboration",
    "sensitivity": null,
    "external": true,
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
-  },
-  "piloti-ask-create": {
-   "kind": "catalog",
-   "domain": "conversations",
-   "sensitivity": null,
-   "external": true,
-   "piloti": false,
-   "platform": false,
-   "withheld": null,
-   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
-  },
-  "piloti-ask-get": {
-   "kind": "catalog",
-   "domain": "conversations",
-   "sensitivity": null,
-   "external": true,
-   "piloti": false,
-   "platform": false,
-   "withheld": null,
-   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+   "reason": "the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them"
   },
   "assignment-add": {
    "kind": "catalog",
@@ -1886,16 +1896,6 @@
    "platform": false,
    "withheld": null,
    "reason": null
-  },
-  "piloti-change-undo": {
-   "kind": "catalog",
-   "domain": "collaboration",
-   "sensitivity": null,
-   "external": true,
-   "piloti": false,
-   "platform": false,
-   "withheld": null,
-   "reason": "the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them"
   },
   "proposal-apply": {
    "kind": "catalog",

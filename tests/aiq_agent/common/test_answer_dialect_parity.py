@@ -74,7 +74,7 @@ def test_the_project_directive_is_named_the_same():
     assert f"'{PROJECT_DIRECTIVE}'" in source
 
 
-TS_AGENT_TEXT = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "piloti-asks" / "answer-text.ts"
+TS_AGENT_TEXT = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "agent-asks" / "answer-text.ts"
 
 
 def test_the_agent_text_rewrites_the_verifiers_labels_as_written():

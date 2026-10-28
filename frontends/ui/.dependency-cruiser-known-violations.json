@@ -6463,7 +6463,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/lib/piloti-asks/answer-evidence.ts",
+    "from": "src/lib/agent-asks/answer-evidence.ts",
     "to": "src/features/chat/lib/citations/build.ts",
     "unresolvedTo": "@/features/chat/lib/citations/build",
     "dependencyTypes": [
@@ -6480,7 +6480,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/lib/piloti-asks/answer-evidence.ts",
+    "from": "src/lib/agent-asks/answer-evidence.ts",
     "to": "src/features/chat/lib/citations/deep-link.ts",
     "unresolvedTo": "@/features/chat/lib/citations/deep-link",
     "dependencyTypes": [
@@ -6497,7 +6497,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/lib/piloti-asks/answer-evidence.ts",
+    "from": "src/lib/agent-asks/answer-evidence.ts",
     "to": "src/features/chat/lib/citations/model.ts",
     "unresolvedTo": "@/features/chat/lib/citations/model",
     "dependencyTypes": [
@@ -6514,7 +6514,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/lib/piloti-asks/answer-evidence.ts",
+    "from": "src/lib/agent-asks/answer-evidence.ts",
     "to": "src/features/chat/lib/citations/persistence.ts",
     "unresolvedTo": "@/features/chat/lib/citations/persistence",
     "dependencyTypes": [

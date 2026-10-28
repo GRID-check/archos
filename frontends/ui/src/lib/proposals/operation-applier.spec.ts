@@ -26,7 +26,7 @@ import { applyOperation, PROPOSAL_DECISION_OPERATIONS, PROPOSAL_DECISION_REFUSAL
 import type { OperationPayload } from './types'
 
 const SESSION = { userId: 'user_anna', organizationId: 'org_1' } as AuthorizedSession
-const DECISIONS = ['proposal-apply', 'proposal-dismiss', 'piloti-change-undo']
+const DECISIONS = ['proposal-apply', 'proposal-dismiss', 'agent-change-undo']
 
 const payload = (operation: string): OperationPayload => ({
   operation,

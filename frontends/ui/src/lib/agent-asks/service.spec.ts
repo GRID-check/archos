@@ -281,7 +281,7 @@ describe('askPiloti', () => {
   it('names the busy thread and the way out in the reason the agent reads', async () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
     const view = await askPiloti(SESSION, { question: 'Und danach?', waitSeconds: 0 })
-    expect(view.reason).toMatch(/never interrupts a running turn.*piloti-ask-get.*conversationId/)
+    expect(view.reason).toMatch(/never interrupts a running turn.*agent-ask-get.*conversationId/)
   })
 
   it('leaves the turn’s start to the chat path’s own time bound', async () => {

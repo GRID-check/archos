@@ -485,7 +485,7 @@ way back, which are this reader's), and a toast says it did. A
 Büroablage document has no chat to start, so it offers no „Piloti fragen".
 With a row marked, Shift+F10 or the menu key opens its ⋯ while the focus
 stays in the field. Each action is an operation that already exists
-(`piloti-ask-create`, `document-status`, `annotation-list`); none is new.
+(`agent-ask-create`, `document-status`, `annotation-list`); none is new.
 
 In the chat composer, `#` and a word search the workspace for a document as
 `@` finds a person (`useDocumentReference`): the palette's live results,

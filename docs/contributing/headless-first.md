@@ -9,7 +9,7 @@ reason and the design are in
 capability; the UI is one client of it, and an agent is another. The agent door
 offers what only Piloti has: the office's workspace (its data and the actions
 on it), Piloti's domain knowledge (the legal corpus, BIM/IFC analysis of the
-office's models) and Piloti itself (`piloti-ask`), with the person saying yes
+office's models) and Piloti itself (`agent-ask-*`), with the person saying yes
 or no to every write.
 
 **What the door does not offer** (ADR-0122, "Amendment: the door offers what

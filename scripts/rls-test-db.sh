@@ -201,7 +201,7 @@ GRID_TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid
     src/lib/project-intake/repository.integration.spec.ts \
     src/lib/changes/repository.integration.spec.ts \
     src/lib/push/repository.integration.spec.ts \
-    src/lib/piloti-asks/repository.integration.spec.ts \
+    src/lib/agent-asks/repository.integration.spec.ts \
     src/lib/inbox/repository.integration.spec.ts \
     src/lib/project-experience/readable-files.integration.spec.ts \
     src/lib/projects/memory-evidence.integration.spec.ts \

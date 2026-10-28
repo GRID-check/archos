@@ -144,6 +144,11 @@ export const RENAMED_OPERATIONS: Readonly<Record<string, string | RenamedWithInp
   'office-shelf-document-delete': 'document-delete',
   // `params.versionId` still reaches the route, which reads it as `?versionId=`.
   'document-version-file-get': 'document-file-get',
+  // The product's name left the operation names (docs/contributing/code-conventions.md#no-brand-names).
+  'piloti-ask-create': 'agent-ask-create',
+  'piloti-ask-get': 'agent-ask-get',
+  'piloti-ask-cancel': 'agent-ask-cancel',
+  'piloti-change-undo': 'agent-change-undo',
 }
 
 /** The current name an old one leads to. */

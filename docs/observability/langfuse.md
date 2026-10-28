@@ -180,8 +180,8 @@ Piloti's own `workspace__*` tools, is a root trace `agent-tool-call` holding one
 `TOOL` observation named `mcp.<operation>` (`search-operations`, `call-operation`
 is recorded under the operation it ran, `unknown` for a name no operation has:
 that is the agent's own text). Each A2A method at `/api/a2a` (ADR-0124) is one
-too, its observation `a2a.<operation>` (`piloti-ask-create`, `piloti-ask-get`,
-`piloti-ask-cancel`); the polls a blocking call or a stream makes while it
+too, its observation `a2a.<operation>` (`agent-ask-create`, `agent-ask-get`,
+`agent-ask-cancel`); the polls a blocking call or a stream makes while it
 waits are not. A tool call on the platform door at `/api/platform/mcp`
 (ADR-0126) is the same trace, observation `mcp.<operation>`, door `platform`.
 Metadata on all: `operation`, `domain`, `door`
