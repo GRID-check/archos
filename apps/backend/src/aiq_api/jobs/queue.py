@@ -99,7 +99,7 @@ POISON_CLAIM_MARKER = "poison"
 # exhausted-claim reap per cycle. Without it every worker ran the scan on every
 # poll tick, so DB load scaled with replica count, not job volume (scaling
 # review phase-2, item 12). Distinct from the web-tier reaper/cleanup lock ids in
-# routes/jobs.py. "AIQRXHS" in hex.
+# routes/job_reaper.py. "AIQRXHS" in hex.
 _PG_REAP_EXHAUSTED_LOCK_ID = 0x41495152_58485300
 
 # @environment_variable GRID_MAX_ACTIVE_JOBS_PER_ORG

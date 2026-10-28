@@ -3,7 +3,7 @@
 Captured once at job-route registration so internal routes registered without a
 builder (e.g. the skills submit route, wired next to the maintenance routes)
 can reuse builder-dependent helpers such as
-``routes.jobs._validate_data_sources_for_agent``.
+``routes.job_data_sources.validate_data_sources_for_agent``.
 
 Kept in its own tiny module — deliberately free of NAT imports — so a
 consumer that only needs to *check whether* a builder exists does not pay the

@@ -9,6 +9,7 @@ from datetime import timedelta
 import pytest
 
 from aiq_api.jobs.event_store import EventStore
+from aiq_api.routes.job_event_cleanup import run_event_cleanup
 
 
 @pytest.fixture
@@ -169,24 +170,23 @@ class TestCleanupJobEvents:
 
 
 # =========================================================================
-# _run_event_cleanup (coordinated: time-based + expired-job events)
+# run_event_cleanup (coordinated: time-based + expired-job events)
 # =========================================================================
 
 
 class TestRunEventCleanup:
-    """Tests for _run_event_cleanup coordinated cleanup cycle."""
+    """Tests for run_event_cleanup coordinated cleanup cycle."""
 
     @pytest.mark.asyncio
     async def test_removes_events_for_expired_jobs(self, db_url):
         """Events for jobs marked is_expired=True in job_info should be deleted."""
-        from aiq_api.routes.jobs import _run_event_cleanup
 
         store = EventStore(db_url, job_id="expired-job")
         store.store({"type": "test", "data": {"msg": "should be deleted"}})
 
         _create_expired_job(db_url, "expired-job")
 
-        await _run_event_cleanup(db_url, retention_seconds=86400, is_postgres=False)
+        await run_event_cleanup(db_url, retention_seconds=86400, is_postgres=False)
 
         remaining = EventStore.get_events(db_url, "expired-job")
         assert len(remaining) == 0
@@ -194,12 +194,11 @@ class TestRunEventCleanup:
     @pytest.mark.asyncio
     async def test_reports_what_the_cycle_removed(self, db_url):
         """The housekeeping route returns these counts to its CronJob (ADR-0082 A1)."""
-        from aiq_api.routes.jobs import _run_event_cleanup
 
         EventStore(db_url, job_id="expired-job").store({"type": "test", "data": {}})
         _create_expired_job(db_url, "expired-job")
 
-        counts = await _run_event_cleanup(db_url, retention_seconds=86400, is_postgres=False)
+        counts = await run_event_cleanup(db_url, retention_seconds=86400, is_postgres=False)
 
         assert counts["expired_job_events"] == 1
         assert counts["old_events"] == 0
@@ -207,7 +206,6 @@ class TestRunEventCleanup:
     @pytest.mark.asyncio
     async def test_preserves_events_for_non_expired_jobs(self, db_url):
         """Events for jobs NOT marked expired should be preserved (if within retention)."""
-        from aiq_api.routes.jobs import _run_event_cleanup
 
         store = EventStore(db_url, job_id="active-job")
         store.store({"type": "test", "data": {"msg": "keep me"}})
@@ -215,7 +213,7 @@ class TestRunEventCleanup:
         # Create job_info table but no expired jobs
         _create_expired_job(db_url, "some-other-job")
 
-        await _run_event_cleanup(db_url, retention_seconds=86400, is_postgres=False)
+        await run_event_cleanup(db_url, retention_seconds=86400, is_postgres=False)
 
         remaining = EventStore.get_events(db_url, "active-job")
         assert len(remaining) == 1
@@ -223,7 +221,6 @@ class TestRunEventCleanup:
     @pytest.mark.asyncio
     async def test_combined_time_and_expired_cleanup(self, db_url):
         """Both time-based and expired-job cleanup should run in one cycle."""
-        from aiq_api.routes.jobs import _run_event_cleanup
 
         # Old event for a non-expired job (should be cleaned by time)
         store1 = EventStore(db_url, job_id="old-job")
@@ -239,7 +236,7 @@ class TestRunEventCleanup:
         store3 = EventStore(db_url, job_id="live-job")
         store3.store({"type": "test", "data": {}})
 
-        await _run_event_cleanup(db_url, retention_seconds=3600, is_postgres=False)
+        await run_event_cleanup(db_url, retention_seconds=3600, is_postgres=False)
 
         assert len(EventStore.get_events(db_url, "old-job")) == 0
         assert len(EventStore.get_events(db_url, "expired-job")) == 0
