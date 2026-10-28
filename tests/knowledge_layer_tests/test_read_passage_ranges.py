@@ -33,7 +33,7 @@ from knowledge_layer.read_passage import read_passage
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
 from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import fetch_signature
+from aiq_agent.common.tool_calls import fetch_signature
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.scoping import ScopedCollection

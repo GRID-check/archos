@@ -43,8 +43,8 @@ import { useComposerMetrics } from '@/features/layout/hooks/use-composer-metrics
 import { ComposerScrim } from '@/features/layout/components/ComposerScrim'
 import { selectThreadPhase } from '@/features/layout/lib/thread-phase'
 import { motion } from '@/components/motion'
-import { useChatStore } from '@/features/chat'
-import type { ChatMessage } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
+import type { ChatMessage } from '@/features/chat/types'
 
 const config: AppConfig = {
   authRequired: false,

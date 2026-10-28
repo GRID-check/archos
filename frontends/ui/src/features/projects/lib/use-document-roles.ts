@@ -16,18 +16,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import type { DocumentRole } from '@/lib/project-profile/document-roles'
+import { listDocumentRoles, type RoleBinding } from '@/adapters/api/document-roles-client'
 import { fetchListingPages } from '@/features/documents/lib/fetch-listing-pages'
 
-export interface RoleBinding {
-  id: string
-  documentId: string
-  role: DocumentRole
-  scopeInstanceId: string | null
-  confidence: 'declared' | 'suggested'
-  filename: string
-  displayName: string | null
-}
+export type { RoleBinding }
 
 export interface ProjectDocumentOption {
   id: string
@@ -55,8 +47,9 @@ function publish(projectId: string, next: DocumentRolesState): void {
 }
 
 async function load(projectId: string): Promise<void> {
-  const [rolesResponse, listed] = await Promise.all([
-    fetch(`/api/projects/${projectId}/document-roles`).catch(() => null),
+  const [roles, listed] = await Promise.all([
+    // A failed read is an empty slot, not a spinner that never stops: see below.
+    listDocumentRoles(projectId).catch((): RoleBinding[] => []),
     // Every page: these are the documents a role can be bound to, and the
     // plan that is the Bebauungsplan is as often the oldest upload as not.
     fetchListingPages<unknown>(`/api/documents?projectId=${encodeURIComponent(projectId)}`)
@@ -64,21 +57,6 @@ async function load(projectId: string): Promise<void> {
       .catch(() => [] as unknown[]),
   ])
 
-  // `.json()` on an OK response still rejects on a truncated or non-JSON body,
-  // and a body of literal `null` type-checks but has no `.roles`. Either used to
-  // reject `load` before `publish`, leaving `bindings` at `null` — which every
-  // subscribed field renders as a spinner that never stops.
-  const readList = async <T>(
-    response: Response | null,
-    key: 'roles'
-  ): Promise<T[]> => {
-    if (!response?.ok) return []
-    const parsed: unknown = await response.json().catch(() => null)
-    if (!parsed || typeof parsed !== 'object') return []
-    const value = (parsed as Record<string, unknown>)[key]
-    return Array.isArray(value) ? (value as T[]) : []
-  }
-  const roles = await readList<RoleBinding>(rolesResponse, 'roles')
   const documents = listed.filter(
     (row): row is ProjectDocumentOption =>
       !!row &&

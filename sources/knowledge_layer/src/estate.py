@@ -368,7 +368,7 @@ class EstateBackend(BackendProtocol):
         limit: int = DEFAULT_LINE_LIMIT,
     ) -> ToolOutput:
         """``read_file`` on the estate: grounding blocks, one per page (agent-filesystem.md §3)."""
-        from aiq_agent.common.turn_status import ActionRow
+        from aiq_agent.common.action_rows import ActionRow
         from aiq_agent.common.turn_status import lane_tool_scope
 
         # Running, the row says what the model asked to read, in its own words; settled, what it may name.
@@ -576,7 +576,7 @@ class EstateBackend(BackendProtocol):
 
     async def ls(self, path: str | None, *, depth: int = 1, drafts: bool = False) -> ToolOutput:
         """``ls`` on the estate (agent-filesystem.md §3): a folder, or the tree as folder cards. An index."""
-        from aiq_agent.common.turn_status import ActionRow
+        from aiq_agent.common.action_rows import ActionRow
 
         from .estate_listing import render_folder
         from .estate_listing import render_root
@@ -608,7 +608,7 @@ class EstateBackend(BackendProtocol):
 
     async def glob(self, pattern: str, path: str | None = None) -> ToolOutput:
         """``glob`` on the estate: file names, ``* ** ? [abc] {a,b}``, folded. An index."""
-        from aiq_agent.common.turn_status import ActionRow
+        from aiq_agent.common.action_rows import ActionRow
 
         from .estate_listing import render_glob
 
