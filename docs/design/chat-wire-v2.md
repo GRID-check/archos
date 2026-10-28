@@ -846,7 +846,7 @@ separately. The exit criterion in the definition of done is the measured diff.
   `packages/knowledge-layer/src/decisions.py`, `packages/knowledge-layer/src/register.py`
   (lanes as models), `common/grounding_block.py`, `turn/inventory.py`,
   `turn/subject_document.py`, and the one-line call sites in
-  `agents/piloti/clarify.py`, `agents/deep_researcher/*` and `sources/*`
+  `agents/piloti/clarify.py`, `agents/deep_researcher/*` and the Python packages under `packages/`
   (`emit_*` names unchanged).
 - **Adds:** `emit`, `emit_step`, `ToolStepCallback`, `StatusStep` builders
   (~+110).

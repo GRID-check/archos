@@ -120,7 +120,6 @@ def test_the_description_scan_sees_the_tools() -> None:
 #: the lockfile and a newcomer's first `cat pyproject.toml` read.
 PACKAGE_GLOBS = (
     "pyproject.toml",
-    "sources/*/pyproject.toml",
     "frontends/*/pyproject.toml",
     "packages/*/pyproject.toml",
 )
