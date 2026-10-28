@@ -103,8 +103,8 @@ beforeEach(() => {
     if (url.includes('/members')) {
       return Response.json({
         members: [
-          { userId: 'u1', name: 'Anna Berger', profilePictureUrl: null, role: 'project-admin' },
-          { userId: 'u2', name: 'Markus Klein', profilePictureUrl: null, role: null },
+          { userId: 'u1', name: 'Anna Berger', email: null, profilePictureUrl: null, role: 'project-admin' },
+          { userId: 'u2', name: 'Markus Klein', email: null, profilePictureUrl: null, role: null },
         ],
       })
     }

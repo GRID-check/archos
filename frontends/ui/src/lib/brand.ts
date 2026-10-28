@@ -1,12 +1,11 @@
 /**
  * Single source of truth for the user-facing product brand.
  *
- * Decision (2026-07-17, click-dummy-overhaul-spec §8): the product ships
- * user-facing as **Piloti**. The internal / repo / platform name stays
- * **GRID** — env vars (`GRID_*`), headers (`x-grid-*`), CSS variables,
- * localStorage keys, DB identifiers and the "GRID Platform" organization are
- * NOT renamed. Use this constant for every user-visible brand mention
- * (wordmark, tab titles, aria labels); never for internal identifiers.
+ * The product ships user-facing as **Piloti**, and the name will change again.
+ * Use this constant for every user-visible brand mention (wordmark, tab
+ * titles, aria labels). No internal identifier carries a product name at all
+ * (env vars, headers, CSS variables, storage keys, DB identifiers): the
+ * `brand-names` ratchet holds that (docs/contributing/code-conventions.md#no-brand-names).
  */
 export const PRODUCT_NAME = 'Piloti'
 

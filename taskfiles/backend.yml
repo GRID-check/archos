@@ -48,13 +48,15 @@ tasks:
       # filter need not fire for `ci/`, `releasenotes/` or a workflow alone
       # (.github/filters.yml). They stay in the core suite too. The product-framing
       # test is here because it reads the first-impression docs, and a docs-only
-      # change runs no filtered tier.
+      # change runs no filtered tier. The layout test is here because a new
+      # top-level directory can come from any tier's change.
       - >-
         {{.PY}} -X faulthandler -m pytest -q -p no:cacheprovider
         tests/test_ci_workflows.py tests/test_reuse_green_run.py tests/test_last_green.py
         tests/test_image_inputs.py tests/test_pinned_images.py tests/test_plan_summary.py
         tests/test_release_notes.py tests/test_pr_closing_keywords.py tests/test_bun_version_pin.py
         tests/test_pr_selection.py tests/test_ci_filter_coverage.py tests/aiq_agent/test_product_framing.py
+        tests/test_repo_layout.py
 
   be:test:sources:
     desc: The sources/ package suites

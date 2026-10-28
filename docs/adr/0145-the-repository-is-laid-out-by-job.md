@@ -272,7 +272,7 @@ open PRs touching that tree have drained or been rebased by their authors.
 
 | # | Move | Lines | Waits on |
 |---|---|---|---|
-| 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter; in flight, and written here if that PR has not merged), and `tests/test_repo_layout.py` (below) | — | — |
+| 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter, `tests/test_ci_filter_coverage.py`), and `tests/test_repo_layout.py` (below), which every later row edits: it drops its legacy name and adds its old path to `MOVED` | — | — |
 | 1 | `plans/` and `docs/superpowers/` deleted (#1250, #1252) | — | — |
 | 2 | `frontends/benchmarks/oib_retrieval` + `tests/benchmarks` → `evals/`; distribution name per rule 3; `oib_compliance` deleted | 140 | — |
 | 3 | `frontends/web` → `apps/site`; `shared/brand` and the brand script → `packages/brand`; task namespace `web:` → `site:` | ~140 | open site PRs |
