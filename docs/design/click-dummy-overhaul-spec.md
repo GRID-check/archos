@@ -334,7 +334,7 @@ Design: `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329`.
 
 **Shipped in v1:** collapsible bar `Herleitung · n Zwischenschritte · m Quellen`;
 parallel per-document source cards (lane tab · name · detail · Treffer) from KB
-`## Trace-Lanes` (+ FE fallbacks); technical NAT steps secondary; multi-turn safe;
+`## Trace-Lanes` (+ FE fallbacks); technical agent runtime steps secondary; multi-turn safe;
 no timer theatrics. Captured lanes survive storage prune.
 
 **Still contract target (not v1):** full stage spine

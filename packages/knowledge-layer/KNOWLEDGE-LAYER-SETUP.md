@@ -89,15 +89,15 @@ help; **reinstall the whole extra**.
 
 ## Usage
 
-### With NeMo Agent Toolkit (YAML Config) - Recommended
+### With the agent runtime (YAML Config) - Recommended
 
-The `knowledge_retrieval` function is registered as a NAT function type. **YAML config is the recommended single source of truth** for workflow configuration:
+The `knowledge_retrieval` function is registered as a plugin function type. **YAML config is the recommended single source of truth** for workflow configuration:
 
 ```yaml
 # Example knowledge_retrieval function configuration
 functions:
   knowledge_search:
-    _type: knowledge_retrieval      # NAT function type
+    _type: knowledge_retrieval      # runtime function type
     collection_name: my_docs        # Required: target collection
     top_k: 5                        # Results to return
 ```
@@ -409,7 +409,7 @@ The registration name (e.g., `"my_backend"`) is what factory calls use:
 
 **Important:** The adapter module must be imported for registration to happen. This is why:
 1. `__init__.py` imports the adapter classes
-2. The NAT function imports from `knowledge_layer.<backend>.adapter`
+2. The plugin function imports from `knowledge_layer.<backend>.adapter`
 
 ### Core Library (`packages/agent/src/agent/knowledge/`)
 
@@ -438,7 +438,7 @@ packages/knowledge-layer/src/
         pyproject.toml   # Optional: isolated dependencies
 ```
 
-### NeMo Agent Toolkit Integration (`packages/knowledge-layer/src/`)
+### Agent runtime integration (`packages/knowledge-layer/src/`)
 
 ```
 packages/knowledge-layer/src/

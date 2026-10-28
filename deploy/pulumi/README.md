@@ -1,7 +1,7 @@
 # Piloti — Kubernetes deployment (Pulumi)
 
 TypeScript Pulumi program that deploys the entire Piloti stack to a Kubernetes
-cluster: the `aiq-agent` backend, the Next.js frontend/BFF, the purger and
+cluster: the `aiq-agent` backend (the chat tier), the Next.js frontend/BFF, the purger and
 skill-scheduler workers, plus CloudNativePG Postgres, a Dragonfly cache, and
 SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic Let's Encrypt TLS.
 

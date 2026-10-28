@@ -1,6 +1,6 @@
-# AIQ Tokenomics
+# Tokenomics
 
-Post-eval analysis module for the Deep Research Agent. Parses a NAT profiler trace, attributes costs and token counts to workflow phases (Orchestrator / Planner / Researcher), and renders a self-contained interactive HTML report.
+Post-eval analysis module for the Deep Research Agent. Parses the agent runtime's profiler trace, attributes costs and token counts to workflow phases (Orchestrator / Planner / Researcher), and renders a self-contained interactive HTML report.
 
 ---
 
@@ -8,7 +8,7 @@ Post-eval analysis module for the Deep Research Agent. Parses a NAT profiler tra
 
 ### The subagent attribution problem
 
-The workflow is registered as `deep_research_agent`, and NAT still emits `FUNCTION_START` / `FUNCTION_END` for **tools** (e.g. search). Planner and Researcher subagents are inline LangGraph graphs inside the **`task`** tool: they do not appear as their own `FUNCTION_*` scopes, and traces from this stack usually have no per-step metadata (such as `function_ancestry`) that identifies subagent phase.
+The workflow is registered as `deep_research_agent`, and the runtime still emits `FUNCTION_START` / `FUNCTION_END` for **tools** (e.g. search). Planner and Researcher subagents are inline LangGraph graphs inside the **`task`** tool: they do not appear as their own `FUNCTION_*` scopes, and traces from this stack usually have no per-step metadata (such as `function_ancestry`) that identifies subagent phase.
 
 This module uses **timing-window attribution**: every `task` TOOL_START/END pair brackets one subagent run and carries `subagent_type` in the tool input. Each `LLM_END` is classified using its **`event_timestamp`** (completion time): if it falls inside a task window, that phase applies; otherwise orchestrator. Overlapping researcher windows (parallel invocations) all yield `researcher-phase` — correct phase even when the specific instance is ambiguous.
 
@@ -20,8 +20,8 @@ This module uses **timing-window attribution**: every `task` TOOL_START/END pair
 packages/agent/src/agent/tokenomics/
 ├── pricing.py       # PricingRegistry — maps model names to per-token prices
 ├── profile.py       # RequestProfile, PhaseStats — structured data classes
-├── nat_adapter.py   # parse_trace() — NAT JSON → list[RequestProfile]
-└── report.py        # generate_report() — builds and renders HTML dashboard
+├── nat_adapter.py   # parse_trace() — runtime JSON → list[RequestProfile]
+└── report/          # generate_report() — builds and renders HTML dashboard
 ```
 
 ---

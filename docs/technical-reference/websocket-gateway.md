@@ -75,14 +75,14 @@ The socket speaks chat wire v2: the upgrade asks for `?v=2`, and any other
 version is closed with `4426`. The event set, the five client messages and
 the rejection codes are the contract in
 [`websocket-protocol.md`](../api/websocket-protocol.md); the design, and why
-it replaced NAT's frames, is [`chat-wire-v2.md`](../design/chat-wire-v2.md).
+it replaced the runtime's frames, is [`chat-wire-v2.md`](../design/chat-wire-v2.md).
 
 The client is `createTurnSocket` (`apps/workspace/ui/adapters/api/turn-socket.ts`):
 
 - **Hello.** The socket is open, and sends, only once the server's first frame
   is a v2 `hello`. Silence for 5 s, or any other first frame, fails the
   attempt: the server behind the gateway does not speak this wire (an agent
-  rolled back to NAT's stock socket passes the upgrade and ignores `?v=2`).
+  rolled back to the runtime's stock socket passes the upgrade and ignores `?v=2`).
 - **Reconnect.** A jittered ladder (`createRetryLadder`, 1 s doubling to 30 s,
   12 attempts), with the auth cookie refreshed before each attempt, since the
   handshake is the only point where the gateway reads it. A `rejected{auth_expired}`

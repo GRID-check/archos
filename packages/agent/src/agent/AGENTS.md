@@ -1,6 +1,6 @@
 # The agent: `packages/agent/src/agent`
 
-The Python half of Piloti: LangGraph agents on the NeMo Agent Toolkit (NAT), the
+The Python half of Piloti: LangGraph agents on the agent runtime (a third-party library), the
 card surface, the post-answer stages, and the knowledge layer. Stateless per
 turn. Conversation state lives in Postgres and reaches this process in headers
 (ADR-0003, ADR-0013).
@@ -17,8 +17,8 @@ scripts need.
 
 | When you | You must | What fails you |
 |---|---|---|
-| Add a tool or agent | `@register_function` with a `FunctionBaseConfig` subclass, then a `nat.plugins` entry point in the root `pyproject.toml` | NAT never discovers it, and nothing reports that |
-| Split a tool across optional deps | Give it its own entry point rather than importing from a neighbour's `register` | One missing extra (ifcopenshell, shapely) takes the whole plugin down. `aiq_bim_measure` is the worked example |
+| Add a tool or agent | `@register_function` with a `FunctionBaseConfig` subclass, then a `nat.plugins` entry point in the root `pyproject.toml` | The runtime never discovers it, and nothing reports that |
+| Split a tool across optional deps | Give it its own entry point rather than importing from a neighbour's `register` | One missing extra (ifcopenshell, shapely) takes the whole plugin down. `bim_measure` is the worked example |
 | Add a source kind | Add it to `SOURCE_KINDS` in `common/source_kinds.py` and run `uv run python scripts/generate_vocabularies.py`; then give it a tint (`KIND_TO_SIGNAL`) in `apps/workspace/bff/source-kinds.ts` | The `vocabularies` pre-commit hook and `tests/test_vocabularies_generated.py` for the tuple; `task workspace:types` for the missing tint |
 | Emit a card | On chat, put it in the answer envelope's `cards` field (`cards/envelope.py`); Piloti no longer binds `emit_card`. Deep research still pushes through the `emit_card` tool, and a system card is pushed by the tool that did the work. Every path lands in the session `CardRegistry`; address a card from prose as `[[card:N]]` | The frontend resolves N positionally against the same ordered array. A card that bypasses the `CardRegistry` is unaddressable |
 | Add per-turn state | A `ContextVar` registry created/reset per turn, the way `cards/registry.py` and `citations/session.py` do | Module-level state leaks across turns and across tenants. Process-lifetime state is allowed only when it holds no tenant or turn data: a bounded cache keyed by model id or content (the query-embedding LRU and its in-flight dedupe in `knowledge_layer/llamaindex/query_embeddings.py`, `common/llm_factory._REASONING_MANDATORY`), a build-time handle (`knowledge/factory._SEARCH_RETRIEVER`), or references that keep running work alive (`agents/piloti/register._WARMING`) |

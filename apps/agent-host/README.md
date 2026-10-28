@@ -1,4 +1,4 @@
-# AI-Q API
+# Agent host API
 
 Unified API plugin for the AI-Q blueprint: **Knowledge API** (collections, documents) and **Async Job API** (agent-agnostic jobs with SSE streaming).
 
@@ -8,7 +8,7 @@ Unified API plugin for the AI-Q blueprint: **Knowledge API** (collections, docum
 ### Web Mode - Local Development
 
 ```bash
-# Loads API keys from deploy/.env; NeMo Agent toolkit auto-creates:
+# Loads API keys from deploy/.env; the agent runtime auto-creates:
 # - SQLite database at .tmp/job_store.db
 PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_openrouter.yml
 ```
@@ -26,7 +26,7 @@ PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                  NeMo Agent toolkit layer                       │
+│                  Agent runtime layer                            │
 │                  (Built-in infrastructure)                      │
 │                                                                 │
 │   nat.front_ends.fastapi/                                       │
@@ -39,7 +39,7 @@ PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    AI-Q API (extension layer)                   │
+│                  Agent host API (extension layer)               │
 │                                                                 │
 │   apps/agent-host/src/agent_host/                                │
 │   ├── jobs/                                                     │
@@ -54,7 +54,7 @@ PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib
 │   │   └── documents.py       # /v1/documents (upload, ingest)   │
 │   ├── models/requests.py     # Pydantic request/response models │
 │   ├── registry.py            # Agent type registry              │
-│   ├── plugin.py              # NAT FastAPI plugin (AgentHostWorker)│
+│   ├── plugin.py              # FastAPI plugin (AgentHostWorker)│
 │   ├── chat_socket.py         # /websocket: the chat wire v2     │
 │   ├── conversation_bus.py    # frames between replicas, attach  │
 │   └── internal_api.py        # writes into the BFF internal API │
@@ -164,7 +164,7 @@ Events streamed during job execution:
 | **Web** (`nat serve`) | Yes | `./jobs.db` (or `front_end.db_url`) | Auto-creates SQLite |
 | **Production** | Yes | PostgreSQL | Set `NAT_JOB_STORE_DB_URL` or `front_end.db_url` |
 
-### NAT Config File
+### Config File
 
 ```yaml
 # configs/config_oib_openrouter.yml (abridged)
@@ -199,9 +199,9 @@ is disabled by default and opt-in via the `REQUIRE_AUTH` environment variable.
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `REQUIRE_AUTH` | Enforce authentication on all non-exempt routes | `false` |
-| `TRACE_USER_IDENTITY_MODE` | Control whether verified user identity is attached to NAT spans: `none`, `id`, or `full` | `none` |
+| `TRACE_USER_IDENTITY_MODE` | Control whether verified user identity is attached to workflow spans: `none`, `id`, or `full` | `none` |
 | `TRACE_USER_IDENTITY_HMAC_SECRET` | Secret used to pseudonymize verified user IDs in traces when identity tagging is enabled | unset |
-| `TRACE_CLIENT_ID_MODE` | Control whether a pseudonymous client identifier is attached to NAT spans: `none` or `ip` | `none` |
+| `TRACE_CLIENT_ID_MODE` | Control whether a pseudonymous client identifier is attached to workflow spans: `none` or `ip` | `none` |
 | `TRACE_CLIENT_ID_HMAC_SECRET` | Secret used to pseudonymize client IDs when client tagging is enabled; falls back to the user-identity secret | unset |
 | `TRACE_CLIENT_IP_HEADERS` | Ordered comma-separated client IP headers to trust before falling back to the ASGI client address | `x-real-ip,x-forwarded-for` |
 
@@ -213,13 +213,13 @@ no validators are registered.
 
 Two registration mechanisms are supported — pick whichever fits your deployment:
 
-### NAT span request tagging
+### Span request tagging
 
-Auth middleware can enrich NAT-exported workflow spans with low-risk request
+Auth middleware can enrich exported workflow spans with low-risk request
 tags and optional pseudonymous identity tags. The resolved tags are propagated
 through HTTP requests, WebSocket workflow execution, and async jobs.
 
-Always-on NAT span tags:
+Always-on span tags:
 
 - `nat.app.caller.type`: resolved caller type from the auth middleware
 - `nat.app.auth.transport`: `bearer`, `cookie`, or `none`
@@ -313,7 +313,7 @@ beside `X-Access-Channel`): the BFF and the backend deploy separately.
 
 ## Registering New Agents
 
-Agents are registered by type so the job runner can load them from NAT config. Register at import time (e.g. in your NAT plugin or app startup):
+Agents are registered by type so the job runner can load them from the workflow config. Register at import time (e.g. in your plugin entry point or app startup):
 
 ```python
 from agent_host.registry import register_agent
@@ -327,7 +327,7 @@ register_agent(
 ```
 
 Requirements:
-- **config_name** must match a NAT function in your YAML (e.g. `deep_research_agent`).
+- **config_name** must match a function in your YAML (e.g. `deep_research_agent`).
 - The agent class must be constructable from that config and support the run signature expected by the runner (see `jobs/runner.py`).
 
 ## Knowledge API
@@ -339,13 +339,13 @@ When a `knowledge_retrieval` function is configured in your workflow, the plugin
 
 They serve the llamaindex backend that the `knowledge_retrieval` function sets up (ADR-0072). If no knowledge function is configured, these routes are not registered.
 
-## Comparison with NAT's Built-in Async
+## Comparison with the Runtime's Built-in Async
 
-NAT's `/generate/async` is not mounted: none of NAT's HTTP turn routes is, since a
+The runtime's `/generate/async` is not mounted: none of its HTTP turn routes is, since a
 chat turn runs on the chat socket alone (`AgentHostConfig`, ADR-0068). The table is
 why research jobs never needed it.
 
-| Feature | NAT `/generate/async` | `/v1/jobs/async` |
+| Feature | Runtime `/generate/async` | `/v1/jobs/async` |
 |---------|----------------------|------------|
 | Job tracking | JobStore | Same JobStore |
 | Database | SQLite/Postgres | Same |

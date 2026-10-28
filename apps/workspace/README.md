@@ -8,7 +8,7 @@ Built with Next.js, React, TypeScript, TailwindCSS, and NVIDIA KUI Foundations.
 
 ## Overview
 
-The Piloti UI provides an accessible, feature-rich frontend for the AI-Q backend. It features:
+The Piloti UI provides an accessible, feature-rich frontend for the agent backend. It features:
 
 - **Next.js** with App Router and Turbopack
 - **React** with TypeScript (strict mode)
@@ -22,7 +22,7 @@ The Piloti UI provides an accessible, feature-rich frontend for the AI-Q backend
 - Bun (installer + script runner: `bun install`, `bun run <script>`)
 - Node.js (the runtime — the app, the Next build and the `node` scripts)
 - npm (nested `npm run` invocations in some scripts)
-- AI-Q Blueprint running (default: `http://localhost:8000`)
+- Agent backend running (default: `http://localhost:8000`)
 
 ## Quick Start
 
@@ -139,7 +139,7 @@ This architecture ensures the backend doesn't need public exposure - only the UI
 
 ## Session Storage Management
 
-The AI-Q UI uses localStorage to persist chat sessions across page refreshes. To prevent quota exceeded errors and ensure optimal performance, the app implements automatic storage management.
+The UI uses localStorage to persist chat sessions across page refreshes. To prevent quota exceeded errors and ensure optimal performance, the app implements automatic storage management.
 
 ### Storage Limits
 
@@ -236,8 +236,8 @@ services:
     image: frontend:latest
     environment:
       # Backend
-      - BACKEND_URL=http://backend:8000
-      - BACKEND_CHAT_URL=http://backend-chat:8000
+      - BACKEND_URL=http://api:8000
+      - BACKEND_CHAT_URL=http://chat:8000
 
       # Authentication (auth is disabled by default)
       - REQUIRE_AUTH=${REQUIRE_AUTH:-false}
@@ -276,8 +276,8 @@ docker run -p 3000:3000 \
 When using docker-compose or custom networks, use service names:
 
 ```bash
--e BACKEND_URL=http://backend:8000
--e BACKEND_CHAT_URL=http://backend-chat:8000
+-e BACKEND_URL=http://api:8000
+-e BACKEND_CHAT_URL=http://chat:8000
 ```
 
 ### Health Check

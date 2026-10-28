@@ -14,7 +14,7 @@ header parse, an inventory load, a registry bind, a refusal — is a unit here.
 edge, a clarify hop, an answer — is a graph node in `agents/piloti/`.
 
 Each unit is a plain function with an explicit signature, so it can be tested
-without standing up a NAT workflow. That is the point of the package: the
+without standing up the runtime's workflow. That is the point of the package: the
 harness used to be one closure, and a field could be written, declared by the
 frontend and reach nobody without a single test noticing.
 
@@ -46,7 +46,7 @@ v2 §b). The docs of record are
 
 - **Add the token callback to the call's inherited manager** (`streaming_call`),
   never as the call's own `callbacks`. Those replace the inherited ones, and
-  NAT's profiler, which bills the call, rides on them.
+  the runtime's profiler, which bills the call, rides on them.
 - **Live bodies are provisional.** `RUN_FINISHED` is authoritative, replaces the
   text, and is what the socket persists.
 - **A streamed call that turns out to ask for tools was a round, not the

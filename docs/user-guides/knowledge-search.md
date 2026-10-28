@@ -68,7 +68,7 @@ Summaries are generated during ingestion using the configured `summary_model` LL
 
 ## Web Search
 
-Web search is provided by a separate NAT function. When enabled:
+Web search is provided by a separate plugin function. When enabled:
 
 - The AI can fetch and cite current information from the internet
 - Web results supplement the local knowledge base

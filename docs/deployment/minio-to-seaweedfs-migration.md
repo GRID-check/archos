@@ -1,7 +1,7 @@
 # MinIO → SeaweedFS data migration
 
 The MinIO → SeaweedFS switch keeps the **same bucket name** (`grid-documents`)
-and the **same object-key layout** (`lib/s3.ts` `buildStorageKey`), so migrating
+and the **same object-key layout** (`apps/workspace/bff/s3.ts` `buildStorageKey`), so migrating
 data is a straight 1:1 object copy — no re-ingestion, and the
 `documents.storage_key` pointers keep resolving unchanged.
 
@@ -36,7 +36,7 @@ needed — while the permanent stack is parked at
   it is independent of which store the app talks to.)
 - `seaweedfs`/`seaweedfs-init` come up exactly as in the final compose.
 - `storage-migrate` (one-shot, frontend image) runs
-  `node scripts/migrate-storage.mjs` MinIO → SeaweedFS and verifies, on **every
+  `node apps/workspace/scripts/migrate-storage.mjs` MinIO → SeaweedFS and verifies, on **every
   deploy/restart** of the stack — idempotent, so re-running is cheap.
 
 Steps:

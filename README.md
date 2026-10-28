@@ -17,7 +17,7 @@ other documents describe Piloti the same way.
 | Part | Where | What it does |
 |---|---|---|
 | **UI and BFF** | [`apps/workspace`](apps/workspace) | Next.js 16 app: projects, files, the building model, chat, tasks. Its API routes are the backend-for-frontend: auth, the Postgres database, and the WebSocket gateway (`server.js`). |
-| **Agent** | [`packages/agent/src/agent`](packages/agent/src/agent) | Python service on the NeMo Agent Toolkit and LangGraph. It answers chat turns, runs research jobs and calls the models. |
+| **Agent** | [`packages/agent/src/agent`](packages/agent/src/agent) | Python service on a third-party agent runtime and LangGraph. It answers chat turns, runs research jobs and calls the models. |
 | **Knowledge layer** | [`packages/knowledge-layer`](packages/knowledge-layer) | Reads the office's documents and the legal corpus, chunks and embeds them into Qdrant, and searches them with the scope of each request. |
 
 Each part has its own `AGENTS.md` next to the code. Read it before you change
@@ -50,7 +50,7 @@ ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib
 Each upload queues its own ingestion. Follow it in the logs:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yaml --env-file deploy/.env logs -f aiq-agent
+docker compose -f deploy/compose/docker-compose.yaml --env-file deploy/.env logs -f ingest-worker
 ```
 
 Auth needs the `WORKOS_*` values in `deploy/.env` (see

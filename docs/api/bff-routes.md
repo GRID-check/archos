@@ -422,7 +422,7 @@ Source: `apps/workspace/app/api/health/route.ts`
 | Method | Path | Auth | Description | Request Body | Response |
 |--------|------|------|-------------|-------------|----------|
 | `GET` | `/api/v1/{path}` | Varies | Proxy for the agent service's `/v1/*` routes a product client uses — an **allowlist** (`lib/proxy/v1-allowlist.ts`): `data_sources`, `documents/{jobId}/status`, `collections/{name}`, `collections/{name}/documents`. The research-runs listing goes through `/api/jobs/async/jobs` instead, which signs the project it checked. Anything else answers `404` before any upstream request. | — | JSON from backend |
-| `POST` | `/api/v1/{path}` | Varies | Same allowlist: `collections` (create). No upload is forwarded: every shelf has a first-party upload route. NAT's agent-turn routes (`chat`, `chat/completions`, `workflow`, …) are not forwarded: they ran outside the signed context envelope. | JSON | JSON from backend |
+| `POST` | `/api/v1/{path}` | Varies | Same allowlist: `collections` (create). No upload is forwarded: every shelf has a first-party upload route. The agent runtime's turn routes (`chat`, `chat/completions`, `workflow`, …) are not forwarded: they ran outside the signed context envelope. | JSON | JSON from backend |
 
 Collection validation rules in `validateCollectionName()` (per method):
 - Base collection (e.g., `oib_knowledge`): rejected with `400 INVALID_COLLECTION`.

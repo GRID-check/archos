@@ -294,7 +294,7 @@ general research requests.
   `agent_host.jobs.submit.submit_agent_job` and immediately returns the job
   id, on the research queue (ADR-0021). The worker
   (`agent_host.jobs.runner`, replayed identically by the research worker and by
-  `agent_host.jobs.worker`) rebuilds the agent from the NAT config and forwards
+  `agent_host.jobs.worker`) rebuilds the agent from the workflow config and forwards
   `user_info`, `clarifier_result`, `project_context`, `available_documents`,
   and `data_sources` onto the state so both paths render identical prompts.
   Response cards are generated post-hoc from the final report in the job

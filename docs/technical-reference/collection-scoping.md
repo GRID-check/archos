@@ -43,7 +43,7 @@ The Archiv collection is injected in `buildCollectionScopeFromRequest` (which ha
      │ X-Grid-Collection-Scope header                          │ calls /api/auth/websocket-scope
      ▼                                                          ▼
 ┌────────────────────────────────────────────────────────────────┐
-│                   Python Backend (NAT context)                  │
+│                   Python Backend (runtime context)              │
 │                                                                  │
 │  get_collection_scope_from_context() → list[str] | None         │
 │    Reads X-Grid-Collection-Scope from Context.metadata.headers   │
@@ -244,7 +244,7 @@ The pattern is used in:
 
 ### `get_collection_scope_from_context()`
 
-Reads and decodes the `X-Grid-Collection-Scope` header from NAT context:
+Reads and decodes the `X-Grid-Collection-Scope` header from the runtime context:
 
 ```python
 def get_collection_scope_from_context() -> list[str] | None:
@@ -316,7 +316,7 @@ re-injects it into the worker's own request context **only when present**:
 ```python
 if collection_scope is not None:
     encoded = base64.urlsafe_b64encode(json.dumps(collection_scope).encode()).rstrip(b"=").decode()
-    # ... set back onto the header the worker's NAT context reads
+    # ... set back onto the header the worker's runtime context reads
 ```
 
 If `collection_scope` is `None` at submit time (e.g. the request bypassed the
@@ -342,4 +342,4 @@ invisible.
 | 1 (highest) | `X-Grid-Collection-Scope` header | Present on proxied HTTP requests and WebSocket upgrades |
 | 2 | `_resolve_target_collections()` config | Header absent (legacy/fallback) |
 
-The header is always set for proxied HTTP requests (`/api/v1/*`, `/api/jobs/async/*`) and WebSocket upgrades. It is absent only when requests bypass the BFF or when the NAT context has no metadata headers.
+The header is always set for proxied HTTP requests (`/api/v1/*`, `/api/jobs/async/*`) and WebSocket upgrades. It is absent only when requests bypass the BFF or when the runtime context has no metadata headers.

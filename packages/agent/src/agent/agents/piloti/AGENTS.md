@@ -1,8 +1,9 @@
 # Piloti: `packages/agent/src/agent/agents/piloti`
 
 The agent that answers every chat turn, and the conversation graph that gives
-it a checkpointer and one outgoing edge. Two NAT registrations: `register.py`
-for the agent, `conversation_register.py` for the workflow NAT runs per turn.
+it a checkpointer and one outgoing edge. Two plugin entry points
+(`nat.plugins` in `packages/agent/pyproject.toml`): `register.py` for the agent,
+`conversation_register.py` for the workflow that runs per turn.
 `clarify.py` is a step of that graph, not an agent.
 
 The persona is a member of the planning office, not a compliance checker.
@@ -79,14 +80,14 @@ site naming the reader that would break.
 
 | Name | Where it is read | Site |
 |---|---|---|
-| `research_agent`, `research_workflow`, `chat_deepresearcher_agent` | NAT `_type` in every `configs/*.yml` and every benchmark config | `register.py`, `conversation_register.py` |
-| `shallow_research_agent` | the NAT function *instance* name; the frontend persists it as `functionName` on every stored turn and the live-trace rules match the substring `shallow` | `configs/config_oib_openrouter.yml` |
+| `research_agent`, `research_workflow`, `chat_deepresearcher_agent` | the runtime's `_type` key in every `configs/*.yml` and every benchmark config | `register.py`, `conversation_register.py` |
+| `shallow_research_agent` | the runtime's function *instance* name; the frontend persists it as `functionName` on every stored turn and the live-trace rules match the substring `shallow` | `configs/config_oib_openrouter.yml` |
 | `shallow_research` | graph node and `AgentGroup` id, stored in `platform_models.agent_group` for every org that re-pointed this agent's model | `conversation.py`, `common/model_overrides.py` |
 | `chat_researcher` | `PROFILE_AGENT_NAME`, the profiler span the reasoning view labels by | `turn/admission.py` |
 | `research_llm` | config key. `researcher_llm` is deep research's own role field and cannot be reused | `register.py` |
 | `researcher` (skill scope) | `platform_skills.grid_agents` and every skill's frontmatter; both resolvers IGNORE a name they do not know, so a rename without a migration serves chat-scoped skills to deep research in silence | `skills/resolver.py`, `register.py` |
 | `researcher` (job agent type) | `AGENT_REGISTRY`, a schedule's stored `agent_type` | `apps/agent-host/src/agent_host/registry.py` |
-| `conversation_researcher`, `aiq_researcher_conversation` | `nat.plugins` entry-point names, carried in the installed dist metadata | `pyproject.toml` |
+| `researcher_conversation` | `nat.plugins` entry-point name, carried in the installed dist metadata | `pyproject.toml` |
 | `LLMRole.RESEARCHER` | a semantic LLM role shared with deep research | `common/llm_provider.py` |
 
 The ADRs and the dated audits under `docs/` still say `researcher`,

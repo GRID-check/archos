@@ -46,10 +46,10 @@ docker compose --env-file ../.env -f docker-compose.yaml up -d
 
 ### chat (the `chat` role)
 
-The Python backend running NAT + FastAPI as `PROCESS_ROLE=chat`: the chat WebSocket
-and the answers running on it, the only way a turn runs (NAT's HTTP turn routes,
+The Python backend running the agent runtime in a FastAPI app as `PROCESS_ROLE=chat`: the chat WebSocket
+and the answers running on it, the only way a turn runs (the runtime's HTTP turn routes,
 `/generate`, `/chat`, `/v1/chat/completions` and the rest, are not mounted). It
-serves no other route but `/health` and NAT's few that run no turn. The frontend's gateway
+serves no other route but `/health` and the runtime's few that run no turn. The frontend's gateway
 reaches it with `BACKEND_CHAT_URL=http://chat:8000`, and nothing else does.
 Every other HTTP route is [`api`](#api-the-api-role)'s.
 
@@ -89,7 +89,7 @@ and set their own `PROCESS_ROLE`, so the four cannot drift.
 
 | Mount | Purpose |
 |-------|---------|
-| `../../configs:/app/configs:ro` | NAT workflow YAML configs |
+| `../../configs:/app/configs:ro` | Workflow YAML configs |
 
 There is no mount for the OIB Richtlinien PDFs: the base corpus lives in SeaweedFS
 and the `oib_corpus_files` table (ADR-0082 step A2). Upload it in the admin UI, or

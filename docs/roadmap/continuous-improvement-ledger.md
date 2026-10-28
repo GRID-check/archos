@@ -107,7 +107,7 @@ debt, in the order they matter:
 3. ~~`packages/knowledge-layer/src/cross_encoder.py:378` — `TODO(cost-tracking): emit a usage event (model, search_units)` → item 25.~~ Closed in I1.
 4. `apps/workspace/ui/features/documents/hooks/use-surfaced-documents.ts:240` — the 500-row resolve window → item 28.
 5. `apps/workspace/bff/jobs/backend-client.ts:48` — `conversation_id` is "THE SEAM, not the feature": nothing sets it, pending the ownership model for a job's conversation.
-6. `apps/agent-host/src/agent_host/websocket_reconnect.py:1621` — `install_reconnectable_handler` is a local monkeypatch, `TODO: upstream to NAT`.
+6. `websocket_reconnect.py:1621` (file since removed) — `install_reconnectable_handler` was a local monkeypatch, `TODO: upstream to the runtime`.
 7. `packages/ris-adapter/src/register.py:285` — `TODO(follow-up): re-evaluate switching method= away from json_schema`, the same constrained-decoding class of bug that PR #75 fixed for the researcher.
 8. `apps/workspace/ui/features/chat/hooks/use-deep-research.spec.ts:511` — a skipped assertion, "Fix fake timer interaction with waitFor"; a hole in the coverage of the surface items 32 and 33 touch.
 9. `packages/agent/src/agent/common/norm_registry.py:236` — `review_note` is an open verification queue for the norm registry with an admin UI and no owner.

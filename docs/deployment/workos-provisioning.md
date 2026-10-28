@@ -142,7 +142,7 @@ registered. WorkOS shapes this, verified against Staging on 2026-10-09: a
 create a cycle"*), a hierarchy is five levels deep at most, a resource cannot
 move to another parent, and roles only add down a tree. So moving a folder
 inside its project never touches WorkOS, and the narrowing over the folder's
-ancestors stays in Grid's code (`effectiveFolderLevel`). The app registers the
+ancestors stays in Piloti's code (`effectiveFolderLevel`). The app registers the
 folder when someone gives it its own list and deletes the resource when it goes
 back to inheriting; a deleted folder keeps its resource, as its row is kept.
 About 5,000 resources of one type per organization is WorkOS's soft limit.

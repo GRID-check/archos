@@ -492,7 +492,7 @@ its passage; this asks what the reader waited for and what they got.
 - **Flags:** `--only <id> …` runs the named questions (an unknown id, or
   one that needs a project, exits 2 and says which). `--runs N` sets runs per
   question (default 2), `--workers N` how many run at once (default 3). `--override KEY VALUE` sets a config value for every
-  run, in `nat run` dot notation, and repeats. `--all`, `--baseline`,
+  run, in the dot notation `nat run` takes, and repeats. `--all`, `--baseline`,
   `--report` and `--ingest` are described above and below.
 - **No stack needed:** `--ingest --corpus data/oib` takes the base corpus
   from that directory's PDFs instead of the object store, so the suite runs
@@ -875,7 +875,7 @@ script says so and exits). CPU throttling and `--animations` need Chromium.
 The page is development only, so these are `next dev` numbers: React's dev
 build, whose prop-diff logging alone was a tenth of the profile. Compare runs
 on the same server, never with production. On the old wire (measured
-2026-09-27, NAT's stock step adaptor: 316 step frames of 16 to 33 KB) a phone
+2026-09-27, the agent runtime's stock step adaptor: 316 step frames of 16 to 33 KB) a phone
 spent 48 s in long tasks on one turn; that wire, and the harness's `heavy`
 and `light` modes that replayed it, are gone with the v2 cut.
 

@@ -17,14 +17,14 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 
 | Field in Langfuse | Where it comes from | Values |
 |---|---|---|
-| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels; metadata `page`, `prompt_version` and `purpose`, `person` from the compare view or `notice` when Piloti compared a new Fassung on its own, ADR-0130), `look-reading` (the second reader of `look` with a `question`: the office's ingest vision model on the same crop, input shown without the pixels, metadata `prompt_version` and `region`; an ERROR generation when the model could not be reached, and the tool still answers), `filing-fit` (where an upload batch belongs, or a root sort's chunk with `purpose: sort`; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `folder-proposals.map` and `folder-proposals.reduce` (a root sort's new folders: the groups of one chunk, then the merge across them), `folder-card` (one folder's written card in the ingest worker, ADR-0127: the summary model, metadata `collection`, `depth`, `prompt_version`, `documents`, `subfolders`, `mode` (`incremental`: the old card and the diff alone; `full`: the whole folder) and the diff sizes `diff_added`, `diff_removed`, `diff_changed`; a card that only lost documents is pruned without a call and has no generation), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, or one A2A method, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>` or `a2a.<operation>`; metadata and tags below) |
+| Trace name | `trace_context.trace_name_for_root` (agent runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels; metadata `page`, `prompt_version` and `purpose`, `person` from the compare view or `notice` when Piloti compared a new Fassung on its own, ADR-0130), `look-reading` (the second reader of `look` with a `question`: the office's ingest vision model on the same crop, input shown without the pixels, metadata `prompt_version` and `region`; an ERROR generation when the model could not be reached, and the tool still answers), `filing-fit` (where an upload batch belongs, or a root sort's chunk with `purpose: sort`; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `folder-proposals.map` and `folder-proposals.reduce` (a root sort's new folders: the groups of one chunk, then the merge across them), `folder-card` (one folder's written card in the ingest worker, ADR-0127: the summary model, metadata `collection`, `depth`, `prompt_version`, `documents`, `subfolders`, `mode` (`incremental`: the old card and the diff alone; `full`: the whole folder) and the diff sizes `diff_added`, `diff_removed`, `diff_changed`; a card that only lost documents is pruned without a call and has no generation), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, or one A2A method, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>` or `a2a.<operation>`; metadata and tags below) |
 | Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
 | Release | `GIT_SHA`, the image's commit | the commit hash |
-| Session | the conversation id (NAT sets `session.id`) | one session per chat |
+| Session | the conversation id (the runtime sets `session.id`) | one session per chat |
 | User | the verified WorkOS subject, only with `TRACE_IDENTITY_ATTRIBUTES=true` | WorkOS user id |
 | Observation type | `nat.span.kind` mapped by `trace_context.observation_type` | `agent` (the turn), `generation` (a model call), `tool`, `retriever` (`retrieve.*`), `chain`, `embedding`, `guardrail`, `evaluator` |
 | Prompt | `PromptLinkProcessor`, generations only | `piloti-system-static` and its version |
-| Usage and cost | `UsageAttributeProcessor` (NAT), `observed_generation` (auxiliary) | input, output, cached and reasoning tokens; the provider's cost when it reports one |
+| Usage and cost | `UsageAttributeProcessor` (agent runtime), `observed_generation` (auxiliary) | input, output, cached and reasoning tokens; the provider's cost when it reports one |
 
 **A trace never holds image bytes.** A page crop reaches the chat model as a `data:image/...;base64,...`
 block, and from there it is copied into the tool span's `output.value` and the next generation's
@@ -96,7 +96,7 @@ when it did not). A refusal is `{"refused": <code>}`: `no_envelope`, `not_found`
 Each „Im Büro behandelt“ search (`POST /v1/collections/similar`) is a root
 trace `similar-passages` holding one `retrieve.similar_passages` retriever
 observation (`direct_trace.observed_retrieval`, since the route runs outside
-NAT): its input the source's collection, file, page and kind, whether it named
+agent runtime): its input the source's collection, file, page and kind, whether it named
 a chunk, the length of its text and how many collections were searched; its
 output `origin` (`point` or `embedded`), the filter fields (never values) and
 the picks by collection, file, chunk, page and score. Metadata: `origin`,
@@ -432,7 +432,7 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 
 | When you | You must |
 |---|---|
-| Add a model call inside a NAT run | Nothing: the exporter's processors cover it. Check the generation shows usage in Langfuse |
+| Add a model call inside an agent run | Nothing: the exporter's processors cover it. Check the generation shows usage in Langfuse |
 | Add a model call outside one (a route, a script, a worker) | Wrap it in `observed_generation("<feature>", …)` and add the feature to the trace-name table above. `test_model_calls_are_traced.py` covers `agent_host` routes |
 | Add or change a quality check | Emit a score through `langfuse_scores.emit_scores`, declare it in `SCORE_DEFINITIONS`, add its row here, run `task langfuse:provision` |
 | Add a dimension an analyst should slice by | Trace metadata through `record_trace_metadata` (tools) or `turn_outcome` (turn results); a tag only if it is a low-cardinality label |
@@ -444,10 +444,10 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 | Concern | Module |
 |---|---|
 | Environment, release, types, trace names | `packages/agent/src/agent/observability/trace_context.py` |
-| The processors on NAT's exporter | `packages/agent/src/agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
+| The processors on the runtime's exporter | `packages/agent/src/agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
 | A turn's outcome on its root | `packages/agent/src/agent/observability/turn_outcome.py`, bound in `agent_host/chat_socket.py` `_drive` |
 | Runtime scores | `packages/agent/src/agent/observability/langfuse_scores.py` |
-| Model calls outside NAT | `packages/agent/src/agent/observability/direct_trace.py` |
+| Model calls outside the runtime | `packages/agent/src/agent/observability/direct_trace.py` |
 | Langfuse configuration as code | `packages/agent/src/agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
 | Votes, reasons, review queue | `apps/workspace/bff/langfuse/feedback-score.ts` |
 | Decisions on Piloti's proposals, marks and changes | `apps/workspace/bff/langfuse/decision-score.ts` |

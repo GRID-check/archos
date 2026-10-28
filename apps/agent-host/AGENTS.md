@@ -1,6 +1,6 @@
 # The API plugin: `apps/agent-host`
 
-The backend's FastAPI front end, loaded by NAT as a front-end plugin
+The backend's FastAPI front end, loaded by the agent runtime as a front-end plugin
 (`_type: agent_host`): REST routes, the async job API with SSE streaming, and
 `/v1/ingest`. A uv workspace member, installed into the same venv as the agent.
 

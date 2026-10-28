@@ -202,8 +202,8 @@ The validated principal is accessible in Python via `get_current_principal()` fr
 `get_auth_token()` in `packages/agent/src/agent/auth/utils.py` returns a token from the first available source, checked in priority order:
 
 1. **Registered token fetchers** — custom fetchers registered via `register_token_fetcher(fn, priority)`, sorted high-to-low
-2. **NAT Context cookies** — `idToken` cookie from the NAT context (browser / web-UI mode)
-3. **NAT Context Authorization header** — `Authorization: Bearer <jwt>` from the NAT context (API callers)
+2. **Runtime context cookies** — `idToken` cookie from the runtime context (browser / web-UI mode)
+3. **Runtime context Authorization header** — `Authorization: Bearer <jwt>` from the runtime context (API callers)
 4. Returns `None` if no source yields a token
 
 ## WebSocket auth
