@@ -15,7 +15,7 @@ type EnvVar = k8s.types.input.core.v1.EnvVar;
  * One run-to-completion Job from the frontend image. Bare `node` on a bundle:
  * the runtime image drops bun, npx, tsx and every devDependency, so the
  * TypeScript scripts are bundled to plain ESM at image build time
- * (`frontends/ui/deploy/Dockerfile`, `dist-scripts/`), with their packages
+ * (`apps/workspace/deploy/Dockerfile`, `dist-scripts/`), with their packages
  * resolved from the production `node_modules`.
  */
 function workosJob(
@@ -64,7 +64,7 @@ function workosJob(
 
 /**
  * Makes the WorkOS environment hold every permission and role of the app's
- * authorization catalog (`frontends/ui/src/lib/authz/catalog.ts`) once per
+ * authorization catalog (`apps/workspace/bff/authz/catalog.ts`) once per
  * deploy: `provision:authz --apply`, which used to be a runbook step per
  * environment and was skipped often enough that Production lacked a permission
  * the code already checked.

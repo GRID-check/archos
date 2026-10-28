@@ -18,11 +18,11 @@ build/
 # Generated / vendored code
 **/generated.ts
 **/*.generated.*
-**/drizzle/**
+**/migrations/**
 **/migrations/**
 **/__mocks__/**
 **/mocks/**
-shared/cards/schemas.json
+contracts/cards/schemas.json
 
 # Non-source assets and data
 data/

@@ -149,7 +149,7 @@ export function langfuseInClusterUrl(): string {
 /**
  * What the BFF needs to write answer feedback into Langfuse as scores and to
  * link a rated turn to its trace (ADR-0044, Amendment 3;
- * `frontends/ui/src/lib/langfuse/config.ts` reads exactly these names).
+ * `apps/workspace/bff/langfuse/config.ts` reads exactly these names).
  *
  * Empty unless the tier is deployed, so a stack without Langfuse renders the
  * frontend exactly as before and the BFF's scoring stays a no-op.

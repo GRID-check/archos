@@ -5,7 +5,7 @@ search, passage reading, the file browser, page images, the two BIM tools, RIS)
 with the arguments in the body, and answers what the tool returned. The BFF's
 MCP server is the only caller: an outside agent reaches Piloti's best reads
 through ``/api/mcp`` and the BFF forwards the call here
-(``frontends/ui/src/lib/agent-api/backend-operations.ts``).
+(``apps/workspace/bff/agent-api/backend-operations.ts``).
 
 Two credentials, as for every act of a person on this tier:
 

@@ -365,7 +365,7 @@ class TestAuthorizeJobAccess:
 
 def test_the_job_envelope_window_is_the_bff_verifiers():
     """The two windows are one decision written in two languages; this holds them equal."""
-    source = (Path(__file__).resolve().parents[3] / "frontends/ui/src/lib/request-context.ts").read_text()
+    source = (Path(__file__).resolve().parents[3] / "apps/workspace/bff/request-context.ts").read_text()
     match = re.search(r"export const REQUEST_CONTEXT_MAX_AGE_MS = ([\d *]+)\n", source)
     assert match, "REQUEST_CONTEXT_MAX_AGE_MS moved; point this test at it"
 

@@ -48,7 +48,7 @@ measuring them needs the TypeScript parser, which lives in the UI's
 `node_modules` that the Repo checks job does not install.
 
 Not checked, because their length follows their input rather than a design
-choice: generated files (the card schemas' `shared/cards/generated.ts`,
+choice: generated files (the card schemas' `src/shared/cards/generated.ts`,
 `*.generated.*`, `*.d.ts`), tests,
 specs, fixtures and test helpers, migrations, and copy (the i18n dictionaries,
 the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.
@@ -62,7 +62,7 @@ AI-Q, then Grid, now Piloti, and the next name is coming; every earlier rename
 was a code change across thousands of lines. Name the thing for what it does:
 `MAX_ACTIVE_JOBS_PER_ORG`, not `MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
 `piloti_wakes`. The product's name is copy, read from one place:
-`PRODUCT_NAME` in `frontends/ui/src/lib/brand.ts`, which the dictionaries
+`PRODUCT_NAME` in `apps/workspace/bff/brand.ts`, which the dictionaries
 reach as `{productName}`, and `aiq_agent.common.brand.PRODUCT_NAME`, which a
 prompt reaches as `{{ product_name }}`. `tests/test_product_name_parity.py`
 holds the two equal.
@@ -73,7 +73,7 @@ holds the two equal.
 arrived, a file may not gain one, and a cleanup makes the check fail until
 `--update` lowers the entry. A move re-keys entries: `--rebaseline`, and check
 its diff shows only the move. A directory is its own key (`dir/`), so a new
-file inside `src/aiq_agent/` is fine and a new `piloti_x/` folder is not.
+file inside `packages/agent/src/aiq_agent/` is fine and a new `piloti_x/` folder is not.
 
 Not a hit: the name as a word in prose (`Piloti` or `Grid` alone, in a
 comment or a string a person reads), `grid` the English word (CSS and Tailwind,
@@ -104,7 +104,7 @@ The agent tier grew to nineteen thousand lines with functions that ran two
 hundred lines deep and four `if`s wide, and the cost was not aesthetic: a fix
 in the middle of one of them could not be tested on its own, and a reader had
 to hold the whole thing to know which branch they were in. These rules are the
-floor for anything under `src/aiq_agent`, the Python packages under `packages/` and `apps/backend`,
+floor for anything under `packages/agent/src/aiq_agent`, the Python packages under `packages/` and `apps/backend`,
 new or touched:
 
 - **Two levels of nesting inside a function, at most.** A third `if`/`for`/
@@ -141,7 +141,7 @@ change needs them.
 ### `any` is not a type we accept, in production code or in tests
 
 `no-explicit-any` (typescript-eslint's rule, run by oxlint as
-`typescript/no-explicit-any`) is an **error** in `frontends/ui/.oxlintrc.json`,
+`typescript/no-explicit-any`) is an **error** in `apps/workspace/.oxlintrc.json`,
 and the suite is clean. Reach for the real
 type, a `Partial<T>` or `Pick<T, …>` of it, `unknown`, or a deliberate
 `as unknown as T` at a single documented boundary.

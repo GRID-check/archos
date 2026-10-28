@@ -14,7 +14,7 @@ or no to every write.
 
 **What the door does not offer** (ADR-0122, "Amendment: the door offers what
 only Piloti has"). Such an operation is still written, then withheld in
-[`exposure.config.ts`](../../frontends/ui/src/lib/agent-api/exposure.config.ts)
+[`exposure.config.ts`](../../apps/workspace/bff/agent-api/exposure.config.ts)
 (`withheld: { category, reason }`), and reads as an unknown name on every door:
 
 | Category | What | Examples |
@@ -34,7 +34,7 @@ office door; it waits for a server of its own for platform staff.
 PostHog's phrase is "headless first, then wire up the UI". Ours:
 
 1. Build the route, service and schema. The route is the capability.
-2. Write its operation in `frontends/ui/src/lib/agent-api/catalog/`.
+2. Write its operation in `apps/workspace/bff/agent-api/catalog/`.
 3. Wire the UI to the route.
 
 Steps 1 and 2 land in the same change. If you build the button first, the
@@ -47,10 +47,10 @@ see.
 |---|---|
 | Add an `app/api` route method a person calls | Add an operation for it in the same change |
 | Add a route that is not something a person does (transport, sign-in plumbing, typing) | Add it to `NOT_AN_AGENT_CAPABILITY` in `agent-reachability.spec.ts`, with a category and a reason |
-| Add an operation | Give it its entry in `frontends/ui/src/lib/agent-api/exposure.config.ts`: who sees it (`external`, `piloti`, `platform`), with a `reason` unless it is `OFFERED`. Regenerate `tests/fixtures/exposure.json` ([how](../architecture/agent-surface.md#the-exposure-config)) |
+| Add an operation | Give it its entry in `apps/workspace/bff/agent-api/exposure.config.ts`: who sees it (`external`, `piloti`, `platform`), with a `reason` unless it is `OFFERED`. Regenerate `tests/fixtures/exposure.json` ([how](../architecture/agent-surface.md#the-exposure-config)) |
 | Draw a card in an outside agent's own chat (an MCP App), or give one a button | An `APP_VIEWS` entry naming the operation whose result it draws, and per button an `APP_TOOLS` entry naming the operation it runs, with its `exposure.config.ts` line `app: true`; never a route of its own ([how](../architecture/agent-surface.md#mcp-apps-cards-in-the-persons-own-assistant), ADR-0142) |
 | Add a route that is product configuration, a proxied service, model compute or screen state | Write its operation; its exposure entry is `withheld: { category, reason }` |
-| Add or change something on the review canvas or in the chat | Its entry in `frontends/ui/src/lib/surface-parity/parity.config.ts`, with its mirror or a reason ([how](../architecture/agent-surface.md#surface-parity-canvas-and-chat)) |
+| Add or change something on the review canvas or in the chat | Its entry in `apps/workspace/bff/surface-parity/parity.config.ts`, with its mirror or a reason ([how](../architecture/agent-surface.md#surface-parity-canvas-and-chat)) |
 | Offer a withheld operation again | Replace its exposure entry, and say why in the PR |
 | Give Piloti a native tool that does what an operation does | Set the operation's entry to `piloti: 'native:<tool>'`, and run the answer suite's workspace set before and after |
 | Change a route's body, query or meaning | Update the operation's schema and description. The schema is shared, so the type checker tells you; the description only review does |
@@ -67,12 +67,12 @@ see.
 - [ ] The description says when to call it, what comes back, where ids come from, what to call next.
 - [ ] `body` and `query` are the route's own schemas, not copies.
 - [ ] `destructive`, `readOnly` and `idempotent` are right where the defaults are not.
-- [ ] `cd frontends/ui && bunx vitest run src/lib/agent-api/` is green.
+- [ ] `cd apps/workspace && bunx vitest run src/lib/agent-api/` is green.
 - [ ] Nothing outside `lib/agent-api/dispatch.ts` calls `runAsActingSession`.
 
 ## What fails you
 
-`frontends/ui/src/lib/agent-api/agent-reachability.spec.ts`. It fails a new
+`apps/workspace/bff/agent-api/agent-reachability.spec.ts`. It fails a new
 person-facing route with no operation and no exemption, a baseline entry that is
 now covered, and a malformed operation. The baseline only shrinks. It also fails
 when an offered operation sits on a product-configuration path
@@ -85,7 +85,7 @@ offered operation's text names a withheld one.
 `exposure.config.spec.ts` fails an entry with no reason where one is due, a
 `platform` entry off the `platform` domain, an entry that offers Piloti a
 sensitive operation, an ask or a proposal decision, and a stale
-`tests/fixtures/exposure.json`. `tests/aiq_agent/tools/test_exposure_config.py`
+`tests/fixtures/exposure.json`. `packages/agent/tests/tools/test_exposure_config.py`
 fails a `native:<tool>` Piloti does not have.
 
 ## Not sure it deserves a tool

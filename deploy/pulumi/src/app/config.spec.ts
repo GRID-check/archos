@@ -9,14 +9,14 @@ const here = __dirname;
 const repoRoot = join(here, "..", "..", "..", "..");
 // The whole worker, not just its entrypoint: the shared `workers/app-database.js`
 // reads the DSN, and the point of this guard is to see every name the process consumes.
-const schedulerDir = join(repoRoot, "frontends", "ui", "scheduler");
+const schedulerDir = join(repoRoot, "apps", "workspace", "scheduler");
 const schedulerSource = [
   ...readdirSync(schedulerDir)
     .filter((file) => file.endsWith(".js") && !file.endsWith(".spec.js"))
     .map((file) => readFileSync(join(schedulerDir, file), "utf8")),
   // The retention window is read by the shared Langfuse client the sweep uses.
-  readFileSync(join(repoRoot, "frontends", "ui", "workers", "langfuse-traces.js"), "utf8"),
-  readFileSync(join(repoRoot, "frontends", "ui", "workers", "app-database.js"), "utf8"),
+  readFileSync(join(repoRoot, "apps", "workspace", "workers", "langfuse-traces.js"), "utf8"),
+  readFileSync(join(repoRoot, "apps", "workspace", "workers", "app-database.js"), "utf8"),
 ].join("\n");
 const configSource = readFileSync(join(here, "config.ts"), "utf8");
 
@@ -128,7 +128,7 @@ describe("purgerEnv", () => {
 describe("frontendEnv", () => {
   it("emits none of the retired feature switches", () => {
     // Every feature is a WorkOS flag per organization now
-    // (`frontends/ui/src/lib/authz/feature-flags.ts`). An env switch emitted
+    // (`apps/workspace/bff/authz/feature-flags.ts`). An env switch emitted
     // here would read as a lever and move nothing, which is how
     // `WORKFLOWS_ENABLED` once shipped a feature with no way to turn it on.
     // Read from source rather than by calling frontendEnv: it touches most of

@@ -61,7 +61,7 @@ The Archiv collection is injected in `buildCollectionScopeFromRequest` (which ha
 
 ## Frontend: `collection-scope.ts`
 
-**File**: `frontends/ui/src/lib/retrieval-scope/collection-scope.ts`
+**File**: `apps/workspace/bff/retrieval-scope/collection-scope.ts`
 
 ### `computeCollectionScope(session, context)`
 
@@ -96,7 +96,7 @@ function buildCollectionScopeHeader(scope: string[]): string
 
 ## Frontend BFF: `collection-scope-request.ts`
 
-**File**: `frontends/ui/src/lib/retrieval-scope/collection-scope-request.ts`
+**File**: `apps/workspace/bff/retrieval-scope/collection-scope-request.ts`
 
 ### `buildCollectionScopeFromRequest(session, context)`
 
@@ -195,7 +195,7 @@ different thread over the same socket.
 
 ## WebSocket Scope
 
-**File**: `frontends/ui/server.js` (lines 198–258)
+**File**: `apps/workspace/server.js` (lines 198–258)
 
 During WebSocket upgrade (`/websocket` path):
 
@@ -205,7 +205,7 @@ During WebSocket upgrade (`/websocket` path):
 4. `server.js` injects `x-grid-collection-scope` into the proxied WebSocket upgrade request headers
 5. Also forwards `x-grid-organization-id`, `x-grid-user-id`, and `authorization` (Bearer token) for user context
 
-**File**: `frontends/ui/src/app/api/auth/websocket-scope/route.ts`
+**File**: `apps/workspace/app/api/auth/websocket-scope/route.ts`
 
 Internal endpoint that:
 - Reads `projectId` and `conversationId` from query params
@@ -233,14 +233,14 @@ const { headerValue } = await buildCollectionScopeFromRequest(session, {
 ```
 
 The pattern is used in:
-- `frontends/ui/src/app/api/v1/[...path]/route.ts` — generic API proxy
-- `frontends/ui/src/app/api/jobs/async/[...path]/route.ts` — async job proxy
+- `apps/workspace/app/api/v1/[...path]/route.ts` — generic API proxy
+- `apps/workspace/app/api/jobs/async/[...path]/route.ts` — async job proxy
 
 ---
 
 ## Python: `scoping.py`
 
-**File**: `src/aiq_agent/knowledge/scoping.py`
+**File**: `packages/agent/src/aiq_agent/knowledge/scoping.py`
 
 ### `get_collection_scope_from_context()`
 

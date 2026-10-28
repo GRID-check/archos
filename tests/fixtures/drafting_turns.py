@@ -24,7 +24,7 @@ Used by:
 
 * ``evals/turn-shapes/test_turn_shapes_live.py`` — the real model, stub
   retrieval, real working directory (skips without ``OPENROUTER_API_KEY``).
-* ``tests/aiq_agent/agents/piloti/test_agent.py`` — the same three through the
+* ``packages/agent/tests/agents/piloti/test_agent.py`` — the same three through the
   compiled graph on a scripted LLM, which is what runs in CI.
 """
 

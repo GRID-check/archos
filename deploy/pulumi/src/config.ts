@@ -272,7 +272,7 @@ export interface GridConfig {
    * `POSTHOG_DEFAULT_PROJECT_TOKEN`), so every stack sends. An empty
    * `grid-oib:posthogHost` opts a stack out and keeps every client disabled
    * (`isPosthogEnabled() === false` in
-   * `frontends/ui/src/lib/analytics/posthog.ts`). The project token is a public
+   * `apps/workspace/bff/analytics/posthog.ts`). The project token is a public
    * `phc_` key by design (it ships in the client bundle), so it lives in plain
    * config like `workosClientId`, not in ESC secrets.
    */

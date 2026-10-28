@@ -356,7 +356,7 @@ llms:
     request_timeout: 25
     reasoning_effort: none
 
-# The review canvas (src/aiq_agent/tools/canvas), one NAT function group: Piloti
+# The review canvas (packages/agent/src/aiq_agent/tools/canvas), one NAT function group: Piloti
 # works a document the way a person at the canvas does. See who is in the
 # `room`, `point` and `highlight` for everyone,
 # read the `marks`, propose a `mark` (a person takes it over), and, when the
@@ -370,7 +370,7 @@ function_groups:
     _type: document_canvas
 
   # Everything a person can do in Piloti, through Piloti's own MCP server
-  # (src/aiq_agent/tools/workspace, ADR-0122): `workspace__search`,
+  # (packages/agent/src/aiq_agent/tools/workspace, ADR-0122): `workspace__search`,
   # `workspace__describe`, `workspace__call`, `workspace__report_missing`. The
   # model finds an operation, reads its schema, calls it; a write comes back as a
   # proposal the person accepts. Each call echoes the turn's signed envelope, so
@@ -501,7 +501,7 @@ functions:
 
   # LET THE MODEL SEE A DRAWING, NOT ONLY ITS CAPTION.
   #
-  # `look` (src/aiq_agent/tools/look, ADR-0128): a page, a region of it, or an
+  # `look` (packages/agent/src/aiq_agent/tools/look, ADR-0128): a page, a region of it, or an
   # embedded image, in every context. It replaced the knowledge layer's image
   # viewer and the canvas group's own look, one function under two names. Until
   # 2026-09 the viewer was declared in no config at all, so retrieval returned
@@ -692,7 +692,7 @@ functions:
   surface_documents:
     _type: surface_documents
 
-  # The WRITE-side workspace tool (src/aiq_agent/tools/files): move, rename,
+  # The WRITE-side workspace tool (packages/agent/src/aiq_agent/tools/files): move, rename,
   # create_folder and assign as one `operation` argument — four tools until
   # they were merged (docs/architecture/agent-tool-surface.md). It proposes: it
   # resolves the file or the folder against what the turn can already see,
@@ -708,7 +708,7 @@ functions:
   propose_file_change:
     _type: propose_file_change
 
-  # The working directory's door into the project (src/aiq_agent/tools/
+  # The working directory's door into the project (packages/agent/src/aiq_agent/tools/
   # documents). `file_draft` puts a draft the turn WROTE into the project as a
   # draft version, and with `submit: true` sends that version for review (it was
   # a second tool, `submit_draft`, until the two merged). Unlike the proposal
@@ -724,7 +724,7 @@ functions:
   file_draft:
     _type: file_draft
 
-  # Delegation (src/aiq_agent/tools/tasks). Hands work that outlives this turn
+  # Delegation (packages/agent/src/aiq_agent/tools/tasks). Hands work that outlives this turn
   # to a `tasks` row (ADR-0051) — a norm check, the Einreichcheck
   # skill, a document to write, a draft to revise — through
   # `POST /api/internal/tasks`, echoing the same BFF-signed envelope, so the row
@@ -738,7 +738,7 @@ functions:
   create_task:
     _type: create_task
 
-  # Cross-project lookups for a chat, shared or solo (src/aiq_agent/tools/cross_project,
+  # Cross-project lookups for a chat, shared or solo (packages/agent/src/aiq_agent/tools/cross_project,
   # ADR-0094): search other projects' documents, find projects, read a brief.
   # Chat only: deep research gets no admission round, so it must never be
   # handed another project's content.
@@ -1063,7 +1063,7 @@ workflow:
   # decided per TURN by the BFF (`GET /api/internal/stages`) from the
   # `memory-reflection` WorkOS flag, with no env-var fallback. A deployment that
   # signs nobody in (REQUIRE_AUTH not true) gets it, as every rollout flag is on
-  # there (`frontends/ui/src/lib/authz/feature-flags.ts`).
+  # there (`apps/workspace/bff/authz/feature-flags.ts`).
   memory_reflection_llm: card_llm
   # Enables the async post-answer follow-up-questions stage. As above, this only
   # makes the capability AVAILABLE; whether it runs is decided per TURN by the

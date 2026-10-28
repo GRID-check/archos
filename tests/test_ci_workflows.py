@@ -68,7 +68,7 @@ CI = load("ci.yml")
 JOBS = CI["jobs"]
 PLAN = JOBS["changes"]
 STEPS = {step["id"]: step for step in PLAN["steps"] if "id" in step}
-TIERS = ["backend", "frontend", "site", "infra", "packages", "sast"]
+TIERS = ["backend", "workspace", "site", "infra", "packages", "sast"]
 BUILD = json.dumps([{"name": "backend"}])
 
 
@@ -189,7 +189,7 @@ def test_a_pull_request_result_counts_only_on_a_green_parent():
     assert outputs["reused"] == "false"
     assert [job for job in CHECKS if not runs(job, event="push", outputs=outputs) and job != "semgrep"] == [
         "backend-affected",
-        "frontend-coverage",
+        "workspace-coverage",
     ]
 
 
@@ -200,7 +200,7 @@ def test_a_miss_runs_every_check_the_filter_selects(hit):
 
     # Diff-aware SAST, the coverage comment and the selected Python run have
     # nothing to do on a push: a push runs the full suite.
-    assert skipped == ["semgrep", "backend-affected", "frontend-coverage"]
+    assert skipped == ["semgrep", "backend-affected", "workspace-coverage"]
 
 
 def test_a_pull_request_runs_every_check_the_filter_selects():
@@ -266,20 +266,20 @@ def test_a_ui_selection_runs_the_shards_without_the_coverage_comment():
     nothing = plan(event="pull_request", ui_mode="none")
     full = plan(event="pull_request", ui_mode="full")
 
-    assert runs("frontend-test", event="pull_request", outputs=selected)
-    assert not runs("frontend-coverage", event="pull_request", outputs=selected)
-    assert not runs("frontend-test", event="pull_request", outputs=nothing)
-    assert runs("frontend-test", event="pull_request", outputs=full)
-    assert runs("frontend-coverage", event="pull_request", outputs=full)
+    assert runs("workspace-test", event="pull_request", outputs=selected)
+    assert not runs("workspace-coverage", event="pull_request", outputs=selected)
+    assert not runs("workspace-test", event="pull_request", outputs=nothing)
+    assert runs("workspace-test", event="pull_request", outputs=full)
+    assert runs("workspace-coverage", event="pull_request", outputs=full)
     # Lint, types and tenant isolation are not selected: they always run.
-    assert runs("frontend", event="pull_request", outputs=nothing)
+    assert runs("workspace", event="pull_request", outputs=nothing)
 
 
 def test_a_push_always_runs_every_ui_spec():
     outputs = plan(event="push", ui_mode="none")
 
-    assert runs("frontend-test", event="push", outputs=outputs)
-    steps = {step.get("name", ""): step for step in JOBS["frontend-test"]["steps"]}
+    assert runs("workspace-test", event="push", outputs=outputs)
+    steps = {step.get("name", ""): step for step in JOBS["workspace-test"]["steps"]}
     full = next(step for name, step in steps.items() if name.startswith("All specs"))
     assert evaluate(full["if"], github={"event_name": "push"}, needs={"changes": {"outputs": outputs}})
 
@@ -305,7 +305,7 @@ def test_the_marker_is_uploaded_only_by_a_passing_pull_request_gate():
 
     assert JOBS["ci-ok"]["if"] == "always()"
     # Every job gates the marker, bar the coverage comment (see CI OK).
-    assert set(JOBS["ci-ok"]["needs"]) == set(JOBS) - {"ci-ok", "frontend-coverage", "backend-testmon"}
+    assert set(JOBS["ci-ok"]["needs"]) == set(JOBS) - {"ci-ok", "workspace-coverage", "backend-testmon"}
     assert len(uploads) == 1 and uploads[0] > check
     upload = steps[uploads[0]]
     # No status function: the implicit success() keeps a failed check from uploading.
@@ -344,7 +344,7 @@ def test_the_commit_is_tagged_only_after_every_check_on_its_push_passed():
     publish = JOBS["publish"]
     can_run_on_push = {job for job in CHECKS if runs(job, event="push", outputs=plan(event="push"))}
 
-    assert can_run_on_push - {"frontend-coverage"} <= set(publish["needs"])
+    assert can_run_on_push - {"workspace-coverage"} <= set(publish["needs"])
     assert "image-push" in publish["needs"]
     condition = " ".join(publish["if"].split())
     assert "github.event_name == 'push'" in condition

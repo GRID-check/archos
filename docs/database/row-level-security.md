@@ -160,7 +160,7 @@ COMMIT;
 The unit-level guard needs no database:
 
 ```bash
-cd frontends/ui && npx vitest run src/lib/db/rls-coverage.spec.ts
+cd apps/workspace && npx vitest run src/lib/db/rls-coverage.spec.ts
 ```
 
 The isolation suite needs a real Postgres, because the claim is that the

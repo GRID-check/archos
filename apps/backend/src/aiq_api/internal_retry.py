@@ -6,7 +6,7 @@ Each of those was one POST: a BFF restart or a network blip at that moment lost
 the write for good, and a run whose ``task_runs`` row the BFF had not recorded
 yet got a 404 and was dropped. This is the first of two answers. It heals the
 common case within half a minute; the BFF's run reconciler
-(``frontends/ui/src/lib/runs/reconcile.ts``) is the backstop that heals the rest
+(``apps/workspace/bff/runs/reconcile.ts``) is the backstop that heals the rest
 by asking the job store.
 
 Why a loop and not ``tenacity``: tenacity is in the venv only as somebody

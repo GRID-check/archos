@@ -45,16 +45,16 @@ jobs:
           node-version: "22"
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
-      - run: task fe:install
+      - run: task workspace:install
       - name: Authorization catalog vs WorkOS
-        run: task fe:provision:authz
+        run: task workspace:provision:authz
         env:
           WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY_STAGING }}
       - name: Audit log schemas vs WorkOS
-        run: task fe:provision:audit-schemas
+        run: task workspace:provision:audit-schemas
         env:
           WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY_STAGING }}
       - name: Feature-flag registry vs WorkOS
-        run: task fe:provision:flags
+        run: task workspace:provision:flags
         env:
           WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY_STAGING }}

@@ -90,9 +90,9 @@ def test_a_new_hit_fails_and_the_baseline_only_moves_down(checker, repo, capsys)
 
 
 def test_a_new_directory_is_a_hit_and_a_new_file_in_an_old_one_is_not(checker, repo):
-    _add(repo, "src/aiq_agent/old.py", "x = 1\n")
+    _add(repo, "packages/agent/src/aiq_agent/old.py", "x = 1\n")
     assert checker.main(["--rebaseline"]) == 0
-    _add(repo, "src/aiq_agent/new.py", "y = 2\n")
+    _add(repo, "packages/agent/src/aiq_agent/new.py", "y = 2\n")
     assert checker.main([]) == 0
     _add(repo, "src/piloti_tools/new.py", "y = 2\n")
     assert checker.main([]) == 1
@@ -101,19 +101,19 @@ def test_a_new_directory_is_a_hit_and_a_new_file_in_an_old_one_is_not(checker, r
 def test_history_and_copy_are_not_checked(checker, repo):
     _add(repo, "docs/adr/0001-piloti.md", "piloti_wakes\n")
     _add(repo, "releasenotes/notes/piloti-x.yaml", "piloti_wakes\n")
-    _add(repo, "frontends/ui/src/i18n/dictionaries/en/chat.ts", "pilotiWakes: 'Piloti'\n")
-    _add(repo, "frontends/ui/drizzle/0001_piloti.sql", "CREATE TABLE piloti_wakes ();\n")
+    _add(repo, "apps/workspace/i18n/dictionaries/en/chat.ts", "pilotiWakes: 'Piloti'\n")
+    _add(repo, "apps/workspace/migrations/0001_piloti.sql", "CREATE TABLE piloti_wakes ();\n")
     assert checker.main([]) == 0
 
 
 def test_the_package_names_pending_their_scripted_rename_are_not_counted(checker):
     assert checker.count_text("from aiq_agent.common.cards import Card\nimport aiq_api.jobs") == 0
-    assert checker.count_text("src/aiq_agent/turn/x.py aiq-agent") == 0
+    assert checker.count_text("packages/agent/src/aiq_agent/turn/x.py aiq-agent") == 0
     assert checker.count_text("from aiq_agent.agents.piloti import run") == 1
 
 
 def test_a_file_split_inside_a_package_directory_is_not_a_new_hit(checker, repo):
-    _add(repo, "src/aiq_agent/big.py", "from aiq_agent.common import x\n")
+    _add(repo, "packages/agent/src/aiq_agent/big.py", "from aiq_agent.common import x\n")
     assert checker.main(["--rebaseline"]) == 0
-    _add(repo, "src/aiq_agent/split/part.py", "from aiq_agent.common import x\n")
+    _add(repo, "packages/agent/src/aiq_agent/split/part.py", "from aiq_agent.common import x\n")
     assert checker.main([]) == 0

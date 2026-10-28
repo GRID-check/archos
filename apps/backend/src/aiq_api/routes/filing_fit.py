@@ -2,7 +2,7 @@
 
 ``POST /v1/filing-fit`` is the model half of the filing suggestion
 (``docs/architecture/proposed-changes.md``, „Ablage"). The BFF
-(``frontends/ui/src/lib/filing/``) has already decided everything a person's
+(``apps/workspace/bff/filing/``) has already decided everything a person's
 access decides: which documents of the batch the uploader may see, which
 folders are open to every reader (a restricted folder is never sent, ADR-0087),
 and whether a document's screening passed (ADR-0086). This route reads nothing

@@ -558,7 +558,7 @@ def _persist_in_background(
 # ---------------------------------------------------------------------------
 
 #: The wire's terminal as the BFF names it (``TURN_OUTCOMES`` in
-#: ``frontends/ui/src/lib/turns/outcome-types.ts``); every ``RUN_ERROR`` is ``failed``.
+#: ``apps/workspace/bff/turns/outcome-types.ts``); every ``RUN_ERROR`` is ``failed``.
 OUTCOME_OF_TERMINAL = {"answered": "answered", "refused": "refused", "handed_off": "handed_off", "cancelled": "stopped"}
 
 #: ``reason``'s bound in that contract.

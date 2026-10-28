@@ -2,14 +2,14 @@
 
 ## Drizzle Kit Setup
 
-**Config file:** `frontends/ui/drizzle.config.ts`
+**Config file:** `apps/workspace/migrations.config.ts`
 
 ```typescript
 import { defineConfig } from "drizzle-kit"
 
 export default defineConfig({
   schema: "./src/lib/db/schema/*.ts",
-  out: "./drizzle",
+  out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
     // The OWNER credential — migrations run DDL and backfills, and `app_rw`
@@ -38,11 +38,11 @@ Edit or create `.ts` files in `src/lib/db/schema/`. The barrel export in `index.
 ### 2. Generate Migration SQL
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 npx drizzle-kit generate
 ```
 
-This reads the current schema, diffs against the last snapshot in `drizzle/meta/`, and produces a new `.sql` file in `drizzle/` (e.g., `0004_next_migration.sql`) plus a snapshot JSON.
+This reads the current schema, diffs against the last snapshot in `migrations/meta/`, and produces a new `.sql` file in `drizzle/` (e.g., `0004_next_migration.sql`) plus a snapshot JSON.
 
 ### 3. Apply Migration
 
@@ -66,7 +66,7 @@ npx drizzle-kit migrate
 npm run db:migrate
 ```
 
-This reads `drizzle/meta/_journal.json` and applies all pending migrations in order.
+This reads `migrations/meta/_journal.json` and applies all pending migrations in order.
 
 ### Docker
 
@@ -82,7 +82,7 @@ This executes on container start, so schema changes are applied before the front
 
 ## Migration History
 
-Journal file: `frontends/ui/drizzle/meta/_journal.json`
+Journal file: `apps/workspace/migrations/meta/_journal.json`
 
 ### 0000 — `amused_grey_gargoyle` (Initial Schema)
 
@@ -234,7 +234,7 @@ These tables are separate from Drizzle ORM (the Next.js app only manages `app`).
 
 ## Runtime schema migration: `document_metadata` (rename + column adds)
 
-The Python backend has **no migration framework** for its own tables (`jobs`) — `DocumentMetadataStore` (`src/aiq_agent/knowledge/document_metadata_store.py`) creates and evolves the `document_metadata` table itself at store init (both the sync `_ensure_table_sync` and async `_ensure_table_async` paths call the shared `_run_schema`).
+The Python backend has **no migration framework** for its own tables (`jobs`) — `DocumentMetadataStore` (`packages/agent/src/aiq_agent/knowledge/document_metadata_store.py`) creates and evolves the `document_metadata` table itself at store init (both the sync `_ensure_table_sync` and async `_ensure_table_async` paths call the shared `_run_schema`).
 
 This table was originally named `summaries` (class `SummaryStore`) and has since grown a `tags TEXT` column (controlled ingestion tags), a `doc_class TEXT` column (explicit "Dokumentart"), a `display_title TEXT` column (the user-facing citation-chip name — the OIB corpus never shows a raw filename), and a `folder_path TEXT` column (the materialised project-folder path the BFF filed the document under — ADR-0049; `NULL` means the project root). Because it now holds far more than summaries, both the table and the store class were renamed to `document_metadata`. `_run_schema` reconciles any prior shape on first access, idempotently:
 
@@ -254,8 +254,8 @@ The migration reports success/failure: the store URL is added to the in-memory `
 
 ## Safety Notes
 
-- **A migration file without a journal entry is never applied.** `drizzle-kit migrate` executes what `drizzle/meta/_journal.json` lists, not what is on disk — so a hand-written `NNNN_*.sql` added without its entry is inert, and every check passes while reporting success: the file is in the diff, review sees it, and the migrate step "succeeds" having skipped it. The first symptom is a 500 from the route that queries the table (issue #283, `relation "platform_retrieval_settings" does not exist`). `frontends/ui/tests/db/migrations-journal.test.ts` now fails the build on that mismatch in both directions; `*.down.sql` companions are hand-run rollbacks and deliberately stay out of the journal.
+- **A migration file without a journal entry is never applied.** `drizzle-kit migrate` executes what `migrations/meta/_journal.json` lists, not what is on disk — so a hand-written `NNNN_*.sql` added without its entry is inert, and every check passes while reporting success: the file is in the diff, review sees it, and the migrate step "succeeds" having skipped it. The first symptom is a 500 from the route that queries the table (issue #283, `relation "platform_retrieval_settings" does not exist`). `apps/workspace/tests/db/migrations-journal.test.ts` now fails the build on that mismatch in both directions; `*.down.sql` companions are hand-run rollbacks and deliberately stay out of the journal.
 - **Generated migrations are idempotent** — `drizzle-kit generate` always produces SQL that can be safely reapplied (though `drizzle-kit migrate` only applies pending ones).
-- **Snapshot diffing** — Drizzle stores snapshots in `drizzle/meta/` for each migration. These are used to compute the diff for the next `generate` run.
+- **Snapshot diffing** — Drizzle stores snapshots in `migrations/meta/` for each migration. These are used to compute the diff for the next `generate` run.
 - **Never edit generated SQL manually** — always modify the schema `.ts` file and re-generate. Manual edits will be overwritten on the next `generate` run.
 - **Rollbacks** — Drizzle Kit does not run down migrations; the deploy never applies a `*.down.sql`. They are hand-run rollbacks, and `scripts/rls-test-db.sh` (`task db:test:rls`) applies the ones from 0133 on, round-tripping each against its forward migration. To revert in production, create a new migration that reverses the change.

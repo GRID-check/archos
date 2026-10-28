@@ -285,7 +285,7 @@ asked in it (spec IB-9).
 
 ## Inbox
 
-Every route below has one typed client, `frontends/ui/src/lib/inbox/client.ts`
+Every route below has one typed client, `apps/workspace/bff/inbox/client.ts`
 (ADR-0055): the inbox list and badge, the review (which marks have unread
 news, and opening a mark reads it) and the shell's notification offer call it, and `app/api/inbox/routes.spec.ts`
 drives the real handlers through it. The service worker posts a tapped

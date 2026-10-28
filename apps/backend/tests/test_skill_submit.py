@@ -145,7 +145,7 @@ def test_the_bff_budgets_prompts_against_this_ceiling():
     """
     from aiq_api.routes.skills import SUBMIT_INPUT_MAX_CHARS
 
-    types_ts = Path(__file__).resolve().parents[3] / "frontends" / "ui" / "src" / "lib" / "jobs" / "types.ts"
+    types_ts = Path(__file__).resolve().parents[3] / "apps" / "workspace" / "bff" / "jobs" / "types.ts"
     match = re.search(r"export const AGENT_RUN_INPUT_MAX_CHARS = ([\d_]+)", types_ts.read_text(encoding="utf-8"))
     assert match, f"AGENT_RUN_INPUT_MAX_CHARS not found in {types_ts}"
     assert int(match.group(1).replace("_", "")) == SUBMIT_INPUT_MAX_CHARS

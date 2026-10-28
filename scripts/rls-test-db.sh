@@ -11,7 +11,7 @@
 # existing cluster is touched.
 set -euo pipefail
 
-UI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../frontends/ui" && pwd)"
+UI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../apps/workspace" && pwd)"
 REPO_ROOT="$(cd "$UI_DIR/../.." && pwd)"
 # A port nobody holds, unless the caller names one. Parallel runs in one
 # container (two agents, two worktrees) each get their own: a fixed default made
@@ -107,10 +107,10 @@ echo "==> applying the migration chain as grid_app_owner (no CREATEROLE, no BYPA
 cd "$UI_DIR"
 MIGRATE="$PGBIN/psql -h $WORKDIR -p $PORT -U grid_app_owner -d grid_app"
 node -e '
-  const j = require("./drizzle/meta/_journal.json");
+  const j = require("./migrations/meta/_journal.json");
   console.log(j.entries.map((e) => e.tag).join("\n"));
 ' | while read -r tag; do
-  $MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/$tag.sql" >/dev/null || {
+  $MIGRATE -v ON_ERROR_STOP=1 -q -f "migrations/$tag.sql" >/dev/null || {
     echo "MIGRATION FAILED at $tag — re-run without -q to see the error" >&2
     exit 1
   }
@@ -140,7 +140,7 @@ restore_rls_role_names() {
 
 # `--only <spec…>`: the migrated cluster and the restricted role, for the specs
 # named and nothing else. For one suite while you work on it, and for the
-# measurements that are not part of the gate (`task fe:search:latency`). The
+# measurements that are not part of the gate (`task workspace:search:latency`). The
 # owner's URL is passed too, for a measurement that has to ANALYZE its seed:
 # the runtime role may not, and production's statistics are autovacuum's.
 if [ "${1:-}" = "--only" ]; then
@@ -165,62 +165,62 @@ rename_rls_roles
 echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers and workspace search suites as app_rw"
 TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
-    src/lib/db/tenant-isolation.integration.spec.ts \
-    src/lib/bim/query.integration.spec.ts \
-    src/lib/bim/model-shelf.integration.spec.ts \
-    src/lib/projects/memory-service.integration.spec.ts \
-    src/lib/projects/memory-restricted.integration.spec.ts \
-    src/lib/documents/document-versions.integration.spec.ts \
-    src/lib/documents/list-page.integration.spec.ts \
-    src/lib/documents/quarantine-listing.integration.spec.ts \
-    src/lib/documents/visibility.integration.spec.ts \
-    src/lib/upload-batches/upload-batches.integration.spec.ts \
-    src/lib/authz/folder-access.integration.spec.ts \
-    src/lib/projects/collection-placement.integration.spec.ts \
-    src/lib/projects/folder-visibility.integration.spec.ts \
-    src/lib/documents/shelf-folders.integration.spec.ts \
-    src/lib/projects/folder-bin.integration.spec.ts \
-    src/lib/documents/stuck-processing.integration.spec.ts \
-    src/lib/documents/retry-policy.integration.spec.ts \
-    src/lib/project-profile/profile-bindings.integration.spec.ts \
-    src/lib/compliance/legal-hold.integration.spec.ts \
-    src/lib/conversations/erasure-queue.integration.spec.ts \
-    src/lib/conversations/restricted-use.integration.spec.ts \
-    src/lib/feedback/restricted-feedback.integration.spec.ts \
-    src/lib/tasks/subject-access.integration.spec.ts \
-    src/lib/tasks/active-runs.integration.spec.ts \
-    src/lib/conversations/cross-project-use.integration.spec.ts \
-    src/lib/cross-project/decisions-repository.integration.spec.ts \
-    src/lib/similar-passages/service.integration.spec.ts \
-    src/lib/permits/repository.integration.spec.ts \
-    src/lib/annotations/repository.integration.spec.ts \
-    src/lib/annotations/project-repository.integration.spec.ts \
-    src/lib/proposals/repository.integration.spec.ts \
-    src/lib/agent-api/operation-proposals.integration.spec.ts \
-    src/lib/agent-api/read-gate.integration.spec.ts \
-    src/lib/project-intake/repository.integration.spec.ts \
-    src/lib/changes/repository.integration.spec.ts \
-    src/lib/push/repository.integration.spec.ts \
-    src/lib/agent-asks/repository.integration.spec.ts \
-    src/lib/inbox/repository.integration.spec.ts \
-    src/lib/project-experience/readable-files.integration.spec.ts \
-    src/lib/projects/memory-evidence.integration.spec.ts \
-    src/lib/download-log/download-log.integration.spec.ts \
-    src/lib/runs/reconcile.integration.spec.ts \
-    src/lib/budgets/service.integration.spec.ts \
-    src/lib/analytics/usage-export-repository.integration.spec.ts \
-    src/lib/feedback/repository.integration.spec.ts \
-    src/lib/citations/repository.integration.spec.ts \
-    src/lib/profiler/repository.integration.spec.ts \
-    src/lib/projects/project-status.integration.spec.ts \
-    src/lib/projects/project-record.integration.spec.ts \
-    src/lib/projects/cleanup.integration.spec.ts \
-    src/lib/feedback/repository.integration.spec.ts \
-    src/lib/filing/root-sort-run-repository.integration.spec.ts \
-    src/lib/folder-cards/repository.integration.spec.ts \
-    src/lib/estate-tree/repository.integration.spec.ts \
-    src/lib/search/providers.integration.spec.ts \
-    src/lib/search/document-repository.integration.spec.ts
+    bff/db/tenant-isolation.integration.spec.ts \
+    bff/bim/query.integration.spec.ts \
+    bff/bim/model-shelf.integration.spec.ts \
+    bff/projects/memory-service.integration.spec.ts \
+    bff/projects/memory-restricted.integration.spec.ts \
+    bff/documents/document-versions.integration.spec.ts \
+    bff/documents/list-page.integration.spec.ts \
+    bff/documents/quarantine-listing.integration.spec.ts \
+    bff/documents/visibility.integration.spec.ts \
+    bff/upload-batches/upload-batches.integration.spec.ts \
+    bff/authz/folder-access.integration.spec.ts \
+    bff/projects/collection-placement.integration.spec.ts \
+    bff/projects/folder-visibility.integration.spec.ts \
+    bff/documents/shelf-folders.integration.spec.ts \
+    bff/projects/folder-bin.integration.spec.ts \
+    bff/documents/stuck-processing.integration.spec.ts \
+    bff/documents/retry-policy.integration.spec.ts \
+    bff/project-profile/profile-bindings.integration.spec.ts \
+    bff/compliance/legal-hold.integration.spec.ts \
+    bff/conversations/erasure-queue.integration.spec.ts \
+    bff/conversations/restricted-use.integration.spec.ts \
+    bff/feedback/restricted-feedback.integration.spec.ts \
+    bff/tasks/subject-access.integration.spec.ts \
+    bff/tasks/active-runs.integration.spec.ts \
+    bff/conversations/cross-project-use.integration.spec.ts \
+    bff/cross-project/decisions-repository.integration.spec.ts \
+    bff/similar-passages/service.integration.spec.ts \
+    bff/permits/repository.integration.spec.ts \
+    bff/annotations/repository.integration.spec.ts \
+    bff/annotations/project-repository.integration.spec.ts \
+    bff/proposals/repository.integration.spec.ts \
+    bff/agent-api/operation-proposals.integration.spec.ts \
+    bff/agent-api/read-gate.integration.spec.ts \
+    bff/project-intake/repository.integration.spec.ts \
+    bff/changes/repository.integration.spec.ts \
+    bff/push/repository.integration.spec.ts \
+    bff/agent-asks/repository.integration.spec.ts \
+    bff/inbox/repository.integration.spec.ts \
+    bff/project-experience/readable-files.integration.spec.ts \
+    bff/projects/memory-evidence.integration.spec.ts \
+    bff/download-log/download-log.integration.spec.ts \
+    bff/runs/reconcile.integration.spec.ts \
+    bff/budgets/service.integration.spec.ts \
+    bff/analytics/usage-export-repository.integration.spec.ts \
+    bff/feedback/repository.integration.spec.ts \
+    bff/citations/repository.integration.spec.ts \
+    bff/profiler/repository.integration.spec.ts \
+    bff/projects/project-status.integration.spec.ts \
+    bff/projects/project-record.integration.spec.ts \
+    bff/projects/cleanup.integration.spec.ts \
+    bff/feedback/repository.integration.spec.ts \
+    bff/filing/root-sort-run-repository.integration.spec.ts \
+    bff/folder-cards/repository.integration.spec.ts \
+    bff/estate-tree/repository.integration.spec.ts \
+    bff/search/providers.integration.spec.ts \
+    bff/search/document-repository.integration.spec.ts
 
 # The tenant suites above may leave queued jobs behind: Ausmisten bins a
 # subfolder, and a Papierkorb delete queues its purge takeover and a refused
@@ -234,15 +234,15 @@ $PSQL -d grid_app -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/nul
 echo "==> running the job-queue and scheduler-claim suites one file at a time as app_rw"
 TEST_DATABASE_URL="postgres://app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
-    src/lib/jobs-queue/queue.integration.spec.ts \
-    src/lib/jobs-queue/repository.integration.spec.ts \
+    bff/jobs-queue/queue.integration.spec.ts \
+    bff/jobs-queue/repository.integration.spec.ts \
     workers/jobs/runner.integration.spec.mjs \
     workers/jobs/slice-bundle.integration.spec.mjs \
     scheduler/db.integration.spec.mjs
 
 # Everything below re-proves one migration of the chain at a time: a database
 # migrated to just before it, seeded with the old shapes, checked row by row,
-# then taken down. Those claims read nothing but frontends/ui/drizzle/ and this
+# then taken down. Those claims read nothing but apps/workspace/migrations/ and this
 # script, and they are ~60% of this script's time. CI's Plan sets
 # RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
 # .github/filters.yml); unset, as locally, they run.
@@ -273,7 +273,7 @@ fi
 # ---------------------------------------------------------------------------
 JOURNAL=()
 while read -r tag; do JOURNAL+=("$tag"); done < <(node -e '
-  const j = require("./drizzle/meta/_journal.json");
+  const j = require("./migrations/meta/_journal.json");
   console.log(j.entries.map((e) => e.tag).join("\n"));
 ')
 CHAIN_AT=-1  # index in JOURNAL of the last migration grid_chain holds; -1 = no grid_chain
@@ -298,7 +298,7 @@ clone_chain_at() {
   fi
   for ((i = CHAIN_AT + 1; i <= target; i++)); do
     $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_chain -v ON_ERROR_STOP=1 -q \
-      -f "drizzle/${JOURNAL[$i]}.sql" >/dev/null || {
+      -f "migrations/${JOURNAL[$i]}.sql" >/dev/null || {
       echo "SETUP OF $db FAILED at ${JOURNAL[$i]} — re-run without -q to see the error" >&2
       exit 1
     }
@@ -330,7 +330,7 @@ migrate_before() {
 # ---------------------------------------------------------------------------
 # Run a migration file (or its down) against <db>, failing loudly.
 apply_in() {
-  $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q -f "drizzle/$2" >/dev/null || {
+  $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U "$OWNER" -d "$1" -v ON_ERROR_STOP=1 -q -f "migrations/$2" >/dev/null || {
     echo "MIGRATION $2 FAILED on $1 — re-run without -q to see the error" >&2
     exit 1
   }

@@ -68,7 +68,7 @@ spaces, decimal comma), no model (`dossier.fact_changes`). The search projects t
 (`document_search_facets.changed_facts`, the filters `factsChanged` and
 `changedFacts`; [`document-search.md`](../design/document-search.md#what-changed-and-what-is-not-read-yet)).
 
-| Field | Vocabulary (`dossier.py`, mirrored in `frontends/ui/src/lib/documents/dossier.ts`) |
+| Field | Vocabulary (`dossier.py`, mirrored in `apps/workspace/bff/documents/dossier.ts`) |
 |---|---|
 | `document_type` | `submission_drawing` `construction_drawing` `site_plan` `zoning_plan` `building_description` `fire_safety_concept` `structural_analysis` `energy_certificate` `building_physics` `soil_report` `expert_report` `permit` `application` `meeting_minutes` `correspondence` `offer` `invoice` `contract` `specification` `schedule` `calculation` `photo` `legal_text` `other` |
 | `parties[].role` | `client` `architect` `engineer` `authority` `contractor` `author` `other` |
@@ -116,7 +116,7 @@ not "fehlt". `reasons` keys: `render_cap`, `vision_failed`, `transcription_faile
 
 ## Findings (BFF)
 
-`frontends/ui/src/lib/documents/findings.ts` derives them from the project's
+`apps/workspace/bff/documents/findings.ts` derives them from the project's
 documents list, pure and on read, and `GET /api/projects/{id}/document-findings`
 serves them (operation `project-document-findings`).
 
@@ -133,7 +133,7 @@ person, never a verdict.
 
 ### Compared with the profile
 
-`frontends/ui/src/lib/documents/profile-contradictions.ts`. The service reads the
+`apps/workspace/bff/documents/profile-contradictions.ts`. The service reads the
 project's profile after the listing's gate let the reader in; a profile that cannot
 be read leaves this kind out. Only confirmed facts (`profile.facts`) are a yardstick,
 never a suggestion read from the same documents, and only where both sides mean the

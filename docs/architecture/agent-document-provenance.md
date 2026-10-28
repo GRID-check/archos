@@ -20,7 +20,7 @@ So authorship is its own axis, and it beats both.
 ## The metadata contract
 
 Four keys, stamped by the BFF at publish and parsed by
-`src/aiq_agent/common/provenance.py`:
+`packages/agent/src/aiq_agent/common/provenance.py`:
 
 | Key | Value |
 |---|---|
@@ -37,7 +37,7 @@ unchanged through the whole pipeline.
 
 `office_piloti`, label "Piloti-Dokument", inside the `office` source kind
 (`common/source_kinds.py`, mirrored in
-`frontends/ui/src/lib/source-kinds.ts`). It is a sub-label within
+`apps/workspace/bff/source-kinds.ts`). It is a sub-label within
 a coarse kind, never a kind of its own — the document IS office knowledge and
 paints in the office colour.
 

@@ -1,9 +1,9 @@
-"""A cross-language fixture exists once, under ``frontends/ui/tests/fixtures/``.
+"""A cross-language fixture exists once, under ``apps/workspace/tests/fixtures/``.
 
 Four contracts (the request-context envelope, the job fire headers, the
 reasoning-effort and retrieval-settings catalogs) used to live twice, a
 repo-root copy for pytest and a byte-identical twin for the UI's Docker
-typecheck context, which cannot reach outside ``frontends/ui``. Nothing but a
+typecheck context, which cannot reach outside ``apps/workspace``. Nothing but a
 person remembering kept the pair equal. Both suites now read the one copy, and
 this test fails a second one appearing under the repo-root ``tests/`` tree.
 See ``docs/contributing/testing-and-verification.md``.
@@ -13,7 +13,7 @@ import hashlib
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-FRONTEND_FIXTURES = REPO / "frontends" / "ui" / "tests" / "fixtures"
+FRONTEND_FIXTURES = REPO / "apps" / "workspace" / "tests" / "fixtures"
 PYTHON_TESTS = REPO / "tests"
 
 
@@ -34,5 +34,5 @@ def test_no_python_test_file_twins_a_frontend_fixture() -> None:
     ]
     assert not twins, (
         "These files duplicate a frontend fixture byte for byte. Delete the copy and read "
-        f"frontends/ui/tests/fixtures/ from the Python test instead: {twins}"
+        f"apps/workspace/tests/fixtures/ from the Python test instead: {twins}"
     )

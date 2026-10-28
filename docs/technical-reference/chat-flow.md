@@ -10,7 +10,7 @@ not this socket.
 The wire is chat wire v2 ([`chat-wire-v2.md`](../design/chat-wire-v2.md),
 the contract in [`websocket-protocol.md`](../api/websocket-protocol.md)).
 
-1. `createTurnSocket` (`frontends/ui/src/adapters/api/turn-socket.ts`) opens
+1. `createTurnSocket` (`apps/workspace/ui/adapters/api/turn-socket.ts`) opens
    `ws://<host>/websocket?v=2&conversationId=<id>&projectId=<id>`, refreshing
    the auth cookie before every attempt. The socket is open, and sends, only
    once the server's first frame, `hello`, says it speaks wire v2; a server
@@ -37,7 +37,7 @@ the contract in [`websocket-protocol.md`](../api/websocket-protocol.md)).
 
 ## Chat store
 
-`frontends/ui/src/features/chat/store.ts`
+`apps/workspace/ui/features/chat/store.ts`
 
 The `useChatStore` Zustand store is three slices (`stores/`); `ChatStore` is
 their union.

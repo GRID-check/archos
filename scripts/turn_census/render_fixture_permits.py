@@ -9,7 +9,7 @@ says, and hide the day the pen reads a Bescheid differently. This runs the pen
 over every document of ``office.json`` the ingest's own type decision tagged
 ``Bescheid`` (``is_permit_decision``) and writes what it returned.
 
-    PYTHONPATH=src .venv/bin/python scripts/turn_census/render_fixture_permits.py
+    PYTHONPATH=packages/agent/src .venv/bin/python scripts/turn_census/render_fixture_permits.py
 
 Needs the network and an OpenRouter key (``BACKFILL_SUMMARY_API_KEY``, or the
 provider key its base URL implies). The model is the
@@ -38,7 +38,7 @@ from aiq_agent.knowledge.permit_extraction import pages_with_markers
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
-FIXTURES = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
+FIXTURES = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent"
 OFFICE = FIXTURES / "office.json"
 OUTPUT = FIXTURES / "permits.json"
 COMMENT = (

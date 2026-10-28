@@ -226,7 +226,7 @@ Enablement (two gates):
   or the stage is compiled out entirely (unset by default historically; now set
   to `card_llm` in `config_oib_openrouter.yml`).
 - **Runtime** — each turn is gated by `isMemoryReflectionEnabled`
-  (`frontends/ui/src/lib/workos/feature-flags.ts`), evaluated by the BFF at the
+  (`apps/workspace/bff/workos/feature-flags.ts`), evaluated by the BFF at the
   WS upgrade and forwarded to the backend as the
   `x-grid-feature-memory-reflection` header (fail-closed: absent header → off).
   The per-org `memory-reflection` **WorkOS feature flag** is the source of
@@ -488,7 +488,7 @@ autonomously — no confirm-gate interrupts the conversation and there is no inl
 
 **(a) Live, in traces.** Every `remember(...)` call is emitted as an intermediate
 trace event on the WS stream (same channel as tool calls / thinking steps) and as
-an observability span (`src/aiq_agent/observability`). So you *watch* memory form
+an observability span (`packages/agent/src/aiq_agent/observability`). So you *watch* memory form
 in the trace/Thinking view in real time — you just aren't asked to approve it.
 
 **(b) Managed in the Project Overview.** The overview page gains a "What Grid knows

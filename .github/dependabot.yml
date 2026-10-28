@@ -45,7 +45,7 @@ updates:
   # Frontend (Next.js UI). bun.lock is its only lockfile; the Docker build and
   # CI install from it.
   - package-ecosystem: bun
-    directory: "/frontends/ui"
+    directory: "/apps/workspace"
     schedule:
       interval: weekly
       day: monday
@@ -143,7 +143,7 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
     ignore:
-      # Same reasons as frontends/ui: `astro check` runs on the TypeScript JS
+      # Same reasons as apps/workspace: `astro check` runs on the TypeScript JS
       # API that TypeScript 7 drops, and the runtime is Node 22.
       - dependency-name: "typescript"
         versions: [">=7"]
@@ -178,7 +178,7 @@ updates:
         patterns: ["@pulumi/*"]
     ignore:
       # deploy.yml runs the program on Node 22 (node-version "22"); same rule
-      # as frontends/ui above.
+      # as apps/workspace above.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
       # `pulumi preview`/`up` load TypeScript through ts-node, which calls the

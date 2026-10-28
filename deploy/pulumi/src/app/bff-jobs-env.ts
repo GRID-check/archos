@@ -39,7 +39,7 @@ const inheritedByBffJobs = (env: EnvVar) =>
  * bff-jobs pool environment (ADR-0079): the whole frontend environment, because
  * the jobs call the same services the routes do (the database, object storage,
  * the backend, WorkOS), plus what the runner reads. Every `BFF_JOBS_` name
- * here must be one `frontends/ui/workers/jobs/index.js` reads; `bff-jobs.spec.ts`
+ * here must be one `apps/workspace/workers/jobs/index.js` reads; `bff-jobs.spec.ts`
  * holds the two together.
  */
 export function bffJobsEnv(w: AppWiring): EnvVar[] {

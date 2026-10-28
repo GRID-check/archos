@@ -1,6 +1,6 @@
 """The UI's copy of each shared vocabulary is what the generator writes.
 
-``frontends/ui/src/shared/vocabularies.generated.ts`` is rendered from the
+``apps/workspace/shared/vocabularies.generated.ts`` is rendered from the
 Python source each tuple names (``scripts/generate_vocabularies.py``). A
 change to a source without regenerating, or a hand edit of the module,
 fails here, so the two languages cannot hold different sets.

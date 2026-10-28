@@ -3,7 +3,7 @@
 - **Date:** 2026-07-10 (repo tip `322ec65`); companion to
   [`compliance-audit-2026-07.md`](compliance-audit-2026-07.md).
 - Feeds the public subprocessor page (`/legal/subprocessors`,
-  `frontends/ui/src/lib/legal/content/{de,en}.ts`) — update both together.
+  `apps/workspace/bff/legal/content/{de,en}.ts`) — update both together.
 
 ## Statement on runtime AI-model switching (OpenRouter)
 
@@ -19,7 +19,7 @@
 >
 > **Bounded by design:** an override can never change `base_url` or the API key —
 > all AI traffic always transits OpenRouter and only OpenRouter
-> (`src/aiq_agent/common/model_overrides.py:25-31`); candidates are validated
+> (`packages/agent/src/aiq_agent/common/model_overrides.py:25-31`); candidates are validated
 > against the OpenRouter catalog server-side (422 on failure, 503 on catalog
 > outage); every change is an immutable, author-attributed, one-click-reversible
 > version with a catalog snapshot; changes emit the audit event
@@ -49,7 +49,7 @@
 | **W&B / Jina** | — | Vestigial: env slots documented, **no code reads them** (`wandb` not even in lockfile) | No | Dead — remove | `WANDB_API_KEY`, `JINA_API_KEY` | negative code search |
 | **OTLP/Phoenix exporter** | configurable | NAT span export incl. LLM I/O; **no shipped config enables it** (console only). Identity enrichment: `TRACE_USER_IDENTITY_MODE=full` adds cleartext email/name to spans (default `none`) | If enabled | Optional, off | workflow YAML; `GRID_TRACE_*` | `aiq_api/auth/middleware.py:59-89` |
 | **Datadog RUM** | — | Frontend shim, no-ops unless deployment injects `DD_RUM` | If enabled | Optional, off | overlay | `shared/utils/rum.ts` |
-| **Google Fonts** | fonts.googleapis.com | **Build-time only** (`next/font` self-hosts at runtime); Next telemetry disabled in image | No | Build only | — | `app/layout.tsx:13`; `frontends/ui/deploy/Dockerfile:104,119` |
+| **Google Fonts** | fonts.googleapis.com | **Build-time only** (`next/font` self-hosts at runtime); Next telemetry disabled in image | No | Build only | — | `app/layout.tsx:13`; `apps/workspace/deploy/Dockerfile:104,119` |
 | **Build/CI**: PyPI, npm, Debian/nodesource, `nvcr.io`, GitHub Actions, Semgrep + gitleaks images (run in-CI, no source upload), OSV-Scanner (queries package names/versions against osv.dev) | — | provisioning/CI | Source code stays in CI; only dependency identifiers leave (OSV) | Build/CI | — | `.github/workflows/*` |
 
 Backend agents fetch no arbitrary URLs themselves (only internal BFF call in

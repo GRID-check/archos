@@ -4,7 +4,7 @@ A closed set of strings that crosses the language boundary (a task kind the
 agent may delegate, a source kind a citation chip is drawn for, a shelf) has
 its one source in Python: a ``Literal``, a registry's keys or an enum's values.
 This script renders each to an ``as const``
-tuple in ``frontends/ui/src/shared/vocabularies.generated.ts``, so the UI
+tuple in ``apps/workspace/shared/vocabularies.generated.ts``, so the UI
 imports the set instead of mirroring it, and a regex parity test has nothing
 left to compare. One stage, unlike the cards and the wire: a tuple of strings
 needs no JSON Schema in between.
@@ -27,24 +27,25 @@ from aiq_agent.cards.workspace_cards import TaskKind
 from aiq_agent.common.source_kinds import SOURCE_KINDS
 from aiq_agent.common.source_kinds import Shelf
 
-OUT_PATH = Path(__file__).resolve().parent.parent / "frontends" / "ui" / "src" / "shared" / "vocabularies.generated.ts"
+OUT_PATH = Path(__file__).resolve().parent.parent / "apps" / "workspace" / "shared" / "vocabularies.generated.ts"
 
 #: Each exported tuple: its TypeScript name, its values in the source's order, and the line that says what it is.
 VOCABULARIES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     (
         "DELEGATABLE_TASK_KINDS",
         get_args(TaskKind),
-        "The kinds a person may delegate: `TaskKind` in `src/aiq_agent/cards/workspace_cards.py`.",
+        "The kinds a person may delegate: `TaskKind` in `packages/agent/src/aiq_agent/cards/workspace_cards.py`.",
     ),
     (
         "SOURCE_KINDS",
         tuple(SOURCE_KINDS),
-        "The coarse source kinds: the keys of `SOURCE_KINDS` in `src/aiq_agent/common/source_kinds.py`.",
+        "The coarse source kinds: the keys of `SOURCE_KINDS` in `packages/agent/src/aiq_agent/common/source_kinds.py`.",
     ),
     (
         "SHELVES",
         tuple(shelf.value for shelf in Shelf),
-        "The shelves a retrieved chunk can come from: `Shelf` in `src/aiq_agent/common/source_kinds.py`.",
+        "The shelves a retrieved chunk can come from: `Shelf` in "
+        "`packages/agent/src/aiq_agent/common/source_kinds.py`.",
     ),
 )
 

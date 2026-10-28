@@ -331,7 +331,7 @@ def test_the_runs_import_this_checkout(tmp_path):
 
     path = census.tree_pythonpath(tmp_path).split(os.pathsep)
     shim = Path(path[1])
-    assert path[0] == str(census.HERE) and path[2] == str(census.ROOT / "src")
+    assert path[0] == str(census.HERE) and path[2] == str(census.ROOT / "packages" / "agent" / "src")
     assert shim.parent == tmp_path and shim.name.startswith(".tree-")
     assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
     assert suite.foreign_imports(tmp_path) == []

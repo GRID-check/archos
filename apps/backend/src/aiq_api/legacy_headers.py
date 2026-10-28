@@ -14,7 +14,7 @@ names they were stored with, so the move is expand, switch, contract:
 A header already present under its old name is left as it is. Only the names
 in ``SERVICE_HEADERS`` are copied: ``x-`` alone is every proxy's prefix. The
 BFF's WebSocket proxy strips the same list from what a browser sends
-(``frontends/ui/src/lib/proxy/ws-upgrade-headers.js``), and
+(``apps/workspace/bff/proxy/ws-upgrade-headers.js``), and
 ``tests/test_legacy_headers.py`` holds the two lists equal.
 """
 

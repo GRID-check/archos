@@ -122,7 +122,7 @@ organization is shown by id. The project and folder names are today's, so a
 deleted project or folder shows up as gone.
 
 Developers: the one writer is `recordDocumentAccess`
-(`frontends/ui/src/lib/download-log/service.ts`), and
+(`apps/workspace/bff/download-log/service.ts`), and
 `download-log/coverage.spec.ts` fails when a new function reads or presigns an
 object, or a new route reaches one, without being classified there. It also
 fails when a logged function does not ask `getAccessibleDocument` (itself, or

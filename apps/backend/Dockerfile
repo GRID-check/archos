@@ -72,7 +72,7 @@ ENV TIKTOKEN_CACHE_DIR=/app/tiktoken-cache
 COPY pyproject.toml uv.lock ./
 
 # Copy all source packages
-COPY src/ ./src/
+COPY packages/agent/ ./packages/agent/
 COPY packages/knowledge-layer/ ./packages/knowledge-layer/
 COPY packages/ris-adapter/ ./packages/ris-adapter/
 COPY packages/tavily-web-search/ ./packages/tavily-web-search/
@@ -95,7 +95,7 @@ COPY packages/ifc-spatial-py/ ./packages/ifc-spatial-py/
 RUN uv sync --frozen --no-dev --no-install-workspace --all-packages
 
 # Install workspace packages (without CLI for base)
-RUN uv pip install --no-deps -e . \
+RUN uv pip install --no-deps -e ./packages/agent \
     && uv pip install --no-deps -e ./packages/tavily-web-search \
     && uv pip install --no-deps -e ./packages/ris-adapter \
     && uv pip install --no-deps -e "./packages/knowledge-layer[all]" \
@@ -124,7 +124,7 @@ RUN /app/.venv/bin/python -c "import aiq_api; import knowledge_layer; import ris
 # The workspace packages are installed editable, so UV_COMPILE_BYTECODE above
 # compiled their dependencies but not them: compile their sources here. Then
 # fetch the BPE table into TIKTOKEN_CACHE_DIR, so no process downloads it.
-RUN /app/.venv/bin/python -m compileall -q -j 0 /app/src /app/packages /app/apps/backend \
+RUN /app/.venv/bin/python -m compileall -q -j 0 /app/packages /app/apps/backend \
     && /app/.venv/bin/python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" \
     && test -n "$(ls -A /app/tiktoken-cache)"
 

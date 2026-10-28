@@ -35,7 +35,7 @@ def test_a_push_names_its_diff_base_and_the_reason(mod):
             "EVENT": "push",
             "BASE": "a" * 40,
             "BASE_REASON": "no green push run is an ancestor of HEAD; diffing against the root commit",
-            "TIERS": json.dumps({"backend": "true", "frontend": "false"}),
+            "TIERS": json.dumps({"backend": "true", "workspace": "false"}),
             "BUILD": json.dumps(IMAGES[:1]),
             "IMAGES": json.dumps(IMAGES),
             "PINS": "[]",
@@ -43,7 +43,7 @@ def test_a_push_names_its_diff_base_and_the_reason(mod):
     )
 
     assert "Diffed against `aaaaaaaaaaaa`: no green push run is an ancestor of HEAD" in text
-    assert "| backend | yes |" in text and "| frontend | no |" in text
+    assert "| backend | yes |" in text and "| workspace | no |" in text
     assert f"| backend | `inputs-{'b' * 16}` | build and push |" in text
     assert f"| frontend | `inputs-{'f' * 16}` | nothing to build |" in text
     assert text.endswith("scanned by trivy: none.\n")

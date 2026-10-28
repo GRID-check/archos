@@ -16,7 +16,7 @@ vars:
   TESTMON_ENV: TESTMON_DATAFILE=.testmondata-
   TESTMON_PATHS:
     map:
-      core: tests/ evals/
+      core: tests/ packages/agent/tests/ evals/
       api: apps/backend/tests/
       sources: packages/knowledge-layer packages/ris-adapter packages/tavily-web-search --dist loadfile
 
@@ -44,7 +44,7 @@ tasks:
   be:test:
     desc: Backend core suite
     cmds:
-      - '{{.PY}} -X faulthandler -m pytest tests/ evals/ -q {{.XDIST}}'
+      - '{{.PY}} -X faulthandler -m pytest tests/ packages/agent/tests/ evals/ -q {{.XDIST}}'
 
   be:test:harness:
     desc: The tests of the repository's own machinery (CI workflows and plan scripts, release notes, PR hygiene)
@@ -60,7 +60,7 @@ tasks:
         tests/test_ci_workflows.py tests/test_reuse_green_run.py tests/test_last_green.py
         tests/test_image_inputs.py tests/test_pinned_images.py tests/test_plan_summary.py
         tests/test_release_notes.py tests/test_pr_closing_keywords.py tests/test_bun_version_pin.py
-        tests/test_pr_selection.py tests/test_ci_filter_coverage.py tests/aiq_agent/test_product_framing.py
+        tests/test_pr_selection.py tests/test_ci_filter_coverage.py packages/agent/tests/test_product_framing.py
         tests/test_repo_layout.py tests/test_ci_filter_reads.py
 
   be:test:sources:
@@ -212,7 +212,7 @@ tasks:
     desc: 'Root-sort eval — placement precision, coverage and the sure-threshold sweep on a labelled synthetic shelf, plus the new-folder grouping (NEEDS OPENROUTER_API_KEY; no backend)'
     dir: '{{.ROOT_DIR}}/apps/backend'
     cmds:
-      # Sets SURE_CONFIDENCE (frontends/ui/src/lib/filing/root-sort-types.ts).
+      # Sets SURE_CONFIDENCE (apps/workspace/bff/filing/root-sort-types.ts).
       # Run before and after a change to the sort prompt, the scoring or the
       # threshold; writes tests/fixtures/root_sort/eval_<date>.json. A few cents.
       # `-I` ignores PYTHONPATH: the venv's editable installs are what resolve the imports.
@@ -299,8 +299,8 @@ tasks:
     desc: Backend core suite with the coverage gate CI enforces
     cmds:
       - >-
-        {{.PY}} -X faulthandler -m pytest tests/ evals/ -q {{.XDIST}}
-        --cov=src/aiq_agent --cov-report=xml:coverage.xml --cov-report=term
+        {{.PY}} -X faulthandler -m pytest tests/ packages/agent/tests/ evals/ -q {{.XDIST}}
+        --cov=packages/agent/src/aiq_agent --cov-report=xml:coverage.xml --cov-report=term
         --cov-fail-under=65
 
   be:test:shard:
@@ -317,10 +317,10 @@ tasks:
       # not in the file is counted at the average, so a stale file only
       # unbalances the shards, never drops a test.
       - >-
-        {{.PY}} -X faulthandler -m pytest tests/ evals/ -q {{.XDIST}}
+        {{.PY}} -X faulthandler -m pytest tests/ packages/agent/tests/ evals/ -q {{.XDIST}}
         --splits {{.TOTAL}} --group {{.INDEX}} --splitting-algorithm least_duration
         --durations-path tests/.test_durations
-        --cov=src/aiq_agent --cov-report=
+        --cov=packages/agent/src/aiq_agent --cov-report=
 
   be:test:coverage:
     desc: Combine the core shards' coverage data and apply the gate CI enforces
@@ -334,7 +334,7 @@ tasks:
     cmds:
       # Re-run when the shards' times in CI drift apart. Rounded to keep the
       # file's churn down; the split needs proportions, not precision.
-      - '{{.PY}} -X faulthandler -m pytest tests/ evals/ -q {{.XDIST}} --store-durations --durations-path tests/.test_durations'
+      - '{{.PY}} -X faulthandler -m pytest tests/ packages/agent/tests/ evals/ -q {{.XDIST}} --store-durations --durations-path tests/.test_durations'
       - >-
         {{.PY}} -c "import json, pathlib; p = pathlib.Path('tests/.test_durations');
         d = json.loads(p.read_text()); p.write_text(json.dumps({k: round(v, 3) for k, v in sorted(d.items())}, indent=0) + chr(10))"
@@ -363,8 +363,8 @@ tasks:
       # in the one scratch database.
       - >-
         bash scripts/rls-test-db.sh --exec "{{.PY}}" -X faulthandler -m pytest -q
-        tests/aiq_agent/common/test_claim_queue.py
+        packages/agent/tests/common/test_claim_queue.py
         tests/knowledge_layer_tests/test_ingest_queue.py
         apps/backend/tests/test_research_queue_fair.py
-        tests/aiq_agent/knowledge/folder_cards
+        packages/agent/tests/knowledge/folder_cards
         tests/test_postgres_rename_legacy_names.py

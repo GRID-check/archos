@@ -1,7 +1,7 @@
 """Project likeness as an input to the one cross-project ranking (design §7, item 3).
 
 The BFF used to decide which projects got searched at all from the hand-set
-fingerprint similarity (``frontends/ui/src/lib/cross-project/similarity.ts``).
+fingerprint similarity (``apps/workspace/bff/cross-project/similarity.ts``).
 With every reachable project in one query, the similarity becomes a ranking
 input instead: a wrong weight nudges an order rather than hiding a project.
 

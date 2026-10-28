@@ -1,7 +1,7 @@
 # Fingerprint quotes: does the quote STATE the value? (ADR-0064 use 12, ADR-0096)
 #
 # Hand-labelled from the precedent fixture office's own passages
-# (frontends/ui/tests/fixtures/precedent/office.json) and lightly varied.
+# (apps/workspace/tests/fixtures/precedent/office.json) and lightly varied.
 # `stated: true` — the quoted words say the project has this value, in these or
 # equivalent words. `stated: false` — the quote names the value for something
 # else (a material, a neighbour, a norm), names another value, or does not

@@ -29,7 +29,7 @@ from fixture_bff import FixtureOffice  # noqa: E402
 
 from aiq_agent.project_context import GridRequestContext  # noqa: E402
 
-SCHEMA = json.loads((REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "cross-project.schema.json").read_text())
+SCHEMA = json.loads((REPO_ROOT / "apps" / "workspace" / "tests" / "fixtures" / "cross-project.schema.json").read_text())
 TOKEN = "eval-token"
 
 
@@ -156,7 +156,7 @@ class TestTheFixtureBff:
 def test_the_fixture_permit_records_are_of_documents_the_office_holds_and_the_ingest_typed_permit_decision():
     """`permits.json` is the pen's output over the office: a record for a document that is not one is a stale render."""
     permits = json.loads(
-        (REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent" / "permits.json").read_text()
+        (REPO_ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent" / "permits.json").read_text()
     )
     documents = {
         document["documentId"]: document

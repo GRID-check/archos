@@ -5,7 +5,7 @@ when research moved off FIFO: fairness across organizations, priority inside one
 the per-organization cap that makes a job wait instead of fail, release on drain
 that spends no attempt, dead rows, the in-place upgrade of the table that is
 already in production, and the meters. The substrate's own scenarios, on both
-databases, are ``tests/aiq_agent/common/test_claim_queue.py``.
+databases, are ``packages/agent/tests/common/test_claim_queue.py``.
 """
 
 from __future__ import annotations

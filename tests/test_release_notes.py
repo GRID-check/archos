@@ -66,7 +66,7 @@ def test_a_plain_sentence_passes():
         (".. note:: the re-index button now works as documented for everyone.", "directive"),
         ("Re-indexing works again, see #1423 for the details of the fix.", "issue or PR number"),
         ("Re-indexing works again after the fix in ingest_oib.py landed here.", "file name"),
-        ("Re-indexing works again after the change to src/aiq_agent landed here.", "repository path"),
+        ("Re-indexing works again after the change to packages/agent/src/aiq_agent landed here.", "repository path"),
         ("Re-indexing works again as of commit 4f2a91c in the ingest path.", "commit sha"),
         ("Re-indexing is fixed, details at https://github.com/GRID-check/grid-oib-agent.", "link"),
     ],
@@ -628,16 +628,16 @@ def test_no_public_changelog_string_reads_as_german():
 
 
 def test_a_product_change_needs_a_note():
-    assert require_note.needs_note(["src/aiq_agent/tools/bim/register.py"])
-    assert require_note.needs_note(["frontends/ui/src/app/page.tsx"])
+    assert require_note.needs_note(["packages/agent/src/aiq_agent/tools/bim/register.py"])
+    assert require_note.needs_note(["apps/workspace/app/page.tsx"])
 
 
 def test_tests_and_docs_do_not_need_a_note():
     assert not require_note.needs_note(
         [
             "tests/test_release_notes.py",
-            "src/aiq_agent/tools/bim/tests/test_measure.py",
-            "frontends/ui/src/app/page.spec.tsx",
+            "packages/agent/src/aiq_agent/tools/bim/tests/test_measure.py",
+            "apps/workspace/app/page.spec.tsx",
             "docs/architecture/overview.md",
             "deploy/pulumi/src/index.ts",
             "apps/site/src/pages/changelog.astro",
@@ -670,8 +670,8 @@ def _git(repo: Path, *args: str) -> str:
 def pr_repo(tmp_path, monkeypatch):
     """A repository with one product file and one old note, on its base commit."""
     _git(tmp_path, "init", "-q", "-b", "develop")
-    (tmp_path / "src/aiq_agent").mkdir(parents=True)
-    (tmp_path / "src/aiq_agent/tool.py").write_text("X = 1\n")
+    (tmp_path / "packages/agent/src/aiq_agent").mkdir(parents=True)
+    (tmp_path / "packages/agent/src/aiq_agent/tool.py").write_text("X = 1\n")
     (tmp_path / "releasenotes/notes").mkdir(parents=True)
     (tmp_path / "releasenotes/notes/old-0000.yaml").write_text("features:\n  - Old.\n")
     _git(tmp_path, "add", "-A")
@@ -691,24 +691,33 @@ def _pr(repo: Path, files: dict[str, str]) -> int:
 
 def test_a_comment_only_edit_to_a_product_file_still_needs_a_note(pr_repo):
     # The check goes by file; a change nobody can notice takes the label instead.
-    assert _pr(pr_repo, {"src/aiq_agent/tool.py": "# why X is one\nX = 1\n"}) == 1
+    assert _pr(pr_repo, {"packages/agent/src/aiq_agent/tool.py": "# why X is one\nX = 1\n"}) == 1
 
 
 def test_a_note_the_pr_adds_satisfies_the_gate(pr_repo):
-    files = {"src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/new-1111.yaml": "fixes:\n  - New.\n"}
+    files = {
+        "packages/agent/src/aiq_agent/tool.py": "X = 2\n",
+        "releasenotes/notes/new-1111.yaml": "fixes:\n  - New.\n",
+    }
 
     assert _pr(pr_repo, files) == 0
 
 
 def test_a_note_in_an_internal_section_satisfies_the_gate(pr_repo):
     """The failure message promises it: a security fix needs a note, not a public one."""
-    files = {"src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/hole-2222.yaml": "security:\n  - Closed.\n"}
+    files = {
+        "packages/agent/src/aiq_agent/tool.py": "X = 2\n",
+        "releasenotes/notes/hole-2222.yaml": "security:\n  - Closed.\n",
+    }
 
     assert _pr(pr_repo, files) == 0
 
 
 def test_editing_an_old_note_does_not_satisfy_the_gate(pr_repo):
-    files = {"src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/old-0000.yaml": "features:\n  - Edited.\n"}
+    files = {
+        "packages/agent/src/aiq_agent/tool.py": "X = 2\n",
+        "releasenotes/notes/old-0000.yaml": "features:\n  - Edited.\n",
+    }
 
     assert _pr(pr_repo, files) == 1
 

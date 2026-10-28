@@ -108,10 +108,10 @@ This repo's CI/dev environment cannot reach openrouter.ai, so the contract
 above is **verified against the official documentation and replayed as test
 fixtures**, not against the live API:
 
-- `tests/aiq_agent/common/test_cost_tracking.py` replays a
+- `packages/agent/tests/common/test_cost_tracking.py` replays a
   documentation-exact usage object end-to-end: extraction → budget math →
   the exact JSON batch POSTed to the ledger endpoint.
-- `frontends/ui/src/app/api/internal/usage/route.spec.ts` accepts exactly
+- `apps/workspace/app/api/internal/usage/route.spec.ts` accepts exactly
   that batch shape into the ledger.
 - **Live-Postgres integration tests** (opt-in via `TEST_DATABASE_URL`,
   auto-skipped in CI): `src/lib/budgets/service.integration.spec.ts` and
@@ -129,7 +129,7 @@ fixtures**, not against the live API:
 
 ## Capture: one handler, zero per-agent code
 
-`src/aiq_agent/common/cost_tracking.py`:
+`packages/agent/src/aiq_agent/common/cost_tracking.py`:
 
 ```
 track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)

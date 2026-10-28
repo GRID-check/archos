@@ -7,7 +7,7 @@
   **not legal advice**; have counsel review before relying on it.
 - **Companion documents:** [`external-dependencies.md`](external-dependencies.md)
   (full third-party register + model-switching statement), the legal pages shipped at
-  `frontends/ui/src/lib/legal/content/{de,en}.ts` (served at `/legal/*`).
+  `apps/workspace/bff/legal/content/{de,en}.ts` (served at `/legal/*`).
 
 ## Executive summary
 
@@ -47,9 +47,9 @@ Full persona report highlights (severity · finding · key evidence):
 |---|---|---|
 | Crit | Third-country transfer of all prompts via OpenRouter; recipient set changes per org-admin click; no ZDR/provider pinning, no transfer safeguards documented | `configs/config_oib_openrouter.yml:52-56`; ADR-0014; no `provider.data_collection` anywhere |
 | Crit | No privacy policy / Impressum / terms (Art. 12–14; ECG §5) | *(fixed in this branch — placeholders must be completed)* |
-| Crit | Art. 15/17/20 not implemented for users: purgers for document/conversation/org/user are "later phases"; no export endpoint; no account deletion UI | `frontends/ui/purger/index.js:47-50`; `app/api/documents/[id]/` (no DELETE) |
+| Crit | Art. 15/17/20 not implemented for users: purgers for document/conversation/org/user are "later phases"; no export endpoint; no account deletion UI | `apps/workspace/purger/index.js:47-50`; `app/api/documents/[id]/` (no DELETE) |
 | Crit | Conversation delete removes only DB rows; LangGraph checkpoints (full content) persist indefinitely | `lib/conversations/repository.ts:87-92`; `docs/architecture/deletion-pipeline.md` (self-acknowledged) |
-| High | Chat prompts logged cleartext at INFO | `src/aiq_agent/agents/chat_researcher/register.py:518` |
+| High | Chat prompts logged cleartext at INFO | `packages/agent/src/aiq_agent/agents/chat_researcher/register.py:518` |
 | High | WorkOS EU data residency unverified (own ADR); audit events ship email + client IP + doc filenames to WorkOS; no DPA evidence | ADR-0002 Open Questions; `lib/audit/service.ts:56-93` |
 | High | Document content flows to NVIDIA US API by config default (embeddings/VLM) | `packages/knowledge-layer/src/llamaindex/adapter.py:583-591` |
 | High | `REQUIRE_AUTH=false` default (Art. 25(2) violation); anon mode has known cross-tenant memory-write gap (S3) | `deploy/.env.example`; `docs/architecture/memory-reflection-audit.md` |

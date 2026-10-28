@@ -26,13 +26,13 @@ DOC = Path("docs/deployment/environment-variables.md")
 
 SCOPE = (
     "apps/backend/src/aiq_api/jobs/*.py",
-    "src/aiq_agent/knowledge/ingest_*.py",
-    "src/aiq_agent/knowledge/folder_cards/*.py",
-    "frontends/ui/workers/*.js",
-    "frontends/ui/purger/*.js",
-    "frontends/ui/scheduler/*.js",
-    "frontends/ui/src/lib/jobs-queue/*.ts",
-    "frontends/ui/src/lib/mail-import/*.ts",
+    "packages/agent/src/aiq_agent/knowledge/ingest_*.py",
+    "packages/agent/src/aiq_agent/knowledge/folder_cards/*.py",
+    "apps/workspace/workers/*.js",
+    "apps/workspace/purger/*.js",
+    "apps/workspace/scheduler/*.js",
+    "apps/workspace/bff/jobs-queue/*.ts",
+    "apps/workspace/bff/mail-import/*.ts",
 )
 
 #: Read but not ours to document: the container runtime sets it.

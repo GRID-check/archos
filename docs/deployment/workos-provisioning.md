@@ -9,12 +9,12 @@
 ## The catalog is the source of truth
 
 Since ADR-0038 the tables below are **generated from, and verified against**,
-`frontends/ui/src/lib/authz/catalog.ts`. That file is what the app derives its
+`apps/workspace/bff/authz/catalog.ts`. That file is what the app derives its
 permission types from AND what the provisioning script applies, so this runbook
 documents the catalog rather than competing with it.
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 WORKOS_API_KEY=sk_… npm run provision:authz            # read-only drift check
 WORKOS_API_KEY=sk_… npm run provision:authz -- --apply # reconcile
 ```
@@ -39,8 +39,8 @@ weeks later) were invisible to everything except a human re-reading the file.
 The product renamed the org-wide shelf from „Archiv" to „Büroablage" („Office
 filing" in English) on 6 Oct 2026. The slug is now `org:office_shelf:manage`; `org:archiv:manage` stays in the catalog, deprecated, until roles are re-granted ([runbook](office-shelf-rename-runbook.md)). Its
 label is NOT taken from the dictionary: Organisation → Zugriff
-(`frontends/ui/src/features/organization/components/permission-reference.tsx`) shows the `name` and `description` from
-`frontends/ui/src/lib/authz/catalog.ts`, so it still reads „Manage document Archiv" there until
+(`apps/workspace/ui/features/organization/components/permission-reference.tsx`) shows the `name` and `description` from
+`apps/workspace/bff/authz/catalog.ts`, so it still reads „Manage document Archiv" there until
 the next provisioning changes them. Changing them rewrites the permission's
 name and description in WorkOS, a provisioning step that waits for the
 product owner's go. Change the
@@ -60,7 +60,7 @@ conventions: read-only check by default, `--apply` reconciles, non-zero exit
 on drift.
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 WORKOS_API_KEY=sk_… npm run provision:workos-env            # read-only drift check
 WORKOS_API_KEY=sk_… npm run provision:workos-env -- --apply # reconcile
 ```
@@ -328,9 +328,9 @@ nobody. The current gap in both environments, and what it costs users, is in
 ### 5. Audit Logs (native WorkOS product)
 
 The app emits every privileged admin action as a **WorkOS Audit Log event**
-(`frontends/ui/src/lib/audit/service.ts`) — no app-side audit table.
+(`apps/workspace/bff/audit/service.ts`) — no app-side audit table.
 
-**The registry is `frontends/ui/src/lib/audit/schemas.mjs`**, and it is not a
+**The registry is `apps/workspace/bff/audit/schemas.mjs`**, and it is not a
 list of action names: each action is stored WITH the schema WorkOS validates
 its events against, and `AUDIT_ACTIONS` is derived from those keys. That is
 deliberate. The two used to be separate lists — actions in `service.ts`,
@@ -438,7 +438,7 @@ work (`piloti.mark.decided`).
   one deploy long, loud, and self-healing, while gating would put every release
   behind a third party; the reasoning is in the Job file's own header.
 - **Manual escape hatch** (a fresh environment, or a key the cluster does not
-  hold — from `frontends/ui`):
+  hold — from `apps/workspace`):
 
   ```bash
   WORKOS_API_KEY=sk_… npm run provision:audit-schemas            # read-only drift check
@@ -483,7 +483,7 @@ work (`piloti.mark.decided`).
 
 Every feature switch is a **WorkOS Feature Flag**, per organization,
 delivered in the AuthKit JWT `feature_flags` claim (registry:
-`frontends/ui/src/lib/authz/feature-flags.ts`). There is one semantic: a flag is
+`apps/workspace/bff/authz/feature-flags.ts`). There is one semantic: a flag is
 on exactly when WorkOS says so for the organization, and anything short of a
 yes — a stale token, a slug missing from WorkOS, a failed lookup, no
 organization — is off. There are no env switches and no enforcement toggle.
@@ -541,7 +541,7 @@ Rollout order (per environment): 1) create the flag in the WorkOS dashboard
 log), in BOTH environments and in the same change that adds the slug to the
 registry, 2) target the organizations that should have it (dashboard, or
 `workos.featureFlags.addFlagTarget({ slug, targetId: 'org_…' })`). `task
-fe:provision:flags` lists every registry slug missing from an environment
+workspace:provision:flags` lists every registry slug missing from an environment
 (read-only, `WORKOS_API_KEY` of that environment). Tokens minted before a change carry the old claim — users pick it up at their
 next sign-in. ✅ All four flags exist in Staging AND Production
 (2026-07-13): `runtime-model-config` and `web-search` enabled for ALL
@@ -589,7 +589,7 @@ redeploy.
 
 **A registry flag absent from WorkOS is off for everybody.** The registry is
 TypeScript and the flags are remote state, so `task verify` cannot see across
-the gap. `task fe:provision:flags` can: it lists the environment's flags
+the gap. `task workspace:provision:flags` can: it lists the environment's flags
 read-only, fails on any registry slug missing there, and reports (without
 failing) flags no code reads. The weekly **WorkOS drift** workflow runs it
 against Staging; Production has no key in CI, so run it there by hand with the
@@ -728,7 +728,7 @@ Three things follow, and each has cost somebody an afternoon:
    `folder` (parent `project`). Descriptions are capped at 150
    characters.
 2. **Script**: `WORKOS_API_KEY=<key> npm run provision:workos-env -- --apply`
-   from `frontends/ui` creates organization **GRID Platform** with external id
+   from `apps/workspace` creates organization **GRID Platform** with external id
    `grid-platform` (the app resolves it by external id, so the name may differ
    but the external id may not). Was dashboard-only before.
 3. **Script**: `WORKOS_API_KEY=<key> npm run provision:authz -- --apply`.
@@ -755,13 +755,13 @@ Three things follow, and each has cost somebody an afternoon:
    cluster deploys against — the `grid-app-audit-schemas` Job reconciles them
    on the next rollout. Otherwise run it by hand:
    `WORKOS_API_KEY=<prod key> npm run provision:audit-schemas -- --apply`
-   (from `frontends/ui`), then re-run without `--apply` to confirm it reports
+   (from `apps/workspace`), then re-run without `--apply` to confirm it reports
    "WorkOS matches the audit registry."
 8. Feature flags (§6): CREATION stays a dashboard step —
    `provision:workos-env` lists every registry flag missing from WorkOS as
    MANUAL rather than attempting it. Create them, target the intended orgs
    (`WORKOS_FLAG_TARGETS_JSON` + `--apply` reconciles targeting, ADDITIVELY).
-   `task fe:provision:flags` then confirms every registry slug exists.
+   `task workspace:provision:flags` then confirms every registry slug exists.
 9. BYOK (ADR-0022): WorkOS Vault needs no per-environment setup — objects
    are created lazily under each org's key context. Enterprise tenants
    wanting customer-managed KEKs (Vault BYOK: AWS KMS / Azure Key Vault /
@@ -814,7 +814,7 @@ not yet registered in WorkOS and never removes a folder role, and saving a list
 in the new dialog deletes that folder's old grant rows, so a list someone
 changed is never carried over again and every later deploy's run is a no-op.
 
-By hand, for an environment no stack deploys against, from `frontends/ui`:
+By hand, for an environment no stack deploys against, from `apps/workspace`:
 
 ```bash
 WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \

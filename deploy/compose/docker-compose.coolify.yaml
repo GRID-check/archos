@@ -482,7 +482,7 @@ services:
   # mounted on `frontend`.
   migrate:
     build:
-      context: ./frontends/ui
+      context: ./apps/workspace
       dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
@@ -513,7 +513,7 @@ services:
   #
   #   1. `document.generated` is emitted with the THROWING emitter, so a
   #      rejected event does not thin the trail — it unfiles the document, row
-  #      and object (frontends/ui/src/lib/documents/generated.ts). An
+  #      and object (apps/workspace/bff/documents/generated.ts). An
   #      unreconciled environment serves a Piloti that files nothing, and says
   #      nothing about it.
   #   2. There is no rolling update to protect. Kubernetes keeps the previous
@@ -535,7 +535,7 @@ services:
   # append-only in WorkOS).
   audit-schemas:
     build:
-      context: ./frontends/ui
+      context: ./apps/workspace
       dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
@@ -552,7 +552,7 @@ services:
 
   frontend:
     build:
-      context: ./frontends/ui
+      context: ./apps/workspace
       dockerfile: apps/backend/Dockerfile
     # The image CMD migrates then serves; migration has moved to migrate,
     # so this container only serves.
@@ -593,7 +593,7 @@ services:
       - NEXT_PUBLIC_WORKOS_REDIRECT_URI=https://${SERVICE_FQDN_FRONTEND}/api/auth/callback
       - WORKOS_REDIRECT_URI=https://${SERVICE_FQDN_FRONTEND}/api/auth/callback
       # PostHog product analytics (fail-open: unset means no events leave the
-      # browser — see frontends/ui/src/lib/analytics/posthog.ts).
+      # browser — see apps/workspace/bff/analytics/posthog.ts).
       - NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST:-}
       - NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=${NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN:-}
       - NEXT_PUBLIC_POSTHOG_SESSION_REPLAY=${NEXT_PUBLIC_POSTHOG_SESSION_REPLAY:-true}
@@ -604,7 +604,7 @@ services:
       - BYOK_SECRET_BACKEND=${BYOK_SECRET_BACKEND:-${GRID_BYOK_SECRET_BACKEND:-}}
       - BYOK_LOCAL_KEK=${BYOK_LOCAL_KEK:-${GRID_BYOK_LOCAL_KEK:-}}
       - BYOK_ALLOW_PRIVATE_BASE_URLS=${BYOK_ALLOW_PRIVATE_BASE_URLS:-${GRID_BYOK_ALLOW_PRIVATE_BASE_URLS:-false}}
-      # Must match the code default in frontends/ui/src/shared/config/file-upload.ts:
+      # Must match the code default in apps/workspace/shared/config/file-upload.ts:
       # an override here that lists fewer types silently narrows what users can upload.
       - FILE_UPLOAD_ACCEPTED_TYPES=${FILE_UPLOAD_ACCEPTED_TYPES:-.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx}
       - FILE_UPLOAD_MAX_SIZE_MB=${FILE_UPLOAD_MAX_SIZE_MB:-100}
@@ -649,7 +649,7 @@ services:
       # endpoints, and it is what makes a pilot report nameable.
       - GIT_SHA=${GIT_SHA:-${GRID_GIT_SHA:-}}
       # Features are WorkOS flags per organization, with no env switches
-      # (frontends/ui/src/lib/authz/feature-flags.ts). With REQUIRE_AUTH=true
+      # (apps/workspace/bff/authz/feature-flags.ts). With REQUIRE_AUTH=true
       # this stack reads them from its WorkOS environment, exactly as
       # Kubernetes does; without it, nobody signs in and every rollout
       # (model surfaces, filing, the post-answer stages, ...) is on while every
@@ -757,7 +757,7 @@ services:
   # build: the runtime keeps neither bun nor tsx.
   workos-authz:
     build:
-      context: ./frontends/ui
+      context: ./apps/workspace
       dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
@@ -781,7 +781,7 @@ services:
 
   purger:
     build:
-      context: ./frontends/ui
+      context: ./apps/workspace
       dockerfile: apps/backend/Dockerfile
     command: ["node", "purger/index.js"]
     environment:
@@ -829,7 +829,7 @@ services:
     # also POSTs the BFF's run reconciler, which closes runs whose ending never
     # reached the BFF.
     build:
-      context: ./frontends/ui
+      context: ./apps/workspace
       dockerfile: apps/backend/Dockerfile
     command: ["node", "scheduler/index.js"]
     environment:
@@ -857,7 +857,7 @@ services:
     # housekeeping routes on the cadences Kubernetes runs as CronJobs. The
     # backend runs no loop of its own.
     build:
-      context: ./frontends/ui
+      context: ./apps/workspace
       dockerfile: apps/backend/Dockerfile
     command: ["node", "workers/housekeeping-clock.js"]
     environment:

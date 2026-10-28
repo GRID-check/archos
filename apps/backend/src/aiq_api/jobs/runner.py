@@ -114,7 +114,7 @@ _OWNERSHIP_LOST_REASON = "queue claim reclaimed by another worker"
 #: The request-context headers a worker supplies to the tools it runs, from
 #: the run's identity. The contract `aiq_agent.project_context.
 #: TOOL_CONTEXT_REQUIREMENTS` is checked against THIS tuple by
-#: `tests/aiq_agent/test_tool_context_contract.py`: a tool that needs a header
+#: `packages/agent/tests/test_tool_context_contract.py`: a tool that needs a header
 #: the worker does not inject fails that test rather than every unattended run.
 WORKER_IDENTITY_HEADERS: tuple[str, ...] = (PROJECT_ID_HEADER, ORGANIZATION_ID_HEADER, USER_ID_HEADER)
 
@@ -1206,7 +1206,7 @@ def _bound_card_registry() -> Iterator[CardRegistry]:
     The chat turn does the same around ``agent.run`` (``piloti/conversation_register.py``),
     with a conversation-scoped registry it clears per turn. A job has no
     conversation of its own to key on and runs once, so a fresh registry is the
-    per-turn state here — the ``ContextVar`` rule in ``src/aiq_agent/AGENTS.md``.
+    per-turn state here — the ``ContextVar`` rule in ``packages/agent/src/aiq_agent/AGENTS.md``.
     Reset in ``finally`` so a failed run leaves nothing bound for the next job
     this worker picks up.
     """

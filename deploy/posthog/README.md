@@ -85,7 +85,7 @@ The inner columns are renamed because ClickHouse refuses an outer
 |---|---|---|---|
 | Platform health (prod) | `tqqimEor` | hourly | The five per-area health tables of `docs/observability/metrics.md`, merged, plus „production sends no metrics at all", which the old heartbeat could not see: it only noticed a service that sent and then stopped |
 | Support: feedback ticket waiting 24h+ (prod) | `gsIfpLwh` | hourly | A prod ticket, contact allowed, where the reporter spoke last more than 24 h and less than 7 days ago. Read from `$conversation_message_*` events: PostHog emits no event when a ticket is resolved, so a ticket resolved without a reply stays listed until its 7 days pass |
-| Costs and budgets (prod) | `1GfF4oj1` | hourly | An office at 90 %+ of its monthly budget or blocked by it; today's LLM cost above 25 USD and above twice the 14-day daily average; Claude chat reading under 20 % of its input from the prompt cache over 24 h (it read 0 % for a month until 2026-10-27, `src/aiq_agent/common/prompt_caching.py`). Cost equals price on the price list today, so a negative-margin rule would never fire |
+| Costs and budgets (prod) | `1GfF4oj1` | hourly | An office at 90 %+ of its monthly budget or blocked by it; today's LLM cost above 25 USD and above twice the 14-day daily average; Claude chat reading under 20 % of its input from the prompt cache over 24 h (it read 0 % for a month until 2026-10-27, `packages/agent/src/aiq_agent/common/prompt_caching.py`). Cost equals price on the price list today, so a negative-margin rule would never fire |
 
 ## Destinations outside `support/`
 

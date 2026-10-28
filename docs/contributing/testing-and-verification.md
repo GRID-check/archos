@@ -31,9 +31,9 @@ Reach for the narrow task rather than the whole gate:
 
 | Working on | Task |
 |---|---|
-| UI types | `task fe:types` |
-| UI tests | `task fe:test` |
-| UI lint (oxlint; why not ESLint or Biome: [lint-evaluation.md](lint-evaluation.md)), and the module seams (dependency-cruiser: [module-seams.md](module-seams.md)) | `task fe:lint` |
+| UI types | `task workspace:types` |
+| UI tests | `task workspace:test` |
+| UI lint (oxlint; why not ESLint or Biome: [lint-evaluation.md](lint-evaluation.md)), and the module seams (dependency-cruiser: [module-seams.md](module-seams.md)) | `task workspace:lint` |
 | Backend lint (ruff), and the package seams (import-linter: [module-seams.md](module-seams.md)) | `task be:lint` |
 | Backend tests | `task be:test`, or `task be:test:api` for the plugin suite |
 | The Chroma exporter and the move off Chroma (`deploy/migration/`, `qdrant/import_vectors.py`) | `task be:test:migration`, in its own `chromadb` environment; nothing else imports `chromadb` ([`deploy/migration/README.md`](../../deploy/migration/README.md#tests)) |
@@ -44,12 +44,12 @@ Then run `task verify:fast` before you push.
 
 ## Traps the task list cannot tell you about
 
-**`next build` does not typecheck the specs; `task fe:types` does.** The build
-reads `frontends/ui/tsconfig.build.json` (`typescript.tsconfigPath` in
+**`next build` does not typecheck the specs; `task workspace:types` does.** The build
+reads `apps/workspace/tsconfig.build.json` (`typescript.tsconfigPath` in
 `next.config.ts`), which leaves specs and test helpers out of its roots, so a
-type error in a test fails `fe:types` and never the production build.
+type error in a test fails `workspace:types` and never the production build.
 
-**`task fe:types` is `bun check`, which is TypeScript 7.** It checks the whole UI
+**`task workspace:types` is `bun check`, which is TypeScript 7.** It checks the whole UI
 in about six seconds with no cache, and the pinned Bun version decides which
 TypeScript that is (`tests/test_bun_version_pin.py`). Your editor runs its own
 TypeScript; without the TypeScript 7 extension it is 6 and the two can disagree
@@ -78,17 +78,17 @@ Keep what the migration put into the database that is still refused today (a
 CHECK, a unique index, a guard trigger) unless a suite on the full chain
 already covers it.
 
-**Backend tests run against this checkout's `src/`.** Without a guard, pytest
+**Backend tests run against this checkout's `packages/agent/src/`.** Without a guard, pytest
 resolves `aiq_agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
-`pythonpath` puts `src/` first, so a bare `pytest` is safe as well as the Taskfile.
+`pythonpath` puts `packages/agent/src/` first, so a bare `pytest` is safe as well as the Taskfile.
 
 **The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
-Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
+Backend job.** `packages/agent/tests/common/test_claim_queue.py`,
 `tests/knowledge_layer_tests/test_ingest_queue.py` and
 `apps/backend/tests/test_research_queue_fair.py` run every scenario on
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
-SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
+SQL. The folder card builder's suites (`packages/agent/tests/knowledge/folder_cards/`:
 dirty queue, budget, manifests, worker) run on both too, through the
 `database_url` and `agent_db` fixtures in their `conftest.py`. Without `TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
@@ -125,11 +125,11 @@ release rather than trusting a green suite.
 ## How CI distributes the same tasks
 
 CI calls the Taskfile, so there is no second copy of the commands. Only the
-scheduling differs: the frontend tier's card check, lint, types and the
+scheduling differs: the workspace tier's card check, lint, types and the
 tenant-isolation suite share one job, the suite is sharded six ways
-(`fe:test:shard`) and stitched back together by `fe:test:merge` for the coverage
+(`workspace:test:shard`) and stitched back together by `workspace:test:merge` for the coverage
 comment, and the production UI build runs inside the frontend image build
-rather than as `fe:build`. The backend core suite is sharded four ways too
+rather than as `workspace:build`. The backend core suite is sharded four ways too
 (`be:test:shard`, split by `tests/.test_durations`), and `be:test:coverage`
 combines the shards' data and applies the 65% gate that `be:test:ci` applies
 in one go locally. The tests of `ci/`, the workflows and the release notes run
@@ -139,7 +139,7 @@ reaches (`be:test:affected`, from the database `be:test:testmon` records on
 every push to `develop`); the full suite runs on the push. To run the same
 selection locally, record once with `task be:test:testmon` and then
 `task be:test:affected SUITE=core`. The UI equivalent is
-`task fe:test:related SHARD=1/1 FILES="src/path/changed.ts"`. Locally `task fe:verify` runs lint, types, tests and
+`task workspace:test:related SHARD=1/1 FILES="src/path/changed.ts"`. Locally `task workspace:verify` runs lint, types, tests and
 build in order instead.
 
 What decides which jobs run (a pull request against its base, a push against the
@@ -309,7 +309,7 @@ CI**, for the same reason `be:eval:retrieval` no longer does: it needs a
 reachable backend with the operator-provided, gitignored OIB corpus ingested,
 and every question costs real model calls. Run it on either side of a change to
 the answering loop and quote the delta in the PR; the CSV and comparison logic,
-and the reading of a recorded wire v2 turn (`shared/wire/v2/`), are covered
+and the reading of a recorded wire v2 turn (`contracts/wire/v2/`), are covered
 offline by [`tests/test_loop_eval.py`](../../tests/test_loop_eval.py).
 
 ## Cross-service contract fixtures
@@ -329,13 +329,13 @@ Two of these exist:
 | `grid_request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
 | `job_fire_headers.json` | `tests/lib/jobs/fire-headers.test.ts` fires a real submit and captures what went out | `test_fire_path_contract.py` asserts each backend-required set is a subset |
 
-Such a fixture lives in `frontends/ui/tests/fixtures/`, once.
-`frontends/ui/Dockerfile.typecheck`'s build context is scoped to `frontends/ui`
+Such a fixture lives in `apps/workspace/tests/fixtures/`, once.
+`apps/workspace/Dockerfile.typecheck`'s build context is scoped to `apps/workspace`
 and cannot `COPY` from outside it, while the Python suite reads the whole
 repository, so that is the one place both can reach. A copy of it anywhere else
 is a second contract that drifts: `tests/test_no_twin_fixtures.py` fails any
 file under the repo-root `tests/` that is byte-identical to one under
-`frontends/ui/tests/fixtures/`.
+`apps/workspace/tests/fixtures/`.
 
 ## Security and static analysis
 
@@ -431,12 +431,12 @@ looking at an attachment is the check.
 
 ## Mobile evidence
 
-Held statically, by `frontends/ui/src/components/ui/mobile-affordances.spec.ts`
-and `frontends/ui/src/components/ui/touch-target.spec.ts`. Capture a 390x844
+Held statically, by `apps/workspace/ui/components/ui/mobile-affordances.spec.ts`
+and `apps/workspace/ui/components/ui/touch-target.spec.ts`. Capture a 390x844
 viewport alongside the desktop shot when you ship a surface — the playbook above
 has the command.
 
-**The browser measurement is gone.** `task fe:touch-audit` loaded the screenshot
+**The browser measurement is gone.** `task workspace:touch-audit` loaded the screenshot
 registry at a phone viewport and reported what neither a spec nor a screenshot
 can: regions whose `touch-action` refuses the vertical pan (a finger lands and
 the page does not move), boxes that stick out past the viewport, and interactive
@@ -509,7 +509,7 @@ task be:eval:answer-suite -- --out /tmp/suite/after --baseline /tmp/suite/before
 **The precedent set** (`-- --set precedent`) asks whether the agent uses the
 office's other projects well (docs/roadmap/office-experience.md, step A). Each
 turn is asked in the current project of a fixture office
-(`frontends/ui/tests/fixtures/precedent/office.json`: a timber GK 4 house in
+(`apps/workspace/tests/fixtures/precedent/office.json`: a timber GK 4 house in
 Niederösterreich, and 24 other projects (23 closed) across all nine Länder with 74 documents:
 Bescheide, Nachforderungen, details, and many passages that answer none of
 the questions, so a search that ranks badly is told apart from a good one). The suite mints a signed envelope per run, and `fixture_bff.py`
@@ -664,7 +664,7 @@ the right input, two writes in one turn, an ambiguous target it must ask about,
 German and English, and follow-up turns in one conversation (a row's `turns`
 run in order; the checkpointer carries the history between processes). Each
 run sits in the current project of a fixture office
-(`frontends/ui/tests/fixtures/workspace/office.json`) as an admin, with a
+(`apps/workspace/tests/fixtures/workspace/office.json`) as an admin, with a
 signed envelope. `scripts/turn_census/fixture_workspace.py` serves the door from
 the catalog production shows Piloti (`catalog.json`, written by
 `workspace-eval.fixture.spec.ts`) and the turn context with the WORKSPACE block
@@ -675,7 +675,7 @@ Python mirror to lists the TypeScript wrote. The questions are `tests/fixtures/w
 the checks (`reads`, `proposes`, `uses`, `no_write`, `no_workspace`, `no_repeat`, the
 judge's `pending` and `asks`) are explained in its header. `uses` names the tool a
 job must be done with, a native one where the exposure config hides the door's
-look-alike from Piloti (`frontends/ui/src/lib/agent-api/exposure.config.ts`): run
+look-alike from Piloti (`apps/workspace/bff/agent-api/exposure.config.ts`): run
 the set before and after you change a `piloti` entry there. The report's
 `## Workspace` section gives the share of runs where every check held, rounds,
 door calls by kind, searches that found nothing, tokens and seconds. No corpus
@@ -760,7 +760,7 @@ counted. Seeding is idempotent and embeds only what changed; a file cut another 
 before loses its stale points. It needs the deployment's embedding key. Reseed after
 editing `project.yaml` by running the suite again.
 
-The suite starts each run from the working tree: edit nothing under `src/`
+The suite starts each run from the working tree: edit nothing under `packages/agent/src/`
 while it runs, or run it from an exported copy of the commit
 (`git archive <sha> | tar -x -C /tmp/copy`).
 
@@ -774,7 +774,7 @@ store and components.
 
 - The turn is `src/app/dev/_fixtures/v2-turn.ts`: `RUN_STARTED`, the setup and
   three retrieval rounds as typed steps (modelled on
-  `shared/wire/v2/turn-answered.jsonl`), the recorded `oib2` answer mapped onto
+  `contracts/wire/v2/turn-answered.jsonl`), the recorded `oib2` answer mapped onto
   v2 events (masthead, deltas, snapshot, cards, `RUN_FINISHED`) at `speed`
   times its pace, a heartbeat every 20 s and a stage after the terminal.
   `RUN_FINISHED` carries the settled snapshot's text and sources and the
@@ -790,7 +790,7 @@ Run it against a dev server with the WorkOS placeholders
 ([gotchas](gotchas.md)):
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 node scripts/measure-stream-socket.mjs --url http://localhost:3001 --runs 2
 ```
 
@@ -889,7 +889,7 @@ and `light` modes that replayed it, are gone with the v2 cut.
 | Does Qdrant retrieval still clear gates G1b, G2 and G6, beside the numbers the Chroma path recorded? | `task be:eval:qdrant-parity` (`-- --variants all` adds the ranking sweep) | `data/oib`, a Qdrant 1.19 server, the embeddings key | about 15 minutes on 4 CPUs; the corpus embedding (~$0.12) is cached after the first run. [The gate report](../audit/qdrant-gates-2026-10.md) |
 | Does the Erfassungs-Agent set a project up right from its documents? | `task be:eval:intake` | key and bun | about a cent and two minutes per run of the boot model |
 | What shape did the turn take (rounds, locator, checkpoint)? | `task be:eval:loop` | a running backend at `LOOP_EVAL_URL` with the corpus | real model calls per question; `--compare` needs no backend |
-| Does the layout shift while an answer streams? | `/dev/stream-replay?fixture=varianten` (or `oib2`), `&speed=N`, `&ending=recorded` for the recording's own terminal (the retired whole-answer rewrite on `oib2`) | the UI dev server | free: the fixtures are recorded frames in `frontends/ui/src/app/dev/_fixtures/stream-frames.ts`, replayed as v2 events through `foldTurnEvent`. `window.__replay` holds `shifts` (each source flagged `edge` when it entered or left the viewport), `anchorTops` and `done` for a headless capture. The answer alone: no Herleitung, no thread scroller |
+| Does the layout shift while an answer streams? | `/dev/stream-replay?fixture=varianten` (or `oib2`), `&speed=N`, `&ending=recorded` for the recording's own terminal (the retired whole-answer rewrite on `oib2`) | the UI dev server | free: the fixtures are recorded frames in `apps/workspace/app/dev/_fixtures/stream-frames.ts`, replayed as v2 events through `foldTurnEvent`. `window.__replay` holds `shifts` (each source flagged `edge` when it entered or left the viewport), `anchorTops` and `done` for a headless capture. The answer alone: no Herleitung, no thread scroller |
 | What does a whole turn cost the page as it arrives over the socket (step frames included), and what does the reader see move until 2.5 s after the settle? | `/dev/stream-socket`, `node scripts/measure-stream-socket.mjs` (`--reader scroll`, `--animations`, and `--scenario`, `--error`, `--drop`, `--reload`, `--switch`, `--toggle`, `--stop` for the [other lifecycles](#every-lifecycle-of-a-turn)) | the UI dev server with the WorkOS placeholders | free: a scripted v2 server behind a stubbed `WebSocket`. [The socket-level streaming harness](#the-socket-level-streaming-harness) |
 
 ## Before opening a PR

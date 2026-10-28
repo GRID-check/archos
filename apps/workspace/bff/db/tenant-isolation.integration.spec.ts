@@ -1,0 +1,826 @@
+/**
+ * Opt-in integration test: the tenant boundary, exercised through the REAL
+ * `getDb()` against a REAL Postgres with every migration applied (ADR-0041).
+ *
+ * Unit tests can show that the context is plumbed. Only this can show that the
+ * database refuses, which is the entire claim. It therefore connects as
+ * `app_rw` — the role the BFF actually runs as — because connecting as the
+ * owner would pass every assertion below while proving nothing: owners are
+ * exempt from row-level security.
+ *
+ *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
+ *     npx vitest run bff/db/tenant-isolation.integration.spec.ts
+ *
+ * Setting up that database is `task db:test:rls` (see Taskfile.yml), which
+ * builds a throwaway cluster, applies the migration chain and runs this file.
+ */
+
+import { sql } from 'drizzle-orm'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
+
+const url = process.env.TEST_DATABASE_URL
+
+const ORG_A = `org_rls_a_${Date.now()}`
+const ORG_B = `org_rls_b_${Date.now()}`
+
+/**
+ * drizzle wraps every driver failure in a `DrizzleQueryError` whose message is
+ * just "Failed query: …", so the refusal we care about — the Postgres error, or
+ * our own `MissingTenantContextError` — is one or more links down `.cause`.
+ * Asserting on the wrapper would pass for ANY failed query, including a typo.
+ */
+function rootCause(error: unknown): Error {
+  let current = error as Error
+  while (current?.cause instanceof Error) current = current.cause
+  return current
+}
+
+/** Await a promise that must reject, and return the underlying reason. */
+async function rejectionCause(run: () => PromiseLike<unknown>): Promise<Error> {
+  try {
+    await run()
+  } catch (error) {
+    return rootCause(error)
+  }
+  throw new Error('expected the query to be refused, but it succeeded')
+}
+
+/**
+ * The suite below is opt-in, and `describe.skipIf` exits 0 when it skips. That
+ * makes a green `tenant-isolation` job indistinguishable from one that ran
+ * nothing — a typo'd variable, a renamed script or a dropped `env:` line would
+ * silently remove every isolation guarantee from the merge gate. This asserts
+ * the suite actually ran.
+ *
+ * The trigger is deliberately NOT `CI`: this file is part of the ordinary unit
+ * suite too, and the six unit shards run in CI with no database anywhere near
+ * them, so keying on `CI` fails whichever shard happens to own this file. The
+ * marker is set by the `tenant-isolation` JOB rather than by
+ * `scripts/rls-test-db.sh`, so that the job — the thing wired into the merge
+ * gate — is what demands a database, and a harness that stops handing one over
+ * still fails here instead of quietly skipping.
+ */
+describe('the isolation suite is not silently skipped in CI', () => {
+  it('has a database to run against', () => {
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(
+      url,
+      'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set, so ' +
+        'the tenant-isolation suite skipped and nothing verified the boundary. ' +
+        'Check `task db:test:rls`.'
+    ).toBeTruthy()
+  })
+})
+
+describe.skipIf(!url)('tenant isolation against live Postgres', () => {
+  let db: Awaited<ReturnType<typeof loadDb>>
+  let withTenant: typeof import('./tenant-context').withTenant
+  let withPlatformAccess: typeof import('./tenant-context').withPlatformAccess
+  let MissingTenantContextError: typeof import('./tenant-context').MissingTenantContextError
+
+  async function loadDb() {
+    const { getDb } = await import('./index')
+    return getDb()
+  }
+
+  beforeAll(async () => {
+    process.env.APP_DATABASE_URL = url
+    const context = await import('./tenant-context')
+    withTenant = context.withTenant
+    withPlatformAccess = context.withPlatformAccess
+    MissingTenantContextError = context.MissingTenantContextError
+    db = await loadDb()
+
+    // Seed both tenants. Writing rows for org B from inside org B's own context
+    // is itself part of the contract: WITH CHECK has to accept a row that
+    // matches the active tenant.
+    for (const org of [ORG_A, ORG_B]) {
+      await withPlatformAccess('test seed: create organizations across tenants', async () => {
+        await db.execute(
+          sql`insert into organizations (workos_organization_id, display_name) values (${org}, ${org}) on conflict do nothing`
+        )
+      })
+      await withTenant({ organizationId: org, userId: `user_${org}` }, async () => {
+        await db.execute(
+          sql`insert into projects (organization_id, name, created_by, collection_name)
+              values (${org}, ${'project of ' + org}, ${'user_' + org}, ${'coll_' + org})`
+        )
+      })
+    }
+  })
+
+  afterAll(async () => {
+    // `beforeAll` may have thrown before `db` was assigned. Cleaning up then
+    // raises a TypeError that REPLACES the real setup failure in the output,
+    // which is the one worth reading.
+    if (!db) return
+    await withPlatformAccess('test teardown', async () => {
+      await db.execute(sql`delete from projects where organization_id in (${ORG_A}, ${ORG_B})`)
+      await db.execute(
+        sql`delete from organizations where workos_organization_id in (${ORG_A}, ${ORG_B})`
+      )
+    })
+    const { closeDb } = await import('./index')
+    await closeDb()
+  })
+
+  /**
+   * The cheapest test here, and the one that would have caught the worst bug in
+   * this feature's history: a policy on `project_folders` that referenced
+   * `project_folders` is rejected by Postgres outright —
+   * "infinite recursion detected in policy" — and because `documents`' policy
+   * joined that table, BOTH were completely unreadable for the runtime role.
+   * Every other test passed, because none of them touched those two tables.
+   *
+   * So: every secured table, selected as the role the app actually uses. Not a
+   * sample.
+   */
+  /**
+   * Two permissive policies on one table OR together, so a second isolation
+   * policy silently widens the first. 0191 renamed `grid_tenant_isolation` to
+   * `tenant_isolation`, and `secure_table` drops both names before it creates
+   * one; this holds every table under row-level security to exactly one, by
+   * the new name, and no policy to the old prefix.
+   */
+  it('gives every table under row-level security exactly one isolation policy', async () => {
+    const rows = await withPlatformAccess('test: count isolation policies', () =>
+      db.execute(sql`
+        SELECT c.relname AS table_name,
+               count(p.polname) FILTER (WHERE p.polname = 'tenant_isolation')::int AS isolation,
+               count(p.polname) FILTER (WHERE left(p.polname, 5) = 'grid_')::int AS old_named
+        FROM pg_class c
+        LEFT JOIN pg_policy p ON p.polrelid = c.oid
+        WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'r' AND c.relrowsecurity
+        GROUP BY c.relname
+      `)
+    )
+    const tables = [...rows].map((row) => ({
+      table: String(row.table_name),
+      isolation: Number(row.isolation),
+      oldNamed: Number(row.old_named),
+    }))
+    expect(tables.length).toBeGreaterThanOrEqual(28)
+    expect(tables.filter((row) => row.isolation !== 1 || row.oldNamed !== 0)).toEqual([])
+  })
+
+  it('can SELECT from every table inside the boundary', async () => {
+    const secured = await withPlatformAccess('test: enumerate secured tables', () =>
+      db.execute(sql`
+        SELECT c.relname AS table_name
+        FROM pg_policy p
+        JOIN pg_class c ON c.oid = p.polrelid
+        WHERE p.polname = 'tenant_isolation'
+          AND c.relnamespace = 'public'::regnamespace
+        ORDER BY 1
+      `)
+    )
+    const names = [...secured].map((row) => String(row.table_name))
+    expect(names.length).toBeGreaterThanOrEqual(28)
+
+    // The one documented exception set: the lesson tables are secured AND
+    // deliberately unreadable for the tenant role (0068 revokes the platform
+    // helper's SELECT — see the migration's comment). Their posture has its
+    // own test below ('hides the lesson tables from tenants entirely'), which
+    // fails if the revoke disappears, so excluding them here does not leave
+    // them untested — it leaves them tested for the OPPOSITE claim.
+    const tenantInvisible = new Set([
+      'platform_lessons',
+      'platform_lesson_reports',
+      'platform_lesson_events',
+    ])
+
+    const broken: Array<{ table: string; error: string }> = []
+    for (const table of names.filter((name) => !tenantInvisible.has(name))) {
+      try {
+        await withTenant({ organizationId: ORG_A, userId: `user_${ORG_A}` }, () =>
+          db.execute(sql.raw(`SELECT count(*) FROM "${table}"`))
+        )
+      } catch (error) {
+        broken.push({ table, error: rootCause(error).message })
+      }
+    }
+
+    expect(broken, 'These tables are inside the boundary but cannot be read.').toEqual([])
+  })
+
+  /**
+   * The reason this feature exists. The query has NO tenant predicate — it is
+   * the mistake a repository makes when someone forgets the WHERE clause — and
+   * it still cannot see another tenant's rows.
+   */
+  it('confines a query that forgot its WHERE clause to the active tenant', async () => {
+    const fromA = await withTenant({ organizationId: ORG_A }, () =>
+      db.execute(sql`select organization_id from projects`)
+    )
+    const fromB = await withTenant({ organizationId: ORG_B }, () =>
+      db.execute(sql`select organization_id from projects`)
+    )
+
+    expect([...fromA].map((row) => row.organization_id)).toEqual([ORG_A])
+    expect([...fromB].map((row) => row.organization_id)).toEqual([ORG_B])
+  })
+
+  it('isolates rows keyed to a person, not an organization', async () => {
+    // `user_preferences` is the only table whose rule is grid.user_id. Both the
+    // policy and the app-side SET LOCAL for that setting could be deleted with
+    // a green suite before this existed.
+    await withTenant({ organizationId: ORG_A, userId: 'user_one' }, () =>
+      db.execute(
+        sql`insert into user_preferences (workos_user_id, prefs) values ('user_one', '{"a":1}')
+            on conflict do nothing`
+      )
+    )
+
+    const asOwner = await withTenant({ organizationId: ORG_A, userId: 'user_one' }, () =>
+      db.execute(sql`select workos_user_id from user_preferences`)
+    )
+    expect([...asOwner].map((row) => row.workos_user_id)).toEqual(['user_one'])
+
+    const asOther = await withTenant({ organizationId: ORG_A, userId: 'user_two' }, () =>
+      db.execute(sql`select workos_user_id from user_preferences`)
+    )
+    expect([...asOther]).toEqual([])
+
+    const cause = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A, userId: 'user_one' }, () =>
+        db.execute(
+          sql`insert into user_preferences (workos_user_id, prefs) values ('user_two', '{"b":2}')`
+        )
+      )
+    )
+    expect(cause.message).toMatch(/row-level security/i)
+
+    await withPlatformAccess('test cleanup', () =>
+      db.execute(sql`delete from user_preferences where workos_user_id in ('user_one','user_two')`)
+    )
+  })
+
+  it('keeps a tenant-scoped row isolated even when its optional FK is NULL', async () => {
+    // The org clause is load-bearing precisely BECAUSE the FK clause is
+    // `project_id IS NULL OR EXISTS(...)`: for a project-less row that half is
+    // TRUE for everyone, so dropping the org half would make the row globally
+    // readable while every FK test still passed.
+    const id = `conv_orphan_${ORG_A}`
+    await withTenant({ organizationId: ORG_A }, () =>
+      db.execute(
+        sql`insert into conversations (id, organization_id, created_by, project_id)
+            values (${id}, ${ORG_A}, 'u', NULL)`
+      )
+    )
+
+    const seenByB = await withTenant({ organizationId: ORG_B }, () =>
+      db.execute(sql`select id from conversations where id = ${id}`)
+    )
+    expect([...seenByB]).toEqual([])
+
+    await withPlatformAccess('test cleanup', () =>
+      db.execute(sql`delete from conversations where id = ${id}`)
+    )
+  })
+
+  it('refuses to write a row belonging to another tenant', async () => {
+    const cause = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(
+          sql`insert into projects (organization_id, name, created_by, collection_name)
+              values (${ORG_B}, 'planted', 'attacker', 'c')`
+        )
+      )
+    )
+    expect(cause.message).toMatch(/row-level security/i)
+  })
+
+  /**
+   * Product feedback (0100): a tenant sees only the reports written from it,
+   * the platform bypass sees all of them, and the CHECKs hold the bounds the
+   * form counts against.
+   */
+  it('keeps product feedback inside its tenant, and its CHECKs hold', async () => {
+    for (const org of [ORG_A, ORG_B]) {
+      await withTenant({ organizationId: org, userId: `user_${org}` }, () =>
+        db.execute(
+          sql`insert into product_feedback (organization_id, user_id, kind, message)
+              values (${org}, ${'user_' + org}, 'bug', ${'report from ' + org})`
+        )
+      )
+    }
+
+    const seenByA = await withTenant({ organizationId: ORG_A }, () =>
+      db.execute(sql`select organization_id from product_feedback`)
+    )
+    expect([...seenByA].map((row) => row.organization_id)).toEqual([ORG_A])
+
+    const seenByPlatform = await withPlatformAccess('test: feedback triage list', () =>
+      db.execute(
+        sql`select organization_id from product_feedback where organization_id in (${ORG_A}, ${ORG_B})`
+      )
+    )
+    expect(new Set([...seenByPlatform].map((row) => row.organization_id))).toEqual(new Set([ORG_A, ORG_B]))
+
+    // The triage list's keyset cursor is a JS Date (milliseconds); a stored
+    // microsecond would let the next page skip a report in the same millisecond.
+    const subMillisecond = await withPlatformAccess('test: feedback precision', () =>
+      db.execute(
+        sql`select count(*)::int as n from product_feedback
+            where organization_id in (${ORG_A}, ${ORG_B})
+              and date_trunc('milliseconds', created_at) <> created_at`
+      )
+    )
+    expect(Number([...subMillisecond][0]?.n)).toBe(0)
+
+    const blank = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(
+          sql`insert into product_feedback (organization_id, user_id, kind, message)
+              values (${ORG_A}, 'u', 'bug', '   ')`
+        )
+      )
+    )
+    expect(blank.message).toMatch(/product_feedback_message_not_blank/)
+
+    // The ticket id is browser-adjacent input that becomes a link on the platform page (0155).
+    const notAnId = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(
+          sql`update product_feedback set posthog_ticket_id = 'javascript:alert(1)' where organization_id = ${ORG_A}`
+        )
+      )
+    )
+    expect(notAnId.message).toMatch(/product_feedback_posthog_ticket_id_shape/)
+
+    await withPlatformAccess('test teardown: feedback', () =>
+      db.execute(sql`delete from product_feedback where organization_id in (${ORG_A}, ${ORG_B})`)
+    )
+  })
+
+  it('keeps mail imports inside their tenant, and the cursor and ending CHECKs hold', async () => {
+    for (const org of [ORG_A, ORG_B]) {
+      await withTenant({ organizationId: org, userId: `user_${org}` }, () =>
+        db.execute(
+          sql`insert into mail_imports (organization_id, project_id, user_id, filename, size_bytes, staging_bucket, staging_key)
+              select ${org}, id, ${'user_' + org}, 'Postfach.pst', 1000, 'grid-documents', ${'org/' + org + '/mail-imports/x/archive'}
+              from projects where organization_id = ${org} limit 1`
+        )
+      )
+    }
+
+    const seenByA = await withTenant({ organizationId: ORG_A }, () =>
+      db.execute(sql`select organization_id from mail_imports`)
+    )
+    expect([...seenByA].map((row) => row.organization_id)).toEqual([ORG_A])
+
+    const seenBySweep = await withPlatformAccess('test: mail import sweep', () =>
+      db.execute(sql`select organization_id from mail_imports where organization_id in (${ORG_A}, ${ORG_B})`)
+    )
+    expect(new Set([...seenBySweep].map((row) => row.organization_id))).toEqual(new Set([ORG_A, ORG_B]))
+
+    // The in-flight mail is always the one at the cursor.
+    const behind = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(sql`update mail_imports set inflight_position = 3, next_position = 4 where organization_id = ${ORG_A}`)
+      )
+    )
+    expect(behind.message).toMatch(/mail_imports_inflight_at_cursor/)
+
+    // An ended import says when; a running one does not.
+    const undated = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(sql`update mail_imports set status = 'failed' where organization_id = ${ORG_A}`)
+      )
+    )
+    expect(undated.message).toMatch(/mail_imports_completed_at/)
+
+    // Only an import that ended carries a reason.
+    const reasonWhileRunning = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(sql`update mail_imports set error_code = 'quota' where organization_id = ${ORG_A}`)
+      )
+    )
+    expect(reasonWhileRunning.message).toMatch(/mail_imports_error_code_ended/)
+
+    await withPlatformAccess('test teardown: mail imports', () =>
+      db.execute(sql`delete from mail_imports where organization_id in (${ORG_A}, ${ORG_B})`)
+    )
+  })
+
+  it('updates and deletes nothing in another tenant', async () => {
+    await withTenant({ organizationId: ORG_A }, async () => {
+      await db.execute(sql`update projects set name = 'overwritten' where organization_id = ${ORG_B}`)
+      await db.execute(sql`delete from projects where organization_id = ${ORG_B}`)
+    })
+
+    const survived = await withTenant({ organizationId: ORG_B }, () =>
+      db.execute(sql`select name from projects`)
+    )
+    expect([...survived].map((row) => row.name)).toEqual([`project of ${ORG_B}`])
+  })
+
+  /**
+   * `SET LOCAL` is a UTILITY statement; `SELECT set_config(...)` is a query, and
+   * Postgres refuses `SET TRANSACTION ISOLATION LEVEL` after any query. So an
+   * earlier version of the context broke isolation levels for tenant scopes
+   * while leaving the platform path (already `SET LOCAL ROLE`) working — the
+   * kind of asymmetry that hides for a long time.
+   */
+  it('still allows an isolation level to be set on the transaction', async () => {
+    const rows = await withTenant({ organizationId: ORG_A }, () =>
+      db.transaction((tx) => tx.execute(sql`select organization_id from projects`), {
+        isolationLevel: 'serializable',
+      })
+    )
+    expect([...rows].map((row) => row.organization_id)).toEqual([ORG_A])
+  })
+
+  it('refuses a setting value that is not a plain identifier', async () => {
+    // `SET LOCAL` takes no bind parameters, so the value is interpolated. It is
+    // validated rather than escaped: anything that could carry quoting fails
+    // closed instead of reaching the server.
+    const cause = await rejectionCause(() =>
+      withTenant({ organizationId: "org_a'; drop table projects; --" }, () =>
+        db.execute(sql`select 1`)
+      )
+    )
+    expect(cause.message).toMatch(/not a plain identifier/i)
+  })
+
+  it('carries the context through an explicit transaction', async () => {
+    const rows = await withTenant({ organizationId: ORG_A }, () =>
+      db.transaction((tx) => tx.execute(sql`select organization_id from projects`))
+    )
+    expect([...rows].map((row) => row.organization_id)).toEqual([ORG_A])
+  })
+
+  it('reaches every tenant under an explicit platform bypass, as the platform role', async () => {
+    const rows = await withPlatformAccess('test: cross-tenant read', () =>
+      db.execute(
+        sql`select current_user as role, count(*)::int as n from projects
+            where organization_id in (${ORG_A}, ${ORG_B}) group by 1`
+      )
+    )
+    expect([...rows][0]).toMatchObject({ role: 'app_platform', n: 2 })
+  })
+
+  it('rejects database access with no context at all', async () => {
+    const cause = await rejectionCause(() => db.execute(sql`select 1`))
+    expect(cause).toBeInstanceOf(MissingTenantContextError)
+  })
+
+  it('does not leak the context to work that follows it', async () => {
+    await withTenant({ organizationId: ORG_A }, async () => {
+      await db.execute(sql`select 1`)
+    })
+    // A pooled connection is reused; transaction-local settings must not ride
+    // along to whoever borrows it next.
+    const cause = await rejectionCause(() => db.execute(sql`select 1`))
+    expect(cause).toBeInstanceOf(MissingTenantContextError)
+  })
+
+  it('lets a tenant read platform configuration but never write it', async () => {
+    await withTenant({ organizationId: ORG_A }, async () => {
+      await expect(
+        db.execute(sql`select count(*) from platform_model_defaults`)
+      ).resolves.toBeDefined()
+    })
+    const cause = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(sql`insert into platform_model_defaults (agent_group, model) values ('x', 'y')`)
+      )
+    )
+    expect(cause.message).toMatch(/permission denied/i)
+  })
+
+  /**
+   * The lesson tables are tighter than the platform-table norm: 0068 revokes
+   * even the tenant READ grant, because nothing tenant-facing queries them
+   * (the injected digest is built under the platform role) and a CANDIDATE
+   * lesson is exactly the text the auditor model flagged as possibly
+   * identifying. This test is what keeps that revoke from being "simplified"
+   * away as an inconsistency with the other platform_* tables.
+   */
+  it('hides the lesson tables from tenants entirely, in both directions', async () => {
+    for (const table of [
+      'platform_lessons',
+      'platform_lesson_reports',
+      'platform_lesson_events',
+    ] as const) {
+      const cause = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_A }, () =>
+          db.execute(sql`select count(*) from ${sql.raw(table)}`)
+        )
+      )
+      expect(cause.message, `${table} must not be tenant-readable`).toMatch(/permission denied/i)
+    }
+    // The platform role still reads them — that is where the pipeline runs.
+    const rows = await withPlatformAccess('test: lesson register read', () =>
+      db.execute(sql`select count(*)::int as n from platform_lessons`)
+    )
+    expect([...rows][0]).toMatchObject({ n: 0 })
+  })
+
+  /**
+   * A row's own organization_id is not the whole rule. Nothing stopped a tenant
+   * from REFERENCING another tenant's row, and the FKs cascade: org A could
+   * attach its conversation to org B's project, and org B deleting that project
+   * — an ordinary, authorised action — would destroy org A's data. The policies
+   * validate the referenced row's organization for exactly this reason.
+   */
+  it('refuses to reference another tenant\'s row', async () => {
+    const [projectOfB] = [
+      ...(await withTenant({ organizationId: ORG_B }, () =>
+        db.execute(sql`select id from projects where organization_id = ${ORG_B}`)
+      )),
+    ]
+
+    const cause = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(
+          sql`insert into conversations (id, organization_id, created_by, project_id)
+              values (${'conv_cross_' + ORG_A}, ${ORG_A}, 'u', ${projectOfB.id})`
+        )
+      )
+    )
+    expect(cause.message).toMatch(/row-level security/i)
+  })
+
+  it('refuses to re-point an existing row at another tenant', async () => {
+    const [projectOfB] = [
+      ...(await withTenant({ organizationId: ORG_B }, () =>
+        db.execute(sql`select id from projects where organization_id = ${ORG_B}`)
+      )),
+    ]
+    const conversationId = `conv_repoint_${ORG_A}`
+
+    await withTenant({ organizationId: ORG_A }, async () => {
+      const [own] = [
+        ...(await db.execute(sql`select id from projects where organization_id = ${ORG_A}`)),
+      ]
+      await db.execute(
+        sql`insert into conversations (id, organization_id, created_by, project_id)
+            values (${conversationId}, ${ORG_A}, 'u', ${own.id})`
+      )
+    })
+
+    // The UPDATE that used to be accepted: the row keeps its own organization,
+    // but the project underneath it becomes another tenant's. WITH CHECK now
+    // rejects it outright rather than letting it through.
+    const cause = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_A }, () =>
+        db.execute(
+          sql`update conversations set project_id = ${projectOfB.id} where id = ${conversationId}`
+        )
+      )
+    )
+    expect(cause.message).toMatch(/row-level security/i)
+
+    const survived = await withPlatformAccess('test: verify no cross-tenant link', () =>
+      db.execute(
+        sql`select p.organization_id as owner
+            from conversations c join projects p on p.id = c.project_id
+            where c.id = ${conversationId}`
+      )
+    )
+    expect([...survived][0]?.owner).toBe(ORG_A)
+
+    await withPlatformAccess('test cleanup', () =>
+      db.execute(sql`delete from conversations where id = ${conversationId}`)
+    )
+  })
+
+  it('isolates child tables through their parent', async () => {
+    const conversationId = `conv_${ORG_A}`
+    await withTenant({ organizationId: ORG_A }, async () => {
+      const [project] = [
+        ...(await db.execute(sql`select id from projects where organization_id = ${ORG_A}`)),
+      ]
+      await db.execute(
+        sql`insert into conversations (id, organization_id, created_by, project_id)
+            values (${conversationId}, ${ORG_A}, 'u', ${project.id})`
+      )
+      await db.execute(
+        sql`insert into messages (conversation_id, role, content)
+            values (${conversationId}, 'user', 'private to A')`
+      )
+    })
+
+    // `messages` has no organization_id of its own; the policy resolves tenancy
+    // through the parent conversation.
+    const seenByB = await withTenant({ organizationId: ORG_B }, () =>
+      db.execute(sql`select content from messages`)
+    )
+    expect([...seenByB]).toEqual([])
+
+    const cause = await rejectionCause(() =>
+      withTenant({ organizationId: ORG_B }, () =>
+        db.execute(
+          sql`insert into messages (conversation_id, role, content)
+              values (${conversationId}, 'user', 'planted by B')`
+        )
+      )
+    )
+    // Since 0031 this is refused by the composite foreign key rather than the
+    // policy: the row's organization defaults to the active tenant, and
+    // `(conv_of_A, ORG_B)` is not a pair that exists in `conversations`. A
+    // stronger refusal than the policy's, and it fires before it.
+    expect(cause.message).toMatch(/row-level security|violates foreign key/i)
+
+    await withPlatformAccess('test cleanup', async () => {
+      await db.execute(sql`delete from messages where conversation_id = ${conversationId}`)
+      await db.execute(sql`delete from conversations where id = ${conversationId}`)
+    })
+  })
+  /**
+   * Folders belong to a SHELF and a TENANT, and the database holds both
+   * (migration 0102, ADR-0078). The Archiv has no project to carry "same project
+   * implies same tenant", so the tenant is a column, the policy reads it, and
+   * composite keys tie a parent and a document to the folder's own shelf.
+   */
+  describe('folders of a shelf', () => {
+    const OFFICE_SHELF_FOLDER_A = `00000000-0000-4000-8000-0000000a0001`
+    const PROJECT_FOLDER_A = `00000000-0000-4000-8000-0000000a0002`
+    const DOC_OFFICE_SHELF_A = `00000000-0000-4000-8000-0000000d0001`
+    const DOC_OFFICE_SHELF_B = `00000000-0000-4000-8000-0000000d0002`
+    const DOC_PROJECT_A = `00000000-0000-4000-8000-0000000d0003`
+    let projectA: string
+
+    const insertDocument = (
+      org: string,
+      values: { id: string; scope: 'project' | 'office_shelf'; projectId: string | null; folderId?: string },
+    ) =>
+      db.execute(
+        sql`insert into documents (id, organization_id, project_id, scope, folder_id, filename, storage_key, collection_name, created_by, status)
+            values (${values.id}, ${org}, ${values.projectId}, ${values.scope}, ${values.folderId ?? null},
+                    ${values.id + '.pdf'}, ${'k/' + values.id}, ${values.scope === 'office_shelf' ? 'archiv_' + org : 'coll_' + org}, 'u', 'uploaded')`,
+      )
+
+    beforeAll(async () => {
+      await withTenant({ organizationId: ORG_A }, async () => {
+        const [project] = [
+          ...(await db.execute(sql`select id from projects where organization_id = ${ORG_A}`)),
+        ]
+        projectA = String(project.id)
+        await db.execute(
+          sql`insert into project_folders (id, organization_id, scope, project_id, name, path)
+              values (${OFFICE_SHELF_FOLDER_A}, ${ORG_A}, 'office_shelf', NULL, 'Normen', 'Normen'),
+                     (${PROJECT_FOLDER_A}, ${ORG_A}, 'project', ${projectA}, 'Plaene', 'Plaene')`,
+        )
+        await insertDocument(ORG_A, { id: DOC_OFFICE_SHELF_A, scope: 'office_shelf', projectId: null })
+        await insertDocument(ORG_A, { id: DOC_PROJECT_A, scope: 'project', projectId: projectA })
+      })
+      await withTenant({ organizationId: ORG_B }, () =>
+        insertDocument(ORG_B, { id: DOC_OFFICE_SHELF_B, scope: 'office_shelf', projectId: null }),
+      )
+    })
+
+    afterAll(async () => {
+      await withPlatformAccess('test cleanup', async () => {
+        await db.execute(
+          sql`delete from documents where id in (${DOC_OFFICE_SHELF_A}, ${DOC_OFFICE_SHELF_B}, ${DOC_PROJECT_A})`,
+        )
+        await db.execute(sql`delete from project_folders where organization_id in (${ORG_A}, ${ORG_B})`)
+      })
+    })
+
+    it('hides an Archiv folder from another tenant, even to a query with no WHERE', async () => {
+      const seenByB = await withTenant({ organizationId: ORG_B }, () =>
+        db.execute(sql`select id from project_folders`),
+      )
+      expect([...seenByB]).toEqual([])
+
+      const seenByA = await withTenant({ organizationId: ORG_A }, () =>
+        db.execute(sql`select id from project_folders order by path`),
+      )
+      expect([...seenByA].map((row) => row.id)).toEqual([OFFICE_SHELF_FOLDER_A, PROJECT_FOLDER_A])
+    })
+
+    it('refuses to write an Archiv folder into another tenant', async () => {
+      const cause = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_B }, () =>
+          db.execute(
+            sql`insert into project_folders (organization_id, scope, name, path)
+                values (${ORG_A}, 'office_shelf', 'planted', 'planted')`,
+          ),
+        ),
+      )
+      expect(cause.message).toMatch(/row-level security/i)
+    })
+
+    it('refuses a folder whose parent is another tenant\'s Archiv folder', async () => {
+      const cause = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_B }, () =>
+          db.execute(
+            sql`insert into project_folders (organization_id, scope, parent_id, name, path)
+                values (${ORG_B}, 'office_shelf', ${OFFICE_SHELF_FOLDER_A}, 'child', 'Normen/child')`,
+          ),
+        ),
+      )
+      expect(cause.message).toMatch(/project_folders_parent_id_organization_id_scope_fkey/)
+    })
+
+    it('refuses to file another tenant\'s Archiv document into this tenant\'s folder', async () => {
+      const cause = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_B }, () =>
+          db.execute(sql`update documents set folder_id = ${OFFICE_SHELF_FOLDER_A} where id = ${DOC_OFFICE_SHELF_B}`),
+        ),
+      )
+      // Either the policy (the folder is invisible to B) or the key; the folder
+      // never attaches.
+      expect(cause.message).toMatch(/row-level security|violates foreign key/i)
+    })
+
+    it('files an Archiv document into an Archiv folder, and nothing else into it', async () => {
+      await withTenant({ organizationId: ORG_A }, () =>
+        db.execute(sql`update documents set folder_id = ${OFFICE_SHELF_FOLDER_A} where id = ${DOC_OFFICE_SHELF_A}`),
+      )
+
+      const intoOfficeShelf = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_A }, () =>
+          db.execute(sql`update documents set folder_id = ${OFFICE_SHELF_FOLDER_A} where id = ${DOC_PROJECT_A}`),
+        ),
+      )
+      expect(intoOfficeShelf.message).toMatch(/violates foreign key/i)
+
+      const intoProject = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_A }, () =>
+          db.execute(sql`update documents set folder_id = ${PROJECT_FOLDER_A} where id = ${DOC_OFFICE_SHELF_A}`),
+        ),
+      )
+      expect(intoProject.message).toMatch(/documents_folder_id_organization_id_scope_fkey/)
+    })
+
+    it('refuses to file a session attachment, whatever the folder', async () => {
+      const conversationId = `conv_folder_${ORG_A}`
+      await withTenant({ organizationId: ORG_A }, () =>
+        db.execute(
+          sql`insert into conversations (id, organization_id, created_by, project_id)
+              values (${conversationId}, ${ORG_A}, 'u', ${projectA})`,
+        ),
+      )
+      const cause = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_A }, () =>
+          db.execute(
+            sql`insert into documents (organization_id, scope, conversation_id, folder_id, filename, storage_key, collection_name, created_by, status)
+                values (${ORG_A}, 'session', ${conversationId}, ${OFFICE_SHELF_FOLDER_A}, 's.pdf', 'k/s', ${'s_' + conversationId}, 'u', 'uploaded')`,
+          ),
+        ),
+      )
+      expect(cause.message).toMatch(/documents_folder_requires_project|violates foreign key/i)
+      await withPlatformAccess('test cleanup', () =>
+        db.execute(sql`delete from conversations where id = ${conversationId}`),
+      )
+    })
+
+    it('keeps the three owner columns telling one story', async () => {
+      const officeShelfWithProject = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_A }, () =>
+          db.execute(
+            sql`insert into project_folders (organization_id, scope, project_id, name, path)
+                values (${ORG_A}, 'office_shelf', ${projectA}, 'x', 'x')`,
+          ),
+        ),
+      )
+      expect(officeShelfWithProject.message).toMatch(/project_folders_scope_owner_check/)
+
+      const projectWithout = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_A }, () =>
+          db.execute(
+            sql`insert into project_folders (organization_id, scope, name, path)
+                values (${ORG_A}, 'project', 'x', 'x')`,
+          ),
+        ),
+      )
+      expect(projectWithout.message).toMatch(/project_folders_scope_owner_check/)
+
+      const sessionScope = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_A }, () =>
+          db.execute(
+            sql`insert into project_folders (organization_id, scope, name, path)
+                values (${ORG_A}, 'session', 'x', 'x')`,
+          ),
+        ),
+      )
+      expect(sessionScope.message).toMatch(/project_folders_scope_check/)
+    })
+
+    it('allows one Archiv folder per name per parent, per tenant', async () => {
+      const duplicate = await rejectionCause(() =>
+        withTenant({ organizationId: ORG_A }, () =>
+          db.execute(
+            sql`insert into project_folders (organization_id, scope, name, path)
+                values (${ORG_A}, 'office_shelf', 'Normen', 'Normen')`,
+          ),
+        ),
+      )
+      expect(duplicate.message).toMatch(/uniq_project_folders_parent_name/)
+
+      // The same name in another tenant's Archiv is a different folder.
+      await withTenant({ organizationId: ORG_B }, () =>
+        db.execute(
+          sql`insert into project_folders (organization_id, scope, name, path)
+              values (${ORG_B}, 'office_shelf', 'Normen', 'Normen')`,
+        ),
+      )
+    })
+  })
+})

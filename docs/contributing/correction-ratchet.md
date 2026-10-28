@@ -37,7 +37,7 @@ human.
 
 The worked example is this repo's own: an agent was told, mid-task, to run
 `task setup` and to note it at the top of `AGENTS.md`. The underlying gap was
-that `AGENTS.md` named `task verify`, `task fe:types` and a dozen other
+that `AGENTS.md` named `task verify`, `task workspace:types` and a dozen other
 commands without ever saying that `task` is not installed by anything in the
 repo and that `task setup` has to run first. Every agent before that one had
 either guessed or asked. The ratchet was a Setup section as the first thing in
@@ -88,7 +88,7 @@ one of them holds while people are tired.
 ## What this repo already does
 
 `documents.documents_session_requires_conversation`
-(`frontends/ui/src/lib/db/schema/documents.ts`) is the pattern at its best. A
+(`apps/workspace/bff/db/schema/documents.ts`) is the pattern at its best. A
 session-scoped document must have a conversation and must not have a project.
 Nothing violated that when the constraint was written. One function was simply
 careful, and the constraint exists because "one function is careful" is a

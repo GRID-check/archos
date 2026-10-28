@@ -242,10 +242,10 @@ holds wherever there is no inset. The paper still bleeds to the glass; only the
 content steps in. A caller that replaces a primitive's padding (`p-0`) owns its
 insets too.
 
-Held statically by `frontends/ui/src/components/ui/touch-target.spec.ts`,
-`frontends/ui/src/components/ui/mobile-affordances.spec.ts` and
-`frontends/ui/src/components/ui/breakpoints.spec.ts`. The browser
-measurement that once backed these (`task fe:touch-audit`) went with the
+Held statically by `apps/workspace/ui/components/ui/touch-target.spec.ts`,
+`apps/workspace/ui/components/ui/mobile-affordances.spec.ts` and
+`apps/workspace/ui/components/ui/breakpoints.spec.ts`. The browser
+measurement that once backed these (`task workspace:touch-audit`) went with the
 screenshot harness; capture a 390x844 viewport and look, until it is rewritten
 (`docs/contributing/testing-and-verification.md`).
 
@@ -463,7 +463,7 @@ line. If a stripe seems genuinely the clearest answer somewhere else, say why
 in the review.
 
 **Page header** — every content page opens with `PageHeader`
-(`frontends/ui/src/components/ui/page-header.tsx`), so the title stays on-spec
+(`apps/workspace/ui/components/ui/page-header.tsx`), so the title stays on-spec
 (`text-xl`) instead of drifting:
 ```tsx
 <header className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">

@@ -28,6 +28,29 @@ overrides = [
     { name = "virtualenv", specifier = ">=21.7.13" },
 ]
 
+[manifest.dependency-groups]
+dev = [
+    { name = "aiq-agent", editable = "packages/agent" },
+    { name = "aiq-api", editable = "apps/backend" },
+    { name = "fakeredis", extras = ["lua"], specifier = ">=2.20.0" },
+    { name = "import-linter", specifier = ">=2.15" },
+    { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
+    { name = "mypy", specifier = ">=2.3.0" },
+    { name = "oib-retrieval", editable = "evals/oib-retrieval" },
+    { name = "pre-commit", specifier = ">=3.5.0" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
+    { name = "pytest-cov", specifier = ">=4.1.0" },
+    { name = "pytest-env", specifier = ">=1.1.0" },
+    { name = "pytest-split", specifier = ">=0.11.0" },
+    { name = "pytest-testmon", specifier = ">=2.2.0" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "ris-adapter", editable = "packages/ris-adapter" },
+    { name = "ruff", specifier = "~=0.17.0" },
+    { name = "tavily-web-search", editable = "packages/tavily-web-search" },
+    { name = "yapf", specifier = ">=0.40.0" },
+]
+
 [[package]]
 name = "a2ui-core"
 version = "0.4.0"
@@ -166,7 +189,7 @@ wheels = [
 [[package]]
 name = "aiq-agent"
 version = "2.0.0"
-source = { editable = "." }
+source = { editable = "packages/agent" }
 dependencies = [
     { name = "a2ui-core" },
     { name = "aiofiles" },
@@ -221,28 +244,6 @@ viz = [
     { name = "pygraphviz" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "aiq-api" },
-    { name = "fakeredis", extra = ["lua"] },
-    { name = "import-linter" },
-    { name = "knowledge-layer", extra = ["all"] },
-    { name = "mypy" },
-    { name = "oib-retrieval" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-env" },
-    { name = "pytest-split" },
-    { name = "pytest-testmon" },
-    { name = "pytest-xdist" },
-    { name = "ris-adapter" },
-    { name = "ruff" },
-    { name = "tavily-web-search" },
-    { name = "yapf" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "a2ui-core", specifier = "==0.4.0" },
@@ -290,28 +291,6 @@ requires-dist = [
     { name = "yapf", marker = "extra == 'dev'", specifier = ">=0.40.0" },
 ]
 provides-extras = ["dev", "docs", "viz"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "aiq-api", editable = "apps/backend" },
-    { name = "fakeredis", extras = ["lua"], specifier = ">=2.20.0" },
-    { name = "import-linter", specifier = ">=2.15" },
-    { name = "knowledge-layer", extras = ["all"], editable = "packages/knowledge-layer" },
-    { name = "mypy", specifier = ">=2.3.0" },
-    { name = "oib-retrieval", editable = "evals/oib-retrieval" },
-    { name = "pre-commit", specifier = ">=3.5.0" },
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-asyncio", specifier = ">=0.21.0" },
-    { name = "pytest-cov", specifier = ">=4.1.0" },
-    { name = "pytest-env", specifier = ">=1.1.0" },
-    { name = "pytest-split", specifier = ">=0.11.0" },
-    { name = "pytest-testmon", specifier = ">=2.2.0" },
-    { name = "pytest-xdist", specifier = ">=3.8.0" },
-    { name = "ris-adapter", editable = "packages/ris-adapter" },
-    { name = "ruff", specifier = "~=0.17.0" },
-    { name = "tavily-web-search", editable = "packages/tavily-web-search" },
-    { name = "yapf", specifier = ">=0.40.0" },
-]
 
 [[package]]
 name = "aiq-api"

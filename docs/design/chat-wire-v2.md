@@ -1,6 +1,6 @@
 # Chat wire v2
 
-**Status:** Designed 2026-09-27; contract committed (`src/aiq_agent/common/wire_v2.py`
+**Status:** Designed 2026-09-27; contract committed (`packages/agent/src/aiq_agent/common/wire_v2.py`
 and what is generated from it), the cut not yet started.
 **Decision:** [ADR-0068](../adr/0068-use-nemo-agent-toolkit-as-designed.md), option A,
 as one cut with no `v: 1` period. The NAT 1.7 → 1.9 upgrade is part of the cut, as
@@ -29,7 +29,7 @@ A production trace of one turn on the old wire showed:
 
 When the cut is done, a turn is a few dozen frames. Each one carries a single
 typed fact, and no frame's size depends on how long the prompt is. The recorded
-answered turn in `shared/wire/v2/turn-answered.jsonl` is 22 frames and 8.5 KB in
+answered turn in `contracts/wire/v2/turn-answered.jsonl` is 22 frames and 8.5 KB in
 total. Its largest frame is the terminal, at about 2 KB. The UI folds each frame in
 constant time. Stop cancels the turn on the server. Nothing in the UI reads a NAT
 function name.
@@ -323,7 +323,7 @@ is the worked example: the confidence rule changed (the answer check,
 ADR-0139), and a `3` would have failed every open tab's `1 | 2`. A checked
 answer therefore travels as `2`, and the new `confidence_check` tells it apart
 from a stored per-sentence turn; an older bundle strips it and shows the level.
-`tests/aiq_agent/common/test_wire_v2_open_tabs.py` checks a checked and an
+`packages/agent/tests/common/test_wire_v2_open_tabs.py` checks a checked and an
 unavailable `RUN_FINISHED` against the schema as it stood before.
 
 So a new field on `TurnResult`, a new step kind, a new `CUSTOM` or a new event
@@ -343,7 +343,7 @@ the same holds: a relayed Stop carries `shown` beside the message on the bus,
 not inside it, so an older owner still parses the Stop. A frame that names only
 known things and still does not parse remains a break that asks an open tab to reload: a renamed or retyped
 field, a new required field, a known `CUSTOM` whose value no longer parses.
-`shared/wire/v2/newer-events.jsonl` holds the tolerated drift; the UI spec
+`contracts/wire/v2/newer-events.jsonl` holds the tolerated drift; the UI spec
 reads it, the Python test refuses it.
 
 **The release that shipped the lenient read was staged.** The bundle before
@@ -369,7 +369,7 @@ which bundle it talks to.
 (`agents/piloti/conversation.py`, today `self._graph.ainvoke` at ~687). Every
 producer inside a graph run calls `get_stream_writer()` and writes a wire
 **body**. This was measured on the installed LangGraph, not assumed
-(`tests/aiq_agent/turn/test_stream_writer_reach.py`, committed with this design): the writer reaches a node in a graph that another node
+(`packages/agent/tests/turn/test_stream_writer_reach.py`, committed with this design): the writer reaches a node in a graph that another node
 `ainvoke`s through a plain async function, which is the shape of Piloti's NAT
 function boundary, and LangChain callbacks such as the token callback, tools
 inside `ToolNode`, child tasks and `asyncio.to_thread` workers. Under `ainvoke`
@@ -550,7 +550,7 @@ same text on both sides. The client stores the same cut (`stopStreaming`,
 whichever of the two writes of the row reaches the BFF first (both insert under
 one id and the second no-ops). The rule has one copy per language,
 `TurnTextFold.stopped` and `features/chat/lib/stopped-answer.ts`, and
-`shared/wire/v2/stopped-cases.jsonl` holds both to the same cases. A Stop that
+`contracts/wire/v2/stopped-cases.jsonl` holds both to the same cases. A Stop that
 crosses the finished answer (the reveal runs up to about a second behind the
 wire) finds no turn to cancel: the server has stored the whole answer and
 answers `turn_not_found`. The client then cuts its own copy where the text on
@@ -734,7 +734,7 @@ interface StoredThinkingStep {
 `functionName`, `displayName`, `category`, `isTopLevel`, `content`,
 `rawPayload` and `isDeepResearch` are gone.
 
-- **Postgres: one migration**, `frontends/ui/drizzle/0097_herleitung_steps_v2.sql`
+- **Postgres: one migration**, `apps/workspace/migrations/0097_herleitung_steps_v2.sql`
   (plus `.down.sql`). It rewrites `metadata->'provenance'->'thinkingSteps'` in
   place with a plpgsql function that applies the same rules the old readers
   applied, once:
@@ -797,12 +797,12 @@ and a reader-order change, nothing more.
 
 | Layer | What | Where |
 |---|---|---|
-| Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old NAT frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `tests/aiq_agent/common/test_wire_v2.py` (committed) |
+| Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old NAT frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `packages/agent/tests/common/test_wire_v2.py` (committed) |
 | Contract, UI side | The same files through the generated zod: every event parses to its type, defaults restored, and every invalid frame refused. `newer-events.jsonl` parses, its unknown keys stripped and its unknown types, step kinds and `CUSTOM` names folded as no-ops (§a, Compatibility). The generated module is the generator's output | `src/adapters/api/wire-v2.spec.ts`, `scripts/generate-wire-schemas.spec.mjs` (committed) |
-| Generation | Pydantic → `shared/wire/v2.schema.json` → `wire-v2.generated.ts`. A `wire-schemas` pre-commit hook fails the commit when either artifact would change, the same arrangement as `card-schemas` | `.pre-commit-config.yaml` (committed) |
-| Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real NAT function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `tests/aiq_agent/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
+| Generation | Pydantic → `contracts/wire/v2.schema.json` → `wire-v2.generated.ts`. A `wire-schemas` pre-commit hook fails the commit when either artifact would change, the same arrangement as `card-schemas` | `.pre-commit-config.yaml` (committed) |
+| Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real NAT function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `packages/agent/tests/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
 | Handler | Auth, binding, rejection codes, cancel authorisation (asker yes, colleague `not_asker`, bus path), HITL round trip and expiry, attach replay and splice with no duplicate or missing seq, stage stamping after the terminal, persistence built from `TurnResult`. A test that builds the app and asserts NAT's `websocket_endpoint` and `WebSocketMessageHandler` are NAT's own objects. A ruff `banned-api` for `nat.data_models.api_server` everywhere, and for the internal modules `nat.plugin_api` covers | `apps/backend/tests/test_chat_socket.py` |
-| Golden replay | One real turn recorded through the whole backend (a fake LLM with a recorded token stream and the real graph) and compared frame for frame, `ts` excepted, with a committed golden JSONL. Every frame is under 4 KB except `STATE_SNAPSHOT` and `RUN_FINISHED` (under 64 KB), the two that carry the sources | `tests/aiq_agent/turn/test_golden_turn.py` |
+| Golden replay | One real turn recorded through the whole backend (a fake LLM with a recorded token stream and the real graph) and compared frame for frame, `ts` excepted, with a committed golden JSONL. Every frame is under 4 KB except `STATE_SNAPSHOT` and `RUN_FINISHED` (under 64 KB), the two that carry the sources | `packages/agent/tests/turn/test_golden_turn.py` |
 | Fold | Every fixture turn folds to the expected `TurnView`. Duplicate seq keeps identity, and a gap is flagged. Snapshot, retraction and terminal replacement. Card before marker. Spectator mid-turn start. The persisted projection round-trips through `sanitizeProvenance` | `features/chat/lib/turn-fold.spec.ts` |
 | Migration | Old stored steps (real rows captured from staging, anonymised) convert to the v2 shape, and the dropped kinds are gone | `message-provenance.spec.ts`; the migration spec for 0097 was retired once 0097 had run in production |
 | Browser | `/dev/stream-socket` (being built now by another engineer) is ported to v2: it replays the fixtures and a recorded long turn through the real socket client, fold and store, and reports frame bytes and main-thread time in `window.__streamSocket` | `app/dev/stream-socket` |
@@ -931,7 +931,7 @@ separately. The exit criterion in the definition of done is the measured diff.
 - **Owns:** `lib/conversations/message-provenance.ts`,
   `features/chat/lib/server-message-mapper.ts`,
   `lib/conversations/agent-answer-metadata.ts` (`stopped`),
-  `drizzle/0097_herleitung_steps_v2{,.down}.sql`,
+  `migrations/0097_herleitung_steps_v2{,.down}.sql`,
   `lib/events/conversation-frames.ts`,
   `app/api/conversations/[id]/{frames,live}/route.ts`,
   `docs/api/websocket-protocol.md` (rewritten from this doc),
@@ -968,11 +968,11 @@ outside the slices.
 
 1. **The diff deletes more than it adds.** `git diff --stat develop...feat/chat-wire-v2`
    across `src/`, `sources/`, `frontends/` and `configs/`, excluding
-   `shared/wire/`, `wire-v2.generated.ts` and the contract tests, is net
+   `contracts/wire/`, `wire-v2.generated.ts` and the contract tests, is net
    negative. The PR carries a **deletion ledger** per slice: file → lines
    removed → what replaced it.
 2. `task verify:fast` is green **on `nvidia-nat*==1.9.0`**. That covers Python
-   lint (including the `nat.plugin_api` ban), type checks and tests, `fe:types`,
+   lint (including the `nat.plugin_api` ban), type checks and tests, `workspace:types`,
    eslint, vitest, and repo-lint including the `card-schemas` and
    `wire-schemas` hooks.
 3. The wire contract tests are green on both sides, and the golden replay

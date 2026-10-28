@@ -10,7 +10,7 @@ app/api/**/route.ts        →  lib/<domain>/service.ts  →  lib/<domain>/repos
 (transport: HTTP only)        (business logic + authz)     (drizzle data access only)
 ```
 
-### 1. Route handlers (`frontends/ui/src/app/api/**/route.ts`)
+### 1. Route handlers (`apps/workspace/app/api/**/route.ts`)
 
 Routes are **thin transport adapters**. They:
 
@@ -30,7 +30,7 @@ Routes are **thin transport adapters**. They:
 - contain **no drizzle imports, no `getDb()`, no WorkOS/SeaweedFS/backend calls,
   and no hand-rolled `NextResponse.json({ error })`.**
 
-### 2. Services (`frontends/ui/src/lib/<domain>/service.ts`)
+### 2. Services (`apps/workspace/bff/<domain>/service.ts`)
 
 Services own the business logic and the **authorization decision**:
 
@@ -46,7 +46,7 @@ Services own the business logic and the **authorization decision**:
   throw `NotFoundError` — never confirm existence to unauthorized callers.
 - Never import `next/server` and never build HTTP responses.
 
-### 3. Repositories (`frontends/ui/src/lib/<domain>/repository.ts`)
+### 3. Repositories (`apps/workspace/bff/<domain>/repository.ts`)
 
 Repositories are the **only** modules that run queries for their domain:
 
@@ -111,7 +111,7 @@ ambient context their API-route callers get from the route factories, which is
 sound today and becomes a bug the moment a page calls them. Scope a repository
 before you put a page in front of it.
 
-`frontends/ui/src/lib/db/server-component-db-access.spec.ts` enforces this: it
+`apps/workspace/bff/db/server-component-db-access.spec.ts` enforces this: it
 parses every file under `src/app` and fails the build when one imports values
 from `@/lib/db`. Route handlers that predate the rule are held in an explicit
 list in that spec so the count can only go down; server components and server

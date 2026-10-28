@@ -301,7 +301,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **`workosClientId`** / 🔒 `workosApiKey` / 🔒 `workosCookiePassword` | — | WorkOS |
 | `platformOwnerEmails` / `platformOrgExternalId` | — / `grid-platform` | Platform tier |
 | `disableSelfServeOrgs` | `false` | Tenancy toggle |
-| *(feature flags)* | — | No stack keys. Every feature is a WorkOS flag per organization (`frontends/ui/src/lib/authz/feature-flags.ts`), read from the WorkOS environment `requireAuth` signs in against. The retired keys `enforceFeatureFlags`, `skillsEnabled`, `collaborationEnabled`, `mailImportEnabled`, `agentAuthoredDocumentsEnabled`, `ifcModelsEnabled` and `memoryReflectionEnabled` are ignored |
+| *(feature flags)* | — | No stack keys. Every feature is a WorkOS flag per organization (`apps/workspace/bff/authz/feature-flags.ts`), read from the WorkOS environment `requireAuth` signs in against. The retired keys `enforceFeatureFlags`, `skillsEnabled`, `collaborationEnabled`, `mailImportEnabled`, `agentAuthoredDocumentsEnabled`, `ifcModelsEnabled` and `memoryReflectionEnabled` are ignored |
 | `auditLogsEnabled` | `false` | WorkOS audit-log emission from the frontend (`AUDIT_LOGS_ENABLED`) — default OFF |
 | `byokSecretBackend` / 🔒 `byokLocalKek` | — | BYOK backends |
 | `allowAgentOrgMemory` | `false` | Org-memory write path |

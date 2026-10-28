@@ -1,7 +1,7 @@
 # Piloti — Vignetten
 
 Request (2026-09-26): bring the riso language into the product app
-(`frontends/ui`), restrained. Three places where the app shows nothing and says
+(`apps/workspace`), restrained. Three places where the app shows nothing and says
 so, and where a picture explains the moment better than an icon disc:
 
 | Art id | Slot in the app | What it has to say |
@@ -103,12 +103,12 @@ drawings go.
 
 | Art id | Format | Composition | Notes |
 |---|---|---|---|
-| `vignetten/bauplatz/empty` | empty (320 / 640) | empty | goes to `frontends/ui/public/art/` |
-| `vignetten/abstecken/empty` | empty (320 / 640) | empty | goes to `frontends/ui/public/art/` |
-| `vignetten/planschrank/empty` | empty (320 / 640) | empty | goes to `frontends/ui/public/art/` |
+| `vignetten/bauplatz/empty` | empty (320 / 640) | empty | goes to `apps/workspace/public/art/` |
+| `vignetten/abstecken/empty` | empty (320 / 640) | empty | goes to `apps/workspace/public/art/` |
+| `vignetten/planschrank/empty` | empty (320 / 640) | empty | goes to `apps/workspace/public/art/` |
 
 The `empty` format's destination is `app` (`lib/formats.js`): its files go to
-the product app and its manifest is `frontends/ui/src/lib/art/art.json`.
+the product app and its manifest is `apps/workspace/bff/art/art.json`.
 
 ## Inspected
 

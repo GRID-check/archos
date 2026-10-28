@@ -557,17 +557,17 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     { name: "NEXT_PUBLIC_WORKOS_REDIRECT_URI", value: `https://${cfg.ingress.appDomain}/api/auth/callback` },
     { name: "WORKOS_REDIRECT_URI", value: `https://${cfg.ingress.appDomain}/api/auth/callback` },
     // PostHog product analytics (fail-open: empty host/token keeps the
-    // browser client disabled — see frontends/ui/src/lib/analytics/posthog.ts).
+    // browser client disabled — see apps/workspace/bff/analytics/posthog.ts).
     // Read by the BFF per request into AppConfig, so pointing a deployment at
     // a different project needs no rebuild (the Docker image builds with no
     // env files; a build-time read would bake `undefined` into the bundle).
     { name: "NEXT_PUBLIC_POSTHOG_HOST", value: cfg.posthog.host },
     { name: "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN", value: cfg.posthog.projectToken },
     // Session replay: off unless the stack opts in; the browser masks all text
-    // and samples at this rate (frontends/ui/src/lib/analytics/posthog-config.ts).
+    // and samples at this rate (apps/workspace/bff/analytics/posthog-config.ts).
     { name: "NEXT_PUBLIC_POSTHOG_SESSION_REPLAY", value: cfg.posthog.sessionReplay ? "true" : "false" },
     { name: "NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE", value: cfg.posthog.replaySampleRate },
-    // PostHog Support (frontends/ui/src/lib/posthog-support/config.ts): the BFF
+    // PostHog Support (apps/workspace/bff/posthog-support/config.ts): the BFF
     // opens a ticket per feedback report and triages them on Platform ->
     // Feedback. Server-side only, despite living beside the NEXT_PUBLIC_ ones.
     // Both or neither: the project id is meaningless without the key, and the
@@ -620,7 +620,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     { name: "SHUTDOWN_DRAIN_MS", value: String(FRONTEND_DRAIN_SECONDS * 1000) },
     // Agent Skills + Jobs (ADR-0046). Whether the feature exists for an
     // organization is its `skills` WorkOS flag, like every other feature
-    // (`frontends/ui/src/lib/authz/feature-flags.ts`); only the scheduling
+    // (`apps/workspace/bff/authz/feature-flags.ts`); only the scheduling
     // floor is deployment configuration.
     { name: "SKILL_MIN_INTERVAL_MINUTES", value: String(cfg.skills.minIntervalMinutes) },
     // Storage-quota alerting (ADR-0042). Read by the sweep behind
@@ -725,7 +725,7 @@ export function purgerEnv(w: AppWiring): EnvVar[] {
 /**
  * Skill-scheduler worker environment.
  *
- * Every name here must match what `frontends/ui/scheduler/index.js` reads. It
+ * Every name here must match what `apps/workspace/scheduler/index.js` reads. It
  * did not: the worker moved to the `SKILL_*` names with Agent Skills and
  * this block kept emitting the `WORKFLOW_*` ones, so the container saw an
  * unset start gate and exited 0 as a no-op on every deployment.

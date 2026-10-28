@@ -31,7 +31,7 @@ from qdrant_client import models
 DIM = 8
 IDENTITY = {"embed_fingerprint": "test-fp", "embed_model": "test-model"}
 
-#: The BFF's SIMILARITY_WEIGHTS (frontends/ui/src/lib/cross-project/similarity.ts), as the request carries them.
+#: The BFF's SIMILARITY_WEIGHTS (apps/workspace/bff/cross-project/similarity.ts), as the request carries them.
 WEIGHTS = {
     "federal_state": 4,
     "building_class": 3,

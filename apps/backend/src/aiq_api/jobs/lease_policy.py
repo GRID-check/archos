@@ -1,7 +1,7 @@
 """What the research and ingest workers share about holding a claim (ADR-0079).
 
 Both queues use these defaults. The BFF's claim loop
-(``frontends/ui/workers/jobs/index.js``) shares max attempts and dead retention,
+(``apps/workspace/workers/jobs/index.js``) shares max attempts and dead retention,
 and drains for 60 s instead of 600 because a slice is short;
 ``apps/backend/tests/test_lease_policy.py`` holds both sides to that. Each
 caller keeps its own floors, and its own values where the queues differ on

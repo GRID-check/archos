@@ -206,7 +206,7 @@ describe("the chat tier's scale-out", () => {
     expect(backendEnvNames.CHAT_AFFINITY).toBe("0");
     expect(frontendEnvNames.CHAT_AFFINITY).toBe("0");
     expect(chatSocket).toContain('"CHAT_AFFINITY"');
-    expect(read("frontends", "ui", "server.js")).toContain("CHAT_AFFINITY");
+    expect(read("apps", "workspace", "server.js")).toContain("CHAT_AFFINITY");
   });
 
   it("leaves the replica count to KEDA once it exists", () => {

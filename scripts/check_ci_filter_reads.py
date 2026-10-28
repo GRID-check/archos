@@ -38,7 +38,7 @@ from wcmatch import glob
 ROOT = Path(__file__).resolve().parents[1]
 FILTERS = ROOT / ".github" / "filters.yml"
 FLAGS = glob.GLOBSTAR | glob.DOTGLOB
-TIERS = ("backend", "frontend", "site", "infra", "packages", "migrations")
+TIERS = ("backend", "workspace", "site", "infra", "packages", "migrations")
 HARNESS_TASK = ROOT / "taskfiles" / "backend.yml"
 BEGIN = "  # Read as source by this tier's tests (scripts/check_ci_filter_reads.py --fix writes it):"
 END = "  # End of the files this tier's tests read."

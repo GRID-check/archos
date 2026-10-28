@@ -15,7 +15,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
   scheduler/worker; every chunk lives in Qdrant (ADR-0115). Runs the LangGraph workflow and the
   async deep-research jobs.
-- **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`frontends/ui/server.js`).
+- **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`apps/workspace/server.js`).
 - **dragonfly** — Redis-protocol shared cache (ADR-0020): read-through caches
   (membership, flags, prompt view, model overrides, budget limits, model
   catalog), the gateway's WS-upgrade rate limiter, and per-conversation
@@ -23,7 +23,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
   in-process fallbacks when it is down or `REDIS_URL` is unset.
 
 The **real** backend front-end plugin is `apps/backend` (`_type: aiq_api`).
-(The old `src/aiq_agent/fastapi_extensions/` duplicate was deleted 2026-07-03,
+(The old `packages/agent/src/aiq_agent/fastapi_extensions/` duplicate was deleted 2026-07-03,
 commit `2570b1b`; its one live route, `/v1/ingest`, was ported into `aiq_api`.)
 
 The working config is `configs/config_oib_openrouter.yml` (OpenRouter DeepSeek +
@@ -37,7 +37,7 @@ only way to run a turn; SSE now serves **only** the deep-research job stream (§
 
 ```
 Browser WebSocket
-  → frontends/ui/server.js  (WS upgrade proxy)
+  → apps/workspace/server.js  (WS upgrade proxy)
       • calls internal /api/websocket-scope?projectId=…  to fetch:
           - projectContext  → sets header  x-grid-project-context
           - collection scope → sets header  x-grid-collection-scope
@@ -62,15 +62,15 @@ Browser WebSocket
   → the turn's wire bodies, stamped and sent by the chat socket (wire v2, ADR-0068)
       apps/backend/src/aiq_api/chat_socket.py
   → the UI's turn socket and fold (docs/api/websocket-protocol.md, "The client")
-  → frontends/ui/src/features/layout/components/ChatArea.tsx → AgentResponse.tsx
+  → apps/workspace/ui/features/layout/components/ChatArea.tsx → AgentResponse.tsx
 ```
 
 Key files:
-- Graph build: `src/aiq_agent/agents/piloti/conversation.py` (`_build_graph`,
+- Graph build: `packages/agent/src/aiq_agent/agents/piloti/conversation.py` (`_build_graph`,
   nodes). The escalation edge and the conversation-scoped state belong to Piloti; the workflow only wires them up.
-- Workflow registration + response creation: `src/aiq_agent/agents/piloti/conversation_register.py`.
-- Wire types: `src/aiq_agent/common/wire_v2.py`, the contract both tiers are
-  generated from and tested against (`shared/wire/v2/`).
+- Workflow registration + response creation: `packages/agent/src/aiq_agent/agents/piloti/conversation_register.py`.
+- Wire types: `packages/agent/src/aiq_agent/common/wire_v2.py`, the contract both tiers are
+  generated from and tested against (`contracts/wire/v2/`).
 
 ### The terminal result (`TurnResult`)
 
@@ -195,7 +195,7 @@ be lifted, and the frontend Zod schema (`schemas.ts`) must declare it.
 Every submission path used to hand-roll its own subset of the `x-grid-*`
 context headers (org/user/project id, collection scope, project
 context/memory, model overrides, budget, disabled sources) — one audited case
-(async-job submit, §8b) simply forgot one. `frontends/ui/src/lib/request-context.ts`
+(async-job submit, §8b) simply forgot one. `apps/workspace/bff/request-context.ts`
 is now the single builder: `buildGridRequestContextWireHeaders` returns every
 individual header PLUS one consolidated, signed `X-Grid-Request-Context`
 header (base64url JSON of the same fields, plus the structured `federal_state`
@@ -284,7 +284,7 @@ no `system_response_message`, no intermediate/status frame, and nothing to strea
 next real turn's `ainvoke` then reads the ingested turns as ordinary history.
 
 Key pieces:
-- Char caps, appender registry: `src/aiq_agent/conversation_context.py`.
+- Char caps, appender registry: `packages/agent/src/aiq_agent/conversation_context.py`.
 - The appender is *published*, not imported: `aiq_api` owns the socket and
   `aiq_agent` owns the graph, so `piloti/conversation_register.py` calls
   `register_context_appender(agent.append_context_message)` where the compiled graph
@@ -396,8 +396,8 @@ registry so a new card type = define model + add renderer, no pipeline surgery),
 NOT to bolt on a silently-failing second LLM call.
 
 Cards (`SummaryCard`, `LegalBasisCard`, `ProjectProfilePatchCard`) are defined in
-`src/aiq_agent/cards/models.py` (discriminated union, `validate_cards`); the
-frontend renders them in `frontends/ui/src/features/grid-cards/`.
+`packages/agent/src/aiq_agent/cards/models.py` (discriminated union, `validate_cards`); the
+frontend renders them in `apps/workspace/ui/features/grid-cards/`.
 
 ### How generation works
 
@@ -661,7 +661,7 @@ The signed header is the **authorization ceiling**, not the turn's search set.
 The client states **intent** on the user message — `focus_file_name`,
 `focus_shelf` (the composer subject's shelf), `source_preset` (the shortcut
 chip) — never an expanded collection list. `shelves_for_turn`
-(`src/aiq_agent/common/focus_file.py`) is the one mapping from that intent
+(`packages/agent/src/aiq_agent/common/focus_file.py`) is the one mapping from that intent
 to the shelves retrieval may keep; the knowledge layer **subtracts** other
 shelves from the ceiling at the retrieve site and, when the focused file has
 hits, does not pad the merge with Archiv/project leftovers (#429, #436).
@@ -696,7 +696,7 @@ Two separate stores back "documents" and are **architecturally distinct**:
 the **Qdrant vector index** that `knowledge_search`/`knowledge_retrieval`
 queries (what's actually retrievable), and a **SQL `document_metadata`
 side-table** (`DocumentMetadataStore`,
-`src/aiq_agent/knowledge/document_metadata_store.py` + `factory.py
+`packages/agent/src/aiq_agent/knowledge/document_metadata_store.py` + `factory.py
 get_available_documents_async`; formerly the `document_metadata` table / `SummaryStore`,
 renamed because it now holds summary + tags + `doc_class` + `display_title` +
 `folder_path`) that
@@ -1092,7 +1092,7 @@ body. Nothing reads a FAILED call either: both capture loops skip a
 `ToolMessage` whose `status` is `error`, so the words a tool failure returns are
 the model's to act on and nobody's evidence. The contract test asserts the
 two readers produce the same entries
-(`tests/aiq_agent/common/test_citation_pipeline_contract.py`).
+(`packages/agent/tests/common/test_citation_pipeline_contract.py`).
 
 The boundary is worth stating once: the TOOL side is structured, and the ANSWER
 side stays text, because the model writes text and a citation key in prose is
@@ -1223,7 +1223,7 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
    When enabled, `LlamaIndexRetriever` adds lexical channels to the dense one
    in the same Qdrant query: German BM25 over the chunk text, and per selective
    exact term (`extract_exact_terms`, token-based, shared utility in
-   `src/aiq_agent/common/legal_terms.py` — deliberately **no regex**; up to
+   `packages/agent/src/aiq_agent/common/legal_terms.py` — deliberately **no regex**; up to
    three technical tokens) the dense ranking restricted to chunks containing
    it (`qdrant/search.py`). The channels are fused server-side by **reciprocal
    rank fusion** (`k=60`). This fixes
@@ -1298,7 +1298,7 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
    rerank scores against labelled unanswerable questions.
 
 4. **Retrieval-precision feedback** — a new `retrieval_precision` event kind in
-   the citation-health pipeline (`src/aiq_agent/common/citation_events.py`):
+   the citation-health pipeline (`packages/agent/src/aiq_agent/common/citation_events.py`):
    `build_turn_events` now compares the *retrieved* source labels against the
    *cited* ones per turn and emits an info-severity event when retrieval
    surfaced documents the answer did not use (`retrieved` / `cited` / `uncited`
@@ -1327,7 +1327,7 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
    PUT per raster (`POST /api/internal/document-image-upload-url`; the backend
    holds a read-only object-store credential, so it writes the way the
    thumbnail is written) and stores it as `<doc dir>/_img/<index>.jpg`, at most
-   `MAX_STORED_IMAGES_PER_DOCUMENT` (64, `frontends/ui/src/lib/s3.ts`, enforced
+   `MAX_STORED_IMAGES_PER_DOCUMENT` (64, `apps/workspace/bff/s3.ts`, enforced
    by the presign route; the backend stops at the first refusal). The caption
    chunk records `image_key` and `stored_image_index`; `_format_results` shows
    an `Image: stored (look image_index=N)` line only for such a
@@ -1360,7 +1360,7 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
 All five changes are covered by tests under `tests/knowledge_layer_tests/`
 (`test_agent_filters.py`, `test_hybrid.py`, `test_rerank.py`,
 `test_view_image.py`, `test_image_store.py`),
-`tests/aiq_agent/common/test_image_view_budget.py`, and in the BFF
+`packages/agent/tests/common/test_image_view_budget.py`, and in the BFF
 `src/app/api/internal/document-file/route.spec.ts`,
 `src/app/api/internal/document-image-upload-url/route.spec.ts`,
 `src/lib/documents/image-derivatives.spec.ts` and
@@ -1524,7 +1524,7 @@ same thing.
 | "How many external walls on the ground floor?" | `lib/bim/query.ts` → SQL over `bim_elements`. A `COUNT(*)` with a `WHERE`; an LLM summing forty thousand elements from retrieved prose is a fact turned into a guess. |
 
 The agent reaches the second through the `ifc_query` tool
-(`src/aiq_agent/tools/bim/register.py`), which posts to
+(`packages/agent/src/aiq_agent/tools/bim/register.py`), which posts to
 `POST /api/internal/bim/query` with the shared service token — the same
 single-writer separation the `remember` tool uses. Models are addressed by
 project and file name; no UUID travels through a conversation.
@@ -1755,7 +1755,7 @@ run (the runner holds a `run_id`), because then the 404 means the BFF has not
 yet written the backend job id onto the row. The ledger client keeps its single
 short attempt; a lost terminal op is settled by the reconciler below.
 What the retry does not heal the BFF's run reconciler does
-(`frontends/ui/src/lib/runs/reconcile.ts`, driven by the `skill-scheduler`
+(`apps/workspace/bff/runs/reconcile.ts`, driven by the `skill-scheduler`
 tick): it asks the job store for the verdict of every run still active after
 ten minutes without a check (`GET /v1/internal/jobs/{id}/outcome`, service
 token, tenant checked against `job_access`), which also hands back the run
@@ -1813,7 +1813,7 @@ This replaces the ADR-0023 Workflows scheduler, which was removed. See
 **Deep-research agent graph internals**: the orchestrator/planner/researcher/
 writer middleware stack, structured-output contracts, and graph invariants
 (concurrency, recursion limit, skill filesystem permissions) live in
-`src/aiq_agent/agents/deep_researcher/README.md`. Its "Known limitations"
+`packages/agent/src/aiq_agent/agents/deep_researcher/README.md`. Its "Known limitations"
 section covers the remaining open defects found by a source audit against the
 installed `deepagents`/`langchain`/`langgraph` versions, several of which are
 now fixed — summarized in §9 below.
@@ -1831,10 +1831,10 @@ No shared base-agent class exists; the remaining agent classes each repeat: tool
 resolution/exclusion, `LLMProvider` construction, verbose/trace callback setup,
 per-request data-source-filtered rebuild, tool-availability validation, and
 prompt-loading fallbacks. Good shared primitives already live in
-`src/aiq_agent/common/` (`llm_provider`, `data_source_registry`, `tool_validation`,
+`packages/agent/src/aiq_agent/common/` (`llm_provider`, `data_source_registry`, `tool_validation`,
 `prompt_utils`, `citations`).
 
-**Recommended (not yet implemented):** a `src/aiq_agent/common/agent_base.py`
+**Recommended (not yet implemented):** a `packages/agent/src/aiq_agent/common/agent_base.py`
 providing `resolve_tools()`, `build_llm_provider()`, `with_tool_guard()`, a
 prompt-loading mixin, and an eval-wrapper factory — collapsing the duplication
 without touching the genuinely agent-specific LangGraph node logic. This is a
@@ -1860,7 +1860,7 @@ past the system prompt into the history.
    provider and manageable outside a release. **Authored and versioned in
    Langfuse**, under the prompt name `piloti-system-static` and the label
    `production`, and pulled by the agent at render time
-   (`src/aiq_agent/common/prompt_store.py`). What each line of it is for, and
+   (`packages/agent/src/aiq_agent/common/prompt_store.py`). What each line of it is for, and
    what was cut and why: [`docs/audit/prompt-value-audit-2026-10.md`](../audit/prompt-value-audit-2026-10.md).
 2. **The office's standing instructions** — the tenant's own preferences,
    arriving per request on the `x-grid-org-instructions` header
@@ -1892,7 +1892,7 @@ which lives in the tool description that owns it (ADR-0060 (d)), a rail code
 enforces, or gone; the 2026-10 audit lists each line.
 
 **Git is the source of truth** (ADR-0060 (a)).
-`src/aiq_agent/agents/piloti/prompts/piloti_static.md` is the prompt review
+`packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md` is the prompt review
 reads, and it is pushed to Langfuse, where labels carry experiments. It is also
 what a process renders when prompt management is off (the default), when the
 Langfuse keys are absent, when Langfuse is unreachable, or when it holds no
@@ -1931,7 +1931,7 @@ fallback is in the trace METADATA instead, as `prompt_name` and
 §Prompt management.
 
 **Editing a template.** Each agent keeps its Jinja2 templates in
-`src/aiq_agent/agents/<agent>/prompts/`; `load_prompt` reads one and
+`packages/agent/src/aiq_agent/agents/<agent>/prompts/`; `load_prompt` reads one and
 `render_prompt_template` renders it (`common/prompt_utils.py`). The `.j2` file
 is the authority on the variables it uses, so keep every one the agent passes,
 and keep standing instructions above per-call content so the provider's prompt
@@ -1950,22 +1950,22 @@ The agent can now persist curated findings across turns. Full design:
 - **Single-writer**: the `app` DB has exactly one writer, the Next.js BFF.
   The backend `remember` tool never touches the DB — it POSTs to the internal
   BFF endpoint `POST /api/internal/memory`
-  (`frontends/ui/src/app/api/internal/memory/route.ts`), authenticated by the
+  (`apps/workspace/app/api/internal/memory/route.ts`), authenticated by the
   shared service token `INTERNAL_API_TOKEN` (`x-grid-internal-token`
   header; the route fails closed with 503 when the token is unconfigured).
-  Backend client: `src/aiq_agent/knowledge/project_memory.py`, over
-  `src/aiq_agent/common/bff_http.py`, the one client every agent-side call to
+  Backend client: `packages/agent/src/aiq_agent/knowledge/project_memory.py`, over
+  `packages/agent/src/aiq_agent/common/bff_http.py`, the one client every agent-side call to
   the BFF goes through (base URL from `FRONTEND_INTERNAL_URL`, then
   `FRONTEND_URL`, default `http://frontend:3000`; redirects refused).
 - **Two scopes**: the `project_memory` table has a `scope` column —
   `project` (requires `projectId`) or `organization` (org-wide, requires
   `organizationId`, `projectId` null).
 - **Read path**: `buildProjectMemoryDigest()`
-  (`frontends/ui/src/lib/projects/memory-service.ts`) merges org-wide +
+  (`apps/workspace/bff/projects/memory-service.ts`) merges org-wide +
   project items (active only; pinned first, then most recently updated,
   bounded), tags each line with scope/kind/confidence/verification, and the
   digest rides the WS upgrade as the `x-grid-project-memory` header
-  (`server.js` → `src/aiq_agent/project_context.py`), injected into prompts
+  (`server.js` → `packages/agent/src/aiq_agent/project_context.py`), injected into prompts
   alongside `x-grid-project-context`.
 
 ## 8b. Runtime model overrides & usage metering (2026-07-07)
@@ -1976,7 +1976,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
 
 - **Model overrides**: `x-grid-model-overrides` (base64url JSON
   `{agentGroup: openrouterModelId}`) is parsed by
-  `src/aiq_agent/common/model_overrides.py` and applied request-scoped:
+  `packages/agent/src/aiq_agent/common/model_overrides.py` and applied request-scoped:
   `LLMProvider.with_model_overrides()` (group-tagged roles; identity when
   nothing applies) in Piloti/deep `_run` closures and in
   `clarify.Clarifier.deps_for`, plus `apply_model_override()` at the clarifier
@@ -1998,8 +1998,8 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   `max_results`/`page_size`, `ris_catalog_lookup` `max_matches` — are no
   longer only build-time YAML. The BFF's Platform → Retrieval surface
   (`/api/platform/retrieval-settings`, catalog + bounds in
-  `frontends/ui/src/lib/retrieval-settings/catalog.ts`) pins keys; the backend
-  resolves them through `src/aiq_agent/common/retrieval_settings.py`
+  `apps/workspace/bff/retrieval-settings/catalog.ts`) pins keys; the backend
+  resolves them through `packages/agent/src/aiq_agent/common/retrieval_settings.py`
   (`get_retrieval_setting(key, fallback)`), which pulls the pinned set from
   the token-guarded `GET /api/internal/retrieval-settings` just like
   `model_overrides` does, TTL-cached in-process (60s positive / 30s negative)
@@ -2008,7 +2008,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   resolver never raises, so a BFF outage cannot break retrieval. Platform-only
   by design: there is no org layer (ADR-0016) — every tenant's queries share
   the fleet counts.
-- **Cost capture (DRY)**: `src/aiq_agent/common/cost_tracking.py` installs
+- **Cost capture (DRY)**: `packages/agent/src/aiq_agent/common/cost_tracking.py` installs
   `GridCostTracker` through LangChain's `register_configure_hook` ContextVar
   seam — every callback manager configured inside the request picks it up,
   so agents contain no metering code. Activated in exactly three places:
@@ -2022,7 +2022,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   per-run **completion-token** ceiling (backlog T4-4, 2026-07-16) —
   `MAX_RUN_COMPLETION_TOKENS`, default `0` = disabled — bounds one job's
   total output tokens across every LLM call including concurrent researcher
-  workers (`BudgetGuardCallback`, `src/aiq_agent/common/budget_guard.py`),
+  workers (`BudgetGuardCallback`, `packages/agent/src/aiq_agent/common/budget_guard.py`),
   independent of the USD budget ledger.
 - **Phase progress events** (backlog T4-4, 2026-07-16): `PhaseProgressCallback`
   (`aiq_api.jobs.phase_events`) observes the deep-research orchestrator's
@@ -2039,7 +2039,7 @@ The staged OIB Soll-Ist pipeline (`agents/compliance_checker/`, backlog T4-3)
 was retired as a chat tool and then deleted, with its `compliance_llm` role
 and its `compliance_check` model group. A norm check is now a task of kind
 `compliance_check`, run by the general agent with its retrieval tools
-(`TASK_ENGINES` in `frontends/ui/src/lib/tasks/delegation.ts`). The code is in
+(`TASK_ENGINES` in `apps/workspace/bff/tasks/delegation.ts`). The code is in
 git history.
 
 ## 8d. Agent skills (ADR-0046)
@@ -2059,7 +2059,7 @@ run's read-only `SkillsBackend` and records what was DELIVERED for
 prompt, and the office's own bounded block (`X-Grid-Org-Instructions`, rendered
 in the turn context as `## Office instructions`).
 
-The set per run = builtin (`src/aiq_agent/skills/builtin/`, discovered
+The set per run = builtin (`packages/agent/src/aiq_agent/skills/builtin/`, discovered
 deterministically, validated strictly) + org rows from the BFF internal
 `GET /api/internal/skills/resolve` (org shadows builtin by name), resolved
 fail-open and cached in the shared cache
@@ -2123,7 +2123,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   `docs/architecture/llm-providers.md` and `docs/audit/scaling-review-2026-07.md` §6.1).
   Model-call retries were narrowed in the same change: `ModelRetryMiddleware`
   now retries only rate limits, timeouts, transport errors, and 5xx (was any
-  exception). See `src/aiq_agent/agents/deep_researcher/README.md`
+  exception). See `packages/agent/src/aiq_agent/agents/deep_researcher/README.md`
   "Known limitations" for details.
 - **Researcher-worker step cap — fixed 2026-07-27 (`tools/research.py`)** —
   each single-query researcher runnable now receives an explicit
@@ -2196,7 +2196,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   `on_llm_error`/`on_tool_error`, so an errored (then retried) model or tool
   attempt never closed its intermediate-step span, corrupting the stack for
   every later step — this is now fixed by
-  `SpanClosingProfilerHandler` (`src/aiq_agent/common/nat_step_repair.py`), a
+  `SpanClosingProfilerHandler` (`packages/agent/src/aiq_agent/common/nat_step_repair.py`), a
   local subclass adding `on_llm_error`/`on_tool_error` overrides that push
   the matching `END` event, mirroring the installed handler's
   `on_llm_end`/`on_tool_end` construction field-for-field. (2) The remaining
@@ -2204,7 +2204,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   steps concurrently (parallel researcher workers, batched source-tool
   fan-out), which NAT's single-chain step model cannot represent — those
   residual warnings are deliberately suppressed (raised to `ERROR` level,
-  `src/aiq_agent/common/logging_utils.py`) rather than fixed, since the steps
+  `packages/agent/src/aiq_agent/common/logging_utils.py`) rather than fixed, since the steps
   themselves are still recorded correctly. `run_id`-keyed token/cost
   accounting (§8b) was never corrupted by either cause.
 - **Shared trace-callback state across concurrent researcher workers — fixed
@@ -2253,7 +2253,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
 `task verify` is the local gate: host-native, defined once in the root
 `Taskfile.yml`. CI calls the same definitions but schedules them differently, so
 a local pass is strong evidence rather than a guarantee. `task verify:fast`
-skips two production builds, `fe:build` and `site:build`. Full command list, the
+skips two production builds, `workspace:build` and `site:build`. Full command list, the
 checks that sit outside `verify`, and the traps `task --list` does not carry:
 `docs/contributing/testing-and-verification.md`.
 

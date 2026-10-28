@@ -610,7 +610,7 @@ graph renders below.
 
 ```mermaid
 flowchart TB
-    subgraph AGENT["Agent process (Python) — src/aiq_agent"]
+    subgraph AGENT["Agent process (Python) — packages/agent/src/aiq_agent"]
         direction TB
         A1["ifc_measure<br/>configs/config_oib_openrouter.yml:481"]
         A2["asyncio.to_thread<br/>tools/bim/measure_register.py:1256"]
@@ -651,7 +651,7 @@ flowchart TB
         T1 --> T2 --> T3 --> T4 --> T5
     end
 
-    subgraph UI["frontends/ui — the viewport"]
+    subgraph UI["apps/workspace — the viewport"]
         V1["@ifc-lite/renderer<br/>draws pixels, reports a GlobalId<br/>asserts no number (§13b)"]
     end
 
@@ -667,7 +667,7 @@ things in this repo read IFC and exactly one of them may state a number:
 |---|---|---|---|
 | `packages/ifc-spatial-py` (IfcOpenShell / OCCT) | yes | **yes — every measured number** | `apps/backend/Dockerfile:67,95,98` installs it |
 | `packages/ifc-spatial` (TypeScript, `@ifc-lite`) | yes | only inside `tests/test_parity.py` | no `package.json` in the repo depends on it |
-| `frontends/ui` viewport (`@ifc-lite/renderer`) | yes | no — pixels and a GlobalId | yes |
+| `apps/workspace` viewport (`@ifc-lite/renderer`) | yes | no — pixels and a GlobalId | yes |
 
 That is §13b's *„the server knows; the browser draws"* extended one step: the
 TypeScript engine is not a second server either, it is the cross-check that
@@ -676,7 +676,7 @@ answer against the TypeScript operator's full-precision value at the operators'
 own stated tolerances, and the BFF route says the same thing from the other
 side — *„the alternative is a second geometry stack in Node that would have to
 agree with the first about every number"*
-(`frontends/ui/src/app/api/internal/bim/source/route.ts:14-21`).
+(`apps/workspace/app/api/internal/bim/source/route.ts:14-21`).
 
 Five things the diagram is there to make legible, because prose keeps getting
 them wrong:
@@ -1104,7 +1104,7 @@ only from the TypeScript MCP server's `open_model` handler
 `apps/backend/Dockerfile:67,95,98` installs `packages/ifc-spatial-py` and nothing
 else, no `package.json` in the repo depends on `@grid/ifc-spatial`, and
 `ifc_measure` (`configs/config_oib_openrouter.yml:481`) reaches the engine
-through `src/aiq_agent/knowledge/ifc_spatial_client.py`, which imports the
+through `packages/agent/src/aiq_agent/knowledge/ifc_spatial_client.py`, which imports the
 **Python** `ifc_spatial` (lines 410-415, 491-493). The TypeScript package is the
 parity reference §13b keeps, not a server — §6.0 draws the boundary.
 
@@ -1157,7 +1157,7 @@ this has stayed survivable without a worker:
 **What remains true is the roadmap item, and it is not this function.** The
 worker does not exist. All of the above runs in the agent's own process:
 `ifc_measure` hands the blocking unit to `asyncio.to_thread`
-(`src/aiq_agent/tools/bim/measure_register.py:1256`), which keeps the event
+(`packages/agent/src/aiq_agent/tools/bim/measure_register.py:1256`), which keeps the event
 loop answering and is **not** isolation — the tessellations, the OCCT tree and
 the contact map sit in the request process's address space, so a model that
 exhausts memory takes the conversation down with it. What stands in for the
@@ -1196,7 +1196,7 @@ phase is not done until both exist.
 Written against shipped code and green tests, not against intent. `ifc_measure`
 is live in `configs/config_oib_openrouter.yml`, backed by
 `packages/ifc-spatial-py`, with the skill in
-`src/aiq_agent/skills/builtin/bim/ifc-spatial-reasoning/`.
+`packages/agent/src/aiq_agent/skills/builtin/bim/ifc-spatial-reasoning/`.
 
 | phase | state | evidence |
 |---|---|---|

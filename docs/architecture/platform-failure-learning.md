@@ -357,12 +357,12 @@ means anything.
 
 | Concern | Path |
 |---|---|
-| Pipeline service + digest | `frontends/ui/src/lib/platform-lessons/service.ts` |
-| Repository (all SQL) | `frontends/ui/src/lib/platform-lessons/repository.ts` |
+| Pipeline service + digest | `apps/workspace/bff/platform-lessons/service.ts` |
+| Repository (all SQL) | `apps/workspace/bff/platform-lessons/repository.ts` |
 | Distiller/auditor route | `apps/backend/src/aiq_api/routes/lesson_distill.py` |
-| PII scrub | `frontends/ui/src/lib/text/redact-pii.ts` |
-| Schema | `frontends/ui/src/lib/db/schema/platform-lessons.ts`, migration `0068` |
-| Trigger | `frontends/ui/src/app/api/feedback/answers/route.ts` (`after()`) |
-| Internal pull | `frontends/ui/src/app/api/internal/platform-lessons/digest/route.ts` → `src/aiq_agent/common/platform_lessons.py` |
-| Prompt section | `src/aiq_agent/agents/piloti/prompts/piloti.j2` §PLATFORM_LESSONS |
-| Dashboard | `frontends/ui/src/app/app/(shell)/platform/lessons/` |
+| PII scrub | `apps/workspace/bff/text/redact-pii.ts` |
+| Schema | `apps/workspace/bff/db/schema/platform-lessons.ts`, migration `0068` |
+| Trigger | `apps/workspace/app/api/feedback/answers/route.ts` (`after()`) |
+| Internal pull | `apps/workspace/app/api/internal/platform-lessons/digest/route.ts` → `packages/agent/src/aiq_agent/common/platform_lessons.py` |
+| Prompt section | `packages/agent/src/aiq_agent/agents/piloti/prompts/piloti.j2` §PLATFORM_LESSONS |
+| Dashboard | `apps/workspace/app/app/(shell)/platform/lessons/` |

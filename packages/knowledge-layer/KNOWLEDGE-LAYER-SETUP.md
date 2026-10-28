@@ -191,7 +191,7 @@ nat serve --config_file configs/config_oib_openrouter.yml --host 0.0.0.0 --port 
 ### Start Frontend
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 npm run dev
 ```
 
@@ -291,7 +291,7 @@ Summaries are generated for the following file types:
 
 Other file types are ingested normally but do not receive summaries.
 
-> **Frontend file types:** The frontend file picker defaults to `.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx` (`frontends/ui/src/shared/config/file-upload.ts`). Leave `FILE_UPLOAD_ACCEPTED_TYPES` unset to keep that default; a value that lists fewer types narrows what users can upload. Word and PowerPoint files also need Gotenberg (`GOTENBERG_URL`). Where to set it:
+> **Frontend file types:** The frontend file picker defaults to `.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx` (`apps/workspace/shared/config/file-upload.ts`). Leave `FILE_UPLOAD_ACCEPTED_TYPES` unset to keep that default; a value that lists fewer types narrows what users can upload. Word and PowerPoint files also need Gotenberg (`GOTENBERG_URL`). Where to set it:
 >
 > | Deployment | Where to set |
 > |-----------|-------------|
@@ -377,7 +377,7 @@ what `llamaindex` can do, and a second backend that cannot do all of it fails
 quietly rather than loudly. A decision to add one supersedes ADR-0072.
 
 What stays is the seam: `BaseRetriever` and `BaseIngestor` in
-`src/aiq_agent/knowledge/base.py`, and the `@register_retriever` /
+`packages/agent/src/aiq_agent/knowledge/base.py`, and the `@register_retriever` /
 `@register_ingestor` registry in `factory.py`. Tests register fakes through it,
 and `tests/knowledge_layer_tests/run_adapter_compliance.py --backend <name>`
 checks an adapter against the interface. `register.py` wires `llamaindex` in
@@ -411,10 +411,10 @@ The registration name (e.g., `"my_backend"`) is what factory calls use:
 1. `__init__.py` imports the adapter classes
 2. The NAT function imports from `knowledge_layer.<backend>.adapter`
 
-### Core Library (`src/aiq_agent/knowledge/`)
+### Core Library (`packages/agent/src/aiq_agent/knowledge/`)
 
 ```
-src/aiq_agent/knowledge/
+packages/agent/src/aiq_agent/knowledge/
     __init__.py      # Exports: Chunk, get_retriever, get_ingestor, etc.
     base.py          # Abstract classes: BaseRetriever, BaseIngestor
     schema.py        # Data models: Chunk, RetrievalResult, FileInfo, CollectionInfo

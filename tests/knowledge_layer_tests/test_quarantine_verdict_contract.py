@@ -2,7 +2,7 @@
 
 The ingest job records why the upload screen held a file back as
 ``FileProgress.quarantine`` (ADR-0113), and the BFF reads it with ``verdictSchema``
-(``frontends/ui/src/lib/upload-screening/quarantine.ts``), whose spec reads the
+(``apps/workspace/bff/upload-screening/quarantine.ts``), whose spec reads the
 same file. Here: each verdict round-trips through the model in exactly the
 fixture's shape, screening a case's pages produces exactly its verdict, the
 legacy ``quarantined:`` string is the same JSON, and the job status and the

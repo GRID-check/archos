@@ -15,8 +15,8 @@
      encode     'webp' (quality 95, sharp-YUV) or 'png' (256-colour palette when
                 committed, lossless for 'out' and separations)
      dest       'site' -> apps/site/public/art/, committed, in src/data/art.json
-                'app'  -> frontends/ui/public/art/, committed, in the app's
-                          src/lib/art/art.json (the product app, Next.js)
+                'app'  -> apps/workspace/public/art/, committed, in the app's
+                          bff/art/art.json (the product app, Next.js)
                 'out'  -> art/riso/out/<work>/, gitignored, reproducible
      file       name template: {base} {w} {h}
      numeral    false leaves the plate numeral off (tiny formats)
@@ -63,7 +63,7 @@ const FORMATS = {
     sizes: [{ density: 1, w: 64, h: 64, pitch: 2.4 }, { density: 2, w: 128, h: 128, pitch: 4.8 }],
   },
   empty: {
-    use: 'Empty state in the product app (frontends/ui), 320 CSS px square. A quiet vignette, not a full plate',
+    use: 'Empty state in the product app (apps/workspace), 320 CSS px square. A quiet vignette, not a full plate',
     compose: 'empty', encode: 'webp', dest: 'app', file: '{base}-empty-{w}', numeral: false,
     sizes: [{ density: 1, w: 320, h: 320, pitch: 3.4 }, { density: 2, w: 640, h: 640, pitch: 6.8 }],
   },

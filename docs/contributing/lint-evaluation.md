@@ -1,9 +1,9 @@
 # UI lint: oxlint vs Biome (evaluation, 2026-10)
 
-`frontends/ui` linted with ESLint 8 (`next/core-web-vitals` + `next/typescript`
+`apps/workspace` linted with ESLint 8 (`next/core-web-vitals` + `next/typescript`
 through FlatCompat, plus the repo's own rules). On ~2,600 files that took
 35–40 s of every `bun run lint`, 25–35 s of a two-core CI runner, and it was the
-slow step of `task fe:verify`. The ask was a much faster lint with nothing the
+slow step of `task workspace:verify`. The ask was a much faster lint with nothing the
 current one enforces lost, oxlint or Biome, chosen on measurements.
 
 **Decision: oxlint 1.85.0, alone.** The repo's rules run in it unchanged as a JS
@@ -13,7 +13,7 @@ on four cores and from 40.1 s to 3.0 s on two. `bun run lint` end to end
 
 `apps/site` and `packages/ifc-spatial` do not use ESLint (`astro check` and
 their own `scripts/lint-*.mjs`; `tsc` and tests respectively), so the change is
-`frontends/ui` only.
+`apps/workspace` only.
 
 ## What had to survive
 
@@ -173,7 +173,7 @@ error. Three things hold that:
 
 ## What changed
 
-- `frontends/ui/.oxlintrc.json` replaces `eslint.config.mjs` and the stale
+- `apps/workspace/.oxlintrc.json` replaces `eslint.config.mjs` and the stale
   `.eslintrc.json`. Every category is off, so the explicit rule list is the
   whole rule set and an oxlint release cannot add rules unasked. The reasoning
   comments moved with the rules, and the card type-ramp file list is the
@@ -185,7 +185,7 @@ error. Three things hold that:
 - `eslint`, `eslint-config-next` (and everything they pulled in) are removed.
   Next 16 no longer lints during `next build`, so nothing else needed them.
 - `bun run lint` is `node scripts/check-static-utility-modifiers.mjs && oxlint src tests`.
-  `task fe:lint`, CI and the husky hook call it unchanged.
+  `task workspace:lint`, CI and the husky hook call it unchanged.
 - A suppression is now written `// oxlint-disable-next-line <rule> -- <reason>`.
   Existing `eslint-disable` comments keep working.
 
@@ -194,7 +194,7 @@ error. Three things hold that:
 Install the **Oxc** extension (`oxc.oxc-vscode`) and remove ESLint's: there is
 no ESLint left to run. The extension uses the project's `oxlint` from
 `node_modules`. In the devcontainer `oxc.path.oxlint` points it at
-`frontends/ui/node_modules/.bin/oxlint`, because the workspace root has no
+`apps/workspace/node_modules/.bin/oxlint`, because the workspace root has no
 `node_modules`. It discovers `.oxlintrc.json` on its own. The language server
 (`oxlint --lsp`, 1.85.0) reports the `grid/*` diagnostics along with the native
 ones; this was checked by opening a file under `src/app/` with planted
@@ -215,4 +215,4 @@ not used.
 - **`check-static-utility-modifiers.mjs`** is now 1.1 s of a 3.8 s lint, the
   largest remaining share.
 - CI needs no change: there is no lint cache to restore, and the job still runs
-  `task fe:lint`.
+  `task workspace:lint`.

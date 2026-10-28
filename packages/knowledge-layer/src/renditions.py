@@ -26,7 +26,7 @@ from knowledge_layer.deferred_files import run_deferred_download
 logger = logging.getLogger(__name__)
 
 #: The formats indexed ONLY from their rendition. Mirrors
-#: ``RENDITION_INDEXED_EXTENSIONS`` in ``frontends/ui/src/lib/documents/preview-types.ts``,
+#: ``RENDITION_INDEXED_EXTENSIONS`` in ``apps/workspace/bff/documents/preview-types.ts``,
 #: the one place the BFF decides which dispatches carry ``extraction_ref``;
 #: there is no shared schema, so a format added there without being added here
 #: still works (a rendition present is always read), while one added here and

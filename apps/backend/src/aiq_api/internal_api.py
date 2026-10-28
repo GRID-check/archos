@@ -221,8 +221,8 @@ async def post_internal_turn_outcome(
 
     ``POST /api/internal/turns/outcome`` with ``{conversationId, turnId,
     outcome, reason?}``: the contract is ``turnOutcomeRequestSchema`` in
-    ``frontends/ui/src/lib/turns/outcome-types.ts``, exported as
-    ``frontends/ui/tests/fixtures/turn-outcome.schema.json``. The BFF detaches
+    ``apps/workspace/bff/turns/outcome-types.ts``, exported as
+    ``apps/workspace/tests/fixtures/turn-outcome.schema.json``. The BFF detaches
     from a headless turn once it runs, so this is the only way its wake learns
     the end. The chat socket calls it once per headless turn, after the
     terminal went out and the answer row was written (``chat_socket``).

@@ -1,7 +1,7 @@
 """Parity guard: which office formats are indexed from their PDF rendition (ADR-0071).
 
 The BFF decides which dispatches carry ``extraction_ref`` with
-``RENDITION_INDEXED_EXTENSIONS`` in ``frontends/ui/src/lib/documents/preview-types.ts``;
+``RENDITION_INDEXED_EXTENSIONS`` in ``apps/workspace/bff/documents/preview-types.ts``;
 the knowledge layer fails such a format that arrives without one, using its own
 copy in ``renditions.py``. There is no shared schema. A format in the backend's
 list and not the BFF's fails every upload of it; one in the BFF's list and not
@@ -15,7 +15,7 @@ from pathlib import Path
 from knowledge_layer.renditions import RENDITION_INDEXED_EXTENSIONS
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TS_PREVIEW_TYPES = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "documents" / "preview-types.ts"
+TS_PREVIEW_TYPES = REPO_ROOT / "apps" / "workspace" / "bff" / "documents" / "preview-types.ts"
 
 
 def _ts_rendition_indexed_extensions() -> set[str]:

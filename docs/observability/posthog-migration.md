@@ -122,7 +122,7 @@ date.
 - [ ] **Survey translations** (English) and launch, after the events they target
   arrive.
 - [ ] **Legal copy** before replay or the landing site is instrumented:
-  `frontends/ui/src/lib/legal/content/{de,en}.ts`, `apps/site/src/i18n/ui.ts`,
+  `apps/workspace/bff/legal/content/{de,en}.ts`, `apps/site/src/i18n/ui.ts`,
   and PostHog's DPA signed.
 - [x] **WorkOS source** (connected 2026-09-09): reads the **Production** WorkOS
   environment through PostHog's webhook endpoint there (`user.*`,

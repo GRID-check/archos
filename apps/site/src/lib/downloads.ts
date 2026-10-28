@@ -11,7 +11,7 @@
  * item per plate (`<work>/<plate>`), carrying every file of every format
  * exported for it: each density, the on-page twin, the print separations.
  *
- * The app's manifest (frontends/ui/src/lib/art/art.json) is not read here: the
+ * The app's manifest (apps/workspace/bff/art/art.json) is not read here: the
  * site's image is built from apps/site alone, so downloads.mjs copies the
  * app's files and their entries into the downloads manifest instead.
  */

@@ -74,12 +74,12 @@ It also lists the third-party image pins the change adds or moves
 | Backend core (`backend`) | backend tier: pushes, and PRs testmon cannot select for | the core suite in 4 shards (`task be:test:shard`), each writing coverage data |
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
 | Backend suites (`backend-suites`) | backend tier | three jobs side by side: the aiq_api suite, the Python packages' suites (`sources`), and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
-| Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
-| Frontend tests (`frontend-test`) | frontend tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task fe:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task fe:test:related`) |
-| Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
+| Workspace (`workspace`) | workspace tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
+| Workspace tests (`workspace-test`) | workspace tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task workspace:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task workspace:test:related`) |
+| Workspace coverage | PRs, workspace tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
 | Site, Infra, Standalone packages | their tier | `task site:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |
-| Image build (`image`) | PRs that change an image's inputs | builds it, read-only token, no push. For the UI this IS the production build check: `fe:build` is not run separately |
+| Image build (`image`) | PRs that change an image's inputs | builds it, read-only token, no push. For the UI this IS the production build check: `workspace:build` is not run separately |
 | Image build + push (`image-push`) | pushes, image not in GHCR | builds and pushes `inputs-<hash>` and the layer cache |
 | Tag images (`publish`) | pushes, after every check passed | `sha-<commit>` on all three images, and `latest` on `develop` |
 | `CI OK` (`ci-ok`) | always | fails unless every needed job passed or was skipped; on a green PR, records the tested tree for reuse |
@@ -127,7 +127,7 @@ deploy exactly as before.
 
 | Piece | Where | What it does |
 |---|---|---|
-| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `frontends/ui/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GIT_SHA` the container reports |
+| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `apps/workspace/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GIT_SHA` the container reports |
 | Backend release | `deploy.yml` (staging), before the plan (`PostHog/resolve-release`) | Finds or creates release `grid-agent` at the backend image's commit and hands its id to the Python tiers as `POSTHOG_RELEASE_ID` (below) |
 | Deploy marker | `deploy.yml`, after each `Pulumi up` (`deploy/pulumi/scripts/posthog-annotate.sh`) | A project annotation `deploy dev <sha>` or `deploy prod <sha>` at the time the apply finished. `continue-on-error`: a PostHog outage never turns a deploy red |
 
@@ -321,8 +321,8 @@ keeps the specs whose imports reach a changed file, split over the same eight
 shards. A spec that reads the tree from disk instead of importing it (the
 route, key and migration walkers; ~120, found by what they call, not by a
 list) has inputs no import graph sees, so it declares them in its first line,
-`// @disk-inputs: src/app/api/**, ../../shared/wire/v2/**` (globs relative to
-`frontends/ui`), and runs when a changed path matches one, wherever in the
+`// @disk-inputs: src/app/api/**, ../../contracts/wire/v2/**` (globs relative to
+`apps/workspace`), and runs when a changed path matches one, wherever in the
 repository it is. `config/vitest/disk-inputs.ts` records what every declaring
 spec reads while it runs and fails it on a path the line leaves out; `node
 scripts/declare-disk-inputs.mjs <spec>` rewrites the line from a recorded run.
@@ -335,7 +335,7 @@ squash commit that touches the UI still selected 815 of 1,644 specs, 86% of
 the suite's time, in October 2026: half of them change a dictionary string,
 which reaches ~720 specs, and the rest mostly touch a module behind
 `lib/api/errors.ts` or the schema barrel. A leaf change reaches a handful.
-`task fe:blast-radius` holds each hub to the specs it reached when recorded;
+`task workspace:blast-radius` holds each hub to the specs it reached when recorded;
 the hubs, and the splits that would cut them, are in
 [`docs/audit/blast-radius-2026-10.md`](../audit/blast-radius-2026-10.md). The
 coverage comment comes only from a full run.

@@ -1,0 +1,613 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grid document lifecycle wire contract",
+  "description": "Generated from apps/workspace/bff/documents/lifecycle-types.ts. Do not edit by hand: lifecycle-schema.spec.ts rewrites this file and fails when it is stale.",
+  "$defs": {
+    "internalDocumentVersionRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "create"
+            },
+            "projectId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "content": {
+              "type": "string",
+              "maxLength": 2000000
+            }
+          },
+          "required": [
+            "op",
+            "projectId",
+            "ref",
+            "title",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "update"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "versionId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "content": {
+              "type": "string",
+              "maxLength": 2000000
+            },
+            "ifMatch": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "op",
+            "documentId",
+            "versionId",
+            "content",
+            "ifMatch"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "submit"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "versionId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "reviewerUserIds": {
+              "default": [],
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "reviewer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "op",
+            "documentId",
+            "versionId"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "discriminator": {
+        "propertyName": "op"
+      }
+    },
+    "replaceContentRequest": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string",
+          "maxLength": 2000000
+        },
+        "ifMatch": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "content",
+        "ifMatch"
+      ],
+      "additionalProperties": false
+    },
+    "submitRequest": {
+      "type": "object",
+      "properties": {
+        "reviewerUserIds": {
+          "default": [],
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "orderMessage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "dueAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "documentVersionView": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "documentId": {
+          "type": "string"
+        },
+        "versionNumber": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "in_review",
+            "changes_requested",
+            "approved",
+            "published",
+            "superseded",
+            "rejected"
+          ]
+        },
+        "contentType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fileSize": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "contentHash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "submittedBy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "submittedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reviewedBy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reviewedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "approvedBy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "approvedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publishedBy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "publishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reviewComment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "bytesReadable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "versionNumber",
+        "state",
+        "contentType",
+        "fileSize",
+        "contentHash",
+        "submittedBy",
+        "submittedAt",
+        "reviewedBy",
+        "reviewedAt",
+        "approvedBy",
+        "approvedAt",
+        "publishedBy",
+        "publishedAt",
+        "reviewComment",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "documentVersionListResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "active",
+            "archived"
+          ]
+        },
+        "publishedVersionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "documentId": {
+                "type": "string"
+              },
+              "versionNumber": {
+                "type": "integer"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "in_review",
+                  "changes_requested",
+                  "approved",
+                  "published",
+                  "superseded",
+                  "rejected"
+                ]
+              },
+              "contentType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fileSize": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "contentHash": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "submittedBy": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "submittedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewedBy": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "approvedBy": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "approvedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "publishedBy": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "publishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewComment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "createdBy": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "bytesReadable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "versionNumber",
+              "state",
+              "contentType",
+              "fileSize",
+              "contentHash",
+              "submittedBy",
+              "submittedAt",
+              "reviewedBy",
+              "reviewedAt",
+              "approvedBy",
+              "approvedAt",
+              "publishedBy",
+              "publishedAt",
+              "reviewComment",
+              "createdBy",
+              "createdAt",
+              "updatedAt"
+            ]
+          }
+        },
+        "reviewerUserIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "people": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "userId",
+              "name"
+            ]
+          }
+        }
+      },
+      "required": [
+        "documentId",
+        "lifecycle",
+        "publishedVersionId",
+        "versions"
+      ]
+    },
+    "documentVersionResponse": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "documentId": {
+              "type": "string"
+            },
+            "versionNumber": {
+              "type": "integer"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "in_review",
+                "changes_requested",
+                "approved",
+                "published",
+                "superseded",
+                "rejected"
+              ]
+            },
+            "contentType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fileSize": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "contentHash": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "submittedBy": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "submittedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reviewedBy": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reviewedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "approvedBy": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "approvedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "publishedBy": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "publishedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reviewComment": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "createdBy": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            },
+            "bytesReadable": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "documentId",
+            "versionNumber",
+            "state",
+            "contentType",
+            "fileSize",
+            "contentHash",
+            "submittedBy",
+            "submittedAt",
+            "reviewedBy",
+            "reviewedAt",
+            "approvedBy",
+            "approvedAt",
+            "publishedBy",
+            "publishedAt",
+            "reviewComment",
+            "createdBy",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      },
+      "required": [
+        "version"
+      ]
+    }
+  }
+}

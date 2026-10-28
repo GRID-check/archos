@@ -2,7 +2,7 @@
 
 How the base corpus (the OIB, Österreichisches Institut für Bautechnik, Richtlinien and the other documents the platform owner uploads) is stored and ingested into the `oib_knowledge` collection in Qdrant. ADR-0082 step A2.
 
-There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `src/aiq_agent/corpus_store.py` (storage, table, cache), `src/aiq_agent/oib_sync.py` (ingestion), `src/aiq_agent/oib_status.py` (the status view) and `apps/backend/src/aiq_api/routes/oib.py` (the routes).
+There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `packages/agent/src/aiq_agent/corpus_store.py` (storage, table, cache), `packages/agent/src/aiq_agent/oib_sync.py` (ingestion), `packages/agent/src/aiq_agent/oib_status.py` (the status view) and `apps/backend/src/aiq_api/routes/oib.py` (the routes).
 
 ---
 
@@ -75,7 +75,7 @@ The hash and version are written only after the file's job reached `FileStatus.S
 
 **A sync cycle** (`oib_sync.sync()`) is housekeeping. It runs
 
-- every ten minutes, as the base-corpus housekeeping route `POST /v1/maintenance/housekeeping/base-corpus` (internal token). On Kubernetes that is the `housekeeping-base-corpus` CronJob (`deploy/pulumi/src/app/workers.ts`, `*/10 * * * *`, `concurrencyPolicy: Forbid`); in Compose it is the housekeeping clock (`frontends/ui/workers/housekeeping-clock.js`);
+- every ten minutes, as the base-corpus housekeeping route `POST /v1/maintenance/housekeeping/base-corpus` (internal token). On Kubernetes that is the `housekeeping-base-corpus` CronJob (`deploy/pulumi/src/app/workers.ts`, `*/10 * * * *`, `concurrencyPolicy: Forbid`); in Compose it is the housekeeping clock (`apps/workspace/workers/housekeeping-clock.js`);
 - on demand, as `POST /v1/admin/oib/sync`, the admin's "run it now". It calls the same function.
 
 There is no sync at boot and no boot thread. A cycle does bookkeeping and queues; it ingests nothing:
@@ -197,7 +197,7 @@ The adapter reaches Qdrant at `QDRANT_URL`, in every deployment and in local dev
 apps/backend routes/oib.py  ·  routes/jobs.py (housekeeping/base-corpus)
        │
        ▼
-src/aiq_agent/oib_sync.py ──────────► src/aiq_agent/corpus_store.py
+packages/agent/src/aiq_agent/oib_sync.py ──────────► packages/agent/src/aiq_agent/corpus_store.py
        │   │                              │ table: oib_corpus_files (SUMMARY_DB)
        │   │                              │ writes: BFF presigned URLs / delete
        │   │                              │ reads:  aiq_agent.common.seaweed_s3

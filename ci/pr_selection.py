@@ -48,7 +48,7 @@ plus every spec that reads files from disk instead of importing them (route
 walkers, schema and migration checks), which no import graph can connect to a
 change. FULL when the change reaches what every spec loads: the package
 manifest, the vitest config and setup, the mocks the setup installs, the
-tsconfig, or how the frontend jobs run.
+tsconfig, or how the workspace jobs run.
 
 The whole suite, sharded and coverage-gated, still runs on every push to
 develop, which the deploy waits for (deploy.yml), so anything a selection
@@ -79,7 +79,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-UI = "frontends/ui/"
+UI = "apps/workspace/"
 
 Get = Callable[[str], Any]
 
@@ -112,7 +112,6 @@ PY_FULL = (
 
 # Where testmon sees Python: the packages under test and the tests themselves.
 PY_TRACKED = (
-    "src/**",
     "tests/**",
     "apps/backend/src/**",
     "apps/backend/tests/**",
@@ -131,7 +130,7 @@ PY_FIXTURES = "tests/fixtures/"
 
 # A non-Python file under these that no test names is code testmon cannot see
 # (package data read at runtime), so it forces a full run rather than none.
-PY_PACKAGE_SRC = ("src/**", "apps/backend/src/**", "packages/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
+PY_PACKAGE_SRC = ("apps/backend/src/**", "packages/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
 
 # What every UI spec loads before its own imports, so no graph sees it.
 UI_FULL = (
@@ -141,13 +140,13 @@ UI_FULL = (
     UI + "vitest.config.*",
     UI + "next.config.ts",
     UI + "config/vitest/**",
-    UI + "src/mocks/**",
+    UI + "tests/mocks/**",
     # Imported by the mock handlers the setup file installs.
-    UI + "src/adapters/api/documents-schemas.ts",
-    UI + "src/features/documents/types.ts",
-    UI + "src/lib/upload-screening/policy.ts",
+    UI + "ui/adapters/api/documents-schemas.ts",
+    UI + "ui/features/documents/types.ts",
+    UI + "bff/upload-screening/policy.ts",
     "Taskfile.yml",
-    "taskfiles/frontend.yml",
+    "taskfiles/workspace.yml",
     ".github/workflows/ci.yml",
     ".github/filters.yml",
     ".github/actions/setup-bun/**",
@@ -158,17 +157,28 @@ UI_FULL = (
 # the BFF loads, the root scripts its walkers check, and the backend fixtures a
 # contract spec reads (`skills/resolve-payload-contract.spec.ts`). A change to none of
 # these since the last green run leaves every UI result standing.
-UI_INPUTS = (UI + "**", "configs/**", "shared/**", "scripts/**", "src/aiq_agent/cards/**", "tests/fixtures/**")
+UI_INPUTS = (
+    UI + "**",
+    "configs/**",
+    "contracts/**",
+    "scripts/**",
+    "packages/agent/src/aiq_agent/cards/**",
+    "tests/fixtures/**",
+)
 
 # The spec files vitest collects (vitest.config.ts `include`). Vitest's `**/`
 # matches no directory too; fnmatch's needs one, so each glob also gets its
-# top-level form. Without it `src/english-names.spec.ts`, which reads every
+# top-level form. Without it `tests/english-names.spec.ts`, which reads every
 # tracked file, was never found and ran on no selection at all.
+_SOURCE_DIRS = ("app", "bff", "ui", "i18n", "shared", "types", "utils")
 _VITEST_INCLUDE = (
-    "src/**/*.spec.ts",
-    "src/**/*.spec.tsx",
-    "src/**/*.test.ts",
-    "src/**/*.test.tsx",
+    *(f"{root}/**/*.{kind}.{ext}" for root in _SOURCE_DIRS for kind in ("spec", "test") for ext in ("ts", "tsx")),
+    "*.spec.ts",
+    "*.spec.tsx",
+    "*.test.ts",
+    "*.test.tsx",
+    "tests/**/*.spec.ts",
+    "tests/**/*.spec.tsx",
     "tests/**/*.test.ts",
     "tests/**/*.test.tsx",
     "purger/**/*.spec.mjs",
@@ -182,7 +192,7 @@ UI_SPECS = _VITEST_INCLUDE + tuple(glob.replace("/**/", "/") for glob in _VITEST
 
 # A spec that reads the tree from disk: route and key walkers, migration and
 # schema checks. Their inputs are not imports, so no graph sees them. Each
-# declares them in a `// @disk-inputs:` line (globs relative to frontends/ui),
+# declares them in a `// @disk-inputs:` line (globs relative to apps/workspace),
 # and runs only when a changed path matches one; one without the line runs on
 # every selection. config/vitest/disk-inputs.ts fails a spec that reads a path
 # its line does not declare, and scripts/declare-disk-inputs.mjs writes the line.
@@ -310,7 +320,7 @@ def decide_python(changed: list[str], test_files: dict[str, str], recorded: bool
 
 
 def decide_ui(changed: list[str], disk_readers: DiskReaders) -> tuple[str, list[str], str]:
-    """`(mode, files for vitest related, reason)`; paths in the files list are relative to frontends/ui.
+    """`(mode, files for vitest related, reason)`; paths in the files list are relative to apps/workspace.
 
     `none` means no UI spec can have changed outcome, so none runs. A disk reader
     runs when a changed path matches its declared inputs, or always without them.

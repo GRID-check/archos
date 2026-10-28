@@ -11,7 +11,7 @@ The Next.js app acts as a BFF layer between the browser and the Python FastAPI b
 
 ## Pattern
 
-Each BFF route is a `route.ts` file in `frontends/ui/src/app/api/` that exports HTTP method handlers (`GET`, `POST`, `PATCH`, `DELETE`).
+Each BFF route is a `route.ts` file in `apps/workspace/app/api/` that exports HTTP method handlers (`GET`, `POST`, `PATCH`, `DELETE`).
 
 ### Common structure
 
@@ -53,7 +53,7 @@ Two helpers control authentication:
 | `resolveSession()` | Returns `null` when `REQUIRE_AUTH=false`. Calls `requireAuthorizedSession()` when auth is required. |
 | `requireAuthorizedSession()` | Reads the WorkOS session from the `idToken` cookie via `@workos-inc/authkit-nextjs`. Redirects to login if missing. |
 
-Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:84`
+Source: `apps/workspace/app/api/v1/[...path]/route.ts:84`
 
 ## Scope injection
 
@@ -65,7 +65,7 @@ Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:84`
 
 The result is a base64url-encoded JSON array sent to the backend.
 
-Source: `frontends/ui/src/lib/retrieval-scope/collection-scope-request`
+Source: `apps/workspace/bff/retrieval-scope/collection-scope-request`
 
 ## Auth forwarding headers
 
@@ -77,7 +77,7 @@ When auth is required, these headers are forwarded:
 | `X-Grid-Organization-Id` | `session.organizationId` |
 | `X-Grid-User-Id` | `session.userId` |
 
-Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:175`
+Source: `apps/workspace/app/api/v1/[...path]/route.ts:175`
 
 ## Error handling
 
@@ -91,7 +91,7 @@ Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:175`
 
 Authz errors are intentionally normalized to `"Not found"` before they reach the FGA check, and `requireProjectAccess` throws `"Not found"` for both missing projects and unauthorized access (information disclosure prevention).
 
-Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:48`
+Source: `apps/workspace/app/api/v1/[...path]/route.ts:48`
 
 ## Generic proxy route
 
@@ -106,7 +106,7 @@ validateCollectionName(path, session, context):
   - else → 400 INVALID_COLLECTION
 ```
 
-Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:119`
+Source: `apps/workspace/app/api/v1/[...path]/route.ts:119`
 
 ## Streaming routes
 
@@ -124,7 +124,7 @@ return new NextResponse(response.body, {
 
 The `response.body` (a `ReadableStream`) is passed directly to `NextResponse` — no buffering. The backend's SSE events flow through unchanged. Streaming routes also support query-token auth for EventSource connections that cannot set custom headers (used by SSE reconnection from the frontend).
 
-Source: `frontends/ui/src/app/api/chat/route.ts:117`, `frontends/ui/src/app/api/jobs/async/[...path]/route.ts:182`
+Source: `apps/workspace/app/api/chat/route.ts:117`, `apps/workspace/app/api/jobs/async/[...path]/route.ts:182`
 
 ## WebSocket proxy
 
