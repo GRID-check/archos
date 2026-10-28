@@ -2,7 +2,7 @@
  "description": "Specs that reach each module reached by at least `recordFloor` specs, out of `specs`, read by frontends/ui/scripts/blast-radius.mjs. A module outside it fails at `threshold`. Rewrite with `task fe:blast-radius -- --update` and say in the pull request why a hub grew. docs/audit/blast-radius-2026-10.md",
  "threshold": 300,
  "recordFloor": 240,
- "specs": 1647,
+ "specs": 1648,
  "modules": {
   "src/adapters/api/config.ts": 286,
   "src/adapters/api/turn-socket.ts": 281,
