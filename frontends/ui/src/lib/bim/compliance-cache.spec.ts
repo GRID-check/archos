@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The compliance memo.
  *
  * The dangerous direction is not a miss — a miss just costs the 1.5 s the

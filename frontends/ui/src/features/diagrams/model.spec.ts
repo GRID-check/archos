@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The parser's database read into a model, with the database written by hand.
  *
  * `parse-mermaid.spec.ts` runs mermaid for real; this covers what the test DOM

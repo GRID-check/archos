@@ -1,5 +1,5 @@
 import type { ISecurityPolicySpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/SecurityPolicySpec";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 
 /**
  * WorkOS permission that grants platform-tier access — the same value the app

@@ -286,7 +286,7 @@ def test_a_captioned_table_is_cited_by_its_page_not_as_table_1():
     """Every captioned table carried no ``table_index`` and was cited
     „<file>, p.N, Table 1", whichever table it was, under a key no other hit
     on that page renders."""
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     from llama_index.core.schema import NodeWithScore
     from llama_index.core.schema import TextNode
 

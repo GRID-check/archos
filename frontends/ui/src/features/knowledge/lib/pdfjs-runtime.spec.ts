@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * `readPageTextItems` must read pdf.js's text stream the way Safari before 27
  * can: with a reader, never by async iteration.
  *

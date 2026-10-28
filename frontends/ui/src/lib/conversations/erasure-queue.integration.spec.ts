@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: a chat marked deleting is queued for the purger, and
  * the purger's claim picks it up — or leaves it, under a legal hold — against a
  * REAL Postgres with every migration applied, as the restricted runtime role.

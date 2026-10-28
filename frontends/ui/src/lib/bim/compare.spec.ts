@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Revision comparison.
  *
  * The claim under test is that GlobalId is a stable identity across exports and

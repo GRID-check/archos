@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Opt-in integration test: the `bff_job_queue` claim (ADR-0079), against a REAL
  * Postgres with every migration applied, connected as `grid_app_rw` — the role
  * the BFF and the runner actually run as.

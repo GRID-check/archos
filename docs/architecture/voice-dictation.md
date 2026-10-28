@@ -75,8 +75,8 @@ insertTranscript at caret ◀──────────
 | Where the text goes | `frontends/ui/src/features/dictation/lib/insert-transcript.ts` |
 | Bounds shared by both sides | `frontends/ui/src/lib/dictation/contract.ts` |
 | The BFF route and service | `frontends/ui/src/app/api/dictation/route.ts`, `frontends/ui/src/lib/dictation/service.ts` |
-| The provider call, models, fallback, ledger row | `frontends/aiq_api/src/aiq_api/routes/dictation.py` |
-| Filler removal and silence phrases | `frontends/aiq_api/src/aiq_api/routes/_dictation_text.py` |
+| The provider call, models, fallback, ledger row | `apps/backend/src/aiq_api/routes/dictation.py` |
+| Filler removal and silence phrases | `apps/backend/src/aiq_api/routes/_dictation_text.py` |
 | The composer's side | `frontends/ui/src/features/layout/components/InputArea.tsx` (`handleTranscript`) |
 | Preview | `/dev/dictation` |
 

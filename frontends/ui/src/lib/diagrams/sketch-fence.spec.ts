@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import fixtures from './__fixtures__/sketch-fences.json'
 import { readSketchFence, SKETCH_REFUSALS, sketchFenceKind, streamedSketchElements } from './sketch-fence'

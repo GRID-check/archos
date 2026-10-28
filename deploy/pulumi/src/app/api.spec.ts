@@ -119,7 +119,7 @@ describe("the api tier", () => {
     find(PDB, "api");
 
     const container = (await resolve(deployment.inputs.spec)).template.spec.containers[0];
-    const { backendImage } = await import("../config");
+    const { backendImage } = await import("../config/images");
     expect(container.image).toBe(backendImage(cfg));
     expect(container.ports).toEqual([{ containerPort: 8000, name: "http" }]);
     expect((await resolve(service.inputs.spec)).ports).toEqual([{ port: 8000, targetPort: 8000, name: "http" }]);
@@ -177,8 +177,8 @@ describe("the api tier", () => {
   });
 
   it("names exactly the web roles the Python image knows", () => {
-    const python = read("frontends", "aiq_api", "src", "aiq_api", "roles.py");
-    const entrypoint = read("deploy", "entrypoint.py");
+    const python = read("apps", "backend", "src", "aiq_api", "roles.py");
+    const entrypoint = read("apps", "backend", "entrypoint.py");
     const known = [...python.matchAll(/^\s+[A-Z]+ = "([a-z]+)"$/gm)].map((m) => m[1]).sort();
 
     expect(known).toEqual(["api", "chat"]);

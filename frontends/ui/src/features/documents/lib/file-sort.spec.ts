@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, test, expect } from 'vitest'
 import { defaultDirectionFor, nextSort, sortFiles } from './file-sort'
 import type { FileItem } from '../components/project-file-workspace'

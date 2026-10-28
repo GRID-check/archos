@@ -48,7 +48,7 @@ TARGET = frozenset(
 
 #: Still waiting for their move, and the ADR-0145 row that empties each.
 LEGACY = {
-    "frontends": "rows 7 and 9 (aiq_api, ui)",
+    "frontends": "row 9 (ui)",
     "shared": "row 4 (cards, wire)",
     "src": "row 8",
 }
@@ -65,6 +65,9 @@ MOVED = {
     "sources/knowledge_layer/": "packages/knowledge-layer (row 6)",
     "sources/ris_adapter/": "packages/ris-adapter (row 6)",
     "sources/tavily_web_search/": "packages/tavily-web-search (row 6)",
+    "frontends/aiq_api/": "apps/backend (row 7)",
+    "deploy/entrypoint.py": "apps/backend/entrypoint.py (row 7)",
+    "deploy/start_web.py": "apps/backend/start_web.py (row 7)",
 }
 
 #: Where an old path may still be named: the record of what was true then.

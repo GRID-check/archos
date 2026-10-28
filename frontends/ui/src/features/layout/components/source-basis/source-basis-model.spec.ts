@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The Datenbasis model — where the composer's count is allowed to be decided,
  * and the only place it is.
  *

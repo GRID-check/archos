@@ -33,7 +33,7 @@ PYTHON_ROOTS = (
     "packages/knowledge-layer",
     "packages/ris-adapter",
     "packages/tavily-web-search",
-    "frontends/aiq_api/src",
+    "apps/backend/src",
     "scripts",
 )
 TS_ROOTS = ("frontends/ui/src", "frontends/ui/workers", "frontends/ui/purger", "frontends/ui/scheduler")
