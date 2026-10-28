@@ -2074,7 +2074,7 @@ class TestAgentAuthoredProvenanceParsing:
         (entry,) = extract_sources_from_tool_result("knowledge_search", "\n".join(lines) + "\n")
         return entry
 
-    def test_a_marked_hit_carries_its_author_and_takes_the_piloti_lane(self):
+    def test_a_marked_hit_carries_its_author_and_takes_the_agent_lane(self):
         entry = self._entry("Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026")
         assert entry.authored_by == "agent"
         # And the lane beats the project shelf the same hit states.

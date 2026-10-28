@@ -16,7 +16,7 @@ import { ANNOUNCE_AFTER_MS, announcementOf, ReviewAnnouncer } from './review-ann
 type Changed = Parameters<Parameters<DocumentReview['room']['onAnnotationsChanged']>[0]>[0]
 
 const ANNA = { peerId: 'peer_anna', userId: 'user_anna', name: 'Anna Berger', kind: 'person' as const }
-const PILOTI = { peerId: null, userId: 'user_me', name: 'Piloti', kind: 'piloti' as const }
+const AGENT = { peerId: null, userId: 'user_me', name: 'Piloti', kind: 'piloti' as const }
 
 function reviewWith(annotations: Array<Pick<AnnotationView, 'id' | 'number'>>, asks: Array<Pick<CanvasAsk, 'id' | 'status'>> = []) {
   const listeners = new Set<(event: Changed) => void>()
@@ -42,9 +42,9 @@ describe('announcementOf', () => {
     const numbers: Record<string, number> = { a7: 7 }
     const line = announcementOf(
       [
-        { kind: 'change', actor: { ...PILOTI }, change: 'created', ids: ['p1', 'p2'] },
+        { kind: 'change', actor: { ...AGENT }, change: 'created', ids: ['p1', 'p2'] },
         { kind: 'change', actor: { ...ANNA }, change: 'created', ids: ['a7'] },
-        { kind: 'change', actor: { ...PILOTI }, change: 'created', ids: ['p3'] },
+        { kind: 'change', actor: { ...AGENT }, change: 'created', ids: ['p3'] },
         { kind: 'answered' },
       ],
       (id) => numbers[id] ?? null,
@@ -72,7 +72,7 @@ describe('ReviewAnnouncer', () => {
     // This tab, and this reader in another tab: nothing to tell them.
     hint({ annotationIds: ['a7'], change: 'updated', actor: { ...ANNA, peerId: 'peer_me', userId: 'user_me', name: 'Miriam Hofer' } })
     hint({ annotationIds: ['a7'], change: 'replied', actor: { peerId: 'peer_other_tab', userId: 'user_me', name: 'Miriam Hofer', kind: 'person' } })
-    hint({ annotationIds: ['p1', 'p2', 'p3'], change: 'created', actor: { ...PILOTI } })
+    hint({ annotationIds: ['p1', 'p2', 'p3'], change: 'created', actor: { ...AGENT } })
     expect(region).toHaveTextContent('')
 
     act(() => vi.advanceTimersByTime(ANNOUNCE_AFTER_MS))

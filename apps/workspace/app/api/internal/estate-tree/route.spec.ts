@@ -30,7 +30,7 @@ import { NotFoundError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import { withTenant } from '@/lib/db/tenant-context'
 import { readEstateTree } from '@/lib/estate-tree/service'
-import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
+import { buildRequestContextEnvelope, REQUEST_CONTEXT_HEADER_NAMES } from '@/lib/request-context'
 import { POST } from './route'
 
 const SECRET = 'internal-token-for-tests' // pragma: allowlist secret
@@ -38,7 +38,7 @@ const PROJECT = '33333333-3333-4333-8333-333333333333'
 
 const session = {
   userId: 'user_requester',
-  email: 'r@grid.test',
+  email: 'r@example.test',
   name: null,
   accessToken: '',
   organizationId: 'org_1',
@@ -49,7 +49,7 @@ const session = {
 }
 
 function envelopeHeaders(secret = SECRET) {
-  const { header, signature } = buildGridRequestContextEnvelope(
+  const { header, signature } = buildRequestContextEnvelope(
     {
       organizationId: 'org_1',
       userId: 'user_requester',
@@ -60,7 +60,7 @@ function envelopeHeaders(secret = SECRET) {
     },
     secret,
   )
-  return { [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header, [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '' }
+  return { [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header, [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '' }
 }
 
 function request(body: unknown, headers: Record<string, string> = envelopeHeaders(), token: string | null = SECRET) {

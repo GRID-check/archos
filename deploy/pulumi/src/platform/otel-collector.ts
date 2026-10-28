@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "./scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { commonLabels } from "./namespaces";
 import {
   ROLLOUT,
@@ -81,7 +81,7 @@ export interface OtelCollectorSources {
  * the one connection out of it that needs a rule of its own (rule 18).
  */
 export function installOtelCollector(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],

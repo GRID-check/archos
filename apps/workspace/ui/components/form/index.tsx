@@ -293,7 +293,7 @@ interface SubmitButtonProps extends React.ComponentProps<typeof Button> {
 }
 
 /**
- * The form's submit. Busy is not disabled (docs/design/grid-design-language.md):
+ * The form's submit. Busy is not disabled (docs/design/design-language.md):
  * while the submit runs the button keeps its focus (`aria-disabled`, and the
  * press is swallowed here, because Chrome blurs a button the moment it becomes
  * `disabled`) and its width (the label stays in the layout, transparent but

@@ -8,7 +8,7 @@
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 
 const LANDING_URL = 'https://dev.piloti.at'
 
@@ -17,10 +17,10 @@ const redirect = vi.fn((url: string): never => {
   // page never falls through to a later redirect() call.
   throw new Error(`NEXT_REDIRECT:${url}`)
 })
-const getGridSession = vi.fn<() => Promise<GridSession | null>>()
+const getUserSession = vi.fn<() => Promise<UserSession | null>>()
 
 vi.mock('next/navigation', () => ({ redirect: (url: string) => redirect(url) }))
-vi.mock('@/lib/auth/session', () => ({ getGridSession: () => getGridSession() }))
+vi.mock('@/lib/auth/session', () => ({ getUserSession: () => getUserSession() }))
 
 // Regression guard for the RSC cookie-write bug: the page must delegate
 // sign-in initiation to the /api/auth/signin Route Handler (the only context
@@ -33,7 +33,7 @@ vi.mock('@workos-inc/authkit-nextjs', () => ({
 
 const { default: HomePage } = await import('./page')
 
-const session: GridSession = {
+const session: UserSession = {
   userId: 'user_1',
   email: 'planer@example.at',
   name: 'Test Planer',
@@ -63,8 +63,8 @@ describe('HomePage redirect', () => {
   beforeEach(() => {
     process.env = { ...originalEnv, REQUIRE_AUTH: 'true', LANDING_URL: LANDING_URL }
     redirect.mockClear()
-    getGridSession.mockReset()
-    getGridSession.mockResolvedValue(null)
+    getUserSession.mockReset()
+    getUserSession.mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -89,13 +89,13 @@ describe('HomePage redirect', () => {
   })
 
   test('sends a signed-in visitor to the workspace', async () => {
-    getGridSession.mockResolvedValue(session)
+    getUserSession.mockResolvedValue(session)
 
     expect(await visit()).toBe('/app/projects')
   })
 
   test('sends a signed-in visitor to the workspace even with ?sign-in', async () => {
-    getGridSession.mockResolvedValue(session)
+    getUserSession.mockResolvedValue(session)
 
     expect(await visit({ 'sign-in': '' })).toBe('/app/projects')
   })
@@ -104,6 +104,6 @@ describe('HomePage redirect', () => {
     process.env.REQUIRE_AUTH = 'false'
 
     expect(await visit()).toBe('/app/projects')
-    expect(getGridSession).not.toHaveBeenCalled()
+    expect(getUserSession).not.toHaveBeenCalled()
   })
 })

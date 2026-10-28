@@ -71,7 +71,7 @@ def test_the_static_prompt_teaches_the_workspace_facts_and_the_work_kind():
     """
     from agent.tools.workspace.register import DESCRIPTIONS
 
-    static = (ROOT / "packages/agent/src/agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
+    static = (ROOT / "packages/agent/src/agent/agents/piloti/prompts/chat_static.md").read_text(encoding="utf-8")
     rules = static.split("<rules>")[1].split("</rules>")[0]
     # English is for finding an operation; a document search runs over German documents.
     assert "look one up (`workspace__search`) in English" in rules

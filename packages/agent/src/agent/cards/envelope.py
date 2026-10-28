@@ -231,7 +231,7 @@ def validate_model_card(payload: object) -> tuple[dict[str, Any] | None, CardRef
     a turn that came back with no card must be tellable from one that never
     reached for a card, and the two call for opposite fixes.
     """
-    from agent.cards.models import grid_card_adapter
+    from agent.cards.models import answer_card_adapter
 
     if not isinstance(payload, dict):
         logger.warning("card rejected: card_json is a %s, not a JSON object", type(payload).__name__)
@@ -251,7 +251,7 @@ def validate_model_card(payload: object) -> tuple[dict[str, Any] | None, CardRef
         logger.warning("card rejected: '%s' in a turn whose scope holds a restricted folder", card_type)
         return None, CardRefusal(REFUSED_CONFINED, card_type)
     try:
-        validated = grid_card_adapter.validate_python(payload).model_dump(exclude_none=True)
+        validated = answer_card_adapter.validate_python(payload).model_dump(exclude_none=True)
     except Exception as exc:
         detail = render_error_detail(exc)
         logger.warning("card rejected: a '%s' card failed validation: %s", card_type, detail)

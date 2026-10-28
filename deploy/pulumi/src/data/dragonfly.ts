@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import {
@@ -84,7 +84,7 @@ interface DragonflyOptions {
    * pod dial 6379.
    */
   password?: pulumi.Output<string>;
-  /** The worker group the pod runs on (`GridConfig.nodeGroups.data`). */
+  /** The worker group the pod runs on (`DeployConfig.nodeGroups.data`). */
   nodeGroup: string | undefined;
 }
 
@@ -281,7 +281,7 @@ function installDragonflyInstance(
  * plaintext RESP (see docs/deployment/kubernetes.md § Encryption posture).
  */
 export function installDragonfly(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): Dragonfly {
@@ -324,7 +324,7 @@ export function installDragonfly(
  * wired in `platform/gateway.ts`.
  */
 export function installRateLimitStore(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): Dragonfly {
@@ -368,7 +368,7 @@ export function installRateLimitStore(
  * silently bisected queue is not.
  */
 export function installLangfuseQueue(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): Dragonfly {

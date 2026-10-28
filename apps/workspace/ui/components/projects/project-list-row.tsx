@@ -15,7 +15,7 @@
  * (the list-row atom) and the `ItemList` that holds the rows (projects-grid)
  * clips the outer corners and draws the hairlines between them. So only the
  * first and last row are rounded, and a row carries no radius, border or shadow
- * of its own. See `docs/design/grid-design-language.md#component-layers-atomic-design`.
+ * of its own. See `docs/design/design-language.md#component-layers-atomic-design`.
  *
  * Why a row at all: past a dozen projects a card grid stops being a set of
  * objects and becomes a wall — nothing is ranked, every tile costs the same

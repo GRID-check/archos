@@ -68,7 +68,7 @@ class TestObservationType:
     def test_nat_kinds_map_to_langfuse_types(self, kind, expected):
         assert observation_type(name="x", kind=kind) == expected
 
-    def test_grid_retrieval_steps_are_retrievers_whatever_nat_calls_them(self):
+    def test_retrieval_steps_are_retrievers_whatever_the_framework_calls_them(self):
         assert observation_type(name="retrieve.knowledge_search", kind="FUNCTION") == "retriever"
 
     @pytest.mark.parametrize("kind", ["CUSTOM", "SPAN", "TASK", "UNKNOWN", None])
@@ -193,7 +193,7 @@ class TestPipelineWiring:
         async with otelcollector_redaction_telemetry_exporter(config, None) as exporter:
             positions = exporter._processor_names
 
-        assert positions["grid_trace_context"] < positions["header_redaction"]
+        assert positions["trace_context"] < positions["header_redaction"]
 
     async def test_tool_contributions_reach_the_trace_with_identity_off(self, monkeypatch):
         """The privacy switch must not also switch off cost and quality reporting."""
@@ -211,5 +211,5 @@ class TestPipelineWiring:
         async with otelcollector_redaction_telemetry_exporter(config, None) as exporter:
             positions = exporter._processor_names
 
-        assert "grid_trace_contributions" in positions
+        assert "trace_contributions" in positions
         assert "langfuse_trace_attributes" not in positions

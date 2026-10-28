@@ -32,7 +32,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.agent import TurnConfig
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
@@ -147,14 +147,14 @@ def _batch(*calls: dict) -> AIMessage:
     return AIMessage(content="", tool_calls=list(calls))
 
 
-def _agent(*rounds: AIMessage) -> tuple[PilotiAgent, MagicMock]:
+def _agent(*rounds: AIMessage) -> tuple[ChatAgent, MagicMock]:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=list(rounds))
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    agent = PilotiAgent(
+    agent = ChatAgent(
         llm_provider=provider,
         tools=_TOOLS,
         system_prompt=_PROMPT,
@@ -163,7 +163,7 @@ def _agent(*rounds: AIMessage) -> tuple[PilotiAgent, MagicMock]:
     return agent, llm
 
 
-async def _run(agent: PilotiAgent, disabled: set[str]):
+async def _run(agent: ChatAgent, disabled: set[str]):
     return await agent.run(
         ResearchAgentState(messages=[HumanMessage(content="Was steht im Web dazu?")]),
         turn=TurnConfig(disabled_sources=frozenset(disabled)),

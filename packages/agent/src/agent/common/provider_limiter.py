@@ -256,7 +256,7 @@ def limit_interval_seconds() -> float:
 
 # ---------------------------------------------------------------------- class
 
-_CLASS: contextvars.ContextVar[str] = contextvars.ContextVar("grid_provider_class", default=DEFAULT_CLASS)
+_CLASS: contextvars.ContextVar[str] = contextvars.ContextVar("limiter_class", default=DEFAULT_CLASS)
 
 
 def current_class() -> str:

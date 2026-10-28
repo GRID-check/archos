@@ -162,8 +162,8 @@ export function formatters(locale: string, now: Date): Formatters {
 }
 
 /** „Piloti · für Anna Berger", or plain „Piloti" when the directory does not know the person. */
-const pilotiFor = (t: Translator, name: string | null): string =>
-  name ? t('review.attribution.pilotiFor', { name }) : 'Piloti'
+const agentFor = (t: Translator, name: string | null): string =>
+  name ? t('review.attribution.agentFor', { name }) : 'Piloti'
 
 /** Who set the mark, who closed it, and whether Piloti works it now: one small line each. */
 function attributionLines(annotation: AnnotationView, t: Translator, f: Formatters): string[] {
@@ -178,8 +178,8 @@ function attributionLines(annotation: AnnotationView, t: Translator, f: Formatte
   } else if (annotation.authorKind === 'piloti') {
     lines.push(
       annotation.acceptedByName
-        ? t('review.export.document.pilotiSetFor', { name: annotation.acceptedByName, date: set })
-        : t('review.export.document.pilotiSet', { date: set })
+        ? t('review.export.document.agentSetFor', { name: annotation.acceptedByName, date: set })
+        : t('review.export.document.agentSet', { date: set })
     )
   } else {
     lines.push(
@@ -227,7 +227,7 @@ function threadBlocks(annotation: AnnotationView, t: Translator, f: Formatters):
   if (annotation.replies.length === 0) return []
   const items: DocRun[][] = annotation.replies.map((reply) => {
     const author =
-      reply.authorKind === 'piloti' ? pilotiFor(t, reply.createdByName) : (reply.createdByName ?? t('review.someone'))
+      reply.authorKind === 'piloti' ? agentFor(t, reply.createdByName) : (reply.createdByName ?? t('review.someone'))
     return [{ text: `${author} · ${f.date(reply.createdAt)}: `, bold: true }, { text: reply.body }]
   })
   return [{ kind: 'paragraph', runs: [{ text: t('review.export.document.thread'), bold: true }] }, { kind: 'bullets', items }]

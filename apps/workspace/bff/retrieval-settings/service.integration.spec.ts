@@ -34,7 +34,7 @@ describe.skipIf(!url)('platform retrieval settings against live Postgres', () =>
       savePlatformRetrievalSettings,
     } = await import('./service')
 
-    const actor = { actorUserId: 'user_test', actorEmail: 'owner@grid.test' }
+    const actor = { actorUserId: 'user_test', actorEmail: 'owner@example.test' }
 
     // Nothing pinned: the map is empty, the view shows catalog defaults.
     await savePlatformRetrievalSettings({ settings: {}, note: null, ...actor })
@@ -71,7 +71,7 @@ describe.skipIf(!url)('platform retrieval settings against live Postgres', () =>
       settings: { 'knowledge.top_k': 12, 'web.max_results': 7 },
       note: 'wider net',
       actorUserId: 'user_first',
-      actorEmail: 'first@grid.test',
+      actorEmail: 'first@example.test',
     })
 
     // The form resends every pinned key; only web.max_results actually moves.
@@ -79,32 +79,32 @@ describe.skipIf(!url)('platform retrieval settings against live Postgres', () =>
       settings: { 'knowledge.top_k': 12, 'web.max_results': 8 },
       note: 'more web hits',
       actorUserId: 'user_second',
-      actorEmail: 'second@grid.test',
+      actorEmail: 'second@example.test',
     })
 
     const view = await listPlatformRetrievalSettings()
     expect(view.find((row) => row.key === 'knowledge.top_k')).toMatchObject({
       value: 12,
       note: 'wider net',
-      updatedByEmail: 'first@grid.test',
+      updatedByEmail: 'first@example.test',
     })
     expect(view.find((row) => row.key === 'web.max_results')).toMatchObject({
       value: 8,
       note: 'more web hits',
-      updatedByEmail: 'second@grid.test',
+      updatedByEmail: 'second@example.test',
     })
 
     await savePlatformRetrievalSettings({
       settings: {},
       note: null,
       actorUserId: 'user_second',
-      actorEmail: 'second@grid.test',
+      actorEmail: 'second@example.test',
     })
   })
 
   it('rejects values outside the catalog before touching the database', async () => {
     const { savePlatformRetrievalSettings } = await import('./service')
-    const actor = { actorUserId: 'user_test', actorEmail: 'owner@grid.test' }
+    const actor = { actorUserId: 'user_test', actorEmail: 'owner@example.test' }
 
     await expect(
       savePlatformRetrievalSettings({ settings: { 'knowledge.top_k': 0 }, note: null, ...actor })

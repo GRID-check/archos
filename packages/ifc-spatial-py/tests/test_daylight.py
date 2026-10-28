@@ -416,7 +416,7 @@ def test_hits_come_back_nearest_first(model: SpatialModel) -> None:
     assert answer.value[-1]["samples"] >= 20
 
 
-def test_the_overhead_caveat_states_the_grid_and_the_exclusions(model: SpatialModel) -> None:
+def test_the_overhead_caveat_states_the_lattice_and_the_exclusions(model: SpatialModel) -> None:
     caveat = dl.above(model, BEDROOM).caveat
     assert "geom.tree.select_ray" in caveat
     assert "25 von 25 Rasterpunkten" in caveat
@@ -424,7 +424,7 @@ def test_the_overhead_caveat_states_the_grid_and_the_exclusions(model: SpatialMo
     assert "keine Vollständigkeitsaussage" in caveat
 
 
-def test_the_grid_drops_points_that_are_over_the_box_but_not_the_element(model: SpatialModel) -> None:
+def test_the_lattice_drops_points_that_are_over_the_box_but_not_the_element(model: SpatialModel) -> None:
     """A bounding box covers plan area its element does not.
 
     The roof of this fixture fills 24 of the 25 grid points over its own box;

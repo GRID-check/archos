@@ -31,7 +31,7 @@
 import 'server-only'
 import { FileTooLargeError, UnprocessableError, formatMegabytes } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import { isIfcFilename } from '@/lib/bim/types'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
@@ -148,7 +148,7 @@ export interface UploadLimitState {
  * because the invariant belongs to the service.
  */
 export async function setMaxUploadFileBytes(
-  session: GridSession,
+  session: UserSession,
   organizationId: string,
   maxUploadFileBytes: number | null,
   request?: Request

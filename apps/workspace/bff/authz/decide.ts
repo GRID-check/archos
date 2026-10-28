@@ -40,7 +40,7 @@
 
 import 'server-only'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { findPermissionSpec, type PermissionTier } from './catalog'
 import { findProjectTenancy } from '@/lib/projects/repository'
 import {
@@ -103,7 +103,7 @@ export interface AuthzDecision {
  * membership (the identity WorkOS resolves FGA roles against); a session
  * missing either cannot produce a tenant-scoped answer at all.
  */
-function asAuthorized(session: GridSession): AuthorizedSession | null {
+function asAuthorized(session: UserSession): AuthorizedSession | null {
   const { organizationId, organizationMembershipId, role } = session
   if (!organizationId || !organizationMembershipId) return null
   return { ...session, organizationId, organizationMembershipId, role: role ?? '' }
@@ -138,7 +138,7 @@ function allow(
 
 /** Claims tiers: answered from the JWT plus (for platform) one cached lookup. */
 async function decideClaimsTier(
-  session: GridSession,
+  session: UserSession,
   permission: KnownPermission,
   tier: PermissionTier
 ): Promise<AuthzDecision> {
@@ -165,7 +165,7 @@ async function decideClaimsTier(
  * security-critical check in the app.
  */
 async function decideProjectTier(
-  session: GridSession,
+  session: UserSession,
   permission: ProjectPermission,
   resource: AuthzResource
 ): Promise<AuthzDecision> {
@@ -218,7 +218,7 @@ async function decideProjectTier(
  * flow. Use {@link authorize} at enforcement points.
  */
 export async function decide(
-  session: GridSession | null,
+  session: UserSession | null,
   permission: AnyPermission,
   resource?: AuthzResource
 ): Promise<AuthzDecision> {
@@ -241,7 +241,7 @@ export async function decide(
 
 /** True when the session holds the permission. Sugar over {@link decide}. */
 export async function can(
-  session: GridSession | null,
+  session: UserSession | null,
   permission: AnyPermission,
   resource?: AuthzResource
 ): Promise<boolean> {
@@ -253,7 +253,7 @@ export async function can(
  * 403 for claims tiers, 404 for the project tier (no existence oracle).
  */
 export async function authorize(
-  session: GridSession | null,
+  session: UserSession | null,
   permission: AnyPermission,
   resource?: AuthzResource
 ): Promise<AuthzDecision> {

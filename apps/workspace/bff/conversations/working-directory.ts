@@ -7,7 +7,7 @@
  * The working directory is per-conversation scratch — drafts, notes, the file a
  * turn is editing — and it lives in the agent service's own LangGraph
  * `PostgresStore`, namespaced by conversation id
- * (`docs/roadmap/piloti-writes-artifacts-and-approval.md` §1). That store is on
+ * (`docs/roadmap/agent-writes-artifacts-and-approval.md` §1). That store is on
  * the other side of ADR-0003's boundary: no foreign key reaches it, no cascade
  * touches it, and `deleteConversation` erasing every row it owns leaves those
  * namespaces standing forever, holding whatever the model had written into

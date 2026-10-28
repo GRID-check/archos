@@ -18,7 +18,7 @@ from pydantic import ValidationError
 
 from agent.cards.envelope import render_envelope_cards_contract
 from agent.cards.envelope import validate_model_card
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
 from agent.cards.surface_card import SURFACE_MAX_CHILDREN
 from agent.cards.surface_card import SURFACE_MAX_LEAVES
@@ -50,19 +50,19 @@ def _tabs(**overrides: Any) -> dict[str, Any]:
 
 def _refusal(card: dict[str, Any]) -> str:
     with pytest.raises(ValidationError) as caught:
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
     return str(caught.value)
 
 
 class TestAValidSurface:
     def test_tabs_of_two_cards_validate_and_keep_their_ids(self):
-        card = grid_card_adapter.validate_python(_tabs())
+        card = answer_card_adapter.validate_python(_tabs())
         assert [component["id"] for component in card.components] == ["root", "a", "b"]
 
     def test_a_card_inside_is_normalised_by_its_own_model(self):
         # The leaf comes back as its card model dumps it: defaults applied,
         # nulls dropped, and still addressed by the model's own id.
-        leaf = grid_card_adapter.validate_python(_tabs()).components[1]
+        leaf = answer_card_adapter.validate_python(_tabs()).components[1]
         assert leaf["id"] == "a" and leaf["component"] == "ifc_model_picker"
         assert "type" not in leaf
         assert leaf["title"] == "Haus A"
@@ -72,7 +72,7 @@ class TestAValidSurface:
         card["components"][0] = {"id": "root", "component": "Column", "children": ["row", "c"]}
         card["components"].append({"id": "row", "component": "Row", "children": ["a", "b"]})
         card["components"].append({**copy.deepcopy(BASIS_B), "id": "c"})
-        assert grid_card_adapter.validate_python(card)
+        assert answer_card_adapter.validate_python(card)
 
     def test_it_passes_the_envelope_validator_as_one_card(self):
         validated, refusal = validate_model_card(_tabs())
@@ -160,12 +160,12 @@ class TestTextLeaves:
         return _tabs(components=[_tabs()["components"][0], a, b])
 
     def test_a_tab_of_markdown_keeps_its_markup(self):
-        card = grid_card_adapter.validate_python(self._variants(_text("a", self.TABLE), BASIS_B))
+        card = answer_card_adapter.validate_python(self._variants(_text("a", self.TABLE), BASIS_B))
         # Card fields are flattened to plain text; a Text leaf IS Markdown and is not.
         assert card.components[1]["text"] == self.TABLE
 
     def test_text_counts_as_a_leaf(self):
-        card = grid_card_adapter.validate_python(self._variants(_text("a", "x"), _text("b", "y")))
+        card = answer_card_adapter.validate_python(self._variants(_text("a", "x"), _text("b", "y")))
         assert [c["component"] for c in card.components] == ["Tabs", "Text", "Text"]
 
     def test_an_empty_text_is_refused(self):
@@ -277,7 +277,7 @@ class TestTextRecital:
         assert recited is not None
         assert [component["id"] for component in recited["components"]] == ["root", "a", "b"]
         assert [tab["child"] for tab in recited["components"][0]["tabs"]] == ["a", "b"]
-        grid_card_adapter.validate_python(recited)
+        answer_card_adapter.validate_python(recited)
 
     def test_a_surface_left_with_one_card_is_that_card(self):
         from agent.cards.surface_citations import recite_surface
@@ -287,7 +287,7 @@ class TestTextRecital:
         recited = recite_surface(card, {}, {1})
 
         assert recited["type"] == "ifc_model_picker" and recited["title"] == BASIS_A["title"]
-        grid_card_adapter.validate_python(recited)
+        answer_card_adapter.validate_python(recited)
 
     def test_a_surface_left_with_one_text_keeps_the_blank_marked_and_recites_the_rest(self):
         from agent.cards.surface_citations import BLANK_TEXT
@@ -300,7 +300,7 @@ class TestTextRecital:
         texts = {c["id"]: c["text"] for c in recited["components"] if c.get("component") == "Text"}
         # Never the stored [5]: after sanitize it is [2], or the tab names a different source.
         assert texts == {"a": BLANK_TEXT, "b": "REI 90 [2]"}
-        grid_card_adapter.validate_python(recited)
+        answer_card_adapter.validate_python(recited)
 
     def test_a_marker_inside_code_is_code(self):
         from agent.cards.surface_citations import recite_text
@@ -333,7 +333,7 @@ class TestSurfaceIntegrity:
 
     def test_a_layout_value_the_renderer_takes_is_accepted(self):
         root = {"id": "root", "component": "Row", "children": ["a", "b"], "justify": "spaceBetween", "align": "start"}
-        assert grid_card_adapter.validate_python(_tabs(components=[root, BASIS_A, BASIS_B]))
+        assert answer_card_adapter.validate_python(_tabs(components=[root, BASIS_A, BASIS_B]))
 
     @pytest.mark.parametrize("marker", ["[[card:2]]", "[[callout]]", "[[ card : 1 ]]"])
     def test_a_prose_marker_in_a_text_is_refused(self, marker):
@@ -504,7 +504,7 @@ class TestPipelineRecital:
         # Positions stay: a later [[card:2]] still names this card.
         assert len(stored) == 2 and stored[0] == before
         assert "[5]" not in str(stored[1]) and "REI 90 [2]" in str(stored[1])
-        grid_card_adapter.validate_python(stored[1])
+        answer_card_adapter.validate_python(stored[1])
 
     def test_a_merged_duplicate_in_a_tab_follows_the_prose(self):
         from types import SimpleNamespace

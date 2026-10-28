@@ -9,7 +9,7 @@ before the answer could only ever withhold capabilities the answer turned out
 to need, and the classes it produced — "meta", "listing", "out of scope" — are
 all shapes the answering model can choose itself.
 
-So this module adds exactly two things to :class:`PilotiAgent`: the
+So this module adds exactly two things to :class:`ChatAgent`: the
 escalation edge (clarifier, then deep research, unless the reader has already
 declined a plan), and the conversation-scoped state the checkpointer persists
 between turns — the message history and that sticky refusal. Everything else a

@@ -7,7 +7,7 @@
  * where the alternative is a markdown bullet list: three discs of equal weight
  * that a reader has to read in full to find out which one is theirs.
  *
- * THE SHAPE (`docs/design/grid-card-charter.md` §A5). The rows used to be
+ * THE SHAPE (`docs/design/answer-card-charter.md` §A5). The rows used to be
  * separated by `divide-y` hairlines, which is what made this a generic list —
  * four cards in the set drew the same rules around the same rows. Now the rank
  * is drawn instead of ruled: the ordinals hang off one continuous hairline and

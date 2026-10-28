@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { getGridSession } from '@/lib/auth/session'
+import { getUserSession } from '@/lib/auth/session'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
@@ -55,7 +55,7 @@ const ProjectChatPage = async ({ params }: ProjectChatPageProps): Promise<ReactN
     // thing is to say so here.
     let canChatInProject = true
     try {
-      const session = await getGridSession()
+      const session = await getUserSession()
       if (session) {
         organizationId = session.organizationId
         canCollaborate = isCollaborationEnabled(session)

@@ -167,7 +167,7 @@ class TestProcessor:
             raise RuntimeError("context is gone")
 
         monkeypatch.setattr(
-            "agent.project_context.GridRequestContext.from_context",
+            "agent.project_context.RequestContext.from_context",
             staticmethod(explode),
         )
 
@@ -906,9 +906,9 @@ class TestUsagePipelineWiring:
             positions = exporter._processor_names
 
             # Usage counts are not personal data: no env gate, unlike identity.
-            assert "grid_usage_attributes" in positions
+            assert "usage_attributes" in positions
             assert "langfuse_trace_attributes" not in positions
-            assert positions["grid_usage_attributes"] < positions["header_redaction"]
+            assert positions["usage_attributes"] < positions["header_redaction"]
 
 
 class TestPosthogSessionLink:

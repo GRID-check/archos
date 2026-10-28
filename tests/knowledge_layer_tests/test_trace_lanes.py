@@ -170,11 +170,11 @@ def test_format_results_empty_chunks_skips_trace_block():
 
 
 # ---------------------------------------------------------------------------
-# A document PILOTI wrote, that a person released (docs/architecture/
+# A document AGENT wrote, that a person released (docs/architecture/
 # agent-document-provenance.md)
 # ---------------------------------------------------------------------------
 
-_PILOTI = {
+_AGENT_FILED = {
     "authored_by": "agent",
     "approved_by": "Maria Huber",
     "approved_at": "2026-09-01",
@@ -182,7 +182,7 @@ _PILOTI = {
 }
 
 
-def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
+def test_a_published_agent_document_gets_its_own_lane_inside_the_office_kind():
     (lane,) = _trace_lanes_for_chunks(
         [
             _chunk(
@@ -190,7 +190,7 @@ def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
                 page=1,
                 collection="proj_abc",
                 shelf="project",
-                provenance=_PILOTI,
+                provenance=_AGENT_FILED,
             )
         ]
     )
@@ -201,8 +201,10 @@ def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
 
 def test_the_fan_out_carries_the_provenance_as_data_not_as_a_sentence():
     """So a frontend can render the approver in the reader's own locale."""
-    (lane,) = _trace_lanes_for_chunks([_chunk(file_name="Konzept.md", page=1, shelf="project", provenance=_PILOTI)])
-    assert (lane.sources[0].provenance, lane.sources[0].shelf) == (_PILOTI, "project")
+    (lane,) = _trace_lanes_for_chunks(
+        [_chunk(file_name="Konzept.md", page=1, shelf="project", provenance=_AGENT_FILED)]
+    )
+    assert (lane.sources[0].provenance, lane.sources[0].shelf) == (_AGENT_FILED, "project")
 
 
 def test_an_unmarked_hit_carries_no_provenance_at_all():
@@ -213,7 +215,7 @@ def test_an_unmarked_hit_carries_no_provenance_at_all():
 def test_the_grounding_block_states_who_released_the_document_in_one_line():
     result = SimpleNamespace(
         success=True,
-        chunks=[_chunk(file_name="Brandschutzkonzept.md", page=1, shelf="project", provenance=_PILOTI)],
+        chunks=[_chunk(file_name="Brandschutzkonzept.md", page=1, shelf="project", provenance=_AGENT_FILED)],
         error_message=None,
     )
     text = format_results(result, "brandschutz")

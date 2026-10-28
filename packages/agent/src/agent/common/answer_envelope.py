@@ -119,7 +119,7 @@ VERDICT_VALUE_MAX_CHARS = 60
 #: A summary is ONE to TWO sentences the reader gets before the prose: the
 #: consequence for THIS reader that the opening does not state (what to do
 #: next, what it means for their project). The prompt asks for it only when
-#: there is such a consequence (``piloti_static.md``); otherwise the opening
+#: there is such a consequence (``chat_static.md``); otherwise the opening
 #: already answers and the field is omitted. Above this it is a paragraph
 #: wearing a summary's name, and it is dropped whole — the prose's own lede
 #: then does the job, so nothing is lost.
@@ -590,7 +590,7 @@ def _verdict_drop_reason(verdict: AnswerMetaVerdict, ctx: GateContext) -> str | 
     """Why this verdict may not stand as the answer's headline, or ``None``.
 
     Two refusals, and the second exists because the first could be walked
-    around. A verdict whose Fundstelle names a document PILOTI wrote is dropped
+    around. A verdict whose Fundstelle names a document AGENT wrote is dropped
     — an approved office document is evidence of what the OFFICE decided, never
     of what the OIB requires. A verdict with NO Fundstelle cannot be judged that
     way at all, so on a turn that retrieved agent-authored material the gate
@@ -610,7 +610,7 @@ def _verdict_drop_reason(verdict: AnswerMetaVerdict, ctx: GateContext) -> str | 
 
 
 def _names_agent_authored_document(reference: AnswerMetaReference | None, ctx: GateContext) -> bool:
-    """Whether a verdict's Fundstelle names a document PILOTI wrote.
+    """Whether a verdict's Fundstelle names a document AGENT wrote.
 
     ``reference.document`` is free text a model produced, so the comparison is
     on normalised names and matches in BOTH directions: the reference may carry
@@ -1109,7 +1109,7 @@ def gate_answer_meta(
     of the answer's prose WITHOUT the sources section, so the takeaway gate
     judges the answer, not its apparatus.
 
-    ``agent_authored_documents`` is what the turn retrieved that PILOTI wrote
+    ``agent_authored_documents`` is what the turn retrieved that AGENT wrote
     (``citations.binding.agent_authored_document_names``); a verdict whose
     Fundstelle resolves into it is dropped, and so is a verdict that names no
     Fundstelle at all — see :func:`_verdict_drop_reason` for why the second

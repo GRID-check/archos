@@ -9,7 +9,7 @@
  */
 
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { getBackendUrl, isAuthRequired } from '@/lib/backend-proxy'
 
 /**
@@ -53,7 +53,7 @@ export async function resolveSessionAndBearer(
   req: Request,
   pathSegments: string[],
   label: string
-): Promise<{ session: GridSession | null; authHeader: string | null }> {
+): Promise<{ session: UserSession | null; authHeader: string | null }> {
   if (!isAuthRequired()) {
     return { session: null, authHeader: null }
   }

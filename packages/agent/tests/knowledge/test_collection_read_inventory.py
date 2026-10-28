@@ -92,7 +92,7 @@ TOOLS: dict[str, tuple[str, str]] = {
     # CONDITION, not yet pinned by a test here: the server's catalog must not expose
     # a route that returns a restricted folder's file content to a turn that has not
     # been admitted for it (ADR-0088); the BFF owns that gate, as for project_lookup.
-    "piloti_workspace": (
+    "workspace_tools": (
         "no_collection_content",
         "returns workspace records and proposals, not passages; the BFF catalog owns the restricted-folder gate",
     ),
@@ -140,7 +140,9 @@ def _registered_tool_types() -> set[str]:
     registry = GlobalTypeRegistry.get()
     infos = [*registry.get_registered_functions(), *registry.get_registered_function_groups()]
     return {
-        info.config_type.static_type() for info in infos if not info.config_type.static_type().startswith("grid_test_")
+        info.config_type.static_type()
+        for info in infos
+        if not info.config_type.static_type().startswith("test_fixture_")
     }
 
 

@@ -36,11 +36,11 @@ import { BadRequestError, ForbiddenError, UnauthorizedError } from '@/lib/api/er
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { readHeader } from '@/lib/http/legacy-header-names'
-import { verifyGridRequestContextEnvelope, type VerifiedGridRequestContext } from '@/lib/request-context'
+import { verifyRequestContextEnvelope, type VerifiedRequestContext } from '@/lib/request-context'
 
 /** The verified envelope, or a 401. Never says which check failed. */
-export function requireVerifiedContext(request: Request): VerifiedGridRequestContext {
-  const context = verifyGridRequestContextEnvelope(
+export function requireVerifiedContext(request: Request): VerifiedRequestContext {
+  const context = verifyRequestContextEnvelope(
     readHeader(request.headers, 'X-Request-Context'),
     readHeader(request.headers, 'X-Request-Context-Sig'),
     process.env.INTERNAL_API_TOKEN,
@@ -67,7 +67,7 @@ export function requireVerifiedContext(request: Request): VerifiedGridRequestCon
  * saying so does not tell the caller anything about the project it named.
  */
 export function requireEnvelopeProject(
-  context: VerifiedGridRequestContext,
+  context: VerifiedRequestContext,
   projectId: string,
 ): void {
   if (!context.projectId) return
@@ -86,7 +86,7 @@ export function requireEnvelopeProject(
  * browser. The agent never borrows a permission its user has lost.
  */
 export async function requirePinnedSession(
-  context: VerifiedGridRequestContext,
+  context: VerifiedRequestContext,
 ): Promise<AuthorizedSession> {
   const session = await resolvePinnedRequesterSession({
     userId: context.userId,

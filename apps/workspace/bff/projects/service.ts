@@ -188,7 +188,7 @@ export async function projectsHolding<T extends Pick<Project, 'id' | 'status'>>(
  * name a project the caller cannot open. Both derived reads run against the
  * filtered list, concurrently — they do not depend on each other.
  */
-export async function getProjectsGridData(
+export async function getProjectsListData(
   session: AuthorizedSession,
   order: 'newest' | 'oldest' = 'newest'
 ): Promise<{

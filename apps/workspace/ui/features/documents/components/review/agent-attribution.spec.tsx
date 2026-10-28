@@ -16,12 +16,12 @@ import { roomEventSchema, type RoomPeer } from '@/lib/annotations/room-types'
 import type { AnnotationView } from '@/lib/annotations/types'
 import type { DocumentReview } from '../../hooks/use-document-review'
 import type { RoomPeerState } from '../../hooks/use-document-room'
-import { pilotiForShort, ReviewPageLayer } from './review-page-layer'
+import { agentForShort, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { ThreadCard } from './thread-card'
 import { fixedStore } from '@/features/realtime/use-channel'
 
-const PILOTI: RoomPeer = {
+const AGENT: RoomPeer = {
   peerId: 'piloti-conv_42',
   userId: 'user_anna',
   name: 'Piloti',
@@ -29,8 +29,8 @@ const PILOTI: RoomPeer = {
   forName: 'Anna Berger',
 }
 
-const pilotiState = (overrides: Partial<RoomPeerState> = {}): RoomPeerState => ({
-  peer: PILOTI,
+const agentState = (overrides: Partial<RoomPeerState> = {}): RoomPeerState => ({
+  peer: AGENT,
   cursor: { page: 1, x: 0.4, y: 0.5 },
   movedAt: null,
   tool: 'select',
@@ -94,52 +94,52 @@ afterEach(() => restore())
 
 describe('Piloti’s cursor on the canvas', () => {
   it('reads „Piloti · for Anna" when its pointer says nothing else', () => {
-    renderLayer([pilotiState()])
+    renderLayer([agentState()])
     const tag = cursorTag()
     expect(within(tag).getByText('Piloti')).toBeInTheDocument()
-    expect(within(tag).getByTestId('piloti-cursor-for')).toHaveTextContent('· for Anna')
+    expect(within(tag).getByTestId('agent-cursor-for')).toHaveTextContent('· for Anna')
     expect(tag.textContent?.replace(/\s+/g, ' ')).toMatch(/^Piloti ?· for Anna$/)
   })
 
   it('keeps „for Anna" beside its pointer label and what it is doing, outside the part that truncates', () => {
-    renderLayer([pilotiState({ label: 'Treppe' })])
+    renderLayer([agentState({ label: 'Treppe' })])
     // Its name always leads: a pointer saying „Treppe" is never taken for a colleague of that name.
     expect(within(cursorTag()).getByText('Piloti · Treppe')).toHaveClass('truncate')
-    expect(within(cursorTag()).getByTestId('piloti-cursor-for')).toHaveTextContent('· for Anna')
-    expect(within(cursorTag()).getByTestId('piloti-cursor-for')).not.toHaveClass('truncate')
+    expect(within(cursorTag()).getByTestId('agent-cursor-for')).toHaveTextContent('· for Anna')
+    expect(within(cursorTag()).getByTestId('agent-cursor-for')).not.toHaveClass('truncate')
   })
 
   it('says it while it works, too', () => {
-    renderLayer([pilotiState({ activity: { state: 'reading', box: null, label: 'sieht sich Seite 2 an' } })])
+    renderLayer([agentState({ activity: { state: 'reading', box: null, label: 'sieht sich Seite 2 an' } })])
     expect(within(cursorTag()).getByText('Piloti · sieht sich Seite 2 an')).toBeInTheDocument()
-    expect(within(cursorTag()).getByTestId('piloti-cursor-for')).toHaveTextContent('· for Anna')
+    expect(within(cursorTag()).getByTestId('agent-cursor-for')).toHaveTextContent('· for Anna')
   })
 
   it('says which page it reads when the room only knows the box it reads', () => {
-    renderLayer([pilotiState({ activity: { state: 'reading', box: { page: 2, x: 0, y: 0, w: 1, h: 1 }, label: null } })])
+    renderLayer([agentState({ activity: { state: 'reading', box: { page: 2, x: 0, y: 0, w: 1, h: 1 }, label: null } })])
     expect(within(cursorTag()).getByText('Piloti · reading page 2')).toBeInTheDocument()
   })
 
   it('names nobody when the server could not', () => {
-    const { forName: _, ...nameless } = PILOTI
-    renderLayer([pilotiState({ peer: nameless })])
+    const { forName: _, ...nameless } = AGENT
+    renderLayer([agentState({ peer: nameless })])
     expect(within(cursorTag()).getByText('Piloti')).toBeInTheDocument()
-    expect(screen.queryByTestId('piloti-cursor-for')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('agent-cursor-for')).not.toBeInTheDocument()
   })
 
   it('carries the name the server stamped through the room’s own parse', () => {
-    const event = roomEventSchema.parse({ kind: 'presence', peer: PILOTI, state: 'here', ttlMs: 25_000 })
+    const event = roomEventSchema.parse({ kind: 'presence', peer: AGENT, state: 'here', ttlMs: 25_000 })
     expect(event).toMatchObject({ peer: { forName: 'Anna Berger' } })
   })
 })
 
-describe('pilotiForShort', () => {
+describe('agentForShort', () => {
   it('takes the first name, the local part of a bare address, or nothing', () => {
-    expect(pilotiForShort({ forName: 'Anna Berger' })).toBe('Anna')
-    expect(pilotiForShort({ forName: '  Ben  ' })).toBe('Ben')
-    expect(pilotiForShort({ forName: 'c.weber@buero.at' })).toBe('c.weber')
-    expect(pilotiForShort({ forName: '   ' })).toBeNull()
-    expect(pilotiForShort({})).toBeNull()
+    expect(agentForShort({ forName: 'Anna Berger' })).toBe('Anna')
+    expect(agentForShort({ forName: '  Ben  ' })).toBe('Ben')
+    expect(agentForShort({ forName: 'c.weber@buero.at' })).toBe('c.weber')
+    expect(agentForShort({ forName: '   ' })).toBeNull()
+    expect(agentForShort({})).toBeNull()
   })
 })
 

@@ -18,7 +18,7 @@ import { chatCopy } from '@/i18n/namespaces/chat'
 
 import { remarkCitationMarkers } from '@/features/layout/lib/citation-markers'
 import { remarkFileReferences } from '@/features/layout/lib/file-reference-markers'
-import { GridCardItem } from '@/features/grid-cards/components/GridCards'
+import { AnswerCardItem } from '@/features/grid-cards/components/AnswerCards'
 import { useDecidedProposals } from '@/features/grid-cards/decided-proposals'
 import {
   CALLOUT_SLOT_INDEX,
@@ -451,7 +451,7 @@ export function useAgentResponseController({
       if (!card) return <CardSlot arrivalKey={arrivalKey} refused={index < (cards?.length ?? 0)} />
       return (
         <CardSlot arrivalKey={arrivalKey}>
-          <GridCardItem
+          <AnswerCardItem
             card={card}
             index={index}
             projectId={projectId}
@@ -840,7 +840,7 @@ export function useAgentResponseController({
             if (!card) return null
             return (
               <CardSlot key={index} arrivalKey={`${arrivalPrefix}:${index}`} arriving={mountedLive}>
-                <GridCardItem
+                <AnswerCardItem
                   card={card}
                   index={index}
                   projectId={projectId}

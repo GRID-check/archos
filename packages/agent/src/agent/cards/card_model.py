@@ -93,7 +93,7 @@ class CardModel(BaseModel):
     would be 177 chances to forget one.
 
     It runs on EVERY emission path, because all of them go through
-    ``grid_card_adapter`` or :func:`validate_cards` — the ``emit_card`` tool, the
+    ``answer_card_adapter`` or :func:`validate_cards` — the ``emit_card`` tool, the
     post-hoc batch generator, Piloti's DSML path, project memory
     and surfaced documents. Identifier-shaped fields (IFC GlobalIds, model file
     names, JSON-pointer paths) inherit it too and are unaffected: none of the

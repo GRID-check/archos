@@ -3,7 +3,7 @@
  */
 import { discriminatedOptions } from '@/lib/api/zod-union'
 import { describe, expect, test } from 'vitest'
-import { gridCardSchema } from '@/shared/cards/schemas'
+import { answerCardSchema } from '@/shared/cards/schemas'
 import {
   CARD_CATALOG,
   SYSTEM_CARD_TYPES,
@@ -15,7 +15,7 @@ import {
 
 describe('card catalogue extraction', () => {
   test('covers the generated union minus the withheld cards', () => {
-    const union = [...discriminatedOptions(gridCardSchema).keys()]
+    const union = [...discriminatedOptions(answerCardSchema).keys()]
     expect(CARD_CATALOG).toHaveLength(union.length - SYSTEM_CARD_TYPES.length)
     // Derived, not hand-maintained: every offerable union member is offered.
     for (const type of union) {
@@ -27,7 +27,7 @@ describe('card catalogue extraction', () => {
   test('excludes the system cards the backend also withholds', () => {
     for (const type of SYSTEM_CARD_TYPES) {
       // Still a real union member — it renders; it is just never requestable.
-      expect(discriminatedOptions(gridCardSchema).has(type)).toBe(true)
+      expect(discriminatedOptions(answerCardSchema).has(type)).toBe(true)
       expect(CARD_CATALOG.some((entry) => entry.type === type)).toBe(false)
       expect(isSelectableCardType(type)).toBe(false)
     }

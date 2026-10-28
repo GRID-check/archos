@@ -33,7 +33,7 @@ import 'server-only'
 import { ApiError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { isPilotiNoticesEnabled } from '@/lib/authz/feature-flags'
+import { isAgentNoticesEnabled } from '@/lib/authz/feature-flags'
 import { runAgentAnnotationRequest } from '@/lib/annotations/agent'
 import { listDocumentAnnotations } from '@/lib/annotations/repository'
 import { unaskedSpendAllowed } from '@/lib/budgets/unasked-spend'
@@ -154,7 +154,7 @@ async function leave(input: {
 export async function noticeRevision(organizationId: string, payload: RevisionNoticePayload): Promise<NoticeOutcome> {
   const session = await resolvePinnedRequesterSession({ ...payload.actor, organizationId })
   if (!session) return skipped('the person is no longer a member')
-  if (!isPilotiNoticesEnabled(session)) return skipped('piloti-notices is off for the organization')
+  if (!isAgentNoticesEnabled(session)) return skipped('piloti-notices is off for the organization')
 
   const [newer, older] = await Promise.all([
     findDocumentInOrg(payload.newerId, organizationId, SCREENED_ONLY),

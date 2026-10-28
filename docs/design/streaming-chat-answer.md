@@ -698,7 +698,7 @@ Three rules hold across all of them:
   first, then changes height in one frame while it is invisible. Only a block
   arriving below the reading point, a card slot growing and a panel the
   reader opened animate their height
-  ([design language, Height](grid-design-language.md#motion-vocabulary)).
+  ([design language, Height](design-language.md#motion-vocabulary)).
 - **What you saw is kept.** A stop, an error, a remount or a replay never takes
   away text the reader has seen, and never types it out again.
 

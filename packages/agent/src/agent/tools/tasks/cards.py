@@ -17,7 +17,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import get_card_registry
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def emit_task_card(body: dict[str, Any], *, goal: str, kind: str) -> bool:
         "conversation_id": _text(body.get("conversationId")),
     }
     try:
-        validated = grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+        validated = answer_card_adapter.validate_python(card).model_dump(exclude_none=True)
     except ValidationError:
         logger.exception("Failed to build task_created card for %s", task_id)
         return False

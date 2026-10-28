@@ -10,9 +10,9 @@ vi.mock('@/lib/db/tenant-context', () => ({ tenantSlotRoute: (handler: unknown) 
 const isAuthRequired = vi.fn()
 vi.mock('@/lib/backend-proxy', () => ({ isAuthRequired: () => isAuthRequired() }))
 
-const getGridSession = vi.fn()
+const getUserSession = vi.fn()
 vi.mock('@/lib/auth/session', () => ({
-  getGridSession: (...args: unknown[]) => getGridSession(...args),
+  getUserSession: (...args: unknown[]) => getUserSession(...args),
 }))
 
 const buildCollectionScopeFromRequest = vi.fn()
@@ -112,7 +112,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     isAuthRequired.mockReturnValue(true)
-    getGridSession.mockResolvedValue(SESSION)
+    getUserSession.mockResolvedValue(SESSION)
     buildCollectionScopeFromRequest.mockResolvedValue(scopeReturning('proj_q'))
     isMemoryReflectionEnabled.mockResolvedValue(true)
     getBudgetStatus.mockResolvedValue({ ...OPEN_BUDGET })
@@ -141,7 +141,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
     // The authenticated handshake loads no prompt block at all, so the only
     // inline copy left is the anonymous legacy one.
     isAuthRequired.mockReturnValue(false)
-    getGridSession.mockResolvedValue(null)
+    getUserSession.mockResolvedValue(null)
     const restricted = 'proj_proj_q_r0123456789ab'
     buildCollectionScopeFromRequest.mockResolvedValue({
       ...scopeReturning('proj_q'),
@@ -240,7 +240,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
   })
 
   it('names the person the socket is for, which the envelope signs for the agent to address them', async () => {
-    getGridSession.mockResolvedValue({ ...SESSION, organizationName: 'Atelier Nord' })
+    getUserSession.mockResolvedValue({ ...SESSION, organizationName: 'Atelier Nord' })
 
     const body = await (await upgrade()).json()
 
@@ -263,7 +263,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
 
   it('preserves anonymous development with its legacy inline profile and memory', async () => {
     isAuthRequired.mockReturnValue(false)
-    getGridSession.mockResolvedValue(null)
+    getUserSession.mockResolvedValue(null)
     const response = await upgrade()
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ projectContext: 'prompt-view', projectMemory: 'digest' })
@@ -282,7 +282,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
 
   it('preserves prompt access refusals in anonymous legacy mode', async () => {
     isAuthRequired.mockReturnValue(false)
-    getGridSession.mockResolvedValue(null)
+    getUserSession.mockResolvedValue(null)
     loadProjectPromptView.mockRejectedValueOnce(new NotFoundError())
     expect((await upgrade()).status).toBe(403)
   })

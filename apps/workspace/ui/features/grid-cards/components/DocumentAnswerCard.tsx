@@ -16,22 +16,22 @@ import {
 } from '@/features/documents/hooks/use-surfaced-documents'
 import { peekFile, ResolveErrorState, UnresolvedCard } from './document-surface'
 
-/** The `workspace-search` question the files came from (`DocumentGridSearch` in `cards/models.py`). */
-export interface DocumentGridSearch {
+/** The `workspace-search` question the files came from (`DocumentAnswerSearch` in `cards/models.py`). */
+export interface DocumentAnswerSearch {
   text: string
   scope: 'office' | 'project' | 'office_shelf'
 }
 
-interface DocumentGridCardProps {
+interface DocumentAnswerCardProps {
   title: string
   query?: string | null
   documents: SurfacedDocument[]
-  search?: DocumentGridSearch | null
+  search?: DocumentAnswerSearch | null
   projectId?: string | null
 }
 
 /** The search the card's link opens: the project's only with the project it was asked in, else the whole office. */
-export function documentGridSearchHref(search: DocumentGridSearch, projectId: string | null): string {
+export function documentAnswerSearchHref(search: DocumentAnswerSearch, projectId: string | null): string {
   let scope: SearchScopeQuery = {}
   if (search.scope === 'office_shelf') scope = { scope: 'office_shelf' }
   else if (search.scope === 'project' && projectId) scope = { scope: 'project', projectId }
@@ -46,7 +46,7 @@ export function documentGridSearchHref(search: DocumentGridSearch, projectId: st
  * card plus an automatic peek. Several close matches are a short FileGrid; when they came from the
  * workspace search, the card offers that search with every result.
  */
-export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _query, documents, search, projectId }) => {
+export const DocumentAnswerCard: FC<DocumentAnswerCardProps> = ({ title, query: _query, documents, search, projectId }) => {
   const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   const { resolved, isLoading, error, retry } = useSurfacedDocuments(documents, projectId ?? null)
@@ -83,7 +83,7 @@ export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _que
 
   return (
     <section
-      data-testid="document-grid-card"
+      data-testid="document-answer-card"
       data-layout={single ? 'receipt' : 'choice'}
       className="w-full"
     >
@@ -99,7 +99,7 @@ export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _que
         <>
           {!single && cells.length > 1 && (
             <p className="text-muted-foreground mb-2 px-0.5 text-[11px] font-medium tracking-[-0.01em]">
-              {title || t('documentGrid.choose')}
+              {title || t('documentAnswer.choose')}
             </p>
           )}
           <FileGrid className={single ? 'max-w-[220px]' : undefined}>
@@ -112,9 +112,9 @@ export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _que
                   locale={locale}
                   onSelect={() => peekFile(file, entry.docSource, projectId)}
                   source={entry.docSource}
-                  sourceLabel={entry.docSource ? t(`documentGrid.source.${entry.docSource}`) : undefined}
+                  sourceLabel={entry.docSource ? t(`documentAnswer.source.${entry.docSource}`) : undefined}
                   hideFooter
-                  ariaLabel={t('documentGrid.openAria', { label: file.filename })}
+                  ariaLabel={t('documentAnswer.openAria', { label: file.filename })}
                 />
               ) : (
                 <UnresolvedCard key={entry.key} entry={entry} projectId={projectId} />
@@ -123,9 +123,9 @@ export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _que
           </FileGrid>
           {search && (
             <Button asChild size="sm" variant="ghost" className="mt-2">
-              <Link href={documentGridSearchHref(search, projectId ?? null)} data-testid="document-grid-open-search">
+              <Link href={documentAnswerSearchHref(search, projectId ?? null)} data-testid="document-answer-open-search">
                 <Search className="size-3.5" aria-hidden="true" />
-                {t('documentGrid.openInSearch')}
+                {t('documentAnswer.openInSearch')}
               </Link>
             </Button>
           )}

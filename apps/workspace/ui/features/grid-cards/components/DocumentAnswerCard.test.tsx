@@ -1,5 +1,5 @@
 /**
- * Render tests for the DocumentGridCard — the chat surfacing card that presents
+ * Render tests for the DocumentAnswerCard — the chat surfacing card that presents
  * REAL project/Büroablage files. Focus: surfaced file names resolve to their
  * live document rows (project + Archiv), the card shows the human summary
  * (never the retrieval snippet / score), and a file that no longer resolves
@@ -11,7 +11,7 @@ import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
-import { DocumentGridCard, documentGridSearchHref } from './DocumentGridCard'
+import { DocumentAnswerCard, documentAnswerSearchHref } from './DocumentAnswerCard'
 import { resetSurfacedDocumentsCache } from '@/features/documents/hooks/use-surfaced-documents'
 import { resetThumbnailCache } from '@/features/documents/components/file-card'
 import { resetFilePeekBinding } from '@/features/documents/lib/open-file-peek'
@@ -46,7 +46,7 @@ afterEach(() => {
   useChatStore.setState({ composerSubject: null })
 })
 
-describe('DocumentGridCard', () => {
+describe('DocumentAnswerCard', () => {
   it('resolves surfaced files to project + Archiv rows and shows the human summary', async () => {
     server.use(
       shelfPost('project', '/api/documents/by-name', () =>
@@ -66,7 +66,7 @@ describe('DocumentGridCard', () => {
     )
 
     render(
-      <DocumentGridCard
+      <DocumentAnswerCard
         title="Relevante Dokumente – Fluchtwege"
         query="Fluchtwege"
         projectId="proj-1"
@@ -86,7 +86,7 @@ describe('DocumentGridCard', () => {
     await waitFor(() =>
       expect(screen.getByText('Relevante Dokumente – Fluchtwege')).toBeInTheDocument(),
     )
-    expect(screen.getByTestId('document-grid-card')).toHaveAttribute('data-layout', 'choice')
+    expect(screen.getByTestId('document-answer-card')).toHaveAttribute('data-layout', 'choice')
 
     await waitFor(() => expect(screen.getByText('Fluchtwegplan.pdf')).toBeInTheDocument())
     expect(screen.getByText('Referenzprojekt.pdf')).toBeInTheDocument()
@@ -110,7 +110,7 @@ describe('DocumentGridCard', () => {
     )
 
     render(
-      <DocumentGridCard
+      <DocumentAnswerCard
         title="Dokumente"
         documents={[{ file_name: 'Verschwunden.pdf', snippet: 'war mal da', source: 'project' }]}
         projectId="proj-1"
@@ -120,7 +120,7 @@ describe('DocumentGridCard', () => {
     await waitFor(() => expect(screen.getByText('Verschwunden.pdf')).toBeInTheDocument())
     // Honest explanation + a REAL action linking into the project files.
     expect(screen.getByText('The assistant referenced this file.')).toBeInTheDocument()
-    const link = screen.getByTestId('document-grid-unresolved')
+    const link = screen.getByTestId('document-answer-unresolved')
     expect(link).toHaveAttribute('href', '/app/projects/proj-1/files')
     expect(screen.getByText('Open in project files')).toBeInTheDocument()
     // Not the old dead "no longer available" grey box.
@@ -142,7 +142,7 @@ describe('DocumentGridCard', () => {
     )
 
     render(
-      <DocumentGridCard
+      <DocumentAnswerCard
         title="Dokumente"
         documents={[{ file_name: 'Fluchtwegplan.pdf', source: 'project' }]}
         projectId="proj-1"
@@ -150,19 +150,19 @@ describe('DocumentGridCard', () => {
     )
 
     // Genuine failure → retry state, never a permanent dead tile.
-    await waitFor(() => expect(screen.getByTestId('document-grid-error')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('document-answer-error')).toBeInTheDocument())
     expect(screen.getByText('Documents couldn’t be loaded.')).toBeInTheDocument()
-    expect(screen.queryByTestId('document-grid-unresolved')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('document-answer-unresolved')).not.toBeInTheDocument()
 
     // Retrying refetches and now resolves the file.
     await userEvent.click(screen.getByText('Try again'))
     await waitFor(() => expect(screen.getByText(/Fluchtwegplan\.pdf/)).toBeInTheDocument())
-    expect(screen.getByTestId('document-grid-card')).toHaveAttribute('data-layout', 'receipt')
-    expect(screen.queryByTestId('document-grid-error')).not.toBeInTheDocument()
+    expect(screen.getByTestId('document-answer-card')).toHaveAttribute('data-layout', 'receipt')
+    expect(screen.queryByTestId('document-answer-error')).not.toBeInTheDocument()
   })
 
   it('renders nothing when there are no documents', () => {
-    const { container } = render(<DocumentGridCard title="Leer" documents={[]} projectId="proj-1" />)
+    const { container } = render(<DocumentAnswerCard title="Leer" documents={[]} projectId="proj-1" />)
     expect(container).toBeEmptyDOMElement()
   })
 
@@ -178,10 +178,10 @@ describe('DocumentGridCard', () => {
     )
 
     render(
-      <DocumentGridCard title="CAD" documents={[{ file_name: 'Plan.dwg', source: 'project' }]} projectId="proj-1" />
+      <DocumentAnswerCard title="CAD" documents={[{ file_name: 'Plan.dwg', source: 'project' }]} projectId="proj-1" />
     )
 
-    await waitFor(() => expect(screen.getByTestId('document-grid-card')).toHaveAttribute('data-layout', 'receipt'))
+    await waitFor(() => expect(screen.getByTestId('document-answer-card')).toHaveAttribute('data-layout', 'receipt'))
     expect(screen.getByText(/Plan\.dwg/)).toBeInTheDocument()
     await waitFor(() => expect(useFilePreviewStore.getState().file?.filename).toBe('Plan.dwg'))
     await userEvent.click(screen.getByText(/Plan\.dwg/))
@@ -197,7 +197,7 @@ describe('DocumentGridCard', () => {
     )
 
     render(
-      <DocumentGridCard
+      <DocumentAnswerCard
         title="Test"
         documents={[{ file_name: 'Bericht.pdf', source: 'office' }]}
         projectId="proj-1"
@@ -208,7 +208,7 @@ describe('DocumentGridCard', () => {
     // Resolved to nothing → honest unresolved card linking to the ARCHIV (buero
     // source), never the same-named project file's card.
     expect(screen.getByText('The assistant referenced this file.')).toBeInTheDocument()
-    expect(screen.getByTestId('document-grid-unresolved')).toHaveAttribute('href', '/app/office-shelf')
+    expect(screen.getByTestId('document-answer-unresolved')).toHaveAttribute('href', '/app/office-shelf')
     expect(screen.getByText('Open in Office filing')).toBeInTheDocument()
     expect(screen.queryByText('Project')).not.toBeInTheDocument()
   })
@@ -223,7 +223,7 @@ describe('DocumentGridCard', () => {
     )
 
     render(
-      <DocumentGridCard
+      <DocumentAnswerCard
         title="Grundrisse"
         query="Grundriss"
         search={{ text: 'Grundriss', scope: 'project' }}
@@ -235,7 +235,7 @@ describe('DocumentGridCard', () => {
       />,
     )
 
-    const link = await screen.findByTestId('document-grid-open-search')
+    const link = await screen.findByTestId('document-answer-open-search')
     expect(link).toHaveTextContent('Open in search')
     expect(link).toHaveAttribute('href', '/app/search?q=Grundriss&project=0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11')
   })
@@ -247,22 +247,22 @@ describe('DocumentGridCard', () => {
       http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 })),
     )
 
-    render(<DocumentGridCard title="Plan" documents={[{ file_name: 'Plan.pdf', source: 'project' }]} projectId="proj-1" />)
+    render(<DocumentAnswerCard title="Plan" documents={[{ file_name: 'Plan.pdf', source: 'project' }]} projectId="proj-1" />)
 
     await waitFor(() => expect(screen.getByText(/Plan\.pdf/)).toBeInTheDocument())
-    expect(screen.queryByTestId('document-grid-open-search')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('document-answer-open-search')).not.toBeInTheDocument()
   })
 })
 
-describe('documentGridSearchHref', () => {
+describe('documentAnswerSearchHref', () => {
   it('opens the scope the search ran in', () => {
-    expect(documentGridSearchHref({ text: 'Statik', scope: 'office' }, 'p1')).toBe('/app/search?q=Statik')
-    expect(documentGridSearchHref({ text: 'Statik', scope: 'office_shelf' }, null)).toBe(
+    expect(documentAnswerSearchHref({ text: 'Statik', scope: 'office' }, 'p1')).toBe('/app/search?q=Statik')
+    expect(documentAnswerSearchHref({ text: 'Statik', scope: 'office_shelf' }, null)).toBe(
       '/app/office-shelf?q=Statik&mode=search',
     )
   })
 
   it('widens a project search to the office when the card knows no project', () => {
-    expect(documentGridSearchHref({ text: 'Statik', scope: 'project' }, null)).toBe('/app/search?q=Statik')
+    expect(documentAnswerSearchHref({ text: 'Statik', scope: 'project' }, null)).toBe('/app/search?q=Statik')
   })
 })

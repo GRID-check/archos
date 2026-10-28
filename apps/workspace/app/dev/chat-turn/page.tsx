@@ -94,7 +94,7 @@ import { AgentResponse } from '@/features/chat/components/AgentResponse'
 import { FollowUpsRail } from '@/features/chat/components/FollowUpsRail'
 import type { CitationSource } from '@/features/chat/types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 import type { CardInteractions } from '@/features/grid-cards/card-decision'
 import type { AnswerMeta } from '@/lib/conversations/message-answer-meta'
@@ -260,7 +260,7 @@ const AnswerTurn: FC<{
   label: string
   question: string
   answer: string
-  cards?: GridCard[]
+  cards?: AnswerCard[]
   citations: CitationSource[]
   confidenceReason: string
   messageId: string
@@ -480,7 +480,7 @@ Für Wohngebäude der Gebäudeklasse 4 ist zusätzlich eine nutzbare Laufbreite 
 
 ${STAIR_SOURCES}`
 
-const ledeCards: GridCard[] = [
+const ledeCards: AnswerCard[] = [
   {
     type: 'calculation',
     title: 'Schrittmaßregel – Treppenlauf Haus A',
@@ -510,7 +510,7 @@ const ledeCards: GridCard[] = [
       label: 'Schrittmaßregel',
       reference: OIB4,
     },
-  } as GridCard,
+  } as AnswerCard,
 ]
 
 /* --- variant: streaming --------------------------------------------------- */
@@ -567,7 +567,7 @@ Die Übersicht geht von OIB-Richtlinie 2, Ausgabe Mai 2023, aus. Ob diese Ausgab
 - [2] [KB] oib-rl_2_ausgabe_mai_2023.pdf, p.13
 - [3] [KB] oib-rl_4_ausgabe_mai_2023.pdf, p.6`
 
-const variantsCards: GridCard[] = [
+const variantsCards: AnswerCard[] = [
   {
     type: 'surface',
     title: 'Nachweis je Variante',
@@ -604,7 +604,7 @@ const variantsCards: GridCard[] = [
         ].join('\n'),
       },
     ],
-  } as unknown as GridCard,
+  } as unknown as AnswerCard,
 ]
 
 const variantsCitations: CitationSource[] = [1, 2, 3].map((number) => ({
@@ -638,7 +638,7 @@ Der Treppenlauf hält die Schrittmaßregel ein; die Rechnung steht unter der Ant
 
 ${FIRE_SOURCES}`
 
-const twoCards: GridCard[] = [
+const twoCards: AnswerCard[] = [
   {
     type: 'building_section',
     title: 'Gebäudeschnitt – Höhenprüfung GK 4',
@@ -654,7 +654,7 @@ const twoCards: GridCard[] = [
       { label: 'GK4-Grenze', height_m: 11, kind: 'threshold' },
     ],
     reference: OIB2,
-  } as GridCard,
+  } as AnswerCard,
   ...ledeCards,
 ]
 
@@ -731,7 +731,7 @@ const memoryStage: MessageStages = {
  * more afterwards. The chip says „Gedächtnis aktualisiert", lists the
  * correction first and quotes the note it retired, struck through.
  */
-const memoryCorrectionCards: GridCard[] = [
+const memoryCorrectionCards: AnswerCard[] = [
   {
     type: 'memory_proposal',
     title: 'Korrektur merken?',
@@ -740,7 +740,7 @@ const memoryCorrectionCards: GridCard[] = [
     confidence: 'high',
     supersedes: 'Das Fluchtniveau beträgt 9,80 m; das Gebäude liegt in Gebäudeklasse 4.',
     proposal_id: null,
-  } as GridCard,
+  } as AnswerCard,
 ]
 
 const memoryCorrectionDecisions: CardInteractions = {

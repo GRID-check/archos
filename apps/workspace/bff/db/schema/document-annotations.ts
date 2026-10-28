@@ -21,15 +21,15 @@ import {
   ANNOTATION_KINDS,
   ANNOTATION_SHAPES,
   ANNOTATION_STATUSES,
-  PILOTI_WAKE_STATUSES,
-  PILOTI_WAKE_TRIGGERS,
+  AGENT_WAKE_STATUSES,
+  AGENT_WAKE_TRIGGERS,
   type AnnotationAuthor,
   type AnnotationKind,
   type AnnotationShape,
   type AnnotationStatus,
   type MarkMention,
-  type PilotiWakeStatus,
-  type PilotiWakeTrigger,
+  type AgentWakeStatus,
+  type AgentWakeTrigger,
 } from '@/lib/annotations/types'
 import { documentVersions } from './document-versions'
 import { documents } from './documents'
@@ -146,7 +146,7 @@ export const documentAnnotations = pgTable(
     kindKnown: check('document_annotations_kind_known', sql`${table.kind} IN (${list(ANNOTATION_KINDS)})`),
     authorKnown: check('document_annotations_author_known', sql`${table.authorKind} IN (${list(ANNOTATION_AUTHORS)})`),
     statusKnown: check('document_annotations_status_known', sql`${table.status} IN (${list(ANNOTATION_STATUSES)})`),
-    onlyPilotiProposes: check(
+    onlyAgentProposes: check(
       'document_annotations_only_piloti_proposes',
       sql`${table.status} <> 'proposed' OR ${table.authorKind} = 'piloti'`
     ),
@@ -154,7 +154,7 @@ export const documentAnnotations = pgTable(
       'document_annotations_acceptance_complete',
       sql`(${table.acceptedBy} IS NULL) = (${table.acceptedAt} IS NULL)`
     ),
-    pilotiNeedsAPerson: check(
+    agentNeedsAPerson: check(
       'document_annotations_piloti_needs_a_person',
       sql`${table.authorKind} = 'person' OR ${table.status} IN ('proposed', 'dismissed') OR ${table.acceptedBy} IS NOT NULL`
     ),
@@ -240,12 +240,12 @@ export const pilotiWakes = pgTable(
     organizationId: text('organization_id').notNull(),
     documentId: uuid('document_id').notNull(),
     annotationId: uuid('annotation_id').notNull(),
-    triggerKind: text('trigger_kind').$type<PilotiWakeTrigger>().notNull(),
+    triggerKind: text('trigger_kind').$type<AgentWakeTrigger>().notNull(),
     /** The reply id, or the delegation's event id. */
     eventId: text('event_id').notNull(),
     /** The person whose act is the event: the turn runs as them. */
     actorUserId: text('actor_user_id').notNull(),
-    status: text('status').$type<PilotiWakeStatus>().notNull().default('queued'),
+    status: text('status').$type<AgentWakeStatus>().notNull().default('queued'),
     /** Why it started no turn; set exactly when the status says so. */
     reason: text('reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -267,8 +267,8 @@ export const pilotiWakes = pgTable(
       table.createdAt.desc()
     ),
     actorIdx: index('idx_agent_wakes_actor_created').on(table.organizationId, table.actorUserId, table.createdAt),
-    triggerKnown: check('agent_wakes_trigger_known', sql`${table.triggerKind} IN (${list(PILOTI_WAKE_TRIGGERS)})`),
-    statusKnown: check('agent_wakes_status_known', sql`${table.status} IN (${list(PILOTI_WAKE_STATUSES)})`),
+    triggerKnown: check('agent_wakes_trigger_known', sql`${table.triggerKind} IN (${list(AGENT_WAKE_TRIGGERS)})`),
+    statusKnown: check('agent_wakes_status_known', sql`${table.status} IN (${list(AGENT_WAKE_STATUSES)})`),
     reasonWhenNotStarted: check(
       'agent_wakes_reason_when_not_started',
       sql`(${table.status} IN ('suppressed', 'refused', 'failed')) = (${table.reason} IS NOT NULL)`
@@ -288,4 +288,4 @@ export const pilotiWakes = pgTable(
   })
 )
 
-export type PilotiWakeRow = typeof pilotiWakes.$inferSelect
+export type AgentWakeRow = typeof pilotiWakes.$inferSelect

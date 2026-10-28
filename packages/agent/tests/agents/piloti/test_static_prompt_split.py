@@ -1,6 +1,6 @@
 """The rendered prompt, pinned: two files and a store, two messages.
 
-The system prompt is the static half alone, `piloti_static.md`, so it can be
+The system prompt is the static half alone, `chat_static.md`, so it can be
 managed in Langfuse and stays the same bytes on every turn of a conversation.
 `piloti.j2` is the turn context, its own message right before the newest human
 message (`prompt.request_messages`). A byte of drift in the system prompt
@@ -41,7 +41,7 @@ from agent.common.prompt_store import ResolvedPrompt
 from agent.common.prompt_utils import render_prompt_template
 from agent.observability import langfuse_trace_attributes as lta
 
-FIXTURE = Path(__file__).parent / "fixtures" / "piloti_prompt_rendered.txt"
+FIXTURE = Path(__file__).parent / "fixtures" / "chat_prompt_rendered.txt"
 
 
 #: The render inputs the fixture was produced with. `answer_envelope_schema`
@@ -165,7 +165,7 @@ class TestStoreSeam:
         bundled = bundled_static_block()
 
         assert bundled.is_fallback is True
-        assert bundled.name == "git:prompts/piloti_static.md"
+        assert bundled.name == "git:prompts/chat_static.md"
         assert len(bundled.version) == 7
         assert bundled.text == (PROMPTS_DIR / STATIC_PROMPT_FILE).read_text(encoding="utf-8")
 
@@ -255,7 +255,7 @@ class TestPromptLink:
 
         assert lta.current_prompt_attributes() == {}
         assert lta.snapshot_contributions()["metadata"] == {
-            "prompt_name": "git:prompts/piloti_static.md",
+            "prompt_name": "git:prompts/chat_static.md",
             "prompt_version": bundled_static_block().version,
         }
 
@@ -290,7 +290,7 @@ class TestPromptLink:
         await stamp_static_prompt_for_turn()
 
         assert lta.current_prompt_attributes() == {}
-        assert lta.snapshot_contributions()["metadata"]["prompt_name"] == "git:prompts/piloti_static.md"
+        assert lta.snapshot_contributions()["metadata"]["prompt_name"] == "git:prompts/chat_static.md"
 
     async def test_another_turn_s_transition_does_not_rename_this_turn_s_fallback(self, monkeypatch):
         """
@@ -314,7 +314,7 @@ class TestPromptLink:
             record_static_prompt_metadata()
 
             assert lta.current_prompt_attributes() == {}
-            assert lta.snapshot_contributions()["metadata"]["prompt_name"] == "git:prompts/piloti_static.md"
+            assert lta.snapshot_contributions()["metadata"]["prompt_name"] == "git:prompts/chat_static.md"
         finally:
             lta.end_turn_prompt_link(token)
 
@@ -365,7 +365,7 @@ class TestServedTextThatDoesNotRender:
         record_static_prompt_metadata()
 
         assert lta.current_prompt_attributes() == {}
-        assert lta.snapshot_contributions()["metadata"]["prompt_name"] == "git:prompts/piloti_static.md"
+        assert lta.snapshot_contributions()["metadata"]["prompt_name"] == "git:prompts/chat_static.md"
 
     def test_a_served_text_that_renders_is_still_served(self, monkeypatch):
         self._serve(monkeypatch, "MANAGED {{ answer_envelope_schema }}")

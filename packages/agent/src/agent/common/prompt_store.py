@@ -11,7 +11,7 @@ to change without shipping a release, and the half whose bytes must not move
 for a provider's prefix cache to hit.
 
 **Git is the source of truth for that half** (ADR-0060 (a)).
-``agents/piloti/prompts/piloti_static.md`` is what review reads and what code
+``agents/piloti/prompts/chat_static.md`` is what review reads and what code
 that depends on the prompt's wording is written against (the envelope's field
 order the answer stream reads, ADR-0066). ``scripts/prompts_push.py``
 (``task prompts:push -- --label <l> --apply``) publishes it to Langfuse as a

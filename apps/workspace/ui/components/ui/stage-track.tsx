@@ -17,7 +17,7 @@
  * ## The one place chroma is let in
  *
  * The design language spends colour on provenance
- * (`docs/design/grid-design-language.md`), and a bar that is ink from end to end
+ * (`docs/design/design-language.md`), and a bar that is ink from end to end
  * says „five segments" rather than „you are through three of them". So the
  * walked part takes a register — and only where the state EARNS one: a subject
  * still in flight is ink, because nothing has been asserted yet.

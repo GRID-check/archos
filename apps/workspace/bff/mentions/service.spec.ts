@@ -107,7 +107,7 @@ import { AGENT_MENTION_ID, MENTION_ERROR_REASONS } from './types'
 const session = {
   userId: 'user_me',
   organizationId: 'org_1',
-  email: 'me@grid.test',
+  email: 'me@example.test',
   role: 'member',
   roles: ['member'],
   permissions: [],
@@ -118,7 +118,7 @@ const BOB = 'user_bob'
 const CAROL = 'user_carol'
 
 function person(userId: string, name: string) {
-  return { userId, email: `${name.toLowerCase()}@grid.test`, name, profilePictureUrl: null }
+  return { userId, email: `${name.toLowerCase()}@example.test`, name, profilePictureUrl: null }
 }
 
 function requestRow(overrides: Partial<MentionRequest> = {}): MentionRequest {

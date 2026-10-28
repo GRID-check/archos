@@ -773,7 +773,7 @@ placement could only ever be retrofitted. Named up front, it can be planned.
 
 ### Type sizes: six classes, and lint per card
 
-`docs/design/grid-card-charter.md` §A2 fixes the card type scale at six steps
+`docs/design/answer-card-charter.md` §A2 fixes the card type scale at six steps
 and one figure. They exist as classes in `src/app/globals.css`, declared in
 `@layer components` so any Tailwind utility still overrides them:
 

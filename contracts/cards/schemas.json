@@ -1272,7 +1272,7 @@
       "title": "DocumentDraftCard",
       "type": "object"
     },
-    "DocumentGridCard": {
+    "DocumentAnswerCard": {
       "description": "Project/B\u00fcroablage files the user asked to see.\n\nSystem-emitted by ``surface_documents``. One file or a short browse\nchoice \u2014 same card, the list length is the difference. Never a\ncatalogue. Citations of exactly one project/B\u00fcro file peek without\nthis card (``useCitationPeek``).",
       "properties": {
         "documents": {
@@ -1300,7 +1300,7 @@
         "search": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DocumentGridSearch"
+              "$ref": "#/$defs/DocumentAnswerSearch"
             },
             {
               "type": "null"
@@ -1326,10 +1326,10 @@
         "title",
         "documents"
       ],
-      "title": "DocumentGridCard",
+      "title": "DocumentAnswerCard",
       "type": "object"
     },
-    "DocumentGridSearch": {
+    "DocumentAnswerSearch": {
       "description": "The ``workspace-search`` question a browse ran, so the reader can open the full result.\n\nSet by ``surface_documents`` only when the files came from that operation; the\ncard then links to the search page with the same text and scope.",
       "properties": {
         "scope": {
@@ -1354,7 +1354,7 @@
         "text",
         "scope"
       ],
-      "title": "DocumentGridSearch",
+      "title": "DocumentAnswerSearch",
       "type": "object"
     },
     "EgressDiagramCard": {
@@ -4033,7 +4033,7 @@
       "daylight_incidence": "#/$defs/DaylightIncidenceCard",
       "dimension_diagram": "#/$defs/DimensionDiagramCard",
       "document_draft": "#/$defs/DocumentDraftCard",
-      "document_grid": "#/$defs/DocumentGridCard",
+      "document_grid": "#/$defs/DocumentAnswerCard",
       "egress_diagram": "#/$defs/EgressDiagramCard",
       "file_operation_proposal": "#/$defs/FileOperationProposalCard",
       "fire_access_plan": "#/$defs/FireAccessPlanCard",
@@ -4098,7 +4098,7 @@
       "$ref": "#/$defs/OperationProposalCard"
     },
     {
-      "$ref": "#/$defs/DocumentGridCard"
+      "$ref": "#/$defs/DocumentAnswerCard"
     },
     {
       "$ref": "#/$defs/DocumentDraftCard"

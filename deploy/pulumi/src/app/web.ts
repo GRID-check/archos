@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { appPullPolicy, webImage } from '../config/images'
 import { assertHpaTargetIsProportional, assertMemoryFitsLimit, toResourceRequirements } from '../config/resources'
 import { webPosthogEnv } from "./config";
@@ -30,7 +30,7 @@ export interface Web {
  * Runs HORIZONTALLY: stateless, HPA on CPU.
  */
 export function installWeb(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   imagePullSecrets: { name: string }[],

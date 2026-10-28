@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { commonLabels } from "../platform/namespaces";
 import { AppWiring, SECRET_NAME } from "./config";
 import { SCALER_POLLING_SECONDS, installTriggerAuth } from "./keda-scaling";
@@ -54,7 +54,7 @@ export function occupancyUrl(namespace: pulumi.Input<string>, tier: string = CHA
  */
 export function installBackendScaling(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   statefulSet: k8s.apps.v1.StatefulSet,
   dependsOn: pulumi.Resource[],
   name: string = CHAT_TIER,

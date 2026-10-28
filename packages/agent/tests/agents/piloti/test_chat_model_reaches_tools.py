@@ -17,7 +17,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
 from agent.citations.registry import SourceRegistry
@@ -62,7 +62,7 @@ async def test_the_tool_reads_the_model_the_turn_answers_with():
     )
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    agent = PilotiAgent(llm_provider=provider, tools=[look], max_tool_iterations=4)
+    agent = ChatAgent(llm_provider=provider, tools=[look], max_tool_iterations=4)
 
     await agent.run(ResearchAgentState(messages=[HumanMessage(content="Was ist auf Seite 2?")]))
 

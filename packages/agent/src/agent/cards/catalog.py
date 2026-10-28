@@ -68,7 +68,7 @@ SYSTEM_CARD_TYPES = frozenset(
 )
 
 #: Card types that no longer exist, each with what carries its content now. They
-#: were deleted from the `GridCard` union (an answer is Markdown prose; a card
+#: were deleted from the `AnswerCard` union (an answer is Markdown prose; a card
 #: must carry an interaction, geometry drawn to scale, a computed number or a
 #: live model binding that Markdown cannot), so no channel can register one.
 #: This map only makes the refusal useful: a model that reaches for one by name
@@ -312,7 +312,7 @@ Markdown cannot carry: an interaction, geometry drawn to scale from measurements
 computes (calculation), or a live binding to the building model."""
 
 #: The chat's MARKDOWN FIRST: the same rule in the blocks the chat prompt teaches
-#: (`piloti_static.md` <formatting> RICH BLOCKS), so the envelope's contract and
+#: (`chat_static.md` <formatting> RICH BLOCKS), so the envelope's contract and
 #: the prompt read one way. Only the chat draws the blocks and a `surface`.
 _MARKDOWN_FIRST_CHAT = """\
 MARKDOWN FIRST. The answer's own Markdown carries what the retired cards carried, in the blocks
@@ -635,9 +635,9 @@ def model_facing_card_types() -> frozenset[str]:
     new card type appears everywhere at once and a system card can never be
     requested by name.
     """
-    from agent.cards.models import GridCard
+    from agent.cards.models import AnswerCard
 
-    return frozenset(_card_type_of(c) for c in GridCard.__args__) - SYSTEM_CARD_TYPES
+    return frozenset(_card_type_of(c) for c in AnswerCard.__args__) - SYSTEM_CARD_TYPES
 
 
 def _annotation_str(annotation: object, nested: list[type]) -> str:
@@ -753,14 +753,14 @@ def describe_card_catalog() -> dict[str, Any]:
     flagged (``emittedBy``) rather than hidden.
 
     Derived from the Pydantic union like every other card surface, so a new card
-    type appears here the moment it is added to ``GridCard`` and cannot drift.
+    type appears here the moment it is added to ``AnswerCard`` and cannot drift.
     Keys are camelCase because this is a wire shape, not a Python one.
     """
-    from agent.cards.models import GridCard
+    from agent.cards.models import AnswerCard
 
     nested: list[type] = []
     cards: list[dict[str, Any]] = []
-    for card_cls in GridCard.__args__:
+    for card_cls in AnswerCard.__args__:
         type_value = getattr(card_cls.model_fields["type"].annotation, "__args__", ("?",))[0]
         doc = (card_cls.__doc__ or "").strip()
         cards.append(
@@ -840,7 +840,7 @@ def render_card_catalog(*, include_model_backed: bool = True, exclude: frozenset
 
     The system types are withheld unconditionally: a tool owns each one.
     """
-    from agent.cards.models import GridCard
+    from agent.cards.models import AnswerCard
 
     withheld = SYSTEM_CARD_TYPES | exclude
     if not include_model_backed:
@@ -848,7 +848,7 @@ def render_card_catalog(*, include_model_backed: bool = True, exclude: frozenset
 
     nested: list[type] = []
     card_lines: list[str] = []
-    for card_cls in GridCard.__args__:
+    for card_cls in AnswerCard.__args__:
         type_value = _card_type_of(card_cls)
         # System cards are emitted by tools on sanctioned paths, never by the
         # model — omit them so the model can't fabricate them. Model-backed
@@ -1027,14 +1027,14 @@ def render_card_index(*, include_model_backed: bool = True, exclude: frozenset[s
 
     The system types are withheld unconditionally: a tool owns each one.
     """
-    from agent.cards.models import GridCard
+    from agent.cards.models import AnswerCard
 
     withheld = SYSTEM_CARD_TYPES | exclude
     if not include_model_backed:
         withheld |= MODEL_BACKED_CARD_TYPES
 
     lines: list[str] = []
-    for card_cls in GridCard.__args__:
+    for card_cls in AnswerCard.__args__:
         type_value = _card_type_of(card_cls)
         if type_value in withheld:
             continue
@@ -1053,13 +1053,13 @@ def card_index_entries(
     over "which card would this answer earn" (``agents/piloti/decisions.py``)
     needs as its criteria, without parsing the rendered index back.
     """
-    from agent.cards.models import GridCard
+    from agent.cards.models import AnswerCard
 
     withheld = SYSTEM_CARD_TYPES | exclude
     if not include_model_backed:
         withheld |= MODEL_BACKED_CARD_TYPES
     entries: list[tuple[str, str]] = []
-    for card_cls in GridCard.__args__:
+    for card_cls in AnswerCard.__args__:
         type_value = _card_type_of(card_cls)
         if type_value in withheld:
             continue
@@ -1074,9 +1074,9 @@ def render_card_details(card_types: Iterable[str]) -> str:
     a model-supplied name and from skill metadata, and a stale name must not
     take down the turn that mentioned it.
     """
-    from agent.cards.models import GridCard
+    from agent.cards.models import AnswerCard
 
-    by_type = {_card_type_of(c): c for c in GridCard.__args__}
+    by_type = {_card_type_of(c): c for c in AnswerCard.__args__}
     withheld = SYSTEM_CARD_TYPES
     wanted = [t for t in dict.fromkeys(card_types) if t in by_type and t not in withheld]
     # A surface's entry is the rule the answer contract teaches it by, worked

@@ -7,7 +7,7 @@ import 'server-only'
 import { getProjectFolderAccess } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getBackendUrl } from '@/lib/backend-proxy'
-import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
+import { buildRequestContextWireHeaders } from '@/lib/request-context'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import type { ProjectFactsWire, SearchBoostWire } from '@/lib/cross-project/project-facts-mirror'
 import { NotFoundError, UpstreamError } from '@/lib/api/errors'
@@ -75,7 +75,7 @@ export async function fetchGroupedSemanticHits(
 ): Promise<BackendSearchHit[]> {
   const unique = [...new Set(collections)]
   if (unique.length === 0) return []
-  const scopeHeaders = buildGridRequestContextWireHeaders(
+  const scopeHeaders = buildRequestContextWireHeaders(
     { collectionScope: unique },
     process.env.INTERNAL_API_TOKEN
   )

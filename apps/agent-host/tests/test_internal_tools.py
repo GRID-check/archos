@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from agent.common.backend_tools import BACKEND_READ_TOOLS
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.project_context import get_organization_id_from_context
 from agent.project_context import get_project_id_from_context
 from agent_host.routes import internal_tools
@@ -47,7 +47,7 @@ class _FakeFunction:
         self.result: Any = "passage text"
 
     async def ainvoke(self, value: _SearchInput) -> Any:
-        context = GridRequestContext.from_context()
+        context = RequestContext.from_context()
         self.calls.append(
             {
                 "arguments": value.model_dump(),

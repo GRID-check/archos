@@ -70,7 +70,7 @@ research keeps rule 1, the answer-level floors.
 
 ## The names that stay
 
-The package is `piloti` and the class is `PilotiAgent`; the agent is Piloti, a
+The package is `piloti` and the class is `ChatAgent`; the agent is Piloti, a
 member of the planning office. Everything below still says `research` or
 `researcher`, and each one is a **wire name** — stored per turn, written into a
 deployment, or hand-written by a skill author — so it moves only with a

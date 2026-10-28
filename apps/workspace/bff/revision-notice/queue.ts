@@ -37,7 +37,7 @@ export async function queueRevisionNotice(request: RevisionNoticeRequest, now = 
   const { organizationId, actorUserId, newerId, olderId } = request
   if (!actorUserId || newerId === olderId) return false
   try {
-    if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.pilotiNotices, organizationId))) return false
+    if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.agentNotices, organizationId))) return false
     const noticeId = revisionNoticeId(newerId, olderId)
     return await withTenant({ organizationId }, () =>
       insertJobIfAbsent({

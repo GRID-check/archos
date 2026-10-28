@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from agent.cards.catalog import INTERACTIVE_CARD_TYPES
 from agent.cards.catalog import SYSTEM_CARD_TYPES
 from agent.cards.look_card import MAX_LOOK_ITEMS
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.models import validate_cards
 from agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
 
@@ -29,7 +29,7 @@ def _card(*items: dict, document: dict | None = None) -> dict:
 
 
 def _valid(card: dict) -> dict:
-    return grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+    return answer_card_adapter.validate_python(card).model_dump(exclude_none=True)
 
 
 class TestShape:
@@ -95,7 +95,7 @@ class TestNoPixels:
         assert pattern.startswith("^(?!")
 
     def test_a_card_has_no_field_that_could_hold_bytes(self) -> None:
-        fields = set(grid_card_adapter.json_schema()["$defs"]["LookItem"]["properties"])
+        fields = set(answer_card_adapter.json_schema()["$defs"]["LookItem"]["properties"])
 
         assert not fields & {"image", "jpeg", "url", "data", "bytes", "thumbnail"}
 

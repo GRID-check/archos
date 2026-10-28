@@ -18,7 +18,7 @@
  * attempt, not a decision.
  */
 
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 
 /** Every card type, classified by whether it asks the user to decide something. */
 export type CardInteractivity =
@@ -37,7 +37,7 @@ export type CardInteractivity =
 /**
  * ⚠️ ADDING A CARD TYPE? YOU MUST CLASSIFY IT HERE. ⚠️
  *
- * This map is exhaustive over `GridCard['type']`, so the moment
+ * This map is exhaustive over `AnswerCard['type']`, so the moment
  * `npm run generate:cards` regenerates the union with a new type, `tsc` fails
  * until you add a line here. That failure is deliberate — it is the only
  * checkpoint between "a new card exists" and "its user decisions are durable".
@@ -52,7 +52,7 @@ export type CardInteractivity =
  * If you classify a card as `'interactive'`, the card is NOT done until:
  *   1. its component takes `messageId` + `cardKey` props and drives its
  *      lifecycle from `useCardDecision` — never from local `useState`;
- *   2. `GridCards` passes it both (`messageId={messageId} cardKey={key}`);
+ *   2. `AnswerCards` passes it both (`messageId={messageId} cardKey={key}`);
  *   3. every terminal outcome it can reach is a member of `CARD_DECISIONS`;
  *   4. `card-interactivity.spec.tsx` covers it (that spec fails for any
  *      `'interactive'` type it does not know how to settle).
@@ -64,7 +64,7 @@ export type CardInteractivity =
  *
  * See docs/adr/0030-interactive-card-decisions-persist-on-the-message.md.
  */
-export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
+export const CARD_INTERACTIVITY: Record<AnswerCard['type'], CardInteractivity> = {
   // Asks the user to apply a JSON Patch to the project brief.
   project_profile_patch: 'interactive',
   // Asks the user to commit an org- or project-scoped memory write.
@@ -172,10 +172,10 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   surface: 'presentational',
 }
 
-const typesClassifiedAs = (kind: CardInteractivity): Array<GridCard['type']> =>
+const typesClassifiedAs = (kind: CardInteractivity): Array<AnswerCard['type']> =>
   Object.entries(CARD_INTERACTIVITY)
     .filter(([, classified]) => classified === kind)
-    .map(([type]) => type) as Array<GridCard['type']>
+    .map(([type]) => type) as Array<AnswerCard['type']>
 
 /** The card types whose user decisions must be persisted (see the map above). */
 export const INTERACTIVE_CARD_TYPES = typesClassifiedAs('interactive')
@@ -187,10 +187,10 @@ export const INTERACTIVE_CARD_TYPES = typesClassifiedAs('interactive')
  */
 export const LIVE_CARD_TYPES = typesClassifiedAs('live')
 
-export const isInteractiveCardType = (type: GridCard['type']): boolean =>
+export const isInteractiveCardType = (type: AnswerCard['type']): boolean =>
   CARD_INTERACTIVITY[type] === 'interactive'
 
-export const isLiveCardType = (type: GridCard['type']): boolean => CARD_INTERACTIVITY[type] === 'live'
+export const isLiveCardType = (type: AnswerCard['type']): boolean => CARD_INTERACTIVITY[type] === 'live'
 
 /**
  * Types that act (they write something), so an observer is never handed one
@@ -280,19 +280,19 @@ export type CardInteractions = Record<string, CardInteraction>
  * Stable identity of a card WITHIN one message.
  *
  * Cards carry no id on the wire, so identity is positional — and positions
- * only mean something because `validateGridCards` never compacts the array: a
+ * only mean something because `validateAnswerCards` never compacts the array: a
  * card that fails validation leaves an `undefined` hole at its wire index
  * rather than renumbering what follows. Once a turn has FINALIZED, its `cards`
  * array is never mutated again — it round-trips through localStorage and
  * `metadata.cards` unchanged — so the key means the same thing for the life
- * of the message. `GridCards` uses this same value as its React key, so a
+ * of the message. `AnswerCards` uses this same value as its React key, so a
  * decision and the element it belongs to cannot drift apart.
  *
  * While a turn is still STREAMING the array is replaced wholesale on each frame
  * that carries cards; `reconcileCardInteractions` re-checks every recorded
  * decision against the new array on each such replacement.
  */
-export const cardKey = (card: Pick<GridCard, 'type'>, index: number): string =>
+export const cardKey = (card: Pick<AnswerCard, 'type'>, index: number): string =>
   `${card.type}-${index}`
 
 /**
@@ -353,8 +353,8 @@ const isTimestamp = (value: unknown): value is string =>
  */
 export const reconcileCardInteractions = (
   interactions: CardInteractions | undefined,
-  previousCards: ReadonlyArray<GridCard | undefined> | undefined,
-  nextCards: ReadonlyArray<GridCard | undefined> | undefined
+  previousCards: ReadonlyArray<AnswerCard | undefined> | undefined,
+  nextCards: ReadonlyArray<AnswerCard | undefined> | undefined
 ): CardInteractions | undefined => {
   if (!interactions) return undefined
 

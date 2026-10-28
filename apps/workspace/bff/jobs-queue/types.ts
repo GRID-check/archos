@@ -350,7 +350,7 @@ export type MailImportPayload = z.infer<typeof mailImportPayloadSchema>
  * text, the mark and the person's rights are read again when it runs, so a
  * queued wake carries no tenant content and a revoked right ends it.
  */
-export const pilotiWakePayloadSchema = z.object({
+export const agentWakePayloadSchema = z.object({
   wakeId: z.guid(),
   trigger: z.enum(['thread_mention', 'thread_reply', 'assigned']),
   /** The reply id, or the delegation's event id. */
@@ -362,7 +362,7 @@ export const pilotiWakePayloadSchema = z.object({
   /** How often the wake has waited already (another turn ran, or no server could take it). */
   waits: z.number().int().nonnegative(),
 })
-export type PilotiWakePayload = z.infer<typeof pilotiWakePayloadSchema>
+export type AgentWakePayload = z.infer<typeof agentWakePayloadSchema>
 
 /**
  * `piloti_wake_stop`: stop the turn a wake started, because the person took the
@@ -372,14 +372,14 @@ export type PilotiWakePayload = z.infer<typeof pilotiWakePayloadSchema>
  * is the wake id. It carries the actor because the wake row is gone with a
  * deleted mark.
  */
-export const pilotiWakeStopPayloadSchema = z.object({
+export const agentWakeStopPayloadSchema = z.object({
   wakeId: z.guid(),
   documentId: z.guid(),
   annotationId: z.guid(),
   /** The person the woken turn runs as: whose thread about the document it is in. */
   actorUserId: z.string().min(1),
 })
-export type PilotiWakeStopPayload = z.infer<typeof pilotiWakeStopPayloadSchema>
+export type AgentWakeStopPayload = z.infer<typeof agentWakeStopPayloadSchema>
 
 /**
  * `project_intake_read`: start a reading of the documents of a project with an

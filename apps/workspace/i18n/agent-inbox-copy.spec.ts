@@ -27,8 +27,8 @@ import { de, en } from './dictionaries'
 import { getByPath } from './translate'
 
 const TYPES = 'collaboration.inbox.types'
-const PILOTI_TYPES = ['pilotiWorkDone', 'pilotiWorkFailed', 'pilotiAsksYou', 'pilotiProposalWaiting'] as const
-const MARK_TYPES = ['pilotiWorkDone', 'pilotiWorkFailed', 'pilotiAsksYou'] as const
+const AGENT_TYPES = ['agentWorkDone', 'agentWorkFailed', 'agentAsksYou', 'agentProposalWaiting'] as const
+const MARK_TYPES = ['agentWorkDone', 'agentWorkFailed', 'agentAsksYou'] as const
 
 /** The words of the code, never of the copy. „Plan“ too: a file is never called one. */
 const JARGON: Record<'de' | 'en', RegExp> = {
@@ -53,14 +53,14 @@ describe('Piloti’s inbox notices', () => {
   for (const [locale, dictionary] of LOCALES) {
     it(`${locale}: every failure class says why, in words of its own`, () => {
       const missing = WAKE_END_REASON_KINDS.filter(
-        (kind) => typeof getByPath(dictionary, `${TYPES}.pilotiWorkFailed.variants.${kind}.body`) !== 'string',
+        (kind) => typeof getByPath(dictionary, `${TYPES}.agentWorkFailed.variants.${kind}.body`) !== 'string',
       )
       expect(missing).toEqual([])
     })
 
     it(`${locale}: every kind of proposal says what it changes`, () => {
       const missing = PROPOSAL_NOTICE_VARIANTS.filter(
-        (variant) => typeof getByPath(dictionary, `${TYPES}.pilotiProposalWaiting.variants.${variant}.title`) !== 'string',
+        (variant) => typeof getByPath(dictionary, `${TYPES}.agentProposalWaiting.variants.${variant}.title`) !== 'string',
       )
       expect(missing).toEqual([])
     })
@@ -73,7 +73,7 @@ describe('Piloti’s inbox notices', () => {
     })
 
     it(`${locale}: no system words`, () => {
-      const offenders = PILOTI_TYPES.flatMap((type) =>
+      const offenders = AGENT_TYPES.flatMap((type) =>
         leaves(getByPath(dictionary, `${TYPES}.${type}`), `${TYPES}.${type}`),
       )
         .filter(([, text]) => JARGON[locale].test(text))

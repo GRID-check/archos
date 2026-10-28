@@ -1,7 +1,7 @@
 export {
-  gridCardSchema,
+  answerCardSchema,
   projectProfilePatchCardSchema,
-  type GridCard,
+  type AnswerCard,
   type ProjectProfilePatchCardData,
-  validateGridCards,
+  validateAnswerCards,
 } from '@/shared/cards/schemas'

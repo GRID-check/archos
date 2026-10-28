@@ -229,7 +229,7 @@ def install_step_stack_repair() -> None:
     Idempotent; call once at process startup (API server and agent worker).
     """
     original = IntermediateStepManager.push_intermediate_step
-    if getattr(original, "_grid_stack_repair", False):
+    if getattr(original, "_stack_repair", False):
         return
 
     def push_intermediate_step(self: IntermediateStepManager, payload: IntermediateStepPayload) -> None:
@@ -242,5 +242,5 @@ def install_step_stack_repair() -> None:
             if stream is not None:
                 _ENDED_STEPS.setdefault(stream, set()).add(payload.UUID)
 
-    push_intermediate_step._grid_stack_repair = True  # type: ignore[attr-defined]
+    push_intermediate_step._stack_repair = True  # type: ignore[attr-defined]
     IntermediateStepManager.push_intermediate_step = push_intermediate_step  # type: ignore[method-assign]

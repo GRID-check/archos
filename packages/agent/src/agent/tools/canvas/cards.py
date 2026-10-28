@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from agent.cards.canvas_activity_card import MAX_CANVAS_ACTIVITY_ITEMS
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import extend_or_add
 from agent.cards.registry import get_card_registry
 
@@ -53,7 +53,7 @@ def _add(registry: Any, document: dict[str, str], item: dict[str, Any]) -> int:
 
     def build(items: list[dict[str, Any]]) -> dict[str, Any]:
         card = {"type": CARD_TYPE, "document": document, "items": items}
-        return grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+        return answer_card_adapter.validate_python(card).model_dump(exclude_none=True)
 
     position = extend_or_add(registry, item, owns=owns, build=build, max_items=MAX_CANVAS_ACTIVITY_ITEMS)
     return 0 if position is None else 1

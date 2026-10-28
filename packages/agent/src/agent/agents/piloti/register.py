@@ -1,6 +1,6 @@
 """NAT register function for research agent.
 
-One :class:`PilotiAgent` is built at boot. Per request ``_run_turn``
+One :class:`ChatAgent` is built at boot. Per request ``_run_turn``
 computes only what the turn varies (the switched-off data sources, the org's
 skills behind ``read_file``, the model override) as a :class:`TurnConfig`
 and hands it to ``agent.run``; nothing is compiled, read or re-indexed per turn.
@@ -67,11 +67,11 @@ from nat.plugin_api import LLMRef
 from nat.plugin_api import register_function
 
 # Importing this module runs its ``@register_function`` so NAT discovers the
-# ``ask_user`` tool through the same ``aiq_researcher`` entry point
+# ``ask_user`` tool through the same ``conversation_researcher`` entry point
 # that imports this file, the pattern ``cards/register.py`` uses for
 # ``surface_documents``, and no extra plugin entry point to keep in sync.
 from . import ask_user as _ask_user  # noqa: F401
-from .agent import PilotiAgent
+from .agent import ChatAgent
 from .agent import TurnConfig
 from .decisions import PROJECT_LOOKUP
 from .decisions import SLOT as DECISION_SLOT
@@ -223,7 +223,7 @@ class _Deployment:
     """What the boot built, shared by every turn."""
 
     config: ResearchAgentConfig
-    agent: PilotiAgent
+    agent: ChatAgent
     provider: LLMProvider
     tools: list[Any]
     #: The read-only estate backend the filesystem tools read through (``knowledge_layer.estate``); built once.
@@ -701,7 +701,7 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
     provider = LLMProvider()
     provider.set_default(llm, group=AgentGroup.RESEARCH)
     callbacks = [VerboseTraceCallback()] if is_verbose(config.verbose) else []
-    agent = PilotiAgent(
+    agent = ChatAgent(
         llm_provider=provider,
         tools=tools,
         max_tool_iterations=config.max_tool_iterations,

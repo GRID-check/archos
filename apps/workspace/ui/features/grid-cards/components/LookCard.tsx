@@ -27,10 +27,10 @@ import { useTranslations, type Translator } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { Quote } from '@/components/ui/quote'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { CARD_SHELL } from './card-chrome'
 
-type LookCardData = Extract<GridCard, { type: 'look' }>
+type LookCardData = Extract<AnswerCard, { type: 'look' }>
 type LookItem = LookCardData['items'][number]
 
 interface LookCardProps {

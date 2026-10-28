@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from agent.skills.models import GRID_METADATA_KEYS
 from agent.skills.models import MAX_DESCRIPTION_CHARS
 from agent.skills.models import MAX_TITLE_CHARS
+from agent.skills.models import SKILL_METADATA_KEYS
 from agent.skills.models import SkillValidationError
 from agent.skills.models import build_skill_from_payload
 from agent.skills.models import parse_skill_md
@@ -105,7 +105,7 @@ def test_description_length_limit() -> None:
         )
 
 
-def test_grid_execution_is_ignored_not_rejected() -> None:
+def test_legacy_execution_is_ignored_not_rejected() -> None:
     """A leftover ``grid-execution`` must not take a skill down.
 
     Scheduling stopped being a property of a skill: the output kind is a column
@@ -123,7 +123,7 @@ def test_grid_execution_is_ignored_not_rejected() -> None:
         assert skill.metadata == {"grid-agents": "researcher", "grid-execution": value}
 
 
-def test_grid_schedulable_is_ignored_not_rejected() -> None:
+def test_legacy_schedulable_is_ignored_not_rejected() -> None:
     """``grid-schedulable`` is gone with no replacement; a leftover is inert."""
     skill = build_skill_from_payload(
         {
@@ -189,7 +189,7 @@ def test_reserved_key_registry() -> None:
     scheduling became a property of the job. ``grid-auto-invoke`` is catalog
     membership, not scheduling: slash and jobs still attach the skill.
     """
-    assert GRID_METADATA_KEYS == {
+    assert SKILL_METADATA_KEYS == {
         "grid-agents",
         "grid-cards",
         "grid-title",
@@ -197,15 +197,15 @@ def test_reserved_key_registry() -> None:
         "grid-auto-invoke",
         "grid-catalog",
     }
-    assert "grid-execution" not in GRID_METADATA_KEYS
-    assert "grid-schedulable" not in GRID_METADATA_KEYS
+    assert "grid-execution" not in SKILL_METADATA_KEYS
+    assert "grid-schedulable" not in SKILL_METADATA_KEYS
 
 
 def _with_title(value: str) -> str:
     return VALID_MD.replace("  grid-agents: researcher", f"  grid-title: {value}")
 
 
-def test_grid_title_is_the_human_name() -> None:
+def test_title_is_the_human_name() -> None:
     skill = parse_skill_md(_with_title("Prognose Baurecht"))
     assert skill_title(skill) == "Prognose Baurecht"
 
@@ -273,7 +273,7 @@ def test_unquoted_yaml_bool_metadata_is_coerced_to_a_string() -> None:
     assert parse_skill_md(off).metadata["grid-auto-invoke"] == "false"
 
 
-def test_grid_hidden_truthy_tokens_mark_a_skill_hidden() -> None:
+def test_hidden_truthy_tokens_mark_a_skill_hidden() -> None:
     for token in ("true", "1", "yes", "TRUE", "  Yes  "):
         skill = parse_skill_md(_with_hidden(token))
         assert skill_hidden(skill.metadata) is True, token
@@ -281,19 +281,19 @@ def test_grid_hidden_truthy_tokens_mark_a_skill_hidden() -> None:
         assert skill.metadata["grid-hidden"] == "true"
 
 
-def test_grid_hidden_falsy_tokens_drop_the_key_and_read_visible() -> None:
+def test_hidden_falsy_tokens_drop_the_key_and_read_visible() -> None:
     for token in ("false", "0", "no", ""):
         skill = parse_skill_md(_with_hidden(token))
         assert "grid-hidden" not in skill.metadata, token
         assert skill_hidden(skill.metadata) is False, token
 
 
-def test_absent_grid_hidden_reads_visible() -> None:
+def test_absent_hidden_reads_visible() -> None:
     skill = parse_skill_md(VALID_MD)
     assert skill_hidden(skill.metadata) is False
 
 
-def test_garbage_grid_hidden_is_a_strict_error_for_a_file_skill() -> None:
+def test_garbage_hidden_is_a_strict_error_for_a_file_skill() -> None:
     with pytest.raises(SkillValidationError, match="grid-hidden"):
         parse_skill_md(_with_hidden("maybe"))
 
@@ -336,19 +336,19 @@ def _with_auto_invoke(value: str) -> str:
 # deletes a row from the model's own inventory is the shape ADR-0060 removed.
 # These tests hold the toleration — an old document must keep parsing, and a
 # malformed value must keep being dropped rather than killing discovery.
-def test_grid_auto_invoke_falsy_tokens_are_kept_verbatim_and_read_by_nobody() -> None:
+def test_auto_invoke_falsy_tokens_are_kept_verbatim_and_read_by_nobody() -> None:
     for token in ("false", "0", "no", "FALSE", "  No  "):
         skill = parse_skill_md(_with_auto_invoke(token))
         assert skill.metadata["grid-auto-invoke"] == "false"
 
 
-def test_grid_auto_invoke_truthy_tokens_drop_the_key() -> None:
+def test_auto_invoke_truthy_tokens_drop_the_key() -> None:
     for token in ("true", "1", "yes", ""):
         skill = parse_skill_md(_with_auto_invoke(token))
         assert "grid-auto-invoke" not in skill.metadata, token
 
 
-def test_garbage_grid_auto_invoke_is_a_strict_error_for_a_file_skill() -> None:
+def test_garbage_legacy_auto_invoke_is_a_strict_error_for_a_file_skill() -> None:
     with pytest.raises(SkillValidationError, match="grid-auto-invoke"):
         parse_skill_md(_with_auto_invoke("maybe"))
 
@@ -384,12 +384,12 @@ def _with_cards(value: str) -> str:
     return VALID_MD.replace("  grid-agents: researcher", f"  grid-cards: {value}")
 
 
-def test_grid_cards_accepts_known_card_types() -> None:
+def test_answer_cards_accepts_known_card_types() -> None:
     skill = parse_skill_md(_with_cards("calculation, stair_diagram"))
     assert preferred_cards(skill.metadata) == ("calculation", "stair_diagram")
 
 
-def test_grid_cards_deduplicates_and_keeps_author_order() -> None:
+def test_answer_cards_deduplicates_and_keeps_author_order() -> None:
     skill = parse_skill_md(_with_cards("stair_diagram,calculation,stair_diagram"))
     assert preferred_cards(skill.metadata) == ("stair_diagram", "calculation")
 

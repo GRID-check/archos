@@ -61,10 +61,10 @@ export async function keepMentions(
   { piloti }: { piloti: boolean }
 ): Promise<MarkMention[]> {
   const standing = standingMentions(text, submitted)
-  const isPiloti = (mention: MarkMention) => mention.targetId === AGENT_MENTION_ID
-  const keptPiloti = (mention: MarkMention) => piloti && mention.display === PRODUCT_NAME
-  const people = isCollaborationEnabled(session) ? standing.filter((mention) => !isPiloti(mention)) : []
-  if (people.length === 0) return standing.filter((mention) => isPiloti(mention) && keptPiloti(mention))
+  const isAgent = (mention: MarkMention) => mention.targetId === AGENT_MENTION_ID
+  const keptAgent = (mention: MarkMention) => piloti && mention.display === PRODUCT_NAME
+  const people = isCollaborationEnabled(session) ? standing.filter((mention) => !isAgent(mention)) : []
+  if (people.length === 0) return standing.filter((mention) => isAgent(mention) && keptAgent(mention))
   const directory = await loadOrganizationDirectory(session.organizationId)
   const named = people.filter((mention) => directory.get(mention.targetId)?.name === mention.display)
   const mayOpen = await mayOpenDocument(
@@ -73,7 +73,7 @@ export async function keepMentions(
     named.map((mention) => mention.targetId)
   )
   return standing.filter((mention) =>
-    isPiloti(mention) ? keptPiloti(mention) : named.includes(mention) && mayOpen.has(mention.targetId)
+    isAgent(mention) ? keptAgent(mention) : named.includes(mention) && mayOpen.has(mention.targetId)
   )
 }
 
@@ -98,7 +98,7 @@ export function newlyMentioned(
 }
 
 /** Whether these mentions address Piloti: its chip, as the reply's `addresses_agent` records it. */
-export const mentionsPiloti = (mentions: readonly MarkMention[]): boolean =>
+export const mentionsAgent = (mentions: readonly MarkMention[]): boolean =>
   mentions.some((mention) => mention.targetId === AGENT_MENTION_ID)
 
 /**

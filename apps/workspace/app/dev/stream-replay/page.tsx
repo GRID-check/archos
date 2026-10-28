@@ -18,7 +18,7 @@ import { parseWireEvent, type WireEvent } from '@/adapters/api/wire-v2'
 import { foldTurnEvent, initialTurnView, type TurnView } from '@/features/chat/lib/turn-fold'
 import { citationsFromWireList } from '@/features/chat/lib/wire-citation'
 import { sanitizeAnswerMeta } from '@/lib/conversations/message-answer-meta'
-import { validateGridCards } from '@/shared/cards/schemas'
+import { validateAnswerCards } from '@/shared/cards/schemas'
 import { STREAM_FRAMES } from '../_fixtures/stream-frames'
 import { answerBodies, asSettled, stampFrame } from '../_fixtures/v2-turn'
 
@@ -169,7 +169,7 @@ export default function StreamReplayPage() {
             content={view.turn.text}
             timestamp={new Date('2026-09-24T14:30:12')}
             isStreaming={view.turn.phase === 'running'}
-            cards={Array.from(view.turn.cards, (card) => (card ? validateGridCards([card.card])[0] : undefined))}
+            cards={Array.from(view.turn.cards, (card) => (card ? validateAnswerCards([card.card])[0] : undefined))}
             citations={citationsFromWireList(view.turn.sources)}
             answerConfidence={view.turn.result?.answer_confidence ?? undefined}
             answerMeta={sanitizeAnswerMeta(view.turn.answerMeta) ?? undefined}

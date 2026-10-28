@@ -27,7 +27,7 @@ import logging
 import re
 
 from agent.cards.catalog import SYSTEM_CARD_TYPES
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import get_card_registry
 
 logger = logging.getLogger(__name__)
@@ -138,7 +138,7 @@ def _salvage_card(card_json: str) -> None:
         payload = json.loads(card_json, strict=False)
         if not isinstance(payload, dict):
             return
-        validated = grid_card_adapter.validate_python(payload).model_dump(exclude_none=True)
+        validated = answer_card_adapter.validate_python(payload).model_dump(exclude_none=True)
         if validated.get("type") in SYSTEM_CARD_TYPES:
             # System cards are emitted only by their owning tool on a sanctioned
             # path — never salvage one from leaked model text. A retired type

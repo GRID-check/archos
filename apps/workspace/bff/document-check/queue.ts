@@ -51,7 +51,7 @@ export async function queueDocumentCheck(request: DocumentCheckRequest, now = ne
   const claim = { organizationId, documentId, anchorId: checkId }
   let claimed = false
   try {
-    if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.pilotiNotices, organizationId))) return false
+    if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.agentNotices, organizationId))) return false
     claimed = await claimRevisionAnnouncement(claim)
     if (!claimed) return false
     // Over the day's cap the version stays claimed: it is skipped for good, never queued later in a burst.

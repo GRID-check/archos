@@ -90,7 +90,7 @@ class TestAttributeMapping:
         neither attribute rather than one the schema rejects. Langfuse's own
         SDK links no fallback either (`_client/attributes.py`).
         """
-        assert prompt_observation_attributes(name="git:prompts/piloti_static.md", version="3f2a9c1") == {}
+        assert prompt_observation_attributes(name="git:prompts/chat_static.md", version="3f2a9c1") == {}
 
 
 class TestRecording:
@@ -255,5 +255,5 @@ class TestPipelineWiring:
         async with otelcollector_redaction_telemetry_exporter(_make_config(), None) as exporter:
             positions = exporter._processor_names
 
-            assert "grid_prompt_link" in positions
-            assert positions["grid_prompt_link"] < positions["header_redaction"]
+            assert "prompt_link" in positions
+            assert positions["prompt_link"] < positions["header_redaction"]

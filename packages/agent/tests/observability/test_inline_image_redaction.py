@@ -101,7 +101,7 @@ class TestPipelineWiring:
         async with otelcollector_redaction_telemetry_exporter(_make_config(), None) as exporter:
             positions = exporter._processor_names
 
-            assert positions["grid_inline_image_redaction"] == min(positions.values())
+            assert positions["inline_image_redaction"] == min(positions.values())
 
 
 class TestWhatThePatternMustAlsoCover:

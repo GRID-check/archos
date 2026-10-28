@@ -141,7 +141,7 @@ def test_knowledge_search_takes_the_checkpoint_as_an_optional_argument() -> None
     assert "No effect on the result" in desc
 
 
-def test_the_description_says_what_a_piloti_document_may_be_cited_for() -> None:
+def test_the_description_says_what_an_agent_document_may_be_cited_for() -> None:
     """The sentence that separates "the office decided this" from "the OIB requires this" for a
     document the office approved but Piloti wrote. Since ADR-0133 slice 6 it rides the hit's own
     `Herkunft:` line, so every tool that returns such a passage says it where it is read."""

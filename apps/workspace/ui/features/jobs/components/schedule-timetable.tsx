@@ -109,7 +109,7 @@ export function ScheduleTimetable({
     const slots = seriesColorsFor(schedules, SERIES_SLOT_COUNT)
     // The grid draws only placeable tasks, so a miss here is a task it is not
     // drawing; the shared „other" tone is the honest answer rather than a hole.
-    return (jobId: string): string => slots.get(jobId) ?? 'var(--grid-series-other)'
+    return (jobId: string): string => slots.get(jobId) ?? 'var(--chart-series-other)'
   }, [schedules])
 
   const nameOf = useMemo(() => {
@@ -152,9 +152,9 @@ export function ScheduleTimetable({
   const expanding = loading || timetable === null
 
   return (
-    // `grid-usage-viz` is what resolves `--grid-series-N`; the style element
+    // `usage-viz` is what resolves `--chart-series-N`; the style element
     // beside it is what defines them for both themes.
-    <section className="grid-usage-viz" aria-label={t('timetable.title')} data-testid="schedule-timetable">
+    <section className="usage-viz" aria-label={t('timetable.title')} data-testid="schedule-timetable">
       <SeriesPaletteStyle />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -402,7 +402,7 @@ function WeekGrid({ timetable, locale, colorOf, nameOf, onSelect }: ShapeProps):
               />
             ))}
             {day.blocks.map((block) => (
-              <GridBlock
+              <ScheduleBlock
                 key={`${block.jobId}-${block.at.toISOString()}`}
                 block={block}
                 top={offsetFor(segments, block.startMinute) ?? 0}
@@ -439,7 +439,7 @@ function WeekGrid({ timetable, locale, colorOf, nameOf, onSelect }: ShapeProps):
   )
 }
 
-function GridBlock({
+function ScheduleBlock({
   block,
   top,
   locale,

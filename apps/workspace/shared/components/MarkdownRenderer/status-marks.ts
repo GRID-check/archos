@@ -2,7 +2,7 @@
  * Status words a table cell may hold, and the mark each renders as.
  *
  * The answer writes a check as a Markdown table with a Status column
- * (`piloti_static.md`, <formatting> STRUCTURE) instead of a checklist card:
+ * (`chat_static.md`, <formatting> STRUCTURE) instead of a checklist card:
  * the same rows, no second channel. A cell of a Status column
  * (`table-shape.ts`) whose WHOLE text is one of these words renders as a
  * coloured mark. Anything else stays text: „offen" in a Bemerkung column is a

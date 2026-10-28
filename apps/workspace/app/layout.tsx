@@ -21,7 +21,7 @@ import type { AppConfig } from '@/shared/context'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import { isVlmConfigured } from '@/lib/documents/vlm-capability'
 import { getEffectiveMaxUploadBytes } from '@/lib/storage/upload-limit'
-import { getGridSession } from '@/lib/auth/session'
+import { getUserSession } from '@/lib/auth/session'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { FEATURE_FLAGS, isFeatureEnabled, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
@@ -124,10 +124,10 @@ const isIfcUploadEnabled = async (): Promise<boolean> =>
 const isSessionFlagEnabled = async (flag: KnownFeatureFlag): Promise<boolean> => {
   try {
     // Own slot, like every other entry point: the root layout gets no route
-    // factory either, and `getGridSession` publishes the tenant into whatever
+    // factory either, and `getUserSession` publishes the tenant into whatever
     // slot is open — with none, into an ambient binding that does not survive.
     return await runWithTenantSlot(async () => {
-      const session = await getGridSession()
+      const session = await getUserSession()
       return isFeatureEnabled(session ?? { featureFlags: null }, flag)
     })
   } catch {
@@ -145,7 +145,7 @@ const isSessionFlagEnabled = async (flag: KnownFeatureFlag): Promise<boolean> =>
 const getSessionMaxUploadBytes = async (): Promise<number | undefined> => {
   try {
     return await runWithTenantSlot(async () => {
-      const session = await getGridSession()
+      const session = await getUserSession()
       if (!session?.organizationId) return undefined
       return getEffectiveMaxUploadBytes(session.organizationId)
     })
@@ -171,7 +171,7 @@ const getPosthogIdentity = async (
   if (!posthog.host || !posthog.projectToken || !isAuthRequired()) return null
   try {
     return await runWithTenantSlot(async () => {
-      const session = await getGridSession()
+      const session = await getUserSession()
       if (!session?.userId) return null
       return {
         distinctId: session.userId,

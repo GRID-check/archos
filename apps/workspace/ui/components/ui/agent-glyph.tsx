@@ -21,7 +21,7 @@ const TONES = {
 } as const
 
 /**
- * PilotiGlyph — Piloti's face wherever a person would show theirs: an ink disc
+ * AgentGlyph — Piloti's face wherever a person would show theirs: an ink disc
  * with its spark. Piloti never wears a person's avatar or an identity colour;
  * ink is its colour on the pages too (its marks, its pointer, the boxes it was
  * asked about).
@@ -30,7 +30,7 @@ const TONES = {
  * (still under reduced motion). `tone="outline"`: the line version, beside
  * outlined icons.
  */
-export function PilotiGlyph({
+export function AgentGlyph({
   size = 'sm',
   tone = 'ink',
   working,
@@ -49,7 +49,7 @@ export function PilotiGlyph({
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
-      data-slot="piloti-glyph"
+      data-slot="agent-glyph"
       data-tone={tone}
       className={cn(
         'relative inline-flex shrink-0 items-center justify-center rounded-full',

@@ -10,7 +10,7 @@
  * ask for it?") had none either.
  *
  * Every entry is a REAL render: the sample card goes through the same
- * `GridCards` dispatcher chat uses, so this page cannot show a card that the
+ * `AnswerCards` dispatcher chat uses, so this page cannot show a card that the
  * renderers do not produce. The values each card carries come from the
  * catalog endpoint, which derives them from the Pydantic union — nothing on
  * this page is a second hand-maintained list.
@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { SectionCard } from '@/features/platform/components/section-card'
-import { GridCards } from '@/features/grid-cards'
+import { AnswerCards } from '@/features/grid-cards'
 import { PREVIEW_EXCLUDED, previewFixtureFor } from '@/features/grid-cards/preview-fixtures'
 import { useTranslations } from '@/i18n'
 import { platformCopy } from '@/i18n/namespaces/platform'
@@ -115,7 +115,7 @@ const CatalogEntry: FC<{ card: CatalogCardDto }> = ({ card }) => {
 
       {fixture ? (
         <InertPreview>
-          <GridCards cards={[fixture]} projectId={null} />
+          <AnswerCards cards={[fixture]} projectId={null} />
         </InertPreview>
       ) : (
         <div className="text-muted-foreground flex items-center gap-2 rounded-md border border-dashed px-3 py-4 text-xs">

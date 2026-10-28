@@ -29,7 +29,7 @@ proposal the page must refuse is not one to send. The browser reads the
 document again before it moves anything, so a stale or forged event cannot open
 what the reader may not see.
 
-Its own entry point (``aiq_viewer`` in the root ``pyproject.toml``).
+Its own entry point (``viewer_tools`` in the root ``pyproject.toml``).
 """
 
 from __future__ import annotations

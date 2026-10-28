@@ -43,7 +43,7 @@ const roleLabel = (slug: string, t: Translator): string =>
   KNOWN_ROLE_SLUGS.has(slug) ? t(`account.roles.${slug}`) : humanizeRoleSlug(slug)
 
 /**
- * Best-effort organization display name. Prefers the Grid-side display name,
+ * Best-effort organization display name. Prefers the app-side display name,
  * falls back to the WorkOS org name, and finally the raw id — never throws, so
  * a lookup failure degrades gracefully instead of crashing the page.
  */

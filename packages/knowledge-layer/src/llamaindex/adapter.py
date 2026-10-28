@@ -1814,9 +1814,9 @@ def _vlm_slot():
 
 def _vision_lane() -> str | None:
     """The organisation the running ingest job reads for, or ``None`` outside one."""
-    from agent.common.cost_tracking import grid_cost_tracker_var
+    from agent.common.cost_tracking import cost_tracker_var
 
-    tracker = grid_cost_tracker_var.get()
+    tracker = cost_tracker_var.get()
     organization_id = getattr(tracker, "organization_id", None)
     return str(organization_id) if organization_id else None
 

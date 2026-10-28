@@ -33,7 +33,7 @@ import {
   requirePlatformPermission,
 } from './platform'
 import { setCacheStore, type CacheStore } from '@/lib/cache'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 
 const PLATFORM_ORG = 'org_platform'
 const SUPPORT_ROLE_SLUG = 'org-platform-support'
@@ -63,7 +63,7 @@ class TestStore implements CacheStore {
   }
 }
 
-const session = (overrides: Partial<GridSession> = {}): GridSession => ({
+const session = (overrides: Partial<UserSession> = {}): UserSession => ({
   userId: 'user_1',
   email: 'someone@grid.com',
   name: 'Someone',

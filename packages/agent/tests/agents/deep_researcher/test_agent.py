@@ -712,7 +712,7 @@ class TestDeepResearcherAgent:
             for removed_field in ("assembly_instruction", "selection_mode", "expected_count", "options"):
                 assert removed_field not in planner_prompt
 
-    def test_prompts_carry_grid_oib_domain_grounding(
+    def test_prompts_carry_oib_domain_grounding(
         self,
         mock_llm_provider,
         real_tool,

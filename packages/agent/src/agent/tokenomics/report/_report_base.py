@@ -35,8 +35,8 @@ _CSS = """<style>
   main { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .report-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .report-cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
   .card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 10px; overflow: hidden; margin-bottom: 16px;
@@ -73,7 +73,7 @@ _CSS = """<style>
   tr:hover td { background: var(--surface2); }
   .price-table td:nth-child(2), .price-table td:nth-child(3),
   .price-table td:nth-child(4) { color: var(--green); font-family: monospace; }
-  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .report-cols-2, .report-cols-3 { grid-template-columns: 1fr; } }
 </style>"""
 
 _JS_LAYOUT_GLOBALS = """

@@ -140,7 +140,7 @@ const BEN: MarkMention = { targetId: 'user_ben', display: 'Ben Gruber' }
 /** In the organization, but not cleared for the folder the document is filed in. */
 const FAR: MarkMention = { targetId: 'user_far', display: 'Fritz Fern' }
 const ME: MarkMention = { targetId: 'user_me', display: 'Miriam Hofer' }
-const PILOTI: MarkMention = { targetId: 'agent:piloti', display: 'Piloti' }
+const AGENT: MarkMention = { targetId: 'agent:piloti', display: 'Piloti' }
 
 const MARK: AnnotationRecord = {
   id: 'ann_1',
@@ -289,10 +289,10 @@ describe('a reply that mentions colleagues', () => {
   })
 
   it('addresses Piloti when Piloti is mentioned, as the chip’s flag does', async () => {
-    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti stimmt die Breite?', mentions: [PILOTI] }, { run })
+    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti stimmt die Breite?', mentions: [AGENT] }, { run })
 
     expect(insertAnnotationReply).toHaveBeenCalledWith(
-      expect.objectContaining({ addressesAgent: true, mentions: [PILOTI] }),
+      expect.objectContaining({ addressesAgent: true, mentions: [AGENT] }),
       undefined
     )
     expect(await rowsOf('annotation.mentioned')).toEqual([])
@@ -444,17 +444,17 @@ describe('a mark whose text mentions colleagues', () => {
 
 describe('what a mention costs and where it counts', () => {
   it('counts @Piloti against the chat’s one mention budget, like a person', async () => {
-    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti stimmt das?', mentions: [PILOTI] }, { run })
+    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti stimmt das?', mentions: [AGENT] }, { run })
     expect(enforceMentionBounds).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'user_me' }), 1)
 
-    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti @Anna Berger stimmt das?', mentions: [PILOTI, ANNA] }, { run })
+    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti @Anna Berger stimmt das?', mentions: [AGENT, ANNA] }, { run })
     expect(enforceMentionBounds).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'user_me' }), 2)
   })
 
   it('keeps no @Piloti in a mark’s own text: only a reply addresses Piloti, and setting a mark wakes nobody', async () => {
     await createAnnotation(
       'doc_1',
-      { page: 1, shape: 'point', x: 0.2, y: 0.2, kind: 'hint', body: '@Piloti @Anna Berger prüfen', mentions: [PILOTI, ANNA] },
+      { page: 1, shape: 'point', x: 0.2, y: 0.2, kind: 'hint', body: '@Piloti @Anna Berger prüfen', mentions: [AGENT, ANNA] },
       { run }
     )
 
@@ -467,9 +467,9 @@ describe('what a mention costs and where it counts', () => {
   it('mentions nobody but Piloti where the office has no collaboration, as the chat and the people picker do', async () => {
     vi.mocked(isCollaborationEnabled).mockReturnValue(false)
 
-    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti @Anna Berger bitte', mentions: [PILOTI, ANNA] }, { run })
+    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti @Anna Berger bitte', mentions: [AGENT, ANNA] }, { run })
 
-    expect(insertAnnotationReply).toHaveBeenCalledWith(expect.objectContaining({ mentions: [PILOTI] }), undefined)
+    expect(insertAnnotationReply).toHaveBeenCalledWith(expect.objectContaining({ mentions: [AGENT] }), undefined)
     expect(await rowsOf('annotation.mentioned')).toEqual([])
   })
 })

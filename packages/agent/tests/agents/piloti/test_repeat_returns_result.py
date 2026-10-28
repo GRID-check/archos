@@ -29,7 +29,7 @@ from langchain_core.tools import tool
 from agent.agents.piloti.agent import _FAILED_FETCH_REPEAT_MESSAGE
 from agent.agents.piloti.agent import _REPEAT_FETCH_MESSAGE
 from agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
 from agent.citations.registry import SourceRegistry
@@ -103,14 +103,14 @@ def _batch(*calls: dict) -> AIMessage:
     return AIMessage(content="", tool_calls=list(calls))
 
 
-def _agent(*rounds: AIMessage, ceiling: int = 7) -> PilotiAgent:
+def _agent(*rounds: AIMessage, ceiling: int = 7) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=list(rounds))
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(
+    return ChatAgent(
         llm_provider=provider,
         tools=_TOOLS,
         system_prompt=_PROMPT,
@@ -118,7 +118,7 @@ def _agent(*rounds: AIMessage, ceiling: int = 7) -> PilotiAgent:
     )
 
 
-async def _run(agent: PilotiAgent):
+async def _run(agent: ChatAgent):
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content="Wie lang darf der Fluchtweg sein?")]))
 
 

@@ -27,8 +27,8 @@ vi.mock('@/lib/projects/folder-bin-jobs', () => ({ runPurgeBinnedChunksSlice: vi
 vi.mock('@/lib/projects/collection-placement', () => ({ runPlacementReingestSlice: vi.fn() }))
 vi.mock('@/lib/mail-import/job', () => ({ runMailImportSlice: vi.fn() }))
 vi.mock('@/lib/tasks/service', () => ({ runReportFilingJob: vi.fn() }))
-vi.mock('@/lib/annotations/wake-job', () => ({ runPilotiWake: vi.fn() }))
-vi.mock('@/lib/annotations/wake-stop-job', () => ({ runPilotiWakeStop: vi.fn() }))
+vi.mock('@/lib/annotations/wake-job', () => ({ runAgentWake: vi.fn() }))
+vi.mock('@/lib/annotations/wake-stop-job', () => ({ runAgentWakeStop: vi.fn() }))
 vi.mock('@/lib/project-intake/service', () => ({
   runIntakeReadSlice: vi.fn(async (_session: unknown, payload: unknown) => ({ done: true, payload })),
 }))
@@ -41,7 +41,7 @@ import { JOB_HANDLERS } from './handlers'
 const PROJECT = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f'
 const payload = {
   projectId: PROJECT,
-  requester: { userId: 'anna', email: 'anna@grid.test', organizationMembershipId: 'om-1', role: 'admin', permissions: ['x'] },
+  requester: { userId: 'anna', email: 'anna@example.test', organizationMembershipId: 'om-1', role: 'admin', permissions: ['x'] },
 }
 const NOW_SESSION = { userId: 'anna', organizationId: 'org-1', role: 'member' } as Partial<AuthorizedSession> as AuthorizedSession
 
@@ -56,7 +56,7 @@ describe('JOB_HANDLERS.project_intake_read', () => {
       done: true,
       payload,
     })
-    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({ userId: 'anna', email: 'anna@grid.test', organizationId: 'org-1' })
+    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({ userId: 'anna', email: 'anna@example.test', organizationId: 'org-1' })
     expect(runIntakeReadSlice).toHaveBeenCalledWith(NOW_SESSION, payload)
   })
 

@@ -63,7 +63,7 @@ from agent.citations.session import set_session_registry
 from agent.common import LLMProvider
 from agent.common import LLMRole
 from agent.common import content_to_text
-from agent.common.cost_tracking import grid_cost_tracker_var
+from agent.common.cost_tracking import cost_tracker_var
 from agent.common.data_sources import disabled_source_notice
 from agent.common.data_sources import source_id_for_call
 from agent.common.grounding_block import begin_grounding_capture
@@ -287,7 +287,7 @@ class TurnBinding:
     #: :attr:`disabled_sources`, so the round the agent node charges is the
     #: round the tools node executes. 0 disables the cap.
     max_calls_per_round: int = 0
-    #: See :attr:`TurnConfig.prefetch`. Read once, in :meth:`PilotiAgent.run`.
+    #: See :attr:`TurnConfig.prefetch`. Read once, in :meth:`ChatAgent.run`.
     prefetch: tuple[dict[str, Any], ...] = ()
     #: See :attr:`TurnConfig.disabled_sources`. Read in BOTH nodes, so the
     #: round the agent node announces is the round the tools node runs.
@@ -855,7 +855,7 @@ def _recursion_limit(ceiling: int) -> int:
 def _turn_input_tokens() -> int:
     """Input tokens this turn has already paid for, off the cost tracker.
 
-    The one accumulator that already exists: ``GridCostTracker`` meters every
+    The one accumulator that already exists: ``CostTracker`` meters every
     chat completion of the turn through LangChain's configure hook, so this
     counts the agent's own rounds, the reranker and every post-answer stage
     that has run so far, with no second meter to keep in step. Zero outside a
@@ -863,7 +863,7 @@ def _turn_input_tokens() -> int:
     has been spent" and therefore never forces synthesis — the honest default
     for a process that is not billing anyone.
     """
-    tracker = grid_cost_tracker_var.get()
+    tracker = cost_tracker_var.get()
     if tracker is None:
         return 0
     return tracker.prompt_tokens
@@ -986,7 +986,7 @@ PREFETCH_NOTE = (
 )
 
 
-class PilotiAgent:
+class ChatAgent:
     """Fast, bounded research with tool-calling.
 
     A two-node LangGraph (``agent`` → ``tools`` → ``agent`` …) whose loop
@@ -997,7 +997,7 @@ class PilotiAgent:
     Example:
         >>> provider = LLMProvider()
         >>> provider.set_default(my_llm)
-        >>> agent = PilotiAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=5)
+        >>> agent = ChatAgent(llm_provider=provider, tools=[web_search_tool], max_tool_iterations=5)
         >>> result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="What is CUDA?")]))
     """
 
@@ -1357,7 +1357,7 @@ class PilotiAgent:
             result = await binding.tool_node.ainvoke(_without_dropped_calls(state, withheld) if withheld else state)
         registry = get_session_registry()
         if registry is None:
-            raise RuntimeError("PilotiAgent graph invoked outside run(): no source registry is bound")
+            raise RuntimeError("ChatAgent graph invoked outside run(): no source registry is bound")
         # Restricted content is admitted for the conversation BEFORE anything
         # reads it (ADR-0087, ADR-0088): a result carrying a restricted
         # collection that is not admitted (not drawable this turn, refused

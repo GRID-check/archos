@@ -9,10 +9,10 @@ import pytest
 from agent import project_context as pc
 
 FIXTURE_PATH = (
-    Path(__file__).resolve().parents[3] / "apps" / "workspace" / "tests" / "fixtures" / "grid_request_context.json"
+    Path(__file__).resolve().parents[3] / "apps" / "workspace" / "tests" / "fixtures" / "request_context.json"
 )
 
-# Camel-case JSON fixture field name -> GridRequestContext attribute name.
+# Camel-case JSON fixture field name -> RequestContext attribute name.
 _INPUT_FIELD_MAP = {
     "organizationId": "organization_id",
     "userId": "user_id",
@@ -89,7 +89,7 @@ class TestMemoryReflectionFlag:
 
     def test_reads_the_expected_header(self, monkeypatch):
         # get_memory_reflection_enabled_from_context() now delegates to
-        # GridRequestContext.from_context(), which reads every X-Grid-*
+        # RequestContext.from_context(), which reads every X-Grid-*
         # header in one pass (backlog T3-9) — so _read_header is called
         # several times per invocation, not just once. Record every name
         # seen instead of asserting on a single overwritten value.
@@ -118,8 +118,8 @@ class TestComposeProjectContext:
         assert pc.compose_project_context(None, None) is None
 
 
-class TestGridRequestContextFromContext:
-    """`GridRequestContext.from_context()` reads every X-Grid-* header from
+class TestRequestContextFromContext:
+    """`RequestContext.from_context()` reads every X-Grid-* header from
     NAT Context metadata in one pass; drive it via the same `_read_header`
     monkeypatch seam the rest of this file uses.
     """
@@ -151,7 +151,7 @@ class TestGridRequestContextFromContext:
         }
         monkeypatch.setattr(pc, "_read_header", lambda name: headers.get(name))
 
-        ctx = pc.GridRequestContext.from_context()
+        ctx = pc.RequestContext.from_context()
 
         assert ctx.organization_id == "org_1"
         assert ctx.user_id == "user_1"
@@ -166,7 +166,7 @@ class TestGridRequestContextFromContext:
 
     def test_empty_context(self, monkeypatch):
         monkeypatch.setattr(pc, "_read_header", lambda name: None)
-        assert pc.GridRequestContext.from_context() == pc.GridRequestContext()
+        assert pc.RequestContext.from_context() == pc.RequestContext()
 
     def test_a_blank_collection_name_is_dropped_not_projected(self, monkeypatch):
         """A blank name authorizes nothing, so it is skipped — and the payload
@@ -183,7 +183,7 @@ class TestGridRequestContextFromContext:
         }
         monkeypatch.setattr(pc, "_read_header", lambda name: headers.get(name))
 
-        ctx = pc.GridRequestContext.from_context()
+        ctx = pc.RequestContext.from_context()
 
         assert ctx.collection_scope == ["proj_proj_1"]
         # The entries keep their raw shape (the shelf travels with them); only
@@ -192,7 +192,7 @@ class TestGridRequestContextFromContext:
 
     def test_malformed_json_headers_degrade_to_none_not_an_exception(self, monkeypatch):
         monkeypatch.setattr(pc, "_read_header", lambda name: "not-valid-base64url-json!!!")
-        ctx = pc.GridRequestContext.from_context()
+        ctx = pc.RequestContext.from_context()
         assert ctx.collection_scope is None
         assert ctx.model_overrides is None
         assert ctx.budget is None
@@ -202,7 +202,7 @@ class TestGridRequestContextFromContext:
         """get_project_id_from_context / get_organization_id_from_context /
         get_memory_reflection_enabled_from_context / get_profile_context_from_context
         / get_memory_digest_from_context must all agree with the equivalent
-        GridRequestContext field for the same underlying headers.
+        RequestContext field for the same underlying headers.
         """
         headers = {
             pc.ORGANIZATION_ID_HEADER: "org_9",
@@ -213,7 +213,7 @@ class TestGridRequestContextFromContext:
         }
         monkeypatch.setattr(pc, "_read_header", lambda name: headers.get(name))
 
-        ctx = pc.GridRequestContext.from_context()
+        ctx = pc.RequestContext.from_context()
         assert pc.get_organization_id_from_context() == ctx.organization_id == "org_9"
         assert pc.get_project_id_from_context() == ctx.project_id == "proj_9"
         assert pc.get_profile_context_from_context() == ctx.project_context == "profile blob"
@@ -222,7 +222,7 @@ class TestGridRequestContextFromContext:
         assert pc.get_project_context_from_context() == "profile blob\n\nmemory blob"
 
 
-class TestGridRequestContextContractFixture:
+class TestRequestContextContractFixture:
     """Cross-language wire contract (backlog T3-9): parsing the fixture's
     `headers` must reproduce the fixture's `input`-equivalent values. The TS
     side (`apps/workspace/bff/request-context.spec.ts`) asserts the
@@ -242,7 +242,7 @@ class TestGridRequestContextContractFixture:
     def test_each_case_round_trips(self):
         fixture = self._load_fixture()
         for case in fixture["cases"]:
-            ctx = pc.GridRequestContext.from_headers(case["headers"])
+            ctx = pc.RequestContext.from_headers(case["headers"])
             expected_input = case["input"]
 
             for json_field, attr_name in _INPUT_FIELD_MAP.items():
@@ -253,11 +253,11 @@ class TestGridRequestContextContractFixture:
                 )
 
 
-class TestGridRequestContextEnvelopeContractFixture:
+class TestRequestContextEnvelopeContractFixture:
     """Cross-language wire contract for the signed envelope (T3-9 follow-up,
     2026-07-16). `envelopeCases` in the fixture carries {secret, input,
     envelopeJson, header, signature}; the TS side
-    (`buildGridRequestContextEnvelope`) asserts building `input` with
+    (`buildRequestContextEnvelope`) asserts building `input` with
     `secret` reproduces `header`/`signature`. This asserts the opposite
     direction: verifying+parsing `header`/`signature` with `secret`
     reproduces the `input`-equivalent fields.
@@ -275,7 +275,7 @@ class TestGridRequestContextEnvelopeContractFixture:
     def test_each_envelope_case_round_trips(self):
         fixture = self._load_fixture()
         for case in fixture["envelopeCases"]:
-            ctx = pc.GridRequestContext.from_envelope(case["header"], case["signature"], case["secret"])
+            ctx = pc.RequestContext.from_envelope(case["header"], case["signature"], case["secret"])
             assert ctx is not None, f"case {case['name']!r}: valid signature must not be treated as absent"
             expected_input = case["input"]
 
@@ -296,8 +296,8 @@ class TestGridRequestContextEnvelopeContractFixture:
             assert decoded == case["envelopeJson"], f"case {case['name']!r}: header does not decode to envelopeJson"
 
 
-class TestGridRequestContextFromEnvelope:
-    """Unit tests for `GridRequestContext.from_envelope` — the single
+class TestRequestContextFromEnvelope:
+    """Unit tests for `RequestContext.from_envelope` — the single
     verify+parse function the enforcement middleware in
     `agent_host.context_envelope` and `from_context`/`from_headers` (envelope
     precedence) all delegate to.
@@ -319,14 +319,14 @@ class TestGridRequestContextFromEnvelope:
         return header, sig
 
     def test_none_header_is_absent(self):
-        assert pc.GridRequestContext.from_envelope(None, "sig", self.SECRET) is None
+        assert pc.RequestContext.from_envelope(None, "sig", self.SECRET) is None
 
     def test_empty_header_is_absent(self):
-        assert pc.GridRequestContext.from_envelope("", "sig", self.SECRET) is None
+        assert pc.RequestContext.from_envelope("", "sig", self.SECRET) is None
 
     def test_valid_signature_parses_fields(self):
         header, sig = self._envelope({"organizationId": "org_1", "userId": "user_1", "memoryReflectionEnabled": True})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.organization_id == "org_1"
         assert ctx.user_id == "user_1"
@@ -334,50 +334,50 @@ class TestGridRequestContextFromEnvelope:
 
     def test_missing_signature_treated_as_absent_when_secret_configured(self):
         header, _sig = self._envelope({"organizationId": "org_1"})
-        assert pc.GridRequestContext.from_envelope(header, None, self.SECRET) is None
+        assert pc.RequestContext.from_envelope(header, None, self.SECRET) is None
 
     def test_tampered_signature_treated_as_absent(self):
         header, sig = self._envelope({"organizationId": "org_1"})
         tampered_sig = ("0" if sig[0] != "0" else "1") + sig[1:]
-        assert pc.GridRequestContext.from_envelope(header, tampered_sig, self.SECRET) is None
+        assert pc.RequestContext.from_envelope(header, tampered_sig, self.SECRET) is None
 
     def test_wrong_secret_treated_as_absent(self):
         header, sig = self._envelope({"organizationId": "org_1"})
-        assert pc.GridRequestContext.from_envelope(header, sig, "a-different-secret") is None
+        assert pc.RequestContext.from_envelope(header, sig, "a-different-secret") is None
 
     def test_tamper_logs_a_warning(self, caplog):
         header, sig = self._envelope({"organizationId": "org_1"})
         tampered_sig = ("0" if sig[0] != "0" else "1") + sig[1:]
         with caplog.at_level("WARNING", logger="agent.project_context"):
-            pc.GridRequestContext.from_envelope(header, tampered_sig, self.SECRET)
+            pc.RequestContext.from_envelope(header, tampered_sig, self.SECRET)
         assert any("signature" in record.message.lower() for record in caplog.records)
 
     def test_no_secret_configured_skips_signature_check_but_still_requires_header(self):
         header, _sig = self._envelope({"organizationId": "org_1"})
         # No secret (dev, INTERNAL_API_TOKEN unset) -> shape-only check;
         # signature is ignored entirely (even garbage/missing).
-        ctx = pc.GridRequestContext.from_envelope(header, "garbage-signature", None)
+        ctx = pc.RequestContext.from_envelope(header, "garbage-signature", None)
         assert ctx is not None
         assert ctx.organization_id == "org_1"
 
-        ctx_no_sig = pc.GridRequestContext.from_envelope(header, None, None)
+        ctx_no_sig = pc.RequestContext.from_envelope(header, None, None)
         assert ctx_no_sig is not None
         assert ctx_no_sig.organization_id == "org_1"
 
     def test_malformed_base64_is_absent_not_an_exception(self):
-        assert pc.GridRequestContext.from_envelope("not-valid-base64!!!", "sig", None) is None
+        assert pc.RequestContext.from_envelope("not-valid-base64!!!", "sig", None) is None
 
     def test_non_object_json_is_absent(self):
         raw = json.dumps(["not", "an", "object"])
         header = base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
-        assert pc.GridRequestContext.from_envelope(header, None, None) is None
+        assert pc.RequestContext.from_envelope(header, None, None) is None
 
     def test_defaults_missing_fields_to_none_or_false(self):
         header, sig = self._envelope({})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         # Every PARSED field defaults; the two raw-envelope fields are what was
         # received, so they are compared against the input rather than to None.
-        assert ctx == pc.GridRequestContext(envelope_header=header, envelope_signature=sig)
+        assert ctx == pc.RequestContext(envelope_header=header, envelope_signature=sig)
 
     def test_the_raw_envelope_is_retained_byte_for_byte(self):
         """A tool that calls back into the BFF echoes these; it never re-signs.
@@ -386,7 +386,7 @@ class TestGridRequestContextFromEnvelope:
         and the signature covers the bytes, not the meaning.
         """
         header, sig = self._envelope({"organizationId": "org_1", "userId": "user_1", "conversationId": "conv_1"})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.envelope_header == header
         assert ctx.envelope_signature == sig
@@ -395,25 +395,25 @@ class TestGridRequestContextFromEnvelope:
     def test_an_unverified_envelope_leaves_nothing_to_echo(self):
         """A wrong signature is an ABSENT envelope, so there are no bytes to echo."""
         header, _ = self._envelope({"organizationId": "org_1"})
-        assert pc.GridRequestContext.from_envelope(header, "deadbeef", self.SECRET) is None
+        assert pc.RequestContext.from_envelope(header, "deadbeef", self.SECRET) is None
 
     def test_issued_at_is_read_as_an_int_and_never_from_a_bool(self):
         """`isinstance(True, int)` is true in Python; `issuedAt: true` is not a time."""
         header, sig = self._envelope({"issuedAt": 1_757_500_000_000})
-        assert pc.GridRequestContext.from_envelope(header, sig, self.SECRET).issued_at == 1_757_500_000_000
+        assert pc.RequestContext.from_envelope(header, sig, self.SECRET).issued_at == 1_757_500_000_000
         header, sig = self._envelope({"issuedAt": True})
-        assert pc.GridRequestContext.from_envelope(header, sig, self.SECRET).issued_at is None
+        assert pc.RequestContext.from_envelope(header, sig, self.SECRET).issued_at is None
 
     @pytest.mark.parametrize("transport", ["bff", None, "BFF", " bff ", "inline", 1, {}, True])
     def test_only_the_supported_transport_marker_is_recognized(self, transport):
         header, sig = self._envelope({"contextTransport": transport})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.context_transport == ("bff" if transport == "bff" else None)
         assert (ctx.envelope_header, ctx.envelope_signature) == (header, sig)
 
 
-class TestGridRequestContextEnvelopePrecedence:
+class TestRequestContextEnvelopePrecedence:
     """`from_context`/`from_headers` prefer a valid envelope over the
     individual headers; an invalid envelope falls back to them.
     """
@@ -423,7 +423,7 @@ class TestGridRequestContextEnvelopePrecedence:
     def _envelope_headers(self, payload: dict) -> dict[str, str]:
         raw = json.dumps(payload)
         header = base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
-        sig = TestGridRequestContextFromEnvelope._sign(raw, self.SECRET)
+        sig = TestRequestContextFromEnvelope._sign(raw, self.SECRET)
         return {
             pc.REQUEST_CONTEXT_ENVELOPE_HEADER: header,
             pc.REQUEST_CONTEXT_ENVELOPE_SIG_HEADER: sig,
@@ -436,7 +436,7 @@ class TestGridRequestContextEnvelopePrecedence:
         merged = {**individual_headers, **envelope_headers}
         monkeypatch.setattr(pc, "_read_header", lambda name: merged.get(name))
 
-        ctx = pc.GridRequestContext.from_context()
+        ctx = pc.RequestContext.from_context()
         assert ctx.organization_id == "org_from_envelope"
 
     def test_from_context_falls_back_to_individual_headers_when_envelope_invalid(self, monkeypatch):
@@ -449,21 +449,21 @@ class TestGridRequestContextEnvelopePrecedence:
         merged = {**individual_headers, **envelope_headers}
         monkeypatch.setattr(pc, "_read_header", lambda name: merged.get(name))
 
-        ctx = pc.GridRequestContext.from_context()
+        ctx = pc.RequestContext.from_context()
         assert ctx.organization_id == "org_from_individual_header"
 
     def test_from_headers_prefers_valid_envelope(self):
         envelope_headers = self._envelope_headers({"organizationId": "org_from_envelope"})
         headers = {pc.ORGANIZATION_ID_HEADER: "org_from_individual_header", **envelope_headers}
 
-        ctx = pc.GridRequestContext.from_headers(headers, secret=self.SECRET)
+        ctx = pc.RequestContext.from_headers(headers, secret=self.SECRET)
         assert ctx.organization_id == "org_from_envelope"
 
     def test_from_headers_without_secret_ignores_signature_and_still_prefers_envelope(self):
         envelope_headers = self._envelope_headers({"organizationId": "org_from_envelope"})
         headers = {pc.ORGANIZATION_ID_HEADER: "org_from_individual_header", **envelope_headers}
 
-        ctx = pc.GridRequestContext.from_headers(headers)
+        ctx = pc.RequestContext.from_headers(headers)
         assert ctx.organization_id == "org_from_envelope"
 
     def test_compact_context_is_parsed_by_both_header_entry_points(self, monkeypatch):
@@ -486,8 +486,8 @@ class TestGridRequestContextEnvelopePrecedence:
         )
         headers[pc.PROJECT_CONTEXT_HEADER] = base64.urlsafe_b64encode(b"stale profile").decode("ascii")
         monkeypatch.setattr(pc, "_read_header", lambda name: headers.get(name))
-        context = pc.GridRequestContext.from_context()
-        assert pc.GridRequestContext.from_headers(headers, secret=self.SECRET) == context
+        context = pc.RequestContext.from_context()
+        assert pc.RequestContext.from_headers(headers, secret=self.SECRET) == context
         assert context.context_transport == "bff"
         assert (context.organization_id, context.user_id, context.project_id) == ("org_1", "user_1", "513")
         assert context.conversation_id == "conv_text"
@@ -505,8 +505,8 @@ class TestGridRequestContextEnvelopePrecedence:
     def test_unsigned_transport_header_does_not_opt_in(self, monkeypatch):
         headers = {"x-grid-context-transport": "bff"}
         monkeypatch.setattr(pc, "_read_header", lambda name: headers.get(name))
-        assert pc.GridRequestContext.from_context().context_transport is None
-        assert pc.GridRequestContext.from_headers(headers).context_transport is None
+        assert pc.RequestContext.from_context().context_transport is None
+        assert pc.RequestContext.from_headers(headers).context_transport is None
 
 
 class TestFederalStateField:
@@ -522,55 +522,55 @@ class TestFederalStateField:
     def _envelope(self, payload: dict) -> tuple[str, str]:
         raw = json.dumps(payload)
         header = base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
-        sig = TestGridRequestContextFromEnvelope._sign(raw, self.SECRET)
+        sig = TestRequestContextFromEnvelope._sign(raw, self.SECRET)
         return header, sig
 
     def test_valid_token_round_trips(self):
         header, sig = self._envelope({"organizationId": "org_1", "federalState": "tyrol"})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.federal_state == "tyrol"
 
     def test_the_field_name_and_tokens_an_older_bff_signed_are_read_as_the_english_ones(self):
         header, sig = self._envelope({"organizationId": "org_1", "bundesland": "wien"})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.federal_state == "vienna"
         header, sig = self._envelope({"federalState": "tirol"})
-        assert pc.GridRequestContext.from_envelope(header, sig, self.SECRET).federal_state == "tyrol"
+        assert pc.RequestContext.from_envelope(header, sig, self.SECRET).federal_state == "tyrol"
 
     def test_outside_austria_token_round_trips_literally(self):
         # project_context.py only validates against the vocabulary; mapping
         # "outside_austria" to "no state prioritized" (None) is
         # ris_catalog.resolve_federal_state's job, not the parser's.
         header, sig = self._envelope({"federalState": "outside_austria"})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.federal_state == "outside_austria"
 
     def test_unknown_token_treated_as_absent(self, caplog):
         header, sig = self._envelope({"organizationId": "org_1", "federalState": "atlantis"})
         with caplog.at_level("DEBUG", logger="agent.project_context"):
-            ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+            ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.federal_state is None
         assert any("federal_state" in record.message.lower() for record in caplog.records)
 
     def test_non_string_token_treated_as_absent(self):
         header, sig = self._envelope({"federalState": 42})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.federal_state is None
 
     def test_case_and_whitespace_insensitive(self):
         header, sig = self._envelope({"federalState": "  VIENNA  "})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.federal_state == "vienna"
 
     def test_absent_field_defaults_to_none(self):
         header, sig = self._envelope({"organizationId": "org_1"})
-        ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
+        ctx = pc.RequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None
         assert ctx.federal_state is None
 
@@ -579,11 +579,11 @@ class TestFederalStateField:
         # headers, which have no federal_state source whatsoever.
         headers = {pc.ORGANIZATION_ID_HEADER: "org_1"}
         monkeypatch.setattr(pc, "_read_header", lambda name: headers.get(name))
-        ctx = pc.GridRequestContext.from_context()
+        ctx = pc.RequestContext.from_context()
         assert ctx.federal_state is None
 
     def test_from_headers_legacy_individual_headers_never_populate_federal_state(self):
-        ctx = pc.GridRequestContext.from_headers({pc.ORGANIZATION_ID_HEADER: "org_1"})
+        ctx = pc.RequestContext.from_headers({pc.ORGANIZATION_ID_HEADER: "org_1"})
         assert ctx.federal_state is None
 
 
@@ -601,9 +601,9 @@ class TestOrgInstructions:
     def _encoded(text: str) -> str:
         return base64.urlsafe_b64encode(text.encode("utf-8")).decode("ascii").rstrip("=")
 
-    def _read(self, monkeypatch, raw: str | None) -> pc.GridRequestContext:
+    def _read(self, monkeypatch, raw: str | None) -> pc.RequestContext:
         monkeypatch.setattr(pc, "_read_header", lambda name: raw if name == pc.ORG_INSTRUCTIONS_HEADER else None)
-        return pc.GridRequestContext.from_context()
+        return pc.RequestContext.from_context()
 
     def test_the_header_name_is_the_one_the_bff_sends(self):
         assert pc.ORG_INSTRUCTIONS_HEADER == "x-grid-org-instructions"
@@ -644,7 +644,7 @@ class TestOrgInstructions:
         payload = {"organizationId": "org_1", "orgInstructions": "Kurz antworten."}
         header = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("ascii").rstrip("=")
 
-        ctx = pc.GridRequestContext.from_envelope(header, None, None)
+        ctx = pc.RequestContext.from_envelope(header, None, None)
 
         assert ctx is not None
         assert ctx.org_instructions == "Kurz antworten."
@@ -653,14 +653,14 @@ class TestOrgInstructions:
         payload = {"orgInstructions": "A" * (pc.ORG_INSTRUCTIONS_MAX_CHARS + 10)}
         header = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("ascii").rstrip("=")
 
-        ctx = pc.GridRequestContext.from_envelope(header, None, None)
+        ctx = pc.RequestContext.from_envelope(header, None, None)
 
         assert ctx is not None
         assert ctx.org_instructions is not None
         assert ctx.org_instructions.endswith(pc.ORG_INSTRUCTIONS_TRUNCATED_MARKER)
 
     def test_from_headers_reads_it_case_insensitively(self):
-        ctx = pc.GridRequestContext.from_headers({"X-Grid-Org-Instructions": self._encoded("Kurz antworten.")})
+        ctx = pc.RequestContext.from_headers({"X-Grid-Org-Instructions": self._encoded("Kurz antworten.")})
         assert ctx.org_instructions == "Kurz antworten."
 
     def test_the_accessor_returns_what_the_parse_bounded(self, monkeypatch):

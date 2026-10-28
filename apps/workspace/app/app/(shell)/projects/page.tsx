@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { getNavFlags } from '@/lib/authz/nav'
 import { canManageCompliance } from '@/lib/authz/organizations'
-import { getProjectsGridData } from '@/lib/projects/service'
+import { getProjectsListData } from '@/lib/projects/service'
 import { ProjectsGrid } from '@/components/projects/projects-grid'
 import { OfficeShelfEntryCard } from '@/components/projects/office-shelf-entry-card'
 import { ShellContent } from '@/components/shell'
@@ -25,7 +25,7 @@ export default async function ProjectsPage({
     // The page is transport: it resolves the session, asks the service for the
     // view, and renders. Tenancy scope, FGA filtering and the document counts all
     // belong to the service/repository pair behind this call — see
-    // `getProjectsGridData`.
+    // `getProjectsListData`.
     // 'newest' rather than 'oldest': the grid orders itself by recency now (the
     // resume rail, then the list), and the repository's order decides which
     // projects survive PROJECT_LIST_LIMIT — at the cap, dropping the oldest is
@@ -34,7 +34,7 @@ export default async function ProjectsPage({
       projects: rows,
       documentCounts: docCountByProject,
       viewerActivity,
-    } = await getProjectsGridData(session, 'newest')
+    } = await getProjectsListData(session, 'newest')
 
     const autoOpenCreate = newParam === '1'
 

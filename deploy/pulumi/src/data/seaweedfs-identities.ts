@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { LANGFUSE, QDRANT } from "../constants";
 
 /**
@@ -131,10 +131,10 @@ export function s3IdentityCatalog({
   // output in their most unredacted form. Langfuse reaches its own bucket with
   // its own identity below. Excluding it here is what keeps adding a platform
   // bucket from silently widening an existing credential.
-  const gridBuckets = platformBuckets.filter((bucket) => bucket !== langfuseBucket && bucket !== qdrantBucket);
+  const appBuckets = platformBuckets.filter((bucket) => bucket !== langfuseBucket && bucket !== qdrantBucket);
 
   const perBucket = (action: string): string[] => [
-    ...gridBuckets.map((bucket) => `${action}:${bucket}`),
+    ...appBuckets.map((bucket) => `${action}:${bucket}`),
     ...tenantScope(action),
   ];
 
@@ -211,7 +211,7 @@ export function s3IdentityCatalog({
 
 /** Render `s3.json` by zipping this stack's credentials onto the catalogue. */
 export function renderS3Config(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   { platformBuckets, tenantBucketPrefix, provisioning }: S3IdentityInputs,
 ): pulumi.Output<string> {
   return pulumi
@@ -255,7 +255,7 @@ export function renderS3Config(
 
 /** The mounted `s3.json`, as a Secret both topologies attach. */
 export function s3ConfigSecret(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   inputs: S3IdentityInputs,

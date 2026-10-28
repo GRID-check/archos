@@ -29,7 +29,7 @@ interface ProjectProfilePatchCardProps {
   /**
    * Whether this surface requires the answer to be persisted. With no owning
    * message the card then shows WHAT is proposed and offers nothing — see
-   * `GridCards.decisionsMustPersist`.
+   * `AnswerCards.decisionsMustPersist`.
    */
   decisionsMustPersist?: boolean
   /** The stored proposal this card is a receipt of (ADR-0105). Absent: the fallback below. */

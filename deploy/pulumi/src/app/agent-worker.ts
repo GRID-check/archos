@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { appPullPolicy, backendImage } from '../config/images'
 import { toResourceRequirements } from '../config/resources'
 import { commonLabels } from "../platform/namespaces";
@@ -59,7 +59,7 @@ export const RESEARCH_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  */
 export function installAgentWorker(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): {

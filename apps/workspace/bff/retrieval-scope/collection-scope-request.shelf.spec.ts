@@ -48,7 +48,7 @@ const ORG_ID = 'org_1'
 const session = {
   userId: 'user_me',
   organizationId: ORG_ID,
-  email: 'me@grid.test',
+  email: 'me@example.test',
   featureFlags: null,
 } as unknown as AuthorizedSession
 

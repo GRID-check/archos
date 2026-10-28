@@ -20,7 +20,7 @@ import { resolveOrgInstructions } from '@/lib/org-instructions/service'
 import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { requesterOf, type GridBudgetSnapshot, type GridRequestContextInput } from '@/lib/request-context'
+import { requesterOf, type BudgetSnapshot, type RequestContextInput } from '@/lib/request-context'
 import { isMemoryReflectionEnabled } from '@/lib/workos/feature-flags'
 
 /** Who a run is for, and where. */
@@ -91,7 +91,7 @@ export function runRequestContextInput(
   context: RunContext,
   conversationId: string | null,
   issuedAt: number,
-): GridRequestContextInput {
+): RequestContextInput {
   return {
     organizationId: subject.organizationId,
     userId: subject.userId,
@@ -119,7 +119,7 @@ async function resolveBudgetSnapshot(
   organizationId: string,
   userId: string,
   projectId: string,
-): Promise<GridBudgetSnapshot | null> {
+): Promise<BudgetSnapshot | null> {
   try {
     const status = await getBudgetStatus(organizationId, userId, projectId)
     return {

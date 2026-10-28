@@ -6,7 +6,7 @@
  * A proposal's reason, a document's title and a task's title are what the
  * reader decides on. Cutting them at one or two lines keeps a card compact,
  * but the full text used to live in a `title` attribute, and a touch screen
- * never shows one (grid-design-language.md, Touch: a hover reveal needs a
+ * never shows one (design-language.md, Touch: a hover reveal needs a
  * second way in). So the text is clamped, and only when the clamp really cut
  * something a "Mehr anzeigen" button appears under it. Text that fits shows no
  * button at all: nothing is added to a short title.

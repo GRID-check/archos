@@ -33,7 +33,7 @@ vi.mock('@/lib/limits', async (importOriginal) => ({
 import { TooManyRequestsError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import { MCP_REQUEST_LIMIT, enforceLimit, memberSubject } from '@/lib/limits'
-import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
+import { buildRequestContextEnvelope, REQUEST_CONTEXT_HEADER_NAMES } from '@/lib/request-context'
 import { DELETE, GET, POST } from './route'
 
 const SECRET = 'internal-token-for-tests' // pragma: allowlist secret
@@ -51,15 +51,15 @@ const session = {
   featureFlags: null,
 }
 
-function pilotiHeaders(): Record<string, string> {
-  const { header, signature } = buildGridRequestContextEnvelope(
+function signedMcpHeaders(): Record<string, string> {
+  const { header, signature } = buildRequestContextEnvelope(
     { organizationId: 'org_1', userId: 'user_1', conversationId: 'conv_1', issuedAt: Date.now() },
     SECRET,
   )
   return {
     'x-grid-internal-token': SECRET,
-    [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header,
-    [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
+    [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header,
+    [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
   }
 }
 
@@ -117,14 +117,14 @@ describe('authentication', () => {
 
   it('keeps Piloti\'s door working without an AuthKit domain', async () => {
     delete process.env.WORKOS_AUTHKIT_DOMAIN
-    const response = await POST(rpc('tools/list', {}, pilotiHeaders()))
+    const response = await POST(rpc('tools/list', {}, signedMcpHeaders()))
     expect(response.status).toBe(200)
   })
 })
 
 describe('origin', () => {
   it('rejects a browser origin that is not the app', async () => {
-    const response = await POST(rpc('tools/list', {}, { origin: 'https://evil.example', ...pilotiHeaders() }))
+    const response = await POST(rpc('tools/list', {}, { origin: 'https://evil.example', ...signedMcpHeaders() }))
     expect(response.status).toBe(403)
   })
 
@@ -139,7 +139,7 @@ describe('origin', () => {
 describe('rate limit (M6)', () => {
   it('charges the mcp-request rule once per HTTP request, to the member, after the caller is known', async () => {
     const response = await POST(
-      rpc('tools/call', { name: 'search-operations', arguments: { query: 'project' } }, pilotiHeaders()),
+      rpc('tools/call', { name: 'search-operations', arguments: { query: 'project' } }, signedMcpHeaders()),
     )
     expect(response.status).toBe(200)
     expect(enforceLimit).toHaveBeenCalledTimes(1)
@@ -161,7 +161,7 @@ describe('rate limit (M6)', () => {
       degraded: false,
     }
     vi.mocked(enforceLimit).mockRejectedValueOnce(new TooManyRequestsError(decision))
-    const response = await POST(rpc('tools/list', {}, pilotiHeaders()))
+    const response = await POST(rpc('tools/list', {}, signedMcpHeaders()))
     expect(response.status).toBe(429)
     expect(response.headers.get('retry-after')).toBe('7')
     expect(response.headers.get('x-ratelimit-policy')).toBe('mcp-request')
@@ -184,7 +184,7 @@ describe('one JSON-RPC message per POST', () => {
     })
     const request = new Request(URL_, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...pilotiHeaders() },
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...signedMcpHeaders() },
       body: ` ${JSON.stringify([call(1), call(2), call(3)])}`,
     })
     const response = await POST(request)
@@ -196,7 +196,7 @@ describe('one JSON-RPC message per POST', () => {
 
   it('still answers a single message after looking at the body', async () => {
     const response = await POST(
-      rpc('tools/call', { name: 'search-operations', arguments: { query: 'project' } }, pilotiHeaders()),
+      rpc('tools/call', { name: 'search-operations', arguments: { query: 'project' } }, signedMcpHeaders()),
     )
     expect(response.status).toBe(200)
   })
@@ -205,7 +205,7 @@ describe('one JSON-RPC message per POST', () => {
 describe('when WorkOS does not answer', () => {
   it('answers a JSON 503 the agent can retry, not a bare 500', async () => {
     vi.mocked(resolvePinnedRequesterSession).mockRejectedValueOnce(new Error('fetch failed: api.workos.com'))
-    const response = await POST(rpc('tools/list', {}, pilotiHeaders()))
+    const response = await POST(rpc('tools/list', {}, signedMcpHeaders()))
     expect(response.status).toBe(503)
     expect(await response.json()).toMatchObject({ code: 'SERVICE_UNAVAILABLE', error: expect.stringMatching(/Try again/) })
     expect(enforceLimit).not.toHaveBeenCalled()
@@ -235,7 +235,7 @@ async function messageOf<T>(response: Response): Promise<T> {
 
 describe('MCP round trip as Piloti', () => {
   async function toolNames(url: string, headers: Record<string, string> = {}): Promise<string[]> {
-    const response = await POST(rpc('tools/list', {}, { ...pilotiHeaders(), ...headers }, url))
+    const response = await POST(rpc('tools/list', {}, { ...signedMcpHeaders(), ...headers }, url))
     expect(response.status).toBe(200)
     const body = await messageOf<{ result: { tools: { name: string }[] } }>(response)
     return body.result.tools.map((tool) => tool.name)
@@ -263,7 +263,7 @@ describe('MCP round trip as Piloti', () => {
         protocolVersion: '2025-06-18',
         capabilities: {},
         clientInfo: { name: 'spec', version: '1' },
-      }, pilotiHeaders()),
+      }, signedMcpHeaders()),
     )
     const body = await messageOf<{ result: { instructions: string } }>(response)
     expect(body.result.instructions).toMatch(/workspace for architects/)
@@ -272,7 +272,7 @@ describe('MCP round trip as Piloti', () => {
 
   it('searches the catalog through tools/call', async () => {
     const response = await POST(
-      rpc('tools/call', { name: 'search-operations', arguments: { query: 'project' } }, pilotiHeaders()),
+      rpc('tools/call', { name: 'search-operations', arguments: { query: 'project' } }, signedMcpHeaders()),
     )
     const body = await messageOf<{ result: { structuredContent: { operations: { name: string }[] } } }>(response)
     expect(body.result.structuredContent.operations.map((op) => op.name)).toContain('project-list')

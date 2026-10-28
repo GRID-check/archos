@@ -6,7 +6,7 @@ import { MessageSquareShare, RotateCcw, Square, StickyNote, X } from 'lucide-rea
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { FieldError } from '@/components/ui/field'
-import { PilotiGlyph } from '@/components/ui/piloti-glyph'
+import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { liveLine } from '@/features/chat/lib/turn-events'
 import { useTranslations } from '@/i18n'
@@ -15,7 +15,7 @@ import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { Quote } from '@/components/ui/quote'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
-import { answerAsBody, answerMarkdown } from '../../lib/piloti-answer-text'
+import { answerAsBody, answerMarkdown } from '../../lib/agent-answer-text'
 import { CANVAS_ASK_INTENTS, stepsOf, type CanvasAsk, type CanvasAskIntent } from '../../hooks/use-canvas-ask'
 import type { DocumentReview } from '../../hooks/use-document-review'
 import { Composer } from './composer'
@@ -47,7 +47,7 @@ const kindFor = (intent: CanvasAskIntent | null) => (intent === 'question' ? 'qu
  * The frame is the thread card's; what Piloti does on the pages meanwhile
  * (its pointer, what it highlights) is drawn by the page layer from the room.
  */
-export function PilotiAnswerCard({
+export function AgentAnswerCard({
   review,
   ask,
   placement,
@@ -96,9 +96,9 @@ export function PilotiAnswerCard({
   }
 
   return (
-    <ReviewCard placement={placement} testId="piloti-card" labelledBy={headerId}>
+    <ReviewCard placement={placement} testId="agent-answer-card" labelledBy={headerId}>
       <div className={cn('flex items-center gap-2 border-b px-3 py-2', placement === 'docked' && 'pr-12')}>
-        <PilotiGlyph working={working} />
+        <AgentGlyph working={working} />
         <span id={headerId} className="flex min-w-0 items-center gap-2">
           <span className="text-foreground text-xs font-semibold">Piloti</span>
           {ask.region && (
@@ -114,7 +114,7 @@ export function PilotiAnswerCard({
               className="size-7 [&_svg]:size-3"
               aria-label={t('review.piloti.stop')}
               title={t('review.piloti.stop')}
-              data-testid="piloti-card-stop"
+              data-testid="agent-card-stop"
               onClick={() => piloti.dismiss(ask.id)}
             >
               <Square aria-hidden className="fill-current" />
@@ -126,7 +126,7 @@ export function PilotiAnswerCard({
             size="icon"
             className="size-7 [&_svg]:size-3.5"
             aria-label={t('review.piloti.close')}
-            data-testid="piloti-card-close"
+            data-testid="agent-answer-card-close"
             onClick={() => (working ? piloti.open(null) : piloti.dismiss(ask.id))}
           >
             <X aria-hidden />
@@ -135,10 +135,10 @@ export function PilotiAnswerCard({
       </div>
 
       {ask.status === 'composing' ? (
-        <div className="space-y-2.5 p-3" data-testid="piloti-composer">
+        <div className="space-y-2.5 p-3" data-testid="agent-composer">
           <Composer
             autoFocus
-            testId="piloti-question"
+            testId="agent-question"
             placeholder={t('review.piloti.placeholder')}
             submitLabel={t('review.piloti.send')}
             onEscape={() => piloti.dismiss(ask.id)}
@@ -149,7 +149,7 @@ export function PilotiAnswerCard({
               <Chip key={intent} asChild interactive variant="outline" size="md">
                 <button
                   type="button"
-                  data-testid={`piloti-quick-${intent}`}
+                  data-testid={`agent-quick-${intent}`}
                   disabled={piloti.busy}
                   onClick={() => void send(t(`review.piloti.quickPrompts.${intent}`), intent)}
                 >
@@ -167,12 +167,12 @@ export function PilotiAnswerCard({
               {ask.question}
             </Quote>
             {ask.degraded.includes('region') && (
-              <p className="text-muted-foreground text-[11px] leading-4" role="note" data-testid="piloti-card-degraded">
+              <p className="text-muted-foreground text-[11px] leading-4" role="note" data-testid="agent-card-degraded">
                 {t('review.piloti.degradedRegion')}
               </p>
             )}
             {notes.length > 0 && (
-              <ul className="space-y-1" aria-label={t('review.piloti.steerNotes')} data-testid="piloti-card-notes">
+              <ul className="space-y-1" aria-label={t('review.piloti.steerNotes')} data-testid="agent-card-notes">
                 {notes.map(([steerId, note]) => (
                   <li key={steerId} className="text-muted-foreground text-xs leading-5 break-words">
                     <Chip size="sm" variant="outline" className="mr-1.5 align-middle">
@@ -186,13 +186,13 @@ export function PilotiAnswerCard({
               </ul>
             )}
             {working && (
-              <div role="status" aria-live="polite" data-testid="piloti-card-thinking">
+              <div role="status" aria-live="polite" data-testid="agent-answer-card-thinking">
                 <ShimmerText className="text-xs">{line}</ShimmerText>
               </div>
             )}
             {text && (
               <div
-                data-testid="piloti-card-answer"
+                data-testid="agent-card-answer"
                 data-status={ask.status}
                 className={cn('text-[13px]', ask.status === 'declined' && 'text-muted-foreground')}
               >
@@ -200,18 +200,18 @@ export function PilotiAnswerCard({
               </div>
             )}
             {answered && !text && (
-              <p className="text-muted-foreground text-xs leading-5" data-testid="piloti-card-empty">
+              <p className="text-muted-foreground text-xs leading-5" data-testid="agent-card-empty">
                 {t('review.piloti.empty')}
               </p>
             )}
             {(ask.status === 'declined' || ask.status === 'handedOff' || ask.status === 'stopped') && (
-              <p className="text-muted-foreground text-xs leading-5" role="status" data-testid="piloti-card-ended">
+              <p className="text-muted-foreground text-xs leading-5" role="status" data-testid="agent-answer-card-ended">
                 {t(`review.piloti.${ask.status}`)}
               </p>
             )}
             {working && (
               <Composer
-                testId="piloti-steer"
+                testId="agent-steer"
                 placeholder={t('review.piloti.steerPlaceholder')}
                 submitLabel={t('review.piloti.steerSend')}
                 onSubmit={async (note) => {
@@ -252,7 +252,7 @@ export function PilotiAnswerCard({
                     size="sm"
                     className="h-7 gap-1.5 text-xs"
                     disabled={adopting}
-                    data-testid="piloti-card-adopt"
+                    data-testid="agent-card-adopt"
                     onClick={() => void adopt()}
                   >
                     <StickyNote className="size-3" aria-hidden />
@@ -262,7 +262,7 @@ export function PilotiAnswerCard({
               )}
               {piloti.conversationHref && (
                 <Button asChild type="button" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
-                  <Link href={piloti.conversationHref} data-testid="piloti-card-chat">
+                  <Link href={piloti.conversationHref} data-testid="agent-card-chat">
                     <MessageSquareShare className="size-3" aria-hidden />
                     {t('review.piloti.continueInChat')}
                   </Link>

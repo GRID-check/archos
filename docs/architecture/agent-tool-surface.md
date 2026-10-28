@@ -143,7 +143,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 - The draft verbs keep their names. They are DeepAgents stock names, stored
   turns hold them, and names persist in `functionName` and
   `get_source_id_for_tool`. The real fix is the single namespace in
-  [`piloti-filesystem-design.md`](piloti-filesystem-design.md) §3 and §6.
+  [`filesystem-design.md`](filesystem-design.md) §3 and §6.
 
 **Measured and rejected.** Do not re-propose without new evidence.
 
@@ -242,7 +242,7 @@ Repo: `pyproject.toml`; `configs/config_oib_openrouter.yml`;
 [turns audit](../audit/turns-per-answer-audit-2026-09.md),
 [turn latency](../audit/turn-latency-measured-2026-09.md),
 [hobble register](hobble-register-2026-09.md),
-[filesystem design](piloti-filesystem-design.md),
+[filesystem design](filesystem-design.md),
 [visual ingestion](visual-ingestion.md); the code paths in the tables above.
 
 External:

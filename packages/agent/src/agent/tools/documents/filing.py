@@ -17,7 +17,7 @@ The route carries a static service token and no user, and the agent's principal
 is wider than any human's. So the acting identity does not come from anything
 this process chooses: it comes from the **signed request-context envelope** the
 BFF minted at the start of the turn, forwarded here byte-for-byte
-(``GridRequestContext.envelope_header`` / ``envelope_signature``), verified there
+(``RequestContext.envelope_header`` / ``envelope_signature``), verified there
 with the same secret, and turned into that person's pinned session
 (ADR-0054 §4). Every permission check, every ``created_by`` and every audit actor
 downstream is the human who asked.

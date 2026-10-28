@@ -20,7 +20,7 @@ With a ``question`` the crop is also read by the office's vision model
 as a reading of the drawing and never a measurement. A chat model that takes no
 images gets those lines alone instead of "I cannot see".
 
-Its own entry point (``aiq_look`` in the root ``pyproject.toml``): a deployment
+Its own entry point (``look_tools`` in the root ``pyproject.toml``): a deployment
 without the canvas group keeps ``look``, and the reverse.
 """
 

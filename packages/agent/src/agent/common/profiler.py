@@ -2,7 +2,7 @@
 
 Captures a nested span tree (turn -> graph node -> LLM/tool call) for every
 agent run and ships it to the platform-owner-only timeline view. Structured
-exactly like ``cost_tracking.py``'s ``GridCostTracker``: one
+exactly like ``cost_tracking.py``'s ``CostTracker``: one
 ``BaseCallbackHandler`` installed through LangChain's
 ``register_configure_hook`` seam, so every LLM/tool call inside an active
 ``track_agent_profile()`` block is captured with zero per-agent wiring —
@@ -55,7 +55,7 @@ SpanKind = str  # 'turn' | 'node' | 'llm' | 'tool'
 
 # Single background worker so ledger writes never block the answer path and
 # arrive in order — same rationale as cost_tracking._flush_executor.
-_flush_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="grid-profiler-flush")
+_flush_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="profiler-flush")
 
 
 @dataclass
@@ -104,7 +104,7 @@ class AgentProfiler(BaseCallbackHandler):
     Sync ``BaseCallbackHandler`` methods are invoked for async runs as well
     (LangChain dispatches them via the running loop's executor), so one
     implementation covers every agent that shares the LLM/tool callback
-    stack — the same guarantee ``GridCostTracker`` relies on.
+    stack — the same guarantee ``CostTracker`` relies on.
     """
 
     raise_error = False
@@ -127,7 +127,7 @@ class AgentProfiler(BaseCallbackHandler):
         self._pending: list[SpanRecord] = []
         self._spans_recorded = 0
         # LLM/tool spans are keyed by the callback's run_id so on_*_end can
-        # find the span it opened, exactly like GridCostTracker._requested_models.
+        # find the span it opened, exactly like CostTracker._requested_models.
         self._run_span: dict[Any, str] = {}
 
     # -- span lifecycle --------------------------------------------------------
@@ -292,7 +292,7 @@ def _post_profiler_spans(payload: dict[str, Any]) -> None:
 # register_configure_hook adds the handler held here to every callback manager
 # LangChain configures while the var is set (inheritable across sub-runs) —
 # the single seam that makes span capture agent-agnostic, mirroring
-# cost_tracking.grid_cost_tracker_var.
+# cost_tracking.cost_tracker_var.
 agent_profiler_var: ContextVar[AgentProfiler | None] = ContextVar("agent_profiler", default=None)
 
 # The innermost currently-open span id, read as the parent when a new span
@@ -525,7 +525,7 @@ def _close_turn_span(
 async def flush_after_answer(*ledgers: Any, timeout_seconds: float | None = None) -> None:
     """Post the turn's final batches once the answer is already on the wire.
 
-    Each ledger (an ``AgentProfiler``, a ``GridCostTracker``: anything with
+    Each ledger (an ``AgentProfiler``, a ``CostTracker``: anything with
     ``flush(wait=...)``) is handed to its own background worker, and the posts
     are then awaited off the event loop so the loop keeps serving other turns
     while the BFF round-trips complete. Best-effort: a failed or slow post

@@ -20,7 +20,7 @@ from agent.agents.piloti.models import ResearchAgentState
 from agent.agents.piloti.prompt import render_turn_context
 from agent.agents.piloti.prompt import system_prompt_template
 from agent.auth import utils as auth_utils
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.turn import context as turn_context
 
 SECRET = "user-prompt-secret"  # noqa: S105 - test fixture value
@@ -35,11 +35,11 @@ def _context_block(user_info) -> str:
     return head.split("\n\n", 1)[0] + "\n"
 
 
-def _signed(payload: dict, secret: str = SECRET) -> GridRequestContext | None:
+def _signed(payload: dict, secret: str = SECRET) -> RequestContext | None:
     raw = json.dumps(payload)
     header = base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
     signature = hmac.new(SECRET.encode(), raw.encode(), hashlib.sha256).hexdigest()
-    return GridRequestContext.from_envelope(header, signature, secret)
+    return RequestContext.from_envelope(header, signature, secret)
 
 
 @pytest.fixture

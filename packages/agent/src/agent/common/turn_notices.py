@@ -349,13 +349,13 @@ VERDICT_DROPPED_SLOT = "verdict:dropped"
 
 
 #: Why a verdict was refused. A stable token, not prose: it is counted.
-#: The Fundstelle the model named resolved to a document PILOTI wrote — office
+#: The Fundstelle the model named resolved to a document AGENT wrote — office
 #: knowledge the office approved, never a source for a normative value.
 VERDICT_DROP_AGENT_AUTHORED = "agent_authored_reference"
 
 
 #: The verdict named NO Fundstelle at all on a turn that retrieved something
-#: PILOTI wrote. The agent-authored gate above can only judge a reference it
+#: AGENT wrote. The agent-authored gate above can only judge a reference it
 #: was given, so without this token the cheapest way past it is to omit the
 #: reference — and an unattributed headline on such a turn is the same claim,
 #: with the evidence that would have failed it left out.

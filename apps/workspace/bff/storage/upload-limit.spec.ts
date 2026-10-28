@@ -48,7 +48,7 @@ vi.mock('@/lib/authz/platform', async (importOriginal) => {
 
 import { PlatformAccessDeniedError } from '@/lib/authz/platform'
 import { setCacheStore, type CacheStore } from '@/lib/cache'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import {
   MAX_UPLOAD_FILE_SETTING,
   assertFileSizeAllowed,
@@ -73,7 +73,7 @@ const mapStore = (): CacheStore => {
   }
 }
 
-const platformSession = (): GridSession => ({
+const platformSession = (): UserSession => ({
   userId: 'user-1',
   email: 'staff@example.com',
   name: 'Staff',

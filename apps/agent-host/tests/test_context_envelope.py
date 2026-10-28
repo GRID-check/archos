@@ -20,7 +20,7 @@ import pytest
 
 from agent_host.context_envelope import ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES
 from agent_host.context_envelope import ENVELOPE_EXEMPT_WEBSOCKET_PATH_PREFIXES
-from agent_host.context_envelope import GridContextEnvelopeMiddleware
+from agent_host.context_envelope import RequestContextEnvelopeMiddleware
 from agent_host.context_envelope import _path_matches
 
 SECRET = "envelope-test-secret"  # noqa: S105 - test fixture value, not a real credential
@@ -106,7 +106,7 @@ class TestDisabledWhenAuthNotRequired:
     @pytest.mark.asyncio
     async def test_passes_through_when_require_auth_false(self, capture_asgi):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=False)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=False)
         scope = _http_scope("/v1/jobs/async/submit", user={"type": "jwt"})
 
         await mw(scope, AsyncMock(), AsyncMock())
@@ -129,7 +129,7 @@ class TestExemptPaths:
     )
     async def test_exempt_path_passes_without_envelope(self, capture_asgi, path):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
 
         await mw(_http_scope(path, user={"type": "jwt"}), AsyncMock(), AsyncMock())
 
@@ -142,7 +142,7 @@ class TestExemptPaths:
         async def app(scope, receive, send):
             calls.append(scope["type"])
 
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         await mw({"type": "lifespan"}, AsyncMock(), AsyncMock())
 
         assert calls == ["lifespan"]
@@ -176,7 +176,7 @@ class TestDenyByDefault:
     )
     async def test_jwt_without_envelope_rejected(self, capture_asgi, path):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         messages: list[dict] = []
 
         async def send(msg):
@@ -191,7 +191,7 @@ class TestDenyByDefault:
     async def test_jwt_with_valid_envelope_reaches_chat_completions(self, monkeypatch, capture_asgi):
         monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope(
             "/v1/chat/completions",
             user={"type": "jwt", "sub": "user-1"},
@@ -205,7 +205,7 @@ class TestDenyByDefault:
     @pytest.mark.asyncio
     async def test_internal_caller_still_exempt_on_a_workflow_path(self, capture_asgi):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
 
         await mw(_http_scope("/v1/chat/completions", user={"type": "internal"}), AsyncMock(), AsyncMock())
 
@@ -216,7 +216,7 @@ class TestExemptions:
     @pytest.mark.asyncio
     async def test_anonymous_caller_exempt(self, capture_asgi):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope("/v1/jobs/async/submit", user={"type": "anonymous"})
 
         await mw(scope, AsyncMock(), AsyncMock())
@@ -226,7 +226,7 @@ class TestExemptions:
     @pytest.mark.asyncio
     async def test_internal_caller_exempt(self, capture_asgi):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope("/v1/internal/skills/submit", user={"type": "internal"})
 
         await mw(scope, AsyncMock(), AsyncMock())
@@ -236,7 +236,7 @@ class TestExemptions:
     @pytest.mark.asyncio
     async def test_unverified_jwt_caller_exempt(self, capture_asgi):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope("/v1/jobs/async/submit", user={"type": "unverified_jwt"})
 
         await mw(scope, AsyncMock(), AsyncMock())
@@ -247,7 +247,7 @@ class TestExemptions:
     async def test_valid_internal_token_call_exempt_even_with_jwt_type(self, monkeypatch, capture_asgi):
         monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-secret")
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope(
             "/v1/jobs/async/submit",
             user={"type": "jwt"},
@@ -259,10 +259,10 @@ class TestExemptions:
         assert calls == ["/v1/jobs/async/submit"]
 
     @pytest.mark.asyncio
-    async def test_grid_internal_token_header_name_also_exempts(self, monkeypatch, capture_asgi):
+    async def test_internal_token_header_name_also_exempts(self, monkeypatch, capture_asgi):
         monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-secret")
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         scope = _http_scope(
             "/v1/jobs/async/submit",
             user={"type": "jwt"},
@@ -277,7 +277,7 @@ class TestExemptions:
     async def test_wrong_internal_token_does_not_exempt(self, monkeypatch, capture_asgi):
         monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-secret")
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         messages: list[dict] = []
 
         async def send(msg):
@@ -299,7 +299,7 @@ class TestHttpEnforcement:
     @pytest.mark.asyncio
     async def test_authenticated_jwt_without_envelope_rejected_403(self, capture_asgi):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         messages: list[dict] = []
 
         async def send(msg):
@@ -320,7 +320,7 @@ class TestHttpEnforcement:
     async def test_authenticated_jwt_with_valid_envelope_allowed(self, monkeypatch, capture_asgi):
         monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
 
         scope = _http_scope(
             "/v1/jobs/async/submit",
@@ -336,7 +336,7 @@ class TestHttpEnforcement:
     async def test_authenticated_jwt_with_tampered_envelope_rejected(self, monkeypatch, capture_asgi):
         monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         messages: list[dict] = []
 
         async def send(msg):
@@ -361,7 +361,7 @@ class TestHttpEnforcement:
         # verification is skipped, but presence is still enforced.
         assert not os.environ.get("INTERNAL_API_TOKEN")
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         messages: list[dict] = []
 
         async def send(msg):
@@ -377,7 +377,7 @@ class TestHttpEnforcement:
     async def test_dev_mode_no_secret_accepts_unsigned_envelope(self, capture_asgi):
         assert not os.environ.get("INTERNAL_API_TOKEN")
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
 
         scope = _http_scope(
             "/v1/jobs/async/submit",
@@ -400,7 +400,7 @@ class TestWebSocketEnforcement:
         mock_v = MagicMock()
         mock_v.can_handle.return_value = True
         mock_v.validate = AM(return_value=({"type": "jwt", "sub": "user-1"}, None))
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True, validators=[mock_v])
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True, validators=[mock_v])
 
         async def receive():
             return {"type": "websocket.connect"}
@@ -427,7 +427,7 @@ class TestWebSocketEnforcement:
         mock_v = MagicMock()
         mock_v.can_handle.return_value = True
         mock_v.validate = AM(return_value=({"type": "jwt", "sub": "user-1"}, None))
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True, validators=[mock_v])
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True, validators=[mock_v])
 
         headers = [(b"authorization", b"Bearer good"), *_envelope_headers({"organizationId": "org_1"})]
         scope = _ws_scope("/websocket", extra_headers=headers)
@@ -439,7 +439,7 @@ class TestWebSocketEnforcement:
     @pytest.mark.asyncio
     async def test_non_jwt_websocket_caller_exempt(self, capture_asgi):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True, validators=[])
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True, validators=[])
         scope = _ws_scope("/websocket")
 
         await mw(scope, AsyncMock(), AsyncMock())
@@ -456,7 +456,7 @@ class TestWebSocketEnforcement:
         mock_v = MagicMock()
         mock_v.can_handle.return_value = True
         mock_v.validate = AM(return_value=({"type": "jwt", "sub": "user-1"}, None))
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True, validators=[mock_v])
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True, validators=[mock_v])
 
         async def receive():
             return {"type": "websocket.connect"}
@@ -475,7 +475,7 @@ class TestWebSocketEnforcement:
     @pytest.mark.asyncio
     async def test_non_jwt_caller_on_another_websocket_path_passes_through(self, capture_asgi):
         app, calls = capture_asgi
-        mw = GridContextEnvelopeMiddleware(app, require_auth=True)
+        mw = RequestContextEnvelopeMiddleware(app, require_auth=True)
         scope = _ws_scope("/some/other/ws/path")
 
         await mw(scope, AsyncMock(), AsyncMock())

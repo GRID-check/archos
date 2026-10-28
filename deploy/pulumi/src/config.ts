@@ -49,7 +49,7 @@ export { GOTENBERG_SLOTS_PER_REPLICA, bffJobsMode, gotenbergCapacity, renditionC
  *
  * Every tunable lives here or in a `config/` module named after its concern, so
  * the rest of the program never touches `pulumi.Config` directly. `loadConfig`
- * reads them in order and assembles `GridConfig`. Set values with
+ * reads them in order and assembles `DeployConfig`. Set values with
  * `pulumi config set grid-oib:<key>` (add `--secret` for the secret ones). See
  * deploy/pulumi/README.md for the full list and docs/deployment/kubernetes.md
  * for the operator guide.
@@ -57,7 +57,7 @@ export { GOTENBERG_SLOTS_PER_REPLICA, bffJobsMode, gotenbergCapacity, renditionC
  * Secret values are typed as `pulumi.Output<string>` — they stay encrypted in
  * the stack state and are only ever materialised inside k8s Secrets.
  */
-export interface GridConfig {
+export interface DeployConfig {
   namespace: string;
   /** Raw kubeconfig for the target cluster (from the provider). Secret. */
   kubeconfig: pulumi.Output<string>;
@@ -364,7 +364,7 @@ export interface GridConfig {
 
 }
 
-export function loadConfig(): GridConfig {
+export function loadConfig(): DeployConfig {
   const cfg = new pulumi.Config();
   refuseLangfuseV4WriteMode(cfg.get("langfuseV4WriteMode"));
 

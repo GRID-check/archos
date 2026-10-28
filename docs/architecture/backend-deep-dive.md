@@ -1074,10 +1074,10 @@ Herleitung never reads them back out of the text. It still writes them as the
 (chat-wire-v2.md, F2).
 
 The renderer files each block under the SHA-256 of the exact bytes it returns,
-in a per-turn `ContextVar` that `PilotiAgent.run` opens beside
+in a per-turn `ContextVar` that `ChatAgent.run` opens beside
 `begin_lane_capture`. `citations/extraction.py::extract_sources_from_tool_result`
 looks the block up by that hash and builds `SourceEntry`s by field copy, so a
-passage body cannot supply a header field the producer omitted. `PilotiAgent.run`
+passage body cannot supply a header field the producer omitted. `ChatAgent.run`
 is the only caller that opens the capture, so the structured read is what a
 Piloti turn gets for `knowledge_search`, `read_passage` and `ris_lookup`, and
 the deep researcher, the conversation path and the job runner parse the text.

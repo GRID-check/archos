@@ -23,7 +23,7 @@
  */
 
 import 'server-only'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
@@ -34,7 +34,7 @@ import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { getBudgetStatus } from '@/lib/budgets/service'
 import { announceBudgetBlocked } from '@/lib/budgets/budget-events'
 import type { ScopedCollection } from '@/lib/retrieval-scope/collection-scope'
-import { requesterOf, type GridRequester } from '@/lib/request-context'
+import { requesterOf, type RequestPerson } from '@/lib/request-context'
 
 /** Run a best-effort lookup: its failure is logged and read as "absent". */
 async function bestEffort<T>(what: string, load: () => Promise<T>): Promise<T | null> {
@@ -84,7 +84,7 @@ export interface TurnContext {
   projectMemory?: string
   orgInstructions?: string
   /** Who `userId` is, by name: signed into the envelope (`requesterOf`). */
-  requester?: GridRequester
+  requester?: RequestPerson
 }
 
 /** The person's (or the organization's, or the project's) LLM budget is spent: no turn starts. */
@@ -106,7 +106,7 @@ export class TurnBudgetExhaustedError extends Error {
  * `session` is null only where nobody authenticates (local dev).
  */
 export async function resolveTurnContext(
-  session: GridSession | null,
+  session: UserSession | null,
   request: { projectId?: string; conversationId?: string }
 ): Promise<TurnContext> {
   const { projectId, conversationId } = request

@@ -7,7 +7,7 @@ import {
   PRESENCE_REFRESH_MS,
   roomEventSchema,
   VIEWPORT_INTERVAL_MS,
-  type PilotiActivityState,
+  type AgentActivityState,
   type RoomBox,
   type RoomCursor,
   type RoomDraft,
@@ -68,7 +68,7 @@ export function sseRoomTransport(documentId: string): RoomTransport {
 
 /** What Piloti is doing on the document, while it works on it. */
 export interface RoomActivityState {
-  state: PilotiActivityState
+  state: AgentActivityState
   /** The region it is reading, when it reads one. */
   box: RoomBox | null
   label: string | null
@@ -170,7 +170,7 @@ const parseRoomEvent = (value: unknown): RoomEvent | null => {
 type AnnotationsChanged = Extract<RoomEvent, { kind: 'annotations.changed' }>
 
 /** A box Piloti points out on a page, with what it says about it. */
-export interface PilotiHighlight {
+export interface AgentHighlight {
   page: number
   x: number
   y: number
@@ -186,7 +186,7 @@ export const HIGHLIGHT_MS = 6_000
  * What Piloti points out, read off its peer: its latest highlight while it
  * lasts, else the region its activity says it is reading.
  */
-export function pilotiHighlightOf(state: RoomPeerState, now = Date.now()): PilotiHighlight | null {
+export function agentHighlightOf(state: RoomPeerState, now = Date.now()): AgentHighlight | null {
   if (state.peer.kind !== 'piloti') return null
   if (state.highlight && state.highlight.expiresAt > now) {
     return { ...state.highlight.box, label: state.highlight.label }
@@ -195,7 +195,7 @@ export function pilotiHighlightOf(state: RoomPeerState, now = Date.now()): Pilot
   return box ? { ...box, label: state.activity?.label ?? null } : null
 }
 
-export type ShownHighlight = PilotiHighlight & { key: string; peerId: string }
+export type ShownHighlight = AgentHighlight & { key: string; peerId: string }
 
 /**
  * The boxes Piloti pointed out, each shown until it points out the next or
@@ -212,7 +212,7 @@ export function createHighlightTracker() {
     /** Read the peers again; only a different set of boxes changes anything. */
     update(peers: readonly RoomPeerState[]) {
       const arrived = peers.flatMap((state) => {
-        const highlight = pilotiHighlightOf(state)
+        const highlight = agentHighlightOf(state)
         if (!highlight) return []
         const key = `${state.peer.peerId}:${highlight.page}:${highlight.x}:${highlight.y}:${highlight.w}:${highlight.h}:${highlight.label ?? ''}`
         return [{ ...highlight, key, peerId: state.peer.peerId }]

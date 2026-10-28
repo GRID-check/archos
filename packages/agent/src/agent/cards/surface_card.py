@@ -179,11 +179,11 @@ def _checked_leaf(component: dict[str, Any]) -> dict[str, Any]:
     if name in SURFACE_EXCLUDED_LEAVES:
         raise ValueError(f"'{component_id}': a '{name}' cannot sit inside a surface.")
     # The union holds this card too, so it is read when a leaf is checked, never at import.
-    from agent.cards.models import grid_card_adapter
+    from agent.cards.models import answer_card_adapter
 
     props = {key: value for key, value in component.items() if key not in ("id", "component")}
     try:
-        card = grid_card_adapter.validate_python({**props, "type": name})
+        card = answer_card_adapter.validate_python({**props, "type": name})
     except Exception as exc:  # the adapter's own clauses, prefixed with where they happened
         from agent.common.tool_errors import render_error_detail
 

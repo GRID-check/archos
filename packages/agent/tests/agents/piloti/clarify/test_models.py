@@ -173,7 +173,7 @@ class TestClarifyRequest:
         assert request.project_context is None
         assert request.available_documents is None
 
-    def test_the_context_piloti_answered_on_travels_too(self):
+    def test_the_context_agent_answered_on_travels_too(self):
         request = ClarifyRequest(
             messages=[],
             data_sources=["web_search"],

@@ -999,10 +999,10 @@ describe('ProjectFileWorkspace — dragging a file into a folder', () => {
    * over it.
    */
   const dragTransfer = (documentId: string) => {
-    const store: Record<string, string> = { 'application/x-grid-document-id': documentId }
+    const store: Record<string, string> = { 'application/x-document-id': documentId }
     return {
-      types: ['application/x-grid-document-id'],
-      items: [{ kind: 'string', type: 'application/x-grid-document-id' }],
+      types: ['application/x-document-id'],
+      items: [{ kind: 'string', type: 'application/x-document-id' }],
       getData: (key: string) => store[key] ?? '',
       setData: (key: string, value: string) => {
         store[key] = value

@@ -425,14 +425,14 @@ class TestRunAgentStateFields:
 
         captured: dict = {}
 
-        class FakePilotiAgent:
+        class FakeChatAgent:
             async def run(self, state):
                 captured["state"] = state
                 return state
 
-        FakePilotiAgent.__module__ = "agent.agents.piloti.agent"
-        FakePilotiAgent.__name__ = "PilotiAgent"
-        FakePilotiAgent.state_model = ResearchAgentState
+        FakeChatAgent.__module__ = "agent.agents.piloti.agent"
+        FakeChatAgent.__name__ = "ChatAgent"
+        FakeChatAgent.state_model = ResearchAgentState
 
         monitor = MagicMock()
         monitor.is_cancelled = False
@@ -440,7 +440,7 @@ class TestRunAgentStateFields:
         monitor.stop = AsyncMock()
 
         await _run_agent(
-            agent=FakePilotiAgent(),
+            agent=FakeChatAgent(),
             input_text="quick lookup",
             monitor=monitor,
             user_info={"name": "Ada"},
@@ -460,7 +460,7 @@ class TestRunAgentStateFields:
         ``_get_agent_state_class`` falls back to guessing from the class name,
         and the guess is silent when it misses: the agent is handed a bare
         dict and every field this class forwards is dropped. Renaming
-        ``ResearcherAgent`` to ``PilotiAgent`` is exactly the miss.
+        ``ResearcherAgent`` to ``ChatAgent`` is exactly the miss.
         """
         import importlib
 

@@ -404,7 +404,7 @@ export const answerExport = {
     building_class: 'Building class',
     // ThermalEnvelopeCard
     components: 'Components',
-    // DocumentGridCard
+    // DocumentAnswerCard
     documents: 'Documents',
     file_name: 'File',
     snippet: 'Matching passage',

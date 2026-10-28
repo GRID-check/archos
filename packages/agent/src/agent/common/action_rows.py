@@ -33,7 +33,7 @@ ACTION_STEP_PREFIX = "action:"
 #: The action row of the tool call running RIGHT NOW, so the sources it returns
 #: name the same call (ADR-0132). Each parallel call runs in its own task, so
 #: siblings never see each other's id.
-_action_call: ContextVar[str | None] = ContextVar("grid_action_call", default=None)
+_action_call: ContextVar[str | None] = ContextVar("action_call", default=None)
 
 
 def current_action_call() -> str | None:

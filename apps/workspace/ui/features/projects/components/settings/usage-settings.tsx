@@ -110,8 +110,8 @@ export function UsageSettings({ projectId, usage, canEditLimit }: UsageSettingsP
             </Alert>
           )}
 
-          {/* `grid-spend-viz` scopes the validated meter tokens (globals.css). */}
-          <div className="grid-spend-viz grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {/* `spend-viz` scopes the validated meter tokens (globals.css). */}
+          <div className="spend-viz grid grid-cols-1 gap-5 sm:grid-cols-2">
             <BudgetMeter
               title={t('project.usage.today')}
               total={usage.day.amount}

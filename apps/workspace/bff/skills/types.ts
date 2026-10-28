@@ -95,7 +95,7 @@ export function isCuratedPlatformSkill(metadata: Record<string, string>): boolea
 /**
  * `grid-hidden` — keep a skill's activation OUT OF THE NOISY LIVE LINE.
  *
- * A boolean-ish flag mirroring the Python `GRID_HIDDEN_KEY`. Some skills apply
+ * A boolean-ish flag mirroring the Python `HIDDEN_KEY`. Some skills apply
  * on every single answer (a house voice is the type case), so announcing them
  * live under every turn is pure noise. A hidden skill's activation is routed to
  * the technical channel instead of the live one (backend `events.py`), so it

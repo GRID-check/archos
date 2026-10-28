@@ -7,7 +7,7 @@
  * demands a fixture or a stated exclusion. Not one of them asks the only
  * question the reader cares about: does anything appear on screen?
  *
- * `GridCardItem` is a flat chain of `if (card.type === '…')` tests ending in
+ * `AnswerCardItem` is a flat chain of `if (card.type === '…')` tests ending in
  * `return null`, so a type that clears every guard above and has no branch
  * renders NOTHING — no warning, no dropped card, no red test. The agent says it
  * made a finding, the answer shows an empty gap, and the only place that is
@@ -38,9 +38,9 @@ import { discriminatedOptions } from '@/lib/api/zod-union'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { z } from 'zod'
 import { render } from '@/test-utils'
-import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
+import { answerCardSchema, type AnswerCard } from '@/shared/cards/schemas'
 import { PREVIEW_EXCLUDED, previewFixtureFor } from '../preview-fixtures'
-import { GridCardItem } from './GridCards'
+import { AnswerCardItem } from './AnswerCards'
 import { rendererSettled } from '@/features/a2ui/A2uiCard'
 // The canonical card JSON Schema, generated from `models.py` and the input the
 // Zod mirror is generated FROM. Loaded at runtime (it lives above the app
@@ -120,7 +120,7 @@ vi.mock('@/features/documents/hooks/use-surfaced-documents', async (importOrigin
   }
 })
 
-type CardInput = z.input<typeof gridCardSchema>
+type CardInput = z.input<typeof answerCardSchema>
 
 /** Only the corner of the JSON Schema this file reads. */
 interface JsonSchemaDocument {
@@ -164,16 +164,16 @@ const EXCLUDED_FIXTURES: Record<string, CardInput> = {
  * right even for `project_profile_patch`, whose `type` literal is wrapped in a
  * `.default()`.
  */
-const ALL_TYPES = [...discriminatedOptions(gridCardSchema).keys()].filter(
+const ALL_TYPES = [...discriminatedOptions(answerCardSchema).keys()].filter(
   (type): type is string => typeof type === 'string'
 )
 
 /** The card of `type` to mount: the gallery's fixture, or the stand-in above. */
-function fixtureFor(type: string): GridCard | undefined {
+function fixtureFor(type: string): AnswerCard | undefined {
   const preview = previewFixtureFor(type)
   if (preview) return preview
   const excluded = EXCLUDED_FIXTURES[type]
-  return excluded ? gridCardSchema.parse(excluded) : undefined
+  return excluded ? answerCardSchema.parse(excluded) : undefined
 }
 
 /**
@@ -212,18 +212,18 @@ const REQUIRED_FIELDS: Record<string, string[]> = Object.fromEntries(
  * The fixture reduced to its required fields and re-parsed, so the schema's
  * defaults fill the rest — the leanest card the agent is allowed to emit.
  */
-function minimalFrom(card: GridCard): GridCard {
+function minimalFrom(card: AnswerCard): AnswerCard {
   const keep = new Set(REQUIRED_FIELDS[card.type] ?? ['type'])
   const stripped = Object.fromEntries(
     Object.entries(card).filter(([name]) => keep.has(name))
   )
-  return gridCardSchema.parse(stripped)
+  return answerCardSchema.parse(stripped)
 }
 
 /** Mount one card through the real dispatcher and report what it painted. */
-function drawn(card: GridCard): { text: string; elements: number } {
+function drawn(card: AnswerCard): { text: string; elements: number } {
   const { container } = render(
-    <GridCardItem card={card} index={0} projectId="p1" messageId="message-1" />
+    <AnswerCardItem card={card} index={0} projectId="p1" messageId="message-1" />
   )
   return {
     text: (container.textContent ?? '').trim(),
@@ -232,11 +232,11 @@ function drawn(card: GridCard): { text: string; elements: number } {
 }
 
 /** The assertion itself, so both cases fail with the same diagnosis. */
-function expectDrawsSomething(card: GridCard, shape: 'fixture' | 'minimal'): void {
+function expectDrawsSomething(card: AnswerCard, shape: 'fixture' | 'minimal'): void {
   const { text, elements } = drawn(card)
   const blame =
     `card type "${card.type}" (${shape}) rendered nothing — ` +
-    'GridCardItem has no branch for it, or its renderer bailed out on a field ' +
+    'AnswerCardItem has no branch for it, or its renderer bailed out on a field ' +
     'the schema does not require'
   expect(elements, blame).toBeGreaterThan(0)
   expect(text, blame).not.toBe('')
@@ -293,12 +293,12 @@ describe('every card type renders', () => {
   it.each(ALL_TYPES)('%s draws its fixture', (type) => {
     const card = fixtureFor(type)
     expect(card, `no fixture for card type "${type}"`).toBeDefined()
-    expectDrawsSomething(card as GridCard, 'fixture')
+    expectDrawsSomething(card as AnswerCard, 'fixture')
   })
 
   it.each(ALL_TYPES)('%s draws with only its required fields', (type) => {
     const card = fixtureFor(type)
     expect(card, `no fixture for card type "${type}"`).toBeDefined()
-    expectDrawsSomething(minimalFrom(card as GridCard), 'minimal')
+    expectDrawsSomething(minimalFrom(card as AnswerCard), 'minimal')
   })
 })

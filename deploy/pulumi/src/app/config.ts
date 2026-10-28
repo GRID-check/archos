@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { APP_DEFAULTS, KEDA_SCALER_ROLE, LANGFUSE, PORT, QDRANT } from "../constants";
 import { APP_DB, CHECKPOINTS_DB, JOBS_DB, RUNTIME_ROLE, type Postgres } from "../data/postgres";
 import { FRONTEND_DRAIN_SECONDS, secretChecksum } from "../platform/rollout";
@@ -10,7 +10,7 @@ import { logicalName, objectName } from "../names";
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
 export interface AppWiring {
-  cfg: GridConfig;
+  cfg: DeployConfig;
   namespace: pulumi.Input<string>;
   provider: k8s.Provider;
   redisUrl: pulumi.Output<string>;
@@ -41,7 +41,7 @@ export const PULL_SECRET_NAME = objectName("registryPullSecret"); // pragma: all
  * upstream images and needs nothing.
  */
 export function buildRegistryPullSecret(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): k8s.core.v1.Secret | undefined {
@@ -257,7 +257,7 @@ export const BACKEND_CHAT_URL = `http://aiq-agent:${PORT.backend}`;
  * resolved a release for the backend image (posthog-python reads it itself and
  * sends it as `$release_id`). Exported for `posthog.spec.ts`.
  */
-export function posthogEnv(cfg: GridConfig): EnvVar[] {
+export function posthogEnv(cfg: DeployConfig): EnvVar[] {
   const { host, projectToken, releaseId } = cfg.posthog;
   if (host === "" || projectToken === "") return [];
   return [
@@ -275,7 +275,7 @@ export function posthogEnv(cfg: GridConfig): EnvVar[] {
  * pages are prerendered and the image builds with no env files) and answers an
  * empty script without them. Exported for `web.spec.ts`.
  */
-export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
+export function webPosthogEnv(cfg: DeployConfig): EnvVar[] {
   const { host, projectToken } = cfg.posthog;
   if (host === "" || projectToken === "") return [];
   return [
@@ -675,7 +675,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
  * checks as scores (ADR-0089, `agent/observability/langfuse_scores.py`)
  * and, once `LANGFUSE_PROMPTS_ENABLED` is set, read the platform prompt.
  */
-export function langfuseApiEnv(cfg: GridConfig): EnvVar[] {
+export function langfuseApiEnv(cfg: DeployConfig): EnvVar[] {
   if (!cfg.langfuse.enabled) return [];
   const fromLangfuseSecret = (name: string, key: string): EnvVar => ({
     name,
@@ -782,7 +782,7 @@ export function auditSchemaEnv(): EnvVar[] {
  * id of the platform organization whose org-scoped roles the catalog also
  * provisions (the frontend reads the same value).
  */
-export function authzCatalogEnv(cfg: GridConfig): EnvVar[] {
+export function authzCatalogEnv(cfg: DeployConfig): EnvVar[] {
   return [
     sref("WORKOS_API_KEY"),
     { name: "PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },

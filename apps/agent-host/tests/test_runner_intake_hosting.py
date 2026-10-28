@@ -37,7 +37,7 @@ class _Reporting:
 @pytest.fixture
 def passes(monkeypatch) -> dict[str, AsyncMock]:
     mocks = {
-        "_generate_grid_cards": AsyncMock(return_value=SimpleNamespace(cards=[{"type": "summary"}], failed=False)),
+        "_generate_answer_cards": AsyncMock(return_value=SimpleNamespace(cards=[{"type": "summary"}], failed=False)),
         "_extract_report_anatomy": AsyncMock(return_value=SimpleNamespace(findings=None, answer_meta=None)),
         "_propose_report_follow_ups": AsyncMock(return_value={"items": [{"question": "q"}]}),
         "_run_deep_research_reflection": AsyncMock(return_value=None),

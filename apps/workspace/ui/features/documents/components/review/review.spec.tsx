@@ -32,7 +32,7 @@ import { createCanvasTurnClient, type CanvasTurnClientOptions } from '../../lib/
 import { CARRY_AT_ONCE, useDocumentReview, type ReviewRevision } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
 import { useCheckFixed } from './check-fixed'
-import { PilotiAnswerCard } from './piloti-answer-card'
+import { AgentAnswerCard } from './agent-answer-card'
 import { ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { DraftCard, ThreadCard } from './thread-card'
@@ -110,7 +110,7 @@ function scriptedRoom() {
 const ANNA = { peerId: 'peer_anna_0001', userId: 'user_anna', name: 'Anna Berger', kind: 'person' as const }
 
 /** Piloti's socket, played by the test: what the canvas sends, and the answer's frames on cue. */
-function scriptedPiloti() {
+function scriptedAgent() {
   const sent: ClientMessage[] = []
   let options: TurnSocketOptions | null = null
   const socket: TurnSocket = {
@@ -154,7 +154,7 @@ function Harness({
 }: {
   transport: RoomTransport
   onReady?: (review: ReturnType<typeof useDocumentReview>) => void
-  piloti?: ReturnType<typeof scriptedPiloti>
+  piloti?: ReturnType<typeof scriptedAgent>
   canPickAssignee?: boolean
   revision?: ReviewRevision | null
 }) {
@@ -178,7 +178,7 @@ function Harness({
             page={1}
             review={review}
             focused
-            renderAsk={(ask, { placement }) => <PilotiAnswerCard review={review} ask={ask} placement={placement} />}
+            renderAsk={(ask, { placement }) => <AgentAnswerCard review={review} ask={ask} placement={placement} />}
             renderThread={({ placement }) =>
               review.draft ? (
                 <DraftCard review={review} draft={review.draft} placement={placement} canPickAssignee={canPickAssignee} />
@@ -256,17 +256,17 @@ function serveConversation() {
 }
 
 /** Draw a box with the Piloti tool, ask about it, and let Piloti answer. */
-async function askAboutABox(piloti: ReturnType<typeof scriptedPiloti>) {
+async function askAboutABox(piloti: ReturnType<typeof scriptedAgent>) {
   await userEvent.click(screen.getByRole('button', { name: 'piloti tool' }))
   const capture = captureSurface()
   fireEvent.pointerDown(capture, { button: 0, clientX: 80, clientY: 120, pointerId: 1 })
   fireEvent.pointerMove(capture, { clientX: 320, clientY: 300, pointerId: 1 })
   fireEvent.pointerUp(capture, { clientX: 320, clientY: 300, pointerId: 1 })
 
-  const card = await screen.findByTestId('piloti-card')
-  expect(within(card).getByTestId('piloti-composer')).toBeInTheDocument()
+  const card = await screen.findByTestId('agent-answer-card')
+  expect(within(card).getByTestId('agent-composer')).toBeInTheDocument()
   expect(within(screen.getByTestId('sheet')).getByTestId('agent-ask-box')).toHaveAttribute('data-status', 'composing')
-  await userEvent.click(within(card).getByTestId('piloti-quick-dimensions'))
+  await userEvent.click(within(card).getByTestId('agent-quick-dimensions'))
   await waitFor(() => expect(piloti.questions()).toHaveLength(1))
 }
 
@@ -647,7 +647,7 @@ describe('the review', () => {
   it('asks Piloti about a box drawn with its tool, and streams the answer beside it', async () => {
     serve([])
     const posted = serveConversation()
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
     await screen.findByTestId('review-empty')
 
@@ -675,8 +675,8 @@ describe('the review', () => {
     })
     expect(piloti.questions()[0]).not.toHaveProperty('reply_in_thread')
 
-    const card = screen.getByTestId('piloti-card')
-    expect(within(card).getByTestId('piloti-card-thinking')).toBeInTheDocument()
+    const card = screen.getByTestId('agent-answer-card')
+    expect(within(card).getByTestId('agent-answer-card-thinking')).toBeInTheDocument()
     expect(within(screen.getByTestId('sheet')).getByTestId('agent-ask-box')).toHaveAttribute('data-status', 'thinking')
 
     piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
@@ -690,9 +690,9 @@ describe('the review', () => {
       outcome: 'answered',
       result: { message_id: 'a-1', text: 'Die Raumhöhe ist nicht kotiert.\n\n[[card:1]]' },
     })
-    await waitFor(() => expect(within(card).queryByTestId('piloti-card-thinking')).toBeNull())
+    await waitFor(() => expect(within(card).queryByTestId('agent-answer-card-thinking')).toBeNull())
     expect(within(card).queryByText(/card:1/)).toBeNull()
-    expect(within(card).getByTestId('piloti-card-chat')).toHaveAttribute(
+    expect(within(card).getByTestId('agent-card-chat')).toHaveAttribute(
       'href',
       '/app/projects/proj_1/chat?session=s_thread_doc_1'
     )
@@ -711,21 +711,21 @@ describe('the review', () => {
         )
       })
     )
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
     await screen.findByTestId('review-empty')
     await askAboutABox(piloti)
     piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
     piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: '**Raumhöhe** fehlt.' } })
 
-    await userEvent.click(await screen.findByTestId('piloti-card-adopt'))
+    await userEvent.click(await screen.findByTestId('agent-card-adopt'))
 
     await waitFor(() =>
       expect(created).toEqual([
         { page: 1, shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.3, kind: 'hint', body: 'Raumhöhe fehlt.' },
       ])
     )
-    await waitFor(() => expect(screen.queryByTestId('piloti-card')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('agent-answer-card')).toBeNull())
     expect(within(screen.getByTestId('sheet')).queryByTestId('agent-ask-box')).toBeNull()
     expect(await screen.findByTestId('review-thread')).toBeInTheDocument()
   })
@@ -763,7 +763,7 @@ describe('the review', () => {
         })
       })
     )
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
 
     await userEvent.click(await screen.findByTestId('review-row'))
@@ -795,12 +795,12 @@ describe('the review', () => {
       focus_region: { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.25, annotation_id: 'ann_1' },
     })
     // No card: Piloti answers in the thread, and the thread says it is on it.
-    expect(screen.queryByTestId('piloti-card')).toBeNull()
-    expect(within(screen.getByTestId('review-thread')).getByTestId('thread-piloti-pending')).toBeInTheDocument()
+    expect(screen.queryByTestId('agent-answer-card')).toBeNull()
+    expect(within(screen.getByTestId('review-thread')).getByTestId('thread-agent-pending')).toBeInTheDocument()
 
     piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
     piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: 'Ja, 1,20 m.' } })
-    await waitFor(() => expect(screen.queryByTestId('thread-piloti-pending')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('thread-agent-pending')).toBeNull())
   })
 
   it('leaves an @Piloti reply to the server when it wakes Piloti, and shows the work as the server knows it', async () => {
@@ -840,7 +840,7 @@ describe('the review', () => {
         )
       )
     )
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     const room = scriptedRoom()
     render(<Harness transport={room.transport} piloti={piloti} />)
 
@@ -853,7 +853,7 @@ describe('the review', () => {
 
     // The mark's own view says Piloti is on it, for whom: the same line everyone in the room
     // reads, after a reload too. Nothing runs in this tab: no thread, no socket, no question.
-    const work = await within(screen.getByTestId('review-thread')).findByTestId('thread-piloti-work')
+    const work = await within(screen.getByTestId('review-thread')).findByTestId('thread-agent-work')
     expect(work).toHaveAttribute('data-state', 'queued')
     expect(work).toHaveTextContent('Miriam Hofer')
     expect(piloti.questions()).toEqual([])
@@ -877,7 +877,7 @@ describe('the review', () => {
         actor: { peerId: null, userId: 'user_me', name: 'Piloti', kind: 'piloti' },
       },
     })
-    await waitFor(() => expect(screen.queryByTestId('thread-piloti-work')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('thread-agent-work')).toBeNull())
     expect(within(screen.getByTestId('review-thread')).getByText('1,20 m im Schnitt B-B.')).toBeInTheDocument()
   })
 
@@ -899,10 +899,10 @@ describe('the review', () => {
       true,
       true
     )
-    render(<Harness transport={scriptedRoom().transport} piloti={scriptedPiloti()} />)
+    render(<Harness transport={scriptedRoom().transport} piloti={scriptedAgent()} />)
 
     await userEvent.click(await screen.findByTestId('review-row'))
-    const work = await within(await screen.findByTestId('review-thread')).findByTestId('thread-piloti-work')
+    const work = await within(await screen.findByTestId('review-thread')).findByTestId('thread-agent-work')
     expect(work).toHaveAttribute('data-state', 'failed')
     expect(work).toHaveTextContent(/budget/i)
   })
@@ -955,18 +955,18 @@ describe('the review', () => {
     const room = scriptedRoom()
     render(<Harness transport={room.transport} />)
     await screen.findByTestId('review-empty')
-    const PILOTI = { peerId: 'piloti_peer_01', userId: 'piloti', name: 'Piloti', kind: 'piloti' as const }
+    const AGENT = { peerId: 'piloti_peer_01', userId: 'piloti', name: 'Piloti', kind: 'piloti' as const }
 
-    room.send({ kind: 'event', event: { kind: 'presence', peer: PILOTI, state: 'here', ttlMs: 25_000 } })
-    room.send({ kind: 'event', event: { kind: 'cursor', peer: PILOTI, cursor: { page: 1, x: 0.4, y: 0.4 } } })
+    room.send({ kind: 'event', event: { kind: 'presence', peer: AGENT, state: 'here', ttlMs: 25_000 } })
+    room.send({ kind: 'event', event: { kind: 'cursor', peer: AGENT, cursor: { page: 1, x: 0.4, y: 0.4 } } })
     room.send({
       kind: 'event',
-      event: { kind: 'activity', peer: PILOTI, state: 'reading', label: 'Liest die Stiege', box: { page: 1, x: 0.5, y: 0.1, w: 0.2, h: 0.3 } },
+      event: { kind: 'activity', peer: AGENT, state: 'reading', label: 'Liest die Stiege', box: { page: 1, x: 0.5, y: 0.1, w: 0.2, h: 0.3 } },
     })
 
     const sheet = screen.getByTestId('sheet')
     expect(await within(sheet).findByText('Piloti · Liest die Stiege', { selector: '[data-slot="live-cursor"] *' })).toBeInTheDocument()
-    const highlight = await within(sheet).findByTestId('piloti-highlight')
+    const highlight = await within(sheet).findByTestId('agent-highlight')
     expect(highlight.style.left).toBe('50%')
     restore()
   })
@@ -1392,7 +1392,7 @@ describe('closing the loop on a mark', () => {
         HttpResponse.json({ annotation: question, replyId: 'r7', wake: 'off' })
       )
     )
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
 
     await userEvent.click(await screen.findByTestId('review-row'))
@@ -1416,7 +1416,7 @@ describe('closing the loop on a mark', () => {
         HttpResponse.json({ annotation: view({ id: 'ann_1' }), replyId: 'r1', wake: wakes.shift() })
       )
     )
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
 
     await userEvent.click(await screen.findByTestId('review-row'))
@@ -1716,7 +1716,7 @@ describe('one’s own reply in the thread', () => {
         })
       )
     )
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
 
     const thread = await openThread()
@@ -1728,7 +1728,7 @@ describe('one’s own reply in the thread', () => {
 
     // Piloti is reading it in this tab: the server would let a delete through, and Piloti would answer a reply that is gone.
     const asking = screen.getByTestId('review-thread')
-    expect(within(asking).getByTestId('thread-piloti-pending')).toBeInTheDocument()
+    expect(within(asking).getByTestId('thread-agent-pending')).toBeInTheDocument()
     expect(within(asking).getAllByTestId('thread-reply-entry')).toHaveLength(1)
     expect(within(asking).queryByTestId('thread-reply-more')).toBeNull()
 
@@ -1739,7 +1739,7 @@ describe('one’s own reply in the thread', () => {
   })
 
   it('offers no change of a colleague’s reply, of Piloti’s, on a closed mark, or of one Piloti answered', async () => {
-    const forPiloti = reply({ body: '@Piloti stimmt das?', mentions: [], addressesPiloti: true })
+    const forAgent = reply({ body: '@Piloti stimmt das?', mentions: [], addressesPiloti: true })
     const answer = reply({
       id: 'rep_2',
       authorKind: 'piloti',
@@ -1751,7 +1751,7 @@ describe('one’s own reply in the thread', () => {
       view({ id: 'ann_1', replies: [reply({ createdBy: 'user_anna', createdByName: 'Anna Berger' })] }),
       view({ id: 'ann_1', replies: [reply({ authorKind: 'piloti', mentions: [] })] }),
       view({ id: 'ann_1', status: 'resolved', replies: [reply()] }),
-      view({ id: 'ann_1', replies: [forPiloti, answer] }),
+      view({ id: 'ann_1', replies: [forAgent, answer] }),
     ]) {
       serve([mark])
       let review: ReturnType<typeof useDocumentReview> | null = null
@@ -2114,7 +2114,7 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
       ],
     })
     serveConversation()
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
 
     const bar = await screen.findByTestId('review-earlier-bar')
@@ -2158,7 +2158,7 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
     }
     const patched = serveLists(lists)
     serveConversation()
-    const piloti = scriptedPiloti()
+    const piloti = scriptedAgent()
     render(
       <Harness
         transport={scriptedRoom().transport}

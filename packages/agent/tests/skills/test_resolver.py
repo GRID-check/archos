@@ -63,7 +63,7 @@ def test_invalid_org_row_is_dropped(resolver: SkillResolver) -> None:
     assert "bad name!" not in {s.name for s in resolved}
 
 
-def test_grid_agents_filter_applies_to_builtin_and_org(resolver: SkillResolver) -> None:
+def test_agents_filter_applies_to_builtin_and_org(resolver: SkillResolver) -> None:
     smart = Skill(
         name="smart",
         description="Deep only.",
@@ -82,7 +82,7 @@ def test_grid_agents_filter_applies_to_builtin_and_org(resolver: SkillResolver) 
     assert "org-deep" not in {s.name for s in resolved}
 
 
-def test_a_leftover_grid_execution_is_ignored_not_honoured(resolver: SkillResolver) -> None:
+def test_a_leftover_legacy_execution_is_ignored_not_honoured(resolver: SkillResolver) -> None:
     """``grid-execution`` is gone from the model, and a stored one changes nothing.
 
     It used to gate availability, then it meant "what a scheduled run produces",
@@ -109,7 +109,7 @@ def test_a_leftover_grid_execution_is_ignored_not_honoured(resolver: SkillResolv
         assert {"chat-mode", "deep-research-mode"} <= names
 
 
-def test_org_row_with_a_stored_grid_execution_still_resolves(resolver: SkillResolver) -> None:
+def test_org_row_with_a_stored_legacy_execution_still_resolves(resolver: SkillResolver) -> None:
     """The whole point of dropping validation: a stale stored key must not 404 a skill.
 
     Org rows are not migrated in lockstep with the code. A row still carrying
@@ -136,7 +136,7 @@ def test_org_row_with_a_stored_grid_execution_still_resolves(resolver: SkillReso
     assert resolved["legacy-row"].metadata["grid-execution"] == "deep-research"
 
 
-def test_grid_agents_is_the_only_scope(resolver: SkillResolver) -> None:
+def test_agents_is_the_only_scope(resolver: SkillResolver) -> None:
     """An un-migrated org row is scoped by ``grid-agents`` alone, nothing else."""
     scheduled_report = Skill(
         name="monthly-report",
@@ -261,7 +261,7 @@ def test_fetch_omits_agent_entirely_when_unset(monkeypatch: pytest.MonkeyPatch) 
     assert query["organization_id"] == "org-42"
 
 
-def test_unknown_grid_agents_names_do_not_delete_the_skill(resolver: SkillResolver) -> None:
+def test_unknown_agents_names_do_not_delete_the_skill(resolver: SkillResolver) -> None:
     """A typo in `grid-agents` must not silently hide a skill from every agent."""
     from agent.skills.resolver import _agent_allows
 
@@ -408,7 +408,7 @@ def test_served_skills_leave_the_builtin_FILES_where_they_are(monkeypatch: pytes
     assert {s.origin for s in served} == {"org"}
 
 
-def test_served_skills_still_honour_grid_agents(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_served_skills_still_honour_agents(monkeypatch: pytest.MonkeyPatch) -> None:
     """One gate, read the same way for both agents."""
     monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
     with mock.patch.object(

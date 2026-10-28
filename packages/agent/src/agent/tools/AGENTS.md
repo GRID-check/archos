@@ -35,7 +35,7 @@ pane already uses, in the reader's own session. A tool here that wrote a row
 directly would bypass `requireProjectAccess`, the provenance marking and the
 review state in one move.
 
-Read [`docs/roadmap/piloti-writes-artifacts-and-approval.md`](../../../../../docs/roadmap/piloti-writes-artifacts-and-approval.md)
+Read [`docs/roadmap/agent-writes-artifacts-and-approval.md`](../../../../../docs/roadmap/agent-writes-artifacts-and-approval.md)
 before changing what a file verb may do.
 
 ## Filing ECHOES the BFF's envelope; it never signs one

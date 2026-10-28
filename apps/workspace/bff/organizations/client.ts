@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Client helper to read the organization's Grid-side default locale.
+ * Client helper to read the organization's app-side default locale.
  *
  * Used to seed the interface language for a member who hasn't chosen one yet,
  * so new members start in their org's configured language. Fails soft (returns

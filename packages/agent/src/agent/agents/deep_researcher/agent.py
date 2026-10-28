@@ -188,7 +188,7 @@ class DeepResearcherAgent:
     """Deep research agent using deepagents library for multi-phase workflow."""
 
     #: The state model ``run`` takes, declared for the async job runner the same
-    #: way ``PilotiAgent`` declares its own — see the note there.
+    #: way ``ChatAgent`` declares its own — see the note there.
     state_model = DeepResearchAgentState
 
     def __init__(

@@ -18,7 +18,7 @@
 import type { JSX } from 'react'
 import { redirect } from 'next/navigation'
 import { ShieldAlert } from 'lucide-react'
-import { getGridSession } from '@/lib/auth/session'
+import { getUserSession } from '@/lib/auth/session'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { getNavFlags } from '@/lib/authz/nav'
 import { BackLink, ShellContent } from '@/components/shell'
@@ -40,7 +40,7 @@ export default async function PlatformLayout({
     // Deliberately NOT requireAuthorizedPageSession: the break-glass owner of a
     // fresh environment may hold zero org memberships and must still reach this
     // page (the org-onboarding redirect would lock them out — ADR-0016).
-    const session = await getGridSession()
+    const session = await getUserSession()
     if (!session && isAuthRequired()) {
       redirect('/')
     }

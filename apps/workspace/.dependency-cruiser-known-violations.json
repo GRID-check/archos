@@ -703,8 +703,8 @@
   {
     "type": "dependency",
     "from": "ui/features/chat/components/agent-response/use-agent-response-controller.tsx",
-    "to": "ui/features/grid-cards/components/GridCards.tsx",
-    "unresolvedTo": "@/features/grid-cards/components/GridCards",
+    "to": "ui/features/grid-cards/components/AnswerCards.tsx",
+    "unresolvedTo": "@/features/grid-cards/components/AnswerCards",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -2295,7 +2295,7 @@
   },
   {
     "type": "dependency",
-    "from": "ui/features/documents/components/review/piloti-answer-card.tsx",
+    "from": "ui/features/documents/components/review/agent-answer-card.tsx",
     "to": "ui/features/chat/lib/turn-events.ts",
     "unresolvedTo": "@/features/chat/lib/turn-events",
     "dependencyTypes": [
@@ -2812,7 +2812,7 @@
   },
   {
     "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentGridCard.tsx",
+    "from": "ui/features/grid-cards/components/DocumentAnswerCard.tsx",
     "to": "ui/features/documents/components/file-card.tsx",
     "unresolvedTo": "@/features/documents/components/file-card",
     "dependencyTypes": [
@@ -2829,7 +2829,7 @@
   },
   {
     "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentGridCard.tsx",
+    "from": "ui/features/grid-cards/components/DocumentAnswerCard.tsx",
     "to": "ui/features/documents/components/file-grid.tsx",
     "unresolvedTo": "@/features/documents/components/file-grid",
     "dependencyTypes": [
@@ -2846,7 +2846,7 @@
   },
   {
     "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentGridCard.tsx",
+    "from": "ui/features/grid-cards/components/DocumentAnswerCard.tsx",
     "to": "ui/features/documents/hooks/use-surfaced-documents.ts",
     "unresolvedTo": "@/features/documents/hooks/use-surfaced-documents",
     "dependencyTypes": [
@@ -2863,7 +2863,7 @@
   },
   {
     "type": "dependency",
-    "from": "ui/features/grid-cards/components/DocumentGridCard.tsx",
+    "from": "ui/features/grid-cards/components/DocumentAnswerCard.tsx",
     "to": "ui/features/search/lib/search-hrefs.ts",
     "unresolvedTo": "@/features/search/lib/search-hrefs",
     "dependencyTypes": [
@@ -2880,7 +2880,7 @@
   },
   {
     "type": "dependency",
-    "from": "ui/features/grid-cards/components/GridCards.tsx",
+    "from": "ui/features/grid-cards/components/AnswerCards.tsx",
     "to": "ui/features/bim/lib/card-highlights.ts",
     "unresolvedTo": "@/features/bim/lib/card-highlights",
     "dependencyTypes": [
@@ -2897,7 +2897,7 @@
   },
   {
     "type": "dependency",
-    "from": "ui/features/grid-cards/components/GridCards.tsx",
+    "from": "ui/features/grid-cards/components/AnswerCards.tsx",
     "to": "ui/features/documents/hooks/use-surfaced-documents.ts",
     "unresolvedTo": "@/features/documents/hooks/use-surfaced-documents",
     "dependencyTypes": [

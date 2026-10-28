@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { appPullPolicy, backendImage } from '../config/images'
 import { toResourceRequirements } from '../config/resources'
 import { assertVlmPeakFitsCeiling } from '../config/vlm-ceiling'
@@ -51,7 +51,7 @@ export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  */
 export function installIngestWorker(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): {

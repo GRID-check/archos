@@ -26,7 +26,7 @@ vi.mock('server-only', () => ({}))
 import { BACKEND_OPERATIONS } from '@/lib/agent-api/backend-operations'
 import { AGENT_OPERATIONS } from '@/lib/agent-api/catalog'
 import { internalAnnotationRequestSchema } from '@/lib/annotations/types'
-import { gridCardSchema } from '@/shared/cards/schemas'
+import { answerCardSchema } from '@/shared/cards/schemas'
 import {
   isCanvasOperation,
   SURFACE_CAPABILITIES,
@@ -49,7 +49,7 @@ const kindOf = (form: SurfaceForm): 'exempt' | 'gap' | 'rendering' =>
 /** The `type` literal of each member of the generated card union. */
 function cardTypes(): Set<string> {
   const types = new Set<string>()
-  for (const option of gridCardSchema.options) {
+  for (const option of answerCardSchema.options) {
     const field = (option as unknown as { shape: { type: { parse: (value: unknown) => unknown } } }).shape.type
     for (const probe of [undefined, '']) {
       try {

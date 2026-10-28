@@ -35,7 +35,7 @@ import { filesCopy } from '@/i18n/namespaces/files'
 import { folderDragProps, useFolderDropTarget, type FileDropAim } from '../hooks/use-document-drag'
 import { cn } from '@/lib/utils'
 import { TimeAgo } from '@/components/ui/time-ago'
-import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
+import { FileTileBody, FileTileFooter, FileTileMedia, GridTileShell } from './file-tile'
 import { FolderAccessMark, FolderReadOnlyBadge, useFolderOwnAccessLabel } from './folder-access-mark'
 import { FolderReadState } from './folder-read-state'
 import type { KnowledgeTally } from '../lib/folder-knowledge'
@@ -578,7 +578,7 @@ const FOLDER_WELL =
  * is the whole distinction. It used to be carried by a warm amber wash as well;
  * that wash was invisible at its own opacity in the grid and read as a warning
  * strip in the detail view, and gold is a provenance signal in this product
- * (see `grid-tile.tsx` for the argument). What is left is the thing that was
+ * (see `file-tile.tsx` for the argument). What is left is the thing that was
  * doing the work.
  *
  * Hover lifts the tile — the shell's own `whileHover`, and the one motion this
@@ -660,8 +660,8 @@ export function FolderCard({
         onOpen={() => onOpen(folder.id)}
         openLabel={openLabel}
       >
-        <GridTileBody className="flex-1 p-0 phone:flex phone:items-center phone:gap-3 phone:bg-transparent phone:p-2 phone:shadow-none">
-          <GridTileMedia className={FOLDER_WELL}>
+        <FileTileBody className="flex-1 p-0 phone:flex phone:items-center phone:gap-3 phone:bg-transparent phone:p-2 phone:shadow-none">
+          <FileTileMedia className={FOLDER_WELL}>
             {/*
               ONE GLYPH, AND NO SECOND MOTION FOR ONE GESTURE.
 
@@ -684,7 +684,7 @@ export function FolderCard({
               folder because a folder is drawn in the well.
             */}
             <Folder className="size-10 text-muted-foreground/60 phone:size-5" strokeWidth={1.4} aria-hidden />
-          </GridTileMedia>
+          </FileTileMedia>
           <div className="px-3.5 pb-3 pt-[11px] phone:min-w-0 phone:flex-1 phone:p-0">
             {editing ? (
               <FolderNameEditor folder={folder} onRenameFolder={onRenameFolder} onDone={() => setEditing(false)} />
@@ -712,11 +712,11 @@ export function FolderCard({
               </p>
             )}
           </div>
-        </GridTileBody>
+        </FileTileBody>
         {/* On a phone the count sits at the row's right, clear of the ⋯ (44px
             on a coarse pointer), and the age stays in the detail view: the row
             has the width for the name or for the date, and the name wins. */}
-        <GridTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:mt-0 phone:w-auto phone:shrink-0 phone:py-0 phone:pl-0 phone:pr-14">
+        <FileTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:mt-0 phone:w-auto phone:shrink-0 phone:py-0 phone:pl-0 phone:pr-14">
           <span className="min-w-0 truncate tabular-nums">
             {t('folders.items', { count: itemCount })}
             {lastModified && (
@@ -728,7 +728,7 @@ export function FolderCard({
               </span>
             )}
           </span>
-        </GridTileFooter>
+        </FileTileFooter>
       </FolderCardFrame>
     </GridTileShell>
   )
@@ -826,7 +826,7 @@ export function FolderRow({
    * second is the one that made it read as a warning:
    *
    *   1. Chroma in this product is the source-signal system and nothing else
-   *      (`grid-design-language.md`). A folder is not a provenance.
+   *      (`design-language.md`). A folder is not a provenance.
    *   2. That gold IS a signal, and it is in the same table: `--source-office`
    *      is the tint on the `JPG` and `PNG` extension chips two rows below. One
    *      hue, two unrelated meanings, one screen.
@@ -930,17 +930,17 @@ export function FolderCardSkeleton(): JSX.Element {
       className="phone:flex-row phone:items-center phone:bg-card"
       data-testid="folder-card-skeleton"
     >
-      <GridTileBody className="flex-1 p-0 phone:flex phone:items-center phone:gap-3 phone:bg-transparent phone:p-2 phone:shadow-none">
-        <GridTileMedia className={FOLDER_WELL}>
+      <FileTileBody className="flex-1 p-0 phone:flex phone:items-center phone:gap-3 phone:bg-transparent phone:p-2 phone:shadow-none">
+        <FileTileMedia className={FOLDER_WELL}>
           <Folder className="size-10 text-muted-foreground/25 phone:size-5" strokeWidth={1.4} aria-hidden />
-        </GridTileMedia>
+        </FileTileMedia>
         <div className="px-3.5 pb-3 pt-[11px] phone:p-0">
           <Skeleton className="h-4 w-24" />
         </div>
-      </GridTileBody>
-      <GridTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px] phone:mt-0 phone:w-auto phone:py-0 phone:pl-0 phone:pr-4">
+      </FileTileBody>
+      <FileTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px] phone:mt-0 phone:w-auto phone:py-0 phone:pl-0 phone:pr-4">
         <Skeleton className="h-3 w-12" />
-      </GridTileFooter>
+      </FileTileFooter>
     </GridTileShell>
   )
 }

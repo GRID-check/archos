@@ -5,7 +5,7 @@
 /**
  * Why a rejected card leaves a HOLE instead of a gap that closes up.
  *
- * `validateGridCards` preserves wire positions: an item the union does not
+ * `validateAnswerCards` preserves wire positions: an item the union does not
  * recognise becomes `undefined` at its own index rather than being filtered
  * out. Positions are card identity — the answer's `[[card:N]]` markers index
  * into exactly this array (`remarkCardMarkers`, and `unplacedCardIndices` for
@@ -32,7 +32,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { validateGridCards } from './schemas'
+import { validateAnswerCards } from './schemas'
 
 const CALCULATION = {
   type: 'calculation',
@@ -62,7 +62,7 @@ const PATCH = {
 
 describe('a card the union knows keeps every card after it in place', () => {
   it('validates a calculation rather than dropping it', () => {
-    const cards = validateGridCards([CALCULATION])
+    const cards = validateAnswerCards([CALCULATION])
 
     expect(cards).toHaveLength(1)
     expect(cards[0]?.type).toBe('calculation')
@@ -73,7 +73,7 @@ describe('a card the union knows keeps every card after it in place', () => {
     // were dropped the proposal would answer to `[[card:1]]` and the patch to
     // `[[card:2]]` — so the marker the model wrote for its patch would draw a
     // proposal instead, in an answer where nothing looks broken.
-    const cards = validateGridCards([CALCULATION, PROPOSAL, PATCH])
+    const cards = validateAnswerCards([CALCULATION, PROPOSAL, PATCH])
 
     expect(cards.map((card) => card?.type)).toEqual(['calculation', 'memory_proposal', 'project_profile_patch'])
   })
@@ -86,7 +86,7 @@ describe('a card the union rejects leaves a hole, not a shift', () => {
     // after it still names the card it was written for.
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      const cards = validateGridCards([{ type: 'not_a_card_type' }, PROPOSAL, PATCH])
+      const cards = validateAnswerCards([{ type: 'not_a_card_type' }, PROPOSAL, PATCH])
 
       expect(cards).toHaveLength(3)
       expect(cards[0]).toBeUndefined()
@@ -102,7 +102,7 @@ describe('a card the union rejects leaves a hole, not a shift', () => {
   it('holds the middle when the middle card is the one that fails', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      const cards = validateGridCards([PROPOSAL, { type: 'not_a_card_type' }, PATCH])
+      const cards = validateAnswerCards([PROPOSAL, { type: 'not_a_card_type' }, PATCH])
 
       expect(cards.map((card) => card?.type)).toEqual(['memory_proposal', undefined, 'project_profile_patch'])
     } finally {
@@ -111,8 +111,8 @@ describe('a card the union rejects leaves a hole, not a shift', () => {
   })
 
   it('returns no cards for a non-array, and holes for nothing else', () => {
-    expect(validateGridCards(undefined)).toEqual([])
-    expect(validateGridCards(null)).toEqual([])
-    expect(validateGridCards({ type: 'memory_proposal' })).toEqual([])
+    expect(validateAnswerCards(undefined)).toEqual([])
+    expect(validateAnswerCards(null)).toEqual([])
+    expect(validateAnswerCards({ type: 'memory_proposal' })).toEqual([])
   })
 })

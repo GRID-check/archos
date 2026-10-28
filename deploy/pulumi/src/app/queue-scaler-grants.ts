@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { appPullPolicy, backendImage } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext, hardenedJobSecurityContext } from "../platform/security";
@@ -116,7 +116,7 @@ export function ensureTablesPython(): string {
 
 export function installQueueScalerGrants(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   const jobsTables = jobsDatabaseTables();

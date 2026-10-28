@@ -44,7 +44,7 @@ def test_a_new_collection_records_both_prefixes_and_no_copied_length():
     assert metadata == {**IDENTITY, "aiq:embed_fingerprint": "fp", "aiq:embed_model": "model"}
 
 
-def test_the_copy_to_grid_runs_once_and_keeps_the_legacy_keys():
+def test_the_copy_to_current_runs_once_and_keeps_the_legacy_keys():
     client = FakeClient(LEGACY)
 
     assert schema.adopt_legacy_metadata(client, "office") == {**IDENTITY, "bm25_length": {"k": 1.5}}

@@ -23,10 +23,10 @@ from langchain_core.outputs import LLMResult
 
 from agent.common.cost_tracking import BudgetExceededError
 from agent.common.cost_tracking import BudgetSnapshot
-from agent.common.cost_tracking import GridCostTracker
+from agent.common.cost_tracking import CostTracker
 from agent.common.cost_tracking import UsageEvent
+from agent.common.cost_tracking import cost_tracker_var
 from agent.common.cost_tracking import extract_usage_event
-from agent.common.cost_tracking import grid_cost_tracker_var
 from agent.common.cost_tracking import track_llm_costs
 
 _ROUTE = Path(__file__).resolve().parents[4] / "apps/workspace/app/api/internal/usage/route.ts"
@@ -140,7 +140,7 @@ class TestExtractUsageEvent:
     def test_batch_shape_matches_internal_endpoint(self, monkeypatch):
         posted = []
         monkeypatch.setattr("agent.common.cost_tracking._post_usage_events", posted.append)
-        tracker = GridCostTracker(organization_id="org_1", activity="ingest")
+        tracker = CostTracker(organization_id="org_1", activity="ingest")
         tracker.record(extract_usage_event(_openrouter_result()))
         tracker.flush(wait=True)
         assert set(posted[0]) == _route_keys("usageBatchSchema")
@@ -185,9 +185,9 @@ class TestBudgetSnapshot:
         assert legacy.exhausted_scope(0.5, 10**9) is None
 
 
-class TestGridCostTracker:
-    def _tracker(self, budget: BudgetSnapshot | None = None) -> GridCostTracker:
-        return GridCostTracker(
+class TestCostTracker:
+    def _tracker(self, budget: BudgetSnapshot | None = None) -> CostTracker:
+        return CostTracker(
             organization_id="org_1",
             user_id="user_1",
             project_id="proj_1",
@@ -312,12 +312,12 @@ class TestGridCostTracker:
 
 class TestTrackLlmCosts:
     def test_sets_and_resets_contextvar(self):
-        assert grid_cost_tracker_var.get() is None
+        assert cost_tracker_var.get() is None
         with track_llm_costs(identity={"organization_id": "org_1"}, budget=BudgetSnapshot()) as tracker:
             assert tracker is not None
-            assert grid_cost_tracker_var.get() is tracker
+            assert cost_tracker_var.get() is tracker
             assert tracker.organization_id == "org_1"
-        assert grid_cost_tracker_var.get() is None
+        assert cost_tracker_var.get() is None
 
     def test_flushes_on_exit(self):
         with patch("agent.common.cost_tracking._post_usage_events") as post:
@@ -353,7 +353,7 @@ class TestDeferredFlush:
         assert len(post.call_args.args[0]["events"]) == 1
 
     def test_flush_without_wait_returns_the_workers_future(self):
-        tracker = self_tracker = GridCostTracker(
+        tracker = self_tracker = CostTracker(
             organization_id="org_1",
             user_id=None,
             project_id=None,
@@ -424,7 +424,7 @@ class TestResponsesApiUsage:
 
 class TestPromptCacheSummary:
     def test_summary_counts_cached_against_total_input(self, caplog):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         tracker.on_llm_end(_responses_result(), run_id="run-1")
         assert tracker.cached_tokens == 35072
         with caplog.at_level("INFO", logger="agent.common.cost_tracking"):
@@ -434,7 +434,7 @@ class TestPromptCacheSummary:
         assert "6811 uncached" in line
 
     def test_nothing_recorded_logs_nothing(self, caplog):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         with caplog.at_level("INFO", logger="agent.common.cost_tracking"):
             tracker.log_prompt_cache_summary()
         assert not [r for r in caplog.records if "[PromptCache]" in r.getMessage()]
@@ -539,12 +539,12 @@ class TestResponsesApiCost:
         from agent.common import cost_tracking
 
         assert cost_tracking._RESPONSES_COST_CARRIER_INSTALLED
-        assert getattr(lc_openai._construct_lc_result_from_responses_api, "__grid_cost_carrier__", False)
+        assert getattr(lc_openai._construct_lc_result_from_responses_api, "__cost_carrier__", False)
         assert cost_tracking.install_responses_cost_carrier() is True  # idempotent
 
     @pytest.mark.parametrize("streaming", [False, True], ids=["invoke", "stream"])
     def test_a_responses_call_records_the_providers_cost(self, streaming):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         _responses_llm(streaming=streaming).invoke("Frage", config={"callbacks": [tracker]})
         assert tracker.events_recorded == 1
         event = tracker._pending[0]
@@ -558,13 +558,13 @@ class TestResponsesApiCost:
         assert tracker.turn_cost_usd == pytest.approx(0.0421)
 
     def test_a_byok_responses_call_is_marked_byok(self):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         usage = {**OPENROUTER_RESPONSES_USAGE, "cost": 0, "is_byok": True}
         _responses_llm(streaming=False, usage=usage).invoke("Frage", config={"callbacks": [tracker]})
         assert tracker._pending[0].is_byok is True
 
     def test_a_reply_without_cost_still_says_missing(self):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         usage = {k: v for k, v in OPENROUTER_RESPONSES_USAGE.items() if k not in ("cost", "is_byok")}
         _responses_llm(streaming=False, usage=usage).invoke("Frage", config={"callbacks": [tracker]})
         event = tracker._pending[0]
@@ -572,7 +572,7 @@ class TestResponsesApiCost:
         assert event.cost_source == "missing"
 
     def test_the_budget_gate_sees_the_answers_cost(self):
-        tracker = GridCostTracker(organization_id="org_1", budget=BudgetSnapshot(remaining_org_usd=0.04))
+        tracker = CostTracker(organization_id="org_1", budget=BudgetSnapshot(remaining_org_usd=0.04))
         llm = _responses_llm(streaming=False)
         llm.invoke("Frage", config={"callbacks": [tracker]})
         with pytest.raises(BudgetExceededError):

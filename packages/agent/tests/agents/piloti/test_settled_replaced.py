@@ -71,7 +71,7 @@ def workflow(monkeypatch):
         seen["order"].append("ledgers flushed")
 
     monkeypatch.setattr(cr.Context, "get", staticmethod(lambda: types.SimpleNamespace(conversation_id="c1")))
-    monkeypatch.setattr(cr.GridRequestContext, "from_context", staticmethod(lambda: None))
+    monkeypatch.setattr(cr.RequestContext, "from_context", staticmethod(lambda: None))
     monkeypatch.setattr(cr, "extract_turn_inputs", lambda _q: TurnInputs("q", [], None, None))
     monkeypatch.setattr(cr, "get_scoped_collections_from_context", lambda: None)
     monkeypatch.setattr(cr, "documents_loading_step", lambda _shelves: None)

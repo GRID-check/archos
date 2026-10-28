@@ -2541,7 +2541,7 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
     from langchain_core.messages import ToolMessage
     from langchain_core.tools import tool
 
-    from agent.agents.piloti.agent import PilotiAgent
+    from agent.agents.piloti.agent import ChatAgent
     from agent.agents.piloti.models import ResearchAgentState
     from agent.citations.entries import SourceEntry
     from agent.citations.registry import SourceRegistry
@@ -2588,7 +2588,7 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
     llm.ainvoke = AsyncMock(side_effect=respond)
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    agent = PilotiAgent(llm_provider=provider, tools=[look, mark], system_prompt="Du bist Piloti.")
+    agent = ChatAgent(llm_provider=provider, tools=[look, mark], system_prompt="Du bist Piloti.")
 
     async def graph_turn(request, ask):
         bodies: asyncio.Queue = asyncio.Queue()

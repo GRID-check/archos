@@ -1,6 +1,6 @@
 """Per-turn usage rollup in dollars: what one turn spent, in one record.
 
-The per-call ledger (``GridCostTracker`` → ``llm_usage_events``) records every
+The per-call ledger (``CostTracker`` → ``llm_usage_events``) records every
 model call. Its rows name the chat answer they belong to (``message_id``,
 which the answer's cost line sums) but no turn of a job, and nothing in the
 BFF groups by turn. This module is the usage sibling of ``common.citation_events``
@@ -106,7 +106,7 @@ def build_usage_rollup(
 
 
 def from_tracker(tracker: Any) -> UsageRollup | None:
-    """Build the rollup off a ``GridCostTracker``.
+    """Build the rollup off a ``CostTracker``.
 
     A tracker that saw no calls yields the zero row (see
     :func:`build_usage_rollup`); ``None`` only when the tracker itself is

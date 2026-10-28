@@ -22,7 +22,7 @@ import {
   unplacedCardIndices,
 } from './card-markers'
 import { cardKey, reconcileCardInteractions } from './card-decision'
-import { validateGridCards } from '@/shared/cards/schemas'
+import { validateAnswerCards } from '@/shared/cards/schemas'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import {
   MARKDOWN_SLOT_TAG,
@@ -304,7 +304,7 @@ describe('a rejected card in the middle keeps every marker and decision bound', 
   const validated = () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      return validateGridCards(WIRE)
+      return validateAnswerCards(WIRE)
     } finally {
       warn.mockRestore()
     }

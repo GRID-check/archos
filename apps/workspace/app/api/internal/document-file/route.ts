@@ -49,7 +49,7 @@ import { NotFoundError } from '@/lib/api/errors'
 import { restrictedCollectionBase } from '@/lib/authz/folder-access-rule'
 import { drawableRestrictedCollections } from '@/lib/conversations/restricted-use'
 import { findDocumentImageStorageKey, findDocumentStorageKey } from '@/lib/documents/document-storage-keys'
-import { type VerifiedGridRequestContext } from '@/lib/request-context'
+import { type VerifiedRequestContext } from '@/lib/request-context'
 import { hasHeader } from '@/lib/http/legacy-header-names'
 
 const querySchema = z.object({
@@ -62,7 +62,7 @@ const querySchema = z.object({
 type DocumentFileQuery = z.infer<typeof querySchema>
 
 /** The verified envelope when the caller presented one (a 401 when it does not verify); null when it presented none. */
-function presentedContext(request: Request): VerifiedGridRequestContext | null {
+function presentedContext(request: Request): VerifiedRequestContext | null {
   const presented =
     hasHeader(request.headers, 'X-Request-Context') || hasHeader(request.headers, 'X-Request-Context-Sig')
   return presented ? requireVerifiedContext(request) : null
@@ -74,7 +74,7 @@ function isRestrictedCollection(collection: string): boolean {
 }
 
 /** Refuse, as an unknown document, a collection the caller's signed turn may not read. Runs inside the tenant scope. */
-async function requireReadable(collection: string, context: VerifiedGridRequestContext | null): Promise<void> {
+async function requireReadable(collection: string, context: VerifiedRequestContext | null): Promise<void> {
   const restricted = isRestrictedCollection(collection)
   if (!context) {
     if (restricted) throw new NotFoundError('Document not found')

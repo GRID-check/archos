@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 #: The artifact key the records travel under.
 ARTIFACT_KEY = "citations"
 
-_collector: ContextVar[list[GroundingHit] | None] = ContextVar("grid_citation_collector", default=None)
+_collector: ContextVar[list[GroundingHit] | None] = ContextVar("citation_hits", default=None)
 
 
 @contextmanager

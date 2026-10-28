@@ -20,7 +20,7 @@
  */
 
 import { discriminatedOptions } from '@/lib/api/zod-union'
-import { gridCardSchema } from '@/shared/cards/schemas'
+import { answerCardSchema } from '@/shared/cards/schemas'
 
 /**
  * Card types emitted only by a tool, never by the model.
@@ -64,7 +64,7 @@ function buildCardCatalog(): CardCatalogEntry[] {
   // `discriminatedOptions` is keyed by the discriminator value zod itself resolved, so it
   // is correct even for the one card whose `type` literal is wrapped in a
   // `.default()` (project_profile_patch) — unwrapping `_def` by hand is not.
-  for (const [type, option] of discriminatedOptions(gridCardSchema)) {
+  for (const [type, option] of discriminatedOptions(answerCardSchema)) {
     if (typeof type !== 'string' || withheld.has(type)) continue
     entries.push({ type, description: firstParagraph(option.description ?? '') })
   }

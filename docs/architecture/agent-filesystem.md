@@ -8,7 +8,7 @@
 > [ADR-0134](../adr/0134-extracted-page-text-is-stored-per-version.md) (page text is
 > stored per version). Written 2026-10-27, before slice 0; what is built, and where it
 > departs from the design, is [As built](#as-built). The write side, and why the estate is never writable through
-> filesystem verbs, is [`piloti-filesystem-design.md`](piloti-filesystem-design.md) §2.
+> filesystem verbs, is [`filesystem-design.md`](filesystem-design.md) §2.
 > Today's tools and their costs: [`agent-tool-surface.md`](agent-tool-surface.md).
 > Output examples use the `files_eval` fixture project
 > (`tests/fixtures/files_eval/project.yaml`); values the fixture does not hold are

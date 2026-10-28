@@ -376,7 +376,7 @@ function_groups:
   # proposal the person accepts. Each call echoes the turn's signed envelope, so
   # it acts as the asker. Chat only, because only a turn carries an envelope.
   workspace:
-    _type: piloti_workspace
+    _type: workspace_tools
 
 functions:
   data_sources:

@@ -273,7 +273,7 @@ export function QuestionHeader({ question, domId }: { question: ProjectIntakeQue
       {question.why && whyOpen && (
         // A quiet tinted surface with the card radius, rather than a second
         // differently-alpha'd action ink, and no side stripe
-        // (grid-design-language.md, "Emphasis without a stripe").
+        // (design-language.md, "Emphasis without a stripe").
         <p
           id={whyId}
           className="bg-muted text-muted-foreground max-w-prose rounded-md px-3 py-2 text-xs"

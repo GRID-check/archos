@@ -240,7 +240,7 @@ class TestObservability:
         from agent.common import cost_tracking
 
         async def _spend(ctx):
-            tracker = cost_tracking.grid_cost_tracker_var.get()
+            tracker = cost_tracking.cost_tracker_var.get()
             tracker.on_llm_end(_usage_response(prompt=2270, completion=180, cost=0.0042))
             return {"ok": True}
 

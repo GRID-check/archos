@@ -2,7 +2,7 @@
  * How the bff-jobs pool is sized against Gotenberg, and which host its slices
  * run in. Split from `config.ts`, which re-exports it.
  */
-import type { GridConfig } from './config'
+import type { DeployConfig } from './config'
 
 /**
  * Conversions one Gotenberg replica is sized to take at once: one running and
@@ -13,7 +13,7 @@ import type { GridConfig } from './config'
 export const GOTENBERG_SLOTS_PER_REPLICA = 2;
 
 /** `bffJobsMode`: a value the runner does not know would crash-loop the pool, so it fails the plan. */
-export function bffJobsMode(raw: string | undefined): GridConfig["bffJobs"]["mode"] {
+export function bffJobsMode(raw: string | undefined): DeployConfig["bffJobs"]["mode"] {
   const mode = raw?.trim() || "http";
   if (mode === "http" || mode === "inprocess") return mode;
   throw new Error(`grid-oib:bffJobsMode must be "http" or "inprocess", not "${mode}"`);
@@ -26,11 +26,11 @@ export function bffJobsMode(raw: string | undefined): GridConfig["bffJobs"]["mod
  * is the fleet-wide bound that replaced a per-process queue in every frontend
  * pod; readers opening a preview are the frontend pods' own, bounded apart.
  */
-export function renditionCeiling(cfg: Pick<GridConfig, "bffJobs">): number {
+export function renditionCeiling(cfg: Pick<DeployConfig, "bffJobs">): number {
   return cfg.bffJobs.maxReplicas * cfg.bffJobs.renditionConcurrency;
 }
 
 /** What the converter can take: its replicas times {@link GOTENBERG_SLOTS_PER_REPLICA}. */
-export function gotenbergCapacity(cfg: Pick<GridConfig, "gotenberg">): number {
+export function gotenbergCapacity(cfg: Pick<DeployConfig, "gotenberg">): number {
   return cfg.gotenberg.replicas * GOTENBERG_SLOTS_PER_REPLICA;
 }

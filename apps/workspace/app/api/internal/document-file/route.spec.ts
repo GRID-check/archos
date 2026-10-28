@@ -29,7 +29,7 @@ import { GET } from './route'
 import { drawableRestrictedCollections } from '@/lib/conversations/restricted-use'
 import { withTenant } from '@/lib/db/tenant-context'
 import { findDocumentImageStorageKey, findDocumentStorageKey } from '@/lib/documents/document-storage-keys'
-import { GRID_HEADER_NAMES, buildGridRequestContextEnvelope } from '@/lib/request-context'
+import { REQUEST_CONTEXT_HEADER_NAMES, buildRequestContextEnvelope } from '@/lib/request-context'
 
 const request = (
   query = '?collection=proj_1&filename=plan.png',
@@ -47,7 +47,7 @@ const WRONG_SECRET = 'not-the-signing-secret' // pragma: allowlist secret
 function envelope(
   overrides: { collectionScope?: string[]; conversationId?: string | null; secret?: string } = {}
 ): Record<string, string> {
-  const { header, signature } = buildGridRequestContextEnvelope(
+  const { header, signature } = buildRequestContextEnvelope(
     {
       organizationId: 'org_1',
       userId: 'user_asker',
@@ -59,8 +59,8 @@ function envelope(
     overrides.secret ?? 'test-token'
   )
   return {
-    [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header,
-    [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
+    [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header,
+    [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
   }
 }
 

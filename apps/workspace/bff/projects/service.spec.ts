@@ -41,7 +41,7 @@ vi.mock('@/lib/conversations/repository', () => ({
   listConversationIdsForProject: vi.fn(),
 }))
 
-import { getProjectsGridData, listProjects } from './service'
+import { getProjectsListData, listProjects } from './service'
 import { makeProject } from '@/test-utils/db-fixtures'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
@@ -178,7 +178,7 @@ describe('listProjects', () => {
  * re-deriving their own scope — a document count or an activity timestamp for a
  * project the caller cannot open is the same leak in a different shape.
  */
-describe('getProjectsGridData', () => {
+describe('getProjectsListData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     listProjectsInOrg.mockResolvedValue([ALPHA, BETA, GAMMA])
@@ -193,7 +193,7 @@ describe('getProjectsGridData', () => {
       projectId === 'proj_beta' ? ['folder_hr'] : projectId === 'proj_alpha' ? ['folder_fees', 'folder_pay'] : []
     )
 
-    await getProjectsGridData(session())
+    await getProjectsListData(session())
 
     const [, ids, hidden] = countDocumentsByProject.mock.calls[0]
     expect(ids).toEqual(['proj_alpha', 'proj_beta', 'proj_gamma'])
@@ -206,7 +206,7 @@ describe('getProjectsGridData', () => {
       Promise.resolve(page(externalId === 'proj_beta'))
     )
 
-    const data = await getProjectsGridData(session())
+    const data = await getProjectsListData(session())
 
     expect(lastProjectActivityByUser).toHaveBeenCalledWith('org_1', 'user_1', ['proj_beta'])
     expect(countDocumentsByProject).toHaveBeenCalledWith('org_1', ['proj_beta'], [], {
@@ -223,7 +223,7 @@ describe('getProjectsGridData', () => {
     effective.mockResolvedValue(page(true))
     lastProjectActivityByUser.mockResolvedValue({})
 
-    const data = await getProjectsGridData(session())
+    const data = await getProjectsListData(session())
 
     expect(data.viewerActivity).toEqual({})
     expect(data.projects).toHaveLength(3)

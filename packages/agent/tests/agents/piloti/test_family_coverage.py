@@ -24,7 +24,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.agent import _opened_documents
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
@@ -102,14 +102,14 @@ def steps(emitted):
 
 @pytest.fixture
 def scripted_agent():
-    def build(*rounds: AIMessage) -> PilotiAgent:
+    def build(*rounds: AIMessage) -> ChatAgent:
         llm = MagicMock()
         llm.bind_tools = MagicMock(return_value=llm)
         llm.bind = MagicMock(return_value=llm)
         llm.ainvoke = AsyncMock(side_effect=list(rounds))
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        return PilotiAgent(llm_provider=provider, tools=[knowledge_search], max_tool_iterations=7)
+        return ChatAgent(llm_provider=provider, tools=[knowledge_search], max_tool_iterations=7)
 
     return build
 

@@ -35,14 +35,14 @@ vi.mock('@/lib/tasks/service', () => ({
   runReportFilingJob: (...args: unknown[]) => runReportFilingJob(...args),
 }))
 
-const runPilotiWake = vi.fn()
+const runAgentWake = vi.fn()
 vi.mock('@/lib/annotations/wake-job', () => ({
-  runPilotiWake: (...args: unknown[]) => runPilotiWake(...args),
+  runAgentWake: (...args: unknown[]) => runAgentWake(...args),
 }))
 
-const runPilotiWakeStop = vi.fn()
+const runAgentWakeStop = vi.fn()
 vi.mock('@/lib/annotations/wake-stop-job', () => ({
-  runPilotiWakeStop: (...args: unknown[]) => runPilotiWakeStop(...args),
+  runAgentWakeStop: (...args: unknown[]) => runAgentWakeStop(...args),
 }))
 
 const resolvePinnedRequesterSession = vi.fn()
@@ -89,7 +89,7 @@ beforeEach(() => {
   runReportFilingJob.mockReset()
   runRestoreFolderSlice.mockReset()
   runPurgeBinnedChunksSlice.mockReset()
-  runPilotiWake.mockReset()
+  runAgentWake.mockReset()
   // Who the identity provider says the requester is today: the role they hold now, not the one they clicked with.
   resolvePinnedRequesterSession.mockReset()
   resolvePinnedRequesterSession.mockImplementation(async ({ userId, email, organizationId }) => ({
@@ -264,14 +264,14 @@ describe('runJobSlice', () => {
     }
     findClaimedJob.mockResolvedValue(row({ kind: 'piloti_wake', payload: wake, attempts: 3 }))
     const notBefore = new Date('2026-10-13T10:00:15Z')
-    runPilotiWake.mockResolvedValue({ done: false, payload: { ...wake, waits: 1 }, notBefore })
+    runAgentWake.mockResolvedValue({ done: false, payload: { ...wake, waits: 1 }, notBefore })
 
     await expect(runJobSlice('job-1', 'w-0')).resolves.toEqual({
       done: false,
       payload: { ...wake, waits: 1 },
       notBefore: '2026-10-13T10:00:15.000Z',
     })
-    expect(runPilotiWake).toHaveBeenCalledWith('org-1', wake, { last: true })
+    expect(runAgentWake).toHaveBeenCalledWith('org-1', wake, { last: true })
   })
 
   it('runs the stop of a wake’s turn as the system: no session, one step, the stored payload', async () => {
@@ -282,17 +282,17 @@ describe('runJobSlice', () => {
       actorUserId: 'user-1',
     }
     findClaimedJob.mockResolvedValue(row({ kind: 'piloti_wake_stop', payload: stop, attempts: 2 }))
-    runPilotiWakeStop.mockResolvedValue(undefined)
+    runAgentWakeStop.mockResolvedValue(undefined)
 
     await expect(runJobSlice('job-1', 'w-0')).resolves.toEqual({ done: true, payload: stop })
-    expect(runPilotiWakeStop).toHaveBeenCalledWith('org-1', stop, { last: false })
+    expect(runAgentWakeStop).toHaveBeenCalledWith('org-1', stop, { last: false })
     expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
   })
 
   it('refuses a stored stop that does not parse, and a stop that threw', async () => {
     findClaimedJob.mockResolvedValue(row({ kind: 'piloti_wake_stop', payload: { wakeId: 'nope' } }))
     await expect(runJobSlice('job-1', 'w-0')).rejects.toThrow()
-    expect(runPilotiWakeStop).not.toHaveBeenCalled()
+    expect(runAgentWakeStop).not.toHaveBeenCalled()
 
     findClaimedJob.mockResolvedValue(
       row({
@@ -305,7 +305,7 @@ describe('runJobSlice', () => {
         },
       })
     )
-    runPilotiWakeStop.mockRejectedValue(new Error('the stop reached no server'))
+    runAgentWakeStop.mockRejectedValue(new Error('the stop reached no server'))
     await expect(runJobSlice('job-1', 'w-0')).rejects.toThrow(/no server/)
   })
 

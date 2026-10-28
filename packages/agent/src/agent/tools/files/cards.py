@@ -52,7 +52,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import CardRegistry
 from agent.cards.registry import get_card_registry
 from agent.tools.proposals_client import add_card
@@ -75,7 +75,7 @@ def _lock_for(registry: CardRegistry) -> asyncio.Lock:
 
 def _validated(card: dict[str, Any]) -> dict[str, Any] | None:
     try:
-        return grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+        return answer_card_adapter.validate_python(card).model_dump(exclude_none=True)
     except ValidationError:
         logger.exception("Failed to build file_operation_proposal card (operation=%s)", card.get("operation"))
         return None

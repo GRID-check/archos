@@ -11,7 +11,7 @@ judgment, pinned only by the ``<output_contract>`` block of
 2. a commissioned report is handed to deep research (``escalate_to_deep`` in
    the envelope) BEFORE any retrieval of its own.
 
-Three more cases cover the shape the Piloti-writes work added and nothing
+Three more cases cover the shape the agent-writes work added and nothing
 measured (ledger row 5): a commissioned Aktenvermerk is WRITTEN rather than
 described, a revision edits the draft instead of writing a second one, and
 „leg das ins Projekt ab" files it. Their prompts and their one assertion live
@@ -21,7 +21,7 @@ harnesses asking different questions would stop being the same eval the first
 time either was edited.
 
 This file is the eval the ADR said those behaviours lacked. It builds the real
-``PilotiAgent`` on the real system prompt against Piloti's own
+``ChatAgent`` on the real system prompt against Piloti's own
 model through OpenRouter, with STUB tools in place of the retrieval stack: the
 stubs return a plausible hit, so nothing here needs a corpus, a database or a
 RIS connection. The trace the assertions read is the turn's own transcript,
@@ -57,7 +57,7 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.answer_pipeline import this_turn
 from agent.agents.piloti.models import ResearchAgentState
 from agent.cards.registry import CardRegistry
@@ -210,7 +210,7 @@ def _research_model_name() -> str:
     return os.environ.get(env_var) or default
 
 
-def _build_agent(extra_tools: list = []) -> PilotiAgent:  # noqa: B006 - read-only default
+def _build_agent(extra_tools: list = []) -> ChatAgent:  # noqa: B006 - read-only default
     """The real agent, the real prompt, the real model; stub tools."""
     from langchain_openai import ChatOpenAI
 
@@ -230,7 +230,7 @@ def _build_agent(extra_tools: list = []) -> PilotiAgent:  # noqa: B006 - read-on
     llm = enforce_chat_request_contract(apply_openrouter_structured_defaults(llm))
     provider = LLMProvider()
     provider.set_default(llm, group=AgentGroup.RESEARCH)
-    return PilotiAgent(
+    return ChatAgent(
         llm_provider=provider,
         tools=[*_TOOLS, *extra_tools],
         # The repair pass re-searches after a failed verification. That is a
@@ -240,7 +240,7 @@ def _build_agent(extra_tools: list = []) -> PilotiAgent:  # noqa: B006 - read-on
     )
 
 
-async def _run_turn(agent: PilotiAgent, question: str, cards: CardRegistry | None = None) -> ResearchAgentState:
+async def _run_turn(agent: ChatAgent, question: str, cards: CardRegistry | None = None) -> ResearchAgentState:
     """One turn, with a single rerun for a transport failure only.
 
     ``cards`` is bound around the run here, in the coroutine that resets it,
@@ -289,7 +289,7 @@ def _data_source_registry():
 
 
 @pytest.fixture(scope="module")
-def agent() -> PilotiAgent:
+def agent() -> ChatAgent:
     return _build_agent()
 
 

@@ -17,10 +17,10 @@ from __future__ import annotations
 import json
 
 import pytest
+from agent_testing.exposure import CHAT_AGENT
 from agent_testing.exposure import CONFIG
 from agent_testing.exposure import EXPOSURE
-from agent_testing.exposure import PILOTI_AGENT
-from agent_testing.exposure import piloti_tool_names
+from agent_testing.exposure import chat_tool_names
 
 
 @pytest.fixture(scope="module")
@@ -28,8 +28,8 @@ def exposure() -> dict[str, dict]:
     return json.loads(EXPOSURE.read_text(encoding="utf-8"))["operations"]
 
 
-def test_every_native_tool_the_config_names_is_one_piloti_has(exposure: dict[str, dict]) -> None:
-    tools = piloti_tool_names()
+def test_every_native_tool_the_config_names_is_one_the_chat_agent_has(exposure: dict[str, dict]) -> None:
+    tools = chat_tool_names()
     natives = {
         name: entry["piloti"].removeprefix("native:")
         for name, entry in exposure.items()
@@ -37,10 +37,10 @@ def test_every_native_tool_the_config_names_is_one_piloti_has(exposure: dict[str
     }
     assert natives, "the config names no native tool: the fixture is not the one this test reads"
     unknown = {name: tool for name, tool in natives.items() if tool not in tools}
-    assert unknown == {}, f"not in {PILOTI_AGENT}'s tools of {CONFIG.name}: {unknown}"
+    assert unknown == {}, f"not in {CHAT_AGENT}'s tools of {CONFIG.name}: {unknown}"
 
 
-def test_the_consultants_steps_hide_these_from_piloti_behind_its_own_tools(exposure: dict[str, dict]) -> None:
+def test_the_consultants_steps_hide_these_from_the_chat_agent_behind_its_own_tools(exposure: dict[str, dict]) -> None:
     """The approved mappings (2026-10-21): visibility on Piloti's door only, the outside agent keeps each."""
     expected = {
         "project-memory-create": "native:remember",
@@ -59,12 +59,12 @@ def test_the_consultants_steps_hide_these_from_piloti_behind_its_own_tools(expos
 
 def test_the_tool_list_reader_sees_the_canvas_group() -> None:
     """The reader itself: a group's members come through under the bound name, or every canvas name looks unknown."""
-    assert {"canvas__mark", "canvas__reply", "remember", "create_task"} <= piloti_tool_names()
+    assert {"canvas__mark", "canvas__reply", "remember", "create_task"} <= chat_tool_names()
 
 
-def test_the_door_looks_with_the_tool_piloti_looks_with(exposure: dict[str, dict]) -> None:
+def test_the_door_looks_with_the_tool_agent_looks_with(exposure: dict[str, dict]) -> None:
     """ADR-0128: one name for one act. The door's ``document-look`` is Piloti's own ``look``, offered outside."""
     assert exposure["document-look"]["piloti"] == "native:look"
     assert exposure["document-look"]["external"] is True
     assert "knowledge-image-view" not in exposure
-    assert "look" in piloti_tool_names()
+    assert "look" in chat_tool_names()

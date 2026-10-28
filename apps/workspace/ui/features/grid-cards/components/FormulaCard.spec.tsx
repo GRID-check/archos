@@ -23,11 +23,11 @@ import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
-import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
+import { answerCardSchema, type AnswerCard } from '@/shared/cards/schemas'
 import { A2uiCard } from '@/features/a2ui/A2uiCard'
 import cases from '../lib/formula-cases.json'
 import type { FormulaCardData } from '../lib/formulas'
-import { GridCardView } from './GridCards'
+import { AnswerCardView } from './AnswerCards'
 import { FormulaCard } from './FormulaCard'
 
 const chatSendFn = vi.fn()
@@ -56,7 +56,7 @@ const fixtureCard = (id: string, patch?: (card: Record<string, unknown>) => void
   const entry = (cases.cases as Array<{ id: string; card?: unknown }>).find((item) => item.id === id)
   const card = structuredClone(entry?.card) as Record<string, unknown>
   patch?.(card)
-  return gridCardSchema.parse(card) as FormulaCardData
+  return answerCardSchema.parse(card) as FormulaCardData
 }
 
 const stair = (going: number | null = 29) =>
@@ -315,7 +315,7 @@ describe('reader inputs in the A2UI data model', () => {
       asLeaf('a', stair()),
       asLeaf('b', stair(30)),
     ],
-  } as unknown as GridCard
+  } as unknown as AnswerCard
 
   it('keeps a variant’s what-if across a tab switch, because the surface holds it', async () => {
     const user = userEvent.setup()
@@ -323,7 +323,7 @@ describe('reader inputs in the A2UI data model', () => {
       <A2uiCard
         card={variants}
         surfaceKey="m1:formula"
-        render={(leaf, leafId) => <GridCardView card={leaf} index={0} messageId="m1" leafId={leafId} />}
+        render={(leaf, leafId) => <AnswerCardView card={leaf} index={0} messageId="m1" leafId={leafId} />}
       />
     )
     const field = await screen.findByRole('spinbutton', { name: 'Stufenhöhe s' })

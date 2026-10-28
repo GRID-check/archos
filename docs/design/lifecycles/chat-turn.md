@@ -3,7 +3,7 @@
 **Design of record:** [`../streaming-chat-answer.md`](../streaming-chat-answer.md)
 (wire, settle, paced reveal, [the turn on screen](../streaming-chat-answer.md#the-turn-on-screen)),
 [`../chat-wire-v2.md`](../chat-wire-v2.md) (events),
-[`../grid-design-language.md`](../grid-design-language.md) (motion tokens),
+[`../design-language.md`](../design-language.md) (motion tokens),
 [`../run-block.md`](../run-block.md) (hand-off to a run).
 **Owner area:** `apps/workspace/ui/features/chat/` (ChatArea, ChatThinking,
 ReasoningFlow, SubagentGroups, AgentResponse, InputArea, `lib/turn-fold.ts`,

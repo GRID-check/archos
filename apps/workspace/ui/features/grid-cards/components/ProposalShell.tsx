@@ -22,9 +22,9 @@ type ProposalTone = 'pending' | 'accepted' | 'dismissed'
  * An outcome's glyph, beside the receipt's words. `pending` has none: the
  * question is the state.
  *
- * Lifecycle is its own axis (`grid-card-charter.md` §A3), and it used to be an
+ * Lifecycle is its own axis (`answer-card-charter.md` §A3), and it used to be an
  * accent edge whose colour tracked the state. Side stripes are discouraged
- * (grid-design-language.md, "Emphasis without a stripe"), and an edge said the
+ * (design-language.md, "Emphasis without a stripe"), and an edge said the
  * outcome in colour alone; the glyph says it in shape, the receipt in words,
  * and the verdict colour only reinforces both (WCAG 1.4.1).
  */

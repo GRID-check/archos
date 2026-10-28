@@ -57,7 +57,7 @@ import type { Project } from '@/lib/db/schema/projects'
 import { revisionTag } from '@/lib/documents/revision-timeline'
 import { listChatProjects } from '@/lib/projects/service'
 import { toProjectStatus } from '@/lib/projects/project-status'
-import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
+import { buildRequestContextWireHeaders } from '@/lib/request-context'
 import type {
   SimilarDocument,
   SimilarGroup,
@@ -144,7 +144,7 @@ async function fetchSimilarFromBackend(
   collections: readonly string[]
 ): Promise<BackendSimilarResponse> {
   const scope = [...new Set([source.collection, ...collections])]
-  const headers = buildGridRequestContextWireHeaders({ collectionScope: scope }, process.env.INTERNAL_API_TOKEN)
+  const headers = buildRequestContextWireHeaders({ collectionScope: scope }, process.env.INTERNAL_API_TOKEN)
   let res: Response
   try {
     res = await fetch(`${getBackendUrl()}/v1/collections/similar`, {

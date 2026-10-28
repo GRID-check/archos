@@ -149,17 +149,17 @@ class TestAQuestion:
 
     async def test_the_reading_is_booked_to_the_turns_usage_ledger(self, sees, model) -> None:
         """The callback path never sees this call, so the reading books itself: budgets and invoices count it."""
-        from agent.common.cost_tracking import GridCostTracker
-        from agent.common.cost_tracking import grid_cost_tracker_var
+        from agent.common.cost_tracking import CostTracker
+        from agent.common.cost_tracking import cost_tracker_var
 
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         recorded: list = []
         tracker.record = recorded.append  # type: ignore[method-assign]
-        token = grid_cost_tracker_var.set(tracker)
+        token = cost_tracker_var.set(tracker)
         try:
             await run_look(page=1, region=REGION, question="What is this?")
         finally:
-            grid_cost_tracker_var.reset(token)
+            cost_tracker_var.reset(token)
 
         [event] = recorded
         assert (event.role, event.model, event.prompt_tokens, event.completion_tokens) == (

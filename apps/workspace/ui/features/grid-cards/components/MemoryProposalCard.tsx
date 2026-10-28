@@ -28,7 +28,7 @@ interface MemoryProposalCardProps {
   /**
    * Whether this surface requires the answer to be persisted. With no owning
    * message the card then shows WHAT is proposed and offers nothing — see
-   * `GridCards.decisionsMustPersist`.
+   * `AnswerCards.decisionsMustPersist`.
    */
   decisionsMustPersist?: boolean
   /** The earlier note this one corrects, quoted; accepting the proposal retires it. */

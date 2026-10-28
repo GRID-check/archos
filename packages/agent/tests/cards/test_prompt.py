@@ -107,9 +107,9 @@ class TestCatalogSharedAcrossSurfaces:
 
     def test_the_withheld_set_is_real(self):
         # A typo here withholds nothing and reads as protection.
-        from agent.cards.models import GridCard
+        from agent.cards.models import AnswerCard
 
-        real = {getattr(card.model_fields["type"].annotation, "__args__", ("?",))[0] for card in GridCard.__args__}
+        real = {getattr(card.model_fields["type"].annotation, "__args__", ("?",))[0] for card in AnswerCard.__args__}
         assert sorted(MODEL_BACKED_CARD_TYPES - real) == []
 
 

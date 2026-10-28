@@ -139,7 +139,7 @@ _counters_lock = threading.Lock()
 #: ``asyncio.to_thread``, which is how the sync helpers here are called from
 #: the event loop, so a scope covers the turn's real cache traffic. A thread
 #: started outside the scope (ingest) counts into the process totals only.
-_turn_counters: ContextVar[CacheCounters | None] = ContextVar("grid_cache_counters", default=None)
+_turn_counters: ContextVar[CacheCounters | None] = ContextVar("turn_cache_counters", default=None)
 
 
 def _count(**deltas: int) -> None:

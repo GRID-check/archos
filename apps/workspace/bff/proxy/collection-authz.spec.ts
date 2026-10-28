@@ -16,7 +16,7 @@ vi.mock('@/lib/authz/projects', () => ({
 }))
 
 import { NotFoundError } from '@/lib/api/errors'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 import {
   normalizeSessionCollectionName,
   parseBodyContext,
@@ -26,7 +26,7 @@ import {
   type CollectionAuthzDeps,
 } from './collection-authz'
 
-const session = { organizationId: 'org-1', userId: 'user-1' } as unknown as GridSession
+const session = { organizationId: 'org-1', userId: 'user-1' } as unknown as UserSession
 
 const deps = (overrides: Partial<CollectionAuthzDeps> = {}): CollectionAuthzDeps => ({
   findProjectIdByCollection: vi.fn().mockResolvedValue('proj-id-1'),
@@ -190,13 +190,13 @@ describe('validateCollectionName', () => {
     userId: 'user-1',
     role: 'member',
     permissions: ['org:archiv:manage'],
-  } as unknown as GridSession
+  } as unknown as UserSession
   const officeShelfMember = {
     organizationId: 'org-1',
     userId: 'user-2',
     role: 'member',
     permissions: [],
-  } as unknown as GridSession
+  } as unknown as UserSession
 
   it('accepts the caller-org Archiv collection for a manager', async () => {
     expect(
@@ -349,7 +349,7 @@ describe('validateCollectionName — what the proxy never does', () => {
     organizationId: 'org-1',
     userId: 'user-1',
     permissions: ['org:archiv:manage'],
-  } as unknown as GridSession
+  } as unknown as UserSession
 
   it.each([
     ['proj_abc', session],

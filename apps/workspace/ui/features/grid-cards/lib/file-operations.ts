@@ -9,10 +9,10 @@
  * card without a stored proposal is read-only (`FileOperationProposalCard`).
  */
 
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { notifyDocumentsChanged } from '@/lib/documents/document-changes'
 
-type ProposalCard = Extract<GridCard, { type: 'file_operation_proposal' }>
+type ProposalCard = Extract<AnswerCard, { type: 'file_operation_proposal' }>
 export type FileOperationKind = ProposalCard['operation']
 /**
  * One row of a proposal, as the card's consumers may hand it over.

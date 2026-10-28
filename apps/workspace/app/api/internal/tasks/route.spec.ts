@@ -30,8 +30,8 @@ vi.mock('@/lib/db/tenant-context', async (importOriginal) => ({
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import { withTenant } from '@/lib/db/tenant-context'
 import {
-  GRID_HEADER_NAMES,
-  buildGridRequestContextEnvelope,
+  REQUEST_CONTEXT_HEADER_NAMES,
+  buildRequestContextEnvelope,
   REQUEST_CONTEXT_MAX_AGE_MS,
 } from '@/lib/request-context'
 import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema/tasks'
@@ -45,7 +45,7 @@ const PROJECT = '33333333-3333-4333-8333-333333333333'
 
 const session = {
   userId: 'user_requester',
-  email: 'r@grid.test',
+  email: 'r@example.test',
   name: null,
   accessToken: '',
   organizationId: 'org_1',
@@ -89,7 +89,7 @@ function envelopeHeaders(
     collectionScope?: string[]
   } = {},
 ) {
-  const { header, signature } = buildGridRequestContextEnvelope(
+  const { header, signature } = buildRequestContextEnvelope(
     {
       organizationId: overrides.organizationId ?? 'org_1',
       userId: overrides.userId ?? 'user_requester',
@@ -101,8 +101,8 @@ function envelopeHeaders(
     SECRET,
   )
   return {
-    [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header,
-    [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
+    [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header,
+    [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
   }
 }
 
@@ -144,7 +144,7 @@ describe('identity', () => {
 
   it('refuses a tampered signature', async () => {
     const headers = envelopeHeaders()
-    headers[GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG] = 'f'.repeat(64)
+    headers[REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG] = 'f'.repeat(64)
     expect((await call(CREATE, headers)).status).toBe(401)
     expect(delegateTask).not.toHaveBeenCalled()
   })
@@ -376,13 +376,13 @@ describe('the research op — an escalated question becomes a run', () => {
   })
 
   it('answers 409 when the envelope carries no thread: there is nowhere to narrate', async () => {
-    const { header, signature } = buildGridRequestContextEnvelope(
+    const { header, signature } = buildRequestContextEnvelope(
       { organizationId: 'org_1', userId: 'user_requester', projectId: PROJECT, issuedAt: Date.now() },
       SECRET,
     )
     const response = await call(RESEARCH, {
-      [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header,
-      [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
+      [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header,
+      [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
     })
 
     expect(response.status).toBe(409)

@@ -11,7 +11,7 @@
  * nothing.
  *
  * An editor form is a Dialog, and one with unsaved changes asks before Escape,
- * the X or a scrim click throws them away (`grid-design-language.md`).
+ * the X or a scrim click throws them away (`design-language.md`).
  */
 
 import { type FC, type MutableRefObject, useEffect, useMemo, useRef, useState } from 'react'

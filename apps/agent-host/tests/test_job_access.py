@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient
 
 from agent.auth import Principal
 from agent_host.auth.middleware import AuthMiddleware
-from agent_host.context_envelope import GridContextEnvelopeMiddleware
+from agent_host.context_envelope import RequestContextEnvelopeMiddleware
 from agent_host.jobs import access as job_access
 from agent_host.jobs.access import JOB_ENVELOPE_MAX_AGE_MS
 from agent_host.jobs.access import JobCaller
@@ -406,7 +406,7 @@ def test_job_routes_under_auth_through_the_middleware_chain(db_url, auth_on, mon
     app = FastAPI()
     validators = [_TokenValidator()]
     # The order plugin.py adds them in: AuthMiddleware is the outer layer.
-    app.add_middleware(GridContextEnvelopeMiddleware, require_auth=True, validators=validators)
+    app.add_middleware(RequestContextEnvelopeMiddleware, require_auth=True, validators=validators)
     app.add_middleware(AuthMiddleware, validators=validators, require_auth=True)
     asyncio.run(jobs_routes.register_job_routes(app, MagicMock(), worker))
     client = TestClient(app)

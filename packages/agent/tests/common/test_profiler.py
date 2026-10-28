@@ -370,11 +370,11 @@ class TestDeferredFlush:
         """Per-turn dollars finalize with the ledgers: the tracker in, a rollup out."""
         from unittest.mock import patch
 
-        from agent.common.cost_tracking import GridCostTracker
+        from agent.common.cost_tracking import CostTracker
         from agent.common.cost_tracking import UsageEvent
         from agent.common.profiler import flush_after_answer
 
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         tracker.record(
             UsageEvent(
                 model="m",
@@ -407,10 +407,10 @@ class TestDeferredFlush:
         """Telemetry must never take the turn down — not even the usage rollup."""
         from unittest.mock import patch
 
-        from agent.common.cost_tracking import GridCostTracker
+        from agent.common.cost_tracking import CostTracker
         from agent.common.profiler import flush_after_answer
 
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         with (
             patch("agent.common.cost_tracking._post_usage_events"),
             patch(

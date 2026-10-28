@@ -275,7 +275,7 @@ async def _execute(scope: JobScope, request: JobRequest) -> None:
     if not await _claim(scope, request):
         logger.info("Job %s already terminal before start; aborting run", request.job_id)
         return
-    from agent.observability import ensure_registered as register_grid_telemetry
+    from agent.observability import ensure_registered as register_telemetry
     from agent_host.auth.request_trace import request_trace_tag_context
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.observability.exporter_manager import ExporterManager
@@ -283,7 +283,7 @@ async def _execute(scope: JobScope, request: JobRequest) -> None:
 
     # Same JOIN as apps/agent-host/start_web.py: Grid telemetry `_type`s register at import
     # and are not in NAT's stock registry, so load_config fails without it.
-    register_grid_telemetry()
+    register_telemetry()
     clock = BootClock("research-job")  # paid by every job, not once per process
     with clock.phase("load_config"):
         config = load_config(request.config_file_path)

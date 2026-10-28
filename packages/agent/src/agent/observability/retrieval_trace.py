@@ -151,7 +151,7 @@ def emit_step_span(
 ) -> None:
     """Push ONE balanced FUNCTION step pair named ``step_name``, with these as its input and output.
 
-    The mechanics every Grid-named observation shares (``retrieve.*``, and the
+    The mechanics every agent-named observation shares (``retrieve.*``, and the
     decision model's ``decide.*``): a START and an END with one UUID, so NAT's
     span stack stays balanced and the observation nests under whatever step is
     open. Never raises: telemetry must never take a turn down.

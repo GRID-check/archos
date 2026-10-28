@@ -302,7 +302,7 @@ def emit_retrieval(
     and the source it is counted under disagree.
 
     ``prefetch`` marks the round the decision ran before the model's first
-    call (round 0 of ``PilotiAgent._prefetch_node``). The Herleitung draws no
+    call (round 0 of ``ChatAgent._prefetch_node``). The Herleitung draws no
     row for it: its sources join the first fan like any other (ADR-0132). The
     round index cannot say this, since a turn with nothing prefetched numbers
     the model's own first search 0 too.

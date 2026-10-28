@@ -33,7 +33,7 @@ import {
   type CreateAnnotationRequest,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
-import type { PilotiChangeRow } from './repository'
+import type { AgentChangeRow } from './repository'
 import { matchesState } from './state'
 
 export type UndoPlan =
@@ -68,7 +68,7 @@ function canMoveBack(current: AnnotationView, to: unknown): to is 'open' | 'reso
   }
 }
 
-function undoCreate(row: PilotiChangeRow, current: AnnotationView | undefined): UndoOutcome {
+function undoCreate(row: AgentChangeRow, current: AnnotationView | undefined): UndoOutcome {
   if (!current || !row.after || !matchesState(current, row.after)) return movedOn()
   if (current.status === 'proposed') {
     return { plan: { kind: 'dismiss', request: { status: 'dismissed', expectedStatus: 'proposed' } } }
@@ -80,7 +80,7 @@ function undoCreate(row: PilotiChangeRow, current: AnnotationView | undefined): 
   return { plan: { kind: 'delete' } }
 }
 
-function undoReply(row: PilotiChangeRow, current: AnnotationView | undefined): UndoOutcome {
+function undoReply(row: AgentChangeRow, current: AnnotationView | undefined): UndoOutcome {
   const body = row.after?.body
   if (row.op !== 'create' || typeof body !== 'string') return noWayBack('This answer cannot be taken back.')
   const reply = current?.replies.find((candidate) => candidate.id === row.objectId)
@@ -88,7 +88,7 @@ function undoReply(row: PilotiChangeRow, current: AnnotationView | undefined): U
   return { plan: { kind: 'delete-reply', replyId: reply.id, expectedBody: body } }
 }
 
-function undoUpdate(row: PilotiChangeRow, current: AnnotationView | undefined): UndoOutcome {
+function undoUpdate(row: AgentChangeRow, current: AnnotationView | undefined): UndoOutcome {
   if (!current || !row.before || !row.after || !matchesState(current, row.after)) return movedOn()
   const before = row.before
   if ('status' in before && !canMoveBack(current, before.status)) {
@@ -100,7 +100,7 @@ function undoUpdate(row: PilotiChangeRow, current: AnnotationView | undefined): 
   return { plan: { kind: 'revert', request: parsed.data } }
 }
 
-function undoDelete(row: PilotiChangeRow, current: AnnotationView | undefined): UndoOutcome {
+function undoDelete(row: AgentChangeRow, current: AnnotationView | undefined): UndoOutcome {
   if (current) return movedOn()
   const before = row.before ?? {}
   const { status, ...place } = before
@@ -112,7 +112,7 @@ function undoDelete(row: PilotiChangeRow, current: AnnotationView | undefined): 
 }
 
 /** What undoing `row` would do now, or why it would not. `current` is the mark as the reader sees it, absent when gone. */
-export function planUndo(row: PilotiChangeRow, current: AnnotationView | undefined): UndoOutcome {
+export function planUndo(row: AgentChangeRow, current: AnnotationView | undefined): UndoOutcome {
   if (row.objectKind === 'annotation_reply') return undoReply(row, current)
   switch (row.op) {
     case 'create':

@@ -29,9 +29,9 @@ vi.mock('@/lib/projects/repository', () => ({
 
 import { authorize, can, decide } from './decide'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 
-const session = (overrides: Partial<GridSession> = {}): GridSession =>
+const session = (overrides: Partial<UserSession> = {}): UserSession =>
   ({
     userId: 'user_1',
     email: 'a@b.c',
@@ -43,7 +43,7 @@ const session = (overrides: Partial<GridSession> = {}): GridSession =>
     permissions: [],
     featureFlags: null,
     ...overrides,
-  }) as GridSession
+  }) as UserSession
 
 const PROJECT = { type: 'project', id: 'proj_1' } as const
 
@@ -160,7 +160,7 @@ describe('project tier', () => {
 
   it('denies a session with no active organization', async () => {
     const decision = await decide(
-      session({ organizationId: null } as Partial<GridSession>),
+      session({ organizationId: null } as Partial<UserSession>),
       'project:view',
       PROJECT
     )

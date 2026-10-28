@@ -78,7 +78,7 @@ describe('openFilePeek', () => {
     expect(useChatStore.getState().composerSubject).toBeNull()
   })
 
-  it('does not steal an Ask-Piloti subject that was not bound by this helper', () => {
+  it('does not steal an Ask-Agent subject that was not bound by this helper', () => {
     useChatStore.getState().setComposerSubject({
       resourceType: 'document',
       resourceId: 'other',

@@ -25,7 +25,7 @@ from nat.plugin_api import register_function
 _SRC = Path(__file__).resolve().parents[4] / "packages" / "agent" / "src" / "agent"
 
 
-class _PagedSearchConfig(FunctionBaseConfig, name="grid_test_paged_search"):
+class _PagedSearchConfig(FunctionBaseConfig, name="test_fixture_paged_search"):
     pass
 
 

@@ -117,7 +117,7 @@ def test_a_notice_the_agent_answered_the_call_with_is_no_record():
         assert record_from_result("task-get", {}, text) is None
 
 
-def test_a_read_keeps_the_rows_and_none_of_piloti_s_words():
+def test_a_read_keeps_the_rows_and_none_of_chat_agent_s_words():
     record = record_from_result(
         "comment-list",
         {},

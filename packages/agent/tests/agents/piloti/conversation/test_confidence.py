@@ -154,7 +154,7 @@ class TestConfidenceEndToEnd:
         checked: str | None = None,
     ):
         """The real Piloti state: the answer text is already marker-free and
-        the signals arrive on structured fields, as ``PilotiAgent.run()`` sets them."""
+        the signals arrive on structured fields, as ``ChatAgent.run()`` sets them."""
 
         async def research(state_input):
             return ResearchAgentState(

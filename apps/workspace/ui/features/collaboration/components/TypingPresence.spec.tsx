@@ -8,7 +8,7 @@ import type { DirectoryPerson } from '@/lib/sharing/types'
 import { TypingPresence } from './TypingPresence'
 
 const person = (userId: string, name: string): DirectoryPerson =>
-  ({ userId, name, email: `${userId}@grid.test`, profilePictureUrl: null }) as DirectoryPerson
+  ({ userId, name, email: `${userId}@example.test`, profilePictureUrl: null }) as DirectoryPerson
 
 describe('TypingPresence', () => {
   it('renders nothing when nobody is typing', () => {

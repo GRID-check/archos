@@ -82,8 +82,8 @@ export const roomPostSchema = upstreamBaseSchema
   .strict()
 export type RoomPost = z.infer<typeof roomPostSchema>
 
-export const PILOTI_ACTIVITY_STATES = ['reading', 'idle'] as const
-export type PilotiActivityState = (typeof PILOTI_ACTIVITY_STATES)[number]
+export const AGENT_ACTIVITY_STATES = ['reading', 'idle'] as const
+export type AgentActivityState = (typeof AGENT_ACTIVITY_STATES)[number]
 
 export const ANNOTATION_CHANGES = ['created', 'updated', 'deleted', 'replied'] as const
 export type AnnotationChange = (typeof ANNOTATION_CHANGES)[number]
@@ -123,7 +123,7 @@ export const roomEventSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('activity'),
     peer: roomPeerSchema,
-    state: z.enum(PILOTI_ACTIVITY_STATES),
+    state: z.enum(AGENT_ACTIVITY_STATES),
     box: roomBoxSchema.optional(),
     label: labelField,
   }),

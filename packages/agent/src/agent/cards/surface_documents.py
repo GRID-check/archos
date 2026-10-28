@@ -441,7 +441,7 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
                 # strips it (the `document_grid` schema has no folder field).
                 doc["_folder_path"] = info.get("folder_path") or None
 
-        from agent.cards.models import grid_card_adapter
+        from agent.cards.models import answer_card_adapter
         from agent.cards.registry import get_card_registry
 
         heading = (title or "").strip()
@@ -457,7 +457,7 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
         if search is not None:
             card["search"] = {"text": search["text"], "scope": search["scope"]}
         try:
-            validated = grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+            validated = answer_card_adapter.validate_python(card).model_dump(exclude_none=True)
         except Exception as exc:
             logger.exception("surface_documents: failed to build document_grid card")
             return f"Error: could not build the document card ({exc})."

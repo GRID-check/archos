@@ -445,7 +445,7 @@ def _spill(identity: str, data: bytes) -> str:
     if existing and os.path.isfile(existing):
         return existing
 
-    handle, path = tempfile.mkstemp(prefix="grid-ifc-", suffix=".ifc")
+    handle, path = tempfile.mkstemp(prefix="ifc-", suffix=".ifc")
     with os.fdopen(handle, "wb") as file:
         file.write(data)
     with _LOCK:

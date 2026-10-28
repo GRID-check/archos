@@ -28,7 +28,7 @@ const run = (overrides: Partial<TaskRun> = {}): TaskRun =>
     title: 'Normprüfung: Fluchtwege',
     plan: { prompt: 'Prüfe …', goal: 'Fluchtwege prüfen' },
     requesterUserId: 'user_owner',
-    requesterEmail: 'owner@grid.test',
+    requesterEmail: 'owner@example.test',
     trigger: 'delegated',
     status: 'running',
     backendJobId: 'backend-1',

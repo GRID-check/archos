@@ -26,24 +26,24 @@
 
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { isPilotiWakesEnabled } from '@/lib/authz/feature-flags'
+import { isAgentWakesEnabled } from '@/lib/authz/feature-flags'
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { DbTransaction } from '@/lib/db/executor'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
-import { BFF_JOB_PRIORITY, type PilotiWakePayload } from '@/lib/jobs-queue/types'
+import { BFF_JOB_PRIORITY, type AgentWakePayload } from '@/lib/jobs-queue/types'
 import { countWakes, insertWake } from './wake-repository'
 import {
   isLive,
   type AnnotationAuthor,
   type AnnotationKind,
   type AnnotationStatus,
-  type PilotiWakeTrigger,
+  type AgentWakeTrigger,
   type WakeOutcome,
 } from './types'
 import { wakeTurnId } from './wake-ids'
 
 /** The job kind a wake runs as. */
-export const PILOTI_WAKE_JOB = 'piloti_wake'
+export const AGENT_WAKE_JOB = 'piloti_wake'
 
 /** The caps, from `WAKE_MAX_PER_MARK_HOUR` and `WAKE_MAX_PER_PERSON_DAY`. */
 export interface WakeLimits {
@@ -68,7 +68,7 @@ export function wakeLimits(env: Record<string, string | undefined> = process.env
 
 /** Whether the organization lets events wake Piloti, as this session carries its flags. */
 export function wakesEnabled(session: Pick<AuthorizedSession, 'featureFlags'>): boolean {
-  return isPilotiWakesEnabled(session)
+  return isAgentWakesEnabled(session)
 }
 
 /**
@@ -78,8 +78,8 @@ export function wakesEnabled(session: Pick<AuthorizedSession, 'featureFlags'>): 
 export function replyTrigger(
   mark: { authorKind: AnnotationAuthor; kind: AnnotationKind; status: AnnotationStatus },
   reply: { authorKind: AnnotationAuthor; addressesPiloti: boolean }
-): PilotiWakeTrigger | null {
-  // Piloti's own writes never wake it: no Piloti-wakes-Piloti.
+): AgentWakeTrigger | null {
+  // Piloti's own writes never wake it: no Agent-wakes-Agent.
   if (reply.authorKind === 'piloti') return null
   if (reply.addressesPiloti) return 'thread_mention'
   if (mark.authorKind === 'piloti' && mark.kind === 'question' && isLive(mark)) return 'thread_reply'
@@ -91,7 +91,7 @@ export interface WakeEvent {
   organizationId: string
   documentId: string
   annotationId: string
-  trigger: PilotiWakeTrigger
+  trigger: AgentWakeTrigger
   /** The reply id, or the delegation's event id. */
   eventId: string
   /** The person whose act it is. */
@@ -161,7 +161,7 @@ export async function enqueueWake(
   }
   // Already recorded: the same event, a second time. It is queued (or ran) under this id.
   if (!(await insertWake(tx, { ...row, status: 'queued' }))) return { outcome: 'queued', wakeId }
-  const payload: PilotiWakePayload = {
+  const payload: AgentWakePayload = {
     wakeId,
     trigger: event.trigger,
     eventId: event.eventId,
@@ -172,7 +172,7 @@ export async function enqueueWake(
   }
   await enqueueJob(
     {
-      kind: PILOTI_WAKE_JOB,
+      kind: AGENT_WAKE_JOB,
       organizationId: event.organizationId,
       payload: { ...payload },
       // A person is waiting for the answer in the thread: ahead of the
@@ -203,7 +203,7 @@ export function auditSuppressedWake(input: {
   actor: { userId: string; email: string | null }
   annotationId: string
   documentId: string
-  trigger: PilotiWakeTrigger
+  trigger: AgentWakeTrigger
   status: 'suppressed'
   reason: string
   stage: 'enqueue' | 'claim'

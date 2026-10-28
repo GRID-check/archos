@@ -12,7 +12,7 @@ Related: file-native work objects (removed; in git history at `56ee3329`)
 [ADR-0038](../adr/0038-one-authorization-catalog-and-decision-point.md),
 [ADR-0011](../adr/0011-deletion-pipeline.md).
 Long-form exploration this narrows:
-[`piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md).
+[`filesystem-design.md`](../architecture/filesystem-design.md).
 
 ## Problem
 
@@ -500,7 +500,7 @@ deployment, which is why they are recorded rather than folded into a fix:
   object and the `projectId` query parameter.
 - [`docs/user-guides/agent-authored-reports.md`](../user-guides/agent-authored-reports.md)
   — what an architect sees.
-- [`docs/architecture/piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md)
+- [`docs/architecture/filesystem-design.md`](../architecture/filesystem-design.md)
   — the exploration marked as narrowed **and built**, with the parts that remain
   unbuilt named so it is not read as a plan of record.
 

@@ -12,7 +12,7 @@
  * anything holding that token write into any tenant as anybody. So the acting
  * identity does not come from the body. It comes from the **signed request
  * envelope** the BFF minted at the start of the turn, verified here with the
- * same secret (`verifyGridRequestContextEnvelope`), and from
+ * same secret (`verifyRequestContextEnvelope`), and from
  * `resolvePinnedRequesterSession`, which builds a real, role-bearing session for
  * that person out of their WorkOS membership TODAY — without minting a token.
  *
@@ -56,7 +56,7 @@ import {
   requireVerifiedContext,
 } from '@/lib/api/internal-envelope'
 import { withTenant } from '@/lib/db/tenant-context'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import type { VerifiedRequestContext } from '@/lib/request-context'
 import { BadRequestError } from '@/lib/api/errors'
 import { fileAgentDocumentDraft } from '@/lib/documents/agent-document'
 import { getAccessibleDocument } from '@/lib/documents/access'
@@ -81,7 +81,7 @@ async function runOp(
   session: AuthorizedSession,
   body: InternalDocumentVersionRequest,
   request: Request,
-  context: VerifiedGridRequestContext,
+  context: VerifiedRequestContext,
 ) {
   if (body.op === 'create') {
     // The project the body names has to be the project the signed envelope

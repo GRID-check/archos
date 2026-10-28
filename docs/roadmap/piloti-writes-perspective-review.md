@@ -9,7 +9,7 @@
 > repository it says so.
 >
 > **Baseline.** The design of record is
-> [`piloti-writes-artifacts-and-approval.md`](piloti-writes-artifacts-and-approval.md);
+> [`agent-writes-artifacts-and-approval.md`](agent-writes-artifacts-and-approval.md);
 > the consequences it is measured against are §2 of
 > [`agentic-workspace-architecture.md`](agentic-workspace-architecture.md); the
 > user evidence is [`../audit/pilot-feedback-triage-2026-09.md`](../audit/pilot-feedback-triage-2026-09.md).

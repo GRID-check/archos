@@ -39,16 +39,16 @@ from langchain_core.tools import tool
 from agent.agents.piloti.agent import _DEFAULT_MAX_CALLS_PER_ROUND
 from agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
 from agent.agents.piloti.agent import _WIDTH_CAP_MESSAGE
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.agent import _recursion_limit
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
 from agent.citations.registry import SourceRegistry
 from agent.common import LLMProvider
 from agent.common import turn_status
-from agent.common.cost_tracking import GridCostTracker
+from agent.common.cost_tracking import CostTracker
 from agent.common.cost_tracking import UsageEvent
-from agent.common.cost_tracking import grid_cost_tracker_var
+from agent.common.cost_tracking import cost_tracker_var
 
 #: A prompt the template cannot break. What is under test is the budget.
 _PROMPT = "Du bist Piloti."
@@ -130,14 +130,14 @@ def _agent(
     ceiling: int = 7,
     max_input_tokens: int = 0,
     max_calls_per_round: int = 0,
-) -> PilotiAgent:
+) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=list(rounds))
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(
+    return ChatAgent(
         llm_provider=provider,
         tools=_TOOLS,
         system_prompt=_PROMPT,
@@ -147,7 +147,7 @@ def _agent(
     )
 
 
-async def _run(agent: PilotiAgent, question: str = "Was weißt du über die OIB 2?"):
+async def _run(agent: ChatAgent, question: str = "Was weißt du über die OIB 2?"):
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content=question)]))
 
 
@@ -233,7 +233,7 @@ class TestTheInputTokenStop:
     @pytest.fixture
     def spent_tracker(self):
         """A turn that has already metered 1 500 input tokens."""
-        tracker = GridCostTracker(organization_id="org-1")
+        tracker = CostTracker(organization_id="org-1")
         tracker.record(
             UsageEvent(
                 model="m",
@@ -249,9 +249,9 @@ class TestTheInputTokenStop:
                 is_byok=None,
             )
         )
-        token = grid_cost_tracker_var.set(tracker)
+        token = cost_tracker_var.set(tracker)
         yield tracker
-        grid_cost_tracker_var.reset(token)
+        cost_tracker_var.reset(token)
 
     async def test_a_turn_over_the_token_ceiling_is_forced_into_synthesis(self, spent_tracker, steps):
         agent = _agent(

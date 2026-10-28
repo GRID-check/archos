@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { gridCardSchema } from '@/shared/cards/schemas'
+import { answerCardSchema } from '@/shared/cards/schemas'
 import cases from './formula-cases.json'
 import {
   DAYLIGHT,
@@ -59,7 +59,7 @@ const words: FormulaWords = {
 }
 
 const cardOf = (entry: FormulaCase): FormulaCardData =>
-  gridCardSchema.parse(entry.card ?? byId.get(entry.base ?? '')?.card) as FormulaCardData
+  answerCardSchema.parse(entry.card ?? byId.get(entry.base ?? '')?.card) as FormulaCardData
 
 const run = (card: FormulaCardData, overrides: FormulaValues = {}) => {
   const values = { ...sourceValues(card.formula), ...overrides }
@@ -252,7 +252,7 @@ describe('inputs and their source values', () => {
         going: { value: 29, min: 40, max: 20 },
       },
     }
-    const card = gridCardSchema.parse(raw) as FormulaCardData
+    const card = answerCardSchema.parse(raw) as FormulaCardData
     const [riser, going] = inputSlots(card.formula)
     expect([riser.min, riser.max]).toEqual([10, null])
     expect([going.min, going.max]).toEqual([0, null])

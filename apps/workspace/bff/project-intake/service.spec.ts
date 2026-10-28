@@ -116,7 +116,7 @@ const SESSION = {
   userId: 'user_1',
   organizationId: ORG,
   organizationMembershipId: 'om_1',
-  email: 'anna@grid.test',
+  email: 'anna@example.test',
   name: 'Anna Berger',
   role: 'member',
   permissions: [],

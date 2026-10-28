@@ -25,7 +25,7 @@ def _reset_summary_store(monkeypatch):
     factory._document_metadata_store = None
 
 
-def test_lazy_init_prefers_aiq_summary_db(monkeypatch, tmp_path):
+def test_lazy_init_prefers_summary_db(monkeypatch, tmp_path):
     url = f"sqlite+aiosqlite:///{tmp_path / 'summary.db'}"
     monkeypatch.setenv("SUMMARY_DB", url)
     # A different NAT url must NOT win over the explicit SUMMARY_DB.

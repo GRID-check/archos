@@ -30,7 +30,7 @@ import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import type { DocBlock } from './blocks'
 import { buildAnswerDocument, type AnswerDocumentInput } from './answer-document'
 import { CARD_EXPORT, isCheck, SKIPPED_FIELDS, skippedNested } from './cards'
-import { gridCardSchema } from '@/shared/cards/schemas'
+import { answerCardSchema } from '@/shared/cards/schemas'
 import { previewFixtureFor } from '@/features/grid-cards/preview-fixtures'
 
 const german = translatorFor(answerExportCopy, 'de')
@@ -791,7 +791,7 @@ describe('every string in the document comes from a dictionary', () => {
   /**
    * One card of every type in the catalogue.
    *
-   * Derived from `gridCardSchema` rather than typed out. The hand-written array
+   * Derived from `answerCardSchema` rather than typed out. The hand-written array
    * this replaced could not fail: a card type added to the union simply never
    * entered it, so "every card in the catalogue" was a claim about a list, not
    * about the catalogue — and thirteen types were outside it. Anything without
@@ -803,7 +803,7 @@ describe('every string in the document comes from a dictionary', () => {
     CARD_EXPORT[card.type as keyof typeof CARD_EXPORT]
 
   const authored = new Map(authoredCards.map((card) => [card.type as string, card]))
-  const everyCardType: Record<string, unknown>[] = [...discriminatedOptions(gridCardSchema).keys()]
+  const everyCardType: Record<string, unknown>[] = [...discriminatedOptions(answerCardSchema).keys()]
     .filter((type): type is string => typeof type === 'string')
     .map(
       (type) =>
@@ -813,7 +813,7 @@ describe('every string in the document comes from a dictionary', () => {
 
   it('covers every card type in the union', () => {
     const covered = new Set(everyCardType.map((card) => card.type))
-    const uncovered = [...discriminatedOptions(gridCardSchema).keys()].filter((type) => !covered.has(type))
+    const uncovered = [...discriminatedOptions(answerCardSchema).keys()].filter((type) => !covered.has(type))
     expect(
       uncovered,
       'no authored body and no preview fixture — add one, or the export is untested for this type'

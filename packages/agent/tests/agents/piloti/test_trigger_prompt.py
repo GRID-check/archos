@@ -19,7 +19,7 @@ from agent.agents.piloti.prompt import system_prompt_template
 from agent.agents.piloti.prompt import trigger_block
 from agent.common.wire_v2 import TurnTrigger
 from agent.common.wire_v2 import UserMessage
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.turn import context as turn_context
 from agent.turn.context import user_info_for
 from agent.turn.payload import extract_turn_inputs
@@ -79,11 +79,11 @@ def test_the_wake_jobs_author_name_reaches_the_turn_inputs():
     assert extract_turn_inputs(UserMessage(conversation_id="c", message_id="m", text="?")).author_name is None
 
 
-def _signed_request(payload: dict) -> GridRequestContext:
+def _signed_request(payload: dict) -> RequestContext:
     raw = json.dumps(payload)
     header = base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
     signature = hmac.new(b"trigger-secret", raw.encode(), hashlib.sha256).hexdigest()
-    request = GridRequestContext.from_envelope(header, signature, "trigger-secret")
+    request = RequestContext.from_envelope(header, signature, "trigger-secret")
     assert request is not None
     return request
 

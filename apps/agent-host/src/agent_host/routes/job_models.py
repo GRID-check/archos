@@ -140,10 +140,10 @@ class JobReportResponse(BaseModel):
     consumer that wanted it, and the section stayed dormant — no heading, no
     citations — for want of a field.
 
-    ## Why ``list[dict]`` and not the ``GridCard`` union
+    ## Why ``list[dict]`` and not the ``AnswerCard`` union
 
     These dicts were validated on the way IN. ``agent.cards.validate_cards``
-    put every one of them through ``grid_card_adapter`` and dumped the model
+    put every one of them through ``answer_card_adapter`` and dumped the model
     back out before the runner wrote them, dropping malformed ones card by card
     and system-card fabrications outright. Typing this field as the union would
     re-run that validation on the way OUT, which adds no guarantee that was not
@@ -154,7 +154,7 @@ class JobReportResponse(BaseModel):
     validates under today's would turn a completed report into a 500. The report
     is what the user waited minutes for; a display enhancement must not be able
     to take it down. Validation on this path belongs where it already is — at
-    generation, and again at render (the BFF's Zod ``validateGridCards``, then
+    generation, and again at render (the BFF's Zod ``validateAnswerCards``, then
     ``legalBasisSection``'s own narrowing) — not a third time in between, where
     the only new behaviour available to it is failure.
 

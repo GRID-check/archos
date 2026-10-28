@@ -14,7 +14,7 @@ from dataclasses import replace
 
 from agent.common import bff_http
 from agent.project_context import MEMORY_HEADER_MAX_CHARS
-from agent.project_context import GridRequestContext
+from agent.project_context import RequestContext
 from agent.project_context import normalize_org_instructions
 from agent.project_context import normalize_project_context
 
@@ -159,7 +159,7 @@ def _parse_blocks(body: object) -> ContextBlocks:
     )
 
 
-def fetch_turn_context(request: GridRequestContext, *, query: str | None = None) -> ContextBlocks:
+def fetch_turn_context(request: RequestContext, *, query: str | None = None) -> ContextBlocks:
     """Read fresh context for this signed requester. Blocking; use ``to_thread``."""
     if not bff_http.internal_token():
         raise TurnContextError("INTERNAL_API_TOKEN is not configured for turn context")

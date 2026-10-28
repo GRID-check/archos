@@ -27,7 +27,7 @@ import { identityInk } from '@/components/ui/avatar-identity'
 import { FloatingNote, FloatingToolbar, ToolbarIconButton } from '@/components/ui/floating-toolbar'
 import { Kbd } from '@/components/ui/kbd'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
-import { PilotiGlyph } from '@/components/ui/piloti-glyph'
+import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
@@ -50,8 +50,8 @@ import {
 } from '../../hooks/use-document-room'
 import { CursorChat } from './cursor-chat'
 import { keepTrigger, restoreFocus } from './focus-return'
-import { PilotiAnswerCard } from './piloti-answer-card'
-import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
+import { AgentAnswerCard } from './agent-answer-card'
+import { isAgentPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel, type OpenMark } from './review-panel'
 import { ReviewAnnouncer } from './review-announcer'
 import { ReviewExportMenu } from './review-export-menu'
@@ -212,7 +212,7 @@ const typing = (target: EventTarget | null) =>
 export function people(peers: readonly RoomPeerState[]): RoomPeerState[] {
   const byUser = new Map<string, RoomPeerState>()
   for (const state of peers) {
-    if (!isPilotiPeer(state) && !byUser.has(state.peer.userId)) byUser.set(state.peer.userId, state)
+    if (!isAgentPeer(state) && !byUser.has(state.peer.userId)) byUser.set(state.peer.userId, state)
   }
   return [...byUser.values()]
 }
@@ -230,7 +230,7 @@ export interface RoomCompany {
 }
 
 export function roomCompanyOf(peers: readonly RoomPeerState[]): RoomCompany {
-  const piloti = peers.find(isPilotiPeer) ?? null
+  const piloti = peers.find(isAgentPeer) ?? null
   return {
     people: people(peers).map((state) => ({
       peerId: state.peer.peerId,
@@ -277,7 +277,7 @@ export function Presence({
       <span aria-hidden className="flex items-center -space-x-1" data-testid="review-presence">
         {piloti && (
           <span className="ring-background rounded-full ring-2">
-            <PilotiGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
+            <AgentGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
           </span>
         )}
         {others.map((person) => (
@@ -296,8 +296,8 @@ export function Presence({
       {piloti && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span data-testid="review-presence-piloti" className="ring-background rounded-full ring-2">
-              <PilotiGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
+            <span data-testid="review-presence-agent" className="ring-background rounded-full ring-2">
+              <AgentGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
             </span>
           </TooltipTrigger>
           <TooltipContent>
@@ -307,7 +307,7 @@ export function Presence({
                 {piloti.label && <span className="block">{piloti.label}</span>}
               </>
             ) : (
-              piloti.label || t('review.pilotiWorking')
+              piloti.label || t('review.agentWorking')
             )}
           </TooltipContent>
         </Tooltip>
@@ -483,7 +483,7 @@ const documentReviewOf = (asks: readonly CanvasAsk[]): CanvasAsk | null =>
  * on the pages. The header says what it is doing, compactly, and where the
  * conversation is.
  */
-function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => void }): JSX.Element {
+function AgentReview({ review, onWalk }: { review: ReviewState; onWalk: () => void }): JSX.Element {
   const t = useTranslations(filesCopy)
   const tChat = useTranslations(chatCopy)
   const { piloti } = review
@@ -495,13 +495,13 @@ function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => v
         variant="outline"
         size="sm"
         className="h-8 gap-1.5"
-        data-testid="review-with-piloti"
+        data-testid="review-with-agent"
         disabled={piloti.busy}
         onClick={() => piloti.ask({ text: t('review.reviewSeed'), region: null, effort: 'medium' })}
       >
         <Sparkles className="size-3.5" aria-hidden />
         {/* On a phone the glyph carries it; the words stay for a screen reader. */}
-        <span className="max-sm:sr-only">{t('review.reviewWithPiloti')}</span>
+        <span className="max-sm:sr-only">{t('review.reviewWithAgent')}</span>
       </Button>
     )
     if (!piloti.busy) return button
@@ -509,7 +509,7 @@ function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => v
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span tabIndex={0} className="inline-flex rounded-md" data-testid="review-with-piloti-busy">
+          <span tabIndex={0} className="inline-flex rounded-md" data-testid="review-with-agent-busy">
             {button}
           </span>
         </TooltipTrigger>
@@ -531,10 +531,10 @@ function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => v
   return (
     <div
       role="status"
-      data-testid="review-piloti-status"
+      data-testid="review-agent-status"
       className="border-border/70 bg-muted/40 flex h-8 max-w-[30rem] items-center gap-2 rounded-full border pr-1 pl-1"
     >
-      <PilotiGlyph working={working} />
+      <AgentGlyph working={working} />
       {working ? (
         <ShimmerText className="min-w-0 flex-1 text-xs">{line}</ShimmerText>
       ) : (
@@ -546,7 +546,7 @@ function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => v
           variant="secondary"
           size="sm"
           className="h-6 shrink-0 rounded-full px-2.5 text-xs"
-          data-testid="review-piloti-walk"
+          data-testid="review-agent-walk"
           onClick={onWalk}
         >
           {t('review.walkProposals')}
@@ -554,7 +554,7 @@ function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => v
       )}
       {piloti.conversationHref && (
         <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-xs">
-          <Link href={piloti.conversationHref} data-testid="review-piloti-conversation">
+          <Link href={piloti.conversationHref} data-testid="review-agent-conversation">
             {t('review.piloti.openConversation')}
           </Link>
         </Button>
@@ -578,7 +578,7 @@ function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => v
         className="size-6 rounded-full [&_svg]:size-3"
         aria-label={working ? t('review.piloti.stop') : t('review.piloti.close')}
         title={working ? t('review.piloti.stop') : t('review.piloti.close')}
-        data-testid="review-piloti-dismiss"
+        data-testid="review-agent-dismiss"
         onClick={() => piloti.dismiss(run.id)}
       >
         <X aria-hidden />
@@ -1176,7 +1176,7 @@ export function DocumentReviewMode({
               </Button>
             )}
             {listBeside && exportMenu}
-            {piloti.available && review.canAnnotate && <PilotiReview review={review} onWalk={walkProposals} />}
+            {piloti.available && review.canAnnotate && <AgentReview review={review} onWalk={walkProposals} />}
           </div>
         </header>
 
@@ -1259,7 +1259,7 @@ export function DocumentReviewMode({
                     onPinByKeyboard={focusNextCard}
                     aim={aim && aim.page === page ? aim : null}
                     renderAsk={
-                      docked ? undefined : (ask, { placement }) => <PilotiAnswerCard key={ask.id} review={review} ask={ask} placement={placement} />
+                      docked ? undefined : (ask, { placement }) => <AgentAnswerCard key={ask.id} review={review} ask={ask} placement={placement} />
                     }
                     renderThread={
                       docked
@@ -1290,7 +1290,7 @@ export function DocumentReviewMode({
               <SheetTitle className="sr-only">{documentName}</SheetTitle>
               <SheetDescription className="sr-only">{t('annotations.section')}</SheetDescription>
               {dockedAsk ? (
-                <PilotiAnswerCard key={dockedAsk.id} review={review} ask={dockedAsk} placement="docked" />
+                <AgentAnswerCard key={dockedAsk.id} review={review} ask={dockedAsk} placement="docked" />
               ) : (
                 threadCard('docked')
               )}

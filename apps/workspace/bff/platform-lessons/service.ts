@@ -31,7 +31,7 @@ import { requirePlatformPermission } from '@/lib/authz/platform'
 import { getPlatformOrganizationId } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { recordAuditEvent } from '@/lib/audit/service'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { NotFoundError } from '@/lib/api/errors'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
@@ -485,7 +485,7 @@ export async function runInternalLessonSweep(): Promise<SweepResult> {
  * in-flight kick rather than racing it, then runs its own (larger) pass so the
  * result it reports describes work it actually did.
  */
-export async function runLessonSweep(session: GridSession | null): Promise<SweepResult> {
+export async function runLessonSweep(session: UserSession | null): Promise<SweepResult> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsManage)
   if (sweepInFlight) await sweepInFlight.catch(() => undefined)
   try {
@@ -540,7 +540,7 @@ export interface LessonOverview {
 }
 
 /** The dashboard list. */
-export async function getLessonOverview(session: GridSession | null): Promise<LessonOverview> {
+export async function getLessonOverview(session: UserSession | null): Promise<LessonOverview> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsView)
   return withPlatformAccess('platform lessons: dashboard list', async () => {
     const [lessons, counts] = await Promise.all([listLessons(), countLessonsByStatus()])
@@ -576,7 +576,7 @@ export interface LessonProvenance {
  * through the quality dashboard's tenant-crossing read, which has its own gate.
  */
 export async function getLessonProvenance(
-  session: GridSession | null,
+  session: UserSession | null,
   lessonId: string
 ): Promise<LessonProvenance> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsView)
@@ -616,7 +616,7 @@ export async function getLessonProvenance(
  * anything that alters the active set invalidates the injected digest.
  */
 export async function updateLesson(
-  session: GridSession | null,
+  session: UserSession | null,
   lessonId: string,
   input: UpdateLessonInput,
   requestForAudit?: Request

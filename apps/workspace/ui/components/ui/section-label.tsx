@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * SectionLabel — the uppercase ~10.5px eyebrow/section-label convention (wide
- * tracking, muted ink) from `grid-design-language.md` §"Type ramp". One
+ * tracking, muted ink) from `design-language.md` §"Type ramp". One
  * primitive so the ~39 hand-rolled eyebrows stop drifting across four tracking
  * values. Renders a `<span>` by default; pass `as` (e.g. `h2`) when the label
  * is the accessible heading for a section.

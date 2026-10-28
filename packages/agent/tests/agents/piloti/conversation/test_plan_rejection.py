@@ -128,7 +128,7 @@ class TestRejectionDegradesToAnAnswer:
         )
 
     @pytest.mark.asyncio
-    async def test_piloti_receives_the_original_question(self, parts):
+    async def test_chat_agent_receives_the_original_question(self, parts):
         """Not a paraphrase and not the plan: the words the user actually typed."""
         calls, _research, deep, clarifier = parts
         seen: dict[str, object] = {}

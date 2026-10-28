@@ -74,7 +74,7 @@ const StorageMeter: FC<{ usedBytes: number; quotaBytes: number | null }> = ({
       : t('storage.noQuota', { used: formatBytes(usedBytes, locale) })
 
   return (
-    <div className="grid-storage-viz">
+    <div className="storage-viz">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-medium">{t('storage.used')}</p>
         <p className="text-muted-foreground text-right text-xs tabular-nums">{reading}</p>

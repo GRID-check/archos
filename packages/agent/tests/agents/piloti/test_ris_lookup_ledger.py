@@ -14,7 +14,7 @@ value the real tool would never see.
 
 A NEW file rather than a case added to ``test_retrieval_ledger.py``: that
 package is being edited concurrently, and this test only needs the public
-surface (``PilotiAgent``, ``ResearchAgentState``) plus the real capture the
+surface (``ChatAgent``, ``ResearchAgentState``) plus the real capture the
 tool performs.
 """
 
@@ -31,7 +31,7 @@ from langchain_core.tools import tool
 from ris_adapter.lookup.passages import Passage
 from ris_adapter.lookup.telemetry import capture_passages
 
-from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import ChatAgent
 from agent.agents.piloti.models import ResearchAgentState
 from agent.citations.entries import SourceEntry
 from agent.citations.registry import SourceRegistry
@@ -94,16 +94,16 @@ def _bypass_citation_pipeline():
 
 @pytest.fixture
 def scripted_agent():
-    """A PilotiAgent whose LLM plays a fixed script of tool rounds."""
+    """A ChatAgent whose LLM plays a fixed script of tool rounds."""
 
-    def build(*rounds: AIMessage) -> PilotiAgent:
+    def build(*rounds: AIMessage) -> ChatAgent:
         llm = MagicMock()
         llm.bind_tools = MagicMock(return_value=llm)
         llm.bind = MagicMock(return_value=llm)
         llm.ainvoke = AsyncMock(side_effect=list(rounds))
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        return PilotiAgent(llm_provider=provider, tools=[ris_lookup_tool], max_tool_iterations=6)
+        return ChatAgent(llm_provider=provider, tools=[ris_lookup_tool], max_tool_iterations=6)
 
     return build
 
@@ -121,7 +121,7 @@ def _lookup(call_id: str, question: str, conclusion: str = "") -> AIMessage:
     )
 
 
-async def _run(agent: PilotiAgent) -> ResearchAgentState:
+async def _run(agent: ChatAgent) -> ResearchAgentState:
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content="Was verlangt die Baubehörde?")]))
 
 

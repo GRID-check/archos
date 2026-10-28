@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from agent.cards.canvas_activity_card import MAX_CANVAS_ACTIVITY_ITEMS
 from agent.cards.catalog import INTERACTIVE_CARD_TYPES
 from agent.cards.catalog import SYSTEM_CARD_TYPES
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.cards.registry import CardRegistry
 from agent.cards.registry import reset_card_registry
 from agent.cards.registry import set_card_registry
@@ -70,13 +70,13 @@ def registry():
 
 class TestTheShape:
     def test_a_proposal_a_point_and_a_reply_validate(self) -> None:
-        card = grid_card_adapter.validate_python(_card(PROPOSED, POINT, REPLIED)).model_dump(exclude_none=True)
+        card = answer_card_adapter.validate_python(_card(PROPOSED, POINT, REPLIED)).model_dump(exclude_none=True)
 
         assert [item["action"] for item in card["items"]] == ["proposed", "proposed", "replied"]
         assert "w" not in card["items"][1]
 
     def test_what_the_person_asked_for_validates_and_an_empty_field_stays_absent(self) -> None:
-        card = grid_card_adapter.validate_python(_card(CREATED, CHANGED, DELETED)).model_dump(exclude_none=True)
+        card = answer_card_adapter.validate_python(_card(CREATED, CHANGED, DELETED)).model_dump(exclude_none=True)
 
         assert [item["action"] for item in card["items"]] == ["created", "changed", "deleted"]
         # An assignee nobody had before is absent, not null: the card is dumped without Nones.
@@ -108,7 +108,7 @@ class TestTheShape:
     )
     def test_what_the_card_refuses(self, change, where) -> None:
         with pytest.raises(ValidationError, match=where):
-            grid_card_adapter.validate_python({**_card(PROPOSED), **change})
+            answer_card_adapter.validate_python({**_card(PROPOSED), **change})
 
 
 class TestOneCardPerDocumentPerTurn:

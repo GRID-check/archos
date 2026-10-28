@@ -9,11 +9,11 @@ import { filesCopy } from '@/i18n/namespaces/files'
  * A name the directory does not know leaves the plain „Piloti" rather than
  * inventing a person; a proposal keeps saying it is one.
  */
-export function usePilotiByline(): (forName: string | null | undefined, options?: { proposal?: boolean }) => string {
+export function useAgentByline(): (forName: string | null | undefined, options?: { proposal?: boolean }) => string {
   const t = useTranslations(filesCopy)
   return (forName, options) => {
     const name = forName?.trim()
     if (!name) return 'Piloti'
-    return options?.proposal ? t('review.attribution.proposalFor', { name }) : t('review.attribution.pilotiFor', { name })
+    return options?.proposal ? t('review.attribution.proposalFor', { name }) : t('review.attribution.agentFor', { name })
   }
 }

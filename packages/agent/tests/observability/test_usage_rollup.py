@@ -21,7 +21,7 @@ from agent.observability.usage_rollup import record_usage_turn
 
 
 class _Tracker:
-    """Duck-typed stand-in for GridCostTracker (prompt/completion/cost totals)."""
+    """Duck-typed stand-in for CostTracker (prompt/completion/cost totals)."""
 
     def __init__(self, *, calls=0, prompt=0, completion=0, cost=0.0, job_id=None, cost_source=None):
         self.events_recorded = calls

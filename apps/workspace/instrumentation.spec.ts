@@ -30,7 +30,7 @@ describe('instrumentation', () => {
     posthogConfigured = true
     shutdownPosthogServer.mockClear()
     initOtelLogs.mockClear()
-    Reflect.deleteProperty(globalThis, '__gridShutdownHooks')
+    Reflect.deleteProperty(globalThis, '__appShutdownHooks')
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -80,7 +80,7 @@ describe('instrumentation', () => {
 
     await register()
 
-    const hooks = (globalThis as Record<string, unknown>).__gridShutdownHooks as Array<() => Promise<void>>
+    const hooks = (globalThis as Record<string, unknown>).__appShutdownHooks as Array<() => Promise<void>>
     expect(hooks).toHaveLength(1)
     await hooks[0]!()
     expect(shutdownPosthogServer).toHaveBeenCalledTimes(1)

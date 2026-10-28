@@ -243,7 +243,7 @@ export async function onWakeEnded(
   if (input.outcome === 'stopped') return
   // A mention or an answer that got nothing back would otherwise vanish: the
   // person asked Piloti something and waits in a thread that never says it
-  // failed. The copy (`pilotiWorkFailed`) is the same for all three triggers;
+  // failed. The copy (`agentWorkFailed`) is the same for all three triggers;
   // what differs is why, and that is the variant.
   const type = input.outcome === 'answered' ? 'piloti.work_done' : 'piloti.work_failed'
   // Always named: rows fold per mark and their payloads merge, so an absent
@@ -271,7 +271,7 @@ function waitsOnPerson(mark: Pick<AnnotationRecord, 'kind' | 'authorKind' | 'sta
  * is the person the turn acted for; `assigneeUserId` the mark's responsible
  * person, if any.
  */
-export async function onPilotiWrote(
+export async function onAgentWrote(
   input: MarkRef & {
     onBehalfOf: string
     assigneeUserId: string | null
@@ -352,12 +352,12 @@ export async function onMarkDeleted(input: Pick<MarkRef, 'organizationId' | 'ann
 
 /**
  * Who did something to a mark: a person, or Piloti for the person its turn
- * acted for (`byPiloti`; `actorUserId` is then that person). `markText` is
+ * acted for (`byAgent`; `actorUserId` is then that person). `markText` is
  * what the mark says, quoted so the reader knows which one it was.
  */
 export interface MarkAct extends MarkRef {
   actorUserId: string
-  byPiloti: boolean
+  byAgent: boolean
   markText: string | null
 }
 
@@ -390,7 +390,7 @@ export async function onAssigneeChanged(
     if (!assignee || assignee === input.actorUserId || !input.open) return
     await emitAboutMark('annotation.assigned_to_you', input, [assignee], {
       excerpt: excerptOf(input.markText),
-      variant: input.byPiloti ? 'piloti' : 'person',
+      variant: input.byAgent ? 'piloti' : 'person',
       actorUserId: input.actorUserId,
       // Handed anew, the Frist is reminded of anew: the payload merges, so the last reminder's stamp is cleared.
       facts: { dueOn: input.dueOn, reminder: null },
@@ -410,7 +410,7 @@ export async function onDueChanged(
 ): Promise<void> {
   const assignee = input.assigneeUserId
   if (!assignee || assignee === input.actorUserId || !input.open) return
-  const variant = `${input.dueOn ? 'due' : 'due_cleared'}${input.byPiloti ? '_piloti' : ''}`
+  const variant = `${input.dueOn ? 'due' : 'due_cleared'}${input.byAgent ? '_piloti' : ''}`
   await bestEffortInbox(`annotation.assigned_to_you (date) for mark ${input.annotationId}`, input.organizationId, () =>
     emitAboutMark('annotation.assigned_to_you', input, [assignee], {
       excerpt: excerptOf(input.markText),
@@ -469,14 +469,14 @@ export async function onMarkReplied(
   }
 ): Promise<void> {
   await bestEffortInbox(`annotation.activity for mark ${input.annotationId}`, input.organizationId, async () => {
-    const asked = input.byPiloti && waitsOnPerson(input.mark) ? input.mark.assigneeUserId : null
+    const asked = input.byAgent && waitsOnPerson(input.mark) ? input.mark.assigneeUserId : null
     const toldOtherwise = new Set([input.actorUserId, asked, ...(input.mentioned ?? [])])
     const candidates = markParticipants(input.mark).filter((userId) => !toldOtherwise.has(userId))
     await emitAboutMark('annotation.activity', input, await whoMayOpen(input.mayOpen, candidates), {
       excerpt: excerptOf(input.replyText),
       mentions: input.replyMentions,
       variant: 'reply',
-      actorUserId: input.byPiloti ? null : input.actorUserId,
+      actorUserId: input.byAgent ? null : input.actorUserId,
       author: markAuthor(input.mark),
       facts: { replyId: input.replyId ?? null },
     })

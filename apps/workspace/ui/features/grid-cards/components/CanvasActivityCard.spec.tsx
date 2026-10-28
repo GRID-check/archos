@@ -40,7 +40,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AnnotationView } from '@/lib/annotations/types'
 import { ChangeRequestError, getTurnChanges, undoChange } from '@/lib/changes/client'
-import type { PilotiChangeView } from '@/lib/changes/types'
+import type { AgentChangeView } from '@/lib/changes/types'
 import type { CardInteractions } from '../card-decision'
 import type { CanvasActivityItem } from '../lib/canvas-activity'
 import { CanvasActivityCard } from './CanvasActivityCard'
@@ -574,7 +574,7 @@ describe('CanvasActivityCard — into the document', () => {
 const ANN4 = '00000000-0000-4000-8000-0000000000a4'
 
 /** One applied change as the server answers it; tests override what they test. */
-const change = (patch: Partial<PilotiChangeView> = {}): PilotiChangeView => ({
+const change = (patch: Partial<AgentChangeView> = {}): AgentChangeView => ({
   id: '00000000-0000-4000-8000-0000000000b1',
   documentId: DOC.id,
   annotationId: ANN4,

@@ -48,7 +48,7 @@ whose answer can only ADD to the turn:
 One request, every question over one state — the vendor evaluates them
 independently — and the state is built from structured fields, never the
 transcript. The effects are applied by the register (``_run_turn``) and the
-agent (``PilotiAgent.run``: the prefetch runs as round 0 through the real
+agent (``ChatAgent.run``: the prefetch runs as round 0 through the real
 tools node, so it costs no budget, files its sources, stamps its hits and
 is answered by the duplicate-fetch guard when the model asks again).
 

@@ -197,7 +197,7 @@ class TestJobReportResponse:
     def test_with_cards(self):
         """The cards ride as the runner persisted them — opaque dicts, unfiltered.
 
-        Deliberately NOT re-validated against the `GridCard` union: they went
+        Deliberately NOT re-validated against the `AnswerCard` union: they went
         through `validate_cards` before the runner wrote them, and a second pass
         on the read path could only turn a finished report into an error.
         """

@@ -50,7 +50,7 @@ export type FileOperation = (typeof FILE_OPERATIONS)[number]
 
 /**
  * What a proposal changes, as the inbox row words it
- * (`collaboration.inbox.types.pilotiProposalWaiting.variants.<variant>`): a
+ * (`collaboration.inbox.types.agentProposalWaiting.variants.<variant>`): a
  * file operation by its verb, every other kind by its kind. Stored on the
  * `piloti.proposal_waiting` item as its `variant` (`./attention.ts`).
  */

@@ -162,7 +162,7 @@ async def otelcollector_redaction_telemetry_exporter(
         try:
             exporter.add_processor(
                 UsageAttributeProcessor(),
-                name="grid_usage_attributes",
+                name="usage_attributes",
                 position=0,
             )
         except Exception:
@@ -180,7 +180,7 @@ async def otelcollector_redaction_telemetry_exporter(
         try:
             exporter.add_processor(
                 PromptLinkProcessor(),
-                name="grid_prompt_link",
+                name="prompt_link",
                 position=0,
             )
         except Exception:
@@ -196,7 +196,7 @@ async def otelcollector_redaction_telemetry_exporter(
     # installed, ahead of redaction like the two above.
     if TraceContextProcessor is not None:
         try:
-            exporter.add_processor(TraceContextProcessor(), name="grid_trace_context", position=0)
+            exporter.add_processor(TraceContextProcessor(), name="trace_context", position=0)
         except Exception:
             logger.warning(
                 "otelcollector_redaction: could not install the trace context processor - "
@@ -216,14 +216,12 @@ async def otelcollector_redaction_telemetry_exporter(
     # NAT 1.9 names the session's user on every span; with identity attributes
     # off, that must not reach the trace store either.
     if not identity_attributes_enabled() and UserIdentityStripProcessor is not None:
-        exporter.add_processor(UserIdentityStripProcessor(), name="grid_strip_user_identity", position=0)
+        exporter.add_processor(UserIdentityStripProcessor(), name="strip_user_identity", position=0)
     # What tools recorded (feature tags, usage rollup, dialect census) is not
     # identity either; with the identity half off it still has to reach the
     # trace, or the privacy switch would also switch off cost and quality.
     if not identity_attributes_enabled() and LangfuseTraceAttributeProcessor is not None:
-        exporter.add_processor(
-            LangfuseTraceAttributeProcessor(identity=False), name="grid_trace_contributions", position=0
-        )
+        exporter.add_processor(LangfuseTraceAttributeProcessor(identity=False), name="trace_contributions", position=0)
     if identity_attributes_enabled() and LangfuseTraceAttributeProcessor is not None:
         try:
             exporter.add_processor(
@@ -245,6 +243,6 @@ async def otelcollector_redaction_telemetry_exporter(
     # first (the last `position=0` insert wins the front) so no later processor
     # copies or measures a payload that still holds pixels.
     if InlineImageRedactionProcessor is not None:
-        exporter.add_processor(InlineImageRedactionProcessor(), name="grid_inline_image_redaction", position=0)
+        exporter.add_processor(InlineImageRedactionProcessor(), name="inline_image_redaction", position=0)
 
     yield exporter

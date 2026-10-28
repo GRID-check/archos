@@ -101,7 +101,7 @@ let collaborationGranted = true
 function makeSession(overrides: Partial<AuthorizedSession> = {}): AuthorizedSession {
   return {
     userId: 'user_1',
-    email: 'user_1@grid.test',
+    email: 'user_1@example.test',
     name: 'Test User',
     accessToken: 'workos_token',
     organizationId: 'org_1',
@@ -256,7 +256,7 @@ beforeEach(() => {
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer' } as never)
   vi.mocked(unreadableRunIds).mockResolvedValue(new Set())
   vi.mocked(resolvePeople).mockResolvedValue(
-    new Map([['user_2', { userId: 'user_2', email: 'anna@grid.test', name: 'Anna Berger', profilePictureUrl: null }]]),
+    new Map([['user_2', { userId: 'user_2', email: 'anna@example.test', name: 'Anna Berger', profilePictureUrl: null }]]),
   )
   vi.mocked(describeResource).mockReturnValue({
     deepLink: (resourceId: string, options?: { anchorId?: string; projectId?: string | null }) =>

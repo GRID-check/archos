@@ -186,7 +186,7 @@ def _best_window(text: str, wanted: set[str], length: int) -> tuple[float, str] 
     return best_score, passage[:MAX_CLOSEST_CHARS].rstrip()
 
 
-_READ_LOG: ContextVar[IntakeReadLog | None] = ContextVar("grid_intake_read_log", default=None)
+_READ_LOG: ContextVar[IntakeReadLog | None] = ContextVar("intake_read_log", default=None)
 
 
 def bind_read_log(log: IntakeReadLog | None = None) -> tuple[IntakeReadLog, Token]:

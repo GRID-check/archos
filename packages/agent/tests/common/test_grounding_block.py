@@ -312,7 +312,7 @@ class TestTheCoverageGap:
             / "agents"
             / "piloti"
             / "prompts"
-        ) / "piloti_static.md"
+        ) / "chat_static.md"
         assert "Coverage: insufficient" not in prompt.read_text(encoding="utf-8")
         assert "Abdeckung: unzureichend" not in prompt.read_text(encoding="utf-8")
 
@@ -416,7 +416,7 @@ class TestTheSourcesStepNamesOnlyWhatTheModelMayBeTold:
 class TestAuthorshipIsDerivedFromProvenance:
     """``authored_by`` cannot disagree with the provenance it is read off."""
 
-    def test_a_piloti_document_is_authored_by_the_agent(self):
+    def test_an_agent_document_is_authored_by_the_agent(self):
         assert _hit(provenance=AgentProvenance(approved_by="Maria Muster")).authored_by == AGENT_AUTHOR
 
     def test_a_document_with_no_provenance_claims_no_author(self):

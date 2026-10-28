@@ -95,5 +95,5 @@ yields `null` and the label degrades to the bare `Piloti-Dokument` rather than
 printing a WorkOS id at an architect.
 
 See ADR-0054 § Indexing for the door, and
-[`docs/roadmap/piloti-writes-artifacts-and-approval.md`](../roadmap/piloti-writes-artifacts-and-approval.md)
+[`docs/roadmap/agent-writes-artifacts-and-approval.md`](../roadmap/agent-writes-artifacts-and-approval.md)
 §3 for the design of record.

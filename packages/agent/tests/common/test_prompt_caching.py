@@ -70,20 +70,20 @@ def test_parts_cannot_collide_across_the_separator():
 
 
 def test_routing_fields_preserve_an_existing_extra_body():
-    merged = with_prompt_cache_routing({"plugins": [{"id": "response-healing"}]}, "grid-abc")
+    merged = with_prompt_cache_routing({"plugins": [{"id": "response-healing"}]}, "session-abc")
     assert merged["plugins"] == [{"id": "response-healing"}]
-    assert merged[SESSION_ID_FIELD] == "grid-abc"
-    assert merged[PROMPT_CACHE_KEY_FIELD] == "grid-abc"
+    assert merged[SESSION_ID_FIELD] == "session-abc"
+    assert merged[PROMPT_CACHE_KEY_FIELD] == "session-abc"
 
 
 def test_routing_never_overwrites_an_explicit_key():
-    merged = with_prompt_cache_routing({SESSION_ID_FIELD: "chosen-by-the-caller"}, "grid-abc")
+    merged = with_prompt_cache_routing({SESSION_ID_FIELD: "chosen-by-the-caller"}, "session-abc")
     assert merged[SESSION_ID_FIELD] == "chosen-by-the-caller"
 
 
 def test_routing_does_not_mutate_the_input():
     original = {"plugins": []}
-    with_prompt_cache_routing(original, "grid-abc")
+    with_prompt_cache_routing(original, "session-abc")
     assert original == {"plugins": []}
 
 

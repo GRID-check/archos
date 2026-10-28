@@ -35,7 +35,7 @@ export const settings = {
       setUpBrief: 'Set up briefing',
       editBrief: 'Edit briefing',
       openSetup: 'Continue setup',
-      askPiloti: 'Ask {productName}',
+      askAgent: 'Ask {productName}',
       openFiles: 'Open files',
       actions: 'Project actions',
       rename: 'Rename',

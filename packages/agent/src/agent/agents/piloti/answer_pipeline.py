@@ -923,7 +923,7 @@ def _gated_meta(
     PROSE, not the sources apparatus.
 
     The registry is the turn's captured sources, and the gate needs exactly one
-    fact out of it: which of the documents cited here PILOTI wrote. A verdict
+    fact out of it: which of the documents cited here AGENT wrote. A verdict
     is the one place an answer names a Fundstelle for a value the reader
     copies, so it is the one place an approved office document must not be able
     to stand in for the OIB.

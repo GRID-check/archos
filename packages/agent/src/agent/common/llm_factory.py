@@ -63,7 +63,7 @@ _RESPONSE_HEALING_PLUGIN = {"id": "response-healing"}
 
 #: Marks a chat-model class as already carrying the request contract, so
 #: resolving the same model twice does not stack wrappers.
-_CONTRACT_MARKER = "__grid_request_contract__"
+_CONTRACT_MARKER = "__request_contract__"
 
 #: One contract subclass per base chat-model class, not per instance — keeps
 #: ``type(llm)`` stable and cheap across the fleet's many resolutions.

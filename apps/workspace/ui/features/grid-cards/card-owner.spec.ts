@@ -8,19 +8,19 @@
  * makes the two one fact, and the cases where the honest answer is "no owner".
  */
 import { describe, expect, it } from 'vitest'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { findCardOwnerMessageId, type CardOwnerConversation } from './card-owner'
 
-const proposal = (content: string): GridCard =>
+const proposal = (content: string): AnswerCard =>
   ({
     type: 'memory_proposal',
     title: 'Merken?',
     content,
     kind: 'preference',
     confidence: 'high',
-  }) as GridCard
+  }) as AnswerCard
 
-const REPORT_CARDS: GridCard[] = [proposal('REI 90 bei GK4')]
+const REPORT_CARDS: AnswerCard[] = [proposal('REI 90 bei GK4')]
 
 const thread = (
   messages: CardOwnerConversation['messages'],

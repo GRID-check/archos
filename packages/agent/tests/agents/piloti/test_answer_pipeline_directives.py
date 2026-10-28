@@ -1,7 +1,7 @@
 """The answer's Markdown directives pass the pipeline as inert text.
 
 The prompt teaches a small directive dialect the renderer draws richly
-(``piloti_static.md`` <formatting>, RICH BLOCKS): ``:::check`` around a check
+(``chat_static.md`` <formatting>, RICH BLOCKS): ``:::check`` around a check
 table, ``:::procedure`` around a Verfahren's list, ``:energy-class[B]``, and a cited
 quote line ``> „…“ [N]``. None of the post-answer passes knows the dialect, and
 none may need to: the fence lines must reach the reader byte-equal, the ``[N]``

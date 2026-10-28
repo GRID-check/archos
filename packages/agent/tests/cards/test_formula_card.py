@@ -18,7 +18,7 @@ from agent.cards.catalog import CARD_EXAMPLES
 from agent.cards.envelope import ENVELOPE_SHAPE_TYPES
 from agent.cards.formula_card import formula_inputs
 from agent.cards.formula_card import stated_result_fields
-from agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 from agent.observability.langfuse_scores import card_validity_score
 from agent.observability.langfuse_scores import formula_provenance_score
 
@@ -39,7 +39,7 @@ def _stair(**changes) -> dict:
 class TestTheSharedFixture:
     @pytest.mark.parametrize("case", [c for c in FIXTURE["cases"] if "card" in c], ids=lambda c: c["id"])
     def test_every_case_is_a_card_the_model_could_emit(self, case):
-        grid_card_adapter.validate_python(case["card"])
+        answer_card_adapter.validate_python(case["card"])
 
     def test_every_derived_case_names_a_base_and_changes_an_input_it_has(self):
         cards = {case["id"]: case["card"] for case in FIXTURE["cases"] if "card" in case}
@@ -69,31 +69,31 @@ class TestTheModelNamesACaseNeverANumber:
     def test_a_stated_result_and_a_limit_do_not_survive_validation(self):
         card = _stair(result=63, limits=[{"target": "riser", "comparator": "<=", "value": 18}])
         card["formula"]["riser"]["result"] = 34
-        dumped = grid_card_adapter.validate_python(card).model_dump()
+        dumped = answer_card_adapter.validate_python(card).model_dump()
         assert "result" not in dumped and "limits" not in dumped
         assert "result" not in dumped["formula"]["riser"]
 
     def test_a_unit_on_the_wire_is_not_the_card_s(self):
         card = _stair()
         card["formula"]["riser"]["unit"] = "m"
-        assert "unit" not in grid_card_adapter.validate_python(card).model_dump()["formula"]["riser"]
+        assert "unit" not in answer_card_adapter.validate_python(card).model_dump()["formula"]["riser"]
 
     @pytest.mark.parametrize(
         "title", ["U-Wert Außenwand – 20 cm Dämmung", "Fluchtweg 36,5 m", "Belichtung 12 %", "U = 0,17"]
     )
     def test_a_title_with_a_figure_is_refused(self, title):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(title=title))
+            answer_card_adapter.validate_python(_stair(title=title))
 
     @pytest.mark.parametrize("title", ["U-Wert Außenwand AW 01", "Fluchtweg Büro 2.14", "Stiege 2. OG", "Haus A"])
     def test_an_identifier_in_a_title_is_not_a_figure(self, title):
-        grid_card_adapter.validate_python(_stair(title=title))
+        answer_card_adapter.validate_python(_stair(title=title))
 
     def test_a_layer_label_or_a_leg_label_with_a_figure_is_refused(self):
         wall = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
         wall["formula"]["layers"][1]["label"] = "EPS-F 20 cm"
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(wall)
+            answer_card_adapter.validate_python(wall)
         route = {
             "type": "formula",
             "title": "Fluchtweg Top 1",
@@ -104,50 +104,50 @@ class TestTheModelNamesACaseNeverANumber:
             },
         }
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(route)
+            answer_card_adapter.validate_python(route)
 
     def test_a_note_that_states_a_result_is_refused(self):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(note="Das Schrittmaß = 63 und damit erfüllt."))
-        grid_card_adapter.validate_python(_stair(note="Gilt für jede Stufe des Laufs."))
+            answer_card_adapter.validate_python(_stair(note="Das Schrittmaß = 63 und damit erfüllt."))
+        answer_card_adapter.validate_python(_stair(note="Gilt für jede Stufe des Laufs."))
 
     def test_the_stair_type_is_required_and_closed(self):
         card = _stair()
         del card["formula"]["stair_type"]
         with pytest.raises(ValidationError):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
         card["formula"]["stair_type"] = "spiral"
         with pytest.raises(ValidationError):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     def test_a_u_value_names_its_component_and_no_heat_flow(self):
         card = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
         card["formula"]["heat_flow"] = "downward"
-        dumped = grid_card_adapter.validate_python(card).model_dump()
+        dumped = answer_card_adapter.validate_python(card).model_dump()
         assert "heat_flow" not in dumped["formula"]
         del card["formula"]["component"]
         with pytest.raises(ValidationError):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     def test_a_source_value_inside_its_own_range(self):
         card = _stair()
         card["formula"]["riser"] = {"value": 30, "min": 10, "max": 25}
         with pytest.raises(ValidationError, match="above `max`"):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     def test_an_unknown_input_is_allowed_and_stays_unknown(self):
         card = _stair()
         card["formula"]["going"] = {"value": None}
-        assert grid_card_adapter.validate_python(card).model_dump()["formula"]["going"]["value"] is None
+        assert answer_card_adapter.validate_python(card).model_dump()["formula"]["going"]["value"] is None
 
     def test_an_unknown_rule_is_refused(self):
         card = _stair()
         card["formula"]["name"] = "clear_room_height"
         with pytest.raises(ValidationError):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     def test_the_worked_example_is_a_valid_card_with_no_number_of_its_own(self):
-        card = grid_card_adapter.validate_python(CARD_EXAMPLES["formula"]).model_dump()
+        card = answer_card_adapter.validate_python(CARD_EXAMPLES["formula"]).model_dump()
         text = json.dumps(card)
         assert "result" not in text and "limits" not in text
         assert card["title"] == "U-Wert Außenwand AW 01"
@@ -243,36 +243,36 @@ class TestTheFigureGuardHoldsWhereItLeaked:
     )
     def test_a_title_with_any_number_but_an_identifier_is_refused(self, title):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(title=title))
+            answer_card_adapter.validate_python(_stair(title=title))
 
     @pytest.mark.parametrize(
         "title", ["Stiege Top 7", "Fluchtweg Büro 2.14", "Stiege 2. OG", "U-Wert Außenwand AW 01", "Gst.-Nr. 123/4"]
     )
     def test_an_identifier_still_passes(self, title):
-        grid_card_adapter.validate_python(_stair(title=title))
+        answer_card_adapter.validate_python(_stair(title=title))
 
     @pytest.mark.parametrize(
         "note", ["nicht erfüllt", "Die Stufenhöhe ist zulässig.", "Auftritt ≥ 27 erreicht.", "max. 18 laut Plan"]
     )
     def test_a_note_with_a_verdict_or_a_comparison_is_refused(self, note):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(note=note))
+            answer_card_adapter.validate_python(_stair(note=note))
 
     def test_a_note_may_cite_a_clause(self):
-        grid_card_adapter.validate_python(_stair(note="Gilt sinngemäß auch für Außentreppen, Pkt. 3.2.7."))
+        answer_card_adapter.validate_python(_stair(note="Gilt sinngemäß auch für Außentreppen, Pkt. 3.2.7."))
 
     @pytest.mark.parametrize("source", ["Schnitt A-A, 17 cm", "Plan: erfüllt", "laut Statik ≥ 20"])
     def test_a_source_says_where_never_what(self, source):
         card = _stair()
         card["formula"]["riser"]["source"] = source
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     @pytest.mark.parametrize("source", ["Einreichplan, Schnitt A-A", "Grundriss 2. OG", "Plan 04-123, Index B"])
     def test_a_source_may_name_a_plan_and_its_number(self, source):
         card = _stair()
         card["formula"]["riser"]["source"] = source
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
 
 
 class TestTheMeasureOfAUValue:
@@ -280,12 +280,12 @@ class TestTheMeasureOfAUValue:
         card = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
         for measure in ("new_build", "renovation"):
             card["formula"]["measure"] = measure
-            assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] == measure
+            assert answer_card_adapter.validate_python(card).model_dump()["formula"]["measure"] == measure
         del card["formula"]["measure"]
-        assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] is None
+        assert answer_card_adapter.validate_python(card).model_dump()["formula"]["measure"] is None
         card["formula"]["measure"] = "partial_renovation"
         with pytest.raises(ValidationError):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     def test_the_fixture_has_a_case_for_each(self):
         measures = {
@@ -350,26 +350,26 @@ class TestTheGuardIsFailClosed:
     @pytest.mark.parametrize("note", NOTES)
     def test_a_note(self, note):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(note=note))
+            answer_card_adapter.validate_python(_stair(note=note))
 
     @pytest.mark.parametrize("title", TITLES)
     def test_a_title(self, title):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(title=title))
+            answer_card_adapter.validate_python(_stair(title=title))
 
     @pytest.mark.parametrize("label", ["EPS 200", "Dämmung passt", "Mineralwolle 16"])
     def test_a_layer_label(self, label):
         wall = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
         wall["formula"]["layers"][1]["label"] = label
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(wall)
+            answer_card_adapter.validate_python(wall)
 
     @pytest.mark.parametrize("source", SOURCES)
     def test_a_source(self, source):
         card = _stair()
         card["formula"]["going"]["source"] = source
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     @pytest.mark.parametrize(
         "text",
@@ -381,33 +381,33 @@ class TestTheGuardIsFailClosed:
         ],
     )
     def test_a_citation_and_a_floor_edge_still_pass_in_a_note(self, text):
-        grid_card_adapter.validate_python(_stair(note=text))
+        answer_card_adapter.validate_python(_stair(note=text))
 
     @pytest.mark.parametrize("source", ["Plan 04-123, Index B", "Grundriss 2. OG", "Raumbuch Top 3"])
     def test_a_plan_number_still_passes_in_a_source(self, source):
         card = _stair()
         card["formula"]["going"]["source"] = source
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
 
     @pytest.mark.parametrize("title", ["U-Wert Außenwand AW 20", "Wohnzimmer Top 63", "Fluchtweg Büro 2.14"])
     def test_an_identifier_passes_whatever_its_number(self, title):
         # The judgement, documented at `_IDENTIFIER`: a component code („AW 20"), a
         # numbered dwelling („Top 63") and a room number are names, and no rule on
         # the text alone can tell one from a figure written as one. They pass.
-        grid_card_adapter.validate_python(_stair(title=title))
+        answer_card_adapter.validate_python(_stair(title=title))
 
     def test_every_fixture_card_and_example_survives_the_guard(self):
         for case in FIXTURE["cases"]:
             if "card" in case:
-                grid_card_adapter.validate_python(case["card"])
-        grid_card_adapter.validate_python(CARD_EXAMPLES["formula"])
+                answer_card_adapter.validate_python(case["card"])
+        answer_card_adapter.validate_python(CARD_EXAMPLES["formula"])
 
 
 class TestAMajorRenovation:
     def test_is_a_measure_of_its_own(self):
         card = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
         card["formula"]["measure"] = "major_renovation"
-        assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] == "major_renovation"
+        assert answer_card_adapter.validate_python(card).model_dump()["formula"]["measure"] == "major_renovation"
 
     def test_the_schema_tells_the_model_it_is_not_judged_by_the_table(self):
         from agent.cards.formula_card import UValueFormula
@@ -435,7 +435,7 @@ class TestTheGuardAllowsProvenanceAndRefusesByClass:
     def test_a_document_reference_passes_in_a_source_and_a_note(self, source):
         card = _stair(note=source)
         card["formula"]["going"]["source"] = source
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
 
     @pytest.mark.parametrize(
         "text",
@@ -468,7 +468,7 @@ class TestTheGuardAllowsProvenanceAndRefusesByClass:
     )
     def test_a_verdict_a_sign_or_a_symbol_is_refused_in_a_note(self, text):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(note=text))
+            answer_card_adapter.validate_python(_stair(note=text))
 
     @pytest.mark.parametrize(
         "title",
@@ -491,14 +491,14 @@ class TestTheGuardAllowsProvenanceAndRefusesByClass:
     )
     def test_a_name_outside_its_alphabet_is_refused(self, title):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(title=title))
+            answer_card_adapter.validate_python(_stair(title=title))
 
     @pytest.mark.parametrize(
         "title",
         ["U-Wert Außenwand AW 01 – Variante 2", "Wohnungseingangstüre → Gang", "Decke über Durchfahrt"],
     )
     def test_a_name_inside_its_alphabet_passes(self, title):
-        grid_card_adapter.validate_python(_stair(title=title))
+        answer_card_adapter.validate_python(_stair(title=title))
 
 
 class TestADocumentReferenceIsNeverADecimal:
@@ -510,11 +510,11 @@ class TestADocumentReferenceIsNeverADecimal:
     def test_a_decimal_after_a_document_word_is_refused(self, text):
         card = _stair(note=text)
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
         card = _stair()
         card["formula"]["going"]["source"] = text
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(card)
+            answer_card_adapter.validate_python(card)
 
     @pytest.mark.parametrize(
         "source",
@@ -523,10 +523,10 @@ class TestADocumentReferenceIsNeverADecimal:
     def test_a_code_an_integer_and_a_decade_pass(self, source):
         card = _stair()
         card["formula"]["going"]["source"] = source
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
 
     def test_abschnitt_stays_a_citation_word(self):
-        grid_card_adapter.validate_python(_stair(note="Siehe Abschnitt 4.2."))
+        answer_card_adapter.validate_python(_stair(note="Siehe Abschnitt 4.2."))
 
 
 class TestMoreVerdicts:
@@ -555,6 +555,6 @@ class TestMoreVerdicts:
     )
     def test_is_refused_in_a_note_and_a_title(self, text):
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(note=text))
+            answer_card_adapter.validate_python(_stair(note=text))
         with pytest.raises(ValidationError, match="carries"):
-            grid_card_adapter.validate_python(_stair(title=f"Stiege A {text}"))
+            answer_card_adapter.validate_python(_stair(title=f"Stiege A {text}"))

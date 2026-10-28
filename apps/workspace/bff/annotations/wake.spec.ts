@@ -61,7 +61,7 @@ describe('what wakes Piloti', () => {
     expect(replyTrigger({ ...pilotisQuestion, kind: 'defect' }, { authorKind: 'person', addressesPiloti: false })).toBeNull()
   })
 
-  it('never Piloti’s own reply: no Piloti-wakes-Piloti, even on its open question', () => {
+  it('never Piloti’s own reply: no Agent-wakes-Agent, even on its open question', () => {
     expect(replyTrigger(pilotisQuestion, { authorKind: 'piloti', addressesPiloti: true })).toBeNull()
   })
 })

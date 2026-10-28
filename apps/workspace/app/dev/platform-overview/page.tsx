@@ -136,7 +136,7 @@ const PRICING_PAYLOAD = {
     defaultOrgDailyCredits: 500,
     defaultOrgMonthlyCredits: 5000,
     note: 'Pilot pricing',
-    updatedByEmail: 'owner@grid.example',
+    updatedByEmail: 'owner@app.example',
     updatedAt: '2026-08-01T09:00:00Z',
     history: [
       {
@@ -146,7 +146,7 @@ const PRICING_PAYLOAD = {
         defaultOrgDailyCredits: 500,
         defaultOrgMonthlyCredits: 5000,
         note: 'Pilot pricing',
-        createdByEmail: 'owner@grid.example',
+        createdByEmail: 'owner@app.example',
         createdAt: '2026-08-01T09:00:00Z',
         status: 'active',
       },
@@ -157,7 +157,7 @@ const PRICING_PAYLOAD = {
         defaultOrgDailyCredits: 1000,
         defaultOrgMonthlyCredits: 10000,
         note: null,
-        createdByEmail: 'owner@grid.example',
+        createdByEmail: 'owner@app.example',
         createdAt: '2026-07-01T09:00:00Z',
         status: 'superseded',
       },
@@ -181,7 +181,7 @@ const WIDGET_MEMBERS = {
   data: [
     {
       id: 'user_1',
-      email: 'owner@grid.example',
+      email: 'owner@app.example',
       emailVerified: true,
       firstName: 'Platform',
       lastName: 'Owner',
@@ -193,7 +193,7 @@ const WIDGET_MEMBERS = {
     },
     {
       id: 'user_2',
-      email: 'ops@grid.example',
+      email: 'ops@app.example',
       emailVerified: true,
       firstName: 'Ops',
       lastName: 'Engineer',

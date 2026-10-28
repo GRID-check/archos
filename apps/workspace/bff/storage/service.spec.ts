@@ -57,7 +57,7 @@ vi.mock('@/lib/authz/platform', async (importOriginal) => {
 })
 
 import { PlatformAccessDeniedError } from '@/lib/authz/platform'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 import {
   assertWithinStorageQuota,
   getStorageOverview,
@@ -68,7 +68,7 @@ import {
 
 const GB = 1e9
 
-const platformSession = (): GridSession => ({
+const platformSession = (): UserSession => ({
   userId: 'user-1',
   email: 'admin@example.com',
   name: 'Admin',

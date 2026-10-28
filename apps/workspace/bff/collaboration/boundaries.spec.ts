@@ -143,14 +143,14 @@ const BOB = 'user_bob'
 const session = {
   userId: 'user_me',
   organizationId: 'org_1',
-  email: 'me@grid.test',
+  email: 'me@example.test',
   role: 'member',
   roles: ['member'],
   permissions: [],
 } as unknown as AuthorizedSession
 
 function person(userId: string, name: string) {
-  return { userId, email: `${name.toLowerCase()}@grid.test`, name, profilePictureUrl: null }
+  return { userId, email: `${name.toLowerCase()}@example.test`, name, profilePictureUrl: null }
 }
 
 function stubConversation(

@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Catalog, MessageProcessor, type SurfaceModel } from '@a2ui/web_core/v0_9'
 import { createComponentImplementation, type ReactComponentImplementation } from '@a2ui/react/v0_9'
 
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { Tabs as UiTabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useHeightGlide } from '@/components/motion/height-glide'
 import { cn } from '@/lib/utils'
@@ -29,7 +29,7 @@ import {
   cardComponentApi,
   catalogCardSchemas,
   ColumnApi,
-  PILOTI_CATALOG_ID,
+  CARDS_CATALOG_ID,
   RowApi,
   TabsApi,
   TextApi,
@@ -58,7 +58,7 @@ function cardComponent(schema: CardSchema): ReactComponentImplementation {
     // knows A2UI has drawn a real component rather than its placeholder.
     return (
       <div className="contents" data-a2ui-node={type}>
-        <ReaderInputsProvider store={store}>{render({ ...(props as object), type } as GridCard, leafId)}</ReaderInputsProvider>
+        <ReaderInputsProvider store={store}>{render({ ...(props as object), type } as AnswerCard, leafId)}</ReaderInputsProvider>
       </div>
     )
   })
@@ -196,8 +196,8 @@ const Text = createComponentImplementation(TextApi, ({ props }) => <TextView tex
 let catalog: Catalog<ReactComponentImplementation> | null = null
 
 /** The catalog, built once on first use. */
-export function pilotiCatalog(): Catalog<ReactComponentImplementation> {
-  catalog ??= new Catalog(PILOTI_CATALOG_ID, A2UI_PROTOCOL_VERSION, [
+export function agentCatalog(): Catalog<ReactComponentImplementation> {
+  catalog ??= new Catalog(CARDS_CATALOG_ID, A2UI_PROTOCOL_VERSION, [
     ...catalogCardSchemas().map(cardComponent),
     Row,
     Column,
@@ -211,8 +211,8 @@ export function pilotiCatalog(): Catalog<ReactComponentImplementation> {
  * A card as a drawn-ready A2UI surface on a processor of its own. Throws what
  * the processor throws for a message it refuses; `A2uiCard` falls back on it.
  */
-export function buildSurface(card: GridCard, surfaceId: string): SurfaceModel<ReactComponentImplementation> | null {
-  const processor = new MessageProcessor<ReactComponentImplementation>([pilotiCatalog()])
+export function buildSurface(card: AnswerCard, surfaceId: string): SurfaceModel<ReactComponentImplementation> | null {
+  const processor = new MessageProcessor<ReactComponentImplementation>([agentCatalog()])
   processor.processMessages(cardToSurfaceMessages(card, surfaceId))
   return processor.model.getSurface(surfaceId) ?? null
 }

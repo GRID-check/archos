@@ -55,7 +55,7 @@ function bootLogLine(env) {
 // context `/api/auth/websocket-scope` resolved. The BFF's wake job builds the
 // headers of the socket it opens as a person with the same function, so the
 // two producers of a chat turn cannot drift. The canonical envelope payload is
-// `buildGridRequestContextEnvelopePayload` in `bff/request-context.ts`;
+// `buildRequestContextEnvelopePayload` in `bff/request-context.ts`;
 // `request-context.spec.ts` pins the CommonJS copy to it.
 const { turnContextHeaders } = require('./bff/turns/turn-headers.js')
 
@@ -130,7 +130,7 @@ const SHUTDOWN_DRAIN_MS = Math.max(
   parseInt(process.env.SHUTDOWN_DRAIN_MS || '', 10) || 2000
 )
 // The list the app pushes its flush-on-exit functions onto (see cleanExit).
-const SHUTDOWN_HOOKS_KEY = '__gridShutdownHooks'
+const SHUTDOWN_HOOKS_KEY = '__appShutdownHooks'
 const SHUTDOWN_HOOKS_MS = 2000
 // Set once SIGTERM/SIGINT arrives: readiness starts failing and new WebSocket
 // upgrades are refused, while everything already in flight runs to completion.
@@ -761,7 +761,7 @@ const startServer = async () => {
   //
   // Before exiting, run what the app registered to flush (PostHog's queued
   // exceptions, ADR-0100): `instrumentation.ts` pushes async functions onto
-  // `globalThis.__gridShutdownHooks`, because this file cannot import it. They
+  // `globalThis.__appShutdownHooks`, because this file cannot import it. They
   // get SHUTDOWN_HOOKS_MS, on top of the drain, and a hook that fails or hangs
   // never keeps the pod alive.
   let exiting = false

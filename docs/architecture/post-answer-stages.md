@@ -25,7 +25,7 @@
 > [memory-reflection-audit.md](./memory-reflection-audit.md),
 > [backend-deep-dive.md](./backend-deep-dive.md),
 > [../design/streaming-chat-answer.md](../design/streaming-chat-answer.md),
-> [../design/grid-card-charter.md](../design/grid-card-charter.md).
+> [../design/answer-card-charter.md](../design/answer-card-charter.md).
 
 ---
 

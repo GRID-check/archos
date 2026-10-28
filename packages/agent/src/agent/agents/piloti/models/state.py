@@ -206,7 +206,7 @@ class ResearchAgentState(BaseModel):
     # reader is shown a banner; presence is the fact.
     answer_lookup_found_nothing: bool = False
     # Structured control-marker signals extracted (and stripped from the answer
-    # text) inside PilotiAgent.run(). The chat orchestrator reads these
+    # text) inside ChatAgent.run(). The chat orchestrator reads these
     # instead of re-parsing the answer string. ``escalation_requested`` doubles as
     # the extraction sentinel: None means "extraction did not run" (older caller,
     # or no real answer message) → the chat node falls back to string detection;
@@ -246,7 +246,7 @@ class ResearchAgentState(BaseModel):
     # The conversation's "already read" digest, IN for the prompt and OUT for
     # the merge: ``conversation._research_input`` threads the checkpointed lines
     # in (so the prompt can render ``## Bereits gelesen`` and the locator rule
-    # can act on it) and ``PilotiAgent.run`` writes the merged lines back
+    # can act on it) and ``ChatAgent.run`` writes the merged lines back
     # (previous plus this turn's captures). Plain strings only, like the
     # conversation field it mirrors — never a new pydantic type.
     already_read_digest: list[str] | None = None

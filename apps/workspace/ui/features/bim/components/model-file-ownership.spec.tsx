@@ -69,7 +69,7 @@ describe('ModelFileOwnership', () => {
     server.use(
       http.get('/api/assignments/document/:id', () =>
         HttpResponse.json({
-          assignees: [{ userId: 'u1', name: 'Anna', email: 'anna@grid.test', profilePictureUrl: null }],
+          assignees: [{ userId: 'u1', name: 'Anna', email: 'anna@example.test', profilePictureUrl: null }],
         }),
       ),
     )

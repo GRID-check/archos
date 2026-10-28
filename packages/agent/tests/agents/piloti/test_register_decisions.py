@@ -175,7 +175,7 @@ async def _run_turn(config: ResearchAgentConfig, decisions: TurnDecisions, messa
         return decisions
 
     with (
-        patch.object(register_module, "PilotiAgent", return_value=agent),
+        patch.object(register_module, "ChatAgent", return_value=agent),
         patch.object(register_module, "decide_turn", new_callable=AsyncMock, side_effect=_decided) as decide,
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
         patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -195,7 +195,7 @@ class TestTheTurn:
         agent = MagicMock()
         agent.run = AsyncMock(side_effect=lambda state, turn=None: state)
         with (
-            patch.object(register_module, "PilotiAgent", return_value=agent),
+            patch.object(register_module, "ChatAgent", return_value=agent),
             patch.object(register_module, "decide_turn", new_callable=AsyncMock) as decide,
             patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
             patch.object(register_module, "SkillResolver") as ResolverCls,
@@ -331,7 +331,7 @@ class TestTheTurn:
         agent = MagicMock()
         agent.run = AsyncMock(side_effect=lambda state, turn=None: state)
         with (
-            patch.object(register_module, "PilotiAgent", return_value=agent),
+            patch.object(register_module, "ChatAgent", return_value=agent),
             patch.object(register_module, "decide_turn", new_callable=AsyncMock, side_effect=RuntimeError("down")),
             patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
             patch.object(register_module, "SkillResolver") as ResolverCls,

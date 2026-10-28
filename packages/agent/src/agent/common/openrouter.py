@@ -445,7 +445,7 @@ class _AsyncPinningTransport(httpx.AsyncBaseTransport):
 
 
 _scoped_policy: contextvars.ContextVar[DataPolicy | None] = contextvars.ContextVar(
-    "grid_openrouter_data_policy", default=None
+    "openrouter_data_policy", default=None
 )
 
 

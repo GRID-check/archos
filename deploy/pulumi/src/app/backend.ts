@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { backendAutoscaled } from '../config/chat-tier'
 import { appPullPolicy, backendImage } from '../config/images'
 import { toResourceRequirements } from '../config/resources'
@@ -45,7 +45,7 @@ export interface Backend {
  */
 export function installBackend(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
   name: string = CHAT_TIER,

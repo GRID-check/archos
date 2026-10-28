@@ -935,10 +935,10 @@ def _run_user_info(user_info: dict | None, envelope_headers: dict[str, str] | No
     """
     if user_info is not None or not envelope_headers:
         return user_info
-    from agent.project_context import GridRequestContext
+    from agent.project_context import RequestContext
     from agent.turn.context import user_info_for
 
-    request = GridRequestContext.from_headers(envelope_headers, secret=os.environ.get("INTERNAL_API_TOKEN"))
+    request = RequestContext.from_headers(envelope_headers, secret=os.environ.get("INTERNAL_API_TOKEN"))
     return user_info_for(request)
 
 
@@ -1149,7 +1149,7 @@ def _get_agent_state_class(agent) -> type | None:
 
     An agent that DECLARES ``state_model`` is believed. Everything below it is
     a guess made from the class name, and a guess is what a rename breaks
-    without a word: ``ResearcherAgent`` → ``PilotiAgent`` stopped matching
+    without a word: ``ResearcherAgent`` → ``ChatAgent`` stopped matching
     ``ResearchAgentState`` and the agent was handed a bare dict. Declare the
     attribute on any new agent rather than shaping its class name to fit.
     """
@@ -1267,7 +1267,7 @@ async def _run_report_passes(
     if not produces_report:
         return CardGenerationResult(cards=None), ReportAnatomy(), None
     cards_result, anatomy, follow_ups = await asyncio.gather(
-        _generate_grid_cards(llm, input_text, report),
+        _generate_answer_cards(llm, input_text, report),
         # The report's anatomy (masthead) and its findings (Befundmatrix), read
         # off the finished report in one structured call, and the follow-up
         # questions the report just made askable. Both post hoc, both additive:
@@ -1346,7 +1346,7 @@ async def _propose_report_follow_ups(
         return None
 
 
-async def _generate_grid_cards(llm: Any, query: str, report: str) -> CardGenerationResult:
+async def _generate_answer_cards(llm: Any, query: str, report: str) -> CardGenerationResult:
     """Generate Grid response cards from the final report.
 
     Best-effort: never raises, so card generation can never crash or fail the

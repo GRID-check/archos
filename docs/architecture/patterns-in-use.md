@@ -18,7 +18,7 @@ whose only job is enforcing the import direction, so a control needing a new
 shape makes the kit grow rather than the organism.
 
 Layers and rules:
-[`../design/grid-design-language.md`](../design/grid-design-language.md#component-layers-atomic-design).
+[`../design/design-language.md`](../design/design-language.md#component-layers-atomic-design).
 **Enforced by:** review only.
 
 ## Module seams

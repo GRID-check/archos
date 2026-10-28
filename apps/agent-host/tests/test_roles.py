@@ -344,7 +344,7 @@ def test_a_config_that_puts_a_route_in_front_of_the_workflow_is_refused(override
 
 
 @pytest.mark.parametrize("raw", ["chat", "api", " API ", "Chat"])
-def test_a_web_role_is_read_from_grid_role(raw):
+def test_a_web_role_is_read_from_role_env(raw):
     assert web_role({ROLE_ENV: raw}) is WebRole(raw.strip().lower())
 
 

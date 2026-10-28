@@ -86,7 +86,7 @@ describe('DocumentVersionDiff', () => {
     // reflex, plus the two source signals the wrong choice would collide with.
     expect(classes).not.toMatch(/green|red|emerald|rose|destructive|source-project|signal-error/)
     // What carries the difference instead: the +/− marker and a fill, and no
-    // side stripe (grid-design-language.md, "Emphasis without a stripe").
+    // side stripe (design-language.md, "Emphasis without a stripe").
     expect(classes).not.toMatch(/border-l/)
     const rows = screen.getAllByTestId('document-version-diff-row')
     const added = rows.find((row) => row.dataset.kind === 'added')
