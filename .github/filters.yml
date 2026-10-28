@@ -19,6 +19,14 @@
 # not obvious from the path. tests/test_ci_filter_coverage.py fails on any
 # tracked path that no tier below names and that its UNFILTERED list does not
 # excuse, so a directory move that forgets this file is caught.
+#
+# A test that reads another area's file as source (a Pulumi spec reading the
+# env names a Python module reads, a backend test reading a BFF constant) must
+# run when that file changes. The block at the end of each tier, between "Read
+# as source by this tier's tests" and "End of the files this tier's tests read",
+# lists those files and is written by `python scripts/check_ci_filter_reads.py
+# --fix`; tests/test_ci_filter_reads.py fails when it differs from what the
+# tests read. Edit the lines above each block by hand, never the block.
 
 # Every filter also watches the tooling its jobs depend on: the tier's own
 # task file (taskfiles/<tier>.yml, which defines the commands the jobs run),
@@ -37,18 +45,6 @@ backend:
   # The recorded wire v2 turns and their schema: the contract fixtures
   # tests/aiq_agent/common/test_wire_v2.py holds the producer to.
   - 'shared/wire/**'
-  # BFF source and fixtures the apps/backend tests read to hold both sides of
-  # a contract to one number or schema. #1318 split documents/service.ts and
-  # merged without this suite, which then failed on the next backend PR.
-  - 'frontends/ui/src/lib/cross-project/project-facts-mirror.ts'
-  - 'frontends/ui/src/lib/documents/semantic-search.ts'
-  - 'frontends/ui/src/lib/platform/vector-reconcile.ts'
-  - 'frontends/ui/src/lib/request-context.ts'
-  - 'frontends/ui/src/lib/runs/run-envelope-types.ts'
-  - 'frontends/ui/tests/fixtures/run-envelope.schema.json'
-  - 'frontends/ui/tests/fixtures/run-ledger.schema.json'
-  - 'frontends/ui/tests/fixtures/turn-outcome.schema.json'
-  - 'frontends/ui/workers/jobs/index.js'
   # Read by tests/aiq_agent/tools/workspace/test_english_only.py.
   - 'ci/german_stems.json'
   # The Python packages (ADR-0145 row 6); ifc-spatial-py is the packages tier's.
@@ -69,6 +65,91 @@ backend:
   - '.github/workflows/ci.yml'
   - '.github/actions/setup-python-env/**'
   - '.github/actions/setup-task/**'
+  # Read as source by this tier's tests (scripts/check_ci_filter_reads.py --fix writes it):
+  - 'ci/brand_names_baseline.json'
+  - 'ci/english_names_baseline_py.json'
+  - 'ci/size_baseline.json'
+  - 'deploy/compose/docker-compose.yaml'
+  - 'deploy/postgres/rename-legacy-names.sh'
+  - 'deploy/posthog/support/copy.de.json'
+  - 'deploy/pulumi/src/app/config.ts'
+  - 'docs/README.md'
+  - 'docs/adr/README.md'
+  - 'docs/architecture/agent-capabilities.md'
+  - 'docs/architecture/north-star-answers.md'
+  - 'docs/audit/qdrant-gates-2026-10.md'
+  - 'docs/observability/langfuse.md'
+  - 'docs/technical-reference/answer-feedback-export.md'
+  - 'frontends/ui/scripts/legacy-env-names.cjs'
+  - 'frontends/ui/src/app/api/internal/usage/route.ts'
+  - 'frontends/ui/src/features/a2ui/catalog.tsx'
+  - 'frontends/ui/src/features/chat/lib/executed-steps.ts'
+  - 'frontends/ui/src/features/documents/lib/ingest-failure.ts'
+  - 'frontends/ui/src/features/grid-cards/card-decision.ts'
+  - 'frontends/ui/src/features/grid-cards/components/GridCards.tsx'
+  - 'frontends/ui/src/features/grid-cards/lib/formula-cases.json'
+  - 'frontends/ui/src/features/layout/components/InputArea.tsx'
+  - 'frontends/ui/src/i18n/dictionaries/de/chat.ts'
+  - 'frontends/ui/src/i18n/dictionaries/en/chat.ts'
+  - 'frontends/ui/src/i18n/dictionaries/index.ts'
+  - 'frontends/ui/src/i18n/index.ts'
+  - 'frontends/ui/src/lib/agent-api/backend-operations.ts'
+  - 'frontends/ui/src/lib/agent-api/exposure.config.ts'
+  - 'frontends/ui/src/lib/analytics/posthog-server.ts'
+  - 'frontends/ui/src/lib/analytics/posthog.ts'
+  - 'frontends/ui/src/lib/analytics/request-error.ts'
+  - 'frontends/ui/src/lib/brand.ts'
+  - 'frontends/ui/src/lib/cross-project/project-facts-mirror.ts'
+  - 'frontends/ui/src/lib/db/schema/budgets.ts'
+  - 'frontends/ui/src/lib/diagrams/__fixtures__/sketch-fences.json'
+  - 'frontends/ui/src/lib/document-check/check.ts'
+  - 'frontends/ui/src/lib/documents/preview-types.ts'
+  - 'frontends/ui/src/lib/documents/retry-policy.ts'
+  - 'frontends/ui/src/lib/documents/semantic-search.ts'
+  - 'frontends/ui/src/lib/documents/tag-vocabulary.ts'
+  - 'frontends/ui/src/lib/jobs/types.ts'
+  - 'frontends/ui/src/lib/model-config/agent-groups.ts'
+  - 'frontends/ui/src/lib/piloti-asks/answer-text.ts'
+  - 'frontends/ui/src/lib/platform/vector-reconcile.ts'
+  - 'frontends/ui/src/lib/project-profile/legacy-names.json'
+  - 'frontends/ui/src/lib/projects/project-status.ts'
+  - 'frontends/ui/src/lib/proxy/ws-upgrade-headers.js'
+  - 'frontends/ui/src/lib/request-context.ts'
+  - 'frontends/ui/src/lib/runs/run-envelope-types.ts'
+  - 'frontends/ui/src/lib/source-kinds.ts'
+  - 'frontends/ui/src/lib/text/answer-directives.ts'
+  - 'frontends/ui/src/lib/workos/feature-flags.ts'
+  - 'frontends/ui/src/shared/cards/generated.ts'
+  - 'frontends/ui/tests/fixtures/backend-tools.schema.json'
+  - 'frontends/ui/tests/fixtures/cross-project.schema.json'
+  - 'frontends/ui/tests/fixtures/document-annotations.schema.json'
+  - 'frontends/ui/tests/fixtures/document-lifecycle.schema.json'
+  - 'frontends/ui/tests/fixtures/estate-tree.schema.json'
+  - 'frontends/ui/tests/fixtures/exposure.json'
+  - 'frontends/ui/tests/fixtures/grid_request_context.json'
+  - 'frontends/ui/tests/fixtures/job_fire_headers.json'
+  - 'frontends/ui/tests/fixtures/precedent/office.json'
+  - 'frontends/ui/tests/fixtures/precedent/permits.json'
+  - 'frontends/ui/tests/fixtures/proposals.schema.json'
+  - 'frontends/ui/tests/fixtures/reasoning_efforts_catalog.json'
+  - 'frontends/ui/tests/fixtures/retrieval_settings_catalog.json'
+  - 'frontends/ui/tests/fixtures/run-envelope.schema.json'
+  - 'frontends/ui/tests/fixtures/run-ledger.schema.json'
+  - 'frontends/ui/tests/fixtures/surface-parity.json'
+  - 'frontends/ui/tests/fixtures/turn-outcome.schema.json'
+  - 'frontends/ui/tests/fixtures/workspace/rendered.json'
+  - 'frontends/ui/tests/fixtures/workspace_mcp_requests.json'
+  - 'frontends/ui/tests/fixtures/workspace_mcp_responses.json'
+  - 'frontends/ui/workers/job-queue.js'
+  - 'frontends/ui/workers/jobs/index.js'
+  - 'frontends/ui/workers/jobs/runner.js'
+  - 'packages/ifc-spatial/test/fixtures/Ifc4_SampleHouse.ifc'
+  - 'packages/ifc-spatial/test/fixtures/floor-slab-and-window.ifc'
+  - 'packages/ifc-spatial/test/fixtures/house-with-rooms.ifc'
+  - 'packages/ifc-spatial/test/fixtures/road-ifc4x3.ifc'
+  - 'packages/ifc-spatial/test/fixtures/units-feet.ifc'
+  - 'shared/cards/schemas.json'
+  # End of the files this tier's tests read.
 # NOT here, though tests read them: `ci/**`, `releasenotes/**`, the other
 # workflows and this file. Their tests (`task be:test:harness`: the workflow,
 # plan-script and release-note suites, ~10s) run in the Repo checks job, which
@@ -135,6 +216,14 @@ frontend:
   - '.github/actions/build-image/**'
   # The brand script writes the app's icons (packages/brand/build-brand-assets.mjs).
   - 'packages/brand/**'
+  # Read as source by this tier's tests (scripts/check_ci_filter_reads.py --fix writes it):
+  - 'apps/backend/src/aiq_api/models/requests.py'
+  - 'deploy/compose/init-db.sql'
+  - 'docs/technical-reference/answer-feedback-export.md'
+  - 'packages/ris-adapter/src/client.py'
+  - 'src/aiq_agent/common/status_keys.py'
+  - 'src/aiq_agent/skills/events.py'
+  # End of the files this tier's tests read.
 site:
   - 'apps/site/**'
   # The brand master and the app's copy: the site's `npm run check` holds
@@ -161,11 +250,13 @@ infra:
   - 'apps/site/runtime/server.mjs'
   # deploy/pulumi/src/data/qdrant-alerts.spec.ts reads the runbook it links.
   - 'docs/deployment/qdrant-runbook.md'
-  # The other side of a contract the manifest specs read as source: the env
-  # names and defaults the Python and BFF tiers read, the queue tables KEDA
-  # counts. #1275 renamed a helper in adapter.py and three specs went red on
-  # the next deploy PR. deploy/pulumi/src/ci-filter.spec.ts holds this list to
-  # every file a spec reads.
+  - 'Taskfile.yml'
+  - 'taskfiles/infra.yml'
+  - '.github/workflows/ci.yml'
+  - '.github/filters.yml'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
+  # Read as source by this tier's tests (scripts/check_ci_filter_reads.py --fix writes it):
   - 'apps/backend/entrypoint.py'
   - 'apps/backend/src/aiq_api/chat_socket.py'
   - 'apps/backend/src/aiq_api/jobs/ingest_dispatch.py'
@@ -190,12 +281,7 @@ infra:
   - 'src/aiq_agent/common/provider_limiter.py'
   - 'src/aiq_agent/knowledge/ingest_queue.py'
   - 'src/aiq_agent/knowledge/ingest_scheduler.py'
-  - 'Taskfile.yml'
-  - 'taskfiles/infra.yml'
-  - '.github/workflows/ci.yml'
-  - '.github/filters.yml'
-  - '.github/actions/setup-bun/**'
-  - '.github/actions/setup-task/**'
+  # End of the files this tier's tests read.
 # The two standalone IFC packages (ADR-0045). Their own family rather than a
 # line in `backend:` or `frontend:`, because they are outside BOTH workspaces —
 # own bun.lock, own uv.lock, own toolchains — so nothing the backend or
@@ -214,7 +300,6 @@ packages:
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'
   - '.github/actions/setup-task/**'
-
 # The per-migration backfill and down checks at the end of
 # scripts/rls-test-db.sh. They read only the migrations and the script, so the
 # frontend job skips them unless one of those changed. The rest of the tenant
@@ -222,7 +307,6 @@ packages:
 migrations:
   - 'frontends/ui/drizzle/**'
   - 'scripts/rls-test-db.sh'
-
 # The pull request SAST scan. Semgrep is diff-aware, so it only ever reports
 # findings the change introduces; this decides whether there is code to scan.
 sast:
