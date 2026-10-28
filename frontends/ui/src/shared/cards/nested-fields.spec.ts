@@ -111,7 +111,7 @@ describe('nested card fields are validated, not waved through', () => {
       const field = schemaFor(entry.defName).shape[entry.field]
       expect(
         bottomsOutInAny(field),
-        `${entry.cardType}.${entry.field} is described by a $ref in shared/cards/schemas.json but ` +
+        `${entry.cardType}.${entry.field} is described by a $ref in contracts/cards/schemas.json but ` +
           'the Zod mirror accepts anything for it. The generator dropped the reference — see ' +
           'scripts/generate-card-schemas.mjs.'
       ).toBe(false)

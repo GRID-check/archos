@@ -178,7 +178,7 @@ export const answerExport = {
    *
    * Keyed by FIELD NAME, like `fields`, and for the same reason: `status` and
    * `provenance` recur across the catalogue. `label-coverage.spec.ts` derives
-   * every enum member of every exported card from `shared/cards/schemas.json`
+   * every enum member of every exported card from `contracts/cards/schemas.json`
    * and fails when one has no word here — so a member added to a `Literal` in
    * `models.py` breaks the build rather than shipping an English word into a
    * German Bauakt.
@@ -302,7 +302,7 @@ export const answerExport = {
    * That is the only such case in the catalogue.
    *
    * `label-coverage.spec.ts` resolves every key here against
-   * `shared/cards/schemas.json`, so an override whose path a card no longer has
+   * `contracts/cards/schemas.json`, so an override whose path a card no longer has
    * fails the build instead of silently ceasing to apply. Add an entry only for
    * a name that genuinely means something else HERE; the flat map stays the
    * default, and one more override is one more place two locales can drift.

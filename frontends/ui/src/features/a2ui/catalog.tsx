@@ -21,7 +21,7 @@
  * which the Markdown-first answer never puts on a card.
  *
  * A card component's props are that card's own fields, validated by the card's
- * generated Zod schema (`shared/cards/generated.ts`) — the same schema a card
+ * generated Zod schema (`src/shared/cards/generated.ts`) — the same schema a card
  * outside A2UI is validated by, so there is one contract, not two. How a card
  * is DRAWN is not this module's business: the host hands a renderer down
  * (`CardRenderer`), which keeps `features/a2ui` free of every card component

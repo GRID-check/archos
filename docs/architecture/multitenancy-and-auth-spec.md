@@ -117,7 +117,7 @@ An honest snapshot of what exists today.
 - **TTL reaper** now deletes only `s_`‑prefixed (session) collections; base/project corpora
   persist.
 - **Cards are a single source of truth.** Pydantic models in `src/aiq_agent/cards/models.py`
-  are canonical → generate `shared/cards/schemas.json` → generate frontend Zod.
+  are canonical → generate `contracts/cards/schemas.json` → generate frontend Zod.
 
 These are **done** and form the foundation this spec builds on.
 

@@ -8,7 +8,7 @@
  * §a): a masthead-only chunk is `masthead`, prose is `TEXT_MESSAGE_*`, the
  * settle is `STATE_SNAPSHOT`, each card is a `card` event, and the terminal is
  * `RUN_FINISHED` with its result. The steps before the answer follow
- * `shared/wire/v2/turn-answered.jsonl`, one retrieval round per query.
+ * `contracts/wire/v2/turn-answered.jsonl`, one retrieval round per query.
  */
 
 import type { RecordedFrame, RecordedTurn } from './stream-frames'

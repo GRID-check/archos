@@ -287,7 +287,7 @@ does not exist, so a moved file is caught; a missing row is not.
 | Card catalog shown to the model | `src/aiq_agent/cards/catalog.py` — `describe_card_catalog` | [`cards.md`](cards.md) | ADR-0012 |
 | Card models | `src/aiq_agent/cards/models.py` (the union), one module per card family beside it | [`docs/design/grid-card-charter.md`](../design/grid-card-charter.md) | ADR-0012 |
 | Per-session card registry | `src/aiq_agent/cards/registry.py` — `get_or_create_card_registry` | [`cards.md`](cards.md) | ADR-0012, ADR-0030 |
-| Generated card schemas | `shared/cards/schemas.json` and `frontends/ui/src/shared/cards/generated.ts`, from `scripts/generate_card_schema.py` | [`cards.md`](cards.md) | ADR-0012 |
+| Generated card schemas | `contracts/cards/schemas.json` and `frontends/ui/src/shared/cards/generated.ts`, from `scripts/generate_card_schema.py` | [`cards.md`](cards.md) | ADR-0012 |
 | A2UI renderer and catalog | `frontends/ui/src/features/a2ui/A2uiCard.tsx`, `frontends/ui/src/features/a2ui/catalog.tsx`, `frontends/ui/src/features/a2ui/surface-messages.ts`; gallery at `frontends/ui/src/app/dev/a2ui/page.tsx` (`/dev/a2ui`) | [`cards.md`](cards.md) | ADR-0065 |
 | Composed surface and its citations | `src/aiq_agent/cards/models.py` — `SurfaceCard`, `SURFACE_EXCLUDED_LEAVES`; `src/aiq_agent/cards/surface_citations.py` — `recite_text` | [`cards.md`](cards.md) | ADR-0065 |
 | Diagram model and views (an answer's mermaid read as a model, drawn by our own views) | `frontends/ui/src/features/diagrams/model.ts`, `frontends/ui/src/features/diagrams/parse-mermaid.ts`, `frontends/ui/src/features/diagrams/use-diagram-model.ts`, `frontends/ui/src/features/diagrams/views` | [`diagrams.md`](diagrams.md) | — |

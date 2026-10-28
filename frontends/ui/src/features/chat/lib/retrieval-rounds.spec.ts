@@ -1,4 +1,4 @@
-// @disk-inputs: ../../shared/wire/v2/**, ../../tests/fixtures/derivation/retrieval_ledger_wire.json, ../shared/wire/v2, shared/wire/v2
+// @disk-inputs: ../../contracts/wire/v2/**, ../../tests/fixtures/derivation/retrieval_ledger_wire.json, ../contracts/wire/v2, contracts/wire/v2
 /**
  * @vitest-environment node
  */

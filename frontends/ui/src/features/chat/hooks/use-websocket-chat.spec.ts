@@ -1,7 +1,7 @@
 /**
  * The chat socket's driver (docs/design/chat-wire-v2.md §e.2, §e.3), driven
  * through a mock socket that delivers the recorded v2 turns
- * (`shared/wire/v2/`) into the real store.
+ * (`contracts/wire/v2/`) into the real store.
  */
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

@@ -95,7 +95,7 @@ For the answer that means:
 - **`RUN_ERROR`.** The turn failed and nothing was persisted.
 
 No frame's size depends on the prompt's length: the recorded answered turn
-(`shared/wire/v2/turn-answered.jsonl`) is 22 events and 8.5 KB, the terminal
+(`contracts/wire/v2/turn-answered.jsonl`) is 22 events and 8.5 KB, the terminal
 its largest at about 2 KB.
 
 ### The platform switch
@@ -799,7 +799,7 @@ keep arriving are never clipped.
 
 Stop keeps what was on screen at the press. The rule of what that is has one
 copy per language and three writers (the agent tier, the asker's browser and
-the BFF), held to the same cases by `shared/wire/v2/stopped-cases.jsonl`:
+the BFF), held to the same cases by `contracts/wire/v2/stopped-cases.jsonl`:
 [chat wire v2, Cancel](chat-wire-v2.md#c-the-route-and-the-handler) and
 `features/chat/lib/stopped-answer.ts`. In short: the shown code points, a
 marker cut in half dropped, a streamed `[N]` dropped and a settled one kept
@@ -1007,7 +1007,7 @@ as it does on a desk.
 
 ## Tests
 
-- Contract: every recorded turn in `shared/wire/v2/` is valid and is byte for
+- Contract: every recorded turn in `contracts/wire/v2/` is valid and is byte for
   byte the frame the server writes (`tests/aiq_agent/common/test_wire_v2.py`,
   `frontends/ui/src/adapters/api/wire-v2.spec.ts`).
 - Producers and handler: prose deltas are coalesced, the snapshot and the

@@ -48,7 +48,7 @@ measuring them needs the TypeScript parser, which lives in the UI's
 `node_modules` that the Repo checks job does not install.
 
 Not checked, because their length follows their input rather than a design
-choice: generated files (the card schemas' `shared/cards/generated.ts`,
+choice: generated files (the card schemas' `src/shared/cards/generated.ts`,
 `*.generated.*`, `*.d.ts`), tests,
 specs, fixtures and test helpers, migrations, and copy (the i18n dictionaries,
 the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.

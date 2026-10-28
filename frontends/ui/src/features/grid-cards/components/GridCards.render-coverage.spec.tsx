@@ -279,7 +279,7 @@ describe('every card type renders', () => {
     const unknown = ALL_TYPES.filter((type) => !REQUIRED_FIELDS[type])
     expect(
       unknown,
-      'card type is in the Zod union but not in shared/cards/schemas.json — regenerate the schema'
+      'card type is in the Zod union but not in contracts/cards/schemas.json — regenerate the schema'
     ).toEqual([])
   })
 

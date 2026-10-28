@@ -1,11 +1,11 @@
-// @disk-inputs: ../../shared/wire/v2/**, ../shared/wire/v2, shared/wire/v2
+// @disk-inputs: ../../contracts/wire/v2/**, ../contracts/wire/v2, contracts/wire/v2
 /**
  * @vitest-environment node
  */
 /**
  * The chat wire v2 contract, read from this side (`docs/design/chat-wire-v2.md`).
  *
- * `shared/wire/v2/` holds recorded turns, one event per line, and
+ * `contracts/wire/v2/` holds recorded turns, one event per line, and
  * `tests/aiq_agent/common/test_wire_v2.py` reads the same files with the Pydantic
  * models they were generated from. Every event must parse here, parse to the
  * type it says it is, and every frame of the old wire must NOT parse: there is
@@ -25,10 +25,10 @@ import { viewerActionArgsSchema } from './wire-v2.generated'
 function fixtureDir(): string {
   let dir = process.cwd()
   for (;;) {
-    const candidate = join(dir, 'shared', 'wire', 'v2')
+    const candidate = join(dir, 'contracts', 'wire', 'v2')
     if (existsSync(candidate)) return candidate
     const parent = dirname(dir)
-    if (parent === dir) throw new Error(`shared/wire/v2 not found above ${process.cwd()}`)
+    if (parent === dir) throw new Error(`contracts/wire/v2 not found above ${process.cwd()}`)
     dir = parent
   }
 }

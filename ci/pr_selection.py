@@ -158,7 +158,7 @@ UI_FULL = (
 # the BFF loads, the root scripts its walkers check, and the backend fixtures a
 # contract spec reads (`skills/resolve-payload-contract.spec.ts`). A change to none of
 # these since the last green run leaves every UI result standing.
-UI_INPUTS = (UI + "**", "configs/**", "shared/**", "scripts/**", "src/aiq_agent/cards/**", "tests/fixtures/**")
+UI_INPUTS = (UI + "**", "configs/**", "contracts/**", "scripts/**", "src/aiq_agent/cards/**", "tests/fixtures/**")
 
 # The spec files vitest collects (vitest.config.ts `include`). Vitest's `**/`
 # matches no directory too; fnmatch's needs one, so each glob also gets its

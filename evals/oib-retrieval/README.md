@@ -73,7 +73,7 @@ the dense A/B, is the load-bearing evidence for the chunking change.
 * **Grades are 3 / 2 / 1**: 3 = this Punkt states the answer; 2 = the answer is wrong or
   incomplete without it; 1 = context an expert would want beside it. nDCG uses the
   exponential gain `2**grade - 1`.
-* **Questions come from the repo's own taxonomy**, not invented: `shared/cards/schemas.json`
+* **Questions come from the repo's own taxonomy**, not invented: `contracts/cards/schemas.json`
   card descriptions name a question class *and* its Richtlinie, `src/aiq_agent/cards/catalog.py`
   `CARD_EXAMPLES` carries Punkt-level references, `src/aiq_agent/common/applicability.py`
   supplies the intake vocabulary, and `configs/norms/at/registry.yml` marks what is corpus

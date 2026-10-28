@@ -5,7 +5,7 @@
 /**
  * The guard that the TypeScript union knows every card type the catalog has.
  *
- * `shared/cards/schemas.json` is generated from `models.py`; `generated.ts` is
+ * `contracts/cards/schemas.json` is generated from `models.py`; `generated.ts` is
  * generated from `schemas.json`; and `test_schema_sync.py` holds the FIRST of
  * those two arrows. Nothing held the second. So the whole cross-stack chain
  * could be green with the frontend union one card type short — which is not a
@@ -84,12 +84,12 @@ describe('the card union covers the canonical catalog', () => {
     expect(CATALOG_TYPES.length).toBeGreaterThan(15)
   })
 
-  it('parses every card type shared/cards/schemas.json declares', () => {
+  it('parses every card type contracts/cards/schemas.json declares', () => {
     const missing = CATALOG_TYPES.filter((type) => !UNION_TYPES.includes(type))
     expect(
       missing,
       `src/shared/cards/generated.ts has no union member for card type(s) ${JSON.stringify(missing)}, ` +
-        'which shared/cards/schemas.json declares. `validateGridCards` leaves a hole where a card it cannot ' +
+        'which contracts/cards/schemas.json declares. `validateGridCards` leaves a hole where a card it cannot ' +
         'parse was, so every [[card:N]] marker after one of these would draw nothing instead of its card. ' +
         `The union is generated, so do not hand-edit it: ${REGENERATE}`
     ).toEqual([])
@@ -104,7 +104,7 @@ describe('the card union covers the canonical catalog', () => {
     expect(
       orphaned,
       `src/shared/cards/generated.ts still parses card type(s) ${JSON.stringify(orphaned)}, which ` +
-        `shared/cards/schemas.json no longer declares. ${REGENERATE}`
+        `contracts/cards/schemas.json no longer declares. ${REGENERATE}`
     ).toEqual([])
   })
 })

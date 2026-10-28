@@ -70,7 +70,7 @@ Key files:
   nodes). The escalation edge and the conversation-scoped state belong to Piloti; the workflow only wires them up.
 - Workflow registration + response creation: `src/aiq_agent/agents/piloti/conversation_register.py`.
 - Wire types: `src/aiq_agent/common/wire_v2.py`, the contract both tiers are
-  generated from and tested against (`shared/wire/v2/`).
+  generated from and tested against (`contracts/wire/v2/`).
 
 ### The terminal result (`TurnResult`)
 

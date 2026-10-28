@@ -309,7 +309,7 @@ CI**, for the same reason `be:eval:retrieval` no longer does: it needs a
 reachable backend with the operator-provided, gitignored OIB corpus ingested,
 and every question costs real model calls. Run it on either side of a change to
 the answering loop and quote the delta in the PR; the CSV and comparison logic,
-and the reading of a recorded wire v2 turn (`shared/wire/v2/`), are covered
+and the reading of a recorded wire v2 turn (`contracts/wire/v2/`), are covered
 offline by [`tests/test_loop_eval.py`](../../tests/test_loop_eval.py).
 
 ## Cross-service contract fixtures
@@ -774,7 +774,7 @@ store and components.
 
 - The turn is `src/app/dev/_fixtures/v2-turn.ts`: `RUN_STARTED`, the setup and
   three retrieval rounds as typed steps (modelled on
-  `shared/wire/v2/turn-answered.jsonl`), the recorded `oib2` answer mapped onto
+  `contracts/wire/v2/turn-answered.jsonl`), the recorded `oib2` answer mapped onto
   v2 events (masthead, deltas, snapshot, cards, `RUN_FINISHED`) at `speed`
   times its pace, a heartbeat every 20 s and a stage after the terminal.
   `RUN_FINISHED` carries the settled snapshot's text and sources and the

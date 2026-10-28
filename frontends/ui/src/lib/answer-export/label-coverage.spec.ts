@@ -5,7 +5,7 @@
 /**
  * The guards that keep an exported document German.
  *
- * Four of them, all derived from `shared/cards/schemas.json` and never from a
+ * Four of them, all derived from `contracts/cards/schemas.json` and never from a
  * hand-written list:
  *
  *   1. every field name the walker can label has a word (`fields`);
@@ -33,7 +33,7 @@
  *
  * ## Derived from the schema, never from a list
  *
- * The field names come out of `shared/cards/schemas.json` — the canonical card
+ * The field names come out of `contracts/cards/schemas.json` — the canonical card
  * schema generated from `models.py`, and the file `generated.ts` is itself
  * generated from. A hand-written list here would be exactly the mistake
  * `answer-document.spec.ts` already made once: its "every card in the
@@ -264,7 +264,7 @@ describe('every per-path label override still points at a field that exists', ()
   it('names a path the card schema has', () => {
     const dangling = overrideKeys
       .filter((key) => !schemaPaths.has(parseOverride(key).path))
-      .map((key) => `${key}  (no such path in shared/cards/schemas.json)`)
+      .map((key) => `${key}  (no such path in contracts/cards/schemas.json)`)
 
     expect(
       dangling,

@@ -3,7 +3,7 @@
  */
 /**
  * The one fold (`docs/design/chat-wire-v2.md` §e.1), over every recorded turn in
- * `shared/wire/v2/` and the synthetic cases the recordings do not hold.
+ * `contracts/wire/v2/` and the synthetic cases the recordings do not hold.
  */
 import { describe, expect, it } from 'vitest'
 import type { WireEvent } from '@/adapters/api/wire-v2'

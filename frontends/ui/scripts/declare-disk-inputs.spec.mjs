@@ -25,7 +25,7 @@ describe('the disk-inputs check', () => {
     expect(globMatcher('src/**')('src/app/.well-known/route.ts')).toBe(true)
     expect(globMatcher('src/*.ts')('src/a/b.ts')).toBe(false)
     expect(globMatcher('src/app/(shell)/**')('src/app/(shell)/x.tsx')).toBe(true)
-    expect(globMatcher('../../shared/wire/v2/**')('../../shared/wire/v2/turn.json')).toBe(true)
+    expect(globMatcher('../../contracts/wire/v2/**')('../../contracts/wire/v2/turn.json')).toBe(true)
     expect(globMatcher('src/app/api/v1/[...path]/route.ts')('src/app/api/v1/[...path]/route.ts')).toBe(true)
     expect(globMatcher('src/app/api/v1/[...path]/route.ts')('src/app/api/v1/p/route.ts')).toBe(false)
     expect(globMatcher('drizzle/*.sql')('drizzle/0001_init.sql')).toBe(true)

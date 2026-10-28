@@ -1,5 +1,5 @@
 {
- "$comment": "The chat wire v2 schema's RunFinished and what it references, as generated before ADR-0139 (shared/wire/v2.schema.json at ef89b61b3): the frame an open tab of that bundle reads. See tests/aiq_agent/common/test_wire_v2_open_tabs.py.",
+ "$comment": "The chat wire v2 schema's RunFinished and what it references, as generated before ADR-0139 (contracts/wire/v2.schema.json at ef89b61b3): the frame an open tab of that bundle reads. See tests/aiq_agent/common/test_wire_v2_open_tabs.py.",
  "$defs": {
   "CitationsRemoved": {
    "additionalProperties": false,

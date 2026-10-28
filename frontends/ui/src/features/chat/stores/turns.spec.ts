@@ -1,6 +1,6 @@
 /**
  * The store holds a turn (docs/design/chat-wire-v2.md §e.3): the recorded v2
- * turns (`shared/wire/v2/`) folded through `applyTurnEvents`, and what the
+ * turns (`contracts/wire/v2/`) folded through `applyTurnEvents`, and what the
  * thread shows and persists for each.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

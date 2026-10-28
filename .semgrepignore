@@ -22,7 +22,7 @@ build/
 **/migrations/**
 **/__mocks__/**
 **/mocks/**
-shared/cards/schemas.json
+contracts/cards/schemas.json
 
 # Non-source assets and data
 data/

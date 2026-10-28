@@ -1,4 +1,4 @@
-// @disk-inputs: ../../shared/cards/schemas.json, src/shared/cards/generated.ts
+// @disk-inputs: ../../contracts/cards/schemas.json, src/shared/cards/generated.ts
 /**
  * The generator's `$ref` resolution, and the drift of what it wrote.
  *
@@ -219,7 +219,7 @@ describe('the committed Zod module', () => {
     expect(
       readFileSync(outPath, 'utf-8'),
       'src/shared/cards/generated.ts is not what `npm run generate:cards` produces from ' +
-        'shared/cards/schemas.json — either the schema was regenerated without regenerating the ' +
+        'contracts/cards/schemas.json — either the schema was regenerated without regenerating the ' +
         'Zod mirror, or the mirror was hand-edited (its own banner says not to). Run ' +
         '`npm run generate:cards` from frontends/ui and commit the result.'
     ).toBe(generatedModule)

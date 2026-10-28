@@ -1,4 +1,4 @@
-// AUTO-GENERATED from shared/wire/v2.schema.json — do not edit; run `npm run generate:wire`
+// AUTO-GENERATED from contracts/wire/v2.schema.json — do not edit; run `npm run generate:wire`
 
 import { z } from 'zod'
 
