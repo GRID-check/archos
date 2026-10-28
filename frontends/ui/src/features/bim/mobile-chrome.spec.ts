@@ -19,6 +19,12 @@ const COMPONENTS = join(__dirname, 'components')
 const code = (...segments: string[]): string =>
   blankComments(readFileSync(join(COMPONENTS, ...segments), 'utf8')) as string
 
+/** The canvas, split into its shell, its view and its controller hook: one source for the checks below. */
+const canvasCode = (): string =>
+  ['ifc-viewer-canvas.tsx', 'ifc-viewer-canvas-view.tsx', 'use-ifc-viewer-canvas-controller.tsx']
+    .map((file) => code(file))
+    .join('\n');
+
 const sources = (dir = COMPONENTS): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name)
@@ -90,7 +96,7 @@ describe('only a surface that owns its gesture keeps the touch action', () => {
     // The Touch rule: a `touch-action` that refuses the vertical pan strands
     // every finger that lands on it. The 3D canvas owns orbit and pinch; the
     // sheet handle owns a drag. Nothing else in the viewer may.
-    const allowed = new Set(['ifc-viewer-canvas.tsx', join('viewer', 'viewer-sheet.tsx')])
+    const allowed = new Set(['ifc-viewer-canvas-view.tsx', join('viewer', 'viewer-sheet.tsx')])
     const offenders = sources()
       .filter((file) => /\btouch-none\b/.test(blankComments(readFileSync(file, 'utf8')) as string))
       .map((file) => file.slice(COMPONENTS.length + 1))
@@ -101,13 +107,13 @@ describe('only a surface that owns its gesture keeps the touch action', () => {
 
 describe('the canvas tells a tap from a drag by what is pressing', () => {
   it('uses the per-pointer slop, not a constant two pixels', () => {
-    const canvas = code('ifc-viewer-canvas.tsx')
+    const canvas = canvasCode()
     expect(canvas).toContain('dragSlopFor(')
     expect(canvas).not.toContain('DRAG_SLOP_PX')
   })
 
   it('recognises a double-tap itself rather than waiting for a dblclick iOS may not send', () => {
-    const canvas = code('ifc-viewer-canvas.tsx')
+    const canvas = canvasCode()
     expect(canvas).toContain('isDoubleTap(')
   })
 })

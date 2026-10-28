@@ -189,7 +189,7 @@ describe.skipIf(!url)('the change record against live Postgres', () => {
 
     const row = await record()
     const update = (set: ReturnType<typeof sql>) =>
-      inOrg(ORG, () => db.execute(sql`update piloti_changes set ${set} where id = ${row.id}::uuid`))
+      inOrg(ORG, () => db.execute(sql`update agent_changes set ${set} where id = ${row.id}::uuid`))
     await expect(update(sql`after = '[]'::jsonb`)).rejects.toThrow()
     await expect(update(sql`undone_at = now()`)).rejects.toThrow()
     await expect(update(sql`undone_by = ${USER}`)).rejects.toThrow()
@@ -232,7 +232,7 @@ describe.skipIf(!url)('the change record against live Postgres', () => {
     expect(await inOrg(OTHER_ORG, () => repo.claimUndo(OTHER_ORG, row.id, USER))).toBeNull()
     expect(await inOrg(OTHER_ORG, () => repo.listTurnChangeRows(OTHER_ORG, ids.conversation, ANSWER))).toEqual([])
     // Row-level security, not only the WHERE: the other tenant's scope sees no row at all.
-    const seen = await inOrg(OTHER_ORG, () => db.execute(sql`select id from piloti_changes where id = ${row.id}::uuid`))
+    const seen = await inOrg(OTHER_ORG, () => db.execute(sql`select id from agent_changes where id = ${row.id}::uuid`))
     expect(Array.from(seen)).toHaveLength(0)
 
     await expect(

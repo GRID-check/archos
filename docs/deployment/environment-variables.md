@@ -383,7 +383,7 @@ An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GRID_WAKE_MAX_PER_MARK_HOUR` | No | `6` | Most wakes of Piloti one Anmerkung gets in a rolling hour. Counted over the `piloti_wakes` rows that were let through, at enqueue and again when the job is claimed; a held wake is recorded as `suppressed` (`cap:mark-hour`) and audited as `piloti.wake.suppressed`. `0` lets none through. |
+| `GRID_WAKE_MAX_PER_MARK_HOUR` | No | `6` | Most wakes of Piloti one Anmerkung gets in a rolling hour. Counted over the `agent_wakes` rows that were let through, at enqueue and again when the job is claimed; a held wake is recorded as `suppressed` (`cap:mark-hour`) and audited as `piloti.wake.suppressed`. `0` lets none through. |
 | `GRID_WAKE_MAX_PER_PERSON_DAY` | No | `50` | Most wakes one person's acts cause in a rolling day, across every document of the organization. Held the same way (`cap:person-day`). |
 
 ### Asks to Piloti (ADR-0124)

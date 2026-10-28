@@ -42,7 +42,7 @@ export const PILOTI_WAKE_TRIGGERS = ['thread_mention', 'thread_reply', 'assigned
 export type PilotiWakeTrigger = (typeof PILOTI_WAKE_TRIGGERS)[number]
 
 /**
- * What a wake came to (`piloti_wakes.status`, migrations 0139 and 0141).
+ * What a wake came to (`agent_wakes.status`, migrations 0139 and 0141).
  * `queued` until the job runs; `started` while its turn runs; then the turn's
  * end: `answered`, `stopped` (a person stopped it, or took the mark back), or
  * `failed`. `suppressed` and `refused` never started a turn; `failed` can be
