@@ -1,6 +1,6 @@
 """The ingestion job routes: one job's status, a batch of them, and cancel.
 
-Split from ``documents.py``, which registers these through ``add_document_job_routes``
+Split from ``documents.py``, which registers these through ``_add_document_job_routes``
 at the end of its own routes, the position they always had.
 """
 
@@ -93,7 +93,7 @@ async def cancel_job(job_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail="Failed to cancel ingestion job")
 
 
-def add_document_job_routes(router: APIRouter) -> None:
+def _add_document_job_routes(router: APIRouter) -> None:
     """Register the ingestion job routes on the document router."""
     router.get(
         "/v1/documents/{job_id}/status",
