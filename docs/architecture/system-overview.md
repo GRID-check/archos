@@ -1,7 +1,7 @@
-# GRID — System Overview
+# Piloti — System Overview
 
 > **The single source of truth for the shape of the system.** An enterprise
-> architecture view: what GRID is, its major components, how they fit together,
+> architecture view: what Piloti is, its major components, how they fit together,
 > the key flows, and the boundaries that matter. Written to let a new senior
 > engineer or a stakeholder *understand the system* without reading the code.
 > For implementation detail, follow the links to the subsystem docs.
@@ -53,7 +53,7 @@ flowchart TB
     Architect["👤 Architect / Org member<br/>works in a project, talks to Piloti"]
     Admin["👤 Org admin<br/>manages projects, members, memory"]
 
-    subgraph GRID["GRID"]
+    subgraph APP["Piloti"]
         SYS["Workspace for planning offices"]
     end
 
@@ -95,7 +95,7 @@ flowchart TB
 
     subgraph Tier2["Tier 2 · Python AI backend (port 8000)"]
         API["FastAPI (agent_host plugin)"]
-        NAT["NeMo Agent Toolkit + LangGraph agents"]
+        AGENT["Agent runtime (NeMo Agent Toolkit) + LangGraph agents"]
         JOBS["Research queue (Postgres) — deep-research jobs"]
     end
 
@@ -112,11 +112,11 @@ flowchart TB
     BFF <-->|Drizzle| PG
     BFF -->|presign / put| SEAWEED
     GW -->|"proxy WS upgrade + REST"| API
-    API --> NAT --> JOBS
-    NAT <--> QDRANT
-    NAT -->|"job store / checkpoints"| PG
+    API --> AGENT --> JOBS
+    AGENT <--> QDRANT
+    AGENT -->|"job store / checkpoints"| PG
     BFF -.->|"internal memory write API (token)"| BFF
-    NAT -.->|"remember tool → internal API"| BFF
+    AGENT -.->|"remember tool → internal API"| BFF
     PURGER --> PG
     PURGER --> SEAWEED
     PURGER -->|"purge-project-resources"| API
@@ -125,7 +125,7 @@ flowchart TB
 | Container | Tech | Responsibility |
 |---|---|---|
 | **frontend** | Next.js 16, React 18, TypeScript | The UI, the BFF (all `/api/*`), and the `server.js` gateway. System of record for `app`. |
-| **aiq-agent / aiq-api** | Python 3.14, FastAPI, NAT, LangGraph | Stateless AI orchestration, one image run as separate roles (ADR-0082): `aiq-agent` is the `chat` role (the chat socket), `aiq-api` the `api` role (every other HTTP route), beside the `agent-worker` and `ingest-worker`. Owns the vector store and the job/checkpoint DBs. |
+| **aiq-agent / aiq-api** | Python 3.14, FastAPI, the agent runtime, LangGraph | Stateless AI orchestration, one image run as separate roles (ADR-0082): `aiq-agent` is the `chat` role (the chat socket), `aiq-api` the `api` role (every other HTTP route), beside the `agent-worker` and `ingest-worker`. Owns the vector store and the job/checkpoint DBs. |
 | **postgres** | PostgreSQL 16 | Three logical DBs: `app` (app state), `jobs` (jobs/events/summaries), `checkpoints` (LangGraph state). |
 | **seaweedfs** | SeaweedFS (S3-compatible) | Object storage for OIB PDFs and uploaded documents (`grid-documents` bucket). |
 | **Qdrant** | shared `qdrant` server (HTTP) | Vector store: two physical collections behind aliases, `piloti_corpus` and `piloti_office`, persisted to a volume and queried by every backend role (ADR-0115). |
@@ -184,7 +184,7 @@ no classifier in front of it: the agent decides per turn, in its answer
 envelope, whether to reply directly, to research and cite, or to hand off to
 deep research. Research answers directly from retrieval; deep research is
 dispatched as an async job (§5.5). Responses stream back through a monkeypatched
-NAT WebSocket handler that lifts structured fields (cards, deep-research job id)
+agent-runtime WebSocket handler that lifts structured fields (cards, deep-research job id)
 onto the message. → `docs/architecture/backend-deep-dive.md` §2.
 
 ### 5.2 The two knowledge systems
@@ -192,7 +192,7 @@ Every normative claim is grounded in a passage retrieved this turn from the
 project, the Büroablage, or the Austrian building-regulation corpus. Not every
 answer is a ruling.
 
-GRID deliberately separates **retrieval** from **memory** — they answer
+Piloti deliberately separates **retrieval** from **memory** — they answer
 different questions and reach the agent differently:
 
 - **Retrieval (RAG) — "the library, searched on demand."** The OIB corpus,
@@ -401,7 +401,7 @@ frontend start). → `docs/database/`.
 |---|---|
 | Frontend | Next.js 16, React 18, TypeScript, shadcn/ui + Tailwind v4 |
 | BFF / gateway | Next.js app-router API routes + a Node `server.js` WS/HTTP proxy |
-| AI orchestration | NeMo Agent Toolkit (NAT) + LangGraph; the Postgres research queue for async jobs |
+| AI orchestration | The agent runtime + LangGraph; the Postgres research queue for async jobs |
 | LLM | any OpenAI-compatible endpoint (reference boot floor: OpenAI GPT-5.6 Luna via OpenRouter; the served model is an admin decision at runtime) |
 | Embeddings | any OpenAI-compatible endpoint (reference: OpenAI text-embedding-3-large via OpenRouter) |
 | RAG / vector store | Qdrant via `qdrant-client` (+ LlamaIndex ingestion) |
@@ -458,13 +458,13 @@ What lives where in the checkout.
 |------|---------|
 | `.devcontainer/` | VS Code dev container configuration |
 | `packages/agent/src/agent/` | Backend agent (LangGraph agents, cards, knowledge layer) |
-| `packages/knowledge-layer`, `packages/ris-adapter`, `packages/tavily-web-search` | The Python packages of the uv workspace: the knowledge layer, the RIS adapter and web search, each a NAT plugin |
+| `packages/knowledge-layer`, `packages/ris-adapter`, `packages/tavily-web-search` | The Python packages of the uv workspace: the knowledge layer, the RIS adapter and web search, each a plugin entry point |
 | `apps/workspace/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
 | `apps/site/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
 | `apps/agent-host/` | The backend FastAPI front-end plugin (`_type: agent_host`): REST routes, async jobs, `/v1/ingest` |
 | `evals/` | Piloti's evals, each with its tests: `oib-retrieval` and the live `turn-shapes` check |
 | `packages/` | Libraries outside the uv and bun workspaces: `ifc-spatial` and `ifc-spatial-py` (the IFC spatial engine, ADR-0045) and `brand` (the Piloti mark and the script that renders every icon from it) |
-| `configs/` | Workflow configs. **LLM-agnostic** — any OpenAI-compatible endpoint (set `base_url`/key per config). **`config_oib_openrouter.yml` is the working reference config** (`config_grid_oib.yml`/Kimi is currently unmaintained). The `model_name` values are only the **boot fallback**: the live default per agent group is admin-controlled (Platform → Models, `platform_model_defaults`) and a tenant may override it (Organization → Models) — see `docs/architecture/org-model-configuration.md`. Do not edit the YAML to move the fleet to a new model. |
+| `configs/` | Workflow configs. **LLM-agnostic** — any OpenAI-compatible endpoint (set `base_url`/key per config). **`config_oib_openrouter.yml` is the working reference config** (the legacy Kimi config is currently unmaintained). The `model_name` values are only the **boot fallback**: the live default per agent group is admin-controlled (Platform → Models, `platform_model_defaults`) and a tenant may override it (Organization → Models) — see `docs/architecture/org-model-configuration.md`. Do not edit the YAML to move the fleet to a new model. |
 | `deploy/` | Docker Compose assets and environment templates; `deploy/pulumi/` holds the Pulumi (TypeScript) Kubernetes deployment (see `docs/deployment/kubernetes.md`) |
 | `docs/architecture/` | Architecture docs (see `backend-deep-dive.md`, `project-memory-design.md`, `docs/audit/citation-system-audit-2026-07.md` for the citation pipeline as built) |
 | `skills/` | API-consumer skill examples |

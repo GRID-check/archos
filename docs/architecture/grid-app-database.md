@@ -1,4 +1,4 @@
-# Grid Application Database (`app`)
+# Application Database (`app`)
 
 This document describes the Next.js BFF's application database: what it stores, how it connects, and how schemas are managed.
 
@@ -6,7 +6,7 @@ This document describes the Next.js BFF's application database: what it stores, 
 
 ## What `app` stores
 
-`app` is the PostgreSQL database owned by the Next.js BFF/application tier. It holds all app-specific application state that is not already owned by the Python AI-Q agent:
+`app` is the PostgreSQL database owned by the Next.js BFF/application tier. It holds all app-specific application state that is not already owned by the Python agent:
 
 | Area | Tables |
 |---|---|

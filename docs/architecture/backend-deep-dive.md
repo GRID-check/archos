@@ -2,7 +2,7 @@
 
 > Authoritative end-to-end map of how GRID's core flows work, why several were
 > broken, and how they were fixed. Written 2026-07-04 from a full source trace
-> (7 parallel explorations + NAT-internals verification). File references are
+> (7 parallel explorations + agent-runtime internals verification). File references are
 > `path:line` at time of writing.
 
 ## 1. System topology
@@ -12,7 +12,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
 - **postgres** — 3 logical DBs: `jobs`, `checkpoints`, `app`.
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
-- **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
+- **aiq-agent** (the chat tier) — FastAPI + the agent runtime (NeMo Agent Toolkit, a third-party library)
   scheduler/worker; every chunk lives in Qdrant (ADR-0115). Runs the LangGraph workflow and the
   async deep-research jobs.
 - **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`apps/workspace/server.js`).
@@ -32,7 +32,7 @@ OpenRouter embeddings), the only config left in `configs/`.
 ## 2. Chat request lifecycle (WebSocket-only)
 
 Chat is **WebSocket only**. The old SSE `/api/generate` chat path is dead, and
-the backend mounts none of NAT's HTTP turn routes, so the chat socket is the
+the backend mounts none of the runtime's HTTP turn routes, so the chat socket is the
 only way to run a turn; SSE now serves **only** the deep-research job stream (§7).
 
 ```
@@ -43,7 +43,7 @@ Browser WebSocket
           - collection scope → sets header  x-grid-collection-scope
       • ALSO sets the signed X-Grid-Request-Context envelope (below)
       • proxies the upgrade to the aiq-agent backend
-  → NAT workflow  chat_deepresearcher_agent
+  → workflow  chat_deepresearcher_agent
       LangGraph:  shallow_research  (Piloti; entry on EVERY turn, full tool set bound)
                     ├─ envelope.escalate_to_deep → clarifier → deep_research → END
                     └─ otherwise                 → END
@@ -241,10 +241,10 @@ is present. It is deny-by-default: the exempt list is the paths that run no
 workflow and that a BFF proxy forwards with the member's bearer alone
 (`/health`, `/v1/collections`, `/v1/documents`, `/v1/data_sources`, the async
 job reads and controls under `/v1/jobs/async/{jobs,job,agents}`, `/v1/drafts`);
-every other path, the WebSocket included, needs the envelope. NAT's HTTP turn
+every other path, the WebSocket included, needs the envelope. The runtime's HTTP turn
 routes (`/chat`, `/generate`, `/v1/chat/completions`, `/v1/workflow`, ...) are
 not mounted at all: a turn runs on the chat socket alone (`AgentHostConfig`,
-ADR-0068), and deny by default is what closes a route a later NAT adds. Always exempt:
+ADR-0068), and deny by default is what closes a route the runtime adds later. Always exempt:
 anonymous mode and internal-token-authenticated service calls. Dev fail-open note:
 when `INTERNAL_API_TOKEN` is unset, signature verification is skipped
 but envelope *presence* is still required for authenticated requests.
@@ -351,7 +351,7 @@ backend pieces live in `chat_socket.py` and `conversation_bus.py`; the design is
   escaped; the turn has a deadline (`CHAT_TURN_DEADLINE_SECONDS`) on its
   own clock, which stops while it waits on a person; a Stop waits at most
   `workflow_stream.PRODUCER_TEARDOWN_SECONDS` for the workflow's teardown. The
-  chat's NAT session manager runs with `max_concurrency=0`: NAT's semaphore
+  chat's runtime session manager runs with `max_concurrency=0`: the runtime's semaphore
   queued a turn after `RUN_STARTED` behind turns waiting on HITL answers, and
   ADR-0040's admission (`MAX_ACTIVE_TURNS`) is the gate that refuses at
   once instead.
@@ -980,7 +980,7 @@ are gone on that path. The org id rides the job config into the call, so the
 org's BYOK and ZDR policy hold in the detached ingestion thread.
 
 **Org BYOK + runtime model override for the VLM.** The vision model used across
-all VLM call sites (Phase 2 enrichment) is resolved the SAME way the NAT chat
+all VLM call sites (Phase 2 enrichment) is resolved the SAME way the chat agent's
 models resolve theirs. `/v1/ingest` forwards `x-grid-organization-id` (the BFF's
 `dispatchIngest` sets it) into the job config; because `_run_ingestion` runs in a
 detached thread pool with no request context, the org id must be captured at the
@@ -1309,7 +1309,7 @@ Five retrieval-quality improvements sit in the knowledge layer's ranked search
    new kind so "precision" is shown as its own diagnostic, not a citation
    defect).
 
-5. **Multimodal answer-time page/image viewing** — the NAT tool `look`
+5. **Multimodal answer-time page/image viewing** — the `look` tool
    (`tools/look/`, ADR-0128; renderer `knowledge_layer/view_image.py`, gated on
    `VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
    knowledge image to the VLM **as an image block during a research turn** —
@@ -1820,7 +1820,7 @@ now fixed — summarized in §9 below.
 
 ## 8. Backend agent architecture & DRY debt
 
-Registered agents (via NAT `@register_function` + `FunctionBaseConfig`):
+Registered agents (via the runtime's `@register_function` + `FunctionBaseConfig`):
 `chat_deepresearcher_agent` (entrypoint), `shallow_research_agent`,
 `deep_research_agent` (+ eval/placeholder wrappers). The clarifier is no longer
 among them: it is a step of the conversation graph
@@ -2188,9 +2188,9 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   `think` call is consolidated into a single pre-finalize `think`, and
   orchestrator `write_todos` updates are phase-level instead of per-step —
   reducing but not eliminating pure-ceremony LLM turns per planning run.
-- **NAT step-tree/span corruption after a retried call — root cause fixed
+- **Step-tree/span corruption in the runtime after a retried call — root cause fixed
   2026-07-16 (`6e57c08`)** — the log warnings `Step id ... not the last step
-  in the stack` / `span ID stack is not equal` had two causes. (1) NAT's
+  in the stack` / `span ID stack is not equal` had two causes. (1) The runtime's
   `LangchainProfilerHandler` (`nat/plugins/langchain/callback_handler.py`,
   `nvidia-nat==1.7.0`) implements `on_llm_start`/`on_tool_start` etc. but no
   `on_llm_error`/`on_tool_error`, so an errored (then retried) model or tool
@@ -2202,7 +2202,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   `on_llm_end`/`on_tool_end` construction field-for-field. (2) The remaining
   cause is NOT a bug: the deep-research pipeline legitimately runs sibling
   steps concurrently (parallel researcher workers, batched source-tool
-  fan-out), which NAT's single-chain step model cannot represent — those
+  fan-out), which the runtime's single-chain step model cannot represent — those
   residual warnings are deliberately suppressed (raised to `ERROR` level,
   `packages/agent/src/agent/common/logging_utils.py`) rather than fixed, since the steps
   themselves are still recorded correctly. `run_id`-keyed token/cost

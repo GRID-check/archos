@@ -1,6 +1,6 @@
 # Cards — the agent's rich-UI presentation layer
 
-> How GRID's agent returns structured, rendered UI instead of plain prose when
+> How Piloti's agent returns structured, rendered UI instead of plain prose when
 > that serves the user better. See also [ADR-0012](../adr/0012-cards-as-rich-ui-layer.md).
 
 ## What a card is
@@ -996,11 +996,11 @@ appear there.
 Two differences from the model-facing catalog (`render_card_catalog`), which is
 rendered from the same models for the `emit_card` tool: system cards are
 **included** and flagged `emittedBy: "system"` rather than hidden (a model that
-learns they exist can fabricate them; a person asking "can Grid show me X?" is
+learns they exist can fabricate them; a person asking "can Piloti show me X?" is
 misled by a list with holes in it), and every entry is data rather than prose.
 
 The response also carries `featureRequest` — the repository plus a link to the
-enhancement issue form — because the question that follows "here is what Grid
+enhancement issue form — because the question that follows "here is what Piloti
 can render" is "and how do I get the one thing that is missing?".
 
 ### The gallery: Platform → cards
@@ -1009,7 +1009,7 @@ can render" is "and how do I get the one thing that is missing?".
 between "Answer quality" and "Base knowledge"). Every entry is a **real render**
 — the sample card goes through the same `AnswerCards` dispatcher chat uses — so
 the page cannot advertise a card the renderers do not produce, and a platform
-owner's visual question ("can Grid show me a Stellplatznachweis?") gets a visual
+owner's visual question ("can Piloti show me a Stellplatznachweis?") gets a visual
 answer. The values each card carries expand underneath, straight from the
 endpoint, and the request-a-card link sits in the header and again at the foot.
 

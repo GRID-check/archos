@@ -1,20 +1,20 @@
 # Project Memory — Design Spec
 
 > A durable, evolving, agent-authored **and** user-curated knowledge layer scoped
-> to a single project, so Grid gets measurably smarter about *that* project over
+> to a single project, so Piloti gets measurably smarter about *that* project over
 > time. This is the "AGENTS.md for a project" idea, designed as a real system.
 > Status: DESIGN (not yet built). Depends on the core project-context injection
 > being runtime-verified first (see `backend-deep-dive.md` §4).
 
 ## 0. The one-sentence goal
 
-Every conversation about a project should start from everything Grid has already
+Every conversation about a project should start from everything Piloti has already
 learned about that project — not from zero — while never letting unverified
 "memory" masquerade as legal fact.
 
 ## 1. Where memory sits (the knowledge layers)
 
-GRID already has four knowledge layers. Memory is the missing fifth.
+Piloti already has four knowledge layers. Memory is the missing fifth.
 
 | Layer | Nature | Scope | Persists across chats? | Source of truth for |
 |---|---|---|---|---|
@@ -22,9 +22,9 @@ GRID already has four knowledge layers. Memory is the missing fifth.
 | **Conversation history** | Raw messages | Conversation | **No** (siloed per chat) | The current dialog |
 | **Uploaded documents (RAG)** | Chunked text, embedded | Project (`proj_*`) | Yes | The user's own files |
 | **OIB corpus (RAG)** | Chunked Richtlinien | Global (`oib_knowledge`) | Yes | The law |
-| **→ Project Memory (NEW)** | Curated, evolving findings | Project | **Yes** | What Grid has *learned/decided* about the project |
+| **→ Project Memory (NEW)** | Curated, evolving findings | Project | **Yes** | What Piloti has *learned/decided* about the project |
 
-The gap memory fills: today, anything Grid figures out in conversation #3
+The gap memory fills: today, anything Piloti figures out in conversation #3
 (e.g. "this project triggers OIB 2.3 because of the underground garage", "the
 client decided to pursue the Fluchttunnel option", "open question: is the
 Aufzug a Feuerwehraufzug?") vanishes when conversation #4 starts. Memory makes
@@ -34,7 +34,7 @@ that knowledge durable and injected.
 - **Profile = structured & confirmed. Memory = unstructured & accreted.** They
   are complementary. High-confidence memory items can *graduate* into structured
   profile facts (§6) rather than living in both places.
-- **Memory is not RAG-over-documents.** It's Grid's own notes, not the user's files.
+- **Memory is not RAG-over-documents.** It's Piloti's own notes, not the user's files.
 - **Memory is not conversation history.** It's a distilled, deduped digest, not a transcript.
 
 ## 2. What a memory item is (data model)
@@ -56,7 +56,7 @@ project_memory
                     -- constraint    = a requirement imposed on this project (the compliance meat)
                     -- open_question = unresolved, needs follow-up
                     -- derived_fact  = a concluded property of the project (graduation candidate)
-                    -- preference    = how the user wants Grid to work on this project
+                    -- preference    = how the user wants Piloti to work on this project
   content           text                          -- ONE concise finding, self-contained
   status            enum  proposed | active | superseded | dismissed
   confidence        enum  low | medium | high
@@ -145,7 +145,7 @@ same text can both be live.
 ### 3.3 Serve — how it reaches the agent (two channels)
 - **Always-on "core memory" digest**: pinned + top-salience items, compacted to a
   small budget, delivered as a header `x-grid-project-memory` (sibling to
-  `x-grid-project-context`). This is the "Grid always knows the essentials" layer.
+  `x-grid-project-context`). This is the "Piloti always knows the essentials" layer.
 - **Per-query recall (RAG)**: findings are embedded into a dedicated vector
   namespace and retrieved per query via the **existing** `X-Grid-Collection-Scope`
   mechanism (add a `mem_<project>` scope). This scales past the header budget.
@@ -491,7 +491,7 @@ trace event on the WS stream (same channel as tool calls / thinking steps) and a
 an observability span (`packages/agent/src/agent/observability`). So you *watch* memory form
 in the trace/Thinking view in real time — you just aren't asked to approve it.
 
-**(b) Managed in the Project Overview.** The overview page gains a "What Grid knows
+**(b) Managed in the Project Overview.** The overview page gains a "What Piloti knows
 about this project" section (not a separate destination — it lives where the
 profile/standards panels already are). Grouped by `kind`, each item shows content,
 provenance (linked conversation), confidence, and status. Actions per item:

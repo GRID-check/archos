@@ -38,9 +38,9 @@ This spec defines the **target design** for:
 
 - **Identity & authentication** — outsourced to WorkOS (AuthKit + Organizations +
   Memberships + RBAC).
-- **Multitenancy & ownership** — organisations, Grid‑owned projects, and per‑resource
+- **Multitenancy & ownership** — organisations, app‑owned projects, and per‑resource
   ownership.
-- **Authorization** — request‑time access checks from JWT claims plus Grid‑owned project
+- **Authorization** — request‑time access checks from JWT claims plus app‑owned project
   membership.
 - **Knowledge & document storage** — server‑authoritative collection naming, SeaweedFS
   for durable document bytes, layered/scoped retrieval.
@@ -63,13 +63,13 @@ the cards schema mechanics (already implemented; treated here as a foundation).
   isolation.
 - Establish **ownership** at the row level: every owned resource carries both an
   `organization_id` and a `created_by` user.
-- Authorize each request from **JWT claims + Grid‑owned project membership**, with no local
+- Authorize each request from **JWT claims + app‑owned project membership**, with no local
   mirror of WorkOS identity.
 - Durably store original document **bytes** (SeaweedFS) instead of discarding them.
 - Keep the Python agent **stateless** — no identity, tenancy, or system‑of‑record state.
 - Preserve a thin, explicit API boundary so a dedicated app server (Option B) can be
   extracted later without a rewrite.
-- Keep all regulatory **content** and customer data in EU‑hostable, Grid‑controlled stores.
+- Keep all regulatory **content** and customer data in EU‑hostable, app‑controlled stores.
 
 ### Non‑Goals
 
@@ -78,7 +78,7 @@ the cards schema mechanics (already implemented; treated here as a foundation).
 - Mirroring WorkOS users/memberships into our database (see
   [ADR‑0007](../adr/0007-no-local-identity-sync.md)).
 - Event‑driven deprovisioning in the MVP (deprovisioning is **lazy**).
-- Modelling projects/teams inside WorkOS (projects are a **Grid** concept).
+- Modelling projects/teams inside WorkOS (projects are an **app** concept).
 - Re‑architecting the agent pipeline or the cards schema.
 
 ---
@@ -185,7 +185,7 @@ flowchart LR
 
 ## 5. Identity & Auth (WorkOS)
 
-Grid outsources identity to **WorkOS** — AuthKit + Organizations + Organization Memberships
+The app outsources identity to **WorkOS** — AuthKit + Organizations + Organization Memberships
 + RBAC. SSO (SAML/OIDC), Directory Sync (SCIM), and Admin Portal are **per‑customer
 add‑ons** enabled later with **no re‑architecture**. The decision rationale lives in
 [ADR‑0002](../adr/0002-outsource-identity-to-workos.md); this section describes the design.
@@ -216,7 +216,7 @@ erDiagram
 - **User** (`user_...`), **Organization** (`org_...`), **Organization Membership**
   (`om_...`) = a many‑to‑many **join** carrying role/roles/status.
 - A user can belong to **many** organisations.
-- WorkOS has **no** native sub‑org "project/team" — **Grid models projects itself**
+- WorkOS has **no** native sub‑org "project/team" — **The app models projects itself**
   (see [§6](#6-tenancy-ownership--access-model)).
 
 ### Session & tokens
@@ -238,7 +238,7 @@ erDiagram
 | `exp`, `iat` | Expiry / issued‑at | Yes |
 
 > **Critical edge case.** `org_id` / `role` / `permissions` exist **only when an org is
-> active**. A brand‑new user with no org gets a token **without** `org_id` → Grid must run a
+> active**. A brand‑new user with no org gets a token **without** `org_id` → the app must run a
 > **"create an org, then refresh the token"** onboarding flow before any tenant‑scoped action
 > is possible. See [§11](#11-security--edge-cases).
 
@@ -322,12 +322,12 @@ See [ADR‑0004](../adr/0004-tenancy-ownership-and-access-model.md).
   `organization_id` (`org_...`) **and** an owner `created_by` (`user_...`).
 - **Access is resolved via membership** — the user's role in the org (from the JWT) **plus**
   project‑level membership.
-- **Projects are a Grid‑owned concept** (WorkOS doesn't know them), scoped by
+- **Projects are an app‑owned concept** (WorkOS doesn't know them), scoped by
   `organization_id`. A project's members are a **subset** of the org's users.
 - Because *"the scoped approach is only as good as the context"* and we need **user‑level**
-  resolution (not just org‑level), Grid owns one membership table:
-  **`project_members(project_id, user_id, role)`**. This is the **one** membership table Grid
-  owns — it is a Grid concept, **distinct** from WorkOS org memberships, which Grid does
+  resolution (not just org‑level), the app owns one membership table:
+  **`project_members(project_id, user_id, role)`**. This is the **one** membership table the app
+  owns — it is an app concept, **distinct** from WorkOS org memberships, which the app does
   **not** mirror.
 
 ### Resource hierarchy
@@ -335,7 +335,7 @@ See [ADR‑0004](../adr/0004-tenancy-ownership-and-access-model.md).
 ```mermaid
 flowchart TD
     Org["Organization (org_...)<br/>WorkOS-authoritative identity<br/>optional thin app-settings row"]
-    Proj["Project (Grid-owned, uuid)<br/>organization_id + created_by"]
+    Proj["Project (app-owned, uuid)<br/>organization_id + created_by"]
     PM["project_members<br/>(project_id, user_id, role)"]
     Conv["Conversation<br/>organization_id + project_id + created_by"]
     Doc["Document<br/>organization_id + project_id + created_by<br/>storage_key + collection_name"]
@@ -491,7 +491,7 @@ Python agent continues to own its own databases.
 
 **WorkOS IDs are stored as opaque `text` FKs.** There is **no users table** and **no
 org‑memberships mirror table** — WorkOS is authoritative for those. `project_members` **is**
-app‑owned because **projects are a Grid concept**. See
+app‑owned because **projects are an app concept**. See
 [ADR‑0007](../adr/0007-no-local-identity-sync.md).
 
 ```mermaid
@@ -559,7 +559,7 @@ erDiagram
 
 ### Tables
 
-#### `organizations` — *Grid app settings row, not a WorkOS mirror*
+#### `organizations` — *App settings row, not a WorkOS mirror*
 
 | Column | Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -585,7 +585,7 @@ erDiagram
 | `collection_name` | `text` | | e.g. `proj_<id>` |
 | `created_at` | `timestamptz` | | |
 
-#### `project_members` — *the one membership table Grid owns*
+#### `project_members` — *the one membership table the app owns*
 
 | Column | Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -799,7 +799,7 @@ flowchart TD
 flowchart LR
     subgraph MVP["MVP"]
         A1["AuthKit + Organizations"]
-        A2["Grid projects + project_members"]
+        A2["App projects + project_members"]
         A3["Per-resource ownership<br/>(organization_id + created_by)"]
         A4["SeaweedFS durable document bytes"]
         A5["Server-authoritative collection names"]
@@ -814,7 +814,7 @@ flowchart LR
     MVP --> Later
 ```
 
-- **MVP:** AuthKit + orgs + Grid projects + ownership + SeaweedFS + server‑authoritative
+- **MVP:** AuthKit + orgs + app projects + ownership + SeaweedFS + server‑authoritative
   collections + server‑side conversation persistence.
 - **Later:** SSO/SCIM/Admin Portal per enterprise customer; WorkOS Events API reconciliation
   (active offboarding cleanup); optional dedicated app server (Option B); RIS data source.

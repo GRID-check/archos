@@ -3,7 +3,7 @@
 The UI talks to the agent tier over one WebSocket per conversation. Every
 message on it is a typed JSON object of **chat wire v2**: the server sends
 events (`RUN_STARTED` … `RUN_FINISHED`, AG-UI's names), the client sends four
-messages. The design, and why it replaced NAT's step stream, is
+messages. The design, and why it replaced the runtime's step stream, is
 [`design/chat-wire-v2.md`](../design/chat-wire-v2.md) (ADR-0068).
 
 **The contract is code, not this page.** `packages/agent/src/agent/common/wire_v2.py`
@@ -14,7 +14,7 @@ commit that leaves either stale), and `contracts/wire/v2/*.jsonl` the recorded
 turns both sides test against, byte for byte. When this page and the models
 disagree, the models are right and this page is a bug.
 
-There is one version. No `v: 1` reader, no NAT frame, no fallback that
+There is one version. No `v: 1` reader, no runtime frame, no fallback that
 interprets a shape the contract does not describe. A frame that does not parse
 is never dropped and waited past: before the `hello` it means the server does
 not speak this wire, after it that the server speaks a newer v2 than the page
@@ -47,7 +47,7 @@ ws://<host>/websocket?v=2&projectId=<uuid>&conversationId=<session_id>
   ([chat-wire-v2.md](../design/chat-wire-v2.md#compatibility-additive-changes-are-safe)). It is the
   other half of the version gate: `4426` tells an old page it is old, `hello`
   tells a current page the server is current. A server that predates this wire
-  (NAT's stock socket) accepts the upgrade, ignores `?v=2` and never closes
+  (the runtime's stock socket) accepts the upgrade, ignores `?v=2` and never closes
   with `4426`, so without a hello the page cannot tell it from a server that is
   thinking. The client sends nothing until the hello arrives (see
   [The client](#the-client)). It is a connection frame, not a turn's: no
@@ -130,7 +130,7 @@ invalid/missing signature is treated as an ABSENT envelope (logged as a
 WARNING tamper signal), falling back to parsing the individual headers
 exactly as before the envelope existed.
 
-**Enforcement matrix** (`agent_host.context_envelope.GridContextEnvelopeMiddleware`,
+**Enforcement matrix** (`agent_host.context_envelope.RequestContextEnvelopeMiddleware`,
 403 / WS policy-violation close): applies only when ALL of — `REQUIRE_AUTH=true`;
 the caller is a WorkOS-authenticated JWT user (not internal-token, not
 anonymous); the path is NOT on the short exempt list; and no valid envelope is
@@ -141,7 +141,7 @@ included, except
 `/v1/jobs/async/job`, `/v1/jobs/async/agents`, `/v1/drafts` — which run no
 workflow and which a BFF proxy forwards with the member's bearer alone. The
 list used to be the other way round (an allowlist of enforced paths), and the
-unlisted NAT routes (`/chat`, `/v1/chat/completions`, `/v1/workflow`,
+unlisted runtime routes (`/chat`, `/v1/chat/completions`, `/v1/workflow`,
 `/generate`, …) ran full agent turns with no organization, budget or source
 policy. Those routes are no longer mounted at all: this socket is the only way
 a turn runs (`agent_host.plugin.AgentHostConfig`). Always exempt: anonymous mode (`REQUIRE_AUTH=false`) and
@@ -321,7 +321,7 @@ ends, each pinned by a test in `apps/agent-host/tests/test_chat_socket.py`:
 - **A bounded teardown.** A Stop waits at most `PRODUCER_TEARDOWN_SECONDS`
   (`workflow_stream`, 10 s) for the workflow's `finally` blocks, then ends the
   turn without them.
-- **No hidden queue.** The chat runs with NAT's per-replica semaphore off; the
+- **No hidden queue.** The chat runs with the runtime's per-replica semaphore off; the
   one concurrency gate is ADR-0040's admission (`MAX_ACTIVE_TURNS`), which
   refuses a turn at once with a retry hint rather than holding it after
   `RUN_STARTED`.

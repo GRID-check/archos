@@ -245,7 +245,7 @@ Requirements are enforced twice: the picker endpoint only lists passing
 models, and the save endpoint re-validates server-side (422 on mismatch).
 
 **`ingest_vlm` specifics.** Unlike the chat groups it re-points a bespoke
-*vision* call site in the ingestion plane (not a NAT chat model), and it is
+*vision* call site in the ingestion plane (not a chat model of the agent runtime), and it is
 resolved by org id inside a detached ingest thread rather than from the request
 header (the org id is captured at `/v1/ingest` — see the "Submission paths"
 section). Two things differ from a chat group:
@@ -379,7 +379,7 @@ org admin saves → org_model_config_versions (+ pointer)
                                      │           ├─ getEffectiveModelOverrides()
 WS upgrade: /api/auth/websocket-scope merges both┘   (org wins per group)
                                      │  response.modelOverrides = {group: modelId}
-server.js  ──  envelope.modelOverrides (signed) + x-grid-model-overrides  ──▶  aiq backend
+server.js  ──  envelope.modelOverrides (signed) + x-grid-model-overrides  ──▶  agent backend
              (inbound x-grid-* stripped first)   the envelope wins when present
                                      │
    model_overrides.py: parse + sanitize (unknown group / bad id dropped, fail-open {})

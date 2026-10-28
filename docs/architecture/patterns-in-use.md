@@ -117,7 +117,7 @@ Anything keyed by a tenant, a user, a conversation or a turn goes behind a
 
 ## Idempotent global registration
 
-Registering a converter or an exporter with NAT is a process-global side effect,
+Registering a converter or an exporter with the agent runtime is a process-global side effect,
 and the modules that need it are imported from several entry points. The
 convention is a module-level `ensure_registered()` that is safe to call twice,
 called explicitly by each entry point rather than run at import time.
@@ -131,7 +131,7 @@ called explicitly by each entry point rather than run at import time.
 Agents, tools and data sources are found through `nat.plugins` entry points in
 the root `pyproject.toml`, not by importing a registry module. This is what lets
 a tool with heavy optional dependencies stay independently loadable:
-`aiq_bim_measure` is a second entry point precisely so `ifc_query` keeps working
+`bim_measure` is a second entry point precisely so `ifc_query` keeps working
 where ifcopenshell and shapely are not installed.
 
 A function that is registered but has no entry point does not exist at runtime.

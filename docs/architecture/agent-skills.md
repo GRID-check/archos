@@ -299,7 +299,7 @@ effective skill set for one run:
      payload) degrades to the builtin set — skills are an additive
      capability and must never take chat down.
 3. Per-agent filtering (below).
-4. The NAT config's `skills_enabled` / `skill_allowlist` (see Config).
+4. The runtime config's `skills_enabled` / `skill_allowlist` (see Config).
 
 ### Agent targeting
 
@@ -565,8 +565,8 @@ name is still a true record of what ran.
 
 ## Config
 
-`configs/config_oib_openrouter.yml`, `shallow_research_agent` (the NAT
-workflow YAML — NAT's own vocabulary for an agent config):
+`configs/config_oib_openrouter.yml`, `shallow_research_agent` (the
+workflow YAML, the runtime's own word for an agent config):
 
 ```yaml
 skills_enabled: true        # default true; false offers no catalog and no skill read

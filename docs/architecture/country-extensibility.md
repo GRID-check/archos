@@ -63,7 +63,7 @@ Phase 3 — vocabulary and language surfaces (scoped per country):
 7. Agent identity prompts: the j2 prompts hardcode "Austrian building
    regulations / RIS / OIB" framing — template off the profile
    (`country_name`, `legal_source_tools`) when country #2 ships.
-8. Request envelope: `GridRequestContext.federal_state` is AT-vocabulary; add a
+8. Request envelope: `RequestContextInput.federal_state` is AT-vocabulary; add a
    `country` envelope field alongside it (the structured `country=<cc>` prompt
    fact is already parsed by `resolve_country`).
 

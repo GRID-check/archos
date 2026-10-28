@@ -1,4 +1,4 @@
-# Rate limiting & load protection — state of the art, and what Grid should build
+# Rate limiting & load protection — state of the art, and what Piloti should build
 
 > Research note and the design it produced. Commissioned as "a sophisticated
 > rate limiter that plays nicely with Kubernetes and doesn't need requirements
