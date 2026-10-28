@@ -1,7 +1,7 @@
 """Memory reflection as a post-answer stage.
 
 The gate cases moved here verbatim from
-``tests/aiq_agent/agents/piloti/test_register_helpers.py`` — the
+``packages/agent/tests/agents/piloti/test_register_helpers.py`` — the
 predicate is the same predicate, it just reads ``TurnFacts`` instead of the graph
 state now. The new cases are the two defects the migration closes: a hard
 timeout, and a gate that finally reads ``research_truncated``.

@@ -13,7 +13,7 @@ from pathlib import Path
 
 from aiq_agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 TS_CATALOG = REPO_ROOT / "frontends" / "ui" / "src" / "features" / "a2ui" / "catalog.tsx"
 
 

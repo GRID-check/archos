@@ -240,7 +240,7 @@ The pattern is used in:
 
 ## Python: `scoping.py`
 
-**File**: `src/aiq_agent/knowledge/scoping.py`
+**File**: `packages/agent/src/aiq_agent/knowledge/scoping.py`
 
 ### `get_collection_scope_from_context()`
 

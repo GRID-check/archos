@@ -413,7 +413,7 @@ def folded_for_quote(text: str) -> str:
     A PDF's line breaks are not the model's to reproduce, and neither is the
     Unicode form an extractor happened to emit: „ä" composed and „a" plus a
     combining diaeresis read the same, and only NFC makes them compare equal
-    (``src/aiq_agent/tools/AGENTS.md``). The closed-project reading and the
+    (``packages/agent/src/aiq_agent/tools/AGENTS.md``). The closed-project reading and the
     intake's read log (``agents/intake/read_log.py``) both check quotes with it.
     """
     return " ".join(unicodedata.normalize("NFC", text).split()).casefold()

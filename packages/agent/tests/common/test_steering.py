@@ -1,7 +1,7 @@
 """The steering inbox and the request splice (``common/steering.py``), each half on its own.
 
 The graph-level proof (a note read in the next round, a write held back) is
-``tests/aiq_agent/agents/piloti/test_steering_turn.py``; this pins the pure
+``packages/agent/tests/agents/piloti/test_steering_turn.py``; this pins the pure
 pieces both nodes rely on.
 """
 

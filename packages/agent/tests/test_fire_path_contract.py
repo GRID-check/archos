@@ -35,7 +35,7 @@ from aiq_api.jobs.runner import WORKER_IDENTITY_HEADERS
 from aiq_api.routes.internal_auth import _TOKEN_HEADERS
 from aiq_api.routes.internal_auth import _require_internal_token
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = REPO / "frontends" / "ui" / "tests" / "fixtures" / "job_fire_headers.json"
 
 

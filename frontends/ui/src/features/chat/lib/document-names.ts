@@ -14,7 +14,7 @@
  * that have no derived title at all (project/Büroablage PDFs).
  *
  * Keep {@link oibDisplayTitle} in sync with `guess_display_title` in
- * `src/aiq_agent/common/norm_registry.py` — same inputs must yield the same
+ * `packages/agent/src/aiq_agent/common/norm_registry.py` — same inputs must yield the same
  * German title on both sides, or a card's name would flip when a message is
  * reloaded from storage.
  */

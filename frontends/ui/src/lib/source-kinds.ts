@@ -1,6 +1,6 @@
 /**
  * Canonical source-kind taxonomy — the frontend half of the backend
- * `src/aiq_agent/common/source_kinds.py` (ADR-0026). The kinds and the shelves
+ * `packages/agent/src/aiq_agent/common/source_kinds.py` (ADR-0026). The kinds and the shelves
  * themselves are generated from it (`shared/vocabularies.generated.ts`); what
  * the UI makes of them (tints, badges, labels) lives here.
  *

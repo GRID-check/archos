@@ -20,7 +20,7 @@ from pathlib import Path
 
 import yaml
 
-CONFIG = Path(__file__).resolve().parents[4] / "configs" / "config_oib_openrouter.yml"
+CONFIG = Path(__file__).resolve().parents[5] / "configs" / "config_oib_openrouter.yml"
 
 #: The tools that render passages a reader cites: a grounding block
 #: (`render_grounding_block`) or a registered source parser. Each must be a data source.

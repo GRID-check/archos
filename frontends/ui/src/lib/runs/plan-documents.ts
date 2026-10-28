@@ -1,7 +1,7 @@
 /**
  * The Unterlagen a reader names for a run: the plan card's Grundlage (read in
  * full) and Ausgeschlossen (never used). The mirror of
- * `src/aiq_agent/common/plan_documents.py`, bounded the same way, so a list the
+ * `packages/agent/src/aiq_agent/common/plan_documents.py`, bounded the same way, so a list the
  * card sends is a list every tier accepts.
  *
  * Identity is the knowledge layer's own: the file name as the inventory lists

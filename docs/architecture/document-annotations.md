@@ -579,7 +579,7 @@ behoben: …“ or „Weiterhin offen: …“, naming B for B's marks (`document
 name from the turn's inventory). It changes no status: the question says so,
 and the `canvas` tools' descriptions hold it on every path, `piloti-acts` on or
 off (`update`: a request to check what is fixed asks for no change; `reply`: the
-verdict's form, and no status change; `tests/aiq_agent/tools/canvas/test_parity.py`).
+verdict's form, and no status change; `packages/agent/tests/tools/canvas/test_parity.py`).
 Closing stays the person's: „Erledigt“ in the mark's thread, or for B's marks
 „Erledigen“ on the row in C's review (`resolveCarried`, a PATCH to B's mark
 with the status the row showed). B's threads are in B's room, which C's review
@@ -717,12 +717,12 @@ left the room it sends nothing more under its peer, so a late send from a timer
 
 Piloti reaches marks in two ways.
 
-**By tool.** The `canvas` function group (`src/aiq_agent/tools/canvas/`) calls
+**By tool.** The `canvas` function group (`packages/agent/src/aiq_agent/tools/canvas/`) calls
 `/api/internal/document-annotations`: `canvas__marks` (`list`), `canvas__mark`
 (`propose`, or `create` with `open=true`), `canvas__update` (`update`),
 `canvas__delete` (`delete`), `canvas__reply` (`reply`), `canvas__room`
 (`room`), and the gestures `canvas__point` and `canvas__highlight`.
-`look` (`src/aiq_agent/tools/look/`, ADR-0128), a tool of its own bound in every
+`look` (`packages/agent/src/aiq_agent/tools/look/`, ADR-0128), a tool of its own bound in every
 context, renders the page or a box on it and makes the box glow here. The turn sends `leave` when it ends, so Piloti's cursor goes with it.
 
 - A tool may name a document (`document`: a file name from the turn's inventory, or an id); the name is resolved against the inventory and its id read from `GET /api/internal/document-file` with the envelope echoed. Without one it acts on the document open on the canvas (`focus_document_id`), then on the conversation's *subject*. The server checks a named document against the asker's access and the turn's signed scope (`lib/annotations/agent.ts`).
@@ -959,7 +959,7 @@ audit trail, as the person who took the mark back.
 
 A turn asked from a thread, whose model did not call `canvas__reply`, posts its
 answer into that thread at the end, when the turn ended `answered`
-(`src/aiq_agent/turn/annotation_reply.py`, posted by `post_fallback_reply` in
+(`packages/agent/src/aiq_agent/turn/annotation_reply.py`, posted by `post_fallback_reply` in
 `apps/backend/src/aiq_api/chat_socket.py`). It does so only when nothing
 Piloti did in that thread already spoke there, and only where everyone who
 opens the document reads. The reply goes through the route the tool uses, as

@@ -33,7 +33,7 @@ from aiq_agent.common.turn_status import get_lane_captures
 from aiq_agent.common.turn_status import lane_tool_scope
 from aiq_agent.common.turn_status import record_lane_hit
 
-FIXTURE = Path(__file__).resolve().parents[4] / "tests/fixtures/derivation/retrieval_ledger_wire.json"
+FIXTURE = Path(__file__).resolve().parents[5] / "tests/fixtures/derivation/retrieval_ledger_wire.json"
 
 
 def _query(text: str, tool: str = "knowledge_search") -> ResearchQuery:

@@ -28,13 +28,13 @@ the four things each caller used to copy:
   did not answer" can catch the base.
 
 The signed request-context envelope is echoed, never signed
-(``src/aiq_agent/tools/AGENTS.md``): :class:`SignedEnvelope` carries the two
+(``packages/agent/src/aiq_agent/tools/AGENTS.md``): :class:`SignedEnvelope` carries the two
 strings the BFF minted and :meth:`SignedEnvelope.headers` forwards them
 byte-for-byte.
 
 Tests fake the transport at ONE place: ``bff_http._opener`` (the attribute or
 its ``open``). :func:`send` reads the module global at call time, so either
-patch reaches every client. ``tests/aiq_agent/common/test_bff_http_ratchet.py``
+patch reaches every client. ``packages/agent/tests/common/test_bff_http_ratchet.py``
 keeps a second redirect guard, base-URL read or token header from appearing
 anywhere else.
 """

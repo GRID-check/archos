@@ -33,7 +33,7 @@ ENVELOPE = (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 #: `apps/backend/tests/test_run_envelope.py`).
 WORKER_SUPPLIED_HEADERS = WORKER_IDENTITY_HEADERS + WORKER_ENVELOPE_HEADERS
 
-CONFIG = Path(__file__).resolve().parents[2] / "configs" / "config_oib_openrouter.yml"
+CONFIG = Path(__file__).resolve().parents[3] / "configs" / "config_oib_openrouter.yml"
 
 
 @pytest.fixture(scope="module")

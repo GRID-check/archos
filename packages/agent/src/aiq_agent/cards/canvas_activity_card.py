@@ -100,7 +100,7 @@ class CanvasActivityCard(CardModel):
     A proposed mark is taken over or dismissed from here as well as on the
     document, and a change is undone from here, through the same annotations API.
 
-    System-emitted by the canvas tools (``src/aiq_agent/tools/canvas/``) after
+    System-emitted by the canvas tools (``packages/agent/src/aiq_agent/tools/canvas/``) after
     the BFF confirmed each write; the model cannot emit it (``SYSTEM_CARD_TYPES``).
     """
 

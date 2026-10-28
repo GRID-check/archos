@@ -5,7 +5,7 @@ collection's cards back with ``GET`` (with each folder's person-written
 description), and ``DELETE``s the card of a folder that no longer deserves one.
 The contract is ``frontends/ui/src/lib/folder-cards/types.ts``, exported as
 ``frontends/ui/tests/fixtures/folder-cards.schema.json``;
-``tests/aiq_agent/knowledge/folder_cards/test_client.py`` validates the bodies built
+``packages/agent/tests/knowledge/folder_cards/test_client.py`` validates the bodies built
 here against that file. There is no Pydantic twin.
 
 Service to service: the internal token only, and the organization in the body or

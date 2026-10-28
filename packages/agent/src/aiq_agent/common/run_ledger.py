@@ -10,7 +10,7 @@ report, or an error).
 **There is no hand-written twin of the contract here.** The shape is defined
 once, in zod, at ``frontends/ui/src/lib/runs/run-ledger-types.ts``, exported to
 ``frontends/ui/tests/fixtures/run-ledger.schema.json`` and validated against
-that file by ``tests/aiq_agent/common/test_run_ledger.py`` — the arrangement
+that file by ``packages/agent/tests/common/test_run_ledger.py`` — the arrangement
 ADR-0055 already uses for the document lifecycle. The models below are how this
 tier BUILDS a payload; the fixture is what says the payload is right, so a field
 renamed on the TS side fails a test here rather than at runtime with a 400

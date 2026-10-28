@@ -43,7 +43,7 @@ from aiq_agent.common.openrouter import openai_client
 from aiq_agent.common.openrouter import pinned_async_http_client
 from aiq_agent.common.openrouter import pinned_http_client
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 SCANNED = [
     ROOT / "src",
     ROOT / "packages" / "knowledge-layer",
@@ -60,7 +60,7 @@ CHAT_MODEL = re.compile(
     r"|ChatLiteLLM|ChatBedrock|ChatBedrockConverse|ChatDeepSeek|ChatOpenRouter)\(|\binit_chat_model\(|\.get_llm\("
 )
 CHAT_MODEL_HOMES = {
-    "src/aiq_agent/common/llm_factory.py": "get_langchain_llm, the one place a chat model is taken from NAT",
+    "packages/agent/src/aiq_agent/common/llm_factory.py": "get_langchain_llm, the one place a chat model is taken from NAT",
     "scripts/turn_census/render_fixture_permits.py": (
         "runs outside NAT; its model goes through enforce_chat_request_contract, the slot seam"
     ),
@@ -70,7 +70,7 @@ CHAT_MODEL_HOMES = {
 EMBEDDING_CLIENT = re.compile(r"\b[A-Za-z]*Embeddings?\(|\.embeddings\.create\(")
 EMBEDDING_CLIENT_HOMES = {
     "packages/knowledge-layer/src/llamaindex/embedding.py": "make_embed_model hands llama-index the limited transports",
-    "src/aiq_agent/common/openrouter.py": "mentions `.embeddings` in a docstring only",
+    "packages/agent/src/aiq_agent/common/openrouter.py": "mentions `.embeddings` in a docstring only",
 }
 #: A match that is not a client: a class that merely has "Embedding" in its name.
 NOT_A_CLIENT = re.compile(r"\b(?:Mock|Fake|Stub|Noop)\w*Embedding|\bQueryEmbedding\(|\b_InflightEmbedding\(")
@@ -84,7 +84,7 @@ MODEL_TRAFFIC = re.compile(
     r"|openrouter\.ai|\brequest_body\(|\bPLATFORM_FIXED\.apply\(|\bZERO_DATA_RETENTION\b"
 )
 RAW_HTTPX_HOMES = {
-    "src/aiq_agent/common/openrouter.py": "the seam builds the clients that take the slot",
+    "packages/agent/src/aiq_agent/common/openrouter.py": "the seam builds the clients that take the slot",
     "packages/knowledge-layer/src/llamaindex/adapter.py": "its httpx.Client PUTs a thumbnail to a presigned URL",
     "scripts/release_notes.py": "sends the public changelog from a dev script",
     "scripts/smoke_card_generation.py": "a dev smoke test on fixed sample text",
@@ -113,9 +113,9 @@ def _code(path: Path) -> str:
 def test_the_scan_sees_the_known_call_sites():
     """Guards the test itself: a glob that silently matched nothing would pass everything."""
     scanned = {_rel(p) for p in _python_files()}
-    assert "src/aiq_agent/common/llm_factory.py" in scanned
+    assert "packages/agent/src/aiq_agent/common/llm_factory.py" in scanned
     assert "packages/knowledge-layer/src/llamaindex/adapter.py" in scanned
-    assert "src/aiq_agent/agents/piloti/register.py" in scanned
+    assert "packages/agent/src/aiq_agent/agents/piloti/register.py" in scanned
 
 
 @pytest.mark.parametrize("path", _python_files(), ids=_rel)

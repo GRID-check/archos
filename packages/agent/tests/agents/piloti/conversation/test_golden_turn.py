@@ -47,7 +47,7 @@ from aiq_agent.turn import answer_stream
 from aiq_agent.turn.answer_stream import streaming_call
 from nat.plugin_api import Context
 
-GOLDEN = Path(__file__).resolve().parents[4] / "fixtures" / "wire_v2" / "golden_turn.jsonl"
+GOLDEN = Path(__file__).resolve().parents[6] / "tests" / "fixtures" / "wire_v2" / "golden_turn.jsonl"
 CONVERSATION_ID = "5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11"
 TURN_ID = "msg_1759000000000_3"
 

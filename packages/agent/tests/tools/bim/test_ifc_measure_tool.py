@@ -1400,7 +1400,7 @@ class TestTheSameModelIsParsedOncePerProcess:
     #: the engine — resolving it relatively made it fire on a `pytest` run
     #: started from anywhere but the repository root instead, and a suite that
     #: skips silently proves nothing about the cache it is here to prove.
-    FIXTURE = pathlib.Path(__file__).resolve().parents[3] / "packages/ifc-spatial/test/fixtures/Ifc4_SampleHouse.ifc"
+    FIXTURE = pathlib.Path(__file__).resolve().parents[4] / "packages/ifc-spatial/test/fixtures/Ifc4_SampleHouse.ifc"
 
     @pytest.fixture()
     def engine(self):

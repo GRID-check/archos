@@ -5,11 +5,11 @@ request-context envelope this module forwards byte-for-byte, builds that
 person's pinned session, decides which projects and folders are in reach,
 records what it hands out on the conversation, and refuses a conversation that
 is not its asker's alone (ADR-0054 §4, ADR-0055, ADR-0094). Echo, never sign:
-see ``src/aiq_agent/tools/AGENTS.md``.
+see ``packages/agent/src/aiq_agent/tools/AGENTS.md``.
 
 The request bodies are described once, in zod (``frontends/ui/src/lib/cross-project/types.ts``),
 and exported as JSON Schema (``frontends/ui/tests/fixtures/cross-project.schema.json``);
-``tests/aiq_agent/tools/cross_project/test_wire_contract.py`` validates the
+``packages/agent/tests/tools/cross_project/test_wire_contract.py`` validates the
 bodies this tool builds against that file. There is no Pydantic twin.
 """
 

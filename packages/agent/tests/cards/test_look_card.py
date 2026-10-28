@@ -1,7 +1,7 @@
 """The ``look`` card (ADR-0128): an address of where Piloti looked, never pixels.
 
 Its shape is checked here; how ``look``, ``highlight`` and ``point`` fill it and
-which looks the answer keeps is checked in ``tests/aiq_agent/tools/look/test_visibility.py``.
+which looks the answer keeps is checked in ``packages/agent/tests/tools/look/test_visibility.py``.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from aiq_agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
 
 DOCUMENT = {"id": "11111111-0000-4000-8000-000000000001", "name": "Grundriss_EG.pdf"}
 REGION = {"page": 2, "scope": "region", "region": [0.6, 0.0, 0.4, 0.3], "where": "oben rechts"}
-SCHEMAS = Path(__file__).resolve().parents[3] / "contracts" / "cards" / "schemas.json"
+SCHEMAS = Path(__file__).resolve().parents[4] / "contracts" / "cards" / "schemas.json"
 
 
 def _card(*items: dict, document: dict | None = None) -> dict:

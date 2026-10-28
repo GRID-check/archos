@@ -20,14 +20,14 @@ is a person route, never this one.
 The body is described once, in zod (``frontends/ui/src/lib/proposals/types.ts``,
 ``internalProposalRequestSchema``), and exported as JSON Schema
 (``frontends/ui/tests/fixtures/proposals.schema.json``);
-``tests/aiq_agent/tools/files/test_proposals.py`` validates the body built here
+``packages/agent/tests/tools/files/test_proposals.py`` validates the body built here
 against that file, for every kind. There is no Pydantic twin.
 
 ## Echo, never sign
 
 The turn's signed envelope goes out byte-for-byte, beside the service token;
 the BFF verifies it and records the person it names as the one Piloti acted
-for. The rule and its reason are in ``src/aiq_agent/tools/AGENTS.md``.
+for. The rule and its reason are in ``packages/agent/src/aiq_agent/tools/AGENTS.md``.
 
 ## Every failure is a card without an id, not an error
 

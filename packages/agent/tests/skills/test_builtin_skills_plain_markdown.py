@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-BUILTIN = Path(__file__).resolve().parents[3] / "src" / "aiq_agent" / "skills" / "builtin"
+BUILTIN = Path(__file__).resolve().parents[4] / "packages" / "agent" / "src" / "aiq_agent" / "skills" / "builtin"
 DIALECT = re.compile(r":::|:(?:energy-class|project|current|applies|recommended)\b")
 
 

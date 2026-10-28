@@ -209,7 +209,7 @@ class TestStoppedWhereTheReaderWas:
         assert (kept.text, [s.number for s in kept.sources], kept.cards) == ("Vorher.\n\nNachher [1].", [1], [])
 
 
-STOPPED_CASES = Path(__file__).resolve().parents[3] / "contracts" / "wire" / "v2" / "stopped-cases.jsonl"
+STOPPED_CASES = Path(__file__).resolve().parents[4] / "contracts" / "wire" / "v2" / "stopped-cases.jsonl"
 
 
 def _stopped_cases() -> list[dict]:

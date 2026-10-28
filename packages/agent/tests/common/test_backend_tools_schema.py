@@ -17,7 +17,7 @@ from pathlib import Path
 from aiq_agent.common.backend_tools import BACKEND_READ_TOOLS
 from scripts.generate_backend_tools_schema import SCHEMA_PATH
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 
 
 def _render_in_a_clean_interpreter() -> str:

@@ -60,7 +60,7 @@ def _load_norm_registry_module():
     """
     import types
 
-    common_dir = REPO_ROOT / "src" / "aiq_agent" / "common"
+    common_dir = REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "common"
     for package in ("aiq_agent", "aiq_agent.common"):
         if package not in sys.modules:
             stub = types.ModuleType(package)

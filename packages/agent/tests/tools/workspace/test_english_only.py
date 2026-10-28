@@ -23,7 +23,7 @@ import pytest
 from aiq_agent.tools.workspace import client
 from aiq_agent.tools.workspace import register
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[5]
 WORDS = json.loads((ROOT / "ci" / "german_stems.json").read_text(encoding="utf-8"))
 STEM = re.compile("|".join(WORDS["stems"]))
 PROSE_WORDS = frozenset(WORDS["prose_words"])
@@ -32,9 +32,9 @@ UMLAUT = re.compile(r"[äöüÄÖÜß]")
 #: What the model reads from the workspace: the client, the tool group, the card, and the backend's
 #: read-tool route whose messages reach an outside agent through the BFF.
 MODULES = [
-    ROOT / "src" / "aiq_agent" / "tools" / "workspace" / "client.py",
-    ROOT / "src" / "aiq_agent" / "tools" / "workspace" / "register.py",
-    ROOT / "src" / "aiq_agent" / "tools" / "workspace" / "cards.py",
+    ROOT / "packages" / "agent" / "src" / "aiq_agent" / "tools" / "workspace" / "client.py",
+    ROOT / "packages" / "agent" / "src" / "aiq_agent" / "tools" / "workspace" / "register.py",
+    ROOT / "packages" / "agent" / "src" / "aiq_agent" / "tools" / "workspace" / "cards.py",
     ROOT / "apps" / "backend" / "src" / "aiq_api" / "routes" / "internal_tools.py",
 ]
 

@@ -292,7 +292,7 @@ def _failure_result(exc: Exception, *, kind: str, content: str, confidence: str,
 
     ``kind``, ``content`` and ``confidence`` are what a card would be made of;
     only :func:`_write_failed` makes one, and they stay in the signature the
-    callers and ``tests/aiq_agent/knowledge/test_cross_project_turn.py`` use.
+    callers and ``packages/agent/tests/knowledge/test_cross_project_turn.py`` use.
     """
     if isinstance(exc, memory_client.CrossProjectMemoryRefusedError):
         # No card: accepting one would write the finding through the reader's

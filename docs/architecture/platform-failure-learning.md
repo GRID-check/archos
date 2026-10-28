@@ -363,6 +363,6 @@ means anything.
 | PII scrub | `frontends/ui/src/lib/text/redact-pii.ts` |
 | Schema | `frontends/ui/src/lib/db/schema/platform-lessons.ts`, migration `0068` |
 | Trigger | `frontends/ui/src/app/api/feedback/answers/route.ts` (`after()`) |
-| Internal pull | `frontends/ui/src/app/api/internal/platform-lessons/digest/route.ts` → `src/aiq_agent/common/platform_lessons.py` |
-| Prompt section | `src/aiq_agent/agents/piloti/prompts/piloti.j2` §PLATFORM_LESSONS |
+| Internal pull | `frontends/ui/src/app/api/internal/platform-lessons/digest/route.ts` → `packages/agent/src/aiq_agent/common/platform_lessons.py` |
+| Prompt section | `packages/agent/src/aiq_agent/agents/piloti/prompts/piloti.j2` §PLATFORM_LESSONS |
 | Dashboard | `frontends/ui/src/app/app/(shell)/platform/lessons/` |

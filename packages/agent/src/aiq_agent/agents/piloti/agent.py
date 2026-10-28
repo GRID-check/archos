@@ -144,7 +144,7 @@ from .quote_patch import quote_patcher
 logger = logging.getLogger(__name__)
 
 # Imported from outside this package under this name
-# (``tests/aiq_agent/agents/test_composer_subject_reaches_prompts.py``).
+# (``packages/agent/tests/agents/test_composer_subject_reaches_prompts.py``).
 _shelf_label = shelf_label
 
 #: Cumulative INPUT tokens one turn may spend before synthesis is forced.

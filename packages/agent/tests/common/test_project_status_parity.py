@@ -12,7 +12,7 @@ from pathlib import Path
 
 from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 TS_STATUS = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "projects" / "project-status.ts"
 
 

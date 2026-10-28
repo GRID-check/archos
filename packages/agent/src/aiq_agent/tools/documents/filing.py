@@ -26,7 +26,7 @@ Re-signing a payload of our own with ``INTERNAL_API_TOKEN`` would work, and
 that is the point: it would let this tier CHOOSE the user id, with a secret that
 authenticates the service. The rule is therefore stated as a rule and not as an
 implementation detail — **echo, never sign** — and
-``tests/aiq_agent/tools/documents/test_filing.py`` asserts the bytes go out
+``packages/agent/tests/tools/documents/test_filing.py`` asserts the bytes go out
 unchanged.
 
 The transport, the token and the redirect guard are

@@ -53,7 +53,7 @@ Rules the models carry
 The TypeScript mirror is ``frontends/ui/src/adapters/api/wire-v2.ts``. Both are
 held to ``contracts/wire/v2.schema.json`` (generated from this module by
 ``scripts/generate_wire_schema.py``) and to the recorded turns under
-``contracts/wire/v2/``: ``tests/aiq_agent/common/test_wire_v2.py`` and
+``contracts/wire/v2/``: ``packages/agent/tests/common/test_wire_v2.py`` and
 ``wire-v2.spec.ts`` validate every fixture, each on its own side.
 """
 
@@ -1418,8 +1418,8 @@ def wire_json_schema() -> dict[str, Any]:
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "Piloti chat wire v2",
         "description": (
-            "Generated from src/aiq_agent/common/wire_v2.py by scripts/generate_wire_schema.py. "
-            "Do not edit by hand; tests/aiq_agent/common/test_wire_v2.py fails when it is stale."
+            "Generated from packages/agent/src/aiq_agent/common/wire_v2.py by scripts/generate_wire_schema.py. "
+            "Do not edit by hand; packages/agent/tests/common/test_wire_v2.py fails when it is stale."
         ),
         "$defs": dict(sorted(defs.items())),
     }

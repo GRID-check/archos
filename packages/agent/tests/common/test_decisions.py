@@ -24,7 +24,7 @@ from aiq_agent.common.decisions import noul
 from aiq_agent.common.decisions import score
 from aiq_agent.common.wire_v2 import StatusStep
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _bff_cost_sources() -> set[str]:

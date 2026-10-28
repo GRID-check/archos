@@ -72,7 +72,7 @@ EVERY_OPERATION = TOOL_OPERATIONS["ifc_measure"] | TOOL_OPERATIONS["ifc_query"]
 EVERY_KIND = set(KINDS) | set(FIRE_ASPECTS) | set(ENVELOPE_ASPECTS) | set(PROFILE_KINDS)
 
 SKILL = (
-    Path(__file__).resolve().parents[3]
+    Path(__file__).resolve().parents[4]
     / "src"
     / "aiq_agent"
     / "skills"

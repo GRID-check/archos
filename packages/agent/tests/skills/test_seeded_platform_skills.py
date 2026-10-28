@@ -110,7 +110,7 @@ def test_seeded_grid_cards_survive_the_read_path(tag: str, row: dict[str, str]):
     """Every named card type still exists, so nothing is dropped on read.
 
     ``preferred_cards`` filters against the live catalog, so a card renamed in
-    ``src/aiq_agent/cards`` — or retired into ``SYSTEM_CARD_TYPES`` — would
+    ``packages/agent/src/aiq_agent/cards`` — or retired into ``SYSTEM_CARD_TYPES`` — would
     quietly shorten this list, and the skill would go on running minus the shapes
     it was seeded to inline. Comparing against the raw metadata is what turns
     that into a failing test.
@@ -233,11 +233,11 @@ def test_the_generic_card_seed_carries_the_craft_the_tool_no_longer_states():
 #: `piloti.j2` alone would silently stop seeing every section above the KV-cache
 #: boundary, which is most of them.
 PILOTI_PROMPT_FILES = (
-    REPO_ROOT / "src/aiq_agent/agents/piloti/prompts/piloti_static.md",
-    REPO_ROOT / "src/aiq_agent/agents/piloti/prompts/piloti.j2",
+    REPO_ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md",
+    REPO_ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti.j2",
 )
-DEEP_WRITER_PROMPT = REPO_ROOT / "src/aiq_agent/agents/deep_researcher/prompts/writer.j2"
-DEEP_AGENT = REPO_ROOT / "src/aiq_agent/agents/deep_researcher/agent.py"
+DEEP_WRITER_PROMPT = REPO_ROOT / "packages/agent/src/aiq_agent/agents/deep_researcher/prompts/writer.j2"
+DEEP_AGENT = REPO_ROOT / "packages/agent/src/aiq_agent/agents/deep_researcher/agent.py"
 
 
 def _piloti_prompt_text() -> str:

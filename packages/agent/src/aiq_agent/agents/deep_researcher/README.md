@@ -146,7 +146,7 @@ replaces the final message content. A run that captured no sources raises
 
 The core deep research agent using the DeepAgents library.
 
-**Location**: `src/aiq_agent/agents/deep_researcher/`
+**Location**: `packages/agent/src/aiq_agent/agents/deep_researcher/`
 
 Optional DeepAgents sandbox behavior is configured via the
 `deep_research_sandbox` config (see `deepagents_runtime.py`).
@@ -259,7 +259,7 @@ workflow:
 
 ## Prompts
 
-The agent loads prompts from `src/aiq_agent/agents/deep_researcher/prompts/`:
+The agent loads prompts from `packages/agent/src/aiq_agent/agents/deep_researcher/prompts/`:
 
 | Prompt | Purpose |
 |--------|---------|
@@ -308,7 +308,7 @@ general research requests.
 Verified against the installed `deepagents==0.6.8`, `langchain==1.3.4`, and
 `langgraph==1.2.4` source; re-read on 2026-10-27 against `deepagents==0.7.32`,
 `langchain==1.4.7` and `langgraph==1.2.16`, with the changes noted inline.
-`tests/aiq_agent/test_deepagents_contract.py` checks the assumptions that the
+`packages/agent/tests/test_deepagents_contract.py` checks the assumptions that the
 code rests on. These are documented as current behavior, not
 aspirational fixes. Several items below were fixed 2026-07-16; each is
 marked with the commit that fixed it.

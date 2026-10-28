@@ -6,7 +6,7 @@ events (`RUN_STARTED` … `RUN_FINISHED`, AG-UI's names), the client sends four
 messages. The design, and why it replaced NAT's step stream, is
 [`design/chat-wire-v2.md`](../design/chat-wire-v2.md) (ADR-0068).
 
-**The contract is code, not this page.** `src/aiq_agent/common/wire_v2.py`
+**The contract is code, not this page.** `packages/agent/src/aiq_agent/common/wire_v2.py`
 (Pydantic) is the source. `contracts/wire/v2.schema.json` is its JSON Schema,
 `frontends/ui/src/adapters/api/wire-v2.generated.ts` the Zod module generated
 from that (`npm run generate:wire`; the `wire-schemas` pre-commit hook fails a
@@ -421,7 +421,7 @@ expanded collection list:
 ```
 
 The backend maps that intent via `shelves_for_turn`
-(`src/aiq_agent/common/focus_file.py`) and subtracts other shelves at the
+(`packages/agent/src/aiq_agent/common/focus_file.py`) and subtracts other shelves at the
 knowledge-layer retrieve site. `include_shelves` does not exist: the contract
 **refuses** a message that carries it, because the mapping owns the expansion so a client cannot ask for
 Archiv while claiming a project file. A subject shelf never subtracts the
@@ -467,7 +467,7 @@ except that Befund. Told which version the subject is, the backend reads that
 version's own bytes through
 `GET /api/internal/document-versions/[versionId]/content` and writes them into
 the conversation's working directory as `/entwuerfe/<name>.md`
-(`src/aiq_agent/turn/subject_document.py`), stamped with the filing record that
+(`packages/agent/src/aiq_agent/turn/subject_document.py`), stamped with the filing record that
 makes a later `file_draft` on that path replace this version rather than file a
 second document. The fail-open in the focus filter is unchanged; this is
 upstream of it.

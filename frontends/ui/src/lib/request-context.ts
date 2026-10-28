@@ -9,7 +9,7 @@
  * workflows submission path all independently remembered (or, in one
  * audited case, forgot) to forward `x-grid-model-overrides`. This module is
  * the wire contract: build the input once, get back every header with the
- * exact encoding the Python side (`src/aiq_agent/project_context.py`,
+ * exact encoding the Python side (`packages/agent/src/aiq_agent/project_context.py`,
  * `common/model_overrides.py`, `common/cost_tracking.py`,
  * `common/data_sources.py`, `knowledge/scoping.py`) expects. A path that
  * forgets a field now gets it via `buildGridRequestContextHeaders`; a path
@@ -18,7 +18,7 @@
  *
  * Header inventory (every `x-grid-*` header found via
  * `grep -rniE "x-grid-[a-z-]+"` across `frontends/ui/src`, `server.js`, and
- * `src/aiq_agent` as of this audit):
+ * `packages/agent/src/aiq_agent` as of this audit):
  *
  * | Header                              | Wire encoding                          | Source of truth (pre-refactor)                          |
  * |--------------------------------------|-----------------------------------------|----------------------------------------------------------|

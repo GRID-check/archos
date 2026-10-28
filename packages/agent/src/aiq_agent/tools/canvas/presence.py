@@ -15,7 +15,7 @@ be posted into the thread when the model did not reply there
 (:func:`aiq_agent.turn.annotation_reply.settle_thread_reply`): that verdict
 reads the turn's restricted-use state, which only this context still holds.
 
-Per-turn state in the ``ContextVar`` pattern (``src/aiq_agent/AGENTS.md``): a
+Per-turn state in the ``ContextVar`` pattern (``packages/agent/src/aiq_agent/AGENTS.md``): a
 mutable record bound before the graph runs, so the tool calls, which run in
 copies of the turn's context, write into the one object the harness reads.
 """

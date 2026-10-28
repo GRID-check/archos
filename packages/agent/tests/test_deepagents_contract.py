@@ -30,7 +30,7 @@ from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.tools import tool
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 #: Every deepagents name imported anywhere in `src/`, `frontends/` or `tests/`,
 #: by module. A name missing after a bump is an ImportError at worker start in
@@ -79,7 +79,7 @@ def test_every_name_we_import_still_exists(module_name: str, names: list[str]) -
     missing = [name for name in names if not hasattr(module, name)]
     assert not missing, (
         f"deepagents no longer exports {missing} from {module_name}. Grep the repo for each name "
-        "(src/aiq_agent/agents/deep_researcher, src/aiq_agent/tools/documents, tests) and port it to "
+        "(packages/agent/src/aiq_agent/agents/deep_researcher, packages/agent/src/aiq_agent/tools/documents, tests) and port it to "
         "the release's replacement before bumping."
     )
 

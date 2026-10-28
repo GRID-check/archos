@@ -1,7 +1,7 @@
 """Test support for the agent, shared by every suite that tests it.
 
 Importable by this name because pytest's ``pythonpath`` (root ``pyproject.toml``)
-lists ``tests/aiq_agent/testing``. A suite imports its helpers from here, never
+lists ``packages/agent/tests/testing``. A suite imports its helpers from here, never
 from another suite's directory by a dotted path (``tests/test_test_imports.py``),
 so moving a suite moves no import. Nothing here ships in an image.
 """

@@ -33,7 +33,7 @@ from .conftest import _version
 from .conftest import _write
 
 SCHEMA_PATH = (
-    Path(__file__).resolve().parents[4] / "frontends" / "ui" / "tests" / "fixtures" / "document-lifecycle.schema.json"
+    Path(__file__).resolve().parents[5] / "frontends" / "ui" / "tests" / "fixtures" / "document-lifecycle.schema.json"
 )
 
 

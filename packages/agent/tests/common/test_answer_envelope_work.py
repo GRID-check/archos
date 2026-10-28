@@ -21,7 +21,7 @@ from aiq_agent.common.answer_envelope import render_envelope_response_format
 from aiq_agent.common.answer_envelope import render_envelope_schema
 
 FIXTURE = json.loads(
-    pathlib.Path(__file__).resolve().parents[3].joinpath("tests/fixtures/answer_meta/work_payload.json").read_text()
+    pathlib.Path(__file__).resolve().parents[4].joinpath("tests/fixtures/answer_meta/work_payload.json").read_text()
 )
 
 

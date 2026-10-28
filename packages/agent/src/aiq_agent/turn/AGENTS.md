@@ -1,4 +1,4 @@
-# The per-turn harness: `src/aiq_agent/turn`
+# The per-turn harness: `packages/agent/src/aiq_agent/turn`
 
 Everything that happens exactly once per chat turn and is **not** the answering
 agent: parsing what the request says about the turn, loading its context and

@@ -18,7 +18,7 @@ import jsonschema
 
 from aiq_agent.agents.piloti.markers import CONFIDENCE_RULE_VERSION
 
-FIXTURES = Path(__file__).parents[2] / "fixtures" / "wire_v2"
+FIXTURES = Path(__file__).parents[4] / "tests" / "fixtures" / "wire_v2"
 
 
 def _lenient(node: Any) -> Any:

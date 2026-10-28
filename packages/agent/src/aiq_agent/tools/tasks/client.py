@@ -25,13 +25,13 @@ and a different set of refusals to word for the model. Sharing the transport
 would mean one function with a path parameter and two error vocabularies, which
 is the fork this repo's own guidance warns about — a helper lifted for half its
 callers. What IS shared and must stay shared is the RULE, and the rule is stated
-in ``src/aiq_agent/tools/AGENTS.md``, not in a function.
+in ``packages/agent/src/aiq_agent/tools/AGENTS.md``, not in a function.
 
 ``SignedEnvelope`` itself IS imported from there, because two frozen dataclasses
 holding the same two strings would be two types the type checker keeps apart for
 no reason. It is safe to import across the plugin boundary that the entry points
 draw: that module is stdlib-only, so it drags in no optional dependency — which
-is the whole of what the "own entry point" rule in ``src/aiq_agent/AGENTS.md``
+is the whole of what the "own entry point" rule in ``packages/agent/src/aiq_agent/AGENTS.md``
 protects against.
 """
 

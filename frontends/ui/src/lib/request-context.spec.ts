@@ -29,7 +29,7 @@ import {
  * this builder must produce. Lives at `frontends/ui/tests/fixtures/`, inside
  * the frontend's typecheck/test Docker build context
  * (`frontends/ui/Dockerfile.typecheck`). The Python side
- * (`tests/aiq_agent/test_project_context.py`) parses the same file in the
+ * (`packages/agent/tests/test_project_context.py`) parses the same file in the
  * opposite direction.
  */
 interface GridRequestContextFixtureCase {

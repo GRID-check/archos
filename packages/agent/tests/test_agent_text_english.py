@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 #: Function words that are German and not English. Two distinct ones outside a
 #: quoted span make a sentence German; domain nouns (Fassung, Büroablage) are
@@ -140,7 +140,7 @@ def test_tool_and_parameter_descriptions_are_english(texts: list[tuple[str, str]
 def _builtin_skill_bodies() -> list[tuple[str, str]]:
     """Each builtin ``SKILL.md`` split into lines, so a failure names file and line."""
     rows: list[tuple[str, str]] = []
-    for path in sorted((ROOT / "src" / "aiq_agent" / "skills" / "builtin").rglob("SKILL.md")):
+    for path in sorted((ROOT / "packages" / "agent" / "src" / "aiq_agent" / "skills" / "builtin").rglob("SKILL.md")):
         rel = path.relative_to(ROOT).as_posix()
         in_fence = False
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -179,7 +179,7 @@ def test_card_schema_descriptions_are_english() -> None:
     assert pinned == [], f"German prose that was translated once is back: {pinned}"
 
 
-PROMPTS = ROOT / "src" / "aiq_agent" / "agents" / "piloti" / "prompts"
+PROMPTS = ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents" / "piloti" / "prompts"
 
 
 def _prompt_lines(text: str, name: str) -> list[tuple[str, str]]:

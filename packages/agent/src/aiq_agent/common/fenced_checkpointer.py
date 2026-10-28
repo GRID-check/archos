@@ -9,7 +9,7 @@ on), go straight through.
 
 Every public method of ``BaseCheckpointSaver`` is delegated explicitly, because
 the base class defines them all (raising ``NotImplementedError``), so a
-``__getattr__`` fallback would never be reached. ``tests/aiq_agent/common/test_fenced_checkpointer.py``
+``__getattr__`` fallback would never be reached. ``packages/agent/tests/common/test_fenced_checkpointer.py``
 fails when LangGraph adds one this class does not forward.
 """
 

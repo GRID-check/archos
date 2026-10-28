@@ -169,7 +169,7 @@ export type IngestPriority = (typeof INGEST_PRIORITIES)[number]
  * What a published Piloti document carries into the retrieval index.
  *
  * The four keys are spelled here and parsed in
- * `src/aiq_agent/common/provenance.py`; the pair is the whole contract, and a
+ * `packages/agent/src/aiq_agent/common/provenance.py`; the pair is the whole contract, and a
  * typo on either side is silent — a human document is what an unmarked chunk
  * looks like. So the field names ARE the wire names (snake_case, unlike every
  * other interface in this file) rather than being mapped at the fetch, which is

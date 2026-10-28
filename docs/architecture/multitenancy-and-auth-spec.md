@@ -116,7 +116,7 @@ An honest snapshot of what exists today.
   `project_collections`.
 - **TTL reaper** now deletes only `s_`‑prefixed (session) collections; base/project corpora
   persist.
-- **Cards are a single source of truth.** Pydantic models in `src/aiq_agent/cards/models.py`
+- **Cards are a single source of truth.** Pydantic models in `packages/agent/src/aiq_agent/cards/models.py`
   are canonical → generate `contracts/cards/schemas.json` → generate frontend Zod.
 
 These are **done** and form the foundation this spec builds on.

@@ -188,7 +188,7 @@ describe("the budget reaches the pods that spend it", () => {
     const sources = [
       read("packages", "knowledge-layer", "src", "llamaindex", "adapter.py"),
       read("packages", "knowledge-layer", "src", "llamaindex", "processing.py"),
-      read("src", "aiq_agent", "common", "provider_limiter.py"),
+      read("packages", "agent", "src", "aiq_agent", "common", "provider_limiter.py"),
     ].join("\n");
     for (const name of Object.keys(expected)) expect(sources, name).toContain(`"${name}"`);
   });
@@ -204,10 +204,10 @@ describe("the budget reaches the pods that spend it", () => {
       python(["packages", "knowledge-layer", "src", "llamaindex", "processing.py"], /os\.environ\.get\("VLM_BATCH_WORKERS", "(\d+)"\)/),
     );
     expect(cfg.providerLimits.limitCeiling).toBe(
-      python(["src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_CEILING = (\d+)$/m),
+      python(["packages", "agent", "src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_CEILING = (\d+)$/m),
     );
     expect(cfg.providerLimits.modelLimitCeiling).toBe(
-      python(["src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_MODEL_CEILING = (\d+)$/m),
+      python(["packages", "agent", "src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_MODEL_CEILING = (\d+)$/m),
     );
   });
 });

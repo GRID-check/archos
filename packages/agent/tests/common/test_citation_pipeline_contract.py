@@ -47,7 +47,7 @@ from aiq_agent.citations.wire import source_entry_to_wire
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "citation_pipeline"
 
 

@@ -323,12 +323,12 @@ class TestTheOpening:
 
 class TestThePrompt:
     def test_the_product_framing_scan_reads_this_prompt(self):
-        """``tests/aiq_agent/test_product_framing.py`` holds every prompt to VISION.md and CONTEXT.md."""
+        """``packages/agent/tests/test_product_framing.py`` holds every prompt to VISION.md and CONTEXT.md."""
         from agent_testing.product_framing import FILE_AS_PLAN
         from agent_testing.product_framing import OLD_FRAME
         from agent_testing.product_framing import PROMPTS
 
-        assert "src/aiq_agent/agents/intake/prompts/system.j2" in PROMPTS
+        assert "packages/agent/src/aiq_agent/agents/intake/prompts/system.j2" in PROMPTS
         from aiq_agent.agents.intake.agent import system_prompt
 
         rendered = system_prompt()

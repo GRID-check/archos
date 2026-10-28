@@ -26,7 +26,7 @@ dependencies = [
     "nvidia-nat-eval==1.9.0",
     "nvidia-nat-profiler==1.9.0",
     # Exact: every 0.7 patch release changed a default, a tool's output or a
-    # builder we call. Bump on purpose, then run tests/aiq_agent/test_deepagents_contract.py.
+    # builder we call. Bump on purpose, then run packages/agent/tests/test_deepagents_contract.py.
     # langchain-modal moves with it (0.0.7 needs deepagents>=0.7.32,<0.8).
     "deepagents==0.7.32",
     "langgraph-checkpoint-postgres>=3.0.0",

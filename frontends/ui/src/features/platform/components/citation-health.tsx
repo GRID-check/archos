@@ -4,7 +4,7 @@
  * Citation health (platform staff): how often citation verification had to
  * intervene, what it caught, why, on which retrieval lanes, for which
  * organizations. Backed by the `citation_events` ledger
- * (src/aiq_agent/common/citation_events.py, the quality sibling of the timing
+ * (packages/agent/src/aiq_agent/common/citation_events.py, the quality sibling of the timing
  * ledger behind `agent-profiler.tsx`).
  *
  * One tab of Platform → Answer quality. The page owns the title and the scope

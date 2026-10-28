@@ -11,7 +11,7 @@ person, while the answer sits in a chat nobody opened.
 So the turn keeps a record, :class:`ThreadReply`, and the chat socket posts the
 turn's answer into the thread when the model did not (:func:`post_fallback_reply`).
 
-**Per-turn state in the ContextVar pattern** (``src/aiq_agent/AGENTS.md``): the
+**Per-turn state in the ContextVar pattern** (``packages/agent/src/aiq_agent/AGENTS.md``): the
 chat socket builds one record per turn (:meth:`ThreadReply.requested_by`), binds
 it before the workflow runs (:func:`bind_thread_reply`), and the canvas tools,
 which run in copies of that context, mark the one object
@@ -37,7 +37,7 @@ the last one's reply.
 uses (``POST /api/internal/document-annotations``, op ``reply``), with the
 turn's signed envelope forwarded unchanged and the answer's id as
 ``answerMessageId``, so the BFF acts as the person who asked, exactly as it
-does for the tool (``src/aiq_agent/tools/AGENTS.md``).
+does for the tool (``packages/agent/src/aiq_agent/tools/AGENTS.md``).
 """
 
 from __future__ import annotations

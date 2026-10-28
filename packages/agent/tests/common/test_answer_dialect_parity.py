@@ -17,7 +17,7 @@ from aiq_agent.common.answer_dialect import DIRECTIVE_MARKERS
 from aiq_agent.common.answer_dialect import PROJECT_DIRECTIVE
 from aiq_agent.common.answer_dialect import PROJECT_KEYS
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 TS_DIALECT = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "text" / "answer-directives.ts"
 
 

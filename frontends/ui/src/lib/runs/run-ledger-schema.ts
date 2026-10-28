@@ -5,7 +5,7 @@
  * shape that grows two hand-written descriptions of one contract. So the zod
  * schemas in `./run-ledger-types` are the source, `lib/api/zod-json-schema.ts`
  * converts them, and `tests/fixtures/run-ledger.schema.json` is the committed
- * artifact both languages read — `src/aiq_agent/common/run_ledger.py` validates
+ * artifact both languages read — `packages/agent/src/aiq_agent/common/run_ledger.py` validates
  * its models against that file rather than restating the shape in Pydantic.
  *
  * The same arrangement the document lifecycle uses (ADR-0055), down to the

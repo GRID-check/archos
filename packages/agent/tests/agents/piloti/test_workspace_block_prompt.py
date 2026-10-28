@@ -17,7 +17,7 @@ from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[5]
 #: The block the production renderer writes (`workspace-block.fixture.spec.ts`).
 BLOCK = json.loads((ROOT / "frontends/ui/tests/fixtures/workspace/rendered.json").read_text(encoding="utf-8"))[
     "workspace"
@@ -71,7 +71,7 @@ def test_the_static_prompt_teaches_the_workspace_facts_and_the_work_kind():
     """
     from aiq_agent.tools.workspace.register import DESCRIPTIONS
 
-    static = (ROOT / "src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
+    static = (ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
     rules = static.split("<rules>")[1].split("</rules>")[0]
     # English is for finding an operation; a document search runs over German documents.
     assert "look one up (`workspace__search`) in English" in rules

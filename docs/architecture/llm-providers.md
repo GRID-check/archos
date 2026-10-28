@@ -55,7 +55,7 @@ Every agent names its models by `llms:` key, never by model id, so pointing a
 role at another model is a config edit and never a Python one. Each key must
 exist under `llms:`.
 
-Deep research (`deep_research_agent`, `src/aiq_agent/agents/deep_researcher/register.py`)
+Deep research (`deep_research_agent`, `packages/agent/src/aiq_agent/agents/deep_researcher/register.py`)
 binds one model per role:
 
 | Config field | `LLMRole` | Agent group an admin re-points |
@@ -73,7 +73,7 @@ that grades each answer against everything its turn registered (ADR-0139),
 resolved per turn on the `follow_ups` agent group and bound to temperature 0.
 The clarify step is configured by the `clarifier:` block on
 `chat_deepresearcher_agent` (`ClarifierSettings` in
-`src/aiq_agent/agents/piloti/clarify.py`): `llm` asks the questions and
+`packages/agent/src/aiq_agent/agents/piloti/clarify.py`): `llm` asks the questions and
 `planner_llm` writes the plan, falling back to `llm` when unset.
 
 ## Runtime per-org model overrides (ADR-0014)

@@ -416,7 +416,7 @@ class TestRetrieval:
         # The agent-node set. Harmless and kept, but NOT what stamps a hit: the
         # tools node runs in its own copied context and sets its own — see
         # ``turn_status.retrieval_round_scope`` and
-        # ``tests/aiq_agent/agents/piloti/test_retrieval_rounds_spine.py``.
+        # ``packages/agent/tests/agents/piloti/test_retrieval_rounds_spine.py``.
         assert turn_status.current_retrieval_round() == 0
 
     def test_a_conclusion_travels_as_reason_not_as_a_value(self, steps) -> None:

@@ -450,7 +450,7 @@ class TestWireCrossing:
         fixture = json.loads(
             pathlib.Path(__file__)
             .resolve()
-            .parents[3]
+            .parents[4]
             .joinpath("tests/fixtures/answer_meta/wire_payload.json")
             .read_text(encoding="utf-8")
         )

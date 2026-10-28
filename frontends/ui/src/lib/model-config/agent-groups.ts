@@ -9,7 +9,7 @@
  * lists models AND server-side on every save — the catalog filter is the
  * "only allow appropriate models for the task" contract.
  *
- * The id set mirrors `AgentGroup` in src/aiq_agent/common/model_overrides.py
+ * The id set mirrors `AgentGroup` in packages/agent/src/aiq_agent/common/model_overrides.py
  * (the backend consumer of the override header) — keep the two in sync.
  */
 
@@ -153,6 +153,6 @@ export const OPENROUTER_MODEL_ID_PATTERN = /^[A-Za-z0-9_.-]{1,64}\/[A-Za-z0-9_.:
  * plain provider-native id (`gpt-4o`, `ft:gpt-4o:acme::abc`, Azure
  * deployment names). The catalog-membership check in `validateOverrides`
  * remains the real gate — this pattern only rejects obvious garbage.
- * Mirrors `_MODEL_ID_RE` in `src/aiq_agent/common/model_overrides.py`.
+ * Mirrors `_MODEL_ID_RE` in `packages/agent/src/aiq_agent/common/model_overrides.py`.
  */
 export const MODEL_ID_PATTERN = /^[A-Za-z0-9_.:-]{1,64}(\/[A-Za-z0-9_.:-]{1,128})?$/

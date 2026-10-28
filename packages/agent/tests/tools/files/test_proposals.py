@@ -5,8 +5,8 @@ reads is the one ``post_proposal`` really builds, headers included. The tool,
 the card and the client above the socket are the real ones. The client is
 shared by the three kinds (``file_operation``, ``memory``, ``project_profile``);
 the file tool is the one that drives it here, the other two callers have their
-own suites (``tests/aiq_agent/memory/test_register.py``,
-``tests/aiq_agent/cards/test_register_envelope_card.py``) and share the wire
+own suites (``packages/agent/tests/memory/test_register.py``,
+``packages/agent/tests/cards/test_register_envelope_card.py``) and share the wire
 tests below.
 
 Five properties:
@@ -60,7 +60,7 @@ from aiq_agent.tools.files.register import ProposeFileChangeConfig
 from aiq_agent.tools.files.register import propose_file_change
 from aiq_agent.turn.response import answer_message_id
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[5]
 PROPOSALS_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "proposals.schema.json"
 REQUEST_DEF = "InternalProposalRequest"
 RESPONSE_DEF = "InternalProposalResponse"

@@ -19,9 +19,9 @@ from aiq_agent.common.norm_registry import ENV_NORMS_DIR
 from aiq_agent.common.norm_registry import reset_registry_cache
 from aiq_agent.common.prompt_utils import render_prompt_template
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-PILOTI_TEMPLATE = REPO_ROOT / "src" / "aiq_agent" / "agents" / "piloti" / "prompts" / "piloti.j2"
-DEEP_TEMPLATE = REPO_ROOT / "src" / "aiq_agent" / "agents" / "deep_researcher" / "prompts" / "researcher.j2"
+REPO_ROOT = Path(__file__).resolve().parents[4]
+PILOTI_TEMPLATE = REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents" / "piloti" / "prompts" / "piloti.j2"
+DEEP_TEMPLATE = REPO_ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents" / "deep_researcher" / "prompts" / "researcher.j2"
 
 _HEADING = "## Normenregister (verifizierte Normen, Rang und Rolle annotiert)"
 

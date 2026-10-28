@@ -24,7 +24,7 @@ from pathlib import Path
 from aiq_agent.cards.catalog import INTERACTIVE_CARD_TYPES
 from aiq_agent.cards.models import GridCard
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 TS_CARD_DECISION = REPO_ROOT / "frontends" / "ui" / "src" / "features" / "grid-cards" / "card-decision.ts"
 
 

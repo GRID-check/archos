@@ -371,7 +371,7 @@ def test_builder_output_matches_the_wire_fixture():
     """
     fixture = json.loads(
         Path(__file__)
-        .parents[4]
+        .parents[5]
         .joinpath("tests/fixtures/derivation/retrieval_ledger_wire.json")
         .read_text(encoding="utf-8")
     )

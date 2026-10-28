@@ -15,7 +15,7 @@ This module turns those runtime checks into scores on the turn's trace:
   their type and range. ``scripts/langfuse_provision.py`` creates a Langfuse
   score config from each, and ``docs/observability/langfuse.md`` documents them,
   so a name cannot exist in one place and not the others
-  (``tests/aiq_agent/observability/test_langfuse_scores.py`` holds them together).
+  (``packages/agent/tests/observability/test_langfuse_scores.py`` holds them together).
 * The ``*_scores`` builders are pure: a check's outcome in, scores out.
 * :func:`emit_scores` posts them to ``POST /api/public/scores`` on a small
   bounded pool, the way ``common.citation_events`` posts its batches: never

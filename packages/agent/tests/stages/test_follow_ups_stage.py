@@ -304,7 +304,7 @@ class TestCostCeiling:
     Slice 1 exists to answer "what does this actually cost", so a prompt edit
     that quietly doubles the bill has to fail rather than land in the number
     the decision is made on. Same discipline as the `emit_card` and post-hoc
-    ceilings in `tests/aiq_agent/cards/`.
+    ceilings in `packages/agent/tests/cards/`.
 
     Measured with cl100k_base when written: 681 tokens of fixed system prompt;
     925 on a representative turn (the 729-character answer from the repo's own

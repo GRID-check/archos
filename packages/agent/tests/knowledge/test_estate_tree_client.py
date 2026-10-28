@@ -19,7 +19,7 @@ from aiq_agent.common import bff_http
 from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.knowledge import estate_tree_client as client
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 SCHEMA = json.loads((ROOT / "frontends/ui/tests/fixtures/estate-tree.schema.json").read_text(encoding="utf-8"))
 ENVELOPE = SignedEnvelope(header="eyJvcmciOiJvcmdfMSJ9", signature="c2ln")
 

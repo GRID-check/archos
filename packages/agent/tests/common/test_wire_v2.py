@@ -30,7 +30,7 @@ from aiq_agent.common.wire_v2 import card_key
 from aiq_agent.common.wire_v2 import stamp
 from aiq_agent.common.wire_v2 import to_frame
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 FIXTURES = ROOT / "contracts" / "wire" / "v2"
 SCHEMA = ROOT / "contracts" / "wire" / "v2.schema.json"
 TURNS = sorted(FIXTURES.glob("turn-*.jsonl"))

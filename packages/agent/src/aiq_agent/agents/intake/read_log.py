@@ -13,7 +13,7 @@ the model was shown is logged, never more of the page than the tool returned.
 
 Per run, never per process: a :class:`~contextvars.ContextVar` bound and reset
 by ``ProjectIntakeAgent.run`` (the per-turn state rule in
-``src/aiq_agent/AGENTS.md``). Two intake runs on one worker read two projects
+``packages/agent/src/aiq_agent/AGENTS.md``). Two intake runs on one worker read two projects
 of possibly two tenants; a module-level log would let one's quote pass on the
 other's text.
 """

@@ -59,7 +59,7 @@ env:
   # The documented footgun, removed. Without this pytest resolves `aiq_agent`
   # from whatever is installed in the venv rather than from this worktree, and
   # validates the wrong code while appearing to pass.
-  PYTHONPATH: src
+  PYTHONPATH: packages/agent/src
 
 includes:
   # flatten: task names stay literal (`fe:test`, not `frontend:fe:test`). dir: .

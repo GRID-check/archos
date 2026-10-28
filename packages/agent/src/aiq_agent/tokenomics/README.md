@@ -17,7 +17,7 @@ This module uses **timing-window attribution**: every `task` TOOL_START/END pair
 ## File structure
 
 ```
-src/aiq_agent/tokenomics/
+packages/agent/src/aiq_agent/tokenomics/
 ├── pricing.py       # PricingRegistry — maps model names to per-token prices
 ├── profile.py       # RequestProfile, PhaseStats — structured data classes
 ├── nat_adapter.py   # parse_trace() — NAT JSON → list[RequestProfile]
@@ -69,7 +69,7 @@ Tool name lookup follows the same substring rule. Unknown tools default to $0/ca
 Run after `nat eval` completes. The trace file is written to the `output_dir` configured in the eval config.
 
 ```bash
-PYTHONPATH=src python -m aiq_agent.tokenomics.report \
+PYTHONPATH=packages/agent/src python -m aiq_agent.tokenomics.report \
     --trace  <eval output_dir>/all_requests_profiler_traces.json \
     --config configs/config_tokenomics_pricing.yml \
     [--output path/to/report.html]

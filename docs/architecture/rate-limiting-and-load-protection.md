@@ -450,7 +450,7 @@ Covered by `tests/gateway/ws-frame-limits.test.ts`, which spawns the real gatewa
 and pushes real frames — the same harness style as the existing upgrade tests,
 because `server.js` has no unit seam.
 
-### L3 — interactive-turn admission (`src/aiq_agent/common/turn_admission.py`)
+### L3 — interactive-turn admission (`packages/agent/src/aiq_agent/common/turn_admission.py`)
 
 A lease-based semaphore around `agent.run(...)` in `piloti/conversation_register.py`:
 slots held for the duration of a turn, per organization and globally, refused
@@ -584,7 +584,7 @@ that chat, research, ingestion and embeddings all draw from
   ingestion.
 - **Fails open.** No Dragonfly, a script it refuses or `PROVIDER_LIMITER=off`
   means every call proceeds, as in every layer but L4.
-- **Enforced.** `tests/aiq_agent/common/test_provider_limiter_call_sites.py`
+- **Enforced.** `packages/agent/tests/common/test_provider_limiter_call_sites.py`
   fails when a module builds a chat model (`ChatOpenAI(`, `init_chat_model(`, a
   raw `builder.get_llm(`) or an embedding client by hand, when a file that talks
   to a model opens a raw `httpx` client instead of the limited one, and when a

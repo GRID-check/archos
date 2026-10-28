@@ -1,5 +1,5 @@
 {
-  "about": "Hand-computed cases for the formula card (ADR-0143), with the bounds of the Mai 2023 Richtlinien. Each `card` validates against cards/models.py (tests/aiq_agent/cards/test_formula_card.py) and is evaluated by formulas.ts (formulas.spec.ts). A case with `base` takes that case's card and applies `overrides`, a reader's what-if inputs by slot key. `expect.quantities` were worked out by hand (the `work` line), to the relative precision `tolerance` allows; `expect.checks` are the verdicts by check id. `preview` marks the cases the /dev/formula-cards page shows.",
+  "about": "Hand-computed cases for the formula card (ADR-0143), with the bounds of the Mai 2023 Richtlinien. Each `card` validates against cards/models.py (packages/agent/tests/cards/test_formula_card.py) and is evaluated by formulas.ts (formulas.spec.ts). A case with `base` takes that case's card and applies `overrides`, a reader's what-if inputs by slot key. `expect.quantities` were worked out by hand (the `work` line), to the relative precision `tolerance` allows; `expect.checks` are the verdicts by check id. `preview` marks the cases the /dev/formula-cards page shows.",
   "tolerance": 0.0001,
   "cases": [
     {

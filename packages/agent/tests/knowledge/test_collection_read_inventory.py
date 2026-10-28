@@ -28,7 +28,7 @@ import pytest
 
 from nat.cli.type_registry import GlobalTypeRegistry
 
-_ROOT = Path(__file__).resolve().parents[3]
+_ROOT = Path(__file__).resolve().parents[4]
 
 #: tool type -> (kind, the test that pins it, or why nothing needs to)
 TOOLS: dict[str, tuple[str, str]] = {
@@ -44,13 +44,13 @@ TOOLS: dict[str, tuple[str, str]] = {
     # `look` (ADR-0128) renders through knowledge_layer.view_image, which reports the collection it read.
     "look": (
         "reports",
-        "tests/aiq_agent/tools/look/test_register.py::test_a_look_reports_the_collection_it_read",
+        "packages/agent/tests/tools/look/test_register.py::test_a_look_reports_the_collection_it_read",
     ),
     # Other projects (ADR-0094): the BFF records what it hands out before it
     # answers, and the tool admits exactly that for the turn.
     "project_lookup": (
         "reports",
-        "tests/aiq_agent/tools/cross_project/test_project_lookup.py::test_project_lookup_admits_what_the_bff_handed_out_and_shuts_the_turns_doors",
+        "packages/agent/tests/tools/cross_project/test_project_lookup.py::test_project_lookup_admits_what_the_bff_handed_out_and_shuts_the_turns_doors",
     ),
     # Listings: never a restricted folder's file.
     "list_files": (
@@ -59,7 +59,7 @@ TOOLS: dict[str, tuple[str, str]] = {
     ),
     "surface_documents": (
         "lists_nothing_restricted",
-        "tests/aiq_agent/cards/test_surface_documents.py::test_a_restricted_folders_collection_is_never_listed",
+        "packages/agent/tests/cards/test_surface_documents.py::test_a_restricted_folders_collection_is_never_listed",
     ),
     "propose_file_change": (
         "lists_nothing_restricted",
@@ -76,7 +76,7 @@ TOOLS: dict[str, tuple[str, str]] = {
     # model named, after the BFF admitted it for the turn; no content of it.
     "show_in_viewer": (
         "no_collection_content",
-        "tests/aiq_agent/tools/viewer/test_register.py::TestADocumentThePersonMayNotSee",
+        "packages/agent/tests/tools/viewer/test_register.py::TestADocumentThePersonMayNotSee",
     ),
     # The review canvas, a function group: Anmerkungen rows and room presence of
     # a document the BFF admits against the conversation's audience and the
@@ -126,7 +126,7 @@ TOOLS: dict[str, tuple[str, str]] = {
     # folder's even when one is signed in.
     "project_intake_agent": (
         "agent",
-        "tests/aiq_agent/agents/intake/test_reading.py::test_a_restricted_folders_collection_is_never_read",
+        "packages/agent/tests/agents/intake/test_reading.py::test_a_restricted_folders_collection_is_never_read",
     ),
 }
 

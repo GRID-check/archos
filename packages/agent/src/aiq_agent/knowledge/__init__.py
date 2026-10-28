@@ -6,7 +6,7 @@ production backend, llamaindex (ADR-0072), implements them, and so do the fakes 
 tests register; both output data conforming to these schemas.
 
 Architecture:
-    src/aiq_agent/knowledge/      # Core abstractions
+    packages/agent/src/aiq_agent/knowledge/      # Core abstractions
     ├── schema.py                # Data models (Chunk, RetrievalResult, etc.)
     ├── base.py                  # Abstract interfaces (BaseRetriever, BaseIngestor)
     └── factory.py               # Registry + factory pattern

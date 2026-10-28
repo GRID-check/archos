@@ -217,7 +217,7 @@ def retired_card_markdown(payload: object) -> str | None:
 #     derives that set from this one (and from SYSTEM_CARD_TYPES), so Python
 #     needs no edit; the frontend's copy in
 #     `frontends/ui/src/features/a2ui/catalog.tsx` is kept by hand, and
-#     `tests/aiq_agent/cards/test_surface_excluded_parity.py` holds it to the
+#     `packages/agent/tests/cards/test_surface_excluded_parity.py` holds it to the
 #     derived set.
 #
 # Emit an interactive card ONLY for an action that is not safely repeatable

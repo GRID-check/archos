@@ -82,7 +82,7 @@ LANGUAGE_NAMES: dict[str, str] = {
 }
 
 #: The probability below which a call is no call. Measured on 50 short office
-#: questions (2026-10-28, the cases in ``tests/aiq_agent/common/test_question_language.py``):
+#: questions (2026-10-28, the cases in ``packages/agent/tests/common/test_question_language.py``):
 #: an English question of three words or more scored 0.90 to 1.0, a German one was
 #: never called another language above 0.5, and „ok danke", a name or „GK 5 OIB RL 2"
 #: stayed under 0.5.

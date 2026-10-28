@@ -1,4 +1,4 @@
-# Project memory: `src/aiq_agent/memory`
+# Project memory: `packages/agent/src/aiq_agent/memory`
 
 The two agent-side writers of a project's durable findings: the in-turn
 `remember` tool (`register.py`) and the body of the post-answer reflection pass
@@ -44,4 +44,4 @@ drops the quote and keeps the finding.
 |---|---|---|
 | Add a reason a finding is dropped | Drop it in `_finding_from_entry`, before the `MAX_NEW_ITEMS` slice | A rejected finding eats a slot, and the pass records fewer than it found |
 | Change what the tool returns to the model | Say plainly whether the item was saved; a card shown is not a write | The model tells the reader it remembered something that was never stored |
-| Change the reflection prompt or schema | Run `tests/aiq_agent/memory/test_reflection.py`; the prompt and `_ReflectionFinding` must name the same fields | The pass parses nothing and silently records zero findings |
+| Change the reflection prompt or schema | Run `packages/agent/tests/memory/test_reflection.py`; the prompt and `_ReflectionFinding` must name the same fields | The pass parses nothing and silently records zero findings |

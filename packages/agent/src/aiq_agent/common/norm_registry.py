@@ -349,9 +349,9 @@ def set_db_loader(
     reset_registry_cache()
 
 
-# The repository root, three levels above this file (src/aiq_agent/common/).
+# The repository root, three levels above this file (packages/agent/src/aiq_agent/common/).
 # Only meaningful for a source checkout; an installed wheel has no seed beside it.
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = Path(__file__).resolve().parents[5]
 
 
 def _norms_dir(path: str | None) -> Path:

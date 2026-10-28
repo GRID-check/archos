@@ -30,7 +30,7 @@ from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.scoping import _base64url_decode
 from aiq_agent.knowledge.scoping import _parse_scope_payload
 
-_FIXTURE = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "collection_scope" / "scope_header.json"
+_FIXTURE = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "collection_scope" / "scope_header.json"
 
 
 def _contract() -> dict[str, Any]:

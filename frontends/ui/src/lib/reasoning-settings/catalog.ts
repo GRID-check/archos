@@ -3,7 +3,7 @@
  * per agent group (Platform → Models).
  *
  * Source of truth for the accepted values. Mirrored by `_EFFORTS` in the
- * backend's `src/aiq_agent/common/reasoning_settings.py`; parity is pinned from
+ * backend's `packages/agent/src/aiq_agent/common/reasoning_settings.py`; parity is pinned from
  * both sides by `frontends/ui/tests/fixtures/reasoning_efforts_catalog.json`, so a value
  * added here without the backend counterpart fails in CI.
  *

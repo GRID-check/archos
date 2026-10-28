@@ -45,7 +45,7 @@ from aiq_agent.tools.canvas.register import run_reply
 from aiq_agent.tools.canvas.register import run_room
 from aiq_agent.tools.canvas.register import run_update
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[5]
 ANNOTATIONS_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "document-annotations.schema.json"
 ANNOTATION_DEFS = (
     "InternalAnnotationRequest",

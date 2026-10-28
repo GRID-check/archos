@@ -1,6 +1,6 @@
 """Tests for auth utilities: token fetcher registry and user info extraction.
 
-Module under test: src/aiq_agent/auth/utils.py
+Module under test: packages/agent/src/aiq_agent/auth/utils.py
 """
 
 import base64

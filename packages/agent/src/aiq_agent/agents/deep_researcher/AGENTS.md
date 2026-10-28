@@ -1,4 +1,4 @@
-# The deep researcher: `src/aiq_agent/agents/deep_researcher`
+# The deep researcher: `packages/agent/src/aiq_agent/agents/deep_researcher`
 
 The long-form agent. It runs as an async job on a research worker, not on a chat
 turn, and it is the one agent here built on **deepagents** rather than a

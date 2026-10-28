@@ -412,7 +412,7 @@ describe('RunBlock — the line and the affordances', () => {
   })
 
   it('failed under zero data retention: the reason says what to do, and there is no Retry', () => {
-    // `ZDR_MODEL_REFUSED_MESSAGE` (src/aiq_agent/common/canned_replies.py), as
+    // `ZDR_MODEL_REFUSED_MESSAGE` (packages/agent/src/aiq_agent/common/canned_replies.py), as
     // deep-research jobs persist it: a retry fails identically until an admin
     // chooses a ZDR model.
     const reason =

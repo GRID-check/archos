@@ -14,7 +14,7 @@ operation is an argument now (docs/architecture/agent-tool-surface.md). The
 card's ``operation`` vocabulary is unchanged, so every stored card reads exactly
 as before.
 
-The reason is the invariant in ``src/aiq_agent/tools/AGENTS.md``: the BFF is
+The reason is the invariant in ``packages/agent/src/aiq_agent/tools/AGENTS.md``: the BFF is
 the single writer of ``app`` (ADR-0003), so this tier has no route to a
 document row and must not grow one. The proposal is a server object
 (``proposals_client.py``, ADR-0105): accepting the card asks the BFF to apply it

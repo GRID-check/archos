@@ -4,7 +4,7 @@ Covers the seam between the skills engine and the agent registration: the
 per-run resolution + allowlist narrowing + the skill ``read_file`` (ADR-0135) +
 ``skills_block``/``skills_activated`` propagation declared in
 ``ResearchAgentConfig``. The engine itself (model/resolver/runtime) is
-tested under ``tests/aiq_agent/skills/``.
+tested under ``packages/agent/tests/skills/``.
 """
 
 from unittest.mock import AsyncMock

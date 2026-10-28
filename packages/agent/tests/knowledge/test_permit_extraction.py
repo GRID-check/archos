@@ -29,7 +29,7 @@ from aiq_agent.knowledge.permit_extraction import pages_with_markers
 CONTRACT_RECORD_KINDS = ["approval", "information_request", "refusal", "other"]
 CONTRACT_REQUIREMENT_KINDS = ["condition", "information_request", "note"]
 
-FIXTURE = Path(__file__).resolve().parents[3] / "frontends/ui/tests/fixtures/precedent/office.json"
+FIXTURE = Path(__file__).resolve().parents[4] / "frontends/ui/tests/fixtures/precedent/office.json"
 
 
 def _fixture_text(document_id: str) -> str:

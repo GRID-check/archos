@@ -9,7 +9,7 @@
  * card after it did, so the reader sees in the conversation what changed on the
  * sheet, and can step from here into the Prüfansicht at that mark and back.
  *
- * System-emitted (`src/aiq_agent/tools/canvas/cards.py`): every id on it is one
+ * System-emitted (`packages/agent/src/aiq_agent/tools/canvas/cards.py`): every id on it is one
  * the annotations service returned, and the model cannot author one.
  *
  * ## A window onto the marks, not a record of answers

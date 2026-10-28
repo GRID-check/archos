@@ -1,6 +1,6 @@
 /**
  * What the answer check found (`TurnResult.confidence_check`,
- * `src/aiq_agent/common/claim_judge.py`, ADR-0139), made durable.
+ * `packages/agent/src/aiq_agent/common/claim_judge.py`, ADR-0139), made durable.
  *
  * One model call grades the final answer against everything the turn
  * registered. `judged`: the chip shows the level and names the statements the

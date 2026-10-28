@@ -20,7 +20,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[4]
 START_WEB = REPO / "apps" / "backend" / "start_web.py"
 AGENT_JOB = REPO / "apps" / "backend" / "src" / "aiq_api" / "jobs" / "agent_job.py"
 

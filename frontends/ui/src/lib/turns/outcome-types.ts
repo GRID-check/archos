@@ -15,7 +15,7 @@ import { z } from 'zod'
 
 /**
  * The wire's terminal words (`RunFinishedBody.outcome` in
- * `src/aiq_agent/common/wire_v2.py`, plus `failed` for `RUN_ERROR`):
+ * `packages/agent/src/aiq_agent/common/wire_v2.py`, plus `failed` for `RUN_ERROR`):
  * `answered`, `refused` (admission or the budget), `handed_off` (the turn
  * handed the work to a run), `stopped` (cancelled or superseded), `failed`.
  */

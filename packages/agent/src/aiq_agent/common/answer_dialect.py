@@ -5,7 +5,7 @@ The model writes a few ``remark-directive`` blocks around ordinary Markdown
 ``:::actions`` and the rest, the markers ``:current`` / ``:applies`` /
 ``:recommended``, and the inline project binding ``:project[key]``. The
 frontend draws them (``frontends/ui/src/lib/text/answer-directives.ts`` holds
-the same vocabulary; ``tests/aiq_agent/common/test_answer_dialect_parity.py``
+the same vocabulary; ``packages/agent/tests/common/test_answer_dialect_parity.py``
 holds the two lists together).
 
 :func:`validate_dialect` runs on the finished answer after citation

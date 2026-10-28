@@ -22,7 +22,7 @@ from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import formula_provenance_score
 
-FIXTURE_PATH = Path(__file__).resolve().parents[3] / "frontends/ui/src/features/grid-cards/lib/formula-cases.json"
+FIXTURE_PATH = Path(__file__).resolve().parents[4] / "frontends/ui/src/features/grid-cards/lib/formula-cases.json"
 FIXTURE = json.loads(FIXTURE_PATH.read_text("utf-8"))
 
 

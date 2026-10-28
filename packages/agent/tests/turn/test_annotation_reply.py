@@ -1,7 +1,7 @@
 """A thread question is answered in its thread (``aiq_agent.turn.annotation_reply``).
 
 The record, the decision and the post are driven directly; the canvas tools
-marking the record are in ``tests/aiq_agent/tools/canvas/test_thread_reply.py``,
+marking the record are in ``packages/agent/tests/tools/canvas/test_thread_reply.py``,
 and the chat socket calling it at the end of a turn in
 ``apps/backend/tests/test_chat_socket.py``. The body the fallback builds is
 validated against the schema the BFF's route exports, as the tool's own are.
@@ -44,7 +44,7 @@ from aiq_agent.turn.annotation_reply import reset_thread_reply
 from aiq_agent.turn.annotation_reply import settle_thread_reply
 from aiq_agent.turn.annotation_reply import thread_text
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 ANNOTATIONS_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "document-annotations.schema.json"
 
 ANNOTATION = "33333333-0000-4000-8000-000000000003"

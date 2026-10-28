@@ -52,7 +52,7 @@ _TIMEOUT_SECONDS = 5.0
 
 _lock = threading.Lock()
 #: Model id (without a ``:variant`` suffix) -> takes image input. Process-lifetime,
-#: keyed by model id, holds no tenant data (``src/aiq_agent/AGENTS.md``).
+#: keyed by model id, holds no tenant data (``packages/agent/src/aiq_agent/AGENTS.md``).
 _catalog: dict[str, bool] = {}
 _catalog_read_at = 0.0
 _catalog_failed_at: float | None = None

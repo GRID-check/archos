@@ -77,7 +77,7 @@ class FileOperationItem(CardModel):
 class FileOperationProposalCard(CardModel):
     """A workspace change the agent PROPOSES and a person applies.
 
-    System-emitted by ``propose_file_change`` (``src/aiq_agent/tools/files/``).
+    System-emitted by ``propose_file_change`` (``packages/agent/src/aiq_agent/tools/files/``).
     Every operation is a write, none of them writes: the tool's own result text
     says plainly that nothing has changed yet. With ``proposal_id`` the card
     shows a proposal stored on the server (ADR-0105), which the server applies

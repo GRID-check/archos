@@ -41,8 +41,8 @@ describe('isInHoldoutSlice', () => {
     // Both tiers must reach the same verdict from the same key: this tier
     // decides whether to INJECT, the BFF decides how to LABEL the vote, and a
     // disagreement mislabels every measurement. The expectations below are
-    // produced by src/aiq_agent/common/platform_lessons.py::is_in_holdout_slice
-    // and pinned by tests/aiq_agent/common/test_platform_lessons.py.
+    // produced by packages/agent/src/aiq_agent/common/platform_lessons.py::is_in_holdout_slice
+    // and pinned by packages/agent/tests/common/test_platform_lessons.py.
     expect(isInHoldoutSlice('conv-8', 10)).toBe(true)
     expect(isInHoldoutSlice('conv-12', 10)).toBe(true)
     expect(isInHoldoutSlice('conv-16', 10)).toBe(true)

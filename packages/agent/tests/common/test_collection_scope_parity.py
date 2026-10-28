@@ -9,7 +9,7 @@ The collection-PREFIX parity test that used to live here is gone with
 ``_COLLECTION_SCOPE_PREFIXES`` (ADR-0047): it policed the agreement of two
 guesses rather than removing the guess. The shelf now travels as data, and the
 round-trip contract test (``tests/knowledge_layer_tests/test_citation_key_scope.py``
-plus ``tests/aiq_agent/knowledge/test_scoping.py``) drives that seam instead.
+plus ``packages/agent/tests/knowledge/test_scoping.py``) drives that seam instead.
 
 The kinds and the shelves are generated into the UI from ``source_kinds.py``
 (``scripts/generate_vocabularies.py``) and need no check here. What is left is

@@ -49,7 +49,6 @@ TARGET = frozenset(
 #: Still waiting for their move, and the ADR-0145 row that empties each.
 LEGACY = {
     "frontends": "row 9 (ui)",
-    "src": "row 8",
 }
 
 #: Finished moves: the old path, and where its contents went.
@@ -66,13 +65,15 @@ MOVED = {
     "sources/knowledge_layer/": "packages/knowledge-layer (row 6)",
     "sources/ris_adapter/": "packages/ris-adapter (row 6)",
     "sources/tavily_web_search/": "packages/tavily-web-search (row 6)",
+    "src/aiq_agent/": "packages/agent/src/aiq_agent (row 8)",
+    "tests/aiq_agent/": "packages/agent/tests (row 8)",
     "frontends/aiq_api/": "apps/backend (row 7)",
     "deploy/entrypoint.py": "apps/backend/entrypoint.py (row 7)",
     "deploy/start_web.py": "apps/backend/start_web.py (row 7)",
 }
 
 #: Where an old path may still be named: the record of what was true then.
-HISTORY = (":!docs/adr/", ":!releasenotes/", ":!docs/audit/")
+HISTORY = (":!docs/adr/", ":!releasenotes/", ":!docs/audit/", ":!frontends/ui/drizzle/")
 
 
 def _at_path_start(path: str) -> str:

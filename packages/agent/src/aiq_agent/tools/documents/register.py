@@ -37,7 +37,7 @@ would be a parameter the API discards — a lie in the signature, and the model
 would put the substance of its handover into it. ``reviewer`` is there only
 because the route grew somewhere to put it.
 
-What this module may NOT do is in ``src/aiq_agent/tools/AGENTS.md``: it echoes
+What this module may NOT do is in ``packages/agent/src/aiq_agent/tools/AGENTS.md``: it echoes
 the BFF-signed envelope and never signs, and the BFF decides identity and
 permission. See ``filing.py`` for why.
 """

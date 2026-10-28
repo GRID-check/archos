@@ -1,4 +1,4 @@
-"""Tests for SpanClosingProfilerHandler (src/aiq_agent/common/nat_step_repair.py).
+"""Tests for SpanClosingProfilerHandler (packages/agent/src/aiq_agent/common/nat_step_repair.py).
 
 Module under test fixes an upstream NAT gap: LangchainProfilerHandler pushes an
 IntermediateStepManager START event from on_llm_start/on_tool_start but never

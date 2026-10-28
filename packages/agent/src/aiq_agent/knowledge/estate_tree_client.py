@@ -10,7 +10,7 @@ Nothing here decides access. The BFF reads the acting person out of the signed
 request-context envelope this module forwards byte for byte, takes the project
 and the conversation from it, and answers with the search's audience reach:
 restricted folders and held uploads are absent, not marked. Echo, never sign
-(``src/aiq_agent/tools/AGENTS.md``).
+(``packages/agent/src/aiq_agent/tools/AGENTS.md``).
 
 The contract is ``frontends/ui/tests/fixtures/estate-tree.schema.json``,
 exported from ``frontends/ui/src/lib/estate-tree/types.ts``; the tests validate

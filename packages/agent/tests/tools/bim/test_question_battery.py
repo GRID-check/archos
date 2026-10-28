@@ -40,7 +40,7 @@ from aiq_agent.tools.bim.measure_register import _render
 
 pytest.importorskip("ifc_spatial.tools", reason="the spatial engine is not installed")
 
-FIXTURES = Path(__file__).resolve().parents[3] / "packages" / "ifc-spatial" / "test" / "fixtures"
+FIXTURES = Path(__file__).resolve().parents[4] / "packages" / "ifc-spatial" / "test" / "fixtures"
 HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
 NO_NORTH = FIXTURES / "house-with-rooms.ifc"
 

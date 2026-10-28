@@ -151,7 +151,7 @@ def _fixture_hits(name: str):
 
     from knowledge_layer.qdrant.search import Hit
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "turn_census"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts" / "turn_census"))
     import fixture_files
 
     project = fixture_files.load_project()

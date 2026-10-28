@@ -22,7 +22,7 @@ from nat.plugin_api import FunctionInfo
 from nat.plugin_api import LLMFrameworkEnum
 from nat.plugin_api import register_function
 
-_SRC = Path(__file__).resolve().parents[3] / "src" / "aiq_agent"
+_SRC = Path(__file__).resolve().parents[4] / "packages" / "agent" / "src" / "aiq_agent"
 
 
 class _PagedSearchConfig(FunctionBaseConfig, name="grid_test_paged_search"):

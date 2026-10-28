@@ -4,7 +4,7 @@
  * is about to execute, or is executing, so the run's tools act as the person
  * who commissioned it (ADR-0108).
  *
- * The worker never signs (`src/aiq_agent/tools/AGENTS.md`, "echo, never sign").
+ * The worker never signs (`packages/agent/src/aiq_agent/tools/AGENTS.md`, "echo, never sign").
  * It carries the envelope the BFF minted at submit and, once that is older than
  * the renewal age, asks this route for a new one. The BFF re-derives everything
  * from the `task_runs` row and the requester's CURRENT membership: a requester

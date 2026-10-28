@@ -297,7 +297,7 @@ def test_priority_does_not_let_one_office_pass_another(db):
 
 
 # The next two scenarios are the lane order every claim shares: the same two run in
-# tests/aiq_agent/common/test_claim_queue.py and in the BFF's
+# packages/agent/tests/common/test_claim_queue.py and in the BFF's
 # frontends/ui/src/lib/jobs-queue/queue.integration.spec.ts. Priority never picks the lane.
 
 

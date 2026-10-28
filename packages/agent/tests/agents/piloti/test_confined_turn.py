@@ -58,7 +58,7 @@ class TestThePromptSaysWhichDoorsAreShutAndWhy:
         """Deep research off is said up front: a refused hand-off would ship the note instead of an answer.
 
         Tasks off is not: `create_task` is refused by the BFF and the tool relays
-        that sentence („Nothing was created", `tests/aiq_agent/tools/tasks`), so
+        that sentence („Nothing was created", `packages/agent/tests/tools/tasks`), so
         the model finds out at the moment it matters.
         """
         rendered = _render(deep_research_allowed=False, tasks_allowed=False)

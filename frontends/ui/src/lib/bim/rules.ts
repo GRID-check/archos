@@ -36,7 +36,7 @@
  * twelve with one that is wrong.
  *
  * Orientation, not legal advice — the same framing the applicability engine
- * carries (`src/aiq_agent/common/applicability.py`).
+ * carries (`packages/agent/src/aiq_agent/common/applicability.py`).
  *
  * Pure: a function of element records plus the project facts.
  */

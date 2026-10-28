@@ -26,7 +26,7 @@ addopts = "--import-mode=importlib -m 'not live'"
 # own venv tested the MAIN checkout's code while everything passed. This puts
 # the checkout's own `packages/agent/src/` ahead of that install (the editable `.pth` is
 # appended to sys.path, so it loses). `apps/backend/src` is the same guard
-# for `aiq_api`, which `tests/aiq_agent` imports too (the worker's header
+# for `aiq_api`, which `packages/agent/tests` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
 # those tests against the MAIN checkout's `aiq_api`. `evals/oib-retrieval/src`
 # is the same guard for the retrieval harness, a finder-style editable the evals

@@ -44,7 +44,7 @@ from aiq_agent.common.answer_envelope import AnswerMeta
 from aiq_agent.knowledge import scoping
 from aiq_agent.turn.response import answer_message_id
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 PROPOSALS_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "proposals.schema.json"
 
 HEADER, SIGNATURE = "eyJzaWduZWQiOiJ0dXJuIn0", "c0ffee"

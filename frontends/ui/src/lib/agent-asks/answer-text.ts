@@ -23,7 +23,7 @@ import { stripCardMarkers } from '@/lib/text/card-markers'
  * (`UNVERIFIED_QUOTE_MARKER`, `DROPPED_CITATION_MARKER`), and what an agent reads
  * instead: English, because anything an agent reads is (AGENTS.md), and in
  * parentheses, so a bracketed label is not read as a Markdown link reference.
- * `tests/aiq_agent/common/test_answer_dialect_parity.py` holds the keys to
+ * `packages/agent/tests/common/test_answer_dialect_parity.py` holds the keys to
  * the Python constants.
  */
 export const VERIFICATION_MARKERS = {

@@ -112,7 +112,6 @@ PY_FULL = (
 
 # Where testmon sees Python: the packages under test and the tests themselves.
 PY_TRACKED = (
-    "src/**",
     "tests/**",
     "apps/backend/src/**",
     "apps/backend/tests/**",
@@ -131,7 +130,7 @@ PY_FIXTURES = "tests/fixtures/"
 
 # A non-Python file under these that no test names is code testmon cannot see
 # (package data read at runtime), so it forces a full run rather than none.
-PY_PACKAGE_SRC = ("src/**", "apps/backend/src/**", "packages/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
+PY_PACKAGE_SRC = ("apps/backend/src/**", "packages/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
 
 # What every UI spec loads before its own imports, so no graph sees it.
 UI_FULL = (
@@ -158,7 +157,7 @@ UI_FULL = (
 # the BFF loads, the root scripts its walkers check, and the backend fixtures a
 # contract spec reads (`skills/resolve-payload-contract.spec.ts`). A change to none of
 # these since the last green run leaves every UI result standing.
-UI_INPUTS = (UI + "**", "configs/**", "contracts/**", "scripts/**", "src/aiq_agent/cards/**", "tests/fixtures/**")
+UI_INPUTS = (UI + "**", "configs/**", "contracts/**", "scripts/**", "packages/agent/src/aiq_agent/cards/**", "tests/fixtures/**")
 
 # The spec files vitest collects (vitest.config.ts `include`). Vitest's `**/`
 # matches no directory too; fnmatch's needs one, so each glob also gets its

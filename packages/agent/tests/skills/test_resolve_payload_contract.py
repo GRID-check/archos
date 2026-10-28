@@ -45,7 +45,7 @@ from aiq_agent.skills.models import skill_hidden
 from aiq_agent.skills.models import skill_title
 from aiq_agent.skills.resolver import SkillResolver
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "skills_resolve" / "resolve_payload.json"
 
 AGENT = "researcher"

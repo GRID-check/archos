@@ -40,7 +40,7 @@ import pytest
 # suite reaches these paths through a `skip`, that did not fail, it silently
 # stopped testing the race it exists for. A test that disappears when you run
 # it from a different directory is worse than one that is missing.
-FIXTURES = Path(__file__).resolve().parents[3] / "packages" / "ifc-spatial" / "test" / "fixtures"
+FIXTURES = Path(__file__).resolve().parents[4] / "packages" / "ifc-spatial" / "test" / "fixtures"
 #: Four different buildings, because the failure is about a table sized for two.
 MODELS = {
     "a": FIXTURES / "Ifc4_SampleHouse.ifc",

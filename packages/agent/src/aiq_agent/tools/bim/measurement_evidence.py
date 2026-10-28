@@ -38,7 +38,7 @@ import re
 EVIDENCE_PROVENANCES: frozenset[str] = frozenset({"declared", "computed"})
 
 #: The opening of the trailer line. Changing it changes the contract, and
-#: ``tests/aiq_agent/agents/piloti/test_grounding.py`` pins both
+#: ``packages/agent/tests/agents/piloti/test_grounding.py`` pins both
 #: sides of it against real renderer output.
 MEASUREMENT_EVIDENCE_PREFIX = "Messwerte in diesem Ergebnis:"
 

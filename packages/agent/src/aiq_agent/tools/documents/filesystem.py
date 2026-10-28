@@ -16,7 +16,7 @@ and replaces the result text where the text is evidence:
 The subclass keeps the name ``FilesystemMiddleware`` (prototype p5: a subclass
 with another name is appended beside the stock instance by ``create_deep_agent``),
 and the builders it overrides are private API pinned by
-``tests/aiq_agent/test_deepagents_contract.py``.
+``packages/agent/tests/test_deepagents_contract.py``.
 """
 
 from __future__ import annotations

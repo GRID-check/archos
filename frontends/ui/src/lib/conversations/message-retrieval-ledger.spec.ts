@@ -6,7 +6,7 @@ import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
 
 /**
  * The Python↔TS crossing, pinned to one artifact: the backend's ledger builder
- * produces this fixture (`tests/aiq_agent/agents/piloti/test_retrieval_ledger.py`
+ * produces this fixture (`packages/agent/tests/agents/piloti/test_retrieval_ledger.py`
  * asserts it still does), and this side asserts the sanitizer passes it
  * through shape-shifted (snake_case wire in, bounded camelCase out). A renamed
  * key or a moved cap on either side fails one of the two tests instead of

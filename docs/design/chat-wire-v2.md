@@ -1,6 +1,6 @@
 # Chat wire v2
 
-**Status:** Designed 2026-09-27; contract committed (`src/aiq_agent/common/wire_v2.py`
+**Status:** Designed 2026-09-27; contract committed (`packages/agent/src/aiq_agent/common/wire_v2.py`
 and what is generated from it), the cut not yet started.
 **Decision:** [ADR-0068](../adr/0068-use-nemo-agent-toolkit-as-designed.md), option A,
 as one cut with no `v: 1` period. The NAT 1.7 → 1.9 upgrade is part of the cut, as
@@ -323,7 +323,7 @@ is the worked example: the confidence rule changed (the answer check,
 ADR-0139), and a `3` would have failed every open tab's `1 | 2`. A checked
 answer therefore travels as `2`, and the new `confidence_check` tells it apart
 from a stored per-sentence turn; an older bundle strips it and shows the level.
-`tests/aiq_agent/common/test_wire_v2_open_tabs.py` checks a checked and an
+`packages/agent/tests/common/test_wire_v2_open_tabs.py` checks a checked and an
 unavailable `RUN_FINISHED` against the schema as it stood before.
 
 So a new field on `TurnResult`, a new step kind, a new `CUSTOM` or a new event
@@ -369,7 +369,7 @@ which bundle it talks to.
 (`agents/piloti/conversation.py`, today `self._graph.ainvoke` at ~687). Every
 producer inside a graph run calls `get_stream_writer()` and writes a wire
 **body**. This was measured on the installed LangGraph, not assumed
-(`tests/aiq_agent/turn/test_stream_writer_reach.py`, committed with this design): the writer reaches a node in a graph that another node
+(`packages/agent/tests/turn/test_stream_writer_reach.py`, committed with this design): the writer reaches a node in a graph that another node
 `ainvoke`s through a plain async function, which is the shape of Piloti's NAT
 function boundary, and LangChain callbacks such as the token callback, tools
 inside `ToolNode`, child tasks and `asyncio.to_thread` workers. Under `ainvoke`
@@ -797,12 +797,12 @@ and a reader-order change, nothing more.
 
 | Layer | What | Where |
 |---|---|---|
-| Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old NAT frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `tests/aiq_agent/common/test_wire_v2.py` (committed) |
+| Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old NAT frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `packages/agent/tests/common/test_wire_v2.py` (committed) |
 | Contract, UI side | The same files through the generated zod: every event parses to its type, defaults restored, and every invalid frame refused. `newer-events.jsonl` parses, its unknown keys stripped and its unknown types, step kinds and `CUSTOM` names folded as no-ops (§a, Compatibility). The generated module is the generator's output | `src/adapters/api/wire-v2.spec.ts`, `scripts/generate-wire-schemas.spec.mjs` (committed) |
 | Generation | Pydantic → `contracts/wire/v2.schema.json` → `wire-v2.generated.ts`. A `wire-schemas` pre-commit hook fails the commit when either artifact would change, the same arrangement as `card-schemas` | `.pre-commit-config.yaml` (committed) |
-| Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real NAT function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `tests/aiq_agent/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
+| Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real NAT function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `packages/agent/tests/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
 | Handler | Auth, binding, rejection codes, cancel authorisation (asker yes, colleague `not_asker`, bus path), HITL round trip and expiry, attach replay and splice with no duplicate or missing seq, stage stamping after the terminal, persistence built from `TurnResult`. A test that builds the app and asserts NAT's `websocket_endpoint` and `WebSocketMessageHandler` are NAT's own objects. A ruff `banned-api` for `nat.data_models.api_server` everywhere, and for the internal modules `nat.plugin_api` covers | `apps/backend/tests/test_chat_socket.py` |
-| Golden replay | One real turn recorded through the whole backend (a fake LLM with a recorded token stream and the real graph) and compared frame for frame, `ts` excepted, with a committed golden JSONL. Every frame is under 4 KB except `STATE_SNAPSHOT` and `RUN_FINISHED` (under 64 KB), the two that carry the sources | `tests/aiq_agent/turn/test_golden_turn.py` |
+| Golden replay | One real turn recorded through the whole backend (a fake LLM with a recorded token stream and the real graph) and compared frame for frame, `ts` excepted, with a committed golden JSONL. Every frame is under 4 KB except `STATE_SNAPSHOT` and `RUN_FINISHED` (under 64 KB), the two that carry the sources | `packages/agent/tests/turn/test_golden_turn.py` |
 | Fold | Every fixture turn folds to the expected `TurnView`. Duplicate seq keeps identity, and a gap is flagged. Snapshot, retraction and terminal replacement. Card before marker. Spectator mid-turn start. The persisted projection round-trips through `sanitizeProvenance` | `features/chat/lib/turn-fold.spec.ts` |
 | Migration | Old stored steps (real rows captured from staging, anonymised) convert to the v2 shape, and the dropped kinds are gone | `message-provenance.spec.ts`; the migration spec for 0097 was retired once 0097 had run in production |
 | Browser | `/dev/stream-socket` (being built now by another engineer) is ported to v2: it replays the fixtures and a recorded long turn through the real socket client, fold and store, and reports frame bytes and main-thread time in `window.__streamSocket` | `app/dev/stream-socket` |

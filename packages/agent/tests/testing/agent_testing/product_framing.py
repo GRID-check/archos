@@ -22,7 +22,7 @@ FIRST_IMPRESSION = [
 
 PROMPTS = sorted(
     path.relative_to(ROOT).as_posix()
-    for path in (ROOT / "src" / "aiq_agent").rglob("prompts/*")
+    for path in (ROOT / "packages" / "agent" / "src" / "aiq_agent").rglob("prompts/*")
     if path.suffix in {".j2", ".md"}
 )
 

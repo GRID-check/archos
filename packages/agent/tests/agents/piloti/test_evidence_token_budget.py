@@ -23,7 +23,7 @@ from pydantic import create_model
 from aiq_agent.tools.documents.draft_store import DraftBackend
 from aiq_agent.tools.documents.tools import filesystem_tools
 
-PROMPT = Path(__file__).resolve().parents[4] / "src/aiq_agent/agents/piloti/prompts/piloti_static.md"
+PROMPT = Path(__file__).resolve().parents[5] / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md"
 
 #: The slice-6 counts in characters / 4 (1,719 and 1,144 when written; o200k 1,712 and 1,399), plus about
 #: 10 % slack. Descriptions: the eight evidence tools of the chat binding; schemas: their JSON Schemas
@@ -31,7 +31,7 @@ PROMPT = Path(__file__).resolve().parents[4] / "src/aiq_agent/agents/piloti/prom
 MAX_DESCRIPTION_TOKENS = 1_890
 MAX_SCHEMA_TOKENS = 1_260
 #: The shared tools' NAT schemas, as ``scripts/generate_backend_tools_schema.py`` exports them.
-NAT_SCHEMAS = Path(__file__).resolve().parents[4] / "frontends/ui/tests/fixtures/backend-tools.schema.json"
+NAT_SCHEMAS = Path(__file__).resolve().parents[5] / "frontends/ui/tests/fixtures/backend-tools.schema.json"
 _TYPES = {"string": str, "integer": int, "boolean": bool, "object": dict}
 #: The evidence bullets of `<rules>`: 175 (chars / 4) after slice 6, 191 before.
 MAX_EVIDENCE_BULLET_TOKENS = 185

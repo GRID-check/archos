@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-CONFIG = Path(__file__).resolve().parents[2] / "configs" / "config_oib_openrouter.yml"
+CONFIG = Path(__file__).resolve().parents[3] / "configs" / "config_oib_openrouter.yml"
 
 
 @pytest.fixture(scope="module")

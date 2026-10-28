@@ -9,7 +9,7 @@ Migrations 0159-0162 rewrote every row. What still arrives with the old names fo
 one release is data an older pod wrote while the deploy rolled: a prompt view, a
 request-context envelope a long-running job still carries, a stored norm
 registry. Everything that reads such data calls this module on the way in;
-nothing writes an old name again. ``tests/aiq_agent/common/test_profile_names.py``
+nothing writes an old name again. ``packages/agent/tests/common/test_profile_names.py``
 holds the tables to ``legacy-names.json``, which the TypeScript side and the
 migrations are generated from. When the last such data has drained, delete this
 module, the JSON, the TypeScript twin and their specs.

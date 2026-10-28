@@ -1,6 +1,6 @@
 """The two boundaries ADR-0100 draws around PostHog, held by something other than review.
 
-1. **One client per runtime.** ``src/aiq_agent/observability/posthog_client.py``
+1. **One client per runtime.** ``packages/agent/src/aiq_agent/observability/posthog_client.py``
    is the only Python module that imports the ``posthog`` SDK, and
    ``frontends/ui/src/lib/analytics/posthog-server.ts`` the only BFF module that
    imports ``posthog-node``. ``posthog-js`` is reached only through
@@ -39,7 +39,7 @@ PYTHON_ROOTS = (
 TS_ROOTS = ("frontends/ui/src", "frontends/ui/workers", "frontends/ui/purger", "frontends/ui/scheduler")
 TS_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".cjs"}
 
-PYTHON_CLIENT = "src/aiq_agent/observability/posthog_client.py"
+PYTHON_CLIENT = "packages/agent/src/aiq_agent/observability/posthog_client.py"
 BROWSER_CLIENT = "frontends/ui/src/lib/analytics/posthog.ts"
 SERVER_CLIENT = "frontends/ui/src/lib/analytics/posthog-server.ts"
 REQUEST_ERRORS = "frontends/ui/src/lib/analytics/request-error.ts"

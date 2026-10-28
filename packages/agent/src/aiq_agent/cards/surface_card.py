@@ -48,7 +48,7 @@ def _basic_catalog() -> Any:
 #: inside a surface does not have. A surface inside a surface is a Column.
 #: Derived from the catalog's sets, so a new member of any of them is excluded
 #: here without a second edit; the frontend's copy is held to this one by
-#: `tests/aiq_agent/cards/test_surface_excluded_parity.py`.
+#: `packages/agent/tests/cards/test_surface_excluded_parity.py`.
 SURFACE_EXCLUDED_LEAVES: frozenset[str] = SYSTEM_CARD_TYPES | INTERACTIVE_CARD_TYPES | frozenset({"surface"})
 
 

@@ -380,7 +380,7 @@ the quote states the value, as ADR-0096 does.
 | 2 Needs and derivation | `lib/project-intake/needs.ts`, `derivations.ts` (+specs) |
 | 3 BFF service and routes | `lib/project-intake/{repository,service,run,client}.ts`, the four routes, outcome fallback, settle hook and BFF job, inbox type, `submitBackgroundRun` in `lib/jobs/service.ts` |
 | 4 Worker hosting | `aiq_api/registry.py`, `aiq_api/jobs/runner.py` |
-| 5 The agent | `src/aiq_agent/agents/intake/`, `pyproject.toml` entry point, `configs/config_oib_openrouter.yml`, `project_context.TOOL_CONTEXT_REQUIREMENTS` |
+| 5 The agent | `packages/agent/src/aiq_agent/agents/intake/`, `pyproject.toml` entry point, `configs/config_oib_openrouter.yml`, `project_context.TOOL_CONTEXT_REQUIREMENTS` |
 | 6 Create flow and UI | `lib/projects/service.ts`, `app/api/projects/route.ts`, `projects/actions.ts`, `create-project-form.tsx`, `app/app/(shell)/projects/[id]/setup/`, `features/project-intake/`, `/dev/project-setup`, i18n |
 | 7 Docs | ADR-0111, this doc, `where-is-what.md`, `CONTEXT.md`, `langfuse.md`, `python-endpoints.md`, `frontends/ui/AGENTS.md` |
 

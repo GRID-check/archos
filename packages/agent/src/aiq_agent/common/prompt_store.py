@@ -214,7 +214,7 @@ def build_langfuse_client() -> PromptFetcher | None:
     ``tracing_enabled=False`` is the load-bearing argument: it is what keeps the
     SDK from registering a global tracer provider or hanging its own span
     processor on ours. See the module docstring, and
-    ``tests/aiq_agent/common/test_prompt_store.py`` for the assertion.
+    ``packages/agent/tests/common/test_prompt_store.py`` for the assertion.
     """
     public_key = os.environ.get(PUBLIC_KEY_ENV, "").strip()
     secret_key = os.environ.get(SECRET_KEY_ENV, "").strip()

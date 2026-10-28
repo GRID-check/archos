@@ -19,7 +19,7 @@ from aiq_agent.common.backend_tools import BACKEND_READ_TOOLS
 from aiq_agent.tools.canvas.register import DESCRIPTIONS
 from aiq_agent.tools.look.register import DESCRIPTION
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[5]
 RETIRED = re.compile(r"view_knowledge_image|canvas__look|knowledge-image-view")
 
 #: Files an agent reads, whole: what is bound, what it is told, and what the door offers.
@@ -28,7 +28,7 @@ AGENT_FACING = [
     ROOT / "frontends" / "ui" / "src" / "lib" / "agent-api" / "backend-operations.ts",
     ROOT / "frontends" / "ui" / "src" / "lib" / "agent-api" / "exposure.config.ts",
     ROOT / "frontends" / "ui" / "tests" / "fixtures" / "exposure.json",
-    *sorted((ROOT / "src" / "aiq_agent" / "agents").glob("*/prompts/**/*.*")),
+    *sorted((ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents").glob("*/prompts/**/*.*")),
 ]
 
 EXECUTED_STEPS = ROOT / "frontends" / "ui" / "src" / "features" / "chat" / "lib" / "executed-steps.ts"

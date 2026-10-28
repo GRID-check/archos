@@ -1,7 +1,7 @@
 """The ``canvas_activity`` card: what Piloti did on a document, as the BFF confirmed it.
 
 Its shape is checked here; how the canvas tools fill and extend it is checked in
-``tests/aiq_agent/tools/canvas``. Built the way ``tools/canvas/cards.py`` builds it.
+``packages/agent/tests/tools/canvas``. Built the way ``tools/canvas/cards.py`` builds it.
 """
 
 from __future__ import annotations

@@ -15,13 +15,13 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
-SEAM = Path("src/aiq_agent/common/bff_http.py")
+ROOT = Path(__file__).resolve().parents[4]
+SEAM = Path("packages/agent/src/aiq_agent/common/bff_http.py")
 
 #: Where the agent tier calls the BFF from. ``knowledge_layer`` is its own
 #: package, imported by the ingest worker, and must not depend on ``aiq_agent``;
 #: ``aiq_api`` is the API host, whose ``internal_api.py`` persists messages.
-TREES = ("src/aiq_agent", "packages/knowledge-layer/src", "apps/backend/src")
+TREES = ("packages/agent/src/aiq_agent", "packages/knowledge-layer/src", "apps/backend/src")
 
 PATTERNS = {
     # A private redirect guard: the seam's opener is the one that refuses redirects.
@@ -32,7 +32,7 @@ PATTERNS = {
     # this one is held only in the agent package.
     "token_header": re.compile(r"x-grid-internal-token", re.IGNORECASE),
 }
-TOKEN_HEADER_TREES = ("src/aiq_agent",)
+TOKEN_HEADER_TREES = ("packages/agent/src/aiq_agent",)
 
 #: Each remaining copy, by pattern, with its count today. Why each is not ported:
 #: - httpx callers (skills resolver, model overrides, LLM credentials, platform
@@ -46,14 +46,14 @@ TOKEN_HEADER_TREES = ("src/aiq_agent",)
 #:   persisting rather than guessing a host).
 ALLOWED: dict[str, dict[str, int]] = {
     "base_url": {
-        "src/aiq_agent/skills/resolver.py": 1,
-        "src/aiq_agent/common/model_overrides.py": 1,
-        "src/aiq_agent/common/llm_credentials.py": 2,
-        "src/aiq_agent/common/platform_lessons.py": 1,
-        "src/aiq_agent/common/retrieval_settings.py": 1,
-        "src/aiq_agent/common/reasoning_settings.py": 1,
-        "src/aiq_agent/corpus_store.py": 4,
-        "src/aiq_agent/knowledge/permit_records_client.py": 3,
+        "packages/agent/src/aiq_agent/skills/resolver.py": 1,
+        "packages/agent/src/aiq_agent/common/model_overrides.py": 1,
+        "packages/agent/src/aiq_agent/common/llm_credentials.py": 2,
+        "packages/agent/src/aiq_agent/common/platform_lessons.py": 1,
+        "packages/agent/src/aiq_agent/common/retrieval_settings.py": 1,
+        "packages/agent/src/aiq_agent/common/reasoning_settings.py": 1,
+        "packages/agent/src/aiq_agent/corpus_store.py": 4,
+        "packages/agent/src/aiq_agent/knowledge/permit_records_client.py": 3,
         "packages/knowledge-layer/src/llamaindex/image_store.py": 3,
         "packages/knowledge-layer/src/llamaindex/document_presence.py": 3,
         "packages/knowledge-layer/src/llamaindex/page_text_store.py": 3,
@@ -61,14 +61,14 @@ ALLOWED: dict[str, dict[str, int]] = {
         "apps/backend/src/aiq_api/internal_api.py": 2,
     },
     "token_header": {
-        "src/aiq_agent/skills/resolver.py": 1,
-        "src/aiq_agent/common/model_overrides.py": 1,
-        "src/aiq_agent/common/llm_credentials.py": 2,
-        "src/aiq_agent/common/platform_lessons.py": 1,
-        "src/aiq_agent/common/retrieval_settings.py": 1,
-        "src/aiq_agent/common/reasoning_settings.py": 1,
-        "src/aiq_agent/corpus_store.py": 1,
-        "src/aiq_agent/knowledge/permit_records_client.py": 1,
+        "packages/agent/src/aiq_agent/skills/resolver.py": 1,
+        "packages/agent/src/aiq_agent/common/model_overrides.py": 1,
+        "packages/agent/src/aiq_agent/common/llm_credentials.py": 2,
+        "packages/agent/src/aiq_agent/common/platform_lessons.py": 1,
+        "packages/agent/src/aiq_agent/common/retrieval_settings.py": 1,
+        "packages/agent/src/aiq_agent/common/reasoning_settings.py": 1,
+        "packages/agent/src/aiq_agent/corpus_store.py": 1,
+        "packages/agent/src/aiq_agent/knowledge/permit_records_client.py": 1,
     },
     "redirect_guard": {},
 }

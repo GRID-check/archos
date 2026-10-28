@@ -29,7 +29,7 @@ A lift on the deterministic side is therefore a claim, not a pass. It has to
 beat 0.933, and it has to answer six sibling questions differently.
 
 ``oib_retrieval`` is installed into the dev environment by ``uv sync`` (the
-root pyproject's dev group). ``aiq_agent`` resolves via ``PYTHONPATH=src`` (set by ``Taskfile.yml`` — never
+root pyproject's dev group). ``aiq_agent`` resolves via ``PYTHONPATH=packages/agent/src`` (set by ``Taskfile.yml`` — never
 invoke pytest here without it, or the assertions below validate whatever the
 venv installed instead of this worktree).
 """
@@ -195,7 +195,7 @@ def test_the_broad_overview_query_reaches_neither_deterministic_channel(index):
     that carries the intent is corpus-identity vocabulary. The sparse
     survivors die at ``german_text``'s DF ceiling; the exact term ``OIB`` that
     casefolding extracts (pinned in
-    ``tests/aiq_agent/common/test_legal_terms.py::TestCaseInsensitiveIdentifiers``)
+    ``packages/agent/tests/common/test_legal_terms.py::TestCaseInsensitiveIdentifiers``)
     dies at the same ceiling in ``hybrid.selective_terms``, because on this
     corpus it filters nothing.
 

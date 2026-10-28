@@ -26,9 +26,9 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 SCANNED = [
-    ROOT / "src",
+    ROOT / "packages" / "agent" / "src",
     ROOT / "packages" / "knowledge-layer",
     ROOT / "packages" / "ris-adapter",
     ROOT / "packages" / "tavily-web-search",
@@ -39,7 +39,7 @@ SCANNED = [
 #: Constructing a model client by hand. Allowed only where the seam builds one.
 RAW_CLIENT = re.compile(r"\b(?:Async)?OpenAI\(|\bNVIDIAEmbedding\(")
 RAW_CLIENT_HOMES = {
-    "src/aiq_agent/common/openrouter.py",  # openai_client
+    "packages/agent/src/aiq_agent/common/openrouter.py",  # openai_client
     "packages/knowledge-layer/src/llamaindex/embedding.py",  # make_embed_model
 }
 
@@ -77,7 +77,7 @@ def test_the_scan_sees_the_known_call_sites():
     scanned = {_rel(p) for p in _python_files()}
     assert "apps/backend/src/aiq_api/routes/generate_summary.py" in scanned
     assert "packages/knowledge-layer/src/cross_encoder.py" in scanned
-    assert "src/aiq_agent/common/decisions.py" in scanned
+    assert "packages/agent/src/aiq_agent/common/decisions.py" in scanned
 
 
 @pytest.mark.parametrize("path", _python_files(), ids=_rel)

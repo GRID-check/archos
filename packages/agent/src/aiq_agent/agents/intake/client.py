@@ -9,7 +9,7 @@ it is done (``finish``); the BFF decides what a value becomes
 the profile (ADR-0003). The body is ``internalIntakeRequestSchema`` in
 ``frontends/ui/src/lib/project-intake/types.ts``, exported as
 ``frontends/ui/tests/fixtures/project-intake.schema.json``;
-``tests/aiq_agent/agents/intake/test_client.py`` validates the bodies built here
+``packages/agent/tests/agents/intake/test_client.py`` validates the bodies built here
 against that file. There is no Pydantic twin.
 
 ## Echo, never sign
@@ -18,7 +18,7 @@ The run carries the envelope the BFF signed for the person whose upload or
 click started it (ADR-0108), injected by the worker at claim. It goes out
 byte-for-byte beside the service token; the project is the envelope's, so no
 body names one. A run without an envelope acts as nobody and gets a refusal,
-never a fallback to the unsigned headers (``src/aiq_agent/tools/AGENTS.md``).
+never a fallback to the unsigned headers (``packages/agent/src/aiq_agent/tools/AGENTS.md``).
 
 ## Never raises
 

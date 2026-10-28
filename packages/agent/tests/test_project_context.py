@@ -9,7 +9,7 @@ import pytest
 from aiq_agent import project_context as pc
 
 FIXTURE_PATH = (
-    Path(__file__).resolve().parents[2] / "frontends" / "ui" / "tests" / "fixtures" / "grid_request_context.json"
+    Path(__file__).resolve().parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "grid_request_context.json"
 )
 
 # Camel-case JSON fixture field name -> GridRequestContext attribute name.

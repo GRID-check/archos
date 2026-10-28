@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from aiq_agent.common import norm_registry as nr
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _entry(entry_id: str, **overrides) -> dict:

@@ -40,7 +40,7 @@ Detached work with no request (an ingest job) enters its organization's
 policy with :func:`data_policy_scope`; code that reads it with
 :func:`scoped_data_policy` and finds no scope pins.
 
-``tests/aiq_agent/common/test_openrouter_call_sites.py`` fails when a module
+``packages/agent/tests/common/test_openrouter_call_sites.py`` fails when a module
 talks to OpenRouter without going through one of them.
 
 The organization's policy FAILS CLOSED: when it cannot be read, the request is

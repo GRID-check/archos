@@ -1,6 +1,6 @@
 """Tests for the per-turn agent execution profiler.
 
-Mirrors tests/aiq_agent/common/test_cost_tracking.py's structure: unit tests
+Mirrors packages/agent/tests/common/test_cost_tracking.py's structure: unit tests
 on the callback handler directly (no live LangChain run needed), plus the
 context-manager activation contract.
 """

@@ -10,7 +10,7 @@ Known gaps in what is already built are tracked in
 Two halves of this product have never actually touched.
 
 One half knows the rules: the OIB corpus, the applicability engine
-(`src/aiq_agent/common/applicability.py` — which Richtlinien apply to *this*
+(`packages/agent/src/aiq_agent/common/applicability.py` — which Richtlinien apply to *this*
 project, from its facts), the retrieval that answers "was verlangt OIB 4 für
 Treppen".
 

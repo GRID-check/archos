@@ -13,8 +13,8 @@ The fixture is a GOLDEN FILE, not a claim about any past version. A deliberate
 prompt edit changes it, and the diff is what review reads; an accidental one
 fails a test instead of shipping. Regenerate with:
 
-    PYTHONPATH=src .venv/bin/python -c "
-    import runpy; runpy.run_path('tests/aiq_agent/agents/piloti/test_static_prompt_split.py')['regenerate']()"
+    PYTHONPATH=packages/agent/src .venv/bin/python -c "
+    import runpy; runpy.run_path('packages/agent/tests/agents/piloti/test_static_prompt_split.py')['regenerate']()"
 """
 
 from __future__ import annotations
@@ -393,7 +393,7 @@ class TestTheRoundCostIsStatedAsAFact:
         """The model cannot see its budget, so the prompt states it: a number that drifts from the config lies."""
         import re
 
-        config = (Path(__file__).resolve().parents[4] / "configs" / "config_oib_openrouter.yml").read_text(
+        config = (Path(__file__).resolve().parents[5] / "configs" / "config_oib_openrouter.yml").read_text(
             encoding="utf-8"
         )
         configured = re.search(r"^\s*max_tool_iterations:\s*(\d+)", config, re.MULTILINE)

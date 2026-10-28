@@ -628,7 +628,7 @@ class GridRequestContext:
         ``frontends/ui/tests/fixtures/grid_request_context.json`` carries
         ``{name, input, headers}`` cases; the TS side asserts
         ``buildGridRequestContextHeaders(input) == headers`` and the Python
-        side (``tests/aiq_agent/test_project_context.py``) asserts
+        side (``packages/agent/tests/test_project_context.py``) asserts
         ``GridRequestContext.from_headers(headers)`` matches ``input``. A
         producer that forgets a header, or that encodes one differently,
         fails this fixture instead of silently degrading in production.

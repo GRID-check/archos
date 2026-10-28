@@ -34,7 +34,7 @@ from aiq_agent.common.content_screen import findings_summary
 from aiq_agent.common.content_screen import fold
 from aiq_agent.common.content_screen import mask_text
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[4]
 FIXTURE_PATH = REPO / "tests" / "fixtures" / "content_screen_cases.json"
 
 _IBAN_AT = "AT61 1904 3002 3457 3201"

@@ -40,7 +40,7 @@ from aiq_agent.common.wire_v2 import SourcesStep
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
 
-FIXTURE_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "citation_pipeline"
+FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "citation_pipeline"
 
 
 def _hit(**overrides) -> GroundingHit:
@@ -304,7 +304,7 @@ class TestTheCoverageGap:
         rendered = render_grounding_block(self._block(coverage_gap="kein Beleg"))
         assert "„Nicht geregelt“" in rendered and "what you searched" in rendered
         prompt = (
-            Path(__file__).resolve().parents[3] / "src" / "aiq_agent" / "agents" / "piloti" / "prompts"
+            Path(__file__).resolve().parents[4] / "packages" / "agent" / "src" / "aiq_agent" / "agents" / "piloti" / "prompts"
         ) / "piloti_static.md"
         assert "Coverage: insufficient" not in prompt.read_text(encoding="utf-8")
         assert "Abdeckung: unzureichend" not in prompt.read_text(encoding="utf-8")

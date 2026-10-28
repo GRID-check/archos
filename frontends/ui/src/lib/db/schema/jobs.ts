@@ -35,7 +35,7 @@ import type { SkillSnapshot } from '@/lib/skills/types'
  * copy of the snapshot, so run history stays self-describing.
  *
  * Platform-authored skills are NOT rows here: they ship as files under
- * `src/aiq_agent/skills/builtin/<collection>/` and arrive via the generated
+ * `packages/agent/src/aiq_agent/skills/builtin/<collection>/` and arrive via the generated
  * `@/lib/skills/platform-skills` module. The `skills` table holds org-authored
  * (and cloned) skills only.
  */

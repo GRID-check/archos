@@ -60,7 +60,7 @@ class DocumentGridCard(CardModel):
 #: parse-independently rule the request-context headers follow, since the
 #: contract crosses a language boundary and the JSON Schema at
 #: ``frontends/ui/tests/fixtures/document-lifecycle.schema.json`` is what pins
-#: the two together (``tests/aiq_agent/tools/documents/test_wire_contract.py``).
+#: the two together (``packages/agent/tests/tools/documents/test_wire_contract.py``).
 DocumentVersionState = Literal[
     "draft",
     "in_review",

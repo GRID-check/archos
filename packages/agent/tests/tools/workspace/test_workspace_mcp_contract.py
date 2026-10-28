@@ -34,7 +34,7 @@ from aiq_agent.common import bff_http
 from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.tools.workspace import client
 
-REPO = Path(__file__).resolve().parents[4]
+REPO = Path(__file__).resolve().parents[5]
 FIXTURES = REPO / "frontends" / "ui" / "tests" / "fixtures"
 REQUESTS_PATH = FIXTURES / "workspace_mcp_requests.json"
 RESPONSES_PATH = FIXTURES / "workspace_mcp_responses.json"
@@ -144,7 +144,7 @@ def _built_requests(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 def _document(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     return {
         "comment": (
-            "Written by tests/aiq_agent/tools/workspace/test_workspace_mcp_contract.py from the real request "
+            "Written by packages/agent/tests/tools/workspace/test_workspace_mcp_contract.py from the real request "
             "builder of aiq_agent/tools/workspace/client.py; replayed by "
             "frontends/ui/src/app/api/mcp/workspace-contract.spec.ts against the real route. "
             "Regenerate with UPDATE_FIXTURES=1. The spec signs envelopePayload (with a current issuedAt) and "

@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-# Builtin skills live in the shared substrate layout (src/aiq_agent/skills/builtin):
+# Builtin skills live in the shared substrate layout (packages/agent/src/aiq_agent/skills/builtin):
 # collection = mid-level dir name, skill = leaf dir name. Only the collections
 # NAMED in `deep_research_skills.agents` are offered to a subagent, each as its
 # own source `/skills/<collection>/` on the run's skills backend (ADR-0135).

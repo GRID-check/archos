@@ -20,7 +20,7 @@ from aiq_agent.observability.langfuse_scores import score_id
 from aiq_agent.observability.langfuse_scores import thread_reply_scores
 from aiq_agent.observability.langfuse_scores import turn_outcome_scores
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[4]
 TRACE = "0" * 31 + "1"
 
 

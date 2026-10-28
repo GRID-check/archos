@@ -84,11 +84,11 @@ worktree, and validates the wrong code while appearing to pass. `pyproject.toml`
 `pythonpath` puts `src/` first, so a bare `pytest` is safe as well as the Taskfile.
 
 **The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
-Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
+Backend job.** `packages/agent/tests/common/test_claim_queue.py`,
 `tests/knowledge_layer_tests/test_ingest_queue.py` and
 `apps/backend/tests/test_research_queue_fair.py` run every scenario on
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
-SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
+SQL. The folder card builder's suites (`packages/agent/tests/knowledge/folder_cards/`:
 dirty queue, budget, manifests, worker) run on both too, through the
 `database_url` and `agent_db` fixtures in their `conftest.py`. Without `TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a

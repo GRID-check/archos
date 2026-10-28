@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 PARITY = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "surface-parity.json"
 #: Tools outside the canvas group that are the same capability family.
 STANDALONE_TOOLS = ("look", "show_in_viewer")
