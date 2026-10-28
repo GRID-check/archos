@@ -416,7 +416,7 @@ What this enables:
    (`docs/audit/upload-and-filing-retriage-2026-10-06.md` l. 228).
 5. **Counts.** `facet(project_id)` and `facet(project_facts.federal_state)` on the
    same filter give "6 von 8 Projekten in Mödling" without fetching passages.
-6. **A cheap catalog.** The `<referenzprojekte>` list (ADR-0094 l. 134) can be
+6. **A cheap catalog.** The `<reference_projects>` list (ADR-0094 l. 134) can be
    ranked by a `recommend` over project-level vectors (the mean of a project's
    document summaries in `office_documents`). Today it uses the fingerprint
    alone.

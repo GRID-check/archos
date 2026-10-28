@@ -2057,7 +2057,7 @@ Per-run `SkillRuntime` (ADR-0018 — never cached on the shared agent) owns the
 run's read-only `SkillsBackend` and records what was DELIVERED for
 `skills_activated` on the terminal frame. Standing instructions are prompt text instead: the platform
 prompt, and the office's own bounded block (`X-Grid-Org-Instructions`, rendered
-in the turn context as `## Anweisungen des Büros`).
+in the turn context as `## Office instructions`).
 
 The set per run = builtin (`src/aiq_agent/skills/builtin/`, discovered
 deterministically, validated strictly) + org rows from the BFF internal
