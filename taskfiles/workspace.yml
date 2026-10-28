@@ -41,7 +41,7 @@ tasks:
     dir: '{{.UI}}'
     cmds:
       # `bun check`: TypeScript 7's checker, built into the pinned Bun (ADR-0103).
-      # Extra arguments reach it, so `-- src/lib/foo.ts` checks one file and its
+      # Extra arguments reach it, so `-- bff/foo.ts` checks one file and its
       # imports. No `.tsbuildinfo`: every run checks the whole project, in seconds.
       - bun run type-check {{.CLI_ARGS}}
 
@@ -78,7 +78,7 @@ tasks:
       documents, three organizations) as the runtime role under RLS. Prints
       p50/p95 per query; a measurement, not a gate. Needs PostgreSQL server binaries.
     cmds:
-      - SEARCH_LATENCY=1 bash scripts/rls-test-db.sh --only src/lib/search/search-latency.integration.spec.ts
+      - SEARCH_LATENCY=1 bash scripts/rls-test-db.sh --only bff/search/search-latency.integration.spec.ts
 
   workspace:test:shard:
     desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/8 task workspace:test:shard)'
@@ -130,7 +130,7 @@ tasks:
       # what is left. No coverage: a selection's coverage is a fraction of the
       # app, and a comment built from it would mislead. The full run on the
       # push to develop carries it. Each path is quoted: a Next route group
-      # (`src/app/app/(shell)/…`) is a syntax error to the shell unquoted.
+      # (`app/app/(shell)/…`) is a syntax error to the shell unquoted.
       - TZ=UTC bunx vitest related --run {{range splitList " " .FILES}}{{shellQuote .}} {{end}}--shard={{.SHARD}} --passWithNoTests --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}}
 
   workspace:test:merge:
