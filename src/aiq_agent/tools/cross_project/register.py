@@ -739,7 +739,7 @@ def _render_search(
         preamble.append(_CLOSED_DOORS)
     if not hits:
         return "\n".join([*preamble, "Keine passenden Dokumente, Entscheidungen oder Bescheide in diesen Projekten."])
-    from knowledge_layer.register import _trace_lanes_for_hits
+    from knowledge_layer.trace_lanes import trace_lanes_for_hits
 
     # Handed out by the BFF, which recorded every one before it answered: what
     # the admission lets through for this turn, and what shuts its doors.
@@ -753,7 +753,7 @@ def _render_search(
             preamble="\n".join(preamble),
             degraded_banner="",
             hits=hits,
-            lanes=_trace_lanes_for_hits(list(hits)),
+            lanes=trace_lanes_for_hits(list(hits)),
             tool=PROJECT_LOOKUP_TOOL,
         )
     )
@@ -872,7 +872,7 @@ def _render_brief(body: dict[str, Any]) -> str:
     if not (summary or facts) or not project.get("collection"):
         # Nothing recorded is nothing to cite: the line stands as the answer.
         return "\n".join([preamble[0], content, *preamble[1:]])
-    from knowledge_layer.register import _trace_lanes_for_hits
+    from knowledge_layer.trace_lanes import trace_lanes_for_hits
 
     hit = _brief_hit(project, content)
     return render_grounding_block(
@@ -880,7 +880,7 @@ def _render_brief(body: dict[str, Any]) -> str:
             preamble="\n".join(preamble),
             degraded_banner="",
             hits=(hit,),
-            lanes=_trace_lanes_for_hits([hit]),
+            lanes=trace_lanes_for_hits([hit]),
             tool=PROJECT_LOOKUP_TOOL,
         )
     )

@@ -1,6 +1,7 @@
 /** Shared strings used across many surfaces. */
 export const common = {
-  appName: 'Piloti',
+  /** The product's name, from `PRODUCT_NAME` (`lib/brand.ts`): every other string says `{productName}`. */
+  productName: '{productName}',
   tagline: 'Workspace for planning offices',
   actions: {
     save: 'Save',

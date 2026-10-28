@@ -98,7 +98,7 @@ export const dossier = {
   findings: {
     title: 'Findings from the documents',
     count: '{count, plural, one {1 finding} other {# findings}}',
-    hint: 'Pointers from what Piloti read, not verdicts. Check them in the documents.',
+    hint: 'Pointers from what {productName} read, not verdicts. Check them in the documents.',
     contradiction: '{fact}: the documents state different values',
     missingDocument: '{label} is referred to, but the project holds no such document',
     missingPlan: 'Drawing number {label} is referred to, but no document matches it',

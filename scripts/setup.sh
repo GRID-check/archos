@@ -49,7 +49,7 @@ echo "Core framework installed"
 # Install the backend host (--no-deps: dependencies already resolved by uv sync)
 echo ""
 echo "Installing the backend host..."
-"${UV_BIN}" pip install -e ./frontends/aiq_api
+"${UV_BIN}" pip install -e ./apps/backend
 echo "Backend host installed"
 
 # Install data sources

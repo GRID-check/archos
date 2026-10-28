@@ -16,7 +16,7 @@ export const tasks: typeof en.tasks = {
   },
   create: {
     delegate: 'Delegieren',
-    delegateHint: 'Übergeben wird im Chat: Bitten Sie Piloti, etwas zu übernehmen.',
+    delegateHint: 'Übergeben wird im Chat: Bitten Sie {productName}, etwas zu übernehmen.',
     /** Die eine Erstell-Geste: eine Aufgabe, deren Assistent das WANN als einen seiner Schritte fragt. */
     task: 'Neue Aufgabe',
   },
@@ -97,7 +97,7 @@ export const tasks: typeof en.tasks = {
   list: {
     emptyTitle: 'Noch nichts übergeben',
     emptyDescription:
-      'Bitten Sie Piloti im Chat, etwas zu übernehmen, oder schicken Sie einen Entwurf zur Überarbeitung zurück — dann steht es hier.',
+      'Bitten Sie {productName} im Chat, etwas zu übernehmen, oder schicken Sie einen Entwurf zur Überarbeitung zurück — dann steht es hier.',
     emptyFiltered: {
       active: 'Gerade läuft nichts',
       unreviewed: 'Alles Fertige ist geprüft',

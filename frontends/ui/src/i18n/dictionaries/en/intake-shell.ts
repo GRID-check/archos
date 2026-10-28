@@ -6,7 +6,7 @@ export const intakeShell = {
   head: {
     eyebrow: 'Setup',
     later: 'Continue later',
-    laterAria: 'Leave the setup for the project overview. Piloti keeps reading, and the setup waits there.',
+    laterAria: 'Leave the setup for the project overview. {productName} keeps reading, and the setup waits there.',
     stepMenu: 'Step {current} of {total}: {step}. Choose another step',
   },
   steps: {
@@ -31,7 +31,7 @@ export const intakeShell = {
     done: 'finished',
   },
   overview: {
-    reading: 'Piloti is still reading',
+    reading: '{productName} is still reading',
     questions: '{count, plural, one {# question open} other {# questions open}}',
     contradictions: '{count, plural, one {# contradiction open} other {# contradictions open}}',
     review: 'Profile to check',

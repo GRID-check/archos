@@ -37,7 +37,7 @@ export const intakeProfileStep = {
     open: 'Gebäudeklasse still open',
     highRiseReason: 'Escape level above 22 m: no Gebäudeklasse, OIB-RL 2.3 applies.',
     missing: 'Still missing: {inputs}.',
-    none: 'Piloti works it out once the storeys, the escape level and the units are known.',
+    none: '{productName} works it out once the storeys, the escape level and the units are known.',
     answer: 'Answer the questions',
     confirmed: 'Confirmed',
     how: 'How was it worked out?',
@@ -72,7 +72,7 @@ export const intakeProfileStep = {
     basis: '{count, plural, one {Worked out from # confirmed value.} other {Worked out from # confirmed values.}}',
     disclaimer: 'Not legal advice.',
     source: 'Open the Richtlinie',
-    ask: 'Ask Piloti',
+    ask: 'Ask {productName}',
     short: {
       oib1: 'Structure',
       oib2: 'Fire safety',
@@ -109,7 +109,7 @@ export const intakeProfileStep = {
   },
   /** One table of what Piloti found: the decisive rows up front, the rest by topic. */
   findings: {
-    heading: 'What Piloti found',
+    heading: 'What {productName} found',
     description: 'Every value with the place it stands. Change only what is wrong; you take the rest in one step at the end.',
     counts: '{total, plural, one {# value} other {# values}} · {confirmed} by you',
     columns: {
@@ -129,8 +129,8 @@ export const intakeProfileStep = {
     showLess: 'Show fewer',
     editor: 'Edit in the briefing editor',
     editorAria: 'Open the briefing editor for this project',
-    empty: 'Piloti has not found any values yet. They appear here once the reading has read documents.',
-    reading: 'Piloti is still reading. More values will be added.',
+    empty: '{productName} has not found any values yet. They appear here once the reading has read documents.',
+    reading: '{productName} is still reading. More values will be added.',
     building: 'Building {number}',
   },
   /** A value's source on its row, and the peek with the page excerpt. */
@@ -155,7 +155,7 @@ export const intakeProfileStep = {
     button: 'Finish setup',
     note: 'You can change any value later in the project settings.',
     takeAll: 'Take everything and finish',
-    noteTakeAll: 'What you did not change, Piloti takes as it is, with its source. Everything stays changeable later.',
+    noteTakeAll: 'What you did not change, {productName} takes as it is, with its source. Everything stays changeable later.',
     closingTitle: 'Finish setup and close the project?',
     closingDescription: 'The project is closed with it: outcome “{outcome}”, period {period}.',
     confirm: 'Finish and close',

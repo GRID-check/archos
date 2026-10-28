@@ -16,7 +16,7 @@ export const tasks = {
   create: {
     /** One-shot delegation happens in chat — this only links there. */
     delegate: 'Delegate',
-    delegateHint: 'Delegation happens in chat: ask Piloti to take something on.',
+    delegateHint: 'Delegation happens in chat: ask {productName} to take something on.',
     /** The one create gesture: a task, whose wizard asks WHEN as one of its steps. */
     task: 'New task',
   },
@@ -104,7 +104,7 @@ export const tasks = {
   list: {
     emptyTitle: 'Nothing delegated yet',
     emptyDescription:
-      'Ask Piloti to take something on in a chat, or send a draft back for revision — it turns up here.',
+      'Ask {productName} to take something on in a chat, or send a draft back for revision — it turns up here.',
     /** Nothing under a narrower filter, which is a different claim from nothing at all. */
     emptyFiltered: {
       active: 'Nothing is running right now',

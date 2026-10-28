@@ -51,7 +51,7 @@ deciding person's session, and the decision is one row every reader sees.
 | The decision score | `frontends/ui/src/lib/langfuse/decision-score.ts`, called from `frontends/ui/src/lib/proposals/service.ts` |
 | Decisions as Piloti reads them | `frontends/ui/src/lib/projects/proposal-decision-rows.ts` (the rows), `frontends/ui/src/lib/projects/proposal-decisions.ts` (the `PROPOSAL_DECISIONS` block) |
 | The receipt card | `frontends/ui/src/features/grid-cards/components/ProposalReceipt.tsx` (the frame), `ProposalReceipts.tsx` (the three bodies), `hooks/use-server-proposal.ts` (the hook) |
-| Piloti's filing suggestions: the trigger, the judgement, the gates, the row | `frontends/ui/src/lib/filing/` (`trigger.ts`, `service.ts`, `plan.ts`, `judge.ts`, `conventions.ts`); the model call `frontends/aiq_api/src/aiq_api/routes/filing_fit.py`; the row `frontends/ui/src/features/documents/components/filing-suggestion.tsx` |
+| Piloti's filing suggestions: the trigger, the judgement, the gates, the row | `frontends/ui/src/lib/filing/` (`trigger.ts`, `service.ts`, `plan.ts`, `judge.ts`, `conventions.ts`); the model call `apps/backend/src/aiq_api/routes/filing_fit.py`; the row `frontends/ui/src/features/documents/components/filing-suggestion.tsx` |
 
 ## The data
 

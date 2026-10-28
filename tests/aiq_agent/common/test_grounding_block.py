@@ -8,7 +8,7 @@ prompt.
 
 The two fixtures here are therefore not hand-written. They are the output the
 producers emitted BEFORE the renderer existed, captured from
-``knowledge_layer.register._format_results`` and
+``knowledge_layer.search_results.format_results`` and
 ``ris_adapter.lookup.render.format_passages`` and checked in. The tests rebuild
 the same hits as records and assert the renderer still produces those exact
 bytes, with every optional field present in one hit and absent in another.

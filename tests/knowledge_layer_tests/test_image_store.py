@@ -16,7 +16,7 @@ import pytest
 from knowledge_layer.llamaindex import adapter
 from knowledge_layer.llamaindex import image_store
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
-from knowledge_layer.register import _format_results
+from knowledge_layer.search_results import format_results
 from knowledge_layer_testing.qdrant import FakeEmbedder
 from knowledge_layer_testing.qdrant import capture_indexed_documents
 
@@ -317,7 +317,7 @@ def _hit(metadata: dict):
 
 
 def _format(chunks) -> str:
-    return _format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
+    return format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
 
 
 def test_hit_shows_the_image_line_only_when_a_raster_was_stored():

@@ -23,7 +23,7 @@ export const organization = {
     overview: {
       title: 'Overview',
       subtitle:
-        'Your organization at a glance — name, domains, members, and the Piloti settings that apply to everyone in it.',
+        'Your organization at a glance — name, domains, members, and the {productName} settings that apply to everyone in it.',
     },
     access: {
       title: 'People & access',
@@ -47,11 +47,11 @@ export const organization = {
     },
     screening: {
       title: 'Sensitive data',
-      subtitle: 'What your office wants no language model to see, and how Piloti recognizes it.',
+      subtitle: 'What your office wants no language model to see, and how {productName} recognizes it.',
     },
     quarantine: {
       title: 'Quarantine',
-      subtitle: 'Files the content check held back. While they wait here, Piloti shows them to no model. Whoever may review them allows or deletes them here.',
+      subtitle: 'Files the content check held back. While they wait here, {productName} shows them to no model. Whoever may review them allows or deletes them here.',
     },
     downloads: {
       title: 'Download log',
@@ -193,7 +193,7 @@ export const organization = {
   customRoles: {
     title: 'Custom roles',
     description:
-      'Roles your office builds itself, beside Piloti’s. A role bundles permissions under a name such as “Management”.',
+      'Roles your office builds itself, beside {productName}’s. A role bundles permissions under a name such as “Management”.',
     howTo:
       'You assign roles to people on the People tab, and they apply across the organization. Who may see a single project folder is set on the folder, under “Access…”, person by person.',
     oneRoleTitle: 'One role per person',
@@ -201,8 +201,8 @@ export const organization = {
       'Unless your organization has multiple roles per person switched on, everyone holds exactly one role. A custom role must then carry every permission its holders work with.',
     create: 'New role',
     customGroup: 'Your office’s roles',
-    environmentGroup: 'Piloti’s roles',
-    environmentHint: 'Provided by Piloti for every organization. They cannot be changed here.',
+    environmentGroup: '{productName}’s roles',
+    environmentHint: 'Provided by {productName} for every organization. They cannot be changed here.',
     emptyTitle: 'No custom roles yet',
     emptyDescription: 'Create a role such as “Management” to bundle permissions under one name.',
     permissionCount: '{count, plural, one {# permission} other {# permissions}}',
@@ -219,7 +219,7 @@ export const organization = {
       name: 'Name',
       namePlaceholder: 'e.g. Management',
       nameHint:
-        'Piloti derives the role’s identifier from its name when you create it. The identifier stays the same afterwards, even if you rename the role.',
+        '{productName} derives the role’s identifier from its name when you create it. The identifier stays the same afterwards, even if you rename the role.',
       nameRequired: 'Give the role a name.',
       description: 'Description (optional)',
       descriptionPlaceholder: 'Who holds this role, and what for',
@@ -251,7 +251,7 @@ export const organization = {
     /** One label and one line per organization permission, keyed by the slug after `org:` with `:` as `_`. */
     permission: {
       settings_manage: { name: 'Manage organization settings', hint: 'Name, language and defaults of the organization.' },
-      models_manage: { name: 'Manage AI models', hint: 'Which model each part of Piloti works with.' },
+      models_manage: { name: 'Manage AI models', hint: 'Which model each part of {productName} works with.' },
       budgets_manage: { name: 'Manage budgets', hint: 'Spending limits and usage of the whole organization.' },
       compliance_manage: { name: 'Manage compliance', hint: 'Legal holds and deletions.' },
       audit_view: { name: 'View the audit log', hint: 'The record of every privileged change.' },
@@ -292,16 +292,16 @@ export const organization = {
   },
   settings: {
     title: 'Organization settings',
-    description: 'Piloti-specific settings for your organization.',
+    description: '{productName}-specific settings for your organization.',
     displayName: 'Display name',
-    displayNameHint: 'Shown inside Piloti. Leave blank to use the WorkOS organization name.',
+    displayNameHint: 'Shown inside {productName}. Leave blank to use the WorkOS organization name.',
     displayNamePlaceholder: 'e.g. Acme Architektur GmbH',
     defaultLocale: 'Default language for new members',
     defaultLocaleHint: 'New members start in this language until they choose their own.',
     defaultLocaleUnset: 'Not set (the browser’s language)',
     chatEffort: 'Default effort for new chats',
     chatEffortHint:
-      'How long Piloti thinks in a new chat. Every member can change the effort in the chat itself; this is only where it starts.',
+      'How long {productName} thinks in a new chat. Every member can change the effort in the chat itself; this is only where it starts.',
     webSearch: 'Web search',
     webSearchHint:
       'Allow agents to search the public web. When off, web-search tools disappear from the picker and are blocked server-side for every member.',
@@ -319,11 +319,11 @@ export const organization = {
   instructions: {
     title: 'Instructions',
     description:
-      'What Piloti should keep in mind for your organization. Sent with every request.',
+      'What {productName} should keep in mind for your organization. Sent with every request.',
     label: 'Standing instructions',
     placeholder:
       'e.g. Lead with the verdict, then the reasoning. Assume Vienna when no Bundesland is named. Always append a list of deficiencies to a review.',
-    hint: 'Standing preferences on form, focus and workflow. They never override Piloti’s own rules and never supply a normative value — an OIB requirement comes from the guideline, never from this box.',
+    hint: 'Standing preferences on form, focus and workflow. They never override {productName}’s own rules and never supply a normative value — an OIB requirement comes from the guideline, never from this box.',
     remaining: '{used} of {max} characters',
     overCap: '{over} characters over. Shorten the text before saving.',
     save: 'Save instructions',
@@ -331,7 +331,7 @@ export const organization = {
     clear: 'Clear',
     clearConfirmTitle: 'Clear the instructions?',
     clearConfirmBody:
-      'Piloti will then follow no standing instructions for your organization. You cannot restore the text.',
+      '{productName} will then follow no standing instructions for your organization. You cannot restore the text.',
     saveError: 'Could not save the instructions. Please try again.',
     loadError: 'Could not load the instructions right now. Please refresh to try again.',
   },
@@ -410,9 +410,9 @@ export const organization = {
     zdrHintMore: 'Show more',
     zdrHintLess: 'Show less',
     zdrHint:
-      'On by default. Every request Piloti sends to an AI model through OpenRouter for your organization goes only to endpoints that store neither prompts nor responses: chat and research answers, clarifying questions, reading documents on upload (drawing captions, OCR, embeddings, summaries, classification), search reranking, conversation titles and summaries, consistency checks and skill reviews. If the setting cannot be read, requests are restricted anyway, and only models with such an endpoint can be chosen. EU-hosted endpoints are preferred where a model has one. Not covered: web search queries go to the web search provider (Tavily), which is not a model provider.',
+      'On by default. Every request {productName} sends to an AI model through OpenRouter for your organization goes only to endpoints that store neither prompts nor responses: chat and research answers, clarifying questions, reading documents on upload (drawing captions, OCR, embeddings, summaries, classification), search reranking, conversation titles and summaries, consistency checks and skill reviews. If the setting cannot be read, requests are restricted anyway, and only models with such an endpoint can be chosen. EU-hosted endpoints are preferred where a model has one. Not covered: web search queries go to the web search provider (Tavily), which is not a model provider.',
     zdrNotApplicable:
-      'Your organization’s own {provider} key is active, so requests go directly to that provider, not through OpenRouter. Retention for those requests is governed by your contract with {provider}; Piloti cannot enforce it. Your saved setting is kept and applies again once you switch back to the platform key or an OpenRouter key.',
+      'Your organization’s own {provider} key is active, so requests go directly to that provider, not through OpenRouter. Retention for those requests is governed by your contract with {provider}; {productName} cannot enforce it. Your saved setting is kept and applies again once you switch back to the platform key or an OpenRouter key.',
     zdrError: 'Could not change zero data retention. Try again.',
     zdrErrorForbidden:
       'You cannot change zero data retention: it needs the “Manage AI models” permission, and model configuration must be enabled for your organization.',
@@ -463,7 +463,7 @@ export const organization = {
       'Bring your own LLM provider key: research traffic is billed to your provider account and the key is envelope-encrypted per organization in WorkOS Vault. Keys are verified live before activation; rotation and revocation are audited.',
     loading: 'Loading credentials…',
     loadError: 'Could not load the LLM credentials.',
-    noCredential: 'No organization key connected — Piloti uses the platform key.',
+    noCredential: 'No organization key connected — {productName} uses the platform key.',
     storageVaultNote: 'New keys are stored encrypted in WorkOS Vault under your organization’s key context.',
     storageLocalNote: 'New keys are stored encrypted with this deployment’s local key.',
     activeBadge: 'Active',
@@ -472,9 +472,9 @@ export const organization = {
     modeByokHint:
       'Research traffic runs on your key and is billed to your provider account. The model picker lists your provider’s models.',
     modePlatformHint:
-      'Research traffic runs on the Piloti platform service. Your key stays stored securely and can be re-enabled anytime.',
+      'Research traffic runs on the {productName} platform service. Your key stays stored securely and can be re-enabled anytime.',
     modeByokSet: 'Switched to your own key — new conversations use it within a minute.',
-    modePlatformSet: 'Switched to the Piloti platform service — your key is kept but not used.',
+    modePlatformSet: 'Switched to the {productName} platform service — your key is kept but not used.',
     modeError: 'Could not change the provider mode.',
     keyLabel: 'Key',
     storageLabel: 'Storage',
@@ -532,7 +532,7 @@ export const organization = {
     /** The per-file upload limit, read-only; `size` is formatted with its unit. */
     maxFileSize: 'Largest file per upload',
     setByPlatform:
-      'Your storage quota and the largest file you can upload are set by Piloti. Contact support if you need more.',
+      'Your storage quota and the largest file you can upload are set by {productName}. Contact support if you need more.',
     loadError: 'Could not load storage usage.',
   },
   budgets: {
@@ -551,7 +551,7 @@ export const organization = {
     unitCredits: 'credits',
     unitTokens: 'tokens',
     ownKeyNote:
-      'Your organization runs on its own provider key. Usage is counted in tokens on your own bill, and Piloti charges no credits for it.',
+      'Your organization runs on its own provider key. Usage is counted in tokens on your own bill, and {productName} charges no credits for it.',
     overLimit: 'Budget exhausted — new requests are blocked',
     legendTitle: 'Usage by model',
     legendEmpty: 'No LLM usage recorded in this window yet.',
@@ -636,12 +636,12 @@ export const organization = {
   screening: {
     title: 'Screening list',
     description:
-      'Piloti checks every upload against these lists, and chat messages against the content terms and numbers. What matches goes to no model after that, until someone allows it.',
+      '{productName} checks every upload against these lists, and chat messages against the content terms and numbers. What matches goes to no model after that, until someone allows it.',
     enabled: 'Screen uploads and chat',
-    enabledHint: 'When off, Piloti checks nothing. Your lists stay saved.',
-    suggestedTitle: 'Piloti’s suggestion applies',
+    enabledHint: 'When off, {productName} checks nothing. Your lists stay saved.',
+    suggestedTitle: '{productName}’s suggestion applies',
     suggestedBody:
-      'Your office has not saved its own list yet. Until it does, Piloti checks with this one. Once you save, yours applies.',
+      'Your office has not saved its own list yet. Until it does, {productName} checks with this one. Once you save, yours applies.',
     namesTitle: 'Before upload: file and folder names',
     namesHint:
       'The browser checks names before it sends anything. A matching file is not sent unless the person uploading chooses “Upload anyway” for it.',
@@ -651,18 +651,18 @@ export const organization = {
     nameExceptionsHint: 'Words that contain a term but mean something else: “Berechnung” contains “Rechnung”.',
     contentTitle: 'After upload: content',
     contentHint:
-      'Piloti reads the text on its own server and checks it before any model sees it. Matches wait in quarantine until someone reviews them and allows or deletes them. The same terms and numbers apply to chat messages: before sending, Piloti shows what it found and sends the message to the answering model only masked. A dictated message is first heard by an external speech model, which transcribes it.',
+      '{productName} reads the text on its own server and checks it before any model sees it. Matches wait in quarantine until someone reviews them and allows or deletes them. The same terms and numbers apply to chat messages: before sending, {productName} shows what it found and sends the message to the answering model only masked. A dictated message is first heard by an external speech model, which transcribes it.',
     contentTerms: 'Content terms',
     contentTermsHint: 'Matches words that start with the term: “Honorar” finds “Honorarnote”.',
     detectors: 'Detect numbers',
-    detectorsHint: 'Piloti recomputes the check digit. A number that only looks right does not match.',
+    detectorsHint: '{productName} recomputes the check digit. A number that only looks right does not match.',
     detector: {
       iban: 'IBAN',
       at_svnr: 'Social security number (AT)',
       credit_card: 'Credit card number',
     },
     limits:
-      'The check sees words and numbers, not meaning. A fee agreement that contains none of your terms gets through. Piloti checks scanned pages and images without a text layer by name only.',
+      'The check sees words and numbers, not meaning. A fee agreement that contains none of your terms gets through. {productName} checks scanned pages and images without a text layer by name only.',
     termPlaceholder: 'Type a term',
     removeTerm: 'Remove “{term}”',
     emptyList: 'No terms',
@@ -690,13 +690,13 @@ export const organization = {
     release: 'Allow',
     releaseTitle: 'Allow “{name}”?',
     releaseDescription:
-      'Piloti then reads the file like any other upload: language models see its content, and search finds it. Your decision is logged under your name.',
+      '{productName} then reads the file like any other upload: language models see its content, and search finds it. Your decision is logged under your name.',
     released: '“{name}” is allowed and being read.',
     releaseError: 'Could not allow the file. Please try again.',
     changed: 'Someone already acted on this file. The list is up to date now.',
     delete: 'Delete',
     deleteTitle: 'Delete “{name}”?',
-    deleteDescription: 'The file is removed from Piloti. This cannot be undone.',
+    deleteDescription: 'The file is removed from {productName}. This cannot be undone.',
     deleted: '“{name}” was deleted.',
     deleteError: 'Could not delete the file. Please try again.',
     deleteErrorSession: 'Only people in that chat can delete a chat attachment.',
@@ -704,8 +704,8 @@ export const organization = {
   },
   /** What Piloti learned about the office's conventions, to confirm or decline (ADR-0129). */
   officeConventions: {
-    title: 'What Piloti has learned about the office',
-    description: 'Conventions Piloti counted from your projects. Confirm what is right, decline what is not: Piloti never uses a declined line, and always keeps a confirmed one.',
+    title: 'What {productName} has learned about the office',
+    description: 'Conventions {productName} counted from your projects. Confirm what is right, decline what is not: {productName} never uses a declined line, and always keeps a confirmed one.',
     confirm: 'Confirm',
     decline: 'Decline',
     undo: 'Take back',
@@ -713,8 +713,8 @@ export const organization = {
     declined: 'Declined',
     support: 'Seen in {projects} of {of} projects',
     supportWhenConfirmed: 'Confirmed by you; seen in {projects} of {of} projects when you confirmed it',
-    empty: 'Nothing learned yet. Piloti needs the same habit in at least three of your projects.',
-    off: 'Piloti does not learn the office’s conventions in this deployment yet.',
+    empty: 'Nothing learned yet. {productName} needs the same habit in at least three of your projects.',
+    off: '{productName} does not learn the office’s conventions in this deployment yet.',
     loadError: 'Could not load the conventions.',
     saveError: 'Could not save your decision. Please try again.',
     line: {

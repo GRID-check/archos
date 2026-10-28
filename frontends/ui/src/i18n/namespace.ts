@@ -10,6 +10,7 @@
  * `dictionaries/index.ts` is left for the checks that need every key at once.
  */
 
+import { withProductName } from '@/lib/brand'
 import type { Locale } from './config'
 import { createTranslator, type Translator } from './translate'
 
@@ -24,7 +25,8 @@ export function defineNamespace<const Name extends string, Messages extends obje
   name: Name,
   messages: Record<Locale, Messages>,
 ): Namespace<Messages> & { readonly name: Name } {
-  return { name, messages }
+  // The copy says `{productName}` (`i18n/product-name.spec.ts`); every namespace gets the name here.
+  return { name, messages: withProductName(messages) }
 }
 
 /**

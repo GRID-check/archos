@@ -8,7 +8,7 @@ export const profile = {
   saveError: 'Could not save your preferences. Please try again.',
   account: {
     title: 'Account',
-    description: 'Your identity within Piloti.',
+    description: 'Your identity within {productName}.',
     name: 'Name',
     email: 'Email',
     organization: 'Organization',
@@ -23,31 +23,31 @@ export const profile = {
   },
   appearance: {
     title: 'Appearance',
-    description: 'Choose how Piloti looks. System follows your device setting.',
+    description: 'Choose how {productName} looks. System follows your device setting.',
     theme: 'Theme',
   },
   language: {
     title: 'Language',
-    description: 'The language used across the Piloti interface.',
+    description: 'The language used across the {productName} interface.',
     label: 'Interface language',
   },
   reasoning: {
     title: 'Reasoning trace',
-    description: "How much of Piloti's reasoning is shown with an answer.",
+    description: "How much of {productName}'s reasoning is shown with an answer.",
     label: 'Show technical reasoning',
     hint: 'Reveals the individual technical steps (which agent or tool ran). Off by default — you normally see the plain-language trace.',
   },
   viewerActions: {
     title: 'Places in the viewer',
     description:
-      'When an answer rests on one place in a document, Piloti can open it beside the chat with the place marked. The answer says what it opened, with “Undo”.',
+      'When an answer rests on one place in a document, {productName} can open it beside the chat with the place marked. The answer says what it opened, with “Undo”.',
     label: 'Open automatically',
-    hint: 'Applies to this browser. Off: Piloti only suggests the place under the answer.',
+    hint: 'Applies to this browser. Off: {productName} only suggests the place under the answer.',
   },
   usageAnalytics: {
     title: 'Usage analytics',
     description:
-      'Piloti measures how the product is used (pages, clicks, errors and masked screen recordings) to find and fix problems.',
+      '{productName} measures how the product is used (pages, clicks, errors and masked screen recordings) to find and fix problems.',
     label: 'Share usage analytics',
     hint: 'Applies to this browser and takes effect immediately. Switched off, this browser sends nothing.',
   },
@@ -69,9 +69,9 @@ export const profile = {
   connectAgent: {
     title: 'Connect your agent',
     description:
-      'Your own AI assistant (Claude, ChatGPT, Cursor and other MCP-capable clients) can work in Piloti for you: everything you can do here, with your rights. It asks you before it changes or deletes anything, and Piloti never gives it more than you have.',
+      'Your own AI assistant (Claude, ChatGPT, Cursor and other MCP-capable clients) can work in {productName} for you: everything you can do here, with your rights. It asks you before it changes or deletes anything, and {productName} never gives it more than you have.',
     urlLabel: 'MCP server address',
-    urlHint: 'Paste this address into your client. You sign in with your Piloti account.',
+    urlHint: 'Paste this address into your client. You sign in with your {productName} account.',
     urlCode: 'MCP URL',
     notice: {
       orgDisabledTitle: 'Not switched on for your organization yet',
@@ -82,14 +82,14 @@ export const profile = {
       orgDisabledMember: 'Ask an administrator of your organization to switch it on.',
       notConfiguredTitle: 'Not available on this installation',
       notConfiguredBody:
-        'The external sign-in for agents is not set up on this Piloti installation yet, so no assistant can connect.',
+        'The external sign-in for agents is not set up on this {productName} installation yet, so no assistant can connect.',
       notConfiguredAdmin:
         'Whoever operates this installation has to set it up first. Your organization’s setting then takes effect.',
       notConfiguredMember: 'Ask an administrator of your organization.',
     },
     steps: {
       title: 'Connect a client',
-      signIn: 'Piloti opens its normal sign-in in your browser. Choose your organization if asked.',
+      signIn: '{productName} opens its normal sign-in in your browser. Choose your organization if asked.',
     },
     clients: {
       claude: {
@@ -97,15 +97,15 @@ export const profile = {
         hint: 'claude.ai and Claude Desktop',
         s1: 'Open Settings, then Connectors.',
         s2: 'Choose “Add custom connector”.',
-        s3: 'Paste the address above and give it the name Piloti.',
-        s4: 'Sign in with your Piloti account when the browser opens.',
+        s3: 'Paste the address above and give it the name {productName}.',
+        s4: 'Sign in with your {productName} account when the browser opens.',
       },
       claudeCode: {
         name: 'Claude Code',
         hint: 'In the terminal',
         s1: 'Add the server with this command:',
         s2: 'Start Claude Code, type /mcp and choose piloti.',
-        s3: 'Sign in with your Piloti account when the browser opens.',
+        s3: 'Sign in with your {productName} account when the browser opens.',
       },
       cursor: {
         name: 'Cursor',
@@ -118,19 +118,19 @@ export const profile = {
         hint: 'Connectors',
         s1: 'Where your plan offers connectors for MCP servers (often under developer mode), add a new one.',
         s2: 'Paste the address above and choose OAuth as the sign-in.',
-        s3: 'Sign in with your Piloti account when asked.',
+        s3: 'Sign in with your {productName} account when asked.',
       },
       other: {
         name: 'Other clients',
         hint: 'MCP-capable clients',
         s1: 'Any client that speaks MCP over HTTP and supports sign-in with OAuth can connect.',
-        s2: 'Add a remote server, paste the address above and sign in with your Piloti account.',
+        s2: 'Add a remote server, paste the address above and sign in with your {productName} account.',
         s3: 'A client without OAuth sign-in cannot connect yet.',
       },
     },
     can: {
       title: 'What your agent can do',
-      intro: 'Whatever you can do in Piloti, within your rights:',
+      intro: 'Whatever you can do in {productName}, within your rights:',
       projects: 'Open and search your projects',
       documents: 'Read, upload, file and share documents',
       shares: 'Submit revisions for approval and approve them',

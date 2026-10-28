@@ -8,7 +8,8 @@ original query's — the original is always retrieved.
 
 from types import SimpleNamespace
 
-from knowledge_layer import register as reg
+from knowledge_layer import fusion
+from knowledge_layer import hyde
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
 from aiq_agent.knowledge.schema import Chunk
@@ -50,11 +51,11 @@ _VAGUE = "was weißt du über die oib-richtlinien"
 class TestDraftHydeText:
     async def test_disabled_never_calls_the_model(self):
         llm = _FakeLLM(reply="draft")
-        assert await reg._draft_hyde_text(llm, _VAGUE, enabled=False, timeout_seconds=5) is None
+        assert await hyde.draft_hyde_text(llm, _VAGUE, enabled=False, timeout_seconds=5) is None
         assert llm.calls == 0
 
     async def test_missing_model_never_drafts(self):
-        assert await reg._draft_hyde_text(None, _VAGUE, enabled=True, timeout_seconds=5) is None
+        assert await hyde.draft_hyde_text(None, _VAGUE, enabled=True, timeout_seconds=5) is None
 
     async def test_identifier_shaped_query_never_calls_the_model(self):
         llm = _FakeLLM(reply="draft")
@@ -66,22 +67,22 @@ class TestDraftHydeText:
             'Suche nach "Fluchtweg Breite"',
             "Was bedeutet Gebäudeklasse 4 für mein Haus?",
         ):
-            assert await reg._draft_hyde_text(llm, query, enabled=True, timeout_seconds=5) is None, query
+            assert await hyde.draft_hyde_text(llm, query, enabled=True, timeout_seconds=5) is None, query
         assert llm.calls == 0
 
     async def test_vague_query_drafts(self):
         llm = _FakeLLM(reply="hypothetischer Abschnitt")
-        draft = await reg._draft_hyde_text(llm, _VAGUE, enabled=True, timeout_seconds=5)
+        draft = await hyde.draft_hyde_text(llm, _VAGUE, enabled=True, timeout_seconds=5)
         assert draft == "hypothetischer Abschnitt"
         assert llm.calls == 1
 
     async def test_model_error_degrades_to_baseline(self):
         llm = _FakeLLM(error=RuntimeError("provider down"))
-        assert await reg._draft_hyde_text(llm, _VAGUE, enabled=True, timeout_seconds=5) is None
+        assert await hyde.draft_hyde_text(llm, _VAGUE, enabled=True, timeout_seconds=5) is None
 
     async def test_slow_model_degrades_to_baseline(self):
         llm = _FakeLLM(reply="zu spät", hang=True)
-        draft = await reg._draft_hyde_text(llm, _VAGUE, enabled=True, timeout_seconds=0.05)
+        draft = await hyde.draft_hyde_text(llm, _VAGUE, enabled=True, timeout_seconds=0.05)
         assert draft is None
 
 
@@ -105,20 +106,20 @@ class TestHydeFusion:
         survives the widened merge (fused upward when both agree)."""
         baseline = _result([_chunk("a", "a.pdf"), _chunk("b", "b.pdf")])
         hyde = _result([_chunk("b", "b.pdf"), _chunk("c", "c.pdf")])
-        merged = reg._merge_results([baseline, hyde], "frage", 16, "test")
+        merged = fusion.merge_results([baseline, hyde], "frage", 16, "test")
         assert merged.success is True
         assert {_chunk_id(chunk) for chunk in merged.chunks} == {"a", "b", "c"}
 
     def test_hyde_only_failure_keeps_the_baseline(self):
         baseline = _result([_chunk("a", "a.pdf")])
         failed = RetrievalResult(chunks=[], query="entwurf", backend="test", success=False, error_message="boom")
-        merged = reg._merge_results([baseline, failed], "frage", 16, "test")
+        merged = fusion.merge_results([baseline, failed], "frage", 16, "test")
         assert merged.success is True
         assert [_chunk_id(chunk) for chunk in merged.chunks] == ["a"]
 
     def test_no_hyde_channels_is_the_plain_baseline(self):
         baseline = _result([_chunk("a", "a.pdf"), _chunk("b", "b.pdf")])
-        merged = reg._merge_results([baseline], "frage", 16, "test")
+        merged = fusion.merge_results([baseline], "frage", 16, "test")
         assert [_chunk_id(chunk) for chunk in merged.chunks] == ["a", "b"]
 
 

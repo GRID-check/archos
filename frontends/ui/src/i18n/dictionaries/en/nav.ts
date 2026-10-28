@@ -2,7 +2,7 @@
 export const nav = {
   projectNavigation: 'Project navigation',
   projectSections: 'Project sections',
-  allProjects: 'Piloti — all projects',
+  allProjects: '{productName} — all projects',
   collapseSidebar: 'Collapse sidebar',
   expandSidebar: 'Expand sidebar',
   /**
@@ -17,7 +17,7 @@ export const nav = {
   openNavigation: 'Open navigation',
   closeNavigation: 'Close navigation',
   sections: {
-    chat: 'Ask Piloti',
+    chat: 'Ask {productName}',
     files: 'Files',
     knowledge: 'Knowledge',
     research: 'Research',
@@ -42,13 +42,13 @@ export const nav = {
     org: 'Organization',
   },
   sectionSubtitles: {
-    files: 'This project’s documents. Piloti reads them and cites from them.',
+    files: 'This project’s documents. {productName} reads them and cites from them.',
     automation:
-      'What Piloti did while you were away, what it will do next, and the skills it does it with.',
+      'What {productName} did while you were away, what it will do next, and the skills it does it with.',
     knowledge: 'What the knowledge base currently contains.',
     settings: 'Where this project stands, and how it is set up.',
     intake: 'Guided briefing for this project.',
-    setup: 'Project, filing, reading, questions, profile: Piloti reads, you check and confirm.',
+    setup: 'Project, filing, reading, questions, profile: {productName} reads, you check and confirm.',
   },
   /**
    * The back control on pages outside the project shell (`BackLink`): `{label}`
@@ -76,8 +76,8 @@ export const nav = {
   tabTitle: {
     intake: 'Setup',
     setup: 'Setup',
-    researchProgress: '{percent}% · {label} — Piloti',
-    researchActive: '⏳ {label} — Piloti',
+    researchProgress: '{percent}% · {label} — {productName}',
+    researchActive: '⏳ {label} — {productName}',
   },
   projectSwitcher: {
     select: 'Select project',

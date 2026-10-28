@@ -8,8 +8,8 @@ import type { en } from '../en'
 export const projectIntake: typeof en.projectIntake = {
   status: {
     waiting: 'Warten auf Dokumente',
-    reading: 'Piloti liest die Unterlagen …',
-    ready: 'Piloti hat die Unterlagen gelesen',
+    reading: '{productName} liest die Unterlagen …',
+    ready: '{productName} hat die Unterlagen gelesen',
     failed: 'Das Lesen ist fehlgeschlagen',
     completed: 'Erfassung abgeschlossen',
   },
@@ -26,7 +26,7 @@ export const projectIntake: typeof en.projectIntake = {
     editSelf: 'Briefing-Editor',
     editSelfAria: 'Den Briefing-Assistenten für dieses Projekt öffnen',
     addDocuments: 'Dokumente hinzufügen',
-    failedTitle: 'Piloti konnte nicht fertig lesen',
+    failedTitle: '{productName} konnte nicht fertig lesen',
     failed: 'Das Lesen wurde unterbrochen. Was bis dahin gefunden wurde, steht unten. Sie können es erneut versuchen.',
     retryAria: 'Das Lesen erneut starten',
     readOnly: 'Sie können die Erfassung ansehen, aber nicht ändern.',
@@ -44,13 +44,13 @@ export const projectIntake: typeof en.projectIntake = {
   upload: {
     title: 'Projektordner hier ablegen',
     description:
-      'Piloti liest die Dokumente, sobald sie hochgeladen sind, und schlägt jeden Wert mit der Seite vor, auf der er steht.',
+      '{productName} liest die Dokumente, sobald sie hochgeladen sind, und schlägt jeden Wert mit der Seite vor, auf der er steht.',
     hint: 'Ganze Ordner, ZIP-Dateien und einzelne Dokumente gehen.',
     dropOverlay: 'Zum Hochladen ablegen',
     unsupportedOverlay: 'Dieser Dateityp wird nicht unterstützt',
     closed: 'Ein abgeschlossenes Projekt nimmt keine Dokumente an.',
     uploadingLabel: 'Wird hochgeladen …',
-    readingSoon: 'Die Dokumente sind da. Piloti beginnt gleich mit dem Lesen.',
+    readingSoon: 'Die Dokumente sind da. {productName} beginnt gleich mit dem Lesen.',
   },
   contradictions: {
     heading: 'Widersprüche',
@@ -71,14 +71,14 @@ export const projectIntake: typeof en.projectIntake = {
     unknown: 'Nicht bekannt',
     unknownAria: '{label}: nicht bekannt',
     dropTitle: 'Dokument nachreichen',
-    dropHint: 'Hier ablegen oder auswählen. Piloti liest es und schließt die Rückfrage, sobald der Wert darin steht.',
+    dropHint: 'Hier ablegen oder auswählen. {productName} liest es und schließt die Rückfrage, sobald der Wert darin steht.',
     pick: 'Auswählen',
     pickAria: 'Ein Dokument auswählen, das beantwortet: {label}',
   },
   review: {
     heading: 'Prüfen',
     description:
-      'Alles, was Piloti in den Dokumenten gefunden hat. Werte, die die Gebäudeklasse entscheiden, bestätigen Sie einzeln; den Rest übernehmen Sie gesammelt, nachdem Sie Falsches verworfen haben.',
+      'Alles, was {productName} in den Dokumenten gefunden hat. Werte, die die Gebäudeklasse entscheiden, bestätigen Sie einzeln; den Rest übernehmen Sie gesammelt, nachdem Sie Falsches verworfen haben.',
     confirm: 'Übernehmen',
     confirmAria: '{value} für {label} übernehmen',
     dismiss: 'Verwerfen',
@@ -87,13 +87,13 @@ export const projectIntake: typeof en.projectIntake = {
     contested: 'Widerspruch',
     decisive: 'Entscheidend',
     decisiveHint: 'Entscheidet über die Gebäudeklasse',
-    empty: 'Noch nichts gefunden. Piloti listet seine Vorschläge hier auf, sobald es ein Dokument gelesen hat.',
+    empty: 'Noch nichts gefunden. {productName} listet seine Vorschläge hier auf, sobald es ein Dokument gelesen hat.',
   },
   // Ablage: die offenen Ablagevorschläge des Projekts, dieselben wie in Dateien.
   filing: {
     heading: 'Ablage',
     description:
-      "Piloti würde diese Dokumente in beschriebene Ordner des Projekts legen. Jeder Vorschlag verschiebt alle Dateien, die dorthin gehören.",
+      "{productName} würde diese Dokumente in beschriebene Ordner des Projekts legen. Jeder Vorschlag verschiebt alle Dateien, die dorthin gehören.",
   },
   derivations: {
     heading: 'Ableitungen',
@@ -174,8 +174,8 @@ export const projectIntake: typeof en.projectIntake = {
     complete: 'Wir konnten die Erfassung nicht abschließen.',
   },
   empty: {
-    title: 'Dieses Projekt hat keine Erfassung durch Piloti',
-    description: 'Es wurde angelegt, ohne dass Piloti die Dokumente liest. Das Briefing füllen Sie im Assistenten aus.',
+    title: 'Dieses Projekt hat keine Erfassung durch {productName}',
+    description: 'Es wurde angelegt, ohne dass {productName} die Dokumente liest. Das Briefing füllen Sie im Assistenten aus.',
     action: 'Briefing öffnen',
   },
 }
