@@ -32,9 +32,15 @@ const sources = (dir = COMPONENTS): string[] =>
     return /\.tsx$/.test(entry.name) && !/\.spec\.tsx$/.test(entry.name) ? [path] : []
   })
 
+/** The stage, split into its shell, its view, its layers and its controller hook: one source for the checks below. */
+const stageCode = (): string =>
+  ['model-stage.tsx', 'model-stage-view.tsx', 'model-stage-layers.tsx', 'model-stage-dock-layer.tsx', 'use-model-stage-controller.tsx']
+    .map((file) => code(file))
+    .join('\n');
+
 describe('the stage respects the notch at every width', () => {
   it('pads the dialog by the safe-area insets without a breakpoint prefix', () => {
-    const stage = code('model-stage.tsx')
+    const stage = stageCode()
     // An iPhone on its side is 852 px wide — past `sm` — with the deepest inset
     // of all. `max-sm:` padding left the dock, the rail and the close pill under
     // the sensor housing in exactly that rotation.
