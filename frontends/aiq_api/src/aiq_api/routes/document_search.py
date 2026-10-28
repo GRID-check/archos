@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from fastapi import Request
 
 from aiq_agent.knowledge.base import FUSED_SCORE_KEY
+from aiq_agent.knowledge.base import LEXICAL_MATCH_KEY
 from aiq_agent.knowledge.base import BaseIngestor
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.scoping import _normalize_collection_name
@@ -24,9 +25,9 @@ from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from aiq_agent.project_context import GridRequestContext
 
-from ..models.requests import DocumentSearchHit
-from ..models.requests import DocumentSearchRequest
-from ..models.requests import DocumentSearchResponse
+from ..models.document_search import DocumentSearchHit
+from ..models.document_search import DocumentSearchRequest
+from ..models.document_search import DocumentSearchResponse
 from ..models.requests import GroupedDocumentSearchRequest
 from ..models.requests import GroupedSearchFilters
 from .collections import _require_ingestor
@@ -168,6 +169,12 @@ def _fused(chunk: Chunk) -> float:
     return float(value) if isinstance(value, (int, float)) else 0.0
 
 
+def _lexical(chunks: list[Chunk]) -> bool | None:
+    """Whether any of a document's ranked chunks holds a word of the query; None when the retriever does not say."""
+    stated = [chunk.metadata[LEXICAL_MATCH_KEY] for chunk in chunks if LEXICAL_MATCH_KEY in chunk.metadata]
+    return any(stated) if stated else None
+
+
 def _document_id(chunk: Chunk) -> str | None:
     """The document's BFF id from the chunk's metadata, when the store put it there."""
     value = chunk.metadata.get("grid_document_id")
@@ -194,7 +201,9 @@ def _ranked_group_hits(
     ranked: list[tuple[float, int, int, DocumentSearchHit]] = []
     for group_index, (collection, chunks) in enumerate(grouped):
         best: dict[str, Chunk] = {}
+        by_file: dict[str, list[Chunk]] = {}
         for chunk in chunks:
+            by_file.setdefault(chunk.file_name, []).append(chunk)
             current = best.get(chunk.file_name)
             if current is None or (_fused(chunk), chunk.score) > (_fused(current), current.score):
                 best[chunk.file_name] = chunk
@@ -207,6 +216,7 @@ def _ranked_group_hits(
                 page_number=chunk.page_number,
                 collection=collection,
                 grid_document_id=_document_id(chunk),
+                lexical=_lexical(by_file[chunk.file_name]),
             )
             ranked.append((-_fused(chunk), group_index, file_index, hit))
     ranked.sort(key=lambda entry: entry[:3])
@@ -257,7 +267,16 @@ def _reading_clauses(filters: GroupedSearchFilters) -> list[dict[str, Any]]:
 
     parts: list[dict[str, Any]] = []
     if filters.document_ids:
-        parts.append({"grid_document_id": {"$in": list(dict.fromkeys(filters.document_ids))}})
+        by_id: dict[str, Any] = {"grid_document_id": {"$in": list(dict.fromkeys(filters.document_ids))}}
+        # A point written before ``grid_document_id`` existed, or copied from Chroma
+        # (``import_vectors.scope_enrichment``), carries none: by id alone the
+        # candidates' older passages fell out of the ranking, and a currentOnly
+        # search lost the very documents whose passages hold the words.
+        parts.append(
+            {"$or": [by_id, {"file_name": {"$in": list(dict.fromkeys(filters.file_names))}}]}
+            if filters.file_names
+            else by_id
+        )
     if filters.reading_types:
         parts.append({"document_type": {"$in": list(dict.fromkeys(filters.reading_types))}})
     if filters.refers_to:
@@ -294,6 +313,28 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
     if not parts:
         return CURRENT_REVISIONS
     return {"$and": [*parts, CURRENT_REVISIONS]}
+
+
+#: The cosine a document matched by meaning alone must reach to be a workspace search hit.
+#:
+#: The fusion always fills its candidates from the dense channel, so without a
+#: floor a word no passage holds („qwxzv“) returned sixteen documents, and
+#: „Rechnung“ eighteen where three passages say it. A document a lexical channel
+#: ranked (its passage holds a query word) is never held to it.
+#:
+#: A number on one embedder's cosines: ``openai/text-embedding-3-large``, the
+#: deployed ``EMBED_MODEL``. Measured 2026-10-27 on the Holzbau Wien project
+#: (dev): nonsense and unrelated passages 0.11 to 0.30 („qwxzv“: 0.15 to 0.29;
+#: „Rechnung“ against drawings and screenshots: 0.11 to 0.30); related without
+#: the word 0.37 (a Reisekostenabrechnung for „Rechnung“); the English „minimum
+#: stair width“ against OIB-RL 4's German passages 0.44 to 0.62. Re-measure it
+#: with the embedder: under another model it is the wrong number.
+MEANING_ONLY_MIN_COSINE = 0.35
+
+
+def above_meaning_floor(hits: list[DocumentSearchHit]) -> list[DocumentSearchHit]:
+    """``hits`` less the documents that matched by meaning alone below :data:`MEANING_ONLY_MIN_COSINE`. Pure."""
+    return [hit for hit in hits if hit.lexical is not False or hit.score >= MEANING_ONLY_MIN_COSINE]
 
 
 #: The trace the workspace search's content query files under, and the observation inside it.
@@ -381,6 +422,28 @@ async def _search_grouped(
     return _ranked_group_hits(grouped, request.files_per_group, request.snippet_max_chars), grouped
 
 
+async def _workspace_search(request: GroupedDocumentSearchRequest, collections: list[str]) -> list[DocumentSearchHit]:
+    """The workspace search's documents, traced, less those that matched by meaning alone below the floor.
+
+    Only this caller is held to :data:`MEANING_ONLY_MIN_COSINE`: it shows the
+    hits as results, where the cross-project lookup hands a ranked pool to a
+    model that reads the passages.
+    """
+    mode = prefilter_mode(request.filters)
+    with observed_retrieval(
+        WORKSPACE_SEARCH_FEATURE,
+        step=WORKSPACE_SEARCH_STEP,
+        query=_trace_query(request, collections),
+        metadata={"prefilter": mode, "collections": len(collections)},
+    ) as trace:
+        ranked, grouped = await _search_grouped(request, collections)
+        hits = above_meaning_floor(ranked)
+        picks = {**_trace_picks(grouped, hits), "below_meaning_floor": len(ranked) - len(hits)}
+        summary = {key: picks[key] for key in ("candidates", "documents", "below_meaning_floor")}
+        trace.finish(picks, {"prefilter": mode, **summary})
+    return hits
+
+
 def add_document_search_routes(router: APIRouter):
     """Add semantic document-search routes to the FastAPI app."""
 
@@ -411,20 +474,7 @@ def add_document_search_routes(router: APIRouter):
         if request.purpose != "workspace_search":
             hits, _ = await _search_grouped(request, collections)
             return DocumentSearchResponse(hits=hits)
-        mode = prefilter_mode(request.filters)
-        with observed_retrieval(
-            WORKSPACE_SEARCH_FEATURE,
-            step=WORKSPACE_SEARCH_STEP,
-            query=_trace_query(request, collections),
-            metadata={"prefilter": mode, "collections": len(collections)},
-        ) as trace:
-            hits, grouped = await _search_grouped(request, collections)
-            picks = _trace_picks(grouped, hits)
-            trace.finish(
-                picks,
-                {"prefilter": mode, "candidates": picks["candidates"], "documents": picks["documents"]},
-            )
-        return DocumentSearchResponse(hits=hits)
+        return DocumentSearchResponse(hits=await _workspace_search(request, collections))
 
     @router.post(
         "/v1/collections/{collection_name}/search",

@@ -27,7 +27,7 @@ import {
 } from '@/lib/annotations/types'
 import type { RevisionRef } from '@/lib/documents/revision-links'
 import { inPool } from '@/lib/utils/in-pool'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '@/features/collaboration/hooks/use-undoable-archive'
 import { useLiveEvents } from '@/features/collaboration/hooks/use-live-events'

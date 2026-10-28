@@ -20,7 +20,8 @@ from aiq_agent.common.claim_judge import Level
 from aiq_agent.common.claim_judge import Passage
 
 #: The measurement set: twelve stored answers with what their turns registered (ADR-0139).
-STORED_ANSWERS = Path(__file__).parents[1] / "fixtures" / "answer_check" / "stored_answers_2026-10.json"
+REPO_ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
+STORED_ANSWERS = REPO_ROOT / "tests" / "fixtures" / "answer_check" / "stored_answers_2026-10.json"
 
 
 def stored_answers() -> list[dict]:

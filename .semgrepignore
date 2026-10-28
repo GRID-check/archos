@@ -36,3 +36,5 @@ docs/
 **/*.spec.tsx
 **/test_*.py
 **/conftest.py
+# The test-support packages (`<package>_testing`, ADR-0145 row 5); never in an image.
+**/testing/*_testing/**

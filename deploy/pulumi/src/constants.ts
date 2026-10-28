@@ -652,8 +652,8 @@ export const POSTGRES_POOLER = {
  * `app` is the owner login (`pgAppUser`), `runtime` is `grid_app_rw` (ADR-0041).
  */
 export const POOLED_POOLS = [
-  { database: "aiq_jobs", login: "app" },
-  { database: "aiq_checkpoints", login: "app" },
+  { database: "jobs", login: "app" },
+  { database: "checkpoints", login: "app" },
   { database: "grid_app", login: "runtime" },
 ] as const;
 

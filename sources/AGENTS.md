@@ -18,9 +18,13 @@ task be:test:sources                          # what CI runs: every package, one
 No package here carries a `tests/__init__.py`. With one, pytest names its
 conftest `tests.conftest`, the same name as the repo's own `tests/` suite, and a
 run over both aborts with "Plugin already registered under a different name".
-Keep it that way: a helper a test needs from another file is imported by its path
-(`from sources.ris_adapter.tests.conftest import LookupHarness`), never as
-`tests.conftest`.
+Keep it that way. A helper a test needs from another file lives in the
+package's support package beside `tests/`, `<package>/testing/<package>_testing/`,
+which pytest's `pythonpath` lists, and is imported by that name
+(`from ris_adapter_testing.lookup import LookupHarness`), never by a dotted path
+through `sources.` or a `tests` directory: `tests/test_test_imports.py` fails it,
+because the move to `packages/<distribution>/` (ADR-0145) leaves no dotted path
+to import by. A conftest only registers fixtures, imported from there.
 
 The run is parallel (`-n logical --dist loadfile`), so a test may not write
 into the repository or share any other state with a test in another file:

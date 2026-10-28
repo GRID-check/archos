@@ -11,6 +11,17 @@ whether that answer may go where everyone reads.
 from __future__ import annotations
 
 import pytest
+from agent_testing.canvas import ANNOTATION
+from agent_testing.canvas import CREATE_BODY
+from agent_testing.canvas import DELETE_BODY
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import LIST_BODY
+from agent_testing.canvas import OK_BODY
+from agent_testing.canvas import PROPOSAL
+from agent_testing.canvas import PROPOSE_BODY
+from agent_testing.canvas import REPLY_BODY
+from agent_testing.canvas import UPDATE_BODY
+from agent_testing.canvas import answering
 
 from aiq_agent.common.focus_file import set_turn_intent
 from aiq_agent.knowledge.restricted_use import RestrictedUse
@@ -27,18 +38,6 @@ from aiq_agent.turn.annotation_reply import ThreadReply
 from aiq_agent.turn.annotation_reply import bind_thread_reply
 from aiq_agent.turn.annotation_reply import reset_thread_reply
 from aiq_agent.turn.response import answer_message_id
-
-from .conftest import ANNOTATION
-from .conftest import CREATE_BODY
-from .conftest import DELETE_BODY
-from .conftest import DOCUMENT
-from .conftest import LIST_BODY
-from .conftest import OK_BODY
-from .conftest import PROPOSAL
-from .conftest import PROPOSE_BODY
-from .conftest import REPLY_BODY
-from .conftest import UPDATE_BODY
-from .conftest import answering
 
 #: The answer the conftest's turn writes: conversation ``s_conv_1``, user message ``m_user_7``.
 ANSWER = answer_message_id("s_conv_1", "m_user_7")

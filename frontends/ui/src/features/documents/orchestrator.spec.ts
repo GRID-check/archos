@@ -70,7 +70,7 @@ vi.mock('@/features/layout/store', () => ({
   },
 }))
 
-vi.mock('@/features/chat', () => ({
+vi.mock('@/features/chat/store', () => ({
   useChatStore: {
     getState: () => ({}),
   },

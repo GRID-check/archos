@@ -86,17 +86,17 @@ services:
       # Same split as Kubernetes (ADR-0083): the first three go through the
       # transaction pooler (`pgbouncer`); what needs ONE server connection across
       # statements goes straight to `postgres`.
-      - NAT_JOB_STORE_DB_URL=postgresql+asyncpg://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_jobs
-      - CHECKPOINT_DB=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_checkpoints
+      - NAT_JOB_STORE_DB_URL=postgresql+asyncpg://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
+      - CHECKPOINT_DB=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
       # A research job's deep checkpoint: resume on another worker instead of starting over.
-      - DEEP_CHECKPOINT_DB=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_checkpoints
-      - SUMMARY_DB=postgresql+psycopg://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_jobs
+      - DEEP_CHECKPOINT_DB=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
+      - SUMMARY_DB=postgresql+psycopg://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
       # SSE LISTEN/NOTIFY: a notification reaches the one server session that ran
       # LISTEN, which a transaction pooler does not keep for the client.
-      - LISTEN_DB_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/aiq_jobs
+      - LISTEN_DB_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
       # Session advisory locks (leader election, the re-ingest lock, the ghost-job
       # reaper): held by a session, so never through the pooler.
-      - LOCK_DB_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/aiq_jobs
+      - LOCK_DB_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
       # ── Shared cache (Dragonfly, ADR-0020) ──
       - REDIS_URL=redis://dragonfly:6379/0
       # Stateless chat tier via the Dragonfly pub/sub conversation bus (ADR-0028).
@@ -189,6 +189,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       # Shared vector store must be up before the agent boots.
@@ -265,6 +267,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       qdrant:
@@ -308,6 +312,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       qdrant:
@@ -339,6 +345,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       qdrant:
@@ -484,13 +492,15 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
       # Read only so `ensure-rls-roles` can keep grid_app_rw's login in step
       # with the credential the app actually uses.
       - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
 
   # One-shot audit-schema reconciler — the Coolify half of what the Kubernetes
   # Job `grid-app-audit-schemas` does (deploy/pulumi/src/app/audit-schemas-job.ts).
@@ -671,6 +681,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       # Started, not healthy: conversion fails open (the original stays
@@ -729,6 +741,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
     restart: unless-stopped
@@ -760,7 +774,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
       - GRID_PLATFORM_ORG_EXTERNAL_ID=${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
     depends_on:
       frontend:
         condition: service_healthy
@@ -795,6 +809,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       seaweedfs:
@@ -828,6 +844,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       frontend:
@@ -933,27 +951,47 @@ services:
   # binds the published host port on the server regardless of Traefik routing,
   # which would expose Postgres (5432) publicly. In-cluster access only.
   postgres:
-    # Custom image bakes in init-db.sql (creates aiq_checkpoints + grid_app on
-    # first boot). Not a bind mount: Coolify pre-creates bind-mount sources as
+    # Custom image bakes in init-db.sql (creates checkpoints + grid_app on
+    # first boot) and the rename script `postgres-rename` runs. Not a bind mount: Coolify pre-creates bind-mount sources as
     # directories, which breaks single-file mounts. See postgres.Dockerfile.
     build:
-      context: ./deploy/compose
-      dockerfile: postgres.Dockerfile
+      context: ./deploy
+      dockerfile: compose/postgres.Dockerfile
     environment:
-      POSTGRES_USER: aiq
+      POSTGRES_USER: agent
       POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
-      POSTGRES_DB: aiq_jobs
+      POSTGRES_DB: jobs
     expose:
       - "5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aiq -d aiq_jobs && pg_isready -U aiq -d aiq_checkpoints && pg_isready -U aiq -d grid_app"]
+      test: ["CMD-SHELL", "pg_isready -U agent -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 120s
     restart: unless-stopped
+
+  # Renames the databases and the owner role from their AI-Q names to jobs,
+  # checkpoints and agent (ADR-0145 row 10d), once, before anything that
+  # connects starts: every service that waits on postgres waits on this too.
+  # A volume made with the new names, and the second run, change nothing. The
+  # same script runs as the Kubernetes Job `pg-rename-legacy-names`.
+  postgres-rename:
+    build:
+      context: ./deploy
+      dockerfile: compose/postgres.Dockerfile
+    command: ["sh", "/rename-legacy-names.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: agent
+      PGPASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+      ROLE_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
   # Transaction pooler in front of the pooled DSNs (ADR-0083): the same
   # PgBouncer parameters Kubernetes runs through the CloudNativePG `Pooler`
@@ -973,7 +1011,7 @@ services:
   pgbouncer:
     image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
     environment:
-      DATABASE_URLS: postgres://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/aiq_jobs,postgres://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/aiq_checkpoints,postgres://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@postgres:5432/grid_app
+      DATABASE_URLS: postgres://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs,postgres://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/checkpoints,postgres://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@postgres:5432/grid_app
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "2000"
@@ -984,6 +1022,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-rename:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432"]
       interval: 5s

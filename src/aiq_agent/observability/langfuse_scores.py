@@ -498,7 +498,7 @@ def file_tool_scores(tools: Iterable[str], literal_searches: int = 0) -> list[Ru
     """Which office-file moves a turn used, from the basenames of the tools it called, one per call.
 
     ``literal_searches`` is how many of the ``knowledge_search`` calls ran in a literal mode
-    (``turn_status.emit_literal_search``): those count as navigation, the rest as search, so the
+    (``action_rows.emit_literal_search``): those count as navigation, the rest as search, so the
     score separates the eval's arms. Nothing for a turn that called no tool at all; ``none`` for a
     turn that called tools but none of these.
     """
