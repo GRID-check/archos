@@ -216,7 +216,7 @@ class TestPipelineWiring:
 
         config = OtelCollectorRedactionTelemetryExporter(
             _type="otelcollector_redaction",
-            project="grid-aiq-agent",
+            project="backend-chat",
             endpoint=ENDPOINT,
             redaction_enabled=True,
             force_redaction=True,

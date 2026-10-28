@@ -22,7 +22,7 @@ import {
   profileAlternativeSchema,
   profileEvidenceSchema,
 } from '@/lib/project-profile/evidence-schema'
-import type { ProjectIntakeQuestionType } from '@/lib/project-profile/intake-definition'
+import type { ProjectIntakeQuestionType } from '@/lib/project-profile/intake-types'
 import { ProjectPrimitiveValueSchema } from '@/lib/project-profile/types'
 import { isMonth, type Month } from '@/lib/projects/month'
 import { PROJECT_OUTCOMES } from '@/lib/projects/project-status'

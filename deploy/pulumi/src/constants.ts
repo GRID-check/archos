@@ -27,7 +27,7 @@ export const UID = {
   backend: 1000,
   /** Frontend image (`frontends/ui/deploy/Dockerfile`): user `nextjs` = 1001. */
   frontend: 1001,
-  /** Web (landing/blog) image (`frontends/web/Dockerfile`): user `piloti` = 1001. */
+  /** Web (landing/blog) image (`apps/site/Dockerfile`): user `piloti` = 1001. */
   web: 1001,
   /** Gotenberg image (upstream `build/Dockerfile`): user `gotenberg` = 1001. */
   gotenberg: 1001,
@@ -44,7 +44,7 @@ export const UID = {
 export const PORT = {
   backend: 8000,
   frontend: 3000,
-  /** Astro Node standalone adapter default port (`frontends/web/Dockerfile`). */
+  /** Astro Node standalone adapter default port (`apps/site/Dockerfile`). */
   web: 4321,
   redis: 6379,
   postgres: 5432,
@@ -693,7 +693,7 @@ export const POSTGRES_DIRECT_RESERVE = {
   sessionLocksBackground: 4,
   /**
    * Migration and bootstrap Jobs on the owner DSN: `pg-init-tables` (one psql at a
-   * time), `grid-migrate` (`ensure-rls-roles` plus drizzle-kit) and the queue
+   * time), `migrate` (`ensure-rls-roles` plus drizzle-kit) and the queue
    * scaler's grants. They overlap on a first deploy, so this is their sum rather
    * than their largest.
    */

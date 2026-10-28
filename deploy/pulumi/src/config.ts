@@ -212,7 +212,7 @@ export interface GridConfig {
 
   frontend: FrontendConfig;
 
-  /** Landing site (frontends/web) — a static-first Astro service; tiny resources. */
+  /** Landing site (apps/site) — a static-first Astro service; tiny resources. */
   web: WebConfig;
 
   /**

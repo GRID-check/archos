@@ -91,7 +91,7 @@ installed by `task agents:setup`. The three levers that matter most here:
 - **A rule lives in exactly one file.** "Add an environment variable" reaches
   every scope, so it is a root obligation and appears in no service guide. A
   copy in a second guide is one more place to forget when the rule changes.
-- **Every obligation names something checkable.** "Run `pytest sources -q` and
+- **Every obligation names something checkable.** "Run `task be:test:sources` and
   paste the output" is an obligation; "know that no CI job runs it" is a
   feeling. The third column exists to answer *what fails you*, and "Nothing.
   That is the problem" is a legitimate and useful answer.

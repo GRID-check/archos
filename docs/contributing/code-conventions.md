@@ -83,6 +83,12 @@ An externally visible name (an MCP tool an outside agent calls, a public
 route, an analytics event) is renamed with the old name kept as an alias for
 one release, never as a hard break.
 
+A name two deployed tiers exchange (the `x-grid-*` service headers between
+the BFF and the backend) moves by expand, switch, contract, because the tiers
+roll out side by side: first every receiver reads the new name beside the old
+(`lib/http/legacy-header-names.ts`, `aiq_api.legacy_headers`), the next
+release the senders switch, the release after the old name goes.
+
 ## Python
 
 Ruff, line length 120, Python 3.14. New tools use `@register_function` with a
@@ -94,7 +100,7 @@ The agent tier grew to nineteen thousand lines with functions that ran two
 hundred lines deep and four `if`s wide, and the cost was not aesthetic: a fix
 in the middle of one of them could not be tested on its own, and a reader had
 to hold the whole thing to know which branch they were in. These rules are the
-floor for anything under `src/aiq_agent`, `sources/` and `frontends/aiq_api`,
+floor for anything under `src/aiq_agent`, the Python packages under `packages/` and `frontends/aiq_api`,
 new or touched:
 
 - **Two levels of nesting inside a function, at most.** A third `if`/`for`/

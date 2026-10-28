@@ -112,8 +112,8 @@ def repo(mod, tmp_path, monkeypatch):
             "pyproject.toml": "[project]\n",
             "frontends/ui/deploy/Dockerfile": "FROM node\nCOPY . .\n",
             "frontends/ui/page.tsx": "export {}\n",
-            "frontends/web/Dockerfile": "FROM node\nCOPY . .\n",
-            "frontends/web/index.astro": "<p/>\n",
+            "apps/site/Dockerfile": "FROM node\nCOPY . .\n",
+            "apps/site/index.astro": "<p/>\n",
             "docs/readme.md": "hi\n",
         },
     )
@@ -161,6 +161,21 @@ def test_a_pull_request_builds_the_images_it_changes(mod, repo):
     assert [entry["name"] for entry in images] == ["backend", "frontend", "web"]
     assert build[0]["repository"] == "grid-oib-frontend" and build[0]["context"] == "frontends/ui"
     assert mod.plan_pull_request(base, week=WEEK)[0] == build
+
+
+def test_a_pull_request_that_moves_an_image_builds_it(mod, repo):
+    # The base had the site somewhere else, so it has no Dockerfile at the path
+    # the image names now: nothing to compare, so the image is built.
+    git(repo, "mv", "apps/site", "site-before-the-move")
+    git(repo, "commit", "-q", "-m", "the old layout")
+    base = git(repo, "rev-parse", "HEAD")
+    git(repo, "checkout", "-q", "-b", "move")
+    git(repo, "mv", "site-before-the-move", "apps/site")
+    git(repo, "commit", "-q", "-m", "the move")
+
+    build, _ = mod.plan_pull_request(base, week=WEEK)
+
+    assert [entry["name"] for entry in build] == ["web"]
 
 
 @pytest.mark.parametrize(

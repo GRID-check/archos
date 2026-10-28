@@ -4,7 +4,7 @@ import { THEME_COLOR } from './theme-boot'
 
 /**
  * Web app manifest (served at /manifest.webmanifest). The icons are rendered
- * from shared/brand/piloti-mark.svg by frontends/web/scripts/build-brand-assets.mjs;
+ * from packages/brand/mark.svg by packages/brand/build-brand-assets.mjs;
  * never edit the PNGs by hand.
  */
 const manifest = (): MetadataRoute.Manifest => ({

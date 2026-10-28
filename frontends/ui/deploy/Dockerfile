@@ -23,7 +23,7 @@
 # BUILD
 # -----------------------------------------------------------------------------
 #
-#   docker build -f deploy/Dockerfile -t aiq-blueprint-ui:latest .
+#   docker build -f deploy/Dockerfile -t frontend:latest .
 #
 # -----------------------------------------------------------------------------
 # RUN
@@ -39,7 +39,7 @@
 #     -e WORKOS_API_KEY=sk_test_xxx \
 #     -e WORKOS_REDIRECT_URI=https://your-domain.com/api/auth/callback \
 #     -e WORKOS_COOKIE_PASSWORD=$(openssl rand -hex 32) \
-#     aiq-blueprint-ui:latest
+#     frontend:latest
 #
 # Without authentication (development/testing):
 #
@@ -47,7 +47,7 @@
 #     -e BACKEND_URL=http://backend:8000 \
 #     -e BACKEND_CHAT_URL=http://backend-chat:8000 \
 #     -e REQUIRE_AUTH=false \
-#     aiq-blueprint-ui:latest
+#     frontend:latest
 #
 # -----------------------------------------------------------------------------
 # ENVIRONMENT VARIABLES (all runtime - no rebuild needed)
@@ -182,6 +182,10 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+# Every Node process of the image reads the old (prefixed) names of the
+# environment variables for one release (scripts/legacy-env-names.cjs). A
+# deployment that sets NODE_OPTIONS itself must keep this --require in it.
+ENV NODE_OPTIONS="--require /app/scripts/legacy-env-names.cjs"
 
 # The commit this image was built from. `--build-arg GRID_GIT_SHA=$(git rev-parse
 # HEAD)` in the image build (publish-images.yml / docker-build.yml); unset
@@ -249,7 +253,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/limits/ws-frames.js ./src
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-upgrade-headers.js ./src/lib/proxy/ws-upgrade-headers.js
 # And this one to classify and log WebSocket teardown after the upgrade.
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-teardown.js ./src/lib/proxy/ws-teardown.js
-# And this one to pick which aiq-agent address a chat socket dials (ADR-0080).
+# And this one to pick which chat address a chat socket dials (ADR-0080).
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/backend-target.js ./src/lib/proxy/backend-target.js
 # And this one to build a chat turn's headers and signed envelope (ADR-0106).
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/turns/turn-headers.js ./src/lib/turns/turn-headers.js

@@ -10,7 +10,7 @@
 
 import { findProjectProfile } from '@/lib/projects/repository'
 import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
-import { answersFromProfile } from '@/lib/project-profile/intake-definition'
+import { answersFromProfile } from '@/lib/project-profile/intake-profile'
 import { documentRoleDefinition, recommendedRoles } from '@/lib/project-profile/document-roles'
 import type { DocumentRole } from '@/lib/project-profile/document-roles'
 import { getRestrictedFolderIds } from '@/lib/authz/folder-access'

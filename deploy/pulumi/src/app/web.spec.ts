@@ -6,7 +6,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "../test-support/stack-config";
 
 /**
- * How the landing site starts (`app/web.ts` + `frontends/web/Dockerfile`).
+ * How the landing site starts (`app/web.ts` + `apps/site/Dockerfile`).
  *
  * The entry file is the image's business. When this program also named one,
  * the two had to change in lockstep across a boundary no test crossed: a new
@@ -32,7 +32,7 @@ pulumi.runtime.setMocks(
   false,
 );
 
-const webDir = join(__dirname, "..", "..", "..", "..", "frontends", "web");
+const webDir = join(__dirname, "..", "..", "..", "..", "apps", "site");
 
 describe("the web Deployment", () => {
   beforeAll(async () => {

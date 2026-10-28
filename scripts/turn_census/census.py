@@ -115,7 +115,7 @@ def run_stamp() -> str:
 
 
 # The NAT plugin a run loads from ``frontends/``: installed editable from ONE
-# checkout like the sources, and loaded by every ``nat run`` through their entry
+# checkout like the workspace packages, and loaded by every ``nat run`` through their entry
 # points. From a worktree of another commit the main checkout's ``aiq_api`` met
 # the worktree's ``aiq_agent`` and every turn died (``Unknown field name
 # front_end``), reported as a 0.0 s run.
@@ -125,13 +125,15 @@ FRONTEND_PACKAGES = {"aiq_api": "frontends/aiq_api/src/aiq_api"}
 def source_packages() -> dict[str, Path]:
     """Each package a run imports besides ``aiq_agent``, by import name, and the directory it imports from.
 
-    Every ``sources/`` package (their package dirs are called ``src``) and the
+    Every Python workspace member (``[tool.uv.workspace]`` in the root
+    ``pyproject.toml``; their package dirs are called ``src``) and the
     NAT plugins under ``frontends/`` (``FRONTEND_PACKAGES``).
     """
     import tomllib
 
     packages: dict[str, Path] = {}
-    for pyproject in sorted((ROOT / "sources").glob("*/pyproject.toml")):
+    members = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"]["workspace"]["members"]
+    for pyproject in sorted(ROOT / member / "pyproject.toml" for member in members):
         setuptools = tomllib.loads(pyproject.read_text()).get("tool", {}).get("setuptools", {})
         for name, relative in setuptools.get("package-dir", {}).items():
             packages[name] = (pyproject.parent / relative).resolve()
@@ -143,10 +145,10 @@ def source_packages() -> dict[str, Path]:
 def tree_pythonpath(out: Path) -> str:
     """A PYTHONPATH that imports THIS checkout's code, whatever the venv installed.
 
-    The venv installs ``aiq_agent``, the ``sources/`` packages and the
+    The venv installs ``aiq_agent``, the workspace packages under ``packages/`` and the
     ``frontends/`` NAT plugins editable from ONE checkout. From a ``git worktree`` without its own venv, a run used to
     import the main checkout's code while the report named the worktree's
-    commit. So ``src/`` goes first, and each ``sources/<pkg>`` is linked under
+    commit. So ``src/`` goes first, and each workspace package is linked under
     its import name (their package dirs are called ``src``), ahead of the
     inherited path. The recorder's directory stays first.
     """

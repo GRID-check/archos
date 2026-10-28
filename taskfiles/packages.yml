@@ -1,7 +1,7 @@
 # Standalone packages (packages/).
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`pkg:test`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`pkg:test`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 
