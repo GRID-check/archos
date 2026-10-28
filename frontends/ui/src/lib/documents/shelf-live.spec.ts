@@ -22,6 +22,15 @@ const modules = readdirSync(SRC, { recursive: true, encoding: 'utf8' })
   .filter((entry) => /\.tsx?$/.test(entry) && !/\.(spec|test)\.tsx?$/.test(entry))
   .filter((entry) => !entry.includes('test-utils') && !entry.startsWith('app/dev'))
   .map((entry) => ({ path: entry.split('\\').join('/'), code: readFileSync(new URL(entry, SRC), 'utf8') }))
+  // The repository is one module, `repository.ts` and the `repository/` folder it
+  // delegates to: read as one unit, so the check asks what it asked of the file.
+  .reduce<{ path: string; code: string }[]>((units, module) => {
+    if (!module.path.startsWith('lib/documents/repository')) return [...units, module]
+    const unit = units.find((other) => other.path === 'lib/documents/repository.ts')
+    if (!unit) return [...units, { path: 'lib/documents/repository.ts', code: module.code }]
+    unit.code += `\n${module.code}`
+    return units
+  }, [])
 
 const WRITES_A_SHELF =
   /\.(update|insert|delete)\(\s*(documents|projectFolders)\s*\)|\b(UPDATE|INSERT INTO|DELETE FROM)\s+(documents|project_folders)\b/

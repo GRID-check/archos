@@ -11,7 +11,7 @@ Only a PUBLISHED version is ever dispatched to that index (ADR-0054). So for a
 version that is still being worked on — ``draft``, ``in_review``,
 ``changes_requested`` — there are no chunks at all, the focus filter matches
 nothing, and it falls open to the whole corpus
-(``sources/knowledge_layer/src/register.py``). The reader asks „warum steht in
+(``packages/knowledge-layer/src/register.py``). The reader asks „warum steht in
 Abschnitt 3 GK 4?" about the Befund Piloti filed a minute ago and gets an answer
 sourced from everything except that Befund — confidently, and with citations.
 

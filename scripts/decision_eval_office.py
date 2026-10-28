@@ -72,7 +72,6 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(REPO_ROOT / "sources"))
 
 FIXTURES = REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
 QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "precedent" / "precedent_questions.yaml"

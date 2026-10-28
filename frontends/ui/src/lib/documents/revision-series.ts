@@ -15,7 +15,7 @@
  * tag says so, never because its name carries an index.
  *
  * The SAME grammar runs for the agent in Python
- * (`sources/knowledge_layer/src/revision_series.py`), and both are held to one set
+ * (`packages/knowledge-layer/src/revision_series.py`), and both are held to one set
  * of cases (`tests/fixtures/revision_series_cases.json`), so the folder brief and
  * the agent's `list_files` cannot disagree about which Fassung is current.
  *

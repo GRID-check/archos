@@ -11,7 +11,10 @@ import type { SendMessageOutcome } from '@/features/chat/hooks/use-websocket-cha
  * explicit `false` or `ok: false` counts as "not sent" — exactly the contract the
  * composer had before mentions existed.
  */
-export function normalizeSendResult(result: unknown): { ok: boolean; outcome?: SendMessageOutcome } {
+export function normalizeSendResult(result: unknown): {
+  ok: boolean
+  outcome?: SendMessageOutcome
+} {
   if (result === false) return { ok: false }
   if (result && typeof result === 'object' && 'ok' in result) {
     const outcome = result as SendMessageOutcome
