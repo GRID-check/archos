@@ -46,6 +46,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import time
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
@@ -55,7 +56,6 @@ from pydantic import Field
 
 from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.action_rows import ActionRow
-from aiq_agent.common.source_kinds import canonical_shelf_value
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -150,6 +150,7 @@ from .browse_rows import USER_SHELVES  # noqa: F401
 from .browse_rows import FileRow  # noqa: F401
 from .browse_rows import Listing  # noqa: F401
 from .browse_rows import _attr  # noqa: F401
+from .browse_rows import _check_shelf
 from .browse_rows import _folder_matches  # noqa: F401
 from .browse_rows import _in_folder  # noqa: F401
 from .browse_rows import _reading_fields  # noqa: F401
@@ -180,13 +181,14 @@ from .browse_search import SEARCH_SHELVES  # noqa: F401
 from .browse_search import _candidate_counts  # noqa: F401
 from .browse_search import _collection_filter  # noqa: F401
 from .browse_search import _has_literal_word  # noqa: F401
-from .browse_search import _search  # noqa: F401
 from .browse_search import entries_on_shelf  # noqa: F401
 from .browse_text import _FOLD  # noqa: F401
+from .browse_text import _coerce_int
 from .browse_text import _pages_label  # noqa: F401
 from .browse_text import _shorten  # noqa: F401
 from .browse_text import _words  # noqa: F401
 from .browse_text import fold  # noqa: F401
+from .browse_tool_text import _LIST_FILES_DESCRIPTION
 from .browse_tree import DEFAULT_TREE_DEPTH  # noqa: F401
 from .browse_tree import MAX_CARD_FILES  # noqa: F401
 from .browse_tree import MAX_CARD_SUBFOLDERS  # noqa: F401
@@ -282,34 +284,6 @@ def _in_flight(collections: Sequence[str]) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-_LIST_FILES_DESCRIPTION = (
-    "Lists the reader's OWN files the way the Files pane shows them: which files exist, in which folder, of "
-    "which Dokumentart, uploaded when. A deterministic listing, paged, not capped by the prompt inventory. "
-    "It says which files exist, not what they say: reading or searching the documents does.\n"
-    "Inputs, all optional: with none, every file on Projektwissen, Büroablage and Private Sitzung, ordered by "
-    "folder, after an overview of the top-level folders with file counts. `folder=` one folder and everything "
-    "below it. `name_contains=` words that must all appear in the file name or title (case and umlaut spelling "
-    "do not matter). `doc_class=` a Dokumentart key. `added_since=` YYYY-MM-DD. `sort=newest`. `topic=` a Thema "
-    "Piloti recognised (Attika, Holzrahmenbau). `shelf=` project | office_shelf | session | base (base, the "
-    "platform OIB corpus, is listed only when asked). `offset=` the next page, as the result says.\n"
-    + TREE_PARAGRAPH
-    + "`revisions_of=` a file name returns that document's whole chain of Fassungen, newest first, each with "
-    "Index/Datum, upload date and what changed against the one before; every other filter is ignored. With "
-    '`compare_to=` another Fassung of the chain (its file name, or "previous"), it returns what changed, page by '
-    "page, in the printed text and in the reading of the drawings, with the Plankopf's Index and Stand "
-    "(„was hat sich zwischen Index B und C geändert“).\n"
-    "Returns: a count, the subfolders, then one line per file: exact file name, title, folder, Dokumentart, page "
-    "count, topics, the date a photo was taken, a Fassung mark (read from the name, or a replacement a person "
-    "confirmed, with what changed), upload date, a one-line summary. An index, not a source: it is never cited, "
-    "and a summary does not say what a file contains. File names are written exactly as returned; each becomes "
-    "a link the reader can open."
-)
-
-# ---------------------------------------------------------------------------
-# NAT registration
-# ---------------------------------------------------------------------------
-
-
 class ListFilesConfig(FunctionBaseConfig, name="list_files"):
     """``list_files`` reads the turn's inventory; the search instance names its scope when none is bound."""
 
@@ -317,21 +291,6 @@ class ListFilesConfig(FunctionBaseConfig, name="list_files"):
         default=FunctionRef("knowledge_search"),
         description="The `knowledge_retrieval` instance whose collection scope this browser shares.",
     )
-
-
-def _coerce_int(value: Any, default: int, *, low: int, high: int) -> int:
-    try:
-        number = int(str(value).strip()) if value not in (None, "") else default
-    except TypeError, ValueError:
-        number = default
-    return max(low, min(high, number))
-
-
-def _check_shelf(shelf: str | None) -> tuple[str | None, str]:
-    shelf = canonical_shelf_value(shelf or "") or None
-    if shelf is not None and shelf not in KNOWN_SHELVES:
-        return None, f"`shelf` must be one of {', '.join(KNOWN_SHELVES)}, or omitted for the reader's own files."
-    return shelf, ""
 
 
 @register_function(config_type=ListFilesConfig)
@@ -688,3 +647,140 @@ async def _searched_documents(search_config: Any, narrowed: Mapping[str, Sequenc
             continue
         counts[row.collection] = counts.get(row.collection, 0) + 1
     return counts
+
+
+async def _read_collection(
+    retriever: Any,
+    entry: Any,
+    pattern: str,
+    filters_by_collection: dict[str, dict[str, Any] | None],
+    read_options: dict[str, Any],
+) -> tuple[list[Any] | None, bool]:
+    """One collection's matching chunks, each stamped with its collection and shelf, and whether the cap was hit."""
+    chunks = await retriever.find_text(
+        entry.collection,
+        pattern,
+        filters=filters_by_collection.get(entry.collection),
+        limit=MAX_MATCH_CHUNKS,
+        **read_options,
+    )
+    if chunks is None:
+        return None, False
+    for chunk in chunks:
+        chunk.metadata.setdefault("collection", entry.collection)
+        if (shelf := _entry_shelf(entry)) is not None:
+            chunk.metadata.setdefault("shelf", shelf)
+    return chunks, len(chunks) >= MAX_MATCH_CHUNKS
+
+
+async def _search(
+    retriever: Any,
+    entries: Sequence[Any],
+    phrases: Sequence[str],
+    pattern: str,
+    filters_by_collection: dict[str, dict[str, Any] | None],
+    *,
+    compiled: Any = None,
+    regex_mode: bool = False,
+    context: int | None = None,
+    stemmed: bool = False,
+    scopes: Sequence[ShelfScope] = (),
+    outcome: ActionOutcome | None = None,
+) -> str:
+    from .qdrant.retrieval import USER_REGEX_SCAN_SECONDS
+    from .qdrant.retrieval import USER_REGEX_TIMEOUT
+    from .qdrant.retrieval import PatternTooCostly
+    from .read_passage import _passage_result
+    from .search_results import format_results
+
+    # A person's regex is the only caller that asks for the timed, narrowed-by-its-words read; a store
+    # that knows only the literal lookup is never handed the keyword.
+    read_options: dict[str, Any] = {"user_regex": True} if regex_mode else {}
+    if stemmed:
+        read_options["stem_phrases"] = list(phrases)
+
+    results = await asyncio.gather(
+        *(_read_collection(retriever, entry, pattern, filters_by_collection, read_options) for entry in entries),
+        return_exceptions=True,
+    )
+    chunks: list[Any] = []
+    truncated = False
+    capped: list[Any] = []
+    answered = 0
+    failed: list[str] = []
+    for entry, result in zip(entries, results, strict=True):
+        if isinstance(result, PatternTooCostly):
+            return _TOO_COSTLY_SCAN if result.scan else _TOO_COSTLY
+        if isinstance(result, BaseException):
+            # An outage is not an empty collection: counted, and said, never
+            # folded into „keine Fundstelle“.
+            logger.warning("exact search: %s failed: %s", entry.collection, result)
+            failed.append(entry.collection)
+            continue
+        found, hit_cap = result
+        if found is None:
+            continue
+        answered += 1
+        chunks.extend(found)
+        truncated = truncated or hit_cap
+        if hit_cap:
+            capped.append(entry)
+    if not answered:
+        if failed:
+            return search_failed_message(phrases, failed, regex_mode=regex_mode)
+        return "Full-text search is not available in this environment. Use `knowledge_search`."
+
+    timeout = USER_REGEX_TIMEOUT if regex_mode else None
+    # Counting reads every matched chunk again; it gets a deadline of its own, as the scan did.
+    deadline = time.monotonic() + USER_REGEX_SCAN_SECONDS if regex_mode else None
+    try:
+        groups = group_matches(
+            chunks,
+            compiled if regex_mode else pattern,
+            timeout=timeout,
+            store_decides=stemmed,
+            deadline=deadline,
+            collect_strings=regex_mode,
+        )
+    except TimeoutError:
+        return _TOO_COSTLY_SCAN if deadline is not None and time.monotonic() >= deadline else _TOO_COSTLY
+    if not groups and truncated:
+        # Every passage the capped scan read held the words only in a breadcrumb or an overlap: what lies past
+        # the cap was not read, so this is no „no“ (and no row count either).
+        return _CAPPED_WITHOUT_OWN_MATCH
+    if outcome is not None:
+        # Hits are the literal matches (the table's count); documents are the files holding them, counted
+        # only where the model may be told about them yet (ADR-0088). No match while a collection failed is
+        # not a no, the message says so, and neither does the row: an error, never „keine Fundstelle“.
+        outcome.record(
+            sum(group.occurrences for group in groups),
+            documents=len(groups),
+            collections=[group.collection for group in groups],
+        )
+        outcome.failed = bool(failed) and not groups
+    if not groups:
+        return no_match_message(phrases, answered, failed, regex_mode=regex_mode, scopes=scopes)
+    # The match table names every matching file and counts its matches, which
+    # is content of each file it names, passages shown or not: reported for the
+    # restricted-use admission (ADR-0088), beside the passages the grounding
+    # block reports itself.
+    from aiq_agent.knowledge.restricted_use import note_collections_read
+
+    note_collections_read(group.collection for group in groups)
+    passages = pick_passages(groups)
+    query = " | ".join(phrases)
+    candidates = await _candidate_counts(retriever, capped, pattern, filters_by_collection, regex_mode=regex_mode)
+    trailer = match_table(
+        groups, phrases, truncated=truncated, failed=failed, regex_mode=regex_mode, candidates=candidates, scopes=scopes
+    )
+    if stemmed:
+        trailer = f"{_STEMMED_NOTE}\n{trailer}"
+    if context is not None:
+        try:
+            snippets = match_snippets(groups, compiled if regex_mode else re.compile(pattern), context, timeout=timeout)
+        except TimeoutError:
+            return _TOO_COSTLY
+        trailer = f"{trailer}\n\n{snippets}" if snippets else trailer
+    formatted = await asyncio.to_thread(format_results, _passage_result(passages, query), query, trailer=trailer)
+    logger.info("exact search: %r matched %d file(s)", query, len(groups))
+    return formatted

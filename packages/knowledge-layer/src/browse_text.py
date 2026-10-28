@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Sequence
+from typing import Any
 
 _FOLD = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
 
@@ -30,3 +31,11 @@ def _pages_label(pages: Sequence[int], limit: int = 12) -> str:
     shown = ", ".join(str(page) for page in pages[:limit])
     more = f" … (+{len(pages) - limit})" if len(pages) > limit else ""
     return f", p. {shown}{more}"
+
+
+def _coerce_int(value: Any, default: int, *, low: int, high: int) -> int:
+    try:
+        number = int(str(value).strip()) if value not in (None, "") else default
+    except TypeError, ValueError:
+        number = default
+    return max(low, min(high, number))

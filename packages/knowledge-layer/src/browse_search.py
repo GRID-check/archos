@@ -4,29 +4,13 @@ itself over the collections a turn may read.
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import re
-import time
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.source_kinds import canonical_shelf_value
 
-from .browse_matches import MAX_MATCH_CHUNKS
-from .browse_matches import group_matches
-from .browse_matches import pick_passages
-from .browse_messages import match_snippets
-from .browse_messages import match_table
-from .browse_messages import no_match_message
-from .browse_messages import search_failed_message
-from .browse_patterns import _CAPPED_WITHOUT_OWN_MATCH
-from .browse_patterns import _TOO_COSTLY
-from .browse_patterns import _TOO_COSTLY_SCAN
-from .browse_scope import _STEMMED_NOTE
-from .browse_scope import ShelfScope
 from .browse_turn import _entry_shelf
 
 # Logs under the name browse always had, so a filter on that name still catches these records.
@@ -85,143 +69,6 @@ def _collection_filter(
     extra = [clause for clause in (caller_filters, narrowing) if clause]
     combined = extra[0] if len(extra) == 1 else ({"$and": extra} if extra else None)
     return base_collection_filters(search_config, combined)
-
-
-async def _read_collection(
-    retriever: Any,
-    entry: Any,
-    pattern: str,
-    filters_by_collection: dict[str, dict[str, Any] | None],
-    read_options: dict[str, Any],
-) -> tuple[list[Any] | None, bool]:
-    """One collection's matching chunks, each stamped with its collection and shelf, and whether the cap was hit."""
-    chunks = await retriever.find_text(
-        entry.collection,
-        pattern,
-        filters=filters_by_collection.get(entry.collection),
-        limit=MAX_MATCH_CHUNKS,
-        **read_options,
-    )
-    if chunks is None:
-        return None, False
-    for chunk in chunks:
-        chunk.metadata.setdefault("collection", entry.collection)
-        if (shelf := _entry_shelf(entry)) is not None:
-            chunk.metadata.setdefault("shelf", shelf)
-    return chunks, len(chunks) >= MAX_MATCH_CHUNKS
-
-
-async def _search(
-    retriever: Any,
-    entries: Sequence[Any],
-    phrases: Sequence[str],
-    pattern: str,
-    filters_by_collection: dict[str, dict[str, Any] | None],
-    *,
-    compiled: Any = None,
-    regex_mode: bool = False,
-    context: int | None = None,
-    stemmed: bool = False,
-    scopes: Sequence[ShelfScope] = (),
-    outcome: ActionOutcome | None = None,
-) -> str:
-    from .qdrant.retrieval import USER_REGEX_SCAN_SECONDS
-    from .qdrant.retrieval import USER_REGEX_TIMEOUT
-    from .qdrant.retrieval import PatternTooCostly
-    from .read_passage import _passage_result
-    from .search_results import format_results
-
-    # A person's regex is the only caller that asks for the timed, narrowed-by-its-words read; a store
-    # that knows only the literal lookup is never handed the keyword.
-    read_options: dict[str, Any] = {"user_regex": True} if regex_mode else {}
-    if stemmed:
-        read_options["stem_phrases"] = list(phrases)
-
-    results = await asyncio.gather(
-        *(_read_collection(retriever, entry, pattern, filters_by_collection, read_options) for entry in entries),
-        return_exceptions=True,
-    )
-    chunks: list[Any] = []
-    truncated = False
-    capped: list[Any] = []
-    answered = 0
-    failed: list[str] = []
-    for entry, result in zip(entries, results, strict=True):
-        if isinstance(result, PatternTooCostly):
-            return _TOO_COSTLY_SCAN if result.scan else _TOO_COSTLY
-        if isinstance(result, BaseException):
-            # An outage is not an empty collection: counted, and said, never
-            # folded into „keine Fundstelle“.
-            logger.warning("exact search: %s failed: %s", entry.collection, result)
-            failed.append(entry.collection)
-            continue
-        found, hit_cap = result
-        if found is None:
-            continue
-        answered += 1
-        chunks.extend(found)
-        truncated = truncated or hit_cap
-        if hit_cap:
-            capped.append(entry)
-    if not answered:
-        if failed:
-            return search_failed_message(phrases, failed, regex_mode=regex_mode)
-        return "Full-text search is not available in this environment. Use `knowledge_search`."
-
-    timeout = USER_REGEX_TIMEOUT if regex_mode else None
-    # Counting reads every matched chunk again; it gets a deadline of its own, as the scan did.
-    deadline = time.monotonic() + USER_REGEX_SCAN_SECONDS if regex_mode else None
-    try:
-        groups = group_matches(
-            chunks,
-            compiled if regex_mode else pattern,
-            timeout=timeout,
-            store_decides=stemmed,
-            deadline=deadline,
-            collect_strings=regex_mode,
-        )
-    except TimeoutError:
-        return _TOO_COSTLY_SCAN if deadline is not None and time.monotonic() >= deadline else _TOO_COSTLY
-    if not groups and truncated:
-        # Every passage the capped scan read held the words only in a breadcrumb or an overlap: what lies past
-        # the cap was not read, so this is no „no“ (and no row count either).
-        return _CAPPED_WITHOUT_OWN_MATCH
-    if outcome is not None:
-        # Hits are the literal matches (the table's count); documents are the files holding them, counted
-        # only where the model may be told about them yet (ADR-0088). No match while a collection failed is
-        # not a no, the message says so, and neither does the row: an error, never „keine Fundstelle“.
-        outcome.record(
-            sum(group.occurrences for group in groups),
-            documents=len(groups),
-            collections=[group.collection for group in groups],
-        )
-        outcome.failed = bool(failed) and not groups
-    if not groups:
-        return no_match_message(phrases, answered, failed, regex_mode=regex_mode, scopes=scopes)
-    # The match table names every matching file and counts its matches, which
-    # is content of each file it names, passages shown or not: reported for the
-    # restricted-use admission (ADR-0088), beside the passages the grounding
-    # block reports itself.
-    from aiq_agent.knowledge.restricted_use import note_collections_read
-
-    note_collections_read(group.collection for group in groups)
-    passages = pick_passages(groups)
-    query = " | ".join(phrases)
-    candidates = await _candidate_counts(retriever, capped, pattern, filters_by_collection, regex_mode=regex_mode)
-    trailer = match_table(
-        groups, phrases, truncated=truncated, failed=failed, regex_mode=regex_mode, candidates=candidates, scopes=scopes
-    )
-    if stemmed:
-        trailer = f"{_STEMMED_NOTE}\n{trailer}"
-    if context is not None:
-        try:
-            snippets = match_snippets(groups, compiled if regex_mode else re.compile(pattern), context, timeout=timeout)
-        except TimeoutError:
-            return _TOO_COSTLY
-        trailer = f"{trailer}\n\n{snippets}" if snippets else trailer
-    formatted = await asyncio.to_thread(format_results, _passage_result(passages, query), query, trailer=trailer)
-    logger.info("exact search: %r matched %d file(s)", query, len(groups))
-    return formatted
 
 
 async def _candidate_counts(

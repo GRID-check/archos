@@ -515,3 +515,10 @@ def select_files(
             1 for row in selected if row.superseded_by and (row.collection, row.file_name) in confirmed
         ),
     )
+
+
+def _check_shelf(shelf: str | None) -> tuple[str | None, str]:
+    shelf = canonical_shelf_value(shelf or "") or None
+    if shelf is not None and shelf not in KNOWN_SHELVES:
+        return None, f"`shelf` must be one of {', '.join(KNOWN_SHELVES)}, or omitted for the reader's own files."
+    return shelf, ""
