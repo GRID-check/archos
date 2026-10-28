@@ -7,10 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
 
 from ..jobs.outcome_notify import notify_job_outcome_from_access
 from ..jobs.runner import _update_status_if_not_terminal

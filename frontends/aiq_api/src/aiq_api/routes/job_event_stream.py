@@ -7,12 +7,8 @@ import json
 import logging
 import os
 import time
-from typing import TYPE_CHECKING
 
 from aiq_agent.common.db_utils import redact_db_url
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 

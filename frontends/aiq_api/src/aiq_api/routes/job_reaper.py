@@ -5,11 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import TYPE_CHECKING
 from typing import Any
-
-if TYPE_CHECKING:
-    pass
 
 from ..jobs.outcome_notify import notify_job_outcome_from_access
 from ..jobs.runner import _update_status_if_not_terminal
@@ -23,6 +19,56 @@ GHOST_JOB_TIMEOUT_SECONDS = 300  # 5 minutes without events = ghost job
 GHOST_JOB_ERROR = "Job timed out (no heartbeat received from worker)"
 
 
+# Active jobs whose last event is older than the timeout, per dialect.
+_STALE_SQL = {
+    "postgres": (
+        "SELECT DISTINCT je.job_id FROM job_events je "
+        "INNER JOIN job_info ji ON je.job_id = ji.job_id "
+        "WHERE ji.status IN ({statuses}) "
+        "GROUP BY je.job_id "
+        "HAVING MAX(je.created_at) < NOW() - :timeout * INTERVAL '1 second'"
+    ),
+    "sqlite": (
+        "SELECT DISTINCT je.job_id FROM job_events je "
+        "INNER JOIN job_info ji ON je.job_id = ji.job_id "
+        "WHERE ji.status IN ({statuses}) "
+        "GROUP BY je.job_id "
+        "HAVING MAX(je.created_at) < datetime('now', :timeout_interval)"
+    ),
+}
+
+# Active jobs that never produced a single event. The INNER JOIN above can't
+# match them, but they are exactly the crash class the reaper exists for: a
+# worker that died during agent setup (RUNNING, before the first
+# heartbeat/callback event). Timestamps come from job_info since these jobs
+# have no events at all.
+_EVENTLESS_SQL = {
+    "postgres": (
+        "SELECT ji.job_id FROM job_info ji "
+        "LEFT JOIN job_events je ON je.job_id = ji.job_id "
+        "WHERE ji.status IN ({statuses}) AND je.job_id IS NULL "
+        "AND COALESCE(ji.updated_at, ji.created_at) < NOW() - :timeout * INTERVAL '1 second'"
+    ),
+    "sqlite": (
+        "SELECT ji.job_id FROM job_info ji "
+        "LEFT JOIN job_events je ON je.job_id = ji.job_id "
+        "WHERE ji.status IN ({statuses}) AND je.job_id IS NULL "
+        "AND datetime(COALESCE(ji.updated_at, ji.created_at)) < datetime('now', :timeout_interval)"
+    ),
+}
+
+
+def _with_statuses(template: str, statuses: tuple[str, ...]):
+    """``template`` as a statement with one bound ``:sN`` placeholder per status, and its parameters."""
+    from sqlalchemy import text
+
+    placeholders = ", ".join(f":s{i}" for i in range(len(statuses)))
+    params: dict[str, Any] = {f"s{i}": status for i, status in enumerate(statuses)}
+    # The template is a module literal and the placeholders are generated; every status is bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+    return text(template.format(statuses=placeholders)), params
+
+
 def _find_stale_jobs(db_url: str, active_statuses: tuple[str, ...]) -> list[str]:
     """
     Sync helper to query for ghost jobs in any of the given non-terminal statuses.
@@ -31,73 +77,26 @@ def _find_stale_jobs(db_url: str, active_statuses: tuple[str, ...]) -> list[str]
     with DB I/O.
     """
     from sqlalchemy import inspect
-    from sqlalchemy import text
 
     from ..jobs.event_store import EventStore
 
     EventStore._ensure_table_exists(db_url)
     engine = EventStore._get_or_create_sync_engine(db_url)
-    inspector = inspect(engine)
-    if not inspector.has_table("job_events"):
+    if not inspect(engine).has_table("job_events"):
         return []
 
-    status_placeholders = ", ".join(f":s{i}" for i in range(len(active_statuses)))
-    status_params: dict[str, Any] = {f"s{i}": status for i, status in enumerate(active_statuses)}
+    dialect = "postgres" if db_url.startswith("postgres") else "sqlite"
+    if dialect == "postgres":
+        timeout: dict[str, Any] = {"timeout": GHOST_JOB_TIMEOUT_SECONDS}
+    else:
+        timeout = {"timeout_interval": f"-{GHOST_JOB_TIMEOUT_SECONDS} seconds"}
 
+    stale_ids: list[str] = []
     with engine.connect() as conn:
-        if db_url.startswith("postgres"):
-            stale_query = text(
-                "SELECT DISTINCT je.job_id FROM job_events je "
-                "INNER JOIN job_info ji ON je.job_id = ji.job_id "
-                f"WHERE ji.status IN ({status_placeholders}) "
-                "GROUP BY je.job_id "
-                "HAVING MAX(je.created_at) < NOW() - :timeout * INTERVAL '1 second'"
-            )
-            params: dict[str, Any] = {**status_params, "timeout": GHOST_JOB_TIMEOUT_SECONDS}
-        else:
-            stale_query = text(
-                "SELECT DISTINCT je.job_id FROM job_events je "
-                "INNER JOIN job_info ji ON je.job_id = ji.job_id "
-                f"WHERE ji.status IN ({status_placeholders}) "
-                "GROUP BY je.job_id "
-                "HAVING MAX(je.created_at) < datetime('now', :timeout_interval)"
-            )
-            params = {
-                **status_params,
-                "timeout_interval": f"-{GHOST_JOB_TIMEOUT_SECONDS} seconds",
-            }
-
-        result = conn.execute(stale_query, params)
-        stale_ids = [row[0] for row in result]
-
-        # Second predicate: active jobs that never produced a single event.
-        # The INNER JOIN above can't match them, but they are exactly the crash
-        # class the reaper exists for: a worker that died during agent setup
-        # (RUNNING, before the first heartbeat/callback event). Timestamps come
-        # from job_info since these jobs have no events at all.
-        if db_url.startswith("postgres"):
-            eventless_query = text(
-                "SELECT ji.job_id FROM job_info ji "
-                "LEFT JOIN job_events je ON je.job_id = ji.job_id "
-                f"WHERE ji.status IN ({status_placeholders}) AND je.job_id IS NULL "
-                "AND COALESCE(ji.updated_at, ji.created_at) < NOW() - :timeout * INTERVAL '1 second'"
-            )
-            eventless_params: dict[str, Any] = {**status_params, "timeout": GHOST_JOB_TIMEOUT_SECONDS}
-        else:
-            eventless_query = text(
-                "SELECT ji.job_id FROM job_info ji "
-                "LEFT JOIN job_events je ON je.job_id = ji.job_id "
-                f"WHERE ji.status IN ({status_placeholders}) AND je.job_id IS NULL "
-                "AND datetime(COALESCE(ji.updated_at, ji.created_at)) < datetime('now', :timeout_interval)"
-            )
-            eventless_params = {
-                **status_params,
-                "timeout_interval": f"-{GHOST_JOB_TIMEOUT_SECONDS} seconds",
-            }
-
-        result = conn.execute(eventless_query, eventless_params)
-        stale_ids.extend(row[0] for row in result)
-        return stale_ids
+        for templates in (_STALE_SQL, _EVENTLESS_SQL):
+            query, params = _with_statuses(templates[dialect], active_statuses)
+            stale_ids.extend(row[0] for row in conn.execute(query, {**params, **timeout}))
+    return stale_ids
 
 
 async def reap_stale_jobs_once(job_store, db_url: str) -> list[str]:
