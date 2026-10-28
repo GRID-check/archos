@@ -48,7 +48,7 @@ const SPEC = /\.(spec|test)\.tsx?$/
 
 /** Every spec file vitest collects from TypeScript, relative to the UI root. */
 function specFiles() {
-  return globSync(['src/**/*.{spec,test}.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'], { cwd: UI }).sort()
+  return globSync(['{app,bff,ui,i18n,shared,types,utils}/**/*.{spec,test}.{ts,tsx}', '*.{spec,test}.{ts,tsx}', 'tests/**/*.{spec,test}.{ts,tsx}'], { cwd: UI }).sort()
 }
 
 /** esbuild's view of the import graph: each input with the inputs it imports. */
@@ -159,7 +159,7 @@ async function main(argv) {
   if (argv.includes('--update')) {
     const modules = baselineOf(reach)
     const description =
-      'Specs that reach each module reached by at least `recordFloor` specs, out of `specs`, read by frontends/ui/scripts/blast-radius.mjs. A module outside it fails at `threshold`. Rewrite with `task fe:blast-radius -- --update` and say in the pull request why a hub grew. docs/audit/blast-radius-2026-10.md'
+      'Specs that reach each module reached by at least `recordFloor` specs, out of `specs`, read by apps/workspace/scripts/blast-radius.mjs. A module outside it fails at `threshold`. Rewrite with `task workspace:blast-radius -- --update` and say in the pull request why a hub grew. docs/audit/blast-radius-2026-10.md'
     writeFileSync(
       BASELINE,
       `${JSON.stringify({ description, threshold: THRESHOLD, recordFloor: RECORD_FLOOR, specs: specs.length, modules }, null, 1)}\n`
@@ -178,7 +178,7 @@ async function main(argv) {
   console.error(`blast radius grew (${found.length}):\n  ${found.join('\n  ')}`)
   console.error(
     '\nA change made a module invalidate more specs. Cut the edge that did it (a hub importing a subtree, a barrel),' +
-      '\nor, when the growth is the point, run `task fe:blast-radius -- --update` and say why in the pull request.'
+      '\nor, when the growth is the point, run `task workspace:blast-radius -- --update` and say why in the pull request.'
   )
   return 1
 }

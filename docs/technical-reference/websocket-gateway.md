@@ -4,7 +4,7 @@ The gateway server (`server.js`) is a Node.js HTTP server on port 3000 that acts
 
 ## server.js architecture
 
-`frontends/ui/server.js`
+`apps/workspace/server.js`
 
 **Development mode** (`NODE_ENV !== 'production'`):
 - Gateway runs on port 3000
@@ -44,7 +44,7 @@ The `BACKEND_WS_URL` is derived from `BACKEND_CHAT_URL` by replacing `http` with
 
 ## Scope resolution
 
-`frontends/ui/src/app/api/auth/websocket-scope/route.ts`
+`apps/workspace/app/api/auth/websocket-scope/route.ts`
 
 Called internally (no external route) by `server.js` during WebSocket upgrade. Resolves the collection scope for the backend:
 
@@ -77,7 +77,7 @@ the rejection codes are the contract in
 [`websocket-protocol.md`](../api/websocket-protocol.md); the design, and why
 it replaced NAT's frames, is [`chat-wire-v2.md`](../design/chat-wire-v2.md).
 
-The client is `createTurnSocket` (`frontends/ui/src/adapters/api/turn-socket.ts`):
+The client is `createTurnSocket` (`apps/workspace/ui/adapters/api/turn-socket.ts`):
 
 - **Hello.** The socket is open, and sends, only once the server's first frame
   is a v2 `hello`. Silence for 5 s, or any other first frame, fails the

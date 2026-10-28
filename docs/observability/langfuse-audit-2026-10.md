@@ -134,7 +134,7 @@ needed.
     root span on purpose (they drowned the agent's). The BFF's own latency is
     visible only in logs.
 11. **PostHog receives users' names and e-mail addresses** on identify
-    (`frontends/ui/src/app/providers.tsx`), which contradicts the compliance
+    (`apps/workspace/app/providers.tsx`), which contradicts the compliance
     audit's "no analytics/tracking anywhere in the UI". Not a Langfuse issue,
     found on the way; it needs a privacy decision.
 12. **Ingest has no rollup.** Ingestion, OCR and vision calls are in the

@@ -1,8 +1,8 @@
-// @disk-inputs: src/app/app/**
+// @disk-inputs: app/app/**
 /**
  * URL invariance for the `/app` route tree.
  *
- * Walks `src/app/app` the way the Next.js router does — every `page.tsx` is a
+ * Walks `app/app` the way the Next.js router does — every `page.tsx` is a
  * URL, every `(group)` directory contributes nothing to it — and compares the
  * result against the checked-in {@link APP_ROUTE_URLS}.
  *
@@ -18,7 +18,7 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { APP_ROUTE_URLS } from './app-routes'
 
-const APP_DIR = join(process.cwd(), 'src', 'app', 'app')
+const APP_DIR = join(process.cwd(), 'app', 'app')
 
 /** Route groups `(name)` are organizational only — they never reach the URL. */
 const isRouteGroup = (segment: string): boolean => segment.startsWith('(') && segment.endsWith(')')

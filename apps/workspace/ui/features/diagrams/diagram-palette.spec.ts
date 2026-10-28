@@ -1,4 +1,4 @@
-// @disk-inputs: src/styles/tokens.css
+// @disk-inputs: ui/styles/tokens.css
 /**
  * The diagram's palette, and the three claims it makes.
  *
@@ -211,7 +211,7 @@ describe('the stubbed tokens are the shipped tokens', () => {
     const { resolve } = await import('node:path')
     // jsdom serves `import.meta.url` over http, so the path is resolved from the
     // vitest root instead.
-    const css = readFileSync(resolve(process.cwd(), 'src/styles/tokens.css'), 'utf8')
+    const css = readFileSync(resolve(process.cwd(), 'ui/styles/tokens.css'), 'utf8')
 
     // `--foreground: var(--ink); /* #1f2023 */` — the value may be a var(), so
     // the documented hex in the trailing comment is what is compared.

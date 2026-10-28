@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import { createElement } from 'react'
 import { beforeAll, afterEach, afterAll, vi } from 'vitest'
-import { resetDatabase } from '../../src/mocks/database'
+import { resetDatabase } from '../../tests/mocks/database'
 import { refuseNetwork } from './network-guard'
 
 // The DOM matchers and the MSW server, only where there is a DOM. This file
@@ -12,7 +12,7 @@ import { refuseNetwork } from './network-guard'
 // refused by the network guard below, which names the URL.
 const hasDom = typeof document !== 'undefined'
 if (hasDom) await import('@testing-library/jest-dom/vitest')
-const server = hasDom ? (await import('../../src/mocks/server')).server : null
+const server = hasDom ? (await import('../../tests/mocks/server')).server : null
 
 // Default mock for AuthKit components so tests that import `@/adapters/auth`
 // (or anything transitively pulling in `@workos-inc/authkit-nextjs/components`)

@@ -11,7 +11,7 @@
  * by `authz-coverage.spec.ts` (that scans `app/api`), so `posthog-proxy.spec.ts`
  * pins the same two facts for this file.
  *
- * Authentication: none, and `src/proxy.ts` leaves the path out of its matcher.
+ * Authentication: none, and `proxy.ts` leaves the path out of its matcher.
  * The SDK posts from signed-out pages and from the moments between a session
  * expiring and the page noticing; an AuthKit redirect to WorkOS would answer a
  * beacon with a login page. It also keeps AuthKit from buffering replay bodies.

@@ -57,8 +57,8 @@
  *                  --animations need Chromium's CDP and are skipped there.
  * --animations     records every animation Chromium starts (CDP Animation domain) and prints, after
  *                  the run's line, each distinct one with its duration and easing, flagged `!` when
- *                  neither matches the motion tokens (src/styles/tokens.css,
- *                  src/components/motion/index.tsx). motion.dev's JS-driven height tweens never
+ *                  neither matches the motion tokens (ui/styles/tokens.css,
+ *                  ui/components/motion/index.tsx). motion.dev's JS-driven height tweens never
  *                  reach the compositor and are not listed.
  *
  * The page is development only, so this measures `next dev`: several times
@@ -134,7 +134,7 @@ const round3 = (value) => Math.round(value * 1000) / 1000
  * and the spring settle durations in the motion module.
  */
 const motionTokens = () => {
-  const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui')
   const css = readFileSync(join(root, 'styles', 'tokens.css'), 'utf8')
   const motion = readFileSync(join(root, 'components', 'motion', 'index.tsx'), 'utf8')
   const durations = new Set([0])

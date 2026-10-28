@@ -77,10 +77,10 @@ describe('stripClientContextHeaders', () => {
 })
 
 describe('server.js strips before it writes', () => {
-  const source = readFileSync(new URL('../../../server.js', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../../server.js', import.meta.url), 'utf8')
 
   it('requires the strip', () => {
-    expect(source).toMatch(/require\('\.\/src\/lib\/proxy\/ws-upgrade-headers\.js'\)/)
+    expect(source).toMatch(/require\('\.\/bff\/proxy\/ws-upgrade-headers\.js'\)/)
   })
 
   describe('WebSocket per-header encoded line budget', () => {
@@ -140,7 +140,7 @@ describe('withoutSessionCookies', () => {
   })
 
   it('is what server.js forwards to the backend', () => {
-    const server = readFileSync(new URL('../../../server.js', import.meta.url), 'utf8')
+    const server = readFileSync(new URL('../../server.js', import.meta.url), 'utf8')
     expect(server).toMatch(/const cookie = withoutSessionCookies\(req\.headers\.cookie\)/)
   })
 })

@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/api/auth/websocket-scope/**, src/app/api/internal/**, src/lib/cross-project/**, src/lib/jobs/service.ts, src/lib/project-profile/**, src/lib/retrieval-scope/collection-scope-request.ts, src/lib/tasks/delegation.ts, src/lib/turn-context/**
+// @disk-inputs: app/api/auth/websocket-scope/**, app/api/internal/**, bff/cross-project/**, bff/jobs/service.ts, bff/project-profile/**, bff/retrieval-scope/collection-scope-request.ts, bff/tasks/delegation.ts, bff/turn-context/**
 /**
  * @vitest-environment node
  *
@@ -16,18 +16,18 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const ROOT = join(process.cwd(), 'src')
+const ROOT = process.cwd()
 
 /** What builds the agent's context, or answers the agent: directories and single files. */
 const CONTEXT_BUILDERS = [
-  'lib/project-profile',
-  'lib/turn-context',
-  'lib/cross-project',
+  'bff/project-profile',
+  'bff/turn-context',
+  'bff/cross-project',
   'app/api/internal',
   'app/api/auth/websocket-scope',
-  'lib/retrieval-scope/collection-scope-request.ts',
-  'lib/jobs/service.ts',
-  'lib/tasks/delegation.ts',
+  'bff/retrieval-scope/collection-scope-request.ts',
+  'bff/jobs/service.ts',
+  'bff/tasks/delegation.ts',
 ]
 
 /** What reads or names the people. */

@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -36,8 +36,8 @@ const proxyDb = drizzle(async (sql, params) => {
 vi.mock('@/lib/db', () => ({ getDb: () => proxyDb }))
 
 import { findGrantForSubject } from './repository'
+import { SOURCE_DIRS, srcKey, srcPath } from '@/test-utils/source-tree'
 
-const SRC_ROOT = path.resolve(__dirname, '..', '..')
 
 /** Every production `.ts`/`.tsx` file under `src/` — specs and mocks excluded. */
 function productionSources(directory: string): string[] {
@@ -58,12 +58,12 @@ function productionSources(directory: string): string[] {
 
 describe('findGrantForSubject — the deliberate non-org-scoped read', () => {
   it('has exactly ONE caller, and it is the access resolver that proved tenancy first', () => {
-    const definition = path.join(SRC_ROOT, 'lib', 'sharing', 'repository.ts')
+    const definition = srcPath('lib/sharing/repository.ts')
 
-    const callers = productionSources(SRC_ROOT)
+    const callers = SOURCE_DIRS.flatMap((dir) => productionSources(path.join(process.cwd(), dir)))
       .filter((file) => file !== definition)
       .filter((file) => /\bfindGrantForSubject\b/.test(readFileSync(file, 'utf8')))
-      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      .map((file) => srcKey(file))
 
     // If this fails, do not relax it: either the new caller has already resolved
     // the resource's organization (say so in the module note and add it here), or

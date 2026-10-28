@@ -10,9 +10,9 @@
  * `tests/aiq_agent/common/test_content_screen.py`.
  *
  * ONE fixture, at the repo root, read from disk at run time: vitest runs in
- * `frontends/ui` with the whole repository checked out (CI's frontend jobs
+ * `apps/workspace` with the whole repository checked out (CI's workspace jobs
  * check out the full tree). Not an `import`, so `tsc` never has to resolve a
- * path outside `frontends/ui` (`Dockerfile.typecheck` copies only that).
+ * path outside `apps/workspace` (`Dockerfile.typecheck` copies only that).
  *
  * The fixture also holds the character tables Python computed (whitespace,
  * decimal digits, letter/number/mark classes, the fold of every code point, the

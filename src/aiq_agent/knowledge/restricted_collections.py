@@ -4,7 +4,7 @@ A document filed under a restricted project folder is ingested into its own
 collection, ``<project collection>_r<12 hex of the folder id>``, and the BFF
 puts that collection into a turn's signed scope only for a member cleared for
 the folder, and only in interactive chat. The name is minted in one place,
-``restrictedCollectionName`` in ``frontends/ui/src/lib/authz/folder-access.ts``;
+``restrictedCollectionName`` in ``apps/workspace/bff/authz/folder-access.ts``;
 this module is its reader and must agree with it.
 
 Retrieval needs nothing from here: every read path stays inside the signed

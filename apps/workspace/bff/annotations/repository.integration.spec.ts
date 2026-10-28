@@ -5,7 +5,7 @@
  * restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/annotations/repository.integration.spec.ts
+ *     npx vitest run bff/annotations/repository.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
  *   - numbers run per document, and ten writers at once get ten numbers; a

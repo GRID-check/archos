@@ -2,7 +2,7 @@
  * Research Runs API Client
  *
  * Lists deep research async jobs ("research runs") for a project via the job
- * proxy (src/app/api/jobs/async/[...path]/route.ts), which forwards to the
+ * proxy (app/api/jobs/async/[...path]/route.ts), which forwards to the
  * backend's /v1/jobs/async/jobs endpoint.
  *
  * The project is named by `projectId`, never by its collection: the proxy

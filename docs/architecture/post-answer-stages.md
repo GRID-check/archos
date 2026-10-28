@@ -66,10 +66,10 @@ read-only pass said it **writes DB rows and the client polls**.
 
 **The poll is what happens.** Reflection's output reaches the browser by a
 three-shot HTTP poll, not by the stream — `POLL_SCHEDULE_MS = [0, 1500, 4000]`
-in `frontends/ui/src/features/chat/hooks/use-conversation-memory.ts:24`, hitting
+in `apps/workspace/ui/features/chat/hooks/use-conversation-memory.ts:24`, hitting
 `GET /api/projects/{id}/memory?conversationId=…`
 (`use-conversation-memory.ts:61-64`, route at
-`frontends/ui/src/app/api/projects/[id]/memory/route.ts:26`).
+`apps/workspace/app/api/projects/[id]/memory/route.ts:26`).
 
 **But the product owner is not imagining the stream**, and this is the point the
 earlier pass missed. Three separate things surface memory in the UI and only one
@@ -698,7 +698,7 @@ Two reasons, both hard:
 - **Tenant isolation comes for free and correct.** `messages` is covered by
   `secure_table('messages', 'EXISTS (SELECT 1 FROM conversations c WHERE
   c.id = conversation_id AND c.organization_id = current_org())')`
-  (`drizzle/0031_row_level_security.sql:268-269`). A new table means a new
+  (`migrations/0031_row_level_security.sql:268-269`). A new table means a new
   policy, a new entry in the tenant-isolation suite, and a new way to get it
   wrong. See §7.3.
 - **The rehydrate path already reads it.** `server-message-mapper.ts:129-140`
@@ -896,7 +896,7 @@ mounted.
 
 The screenshot registry has since been deleted, and this argument went with it.
 It is kept here because the argument still has to be answered by whoever makes
-the change. `frontends/ui/visual/registry.mjs:150-156` used to read:
+the change. `apps/workspace/visual/registry.mjs:150-156` used to read:
 
 > `answer-follow-ups` — "An inline callout mid-answer and a `follow_ups` card
 > **ENDING the answer**, with the provenance footer directly beneath it — **the
@@ -966,7 +966,7 @@ The answer is complete and being streamed before any stage task runs
   (`repository.ts:519-525`), and the PATCH is idempotent for the same reason.
 - **Memory reflection keeps its own second layer**, unchanged: write-time
   normalised de-duplication in `createProjectMemoryItem` plus the two partial
-  unique indexes from `drizzle/0010_project_memory_dedup.sql`. A duplicated
+  unique indexes from `migrations/0010_project_memory_dedup.sql`. A duplicated
   reflection **cannot** produce two memory proposals even if everything above
   fails.
 - **Deliberately no retries.** A stage is a best-effort enhancement of a
@@ -978,7 +978,7 @@ The answer is complete and being streamed before any stage task runs
 - **`follow_ups` writes no table.** Its output lands in `messages.metadata`,
   covered by `secure_table('messages', 'EXISTS (SELECT 1 FROM conversations
   c WHERE c.id = conversation_id AND c.organization_id = current_org())')`
-  (`drizzle/0031_row_level_security.sql:268-269`), through a route that already
+  (`migrations/0031_row_level_security.sql:268-269`), through a route that already
   calls `requireResourceAccess(session, 'conversation', id, 'collaborator')`
   (`lib/conversations/service.ts:591`). **No new policy, no new CI surface.**
 - **`memory_reflection` writes `project_memory`**, covered by
@@ -994,7 +994,7 @@ The answer is complete and being streamed before any stage task runs
   `websocket_reconnect.py:475-488`). A stage never chooses a recipient.
 
 **Net: this design adds zero rows to `secure_table`.** That is the claim
-the tenant-isolation suite (`task db:test:rls`, a step of CI's Frontend job) would otherwise
+the tenant-isolation suite (`task db:test:rls`, a step of CI's Workspace job) would otherwise
 have to re-prove, and it is deliberate.
 
 ### 7.4 Observability
@@ -1650,7 +1650,7 @@ Then the specific risks:
    `sanitizeProvenance` already applies (`service.ts:600-611`, and the reasoning
    at `messages/[messageId]/route.ts:44-55`).
 9. **`AgentGroup.FOLLOW_UPS` must be mirrored** in
-   `frontends/ui/src/lib/model-config/agent-groups.ts` or the Platform → Models
+   `apps/workspace/bff/model-config/agent-groups.ts` or the Platform → Models
    surface silently omits it (`common/model_overrides.py:64-67` says so).
    Mechanical, easy to forget, caught by the existing sync test.
 

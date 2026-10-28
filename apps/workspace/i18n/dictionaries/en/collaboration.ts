@@ -3,7 +3,7 @@
  * inbox (ADR-0032…0035).
  *
  * Anything counted here carries explicit `…One` / `…Many` keys and the renderer
- * picks between them. That predates the plural blocks `src/i18n/translate.ts`
+ * picks between them. That predates the plural blocks `i18n/translate.ts`
  * now understands (`{count, plural, one {…} other {…}}`), and these pairs are
  * left as they are because they are already correct — but a NEW counted string
  * belongs in one key with a plural block rather than in a new pair. What has not

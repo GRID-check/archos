@@ -18,7 +18,7 @@ import json
 import os
 import sys
 
-TIER_ORDER = ("backend", "frontend", "site", "infra", "packages", "sast")
+TIER_ORDER = ("backend", "workspace", "site", "infra", "packages", "sast")
 
 
 def _short(sha: str) -> str:

@@ -20,7 +20,7 @@ export function runLedgerJsonSchema(): JsonSchemaNode {
   return jsonSchemaDocument(RUN_LEDGER_WIRE_SCHEMAS, {
     title: 'Grid run ledger wire contract',
     description:
-      'Generated from frontends/ui/src/lib/runs/run-ledger-types.ts. Do not edit by hand: ' +
+      'Generated from apps/workspace/bff/runs/run-ledger-types.ts. Do not edit by hand: ' +
       'run-ledger-schema.spec.ts rewrites this file and fails when it is stale.',
   })
 }

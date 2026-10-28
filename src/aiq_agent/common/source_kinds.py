@@ -71,7 +71,7 @@ class SourceKind:
 
 #: The canonical registry. Extend here, run ``scripts/generate_vocabularies.py``
 #: (the UI's ``SOURCE_KINDS`` is generated from these keys) and give the kind its
-#: ``--source-*`` tint in ``frontends/ui/src/lib/source-kinds.ts``.
+#: ``--source-*`` tint in ``apps/workspace/bff/source-kinds.ts``.
 SOURCE_KINDS: dict[str, SourceKind] = {
     "building_law": SourceKind(
         key="building_law",
@@ -215,7 +215,7 @@ class Shelf(StrEnum):
     "Projektwissen".
 
     The TypeScript twin declares the same four members
-    (``frontends/ui/src/lib/source-kinds.ts``); neither runtime
+    (``apps/workspace/bff/source-kinds.ts``); neither runtime
     imports the other's — three constants declared twice is looser coupling than
     a generated artifact on the core retrieval path.
     """
@@ -248,8 +248,8 @@ def canonical_shelf_value(value: str) -> str:
 #: (``docs/deployment/office-shelf-rename-runbook.md``). Until an operator has
 #: run it, writers keep the ACTIVE prefix; readers accept every one in
 #: :data:`OFFICE_SHELF_COLLECTION_PREFIXES`. The TypeScript twin is
-#: ``OFFICE_SHELF_COLLECTION_PREFIX`` in ``frontends/ui/src/lib/office-shelf/collection.ts``;
-#: ``frontends/ui/src/lib/office-shelf/collection-prefix.spec.ts`` holds the two equal.
+#: ``OFFICE_SHELF_COLLECTION_PREFIX`` in ``apps/workspace/bff/office-shelf/collection.ts``;
+#: ``apps/workspace/bff/office-shelf/collection-prefix.spec.ts`` holds the two equal.
 OFFICE_SHELF_COLLECTION_PREFIX = "archiv_"
 #: The prefix the shelf's collections take once re-tagged (the next release's value).
 OFFICE_SHELF_TARGET_COLLECTION_PREFIX = "office_shelf_"

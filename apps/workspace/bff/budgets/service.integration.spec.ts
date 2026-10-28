@@ -7,7 +7,7 @@
  * TEST_DATABASE_URL is set.
  *
  *   TEST_DATABASE_URL=postgres://user@host:port/app npx vitest run \
- *     src/lib/budgets/service.integration.spec.ts
+ *     bff/budgets/service.integration.spec.ts
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'

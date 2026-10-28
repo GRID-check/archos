@@ -1,4 +1,4 @@
-// @disk-inputs: src/lib/bim/rules.ts
+// @disk-inputs: bff/bim/rules.ts
 /**
  * @vitest-environment node
  */
@@ -117,7 +117,7 @@ describe('projected rule inputs', () => {
     // `undefined` on the fast path and the real value on the slow one — the
     // same model answering two ways depending on which path served it. This
     // fails the moment a new rule needs a new key.
-    const source = readFileSync(join(process.cwd(), 'src', 'lib', 'bim', 'rules.ts'), 'utf8')
+    const source = readFileSync(join(process.cwd(), 'bff', 'bim', 'rules.ts'), 'utf8')
     const read = new Set(
       // `dimensionProperty` is in the alternation too: it is the
       // positive-only reader the dimensional rules use, and a key visible only

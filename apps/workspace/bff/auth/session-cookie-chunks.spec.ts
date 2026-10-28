@@ -40,7 +40,7 @@ vi.mock('next/headers', () => ({
 }))
 // `saveSession` verifies the access token against WorkOS's JWKS before sealing it,
 // with the `jose` AuthKit ships beside itself rather than ours.
-vi.mock('../../../node_modules/@workos-inc/authkit-nextjs/node_modules/jose/dist/node/esm/index.js', async (importOriginal) => ({
+vi.mock('../../node_modules/@workos-inc/authkit-nextjs/node_modules/jose/dist/node/esm/index.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('jose')>()),
   createRemoteJWKSet: () => () => Promise.resolve(undefined),
   jwtVerify: async () => ({ payload: {}, protectedHeader: { alg: 'RS256' } }),
@@ -69,7 +69,7 @@ type ChunkModule = {
   ) => void
 }
 
-const DIST = path.resolve(__dirname, '../../../node_modules/@workos-inc/authkit-nextjs/dist/esm')
+const DIST = path.resolve(__dirname, '../../node_modules/@workos-inc/authkit-nextjs/dist/esm')
 let authkit: AuthKit
 let sessionModule: SessionModule
 let chunks: ChunkModule

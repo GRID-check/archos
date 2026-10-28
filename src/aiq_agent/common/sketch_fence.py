@@ -6,11 +6,11 @@ shapes with a ``label``, free text, arrows and lines with ``points`` and
 ``start``/``end`` bound by element id, frames around groups. The browser fills
 in what the skeleton leaves out (sizes from labels, arrow ends, ids, seeds).
 ADR-0146 says why the model may write this at all; the doctrine it keeps is in
-``frontends/ui/src/lib/diagrams/diagram-sources.ts``: a sketch claims no
+``apps/workspace/bff/diagrams/diagram-sources.ts``: a sketch claims no
 dimension.
 
 This module is the server's half of the check, and
-``frontends/ui/src/lib/diagrams/sketch-fence.ts`` is the browser's. They apply
+``apps/workspace/bff/diagrams/sketch-fence.ts`` is the browser's. They apply
 the same rules and name a refusal with the same word;
 ``tests/aiq_agent/common/test_sketch_fence.py`` runs both against one fixture
 file. The server's verdict is what reaches the stored answer: a fence it

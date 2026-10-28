@@ -5,7 +5,7 @@
  * the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/projects/folder-bin.integration.spec.ts
+ *     npx vitest run bff/projects/folder-bin.integration.spec.ts
  *
  * Every rule here is a claim about SQL: which rows a listing leaves out, what
  * the triggers refuse, what the hold predicate covers, which answers the
@@ -265,7 +265,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
 
   /** The purger's claim, run and rolled back: what it would take right now. */
   async function claimable(): Promise<string[]> {
-    const { claimNext } = await import('../../../purger/db.js')
+    const { claimNext } = await import('../../purger/db.js')
     const client = postgres(url as string, { prepare: false, max: 1 })
     const claimed: string[] = []
     try {

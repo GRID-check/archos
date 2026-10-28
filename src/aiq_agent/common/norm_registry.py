@@ -105,7 +105,7 @@ BUNDESLAENDER: tuple[str, ...] = (
 )
 
 # Structured `federal_state` fact tokens (intake wizard vocabulary, see
-# frontends/ui/src/lib/project-profile/intake-definition.ts) -> canonical names.
+# apps/workspace/bff/project-profile/intake-definition.ts) -> canonical names.
 # `outside_austria` maps to None on purpose: the project is explicitly
 # outside Austria, so no state's law should be prioritized.
 FEDERAL_STATE_TOKENS: dict[str, str | None] = {

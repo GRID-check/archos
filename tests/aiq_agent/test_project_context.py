@@ -9,7 +9,7 @@ import pytest
 from aiq_agent import project_context as pc
 
 FIXTURE_PATH = (
-    Path(__file__).resolve().parents[2] / "frontends" / "ui" / "tests" / "fixtures" / "grid_request_context.json"
+    Path(__file__).resolve().parents[2] / "apps" / "workspace" / "tests" / "fixtures" / "grid_request_context.json"
 )
 
 # Camel-case JSON fixture field name -> GridRequestContext attribute name.
@@ -225,7 +225,7 @@ class TestGridRequestContextFromContext:
 class TestGridRequestContextContractFixture:
     """Cross-language wire contract (backlog T3-9): parsing the fixture's
     `headers` must reproduce the fixture's `input`-equivalent values. The TS
-    side (`frontends/ui/src/lib/request-context.spec.ts`) asserts the
+    side (`apps/workspace/bff/request-context.spec.ts`) asserts the
     opposite direction — building `input` reproduces `headers` — from the
     same file.
     """

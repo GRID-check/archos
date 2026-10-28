@@ -11,9 +11,9 @@
  * failure. So this lints one planted violation per guard, at the path the
  * guard covers, and fails if any of them comes back clean.
  *
- * The fixtures live in a temporary copy of the layout (`src/app/…`,
- * `src/lib/…`, `tests/…`) rather than in the tree, because a planted violation
- * in `src/` would fail the real lint run.
+ * The fixtures live in a temporary copy of the layout (`app/…`,
+ * `bff/…`, `tests/…`) rather than in the tree, because a planted violation
+ * in the source directories would fail the real lint run.
  */
 
 import { execFileSync } from 'node:child_process'
@@ -29,7 +29,7 @@ const UI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OXLINT = path.join(UI, 'node_modules', 'oxlint', 'bin', 'oxlint')
 
 const FIXTURES = {
-  'src/app/canary/page.tsx': [
+  'app/canary/page.tsx': [
     "'use client'",
     "import { useEffect, useState } from 'react'",
     "import { getGridSession } from '@/lib/auth/session'",
@@ -41,7 +41,7 @@ const FIXTURES = {
     '  return <div className="transition-all"><img src="/x.png" alt="" /></div>',
     '}',
   ].join('\n'),
-  'src/lib/canary.ts': [
+  'bff/canary.ts': [
     "import { getCached } from '@/lib/cache'",
     'export const load = (projectId: string) => getCached(`digest:${projectId}`, 1000, async () => 1)',
     'export const rollback = (tx: { rollback(): void }) => tx.rollback()',
@@ -50,40 +50,40 @@ const FIXTURES = {
     "export const redis = require('ioredis')",
   ].join('\n'),
   // Specs may spell the tenant boundary's failure modes on purpose.
-  'src/lib/canary.spec.ts': [
+  'bff/canary.spec.ts': [
     "import { getCached } from '@/lib/cache'",
     'export const load = (projectId: string) => getCached(`digest:${projectId}`, 1000, async () => 1)',
     "export const isDuplicate = (error: { code: string }) => error.code === '23505'",
   ].join('\n'),
   // Transport code does not query: one value import from `@/lib/db` must be
   // reported; the type import and `tenant-context` must not.
-  'src/app/api/canary/route.ts': [
+  'app/api/canary/route.ts': [
     "import { db } from '@/lib/db'",
     "import type { Users } from '@/lib/db/schema'",
     "import { withTenant } from '@/lib/db/tenant-context'",
     'export const handle = [db, withTenant] as unknown as Users',
   ].join('\n'),
   // A file that imported the db before the rule existed stays allowed.
-  'src/app/api/internal/usage/route.ts': "import { db } from '@/lib/db'\nexport const handle = db",
-  'src/features/grid-cards/schematics/kit.tsx': "export const size = 'text-sm'",
+  'app/api/internal/usage/route.ts': "import { db } from '@/lib/db'\nexport const handle = db",
+  'ui/features/grid-cards/schematics/kit.tsx': "export const size = 'text-sm'",
   'tests/canary.test.ts': 'export const fixture: any = {}',
-  'src/lib/canary-repository.ts': "import { projects } from '@/lib/db/schema'\nexport const table = projects",
-  'src/lib/canary-table.ts': "import { projects } from '@/lib/db/schema/projects'\nexport const table = projects",
+  'bff/canary-repository.ts': "import { projects } from '@/lib/db/schema'\nexport const table = projects",
+  'bff/canary-table.ts': "import { projects } from '@/lib/db/schema/projects'\nexport const table = projects",
 }
 
 /** [file, rule] pairs that MUST be reported. */
 const EXPECTED = [
-  ['src/app/canary/page.tsx', 'grid(require-tenant-scope)'],
-  ['src/app/canary/page.tsx', 'typescript(no-explicit-any)'],
-  ['src/app/canary/page.tsx', 'react-hooks(rules-of-hooks)'],
-  ['src/app/canary/page.tsx', 'react-hooks(exhaustive-deps)'],
-  ['src/app/canary/page.tsx', 'grid(motion-vocabulary)'],
-  ['src/app/canary/page.tsx', 'next(no-img-element)'],
-  ['src/lib/canary.ts', 'grid(require-tenant-cache-key)'],
-  ['src/lib/canary.ts', 'grid(no-restricted-syntax)'],
-  ['src/app/api/canary/route.ts', 'eslint(no-restricted-imports)'],
-  ['src/lib/canary-repository.ts', 'eslint(no-restricted-imports)'],
-  ['src/features/grid-cards/schematics/kit.tsx', 'grid(card-type-scale)'],
+  ['app/canary/page.tsx', 'grid(require-tenant-scope)'],
+  ['app/canary/page.tsx', 'typescript(no-explicit-any)'],
+  ['app/canary/page.tsx', 'react-hooks(rules-of-hooks)'],
+  ['app/canary/page.tsx', 'react-hooks(exhaustive-deps)'],
+  ['app/canary/page.tsx', 'grid(motion-vocabulary)'],
+  ['app/canary/page.tsx', 'next(no-img-element)'],
+  ['bff/canary.ts', 'grid(require-tenant-cache-key)'],
+  ['bff/canary.ts', 'grid(no-restricted-syntax)'],
+  ['app/api/canary/route.ts', 'eslint(no-restricted-imports)'],
+  ['bff/canary-repository.ts', 'eslint(no-restricted-imports)'],
+  ['ui/features/grid-cards/schematics/kit.tsx', 'grid(card-type-scale)'],
   ['tests/canary.test.ts', 'typescript(no-explicit-any)'],
 ]
 
@@ -103,7 +103,7 @@ beforeAll(() => {
 
   let stdout
   try {
-    stdout = execFileSync(process.execPath, [OXLINT, '-c', '.oxlintrc.json', '-f', 'json', 'src', 'tests'], {
+    stdout = execFileSync(process.execPath, [OXLINT, '-c', '.oxlintrc.json', '-f', 'json', 'app', 'bff', 'ui', 'tests'], {
       cwd: workdir,
       encoding: 'utf8',
     })
@@ -124,15 +124,15 @@ describe('.oxlintrc.json', () => {
   })
 
   it('reports each restricted selector once', () => {
-    const restricted = findings.filter(([f, r]) => f === 'src/lib/canary.ts' && r === 'grid(no-restricted-syntax)')
+    const restricted = findings.filter(([f, r]) => f === 'bff/canary.ts' && r === 'grid(no-restricted-syntax)')
     expect(restricted).toHaveLength(4)
   })
 
   it('reports only the value import from the db in a route, and the schema barrel outside one', () => {
     const imports = findings.filter(([f, r]) => r === 'eslint(no-restricted-imports)')
     expect(imports.sort()).toEqual([
-      ['src/app/api/canary/route.ts', 'eslint(no-restricted-imports)'],
-      ['src/lib/canary-repository.ts', 'eslint(no-restricted-imports)'],
+      ['app/api/canary/route.ts', 'eslint(no-restricted-imports)'],
+      ['bff/canary-repository.ts', 'eslint(no-restricted-imports)'],
     ])
   })
 
@@ -148,10 +148,10 @@ describe('.oxlintrc.json', () => {
       (o) => o.rules['typescript/no-restricted-imports'] === 'off' && !o.files.some((f) => f.includes('spec')),
     )
     const unescaped = exempt.files.map((f) => f.replace(/\\([[\]])/g, '$1'))
-    expect(unescaped).toEqual(PRE_EXISTING_DB_IMPORTERS.map((file) => `src/${file}`))
+    expect(unescaped).toEqual(PRE_EXISTING_DB_IMPORTERS.map((file) => file))
   })
 
   it('leaves specs out of the tenant-boundary and restricted-syntax rules', () => {
-    expect(findings.filter(([file]) => file === 'src/lib/canary.spec.ts')).toEqual([])
+    expect(findings.filter(([file]) => file === 'bff/canary.spec.ts')).toEqual([])
   })
 })

@@ -1,8 +1,8 @@
 """The run ledger's wire, validated against the schema the BFF generated from its own zod.
 
 ADR-0055 read from this side: there is **no hand-written twin** of the contract.
-The shape lives in ``frontends/ui/src/lib/runs/run-ledger-types.ts``, is
-serialised to ``frontends/ui/tests/fixtures/run-ledger.schema.json`` by
+The shape lives in ``apps/workspace/bff/runs/run-ledger-types.ts``, is
+serialised to ``apps/workspace/tests/fixtures/run-ledger.schema.json`` by
 ``run-ledger-schema.spec.ts``, and what this file asserts is that the payloads
 ``aiq_agent.common.run_ledger`` builds validate against it — so a field renamed
 on the TS side fails here rather than at runtime with a 400 the reader sees as
@@ -41,7 +41,9 @@ from aiq_agent.common.run_ledger import RunStatus
 from aiq_agent.common.run_ledger import RunStep
 from aiq_agent.common.run_ledger import to_wire
 
-SCHEMA_PATH = Path(__file__).resolve().parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "run-ledger.schema.json"
+SCHEMA_PATH = (
+    Path(__file__).resolve().parents[3] / "apps" / "workspace" / "tests" / "fixtures" / "run-ledger.schema.json"
+)
 
 
 @pytest.fixture(scope="module")

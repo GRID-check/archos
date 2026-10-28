@@ -15,8 +15,8 @@ import { listPlatformSkills } from './platform-skills'
 import { KNOWN_SKILL_AGENTS, METADATA_AGENTS } from './types'
 
 const here = dirname(fileURLToPath(import.meta.url))
-// src/lib/skills -> src/lib -> src -> frontends/ui
-const uiRoot = join(here, '..', '..', '..')
+// bff/skills -> bff -> src -> apps/workspace
+const uiRoot = join(here, '..', '..')
 const script = join(uiRoot, 'scripts', 'sync-platform-skills.mjs')
 
 describe('sync-platform-skills --check', () => {

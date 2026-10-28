@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/api/internal/document-versions/route.ts
+// @disk-inputs: app/api/internal/document-versions/route.ts
 /**
  * @vitest-environment node
  */

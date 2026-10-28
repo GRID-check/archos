@@ -17,7 +17,7 @@
  * definition this module does. Re-exported here so the app keeps importing it
  * from `@/lib/db/errors`.
  */
-import { MAX_CAUSE_DEPTH, databaseUnavailableCode } from '../../../workers/database-unavailable.js'
+import { MAX_CAUSE_DEPTH, databaseUnavailableCode } from '../../workers/database-unavailable.js'
 
 export { databaseUnavailableCode }
 

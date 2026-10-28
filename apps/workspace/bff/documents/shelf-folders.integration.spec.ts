@@ -11,7 +11,7 @@
  * the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/documents/shelf-folders.integration.spec.ts
+ *     npx vitest run bff/documents/shelf-folders.integration.spec.ts
  */
 
 import { sql } from 'drizzle-orm'

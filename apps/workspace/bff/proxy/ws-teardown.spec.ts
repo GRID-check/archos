@@ -130,7 +130,7 @@ describe('handleWsProxyError before the upgrade', () => {
 })
 
 describe('server.js wiring', () => {
-  const source = readFileSync(new URL('../../../server.js', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../../server.js', import.meta.url), 'utf8')
 
   it('watches the pair from the proxied request, and has no unclassified socket error log', () => {
     expect(source).toMatch(

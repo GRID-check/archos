@@ -44,7 +44,7 @@ PRODUCT_PATTERNS = [
     re.compile(r"^src/aiq_agent/"),
     re.compile(r"^sources/[^/]+/src/"),
     re.compile(r"^apps/backend/src/"),
-    re.compile(r"^frontends/ui/src/"),
+    re.compile(r"^apps/workspace/(app|bff|ui|i18n|shared)/"),
 ]
 
 # ...except for the parts of them that only a developer ever sees.

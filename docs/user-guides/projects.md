@@ -20,7 +20,7 @@ When the Büroablage is enabled for your org, a full-width **Büroablage** entry
 
 Organization admins additionally see a **Recently deleted** section at the bottom, from which soft-deleted projects can be restored during the grace period.
 
-Source: `frontends/ui/src/app/app/projects/page.tsx`, `frontends/ui/src/components/projects/`
+Source: `apps/workspace/app/app/projects/page.tsx`, `apps/workspace/ui/components/projects/`
 
 ## Creating a project
 
@@ -30,7 +30,7 @@ To add a finished project as a reference for the office, create it as **closed**
 
 If no projects exist yet, the page shows a centered empty state with a **Create your first project** action.
 
-Source: `frontends/ui/src/components/projects/create-project-dialog.tsx`
+Source: `apps/workspace/ui/components/projects/create-project-dialog.tsx`
 
 ## Project page layout
 
@@ -51,7 +51,7 @@ Every section except **Ask Piloti** shares one page header: a `{project} / {sect
 
 The former **Overview** and **Members** pages were consolidated into **Settings**; their old routes redirect there (the root redirects to Ask Piloti). The legacy **Research** page redirects to **History**. The wordmark at the top of the sidebar links back to **All projects** (`/app/projects`).
 
-Source: `frontends/ui/src/components/shell/app-sidebar.tsx`, `frontends/ui/src/app/app/projects/[id]/layout.tsx`
+Source: `apps/workspace/ui/components/shell/app-sidebar.tsx`, `apps/workspace/app/app/projects/[id]/layout.tsx`
 
 ## Project brief and intake
 
@@ -61,13 +61,13 @@ The wizard implements four scopes: a project may contain one grundstück and **o
 
 Changing the location in the intake wizard takes effect immediately for new chats: the profile save clears both the cached project-context prompt view and the cached Bundesland used for jurisdiction-dependent RIS logic, so a saved location change is never served stale.
 
-Source: `frontends/ui/src/features/projects/components/project-intake-wizard.tsx`, `frontends/ui/src/lib/project-profile/`
+Source: `apps/workspace/ui/features/projects/components/project-intake-wizard.tsx`, `apps/workspace/bff/project-profile/`
 
 ## Project-scoped chat
 
 When you start a chat from a project's "Ask Piloti" (chat) tab, the conversation is tagged with the project's ID. The `buildCollectionScopeFromRequest()` function includes the project's collection (`proj_{uuid}`) in the `X-Grid-Collection-Scope` header. This limits knowledge retrieval to documents uploaded to that project.
 
-Source: `docs/technical-reference/chat-flow.md`, `frontends/ui/src/lib/retrieval-scope/collection-scope-request.ts`
+Source: `docs/technical-reference/chat-flow.md`, `apps/workspace/bff/retrieval-scope/collection-scope-request.ts`
 
 ## Document management
 
@@ -81,7 +81,7 @@ Upload documents via the **Documents** tab. The upload flow:
 
 Documents are listed with their filename, content type, file size, status, and creation date.
 
-Source: `frontends/ui/src/app/api/documents/upload/route.ts:20`, `frontends/ui/src/app/projects/[id]/page.tsx:24`
+Source: `apps/workspace/app/api/documents/upload/route.ts:20`, `apps/workspace/app/projects/[id]/page.tsx:24`
 
 ## Skills (feature-flagged)
 
@@ -105,8 +105,8 @@ may use it, and that is all. Running one on a timer is what the **Jobs** tab is
 for; running one in a conversation is what typing `/` at the start of a chat
 message is for — see [Chat](chat.md).
 
-Source: `frontends/ui/src/features/skills/`, service in
-`frontends/ui/src/lib/skills/`
+Source: `apps/workspace/ui/features/skills/`, service in
+`apps/workspace/bff/skills/`
 
 ## Jobs (feature-flagged)
 
@@ -158,8 +158,8 @@ something should run on a timer is a property of the job. Every run — schedule
 or manual — is subject to the async-job admission caps; rejected occurrences
 appear as *skipped* runs in the history.
 
-Source: `frontends/ui/src/features/jobs/`, service in
-`frontends/ui/src/lib/jobs/`
+Source: `apps/workspace/ui/features/jobs/`, service in
+`apps/workspace/bff/jobs/`
 
 ## The Steckbrief
 
@@ -238,7 +238,7 @@ The **Members** section of the project **Settings** page (`/app/projects/{id}/se
 
 Members can be added or removed by any user with the `project:manage` permission. Organization admins bypass per-project checks entirely.
 
-Source: `frontends/ui/src/lib/authz/projects.ts:7`, `frontends/ui/src/app/api/projects/[id]/members/route.ts:32`
+Source: `apps/workspace/bff/authz/projects.ts:7`, `apps/workspace/app/api/projects/[id]/members/route.ts:32`
 
 ## Navigating between projects
 

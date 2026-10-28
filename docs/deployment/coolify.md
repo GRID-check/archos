@@ -120,7 +120,7 @@ own domains, DB password, and internal token with no manual input.
    branch (e.g. `develop`).
 2. **Base Directory**: leave at repo root (`/`). **Compose file path**:
    `deploy/compose/docker-compose.coolify.yaml`.
-   > The compose `build:` contexts (`../..`, `../../frontends/ui`) and the
+   > The compose `build:` contexts (`../..`, `../../apps/workspace`) and the
    > Postgres `./init-db.sql` bind mount both resolve relative to the compose
    > file's directory, so they work as-is from the repo checkout.
 3. **Environment Variables** — set the required secrets:

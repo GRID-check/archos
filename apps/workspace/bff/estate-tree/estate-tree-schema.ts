@@ -10,7 +10,7 @@ export function estateTreeJsonSchema(): JsonSchemaNode {
   return jsonSchemaDocument(ESTATE_TREE_WIRE_SCHEMAS, {
     title: 'Grid estate tree wire contract',
     description:
-      'Generated from frontends/ui/src/lib/estate-tree/types.ts. Do not edit by hand: ' +
+      'Generated from apps/workspace/bff/estate-tree/types.ts. Do not edit by hand: ' +
       'estate-tree-schema.spec.ts rewrites this file and fails when it is stale.',
   })
 }

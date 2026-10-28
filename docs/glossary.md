@@ -113,11 +113,11 @@ replaced `agent_capability_missing`.
 
 | Term | Meaning | Defined in |
 |---|---|---|
-| BFF | The Next.js server in `frontends/ui` (API routes plus the `server.js` WebSocket gateway). It owns identity, authorization, tenancy and the `app` database; the Python agent is stateless and trusts what the BFF sends it | [`frontends/ui/AGENTS.md`](../frontends/ui/AGENTS.md) |
+| BFF | The Next.js server in `apps/workspace` (API routes plus the `server.js` WebSocket gateway). It owns identity, authorization, tenancy and the `app` database; the Python agent is stateless and trusts what the BFF sends it | [`apps/workspace/AGENTS.md`](../apps/workspace/AGENTS.md) |
 | NAT | NVIDIA NeMo Agent Toolkit, the framework the Python agent runs on. Tools register with `@register_function`, are discovered through a `nat.plugins` entry point, and agents are `_type` entries in `configs/*.yml` | [`src/aiq_agent/AGENTS.md`](../src/aiq_agent/AGENTS.md) |
-| Signed request context | The `X-Grid-Request-Context` envelope the BFF mints for every agent request, HMAC-signed, carrying the scope, project context and memory the agent may use | [`frontends/ui/src/lib/request-context.ts`](../frontends/ui/src/lib/request-context.ts) |
+| Signed request context | The `X-Grid-Request-Context` envelope the BFF mints for every agent request, HMAC-signed, carrying the scope, project context and memory the agent may use | [`apps/workspace/bff/request-context.ts`](../apps/workspace/bff/request-context.ts) |
 | Workspace primitive, typed client | A workspace capability exposed as one HTTP API with a typed client, which the UI, the agent's tools and tasks all call as equal clients (ADR-0055) | [`docs/adr/0055-api-first-workspace-primitives.md`](adr/0055-api-first-workspace-primitives.md) |
-| Route factories | `apiRoute`, `internalApiRoute`, `publicApiRoute`, `platformApiRoute`: the only sanctioned wrappers for a BFF route handler, each declaring its authorization | [`frontends/ui/src/lib/api/handler.ts`](../frontends/ui/src/lib/api/handler.ts) |
+| Route factories | `apiRoute`, `internalApiRoute`, `publicApiRoute`, `platformApiRoute`: the only sanctioned wrappers for a BFF route handler, each declaring its authorization | [`apps/workspace/bff/api/handler.ts`](../apps/workspace/bff/api/handler.ts) |
 | `SourceKind` | The code form of a source kind (`building_law`, `office`, `project`, `web`, plus `measurement` for model measurements). Defined in Python and mirrored by hand in `source-kinds.ts`; changing one and not the other renders the chip as unknown | [`src/aiq_agent/common/source_kinds.py`](../src/aiq_agent/common/source_kinds.py) |
 | `doc_class`, norm lanes | The stored Dokumentart (human-set, beats any filename guess), and the finer `norm_registry` lanes (`building_law_oib`, `building_law_state`, …) that sub-label a source kind | [`src/aiq_agent/knowledge/document_classification.py`](../src/aiq_agent/knowledge/document_classification.py) |
 | Answer envelope | The one JSON object a research answer is generated as: the `answer` prose plus optional anatomy (kind, verdict, takeaways, callout, cards) | [`src/aiq_agent/common/answer_envelope.py`](../src/aiq_agent/common/answer_envelope.py) |
@@ -129,13 +129,13 @@ replaced `agent_capability_missing`.
 | `escalate_to_deep` | The answer envelope's own decision to hand a question to deep research, with a reason. There is no intent classifier in front of it (ADR-0052) | [`src/aiq_agent/agents/piloti/AGENTS.md`](../src/aiq_agent/agents/piloti/AGENTS.md) |
 | Research rounds | The tool budget counts rounds, not calls: one charge per round, with a cap on how many calls one round may make | [`src/aiq_agent/agents/piloti/AGENTS.md`](../src/aiq_agent/agents/piloti/AGENTS.md) |
 | Post-answer stage | Background work after an answer is delivered (follow-ups, memory reflection), declared as a `StageSpec`, fault-isolated, dropped rather than queued when too many are pending | [`docs/architecture/post-answer-stages.md`](architecture/post-answer-stages.md) |
-| Agent group | A named bundle of model slots an override targets (`clarifier`, `shallow_research`, `deep_research`, …), each with capability requirements | [`frontends/ui/src/lib/model-config/agent-groups.ts`](../frontends/ui/src/lib/model-config/agent-groups.ts) |
+| Agent group | A named bundle of model slots an override targets (`clarifier`, `shallow_research`, `deep_research`, …), each with capability requirements | [`apps/workspace/bff/model-config/agent-groups.ts`](../apps/workspace/bff/model-config/agent-groups.ts) |
 | Model override layers | The model an agent group uses: the organization's override, else the platform default (Platform → Models), else the YAML `model_name`, which is only the boot fallback | [`docs/architecture/org-model-configuration.md`](architecture/org-model-configuration.md) |
 | Aufwand dial | The composer's reasoning-effort control for one chat, beside the per-group thinking level the platform sets | [`docs/architecture/org-model-configuration.md`](architecture/org-model-configuration.md) |
 | Capability | A property derived from an infrastructure dependency (a VLM is configured), never a second flag. A feature is available when its flag is on AND its capability holds | [`docs/contributing/code-conventions.md`](contributing/code-conventions.md) |
-| Ask (`agent_asks`) | A question another agent puts to Piloti for a person (ADR-0124): `agent-ask-create` on the MCP door, `SendMessage` on the A2A door. Runs as a headless turn (trigger `agent_consult`) in the person's own thread; its states are the A2A task states. Not an Aufgabe (`task`) and not a task run | [`frontends/ui/src/lib/agent-asks/service.ts`](../frontends/ui/src/lib/agent-asks/service.ts) |
+| Ask (`agent_asks`) | A question another agent puts to Piloti for a person (ADR-0124): `agent-ask-create` on the MCP door, `SendMessage` on the A2A door. Runs as a headless turn (trigger `agent_consult`) in the person's own thread; its states are the A2A task states. Not an Aufgabe (`task`) and not a task run | [`apps/workspace/bff/agent-asks/service.ts`](../apps/workspace/bff/agent-asks/service.ts) |
 | A2A | The Agent2Agent protocol: how one agent hands work to another. Piloti serves it at `/api/a2a` (JSON-RPC, 1.0 and 0.3) with its agent card at `/.well-known/agent-card.json`. Its words map onto ours: an A2A **task** is an ask, its **context** (`contextId`) the conversation, a **message** a question or an answer in it, a **part** the message's text, an **artifact** the answer or a document Piloti filed | [`docs/adr/0124-agents-consult-piloti-over-mcp-and-a2a.md`](adr/0124-agents-consult-piloti-over-mcp-and-a2a.md) |
-| Piloti vs GRID | Piloti is the name in anything a user reads; GRID is the repository, the `GRID_*` variables, the `x-grid-*` headers and the CSS variables | [`frontends/ui/src/lib/brand.ts`](../frontends/ui/src/lib/brand.ts) |
+| Piloti vs GRID | Piloti is the name in anything a user reads; GRID is the repository, the `GRID_*` variables, the `x-grid-*` headers and the CSS variables | [`apps/workspace/bff/brand.ts`](../apps/workspace/bff/brand.ts) |
 
 ## The chat wire
 
@@ -143,7 +143,7 @@ replaced `agent_capability_missing`.
 |---|---|---|
 | Chat wire v2 | The WebSocket protocol of a turn: typed events stamped `(turn_id, seq)`, closed by `RUN_FINISHED` with the authoritative result | [`docs/api/websocket-protocol.md`](api/websocket-protocol.md) |
 | `attach` | The client message that re-registers a socket to a turn from a sequence number, replaying what it missed; sent on reconnect and reload | [`docs/api/websocket-protocol.md`](api/websocket-protocol.md) |
-| `foldTurnEvent` | The one pure function that turns a wire event into the turn's view state, shared by the live socket, the replay and the spectator stream | [`frontends/ui/src/features/chat/lib/turn-fold.ts`](../frontends/ui/src/features/chat/lib/turn-fold.ts) |
+| `foldTurnEvent` | The one pure function that turns a wire event into the turn's view state, shared by the live socket, the replay and the spectator stream | [`apps/workspace/ui/features/chat/lib/turn-fold.ts`](../apps/workspace/ui/features/chat/lib/turn-fold.ts) |
 | A2UI | The rendering layer every card is drawn through; its catalog is generated from the backend's card schema (`npm run generate:cards`) | [`docs/architecture/cards.md`](architecture/cards.md) |
 | System card | A card type only a tool may emit (`memory_proposal`, `document_draft`, `task_created`, …); the model may not fabricate one | [`docs/architecture/cards.md`](architecture/cards.md) |
 
@@ -151,15 +151,15 @@ replaced `agent_capability_missing`.
 
 | Term | Meaning | Defined in |
 |---|---|---|
-| Tenant slot | The request-scoped context (`runWithTenantSlot`) that carries the organization as data. A query outside one throws `MissingTenantContextError` | [`frontends/ui/src/lib/db/tenant-context.ts`](../frontends/ui/src/lib/db/tenant-context.ts) |
-| `getGridSession` | The one funnel every authenticated path goes through to resolve the caller and publish the organization and user into the tenant slot | [`frontends/ui/src/lib/auth/session.ts`](../frontends/ui/src/lib/auth/session.ts) |
-| `withPageSession` | The wrapper that gives a server component or server action an authorized session and an open tenant slot | [`frontends/ui/src/lib/auth/require-auth.ts`](../frontends/ui/src/lib/auth/require-auth.ts) |
-| `withTenant`, `withPlatformAccess` | Explicit tenant context where there is no session: one organization, or the deliberate cross-tenant path | [`frontends/ui/src/lib/db/tenant-context.ts`](../frontends/ui/src/lib/db/tenant-context.ts) |
+| Tenant slot | The request-scoped context (`runWithTenantSlot`) that carries the organization as data. A query outside one throws `MissingTenantContextError` | [`apps/workspace/bff/db/tenant-context.ts`](../apps/workspace/bff/db/tenant-context.ts) |
+| `getGridSession` | The one funnel every authenticated path goes through to resolve the caller and publish the organization and user into the tenant slot | [`apps/workspace/bff/auth/session.ts`](../apps/workspace/bff/auth/session.ts) |
+| `withPageSession` | The wrapper that gives a server component or server action an authorized session and an open tenant slot | [`apps/workspace/bff/auth/require-auth.ts`](../apps/workspace/bff/auth/require-auth.ts) |
+| `withTenant`, `withPlatformAccess` | Explicit tenant context where there is no session: one organization, or the deliberate cross-tenant path | [`apps/workspace/bff/db/tenant-context.ts`](../apps/workspace/bff/db/tenant-context.ts) |
 | RLS | Row-level security: every tenant table has a Postgres policy keyed to the request's organization, so a query that lost its filter returns nothing (ADR-0041) | [`docs/database/row-level-security.md`](database/row-level-security.md) |
 | `secure_table()` | The SQL call that puts a new table under RLS, required in the migration that creates it; a test fails by table name without it | [`docs/database/row-level-security.md`](database/row-level-security.md) |
 | Tenant-isolation suite | `task db:test:rls`: the specs that prove RLS against a real Postgres. Required when touching the tenant boundary, not part of `task verify` | [`docs/contributing/testing-and-verification.md`](contributing/testing-and-verification.md) |
-| Authz catalog, `decide()` | Every permission is declared in the catalog and checked in one place. Code checks a permission, never a role name (ADR-0038) | [`frontends/ui/src/lib/authz/decide.ts`](../frontends/ui/src/lib/authz/decide.ts) |
-| Tenant cache key | A cache key must carry the organization, or a hit serves another tenant's value; `grid/require-tenant-cache-key` enforces it | [`frontends/ui/src/lib/cache/index.ts`](../frontends/ui/src/lib/cache/index.ts) |
+| Authz catalog, `decide()` | Every permission is declared in the catalog and checked in one place. Code checks a permission, never a role name (ADR-0038) | [`apps/workspace/bff/authz/decide.ts`](../apps/workspace/bff/authz/decide.ts) |
+| Tenant cache key | A cache key must carry the organization, or a hit serves another tenant's value; `grid/require-tenant-cache-key` enforces it | [`apps/workspace/bff/cache/index.ts`](../apps/workspace/bff/cache/index.ts) |
 | Org-less token | A session token before an organization is active, which carries no organization or permissions; a new user creates one first | [`docs/architecture/multitenancy-and-auth-spec.md`](architecture/multitenancy-and-auth-spec.md) |
 | Shareable resource | A resource type registered with the generic sharing substrate (grants in `resource_shares`); a new type needs a registry entry, not a migration | [`docs/architecture/adding-a-shareable-resource-type.md`](architecture/adding-a-shareable-resource-type.md) |
 | Deletion queue, purger | Soft deletes write a tombstone row; the purger, a separate service in the frontend image, runs each entity's purge steps after the grace period, unless a legal hold blocks it | [`docs/architecture/deletion-pipeline.md`](architecture/deletion-pipeline.md) |
@@ -174,9 +174,9 @@ replaced `agent_capability_missing`.
 | Term | Meaning | Defined in |
 |---|---|---|
 | Motion vocabulary | The named durations, easings and springs every animation uses; literal durations and curves are linted out by `grid/motion-vocabulary` | [`docs/design/grid-design-language.md`](design/grid-design-language.md) |
-| Design tokens | The semantic CSS variables (`bg-background`, `text-muted-foreground`, …); components never hardcode a colour | [`frontends/ui/src/styles/tokens.css`](../frontends/ui/src/styles/tokens.css) |
+| Design tokens | The semantic CSS variables (`bg-background`, `text-muted-foreground`, …); components never hardcode a colour | [`apps/workspace/ui/styles/tokens.css`](../apps/workspace/ui/styles/tokens.css) |
 | Card type scale | The six text steps a card may use (`card-eyebrow` to `card-headline`), held by `grid/card-type-scale` | [`docs/architecture/cards.md`](architecture/cards.md) |
-| Atoms, domain atoms | The atomic-design layering: organisms compose atoms rather than raw Tailwind | [`frontends/ui/AGENTS.md`](../frontends/ui/AGENTS.md) |
+| Atoms, domain atoms | The atomic-design layering: organisms compose atoms rather than raw Tailwind | [`apps/workspace/AGENTS.md`](../apps/workspace/AGENTS.md) |
 
 ## Working in the repo
 

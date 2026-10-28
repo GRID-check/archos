@@ -58,8 +58,8 @@ There is also a fourth, less structural but more immediate finding:
 
 | # | Where | Scope | Algorithm | Store | On failure |
 |---|---|---|---|---|---|
-| 1 | `frontends/ui/server.js` (WS upgrade) | per client IP | fixed window, atomic `INCR` | Dragonfly | fail open |
-| 2 | `frontends/ui/src/lib/sharing/rate-limit.ts` | per subject/action | fixed window, **non-atomic** read-modify-write | Dragonfly via cache | fail open |
+| 1 | `apps/workspace/server.js` (WS upgrade) | per client IP | fixed window, atomic `INCR` | Dragonfly | fail open |
+| 2 | `apps/workspace/bff/sharing/rate-limit.ts` | per subject/action | fixed window, **non-atomic** read-modify-write | Dragonfly via cache | fail open |
 | 3 | `apps/backend/.../jobs/submit.py`, `jobs/queue.py` | per org a **claim cap** (`…_PER_ORG` 3) plus a **queued-length bound** (`MAX_QUEUED_JOBS_PER_ORG` 50), the only 429 | Postgres | fail open |
 | 4 | `common/cost_tracking.py` + ADR-0015 | org / member / project | EUR budget, daily+monthly | Postgres ledger + rollups | read fails open, refusal fails closed |
 | 5 | `MAX_RUN_COMPLETION_TOKENS`, `MAX_QUERY_SUBMISSIONS` | per run | hard ceilings | in-process | n/a |
@@ -351,7 +351,7 @@ Starting budgets (per client IP, per minute) — placeholders until measured:
 source IP (§1). `xffNumTrustedHops` defaults to 0, which is right only if it
 does. Every per-IP number above is provisional until someone checks.
 
-### L2 — per-member limits (`frontends/ui/src/lib/limits/`)
+### L2 — per-member limits (`apps/workspace/bff/limits/`)
 
 Enforcement is **`rate-limiter-flexible`**, not our own algorithm (see §2.5).
 What this module owns is the vocabulary around it:
@@ -414,7 +414,7 @@ requests; it now takes 200.
 with their budgets unchanged, so that migration was an algorithm change and not a
 silent retune.
 
-### L2b — WebSocket frames (`frontends/ui/server.js`)
+### L2b — WebSocket frames (`apps/workspace/server.js`)
 
 The blind spot of §1.2, closed. `src/lib/limits/ws-frames.js` is a passive
 incremental frame parser attached as an extra `data` listener on the client

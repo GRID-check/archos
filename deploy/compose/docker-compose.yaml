@@ -31,7 +31,7 @@
 #   docker compose --env-file ../.env -f docker-compose.yaml up -d
 #
 # Frontend image:
-#   The frontend is built from frontends/ui/deploy/Dockerfile.
+#   The frontend is built from apps/workspace/deploy/Dockerfile.
 #
 # =============================================================================
 
@@ -534,7 +534,7 @@ services:
   migrate:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
-      context: ../../frontends/ui
+      context: ../../apps/workspace
       dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
@@ -566,7 +566,7 @@ services:
   # It runs BEFORE the frontend serves, unlike the Kubernetes Job, because
   # `document.generated` is emitted with the THROWING emitter: a rejected event
   # does not thin the audit trail, it unfiles the document the trail was about
-  # (frontends/ui/src/lib/documents/generated.ts). An unreconciled environment
+  # (apps/workspace/bff/documents/generated.ts). An unreconciled environment
   # therefore serves a Piloti that files nothing, silently, and there is no
   # rolling update here whose availability the ordering would cost — the stack
   # comes up as a unit, and where WORKOS_API_KEY is set WorkOS is already a hard
@@ -585,7 +585,7 @@ services:
   audit-schemas:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
-      context: ../../frontends/ui
+      context: ../../apps/workspace
       dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
@@ -605,7 +605,7 @@ services:
   frontend:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
-      context: ../../frontends/ui
+      context: ../../apps/workspace
       dockerfile: apps/backend/Dockerfile
     # The image CMD migrates then serves; migration has moved to migrate,
     # so this container only serves.
@@ -647,7 +647,7 @@ services:
       - NEXT_PUBLIC_WORKOS_REDIRECT_URI=${NEXT_PUBLIC_WORKOS_REDIRECT_URI:-${WORKOS_REDIRECT_URI:-http://localhost:3000/api/auth/callback}}
       - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD}
       # PostHog product analytics (fail-open: unset means no events leave the
-      # browser — see frontends/ui/src/lib/analytics/posthog.ts).
+      # browser — see apps/workspace/bff/analytics/posthog.ts).
       - NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST:-}
       - NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=${NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN:-}
       - NEXT_PUBLIC_POSTHOG_SESSION_REPLAY=${NEXT_PUBLIC_POSTHOG_SESSION_REPLAY:-true}
@@ -655,7 +655,7 @@ services:
       - NEXT_PUBLIC_POSTHOG_PROXY=${NEXT_PUBLIC_POSTHOG_PROXY:-true}
       # Web Push for the inbox (ADR-0112). All three or none; unset means the
       # feature is off. Generate the pair with `npx web-push generate-vapid-keys
-      # --json` in frontends/ui. The bff-jobs service shares this list and is
+      # --json` in apps/workspace. The bff-jobs service shares this list and is
       # the one that sends.
       - WEB_PUSH_VAPID_PUBLIC_KEY=${WEB_PUSH_VAPID_PUBLIC_KEY:-${GRID_WEB_PUSH_VAPID_PUBLIC_KEY:-}}
       - WEB_PUSH_VAPID_PRIVATE_KEY=${WEB_PUSH_VAPID_PRIVATE_KEY:-${GRID_WEB_PUSH_VAPID_PRIVATE_KEY:-}}
@@ -666,7 +666,7 @@ services:
       - BYOK_SECRET_BACKEND=${BYOK_SECRET_BACKEND:-${GRID_BYOK_SECRET_BACKEND:-}}
       - BYOK_LOCAL_KEK=${BYOK_LOCAL_KEK:-${GRID_BYOK_LOCAL_KEK:-}}
       - BYOK_ALLOW_PRIVATE_BASE_URLS=${BYOK_ALLOW_PRIVATE_BASE_URLS:-${GRID_BYOK_ALLOW_PRIVATE_BASE_URLS:-false}}
-      # Must match the code default in frontends/ui/src/shared/config/file-upload.ts:
+      # Must match the code default in apps/workspace/shared/config/file-upload.ts:
       # an override here that lists fewer types silently narrows what users can upload.
       - FILE_UPLOAD_ACCEPTED_TYPES=${FILE_UPLOAD_ACCEPTED_TYPES:-.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx}
       - FILE_UPLOAD_MAX_SIZE_MB=${FILE_UPLOAD_MAX_SIZE_MB:-}
@@ -722,7 +722,7 @@ services:
       # endpoints, and it is what makes a pilot report nameable.
       - GIT_SHA=${GIT_SHA:-${GRID_GIT_SHA:-}}
       # Features are WorkOS flags per organization, with no env switches
-      # (frontends/ui/src/lib/authz/feature-flags.ts). With REQUIRE_AUTH=true
+      # (apps/workspace/bff/authz/feature-flags.ts). With REQUIRE_AUTH=true
       # this stack reads them from its WorkOS environment, exactly as
       # Kubernetes does; without it, nobody signs in and every rollout
       # (model surfaces, filing, the post-answer stages, ...) is on while every
@@ -799,7 +799,7 @@ services:
   workos-authz:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
-      context: ../../frontends/ui
+      context: ../../apps/workspace
       dockerfile: apps/backend/Dockerfile
     restart: "no"
     command:
@@ -843,7 +843,7 @@ services:
     # defaults here; set them on this service to change them.
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
-      context: ../../frontends/ui
+      context: ../../apps/workspace
       dockerfile: apps/backend/Dockerfile
     command: ["node", "workers/jobs/index.js"]
     environment: *frontend-environment
@@ -880,13 +880,13 @@ services:
   purger:
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
-      context: ../../frontends/ui
+      context: ../../apps/workspace
       dockerfile: apps/backend/Dockerfile
     command: ["node", "purger/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
       # organization, so it steps up to app_platform per transaction
-      # — see frontends/ui/workers/platform-scope.js.
+      # — see apps/workspace/workers/platform-scope.js.
       - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}}
       - BACKEND_URL=${BACKEND_URL:-http://api:8000}
       # A chat erasure the delete request could not finish is retried through
@@ -932,13 +932,13 @@ services:
     # (lib/runs/reconcile.ts).
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
-      context: ../../frontends/ui
+      context: ../../apps/workspace
       dockerfile: apps/backend/Dockerfile
     command: ["node", "scheduler/index.js"]
     environment:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
       # organization, so it steps up to app_platform per transaction
-      # — see frontends/ui/workers/platform-scope.js.
+      # — see apps/workspace/workers/platform-scope.js.
       - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/app}}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
@@ -986,7 +986,7 @@ services:
     # as CronJobs. Off the frontend image, like the purger: workers/housekeeping-clock.js.
     image: ${FRONTEND_IMAGE:-frontend:local}
     build:
-      context: ../../frontends/ui
+      context: ../../apps/workspace
       dockerfile: apps/backend/Dockerfile
     command: ["node", "workers/housekeeping-clock.js"]
     environment:

@@ -1,4 +1,4 @@
-// @disk-inputs: deploy/Dockerfile, observability/http-metrics.js, observability/otel-metrics.js, server.js, src/lib/limits/factory.js, src/lib/limits/rules.js, src/lib/limits/ws-frames.js, src/lib/proxy/backend-target.js, src/lib/proxy/ws-teardown.js, src/lib/proxy/ws-upgrade-headers.js, src/lib/redis/connect.js, src/lib/turns/turn-headers.js
+// @disk-inputs: deploy/Dockerfile, observability/http-metrics.js, observability/otel-metrics.js, server.js, bff/limits/factory.js, bff/limits/rules.js, bff/limits/ws-frames.js, bff/proxy/backend-target.js, bff/proxy/ws-teardown.js, bff/proxy/ws-upgrade-headers.js, bff/redis/connect.js, bff/turns/turn-headers.js
 /**
  * @vitest-environment node
  */
@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest'
  * `server.js` had no such guard until its fourth required module.
  */
 
-const UI_ROOT = path.resolve(__dirname, '../../..')
+const UI_ROOT = path.resolve(__dirname, '../..')
 
 function relativeRequiresOf(source: string): string[] {
   const requires: string[] = []

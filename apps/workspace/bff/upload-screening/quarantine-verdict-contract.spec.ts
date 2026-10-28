@@ -9,7 +9,7 @@
  * the job wrote them.
  *
  * ONE copy: read from disk at run time, as `content-screen.spec.ts` reads its
- * fixture (vitest runs in frontends/ui with the whole repository checked out).
+ * fixture (vitest runs in apps/workspace with the whole repository checked out).
  */
 
 import { readFileSync } from 'node:fs'

@@ -1,6 +1,6 @@
 /**
  * The view carries only the dictionary namespaces its components import
- * (ADR-0142, `src/i18n/namespace.ts`). Every card the view draws, open and
+ * (ADR-0142, `i18n/namespace.ts`). Every card the view draws, open and
  * decided, read-only, and the frame's own lines, in both languages, is drawn
  * here, and fails on any key a namespace does not hold (the translator warns
  * `[i18n] Missing translation` and shows the key path).

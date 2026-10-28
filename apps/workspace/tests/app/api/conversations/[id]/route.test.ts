@@ -12,7 +12,7 @@
  * the defect, not the new queries.
  *
  * They now mock at the **repository boundary**, like the newer specs beside them
- * (`src/app/api/conversations/[id]/route.spec.ts`). That is more robust and more
+ * (`app/api/conversations/[id]/route.spec.ts`). That is more robust and more
  * honest: what is under test is the route + service contract, not drizzle's
  * builder shape.
  *

@@ -2720,7 +2720,7 @@ async def test_a_headless_socket_s_caller_skips_the_clarifier_and_says_it_is_hea
 # ---------------------------------------------------------------------------
 
 OUTCOME_SCHEMA = (
-    Path(__file__).resolve().parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "turn-outcome.schema.json"
+    Path(__file__).resolve().parents[3] / "apps" / "workspace" / "tests" / "fixtures" / "turn-outcome.schema.json"
 )
 HEADLESS = [(b"x-chat-mode", b"headless")]
 WAKE = "aaaaaaaa-0000-4000-8000-000000000001"

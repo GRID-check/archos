@@ -16,7 +16,7 @@
    Three var vocabularies are defined here:
 
    1. shadcn/ui vars (--background, --primary, ...) consumed by the vendored
-      primitives in src/components/ui.
+      primitives in ui/components/ui.
    2. Legacy semantic vars (--text-color-*, --background-color-surface-*,
       --border-color-*) consumed by the @utility classes in globals.css
       (text-subtle, bg-surface-sunken, border-base, ...). These carry the

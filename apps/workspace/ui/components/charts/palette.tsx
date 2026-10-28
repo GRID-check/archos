@@ -34,7 +34,7 @@ import type { FC } from 'react'
 
 /* ── TWIN WARNING ─────────────────────────────────────────────────────────────
  *
- * These eight+one values also exist in `src/app/globals.css` as
+ * These eight+one values also exist in `app/globals.css` as
  * `--spend-series-1…8` / `--spend-other` under `.grid-spend-viz` (light) and
  * `.dark .grid-spend-viz` — one palette written down twice, which is one copy
  * too many.

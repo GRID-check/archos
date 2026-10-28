@@ -4,7 +4,7 @@
     "The production build's tsconfig (next.config.ts `typescript.tsconfigPath`).",
     "It drops specs and test-only files from the ROOTS, so a type error in a",
     "test no longer fails `next build`. A test file that production code imports",
-    "is still checked through that import. `task fe:types` keeps checking",
+    "is still checked through that import. `task workspace:types` keeps checking",
     "everything through tsconfig.json."
   ],
   "exclude": [
@@ -14,8 +14,8 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "tests/**",
-    "src/test-utils/**",
-    "src/mocks/**",
+    "tests/test-utils/**",
+    "tests/mocks/**",
     "config/vitest/**",
     "vitest.config.ts"
   ]

@@ -1,5 +1,5 @@
 // @ts-check
-// The module seams of the UI, checked by dependency-cruiser in `task fe:lint`
+// The module seams of the UI, checked by dependency-cruiser in `task workspace:lint`
 // (`bun run lint:seams`). Why each rule exists, and how the baselines move:
 // docs/contributing/module-seams.md.
 //
@@ -13,7 +13,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SRC = path.join(__dirname, 'src');
+const SOURCE_DIRS = ['app', 'bff', 'ui', 'i18n', 'shared', 'types', 'utils'];
 const TEST_FILE = '\\.(spec|test)\\.[cm]?[jt]sx?$';
 
 /**
@@ -36,7 +36,7 @@ function serverOnlyModules() {
       }
     }
   };
-  walk(SRC);
+  for (const dir of SOURCE_DIRS) walk(path.join(__dirname, dir));
   return found;
 }
 
@@ -53,8 +53,8 @@ module.exports = {
         'lib/ is the headless core: the routes, the agent door and every feature share it. ' +
         'It must not reach up into features/ or components/. Move the shared piece down into lib/.',
       severity: 'error',
-      from: { path: '^src/lib/' },
-      to: { path: '^src/(features|components)/' },
+      from: { path: '^bff/' },
+      to: { path: '^ui/(features|components)/' },
     },
     {
       name: 'lib-imports-app',
@@ -62,8 +62,8 @@ module.exports = {
         'lib/ must not reach into app/. The one exception is the agent door: each operation in ' +
         'lib/agent-api/catalog/ loads the route it names, because the route stays the gate (ADR-0122).',
       severity: 'error',
-      from: { path: '^src/lib/', pathNot: '^src/lib/agent-api/catalog/' },
-      to: { path: '^src/app/' },
+      from: { path: '^bff/', pathNot: '^bff/agent-api/catalog/' },
+      to: { path: '^app/' },
     },
     {
       name: 'components-import-features',
@@ -71,8 +71,8 @@ module.exports = {
         'components/ is the shared kit and knows no feature. Pass the feature in as props, ' +
         'or move the piece into the feature that owns it.',
       severity: 'error',
-      from: { path: '^src/components/' },
-      to: { path: '^src/features/' },
+      from: { path: '^ui/components/' },
+      to: { path: '^ui/features/' },
     },
     {
       name: 'feature-deep-import',
@@ -80,10 +80,10 @@ module.exports = {
         "A feature reaches another feature only through that feature's index (or a top-level module), " +
         'never into its components/, hooks/, stores/ or lib/. Export it from the index, or move it to lib/.',
       severity: 'error',
-      from: { path: '^src/features/([^/]+)/' },
+      from: { path: '^ui/features/([^/]+)/' },
       to: {
-        path: '^src/features/[^/]+/(components|hooks|stores|lib)/',
-        pathNot: '^src/features/$1/',
+        path: '^ui/features/[^/]+/(components|hooks|stores|lib)/',
+        pathNot: '^ui/features/$1/',
       },
     },
     {
@@ -92,13 +92,13 @@ module.exports = {
         "A module that imports 'server-only' must not reach the browser bundle. Client code " +
         '(features/, components/, hooks/) may name its types with `import type`, nothing more.',
       severity: 'error',
-      from: { path: '^src/(features|components|hooks)/' },
+      from: { path: '^ui/(features|components|hooks)/' },
       to: { path: SERVER_ONLY, dependencyTypesNot: ['type-only'] },
     },
   ],
   options: {
-    includeOnly: '^src/',
-    exclude: { path: [TEST_FILE, '^src/(test-utils|mocks)/'] },
+    includeOnly: '^(app|bff|ui|i18n|shared|types|utils)/',
+    exclude: { path: [TEST_FILE] },
     doNotFollow: { path: 'node_modules' },
     // Keep `import type` edges: a type-only import still couples two modules,
     // and `client-imports-server-only` has to tell the two kinds apart.

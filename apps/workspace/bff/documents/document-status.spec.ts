@@ -1,4 +1,4 @@
-// @disk-inputs: drizzle/**, src/**
+// @disk-inputs: app/**, bff/**, i18n/**, migrations/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -76,6 +76,7 @@ import {
   isKnownDocumentStatus,
 } from './document-status'
 import { SURFACE_STATES, SURFACE_STATE_LABEL_KEYS, surfaceStateOf } from './surface-state'
+import { SOURCE_DIRS } from '@/test-utils/source-tree'
 
 /**
  * The modules that WRITE `documents.status` — the documents domain and the two
@@ -83,7 +84,7 @@ import { SURFACE_STATES, SURFACE_STATE_LABEL_KEYS, surfaceStateOf } from './surf
  * Directories rather than a file list on purpose: a new writer in one of them
  * is caught the day it lands, which is the whole point of scanning at all.
  */
-const WRITER_DIRS = ['src/lib/documents', 'src/lib/session-documents', 'src/lib/office-shelf']
+const WRITER_DIRS = ['bff/documents', 'bff/session-documents', 'bff/office-shelf']
 
 function sourceFiles(dir: string, found: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -141,55 +142,55 @@ const OPAQUE_STATUS_WRITES: Readonly<Record<string, string>> = {
   // what lands in the column — `completed` and `failed` are known only because
   // `reconcile-status.ts` spells them out, and it is scanned. A decision moved
   // one hop further away would be invisible here.
-  'src/lib/documents/repository/reconcile.ts: resolution.status':
+  'bff/documents/repository/reconcile.ts: resolution.status':
     "whatever reconcile-status.ts resolved: 'completed' or 'failed'",
   // Reads, not writes: drizzle SELECT and RETURNING projections naming the column.
-  'src/lib/documents/repository/list.ts: documents.status': 'a SELECT projection, not a write',
-  'src/lib/documents/repository/lookup-by-ref.ts: documents.status': 'a SELECT projection, not a write',
-  'src/lib/documents/repository/name-lookup.ts: documents.status': 'a SELECT projection, not a write',
-  'src/lib/documents/repository/reconcile.ts: documents.status':
+  'bff/documents/repository/list.ts: documents.status': 'a SELECT projection, not a write',
+  'bff/documents/repository/lookup-by-ref.ts: documents.status': 'a SELECT projection, not a write',
+  'bff/documents/repository/name-lookup.ts: documents.status': 'a SELECT projection, not a write',
+  'bff/documents/repository/reconcile.ts: documents.status':
     'a RETURNING projection and a guard comparison, not a write',
-  'src/lib/session-documents/repository.ts: documents.status': 'a SELECT projection, not a write',
-  'src/lib/documents/name-probe-types.ts: z.string()':
+  'bff/session-documents/repository.ts: documents.status': 'a SELECT projection, not a write',
+  'bff/documents/name-probe-types.ts: z.string()':
     "the name probe's wire schema, carrying the status the probe read to the upload planner; never a write",
-  'src/lib/documents/placement-repository.ts: documents.status':
+  'bff/documents/placement-repository.ts: documents.status':
     "a SELECT and RETURNING projection, not a write; its one write is the literal 'processing'",
   // The reconciler's own plumbing: an HTTP status, a backend file state, and
   // its resolution being handed on. None of them reaches the column except
   // through the repository entry above.
-  'src/lib/documents/reconcile-status.ts: response.status': 'an HTTP status code, not the column',
-  'src/lib/documents/reconcile-status.ts: file.status':
+  'bff/documents/reconcile-status.ts: response.status': 'an HTTP status code, not the column',
+  'bff/documents/reconcile-status.ts: file.status':
     "the BACKEND's file state, compared against, never stored",
-  'src/lib/documents/reconcile-status.ts: resolution.status':
+  'bff/documents/reconcile-status.ts: resolution.status':
     'the value this module just decided, on its way to the repository',
-  'src/lib/documents/reconcile-status.ts: row.status':
+  'bff/documents/reconcile-status.ts: row.status':
     'the status the read saw, the guard of the repository write (`ReconciledFrom`), never written',
   // Service return values: what the CALLER is told, not what the row holds.
-  'src/lib/documents/reingest.ts: doc.status': 'the row being read back, returned to the caller',
-  'src/lib/documents/document-details.ts: reconciled.status': 'a reconciled status, returned to the caller',
+  'bff/documents/reingest.ts: doc.status': 'the row being read back, returned to the caller',
+  'bff/documents/document-details.ts: reconciled.status': 'a reconciled status, returned to the caller',
   // The heal-and-refuse 409: the healed resolution echoed in the error payload,
   // returned to the caller. The column write is the `setDocumentReconciledStatus`
   // call two lines above it, which takes the whole resolution object.
-  'src/lib/documents/reingest.ts: knowledge.resolution.status':
+  'bff/documents/reingest.ts: knowledge.resolution.status':
     'the healed resolution echoed in the 409, returned to the caller',
   // The wire projection: the row's own status copied into the JSON the browser
   // reads. It writes a response body, never the column.
-  'src/lib/documents/list-projection.ts: row.status': 'a row being serialized, not a write',
+  'bff/documents/list-projection.ts: row.status': 'a row being serialized, not a write',
   // The retry rule's refusal (migration 0134): the failed row's status echoed
   // in the 409 payload, returned to the caller. Nothing is written.
-  'src/lib/documents/reingest.ts: failure.status': 'the refused row echoed in the 409, returned to the caller',
+  'bff/documents/reingest.ts: failure.status': 'the refused row echoed in the 409, returned to the caller',
   // The shelf listing handing a row to the retry rule (`canRetryRow`), a read.
-  'src/lib/documents/shelf-listing.ts: row.status': 'a row handed to the retry rule, not a write',
+  'bff/documents/shelf-listing.ts: row.status': 'a row handed to the retry rule, not a write',
   // Shorthand `{ status }` in a service's RETURN value — the dispatcher's job
   // status on its way back to the caller. Shorthand is worth listing separately
   // from the rest: the name is all there is, so even the expression a reader
   // could follow by eye is gone.
-  'src/lib/documents/reingest.ts: status': "the dispatcher's job status, returned to the caller",
-  'src/lib/session-documents/service.ts: status':
+  'bff/documents/reingest.ts: status': "the dispatcher's job status, returned to the caller",
+  'bff/session-documents/service.ts: status':
     "the dispatcher's job status, returned to the caller",
   // The one upload pipeline both shelves share (ADR-0078) — it replaced the
   // `ingestStatus` return in the documents service and the `status` return in archiv/service.ts.
-  'src/lib/documents/shelf-upload.ts: status': "the dispatcher's job status, returned to the caller",
+  'bff/documents/shelf-upload.ts: status': "the dispatcher's job status, returned to the caller",
 }
 
 /** `status` as a property name, in either spelling an object literal allows. */
@@ -339,7 +340,7 @@ describe('every status a writer emits is declared', () => {
     expect(
       undeclared,
       'These statuses are written to documents.status but are not declared in ' +
-        'src/lib/documents/document-status.ts, so the badge renders them grey ' +
+        'bff/documents/document-status.ts, so the badge renders them grey ' +
         'and the poller ignores them. Add an entry with its variant and phase.',
     ).toEqual([])
   })
@@ -406,14 +407,14 @@ const TABLE_WRITE_RE = /\.(insert|update)\(\s*documents\s*\)|update\s+"?document
  * rather than an oversight.
  */
 const PASS_THROUGH_TABLE_WRITERS = [
-  'src/lib/storage/repository.ts',
+  'bff/storage/repository.ts',
   // A restore from the Papierkorb re-points a document at the collection its
   // folder puts it in now (ADR-0088): `collection_name` and `updated_at`, and
   // nothing else; the status that follows is the re-ingest's.
-  'src/lib/projects/folder-bin-repository.ts',
+  'bff/projects/folder-bin-repository.ts',
   // The purge marks a filed report drawn from a deleted folder: a merge of
   // `metadata.sourceDeleted`, no status and no authorship.
-  'src/lib/projects/folder-derived-repository.ts',
+  'bff/projects/folder-derived-repository.ts',
 ]
 
 function everySourceFile(dir: string, found: string[] = []): string[] {
@@ -427,7 +428,7 @@ function everySourceFile(dir: string, found: string[] = []): string[] {
 }
 
 describe('the scan looks where the writing happens', () => {
-  const tableWriters = everySourceFile(join(process.cwd(), 'src'))
+  const tableWriters = SOURCE_DIRS.flatMap((dir) => everySourceFile(join(process.cwd(), dir)))
     .filter((file) => TABLE_WRITE_RE.test(readFileSync(file, 'utf8')))
     .map((file) => toPosix(relative(process.cwd(), file)))
     .sort()
@@ -435,7 +436,7 @@ describe('the scan looks where the writing happens', () => {
   it('finds the table writers at all', () => {
     // Same reason as above: an empty list would satisfy the next assertion
     // while proving nothing.
-    expect(tableWriters.some((file) => file.startsWith('src/lib/documents/repository/'))).toBe(true)
+    expect(tableWriters.some((file) => file.startsWith('bff/documents/repository/'))).toBe(true)
   })
 
   it('has no writer of the documents table outside the scanned directories', () => {
@@ -459,14 +460,14 @@ describe('the vocabulary is derived, not restated', () => {
     // The poller's set was a literal, and it drifted from the badge's table by
     // two values without anything failing. Reading the source keeps that from
     // silently coming back — an import cannot be half-done.
-    const source = readFileSync(join(process.cwd(), 'src/lib/documents/reconcile-status.ts'), 'utf8')
+    const source = readFileSync(join(process.cwd(), 'bff/documents/reconcile-status.ts'), 'utf8')
     expect(source).toContain("import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'")
     expect(source).not.toMatch(/const IN_FLIGHT_STATUSES = new Set\(\[/)
   })
 
   it('the badge takes its variants and labels from the declaration', () => {
     const source = readFileSync(
-      join(process.cwd(), 'src/features/documents/components/document-status.tsx'),
+      join(process.cwd(), 'ui/features/documents/components/document-status.tsx'),
       'utf8',
     )
     expect(source).toContain("from '@/lib/documents/document-status'")
@@ -556,7 +557,7 @@ describe('the column vocabulary (migration 0135, extended by 0153)', () => {
     // redefines `documents_status_known`, not a fixed file: the constraint the
     // database is under is whatever the final ALTER left, and pinning 0135
     // would go red the day a ninth value lands.
-    const dir = join(process.cwd(), 'drizzle')
+    const dir = join(process.cwd(), 'migrations')
     const defining = readdirSync(dir)
       .filter((name) => name.endsWith('.sql') && !name.endsWith('.down.sql'))
       .sort()

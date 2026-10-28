@@ -332,7 +332,7 @@ describe('DocumentActionsMenu — re-reading an indexed document', () => {
  * selection would be a test of jsdom. That half is verified in a real browser by
  * the `document-actions-moved` screenshot fixture, which drives the same click
  * against a shimmed PATCH and prints what reached `onMoved`; the request itself
- * is pinned in `src/lib/documents/move-to-folder.spec.ts`.
+ * is pinned in `bff/documents/move-to-folder.spec.ts`.
  */
 describe('DocumentActionsMenu — moving between folders', () => {
   const FOLDERS = [

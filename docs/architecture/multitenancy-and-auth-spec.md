@@ -857,7 +857,7 @@ The authorization model above is now PERMISSION-driven. Full decision record:
 `docs/adr/0016-platform-tier-and-permission-registry.md`; provisioning state:
 `docs/deployment/workos-provisioning.md`. Summary:
 
-- **Registry**: `frontends/ui/src/lib/authz/permissions.ts` defines the
+- **Registry**: `apps/workspace/bff/authz/permissions.ts` defines the
   `org:*` and `platform:*` permission slugs (provisioned in WorkOS, delivered
   via the AuthKit JWT `permissions` claim). Routes/pages check permissions via
   granular helpers (`canManageModels`, `canManageBudgets`,

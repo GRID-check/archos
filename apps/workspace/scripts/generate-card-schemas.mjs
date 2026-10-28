@@ -1,5 +1,5 @@
 /**
- * Generate the frontend Zod schema (`src/shared/cards/generated.ts`) from the
+ * Generate the frontend Zod schema (`apps/workspace/shared/cards/generated.ts`) from the
  * canonical Grid card JSON Schema (`contracts/cards/schemas.json`).
  *
  * The JSON Schema is itself generated from the Pydantic models, making the
@@ -227,9 +227,9 @@ ${types.join('\n')}
 }
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
-// scripts -> ui -> frontends -> repo root
+// scripts -> workspace -> apps -> repo root
 export const schemaPath = resolve(scriptDir, '../../../contracts/cards/schemas.json')
-export const outPath = resolve(scriptDir, '../src/shared/cards/generated.ts')
+export const outPath = resolve(scriptDir, '../shared/cards/generated.ts')
 
 // Importing this module (the spec does) must not write the generated file.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

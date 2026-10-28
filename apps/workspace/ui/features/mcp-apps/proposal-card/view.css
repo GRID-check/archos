@@ -5,7 +5,7 @@
  * base to this folder (`scripts/build-mcp-app-views.ts`); every other folder
  * the card draws from is named here.
  */
-@import '../../../app/globals.css';
+@import '../../../../app/globals.css';
 
 @source '../../a2ui';
 @source '../../grid-cards/components';

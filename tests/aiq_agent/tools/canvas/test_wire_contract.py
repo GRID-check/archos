@@ -1,7 +1,7 @@
 """The canvas wire, validated against the schemas the contract lives in.
 
 ADR-0055 read from this side: there is no Pydantic twin of a request body. The
-Anmerkungen ops are ``frontends/ui/tests/fixtures/document-annotations.schema.json``,
+Anmerkungen ops are ``apps/workspace/tests/fixtures/document-annotations.schema.json``,
 serialised from ``lib/annotations/types.ts``; the room ops are
 ``tests/fixtures/canvas/room-ops.schema.json``, the contract as agreed with the
 BFF until it exports them too. What this file asserts is that the bodies the
@@ -46,7 +46,7 @@ from aiq_agent.tools.canvas.register import run_room
 from aiq_agent.tools.canvas.register import run_update
 
 ROOT = Path(__file__).resolve().parents[4]
-ANNOTATIONS_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "document-annotations.schema.json"
+ANNOTATIONS_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "document-annotations.schema.json"
 ANNOTATION_DEFS = (
     "InternalAnnotationRequest",
     "InternalAnnotationListResponse",

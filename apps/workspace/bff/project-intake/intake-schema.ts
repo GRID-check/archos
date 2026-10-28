@@ -36,7 +36,7 @@ export function projectIntakeJsonSchema(): JsonSchemaNode {
   return jsonSchemaDocument(INTAKE_WIRE_SCHEMAS, {
     title: 'Grid project intake wire contract',
     description:
-      'Generated from frontends/ui/src/lib/project-intake/types.ts. Do not edit by hand: ' +
+      'Generated from apps/workspace/bff/project-intake/types.ts. Do not edit by hand: ' +
       'intake-schema.spec.ts rewrites this file and fails when it is stale.',
   })
 }

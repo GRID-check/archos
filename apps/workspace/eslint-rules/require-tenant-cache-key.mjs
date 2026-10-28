@@ -6,7 +6,7 @@
  * never enters the tenant scope where row-level security would have caught the
  * read. That is not hypothetical: `docs/contributing/gotchas.md:36` records it
  * as "Cached project context comes back belonging to another tenant", and
- * `frontends/ui/AGENTS.md` carries "Put the organization in every cache key" as
+ * `apps/workspace/AGENTS.md` carries "Put the organization in every cache key" as
  * a rule precisely because a reviewer had to say it.
  *
  * A rule rather than a rule in prose because the failure is invisible in the

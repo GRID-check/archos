@@ -34,7 +34,7 @@ export function proposalsJsonSchema(): JsonSchemaNode {
   return jsonSchemaDocument(PROPOSAL_WIRE_SCHEMAS, {
     title: 'Grid proposed changes wire contract',
     description:
-      'Generated from frontends/ui/src/lib/proposals/types.ts. Do not edit by hand: ' +
+      'Generated from apps/workspace/bff/proposals/types.ts. Do not edit by hand: ' +
       'proposal-schema.spec.ts rewrites this file and fails when it is stale.',
   })
 }

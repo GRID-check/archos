@@ -17,9 +17,9 @@ Nothing here writes a document, a folder, a memory note or the project
 profile; the BFF is the single writer of ``app`` (ADR-0003) and applying
 is a person route, never this one.
 
-The body is described once, in zod (``frontends/ui/src/lib/proposals/types.ts``,
+The body is described once, in zod (``apps/workspace/bff/proposals/types.ts``,
 ``internalProposalRequestSchema``), and exported as JSON Schema
-(``frontends/ui/tests/fixtures/proposals.schema.json``);
+(``apps/workspace/tests/fixtures/proposals.schema.json``);
 ``tests/aiq_agent/tools/files/test_proposals.py`` validates the body built here
 against that file, for every kind. There is no Pydantic twin.
 

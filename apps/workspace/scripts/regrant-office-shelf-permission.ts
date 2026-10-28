@@ -10,7 +10,7 @@
  * removes the old slug (that is a later release's step, see the runbook), so
  * running it twice, or half way, changes nothing that was already right.
  *
- *   Usage (from frontends/ui):
+ *   Usage (from apps/workspace):
  *     WORKOS_API_KEY=sk_… bun run regrant:office-shelf             # list the roles, change nothing
  *     WORKOS_API_KEY=sk_… bun run regrant:office-shelf -- --apply  # add the new slug to each
  *

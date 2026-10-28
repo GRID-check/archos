@@ -1,4 +1,4 @@
-// @disk-inputs: src/features/chat/components/AnswerSourcesRow.tsx, src/features/chat/components/CitationPeek.tsx, src/features/chat/components/FindingsMatrix.tsx, src/features/chat/components/PlanChecklist.tsx, src/features/knowledge/components/ris-document-dialog.tsx
+// @disk-inputs: ui/features/chat/components/AnswerSourcesRow.tsx, ui/features/chat/components/CitationPeek.tsx, ui/features/chat/components/FindingsMatrix.tsx, ui/features/chat/components/PlanChecklist.tsx, ui/features/knowledge/components/ris-document-dialog.tsx
 /**
  * What a finger meets in an answer's own content, held as source rules.
  *
@@ -16,10 +16,9 @@
 
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { blankComments } from '../../../../scripts/check-static-utility-modifiers.mjs'
+import { srcJoin } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..', '..', '..')
 
 const FILES = [
   'features/chat/components/PlanChecklist.tsx',
@@ -48,7 +47,7 @@ const SIZED_ELSEWHERE: Record<string, string[]> = {
 
 describe('hand-written controls in answer content', () => {
   it.each(FILES)('%s sizes every button and link for a finger', (file) => {
-    const source = blankComments(readFileSync(join(SRC, file), 'utf8')) as string
+    const source = blankComments(readFileSync(srcJoin(file), 'utf8')) as string
     const offenders: string[] = []
     for (const match of source.matchAll(CONTROL_TAG)) {
       const tag = match[0]
@@ -61,7 +60,7 @@ describe('hand-written controls in answer content', () => {
   })
 
   it('the plan checklist removes a point and an Unterlage with a 44px control', () => {
-    const source = blankComments(readFileSync(join(SRC, 'features/chat/components/PlanChecklist.tsx'), 'utf8')) as string
+    const source = blankComments(readFileSync(srcJoin('features/chat/components/PlanChecklist.tsx'), 'utf8')) as string
     // Both remove buttons (the point, the chip's own) grow to 44px on a coarse pointer.
     expect(source.match(/pointer-coarse:size-11/g)?.length).toBeGreaterThanOrEqual(3)
   })

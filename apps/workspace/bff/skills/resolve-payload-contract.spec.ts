@@ -74,9 +74,9 @@ import { resolveSkillsForAgent } from './service'
 import type { Skill } from '@/lib/db/schema/jobs'
 import type { PlatformSkillRow } from '@/lib/db/schema/platform-skills'
 
-// frontends/ui/src/lib/skills → repo root is five levels up.
+// apps/workspace/bff/skills → repo root is five levels up.
 const HERE = dirname(fileURLToPath(import.meta.url))
-const FIXTURE = resolvePath(HERE, '../../../../../tests/fixtures/skills_resolve/resolve_payload.json')
+const FIXTURE = resolvePath(HERE, '../../../../tests/fixtures/skills_resolve/resolve_payload.json')
 const SAMPLE = JSON.parse(readFileSync(FIXTURE, 'utf-8')) as Array<Record<string, unknown>>
 
 const AGENT = 'researcher'

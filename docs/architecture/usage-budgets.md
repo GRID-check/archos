@@ -111,7 +111,7 @@ fixtures**, not against the live API:
 - `tests/aiq_agent/common/test_cost_tracking.py` replays a
   documentation-exact usage object end-to-end: extraction → budget math →
   the exact JSON batch POSTed to the ledger endpoint.
-- `frontends/ui/src/app/api/internal/usage/route.spec.ts` accepts exactly
+- `apps/workspace/app/api/internal/usage/route.spec.ts` accepts exactly
   that batch shape into the ledger.
 - **Live-Postgres integration tests** (opt-in via `TEST_DATABASE_URL`,
   auto-skipped in CI): `src/lib/budgets/service.integration.spec.ts` and

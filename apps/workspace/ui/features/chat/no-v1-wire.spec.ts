@@ -1,4 +1,4 @@
-// @disk-inputs: src/adapters/api/**, src/features/chat/**
+// @disk-inputs: ui/adapters/api/**, ui/features/chat/**
 /**
  * @vitest-environment node
  */
@@ -16,7 +16,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-const SRC = join(process.cwd(), 'src')
+const SRC = join(process.cwd(), 'ui')
 const ROOTS = ['features/chat', 'adapters/api'].map((dir) => join(SRC, dir))
 const THIS_FILE = join(SRC, 'features/chat/no-v1-wire.spec.ts')
 

@@ -19,7 +19,7 @@
  *   - Re-runs skip objects already present in the destination with a matching
  *     size, so you can run it repeatedly (e.g. a final sync at cutover).
  *
- * Usage (run from frontends/ui, where @aws-sdk/client-s3 is installed):
+ * Usage (run from apps/workspace, where @aws-sdk/client-s3 is installed):
  *   # copy everything
  *   SRC_ENDPOINT=http://localhost:9000 SRC_ACCESS_KEY=minioadmin SRC_SECRET_KEY=minioadmin \
  *   DST_ENDPOINT=http://localhost:8333 DST_ACCESS_KEY=seaweedadmin DST_SECRET_KEY=seaweedadmin \

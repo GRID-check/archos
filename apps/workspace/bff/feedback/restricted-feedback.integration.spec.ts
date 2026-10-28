@@ -7,7 +7,7 @@
  * REAL Postgres through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/feedback/restricted-feedback.integration.spec.ts
+ *     npx vitest run bff/feedback/restricted-feedback.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  *

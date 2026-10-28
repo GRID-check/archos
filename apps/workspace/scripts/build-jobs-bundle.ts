@@ -1,5 +1,5 @@
 /**
- * Bundle the `bff-jobs` slice entry (`src/lib/jobs-queue/slice-entry.ts`) into
+ * Bundle the `bff-jobs` slice entry (`bff/jobs-queue/slice-entry.ts`) into
  * one ESM file, `dist-jobs/slice.mjs`, that plain Node imports (ADR-0079,
  * amendment 1). `workers/jobs/runner.js` loads it when
  * `BFF_JOBS_MODE=inprocess`, so a job pod runs its slices without booting
@@ -54,7 +54,7 @@ declare const Bun: {
 }
 
 const UI_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const ENTRY = path.join(UI_ROOT, 'src/lib/jobs-queue/slice-entry.ts')
+const ENTRY = path.join(UI_ROOT, 'bff/jobs-queue/slice-entry.ts')
 /** Packages inlined rather than imported, each for the reason in the header. */
 const INLINED_PACKAGES = /^@workos-inc\/authkit-nextjs$/
 

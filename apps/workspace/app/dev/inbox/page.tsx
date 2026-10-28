@@ -9,7 +9,7 @@
  * The fetch shim is installed at MODULE SCOPE on purpose: React runs a child's
  * effects before its parent's, so `useInboxList` would fire its request before a
  * parent `useEffect` could install a shim — the shim would race and lose (see
- * `docs/ux/visual-screenshots.md` and `src/app/dev/document-grid/page.tsx`). It is
+ * `docs/ux/visual-screenshots.md` and `app/dev/document-grid/page.tsx`). It is
  * browser + dev guarded and idempotent via a `window.__inboxShim` flag.
  *
  * The fixtures deliberately exercise every interesting row: an unread actionable

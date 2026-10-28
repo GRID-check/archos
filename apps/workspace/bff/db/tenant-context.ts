@@ -49,7 +49,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 
 /**
  * Postgres settings the RLS policies read. These names are also written in
- * `drizzle/0031_row_level_security.sql`; `tenant-context.spec.ts` parses that
+ * `migrations/0031_row_level_security.sql`; `tenant-context.spec.ts` parses that
  * migration and fails if the two ever disagree.
  */
 export const ORGANIZATION_SETTING = 'grid.organization_id'

@@ -15,7 +15,7 @@
  *     counts and the IFC model header each see a held row only as its reader may.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/documents/visibility.integration.spec.ts
+ *     npx vitest run bff/documents/visibility.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  */

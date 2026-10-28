@@ -1,6 +1,6 @@
 {
   "$schema": "grid-request-context-contract-v1",
-  "description": "Cross-language wire contract for the X-Grid-* cross-cutting request-context headers (backlog T3-9). TS: frontends/ui/src/lib/request-context.ts's buildGridRequestContextHeaders(case.input) must equal case.headers. Python: aiq_agent.project_context.GridRequestContext.from_headers(case.headers) must equal the case.input-equivalent fields. A path that forgets to forward one of these headers, or that encodes it differently, fails this fixture instead of silently degrading in production. Base64url payloads below are computed with Node's Buffer.toString('base64url') (unpadded) — the exact encoding server.js / header-encoding.ts / request-context.ts use; the Python decoder re-pads before decoding.",
+  "description": "Cross-language wire contract for the X-Grid-* cross-cutting request-context headers (backlog T3-9). TS: apps/workspace/bff/request-context.ts's buildGridRequestContextHeaders(case.input) must equal case.headers. Python: aiq_agent.project_context.GridRequestContext.from_headers(case.headers) must equal the case.input-equivalent fields. A path that forgets to forward one of these headers, or that encodes it differently, fails this fixture instead of silently degrading in production. Base64url payloads below are computed with Node's Buffer.toString('base64url') (unpadded) — the exact encoding server.js / header-encoding.ts / request-context.ts use; the Python decoder re-pads before decoding.",
   "cases": [
     {
       "name": "full_authenticated_project_context",

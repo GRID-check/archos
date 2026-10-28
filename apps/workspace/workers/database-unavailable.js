@@ -5,7 +5,7 @@
  *
  * Three readers ask this question, in three module systems:
  *
- *   - the BFF (`src/lib/db/errors.ts`, TypeScript, bundled by Next), which
+ *   - the BFF (`bff/db/errors.ts`, TypeScript, bundled by Next), which
  *     answers an outage with one fixed ERROR line and a 503;
  *   - the log bridge (`observability/otel-logs.js`), which builds the regex
  *     that recognises the same outage in Next's own `⨯ Error: Failed query`

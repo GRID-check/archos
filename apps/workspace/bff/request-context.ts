@@ -14,10 +14,10 @@
  * `common/data_sources.py`, `knowledge/scoping.py`) expects. A path that
  * forgets a field now gets it via `buildGridRequestContextHeaders`; a path
  * that encodes something differently is caught by the shared fixture at
- * `frontends/ui/tests/fixtures/grid_request_context.json`, which both suites read.
+ * `apps/workspace/tests/fixtures/grid_request_context.json`, which both suites read.
  *
  * Header inventory (every `x-grid-*` header found via
- * `grep -rniE "x-grid-[a-z-]+"` across `frontends/ui/src`, `server.js`, and
+ * `grep -rniE "x-grid-[a-z-]+"` across `apps/workspace/src`, `server.js`, and
  * `src/aiq_agent` as of this audit):
  *
  * | Header                              | Wire encoding                          | Source of truth (pre-refactor)                          |

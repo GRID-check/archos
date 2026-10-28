@@ -28,5 +28,5 @@ export {
   release,
   saveProgress,
   stats,
-} from '../../../workers/job-queue.js'
-export type { Claim, ClaimOptions } from '../../../workers/job-queue.js'
+} from '../../workers/job-queue.js'
+export type { Claim, ClaimOptions } from '../../workers/job-queue.js'

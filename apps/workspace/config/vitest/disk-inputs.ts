@@ -6,9 +6,9 @@
  * selection (`ci/pr_selection.py`, `decide_ui`) used to run all of them on every
  * UI selection. Each now declares its inputs in a header line:
  *
- *   // @disk-inputs: src/app/api/**\/route.ts, ../../tests/fixtures/exposure.json
+ *   // @disk-inputs: app/api/**\/route.ts, ../../tests/fixtures/exposure.json
  *
- * Globs are relative to `frontends/ui`, the way `process.cwd()` is in a spec.
+ * Globs are relative to `apps/workspace`, the way `process.cwd()` is in a spec.
  * The selection runs a declaring spec only when a changed path matches one, and
  * this file keeps the declaration honest: it records every path the spec reads
  * while it runs and fails the file when one falls outside the declaration.

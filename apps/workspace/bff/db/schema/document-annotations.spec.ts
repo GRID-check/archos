@@ -1,4 +1,4 @@
-// @disk-inputs: drizzle/0149_piloti_wakes_document_idx.down.sql, drizzle/0149_piloti_wakes_document_idx.sql, drizzle/meta/_journal.json
+// @disk-inputs: migrations/0149_piloti_wakes_document_idx.down.sql, migrations/0149_piloti_wakes_document_idx.sql, migrations/meta/_journal.json
 /**
  * @vitest-environment node
  */
@@ -21,7 +21,7 @@ import { pilotiWakes } from './document-annotations'
 // Built under the table's old name (0149); 0189 renamed both.
 const BUILT_AS = 'idx_piloti_wakes_document_annotation_created'
 const NAME = 'idx_agent_wakes_document_annotation_created'
-const read = (file: string) => readFileSync(join(process.cwd(), 'drizzle', file), 'utf8')
+const read = (file: string) => readFileSync(join(process.cwd(), 'migrations', file), 'utf8')
 
 describe('the index of a document’s wakes (migration 0149)', () => {
   it('is declared on the table: the document, then the mark, newest wake first', () => {

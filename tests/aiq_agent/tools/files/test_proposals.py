@@ -12,7 +12,7 @@ tests below.
 Five properties:
 
 * **The body is the contract's.** It validates against
-  ``frontends/ui/tests/fixtures/proposals.schema.json``, the JSON Schema the
+  ``apps/workspace/tests/fixtures/proposals.schema.json``, the JSON Schema the
   BFF exports from ``lib/proposals/types.ts``, for every kind. No Pydantic twin.
 * **The card's index is its real position.** ``originCardIndex`` is where the
   card sits in the turn's registry, even when a sibling tool adds a card while
@@ -61,7 +61,7 @@ from aiq_agent.tools.files.register import propose_file_change
 from aiq_agent.turn.response import answer_message_id
 
 ROOT = Path(__file__).resolve().parents[4]
-PROPOSALS_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "proposals.schema.json"
+PROPOSALS_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "proposals.schema.json"
 REQUEST_DEF = "InternalProposalRequest"
 RESPONSE_DEF = "InternalProposalResponse"
 

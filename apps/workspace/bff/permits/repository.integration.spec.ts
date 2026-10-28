@@ -5,7 +5,7 @@
  * Postgres through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/permits/repository.integration.spec.ts
+ *     npx vitest run bff/permits/repository.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
  *   - a document has one record: storing again replaces it and its

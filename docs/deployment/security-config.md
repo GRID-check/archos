@@ -54,7 +54,7 @@ The `WORKOS_COOKIE_PASSWORD` is used to encrypt the AuthKit session cookie. Requ
 
 ### The chat socket's context headers
 
-The WebSocket proxy (`frontends/ui/server.js`) tells the backend who the caller
+The WebSocket proxy (`apps/workspace/server.js`) tells the backend who the caller
 is and what the organization decided: model overrides, the remaining budget, the
 data sources it switched off. It does so twice, as individual `x-grid-*` headers
 and as the signed `X-Grid-Request-Context` envelope (HMAC-SHA256 under

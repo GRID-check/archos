@@ -156,7 +156,7 @@ def _slug(path: str) -> str:
 def _filing_hash(conversation_id: str, path: str) -> str:
     """The browser tier's collision suffix, mirrored byte for byte.
 
-    ``frontends/ui/src/lib/conversations/draft-filing.ts::filingReference``
+    ``apps/workspace/bff/conversations/draft-filing.ts::filingReference``
     mints the same key over the same normalized path; the two tiers must agree
     or a long key files this draft beside the browser's copy as a duplicate
     document.

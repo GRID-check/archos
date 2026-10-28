@@ -38,7 +38,7 @@ export function documentLifecycleJsonSchema(): JsonSchemaNode {
   return jsonSchemaDocument(DOCUMENT_LIFECYCLE_WIRE_SCHEMAS, {
     title: 'Grid document lifecycle wire contract',
     description:
-      'Generated from frontends/ui/src/lib/documents/lifecycle-types.ts. Do not edit by hand: ' +
+      'Generated from apps/workspace/bff/documents/lifecycle-types.ts. Do not edit by hand: ' +
       'lifecycle-schema.spec.ts rewrites this file and fails when it is stale.',
   })
 }

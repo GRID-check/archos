@@ -5,7 +5,7 @@ CI installs Bun through that action; the images copy the binary out of an
 Three places, and nothing tied them together: CI and both images sat on 1.3.11
 while sessions ran 1.4.2, under a Dockerfile comment asking for lockstep.
 
-Since `task fe:types` is `bun check`, the Bun version IS the type checker's
+Since `task workspace:types` is `bun check`, the Bun version IS the type checker's
 version, so a drift here is a gate that passes in one place and fails in
 another. These tests read the real files and fail on the first one that names
 another version.

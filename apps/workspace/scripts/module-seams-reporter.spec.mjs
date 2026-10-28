@@ -22,44 +22,44 @@ const graph = (pairs) => {
 describe('cycleEdges', () => {
   it('collapses modules to features, so a cycle through different files of two features is one', () => {
     const modules = graph([
-      ['src/features/chat/components/answer.tsx', 'src/features/documents/lib/names.ts'],
-      ['src/features/documents/components/row.tsx', 'src/features/chat/index.ts'],
+      ['ui/features/chat/components/answer.tsx', 'ui/features/documents/lib/names.ts'],
+      ['ui/features/documents/components/row.tsx', 'ui/features/chat/index.ts'],
     ])
     expect([...cycleEdges(modules).keys()].sort()).toEqual(['chat → documents', 'documents → chat'])
   })
 
   it('finds a three-feature cycle with no mutual pair in it', () => {
     const modules = graph([
-      ['src/features/a/x.ts', 'src/features/b/y.ts'],
-      ['src/features/b/y.ts', 'src/features/c/z.ts'],
-      ['src/features/c/z.ts', 'src/features/a/x.ts'],
+      ['ui/features/a/x.ts', 'ui/features/b/y.ts'],
+      ['ui/features/b/y.ts', 'ui/features/c/z.ts'],
+      ['ui/features/c/z.ts', 'ui/features/a/x.ts'],
     ])
     expect([...cycleEdges(modules).keys()].sort()).toEqual(['a → b', 'b → c', 'c → a'])
   })
 
   it('ignores a one-way edge, an edge inside one feature, and edges into lib/', () => {
     const modules = graph([
-      ['src/features/a/x.ts', 'src/features/b/y.ts'],
-      ['src/features/a/x.ts', 'src/features/a/lib/w.ts'],
-      ['src/features/b/y.ts', 'src/lib/format.ts'],
-      ['src/lib/format.ts', 'src/features/a/x.ts'],
+      ['ui/features/a/x.ts', 'ui/features/b/y.ts'],
+      ['ui/features/a/x.ts', 'ui/features/a/lib/w.ts'],
+      ['ui/features/b/y.ts', 'bff/format.ts'],
+      ['bff/format.ts', 'ui/features/a/x.ts'],
     ])
     expect(cycleEdges(modules).size).toBe(0)
   })
 
   it('keeps one module edge as evidence for the feature edge', () => {
     const modules = graph([
-      ['src/features/a/x.ts', 'src/features/b/y.ts'],
-      ['src/features/b/y.ts', 'src/features/a/x.ts'],
+      ['ui/features/a/x.ts', 'ui/features/b/y.ts'],
+      ['ui/features/b/y.ts', 'ui/features/a/x.ts'],
     ])
-    expect(cycleEdges(modules).get('a → b')).toBe('src/features/a/x.ts → src/features/b/y.ts')
+    expect(cycleEdges(modules).get('a → b')).toBe('ui/features/a/x.ts → ui/features/b/y.ts')
   })
 })
 
 describe('featureCycleFindings', () => {
   const modules = graph([
-    ['src/features/a/x.ts', 'src/features/b/y.ts'],
-    ['src/features/b/y.ts', 'src/features/a/x.ts'],
+    ['ui/features/a/x.ts', 'ui/features/b/y.ts'],
+    ['ui/features/b/y.ts', 'ui/features/a/x.ts'],
   ])
 
   it('passes the edges the baseline lists', () => {

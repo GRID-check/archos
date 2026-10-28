@@ -11,7 +11,7 @@ import { logicalName } from "../names";
 
 /**
  * Reconciles the WorkOS Audit Log schemas with the app's audit registry
- * (`frontends/ui/src/lib/audit/schemas.mjs`) once per deploy, from the frontend
+ * (`apps/workspace/bff/audit/schemas.mjs`) once per deploy, from the frontend
  * image.
  *
  * It is a deploy step because the failure it prevents is silent: an action the

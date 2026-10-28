@@ -51,9 +51,9 @@ User's Browser                 Next.js BFF                    SeaweedFS         
 ## Step 1: Upload (`FileUploadZone` + `useFileUpload`)
 
 **Frontend files**:
-- `frontends/ui/src/features/documents/components/FileUploadZone.tsx`
-- `frontends/ui/src/features/documents/hooks/use-file-upload.ts`
-- `frontends/ui/src/features/documents/orchestrator.ts`
+- `apps/workspace/ui/features/documents/components/FileUploadZone.tsx`
+- `apps/workspace/ui/features/documents/hooks/use-file-upload.ts`
+- `apps/workspace/ui/features/documents/orchestrator.ts`
 
 The user selects files via the `FileUploadZone` (drag-and-drop or click-to-browse). The `useFileUpload` hook:
 
@@ -68,7 +68,7 @@ The user selects files via the `FileUploadZone` (drag-and-drop or click-to-brows
 
 ## Step 2: BFF Upload Route
 
-**File**: `frontends/ui/src/app/api/documents/upload/route.ts`
+**File**: `apps/workspace/app/api/documents/upload/route.ts`
 
 ```typescript
 POST /api/documents/upload
@@ -95,7 +95,7 @@ a Word, presentation, `.xls` or `.ods` file returns `failed` at once.
 
 ### Office files: convert, then ingest
 
-**File**: `frontends/ui/src/lib/documents/document-dispatch.ts` (`beginRenditionIngest`)
+**File**: `apps/workspace/bff/documents/document-dispatch.ts` (`beginRenditionIngest`)
 
 An office file (`isOfficeRenditionSource` on the row's filename and stored type)
 is converted to its PDF rendition before it is ingested, by a background job
@@ -135,7 +135,7 @@ whose job died) is found by the sweep `POST /api/internal/maintenance/
 reconcile-background-work`, which the scheduler worker calls every tick: a row
 with no job gets a new one, a row whose job is dead is failed with its reason.
 
-**SeaweedFS config** (`frontends/ui/src/lib/s3.ts`):
+**SeaweedFS config** (`apps/workspace/bff/s3.ts`):
 - Endpoint: `process.env.SEAWEED_ENDPOINT`
 - Bucket: `process.env.SEAWEED_BUCKET || 'grid-documents'`
 - Region: `us-east-1`, `forcePathStyle: true`
@@ -513,13 +513,13 @@ catches it on the next ingestion run for that collection.
 
 Two pollers read two different things.
 
-**Upload progress**: `UploadOrchestrator` (`frontends/ui/src/features/documents/orchestrator.ts`, a singleton outside the React lifecycle)
+**Upload progress**: `UploadOrchestrator` (`apps/workspace/ui/features/documents/orchestrator.ts`, a singleton outside the React lifecycle)
 - Polls the backend JOB every 5 seconds through the BFF proxy: `GET /api/v1/documents/{jobId}/status` (`documentsClient.getJobStatus`), which reaches `GET /v1/documents/{job_id}/status` in `documents.py` and returns `IngestionJobStatus` with per-file progress
 - Maximum 420 poll attempts (~35 minutes)
 - Persists job state to localStorage for recovery on page refresh
 - Updates `TrackedFile` entries in the Zustand store from the job status. A file the job ends `failed` with a `quarantine` verdict becomes `held`, not `failed` (`trackedStatusOfJobFile`; a job from before the typed field is read by its `quarantined:{…}` error), so the tray never offers to retry a file the content check held back (ADR-0086). A row settled by a document status read takes the status's read family instead (`trackedPatchFromStatus`): `quarantined` is `held`, `uploaded` and `stored` are `stored`, never `success`. The tray's states: [`docs/ux/file-upload-and-explorer.md`](../ux/file-upload-and-explorer.md#the-rule)
 
-**Document status**: `GET /api/documents/{id}/status` (`frontends/ui/src/app/api/documents/[id]/status/route.ts` → `getDocumentStatus` in `lib/documents/document-details.ts`)
+**Document status**: `GET /api/documents/{id}/status` (`apps/workspace/app/api/documents/[id]/status/route.ts` → `getDocumentStatus` in `lib/documents/document-details.ts`)
 - Reads the `documents` row, reconciling an in-flight row first (see below)
 - Returns `{ id, status, filename, displayName, scope, fileSize, contentType, collectionName, errorMessage, createdAt, updatedAt, summary, pageCount, chunkCount, contentTypes, tags, authoredBy, openVersion, versionCount }`. `summary` through `tags` are read-only metadata merged from the backend's collection listing
 - Read by the open file preview, the composer's subject bar and the chat's document peek
@@ -535,7 +535,7 @@ arrives without a summary, the host polls up to three more times
 
 ### Status reconciliation (BFF)
 
-**File**: `frontends/ui/src/lib/documents/reconcile-status.ts`
+**File**: `apps/workspace/bff/documents/reconcile-status.ts`
 
 Backend ingestion is fire-and-forget from the BFF's perspective — there is no completion
 callback, so the `documents` row would otherwise stay `pending` forever. Instead, the BFF
@@ -666,7 +666,7 @@ cannot show a document that failed to index into Qdrant.
 
 ## File: Download
 
-**File**: `frontends/ui/src/app/api/documents/[id]/download/route.ts`
+**File**: `apps/workspace/app/api/documents/[id]/download/route.ts`
 - Auth check (`requireAuthorizedSession`)
 - Reads `storageKey` from the `documents` table
 - Generates a presigned GET URL with `ResponseContentDisposition: attachment`

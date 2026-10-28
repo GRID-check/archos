@@ -23,17 +23,83 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
+      "@/app": [
+        "./app"
       ],
-      "@/adapters/*": [
-        "./src/adapters/*"
+      "@/app/*": [
+        "./app/*"
+      ],
+      "@/lib": [
+        "./bff"
+      ],
+      "@/lib/*": [
+        "./bff/*"
+      ],
+      "@/features": [
+        "./ui/features"
       ],
       "@/features/*": [
-        "./src/features/*"
+        "./ui/features/*"
+      ],
+      "@/components": [
+        "./ui/components"
+      ],
+      "@/components/*": [
+        "./ui/components/*"
+      ],
+      "@/hooks": [
+        "./ui/hooks"
+      ],
+      "@/hooks/*": [
+        "./ui/hooks/*"
+      ],
+      "@/styles": [
+        "./ui/styles"
+      ],
+      "@/styles/*": [
+        "./ui/styles/*"
+      ],
+      "@/adapters": [
+        "./ui/adapters"
+      ],
+      "@/adapters/*": [
+        "./ui/adapters/*"
+      ],
+      "@/i18n": [
+        "./i18n"
+      ],
+      "@/i18n/*": [
+        "./i18n/*"
+      ],
+      "@/shared": [
+        "./shared"
       ],
       "@/shared/*": [
-        "./src/shared/*"
+        "./shared/*"
+      ],
+      "@/types": [
+        "./types"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
+      "@/utils": [
+        "./utils"
+      ],
+      "@/utils/*": [
+        "./utils/*"
+      ],
+      "@/test-utils": [
+        "./tests/test-utils"
+      ],
+      "@/test-utils/*": [
+        "./tests/test-utils/*"
+      ],
+      "@/mocks": [
+        "./tests/mocks"
+      ],
+      "@/mocks/*": [
+        "./tests/mocks/*"
       ]
     }
   },

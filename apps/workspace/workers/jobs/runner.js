@@ -129,7 +129,7 @@ function createSliceRunner({ url, token, timeoutMs, fetchImpl = fetch }) {
 }
 
 /**
- * What `dist-jobs/slice.mjs` exports (`src/lib/jobs-queue/slice-entry.ts`).
+ * What `dist-jobs/slice.mjs` exports (`bff/jobs-queue/slice-entry.ts`).
  *
  * @typedef {object} SliceBundle
  * @property {() => Promise<void>} initSliceHost

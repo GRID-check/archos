@@ -5,7 +5,7 @@
  * the restricted runtime role (ADR-0093, ADR-0094, ADR-0122):
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/agent-api/read-gate.integration.spec.ts
+ *     npx vitest run bff/agent-api/read-gate.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  *

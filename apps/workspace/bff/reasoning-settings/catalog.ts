@@ -4,7 +4,7 @@
  *
  * Source of truth for the accepted values. Mirrored by `_EFFORTS` in the
  * backend's `src/aiq_agent/common/reasoning_settings.py`; parity is pinned from
- * both sides by `frontends/ui/tests/fixtures/reasoning_efforts_catalog.json`, so a value
+ * both sides by `apps/workspace/tests/fixtures/reasoning_efforts_catalog.json`, so a value
  * added here without the backend counterpart fails in CI.
  *
  * These are OpenRouter's UNIFIED effort levels, passed through verbatim. We

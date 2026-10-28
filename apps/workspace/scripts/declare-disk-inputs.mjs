@@ -40,7 +40,7 @@ function specsReadingDisk() {
       else if (SPEC.test(name) && READS_DISK.test(readFileSync(full, 'utf8'))) found.push(path.relative(UI, full))
     }
   }
-  for (const root of ['src', 'tests', 'purger', 'scheduler', 'observability', 'workers', 'scripts', 'eslint-rules']) {
+  for (const root of ['app', 'bff', 'ui', 'i18n', 'shared', 'types', 'utils', 'tests', 'purger', 'scheduler', 'observability', 'workers', 'scripts', 'eslint-rules']) {
     if (existsSync(path.join(UI, root))) walk(path.join(UI, root))
   }
   return found.sort()

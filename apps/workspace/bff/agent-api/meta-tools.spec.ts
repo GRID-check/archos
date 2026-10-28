@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest'
 import { metaToolsFor } from './discovery'
 import { AGENT_DOMAINS } from './operation'
 
-const FIXTURE = resolve(__dirname, '../../../../../src/aiq_agent/tools/workspace/meta_tools.json')
+const FIXTURE = resolve(__dirname, '../../../../src/aiq_agent/tools/workspace/meta_tools.json')
 
 describe('the meta-tools Piloti reads', () => {
   it('are the committed fixture', () => {
@@ -27,7 +27,7 @@ describe('the meta-tools Piloti reads', () => {
       JSON.stringify(
         {
           comment:
-            'Written by frontends/ui/src/lib/agent-api/meta-tools.spec.ts from metaToolsFor (discovery.ts), the in-product variant. Read by tools/workspace/register.py. Regenerate with UPDATE_FIXTURES=1.',
+            'Written by apps/workspace/bff/agent-api/meta-tools.spec.ts from metaToolsFor (discovery.ts), the in-product variant. Read by tools/workspace/register.py. Regenerate with UPDATE_FIXTURES=1.',
           tools: metaToolsFor({ actor: 'piloti' }),
         },
         null,

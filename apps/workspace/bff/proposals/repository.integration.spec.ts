@@ -5,7 +5,7 @@
  * restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/proposals/repository.integration.spec.ts
+ *     npx vitest run bff/proposals/repository.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
  *   - a proposal is born `proposed`, undecided, with no results and no claim;

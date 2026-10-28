@@ -11,11 +11,11 @@ When a project is created (via server action or API route), the flow is:
 3. The returned WorkOS resource ID is stored back in the `workosResourceId` column.
 4. The creator is assigned the `project-admin` role via `workos.authorization.assignRole()`.
 
-Source: `frontends/ui/src/app/projects/actions.ts:30`, `frontends/ui/src/app/api/projects/route.ts:52`
+Source: `apps/workspace/app/projects/actions.ts:30`, `apps/workspace/app/api/projects/route.ts:52`
 
 ## Permission check (`requireProjectAccess`)
 
-`frontends/ui/src/lib/authz/projects.ts`
+`apps/workspace/bff/authz/projects.ts`
 
 ```typescript
 export async function requireProjectAccess(
@@ -68,7 +68,7 @@ If the FGA check fails, the function throws `"Not found"` (not `"Forbidden"`) to
 
 The project creator is automatically assigned `project-admin` via `workos.authorization.assignRole()` in the same transaction that inserts the project. No additional setup is needed.
 
-Source: `frontends/ui/src/app/projects/actions.ts:57`
+Source: `apps/workspace/app/projects/actions.ts:57`
 
 ## Project-org validation
 
@@ -80,13 +80,13 @@ Every project belongs to exactly one organization (the `organizationId` FK on th
 
 This prevents cross-org access even if an FGA check would pass (e.g., due to configuration error).
 
-Source: `frontends/ui/src/lib/authz/projects.ts:24`
+Source: `apps/workspace/bff/authz/projects.ts:24`
 
 ## Anonymous mode
 
 When `REQUIRE_AUTH=false`, the `resolveSession()` helper returns `null` and all project access checks are skipped. The `validateCollectionName()` function in the v1 proxy route blocks uploads to `proj_*` collections with a `403` when there is no session, but read operations may pass through depending on backend configuration.
 
-Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:84`
+Source: `apps/workspace/app/api/v1/[...path]/route.ts:84`
 
 ## Member management
 
@@ -94,4 +94,4 @@ Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:84`
 - **Add**: Calls `workos.authorization.assignRole()` with `organizationMembershipId`, `resourceExternalId`, and `roleSlug`.
 - **Remove**: Finds the role assignment by querying `listRoleAssignmentsForResource()`, then calls `workos.authorization.removeRoleAssignment()`.
 
-Source: `frontends/ui/src/app/api/projects/[id]/members/route.ts`, `frontends/ui/src/app/api/projects/[id]/members/[assignmentId]/route.ts`
+Source: `apps/workspace/app/api/projects/[id]/members/route.ts`, `apps/workspace/app/api/projects/[id]/members/[assignmentId]/route.ts`

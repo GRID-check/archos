@@ -3,11 +3,11 @@
  * Read-only: it lists the environment's flags and writes nothing.
  *
  *   Usage:
- *     WORKOS_API_KEY=sk_… task fe:provision:flags
+ *     WORKOS_API_KEY=sk_… task workspace:provision:flags
  *
  * ## Why this exists
  *
- * Flags are always enforced (`src/lib/authz/feature-flags.ts`), and a slug
+ * Flags are always enforced (`bff/authz/feature-flags.ts`), and a slug
  * WorkOS does not know is OFF for every organization. The registry is
  * TypeScript and the flags are remote state, so nothing in `task verify` can
  * see across the gap: a slug added to the registry without being created in
@@ -27,7 +27,7 @@
 
 import { WorkOS } from '@workos-inc/node'
 
-import { REGISTRY_FLAG_SLUGS } from '../src/lib/authz/feature-flags'
+import { REGISTRY_FLAG_SLUGS } from '../bff/authz/feature-flags'
 import { planFlagCheck } from './provision-workos-env-plan'
 
 async function listEnvironmentFlagSlugs(workos: WorkOS): Promise<string[]> {

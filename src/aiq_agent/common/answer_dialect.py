@@ -4,7 +4,7 @@ The model writes a few ``remark-directive`` blocks around ordinary Markdown
 (ADR-0069, ``docs/design/answer-richness.md``): ``:::check``, ``:::cases``,
 ``:::actions`` and the rest, the markers ``:current`` / ``:applies`` /
 ``:recommended``, and the inline project binding ``:project[key]``. The
-frontend draws them (``frontends/ui/src/lib/text/answer-directives.ts`` holds
+frontend draws them (``apps/workspace/bff/text/answer-directives.ts`` holds
 the same vocabulary; ``tests/aiq_agent/common/test_answer_dialect_parity.py``
 holds the two lists together).
 
@@ -77,7 +77,7 @@ MARKER_PARENTS: dict[str, str] = {"current": "procedure", "applies": "cases", "r
 PROJECT_DIRECTIVE = "project"
 
 #: The keys ``:project[…]`` accepts, each with the project-profile fact it reads
-#: (``frontends/ui/src/lib/project-profile/intake-definition.ts`` writes them).
+#: (``apps/workspace/bff/project-profile/intake-definition.ts`` writes them).
 #: Mirrors ``PROJECT_KEYS`` in ``answer-directives.ts``. No ``parcel_area_m2``:
 #: the profile records no Grundstücksfläche.
 PROJECT_KEYS: dict[str, str] = {

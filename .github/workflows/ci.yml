@@ -73,7 +73,7 @@ jobs:
       # skips. Images are still planned: a pull request builds, never pushes.
       reused: ${{ steps.reuse.outputs.hit || 'false' }}
       backend: ${{ steps.filter.outputs.backend || 'false' }}
-      frontend: ${{ steps.filter.outputs.frontend || 'false' }}
+      workspace: ${{ steps.filter.outputs.workspace || 'false' }}
       site: ${{ steps.filter.outputs.site || 'false' }}
       infra: ${{ steps.filter.outputs.infra || 'false' }}
       packages: ${{ steps.filter.outputs.packages || 'false' }}
@@ -163,7 +163,7 @@ jobs:
 
       - name: Tests this change reaches
         id: pysel
-        if: github.event_name == 'pull_request' && (steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true')
+        if: github.event_name == 'pull_request' && (steps.filter.outputs.backend == 'true' || steps.filter.outputs.workspace == 'true')
         # A failure here leaves every mode unset, which reads 'full'.
         continue-on-error: true
         env:
@@ -403,7 +403,7 @@ jobs:
           retention-days: 1
 
   # The core suite's coverage gate (65% of src/aiq_agent) over all four shards,
-  # and the PR comment. In `CI OK`, unlike the frontend's comment-only merge,
+  # and the PR comment. In `CI OK`, unlike the workspace's comment-only merge,
   # because the gate is a check.
   backend-coverage:
     name: Backend coverage gate
@@ -486,7 +486,7 @@ jobs:
       # The suites above run each claim queue on SQLite only: their Postgres
       # parameter skips without TEST_POSTGRES_URL, and production runs the
       # Postgres SQL. ubuntu-latest ships the server binaries; the RLS script
-      # builds the throwaway cluster, as in the frontend job.
+      # builds the throwaway cluster, as in the workspace job.
       - name: Claim queues on real Postgres
         if: matrix.suite == 'migration and claim queues'
         run: task be:test:postgres
@@ -640,10 +640,10 @@ jobs:
   # database, so the unit shards are green whether the policies work or not.
   # It also runs the migrations as a non-superuser owner, which is what catches
   # a privilege mistake a superuser hides.
-  frontend:
-    name: Frontend (cards, lint, types, tenant isolation)
+  workspace:
+    name: Workspace (cards, lint, types, tenant isolation)
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    if: needs.changes.outputs.workspace == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -660,14 +660,14 @@ jobs:
           node-version: "22"
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
-      - run: task fe:install
-      - run: task fe:cards:check
+      - run: task workspace:install
+      - run: task workspace:cards:check
       # Findings become annotations on the pull request's diff.
-      - run: task fe:lint -- --format=github
-      - run: task fe:types
+      - run: task workspace:lint -- --format=github
+      - run: task workspace:types
       # How many specs a change to each hub module selects, against its recorded
       # baseline: a new edge from a hub into a subtree fails here.
-      - run: task fe:blast-radius
+      - run: task workspace:blast-radius
       # ubuntu-latest ships PostgreSQL server binaries but runs no cluster; the
       # script builds a throwaway one and tears it down.
       - name: Tenant isolation (row-level security, real Postgres)
@@ -679,13 +679,13 @@ jobs:
           # The per-migration checks only when a migration or the script moved.
           RLS_MIGRATION_CHECKS: ${{ needs.changes.outputs.migrations == 'true' && '1' || '0' }}
 
-  frontend-test:
-    name: Frontend tests (shard ${{ matrix.shard }}/8)
+  workspace-test:
+    name: Workspace tests (shard ${{ matrix.shard }}/8)
     needs: changes
     # A pull request whose change no UI spec reads since its reference (the
     # last green run or the base, ci/pr_selection.py) runs none ('none'); one that a selection can see runs only the specs
     # its change reaches ('select'); everything else, and every push, all.
-    if: needs.changes.outputs.frontend == 'true' && (github.event_name == 'push' || needs.changes.outputs.ui_mode != 'none')
+    if: needs.changes.outputs.workspace == 'true' && (github.event_name == 'push' || needs.changes.outputs.ui_mode != 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -710,17 +710,17 @@ jobs:
           node-version: "22"
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
-      - run: task fe:install
+      - run: task workspace:install
       - name: All specs, shard ${{ matrix.shard }}/8
         if: github.event_name == 'push' || needs.changes.outputs.ui_mode == 'full'
         # Coverage only where the comment is built from it.
-        run: task fe:test:shard SHARD=${{ matrix.shard }}/8 COVERAGE=${{ github.event_name == 'pull_request' }}
+        run: task workspace:test:shard SHARD=${{ matrix.shard }}/8 COVERAGE=${{ github.event_name == 'pull_request' }}
       - name: The specs this change reaches, shard ${{ matrix.shard }}/8
         if: github.event_name == 'pull_request' && needs.changes.outputs.ui_mode == 'select'
         env:
           SHARD: ${{ matrix.shard }}/8
           FILES_JSON: ${{ needs.changes.outputs.ui_files }}
-        run: task fe:test:related SHARD="$SHARD" FILES="$(jq -r 'join(" ")' <<<"$FILES_JSON")"
+        run: task workspace:test:related SHARD="$SHARD" FILES="$(jq -r 'join(" ")' <<<"$FILES_JSON")"
       # Coverage is collected per shard and merged below: a shard only loads
       # its own slice of the app. Uploaded even when the shard failed, because
       # the merged report is where a reviewer looks.
@@ -728,17 +728,17 @@ jobs:
         if: always() && github.event_name == 'pull_request' && needs.changes.outputs.ui_mode == 'full'
         with:
           name: vitest-blob-${{ matrix.shard }}
-          path: frontends/ui/.vitest-reports
+          path: apps/workspace/.vitest-reports
           include-hidden-files: true
           retention-days: 1
 
   # The coverage comment, and nothing else: correctness is gated by the shards.
   # Not in `CI OK`, so a slow merge never holds the gate open, and pull request
   # only, because on a push there is nobody to comment to.
-  frontend-coverage:
-    name: Frontend coverage
-    needs: [changes, frontend-test]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.changes.outputs.ui_mode == 'full' }}
+  workspace-coverage:
+    name: Workspace coverage
+    needs: [changes, workspace-test]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.workspace == 'true' && needs.changes.outputs.ui_mode == 'full' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -753,18 +753,18 @@ jobs:
           node-version: "22"
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
-      - run: task fe:install
+      - run: task workspace:install
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: vitest-blob-*
           merge-multiple: true
-          path: frontends/ui/.vitest-reports
-      - run: task fe:test:merge
-      - name: Coverage comment (frontend)
+          path: apps/workspace/.vitest-reports
+      - run: task workspace:test:merge
+      - name: Coverage comment (workspace)
         continue-on-error: true
         uses: davelosert/vitest-coverage-report-action@c4bbc33a89b7ace0e63d35f1f7d4bcee31155a73 # v2.13.0
         with:
-          working-directory: frontends/ui
+          working-directory: apps/workspace
 
   site:
     name: Site (Astro check + build)
@@ -973,7 +973,7 @@ jobs:
   # has all three images, and no commit CI failed has any.
   publish:
     name: Tag images for this commit
-    needs: [changes, repo, backend, backend-coverage, backend-suites, frontend, frontend-test, site, infra, packages, trivy, image-push]
+    needs: [changes, repo, backend, backend-coverage, backend-suites, workspace, workspace-test, site, infra, packages, trivy, image-push]
     if: >-
       always() && github.event_name == 'push' && needs.changes.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -1014,7 +1014,7 @@ jobs:
   ci-ok:
     name: CI OK
     if: always()
-    # `frontend-coverage` is deliberately NOT here: it produces a comment,
+    # `workspace-coverage` is deliberately NOT here: it produces a comment,
     # correctness is gated by the shards, and requiring it held the gate open
     # for a minute after the last shard.
     #
@@ -1023,7 +1023,7 @@ jobs:
     # checkout can hold a corpus to measure, and a job that can only pass
     # vacuously is worse than none. It survives as `task be:eval:retrieval`;
     # ADR-0058 "Update (2026-09-09)" says what restoring the gate would take.
-    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, backend-affected, frontend, frontend-test, site, infra, packages, trivy, image, image-push, publish]
+    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, backend-affected, workspace, workspace-test, site, infra, packages, trivy, image, image-push, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

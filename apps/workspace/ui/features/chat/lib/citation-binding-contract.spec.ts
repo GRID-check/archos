@@ -41,7 +41,7 @@ import { describe, expect, test } from 'vitest'
 import { citationFromWire } from './wire-citation'
 import type { WireCitationSource } from '../types'
 
-// frontends/ui/src/features/chat/lib → repo root is six levels up.
+// apps/workspace/ui/features/chat/lib → repo root is six levels up.
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_DIR = resolve(HERE, '../../../../../../tests/fixtures/citation_pipeline')
 const WIRE_SOURCES = JSON.parse(

@@ -1,7 +1,7 @@
 """The German names the project profile used to store, and what they are called now.
 
 ONE normalizer for the whole vocabulary, the Python twin of
-``frontends/ui/src/lib/project-profile/legacy-names.ts``: a stored key
+``apps/workspace/bff/project-profile/legacy-names.ts``: a stored key
 (``bundesland``), a select token (``wien``), the building instance id (``bw1``)
 and the derivation rule (``gebaeudeklasse``).
 

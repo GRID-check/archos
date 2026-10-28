@@ -8,7 +8,7 @@
  * `tests/vitest-durations.json` (a file not in it counts at the median), takes
  * them longest first and hands each to the shard with the least time so far.
  * Every shard computes the same split from the same list, as pytest-split
- * does for the backend. Refresh the file with `task fe:test:durations`; a
+ * does for the backend. Refresh the file with `task workspace:test:durations`; a
  * stale one only unbalances the shards, it never drops a spec.
  */
 import { readFileSync } from 'node:fs'

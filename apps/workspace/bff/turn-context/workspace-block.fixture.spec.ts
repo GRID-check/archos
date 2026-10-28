@@ -11,7 +11,7 @@
  * replaced by the run's conversation. A change to the block fails here until the
  * fixture is regenerated:
  *
- *   UPDATE_FIXTURES=1 npx vitest run src/lib/turn-context/workspace-block.fixture.spec.ts
+ *   UPDATE_FIXTURES=1 npx vitest run bff/turn-context/workspace-block.fixture.spec.ts
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -50,7 +50,7 @@ function render(): string {
   }).split('\n')
   const fixture = {
     comment:
-      'Written by src/lib/turn-context/workspace-block.fixture.spec.ts from office.json; served by ' +
+      'Written by bff/turn-context/workspace-block.fixture.spec.ts from office.json; served by ' +
       'scripts/turn_census/fixture_workspace.py. Regenerate with UPDATE_FIXTURES=1.',
     workspace,
     proposalsHeader: withOne.at(-2),

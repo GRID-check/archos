@@ -24,7 +24,7 @@
  * module is where a turn's memory finally means the turn's.
  *
  * A pure module with its own fast spec, not logic inside the render function —
- * `src/features/chat/lib/` is where this codebase puts the part that can be
+ * `ui/features/chat/lib/` is where this codebase puts the part that can be
  * tested in a millisecond instead of a mount (AGENTS.md).
  *
  * **What is deliberately NOT here:** a project-scoped in-turn `remember` write

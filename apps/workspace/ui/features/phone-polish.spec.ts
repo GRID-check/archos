@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/app/(shell)/inbox/inbox-sheet.tsx, src/features/bim/components/viewer/viewer-tool-button.tsx, src/features/chat/components/AgentPrompt.tsx, src/features/chat/components/effort-dial/EffortDial.tsx, src/features/documents/components/file-workspace.tsx
+// @disk-inputs: app/app/(shell)/inbox/inbox-sheet.tsx, ui/features/bim/components/viewer/viewer-tool-button.tsx, ui/features/chat/components/AgentPrompt.tsx, ui/features/chat/components/effort-dial/EffortDial.tsx, ui/features/documents/components/file-workspace.tsx
 /**
  * Static ratchets for the phone details that fail without a sound: a list that
  * ends under the home indicator, a caption that ellipsizes, a layout animation
@@ -7,11 +7,10 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { srcJoin } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..')
-const read = (...parts: string[]): string => readFileSync(join(SRC, ...parts), 'utf8')
+const read = (...parts: string[]): string => readFileSync(srcJoin(...parts), 'utf8')
 
 describe('a sheet that reaches the screen edge ends its list above the home indicator', () => {
   it('Inbox', () => {

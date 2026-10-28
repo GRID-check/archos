@@ -1,7 +1,7 @@
 """The Python reader of ADR-0087's restricted-folder collection names.
 
 The writer is ``restrictedCollectionName`` in
-``frontends/ui/src/lib/authz/folder-access.ts``:
+``apps/workspace/bff/authz/folder-access.ts``:
 ``${projectCollection}_r`` + the first twelve hex digits of the folder uuid,
 dashes removed, lowercased. ``_bff_name`` restates that rule so the two sides
 are checked against one spelling of it.

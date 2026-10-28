@@ -1,6 +1,6 @@
-# The UI and the BFF: `frontends/ui`
+# The UI and the BFF: `apps/workspace`
 
-Next.js App Router: the product UI, the BFF API routes under `src/app/api`, and
+Next.js App Router: the product UI, the BFF API routes under `app/api`, and
 the WebSocket proxy (`server.js`). This is also where tenancy, authorization and
 the database live. The Python agent is stateless and trusts what this tier
 sends it.
@@ -11,11 +11,22 @@ before writing Next code, and heed its deprecation notices. (`next dev` used to
 write this advice into this file itself; `agentRules: false` in `next.config.ts`
 stops it, because its rewrite dirtied the tracked file on every start.)
 
+## Layout
+
+`app/` is the Next routes, `ui/` the client code (`features/`, `components/`, `hooks/`,
+`styles/`, `adapters/`), `bff/` the server side (domain modules, the database schema,
+authorization, queues), and `i18n/`, `shared/`, `types/` and `utils/` are read by both.
+Specs sit beside the code; `tests/` holds the harness (`test-utils/`, `mocks/`, fixtures)
+and the specs that read the whole tree. The `@/lib/*` alias points at `bff/` and the other
+`@/<dir>/*` aliases at the directory of that name (`tsconfig.json`). `migrations/` is the
+Drizzle output. The workers, scheduler, purger and observability entrypoints stay at the
+root: they are other process types of the same image.
+
 ## What the gate does not cover
 
 `task db:test:rls` is required whenever you touch the tenant boundary, and
 `task verify` does not run it. `next build` typechecks production code only
-(`tsconfig.build.json`); the specs are typechecked by `task fe:types`, which is
+(`tsconfig.build.json`); the specs are typechecked by `task workspace:types`, which is
 `bun check`, TypeScript 7's checker. Bun is the toolchain here (install, scripts,
 bundling the deploy scripts, type checking) and never the runtime (ADR-0103):
 `--bun` exports `NODE_OPTIONS=--bun`, which kills Turbopack's PostCSS step.
@@ -25,28 +36,28 @@ bundling the deploy scripts, type checking) and never the runtime (ADR-0103):
 | When you | You must | What fails you |
 |---|---|---|
 | Add an `app/api` route | Declare `authz` on the factory from `@/lib/api/handler` | `apiRoute` does not compile; `authz-coverage.spec.ts` |
-| Add a permission | `lib/authz/catalog.ts`. The deploy applies it to its environment (Job `grid-app-authz-catalog`); a new **resource type** is a dashboard step per environment, before the deploy | WorkOS drifts from the code. A project-tier permission that exists only in the catalog is held by nobody |
-| Decide access | Check a permission through `lib/authz/decide.ts`, the single decision point. Adoption is incremental, so gates still call `hasPermission` / `requireProjectAccess` / `requirePlatformPermission` (ADR-0038 §6) | A role-name check breaks every custom role |
+| Add a permission | `bff/authz/catalog.ts`. The deploy applies it to its environment (Job `grid-app-authz-catalog`); a new **resource type** is a dashboard step per environment, before the deploy | WorkOS drifts from the code. A project-tier permission that exists only in the catalog is held by nobody |
+| Decide access | Check a permission through `bff/authz/decide.ts`, the single decision point. Adoption is incremental, so gates still call `hasPermission` / `requireProjectAccess` / `requirePlatformPermission` (ADR-0038 §6) | A role-name check breaks every custom role |
 | Create a table | `SELECT secure_table('<table>','<predicate>');` in the same migration | `rls-coverage.spec.ts`, by name |
 | Read tenant rows | Context from `getGridSession()`, or state it (`withTenant`, `withPlatformAccess`, `withOptionalTenant`) | `internalApiRoute` does not compile |
-| Add an `app/api` route a person calls | Add its operation in `src/lib/agent-api/catalog/` in the same change, sharing the route's zod schema from a `lib/` wire module, or exempt it in `NOT_AN_AGENT_CAPABILITY` with a reason. [`headless-first.md`](../../docs/contributing/headless-first.md) | `lib/agent-api/agent-reachability.spec.ts` |
-| Add or change a capability on the review canvas or in the chat (a mark action, a pointer, a look, a compare, a box to ask about) | Give it an entry in `src/lib/surface-parity/parity.config.ts`: its canvas form and its chat form, each a rendering, an `exempt` reason or a `gap` naming the slice that closes it. Regenerate `tests/fixtures/surface-parity.json` (`UPDATE_FIXTURES=1 bunx vitest run src/lib/surface-parity/parity.config.spec.ts`). [`agent-surface.md`](../../docs/architecture/agent-surface.md#surface-parity-canvas-and-chat) | `surface-parity/parity.config.spec.ts`; `tests/aiq_agent/tools/test_surface_parity.py` for a canvas-group tool or `look` |
-| Write anything an agent reads: an operation's name, summary or description, a schema's `.describe()`, a refusal or result text under `lib/agent-api/` | English, one word per concept, the glossary's word ([Agent surface and standard terms](../../docs/glossary.md#agent-surface-and-standard-terms)); German only for domain data, listed in the spec's `DOMAIN_DATA` with a reason. A route's own refusal reaches an agent in English through `getLocale()` | `lib/agent-api/english-only.spec.ts` |
+| Add an `app/api` route a person calls | Add its operation in `bff/agent-api/catalog/` in the same change, sharing the route's zod schema from a `bff/` wire module, or exempt it in `NOT_AN_AGENT_CAPABILITY` with a reason. [`headless-first.md`](../../docs/contributing/headless-first.md) | `bff/agent-api/agent-reachability.spec.ts` |
+| Add or change a capability on the review canvas or in the chat (a mark action, a pointer, a look, a compare, a box to ask about) | Give it an entry in `bff/surface-parity/parity.config.ts`: its canvas form and its chat form, each a rendering, an `exempt` reason or a `gap` naming the slice that closes it. Regenerate `tests/fixtures/surface-parity.json` (`UPDATE_FIXTURES=1 bunx vitest run bff/surface-parity/parity.config.spec.ts`). [`agent-surface.md`](../../docs/architecture/agent-surface.md#surface-parity-canvas-and-chat) | `surface-parity/parity.config.spec.ts`; `tests/aiq_agent/tools/test_surface_parity.py` for a canvas-group tool or `look` |
+| Write anything an agent reads: an operation's name, summary or description, a schema's `.describe()`, a refusal or result text under `bff/agent-api/` | English, one word per concept, the glossary's word ([Agent surface and standard terms](../../docs/glossary.md#agent-surface-and-standard-terms)); German only for domain data, listed in the spec's `DOMAIN_DATA` with a reason. A route's own refusal reaches an agent in English through `getLocale()` | `bff/agent-api/english-only.spec.ts` |
 | Write an endpoint | Route is a thin adapter, service owns logic and authorization, repository owns the SQL and bounds every list | Review. `publicApiRoute` needs an ADR |
-| Query the `documents` table, or a table carrying one document's facts (versions, roles, IFC models and elements, Prüfbuch confirmations, assignments) | Take a `DocumentReader` and AND `documentVisibleTo(reader)` (`lib/documents/visibility.ts`) into THAT query's WHERE; a session's item path loads the row with `findDocumentForSession`. A person's upload is held from everyone but its uploader and reviewers until its screening of the bytes it holds passes (ADR-0086). Make an `internalRead(why)` or the reviewer's reader only where the spec lists it; a person-facing path takes `shelfReaderFor` | `documents/document-visibility.spec.ts`, unless one of its allowlists says why |
+| Query the `documents` table, or a table carrying one document's facts (versions, roles, IFC models and elements, Prüfbuch confirmations, assignments) | Take a `DocumentReader` and AND `documentVisibleTo(reader)` (`bff/documents/visibility.ts`) into THAT query's WHERE; a session's item path loads the row with `findDocumentForSession`. A person's upload is held from everyone but its uploader and reviewers until its screening of the bytes it holds passes (ADR-0086). Make an `internalRead(why)` or the reviewer's reader only where the spec lists it; a person-facing path takes `shelfReaderFor` | `documents/document-visibility.spec.ts`, unless one of its allowlists says why |
 | Read a raw `sql<T>` result | Coerce at the repository boundary (`new Date(row.x)`, `Number(row.x)`) | Nothing. `tsc` believes the annotation and you get `toISOString is not a function` at runtime |
 | Reach for `any` | Use the real type, `Partial<T>`, `unknown`, or the fixtures in `@/test-utils/*` | `typescript/no-explicit-any` is an error in `.oxlintrc.json`, in tests too |
-| Write a general-purpose helper | Search first, then put it in `lib/text/`, `lib/utils/` or `lib/format.ts` | A private copy is a fork, and the drift is invisible because each copy looks locally correct |
+| Write a general-purpose helper | Search first, then put it in `bff/text/`, `bff/utils/` or `bff/format.ts` | A private copy is a fork, and the drift is invisible because each copy looks locally correct |
 | Build a component | Compose atoms; if the kit lacks a shape, add the atom rather than a `<div className="…">` in the organism | Review. The viewport that ignored this had four floating panels in three materials, none testable |
 | Show something a surface already shows | Compose the same atoms, or reuse the organism | Two lookalikes drift on the first token retune. `project-atoms.tsx` exists for exactly this |
-| Add a card type | Classify it in `CARD_INTERACTIVITY` (`features/grid-cards/card-decision.ts`): `presentational`, `interactive` (its decision is kept on the message), or `live` (it shows server objects and every control writes to them, never to the message; give it a case in the `live card wiring` ratchet). An interactive or system (`SYSTEM_CARD_TYPES`) type is also added by hand to `SURFACE_EXCLUDED_LEAVES` in `features/a2ui/catalog.tsx` (`cards/models.py` derives its copy from those sets): a leaf inside a surface has no message position for its decision to be keyed by | `task fe:types`; `tests/aiq_agent/cards/test_surface_excluded_parity.py` |
-| Touch `features/a2ui` | Keep the catalog the card types (ADR-0065). It is built from the generated `gridCardSchema`, so a card type is added in `src/aiq_agent/cards/models.py` and reaches the catalog through `npm run generate:cards`; only the frontend's `SURFACE_EXCLUDED_LEAVES` is kept by hand, held to the set `cards/models.py` derives by `test_surface_excluded_parity.py` | `card-schemas` pre-commit hook; a type missing from the catalog is refused by `preflight` and drawn without A2UI |
+| Add a card type | Classify it in `CARD_INTERACTIVITY` (`ui/features/grid-cards/card-decision.ts`): `presentational`, `interactive` (its decision is kept on the message), or `live` (it shows server objects and every control writes to them, never to the message; give it a case in the `live card wiring` ratchet). An interactive or system (`SYSTEM_CARD_TYPES`) type is also added by hand to `SURFACE_EXCLUDED_LEAVES` in `ui/features/a2ui/catalog.tsx` (`cards/models.py` derives its copy from those sets): a leaf inside a surface has no message position for its decision to be keyed by | `task workspace:types`; `tests/aiq_agent/cards/test_surface_excluded_parity.py` |
+| Touch `ui/features/a2ui` | Keep the catalog the card types (ADR-0065). It is built from the generated `gridCardSchema`, so a card type is added in `src/aiq_agent/cards/models.py` and reaches the catalog through `npm run generate:cards`; only the frontend's `SURFACE_EXCLUDED_LEAVES` is kept by hand, held to the set `cards/models.py` derives by `test_surface_excluded_parity.py` | `card-schemas` pre-commit hook; a type missing from the catalog is refused by `preflight` and drawn without A2UI |
 | Store a card's answer | On `ChatMessage.cardInteractions` via `useCardDecision`, except for a card that shows a server proposal (`proposal_id`, ADR-0105): the proposal records who decided and when, and the card writes nothing to the message ([`proposed-changes.md`](../../docs/architecture/proposed-changes.md)) | A reload re-applies the patch; neither endpoint is idempotent |
-| Import across a seam | Keep the direction `app` → `features` → `components` → `lib`: `lib/` imports no `features/`, `components/` or `app/` (the agent catalog's route loaders excepted), `components/` imports no `features/`, a feature reaches another only through its index and never in a cycle, and client code names a `server-only` module with `import type` alone. A shared piece moves down into `lib/`. When you remove a known violation, `bun run lint:seams:baseline`. [`module-seams.md`](../../docs/contributing/module-seams.md) | `bun run lint:seams` in `task fe:lint` (dependency-cruiser): a new violation fails, and so does a baseline entry that is gone |
+| Import across a seam | Keep the direction `app` → `ui/features` → `ui/components` → `bff`: `bff/` imports no `ui/features/`, `ui/components/` or `app/` (the agent catalog's route loaders excepted), `ui/components/` imports no `ui/features/`, a feature reaches another only through its index and never in a cycle, and client code names a `server-only` module with `import type` alone. A shared piece moves down into `bff/`. When you remove a known violation, `bun run lint:seams:baseline`. [`module-seams.md`](../../docs/contributing/module-seams.md) | `bun run lint:seams` in `task workspace:lint` (dependency-cruiser): a new violation fails, and so does a baseline entry that is gone |
 | Add a lint rule of our own | Write it against ESLint's rule API in `eslint-rules/`, register it in `eslint-rules/index.mjs`, switch it on in `.oxlintrc.json`, spec it with oxlint's `RuleTester`, and plant a violation in `eslint-rules/lint-config.spec.mjs`. Suppress with `oxlint-disable-next-line <rule> -- <reason>` | `lint-config.spec.mjs` fails when a guarded rule stops firing at the path it guards. [`lint-evaluation.md`](../../docs/contributing/lint-evaluation.md) |
-| Add user-facing copy | Add the key to every dictionary in `src/i18n/dictionaries`. Translate through the namespace's module, `useTranslations(chatCopy)` with `chatCopy` from `@/i18n/namespaces/chat`, never the whole dictionary: that import puts every spec that translates anything below every copy change. A new namespace gets its module there too | `key-coverage.spec.ts`; `aggregate-imports.spec.ts` |
+| Add user-facing copy | Add the key to every dictionary in `i18n/dictionaries`. Translate through the namespace's module, `useTranslations(chatCopy)` with `chatCopy` from `@/i18n/namespaces/chat`, never the whole dictionary: that import puts every spec that translates anything below every copy change. A new namespace gets its module there too | `key-coverage.spec.ts`; `aggregate-imports.spec.ts` |
 | Ship a user-visible surface | A `/dev/<name>` preview route, and a capture of it attached to the PR (`agent-browser` + `before-and-after`). Commit no PNGs. Let Figma inspire it (never a template) and walk Nielsen's ten heuristics, stating in the PR what the surface does for each; every explanation in it first answers why the surface needs it ([design language](../../docs/design/grid-design-language.md#principles), principles 7 to 9) | Review. [`docs/ux/visual-screenshots.md`](../../docs/ux/visual-screenshots.md) |
-| Write a spec that reads the tree from disk (`readFileSync`, `readdirSync`, a walker) | Declare what it reads in its first line, `// @disk-inputs: <globs relative to frontends/ui>`: `node scripts/declare-disk-inputs.mjs <spec>` writes it from a recorded run. Without it the spec runs on every pull request's UI selection; with a wrong one, a change to what it reads skips it ([`ci.md`](../../docs/contributing/ci.md)) | `config/vitest/disk-inputs.ts` fails a spec that reads a path its line leaves out |
+| Write a spec that reads the tree from disk (`readFileSync`, `readdirSync`, a walker) | Declare what it reads in its first line, `// @disk-inputs: <globs relative to apps/workspace>`: `node scripts/declare-disk-inputs.mjs <spec>` writes it from a recorded run. Without it the spec runs on every pull request's UI selection; with a wrong one, a change to what it reads skips it ([`ci.md`](../../docs/contributing/ci.md)) | `config/vitest/disk-inputs.ts` fails a spec that reads a path its line leaves out |
 | Call the Python backend | Take its address from `getBackendUrl` (`@/lib/backend-url`, the leaf; `@/lib/backend-proxy` re-exports it but pulls AuthKit) and the service token from `internalServiceHeaders(baseUrl)` (`@/lib/internal-auth`). No token, or plain HTTP to a public host, throws `InternalServiceUnavailableError` (a 503) and sends nothing; catch it only where the backend route really answers without the token | `internal-auth.spec.ts` fails any other file that spells `x-grid-internal-token`; `backend-url.spec.ts` any other read of `process.env.BACKEND_URL` |
 | Build work over many items, or longer than one request | A server run on `bff_job_queue` (ADR-0121). The browser starts it, reads it and asks for the next step; it never loops over items | `browser-work-loops.spec.ts`, a per-file ratchet; review |
 
@@ -54,8 +65,8 @@ bundling the deploy scripts, type checking) and never the runtime (ADR-0103):
 
 **The UI is built atomically: atoms → molecules → organisms → route.** An
 organism reaches for an atom, never for Tailwind; shape is a primitive
-(`components/ui/raised-card.tsx`) and the domain is an atom on top of it
-(`components/projects/project-atoms.tsx`). `features/bim/components/viewer/index.ts`
+(`ui/components/ui/raised-card.tsx`) and the domain is an atom on top of it
+(`ui/components/projects/project-atoms.tsx`). `ui/features/bim/components/viewer/index.ts`
 is a barrel that exists purely to enforce the import direction. The layers, and
 the three rules that carry them:
 [`docs/design/grid-design-language.md`](../../docs/design/grid-design-language.md#component-layers-atomic-design).
@@ -74,7 +85,7 @@ check. RLS is the backstop, never the plan.
 
 **Put the organization in every cache key.** `getCached` returns before the
 loader runs, so a key without the organization serves whatever the first caller
-populated and never enters the tenant scope. `lib/project-profile/prompt-view.ts`
+populated and never enters the tenant scope. `bff/project-profile/prompt-view.ts`
 is the pattern, and `grid/require-tenant-cache-key` is the check: a `getCached`
 or `setCached` key with no organization segment fails lint. A key that really is
 one per deployment (platform defaults, an upstream catalog) goes in
@@ -88,15 +99,15 @@ second form: it confirms or dismisses what Piloti read, and answers a single
 open question with the wizard's own control (`intake-question-field.tsx`),
 writing through `patchProjectProfile`, the profile's one door.
 
-**Only `lib/agent-api/dispatch.ts` enters the acting session.** An agent has no
+**Only `bff/agent-api/dispatch.ts` enters the acting session.** An agent has no
 AuthKit cookie, so `getGridSession()` has a second answer: the session
-`runAsActingSession` (`lib/agent-api/acting-session.ts`) binds to one MCP call,
+`runAsActingSession` (`bff/agent-api/acting-session.ts`) binds to one MCP call,
 built by `resolvePinnedRequesterSession`. Never call `runAsActingSession`
 anywhere else, and never pass it a session a request supplied: that is a way past
 every route's `authz`. [`agent-surface.md`](../../docs/architecture/agent-surface.md#the-acting-session).
 
 **The product's name is copy, never a name in code.** `PRODUCT_NAME` in
-`lib/brand.ts` is the single source: a dictionary string says `{productName}`
+`bff/brand.ts` is the single source: a dictionary string says `{productName}`
 and the registry fills it in (`withProductName`, beside it; `i18n/product-name.spec.ts`
 fails a string that spells the name), and code reads the constant. No identifier, env var,
 header, CSS variable or route carries a product name (`aiq`, `grid`, `piloti`):

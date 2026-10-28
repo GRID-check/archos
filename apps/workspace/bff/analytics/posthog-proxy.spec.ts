@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/ingest/[...path]/route.ts, src/proxy.ts
+// @disk-inputs: app/ingest/[...path]/route.ts, proxy.ts
 /**
  * @vitest-environment node
  */
@@ -157,7 +157,7 @@ describe('forwardToPosthog', () => {
  * it states why it is public.
  */
 describe('the /ingest route file', () => {
-  const source = readFileSync(join(process.cwd(), 'src/app/ingest/[...path]/route.ts'), 'utf8')
+  const source = readFileSync(join(process.cwd(), 'app/ingest/[...path]/route.ts'), 'utf8')
 
   test('declares every handler through publicApiRoute with a why', () => {
     expect(source).toMatch(/export const GET = publicApiRoute\(/)
@@ -167,6 +167,6 @@ describe('the /ingest route file', () => {
   })
 
   test('is left out of the auth proxy matcher', () => {
-    expect(readFileSync(join(process.cwd(), 'src/proxy.ts'), 'utf8')).toContain('|ingest/')
+    expect(readFileSync(join(process.cwd(), 'proxy.ts'), 'utf8')).toContain('|ingest/')
   })
 })

@@ -10,7 +10,7 @@
  * mocked it; this can.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/search/document-repository.integration.spec.ts
+ *     npx vitest run bff/search/document-repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  */

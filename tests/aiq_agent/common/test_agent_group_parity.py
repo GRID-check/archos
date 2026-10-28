@@ -27,7 +27,7 @@ import pytest
 
 from aiq_agent.common.model_overrides import AgentGroup
 
-_MIRROR = Path("frontends/ui/src/lib/model-config/agent-groups.ts")
+_MIRROR = Path("apps/workspace/bff/model-config/agent-groups.ts")
 
 
 @pytest.fixture(scope="module")

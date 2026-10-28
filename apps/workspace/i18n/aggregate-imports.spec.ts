@@ -3,7 +3,7 @@
  */
 
 /**
- * Nothing outside `src/i18n` imports the whole dictionary.
+ * Nothing outside `i18n` imports the whole dictionary.
  *
  * A pull request runs the specs whose import graph reaches a changed file. When
  * every component reached the aggregate (`dictionaries/index.ts`, `en/index.ts`,
@@ -20,16 +20,16 @@ import { describe, expect, it } from 'vitest'
 
 /** Files that read every namespace on purpose, and why. */
 const ALLOWED: Record<string, string> = {
-  'src/lib/navigation/describe-path.spec.ts':
+  'bff/navigation/describe-path.spec.ts':
     'checks that every label the path describer can return resolves, across the namespaces it names',
 }
 
 const AGGREGATE = /^import\s+(?!type\b)[^']*?from\s+'(?:@\/i18n|\.{1,2}(?:\/\.\.)*)\/dictionaries(?:\/(?:en|de))?'/m
 
 describe('the aggregate dictionary', () => {
-  it('is imported for its values only inside src/i18n', () => {
+  it('is imported for its values only inside i18n', () => {
     const offenders = globSync('{src,tests}/**/*.{ts,tsx}')
-      .filter((file) => !file.startsWith('src/i18n/') && !(file in ALLOWED))
+      .filter((file) => !file.startsWith('i18n/') && !(file in ALLOWED))
       .filter((file) => AGGREGATE.test(readFileSync(file, 'utf8')))
     expect(
       offenders,

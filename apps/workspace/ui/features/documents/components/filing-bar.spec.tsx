@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: ui/**
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

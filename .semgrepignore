@@ -18,7 +18,7 @@ build/
 # Generated / vendored code
 **/generated.ts
 **/*.generated.*
-**/drizzle/**
+**/migrations/**
 **/migrations/**
 **/__mocks__/**
 **/mocks/**

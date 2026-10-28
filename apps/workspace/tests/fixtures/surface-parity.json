@@ -1,5 +1,5 @@
 {
- "comment": "Where each canvas capability is shown: frontends/ui/src/lib/surface-parity/parity.config.ts, written by parity.config.spec.ts (UPDATE_FIXTURES=1). `tool` is the name the model binds (`canvas__mark`, `look`).",
+ "comment": "Where each canvas capability is shown: apps/workspace/bff/surface-parity/parity.config.ts, written by parity.config.spec.ts (UPDATE_FIXTURES=1). `tool` is the name the model binds (`canvas__mark`, `look`).",
  "capabilities": {
   "look": {
    "summary": "Look at a page or a box on it, then answer from what was seen",

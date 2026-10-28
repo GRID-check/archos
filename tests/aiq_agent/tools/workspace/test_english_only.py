@@ -3,7 +3,7 @@
 The workspace tools are the in-product half of the agent surface (ADR-0122): their descriptions,
 their refusals, the truncation note and the error prefix are what the model reads, the same
 surface an external agent reads from ``/api/mcp`` in English. The BFF half is
-``frontends/ui/src/lib/agent-api/english-only.spec.ts``; both read the words in
+``apps/workspace/bff/agent-api/english-only.spec.ts``; both read the words in
 ``ci/german_stems.json``.
 
 Every string constant in the modules below is checked, docstrings included (they are English too,

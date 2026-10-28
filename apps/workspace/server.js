@@ -32,10 +32,10 @@ const crypto = require('crypto')
 // come from (WorkOS, or the fixed defaults of a deployment that signs nobody
 // in), printed before this process serves anything. A pilot said a feature did
 // not work and nobody could say which build they were on, nor whether that
-// feature was switched on for them at all. Rationale in full: `src/lib/boot.ts`.
+// feature was switched on for them at all. Rationale in full: `bff/boot.ts`.
 //
 // DUPLICATED from `formatBootLine`/`flagSource`/`deployedSha` in that module,
-// for the same reason `src/lib/turns/turn-headers.js` duplicates the envelope builder: this file is
+// for the same reason `bff/turns/turn-headers.js` duplicates the envelope builder: this file is
 // plain CommonJS (see the `require(...)` calls above) and cannot import a TS
 // module. `tests/lib/boot.test.ts` extracts THIS function from the source and
 // runs it against the TS one over the same table, so the two cannot print
@@ -51,13 +51,13 @@ function bootLogLine(env) {
 // ── The turn's headers, and the signed context envelope (ADR-0054, ADR-0106) ──
 // Every x-grid-* header this file forwards on a chat upgrade, and the one
 // consolidated, signed `X-Grid-Request-Context` envelope beside them, are built
-// by `turnContextHeaders` in `src/lib/turns/turn-headers.js` from the turn
+// by `turnContextHeaders` in `bff/turns/turn-headers.js` from the turn
 // context `/api/auth/websocket-scope` resolved. The BFF's wake job builds the
 // headers of the socket it opens as a person with the same function, so the
 // two producers of a chat turn cannot drift. The canonical envelope payload is
-// `buildGridRequestContextEnvelopePayload` in `src/lib/request-context.ts`;
+// `buildGridRequestContextEnvelopePayload` in `bff/request-context.ts`;
 // `request-context.spec.ts` pins the CommonJS copy to it.
-const { turnContextHeaders } = require('./src/lib/turns/turn-headers.js')
+const { turnContextHeaders } = require('./bff/turns/turn-headers.js')
 
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = process.env.HOSTNAME || '0.0.0.0'
@@ -90,8 +90,8 @@ const NEXT_INTERNAL_URL = process.env.NEXT_INTERNAL_URL || 'http://localhost:300
 // Service and the conversation bus decides, per turn, which replica runs it, so
 // the backend can autoscale. Either way a single replica, no pod template or no
 // conversationId reaches the load-balanced Service. The rule lives in
-// src/lib/proxy/backend-target.js.
-const { affinityEnabled, createBackendTargetPicker } = require('./src/lib/proxy/backend-target.js')
+// bff/proxy/backend-target.js.
+const { affinityEnabled, createBackendTargetPicker } = require('./bff/proxy/backend-target.js')
 const BACKEND_REPLICAS = Math.max(1, parseInt(process.env.BACKEND_REPLICAS || '1', 10) || 1)
 // Per-pod WS DNS template with a literal `{i}`, e.g.
 // an in-cluster headless-service pod address like
@@ -143,7 +143,7 @@ let draining = false
 // with the side and the connection's age, and the first close names who
 // closed. Neither files an issue per reconnect (ADR-0031); anything else stays
 // ERROR. The codes, and why a spliced socket never gets a 502: ws-teardown.js.
-const { handleWsProxyError, watchSplicedSockets } = require('./src/lib/proxy/ws-teardown.js')
+const { handleWsProxyError, watchSplicedSockets } = require('./bff/proxy/ws-teardown.js')
 
 // ── WebSocket rate limiting (ADR-0020, ADR-0040 layers L2 / L2b) ──
 //
@@ -161,14 +161,14 @@ const { handleWsProxyError, watchSplicedSockets } = require('./src/lib/proxy/ws-
 //      place that can count them.
 //
 // Both use the shared catalog and the shared `rate-limiter-flexible` wiring
-// (`src/lib/limits/`), so the WS proxy and the BFF cannot drift into different
+// (`bff/limits/`), so the WS proxy and the BFF cannot drift into different
 // budgets, key prefixes or failure behaviour. Fails open — an abuse bound must
 // never be the thing that takes chat down.
-const { WS_UPGRADE_LIMIT, CHAT_TURN_LIMIT, WS_CONTROL_LIMIT } = require('./src/lib/limits/rules.js')
-const { createLimiter, consumeLimiter } = require('./src/lib/limits/factory.js')
-const { createFrameObserver, classifyFrame } = require('./src/lib/limits/ws-frames.js')
+const { WS_UPGRADE_LIMIT, CHAT_TURN_LIMIT, WS_CONTROL_LIMIT } = require('./bff/limits/rules.js')
+const { createLimiter, consumeLimiter } = require('./bff/limits/factory.js')
+const { createFrameObserver, classifyFrame } = require('./bff/limits/ws-frames.js')
 // Inbound x-grid-* / authorization are the proxy's to set, never the client's.
-const { stripClientContextHeaders, findOversizedWsHeader, withoutSessionCookies } = require('./src/lib/proxy/ws-upgrade-headers.js')
+const { stripClientContextHeaders, findOversizedWsHeader, withoutSessionCookies } = require('./bff/proxy/ws-upgrade-headers.js')
 
 // `WS_UPGRADE_RATE_LIMIT` predates the catalog and stays honoured: an
 // operator who tuned it should not have it silently reverted by this refactor.
@@ -198,7 +198,7 @@ const WS_MESSAGE_LIMITS_ENABLED = process.env.WS_MESSAGE_LIMITS !== '0'
 let limitStoreClient = null
 if (process.env.REDIS_URL) {
   try {
-    const { createRedisClient } = require('./src/lib/redis/connect.js')
+    const { createRedisClient } = require('./bff/redis/connect.js')
     limitStoreClient = createRedisClient(process.env.REDIS_URL, 'Gateway', { commandTimeout: 500 })
   } catch (error) {
     console.warn('[Gateway] shared rate limiter unavailable, using per-process buckets:', error.message)
@@ -760,7 +760,7 @@ const startServer = async () => {
   // timer is the hard ceiling on how long a rolling update waits for this pod.
   //
   // Before exiting, run what the app registered to flush (PostHog's queued
-  // exceptions, ADR-0100): `src/instrumentation.ts` pushes async functions onto
+  // exceptions, ADR-0100): `instrumentation.ts` pushes async functions onto
   // `globalThis.__gridShutdownHooks`, because this file cannot import it. They
   // get SHUTDOWN_HOOKS_MS, on top of the drain, and a hook that fails or hangs
   // never keeps the pod alive.

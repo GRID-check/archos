@@ -1,4 +1,4 @@
-// @disk-inputs: ../../src/aiq_agent/project_context.py, drizzle/0087_organization_instructions.sql
+// @disk-inputs: ../../src/aiq_agent/project_context.py, migrations/0087_organization_instructions.sql
 /**
  * @vitest-environment node
  */
@@ -211,7 +211,7 @@ describe('the settings read', () => {
  */
 describe('the bound the database enforces', () => {
   const migration = readFileSync(
-    join(process.cwd(), 'drizzle', '0087_organization_instructions.sql'),
+    join(process.cwd(), 'migrations', '0087_organization_instructions.sql'),
     'utf8'
   )
 

@@ -1,6 +1,6 @@
 """The read tools Piloti's agent has that the BFF does not, served to other agents (ADR-0122).
 
-The BFF's operation catalog (``frontends/ui/src/lib/agent-api/catalog``) covers what
+The BFF's operation catalog (``apps/workspace/bff/agent-api/catalog``) covers what
 the BFF's routes do. Piloti's best READ tools live only here, in the Python agent:
 they read the office's documents, the building-law corpus, the BIM models and
 RIS. An outside agent that reaches Piloti over MCP must get them too, so the
@@ -10,7 +10,7 @@ RIS. An outside agent that reaches Piloti over MCP must get them too, so the
 This module is the one list of which tools those are, and the one place that says
 what a tool looks like from outside: its name, the description the model sees,
 its input JSON Schema and its annotations. The BFF reads the result from
-``frontends/ui/tests/fixtures/backend-tools.schema.json``, which
+``apps/workspace/tests/fixtures/backend-tools.schema.json``, which
 ``scripts/generate_backend_tools_schema.py`` writes from these functions, so the
 tool contract is written once and a stale copy fails a test.
 

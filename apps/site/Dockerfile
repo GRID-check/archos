@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Bun installs and runs the scripts; Node runs Astro and the site (ADR-0103).
-# Copied from the official image, as frontends/ui/deploy/Dockerfile does and
+# Copied from the official image, as apps/workspace/deploy/Dockerfile does and
 # for the same reasons; the version is the one `.github/actions/setup-bun`
 # pins (`tests/test_bun_version_pin.py`). The runner deletes it again.
 COPY --from=oven/bun:1.4.3-slim /usr/local/bin/bun /usr/local/bin/bun

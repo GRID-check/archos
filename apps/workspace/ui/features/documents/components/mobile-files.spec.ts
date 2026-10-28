@@ -1,4 +1,4 @@
-// @disk-inputs: src/components/ui/middle-truncate.tsx, src/features/documents/components/file-card.tsx, src/features/documents/components/file-list-view.tsx, src/features/documents/components/file-name.tsx, src/features/documents/components/file-workspace.tsx, src/features/documents/components/folder-bin-panel.tsx, src/features/documents/components/folder-navigation.tsx, src/features/documents/components/folder-object-menu.tsx
+// @disk-inputs: ui/components/ui/middle-truncate.tsx, ui/features/documents/components/file-card.tsx, ui/features/documents/components/file-list-view.tsx, ui/features/documents/components/file-name.tsx, ui/features/documents/components/file-workspace.tsx, ui/features/documents/components/folder-bin-panel.tsx, ui/features/documents/components/folder-navigation.tsx, ui/features/documents/components/folder-object-menu.tsx
 /**
  * What the Dateien library keeps on a phone, held against its SOURCE.
  *

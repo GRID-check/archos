@@ -8,11 +8,11 @@ are tested separately and each test pinned its own spelling". The lesson got
 written down; the test did not. A fire path has no human on it, so a silent 403
 is indistinguishable from a quiet week.
 
-The contract is `frontends/ui/tests/fixtures/job_fire_headers.json`. This module asserts that
+The contract is `apps/workspace/tests/fixtures/job_fire_headers.json`. This module asserts that
 every set the BACKEND requires is a subset of it, reading each set off the
 module that owns it rather than restating the names — a restated list is a
 third thing that agrees with itself. The BFF half
-(`frontends/ui/tests/lib/jobs/fire-headers.test.ts`) fires a real submit through
+(`apps/workspace/tests/lib/jobs/fire-headers.test.ts`) fires a real submit through
 the real client and asserts the headers that go out cover the same file. Neither
 side can move a name alone.
 """
@@ -36,7 +36,7 @@ from aiq_api.routes.internal_auth import _TOKEN_HEADERS
 from aiq_api.routes.internal_auth import _require_internal_token
 
 REPO = Path(__file__).resolve().parents[2]
-FIXTURE_PATH = REPO / "frontends" / "ui" / "tests" / "fixtures" / "job_fire_headers.json"
+FIXTURE_PATH = REPO / "apps" / "workspace" / "tests" / "fixtures" / "job_fire_headers.json"
 
 
 @pytest.fixture(scope="module")
@@ -150,5 +150,5 @@ def test_every_backend_requirement_is_inside_the_contract(contract: dict) -> Non
     unnamed = sorted(backend_requires - named)
     assert unnamed == [], (
         f"the backend requires headers the contract does not name: {unnamed}. "
-        "Add them to frontends/ui/tests/fixtures/job_fire_headers.json AND make the BFF send them."
+        "Add them to apps/workspace/tests/fixtures/job_fire_headers.json AND make the BFF send them."
     )

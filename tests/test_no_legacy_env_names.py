@@ -21,8 +21,8 @@ ALLOWED = (
     "apps/backend/entrypoint.py",
     "tests/test_entrypoint_roles.py",
     "tests/test_no_legacy_env_names.py",
-    "frontends/ui/scripts/legacy-env-names.cjs",
-    "frontends/ui/scripts/legacy-env-names.spec.mjs",
+    "apps/workspace/scripts/legacy-env-names.cjs",
+    "apps/workspace/scripts/legacy-env-names.spec.mjs",
     "deploy/compose/docker-compose.yaml",
     "deploy/compose/docker-compose.coolify.yaml",
     "docs/deployment/environment-variables.md",
@@ -44,7 +44,7 @@ GRID_ALLOWED = (
     "scripts/check_brand_names.py",
     "tests/test_check_brand_names.py",
     "tests/.test_durations",
-    "frontends/ui/drizzle/",
+    "apps/workspace/migrations/",
     "apps/site/src/data/",
 )
 

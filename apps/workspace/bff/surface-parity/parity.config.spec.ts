@@ -1,4 +1,4 @@
-// @disk-inputs: src/features/chat/components/ViewerActionRow.tsx, src/features/chat/components/reasoning/LookStepRow.tsx, src/features/chat/lib/canvas-bridge.ts, src/features/documents/components/document-revisions.tsx, src/features/documents/components/file-preview-pane.tsx, src/features/documents/components/review/composer.tsx, src/features/documents/components/review/cursor-chat.tsx, src/features/documents/components/review/document-review.tsx, src/features/documents/components/review/mark-row.tsx, src/features/documents/components/review/review-export-menu.tsx, src/features/documents/components/review/review-page-layer.tsx, src/features/documents/components/review/review-panel.tsx, src/features/documents/components/review/thread-card.tsx, src/features/documents/hooks/use-canvas-ask.ts, src/features/documents/lib/review-focus.ts, src/features/grid-cards/components/CanvasActivityCard.tsx, src/features/grid-cards/components/RevisionCompareCard.tsx, src/features/knowledge/components/page-place-button.tsx, src/features/search/components/composer-search-picker.tsx, tests/fixtures/surface-parity.json
+// @disk-inputs: ui/features/chat/components/ViewerActionRow.tsx, ui/features/chat/components/reasoning/LookStepRow.tsx, ui/features/chat/lib/canvas-bridge.ts, ui/features/documents/components/document-revisions.tsx, ui/features/documents/components/file-preview-pane.tsx, ui/features/documents/components/review/composer.tsx, ui/features/documents/components/review/cursor-chat.tsx, ui/features/documents/components/review/document-review.tsx, ui/features/documents/components/review/mark-row.tsx, ui/features/documents/components/review/review-export-menu.tsx, ui/features/documents/components/review/review-page-layer.tsx, ui/features/documents/components/review/review-panel.tsx, ui/features/documents/components/review/thread-card.tsx, ui/features/documents/hooks/use-canvas-ask.ts, ui/features/documents/lib/review-focus.ts, ui/features/grid-cards/components/CanvasActivityCard.tsx, ui/features/grid-cards/components/RevisionCompareCard.tsx, ui/features/knowledge/components/page-place-button.tsx, ui/features/search/components/composer-search-picker.tsx, tests/fixtures/surface-parity.json
 /**
  * @vitest-environment node
  */
@@ -14,7 +14,7 @@
  * group and `look` has an entry). A changed entry fails here until it is
  * regenerated:
  *
- *   UPDATE_FIXTURES=1 bunx vitest run src/lib/surface-parity/parity.config.spec.ts
+ *   UPDATE_FIXTURES=1 bunx vitest run bff/surface-parity/parity.config.spec.ts
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -35,7 +35,7 @@ import {
 } from './parity.config'
 
 const FIXTURE = join(process.cwd(), 'tests/fixtures/surface-parity.json')
-const SRC = join(process.cwd(), 'src')
+const SRC = join(process.cwd(), 'ui')
 
 const entries = Object.entries(SURFACE_CAPABILITIES as Readonly<Record<string, SurfaceCapability>>)
 const sides = entries.flatMap(([name, entry]) => [
@@ -149,7 +149,7 @@ function render(): string {
   )
   const fixture = {
     comment:
-      'Where each canvas capability is shown: frontends/ui/src/lib/surface-parity/parity.config.ts, written by ' +
+      'Where each canvas capability is shown: apps/workspace/bff/surface-parity/parity.config.ts, written by ' +
       'parity.config.spec.ts (UPDATE_FIXTURES=1). `tool` is the name the model binds (`canvas__mark`, `look`).',
     capabilities,
   }

@@ -171,7 +171,7 @@ export const bim = {
     showInModel: 'show in model',
     more: '{count} more elements',
     // A rule with seven findings shows six and would otherwise render "1 more".
-    // The sibling key predates the plural blocks `src/i18n/translate.ts` now
+    // The sibling key predates the plural blocks `i18n/translate.ts` now
     // understands; it is correct as it stands, so it keeps its shape.
     moreOne: 'One more element',
     truncated: 'Further elements are affected — see the counts above.',

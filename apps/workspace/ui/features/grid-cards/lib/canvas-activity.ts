@@ -10,7 +10,7 @@
  *
  * These interfaces mirror `CanvasActivityCard` in
  * `src/aiq_agent/cards/canvas_activity_card.py` field for field. They exist so the component
- * reads a shape it owns, and the generated Zod output (`src/shared/cards/generated.ts`,
+ * reads a shape it owns, and the generated Zod output (`apps/workspace/shared/cards/generated.ts`,
  * from `npm run generate:cards`) is assignable to it: `w`/`h` arrive there as
  * `number | null`, which these accept.
  *

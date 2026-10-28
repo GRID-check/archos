@@ -53,8 +53,8 @@ type Baseline = Record<string, BaselineEntry>
 /** Browser code: features, components, hooks, the app's pages (not its API), and any file that opts in with 'use client'. */
 function isBrowserPath(file: string): boolean {
   if (/\.(spec|test)\.tsx?$/.test(file)) return false
-  if (/^src\/app\/api\//.test(file)) return false
-  return /^src\/(features|components|hooks)\//.test(file) || /^src\/app\//.test(file)
+  if (/^app\/api\//.test(file)) return false
+  return /^ui\/(features|components|hooks)\//.test(file) || /^app\//.test(file)
 }
 
 function isUseClient(source: ts.SourceFile): boolean {
@@ -115,9 +115,9 @@ function sourceOf(file: string, text: string): ts.SourceFile {
   return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind)
 }
 
-/** Every tracked or not-yet-tracked TypeScript file under src (a new file is seen before it is committed). */
+/** Every tracked or not-yet-tracked TypeScript file under the source directories (a new file is seen before it is committed). */
 function sourceFiles(): string[] {
-  const listed = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', 'src'], {
+  const listed = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', 'app', 'bff', 'ui', 'i18n', 'shared', 'types', 'utils'], {
     cwd: UI_ROOT,
     encoding: 'utf8',
   })

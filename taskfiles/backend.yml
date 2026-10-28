@@ -212,7 +212,7 @@ tasks:
     desc: 'Root-sort eval — placement precision, coverage and the sure-threshold sweep on a labelled synthetic shelf, plus the new-folder grouping (NEEDS OPENROUTER_API_KEY; no backend)'
     dir: '{{.ROOT_DIR}}/apps/backend'
     cmds:
-      # Sets SURE_CONFIDENCE (frontends/ui/src/lib/filing/root-sort-types.ts).
+      # Sets SURE_CONFIDENCE (apps/workspace/bff/filing/root-sort-types.ts).
       # Run before and after a change to the sort prompt, the scoring or the
       # threshold; writes tests/fixtures/root_sort/eval_<date>.json. A few cents.
       # `-I` ignores PYTHONPATH: the venv's editable installs are what resolve the imports.

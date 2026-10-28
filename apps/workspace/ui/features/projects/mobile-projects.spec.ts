@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/app/(shell)/projects/**, src/app/app/onboarding/**, src/app/dev/create-project/**, src/app/dev/intake/**, src/app/dev/onboarding/**, src/app/dev/project-memory-restricted/**, src/app/dev/project-setup/**, src/app/dev/projects-home/**, src/components/projects/**, src/features/onboarding/**, src/features/project-intake/**, src/features/projects/**
+// @disk-inputs: app/app/(shell)/projects/**, app/app/onboarding/**, app/dev/create-project/**, app/dev/intake/**, app/dev/onboarding/**, app/dev/project-memory-restricted/**, app/dev/project-setup/**, app/dev/projects-home/**, ui/components/projects/**, ui/features/onboarding/**, ui/features/project-intake/**, ui/features/projects/**
 /**
  * Two phone defects the projects surfaces had, held in the source so a third
  * occurrence is caught by a test and not by someone holding an iPhone.
@@ -22,8 +22,8 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { blankComments } from '../../../scripts/check-static-utility-modifiers.mjs'
+import { srcKey, srcJoin } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..', '..')
 
 const ROOTS = [
   'features/projects',
@@ -49,7 +49,7 @@ const walk = (dir: string, out: string[] = []): string[] => {
   return out
 }
 
-const FILES = ROOTS.flatMap((root) => walk(join(SRC, root)))
+const FILES = ROOTS.flatMap((root) => walk(srcJoin(root)))
 
 /** Every string literal that looks like a class list, with comments blanked first. */
 function classLists(file: string): string[] {
@@ -73,7 +73,7 @@ describe('projects surfaces on a phone', () => {
         const all = tokens(list)
         const fixed = all.some((token) => /^h-(?:\d+|\[[^\]]+\])$/.test(token))
         const inset = all.some((token) => /^pt-\[.*safe-area-inset-top.*\]$/.test(token))
-        if (fixed && inset) offenders.push(`${file.slice(SRC.length + 1)}: ${list}`)
+        if (fixed && inset) offenders.push(`${srcKey(file)}: ${list}`)
       }
     }
     expect(offenders).toEqual([])
@@ -87,14 +87,14 @@ describe('projects surfaces on a phone', () => {
         if (!all.includes('grid')) continue
         const widens = all.some((token) => /^(?:sm|md|lg|xl):grid-cols-\d+$/.test(token))
         const base = all.some((token) => /^grid-cols-/.test(token))
-        if (widens && !base) offenders.push(`${file.slice(SRC.length + 1)}: ${list}`)
+        if (widens && !base) offenders.push(`${srcKey(file)}: ${list}`)
       }
     }
     expect(offenders).toEqual([])
   })
 
   it('has no `md:`-based touch size in the intake controls', () => {
-    const source = readFileSync(join(SRC, 'features/projects/components/intake-question-field.tsx'), 'utf8')
+    const source = readFileSync(srcJoin('features/projects/components/intake-question-field.tsx'), 'utf8')
     expect(source).not.toMatch(/\bmd:min-h-\d+/)
   })
 })

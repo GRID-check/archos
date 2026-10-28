@@ -30,7 +30,7 @@ identity's writes and hands its capabilities in) and reaches `knowledge_layer`
 only through the port in `knowledge/factory.py` (ADR-0072).
 The rules and the baselines that hold today's exceptions:
 [`../contributing/module-seams.md`](../contributing/module-seams.md).
-**Enforced by:** dependency-cruiser in `task fe:lint`, import-linter in
+**Enforced by:** dependency-cruiser in `task workspace:lint`, import-linter in
 `task be:lint`. Both baselines only shrink.
 
 ## Guard scripts
@@ -41,7 +41,7 @@ correctly and the wrong thing happens anyway.
 
 | Script | Catches |
 |---|---|
-| `frontends/ui/scripts/check-static-utility-modifiers.mjs` | `bg-warning/15` against a static Tailwind v4 `@utility`, which matches no rule and is silently dropped. Reads the utility names out of `globals.css`, so it tracks the design system rather than a hardcoded list |
+| `apps/workspace/scripts/check-static-utility-modifiers.mjs` | `bg-warning/15` against a static Tailwind v4 `@utility`, which matches no rule and is silently dropped. Reads the utility names out of `globals.css`, so it tracks the design system rather than a hardcoded list |
 | `scripts/check_agent_docs.py` | An `AGENTS.md` no agent can reach, and a Markdown link to a file git does not track |
 | `scripts/check_adrs.py` | The ADR index disagreeing with the directory |
 | `scripts/validate_skills.py` | A malformed skill bundle |
@@ -62,9 +62,9 @@ fail on a difference.
 
 | Artifact | Generated from | Guarded |
 |---|---|---|
-| `frontends/ui/src/lib/skills/platform-skills.ts` | `src/aiq_agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
+| `apps/workspace/bff/skills/platform-skills.ts` | `src/aiq_agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
 | `contracts/cards/schemas.json` | the card models (`src/aiq_agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
-| `frontends/ui/src/shared/cards/generated.ts` | `contracts/cards/schemas.json`, via `frontends/ui/scripts/generate-card-schemas.mjs` | yes, the same hook |
+| `apps/workspace/shared/cards/generated.ts` | `contracts/cards/schemas.json`, via `apps/workspace/scripts/generate-card-schemas.mjs` | yes, the same hook |
 
 The card schema is a two-stage pipeline from Pydantic models to Zod. Neither
 generator has a `--check` flag, so the hook simply runs both: pre-commit fails
@@ -108,7 +108,7 @@ process-lifetime handle holding no tenant or turn data:
   knowledge tool is built;
 - `agents/piloti/register._WARMING`, strong references to running warm-ups, so
   the loop does not drop a task it holds only weakly;
-- the parsed-model cache in `frontends/ui/src/features/diagrams/use-diagram-model.ts`,
+- the parsed-model cache in `apps/workspace/ui/features/diagrams/use-diagram-model.ts`,
   keyed by the mermaid source text and capped at 64.
 
 Anything keyed by a tenant, a user, a conversation or a turn goes behind a
@@ -166,12 +166,12 @@ workflow runs it on a schedule.
 ## Headless first: one MCP surface
 
 Every capability a person has is an operation in
-`frontends/ui/src/lib/agent-api/catalog/`, naming the BFF route the UI calls. The
+`apps/workspace/bff/agent-api/catalog/`, naming the BFF route the UI calls. The
 MCP server at `/api/mcp` runs that route's handler in-process as the person, so
 authz, rate limit and body schema are the route's own. A route that is not a
 person's act (transport, sign-in plumbing) is exempt with a reason. ADR-0122,
 [`agent-surface.md`](agent-surface.md).
-**Enforced by:** `frontends/ui/src/lib/agent-api/agent-reachability.spec.ts`; the
+**Enforced by:** `apps/workspace/bff/agent-api/agent-reachability.spec.ts`; the
 routes that predate it sit in a shrink-only baseline.
 
 ## Bulk work is a server run, never a browser loop
@@ -182,7 +182,7 @@ bounded slices (root sort is the first). The browser starts it, reads it and
 asks for the next step; it never loops over items or keeps a pool of item
 requests. The decision and its debt are ADR-0121.
 
-`frontends/ui/src/browser-work-loops.spec.ts` counts the pool signatures per
+`apps/workspace/tests/browser-work-loops.spec.ts` counts the pool signatures per
 browser file against `ci/browser_work_loops.json`, where each count has its
 reason. A count may not grow and a new file may not appear.
 **Enforced by:** that ratchet, for pools only. A sequential browser loop is not

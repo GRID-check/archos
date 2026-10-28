@@ -26,7 +26,7 @@ const registerShutdownHook = (hook: () => Promise<void>): void => {
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   try {
-    const { requestErrorHandler } = await import("./lib/analytics/request-error");
+    const { requestErrorHandler } = await import("./bff/analytics/request-error");
     await requestErrorHandler()?.(error, request, context);
   } catch (failure) {
     // Reporting an error must never raise a second one on the request's path.
@@ -44,7 +44,7 @@ export async function register() {
   // right trade for never having a deployment that prints none. Rationale and
   // the shared format: `lib/boot.ts`.
   try {
-    const { bootLine } = await import("./lib/boot");
+    const { bootLine } = await import("./bff/boot");
     // This line IS the deliverable: it has to reach stdout at info level,
     // where a container log collector picks it up. `console.warn` would file a
     // normal boot as a problem, and routing it through a logger would make the
@@ -63,7 +63,7 @@ export async function register() {
   // which is the pre-existing behaviour. See lib/model-config/bootstrap-defaults.
   try {
     const { bootstrapPlatformModelDefaults } = await import(
-      "./lib/model-config/bootstrap-defaults"
+      "./bff/model-config/bootstrap-defaults"
     );
     await bootstrapPlatformModelDefaults();
   } catch (error) {
@@ -77,7 +77,7 @@ export async function register() {
   // before it exits (`__gridShutdownHooks`); the client queues nothing, and the
   // hook does nothing, while PostHog is off.
   registerShutdownHook(async () => {
-    const { shutdownPosthogServer } = await import("./lib/analytics/posthog-server");
+    const { shutdownPosthogServer } = await import("./bff/analytics/posthog-server");
     await shutdownPosthogServer();
   });
 
@@ -95,6 +95,6 @@ export async function register() {
   // Bridge console.* to OTLP log records, which the collector forwards to
   // PostHog Logs. Shared with the scheduler/purger workers; no-ops without the
   // endpoint.
-  const { initOtelLogs } = await import("../observability/otel-logs.js");
+  const { initOtelLogs } = await import("./observability/otel-logs.js");
   initOtelLogs();
 }

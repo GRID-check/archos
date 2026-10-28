@@ -1,4 +1,4 @@
-// @disk-inputs: src/lib/jobs/background-run.ts, src/lib/jobs/service.ts
+// @disk-inputs: bff/jobs/background-run.ts, bff/jobs/service.ts
 /**
  * @vitest-environment node
  *
@@ -14,7 +14,7 @@
  *
  * The fix that ADR asked for was "a test that crosses the service boundary
  * rather than two that agree with themselves". This is one of its two halves:
- * a shared fixture (`frontends/ui/tests/fixtures/job_fire_headers.json`) names the headers,
+ * a shared fixture (`apps/workspace/tests/fixtures/job_fire_headers.json`) names the headers,
  * this spec asserts the BFF really puts them on the wire, and
  * `tests/aiq_agent/test_fire_path_contract.py` asserts what the Python side
  * demands is a subset of the same file. Neither side can move a name alone.
@@ -26,7 +26,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
-// The one copy lives inside `frontends/ui`, because the frontend's
+// The one copy lives inside `apps/workspace`, because the frontend's
 // typecheck/test Docker context is scoped to it; the Python side reads it there.
 import fixture from '../../fixtures/job_fire_headers.json'
 
@@ -184,7 +184,7 @@ describe('the fire path in lib/jobs/background-run.ts', () => {
   // every background run (the chat's `submitAgentRun`, the intake) fires
   // through it. A refactor that passes a hand-rolled object instead would keep
   // every test above green while dropping the envelope from production.
-  const read = (path: string) => readFileSync(new URL(`../../../src/lib/jobs/${path}`, import.meta.url), 'utf8')
+  const read = (path: string) => readFileSync(new URL(`../../../bff/jobs/${path}`, import.meta.url), 'utf8')
   const fire = read('background-run.ts')
 
   it('builds its headers with the shared wire builder', () => {

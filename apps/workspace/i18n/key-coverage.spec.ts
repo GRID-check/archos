@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -31,15 +31,16 @@ import { en } from './dictionaries/en'
 import { de } from './dictionaries/de'
 import type { Namespace } from './namespace'
 import { getByPath } from './translate'
+import { SOURCE_DIRS } from '@/test-utils/source-tree'
 
-const SRC_DIR = join(process.cwd(), 'src')
-const I18N_DIR = join(SRC_DIR, 'i18n')
+const I18N_DIR = join(process.cwd(), 'i18n')
 
 /**
  * Every `.ts`/`.tsx` under `src`, minus this directory — the dictionaries and
  * the translator itself legitimately mention keys without calling `t`.
  */
-function sourceFiles(dir = SRC_DIR, found: string[] = []): string[] {
+function sourceFiles(dir?: string, found: string[] = []): string[] {
+  if (!dir) return SOURCE_DIRS.flatMap((root) => sourceFiles(join(process.cwd(), root)))
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name)
     if (entry.isDirectory()) {
@@ -138,7 +139,7 @@ describe('translation keys resolve against the dictionary', () => {
     expect(
       unresolved.sort(),
       'These keys resolve to nothing, so the UI renders the literal dot-path. ' +
-        'Fix the call site, or add the key to src/i18n/dictionaries/en (German ' +
+        'Fix the call site, or add the key to i18n/dictionaries/en (German ' +
         'follows by compile error).',
     ).toEqual([])
   })

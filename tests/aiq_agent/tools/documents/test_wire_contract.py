@@ -2,7 +2,7 @@
 
 ADR-0055's rule read from this side: there is **no hand-written Pydantic twin**
 of the request body. The contract is
-``frontends/ui/tests/fixtures/document-lifecycle.schema.json``, serialised from
+``apps/workspace/tests/fixtures/document-lifecycle.schema.json``, serialised from
 ``lib/documents/lifecycle-types.ts`` and refreshed by
 ``lifecycle-schema.spec.ts``, and what this file asserts is that the payloads
 ``tools/documents/register.py`` actually builds validate against it — so a field
@@ -33,7 +33,7 @@ from .conftest import _version
 from .conftest import _write
 
 SCHEMA_PATH = (
-    Path(__file__).resolve().parents[4] / "frontends" / "ui" / "tests" / "fixtures" / "document-lifecycle.schema.json"
+    Path(__file__).resolve().parents[4] / "apps" / "workspace" / "tests" / "fixtures" / "document-lifecycle.schema.json"
 )
 
 

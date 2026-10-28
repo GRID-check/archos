@@ -1,5 +1,5 @@
 {
-  "comment": "Written by tests/aiq_agent/tools/workspace/test_workspace_mcp_contract.py from the real request builder of aiq_agent/tools/workspace/client.py; replayed by frontends/ui/src/app/api/mcp/workspace-contract.spec.ts against the real route. Regenerate with UPDATE_FIXTURES=1. The spec signs envelopePayload (with a current issuedAt) and substitutes the placeholders.",
+  "comment": "Written by tests/aiq_agent/tools/workspace/test_workspace_mcp_contract.py from the real request builder of aiq_agent/tools/workspace/client.py; replayed by apps/workspace/app/api/mcp/workspace-contract.spec.ts against the real route. Regenerate with UPDATE_FIXTURES=1. The spec signs envelopePayload (with a current issuedAt) and substitutes the placeholders.",
   "placeholders": {
     "token": "<INTERNAL_API_TOKEN>",
     "signature": "<ENVELOPE_SIGNATURE>",

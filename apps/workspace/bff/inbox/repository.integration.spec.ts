@@ -5,7 +5,7 @@
  * runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/inbox/repository.integration.spec.ts
+ *     npx vitest run bff/inbox/repository.integration.spec.ts
  *
  * What it proves, a claim about SQL a mocked handle cannot disagree with:
  * reading page after page with the cursor each page hands back returns every

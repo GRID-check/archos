@@ -1,6 +1,6 @@
 """The contract of the read tools other agents reach over MCP is the one the tools generate (ADR-0122).
 
-``frontends/ui/tests/fixtures/backend-tools.schema.json`` is what the BFF's MCP
+``apps/workspace/tests/fixtures/backend-tools.schema.json`` is what the BFF's MCP
 server shows an outside agent: each tool's name, the description the chat model
 reads, its input JSON Schema and its annotations. It is written from the
 functions themselves, so a changed description or argument that leaves it
@@ -41,7 +41,7 @@ def _render_in_a_clean_interpreter() -> str:
 
 def test_the_committed_contract_is_the_one_the_tools_generate() -> None:
     assert SCHEMA_PATH.read_text(encoding="utf-8") == _render_in_a_clean_interpreter(), (
-        "frontends/ui/tests/fixtures/backend-tools.schema.json is stale: run "
+        "apps/workspace/tests/fixtures/backend-tools.schema.json is stale: run "
         "`uv run python scripts/generate_backend_tools_schema.py` and commit it."
     )
 

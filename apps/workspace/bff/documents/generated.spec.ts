@@ -1,10 +1,11 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { srcEntries, srcPath } from '@/test-utils/source-tree'
 
 vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/folder-access')).openFolderAccessModule())
 vi.mock('server-only', () => ({}))
@@ -1145,13 +1146,8 @@ describe('filing into a folder the commissioning person may only read (ADR-0088)
 })
 
 describe('every path that can create a machine-authored row', () => {
-  const SRC = new URL('../../', import.meta.url)
-
   /** Every non-test module under `src/`, as repo-relative paths. */
-  const modules: { path: string; code: string }[] = readdirSync(SRC, {
-    recursive: true,
-    encoding: 'utf8',
-  })
+  const modules: { path: string; code: string }[] = srcEntries()
     .filter((entry) => /\.tsx?$/.test(entry))
     .filter((entry) => !/\.(spec|test)\.tsx?$/.test(entry))
     // Fixtures and the `/dev` preview routes build ROW-SHAPED OBJECTS for the
@@ -1159,7 +1155,7 @@ describe('every path that can create a machine-authored row', () => {
     .filter((entry) => !entry.includes('test-utils') && !entry.startsWith('app/dev'))
     .map((entry) => ({
       path: entry.split('\\').join('/'),
-      code: readFileSync(new URL(entry, SRC), 'utf8'),
+      code: readFileSync(srcPath(entry), 'utf8'),
     }))
 
   const importersOf = (specifier: string): string[] =>

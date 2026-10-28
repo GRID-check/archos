@@ -22,7 +22,7 @@
  * each held to the same scenarios by its own tests; a shared SQL function was
  * rejected because the Python side also runs on SQLite in tests.
  *
- * WHY THIS IS A CommonJS FILE AND NOT PART OF `src/lib`. The runner that claims
+ * WHY THIS IS A CommonJS FILE AND NOT PART OF `bff`. The runner that claims
  * is a plain Node process with no build step (`workers/jobs/index.js`, the shape
  * of the purger and the scheduler), so it cannot import TypeScript. The BFF
  * reaches the same functions through `lib/jobs-queue/`, as it reaches

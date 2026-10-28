@@ -9,7 +9,7 @@ download, a parse and sometimes vision calls each time.
 So every per-file failure gets a category and a ``retryable`` flag, stamped on
 the job's ``file_details`` (``FileProgress.failure_category`` / ``retryable``)
 next to the message, and the BFF persists both on the document row and decides
-retries from them (``frontends/ui/src/lib/documents/retry-policy.ts``):
+retries from them (``apps/workspace/bff/documents/retry-policy.ts``):
 
 ==============  =========  ====================================================
 category        retryable  what it means

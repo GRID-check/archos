@@ -28,7 +28,7 @@ change can localize them.
 Localization must be driven by a **per-request locale signal**. Investigation
 found that **no locale/language signal currently reaches the backend**:
 
-- The gateway (`frontends/ui/server.js`) injects a fixed set of headers at the
+- The gateway (`apps/workspace/server.js`) injects a fixed set of headers at the
   WebSocket upgrade: `x-grid-collection-scope`, `x-grid-organization-id`,
   `x-grid-user-id`, `authorization`, `x-grid-project-context`,
   `x-grid-project-id`, `x-grid-project-memory`,
@@ -69,7 +69,7 @@ decision rather than implemented ad hoc.
    stable, explicit product setting.
 2. **Inject at the gateway.** Add `locale` to the `result.data` payload
    produced by the BFF (`fetchCollectionScopeHeader` and the async submit
-   path), then inject a single header in `frontends/ui/server.js` alongside
+   path), then inject a single header in `apps/workspace/server.js` alongside
    the existing ones:
    `req.headers['x-grid-locale'] = result.data.locale` (a short BCP-47 tag,
    e.g. `de`, `en`). Absent header ⇒ default to `en` (fail-open).

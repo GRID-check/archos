@@ -1,13 +1,13 @@
 # Module seams
 
 Which module may import which is checked by a tool in each language, not by
-review: dependency-cruiser for the UI (`task fe:lint`), import-linter for the
+review: dependency-cruiser for the UI (`task workspace:lint`), import-linter for the
 Python packages (`task be:lint`). Each has a list of the violations that existed
 when the check arrived. A new violation fails, and so does a listed one that is
 gone, so the lists only shrink. That is the ratchet: fixing an edge removes its
 line, and the line cannot come back.
 
-## The UI: `frontends/ui`
+## The UI: `apps/workspace`
 
 The layers point one way: `app` → `features` → `components` → `lib`.
 
@@ -23,7 +23,7 @@ The layers point one way: `app` → `features` → `components` → `lib`.
 Test files, `test-utils/` and `mocks/` are not checked. A type-only import
 counts like any other, except for `client-imports-server-only`.
 
-The config is `frontends/ui/.dependency-cruiser.cjs`. `feature-cycle` is not a
+The config is `apps/workspace/.dependency-cruiser.cjs`. `feature-cycle` is not a
 dependency-cruiser rule: dependency-cruiser finds cycles between modules or
 between leaf folders and keys each one by the path it walked, and those paths
 move when an unrelated edge inside a feature does. The reporter
@@ -32,7 +32,7 @@ and keys a cycle by its feature-to-feature edges instead.
 
 ### Working with it
 
-- `bun run lint:seams` (inside `task fe:lint`) passes the known violations and
+- `bun run lint:seams` (inside `task workspace:lint`) passes the known violations and
   fails new ones, and fails a baseline entry whose violation is gone.
 - Fixed one? `bun run lint:seams:baseline` removes the stale entries from both
   lists (`.dependency-cruiser-known-violations.json`,

@@ -1,4 +1,4 @@
-// @disk-inputs: deploy/Dockerfile, next.config.ts, src/lib/api/legacy-routes.ts, src/lib/images/avatar-hosts.ts, src/lib/images/optimizable.ts, src/shared/config/request-body-limit.ts
+// @disk-inputs: deploy/Dockerfile, next.config.ts, bff/api/legacy-routes.ts, bff/images/avatar-hosts.ts, bff/images/optimizable.ts, shared/config/request-body-limit.ts
 import { describe, expect, it } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
@@ -18,7 +18,7 @@ import path from 'node:path'
  * if that obligation is ever dropped there.
  */
 
-const UI_ROOT = path.resolve(__dirname, '../../..')
+const UI_ROOT = path.resolve(__dirname, '../..')
 
 function relativeImportsOf(configSource: string): string[] {
   const imports: string[] = []

@@ -12,7 +12,7 @@
  * It runs under `task db:test:rls`, through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/documents/document-versions.integration.spec.ts
+ *     npx vitest run bff/documents/document-versions.integration.spec.ts
  */
 
 import { randomUUID } from 'node:crypto'

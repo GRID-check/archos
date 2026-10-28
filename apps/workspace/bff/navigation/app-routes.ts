@@ -11,7 +11,7 @@
  * URL, so a directory renamed from `(shell)` to `shell` — or a page dragged one
  * level too deep while refactoring — changes every link, bookmark and redirect
  * in the product and NOTHING in the type system notices. `app-routes.spec.ts`
- * walks `src/app/app` on disk, strips the `(…)` groups exactly as the router
+ * walks `app/app` on disk, strips the `(…)` groups exactly as the router
  * does, and asserts the result equals this list.
  *
  * Adding a page? Add its URL here in the same commit. That is the point: the

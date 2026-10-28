@@ -1,4 +1,4 @@
-// @disk-inputs: src/lib/documents/ingest-dispatch.ts
+// @disk-inputs: bff/documents/ingest-dispatch.ts
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -59,7 +59,7 @@ const BACKEND_MESSAGES: Array<[string, IngestFailureKind]> = [
  * rather than importing it; a reworded constant fails here.
  */
 function bffConstant(name: string): string {
-  const source = readFileSync(path.resolve(__dirname, '../../../lib/documents/ingest-dispatch.ts'), 'utf8')
+  const source = readFileSync(path.resolve(__dirname, '../../../../bff/documents/ingest-dispatch.ts'), 'utf8')
   const match = new RegExp(`export const ${name} = '([^']+)'`).exec(source)
   if (!match) throw new Error(`${name} not found in lib/documents/ingest-dispatch.ts`)
   return match[1]

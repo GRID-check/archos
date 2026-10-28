@@ -159,7 +159,7 @@ export default {
     // handlers are covered by their factories, and library code inherits the
     // caller's scope by design.
     const isEntryPoint =
-      /[\\/]src[\\/]app[\\/]/.test(filename) && !/[\\/]route\.tsx?$/.test(filename) && !/\.spec\.tsx?$/.test(filename)
+      /(?:^|[\\/])app[\\/]/.test(filename) && !/[\\/]route\.tsx?$/.test(filename) && !/\.spec\.tsx?$/.test(filename)
     if (!isEntryPoint) return {}
 
     const checkComponent = (node) => {

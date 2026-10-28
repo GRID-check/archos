@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * The two mobile contracts `touch-target.spec.ts` cannot see.
  *
@@ -40,8 +40,8 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { blankComments } from '../../../scripts/check-static-utility-modifiers.mjs'
+import { SOURCE_DIRS, srcKey, srcJoin } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..', '..')
 
 /**
  * Read a source file with its COMMENT BODIES BLANKED.
@@ -67,9 +67,9 @@ const walk = (dir: string, out: string[] = []): string[] => {
   return out
 }
 
-const SOURCE_FILES = walk(SRC).filter((f) => !f.endsWith('mobile-affordances.spec.ts'))
+const SOURCE_FILES = SOURCE_DIRS.flatMap((dir) => walk(join(process.cwd(), dir))).filter((f) => !f.endsWith('mobile-affordances.spec.ts'))
 
-const relative = (file: string): string => file.slice(SRC.length + 1)
+const relative = (file: string): string => srcKey(file)
 
 /**
  * Every region of a file that resolves to ONE element's class list: a balanced
@@ -192,7 +192,7 @@ describe('no height is measured against the large viewport', () => {
 
   it('holds the stylesheet to the same rule', () => {
     for (const sheet of ['app/globals.css', 'styles/tokens.css']) {
-      expect(readFileSync(join(SRC, ...sheet.split('/')), 'utf8').match(VH), sheet).toBeNull()
+      expect(readFileSync(srcJoin(...sheet.split('/')), 'utf8').match(VH), sheet).toBeNull()
     }
   })
 })
@@ -292,7 +292,7 @@ describe('no text field invites the iOS zoom', () => {
     // field and cannot zoom on its own — it carries the same step so a select and
     // an input standing side by side are never two different sizes.
     for (const file of ['input.tsx', 'textarea.tsx', 'select.tsx']) {
-      const source = readCode(join(SRC, 'components', 'ui', file))
+      const source = readCode(srcJoin('components', 'ui', file))
       expect(source, file).toContain('pointer-coarse:text-base')
       expect(source, file).not.toMatch(/\bmd:text-sm\b/)
     }
@@ -315,7 +315,7 @@ describe('no library stylesheet keeps the page scroll', () => {
    * class comes off the element, the rule comes out of the stylesheet, or
    * upstream fixes the default and the override becomes a lie nobody rereads.
    */
-  const FLOW = join(SRC, 'features', 'chat', 'components', 'reasoning', 'flow', 'flow-inner.tsx')
+  const FLOW = srcJoin('features', 'chat', 'components', 'reasoning', 'flow', 'flow-inner.tsx')
 
   it('the reasoning graph opts into the override', () => {
     const source = readCode(FLOW)
@@ -330,7 +330,7 @@ describe('no library stylesheet keeps the page scroll', () => {
   })
 
   it('globals.css carries the rule the class refers to', () => {
-    const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+    const css = readFileSync(srcJoin('app', 'globals.css'), 'utf8')
     expect(css).toMatch(/\.reasoning-flow-scrollable\s+\.react-flow__pane\s*\{[^}]*touch-action:\s*auto/)
   })
 
@@ -340,7 +340,7 @@ describe('no library stylesheet keeps the page scroll', () => {
     // `touch-action: none`, this fails and the override can be deleted instead
     // of being carried forever as a rule nobody can justify.
     const upstream = readFileSync(
-      join(SRC, '..', 'node_modules', '@xyflow', 'react', 'dist', 'style.css'),
+      join(process.cwd(), 'node_modules', '@xyflow', 'react', 'dist', 'style.css'),
       'utf8',
     )
     expect(upstream).toMatch(/\.react-flow__pane\s*\{[^}]*touch-action:\s*none/)
@@ -362,7 +362,7 @@ describe('the soft keyboard is told what the action key does', () => {
     ['features/layout/components/input-area/composer-field.tsx', 'send'],
     ['components/ui/type-to-confirm-dialog.tsx', 'done'],
   ])('%s declares enterKeyHint="%s"', (file, hint) => {
-    const source = readCode(join(SRC, ...file.split('/')))
+    const source = readCode(srcJoin(...file.split('/')))
     expect(source).toContain(`enterKeyHint="${hint}"`)
   })
 
@@ -370,7 +370,7 @@ describe('the soft keyboard is told what the action key does', () => {
     // A query matches strings. Autocapitalize turns "oib" into "Oib" and
     // autocorrect rewrites the abbreviations these documents are named with, so
     // the result set disagrees with what the reader believes they typed.
-    const source = readCode(join(SRC, 'components', 'ui', 'search-field.tsx'))
+    const source = readCode(srcJoin('components', 'ui', 'search-field.tsx'))
     expect(source).toMatch(/autoCapitalize="off"/)
     expect(source).toMatch(/autoCorrect="off"/)
   })
@@ -390,7 +390,7 @@ describe('every floating surface fits the screen it opens on', () => {
     ['context-menu.tsx', 'context-menu', 2],
     ['select.tsx', 'select', 1],
   ])('%s caps every menu, submenus included, to the room it has', (file, primitive, surfaces) => {
-    const source = readCode(join(SRC, 'components', 'ui', file))
+    const source = readCode(srcJoin('components', 'ui', file))
     for (const axis of ['height', 'width']) {
       const cap = `max-${axis === 'height' ? 'h' : 'w'}-(--radix-${primitive}-content-available-${axis})`
       expect(source.split(cap).length - 1, `${file}: ${cap}`).toBe(surfaces)
@@ -401,7 +401,7 @@ describe('every floating surface fits the screen it opens on', () => {
     ['popover.tsx', 'popover'],
     ['tooltip.tsx', 'tooltip'],
   ])('%s is never wider than the room it has', (file, primitive) => {
-    expect(readCode(join(SRC, 'components', 'ui', file))).toContain(
+    expect(readCode(srcJoin('components', 'ui', file))).toContain(
       `max-w-(--radix-${primitive}-content-available-width)`
     )
   })
@@ -419,7 +419,7 @@ describe('a focus ring is for the keyboard', () => {
    * focus itself on open (a frame along the top of a phone sheet answers no
    * question) and a cmdk field inside its own bordered row.
    */
-  const css = blankComments(readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')) as string
+  const css = blankComments(readFileSync(srcJoin('app', 'globals.css'), 'utf8')) as string
 
   /** `[start, end)` of every `@layer … { … }` block. */
   const layers = (): Array<[number, number]> => {

@@ -12,7 +12,7 @@
  *
  * The second needs a server, so it runs only with `REALTIME_REDIS_URL`:
  *   redis-server --port 6390 --save '' &
- *   REALTIME_REDIS_URL=redis://127.0.0.1:6390 npx vitest run src/lib/redis/connect.spec.ts
+ *   REALTIME_REDIS_URL=redis://127.0.0.1:6390 npx vitest run bff/redis/connect.spec.ts
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'

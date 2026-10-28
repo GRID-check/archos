@@ -6,7 +6,7 @@
  * design can be reviewed and screenshotted (`docs/ux/visual-screenshots.md`). Not
  * linked from anywhere; 404s outside development.
  *
- * Deliberately fetch-free (the reference for that is `src/app/dev/cards/page.tsx`):
+ * Deliberately fetch-free (the reference for that is `app/dev/cards/page.tsx`):
  * all three components are presentational, which is the property that lets a list
  * row render the access chip without opening a request per row. The share *dialog*,
  * which does read from the server, has its own preview at `/dev/share-dialog`.

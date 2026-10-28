@@ -23,7 +23,7 @@ Browser  -->  UI Container (HTTP + WebSocket Proxy)  -->  Backend
 
 ### 1. Build the Image
 
-From the **`frontends/ui/`** directory:
+From the **`apps/workspace/`** directory:
 
 ```bash
 docker build -f deploy/Dockerfile -t frontend:latest .

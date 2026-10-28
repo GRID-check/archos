@@ -28,12 +28,12 @@ TESTS = {
     "tests/test_config.py": "load('configs/config_oib_openrouter.yml')",
     "packages/knowledge-layer/tests/test_schema.py": "read('schemas.json')",
 }
-READERS = {"src/lib/authz/authz-coverage.spec.ts": None}
+READERS = {"bff/authz/authz-coverage.spec.ts": None}
 #: One reader that declares its inputs, one that does not.
 DECLARED = {
-    "src/app/api/authz-coverage.spec.ts": ("frontends/ui/src/app/api/**",),
-    "src/lib/skills/legacy-names.spec.ts": ("src/aiq_agent/skills/builtin.py",),
-    "src/english-names.spec.ts": None,
+    "app/api/authz-coverage.spec.ts": ("apps/workspace/app/api/**",),
+    "bff/skills/legacy-names.spec.ts": ("src/aiq_agent/skills/builtin.py",),
+    "tests/english-names.spec.ts": None,
 }
 
 
@@ -199,23 +199,23 @@ def test_a_lookup_failure_answers_no_database(mod):
 
 
 def test_a_ui_change_selects_its_files_and_every_disk_reader(mod):
-    mode, files, _ = mod.decide_ui(["frontends/ui/src/features/chat/x.tsx"], READERS)
+    mode, files, _ = mod.decide_ui(["apps/workspace/ui/features/chat/x.tsx"], READERS)
 
     assert mode == "select"
-    assert files == ["src/features/chat/x.tsx", "src/lib/authz/authz-coverage.spec.ts"]
+    assert files == ["bff/authz/authz-coverage.spec.ts", "ui/features/chat/x.tsx"]
 
 
 @pytest.mark.parametrize(
     "path",
     [
-        "frontends/ui/package.json",
-        "frontends/ui/bun.lock",
-        "frontends/ui/tsconfig.json",
-        "frontends/ui/vitest.config.ts",
-        "frontends/ui/config/vitest/vitest.setup.ts",
-        "frontends/ui/src/mocks/handlers.ts",
-        "frontends/ui/src/features/documents/types.ts",
-        "taskfiles/frontend.yml",
+        "apps/workspace/package.json",
+        "apps/workspace/bun.lock",
+        "apps/workspace/tsconfig.json",
+        "apps/workspace/vitest.config.ts",
+        "apps/workspace/config/vitest/vitest.setup.ts",
+        "apps/workspace/tests/mocks/handlers.ts",
+        "apps/workspace/ui/features/documents/types.ts",
+        "taskfiles/workspace.yml",
         ".github/actions/setup-bun/action.yml",
         "ci/pr_selection.py",
     ],
@@ -249,17 +249,17 @@ def test_the_disk_readers_are_found_by_what_they_do(mod):
     for path in list(readers)[:20]:
         assert mod.READS_DISK.search((ROOT / mod.UI / path).read_text(encoding="utf-8"))
     # Top-level specs too: fnmatch's `**/` needs a directory, vitest's does not.
-    assert "src/english-names.spec.ts" in readers
+    assert "tests/english-names.spec.ts" in readers
 
 
 def test_a_declaring_reader_runs_only_when_its_inputs_change(mod):
-    mode, files, _ = mod.decide_ui(["frontends/ui/src/features/chat/x.tsx"], DECLARED)
+    mode, files, _ = mod.decide_ui(["apps/workspace/ui/features/chat/x.tsx"], DECLARED)
 
     assert mode == "select"
-    assert files == ["src/english-names.spec.ts", "src/features/chat/x.tsx"]
+    assert files == ["tests/english-names.spec.ts", "ui/features/chat/x.tsx"]
 
-    _, files, _ = mod.decide_ui(["frontends/ui/src/app/api/projects/route.ts"], DECLARED)
-    assert "src/app/api/authz-coverage.spec.ts" in files
+    _, files, _ = mod.decide_ui(["apps/workspace/app/api/projects/route.ts"], DECLARED)
+    assert "app/api/authz-coverage.spec.ts" in files
 
 
 def test_a_declared_input_outside_the_ui_selects_its_reader(mod):
@@ -267,20 +267,20 @@ def test_a_declared_input_outside_the_ui_selects_its_reader(mod):
     mode, files, _ = mod.decide_ui(["src/aiq_agent/skills/builtin.py"], DECLARED)
 
     assert mode == "select"
-    assert files == ["src/english-names.spec.ts", "src/lib/skills/legacy-names.spec.ts"]
+    assert files == ["bff/skills/legacy-names.spec.ts", "tests/english-names.spec.ts"]
 
 
 def test_the_declaration_is_read_relative_to_the_ui(mod):
-    source = "// @disk-inputs: src/app/api/**, ../../contracts/wire/v2/**\nimport x from 'y'\n"
+    source = "// @disk-inputs: app/api/**, ../../contracts/wire/v2/**\nimport x from 'y'\n"
 
-    assert mod.declared_inputs(source) == ("frontends/ui/src/app/api/**", "contracts/wire/v2/**")
+    assert mod.declared_inputs(source) == ("apps/workspace/app/api/**", "contracts/wire/v2/**")
     assert mod.declared_inputs("import x from 'y'\n") is None
     # A Next route's brackets are literal, not an fnmatch character class.
-    (route,) = mod.declared_inputs("// @disk-inputs: src/app/api/v1/[...path]/route.ts\n")
-    assert mod._matches("frontends/ui/src/app/api/v1/[...path]/route.ts", [route])
-    assert not mod._matches("frontends/ui/src/app/api/v1/p/route.ts", [route])
+    (route,) = mod.declared_inputs("// @disk-inputs: app/api/v1/[...path]/route.ts\n")
+    assert mod._matches("apps/workspace/app/api/v1/[...path]/route.ts", [route])
+    assert not mod._matches("apps/workspace/app/api/v1/p/route.ts", [route])
     # What a child process reads, no recorder sees: such a spec never counts as declared.
-    spawning = "// @disk-inputs: src/**\nimport { execFileSync } from 'node:child_process'\n"
+    spawning = "// @disk-inputs: app/**\nimport { execFileSync } from 'node:child_process'\n"
     assert mod.declared_inputs(spawning) is None
 
 

@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -21,6 +21,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { SOURCE_DIRS } from '@/test-utils/source-tree'
 
 /** Every first-party source file that could contain a transaction. */
 function sourceFiles(): string[] {
@@ -32,7 +33,7 @@ function sourceFiles(): string[] {
       else if (/\.tsx?$/.test(entry.name) && !/\.spec\.tsx?$/.test(entry.name)) found.push(path)
     }
   }
-  walk(join(process.cwd(), 'src'))
+  for (const dir of SOURCE_DIRS) walk(join(process.cwd(), dir))
   return found
 }
 

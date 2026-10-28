@@ -21,10 +21,10 @@
  * It is a classic script with no build step and no imports, so it can be served
  * as a static file with `Cache-Control: no-cache` (next.config.ts) and updated
  * by a deploy like any other asset. The pure functions at the top are exported
- * for the spec (`src/lib/push/service-worker.spec.ts`) when loaded as a module;
+ * for the spec (`bff/push/service-worker.spec.ts`) when loaded as a module;
  * in a browser `module` does not exist and only the listeners register.
  *
- * The payload shape is `PushMessage` in `src/lib/push/payload.ts`. `version`
+ * The payload shape is `PushMessage` in `bff/push/payload.ts`. `version`
  * lets this file and the server move independently across a deploy: a payload
  * of a version this file does not know still shows a notification, with the
  * words it carries if they are there and a generic line if they are not.
@@ -36,7 +36,7 @@ var GENERIC_TITLE = 'Piloti'
 var ICON = '/icons/icon-192.png'
 var CONFIG_PATH = '/api/notifications/push/config'
 var DEVICES_PATH = '/api/notifications/push/devices'
-/** The inbox's read endpoint (`INBOX_READ_PATH` in `src/lib/inbox/client.ts`, which this file cannot import). */
+/** The inbox's read endpoint (`INBOX_READ_PATH` in `bff/inbox/client.ts`, which this file cannot import). */
 var READ_PATH = '/api/inbox/read'
 /** How long a tap waits for the read before it opens the item anyway. */
 var READ_WAIT_MS = 400

@@ -13,14 +13,14 @@
  * release without spending an attempt, and dead rows that keep their reason.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/jobs-queue/queue.integration.spec.ts
+ *     npx vitest run bff/jobs-queue/queue.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  */
 
 import postgres from 'postgres'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { withPlatformScope } from '../../../workers/platform-scope.js'
+import { withPlatformScope } from '../../workers/platform-scope.js'
 import * as queue from './queue'
 
 const url = process.env.TEST_DATABASE_URL

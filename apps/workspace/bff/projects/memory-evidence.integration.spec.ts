@@ -6,7 +6,7 @@
  * restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/projects/memory-evidence.integration.spec.ts
+ *     npx vitest run bff/projects/memory-evidence.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
  * a decision drafted while its files were open keeps citing one only while

@@ -5,7 +5,7 @@
  * Postgres, through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/conversations/cross-project-use.integration.spec.ts
+ *     npx vitest run bff/conversations/cross-project-use.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  *

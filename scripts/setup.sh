@@ -77,9 +77,9 @@ fi
 
 # Setup UI dependencies (optional)
 echo ""
-if [ -d "frontends/ui" ]; then
+if [ -d "apps/workspace" ]; then
     echo "Setting up UI dependencies..."
-    cd frontends/ui
+    cd apps/workspace
 
     if command -v npm &> /dev/null; then
         npm ci
@@ -91,7 +91,7 @@ if [ -d "frontends/ui" ]; then
 
     cd ../..
 else
-    echo "UI directory not found at frontends/ui"
+    echo "UI directory not found at apps/workspace"
 fi
 
 echo ""

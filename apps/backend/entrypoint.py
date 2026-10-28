@@ -14,7 +14,7 @@ ROLES = ("chat", "api", "worker", "ingest-worker")
 #: The prefixes the variables carried before they lost the product's name,
 #: newest first: ``GRID_X``, then ``AIQ_X``, is read as ``X`` for one release,
 #: then this fallback goes. Mirrored, with ``RENAMED``, in
-#: ``frontends/ui/scripts/legacy-env-names.cjs`` for the UI image's processes.
+#: ``apps/workspace/scripts/legacy-env-names.cjs`` for the UI image's processes.
 LEGACY_PREFIXES = ("GRID_", "AIQ_")
 
 #: Where the bare name would collide with a variable a library or the platform

@@ -22,7 +22,7 @@
  * the rest of the BIM SQL suite (ADR-0041, `task db:test:rls`).
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/bim/model-shelf.integration.spec.ts
+ *     npx vitest run bff/bim/model-shelf.integration.spec.ts
  */
 
 import { sql } from 'drizzle-orm'

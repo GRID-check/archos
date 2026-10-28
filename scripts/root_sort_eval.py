@@ -6,7 +6,7 @@ WHY THIS EXISTS
 A person sorting a shelf's root asks the filing judgement (``POST /v1/filing-fit``,
 ``purpose: sort``) to place every loose document into a folder. Each placement carries
 Jev's probability for its folder; the dialog reads it as "sure" at ``SURE_CONFIDENCE``
-(``frontends/ui/src/lib/filing/root-sort-types.ts``) and as "unsure" below. That cut was
+(``apps/workspace/bff/filing/root-sort-types.ts``) and as "unsure" below. That cut was
 never measured. This script measures it on a labelled synthetic shelf: an Austrian
 architecture office's project root (``tests/fixtures/root_sort/austrian_office_root.json``).
 
@@ -21,7 +21,7 @@ WHAT IT MEASURES
   were grouped, and each group's purity by the theme a person would give it.
 
 The sort runs in chunks of ``CHUNK`` documents, the production ``ROOT_SORT_CHUNK``
-(half of ``MAX_JUDGED_DOCUMENTS`` in ``frontends/ui/src/lib/filing/types.ts``), and each
+(half of ``MAX_JUDGED_DOCUMENTS`` in ``apps/workspace/bff/filing/types.ts``), and each
 chunk's seconds are reported with the grouping's. No conventions are sent, so a placement
 is always into an existing folder of the shelf.
 

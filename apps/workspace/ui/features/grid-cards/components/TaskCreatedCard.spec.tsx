@@ -13,7 +13,7 @@
  * the same target, because that is the only property that catches it.
  *
  * Renders without an `I18nProvider`, so the dictionary falls back to `en`
- * (`src/i18n/context.tsx`) and the strings below are the English ones.
+ * (`i18n/context.tsx`) and the strings below are the English ones.
  */
 
 import { describe, expect, it } from 'vitest'

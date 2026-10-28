@@ -155,7 +155,7 @@ RUN --mount=type=secret,id=posthog_cli_api_key,required=false \
 
 # The deploy-time WorkOS Jobs (deploy/pulumi/src/app/workos-authz-jobs.ts) run
 # TypeScript scripts, and the runner keeps neither bun nor tsx. Bundle each to
-# one plain ESM file here: `src/` imports such as the authorization catalog are
+# one plain ESM file here: `bff/` imports such as the authorization catalog are
 # inlined, packages stay imports and resolve from the production node_modules.
 RUN for script in provision-workos-authz migrate-folder-grants-to-workos; do \
       bun build "scripts/$script.ts" --target=node --packages=external --format=esm \
@@ -217,11 +217,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/workers ./workers
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/dist-scripts ./dist-scripts
 COPY --from=builder --chown=nextjs:nodejs /app/dist-jobs ./dist-jobs
-# The only `src/` file the runtime needs: the audit action+schema registry the
+# The only source-tree file (besides those below) the runtime needs: the audit action+schema registry the
 # deploy-time provisioning script reconciles into WorkOS. It is shared with the
 # app (which reaches it through the bundle, not from disk), so it lives in
-# lib/audit rather than being duplicated into scripts/.
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/audit/schemas.mjs ./src/lib/audit/schemas.mjs
+# bff/audit rather than being duplicated into scripts/.
+COPY --from=builder --chown=nextjs:nodejs /app/bff/audit/schemas.mjs ./bff/audit/schemas.mjs
 # `next.config.ts` imports these at server start (AVATAR_IMAGE_PATTERNS,
 # LOCAL_IMAGE_PATTERNS); Next transpiles the config to
 # `next.config.compiled.js`, which then requires the files from disk — missing
@@ -229,38 +229,38 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/audit/schemas.mjs ./src/l
 # (avatar-hosts: update 67 CrashLoopBackOff; optimizable: update 83).
 # All three modules must stay import-free (see their file headers) — anything
 # they import needs a copy here too.
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/images/avatar-hosts.ts ./src/lib/images/avatar-hosts.ts
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/images/optimizable.ts ./src/lib/images/optimizable.ts
+COPY --from=builder --chown=nextjs:nodejs /app/bff/images/avatar-hosts.ts ./bff/images/avatar-hosts.ts
+COPY --from=builder --chown=nextjs:nodejs /app/bff/images/optimizable.ts ./bff/images/optimizable.ts
 # The renamed API paths' redirects (`redirects()`); import-free like the two above.
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/api/legacy-routes.ts ./src/lib/api/legacy-routes.ts
+COPY --from=builder --chown=nextjs:nodejs /app/bff/api/legacy-routes.ts ./bff/api/legacy-routes.ts
 # The request-body ceiling, which becomes `proxyClientMaxBodySize` and the
 # server-action body limit. It has to clear the largest file any route admits —
 # an `.ifc` at BIM_MAX_IFC_BYTES, not the 100 MB document limit — or a model is
 # cut off in front of the handler and `request.formData()` throws (issue #369).
-COPY --from=builder --chown=nextjs:nodejs /app/src/shared/config/request-body-limit.ts ./src/shared/config/request-body-limit.ts
+COPY --from=builder --chown=nextjs:nodejs /app/shared/config/request-body-limit.ts ./shared/config/request-body-limit.ts
 # `server.js` requires these three at startup for WebSocket rate limiting
 # (ADR-0040 L2b). They are CommonJS precisely so the proxy can load them — the
 # same shared catalog the TypeScript side imports — which means they must be on
 # disk in the runtime image, not merely inside the Next bundle. Missing, the
 # gateway dies with MODULE_NOT_FOUND before it ever listens (the failure mode
 # that took the avatar-hosts copy above to learn).
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/limits/rules.js ./src/lib/limits/rules.js
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/limits/factory.js ./src/lib/limits/factory.js
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/limits/ws-frames.js ./src/lib/limits/ws-frames.js
+COPY --from=builder --chown=nextjs:nodejs /app/bff/limits/rules.js ./bff/limits/rules.js
+COPY --from=builder --chown=nextjs:nodejs /app/bff/limits/factory.js ./bff/limits/factory.js
+COPY --from=builder --chown=nextjs:nodejs /app/bff/limits/ws-frames.js ./bff/limits/ws-frames.js
 # Same reason: `server.js` requires it to strip client-sent x-grid-* headers from
 # the WebSocket upgrade. `server-js-runtime-copies.spec.ts` fails when a
 # `server.js` require has no COPY line here.
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-upgrade-headers.js ./src/lib/proxy/ws-upgrade-headers.js
+COPY --from=builder --chown=nextjs:nodejs /app/bff/proxy/ws-upgrade-headers.js ./bff/proxy/ws-upgrade-headers.js
 # And this one to classify and log WebSocket teardown after the upgrade.
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-teardown.js ./src/lib/proxy/ws-teardown.js
+COPY --from=builder --chown=nextjs:nodejs /app/bff/proxy/ws-teardown.js ./bff/proxy/ws-teardown.js
 # And this one to pick which chat address a chat socket dials (ADR-0080).
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/backend-target.js ./src/lib/proxy/backend-target.js
+COPY --from=builder --chown=nextjs:nodejs /app/bff/proxy/backend-target.js ./bff/proxy/backend-target.js
 # And this one to build a chat turn's headers and signed envelope (ADR-0106).
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/turns/turn-headers.js ./src/lib/turns/turn-headers.js
+COPY --from=builder --chown=nextjs:nodejs /app/bff/turns/turn-headers.js ./bff/turns/turn-headers.js
 # And this one to open the shared rate-limit store's Dragonfly connection.
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/redis/connect.js ./src/lib/redis/connect.js
+COPY --from=builder --chown=nextjs:nodejs /app/bff/redis/connect.js ./bff/redis/connect.js
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
 
 USER nextjs
 

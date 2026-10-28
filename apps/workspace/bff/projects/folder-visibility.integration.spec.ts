@@ -5,7 +5,7 @@
  * (ADR-0087), through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/projects/folder-visibility.integration.spec.ts
+ *     npx vitest run bff/projects/folder-visibility.integration.spec.ts
  *
  * Each reads `documents` beside the listing repository: the overview's recent
  * list and its counts, the projects grid's number, and a binding's filename in

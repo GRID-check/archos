@@ -5,7 +5,7 @@
  * role (`task db:test:rls`):
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     bunx vitest run src/lib/estate-tree/repository.integration.spec.ts
+ *     bunx vitest run bff/estate-tree/repository.integration.spec.ts
  *
  * Under the reach a conversation's shared audience gets (`screenedOnly`, the
  * restricted folders hidden; built here from the real `getRestrictedFolderIds`

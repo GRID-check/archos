@@ -23,7 +23,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import postcss from 'postcss'
 import tailwind from '@tailwindcss/postcss'
-import { APP_VIEWS } from '../src/lib/agent-api/catalog/app-views'
+import { APP_VIEWS } from '../bff/agent-api/catalog/app-views'
 
 /** The slice of Bun's build API this script uses; `@types/bun` is not installed (Bun is the toolchain here, ADR-0103). */
 interface BunResolveArgs {
@@ -46,14 +46,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
  * Each view of the catalog (`APP_VIEWS`, `catalog/app-views.ts`): its document
- * is its `file`, its code lives in `src/features/mcp-apps/<name>/`, entered at
+ * is its `file`, its code lives in `ui/features/mcp-apps/<name>/`, entered at
  * `main.tsx` and styled by `view.css`.
  */
 const VIEWS = APP_VIEWS.map((view) => ({
   file: view.file,
   title: view.title,
-  entry: `src/features/mcp-apps/${view.name}/main.tsx`,
-  css: `src/features/mcp-apps/${view.name}/view.css`,
+  entry: `ui/features/mcp-apps/${view.name}/main.tsx`,
+  css: `ui/features/mcp-apps/${view.name}/view.css`,
 }))
 
 /** A script inlined in HTML must not close its own element. */
@@ -65,11 +65,11 @@ const inlineStyle = (css: string): string => css.replace(/<\/style/gi, '<\\/styl
  * Markdown renderer, which the A2UI catalog imports for its `Text` leaf and
  * which carries mermaid, KaTeX and the chat stores (~7 MB). Why it is safe is
  * in the stand-in's own header. The dictionaries need none: each component
- * imports the namespace it reads (`src/i18n/namespace.ts`), so a view bundles
+ * imports the namespace it reads (`i18n/namespace.ts`), so a view bundles
  * the copy it draws and no other.
  */
 const STAND_INS: ReadonlyArray<{ filter: RegExp; path: string }> = [
-  { filter: /MarkdownRenderer\/MarkdownRenderer$/, path: 'src/features/mcp-apps/markdown-stand-in.tsx' },
+  { filter: /MarkdownRenderer\/MarkdownRenderer$/, path: 'ui/features/mcp-apps/markdown-stand-in.tsx' },
 ]
 
 const standIns: BunPlugin = {

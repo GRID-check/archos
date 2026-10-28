@@ -49,7 +49,7 @@ index 0000000000000000000000000000000000000000..44111a0557c6e3a74508d39865f98b9a
 @@ -0,0 +1,88 @@
 +/**
 + * The sealed session, split across `<name>.0`, `<name>.1`, … once it outgrows
-+ * one cookie. Patched in by Piloti (frontends/ui/patches): workos/authkit-nextjs#404.
++ * one cookie. Patched in by Piloti (apps/workspace/patches): workos/authkit-nextjs#404.
 + *
 + * A browser keeps a cookie only while its name and value fit in 4096 bytes and
 + * drops a larger one without a word. The sealed session carries the access

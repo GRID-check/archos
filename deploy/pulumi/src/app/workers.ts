@@ -229,7 +229,7 @@ export function installWorkers(
   );
 
   // Always created. It drives the run reconciler
-  // (`frontends/ui/src/lib/runs/reconcile.ts`) as well as the schedules, and
+  // (`apps/workspace/bff/runs/reconcile.ts`) as well as the schedules, and
   // runs exist without Agent Skills (an escalated chat question). Whether a
   // schedule fires is the organization's `skills` WorkOS flag, checked by the
   // BFF per fire, so there is no deployment switch here.

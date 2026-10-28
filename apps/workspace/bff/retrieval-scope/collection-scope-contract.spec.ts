@@ -32,9 +32,9 @@ import { describe, expect, test } from 'vitest'
 import { encodeCollectionScopeHeader } from './collection-scope-request'
 import type { ScopedCollection } from './collection-scope'
 
-// frontends/ui/src/lib → repo root is five levels up.
+// apps/workspace/bff → repo root is five levels up.
 const HERE = dirname(fileURLToPath(import.meta.url))
-const FIXTURE = resolve(HERE, '../../../../../tests/fixtures/collection_scope/scope_header.json')
+const FIXTURE = resolve(HERE, '../../../../tests/fixtures/collection_scope/scope_header.json')
 
 interface ScopeCase {
   name: string

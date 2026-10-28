@@ -4,7 +4,7 @@
  *
  * The boot line, and the pin that keeps its two implementations identical.
  *
- * `src/lib/boot.ts` is canonical; `server.js` carries a hand-written CommonJS
+ * `bff/boot.ts` is canonical; `server.js` carries a hand-written CommonJS
  * copy because it cannot import a TS module (its header says why, and the
  * signed-envelope builder above it is duplicated for the same reason). A copy
  * that nothing compares is a copy that drifts, and the drift here is silent:

@@ -191,7 +191,7 @@ function fixtureFor(type: string): GridCard | undefined {
  * instance built from Zod's answer was a card the backend could never emit,
  * and the eight schematic cards it produced crashed on a required field.
  * `scripts/generate-card-schemas.mjs` resolves those refs now (guarded by
- * `src/shared/cards/nested-fields.spec.ts`), so the two sources agree; the
+ * `apps/workspace/shared/cards/nested-fields.spec.ts`), so the two sources agree; the
  * canonical one is still the one to ask.
  */
 const REQUIRED_FIELDS: Record<string, string[]> = Object.fromEntries(

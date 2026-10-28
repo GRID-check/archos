@@ -196,7 +196,7 @@ The lazy loading is automatic and seamless - you don't need to do anything speci
 
 ### Build
 
-From the **UI directory** (`frontends/ui/`):
+From the **UI directory** (`apps/workspace/`):
 
 ```bash
 docker build -t frontend:latest .
@@ -329,12 +329,12 @@ See `.env.example` for the full list of available frontend variables.
 
 ## API Communication
 
-A question is asked over one WebSocket per conversation, chat wire v2: `src/adapters/api/turn-socket.ts`
+A question is asked over one WebSocket per conversation, chat wire v2: `ui/adapters/api/turn-socket.ts`
 connects, `adapters/api/wire-v2.ts` parses every event and `features/chat/lib/turn-fold.ts` folds it. The backend
 serves no HTTP route that runs a turn. Protocol: [`docs/api/websocket-protocol.md`](../../docs/api/websocket-protocol.md).
 
 Deep-research runs stream their own events over Server-Sent Events, through the same-origin job proxy
-(`src/adapters/api/deep-research-client.ts`).
+(`ui/adapters/api/deep-research-client.ts`).
 
 ## Authentication
 
@@ -343,29 +343,29 @@ Authentication is **disabled by default**. When disabled, the UI runs as a "Defa
 ### Architecture
 
 ```
-src/adapters/auth/
+ui/adapters/auth/
 ├── use-auth.ts      # Provider-agnostic useAuth() hook wrapping AuthKit
 ├── types.ts         # Client auth types
 ├── token.ts         # JWT exp helper for token rotation
 └── index.ts         # Re-exports
 
-src/lib/auth/
+bff/auth/
 ├── session.ts       # Server GridSession helper wrapping withAuth()/refreshSession()
 ├── require-auth.ts  # requireAuthorizedSession() redirects to onboarding
 └── types.ts         # GridSession / AuthorizedSession types
 
-src/lib/authz/
+bff/authz/
 └── projects.ts      # project_members lookup + admin override
 ```
 
-- `src/app/providers.tsx` wraps the app with `AuthKitProvider`.
-- `src/proxy.ts` uses `authkitMiddleware` to keep the encrypted session cookie and access token current.
+- `app/providers.tsx` wraps the app with `AuthKitProvider`.
+- `proxy.ts` uses `authkitMiddleware` to keep the encrypted session cookie and access token current.
 - API routes use `withAuth()` and forward the raw WorkOS access token to the Python agent.
 - `useAuth()` returns `{ isAuthenticated, isLoading, user, accessToken, idToken, organizationId, role, permissions, signIn, signOut, getAccessToken }`. `idToken` is mapped to the WorkOS access token for backward compatibility.
 
 ### Enabling WorkOS AuthKit
 
-Set these environment variables in `frontends/ui/.env.local`:
+Set these environment variables in `apps/workspace/.env.local`:
 
 ```bash
 REQUIRE_AUTH=true
@@ -403,16 +403,16 @@ When auth is disabled, `useAuth()` returns `isAuthenticated: true` with a defaul
 
 ### Adding a New Feature
 
-1. Create a directory under `src/features/[feature-name]/`
+1. Create a directory under `ui/features/[feature-name]/`
 2. Add subdirectories: `components/`, `hooks/`
 3. Create `types.ts` for feature-specific types
 4. Create `store.ts` for Zustand state (if needed)
 
 ### Adding a New API Endpoint
 
-1. Add Zod schema in `src/adapters/api/schemas.ts`
+1. Add Zod schema in `ui/adapters/api/schemas.ts`
 2. Create client function in appropriate adapter file
-3. Export from `src/adapters/api/index.ts`
+3. Export from `ui/adapters/api/index.ts`
 
 ## Import Rules
 
@@ -466,10 +466,10 @@ bun run test:ci
 
 - **Vitest** -- Test runner with coverage via `@vitest/coverage-v8`
 - **Testing Library** -- `@testing-library/react` and `@testing-library/user-event` for component testing
-- **MSW** -- Mock Service Worker for API mocking in tests (handlers in `src/mocks/`)
+- **MSW** -- Mock Service Worker for API mocking in tests (handlers in `tests/mocks/`)
 - **happy-dom** -- DOM environment for tests
 
-Test utilities are in `src/test-utils/` and MSW mock handlers/database are in `src/mocks/`.
+Test utilities are in `tests/test-utils/` and MSW mock handlers/database are in `tests/mocks/`.
 
 ## Troubleshooting
 

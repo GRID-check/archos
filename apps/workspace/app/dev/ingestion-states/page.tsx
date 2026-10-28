@@ -19,7 +19,7 @@
  *   5. The chat's file peek, for a held file beside a citable one.
  *
  * Backend-free: fixtures only, and a fetch shim that 404s thumbnails so every
- * card draws the sketch placeholder. `src/app/dev/layout.tsx` 404s the route
+ * card draws the sketch placeholder. `app/dev/layout.tsx` 404s the route
  * outside development.
  */
 

@@ -15,7 +15,7 @@
  * `?as=viewer` renders what a project viewer gets: no project menu, a read-only
  * memory, no reindex, and no Members or Usage section or tile at all.
  *
- * Not linked from anywhere; `src/app/dev/layout.tsx` 404s it outside development.
+ * Not linked from anywhere; `app/dev/layout.tsx` 404s it outside development.
  */
 
 import type { JSX } from 'react'

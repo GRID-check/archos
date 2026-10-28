@@ -25,7 +25,7 @@ interface Cases {
 }
 
 const cases = JSON.parse(
-  readFileSync(resolve(__dirname, '../../../../../tests/fixtures/revision_series_cases.json'), 'utf8')
+  readFileSync(resolve(__dirname, '../../../../tests/fixtures/revision_series_cases.json'), 'utf8')
 ) as Cases
 
 describe('parseRevisionName, on the shared cases', () => {

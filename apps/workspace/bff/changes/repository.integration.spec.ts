@@ -5,7 +5,7 @@
  * through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/changes/repository.integration.spec.ts
+ *     npx vitest run bff/changes/repository.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
  *   - a create, an update, a delete and a reply each record and read back

@@ -31,7 +31,7 @@ from aiq_agent.common.source_kinds import DEFAULT_SOURCE_KIND
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.common.source_kinds import shelf_for_qualifier
 
-_MIRROR = Path("frontends/ui/src/lib/source-kinds.ts")
+_MIRROR = Path("apps/workspace/bff/source-kinds.ts")
 
 
 @pytest.fixture(scope="module")

@@ -16,7 +16,7 @@ of both leaves the signed scope intact (ADR-0024: Archiv stays in
 every unscoped project turn).
 
 The mapping is a twin of ``includeShelvesForTurn`` in
-``frontends/ui/src/features/layout/lib/retrieval-scope.ts``. Change both.
+``apps/workspace/ui/features/layout/lib/retrieval-scope.ts``. Change both.
 """
 
 from __future__ import annotations

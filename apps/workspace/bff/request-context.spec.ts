@@ -1,8 +1,8 @@
-// @disk-inputs: server.js, src/lib/turns/turn-headers.js
+// @disk-inputs: server.js, bff/turns/turn-headers.js
 /**
  * @vitest-environment node
  */
-import fixtureData from '../../tests/fixtures/grid_request_context.json'
+import fixtureData from '../tests/fixtures/grid_request_context.json'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { buildGridRequestContextEnvelopeHeaders as commonJsEnvelopeHeaders, turnContextHeaders } from './turns/turn-headers.js'
@@ -26,9 +26,9 @@ import {
 
 /**
  * Cross-language contract fixture (backlog T3-9): the canonical wire values
- * this builder must produce. Lives at `frontends/ui/tests/fixtures/`, inside
+ * this builder must produce. Lives at `apps/workspace/tests/fixtures/`, inside
  * the frontend's typecheck/test Docker build context
- * (`frontends/ui/Dockerfile.typecheck`). The Python side
+ * (`apps/workspace/Dockerfile.typecheck`). The Python side
  * (`tests/aiq_agent/test_project_context.py`) parses the same file in the
  * opposite direction.
  */
@@ -464,7 +464,7 @@ describe('server.js mints the same envelope payload this module does', () => {
   // The builder server.js uses lives in `turns/turn-headers.js` (CommonJS, so
   // server.js can require it and the wake job can import it).
   const source = readFileSync(new URL('./turns/turn-headers.js', import.meta.url), 'utf8')
-  const server = readFileSync(new URL('../../server.js', import.meta.url), 'utf8')
+  const server = readFileSync(new URL('../server.js', import.meta.url), 'utf8')
 
   /** The `payload.<field>` assignments of the duplicated builder, in file order. */
   const serverFields = (): string[] => {

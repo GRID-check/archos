@@ -1,6 +1,6 @@
 """The boot line's format, pinned on the Python side.
 
-Same table as ``frontends/ui/tests/lib/boot.test.ts``. The two services print
+Same table as ``apps/workspace/tests/lib/boot.test.ts``. The two services print
 the same line so one ``grep '^\\[boot\\]'`` over a deployment answers "what is
 this running, and where do its flags come from" for both tiers at once; that
 only holds if both sides agree on the format down to the rule that reads

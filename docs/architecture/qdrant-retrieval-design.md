@@ -210,7 +210,7 @@ project status and facts are all edited by people in Postgres. They are
   the commit.
 - The mirror carries a `meta_version`, and conditional updates (1.16) refuse to
   apply an older version over a newer one.
-- The existing weekly reconcile (`frontends/ui/src/lib/platform/vector-reconcile.ts`)
+- The existing weekly reconcile (`apps/workspace/bff/platform/vector-reconcile.ts`)
   repairs drift by copying again rather than by sampling and comparing: its
   document facts half sends every live collection, in batches of 25, to
   `POST /v1/maintenance/refresh-document-facts`, which runs
@@ -351,7 +351,7 @@ benefit yet.
 
 ### Before Qdrant
 
-How ADR-0094 search ran before this design was built (`frontends/ui/src/lib/cross-project/service.ts`);
+How ADR-0094 search ran before this design was built (`apps/workspace/bff/cross-project/service.ts`);
 "As built" below says what runs now: a page of up to 40 projects
 (`CROSS_PROJECT_PAGE_PROJECTS`) in one grouped query, at most 500 collections
 (`BACKEND_SEARCH_MAX_COLLECTIONS`, the backend's cap).

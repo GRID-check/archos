@@ -6,7 +6,7 @@
  * activity counts, what happens when the viewer has none, how a partially
  * filled rail is topped up — are the part worth testing, and testing them
  * through a mounted React tree costs ~130x per assertion for no added coverage
- * (AGENTS.md §"fix causes, not symptoms"). `src/features/layout/lib/` is the
+ * (AGENTS.md §"fix causes, not symptoms"). `ui/features/layout/lib/` is the
  * established shape; this follows it.
  *
  * The rail answers "what do I open now?", so it is ordered by the VIEWER'S own

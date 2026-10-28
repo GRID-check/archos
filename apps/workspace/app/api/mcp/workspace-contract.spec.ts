@@ -60,7 +60,7 @@ import { signGridRequestContextEnvelope } from '@/lib/request-context'
 import { POST } from './route'
 
 const SECRET = 'internal-token-for-tests' // pragma: allowlist secret
-const FIXTURES = resolve(__dirname, '../../../../tests/fixtures')
+const FIXTURES = resolve(__dirname, '../../../tests/fixtures')
 const REQUESTS = resolve(FIXTURES, 'workspace_mcp_requests.json')
 const RESPONSES = resolve(FIXTURES, 'workspace_mcp_responses.json')
 

@@ -14,7 +14,7 @@
  * the role later reached the folder. A folder role is given to a person, so
  * after this runs, the list is the people who held the role today.
  *
- *   Usage (from frontends/ui):
+ *   Usage (from apps/workspace):
  *     WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \
  *       bun run migrate:folder-grants             # show the plan, change nothing
  *     … bun run migrate:folder-grants -- --apply  # register the folders and assign the roles

@@ -1,4 +1,4 @@
-// @disk-inputs: drizzle/0049_session_documents.sql, drizzle/0063_agent_authored_documents.sql, drizzle/0064_generated_document_idempotency.sql, drizzle/0065_diagram_document_producer_idempotency.sql, drizzle/0066_authored_ref_names_its_kind.sql, drizzle/0102_archiv_folders.sql, src/lib/documents/repository.ts, src/lib/documents/repository/*.ts
+// @disk-inputs: migrations/0049_session_documents.sql, migrations/0063_agent_authored_documents.sql, migrations/0064_generated_document_idempotency.sql, migrations/0065_diagram_document_producer_idempotency.sql, migrations/0066_authored_ref_names_its_kind.sql, migrations/0102_archiv_folders.sql, bff/documents/repository.ts, bff/documents/repository/*.ts
 /**
  * @vitest-environment node
  */
@@ -86,25 +86,25 @@ import { IN_FLIGHT_DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 
 const CONSTRAINT = 'documents_session_requires_conversation'
 
-const MIGRATION = readFileSync(join(process.cwd(), 'drizzle/0049_session_documents.sql'), 'utf8')
+const MIGRATION = readFileSync(join(process.cwd(), 'migrations/0049_session_documents.sql'), 'utf8')
 
 const AUTHORSHIP_CONSTRAINT = 'documents_authorship_requires_provenance'
 
 const MIGRATION_0063 = readFileSync(
-  join(process.cwd(), 'drizzle/0063_agent_authored_documents.sql'),
+  join(process.cwd(), 'migrations/0063_agent_authored_documents.sql'),
   'utf8'
 )
 
 const MIGRATION_0064 = readFileSync(
-  join(process.cwd(), 'drizzle/0064_generated_document_idempotency.sql'),
+  join(process.cwd(), 'migrations/0064_generated_document_idempotency.sql'),
   'utf8'
 )
 const MIGRATION_0065 = readFileSync(
-  join(process.cwd(), 'drizzle/0065_diagram_document_producer_idempotency.sql'),
+  join(process.cwd(), 'migrations/0065_diagram_document_producer_idempotency.sql'),
   'utf8'
 )
 const MIGRATION_0066 = readFileSync(
-  join(process.cwd(), 'drizzle/0066_authored_ref_names_its_kind.sql'),
+  join(process.cwd(), 'migrations/0066_authored_ref_names_its_kind.sql'),
   'utf8'
 )
 
@@ -113,9 +113,9 @@ const MIGRATION_0066 = readFileSync(
  * module and a schema spec has no business booting one. The same arrangement
  * `document-status.spec.ts` uses on the poller.
  */
-const REPOSITORY_DIR = join(process.cwd(), 'src/lib/documents/repository')
+const REPOSITORY_DIR = join(process.cwd(), 'bff/documents/repository')
 const DOCUMENTS_REPOSITORY = [
-  join(process.cwd(), 'src/lib/documents/repository.ts'),
+  join(process.cwd(), 'bff/documents/repository.ts'),
   ...readdirSync(REPOSITORY_DIR).map((name) => join(REPOSITORY_DIR, name)),
 ]
   .map((file) => readFileSync(file, 'utf8'))
@@ -374,7 +374,7 @@ describe('the indexes drizzle cannot declare', () => {
     // An Archiv folder has no project, so `project_id` is NULL for the whole
     // shelf and needs the same sentinel `parent_id` has — without it the Archiv
     // is the one shelf the index silently stops protecting.
-    const widened = readFileSync(join(process.cwd(), 'drizzle/0102_archiv_folders.sql'), 'utf8')
+    const widened = readFileSync(join(process.cwd(), 'migrations/0102_archiv_folders.sql'), 'utf8')
     expect(widened).toMatch(
       /CREATE UNIQUE INDEX "uniq_project_folders_parent_name"[\s\S]*?"organization_id"[\s\S]*?coalesce\("project_id"[\s\S]*?coalesce\("parent_id"/
     )

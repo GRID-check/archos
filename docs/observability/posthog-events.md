@@ -34,8 +34,8 @@ events. `tests/test_posthog_boundaries.py` enforces that.
   durations and statuses. Never a question, an answer, a document or file name,
   an email, a name, a URL or an error message that can quote one.
 - **Both sides use a closed union.** `PostHogEvent` in
-  `frontends/ui/src/lib/analytics/posthog.ts` and `ServerEvent` in
-  `frontends/ui/src/lib/analytics/posthog-server.ts`. A typo fails the build.
+  `apps/workspace/bff/analytics/posthog.ts` and `ServerEvent` in
+  `apps/workspace/bff/analytics/posthog-server.ts`. A typo fails the build.
   Add the name to the union and a row here in the same change.
 - **A server event never changes a route.** `captureServer` queues and returns;
   it cannot throw, and the budget checks that need the cache or the ledger run
@@ -47,7 +47,7 @@ events. `tests/test_posthog_boundaries.py` enforces that.
   the event, so a signed image link or an OAuth callback cannot leave the process
   by accident.
 
-Paths below are under `frontends/ui/src`.
+Paths below are under `apps/workspace/src`.
 
 ## Server events
 

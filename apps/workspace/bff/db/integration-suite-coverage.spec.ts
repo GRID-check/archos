@@ -1,4 +1,4 @@
-// @disk-inputs: ../../scripts/rls-test-db.sh, ../../taskfiles/**, src/**
+// @disk-inputs: ../../scripts/rls-test-db.sh, ../../taskfiles/**, app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  *
@@ -13,6 +13,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { SOURCE_DIRS } from '@/test-utils/source-tree'
 
 const UI = process.cwd()
 const SCRIPT = join(UI, '..', '..', 'scripts', 'rls-test-db.sh')
@@ -32,10 +33,10 @@ function specsRunByATask(): string[] {
 
 /** Specs that predate this check and are not in the run. Remove a line when its spec joins the script. */
 const NOT_YET_RUN = new Set([
-  'src/lib/model-config/bootstrap-defaults.integration.spec.ts',
-  'src/lib/model-config/platform-defaults.integration.spec.ts',
-  'src/lib/model-config/service.integration.spec.ts',
-  'src/lib/retrieval-settings/service.integration.spec.ts',
+  'bff/model-config/bootstrap-defaults.integration.spec.ts',
+  'bff/model-config/platform-defaults.integration.spec.ts',
+  'bff/model-config/service.integration.spec.ts',
+  'bff/retrieval-settings/service.integration.spec.ts',
 ])
 
 function integrationSpecs(dir: string): string[] {
@@ -49,7 +50,7 @@ function integrationSpecs(dir: string): string[] {
 describe('the Postgres integration suite', () => {
   const script = readFileSync(SCRIPT, 'utf8')
   const byATask = new Set(specsRunByATask())
-  const needingPostgres = integrationSpecs(join(UI, 'src')).filter((path) =>
+  const needingPostgres = SOURCE_DIRS.flatMap((dir) => integrationSpecs(join(UI, dir))).filter((path) =>
     readFileSync(join(UI, path), 'utf8').includes('TEST_DATABASE_URL'),
   )
 

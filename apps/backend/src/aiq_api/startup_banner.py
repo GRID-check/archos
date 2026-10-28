@@ -1,6 +1,6 @@
 """What this process is, in one line, at startup — the Python half.
 
-The BFF twin is ``frontends/ui/src/lib/boot.ts``; read its header for why this
+The BFF twin is ``apps/workspace/bff/boot.ts``; read its header for why this
 exists at all. In short: a pilot reported that a feature did not work, and
 nobody could say which build they were running or whether that feature was
 switched on for them, so "broken" and "never enabled" looked identical from
@@ -20,7 +20,7 @@ says: every feature is a WorkOS flag per organization, decided by the BFF, so
 there is no process-wide value to print. ``workos`` wherever people sign in
 (``REQUIRE_AUTH=true``); ``defaults`` in a deployment that authenticates nobody,
 where the BFF turns every rollout on and every entitlement off
-(``frontends/ui/src/lib/authz/feature-flags.ts``).
+(``apps/workspace/bff/authz/feature-flags.ts``).
 
 **The value is what THIS process can see, and that is the point.** A boot log
 that showed another container's environment would be inventing it; which

@@ -1,7 +1,7 @@
 /**
  * Apply GRID's authorization catalog to a WorkOS environment — or fail on drift.
  *
- * The catalog (`src/lib/authz/catalog.ts`) is the single source of truth the app
+ * The catalog (`bff/authz/catalog.ts`) is the single source of truth the app
  * derives its permission types from. This script makes WorkOS agree with it, and
  * `--check` makes CI fail when it stops agreeing.
  *
@@ -39,7 +39,7 @@ import {
   ROLES,
   type PermissionTier,
   type RoleSpec,
-} from '../src/lib/authz/catalog'
+} from '../bff/authz/catalog'
 
 const PLATFORM_ORG_EXTERNAL_ID = process.env.PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
 

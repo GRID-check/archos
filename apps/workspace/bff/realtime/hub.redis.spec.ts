@@ -10,7 +10,7 @@
  *
  * Runs only with `REALTIME_REDIS_URL` set, e.g. against a local server:
  *   redis-server --port 6390 --save '' &
- *   REALTIME_REDIS_URL=redis://127.0.0.1:6390 npx vitest run src/lib/realtime/hub.redis.spec.ts
+ *   REALTIME_REDIS_URL=redis://127.0.0.1:6390 npx vitest run bff/realtime/hub.redis.spec.ts
  */
 
 import { afterAll, describe, expect, it, vi } from 'vitest'

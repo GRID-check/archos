@@ -5,7 +5,7 @@
  * the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     bunx vitest run src/lib/folder-cards/repository.integration.spec.ts
+ *     bunx vitest run bff/folder-cards/repository.integration.spec.ts
  *
  * Proves the SQL the route rests on: a path resolves to its folder inside the
  * organization and shelf; another organization neither reads nor writes the

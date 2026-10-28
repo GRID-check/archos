@@ -12,7 +12,7 @@
  * `task db:test:rls`, through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/documents/quarantine-listing.integration.spec.ts
+ *     npx vitest run bff/documents/quarantine-listing.integration.spec.ts
  */
 
 import { sql } from 'drizzle-orm'

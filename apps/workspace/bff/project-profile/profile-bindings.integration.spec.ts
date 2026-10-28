@@ -11,7 +11,7 @@
  * `task db:test:rls`:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/project-profile/profile-bindings.integration.spec.ts
+ *     npx vitest run bff/project-profile/profile-bindings.integration.spec.ts
  */
 
 import { sql } from 'drizzle-orm'

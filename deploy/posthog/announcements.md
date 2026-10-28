@@ -8,7 +8,7 @@ top) type. PostHog shows it, remembers per browser who has seen or closed it, an
 counts reach. Nothing in Piloti has to be deployed for a new one.
 
 What it is not: an email (PostHog has no address of anyone, see the privacy
-posture in `frontends/ui/src/lib/analytics/posthog.ts`), and not a record a
+posture in `apps/workspace/bff/analytics/posthog.ts`), and not a record a
 member can find again later. A member who has turned off usage analytics in
 their profile does not see announcements either.
 
@@ -18,7 +18,7 @@ their profile does not see announcements either.
    tours through remote config by itself; the app passes no
    `disable_product_tours`, so nothing else is needed.
 2. Check that the privacy notice still lists the tour keys
-   (`frontends/ui/src/lib/legal/content`, "ph_product_tour_…"). It does since
+   (`apps/workspace/bff/legal/content`, "ph_product_tour_…"). It does since
    2026-10-27; a new key posthog-js starts writing goes there too.
 
 ## Each announcement

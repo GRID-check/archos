@@ -2,7 +2,7 @@
 /**
  * Guard: a static `@utility` can never take a slash-opacity modifier.
  *
- * `src/app/globals.css` declares the design-system colour classes as Tailwind v4
+ * `app/globals.css` declares the design-system colour classes as Tailwind v4
  * `@utility <name> { … }` blocks. A block that does not call `--modifier(…)` is a
  * STATIC utility: Tailwind matches the class name literally, so `bg-warning/15` or
  * `border-info/40` matches no rule at all and is dropped from the stylesheet.
@@ -22,8 +22,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const UI_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const GLOBALS_CSS = 'src/app/globals.css'
-const SCAN_ROOT = 'src'
+const GLOBALS_CSS = 'app/globals.css'
+const SCAN_ROOTS = ['app', 'bff', 'ui', 'i18n', 'shared', 'types', 'utils']
 const SCAN_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.css'])
 
 /**
@@ -194,7 +194,7 @@ export function run({ root = UI_ROOT, knownViolations = KNOWN_VIOLATIONS } = {})
   const unmatchedBaseline = new Set(knownViolations.map((v) => `${v.file}\u0000${v.className}`))
   const unexpected = []
 
-  for (const file of collectFiles(path.join(root, SCAN_ROOT))) {
+  for (const file of SCAN_ROOTS.flatMap((dir) => collectFiles(path.join(root, dir)))) {
     const relative = path.relative(root, file).split(path.sep).join('/')
     for (const violation of findViolations(fs.readFileSync(file, 'utf8'), utilityNames)) {
       const key = `${relative}\u0000${violation.className}`

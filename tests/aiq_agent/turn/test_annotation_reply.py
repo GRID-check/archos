@@ -45,7 +45,7 @@ from aiq_agent.turn.annotation_reply import settle_thread_reply
 from aiq_agent.turn.annotation_reply import thread_text
 
 ROOT = Path(__file__).resolve().parents[3]
-ANNOTATIONS_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "document-annotations.schema.json"
+ANNOTATIONS_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "document-annotations.schema.json"
 
 ANNOTATION = "33333333-0000-4000-8000-000000000003"
 DOCUMENT = "11111111-0000-4000-8000-000000000001"

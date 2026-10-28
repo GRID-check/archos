@@ -3898,7 +3898,7 @@
     },
     "UserMessage": {
       "additionalProperties": false,
-      "description": "A question (or, with ``context_only``, a colleague's line the agent must see but not answer).\n\n``type`` stays ``user_message``: the gateway's per-socket turn limiter\n(``frontends/ui/src/lib/limits/ws-frames.js``) counts turns by it.",
+      "description": "A question (or, with ``context_only``, a colleague's line the agent must see but not answer).\n\n``type`` stays ``user_message``: the gateway's per-socket turn limiter\n(``apps/workspace/bff/limits/ws-frames.js``) counts turns by it.",
       "properties": {
         "author_name": {
           "anyOf": [

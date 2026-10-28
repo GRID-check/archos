@@ -3,8 +3,8 @@
 The BFF is the card's one writer (ADR-0003): the builder ``PUT``s a card, reads a
 collection's cards back with ``GET`` (with each folder's person-written
 description), and ``DELETE``s the card of a folder that no longer deserves one.
-The contract is ``frontends/ui/src/lib/folder-cards/types.ts``, exported as
-``frontends/ui/tests/fixtures/folder-cards.schema.json``;
+The contract is ``apps/workspace/bff/folder-cards/types.ts``, exported as
+``apps/workspace/tests/fixtures/folder-cards.schema.json``;
 ``tests/aiq_agent/knowledge/folder_cards/test_client.py`` validates the bodies built
 here against that file. There is no Pydantic twin.
 

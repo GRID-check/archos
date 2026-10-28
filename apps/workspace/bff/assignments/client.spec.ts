@@ -1,4 +1,4 @@
-// @disk-inputs: src/adapters/**, src/components/**, src/features/**, src/hooks/**
+// @disk-inputs: ui/adapters/**, ui/components/**, ui/features/**, ui/hooks/**
 /**
  * @vitest-environment node
  */
@@ -71,8 +71,8 @@ function sources(root: string): string[] {
 
 describe('the browser reaches the assignments through their client only', () => {
   it('names no /api/assignments path outside lib/assignments/client.ts', () => {
-    const src = join(process.cwd(), 'src')
-    const offenders = ['features', 'components', 'hooks', 'adapters']
+    const src = process.cwd()
+    const offenders = ['ui/features', 'ui/components', 'ui/hooks', 'ui/adapters']
       .flatMap((root) => sources(join(src, root)))
       .filter((path) => readFileSync(path, 'utf8').includes('/api/assignments'))
       .map((path) => path.slice(src.length + 1))

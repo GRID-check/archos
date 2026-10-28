@@ -5,7 +5,7 @@
  * and 0128), through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/authz/folder-access.integration.spec.ts
+ *     npx vitest run bff/authz/folder-access.integration.spec.ts
  *
  * The unit specs prove the rule and that every read path passes the hidden
  * folders on; this proves the SQL that receives them leaves the documents out,

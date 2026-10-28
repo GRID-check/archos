@@ -4,7 +4,7 @@
  * „Im Büro behandelt" against a REAL Postgres, through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/similar-passages/service.integration.spec.ts
+ *     npx vitest run bff/similar-passages/service.integration.spec.ts
  *
  * What it proves, each a claim about who may see what:
  *   - the backend is asked about the reader's project, the projects they may

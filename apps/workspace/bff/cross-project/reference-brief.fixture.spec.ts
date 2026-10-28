@@ -13,7 +13,7 @@
  * catalog or a brief renders fails here until the fixture is regenerated, so
  * the eval never measures a format production no longer sends:
  *
- *   UPDATE_FIXTURES=1 npx vitest run src/lib/cross-project/reference-brief.fixture.spec.ts
+ *   UPDATE_FIXTURES=1 npx vitest run bff/cross-project/reference-brief.fixture.spec.ts
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'

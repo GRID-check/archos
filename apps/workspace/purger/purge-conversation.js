@@ -3,7 +3,7 @@
  * The retry of one chat erasure (`entity_type = 'conversation'`).
  *
  * A chat is erased in the delete request itself (`deleteConversation`,
- * `src/lib/conversations/service.ts`), not here: the request marks it deleting,
+ * `bff/conversations/service.ts`), not here: the request marks it deleting,
  * queues this row in the same transaction, erases the attachments, the chat's
  * `s_` collection and the rows, and closes the row. The row is for the request
  * that could not finish — the agent service was down, a store answered 5xx, the
@@ -30,7 +30,7 @@ const { LEGAL_HOLD_CODE, assertNoHold } = require('./purge-project')
 /** @typedef {import('./types').QueueEntry} QueueEntry */
 /** @typedef {import('./types').PurgeDeps} PurgeDeps */
 
-// Must match src/lib/internal-auth.ts INTERNAL_TOKEN_HEADER, the header
+// Must match bff/internal-auth.ts INTERNAL_TOKEN_HEADER, the header
 // `internalApiRoute` reads.
 const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
 

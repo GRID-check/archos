@@ -214,7 +214,7 @@ describe('every label an exported card can print is a translated word', () => {
       'These field names have no entry in `answerExport.fields`, so `fieldLabel` ' +
         'humanizes them — a German compliance document prints „Current step“ and ' +
         '„To value“ beside „Fundstelle“ and „Einheit“. Add each one to ' +
-        'src/i18n/dictionaries/en/answer-export.ts; German follows by compile error.'
+        'i18n/dictionaries/en/answer-export.ts; German follows by compile error.'
     ).toEqual([])
   })
 
@@ -356,7 +356,7 @@ describe('every value an exported card can print is a translated word', () => {
       untranslated.sort(),
       'These enum members have no word in `answerExport.values`, so the walker ' +
         'prints the wire value: „Wirkung | tightens“, „Rang | verordnung“. Add ' +
-        'each one to src/i18n/dictionaries/en/answer-export.ts; German follows ' +
+        'each one to i18n/dictionaries/en/answer-export.ts; German follows ' +
         'by compile error.'
     ).toEqual([])
   })

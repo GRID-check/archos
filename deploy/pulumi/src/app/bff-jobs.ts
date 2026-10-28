@@ -13,7 +13,7 @@ import { bffJobsEnv } from "./bff-jobs-env";
 import { installQueueScaledObject, installTriggerAuth, queueDepthQuery } from "./keda-scaling";
 import { PORT, UID } from "../constants";
 
-/** The durable queue the pool drains (`frontends/ui/drizzle/0104_bff_job_queue.sql`). */
+/** The durable queue the pool drains (`apps/workspace/migrations/0104_bff_job_queue.sql`). */
 export const QUEUE_TABLE = "bff_job_queue";
 
 /**

@@ -9,7 +9,7 @@
  * us. This pins the header the server actually sends.
  */
 import { describe, expect, test } from 'vitest'
-import { nextConfig } from '../../../next.config'
+import { nextConfig } from '../../next.config'
 
 async function permissionsPolicy(): Promise<string | undefined> {
   const rules = (await nextConfig.headers?.()) ?? []

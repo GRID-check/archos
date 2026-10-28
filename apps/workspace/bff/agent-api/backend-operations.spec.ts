@@ -110,7 +110,7 @@ describe('the operations', () => {
       readFileSync(
         join(
           dirname(fileURLToPath(import.meta.url)),
-          '../../../tests/fixtures/backend-tools.schema.json'
+          '../../tests/fixtures/backend-tools.schema.json'
         ),
         'utf8'
       )

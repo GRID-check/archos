@@ -1,4 +1,4 @@
-// @disk-inputs: src/features/bim/components/**
+// @disk-inputs: ui/features/bim/components/**
 /**
  * The classes of mobile defect the viewer's chrome was found with, held as
  * source ratchets.

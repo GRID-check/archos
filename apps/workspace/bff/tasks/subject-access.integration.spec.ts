@@ -5,7 +5,7 @@
  * NOW (ADR-0093), against a REAL Postgres through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/tasks/subject-access.integration.spec.ts
+ *     npx vitest run bff/tasks/subject-access.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  *

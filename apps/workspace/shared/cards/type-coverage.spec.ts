@@ -70,7 +70,7 @@ const UNION_TYPES = [...discriminatedOptions(gridCardSchema).keys()]
 
 const REGENERATE =
   'Run `uv run python scripts/generate_card_schema.py` (repo root) and then ' +
-  '`npm run generate:cards` (frontends/ui), and commit both results.'
+  '`npm run generate:cards` (apps/workspace), and commit both results.'
 
 describe('the card union covers the canonical catalog', () => {
   it('has a discriminator mapping that names every member of the union', () => {
@@ -88,7 +88,7 @@ describe('the card union covers the canonical catalog', () => {
     const missing = CATALOG_TYPES.filter((type) => !UNION_TYPES.includes(type))
     expect(
       missing,
-      `src/shared/cards/generated.ts has no union member for card type(s) ${JSON.stringify(missing)}, ` +
+      `apps/workspace/shared/cards/generated.ts has no union member for card type(s) ${JSON.stringify(missing)}, ` +
         'which contracts/cards/schemas.json declares. `validateGridCards` leaves a hole where a card it cannot ' +
         'parse was, so every [[card:N]] marker after one of these would draw nothing instead of its card. ' +
         `The union is generated, so do not hand-edit it: ${REGENERATE}`
@@ -103,7 +103,7 @@ describe('the card union covers the canonical catalog', () => {
     const orphaned = UNION_TYPES.filter((type) => !CATALOG_TYPES.includes(type))
     expect(
       orphaned,
-      `src/shared/cards/generated.ts still parses card type(s) ${JSON.stringify(orphaned)}, which ` +
+      `apps/workspace/shared/cards/generated.ts still parses card type(s) ${JSON.stringify(orphaned)}, which ` +
         `contracts/cards/schemas.json no longer declares. ${REGENERATE}`
     ).toEqual([])
   })

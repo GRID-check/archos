@@ -38,7 +38,7 @@
  * that), an external agent only behind those guards.
  *
  * Changing an entry changes `tests/fixtures/exposure.json` (the docs' and
- * Python's copy): `UPDATE_FIXTURES=1 bunx vitest run src/lib/agent-api/exposure.config.spec.ts`.
+ * Python's copy): `UPDATE_FIXTURES=1 bunx vitest run bff/agent-api/exposure.config.spec.ts`.
  */
 
 import type { BackendOperationName } from './backend-operations'

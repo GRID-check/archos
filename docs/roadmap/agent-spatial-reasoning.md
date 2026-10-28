@@ -651,7 +651,7 @@ flowchart TB
         T1 --> T2 --> T3 --> T4 --> T5
     end
 
-    subgraph UI["frontends/ui — the viewport"]
+    subgraph UI["apps/workspace — the viewport"]
         V1["@ifc-lite/renderer<br/>draws pixels, reports a GlobalId<br/>asserts no number (§13b)"]
     end
 
@@ -667,7 +667,7 @@ things in this repo read IFC and exactly one of them may state a number:
 |---|---|---|---|
 | `packages/ifc-spatial-py` (IfcOpenShell / OCCT) | yes | **yes — every measured number** | `apps/backend/Dockerfile:67,95,98` installs it |
 | `packages/ifc-spatial` (TypeScript, `@ifc-lite`) | yes | only inside `tests/test_parity.py` | no `package.json` in the repo depends on it |
-| `frontends/ui` viewport (`@ifc-lite/renderer`) | yes | no — pixels and a GlobalId | yes |
+| `apps/workspace` viewport (`@ifc-lite/renderer`) | yes | no — pixels and a GlobalId | yes |
 
 That is §13b's *„the server knows; the browser draws"* extended one step: the
 TypeScript engine is not a second server either, it is the cross-check that
@@ -676,7 +676,7 @@ answer against the TypeScript operator's full-precision value at the operators'
 own stated tolerances, and the BFF route says the same thing from the other
 side — *„the alternative is a second geometry stack in Node that would have to
 agree with the first about every number"*
-(`frontends/ui/src/app/api/internal/bim/source/route.ts:14-21`).
+(`apps/workspace/app/api/internal/bim/source/route.ts:14-21`).
 
 Five things the diagram is there to make legible, because prose keeps getting
 them wrong:

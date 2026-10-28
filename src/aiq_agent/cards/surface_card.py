@@ -77,7 +77,7 @@ SURFACE_MAX_TABS = 6
 
 
 #: The values the frontend's `RowApi` takes for a Row's or Column's `justify`
-#: and `align` (`frontends/ui/src/features/a2ui/catalog.tsx`). Any other value
+#: and `align` (`apps/workspace/ui/features/a2ui/catalog.tsx`). Any other value
 #: fails the renderer's preflight and the whole surface degrades, so it is
 #: refused here, where the repair can still fix it.
 SURFACE_JUSTIFY = frozenset({"start", "center", "end", "spaceBetween", "spaceAround", "spaceEvenly", "stretch"})

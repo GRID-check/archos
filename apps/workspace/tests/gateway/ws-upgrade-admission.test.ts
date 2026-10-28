@@ -19,7 +19,7 @@ import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import http from 'node:http'
 import path from 'node:path'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { verifyGridRequestContextEnvelope } from '../../src/lib/request-context'
+import { verifyGridRequestContextEnvelope } from '../../bff/request-context'
 
 const UI_ROOT = path.resolve(__dirname, '../..')
 

@@ -11,7 +11,7 @@
  * resolves through `conversations.project_id`.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/profiler/repository.integration.spec.ts
+ *     npx vitest run bff/profiler/repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database.
  */

@@ -1,8 +1,8 @@
-// @disk-inputs: ../../contracts/cards/schemas.json, src/shared/cards/generated.ts
+// @disk-inputs: ../../contracts/cards/schemas.json, **/shared/cards/generated.ts
 /**
  * The generator's `$ref` resolution, and the drift of what it wrote.
  *
- * The companion spec — `src/shared/cards/nested-fields.spec.ts` — asks whether
+ * The companion spec — `apps/workspace/shared/cards/nested-fields.spec.ts` — asks whether
  * the CHECKED-IN artifact validates nested card fields. The first half of this
  * one asks whether the generator would still do the right thing for shapes the
  * card models do not currently contain: a cycle, an unsupported sibling
@@ -197,7 +197,7 @@ describe('values the model types as Any', () => {
  *
  * That test holds `models.py -> schemas.json`. Nothing held
  * `schemas.json -> generated.ts`, and the two guards that looked as though they
- * did only cover their own corner: `src/shared/cards/type-coverage.spec.ts`
+ * did only cover their own corner: `apps/workspace/shared/cards/type-coverage.spec.ts`
  * asks whether the union has a MEMBER for every card type, and
  * `nested-fields.spec.ts` asks whether the fields it does have bottom out in
  * something other than `z.any()`. Neither notices a card type that is present
@@ -218,10 +218,10 @@ describe('the committed Zod module', () => {
 
     expect(
       readFileSync(outPath, 'utf-8'),
-      'src/shared/cards/generated.ts is not what `npm run generate:cards` produces from ' +
+      'apps/workspace/shared/cards/generated.ts is not what `npm run generate:cards` produces from ' +
         'contracts/cards/schemas.json — either the schema was regenerated without regenerating the ' +
         'Zod mirror, or the mirror was hand-edited (its own banner says not to). Run ' +
-        '`npm run generate:cards` from frontends/ui and commit the result.'
+        '`npm run generate:cards` from apps/workspace and commit the result.'
     ).toBe(generatedModule)
   })
 })

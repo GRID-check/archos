@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * The hold is a reader every query states, not a status every reader remembers
  * (ADR-0086, amended 2026-10-08).
@@ -28,8 +28,8 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join, posix } from 'node:path'
 import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
+import { SOURCE_DIRS, srcKey, srcPath } from '@/test-utils/source-tree'
 
-const SRC = join(process.cwd(), 'src')
 const PREDICATE = 'documentVisibleTo'
 
 /**
@@ -342,7 +342,8 @@ function importedComposers(tree: ts.SourceFile, path: string): Set<string> {
 }
 
 /** Every `.ts` under `src`, specs, fixtures and mocks aside. */
-function sourceFiles(dir = SRC, found: string[] = []): string[] {
+function sourceFiles(dir?: string, found: string[] = []): string[] {
+  if (!dir) return SOURCE_DIRS.flatMap((root) => sourceFiles(join(process.cwd(), root)))
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
     if (entry.isDirectory()) {
@@ -377,7 +378,7 @@ const GUARDED_TABLES: Record<string, string> = {
 /** The relational-API names that reach `documents` from another table (`one(documents)`, `many(documents)`). */
 function documentRelations(): Set<string> {
   const names = new Set<string>()
-  const dir = join(SRC, 'lib/db/schema')
+  const dir = srcPath('lib/db/schema')
   for (const file of readdirSync(dir)) {
     if (!file.endsWith('.ts') || file.endsWith('.spec.ts')) continue
     const tree = ts.createSourceFile(file, readFileSync(join(dir, file), 'utf8'), ts.ScriptTarget.Latest, true)
@@ -679,7 +680,7 @@ function elevatedReaders(source: string, path: string): Array<{ key: string; mak
 
 describe('every read of documents states its reader (ADR-0086)', () => {
   const files = sourceFiles().map((file) => ({
-    path: file.slice(SRC.length + 1).replaceAll('\\', '/'),
+    path: srcKey(file),
     source: readFileSync(file, 'utf8'),
   }))
   const reads = files.flatMap(({ path, source }) => documentsReads(source, path))

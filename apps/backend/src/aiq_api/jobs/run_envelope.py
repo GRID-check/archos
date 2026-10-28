@@ -63,7 +63,7 @@ from .access import verified_envelope
 logger = logging.getLogger(__name__)
 
 #: Renew a carried envelope once it is this old. The BFF's
-#: ``RUN_ENVELOPE_RENEW_AFTER_MS`` (``frontends/ui/src/lib/runs/run-envelope-types.ts``);
+#: ``RUN_ENVELOPE_RENEW_AFTER_MS`` (``apps/workspace/bff/runs/run-envelope-types.ts``);
 #: the envelope itself lives ``JOB_ENVELOPE_MAX_AGE_MS`` (six hours).
 RUN_ENVELOPE_RENEW_AFTER_MS = 60 * 60 * 1000
 

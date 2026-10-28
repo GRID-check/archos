@@ -37,7 +37,7 @@ export default async function McpAppsPreviewPage() {
   if (!html) {
     return (
       <main className="p-8 text-sm">
-        The view is not built. Run <code>bun run build:mcp-apps</code> in <code>frontends/ui</code>.
+        The view is not built. Run <code>bun run build:mcp-apps</code> in <code>apps/workspace</code>.
       </main>
     )
   }

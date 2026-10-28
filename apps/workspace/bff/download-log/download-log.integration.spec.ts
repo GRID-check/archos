@@ -5,7 +5,7 @@
  * restricted runtime role (migration 0114, ADR-0088):
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/download-log/download-log.integration.spec.ts
+ *     npx vitest run bff/download-log/download-log.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  *
@@ -490,7 +490,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
         BAD_ORG
       )
 
-      const { pruneDownloadLog } = await import('../../../scheduler/db.js')
+      const { pruneDownloadLog } = await import('../../scheduler/db.js')
       const client = postgres(url as string, { prepare: false, max: 1 })
       try {
         const result = await pruneDownloadLog(client)
@@ -510,7 +510,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
       await clear()
       for (let i = 0; i < 5; i += 1) await insertRaw({ at: `2024-01-0${i + 1}T10:00:00Z` })
 
-      const { pruneDownloadLog } = await import('../../../scheduler/db.js')
+      const { pruneDownloadLog } = await import('../../scheduler/db.js')
       const client = postgres(url as string, { prepare: false, max: 1 })
       try {
         const first = await pruneDownloadLog(client, { batch: 2, maxBatches: 2 })

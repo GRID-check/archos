@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import { nextConfig } from '../../../next.config'
+import { nextConfig } from '../../next.config'
 
 describe('the old office-shelf URLs', () => {
   it('redirect permanently from /app/archiv, query string included by Next', async () => {

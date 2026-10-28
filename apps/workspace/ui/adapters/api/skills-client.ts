@@ -14,7 +14,7 @@
  * client only transports the documented shapes and surfaces the BFF error
  * envelope (`{ error, code }`).
  *
- * Style follows src/adapters/api/research-runs-client.ts.
+ * Style follows ui/adapters/api/research-runs-client.ts.
  */
 
 import { ApiRequestError } from './api-error'

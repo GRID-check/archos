@@ -3,7 +3,7 @@
 A file that failed ``deterministic`` (empty, encrypted, unparseable, too many
 unreadable pages; ``aiq_agent.knowledge.ingest_failures``) fails the same way
 every time the same reader reads the same bytes, so the BFF stops offering to
-read it again (``frontends/ui/src/lib/documents/retry-policy.ts``). Two things
+read it again (``apps/workspace/bff/documents/retry-policy.ts``). Two things
 lift that: new bytes, or a reader newer than the one that failed. This constant
 is how the BFF can tell the second.
 

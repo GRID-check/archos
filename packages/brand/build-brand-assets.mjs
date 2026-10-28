@@ -21,8 +21,8 @@
  * Output
  *   apps/site/public/  favicon.svg, favicon.ico, apple-touch-icon.png,
  *                          icons/icon-{192,512}.png, icons/icon-maskable-512.png,
- *   frontends/ui/src/app/  icon.svg, favicon.ico, apple-icon.png (Next file conventions)
- *   frontends/ui/public/   icons/icon-{192,512}.png, icons/icon-maskable-512.png
+ *   apps/workspace/app/  icon.svg, favicon.ico, apple-icon.png (Next file conventions)
+ *   apps/workspace/public/   icons/icon-{192,512}.png, icons/icon-maskable-512.png
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url'
 const brandRoot = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(brandRoot, '../..')
 const siteRoot = resolve(repoRoot, 'apps/site')
-const uiRoot = resolve(repoRoot, 'frontends/ui')
+const uiRoot = resolve(repoRoot, 'apps/workspace')
 const MASTER = resolve(brandRoot, 'mark.svg')
 
 const INK = '#2a301f' // --color-accent-900, the tile

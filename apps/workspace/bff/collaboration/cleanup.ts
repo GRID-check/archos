@@ -237,7 +237,7 @@ export async function sweepOrphanedCollaborationRows(
  * One existed (`purgeCollaborationForConversations`, a loop over
  * `purgeConversationCollaboration`) and had no caller in any tier. The one job it
  * was written for — a hard project purge — belongs to the purger service
- * (`frontends/ui/purger/`), which is a separate CommonJS process that cannot
+ * (`apps/workspace/purger/`), which is a separate CommonJS process that cannot
  * import this module and must not use it if it could:
  *
  *   - it runs as `node purger/index.js` with no bundler and no TS step, so a

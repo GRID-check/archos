@@ -8,7 +8,7 @@
  * The shim is installed at MODULE SCOPE on purpose: React runs a child's effects
  * before its parent's, so `useSharing` would fire its request before a parent
  * `useEffect` could install one — the shim would race and lose (see
- * `docs/ux/visual-screenshots.md` and `src/app/dev/document-grid/page.tsx`). It is
+ * `docs/ux/visual-screenshots.md` and `app/dev/document-grid/page.tsx`). It is
  * browser + dev guarded and idempotent via a `window.__sharingShim` flag, and it
  * answers the mutations too, so the controls are live in the preview.
  *

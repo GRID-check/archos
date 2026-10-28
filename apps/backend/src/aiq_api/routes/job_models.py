@@ -129,9 +129,9 @@ class JobReportResponse(BaseModel):
 
     ## Why ``cards`` rides on the report response
 
-    The filed report PDF (``frontends/ui/src/lib/pdf/report-document.ts``) is
+    The filed report PDF (``apps/workspace/bff/pdf/report-document.ts``) is
     built from the report and the run's cards, and
-    ``fileResearchReport`` (``frontends/ui/src/lib/documents/research-report.ts``)
+    ``fileResearchReport`` (``apps/workspace/bff/documents/research-report.ts``)
     takes them as an optional argument its only caller could not fill: the BFF
     files the report at the moment it reads it off THIS route, and this route
     returned the report and nothing else. The runner has persisted
@@ -161,7 +161,7 @@ class JobReportResponse(BaseModel):
     ## Why every card type
 
     The „Rechtsgrundlagen" section now reads the report's own quote lines
-    (``frontends/ui/src/lib/answer-export/excerpts.ts``), not a card; the
+    (``apps/workspace/bff/answer-export/excerpts.ts``), not a card; the
     retired ``legal_basis`` card no longer exists. The run's cards already reach
     the client whole by two other paths — over the socket as the answer streams,
     and on the conversation message row ``write_job_turn`` writes

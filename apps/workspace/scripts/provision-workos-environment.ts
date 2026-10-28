@@ -46,7 +46,7 @@
 
 import { NotFoundException, WorkOS } from '@workos-inc/node'
 
-import { REGISTRY_FLAG_SLUGS } from '../src/lib/authz/feature-flags'
+import { REGISTRY_FLAG_SLUGS } from '../bff/authz/feature-flags'
 import { diffSets, parseFlagTargets, planFlagCheck, splitList } from './provision-workos-env-plan'
 
 const PLATFORM_ORG_EXTERNAL_ID = process.env.PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
@@ -443,7 +443,7 @@ async function reconcileFlags(): Promise<void> {
     (flag) => flag.slug
   )
   const existingSlugs = new Set(existing)
-  // The same verdict `task fe:provision:flags` reaches, from the same helper.
+  // The same verdict `task workspace:provision:flags` reaches, from the same helper.
   const plan = planFlagCheck(REGISTRY_FLAG_SLUGS, existing)
   for (const slug of plan.present) note(`ok       ${slug}`)
   for (const slug of plan.missing) {

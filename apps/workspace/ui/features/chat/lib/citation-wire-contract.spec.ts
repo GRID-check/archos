@@ -33,7 +33,7 @@ import { buildCitationModel } from './citations'
 import { splitReportSources } from '@/features/layout/lib/report-citations'
 import type { WireCitationSource } from '../types'
 
-// frontends/ui/src/features/chat/lib → repo root is six levels up.
+// apps/workspace/ui/features/chat/lib → repo root is six levels up.
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_DIR = resolve(HERE, '../../../../../../tests/fixtures/citation_pipeline')
 const fixture = (name: string): string =>

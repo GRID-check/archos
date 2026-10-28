@@ -43,14 +43,14 @@ vi.mock('./version-repository', () => ({
 }))
 
 vi.mock('@/lib/storage/service', () => ({
-  // The quota check is exercised in src/lib/storage/service.spec.ts; here it is
+  // The quota check is exercised in bff/storage/service.spec.ts; here it is
   // stubbed to a no-op so these specs keep testing the upload path itself
   // rather than reaching Postgres for org settings.
   assertWithinStorageQuota: vi.fn().mockResolvedValue(undefined),
 }))
 
 // The per-organization size limit, likewise: exercised in
-// src/lib/storage/upload-limit.spec.ts, stubbed here so an upload spec does not
+// bff/storage/upload-limit.spec.ts, stubbed here so an upload spec does not
 // reach Postgres for the organization's settings.
 vi.mock('@/lib/storage/upload-limit', () => ({
   assertFileSizeAllowed: vi.fn().mockResolvedValue(undefined),

@@ -5,7 +5,7 @@
  * „Entscheidungen"), against a REAL Postgres through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/cross-project/decisions-repository.integration.spec.ts
+ *     npx vitest run bff/cross-project/decisions-repository.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
  *   - the question's embedding is ranked against each item's stored one in

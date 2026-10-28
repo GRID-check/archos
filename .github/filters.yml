@@ -31,7 +31,7 @@
 # Every filter also watches the tooling its jobs depend on: the tier's own
 # task file (taskfiles/<tier>.yml, which defines the commands the jobs run),
 # the root Taskfile.yml (the variables every task reads) and the composite
-# setup actions the jobs use. Otherwise a change to `fe:verify`,
+# setup actions the jobs use. Otherwise a change to `workspace:verify`,
 # `infra:types` or a setup action merges without its job running. Only
 # what a tier's jobs use: a new backend task does not run the UI suite.
 backend:
@@ -80,69 +80,69 @@ backend:
   - 'docs/audit/qdrant-gates-2026-10.md'
   - 'docs/observability/langfuse.md'
   - 'docs/technical-reference/answer-feedback-export.md'
-  - 'frontends/ui/scripts/legacy-env-names.cjs'
-  - 'frontends/ui/src/app/api/internal/usage/route.ts'
-  - 'frontends/ui/src/features/a2ui/catalog.tsx'
-  - 'frontends/ui/src/features/chat/lib/executed-steps.ts'
-  - 'frontends/ui/src/features/documents/lib/ingest-failure.ts'
-  - 'frontends/ui/src/features/grid-cards/card-decision.ts'
-  - 'frontends/ui/src/features/grid-cards/components/GridCards.tsx'
-  - 'frontends/ui/src/features/grid-cards/lib/formula-cases.json'
-  - 'frontends/ui/src/features/layout/components/InputArea.tsx'
-  - 'frontends/ui/src/i18n/dictionaries/de/chat.ts'
-  - 'frontends/ui/src/i18n/dictionaries/en/chat.ts'
-  - 'frontends/ui/src/i18n/dictionaries/index.ts'
-  - 'frontends/ui/src/i18n/index.ts'
-  - 'frontends/ui/src/lib/agent-api/backend-operations.ts'
-  - 'frontends/ui/src/lib/agent-api/exposure.config.ts'
-  - 'frontends/ui/src/lib/agent-asks/answer-text.ts'
-  - 'frontends/ui/src/lib/analytics/posthog-server.ts'
-  - 'frontends/ui/src/lib/analytics/posthog.ts'
-  - 'frontends/ui/src/lib/analytics/request-error.ts'
-  - 'frontends/ui/src/lib/brand.ts'
-  - 'frontends/ui/src/lib/cross-project/project-facts-mirror.ts'
-  - 'frontends/ui/src/lib/db/schema/budgets.ts'
-  - 'frontends/ui/src/lib/diagrams/__fixtures__/sketch-fences.json'
-  - 'frontends/ui/src/lib/document-check/check.ts'
-  - 'frontends/ui/src/lib/documents/preview-types.ts'
-  - 'frontends/ui/src/lib/documents/retry-policy.ts'
-  - 'frontends/ui/src/lib/documents/semantic-search.ts'
-  - 'frontends/ui/src/lib/documents/tag-vocabulary.ts'
-  - 'frontends/ui/src/lib/jobs/types.ts'
-  - 'frontends/ui/src/lib/model-config/agent-groups.ts'
-  - 'frontends/ui/src/lib/platform/vector-reconcile.ts'
-  - 'frontends/ui/src/lib/project-profile/legacy-names.json'
-  - 'frontends/ui/src/lib/projects/project-status.ts'
-  - 'frontends/ui/src/lib/proxy/ws-upgrade-headers.js'
-  - 'frontends/ui/src/lib/request-context.ts'
-  - 'frontends/ui/src/lib/runs/run-envelope-types.ts'
-  - 'frontends/ui/src/lib/source-kinds.ts'
-  - 'frontends/ui/src/lib/text/answer-directives.ts'
-  - 'frontends/ui/src/lib/workos/feature-flags.ts'
-  - 'frontends/ui/src/shared/cards/generated.ts'
-  - 'frontends/ui/tests/fixtures/backend-tools.schema.json'
-  - 'frontends/ui/tests/fixtures/cross-project.schema.json'
-  - 'frontends/ui/tests/fixtures/document-annotations.schema.json'
-  - 'frontends/ui/tests/fixtures/document-lifecycle.schema.json'
-  - 'frontends/ui/tests/fixtures/estate-tree.schema.json'
-  - 'frontends/ui/tests/fixtures/exposure.json'
-  - 'frontends/ui/tests/fixtures/grid_request_context.json'
-  - 'frontends/ui/tests/fixtures/job_fire_headers.json'
-  - 'frontends/ui/tests/fixtures/precedent/office.json'
-  - 'frontends/ui/tests/fixtures/precedent/permits.json'
-  - 'frontends/ui/tests/fixtures/proposals.schema.json'
-  - 'frontends/ui/tests/fixtures/reasoning_efforts_catalog.json'
-  - 'frontends/ui/tests/fixtures/retrieval_settings_catalog.json'
-  - 'frontends/ui/tests/fixtures/run-envelope.schema.json'
-  - 'frontends/ui/tests/fixtures/run-ledger.schema.json'
-  - 'frontends/ui/tests/fixtures/surface-parity.json'
-  - 'frontends/ui/tests/fixtures/turn-outcome.schema.json'
-  - 'frontends/ui/tests/fixtures/workspace/rendered.json'
-  - 'frontends/ui/tests/fixtures/workspace_mcp_requests.json'
-  - 'frontends/ui/tests/fixtures/workspace_mcp_responses.json'
-  - 'frontends/ui/workers/job-queue.js'
-  - 'frontends/ui/workers/jobs/index.js'
-  - 'frontends/ui/workers/jobs/runner.js'
+  - 'apps/workspace/scripts/legacy-env-names.cjs'
+  - 'apps/workspace/app/api/internal/usage/route.ts'
+  - 'apps/workspace/ui/features/a2ui/catalog.tsx'
+  - 'apps/workspace/ui/features/chat/lib/executed-steps.ts'
+  - 'apps/workspace/ui/features/documents/lib/ingest-failure.ts'
+  - 'apps/workspace/ui/features/grid-cards/card-decision.ts'
+  - 'apps/workspace/ui/features/grid-cards/components/GridCards.tsx'
+  - 'apps/workspace/ui/features/grid-cards/lib/formula-cases.json'
+  - 'apps/workspace/ui/features/layout/components/InputArea.tsx'
+  - 'apps/workspace/i18n/dictionaries/de/chat.ts'
+  - 'apps/workspace/i18n/dictionaries/en/chat.ts'
+  - 'apps/workspace/i18n/dictionaries/index.ts'
+  - 'apps/workspace/i18n/index.ts'
+  - 'apps/workspace/bff/agent-api/backend-operations.ts'
+  - 'apps/workspace/bff/agent-api/exposure.config.ts'
+  - 'apps/workspace/bff/agent-asks/answer-text.ts'
+  - 'apps/workspace/bff/analytics/posthog-server.ts'
+  - 'apps/workspace/bff/analytics/posthog.ts'
+  - 'apps/workspace/bff/analytics/request-error.ts'
+  - 'apps/workspace/bff/brand.ts'
+  - 'apps/workspace/bff/cross-project/project-facts-mirror.ts'
+  - 'apps/workspace/bff/db/schema/budgets.ts'
+  - 'apps/workspace/bff/diagrams/__fixtures__/sketch-fences.json'
+  - 'apps/workspace/bff/document-check/check.ts'
+  - 'apps/workspace/bff/documents/preview-types.ts'
+  - 'apps/workspace/bff/documents/retry-policy.ts'
+  - 'apps/workspace/bff/documents/semantic-search.ts'
+  - 'apps/workspace/bff/documents/tag-vocabulary.ts'
+  - 'apps/workspace/bff/jobs/types.ts'
+  - 'apps/workspace/bff/model-config/agent-groups.ts'
+  - 'apps/workspace/bff/platform/vector-reconcile.ts'
+  - 'apps/workspace/bff/project-profile/legacy-names.json'
+  - 'apps/workspace/bff/projects/project-status.ts'
+  - 'apps/workspace/bff/proxy/ws-upgrade-headers.js'
+  - 'apps/workspace/bff/request-context.ts'
+  - 'apps/workspace/bff/runs/run-envelope-types.ts'
+  - 'apps/workspace/bff/source-kinds.ts'
+  - 'apps/workspace/bff/text/answer-directives.ts'
+  - 'apps/workspace/bff/workos/feature-flags.ts'
+  - 'apps/workspace/shared/cards/generated.ts'
+  - 'apps/workspace/tests/fixtures/backend-tools.schema.json'
+  - 'apps/workspace/tests/fixtures/cross-project.schema.json'
+  - 'apps/workspace/tests/fixtures/document-annotations.schema.json'
+  - 'apps/workspace/tests/fixtures/document-lifecycle.schema.json'
+  - 'apps/workspace/tests/fixtures/estate-tree.schema.json'
+  - 'apps/workspace/tests/fixtures/exposure.json'
+  - 'apps/workspace/tests/fixtures/grid_request_context.json'
+  - 'apps/workspace/tests/fixtures/job_fire_headers.json'
+  - 'apps/workspace/tests/fixtures/precedent/office.json'
+  - 'apps/workspace/tests/fixtures/precedent/permits.json'
+  - 'apps/workspace/tests/fixtures/proposals.schema.json'
+  - 'apps/workspace/tests/fixtures/reasoning_efforts_catalog.json'
+  - 'apps/workspace/tests/fixtures/retrieval_settings_catalog.json'
+  - 'apps/workspace/tests/fixtures/run-envelope.schema.json'
+  - 'apps/workspace/tests/fixtures/run-ledger.schema.json'
+  - 'apps/workspace/tests/fixtures/surface-parity.json'
+  - 'apps/workspace/tests/fixtures/turn-outcome.schema.json'
+  - 'apps/workspace/tests/fixtures/workspace/rendered.json'
+  - 'apps/workspace/tests/fixtures/workspace_mcp_requests.json'
+  - 'apps/workspace/tests/fixtures/workspace_mcp_responses.json'
+  - 'apps/workspace/workers/job-queue.js'
+  - 'apps/workspace/workers/jobs/index.js'
+  - 'apps/workspace/workers/jobs/runner.js'
   - 'packages/ifc-spatial/test/fixtures/Ifc4_SampleHouse.ifc'
   - 'packages/ifc-spatial/test/fixtures/floor-slab-and-window.ifc'
   - 'packages/ifc-spatial/test/fixtures/house-with-rooms.ifc'
@@ -166,27 +166,27 @@ backend:
 # removing the filter did not leave the harness watched by nothing. So nothing
 # lost a filter; only the job went. See ci.yml's `ci-ok` comment and ADR-0058's
 # "Update (2026-09-09)".
-frontend:
-  - 'frontends/ui/**'
+workspace:
+  - 'apps/workspace/**'
   # The BFF's model-config tests read the workflow config (the agent
   # groups it seeds are derived from `llms:`), so a PR touching only
   # `configs/` must still run them — otherwise a drift between the
-  # two lands green because no frontend job ran at all.
+  # two lands green because no workspace job ran at all.
   - 'configs/**'
   - 'Taskfile.yml'
-  - 'taskfiles/frontend.yml'
+  - 'taskfiles/workspace.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'
   - '.github/actions/setup-task/**'
   # `scripts/rls-test-db.sh` IS the tenant-isolation gate. Without
-  # this line a change to it leaves `frontend` false, the gate job
+  # this line a change to it leaves `workspace` false, the gate job
   # is skipped, and `ci-ok` counts skipped as passed — so a broken
   # row-level-security harness merges unverified. It is the only root
-  # script the frontend jobs run (the UI's own are under frontends/ui).
+  # script the workspace jobs run (the UI's own are under apps/workspace).
   - 'scripts/rls-test-db.sh'
   # The card schema is generated from the card models and the JSON schema into the Zod module
-  # the UI validates with, and `task fe:cards:check` is the only gate
+  # the UI validates with, and `task workspace:cards:check` is the only gate
   # that sees the Zod half (repo-lint has no node_modules). Without
   # these lines a models-only PR skips this job and ships a stale
   # `generated.ts`, which type-checks.
@@ -205,7 +205,7 @@ frontend:
   - 'src/aiq_agent/cards/surface_card.py'
   - 'contracts/cards/schemas.json'
   # The same wire v2 recordings, read by the UI's store and socket specs
-  # (frontends/ui/src/test-utils/wire-v2-fixtures.ts).
+  # (apps/workspace/tests/test-utils/wire-v2-fixtures.ts).
   - 'contracts/wire/**'
   # Data the UI specs read from ci/ and .github/: the German stems
   # (english-names.spec.ts, english-only.spec.ts), the browser work loops
@@ -229,13 +229,13 @@ site:
   # The brand master and the app's copy: the site's `npm run check` holds
   # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
   - 'packages/brand/**'
-  - 'frontends/ui/src/app/icon.svg'
+  - 'apps/workspace/app/icon.svg'
   # The app's inline copy of the mark's path, held by the same --check.
-  - 'frontends/ui/src/lib/brand.ts'
+  - 'apps/workspace/bff/brand.ts'
   # The app's riso art: exported from apps/site/art/riso and held to its
   # JOBS tables by the site's `npm run check` (art/riso/check.mjs).
-  - 'frontends/ui/public/art/**'
-  - 'frontends/ui/src/lib/art/**'
+  - 'apps/workspace/public/art/**'
+  - 'apps/workspace/bff/art/**'
   - 'Taskfile.yml'
   - 'taskfiles/site.yml'
   - '.github/workflows/ci.yml'
@@ -267,14 +267,14 @@ infra:
   - 'apps/backend/src/aiq_api/routes/chat_occupancy.py'
   - 'apps/backend/src/aiq_api/routes/internal_auth.py'
   - 'apps/backend/src/aiq_api/routes/jobs.py'
-  - 'frontends/ui/deploy/Dockerfile'
-  - 'frontends/ui/drizzle/0104_bff_job_queue.sql'
-  - 'frontends/ui/server.js'
-  - 'frontends/ui/workers/app-database.js'
-  - 'frontends/ui/workers/housekeeping-clock.js'
-  - 'frontends/ui/workers/job-queue.js'
-  - 'frontends/ui/workers/jobs/index.js'
-  - 'frontends/ui/workers/langfuse-traces.js'
+  - 'apps/workspace/deploy/Dockerfile'
+  - 'apps/workspace/migrations/0104_bff_job_queue.sql'
+  - 'apps/workspace/server.js'
+  - 'apps/workspace/workers/app-database.js'
+  - 'apps/workspace/workers/housekeeping-clock.js'
+  - 'apps/workspace/workers/job-queue.js'
+  - 'apps/workspace/workers/jobs/index.js'
+  - 'apps/workspace/workers/langfuse-traces.js'
   - 'packages/knowledge-layer/src/llamaindex/adapter.py'
   - 'packages/knowledge-layer/src/llamaindex/processing.py'
   - 'src/aiq_agent/common/claim_queue.py'
@@ -283,14 +283,14 @@ infra:
   - 'src/aiq_agent/knowledge/ingest_scheduler.py'
   # End of the files this tier's tests read.
 # The two standalone IFC packages (ADR-0045). Their own family rather than a
-# line in `backend:` or `frontend:`, because they are outside BOTH workspaces —
+# line in `backend:` or `workspace:`, because they are outside BOTH workspaces —
 # own bun.lock, own uv.lock, own toolchains — so nothing the backend or
-# frontend jobs install can run them, and a `packages/`-only PR has no reason to
+# workspace jobs install can run them, and a `packages/`-only PR has no reason to
 # pay for a Next.js build. The `packages` job is ~4 minutes, essentially all of
 # it packages/ifc-spatial-py, which is why it is filtered at all.
 packages:
   # The IFC packages only: packages/brand has no suite of its own and is
-  # checked by the site and frontend tiers (ADR-0145).
+  # checked by the site and workspace tiers (ADR-0145).
   - 'packages/ifc-spatial*/**'
   # The guide for both, beside them.
   - 'packages/*.md'
@@ -302,16 +302,15 @@ packages:
   - '.github/actions/setup-task/**'
 # The per-migration backfill and down checks at the end of
 # scripts/rls-test-db.sh. They read only the migrations and the script, so the
-# frontend job skips them unless one of those changed. The rest of the tenant
-# isolation suite runs with the frontend tier as before.
+# workspace job skips them unless one of those changed. The rest of the tenant
+# isolation suite runs with the workspace tier as before.
 migrations:
-  - 'frontends/ui/drizzle/**'
+  - 'apps/workspace/migrations/**'
   - 'scripts/rls-test-db.sh'
 # The pull request SAST scan. Semgrep is diff-aware, so it only ever reports
 # findings the change introduces; this decides whether there is code to scan.
 sast:
   - 'src/**'
-  - 'frontends/**'
   - 'apps/**'
   - 'packages/**'
   - 'deploy/**'

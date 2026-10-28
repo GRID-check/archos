@@ -1,4 +1,4 @@
-// @disk-inputs: src/styles/tokens.css
+// @disk-inputs: ui/styles/tokens.css
 /**
  * @vitest-environment node
  */
@@ -41,7 +41,7 @@ describe('installed app chrome', () => {
   test('THEME_COLOR is still the --background token of each theme', () => {
     // The token is oklch with its hex in a comment; the comment is the contract
     // `theme-boot.ts` states ("Retune both together").
-    const tokens = readFileSync(join(__dirname, '..', 'styles', 'tokens.css'), 'utf8')
+    const tokens = readFileSync(join(__dirname, '..', 'ui', 'styles', 'tokens.css'), 'utf8')
     const backgrounds = [...tokens.matchAll(/^\s*--background:[^;]+;\s*\/\*\s*(#[0-9a-f]{6})/gim)].map((m) => m[1])
 
     expect(backgrounds).toEqual([THEME_COLOR.light, THEME_COLOR.dark])

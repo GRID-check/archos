@@ -5,7 +5,7 @@ DSL, which was reduced away together with the parity codegen). Two consumers kee
 in step by construction, not by generated parity fixtures:
 
 * this module — the German prompt block, and
-* ``frontends/ui/src/lib/oib/applicable-standards.ts`` — the Overview UI.
+* ``apps/workspace/bff/oib/applicable-standards.ts`` — the Overview UI.
 
 Both encode the same hand-written verdicts (OIB 1/2/3 near-universal, 4/5 always
 with a stronger reason for public/noise-sensitive uses, the fire sub-Richtlinien

@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -13,16 +13,15 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { actingReaderIsAgent, currentActingSession, runAsActingSession } from './acting-session'
+import { SOURCE_DIRS, srcKey } from '@/test-utils/source-tree'
 
-const SRC = join(dirname(fileURLToPath(import.meta.url)), '../..')
 
 /** The files allowed to name it: where it is defined, and the one caller. */
 const ALLOWED = new Set(['lib/agent-api/acting-session.ts', 'lib/agent-api/dispatch.ts'])
@@ -39,9 +38,9 @@ function sourceFiles(dir: string): string[] {
 
 describe('the acting session', () => {
   it('is entered only by the dispatcher', () => {
-    const callers = sourceFiles(SRC)
+    const callers = SOURCE_DIRS.flatMap((dir) => sourceFiles(join(process.cwd(), dir)))
       .filter((file) => readFileSync(file, 'utf8').includes('runAsActingSession'))
-      .map((file) => relative(SRC, file).split('\\').join('/'))
+      .map((file) => srcKey(file))
       .filter((file) => !ALLOWED.has(file))
     expect(callers).toEqual([])
   })

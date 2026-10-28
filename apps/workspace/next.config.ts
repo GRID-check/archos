@@ -1,10 +1,10 @@
 import path from 'node:path'
 import type { NextConfig } from 'next'
 import type { withPostHogConfig } from '@posthog/nextjs-config'
-import { LEGACY_ROUTES } from './src/lib/api/legacy-routes'
-import { AVATAR_IMAGE_PATTERNS } from './src/lib/images/avatar-hosts'
-import { LOCAL_IMAGE_PATTERNS } from './src/lib/images/optimizable'
-import { requestBodyLimitBytes } from './src/shared/config/request-body-limit'
+import { LEGACY_ROUTES } from './bff/api/legacy-routes'
+import { AVATAR_IMAGE_PATTERNS } from './bff/images/avatar-hosts'
+import { LOCAL_IMAGE_PATTERNS } from './bff/images/optimizable'
+import { requestBodyLimitBytes } from './shared/config/request-body-limit'
 
 /**
  * The TRANSPORT ceiling, which has to clear the largest body any route may
@@ -28,12 +28,12 @@ export const nextConfig: NextConfig = {
   // `next dev` rewrites AGENTS.md when it detects a coding agent: it upserts a
   // managed block whose heading level differs from ours, so every dev start in an
   // agent session dirtied a tracked file (docs/contributing/gotchas.md, "next dev
-  // rewrites frontends/ui/AGENTS.md"). Off; AGENTS.md carries the same advice in
-  // its own words. `src/next-agent-rules.spec.ts` holds both.
+  // rewrites apps/workspace/AGENTS.md"). Off; AGENTS.md carries the same advice in
+  // its own words. `tests/next-agent-rules.spec.ts` holds both.
   agentRules: false,
 
   // Renamed paths keep answering for one release: the API paths in
-  // src/lib/api/legacy-routes.ts, and the office shelf's old page URL. A stored
+  // bff/api/legacy-routes.ts, and the office shelf's old page URL. A stored
   // link (an inbox item, a shared link: `/app/archiv?doc=<id>`) and a bookmark
   // keep working through the permanent redirect, query string included.
   async redirects() {
@@ -53,7 +53,7 @@ export const nextConfig: NextConfig = {
 
   // The build typechecks production code only: tsconfig.build.json leaves the
   // specs and test helpers out of its roots, so a type error in a test cannot
-  // fail `next build`. `task fe:types` (tsc on tsconfig.json) still checks them.
+  // fail `next build`. `task workspace:types` (tsc on tsconfig.json) still checks them.
   typescript: {
     tsconfigPath: 'tsconfig.build.json',
   },
@@ -128,13 +128,13 @@ export const nextConfig: NextConfig = {
   // configured: turbopack serves `next dev` and webpack the production build.
   turbopack: {
     resolveAlias: {
-      'laz-perf': './src/lib/bim/laz-perf-stub.ts',
+      'laz-perf': './bff/bim/laz-perf-stub.ts',
       // The decoder also imports its own `.wasm` through a `?url` specifier,
       // which resolves to an Emscripten loader importing `env` and
       // `wasi_snapshot_preview1`. Aliasing the package alone leaves that second
       // request behind, so both spellings are mapped.
-      'laz-perf/lib/web/laz-perf.wasm?url': './src/lib/bim/laz-perf-stub.ts',
-      'laz-perf/lib/web/laz-perf.wasm': './src/lib/bim/laz-perf-stub.ts',
+      'laz-perf/lib/web/laz-perf.wasm?url': './bff/bim/laz-perf-stub.ts',
+      'laz-perf/lib/web/laz-perf.wasm': './bff/bim/laz-perf-stub.ts',
     },
   },
 
@@ -142,8 +142,8 @@ export const nextConfig: NextConfig = {
     config.resolve = config.resolve ?? {}
     config.resolve.alias = {
       ...(config.resolve.alias ?? {}),
-      'laz-perf': path.resolve(process.cwd(), 'src/lib/bim/laz-perf-stub.ts'),
-      'laz-perf/lib/web/laz-perf.wasm': path.resolve(process.cwd(), 'src/lib/bim/laz-perf-stub.ts'),
+      'laz-perf': path.resolve(process.cwd(), 'bff/bim/laz-perf-stub.ts'),
+      'laz-perf/lib/web/laz-perf.wasm': path.resolve(process.cwd(), 'bff/bim/laz-perf-stub.ts'),
     }
     return config
   },

@@ -8,7 +8,7 @@
  * in the number as in production. A script beside it would have to restate the
  * SQL the builders make, and a restated query measures the copy.
  *
- *   task fe:search:latency
+ *   task workspace:search:latency
  *
  * which is `SEARCH_LATENCY=1 bash scripts/rls-test-db.sh --only <this file>`.
  * Optional: SEARCH_LATENCY_RUNS (default 40), SEARCH_LATENCY_SCALE

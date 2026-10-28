@@ -15,7 +15,7 @@
  * `configs/config_oib_openrouter.yml`). A changed entry fails here until the
  * fixture is regenerated:
  *
- *   UPDATE_FIXTURES=1 bunx vitest run src/lib/agent-api/exposure.config.spec.ts
+ *   UPDATE_FIXTURES=1 bunx vitest run bff/agent-api/exposure.config.spec.ts
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -145,7 +145,7 @@ function render(): string {
   )
   const fixture = {
     comment:
-      'Who sees each capability: frontends/ui/src/lib/agent-api/exposure.config.ts, written by exposure.config.spec.ts ' +
+      'Who sees each capability: apps/workspace/bff/agent-api/exposure.config.ts, written by exposure.config.spec.ts ' +
       '(UPDATE_FIXTURES=1). `piloti` is true, false or "native:<tool>" (Piloti uses that tool; the door hides the operation from it). ' +
       '`appTools` are the MCP Apps views’ app-only tools (ADR-0142), each running the operation it names.',
     operations,

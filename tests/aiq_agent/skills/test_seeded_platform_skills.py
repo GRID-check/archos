@@ -1,6 +1,6 @@
 """Parity guard: the SEEDED platform skills must parse the way the runtime reads them.
 
-A seeded standard skill (``frontends/ui/drizzle/00XX_*_standard_skill.sql``) is
+A seeded standard skill (``apps/workspace/migrations/00XX_*_standard_skill.sql``) is
 a row of SQL text on one side of the stack and a :class:`Skill` on the other,
 and nothing in between type-checks it. Its ``metadata`` is a jsonb blob whose
 reserved keys only this package understands: ``grid-cards`` names card types
@@ -19,7 +19,7 @@ live line.
 So the seeds are re-validated here in STRICT mode, the way an in-repo SKILL.md
 is, and the parsed metadata is compared against what the runtime would actually
 read back. This is a filesystem test with no database, for the same reason
-``frontends/ui/tests/db/migrations-journal.test.ts`` is: the failure it catches
+``apps/workspace/tests/db/migrations-journal.test.ts`` is: the failure it catches
 is a bookkeeping mismatch, visible long before anything connects.
 """
 

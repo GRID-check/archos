@@ -14,7 +14,7 @@ from aiq_agent.common.sketch_fence import check_sketch
 from aiq_agent.common.sketch_fence import sketch_census
 from aiq_agent.observability.answer_scores import sketch_scores
 
-FIXTURES = Path(__file__).resolve().parents[3] / "frontends/ui/src/lib/diagrams/__fixtures__/sketch-fences.json"
+FIXTURES = Path(__file__).resolve().parents[3] / "apps/workspace/bff/diagrams/__fixtures__/sketch-fences.json"
 CASES = json.loads(FIXTURES.read_text(encoding="utf-8"))["cases"]
 
 

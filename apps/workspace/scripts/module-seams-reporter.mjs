@@ -1,4 +1,4 @@
-// dependency-cruiser reporter for `task fe:lint`: its own `err` report, plus
+// dependency-cruiser reporter for `task workspace:lint`: its own `err` report, plus
 // the one seam dependency-cruiser cannot express, a cycle between FEATURES.
 //
 // dependency-cruiser finds cycles between modules or between leaf folders, and
@@ -25,7 +25,7 @@ const { default: errReporter } = await import(
 )
 
 const KNOWN_FILE = path.join(import.meta.dirname, '..', '.dependency-cruiser-known-feature-cycles.json')
-const FEATURE = /^src\/features\/([^/]+)\//
+const FEATURE = /^ui\/features\/([^/]+)\//
 
 /** @param {import('dependency-cruiser').IModule[]} modules */
 function featureEdges(modules) {

@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import catalogFixture from '../../../tests/fixtures/reasoning_efforts_catalog.json'
+import catalogFixture from '../../tests/fixtures/reasoning_efforts_catalog.json'
 
 import {
   REASONING_EFFORTS,

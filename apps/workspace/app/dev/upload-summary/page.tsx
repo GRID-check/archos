@@ -12,7 +12,7 @@
  *  - `?dialog=1` opens the real route dialog over the page, fed by the
  *    module-scope fetch shim below (the summary and the project's name).
  *
- * Not linked from anywhere; `src/app/dev/layout.tsx` 404s it outside development.
+ * Not linked from anywhere; `app/dev/layout.tsx` 404s it outside development.
  */
 
 import type { JSX } from 'react'

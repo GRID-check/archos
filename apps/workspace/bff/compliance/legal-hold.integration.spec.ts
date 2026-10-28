@@ -9,7 +9,7 @@
  * conversations and holds, and it runs under row-level security.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/compliance/legal-hold.integration.spec.ts
+ *     npx vitest run bff/compliance/legal-hold.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  */

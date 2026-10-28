@@ -7,7 +7,7 @@
  * TypeScript, and the two must agree on every row (migration 0134).
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/documents/retry-policy.integration.spec.ts
+ *     npx vitest run bff/documents/retry-policy.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  */

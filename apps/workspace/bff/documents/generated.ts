@@ -76,7 +76,7 @@ import { publishShelfChanged } from './shelf-live'
  *
  * **The second producer is a key of this map and a caller of
  * {@link fileGeneratedDocument}.** It is not a second copy of the filing code.
- * `src/lib/diagrams/filing.ts` is what that looked like when it happened: two
+ * `bff/diagrams/filing.ts` is what that looked like when it happened: two
  * members added here, one new caller, no second insert path — so the quota, the
  * audit emit and the no-ingest rule are true of the new rows because they go
  * through the same function rather than through a copy of it.
@@ -719,7 +719,7 @@ export async function fileGeneratedDocument(
   // corpus, comes back to the agent as retrievable evidence under a green
   // *Projektwissen* badge, indistinguishable from a stamped Gutachten — and the
   // retrieval path's documented posture is fail-OPEN, so a filter there is not
-  // a safety mechanism. `src/lib/documents/generated.spec.ts` asserts the
+  // a safety mechanism. `bff/documents/generated.spec.ts` asserts the
   // absence at the dispatch site; do not add a call here.
   //
   // ADR-0054 opened exactly one door, and it is not this one: a PUBLISHED

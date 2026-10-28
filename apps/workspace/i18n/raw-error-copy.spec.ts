@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  *
@@ -25,10 +25,10 @@
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { SOURCE_DIRS, srcKey } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..')
 
 /** `{file.errorMessage}` as a child, not as a prop value (`message={…}`). */
 const ERROR_MESSAGE_CHILD = /(?<!=)\{\s*[\w.?]+\.errorMessage\s*\}/
@@ -55,7 +55,7 @@ function sourceFiles(dir: string): string[] {
   })
 }
 
-const files = sourceFiles(SRC).map((path) => ({ path: relative(SRC, path), text: readFileSync(path, 'utf8') }))
+const files = SOURCE_DIRS.flatMap((dir) => sourceFiles(join(process.cwd(), dir))).map((path) => ({ path: srcKey(path), text: readFileSync(path, 'utf8') }))
 
 function offenders(pattern: RegExp, allowed: Record<string, string>): string[] {
   return files.flatMap(({ path, text }) =>

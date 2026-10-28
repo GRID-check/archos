@@ -12,8 +12,8 @@ and the conversation from it, and answers with the search's audience reach:
 restricted folders and held uploads are absent, not marked. Echo, never sign
 (``src/aiq_agent/tools/AGENTS.md``).
 
-The contract is ``frontends/ui/tests/fixtures/estate-tree.schema.json``,
-exported from ``frontends/ui/src/lib/estate-tree/types.ts``; the tests validate
+The contract is ``apps/workspace/tests/fixtures/estate-tree.schema.json``,
+exported from ``apps/workspace/bff/estate-tree/types.ts``; the tests validate
 the bodies built here and the answers parsed here against it. There is no
 Pydantic twin.
 """

@@ -14,7 +14,7 @@
  * conversation row the way it treats a project.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/conversations/erasure-queue.integration.spec.ts
+ *     npx vitest run bff/conversations/erasure-queue.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  */
@@ -78,7 +78,7 @@ describe.skipIf(!url)('chat erasure retry queue against live Postgres (migration
    * other suites share) is left as it was.
    */
   async function claimableIds(): Promise<string[]> {
-    const { claimNext } = await import('../../../purger/db.js')
+    const { claimNext } = await import('../../purger/db.js')
     const client = postgres(url as string, { prepare: false, max: 1 })
     const claimed: string[] = []
     try {

@@ -29,11 +29,11 @@ import {
   LEGACY_DOC_CLASSES,
 } from './doc-class'
 
-// frontends/ui/src/lib/knowledge → repo root is four levels up from src/.
+// apps/workspace/bff/knowledge → repo root is four levels up from src/.
 const HERE = dirname(fileURLToPath(import.meta.url))
 const BACKEND_SOURCE = resolve(
   HERE,
-  '../../../../../src/aiq_agent/knowledge/document_classification.py',
+  '../../../../src/aiq_agent/knowledge/document_classification.py',
 )
 
 /** Pull the ordered keys out of the Python `DOCUMENT_CLASS_LABELS` dict block. */

@@ -161,7 +161,7 @@ class TestFactsFromProjectContext:
         assert facts_from_project_context("") == {}
 
     def test_suggestions_and_contested_sections_add_no_facts(self):
-        """The intake's suggestions ride the view (frontends/ui prompt-view.ts); only ``confirmed:`` is a fact.
+        """The intake's suggestions ride the view (apps/workspace prompt-view.ts); only ``confirmed:`` is a fact.
 
         An ``assumptions:`` line now ends in ``[Vorschlag: Datei, S. n]`` or ``[abgeleitet]``, and a
         ``contested:`` section lists ``- key: value | alternativ: v2 (Datei, S. n)``. A file name may
@@ -337,7 +337,7 @@ class TestWizardPromptText:
 
 
 class TestTwinParityFixtures:
-    """Mirrors the table in frontends/ui/src/lib/oib/applicable-standards.test.ts. Keep the two identical."""
+    """Mirrors the table in apps/workspace/bff/oib/applicable-standards.test.ts. Keep the two identical."""
 
     @pytest.mark.parametrize(
         ("facts", "expected"),

@@ -25,7 +25,7 @@ from aiq_api.legacy_headers import LegacyHeaderNamesMiddleware
 from aiq_api.legacy_headers import with_legacy_names
 
 ROOT = Path(__file__).resolve().parents[1]
-WS_PROXY = ROOT / "frontends" / "ui" / "src" / "lib" / "proxy" / "ws-upgrade-headers.js"
+WS_PROXY = ROOT / "apps" / "workspace" / "bff" / "proxy" / "ws-upgrade-headers.js"
 
 
 def test_a_new_name_is_copied_onto_the_old_one():

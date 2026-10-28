@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { REGISTRY_FLAG_SLUGS } from '../src/lib/authz/feature-flags.ts'
+import { REGISTRY_FLAG_SLUGS } from '../bff/authz/feature-flags.ts'
 import { diffSets, parseFlagTargets, planFlagCheck, splitList } from './provision-workos-env-plan.ts'
 
 describe('splitList', () => {
@@ -98,7 +98,7 @@ describe('parseFlagTargets', () => {
   })
 })
 
-describe('planFlagCheck (task fe:provision:flags)', () => {
+describe('planFlagCheck (task workspace:provision:flags)', () => {
   it('passes when the environment has every registry slug', () => {
     expect(planFlagCheck(['skills', 'deep-research'], ['deep-research', 'skills'])).toEqual({
       ok: true,

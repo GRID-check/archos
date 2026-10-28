@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 MEMORY_REFLECTION_FLAG_SLUG = "memory-reflection"
 
 #: The flag slug gating deep research, mirrored from the BFF registry
-#: (``frontends/ui/src/lib/authz/feature-flags.ts``). Named here for the log
+#: (``apps/workspace/bff/authz/feature-flags.ts``). Named here for the log
 #: line and the tests; nothing in this module branches on the string.
 DEEP_RESEARCH_FLAG_SLUG = "deep-research"
 

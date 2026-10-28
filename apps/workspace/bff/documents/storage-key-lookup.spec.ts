@@ -1,4 +1,4 @@
-// @disk-inputs: src/lib/documents/repository/storage.ts
+// @disk-inputs: bff/documents/repository/storage.ts
 /**
  * @vitest-environment node
  */

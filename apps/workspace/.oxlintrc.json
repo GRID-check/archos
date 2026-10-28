@@ -111,7 +111,19 @@
       }
     },
     {
-      "files": ["src/**/*.{ts,tsx}"],
+      "files": [
+        "app/**/*.{ts,tsx}",
+        "bff/**/*.{ts,tsx}",
+        "ui/**/*.{ts,tsx}",
+        "i18n/**/*.{ts,tsx}",
+        "shared/**/*.{ts,tsx}",
+        "types/**/*.{ts,tsx}",
+        "utils/**/*.{ts,tsx}",
+        "tests/test-utils/**/*.{ts,tsx}",
+        "tests/mocks/**/*.{ts,tsx}",
+        "proxy.ts",
+        "instrumentation.ts"
+      ],
       "rules": {
         "no-unused-vars": [
           "error",
@@ -193,7 +205,7 @@
       // a missing tenant scope is invisible until a user actually hits it.
       // Twice now that user has been a customer (#342, #344). This moves the
       // check into the editor and CI. See eslint-rules/require-tenant-scope.mjs.
-      "files": ["src/app/**/*.{ts,tsx}"],
+      "files": ["app/**/*.{ts,tsx}"],
       "rules": { "grid/require-tenant-scope": "error" }
     },
     {
@@ -203,9 +215,21 @@
       // specs (docs/audit/blast-radius-2026-10.md §7.2). Only the drizzle
       // client (`lib/db/index.ts`, which imports it as `./schema` for the
       // relational query API) needs the whole object. Specs are exempt below.
-      // The route override after this one replaces it for `src/app`, where no
+      // The route override after this one replaces it for `app`, where no
       // value import from `@/lib/db/*` is allowed at all.
-      "files": ["src/**/*.{ts,tsx}"],
+      "files": [
+        "app/**/*.{ts,tsx}",
+        "bff/**/*.{ts,tsx}",
+        "ui/**/*.{ts,tsx}",
+        "i18n/**/*.{ts,tsx}",
+        "shared/**/*.{ts,tsx}",
+        "types/**/*.{ts,tsx}",
+        "utils/**/*.{ts,tsx}",
+        "tests/test-utils/**/*.{ts,tsx}",
+        "tests/mocks/**/*.{ts,tsx}",
+        "proxy.ts",
+        "instrumentation.ts"
+      ],
       "rules": {
         "typescript/no-restricted-imports": [
           "error",
@@ -224,11 +248,11 @@
       // Transport code does not query (ADR-0017): route handlers and server
       // components call a service, and the query lives there.
       // `server-component-db-access.spec.ts` holds the same rule, but it lives
-      // under src/lib/db, so a targeted test run of the area you changed never
+      // under bff/db, so a targeted test run of the area you changed never
       // reaches it, and twice in one branch a route importing
       // `@/lib/db/schema` was first caught by CI. Here it fails the editor and
       // `bun run lint`. Type-only imports stay allowed.
-      "files": ["src/app/**/*.{ts,tsx}"],
+      "files": ["app/**/*.{ts,tsx}"],
       "rules": {
         "typescript/no-restricted-imports": [
           "error",
@@ -258,16 +282,27 @@
       // import that module, so eslint-rules/lint-config.spec.mjs fails when
       // the two lists differ. Shrink both; never grow them.
       "files": [
-        "src/app/api/internal/agent-profiler-spans/route.ts",
-        "src/app/api/internal/citation-events/route.ts",
-        "src/app/api/internal/memory/route.ts",
-        "src/app/api/internal/usage/route.ts"
+        "app/api/internal/agent-profiler-spans/route.ts",
+        "app/api/internal/citation-events/route.ts",
+        "app/api/internal/memory/route.ts",
+        "app/api/internal/usage/route.ts"
       ],
       "rules": { "typescript/no-restricted-imports": "off" }
     },
     {
       // Specs may spell the tenant boundary's failure modes on purpose.
-      "files": ["src/**/*.spec.{ts,tsx}"],
+      "files": [
+        "app/**/*.spec.{ts,tsx}",
+        "bff/**/*.spec.{ts,tsx}",
+        "ui/**/*.spec.{ts,tsx}",
+        "i18n/**/*.spec.{ts,tsx}",
+        "shared/**/*.spec.{ts,tsx}",
+        "types/**/*.spec.{ts,tsx}",
+        "utils/**/*.spec.{ts,tsx}",
+        "tests/*.spec.ts",
+        "proxy.spec.ts",
+        "instrumentation.spec.ts"
+      ],
       "rules": {
         "grid/require-tenant-scope": "off",
         "grid/require-tenant-cache-key": "off",
@@ -299,12 +334,12 @@
       // title, note and norm footer — so one migration moves all of them onto
       // the ramp at once.
       "files": [
-        "src/features/grid-cards/components/KeyTakeawaysCard.tsx",
-        "src/features/grid-cards/components/VerdictHeaderCard.tsx",
-        "src/features/grid-cards/components/CalloutCard.tsx",
-        "src/features/grid-cards/components/ProposalShell.tsx",
-        "src/features/grid-cards/schematics/kit.tsx",
-        "src/features/grid-cards/components/CanvasActivityCard.tsx"
+        "ui/features/grid-cards/components/KeyTakeawaysCard.tsx",
+        "ui/features/grid-cards/components/VerdictHeaderCard.tsx",
+        "ui/features/grid-cards/components/CalloutCard.tsx",
+        "ui/features/grid-cards/components/ProposalShell.tsx",
+        "ui/features/grid-cards/schematics/kit.tsx",
+        "ui/features/grid-cards/components/CanvasActivityCard.tsx"
       ],
       "rules": { "grid/card-type-scale": "error" }
     }

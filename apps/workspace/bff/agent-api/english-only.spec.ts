@@ -1,4 +1,4 @@
-// @disk-inputs: ../../ci/german_stems.json, src/app/api/mcp/**, src/lib/agent-api/**
+// @disk-inputs: ../../ci/german_stems.json, app/api/mcp/**, bff/agent-api/**
 /**
  * @vitest-environment node
  */
@@ -42,7 +42,7 @@ import type { AgentPrincipal } from './principal'
 import { READ_REFUSALS } from './conversation-audience'
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '../..')
-const SURFACE_DIRS = ['lib/agent-api', 'app/api/mcp']
+const SURFACE_DIRS = ['bff/agent-api', 'app/api/mcp']
 
 /**
  * Text an agent may read that is German because it is domain data: a proper

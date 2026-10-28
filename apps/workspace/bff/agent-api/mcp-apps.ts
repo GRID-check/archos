@@ -70,7 +70,7 @@ export const VIEW_UI_META: McpUiResourceMeta = {
   prefersBorder: false,
 }
 
-/** Where the built documents are: beside the app (`frontends/ui/mcp-app-views/`, `/app/mcp-app-views/` in the image). */
+/** Where the built documents are: beside the app (`apps/workspace/mcp-app-views/`, `/app/mcp-app-views/` in the image). */
 export const VIEWS_DIR = join(process.cwd(), 'mcp-app-views')
 
 const documents = new Map<string, Promise<string>>()

@@ -1,6 +1,6 @@
 """Every ``native:<tool>`` in the exposure config is a tool Piloti really has (ADR-0122).
 
-``frontends/ui/src/lib/agent-api/exposure.config.ts`` decides who sees each
+``apps/workspace/bff/agent-api/exposure.config.ts`` decides who sees each
 operation of the agent door. ``piloti: 'native:<tool>'`` hides an operation from
 Piloti's door because Piloti does that work with its own tool. A name that is
 not in Piloti's tool list would hide the operation and leave Piloti with no way
@@ -8,7 +8,7 @@ to do the work at all, so each one is checked against the chat agent's
 ``tools:`` in ``configs/config_oib_openrouter.yml``, a function group's member as
 ``<group>__<function>``, the name the model binds.
 
-The TypeScript config reaches Python as ``frontends/ui/tests/fixtures/exposure.json``,
+The TypeScript config reaches Python as ``apps/workspace/tests/fixtures/exposure.json``,
 written and drift-checked by ``exposure.config.spec.ts``.
 """
 

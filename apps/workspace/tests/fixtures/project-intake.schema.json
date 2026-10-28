@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Grid project intake wire contract",
-  "description": "Generated from frontends/ui/src/lib/project-intake/types.ts. Do not edit by hand: intake-schema.spec.ts rewrites this file and fails when it is stale.",
+  "description": "Generated from apps/workspace/bff/project-intake/types.ts. Do not edit by hand: intake-schema.spec.ts rewrites this file and fails when it is stale.",
   "$defs": {
     "InternalIntakeRequest": {
       "oneOf": [

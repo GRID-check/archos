@@ -5,7 +5,7 @@
  * the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/projects/project-status.integration.spec.ts
+ *     npx vitest run bff/projects/project-status.integration.spec.ts
  *
  * What only the database can prove: that closing and reopening never open a
  * folder with its own access list (the real tree, the real rule, the real

@@ -75,7 +75,7 @@ The hash and version are written only after the file's job reached `FileStatus.S
 
 **A sync cycle** (`oib_sync.sync()`) is housekeeping. It runs
 
-- every ten minutes, as the base-corpus housekeeping route `POST /v1/maintenance/housekeeping/base-corpus` (internal token). On Kubernetes that is the `housekeeping-base-corpus` CronJob (`deploy/pulumi/src/app/workers.ts`, `*/10 * * * *`, `concurrencyPolicy: Forbid`); in Compose it is the housekeeping clock (`frontends/ui/workers/housekeeping-clock.js`);
+- every ten minutes, as the base-corpus housekeeping route `POST /v1/maintenance/housekeeping/base-corpus` (internal token). On Kubernetes that is the `housekeeping-base-corpus` CronJob (`deploy/pulumi/src/app/workers.ts`, `*/10 * * * *`, `concurrencyPolicy: Forbid`); in Compose it is the housekeeping clock (`apps/workspace/workers/housekeeping-clock.js`);
 - on demand, as `POST /v1/admin/oib/sync`, the admin's "run it now". It calls the same function.
 
 There is no sync at boot and no boot thread. A cycle does bookkeeping and queues; it ingests nothing:

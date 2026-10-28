@@ -3,7 +3,7 @@
  *
  * ## Why the tokens are copied rather than read
  *
- * `src/styles/tokens.css` is the single source of truth for colour in the app,
+ * `ui/styles/tokens.css` is the single source of truth for colour in the app,
  * and it is written in `oklch()` behind CSS custom properties. react-pdf has
  * neither: `StyleSheet.create` resolves no variables and pdfkit understands no
  * colour space but sRGB. So the handful of tokens a document actually needs are

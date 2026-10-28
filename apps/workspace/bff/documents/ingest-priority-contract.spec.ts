@@ -1,4 +1,4 @@
-// @disk-inputs: ../../apps/backend/src/aiq_api/models/requests.py
+// @disk-inputs: ../backend/src/aiq_api/models/requests.py
 /**
  * @vitest-environment node
  */
@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest'
 import { INGEST_PRIORITIES } from './ingest-dispatch'
 
 /** Repo root, from this spec's own location. */
-const REPO_ROOT = join(__dirname, '..', '..', '..', '..', '..')
+const REPO_ROOT = join(__dirname, '..', '..', '..', '..')
 const REQUESTS = join(REPO_ROOT, 'apps', 'backend', 'src', 'aiq_api', 'models', 'requests.py')
 
 const backendPriorities = (): string[] => {

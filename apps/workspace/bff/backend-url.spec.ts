@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -14,6 +14,7 @@ import path from 'node:path'
 import ts from 'typescript-api'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getBackendUrl } from './backend-url'
+import { SOURCE_DIRS } from '@/test-utils/source-tree'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -35,8 +36,8 @@ describe('getBackendUrl', () => {
   })
 })
 
-const UI_ROOT = path.resolve(__dirname, '../..')
-const RESOLVER = 'src/lib/backend-url.ts'
+const UI_ROOT = path.resolve(__dirname, '..')
+const RESOLVER = 'bff/backend-url.ts'
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -70,7 +71,7 @@ function backendUrlReads(file: string): number {
 
 describe('the backend address has one resolver', () => {
   it('no file but backend-url.ts reads process.env.BACKEND_URL', () => {
-    const offenders = sourceFiles(path.join(UI_ROOT, 'src'))
+    const offenders = SOURCE_DIRS.flatMap((dir) => sourceFiles(path.join(UI_ROOT, dir)))
       .map((file) => path.relative(UI_ROOT, file).split(path.sep).join('/'))
       .filter((file) => file !== RESOLVER && backendUrlReads(path.join(UI_ROOT, file)) > 0)
     expect(offenders, 'Import getBackendUrl from @/lib/backend-url (or @/lib/backend-proxy, which re-exports it).').toEqual(

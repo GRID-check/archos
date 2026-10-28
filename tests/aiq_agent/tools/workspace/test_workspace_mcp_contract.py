@@ -6,10 +6,10 @@ this client really builds is one the real route answers, or that the answer is o
 this client really parses. Two committed fixtures close that, the pattern of
 ``grid_request_context.json``:
 
-* ``frontends/ui/tests/fixtures/workspace_mcp_requests.json`` is written HERE from
+* ``apps/workspace/tests/fixtures/workspace_mcp_requests.json`` is written HERE from
   the real request builder (only the socket is replaced). The BFF spec
   ``workspace-contract.spec.ts`` replays it against the real route handler.
-* ``frontends/ui/tests/fixtures/workspace_mcp_responses.json`` is written by that
+* ``apps/workspace/tests/fixtures/workspace_mcp_responses.json`` is written by that
   spec from what the route really answered. The second half of this file feeds
   each body back through the real ``call_tool``.
 
@@ -35,7 +35,7 @@ from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.tools.workspace import client
 
 REPO = Path(__file__).resolve().parents[4]
-FIXTURES = REPO / "frontends" / "ui" / "tests" / "fixtures"
+FIXTURES = REPO / "apps" / "workspace" / "tests" / "fixtures"
 REQUESTS_PATH = FIXTURES / "workspace_mcp_requests.json"
 RESPONSES_PATH = FIXTURES / "workspace_mcp_responses.json"
 
@@ -146,7 +146,7 @@ def _document(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         "comment": (
             "Written by tests/aiq_agent/tools/workspace/test_workspace_mcp_contract.py from the real request "
             "builder of aiq_agent/tools/workspace/client.py; replayed by "
-            "frontends/ui/src/app/api/mcp/workspace-contract.spec.ts against the real route. "
+            "apps/workspace/app/api/mcp/workspace-contract.spec.ts against the real route. "
             "Regenerate with UPDATE_FIXTURES=1. The spec signs envelopePayload (with a current issuedAt) and "
             "substitutes the placeholders."
         ),

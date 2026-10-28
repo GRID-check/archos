@@ -22,13 +22,13 @@ import {
  * A renamed key or a moved cap on either side fails one of the two tests
  * instead of shipping green with the anatomy silently dropped.
  */
-const FIXTURE_PATH = resolve(__dirname, '../../../../../tests/fixtures/answer_meta/wire_payload.json')
+const FIXTURE_PATH = resolve(__dirname, '../../../../tests/fixtures/answer_meta/wire_payload.json')
 
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as Record<string, unknown>
 
 /** The work report's crossing, gated by the backend the same way (ADR-0123). */
 const WORK_FIXTURE = JSON.parse(
-  readFileSync(resolve(__dirname, '../../../../../tests/fixtures/answer_meta/work_payload.json'), 'utf-8')
+  readFileSync(resolve(__dirname, '../../../../tests/fixtures/answer_meta/work_payload.json'), 'utf-8')
 ) as Record<string, unknown>
 
 describe('sanitizeAnswerMeta', () => {

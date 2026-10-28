@@ -30,7 +30,7 @@ A Fassung is stored in one of two ways, and the reader sees one of them.
 | What else is stored there | State per version, who approved, who published | `revision_suggestion`, `change_summary`, `change_basis`, `revision_facts` (the title block) |
 | Who decides it is one | The name, so nobody has to | A person, after a suggestion |
 | Undo | Not needed, the old bytes stay | Unlink. No citation, share, assignment or folder placement moves |
-| Owner | `frontends/ui/src/lib/documents/lifecycle*.ts`, `version-repository.ts` | `src/aiq_agent/knowledge/document_metadata_store.py` |
+| Owner | `apps/workspace/bff/documents/lifecycle*.ts`, `version-repository.ts` | `src/aiq_agent/knowledge/document_metadata_store.py` |
 
 `supersedes` is never stored. It is the reverse of `superseded_by`, derived when
 the listing is read.
@@ -72,7 +72,7 @@ a suggestion or a decision. None of them links two documents without a person.
 
 | Layer | Reads | Says | Model call | Code |
 |---|---|---|---|---|
-| Name grammar | The file name: `Index C`, `idx-B`, `Rev 12`, `v3`, a date as `2026-08-14`, `14.08.2026`, `260814_…`, a bare letter after a sheet number (`A-101_C_…`) | Which names are one series, and which looks current | No | `frontends/ui/src/lib/documents/revision-series.ts`, `packages/knowledge-layer/src/revision_series.py` |
+| Name grammar | The file name: `Index C`, `idx-B`, `Rev 12`, `v3`, a date as `2026-08-14`, `14.08.2026`, `260814_…`, a bare letter after a sheet number (`A-101_C_…`) | Which names are one series, and which looks current | No | `apps/workspace/bff/documents/revision-series.ts`, `packages/knowledge-layer/src/revision_series.py` |
 | Title block | The Plankopf: document number, Index, date, scale, title, read once per drawing page during ingestion | Same `document_number` means same document. Higher Index, else later date, means later state | No extra call: it rides the drawing analysis | `src/aiq_agent/knowledge/title_block.py`, `packages/knowledge-layer/src/llamaindex/visual_analysis.py` |
 | LLM judge | Name, Dokumentart, tags and one-line summary of up to eight candidates in the collection | Whether the new file is a newer Fassung of exactly one of them | One, on the summary model | `src/aiq_agent/knowledge/document_revisions.py` |
 | Derived on read | The rows already stored: title blocks first, then the name grammar | A suggestion for documents ingested before the Fassung step existed | No | `packages/knowledge-layer/src/llamaindex/revisions.py`, `derive_suggestions` |
@@ -83,7 +83,7 @@ a suggestion or a decision. None of them links two documents without a person.
 The same grammar runs in TypeScript and Python. One fixture holds both to the same
 reading, so the upload dialog and the agent's `list_files` cannot disagree about
 which Fassung is current: `tests/fixtures/revision_series_cases.json`, run by
-`frontends/ui/src/lib/documents/revision-series.spec.ts` and
+`apps/workspace/bff/documents/revision-series.spec.ts` and
 `tests/knowledge_layer_tests/test_revision_series.py`. Change a rule on one side
 and the fixture must move.
 
@@ -382,7 +382,7 @@ name, each labelled as what it is.
 Where the office switched it on (WorkOS flag `piloti-notices`, off by default),
 a Fassung under another name is compared without anyone asking, and what moved
 is proposed as marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.md),
-`frontends/ui/src/lib/revision-notice/`).
+`apps/workspace/bff/revision-notice/`).
 
 1. **Queued.** `notifyNewRevision` queues a `revision_notice` job right after it
    claims the announcement of a cross-name Fassung, so once per Fassung; the
@@ -527,7 +527,7 @@ sequenceDiagram
   such a version today; a reviewer's release is per document, not per version.
 
 - **A re-read after a failed first ingest loses `revision_of`.** `reingestDocument`
-  dispatches without it (`frontends/ui/src/lib/documents/reingest.ts`), so the
+  dispatches without it (`apps/workspace/bff/documents/reingest.ts`), so the
   confirmed link is never written. The file falls back to the ordinary path: a
   title-block, name or content suggestion, which a person must confirm again. If
   none of the three fires, nothing is offered.

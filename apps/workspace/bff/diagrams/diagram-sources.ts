@@ -4,7 +4,7 @@
  * ## The doctrine this module sits next to, and the line it must not cross
  *
  * This repository already renders fifteen technical diagrams
- * (`src/features/grid-cards/schematics/`) and it renders them a very particular
+ * (`ui/features/grid-cards/schematics/`) and it renders them a very particular
  * way: **the model emits parameters only and the renderer does every piece of
  * geometry**. `docs/architecture/cards.md` states the guarantee that buys —
  * *"a card cannot show a diagram that disagrees with its own numbers"* — and it
@@ -55,7 +55,7 @@
  *
  * **`excalidraw` is declared and, in this vertical, has no client renderer.**
  * That is a measured decision and not an oversight; see
- * `src/features/diagrams/diagram-renderers.ts`, which is the one place the
+ * `ui/features/diagrams/diagram-renderers.ts`, which is the one place the
  * kind-to-renderer map lives and the one place the reason is written down. The
  * server never renders — it validates and files — so it is indifferent to which
  * kinds a client can produce, and declaring the kind now is what makes adding

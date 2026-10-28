@@ -52,7 +52,7 @@
  * `url()`, `image-set()`), and the server would have to become a CSS engine to
  * know whether a rule is safe. It also would not help the PDF, which cannot
  * apply CSS at all. So the producer flattens computed styles onto presentation
- * attributes before it posts — `src/features/diagrams/render-mermaid.ts` — and
+ * attributes before it posts — `ui/features/diagrams/render-mermaid.ts` — and
  * a `<style>` block arriving here means the producer skipped that step. Failing
  * loudly at that point is the whole value: the alternative is a filed diagram
  * that renders correctly in the preview pane and blank in the PDF.

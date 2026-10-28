@@ -25,7 +25,7 @@
  * ## The vocabularies are ASCII keys; the German is rendered from a dictionary
  *
  * `planning` and `running` are KEYS. The reader sees „Planen" and „läuft", and the
- * umlaut lives in `src/i18n/dictionaries` where every other user-facing string
+ * umlaut lives in `i18n/dictionaries` where every other user-facing string
  * lives. A key with an umlaut in it is a key that arrives differently normalised
  * depending on who serialised it, which is a bug nobody can see.
  *

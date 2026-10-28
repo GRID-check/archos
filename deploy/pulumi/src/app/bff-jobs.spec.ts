@@ -16,7 +16,7 @@ const read = (...parts: string[]) => readFileSync(join(repoRoot, ...parts), "utf
  *
  * It crosses three boundaries this program cannot see into, and each one plans
  * and applies clean when it drifts:
- *   - the runner reads its env (`frontends/ui/workers/jobs/index.js`), and a
+ *   - the runner reads its env (`apps/workspace/workers/jobs/index.js`), and a
  *     renamed knob leaves the pool on its defaults;
  *   - KEDA counts the queue's table, and a table or status that moves leaves
  *     the pool at its floor with work waiting (or up forever for dead rows);
@@ -120,10 +120,10 @@ describe("the bff-jobs pool", () => {
     expect(pod.containers).toHaveLength(1);
     expect(pod.containers[0].command).toEqual(["node", "workers/jobs/index.js"]);
     // A path that moves leaves a pod that crash-loops with a green plan.
-    expect(existsSync(join(repoRoot, "frontends", "ui", "workers", "jobs", "index.js"))).toBe(true);
+    expect(existsSync(join(repoRoot, "apps", "workspace", "workers", "jobs", "index.js"))).toBe(true);
     // The image copies `workers/` whole; a second COPY line per file is how
     // `purger/` once shipped without a module it required.
-    expect(read("frontends", "ui", "deploy", "Dockerfile")).toMatch(/COPY .*\/app\/workers \.\/workers/);
+    expect(read("apps", "workspace", "deploy", "Dockerfile")).toMatch(/COPY .*\/app\/workers \.\/workers/);
     expect(pod.securityContext).toMatchObject({ runAsNonRoot: true });
     expect(RESOURCES.filter((r) => r.type === "kubernetes:core/v1:Service" && r.name === "bff-jobs")).toEqual([]);
   });
@@ -146,7 +146,7 @@ describe("the bff-jobs pool", () => {
 
   it("emits only BFF_JOBS_ names the runner reads, and the ones it needs", async () => {
     const readByRunner = new Set(
-      [...read("frontends", "ui", "workers", "jobs", "index.js").matchAll(/\b((?:GRID_)?BFF_JOBS_[A-Z_]+)/g)].map((m) => m[1]),
+      [...read("apps", "workspace", "workers", "jobs", "index.js").matchAll(/\b((?:GRID_)?BFF_JOBS_[A-Z_]+)/g)].map((m) => m[1]),
     );
     const emitted = env.map((e) => e.name as string).filter((name) => /^(GRID_)?BFF_JOBS_/.test(name));
 
@@ -164,7 +164,7 @@ describe("the bff-jobs pool", () => {
     expect(bffJobsMode("inprocess")).toBe("inprocess");
     expect(() => bffJobsMode("in-process")).toThrow(/bffJobsMode/);
     // The runner's own list of modes is the one this mirrors.
-    expect(read("frontends", "ui", "workers", "jobs", "index.js")).toMatch(/const MODES = .*\['http', 'inprocess'\]/);
+    expect(read("apps", "workspace", "workers", "jobs", "index.js")).toMatch(/const MODES = .*\['http', 'inprocess'\]/);
   });
 
   it("carries the Web Push key pair and contact: this pool is the one that sends (ADR-0112)", async () => {
@@ -190,11 +190,11 @@ describe("the bff-jobs pool", () => {
   });
 
   it("scales on the table the queue is written to, leaving dead rows out", () => {
-    const migration = read("frontends", "ui", "drizzle", "0104_bff_job_queue.sql");
+    const migration = read("apps", "workspace", "migrations", "0104_bff_job_queue.sql");
     const table = migration.match(/CREATE TABLE IF NOT EXISTS "([a-z_]+)"/)?.[1];
 
     expect(table).toBe("bff_job_queue");
-    expect(read("frontends", "ui", "workers", "job-queue.js")).toContain(`FROM ${table}`);
+    expect(read("apps", "workspace", "workers", "job-queue.js")).toContain(`FROM ${table}`);
     // The retired set is shared by every tier, so `cancelled` is named here too.
     // This queue never writes it, and the clause is true on either status.
     expect(BFF_QUEUE_DEPTH_QUERY).toBe(

@@ -20,7 +20,7 @@
  * Nothing is hidden for good: every field the backend persists stays editable
  * under "Advanced", so an entry always round-trips verbatim.
  *
- * @see src/lib/norms/schemas.ts — the field contract this mirrors
+ * @see bff/norms/schemas.ts — the field contract this mirrors
  * @see src/aiq_agent/common/norm_registry.py — how entries are consumed
  */
 

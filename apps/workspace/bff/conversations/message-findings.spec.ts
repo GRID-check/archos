@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { findingCounts, hasFindingStatuses, sanitizeFindings } from './message-findings'
 
-const FIXTURE_PATH = resolve(__dirname, '../../../../../tests/fixtures/findings/wire_payload.json')
+const FIXTURE_PATH = resolve(__dirname, '../../../../tests/fixtures/findings/wire_payload.json')
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as Record<string, unknown>
 
 describe('sanitizeFindings', () => {

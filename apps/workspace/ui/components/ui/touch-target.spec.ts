@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * The touch-target contract.
  *
@@ -24,9 +24,9 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { SOURCE_DIRS, srcKey, srcJoin } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..', '..')
-const GLOBALS_CSS = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+const GLOBALS_CSS = readFileSync(srcJoin('app', 'globals.css'), 'utf8')
 
 const walk = (dir: string, out: string[] = []): string[] => {
   for (const entry of readdirSync(dir)) {
@@ -37,7 +37,7 @@ const walk = (dir: string, out: string[] = []): string[] => {
   return out
 }
 
-const SOURCE_FILES = walk(SRC)
+const SOURCE_FILES = SOURCE_DIRS.flatMap((dir) => walk(join(process.cwd(), dir)))
 
 describe('touch-target utility', () => {
   it('is declared in globals.css', () => {
@@ -62,7 +62,7 @@ describe('touch-target utility', () => {
     for (const file of SOURCE_FILES) {
       if (file.endsWith('globals.css') || file.endsWith('touch-target.spec.ts')) continue
       for (const match of readFileSync(file, 'utf8').matchAll(/\btouch-target[\w-]+/g)) {
-        typos.push(`${file.slice(SRC.length + 1)}: ${match[0]}`)
+        typos.push(`${srcKey(file)}: ${match[0]}`)
       }
     }
     expect(typos).toEqual([])
@@ -79,7 +79,7 @@ describe('touch sizing uses one axis', () => {
       if (file.endsWith('touch-target.spec.ts')) continue
       const source = readFileSync(file, 'utf8')
       for (const match of source.matchAll(/\bmd:(?:min-h-0|size-7|h-8|min-h-11|size-11|h-11)\b/g)) {
-        offenders.push(`${file.slice(SRC.length + 1)}: ${match[0]}`)
+        offenders.push(`${srcKey(file)}: ${match[0]}`)
       }
     }
     expect(offenders).toEqual([])
@@ -101,12 +101,12 @@ describe('control primitives carry a coarse-pointer touch size', () => {
     ['switch.tsx'],
     ['chip.tsx'],
   ])('%s', (file) => {
-    const source = readFileSync(join(SRC, 'components', 'ui', file), 'utf8')
+    const source = readFileSync(srcJoin('components', 'ui', file), 'utf8')
     expect(source).toMatch(/pointer-coarse:|touch-target/)
   })
 
   it('gives Button a floor on both axes — height alone leaves icon buttons narrow', () => {
-    const source = readFileSync(join(SRC, 'components', 'ui', 'button.tsx'), 'utf8')
+    const source = readFileSync(srcJoin('components', 'ui', 'button.tsx'), 'utf8')
     expect(source).toMatch(/pointer-coarse:h-11/)
     expect(source).toMatch(/pointer-coarse:size-11/)
     expect(source).toMatch(/pointer-coarse:min-w-11/)

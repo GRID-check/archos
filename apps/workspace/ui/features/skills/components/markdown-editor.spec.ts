@@ -1,4 +1,4 @@
-// @disk-inputs: src/features/skills/components/markdown-editor.css
+// @disk-inputs: ui/features/skills/components/markdown-editor.css
 /**
  * @vitest-environment node
  */

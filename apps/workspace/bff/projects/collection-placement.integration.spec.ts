@@ -5,7 +5,7 @@
  * against a REAL Postgres through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/projects/collection-placement.integration.spec.ts
+ *     npx vitest run bff/projects/collection-placement.integration.spec.ts
  *
  * The backend is mocked; the rows and the job queue are not. What is proven:
  * the purge comes before the re-point, a failed purge leaves the row where it

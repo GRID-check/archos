@@ -31,7 +31,7 @@ from aiq_agent.common.source_kinds import SOURCE_KINDS
 from aiq_agent.common.source_kinds import Shelf
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DICTIONARIES = REPO_ROOT / "frontends" / "ui" / "src" / "i18n" / "dictionaries"
+DICTIONARIES = REPO_ROOT / "apps" / "workspace" / "i18n" / "dictionaries"
 PROMPTS = sorted((REPO_ROOT / "src" / "aiq_agent" / "agents").glob("*/prompts/*"))
 BUILTIN_SKILLS = sorted((REPO_ROOT / "src" / "aiq_agent" / "skills" / "builtin").rglob("SKILL.md"))
 

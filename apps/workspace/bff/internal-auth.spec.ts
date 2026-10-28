@@ -1,4 +1,4 @@
-// @disk-inputs: server.js, src/**
+// @disk-inputs: app/**, bff/**, i18n/**, server.js, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -24,6 +24,7 @@ import {
   InternalServiceUnavailableError,
   internalServiceHeaders,
 } from './internal-auth'
+import { SOURCE_DIRS } from '@/test-utils/source-tree'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -57,8 +58,8 @@ describe('internalServiceHeaders', () => {
   })
 })
 
-const UI_ROOT = path.resolve(__dirname, '../..')
-const PRODUCER = 'src/lib/internal-auth.ts'
+const UI_ROOT = path.resolve(__dirname, '..')
+const PRODUCER = 'bff/internal-auth.ts'
 const HEADER = 'x-grid-internal-token'
 
 function sourceFiles(dir: string): string[] {
@@ -88,7 +89,7 @@ function headerLiterals(file: string): number {
 
 describe('the header has one producer', () => {
   it('no file but internal-auth.ts spells the service-token header', () => {
-    const files = [...sourceFiles(path.join(UI_ROOT, 'src')), path.join(UI_ROOT, 'server.js')]
+    const files = [...SOURCE_DIRS.flatMap((dir) => sourceFiles(path.join(UI_ROOT, dir))), path.join(UI_ROOT, 'server.js')]
     const offenders = files
       .map((file) => path.relative(UI_ROOT, file).split(path.sep).join('/'))
       .filter((file) => file !== PRODUCER && headerLiterals(path.join(UI_ROOT, file)) > 0)

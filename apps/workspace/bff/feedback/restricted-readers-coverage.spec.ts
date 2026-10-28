@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -31,11 +31,11 @@
  *   so does a reader nobody classified.
  */
 import { readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
+import { SOURCE_DIRS, srcKey } from '@/test-utils/source-tree'
 
-const SRC = join(process.cwd(), 'src')
 
 type Classification = { rule: true } | { tenant: string } | { presenceOnly: string }
 
@@ -170,8 +170,8 @@ function scan(): Scan {
   const readers = new Map<string, Unit>()
   const byName = new Map<string, Unit[]>()
   const units: Unit[] = []
-  for (const file of sourceFiles(SRC)) {
-    const rel = relative(SRC, file).replace(/\\/g, '/')
+  for (const file of SOURCE_DIRS.flatMap((root) => sourceFiles(join(process.cwd(), root)))) {
+    const rel = srcKey(file)
     const text = readFileSync(file, 'utf8')
     const source = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true)
     for (const unit of unitsOf(rel, source)) {

@@ -75,7 +75,7 @@ def test_the_backend_image_watches_what_its_dockerfile_copies(mod):
 
 def test_a_copy_that_leaves_the_context_is_refused(mod):
     with pytest.raises(ValueError, match="leaves the build context"):
-        mod._normalise("frontends/ui", "../../etc/passwd")
+        mod._normalise("apps/workspace", "../../etc/passwd")
 
 
 # --- Hashing, on a repository of our own ---------------------------------------
@@ -110,8 +110,8 @@ def repo(mod, tmp_path, monkeypatch):
             "apps/backend/Dockerfile": "FROM debian\nCOPY src/ ./src/\nCOPY pyproject.toml ./\n",
             "src/app.py": "print(1)\n",
             "pyproject.toml": "[project]\n",
-            "frontends/ui/deploy/Dockerfile": "FROM node\nCOPY . .\n",
-            "frontends/ui/page.tsx": "export {}\n",
+            "apps/workspace/deploy/Dockerfile": "FROM node\nCOPY . .\n",
+            "apps/workspace/page.tsx": "export {}\n",
             "apps/site/Dockerfile": "FROM node\nCOPY . .\n",
             "apps/site/index.astro": "<p/>\n",
             "docs/readme.md": "hi\n",
@@ -149,7 +149,7 @@ def test_a_copied_path_the_commit_does_not_track_fails_loudly(mod, repo):
 def test_a_pull_request_builds_the_images_it_changes(mod, repo):
     base = git(repo, "rev-parse", "HEAD")
     git(repo, "checkout", "-q", "-b", "feature")
-    write(repo, {"frontends/ui/page.tsx": "export const x = 1\n"})
+    write(repo, {"apps/workspace/page.tsx": "export const x = 1\n"})
     # develop moves on under the PR; its change is not the PR's to build.
     git(repo, "checkout", "-q", "develop")
     moved = write(repo, {"src/app.py": "print(3)\n"})
@@ -159,7 +159,7 @@ def test_a_pull_request_builds_the_images_it_changes(mod, repo):
 
     assert [entry["name"] for entry in build] == ["frontend"]
     assert [entry["name"] for entry in images] == ["backend", "frontend", "web"]
-    assert build[0]["repository"] == "grid-oib-frontend" and build[0]["context"] == "frontends/ui"
+    assert build[0]["repository"] == "grid-oib-frontend" and build[0]["context"] == "apps/workspace"
     assert mod.plan_pull_request(base, week=WEEK)[0] == build
 
 

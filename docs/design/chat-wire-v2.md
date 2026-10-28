@@ -734,7 +734,7 @@ interface StoredThinkingStep {
 `functionName`, `displayName`, `category`, `isTopLevel`, `content`,
 `rawPayload` and `isDeepResearch` are gone.
 
-- **Postgres: one migration**, `frontends/ui/drizzle/0097_herleitung_steps_v2.sql`
+- **Postgres: one migration**, `apps/workspace/migrations/0097_herleitung_steps_v2.sql`
   (plus `.down.sql`). It rewrites `metadata->'provenance'->'thinkingSteps'` in
   place with a plpgsql function that applies the same rules the old readers
   applied, once:
@@ -931,7 +931,7 @@ separately. The exit criterion in the definition of done is the measured diff.
 - **Owns:** `lib/conversations/message-provenance.ts`,
   `features/chat/lib/server-message-mapper.ts`,
   `lib/conversations/agent-answer-metadata.ts` (`stopped`),
-  `drizzle/0097_herleitung_steps_v2{,.down}.sql`,
+  `migrations/0097_herleitung_steps_v2{,.down}.sql`,
   `lib/events/conversation-frames.ts`,
   `app/api/conversations/[id]/{frames,live}/route.ts`,
   `docs/api/websocket-protocol.md` (rewritten from this doc),
@@ -972,7 +972,7 @@ outside the slices.
    negative. The PR carries a **deletion ledger** per slice: file → lines
    removed → what replaced it.
 2. `task verify:fast` is green **on `nvidia-nat*==1.9.0`**. That covers Python
-   lint (including the `nat.plugin_api` ban), type checks and tests, `fe:types`,
+   lint (including the `nat.plugin_api` ban), type checks and tests, `workspace:types`,
    eslint, vitest, and repo-lint including the `card-schemas` and
    `wire-schemas` hooks.
 3. The wire contract tests are green on both sides, and the golden replay

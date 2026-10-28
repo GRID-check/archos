@@ -3,7 +3,7 @@
 Piloti is the workspace for architects: a planning office runs its work in it, every project and
 every process, and Piloti, the agent, is a colleague in that office. Building law is one capability
 among many. [`VISION.md`](VISION.md) says what the product is; read it before you describe Piloti
-anywhere. The code: a Next.js UI and BFF (`frontends/ui`), a Python agent on the NeMo Agent Toolkit
+anywhere. The code: a Next.js UI and BFF (`apps/workspace`), a Python agent on the NeMo Agent Toolkit
 (`src/aiq_agent`), and the knowledge layer that reads the office's documents and the legal corpus
 (`packages/knowledge-layer`).
 
@@ -135,7 +135,7 @@ asked for it in this session:
 
 | Run it freely | Ask first |
 |---|---|
-| `task fe:provision:authz` and its siblings, which check | the same task with `-- --apply`, which writes the catalog into WorkOS (every deploy also runs it, as the Job `grid-app-authz-catalog`) |
+| `task workspace:provision:authz` and its siblings, which check | the same task with `-- --apply`, which writes the catalog into WorkOS (every deploy also runs it, as the Job `grid-app-authz-catalog`) |
 | `npm run preview` in `deploy/pulumi` | `npm run up`, which mutates the cluster, and `npm run destroy`, which deletes it |
 | writing a migration file | `bun run db:migrate` or `migrate:storage` against a database you did not create |
 | `task prompts:push`, which checks | the same task with `-- --apply`, which publishes the platform prompt to Langfuse |
@@ -168,8 +168,8 @@ ones that will fail your PR.
 | When you | You must | What fails you |
 |---|---|---|
 | Write a commit, or open **or rename** a PR | Conventional Commits — `feat` `fix` `docs` `refactor` `perf` `test` `ci` `build` `chore` `revert`. The **PR title** most of all: the repo squash-merges it, so the title is the commit that lands on `develop`. [`CONTRIBUTING.md`](CONTRIBUTING.md#commits-and-pr-titles) | The **Conventional PR title** job blocks the PR. A prose title is the one that keeps slipping through, because nothing local checks it |
-| Add or change something a person can do (a route, a button, a setting) | Give it an operation in `frontends/ui/src/lib/agent-api/catalog/` in the same change, or a reason in `NOT_AN_AGENT_CAPABILITY`. Headless first: the operation is the capability, the UI one client of it. Who sees it (an outside agent, Piloti, a native tool of Piloti's instead, the platform door, or nobody: `withheld`, with category and reason) is its entry in `frontends/ui/src/lib/agent-api/exposure.config.ts`, the one file that decides it. [`docs/contributing/headless-first.md`](docs/contributing/headless-first.md) | `agent-reachability.spec.ts`; the config does not compile without the entry, and `exposure.config.spec.ts` fails a missing reason or a stale `exposure.json` |
-| Name anything in code: a file, folder, identifier, type, enum token, test id, route, API or schema field | **English only, no exceptions for domain words.** `profile-review.ts`, never `steckbrief.ts`; `buildingClass`, never `gebaeudeklasse`. German lives in the i18n dictionaries and in domain data (document names, addresses, legal citations), nowhere else. A German name you meet is a rename in your change; a persisted German key (a profile key such as `standort_adresse`, a stored JSON field) is renamed with its migration and the agent's side in the same change, never by adding a second name beside it German domain term to English code name: [`docs/glossary.md`](docs/glossary.md#german-domain-term-english-code-name) | `tests/test_english_names.py` (Python) and `frontends/ui/src/english-names.spec.ts` (UI), a per-file ratchet on identifiers with German stems (`ci/german_stems.json`); review for file names, routes and string tokens |
+| Add or change something a person can do (a route, a button, a setting) | Give it an operation in `apps/workspace/bff/agent-api/catalog/` in the same change, or a reason in `NOT_AN_AGENT_CAPABILITY`. Headless first: the operation is the capability, the UI one client of it. Who sees it (an outside agent, Piloti, a native tool of Piloti's instead, the platform door, or nobody: `withheld`, with category and reason) is its entry in `apps/workspace/bff/agent-api/exposure.config.ts`, the one file that decides it. [`docs/contributing/headless-first.md`](docs/contributing/headless-first.md) | `agent-reachability.spec.ts`; the config does not compile without the entry, and `exposure.config.spec.ts` fails a missing reason or a stale `exposure.json` |
+| Name anything in code: a file, folder, identifier, type, enum token, test id, route, API or schema field | **English only, no exceptions for domain words.** `profile-review.ts`, never `steckbrief.ts`; `buildingClass`, never `gebaeudeklasse`. German lives in the i18n dictionaries and in domain data (document names, addresses, legal citations), nowhere else. A German name you meet is a rename in your change; a persisted German key (a profile key such as `standort_adresse`, a stored JSON field) is renamed with its migration and the agent's side in the same change, never by adding a second name beside it German domain term to English code name: [`docs/glossary.md`](docs/glossary.md#german-domain-term-english-code-name) | `tests/test_english_names.py` (Python) and `apps/workspace/tests/english-names.spec.ts` (UI), a per-file ratchet on identifiers with German stems (`ci/german_stems.json`); review for file names, routes and string tokens |
 | Name anything in code or infrastructure | **No product name**: no `aiq`, `grid` or `piloti` in an identifier, file, folder, environment variable, route, header, table, event or tool name. Name it for what it does; the product's name is copy, read from one place. [`code-conventions.md`](docs/contributing/code-conventions.md#no-brand-names) | The `brand-names` hook (`scripts/check_brand_names.py` against `ci/brand_names_baseline.json`) in `task lint:repo` and CI's **Repo checks** job |
 | Write a file or a function | A source file (Python, TypeScript or JavaScript) stays at or under 600 lines and a Python function at or under 60; one already over may not grow, and when it shrinks you lower its entry with `--update`. Generated files, tests, fixtures, migrations and copy are exempt. [`code-conventions.md`](docs/contributing/code-conventions.md#size-limits) | The `file-size` hook (`scripts/check_file_size.py` against `ci/size_baseline.json`) in `task lint:repo` and CI's **Repo checks** job |
 | Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `tests/aiq_agent/test_product_framing.py` (agent prompts), `apps/site/scripts/lint-claims.mjs` (the site); review elsewhere |
@@ -187,7 +187,7 @@ ones that will fail your PR.
 `task verify` is the local gate: host-native, defined once in `Taskfile.yml`. CI
 calls the same definitions but schedules them differently, so a local pass is
 strong evidence rather than a guarantee. `task verify:fast` skips two production
-builds, `fe:build` and `site:build`.
+builds, `workspace:build` and `site:build`.
 
 Three gates sit outside `task verify` and are still required: `task db:test:rls`
 whenever you touch the tenant boundary, `task be:test:postgres` whenever you touch
@@ -201,10 +201,10 @@ for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 **One coarse `SourceKind` drives all rendering** (`building_law | office |
 project | web | measurement`), defined in `src/aiq_agent/common/source_kinds.py`.
 The UI's `SOURCE_KINDS` and `SHELVES` are generated from it into
-`frontends/ui/src/shared/vocabularies.generated.ts` by
+`apps/workspace/shared/vocabularies.generated.ts` by
 `scripts/generate_vocabularies.py` (the `vocabularies` pre-commit hook), so a
 kind added in Python reaches the chip without a second edit;
-`frontends/ui/src/lib/source-kinds.ts` holds what the UI makes of each kind. The
+`apps/workspace/bff/source-kinds.ts` holds what the UI makes of each kind. The
 fine `norm_registry` lanes are a sub-label within a kind, and the lane→kind table
 is still a mirror, held by `test_collection_scope_parity.py`. `doc_class` is
 human-set and beats every filename guess.
@@ -225,7 +225,7 @@ twice. [`docs/adr/0055-api-first-workspace-primitives.md`](docs/adr/0055-api-fir
 **The agent door offers what only Piloti has** (ADR-0122 and its amendment). One
 MCP server at `/api/mcp` is the agent surface; Claude, Cursor and Piloti itself
 are clients of it, and the UI is another. Each tool is an operation in
-`frontends/ui/src/lib/agent-api/catalog/` that names a route the UI already
+`apps/workspace/bff/agent-api/catalog/` that names a route the UI already
 calls; the route stays the gate, so authz, rate limit and body schema apply
 unchanged. Writes need the person's yes. The door offers the office's workspace
 (its data and the actions on it), Piloti's domain knowledge (the legal corpus,

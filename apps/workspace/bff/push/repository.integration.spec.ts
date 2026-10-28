@@ -5,7 +5,7 @@
  * the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/push/repository.integration.spec.ts
+ *     npx vitest run bff/push/repository.integration.spec.ts
  *
  * The unit specs use an in-memory table; these prove the SQL the privacy claims
  * rest on: another organization cannot read, remove or refresh a device; an

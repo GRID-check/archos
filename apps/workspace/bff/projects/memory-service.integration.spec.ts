@@ -21,7 +21,7 @@
  * a near-identical vector, not how one is produced.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/projects/memory-service.integration.spec.ts
+ *     npx vitest run bff/projects/memory-service.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs
  * this file alongside the isolation and BIM suites.

@@ -8,7 +8,7 @@ parts.
 
 ## The data, and the rules the database holds
 
-Migration `frontends/ui/drizzle/0138_document_annotations.sql` creates two
+Migration `apps/workspace/migrations/0138_document_annotations.sql` creates two
 tables, both under `secure_table` RLS.
 
 | Table | Holds | RLS predicate |
@@ -127,7 +127,7 @@ the shelf's `?doc=` sync and the pane already answer.
 
 ## The service and its API
 
-`frontends/ui/src/lib/annotations/`:
+`apps/workspace/bff/annotations/`:
 
 | File | Owns |
 |---|---|
@@ -771,7 +771,7 @@ The CHECKs of migration 0138 hold on every path, unchanged:
 - `piloti_needs_a_person`: Piloti's open or resolved mark carries `accepted_by`, the asker, because the person stood behind it by asking.
 - `closing_complete`: closing goes through `transition()`, which sets `closed_by`/`closed_at` to the asker and clears them on reopening.
 
-`frontends/ui/src/app/api/internal/document-annotations/route.spec.ts` runs the
+`apps/workspace/app/api/internal/document-annotations/route.spec.ts` runs the
 real service over a fake repository and checks every row it leaves against
 these predicates; `repository.integration.spec.ts` sets a born-open mark in
 real PostgreSQL and finds the CHECK still refusing one with nobody behind it.
@@ -880,7 +880,7 @@ back) has no trace, so it is on its row and in the audit trail as
 every end, however it came, is one `piloti.wake.ended`: the turn's, or the
 job's when it was refused or gave up before a turn answered, with the class of
 its reason (`reasonKind`, the inbox's `variant` below)
-(`frontends/ui/src/lib/annotations/wake-audit.ts`).
+(`apps/workspace/bff/annotations/wake-audit.ts`).
 
 **With the switch off** the reply answers `wake: 'off'`, whichever rule met it
 (an @Piloti, or an answer to Piloti's own open Rückfrage with no @Piloti at
@@ -912,8 +912,8 @@ Every transition of a wake (started, ended, held at claim) tells the room
 A woken turn has an end (ADR-0106, amended by ADR-0109). When the turn's
 terminal is written, the chat socket posts its outcome once to
 `POST /api/internal/turns/outcome`
-(`frontends/ui/src/app/api/internal/turns/outcome/route.ts`). The BFF maps it to
-the wake's final word (`wakeEndOf` in `frontends/ui/src/lib/turns/outcome.ts`):
+(`apps/workspace/app/api/internal/turns/outcome/route.ts`). The BFF maps it to
+the wake's final word (`wakeEndOf` in `apps/workspace/bff/turns/outcome.ts`):
 
 - `answered` and `handed_off`: the wake is `answered`.
 - `stopped` (the turn was cancelled): the wake is `stopped`.
@@ -936,7 +936,7 @@ turn that errors at once can report before the job has marked it started.
 
 Taking a mark back from Piloti, or resolving, dismissing or deleting the mark,
 is a person's change, and it ends what the delegation started
-(`frontends/ui/src/lib/annotations/take-back.ts`, in the change's own
+(`apps/workspace/bff/annotations/take-back.ts`, in the change's own
 transaction):
 
 - A wake still `queued` is settled `suppressed`, with the reason `taken back`,
@@ -945,7 +945,7 @@ transaction):
   no turn.
 - A wake that started gets a `piloti_wake_stop` job, queued in the same
   transaction, so a crash after the commit loses no stop. The job
-  (`frontends/ui/src/lib/annotations/wake-stop-job.ts`) cancels the turn on the
+  (`apps/workspace/bff/annotations/wake-stop-job.ts`) cancels the turn on the
   chat socket, as the person in the thread. The turn ends `cancelled` and
   reports `stopped` itself, so the job never writes the wake. A turn that is no
   longer running is a stop already done.
@@ -967,9 +967,9 @@ the person who asked.
 
 ### What the person hears
 
-The inbox hears through `frontends/ui/src/lib/annotations/attention.ts` (ADR-0035).
+The inbox hears through `apps/workspace/bff/annotations/attention.ts` (ADR-0035).
 An item about a mark opens the Prüfansicht at that mark (`markId` in
-`frontends/ui/src/lib/sharing/registry.ts`):
+`apps/workspace/bff/sharing/registry.ts`):
 
 | Item | When | For | Actionable |
 |---|---|---|---|
@@ -1042,7 +1042,7 @@ person its turn acted for: on a wake, who woke it, who hears `piloti.work_done`
 instead. When Piloti follows up its own open Rückfrage, the Zuständige it asks
 has the `piloti.asks_you` row and no second one. Every recipient of a
 colleague's news must be able to open the document now, its folder included
-(`mayOpenDocument`, `frontends/ui/src/lib/documents/may-open.ts`), the rule
+(`mayOpenDocument`, `apps/workspace/bff/documents/may-open.ts`), the rule
 that decides who may be mentioned; who may be made Zuständige must also be
 able to write it (`mayWriteDocument`, above). A held upload (ADR-0086) opens
 and is written there only for its uploader and the people who may review its
@@ -1105,7 +1105,7 @@ reopening a dismissed proposal nobody stood behind, the moves that set
 (`assigned`) adds „Die Anmerkung liegt wieder bei Ihnen.“ Rows fold per mark
 and their payloads merge, so every row names its variant, and a replied-to
 mark is one counted row however busy its thread is (`titleRelatedMany` in
-`frontends/ui/src/lib/inbox/item-copy.ts`). Piloti's own rows wear its glyph,
+`apps/workspace/bff/inbox/item-copy.ts`). Piloti's own rows wear its glyph,
 drawn as a line like every other row's; a row a person caused wears that
 person's face with the type's glyph in its corner.
 
@@ -1166,7 +1166,7 @@ when its review opens (`marksSet: true` on the same route), not with the mark
 they link to.
 
 A failure says why. `onWakeEnded` classes the wake's stored reason with
-`wakeEndReasonKind` (`frontends/ui/src/lib/annotations/wake-end-reason.ts`) and
+`wakeEndReasonKind` (`apps/workspace/bff/annotations/wake-end-reason.ts`) and
 stores the class as the item's `variant`; the row reads
 `pilotiWorkFailed.variants.<class>.body`, never the stored reason, which is
 English and meant for the audit trail:
@@ -1323,8 +1323,8 @@ an answer older than the record. Its actions:
    card reads its turn's rows from `GET /api/conversations/[id]/messages/[messageId]/changes`,
    and the button calls `POST /api/piloti-changes/[id]/undo`. The undo is a
    compare-and-swap run as the person who clicks, through the annotations
-   service's own rules (`frontends/ui/src/lib/changes/service.ts`, the inverse
-   in `frontends/ui/src/lib/changes/undo.ts`). It runs only while the mark is
+   service's own rules (`apps/workspace/bff/changes/service.ts`, the inverse
+   in `apps/workspace/bff/changes/undo.ts`). It runs only while the mark is
    still as Piloti left it, so a colleague's later move is never undone: the
    answer is `409 moved-on`, and the card says where the mark stands. Undoing a
    change that is already undone answers `409 already-undone` and shows who did
@@ -1342,13 +1342,13 @@ an answer older than the record. Its actions:
    changes, and undo there still replays that copy after reading the mark again.
 
    Each decision on Piloti's work also posts one `piloti-decision` score on the
-   trace of the turn that produced it (`frontends/ui/src/lib/langfuse/decision-score.ts`;
+   trace of the turn that produced it (`apps/workspace/bff/langfuse/decision-score.ts`;
    the catalogue is in [`langfuse.md`](../observability/langfuse.md)): a proposed
    mark taken over (`accepted`) or dismissed (`dismissed`), and an applied change
    undone (`undone`). The score says what was decided, never by whom; the
    audit trail says who: who undid it (`piloti.change.undone`), and who took
    over or dismissed a proposed mark (`piloti.mark.decided`,
-   `frontends/ui/src/lib/annotations/mark-audit.ts`, one per mark, the live
+   `apps/workspace/bff/annotations/mark-audit.ts`, one per mark, the live
    card's batch included, since it sends the same PATCH per mark).
 
 ## The Protokoll: Anmerkungen as a file
@@ -1358,7 +1358,7 @@ client or a consultant. „Protokoll exportieren" in the Prüfansicht's header
 (`features/documents/components/review/review-export-menu.tsx`) downloads one.
 
 `GET /api/documents/[id]/annotations/export?format=pdf|docx|md&scope=open|all&revision=current|all&includeProposals=1`
-(`frontends/ui/src/lib/annotations/export.ts`; the query and the link in
+(`apps/workspace/bff/annotations/export.ts`; the query and the link in
 `export-request.ts`, shared by the route and the menu). The defaults are a PDF
 of the open marks.
 
@@ -1566,4 +1566,4 @@ it, and the project is not closed (`protocolFiling`, `file-preview-pane.tsx`).
 - Over the chat, a canvas question whose server reads no box is not told so (`onDegraded` is the stand-alone canvas client's).
 - The Python side posts to internal routes through several near-identical helpers.
 - A change Piloti makes and its note are two writes in one request, not one transaction (`updateAnnotationForAsker`). Every refusal the service can foresee (rights, a stale status, a full thread) comes before the change; a database failure between the two writes would still leave the change without its note.
-- The change record is a third write, after the annotations service has committed the change and its note (`recordPilotiChanges`, `frontends/ui/src/lib/changes/service.ts`). The service offers no hook into its transaction, and a failed record is logged, not thrown: the change then lands without a row, so the card cannot undo it from the record.
+- The change record is a third write, after the annotations service has committed the change and its note (`recordPilotiChanges`, `apps/workspace/bff/changes/service.ts`). The service offers no hook into its transaction, and a failed record is logged, not thrown: the change then lands without a row, so the card cannot undo it from the record.

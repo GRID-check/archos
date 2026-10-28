@@ -18,7 +18,7 @@
  * the fixture is regenerated, so the eval never measures a door production no
  * longer has:
  *
- *   UPDATE_FIXTURES=1 npx vitest run src/app/api/mcp/workspace-eval.fixture.spec.ts
+ *   UPDATE_FIXTURES=1 npx vitest run app/api/mcp/workspace-eval.fixture.spec.ts
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -124,7 +124,7 @@ function render(): string {
   const search = Object.fromEntries(SEARCH_QUERIES.map((query) => [query, searchNames(query)]))
   const fixture = {
     comment:
-      'Written by src/app/api/mcp/workspace-eval.fixture.spec.ts from the real catalog; served by ' +
+      'Written by app/api/mcp/workspace-eval.fixture.spec.ts from the real catalog; served by ' +
       'scripts/turn_census/fixture_workspace.py. Regenerate with UPDATE_FIXTURES=1.',
     limit: LIMIT,
     operations,

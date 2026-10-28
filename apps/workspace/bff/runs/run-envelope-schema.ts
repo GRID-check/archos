@@ -17,7 +17,7 @@ export function runEnvelopeJsonSchema(): JsonSchemaNode {
   return jsonSchemaDocument(RUN_ENVELOPE_WIRE_SCHEMAS, {
     title: 'Grid run envelope wire contract',
     description:
-      'Generated from frontends/ui/src/lib/runs/run-envelope-types.ts. Do not edit by hand: ' +
+      'Generated from apps/workspace/bff/runs/run-envelope-types.ts. Do not edit by hand: ' +
       'run-envelope-schema.spec.ts rewrites this file and fails when it is stale.',
   })
 }

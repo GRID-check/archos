@@ -4,7 +4,7 @@
  * „Ausmisten" against a REAL Postgres (ADR-0092), through the restricted role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/projects/cleanup.integration.spec.ts
+ *     npx vitest run bff/projects/cleanup.integration.spec.ts
  *
  * What the database must show: a confirmed document lands in a subfolder of its
  * OWN folder that inherits its access (so its readers and its retrieval

@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -13,15 +13,14 @@
  * announces its writes, or with why they change nothing a shelf listing shows.
  */
 
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { srcEntries, srcPath } from '@/test-utils/source-tree'
 
-const SRC = new URL('../../', import.meta.url)
-
-const modules = readdirSync(SRC, { recursive: true, encoding: 'utf8' })
+const modules = srcEntries()
   .filter((entry) => /\.tsx?$/.test(entry) && !/\.(spec|test)\.tsx?$/.test(entry))
   .filter((entry) => !entry.includes('test-utils') && !entry.startsWith('app/dev'))
-  .map((entry) => ({ path: entry.split('\\').join('/'), code: readFileSync(new URL(entry, SRC), 'utf8') }))
+  .map((entry) => ({ path: entry.split('\\').join('/'), code: readFileSync(srcPath(entry), 'utf8') }))
   // The repository is one module, `repository.ts` and the `repository/` folder it
   // delegates to: read as one unit, so the check asks what it asked of the file.
   .reduce<{ path: string; code: string }[]>((units, module) => {

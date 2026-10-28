@@ -533,7 +533,7 @@ async def _surface_named(
     ]
 
 
-#: The operation a browse asks: the search page's own (``frontends/ui/src/lib/agent-api/catalog/documents.ts``).
+#: The operation a browse asks: the search page's own (``apps/workspace/bff/agent-api/catalog/documents.ts``).
 WORKSPACE_SEARCH_OPERATION = "workspace-search"
 #: Hits asked per shelf: room for the kind filter below to keep ``max_files`` of one kind.
 _WORKSPACE_SEARCH_LIMIT = 10

@@ -1,4 +1,4 @@
-// @disk-inputs: src/lib/api/api-error.ts, src/lib/api/errors.ts
+// @disk-inputs: bff/api/api-error.ts, bff/api/errors.ts
 /**
  * @vitest-environment node
  */

@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * @vitest-environment node
  */
@@ -59,6 +59,7 @@ import { describe, expect, it } from 'vitest'
 import { AUDIT_ACTIONS, AUDIT_SCHEMAS, RETIRED_AUDIT_ACTIONS } from './schemas.mjs'
 import { AUTHORED_REF_KINDS } from '@/lib/documents/document-authors'
 import { DOCUMENT_VERSION_TRANSITIONS } from '@/lib/documents/lifecycle-types'
+import { SOURCE_DIRS } from '@/test-utils/source-tree'
 
 /** `src/`, from this file's own location rather than from the process cwd. */
 const SOURCE_ROOT = fileURLToPath(new URL('../..', import.meta.url))
@@ -103,7 +104,7 @@ const EMITTED_ACTIONS: ReadonlySet<string> = new Set([
    * transition with an unregistered action still fails, on the line above.
    */
   ...DOCUMENT_VERSION_TRANSITIONS.map((row) => row.auditAction),
-  ...sourceFiles(SOURCE_ROOT)
+  ...SOURCE_DIRS.flatMap((dir) => sourceFiles(join(SOURCE_ROOT, dir)))
     .map((path) => readFileSync(path, 'utf8'))
     .filter((text) => text.includes('recordAuditEvent'))
     .flatMap((text) =>

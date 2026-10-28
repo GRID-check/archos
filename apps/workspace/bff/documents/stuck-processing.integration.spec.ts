@@ -13,7 +13,7 @@
  *     its CHECK and its partial index).
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/documents/stuck-processing.integration.spec.ts
+ *     npx vitest run bff/documents/stuck-processing.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
  */

@@ -1,12 +1,12 @@
-// @disk-inputs: drizzle/**
+// @disk-inputs: migrations/**
 /**
  * @vitest-environment node
  */
 /**
- * `drizzle/meta/_journal.json` is the list `drizzle-kit migrate` actually
+ * `migrations/meta/_journal.json` is the list `drizzle-kit migrate` actually
  * executes — the `.sql` files on disk are inert without an entry pointing at
  * them. That asymmetry is silent in every check we run: the migration is in the
- * diff, review sees it, `fe:build` and `fe:test` pass, and the deploy's migrate
+ * diff, review sees it, `workspace:build` and `workspace:test` pass, and the deploy's migrate
  * step reports success having skipped the file entirely. The table simply never
  * exists, and the first symptom is a 500 from the route that queries it
  * (issue #283: `relation "platform_retrieval_settings" does not exist`, from a
@@ -21,7 +21,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const DRIZZLE_DIR = path.resolve(__dirname, '../../drizzle')
+const DRIZZLE_DIR = path.resolve(__dirname, '../../migrations')
 
 interface JournalEntry {
   idx: number

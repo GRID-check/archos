@@ -5,7 +5,7 @@
  * (ADR-0086, migrations 0109 and 0110), through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/upload-batches/upload-batches.integration.spec.ts
+ *     npx vitest run bff/upload-batches/upload-batches.integration.spec.ts
  *
  * The unit specs mock the repository; these prove the SQL the claims rest on:
  * a batch completes only once it is sealed and nothing of it is in flight, it

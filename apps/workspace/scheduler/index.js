@@ -57,7 +57,7 @@
  * There is no deployment-wide schedules gate. Every due definition is claimed
  * and handed to the BFF, which checks the organization's `skills` WorkOS flag
  * and records a `skipped` run when it is off (`fireScheduledJob`,
- * `src/lib/jobs/service.ts`). That is the same per-organization answer the
+ * `bff/jobs/service.ts`). That is the same per-organization answer the
  * Automation section reads, so revoking an organization's flag pauses its
  * schedules without a deploy, and nothing here can disagree with it.
  */
@@ -93,7 +93,7 @@ const {
 
 const LOG = '[job-scheduler]'
 
-// Must match src/lib/internal-auth.ts INTERNAL_TOKEN_HEADER — the header the
+// Must match bff/internal-auth.ts INTERNAL_TOKEN_HEADER — the header the
 // `internalApiRoute` factory guarding /api/internal/skills/fire expects.
 const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
 const FIRE_TIMEOUT_MS = 30000

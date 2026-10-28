@@ -2,7 +2,7 @@
 /**
  * Writes tests/vitest-durations.json, the per-file times `duration-sequencer.ts`
  * shards by, from a vitest JSON report: `node scripts/record-vitest-durations.mjs <report.json>`.
- * `task fe:test:durations` runs the suite and this. Rounded to 10 ms to keep the
+ * `task workspace:test:durations` runs the suite and this. Rounded to 10 ms to keep the
  * file's churn down; the split needs proportions, not precision.
  */
 import { readFileSync, writeFileSync } from 'node:fs'

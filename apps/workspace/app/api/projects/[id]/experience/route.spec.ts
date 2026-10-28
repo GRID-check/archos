@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/api/projects/[id]/experience/route.ts
+// @disk-inputs: app/api/projects/[id]/experience/route.ts
 /**
  * @vitest-environment node
  */

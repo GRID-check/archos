@@ -12,7 +12,7 @@ Older, deeper material is still right and is linked rather than repeated:
 ADR-0076 (the queue), ADR-0117 (the page pipeline, proposed, not built).
 
 Short forms: **A** is `packages/knowledge-layer/src/llamaindex/adapter.py`, **S** is
-`frontends/ui/src/lib/documents/service.ts` as it stood before it was split (its `S:N` line references are from then; `dispatchDocument` is now in `document-dispatch.ts`, `dispatchIngest` in `ingest-dispatch.ts`), **D** is
+`apps/workspace/bff/documents/service.ts` as it stood before it was split (its `S:N` line references are from then; `dispatchDocument` is now in `document-dispatch.ts`, `dispatchIngest` in `ingest-dispatch.ts`), **D** is
 `apps/backend/src/aiq_api/jobs/ingest_dispatch.py`.
 
 ## 1. The whole thing on one page
@@ -167,7 +167,7 @@ What fails the file, and what only makes it poorer:
 A 429 or a timeout inside a vision call is retried in place (A:2274). A file whose
 read failed for a passing reason (`transient`: an interruption, a timeout, a download
 or provider error) is sent back by the background-work sweep
-(`frontends/ui/src/lib/documents/transient-retry.ts`): at `bulk` priority, at most
+(`apps/workspace/bff/documents/transient-retry.ts`): at `bulk` priority, at most
 three attempts in all, 5 minutes after the first failure and doubling, and only for a
 failure of the last 24 hours, so a deploy never re-reads an old backlog. Every other
 failure waits for a person or the `reingest_failed` job.
@@ -328,4 +328,4 @@ order, so B's document waits for one document of A's to finish before it starts.
 | What did it cost? | `llm_usage_events` where `activity = 'ingest'` and the job id |
 | Who decides the order of jobs? | `aiq_agent.knowledge.ingest_queue.claim_next`, ADR-0076 and ADR-0079 |
 | Where is the vision prompt? | `visual_analysis.build_prompt` over `visual_domains` |
-| What runs after a document settles? | `frontends/ui/src/lib/upload-batches/settle.ts` (`onDocumentsSettled`) |
+| What runs after a document settles? | `apps/workspace/bff/upload-batches/settle.ts` (`onDocumentsSettled`) |

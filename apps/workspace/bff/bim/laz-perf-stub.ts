@@ -18,7 +18,7 @@
  */
 
 const MESSAGE =
-  'laz-perf is stubbed out in this build (see src/lib/bim/laz-perf-stub.ts). ' +
+  'laz-perf is stubbed out in this build (see bff/bim/laz-perf-stub.ts). ' +
   'Grid does not decode LAZ point clouds; remove the alias in next.config.ts to enable them.'
 
 function unavailable(): never {

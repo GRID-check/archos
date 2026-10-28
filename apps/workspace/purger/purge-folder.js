@@ -4,7 +4,7 @@
  * its grace period (`FOLDER_PURGE_GRACE_DAYS`) is over.
  *
  * Like a chat's erasure, the steps live in the BFF (`purgeBinnedFolder`,
- * `src/lib/projects/folder-bin.ts`): each document goes by the document
+ * `bff/projects/folder-bin.ts`): each document goes by the document
  * delete's own steps (chunks, every version's objects, renditions, thumbnails,
  * grants, the row), what was derived from the folder is marked, and removed
  * when the organization's setting asks („Mit dem Ordner entfernen“), and the folders are
@@ -28,7 +28,7 @@ const { PERMANENT_FAILURE_CODE } = require('./purge-conversation')
 /** @typedef {import('./types').QueueEntry} QueueEntry */
 /** @typedef {import('./types').PurgeDeps} PurgeDeps */
 
-// Must match src/lib/internal-auth.ts INTERNAL_TOKEN_HEADER.
+// Must match bff/internal-auth.ts INTERNAL_TOKEN_HEADER.
 const INTERNAL_TOKEN_HEADER = 'x-grid-internal-token'
 
 // Under the 15-minute stale-claim window (`purger/db.js`). A large folder is

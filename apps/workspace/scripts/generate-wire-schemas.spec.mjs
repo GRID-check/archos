@@ -1,8 +1,8 @@
-// @disk-inputs: ../../contracts/wire/v2.schema.json, src/adapters/api/wire-v2.generated.ts
+// @disk-inputs: ../../contracts/wire/v2.schema.json, ui/adapters/api/wire-v2.generated.ts
 /**
  * The wire generator's unions, and the drift of what it wrote.
  *
- * `src/adapters/api/wire-v2.generated.ts` is generated from
+ * `ui/adapters/api/wire-v2.generated.ts` is generated from
  * `contracts/wire/v2.schema.json`, itself generated from `wire_v2.py`. A stale
  * generated module type-checks perfectly, so the last test here is the gate:
  * the module in the repo must be the module this generator emits.

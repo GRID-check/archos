@@ -4,7 +4,7 @@
  *
  * WorkOS validates every emitted event against the schema registered for its
  * action, and rejects the event outright when there is none. The registry
- * (`src/lib/audit/schemas.mjs`) is the single source of truth this script
+ * (`bff/audit/schemas.mjs`) is the single source of truth this script
  * applies: the app derives `AUDIT_ACTIONS` from the same keys, so the code and
  * the identity provider cannot drift apart the way they did for the nine
  * actions behind issues #255/#256.
@@ -34,7 +34,7 @@
 
 import { NotFoundException, WorkOS } from '@workos-inc/node'
 
-import { AUDIT_SCHEMAS } from '../src/lib/audit/schemas.mjs'
+import { AUDIT_SCHEMAS } from '../bff/audit/schemas.mjs'
 
 const apply = process.argv.includes('--apply')
 const apiKey = process.env.WORKOS_API_KEY

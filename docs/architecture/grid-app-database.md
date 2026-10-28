@@ -30,9 +30,9 @@ The BFF connects via **Drizzle ORM** with the **`postgres` driver**.
 - **Role:** `app_rw` — DML only, no DDL, and **subject to row-level
   security** (ADR-0041). Migrations use the owner credential in
   `APP_MIGRATION_DATABASE_URL` instead.
-- **Client file:** `frontends/ui/src/lib/db/index.ts`
+- **Client file:** `apps/workspace/bff/db/index.ts`
 
-> **Every query carries a tenant.** `frontends/ui/src/lib/db/index.ts` wraps the
+> **Every query carries a tenant.** `apps/workspace/bff/db/index.ts` wraps the
 > postgres-js client so each statement runs with `grid.organization_id` set from
 > the caller's context, and Postgres policies filter rows to that organization.
 > A query that loses its `organization_id` filter returns nothing rather than
@@ -67,14 +67,14 @@ Use `closeDb()` to close the connection in tests or during graceful shutdown.
 
 ## Schema management
 
-Schemas live in `frontends/ui/src/lib/db/schema/` as TypeScript files using Drizzle's PostgreSQL column builders. They are exported from `frontends/ui/src/lib/db/schema/index.ts`.
+Schemas live in `apps/workspace/bff/db/schema/` as TypeScript files using Drizzle's PostgreSQL column builders. They are exported from `apps/workspace/bff/db/schema/index.ts`.
 
-Drizzle Kit is configured in `frontends/ui/drizzle.config.ts`:
+Drizzle Kit is configured in `apps/workspace/migrations.config.ts`:
 
 ```typescript
 export default defineConfig({
   schema: "./src/lib/db/schema/*.ts",
-  out: "./drizzle",
+  out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
     // The OWNER credential (ADR-0041). `APP_DATABASE_URL` is the runtime
@@ -89,12 +89,12 @@ export default defineConfig({
 
 ### Adding a new table
 
-1. Create or extend a file under `frontends/ui/src/lib/db/schema/`.
-2. Export the table from `frontends/ui/src/lib/db/schema/index.ts`.
+1. Create or extend a file under `apps/workspace/bff/db/schema/`.
+2. Export the table from `apps/workspace/bff/db/schema/index.ts`.
 3. Generate a migration:
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 npm run db:generate   # or: npx drizzle-kit generate
 ```
 
@@ -106,7 +106,7 @@ npm run db:migrate    # or: npx drizzle-kit migrate
 
 ### Migration files
 
-Generated migrations are written to `frontends/ui/drizzle/` and committed to git.
+Generated migrations are written to `apps/workspace/migrations/` and committed to git.
 
 ---
 

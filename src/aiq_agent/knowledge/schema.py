@@ -213,7 +213,7 @@ class QuarantineReason(BaseModel):
     Serialised in one shape wherever it is dumped (the job status, the
     collection file list, the legacy ``quarantined:`` string): ``term`` and
     ``sample`` only when set, ``pages_truncated`` only when true. The BFF's
-    ``verdictSchema`` (``frontends/ui/src/lib/upload-screening/quarantine.ts``)
+    ``verdictSchema`` (``apps/workspace/bff/upload-screening/quarantine.ts``)
     reads exactly that, and ``tests/fixtures/quarantine_verdict_cases.json``
     holds the two to it.
     """

@@ -3,9 +3,9 @@
  * six.
  *
  * `docs/design/grid-card-charter.md` §A2 fixes the scale for
- * `src/features/grid-cards/**`: Eyebrow 10.5, Meta 11, Caption 12, Body 13.5,
+ * `ui/features/grid-cards/**`: Eyebrow 10.5, Meta 11, Caption 12, Body 13.5,
  * Title 14, Figure 15/20/24/30 — expressed as the `card-*` classes in
- * `src/app/globals.css`. The audit that produced the charter found THIRTEEN
+ * `app/globals.css`. The audit that produced the charter found THIRTEEN
  * distinct sizes in the folder, ten of them arbitrary values, with
  * `text-[12px]` next to `text-xs` and `text-[14px]` next to `text-sm`: the same
  * size written two ways, twice. Nothing was wrong with any single call site,

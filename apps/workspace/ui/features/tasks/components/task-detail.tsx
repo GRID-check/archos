@@ -19,7 +19,7 @@
  * It used to restate the card instead — a kind chip, a status chip, the goal,
  * the review reason and the error, all of which the card the reader had just
  * clicked already showed, in a second grammar assembled from `SheetTitle` and
- * `SectionLabel`. That is the lookalike `frontends/ui/AGENTS.md` forbids
+ * `SectionLabel`. That is the lookalike `apps/workspace/AGENTS.md` forbids
  * („show something a surface already shows → reuse the organism"), and it made
  * the bigger, more deliberate surface say strictly LESS about the run than the
  * row that opened it: the card at least carried the run line.

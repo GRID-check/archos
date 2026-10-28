@@ -9,7 +9,7 @@
  * exempt from row-level security.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/db/tenant-isolation.integration.spec.ts
+ *     npx vitest run bff/db/tenant-isolation.integration.spec.ts
  *
  * Setting up that database is `task db:test:rls` (see Taskfile.yml), which
  * builds a throwaway cluster, applies the migration chain and runs this file.

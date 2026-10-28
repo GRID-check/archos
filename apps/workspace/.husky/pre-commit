@@ -3,10 +3,10 @@
 echo "Running pre-commit checks..."
 
 # Run lint and type-check in parallel
-task -d "$(git rev-parse --show-toplevel)" fe:lint &
+task -d "$(git rev-parse --show-toplevel)" workspace:lint &
 LINT_PID=$!
 
-task -d "$(git rev-parse --show-toplevel)" fe:types &
+task -d "$(git rev-parse --show-toplevel)" workspace:types &
 TYPECHECK_PID=$!
 
 # Wait for both and capture exit codes

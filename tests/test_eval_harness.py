@@ -37,7 +37,7 @@ from aiq_agent.turn import payload  # noqa: E402
 ROW = {row["id"]: row for row in north_star_eval.load_questions()}["ns-drawn-box"]
 TOKEN = "eval-token"
 OFFICE = {"organizationId": "org-x", "userId": "user-x"}
-SCHEMA = json.loads((REPO_ROOT / "frontends/ui/tests/fixtures/proposals.schema.json").read_text(encoding="utf-8"))
+SCHEMA = json.loads((REPO_ROOT / "apps/workspace/tests/fixtures/proposals.schema.json").read_text(encoding="utf-8"))
 
 
 class TestTheDrawnBoxOnTheTurn:

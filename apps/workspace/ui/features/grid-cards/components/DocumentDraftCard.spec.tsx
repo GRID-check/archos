@@ -26,7 +26,7 @@
  * way here as it does in the Files grid (`documents/components/authorship-line`).
  *
  * Renders without an `I18nProvider`, so the dictionary falls back to `en`
- * (`src/i18n/context.tsx`) and the strings asserted below are the English ones.
+ * (`i18n/context.tsx`) and the strings asserted below are the English ones.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/**
+// @disk-inputs: app/**
 /**
  * Server components are transport, like route handlers — they may not query.
  *
@@ -29,9 +29,9 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
-import { PRE_EXISTING_DB_IMPORTERS } from '../../../eslint-rules/route-db-access-allowlist.mjs'
+import { PRE_EXISTING_DB_IMPORTERS } from '../../eslint-rules/route-db-access-allowlist.mjs'
 
-const APP_DIR = join(process.cwd(), 'src', 'app')
+const APP_DIR = join(process.cwd(), 'app')
 
 /**
  * Route handlers that still query directly, from before this was enforced.
@@ -45,7 +45,7 @@ const APP_DIR = join(process.cwd(), 'src', 'app')
  */
 const PRE_EXISTING_ROUTE_HANDLERS = PRE_EXISTING_DB_IMPORTERS
 
-/** Every `.ts`/`.tsx` file under `src/app`, recursively. */
+/** Every `.ts`/`.tsx` file under `app`, recursively. */
 function appFiles(dir = APP_DIR, found: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
@@ -56,7 +56,7 @@ function appFiles(dir = APP_DIR, found: string[] = []): string[] {
 }
 
 const relative = (file: string) =>
-  file.slice(join(process.cwd(), 'src').length + 1).replaceAll('\\', '/')
+  file.slice(process.cwd().length + 1).replaceAll('\\', '/')
 
 /**
  * Every module specifier a file imports VALUES from.

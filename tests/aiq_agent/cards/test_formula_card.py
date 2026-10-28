@@ -1,6 +1,6 @@
 """The formula card's contract (ADR-0143), and the fixture both sides compute from.
 
-The arithmetic and the bounds live in the browser (`frontends/ui/src/features/
+The arithmetic and the bounds live in the browser (`apps/workspace/ui/features/
 grid-cards/lib/formulas.ts`) and are tested there against `formula-cases.json`.
 This side holds what the model may put on the wire: every case's card is a
 valid card, the model names a case but never a number (no limit, no result, no
@@ -22,7 +22,7 @@ from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import formula_provenance_score
 
-FIXTURE_PATH = Path(__file__).resolve().parents[3] / "frontends/ui/src/features/grid-cards/lib/formula-cases.json"
+FIXTURE_PATH = Path(__file__).resolve().parents[3] / "apps/workspace/ui/features/grid-cards/lib/formula-cases.json"
 FIXTURE = json.loads(FIXTURE_PATH.read_text("utf-8"))
 
 

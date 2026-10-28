@@ -7,7 +7,7 @@
  * away from devices for as long as the header says.
  */
 import { describe, expect, test } from 'vitest'
-import { nextConfig } from '../../../next.config'
+import { nextConfig } from '../../next.config'
 
 describe('/sw.js headers', () => {
   test('is never cached, is scoped to the origin and is JavaScript', async () => {

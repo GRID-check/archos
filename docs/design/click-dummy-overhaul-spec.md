@@ -3,7 +3,7 @@
 **Status:** Accepted working spec (2026-07-17). Owner: product/frontend.
 **Sources:** the team's click dummy `Ask_Piloti_v6_standalone2.html` (external, not in
 repo — a self-contained React bundle; fully reverse-engineered for this spec),
-the current `frontends/ui` implementation, `docs/design/grid-design-language.md`,
+the current `apps/workspace` implementation, `docs/design/grid-design-language.md`,
 `docs/audit/feedback-backlog.md` (FB-2/4/6/8/9/10/11/12), `docs/audit/ux-system-audit.md`.
 
 **Scope guard:** the **Herleitung reasoning-trace** (chain-of-thought UI, §7) is
@@ -348,7 +348,7 @@ deep-research DAG (graph lib) that must not drop ResearchPanel capabilities
 1. Product name/wordmark: DECIDED (2026-07-17): user-facing brand is
    **Piloti**; internal/platform name stays GRID (env vars, headers, CSS
    variables, storage keys, DB identifiers, repo/product-platform name are
-   untouched). Single source of truth: `frontends/ui/src/lib/brand.ts`.
+   untouched). Single source of truth: `apps/workspace/bff/brand.ts`.
 2. `sourceColors`: spec says keep (§1) — confirm with design.
 3. Sharing model for chats ("Privater Workspace") — undesigned.
 4. Insights telemetry: which aggregates are acceptable org-policy-wise?

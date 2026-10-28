@@ -8,8 +8,8 @@ the envelope's CONVERSATION subject) and applies the rules a person's own
 session would (ADR-0054 §4, ADR-0055). Echo, never sign: see
 ``src/aiq_agent/tools/AGENTS.md``.
 
-The Anmerkungen bodies are described once, in zod (``frontends/ui/src/lib/annotations/types.ts``),
-and exported as JSON Schema (``frontends/ui/tests/fixtures/document-annotations.schema.json``);
+The Anmerkungen bodies are described once, in zod (``apps/workspace/bff/annotations/types.ts``),
+and exported as JSON Schema (``apps/workspace/tests/fixtures/document-annotations.schema.json``);
 ``tests/aiq_agent/tools/canvas/test_wire_contract.py`` validates the bodies these
 tools build against that file. There is no Pydantic twin. The room ops
 (``room``, ``point``, ``highlight``, ``leave``) ride the same route and the same

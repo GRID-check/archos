@@ -8,7 +8,7 @@
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 /* GRID design tokens — shadcn vars + legacy semantic vars (see tokens.css). */
-@import '../styles/tokens.css';
+@import '../ui/styles/tokens.css';
 @import 'tw-animate-css';
 
 /* KaTeX math typesetting (rehype-katex output in MarkdownRenderer). Kept
@@ -47,7 +47,7 @@
    `phone` is the third question: "is this a phone-sized screen?" (below `sm`,
    or a phone on its side). The Dialog is a bottom sheet under it.
 
-   The same three queries are exported from `src/hooks/use-is-mobile.ts` for the
+   The same three queries are exported from `ui/hooks/use-is-mobile.ts` for the
    decisions CSS cannot make, and `breakpoints.spec.ts` holds the two copies to
    one string. Change them together. Which axis answers which question:
    docs/design/grid-design-language.md, "Breakpoints". */
@@ -640,7 +640,7 @@ body {
 /* =============================================================================
    The card type ramp — `docs/design/grid-card-charter.md` §A2
 
-   Six steps and one figure, for `src/features/grid-cards/**`. The audit that
+   Six steps and one figure, for `ui/features/grid-cards/**`. The audit that
    produced the charter counted THIRTEEN distinct sizes across the card set,
    ten of them arbitrary values, with `text-[12px]` sitting beside `text-xs`
    and `text-[14px]` beside `text-sm` — the same size written two ways. That

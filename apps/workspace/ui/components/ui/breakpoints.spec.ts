@@ -1,4 +1,4 @@
-// @disk-inputs: src/**
+// @disk-inputs: app/**, bff/**, i18n/**, shared/**, types/**, ui/**, utils/**
 /**
  * A phone on its side is still a phone: `md:` and `useIsMobile()` agree, and
  * both say so.
@@ -24,10 +24,10 @@ import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
 
 import { MOBILE_LAYOUT_QUERY, PHONE_ON_ITS_SIDE_QUERY, PHONE_QUERY } from '@/hooks/use-is-mobile'
+import { SOURCE_DIRS, srcKey, srcJoin } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..', '..')
-const UI_ROOT = join(SRC, '..')
-const GLOBALS = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+const UI_ROOT = process.cwd()
+const GLOBALS = readFileSync(srcJoin('app', 'globals.css'), 'utf8')
 
 /** The body of `@custom-variant <name> { … }`, braces balanced. */
 function customVariant(name: string): string {
@@ -115,7 +115,7 @@ describe('no breakpoint is written by hand into JavaScript', () => {
     // A `(max-width: 767px)` in a matchMedia forgets the phone on its side, and
     // disagrees with every `md:` class on the same screen.
     const RAW_MD = /\((?:max|min)-width:\s*(?:767|768)(?:\.\d+)?px\)|\(width\s*[<>]=?\s*48rem\)/
-    const offenders = walk(SRC)
+    const offenders = SOURCE_DIRS.flatMap((dir) => walk(join(process.cwd(), dir)))
       .filter((file) => !file.endsWith(join('hooks', 'use-is-mobile.ts')))
       // An `<img sizes>` names widths for the image picker, not a layout.
       .filter((file) =>
@@ -123,7 +123,7 @@ describe('no breakpoint is written by hand into JavaScript', () => {
           .split('\n')
           .some((line) => RAW_MD.test(line) && !/\bsizes[=:]/.test(line))
       )
-      .map((file) => file.slice(SRC.length + 1))
+      .map((file) => srcKey(file))
     expect(offenders).toEqual([])
   })
 })

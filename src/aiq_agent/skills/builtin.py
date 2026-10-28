@@ -27,7 +27,7 @@ BUILTIN_SKILLS_DIR = Path(__file__).resolve().parent / "builtin"
 #: says (``/einreichcheck``) and what an older message lists as activated, so the old
 #: names keep resolving: :func:`canonical_skill_name` is the one place that maps them,
 #: and the pinned skill, the skills the model reports followed and the turn-start
-#: decision all go through it. Mirrored in ``frontends/ui/src/lib/skills/legacy-names.ts``;
+#: decision all go through it. Mirrored in ``apps/workspace/bff/skills/legacy-names.ts``;
 #: ``test_builtin.py`` pins the two against the same table. Nothing writes an old name
 #: again. Remove after one release.
 LEGACY_SKILL_NAMES: dict[str, str] = {

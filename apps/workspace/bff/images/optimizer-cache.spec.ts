@@ -31,7 +31,7 @@ import { getMaxAge } from 'next/dist/server/image-optimizer/get-max-age'
 import { imageConfigDefault } from 'next/dist/shared/lib/image-config'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { nextConfig } from '../../../next.config'
+import { nextConfig } from '../../next.config'
 import { DOCUMENT_IMAGE_CACHE_CONTROL, IMAGE_URL_WINDOW_SECONDS } from './signed-image-url'
 
 type CacheOptions = ConstructorParameters<typeof ImageOptimizerCache>[0]

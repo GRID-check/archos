@@ -26,7 +26,7 @@ describe('maxAttempts', () => {
   // must know it is on the last claim. A changed default on one side only would
   // bury jobs without the row ever saying why, or say "failed" a claim early.
   it('uses the default the runner uses', () => {
-    const runner = readFileSync(join(__dirname, '..', '..', '..', 'workers', 'jobs', 'index.js'), 'utf8')
+    const runner = readFileSync(join(__dirname, '..', '..', 'workers', 'jobs', 'index.js'), 'utf8')
     const declared = runner.match(/toInt\(env\.BFF_JOBS_MAX_ATTEMPTS,\s*(\d+)\)/)
 
     expect(declared).not.toBeNull()

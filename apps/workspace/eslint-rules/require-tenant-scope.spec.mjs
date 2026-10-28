@@ -17,7 +17,7 @@ const ruleTester = new RuleTester({
   languageOptions: { sourceType: 'module', parserOptions: { lang: 'tsx' } },
 })
 
-const PAGE = 'src/app/projects/[id]/page.tsx'
+const PAGE = 'app/projects/[id]/page.tsx'
 
 // `RuleTester.run` declares its own suite, so it has to sit at the top level.
 ruleTester.run('require-tenant-scope', rule, {
@@ -47,17 +47,17 @@ ruleTester.run('require-tenant-scope', rule, {
     },
     {
       // Route handlers get their slot from the route factories.
-      filename: 'src/app/api/projects/route.ts',
+      filename: 'app/api/projects/route.ts',
       code: "import { getGridSession } from '@/lib/auth/session'\nexport const GET = () => getGridSession()",
     },
     {
       // Library code inherits its caller's scope by design.
-      filename: 'src/lib/projects/service.ts',
+      filename: 'bff/projects/service.ts',
       code: "import { getGridSession } from '@/lib/auth/session'\nexport const load = () => getGridSession()",
     },
     {
       // Specs are not entry points.
-      filename: 'src/app/projects/page.spec.tsx',
+      filename: 'app/projects/page.spec.tsx',
       code: "import { getGridSession } from '@/lib/auth/session'\ngetGridSession()",
     },
     {
@@ -74,7 +74,7 @@ ruleTester.run('require-tenant-scope', rule, {
     },
     {
       // Library code is not an entry point, so a helper there is not checked.
-      filename: 'src/features/projects/components/tile.tsx',
+      filename: 'ui/features/projects/components/tile.tsx',
       code: 'export async function Tile({ session }) { return session }',
     },
   ],
@@ -89,7 +89,7 @@ ruleTester.run('require-tenant-scope', rule, {
     },
     {
       // A server action is an entry point too.
-      filename: 'src/app/projects/actions.ts',
+      filename: 'app/projects/actions.ts',
       code:
         "'use server'\nimport { requireGridSession } from '@/lib/auth/session'\n" +
         'export async function rename() { return requireGridSession() }',

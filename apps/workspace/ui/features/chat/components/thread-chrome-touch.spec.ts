@@ -1,4 +1,4 @@
-// @disk-inputs: src/features/chat/components/AnswerActions.tsx, src/features/chat/components/AnswerFeedback.tsx, src/features/chat/components/RetryThoroughButton.tsx, src/features/layout/components/ChatArea.tsx, src/features/layout/components/ChatToolbar.tsx, src/features/layout/components/SessionsPanel.tsx, src/features/runs/components/RunBlock.tsx
+// @disk-inputs: ui/features/chat/components/AnswerActions.tsx, ui/features/chat/components/AnswerFeedback.tsx, ui/features/chat/components/RetryThoroughButton.tsx, ui/features/layout/components/ChatArea.tsx, ui/features/layout/components/ChatToolbar.tsx, ui/features/layout/components/SessionsPanel.tsx, ui/features/runs/components/RunBlock.tsx
 /**
  * The thread's chrome, held to the phone.
  *
@@ -18,10 +18,9 @@
 
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { srcJoin } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..', '..', '..')
-const read = (path: string): string => readFileSync(join(SRC, path), 'utf8')
+const read = (path: string): string => readFileSync(srcJoin(path), 'utf8')
 
 const FOOTNOTE_BUTTONS = [
   'features/chat/components/AnswerActions.tsx',

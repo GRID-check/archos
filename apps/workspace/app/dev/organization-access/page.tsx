@@ -7,7 +7,7 @@
  * (`docs/ux/visual-screenshots.md`). Not linked from anywhere; 404s outside
  * development.
  *
- * Deliberately fetch-free, the way `src/app/dev/cards/page.tsx` is: the roles
+ * Deliberately fetch-free, the way `app/dev/cards/page.tsx` is: the roles
  * and permissions views read `lib/authz/catalog.ts` directly (that is the point
  * of them), and the directory is handed its roster as a prop. The one part that
  * does talk to a server — the WorkOS Users Management widget — is suppressed

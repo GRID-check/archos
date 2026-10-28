@@ -10,7 +10,7 @@
  * whatever the fixture author expected, which is exactly the thing under test.
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/bim/query.integration.spec.ts
+ *     npx vitest run bff/bim/query.integration.spec.ts
  */
 
 import { readFileSync } from 'node:fs'
@@ -76,7 +76,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
    */
   const runSearchKeyBackfill = async (): Promise<void> => {
     const source = readFileSync(
-      join(process.cwd(), 'drizzle', '0038_bim_element_search_keys.sql'),
+      join(process.cwd(), 'migrations', '0038_bim_element_search_keys.sql'),
       'utf8'
     ).replace(/^\s*--.*$/gm, '')
     const statements = source

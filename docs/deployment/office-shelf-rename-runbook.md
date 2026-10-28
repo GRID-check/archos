@@ -33,7 +33,7 @@ time, so no step can lock anybody out.
    catalog, marked `deprecated`.
 2. **Re-grant custom roles that hold the old slug.** Custom roles an office built
    itself are not in the catalog, so the Job does not touch them. From
-   `frontends/ui`:
+   `apps/workspace`:
 
    ```bash
    WORKOS_API_KEY=sk_... bun run regrant:office-shelf             # lists the roles, writes nothing

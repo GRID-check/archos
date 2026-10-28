@@ -8,7 +8,7 @@ Daten" policy (ADR-0086):
 * the chat socket (``aiq_api.chat_socket``) replaces them with a placeholder
   before the agent sees a message or its history keeps one.
 
-The browser runs a TypeScript twin (``frontends/ui/src/lib/upload-screening/content-screen.ts``)
+The browser runs a TypeScript twin (``apps/workspace/bff/upload-screening/content-screen.ts``)
 before a chat message leaves it. Both implementations read the ONE shared fixture,
 ``tests/fixtures/content_screen_cases.json`` at the repository root, so the same
 text gives the same spans, the same masked text and the same findings on both

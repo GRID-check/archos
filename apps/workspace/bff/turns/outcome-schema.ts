@@ -15,7 +15,7 @@ export function turnOutcomeJsonSchema(): JsonSchemaNode {
   return jsonSchemaDocument(TURN_OUTCOME_WIRE_SCHEMAS, {
     title: 'Grid turn outcome wire contract',
     description:
-      'Generated from frontends/ui/src/lib/turns/outcome-types.ts. Do not edit by hand: ' +
+      'Generated from apps/workspace/bff/turns/outcome-types.ts. Do not edit by hand: ' +
       'outcome-schema.spec.ts rewrites this file and fails when it is stale.',
   })
 }

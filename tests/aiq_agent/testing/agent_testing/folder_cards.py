@@ -13,7 +13,7 @@ import pytest
 from langchain_core.messages import AIMessage
 
 ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
-FOLDER_CARDS_SCHEMA = ROOT / "frontends/ui/tests/fixtures/folder-cards.schema.json"
+FOLDER_CARDS_SCHEMA = ROOT / "apps/workspace/tests/fixtures/folder-cards.schema.json"
 
 
 _POSTGRES = os.environ.get("TEST_POSTGRES_URL")

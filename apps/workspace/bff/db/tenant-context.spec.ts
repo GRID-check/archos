@@ -1,5 +1,5 @@
 // @vitest-environment node
-// @disk-inputs: src/app/api/**, src/lib/agent-api/mcp-door-route.ts, src/lib/api/handler.ts, src/lib/api/platform-handler.ts, src/lib/db/tenant-context.ts
+// @disk-inputs: app/api/**, bff/agent-api/mcp-door-route.ts, bff/api/handler.ts, bff/api/platform-handler.ts, bff/db/tenant-context.ts
 /**
  * The tenant context, and the leak it is built to avoid (ADR-0041).
  *
@@ -231,10 +231,10 @@ describe('explicit scopes', () => {
  */
 describe('route factories open a request-scoped slot', () => {
   const FACTORIES: Array<{ file: string; factories: string[] }> = [
-    { file: 'src/lib/api/handler.ts', factories: ['apiRoute', 'internalApiRoute', 'publicApiRoute'] },
-    { file: 'src/lib/api/platform-handler.ts', factories: ['platformApiRoute'] },
+    { file: 'bff/api/handler.ts', factories: ['apiRoute', 'internalApiRoute', 'publicApiRoute'] },
+    { file: 'bff/api/platform-handler.ts', factories: ['platformApiRoute'] },
     // The MCP doors' edge (`/api/mcp`, `/api/platform/mcp`, ADR-0126): one factory, two doors.
-    { file: 'src/lib/agent-api/mcp-door-route.ts', factories: ['mcpDoorPost'] },
+    { file: 'bff/agent-api/mcp-door-route.ts', factories: ['mcpDoorPost'] },
   ]
 
   it.each(FACTORIES)('$file wraps every handler in runWithTenantSlot', ({ file, factories }) => {
@@ -262,7 +262,7 @@ describe('route factories open a request-scoped slot', () => {
     // The factory check above cannot see a route that skips the factories —
     // which is exactly how seven hand-rolled routes ended up on the unbounded
     // `enterWith` fallback. This one walks the whole surface instead.
-    const apiDir = join(process.cwd(), 'src', 'app', 'api')
+    const apiDir = join(process.cwd(), 'app', 'api')
     const routes: string[] = []
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -295,7 +295,7 @@ describe('route factories open a request-scoped slot', () => {
   })
 
   it('nothing calls the unbounded enterWith except the documented session fallback', () => {
-    const context = readFileSync(join(process.cwd(), 'src/lib/db/tenant-context.ts'), 'utf8')
+    const context = readFileSync(join(process.cwd(), 'bff/db/tenant-context.ts'), 'utf8')
     // Exactly one: the server-component path, which no factory wraps.
     expect(context.match(/storage\.enterWith\(/g) ?? []).toHaveLength(1)
   })

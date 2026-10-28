@@ -1,7 +1,7 @@
 """Parity guard: the server's dialect vocabulary is the renderer's.
 
 ``common/answer_dialect.py`` validates the answer against the block names,
-markers and ``:project[…]`` keys that ``frontends/ui/src/lib/text/answer-directives.ts``
+markers and ``:project[…]`` keys that ``apps/workspace/bff/text/answer-directives.ts``
 draws. There is no shared schema between the two files: a block the server
 knows and the renderer does not shows as its literal ``:::`` lines, and one the
 renderer knows and the server does not is unwrapped before anyone sees it.
@@ -18,7 +18,7 @@ from aiq_agent.common.answer_dialect import PROJECT_DIRECTIVE
 from aiq_agent.common.answer_dialect import PROJECT_KEYS
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-TS_DIALECT = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "text" / "answer-directives.ts"
+TS_DIALECT = REPO_ROOT / "apps" / "workspace" / "bff" / "text" / "answer-directives.ts"
 
 
 def _declaration(name: str) -> str:
@@ -74,7 +74,7 @@ def test_the_project_directive_is_named_the_same():
     assert f"'{PROJECT_DIRECTIVE}'" in source
 
 
-TS_AGENT_TEXT = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "agent-asks" / "answer-text.ts"
+TS_AGENT_TEXT = REPO_ROOT / "apps" / "workspace" / "bff" / "agent-asks" / "answer-text.ts"
 
 
 def test_the_agent_text_rewrites_the_verifiers_labels_as_written():

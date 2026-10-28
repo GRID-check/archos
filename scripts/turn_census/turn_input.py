@@ -12,7 +12,7 @@ turn's own parse (``aiq_agent.turn.payload.extract_turn_inputs``) read the strin
 What a row's two harness needs mean here:
 
 - ``given_box``: the turn carries the drawn box (``focus_region``: page, x, y, w, h);
-- ``trigger``: the turn is the headless one an upload starts (``frontends/ui/src/lib/document-check/job.ts``,
+- ``trigger``: the turn is the headless one an upload starts (``apps/workspace/bff/document-check/job.ts``,
   ``checkTurnMessage``): the row's question is the fixed instruction, and the message carries the open
   document (``focus_file_name``, ``focus_shelf``, ``focus_document_id``) and ``trigger: new_document``;
 - ``open`` (a files-set row's key, the document's name): the turn is asked with that document open

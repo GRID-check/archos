@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/app/(shell)/organization/**, src/app/app/(shell)/platform/**, src/app/app/(shell)/profile/**, src/components/charts/**, src/features/budgets/**, src/features/organization/**, src/features/platform/**
+// @disk-inputs: app/app/(shell)/organization/**, app/app/(shell)/platform/**, app/app/(shell)/profile/**, ui/components/charts/**, ui/features/budgets/**, ui/features/organization/**, ui/features/platform/**
 /**
  * What the admin surfaces (organization, platform, profile, the charts) must
  * not do on an iPhone, held against the source.
@@ -22,8 +22,8 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { blankComments } from '../../../scripts/check-static-utility-modifiers.mjs'
+import { srcKey, srcJoin } from '@/test-utils/source-tree'
 
-const SRC = join(__dirname, '..', '..')
 const ADMIN_DIRS = [
   'features/organization',
   'features/platform',
@@ -45,8 +45,8 @@ const walk = (dir: string, out: string[] = []): string[] => {
   return out
 }
 
-const ADMIN_FILES = ADMIN_DIRS.flatMap((dir) => walk(join(SRC, dir)))
-const rel = (file: string): string => file.slice(SRC.length + 1)
+const ADMIN_FILES = ADMIN_DIRS.flatMap((dir) => walk(srcJoin(dir)))
+const rel = (file: string): string => srcKey(file)
 
 describe('admin surfaces on a phone', () => {
   it('draws no chart inside a width-floored scroll box', () => {
@@ -83,7 +83,7 @@ describe('admin surfaces on a phone', () => {
   })
 
   it('shows the keyboard-shortcut card only where a keyboard can be', () => {
-    const code = readCode(join(SRC, 'app/app/(shell)/profile/profile-controls.tsx'))
+    const code = readCode(srcJoin('app/app/(shell)/profile/profile-controls.tsx'))
     expect(code).toMatch(/any-pointer-fine:block[^]*?<ShortcutSettings \/>/)
   })
 })

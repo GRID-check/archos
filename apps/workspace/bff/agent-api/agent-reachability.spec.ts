@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/api/**, src/lib/agent-api/agent-reachability-baseline.json, src/lib/agent-api/catalog/**
+// @disk-inputs: app/api/**, bff/agent-api/agent-reachability-baseline.json, bff/agent-api/catalog/**
 /**
  * @vitest-environment node
  */

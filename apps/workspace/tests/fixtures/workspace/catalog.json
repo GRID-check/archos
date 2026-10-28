@@ -1,5 +1,5 @@
 {
- "comment": "Written by src/app/api/mcp/workspace-eval.fixture.spec.ts from the real catalog; served by scripts/turn_census/fixture_workspace.py. Regenerate with UPDATE_FIXTURES=1.",
+ "comment": "Written by app/api/mcp/workspace-eval.fixture.spec.ts from the real catalog; served by scripts/turn_census/fixture_workspace.py. Regenerate with UPDATE_FIXTURES=1.",
  "limit": 10,
  "operations": [
   {

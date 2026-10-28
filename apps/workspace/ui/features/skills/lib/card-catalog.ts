@@ -3,7 +3,7 @@
  *
  * A skill author picks card types here (`grid-cards`), so the list has to be
  * the SAME list the agent is allowed to emit. It is therefore read out of
- * `src/shared/cards/generated.ts` — which is regenerated from the canonical Pydantic
+ * `apps/workspace/shared/cards/generated.ts` — which is regenerated from the canonical Pydantic
  * models — rather than typed out by hand: a hand-kept copy drifts the moment
  * someone adds a card, and the drift is silent (the picker simply stops
  * offering the new card, or offers one the backend rejects at write time).

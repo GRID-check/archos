@@ -55,7 +55,7 @@ produces a file rather than a long message: `write_file` into a per-conversation
 working folder (`src/aiq_agent/tools/documents/tools.py`, bound per turn at
 `src/aiq_agent/agents/piloti/register.py:325`), with a `document_draft` card
 beside the answer naming what was written
-(`frontends/ui/src/features/grid-cards/components/DocumentDraftCard.tsx`).
+(`apps/workspace/ui/features/grid-cards/components/DocumentDraftCard.tsx`).
 „Kürze Punkt 3" edits that file in place instead of printing a second copy
 (`piloti-working-directory`).
 
@@ -72,7 +72,7 @@ panel — sends no reviewer (`DocumentDraftCard.tsx:168`,
 `document-lifecycle-panel.tsx:278`), and neither does the agent's `submit_draft`
 (`src/aiq_agent/tools/documents/register.py:332`, whose comment says the route
 "falls back to the project's reviewers"). It does not: `resolveReviewers`
-(`frontends/ui/src/lib/documents/lifecycle.ts:160-169`) falls back to the
+(`apps/workspace/bff/documents/lifecycle.ts:160-169`) falls back to the
 document's **assignments**, and a freshly filed Piloti draft is „Unvergeben" by
 construction. With no assignee the submit is refused with *"Nobody to review this
 version: name a reviewer or assign the document first"* (`lifecycle.ts:594`).
@@ -118,7 +118,7 @@ or Piloti wrote it.
 A finished deep-research report is filed as an **Entwurf** and submitted for
 approval rather than arriving as a filed file
 (`auftraege-und-ueberarbeitung`, upgrade note;
-`frontends/ui/src/lib/documents/research-report.ts:298-370`). It is submitted to
+`apps/workspace/bff/documents/research-report.ts:298-370`). It is submitted to
 the person who commissioned it — and that person is the submitter, so **they
 cannot approve it themselves**. Publishing one is also a no-op for search:
 `deep_research` output lives outside the `piloti/` namespace and
@@ -157,7 +157,7 @@ proposal tools (`:557-600`, listed at `:660-666`).
 | Consequence (§2) | Movement |
 |---|---|
 | **Traceability is the product** | Sideways-and-forward. The *retrieval* chain is untouched here — the query is still blanked before storage, `Punkt` and score still do not reach the row (§4 of the architecture doc). What is new is a second chain: who wrote a document, who asserted it, when, and which bytes were live in March — held by CHECK constraints (`0082`) and nine audit actions (`lib/audit/schemas.mjs:277-360`), not by call sites. |
-| **The agent must hold work** | Real movement. `create_task` from chat, a `TaskCreatedCard` naming a row the BFF already wrote, `revision` tasks opened from a reviewer's comment, a deep-research report filed at completion in the pinned requester's session. What is still missing is the surface: no UI reads `GET /api/projects/[id]/tasks` (no consumer found in `frontends/ui/src`), so a task is visible only as the card in the thread that made it. |
+| **The agent must hold work** | Real movement. `create_task` from chat, a `TaskCreatedCard` naming a row the BFF already wrote, `revision` tasks opened from a reviewer's comment, a deep-research report filed at completion in the pinned requester's session. What is still missing is the surface: no UI reads `GET /api/projects/[id]/tasks` (no consumer found in `apps/workspace/src`), so a task is visible only as the card in the thread that made it. |
 | **Every loop closes on a measurement** | Barely moved, and this is the weakest column. The design names three measurements (design of record §8); the audit actions that would feed them exist; nothing reads them. The one live-model harness (`task be:eval:turn-shapes`, `Taskfile.yml:433`) has three cases and none is a drafting turn (`evals/turn-shapes/test_turn_shapes_live.py:267-302`). |
 
 ### Against the pilot's actual asks

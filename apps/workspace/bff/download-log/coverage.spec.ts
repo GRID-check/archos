@@ -1,4 +1,4 @@
-// @disk-inputs: src/**, tests/fixtures/backend-tools.schema.json.ts, tests/fixtures/backend-tools.schema.json.tsx, tests/fixtures/backend-tools.schema.json/index.ts, tests/fixtures/backend-tools.schema.json/index.tsx, workers/database-unavailable.js.ts, workers/database-unavailable.js.tsx, workers/database-unavailable.js/index.ts, workers/database-unavailable.js/index.tsx
+// @disk-inputs: app/**, bff/**, i18n.ts, i18n.tsx, i18n/**, shared/**, test-utils.ts, test-utils.tsx, tests/fixtures/backend-tools.schema.json.ts, tests/fixtures/backend-tools.schema.json.tsx, tests/fixtures/backend-tools.schema.json/index.ts, tests/fixtures/backend-tools.schema.json/index.tsx, tests/mocks/server.ts, tests/test-utils/index.ts, tests/test-utils/index.tsx, types/**, ui/**, utils/**, workers/database-unavailable.js.ts, workers/database-unavailable.js.tsx, workers/database-unavailable.js/index.ts, workers/database-unavailable.js/index.tsx
 /**
  * @vitest-environment node
  */
@@ -71,8 +71,8 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import ts from 'typescript-api'
 import { DOWNLOAD_LOG_KINDS, type DownloadLogKind } from './kinds'
+import { SOURCE_DIRS, srcKey, srcPath } from '@/test-utils/source-tree'
 
-const SRC = join(process.cwd(), 'src')
 
 type Disposition =
   | { logged: readonly DownloadLogKind[] }
@@ -194,12 +194,13 @@ const ROUTES: Record<string, RouteDisposition> = {
 // Reading the source
 // ---------------------------------------------------------------------------
 
-function sourceFiles(dir: string, found: string[] = []): string[] {
+function sourceFiles(dir?: string, found: string[] = []): string[] {
+  if (!dir) return SOURCE_DIRS.flatMap((root) => sourceFiles(join(process.cwd(), root)))
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name)
     if (entry.isDirectory()) {
       // Dev previews are fixtures for pictures, never a route a customer reaches.
-      if (path === join(SRC, 'app', 'dev')) continue
+      if (path === join(process.cwd(), 'app', 'dev')) continue
       sourceFiles(path, found)
     } else if (/\.tsx?$/.test(entry.name) && !/\.(spec|test)\.tsx?$/.test(entry.name)) {
       found.push(path)
@@ -242,7 +243,7 @@ interface ResolvedCall {
 }
 
 function topLevelFunctions(file: string): TopLevelFunction[] {
-  return functionsInSource(relative(SRC, file).replace(/\\/g, '/'), readFileSync(file, 'utf8'))
+  return functionsInSource(srcKey(file), readFileSync(file, 'utf8'))
 }
 
 /**
@@ -255,13 +256,13 @@ function moduleFile(fromRel: string, specifier: string): string | null {
   else if (specifier.startsWith('.')) base = join(fromRel, '..', specifier).replace(/\\/g, '/')
   else return null
   const candidates = [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`]
-  return candidates.find((candidate) => /\.tsx?$/.test(candidate) && existsSync(join(SRC, candidate))) ?? `${base}.ts`
+  return candidates.find((candidate) => /\.tsx?$/.test(candidate) && existsSync(srcPath(candidate))) ?? `${base}.ts`
 }
 
 const parsedSources = new Map<string, ts.SourceFile | null>()
 function parsed(rel: string): ts.SourceFile | null {
   if (!parsedSources.has(rel)) {
-    const path = join(SRC, rel)
+    const path = srcPath(rel)
     const text = existsSync(path) ? readFileSync(path, 'utf8') : null
     parsedSources.set(rel, text === null ? null : ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true))
   }
@@ -740,10 +741,10 @@ function accessCheckedFirst(functions: readonly TopLevelFunction[]): Set<string>
   return checked
 }
 
-const FILES = sourceFiles(SRC)
+const FILES = sourceFiles()
 const ALL_FUNCTIONS = FILES.flatMap(topLevelFunctions)
 const ROUTE_FILES = FILES.filter((file) => /[\\/]app[\\/]api[\\/].*route\.ts$/.test(file))
-const ROUTE_KEY = (file: string): string => relative(join(SRC, 'app', 'api'), file).replace(/\\/g, '/')
+const ROUTE_KEY = (file: string): string => relative(join(process.cwd(), 'app', 'api'), file).replace(/\\/g, '/')
 
 /** The `recordDocumentAccess` definition and its own module are not call sites. */
 const LOG_MODULE = 'lib/download-log/'
@@ -1241,7 +1242,7 @@ describe('download log coverage: routes', () => {
 
   it('every listed route exists and names a function it really reaches', () => {
     for (const [route, disposition] of Object.entries(ROUTES)) {
-      const file = join(SRC, 'app', 'api', route)
+      const file = join(process.cwd(), 'app', 'api', route)
       expect(existsSync(file), route).toBe(true)
       if ('via' in disposition) {
         expect(readFileSync(file, 'utf8'), route).toContain(disposition.via)

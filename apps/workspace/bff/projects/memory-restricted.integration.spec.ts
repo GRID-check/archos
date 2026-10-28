@@ -5,7 +5,7 @@
  * with the full migration chain applied, through the restricted runtime role:
  *
  *   TEST_DATABASE_URL=postgres://app_rw@host:port/app \
- *     npx vitest run src/lib/projects/memory-restricted.integration.spec.ts
+ *     npx vitest run bff/projects/memory-restricted.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
  *   - the column's CHECK refuses an empty, oversized, NULL-holding or

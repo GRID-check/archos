@@ -387,7 +387,7 @@ config:
 
   # serve this flow). Created by
 
-  # `WORKOS_API_KEY=sk_… npm run provision:workos-env -- --apply` (frontends/ui)
+  # `WORKOS_API_KEY=sk_… npm run provision:workos-env -- --apply` (apps/workspace)
 
   # with WORKOS_CONNECT_APP_NAME / WORKOS_CONNECT_REDIRECT_URIS set — it
 

@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 const reportRequestError = vi.fn(async (..._args: unknown[]) => {})
 let posthogConfigured = true
 const shutdownPosthogServer = vi.fn(async () => {})
-vi.mock('./lib/analytics/request-error', () => ({
+vi.mock('./bff/analytics/request-error', () => ({
   requestErrorHandler: () => (posthogConfigured ? reportRequestError : null),
 }))
-vi.mock('./lib/analytics/posthog-server', () => ({
+vi.mock('./bff/analytics/posthog-server', () => ({
   shutdownPosthogServer: () => shutdownPosthogServer(),
 }))
 const initOtelLogs = vi.fn()
-vi.mock('../observability/otel-logs.js', () => ({ initOtelLogs: () => initOtelLogs() }))
-vi.mock('./lib/boot', () => ({ bootLine: () => 'boot' }))
-vi.mock('./lib/model-config/bootstrap-defaults', () => ({ bootstrapPlatformModelDefaults: async () => {} }))
+vi.mock('./observability/otel-logs.js', () => ({ initOtelLogs: () => initOtelLogs() }))
+vi.mock('./bff/boot', () => ({ bootLine: () => 'boot' }))
+vi.mock('./bff/model-config/bootstrap-defaults', () => ({ bootstrapPlatformModelDefaults: async () => {} }))
 
 const request = { path: '/app', method: 'GET', headers: {} }
 const context = {

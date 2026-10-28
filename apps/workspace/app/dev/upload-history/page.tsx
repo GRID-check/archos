@@ -11,7 +11,7 @@
  *  - a project with none yet (the empty state);
  *  - a project whose history fails to load (the retry).
  *
- * Not linked from anywhere; `src/app/dev/layout.tsx` 404s it outside development.
+ * Not linked from anywhere; `app/dev/layout.tsx` 404s it outside development.
  */
 
 import type { JSX } from 'react'
