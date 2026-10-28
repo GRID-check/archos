@@ -250,31 +250,36 @@ describe("the program's ScaledObjects", () => {
   });
 
   describe("the scaler's credential", () => {
-    it("is a read-only login of its own, declared with the other roles and holding nothing but LOGIN", async () => {
+    it("is a read-only login of its own, kept by the rename Jobs and holding nothing but LOGIN", async () => {
+      // Not the Cluster's managed role any more: the operator would create the
+      // new name beside the old one before the rename ran (ADR-0145 row 10d).
       const { KEDA_SCALER_ROLE } = await import("../constants");
       const spec = await resolve(find(CLUSTER, "grid-pg").inputs.spec as Record<string, any>);
-      const role = spec.managed.roles.find((r: { name: string }) => r.name === KEDA_SCALER_ROLE);
+      const managed = spec.managed.roles.map((r: { name: string }) => r.name);
+      expect(managed).not.toContain(KEDA_SCALER_ROLE);
+      expect(managed).not.toContain("grid_keda_scaler");
 
-      expect(role).toMatchObject({
-        ensure: "present",
-        login: true,
-        superuser: false,
-        createdb: false,
-        createrole: false,
-        replication: false,
-        // Not the attribute: its one read of a tenant table is a policy of its own.
-        bypassrls: false,
-        inherit: false,
-      });
-      expect(role.inRoles).toBeUndefined();
-      expect(role.connectionLimit).toBeGreaterThan(0);
-      expect(role.passwordSecret.name).toBe("grid-pg-keda-scaler-credentials");
+      // The script creates it with LOGIN, a connection limit, and nothing else:
+      // no BYPASSRLS (its one read of a tenant table is a policy of its own),
+      // no inherited rights, no DDL.
+      const script = read("deploy", "postgres", "rename-legacy-names.sh");
+      expect(script).toContain("grid_keda_scaler:keda_scaler");
+      expect(script).toContain('CREATE ROLE $old LOGIN NOINHERIT NOBYPASSRLS CONNECTION LIMIT ${SCALER_CONNECTION_LIMIT:-4}');
+      const env = await resolve(
+        find("kubernetes:batch/v1:Job", "pg-rename-legacy-names").inputs.spec.template.spec.containers[0].env as Array<
+          Record<string, any>
+        >,
+      );
+      const byName = Object.fromEntries(env.map((e) => [e.name, e]));
+      expect(byName.SCALER_PASSWORD.valueFrom.secretKeyRef.name).toBe("grid-pg-keda-scaler-credentials");
+      expect(Number(byName.SCALER_CONNECTION_LIMIT.value)).toBeGreaterThan(0);
+      expect(byName.ENSURE_RLS_ROLES.value).toBe("1");
     });
 
     it("has a password that is neither the owner's nor the runtime role's, and is stable", async () => {
       const secret = await stringData("pg-keda-scaler-credentials");
 
-      expect(secret.username).toBe("grid_keda_scaler");
+      expect(secret.username).toBe("keda_scaler");
       expect(secret.password).toBe(scalerPassword);
       expect(scalerPassword).toMatch(/^[A-Za-z0-9_-]{43}$/);
       expect([scalerPassword]).not.toContain(await resolve(cfg.postgres.appPassword));
@@ -290,9 +295,9 @@ describe("the program's ScaledObjects", () => {
     });
 
     it("is what KEDA connects with: the scaler's login on each database, by FQDN, never the owner", () => {
-      const scalerRequests = dsnRequests.filter((r) => r.as?.user === "grid_keda_scaler");
+      const scalerRequests = dsnRequests.filter((r) => r.as?.user === "keda_scaler");
 
-      expect(scalerRequests.map((r) => r.db).sort()).toEqual(["grid_app", "jobs"]);
+      expect(scalerRequests.map((r) => r.db).sort()).toEqual(["app", "jobs"]);
       expect(scalerRequests.every((r) => r.clusterWide === true)).toBe(true);
     });
 
@@ -321,11 +326,11 @@ describe("the program's ScaledObjects", () => {
       const { "jobs.sql": jobs, "app.sql": app } = grants();
 
       expect(jobs).toBe(
-        "REVOKE SELECT ON ingest_job_queue, research_job_queue FROM grid_keda_scaler;\n" +
-          "GRANT SELECT (status) ON ingest_job_queue, research_job_queue TO grid_keda_scaler;\n",
+        "REVOKE SELECT ON ingest_job_queue, research_job_queue FROM keda_scaler;\n" +
+          "GRANT SELECT (status) ON ingest_job_queue, research_job_queue TO keda_scaler;\n",
       );
-      expect(app).toContain("REVOKE SELECT ON bff_job_queue FROM grid_keda_scaler;");
-      expect(app).toContain("GRANT SELECT (status) ON bff_job_queue TO grid_keda_scaler;");
+      expect(app).toContain("REVOKE SELECT ON bff_job_queue FROM keda_scaler;");
+      expect(app).toContain("GRANT SELECT (status) ON bff_job_queue TO keda_scaler;");
       for (const sql of [jobs, app]) {
         expect(sql).not.toMatch(/INSERT|UPDATE|DELETE|TRUNCATE|ALL PRIVILEGES|BYPASSRLS/i);
         // Never table-wide: a payload (reports, requester emails, presigned URLs) must stay unreadable to the scaler.
@@ -346,9 +351,9 @@ describe("the program's ScaledObjects", () => {
     it("cross the organisation boundary by a policy of their own, for SELECT and for that role only", () => {
       const { "app.sql": app } = grants();
 
-      expect(app).toContain("CREATE POLICY grid_keda_scaler_count ON bff_job_queue FOR SELECT TO grid_keda_scaler USING (true);");
+      expect(app).toContain("CREATE POLICY keda_scaler_count ON bff_job_queue FOR SELECT TO keda_scaler USING (true);");
       // Replaced, not stacked, on a re-run, and the tenant policy is left alone.
-      expect(app).toContain("DROP POLICY IF EXISTS grid_keda_scaler_count ON bff_job_queue;");
+      expect(app).toContain("DROP POLICY IF EXISTS keda_scaler_count ON bff_job_queue;");
       expect(app).not.toContain("grid_tenant_isolation");
     });
 
@@ -373,7 +378,7 @@ describe("the program's ScaledObjects", () => {
       expect(init.command.slice(0, 2)).toEqual(["python", "-c"]);
       expect(init.command[2]).toBe(ensureTablesPython());
       expect(psql.image).toMatch(/^postgres:/);
-      expect(script).toMatch(/pg_roles WHERE rolname = 'grid_keda_scaler'/);
+      expect(script).toMatch(/pg_roles WHERE rolname = 'keda_scaler'/);
       expect(script.indexOf("pg_roles")).toBeLessThan(script.indexOf("/sql/jobs.sql"));
       expect(script).toContain("-v ON_ERROR_STOP=1 -f /sql/app.sql");
       expect(spec.template.spec.restartPolicy).toBe("OnFailure");

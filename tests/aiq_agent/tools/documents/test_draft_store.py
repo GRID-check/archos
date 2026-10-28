@@ -377,7 +377,7 @@ class TestTheFilingRecordIsReadOnce:
 class TestDroppingAConversationsWorkingDirectory:
     """``delete_conversation_drafts``: the one verb that removes a namespace.
 
-    A conversation's drafts are the only thing it owns outside ``grid_app``, so
+    A conversation's drafts are the only thing it owns outside ``app``, so
     without this they outlive the conversation row: bytes under a key that names
     nothing, which nothing will read and nothing will total against a quota.
     """

@@ -42,9 +42,9 @@ in order during the replay, which is the fastest way to learn the contract:
 
 | Precondition | The error if it is missing |
 |---|---|
-| roles `grid_app_owner`, `grid_app_platform`, `grid_app_rw` exist | *"row-level security roles are missing … They are cluster-level objects and are deliberately not created by this migration."* |
-| `grid_app_platform` holds **BYPASSRLS** | *"exists but does not hold BYPASSRLS. Cross-tenant work would silently see nothing."* |
-| `grid_app_rw` is a **member of** `grid_app_platform` | *"Without the membership the platform step-up (SET LOCAL ROLE) is rejected and every background sweep goes quiet."* |
+| roles `app_owner`, `app_platform`, `app_rw` exist | *"row-level security roles are missing … They are cluster-level objects and are deliberately not created by this migration."* |
+| `app_platform` holds **BYPASSRLS** | *"exists but does not hold BYPASSRLS. Cross-tenant work would silently see nothing."* |
+| `app_rw` is a **member of** `app_platform` | *"Without the membership the platform step-up (SET LOCAL ROLE) is rejected and every background sweep goes quiet."* |
 
 These are pre-existing requirements, not new ones — but a fresh environment
 (a staging rebuild, a new region) hits them before it reaches `0063`, and the

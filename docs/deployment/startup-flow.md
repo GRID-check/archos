@@ -16,7 +16,7 @@ docker compose up -d --build
          │      • Container name: aiq-postgres
          │      • Runs /docker-entrypoint-initdb.d/init-db.sql
          │      │   • Creates checkpoints database
-         │      │   • Creates grid_app database
+         │      │   • Creates `app` database
          │      │   • Grants ALL on all 3 DBs to aiq user
          │      │   • Connects to jobs
          │      │   │   • Creates job_info table
@@ -76,7 +76,7 @@ docker compose up -d --build
          │      • One-shot (restart: "no"); everything below waits for it to exit 0
          │      │
          │      │   Step 6a: node scripts/ensure-rls-roles.mjs
-         │      │   • Creates grid_app_rw / grid_app_platform if absent
+         │      │   • Creates app_rw / app_platform if absent
          │      │   • Syncs the runtime password from GRID_APP_DATABASE_URL
          │      │
          │      └── Step 6b: node node_modules/drizzle-kit/bin.cjs migrate
@@ -90,7 +90,7 @@ docker compose up -d --build
                 • Container name: aiq-blueprint-ui
                 • command: ["node", "server.js"] — it serves, it does not migrate.
                   The serving container never holds the owner credential (ADR-0041).
-                • Connects as grid_app_rw via GRID_APP_DATABASE_URL
+                • Connects as app_rw via GRID_APP_DATABASE_URL
                 │
                 │   server.js starts
                 │   • Production mode (NODE_ENV=production)
@@ -152,15 +152,15 @@ This is step 6 of the sequence above, spelled out. Migrations no longer run from
 the `frontend` container in any stack — compose, Coolify or Kubernetes. The
 one-shot `grid-migrate` service runs, in order:
 
-1. `node scripts/ensure-rls-roles.mjs` — creates `grid_app_rw` and
-   `grid_app_platform` if absent and syncs the runtime password from
+1. `node scripts/ensure-rls-roles.mjs` — creates `app_rw` and
+   `app_platform` if absent and syncs the runtime password from
    `GRID_APP_DATABASE_URL`. Idempotent and fail-soft.
 2. `node node_modules/drizzle-kit/bin.cjs migrate` — as the schema owner via
    `GRID_APP_MIGRATION_DATABASE_URL`, because DDL and backfills need the owner
    (row-level security does not apply to it).
 
 `frontend` then starts with `command: ["node", "server.js"]` and connects as
-`grid_app_rw`. On Kubernetes the roles come from CloudNativePG's
+`app_rw`. On Kubernetes the roles come from CloudNativePG's
 `managed.roles` instead and the migration Job does step 2 alone.
 
 ## Init Database Script
@@ -169,6 +169,6 @@ The `init-db.sql` script (`deploy/compose/init-db.sql`) runs as part of PostgreS
 
 - **jobs** database: Contains `job_info`, `job_access`, `job_events`, and `document_metadata` tables.
 - **checkpoints** database: Contains `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, and `checkpoint_migrations` tables for LangGraph state persistence.
-- **grid_app** database: Created but left empty (schema managed by Drizzle Kit migrations from the frontend).
+- **`app`** database: Created but left empty (schema managed by Drizzle Kit migrations from the frontend).
 
 The LangGraph checkpoint tables are created in the init script (not lazily by the application) to prevent crashes if PostgreSQL restarts while the backend is running — previously, restarts would drop the tables and running backends would crash with "relation checkpoints does not exist".

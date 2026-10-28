@@ -519,16 +519,16 @@ export const GOTENBERG = {
 
 /**
  * The read-only Postgres login KEDA's `postgresql` scaler counts the queues with
- * (ADR-0079). It is the one name the Cluster's managed roles, the grants Job and
- * the DSNs in `grid-secrets` must agree on. Its password is
+ * (ADR-0079): the one name the rename Jobs (`data/postgres-rename.ts`), the grants
+ * Job and the DSNs in `grid-secrets` agree on; `grid_keda_scaler` before ADR-0145. Its password is
  * `postgres.scalerPassword` (`config.ts`).
  */
-export const KEDA_SCALER_ROLE = "grid_keda_scaler";
+export const KEDA_SCALER_ROLE = "keda_scaler";
 
 /**
  * `CONNECTION LIMIT` on {@link KEDA_SCALER_ROLE}: the operator opens one
  * connection per poll, and the role's own cap is the most it can ever hold.
- * Declared on the Cluster's managed role and counted in the pooler budget's
+ * Set by the rename Jobs and counted in the pooler budget's
  * direct-connection reserve (`pgConnectionBudget`), so the two cannot disagree.
  */
 export const KEDA_SCALER_CONNECTION_LIMIT = 8;
@@ -649,12 +649,12 @@ export const POSTGRES_POOLER = {
  * pooled env vars in `grid-secrets` and fails when the two differ, so a new
  * pooled DSN cannot be added without paying for it here.
  *
- * `app` is the owner login (`pgAppUser`), `runtime` is `grid_app_rw` (ADR-0041).
+ * `app` is the owner login (`pgAppUser`), `runtime` is `app_rw` (ADR-0041).
  */
 export const POOLED_POOLS = [
   { database: "jobs", login: "app" },
   { database: "checkpoints", login: "app" },
-  { database: "grid_app", login: "runtime" },
+  { database: "app", login: "runtime" },
 ] as const;
 
 /**

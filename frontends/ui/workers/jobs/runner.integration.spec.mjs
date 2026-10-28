@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * The claim loop over the REAL queue, against a real Postgres as `grid_app_rw`
+ * The claim loop over the REAL queue, against a real Postgres as `app_rw`
  * (ADR-0079): what the unit spec proves with fakes, proved with the SQL.
  *
  * The claim a feature makes is not "the loop calls release", it is "a job whose
@@ -10,7 +10,7 @@
  * `createRunner` and `workers/job-queue.js`, and only the BFF's work is a stub
  * that counts a cursor up.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run workers/jobs/runner.integration.spec.mjs
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

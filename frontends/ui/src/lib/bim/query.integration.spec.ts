@@ -9,7 +9,7 @@
  * None of that is observable from a mock — a mocked drizzle handle returns
  * whatever the fixture author expected, which is exactly the thing under test.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/bim/query.integration.spec.ts
  */
 

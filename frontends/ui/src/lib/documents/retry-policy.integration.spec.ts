@@ -6,7 +6,7 @@
  * rescan select with the SQL, a single „Erneut lesen“ decides with the
  * TypeScript, and the two must agree on every row (migration 0134).
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/documents/retry-policy.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

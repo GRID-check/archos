@@ -4,7 +4,7 @@
  * The Papierkorb against a REAL Postgres (migration 0115, ADR-0088), through
  * the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/folder-bin.integration.spec.ts
  *
  * Every rule here is a claim about SQL: which rows a listing leaves out, what
@@ -266,7 +266,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
     const claimed: string[] = []
     try {
       await client.begin(async (tx) => {
-        await tx.unsafe('SET LOCAL ROLE grid_app_platform')
+        await tx.unsafe('SET LOCAL ROLE app_platform')
         for (let i = 0; i < 1000; i += 1) {
           const entry = await claimNext(tx as never)
           if (!entry) break

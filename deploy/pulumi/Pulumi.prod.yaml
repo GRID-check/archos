@@ -19,7 +19,7 @@
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:pgAppPassword         "$(openssl rand -base64 24)" --secret
 
-#   # Password for the least-privilege `grid_app_rw` runtime role (ADR-0041).
+#   # Password for the least-privilege `app_rw` runtime role (ADR-0041).
 
 #   # Required, no fallback — a stack without it fails at `pulumi preview`:
 

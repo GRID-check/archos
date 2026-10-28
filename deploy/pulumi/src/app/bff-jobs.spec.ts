@@ -244,9 +244,9 @@ describe("the bff-jobs pool", () => {
     ]);
     // Not the schema owner: the read-only login `queue-scaler-grants.ts` grants.
     expect(requests).toContainEqual(
-      expect.objectContaining({ db: "grid_app", clusterWide: true, as: expect.objectContaining({ user: "grid_keda_scaler" }) }),
+      expect.objectContaining({ db: "app", clusterWide: true, as: expect.objectContaining({ user: "keda_scaler" }) }),
     );
-    expect(requests.every((r) => r.as?.user === "grid_keda_scaler" && r.clusterWide === true)).toBe(true);
+    expect(requests.every((r) => r.as?.user === "keda_scaler" && r.clusterWide === true)).toBe(true);
   });
 
   it("lets KEDA reach Postgres even when the ingest tier is off", async () => {

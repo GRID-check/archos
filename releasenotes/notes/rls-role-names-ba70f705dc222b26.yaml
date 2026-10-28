@@ -1,0 +1,9 @@
+---
+operators:
+  - >
+    The application database grid_app is renamed to app, and its roles
+    grid_app_rw, grid_app_platform, grid_app_owner and grid_keda_scaler to
+    app_rw, app_platform, app_owner and keda_scaler, automatically on deploy:
+    the database before the migrations, the roles after them. Expect a short
+    outage of the workspace while it runs. Re-point any external DSN or tool
+    that logs in with the old names.

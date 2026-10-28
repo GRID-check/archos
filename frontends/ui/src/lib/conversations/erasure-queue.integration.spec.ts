@@ -10,7 +10,7 @@
  * claim query (`purger/db.js`) with its `legal_hold_blocks` guard treats a
  * conversation row the way it treats a project.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/conversations/erasure-queue.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -80,7 +80,7 @@ describe.skipIf(!url)('chat erasure retry queue against live Postgres (migration
     const claimed: string[] = []
     try {
       await client.begin(async (tx) => {
-        await tx.unsafe('SET LOCAL ROLE grid_app_platform')
+        await tx.unsafe('SET LOCAL ROLE app_platform')
         for (let i = 0; i < 1000; i += 1) {
           const entry = await claimNext(tx as never)
           if (!entry) break

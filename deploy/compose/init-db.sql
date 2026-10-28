@@ -8,7 +8,7 @@
 -- Databases:
 --   - jobs         (job metadata, events, document metadata)
 --   - checkpoints  (LangGraph conversation state)
---   - grid_app         (Next.js BFF application state)
+--   - app          (Next.js BFF application state)
 --
 -- Tables in jobs:
 --   - job_info      — NAT JobStore metadata (status, timestamps, expiry)
@@ -28,13 +28,13 @@
 -- Create checkpoints database if it doesn't exist
 SELECT 'CREATE DATABASE checkpoints' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'checkpoints')\gexec
 
--- Create grid_app database if it doesn't exist
-SELECT 'CREATE DATABASE grid_app' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'grid_app')\gexec
+-- Create app database if it doesn't exist
+SELECT 'CREATE DATABASE app' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'app')\gexec
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON DATABASE jobs TO agent;
 GRANT ALL PRIVILEGES ON DATABASE checkpoints TO agent;
-GRANT ALL PRIVILEGES ON DATABASE grid_app TO agent;
+GRANT ALL PRIVILEGES ON DATABASE app TO agent;
 
 -- =============================================================================
 -- Langfuse (ADR-0044) — its own role, its own database
@@ -48,7 +48,7 @@ GRANT ALL PRIVILEGES ON DATABASE grid_app TO agent;
 -- Separate from `agent` on the same reasoning Kubernetes uses (see
 -- `LANGFUSE.databaseUser`): Langfuse runs its own Prisma migrations, so its
 -- credential is one with DDL rights, and that has no business reaching
--- `grid_app` where every tenant's conversations live. NOCREATEDB / NOCREATEROLE
+-- `app` where every tenant's conversations live. NOCREATEDB / NOCREATEROLE
 -- keeps it confined to the database it owns.
 --
 -- The dev password matches `aiq_dev` alongside it: a compose stack on a laptop.
@@ -95,6 +95,11 @@ SELECT 'CREATE DATABASE langfuse OWNER langfuse_app' WHERE NOT EXISTS (SELECT FR
 -- The dev password below is exactly that: a DEV default, matching `aiq_dev`
 -- alongside it, for a compose stack on a laptop.
 
+-- Created under their OLD names on purpose (ADR-0145 row 10d): the migrations
+-- written before the rename grant to `grid_app_rw` and `grid_app_platform` by
+-- name, so those are the names a fresh volume migrates with. The service
+-- `postgres-rename-roles` renames them to `app_owner`, `app_platform` and
+-- `app_rw` once the migrations have run.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grid_app_owner') THEN

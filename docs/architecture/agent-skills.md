@@ -588,7 +588,7 @@ subagent lists, and the office's skills are added to the writer's sources when
 the BFF served any. Both reach the subagents through the one `SkillsMiddleware`
 and backend described under Selection; there is no second channel.
 
-## Data model (grid_app, Drizzle)
+## Data model (`app`, Drizzle)
 
 **Since migration 0086 the trigger and the attempt live in two tables of their
 own: `task_definitions` (kind, plan, requester, `trigger` = manual | once |
@@ -1051,7 +1051,7 @@ job's prompt as a `user` message and the report as an `agent_response`,
 carrying the cards in metadata. A run with a run message writes its report
 through the run report route instead, onto the block (ADR-0062).
 
-- **Python never touches Postgres.** `grid_app` is single-writer and the BFF
+- **Python never touches Postgres.** `app` is single-writer and the BFF
   owns it, so this goes over `POST /api/internal/conversations/{id}/messages`
   with the service token, exactly as the memory-reflection step already does
   from inside a worker.
