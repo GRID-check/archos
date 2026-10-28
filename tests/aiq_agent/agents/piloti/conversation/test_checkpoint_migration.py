@@ -14,6 +14,7 @@ from typing import Any
 
 import aiosqlite
 import pytest
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
@@ -25,7 +26,6 @@ from aiq_agent.agents.piloti.conversation import ConversationGraph
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.common import _build_checkpointer_serde
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 THREAD = "conversation-across-the-deploy"
 

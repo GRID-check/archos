@@ -18,9 +18,8 @@ from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
 from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.qdrant import writes
 from knowledge_layer.qdrant.payload import ChunkRecord
-
-from sources.knowledge_layer.tests.qdrant_testing import record as _record
-from sources.knowledge_layer.tests.qdrant_testing import vector as _vector
+from knowledge_layer_testing.qdrant import record as _record
+from knowledge_layer_testing.qdrant import vector as _vector
 
 #: The real reader, before ``retriever`` stubs it for the tests that need no metadata store.
 FACTS_BY_FILE = writes.facts_by_file
@@ -562,6 +561,26 @@ def test_bm25_candidates_leave_out_the_pieces_of_a_file_name():
         "fluchttreppe",
     ]
     assert "5.1.1" in bm25_candidates("Punkt 5.1.1 der OIB-RL 2"), "a Punkt number is no file name"
+
+
+def test_bm25_candidates_ask_both_german_spellings():
+    """The index folds „ä“ to „a“ and keeps „ae“: „Flaechenwidmung“ found none of what „Flächenwidmung“ found."""
+    from knowledge_layer.qdrant.retrieval import bm25_candidates
+
+    assert bm25_candidates("Flaechenwidmung") == ["flaechenwidmung", "flächenwidmung"]
+    assert bm25_candidates("Flächenwidmung Tür") == ["flächenwidmung", "flaechenwidmung", "tür", "tuer"]
+    # A stopword typed without its umlaut is still a stopword.
+    assert bm25_candidates("Fluchtwege fuer die Garage") == ["fluchtwege", "die", "garage"]
+
+
+def test_either_spelling_prices_the_spelling_the_documents_use(retriever):
+    rows = [_row("Die Flächenwidmung erlaubt Wohnen.", "fwp.pdf"), _row("Die Garage hat zwei Ebenen.", "g.pdf")]
+    _ingest(retriever, "proj_a", rows)
+
+    typed_without, _ = retriever._qdrant_lexical_inputs("Flaechenwidmung", "proj_a")
+    typed_with, _ = retriever._qdrant_lexical_inputs("Flächenwidmung", "proj_a")
+
+    assert typed_without.split() == typed_with.split() == ["flächenwidmung"]
 
 
 def test_umlaut_stopwords_never_reach_bm25_whatever_their_frequency(retriever):

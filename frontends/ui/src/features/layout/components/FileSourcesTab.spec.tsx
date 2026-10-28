@@ -52,13 +52,17 @@ vi.mock('@/features/documents', () => ({
     error: null,
     clearError: mockClearError,
   })),
+  FileUploadZone: ({ onUpload }: { onUpload: (files: File[]) => void }) => (
+    <button onClick={() => onUpload([new File([''], 'test.pdf')])}>Upload Zone</button>
+  ),
+}))
+vi.mock('@/features/documents/store', () => ({
   useDocumentsStore: vi.fn((selector) => {
     const state = { currentCollectionName: 'session-1' }
     return selector(state)
   }),
-  FileUploadZone: ({ onUpload }: { onUpload: (files: File[]) => void }) => (
-    <button onClick={() => onUpload([new File([''], 'test.pdf')])}>Upload Zone</button>
-  ),
+}))
+vi.mock('@/features/documents/utils', () => ({
   mapToDisplayStatus: (status: string) => status,
 }))
 
@@ -128,7 +132,8 @@ vi.mock('./DeleteFileConfirmationModal', () => ({
     ) : null,
 }))
 
-import { useFileUpload, useDocumentsStore } from '@/features/documents'
+import { useFileUpload } from '@/features/documents'
+import { useDocumentsStore } from '@/features/documents/store'
 
 describe('FileSourcesTab', () => {
   beforeEach(() => {

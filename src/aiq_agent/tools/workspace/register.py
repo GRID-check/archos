@@ -27,8 +27,8 @@ from typing import Any
 
 from aiq_agent import project_context
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.turn_status import record_lane_hit
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.retrieval_trace import emit_step_span

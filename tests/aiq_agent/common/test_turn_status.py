@@ -19,6 +19,10 @@ import re
 
 import pytest
 
+from aiq_agent.common import retrieval_status
+from aiq_agent.common import status_keys
+from aiq_agent.common import tool_calls
+from aiq_agent.common import turn_notices
 from aiq_agent.common import turn_status
 from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.skills.events import ALL_SKILL_KEYS
@@ -59,15 +63,15 @@ def _started(emitted, prefix: str) -> list[str]:
 class TestOutsideAGraph:
     def test_emission_outside_a_graph_run_is_silent(self) -> None:
         """No stream to write to (the setup phase): nothing, and no error."""
-        turn_status.emit_citation_check()
-        turn_status.emit_escalation("weil")
+        retrieval_status.emit_citation_check()
+        retrieval_status.emit_escalation("weil")
 
 
 class TestDocumentsLoading:
     """A setup-phase line: RETURNED for ``_run`` to yield, never emitted."""
 
     def test_a_shelf_of_the_readers_own_is_named(self, steps) -> None:
-        step = turn_status.documents_loading_step(["office_shelf"])
+        step = retrieval_status.documents_loading_step(["office_shelf"])
         # The SHELF is in the key, not in the values: German needs the dative
         # ("aus der Büroablage") and English needs no article at all, so a
         # shelf name cannot be interpolated into one shared template.
@@ -80,18 +84,18 @@ class TestDocumentsLoading:
         assert steps == []
 
     def test_several_shelves_collapse_into_one_line(self) -> None:
-        assert turn_status.documents_loading_step(["office_shelf", "project"]).key == "status.documents.several"
+        assert retrieval_status.documents_loading_step(["office_shelf", "project"]).key == "status.documents.several"
 
     def test_the_base_corpus_alone_says_nothing(self) -> None:
         """It is read on every research turn — announcing it announces a constant."""
-        assert turn_status.documents_loading_step(["base"]) is None
-        assert turn_status.documents_loading_step([]) is None
-        assert turn_status.documents_loading_step(None) is None
+        assert retrieval_status.documents_loading_step(["base"]) is None
+        assert retrieval_status.documents_loading_step([]) is None
+        assert retrieval_status.documents_loading_step(None) is None
 
 
 class TestRetrieval:
     def test_it_names_the_corpus_by_ID_and_quotes_the_question(self, steps) -> None:
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search_tool", "args": {"query": "Fluchtweglänge GK4"}}],
             round_index=0,
         )
@@ -102,7 +106,7 @@ class TestRetrieval:
         assert payload.values == {"corpus": "knowledge", "query": "Fluchtweglänge GK4"}
 
     def test_a_group_qualified_tool_name_still_resolves(self, steps) -> None:
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "sources__ris_search_tool", "args": {"query": "OIB 2"}}],
             round_index=0,
         )
@@ -110,7 +114,7 @@ class TestRetrieval:
 
     def test_a_lookup_in_other_projects_says_where_it_went(self, steps) -> None:
         """The reader sees the chat leave its own project (ADR-0094)."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "project_lookup", "args": {"action": "search", "query": "Traufe Holzbau"}}],
             round_index=0,
         )
@@ -125,7 +129,7 @@ class TestRetrieval:
     )
     def test_a_lookup_without_a_query_never_quotes_its_action_or_id(self, steps, args) -> None:
         """„Sucht in anderen Projekten: „brief"" read the action word as what was asked."""
-        turn_status.emit_retrieval([{"name": "project_lookup", "args": args}], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "project_lookup", "args": args}], round_index=0)
         payload = _live(steps)[0]
         assert payload.key == "status.retrieval.plain"
         assert payload.values == {"corpus": "otherProjects"}
@@ -139,19 +143,19 @@ class TestRetrieval:
     )
     def test_a_filesystem_address_is_never_quoted_as_a_query(self, steps, call) -> None:
         """„Sucht in Ihren Unterlagen: „/project/03 Einreichung/““ read a path as what was asked (ADR-0133)."""
-        turn_status.emit_retrieval([call], round_index=0)
+        retrieval_status.emit_retrieval([call], round_index=0)
         payload = _live(steps)[0]
         assert "query" not in payload.values
         assert "/project/" not in " ".join(payload.values.values())
 
     def test_a_search_with_no_query_uses_the_other_template(self, steps) -> None:
-        turn_status.emit_retrieval([{"name": "web_search_tool", "args": {}}], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "web_search_tool", "args": {}}], round_index=0)
         payload = _live(steps)[0]
         assert payload.key == "status.retrieval.plain"
         assert payload.values == {"corpus": "web"}
 
     def test_the_quoted_query_never_outgrows_its_slot(self, steps) -> None:
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search_tool", "args": {"query": "Frage " * 40}}],
             round_index=0,
         )
@@ -159,7 +163,7 @@ class TestRetrieval:
 
     def test_a_parallel_batch_is_ONE_line(self, steps) -> None:
         """Three lines in the same instant is a log stream, not a status."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [
                 {"name": "knowledge_search_tool", "args": {"query": "Fluchtweglänge GK4"}},
                 {"name": "ris_search_tool", "args": {"query": "Fluchtweglänge GK4"}},
@@ -173,8 +177,8 @@ class TestRetrieval:
         assert _live(steps)[0].values["corpus"] == "knowledge,ris,web"
 
     def test_successive_rounds_do_not_collapse_into_one_step(self, steps) -> None:
-        turn_status.emit_retrieval([{"name": "ris_search_tool", "args": {"query": "a"}}], round_index=0)
-        turn_status.emit_retrieval([{"name": "ris_search_tool", "args": {"query": "b"}}], round_index=1)
+        retrieval_status.emit_retrieval([{"name": "ris_search_tool", "args": {"query": "a"}}], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "ris_search_tool", "args": {"query": "b"}}], round_index=1)
         assert _started(steps, "status:retrieval") == ["status:retrieval:0", "status:retrieval:1"]
 
     def test_opening_a_named_passage_says_WHAT_is_being_read(self, steps) -> None:
@@ -185,7 +189,7 @@ class TestRetrieval:
         because it is its publisher's own name for it; the German „Pkt." and
         the whole sentence around it belong to the frontend.
         """
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}}],
             round_index=1,
         )
@@ -195,7 +199,7 @@ class TestRetrieval:
         assert payload.tools == ["read_passage"]
 
     def test_a_page_locator_uses_its_own_key(self, steps) -> None:
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "read_passage", "args": {"document": "Brandschutzkonzept.pdf", "page": 12}}],
             round_index=1,
         )
@@ -205,9 +209,9 @@ class TestRetrieval:
 
     def test_the_locator_is_a_retrieval_round_of_the_spine(self, steps) -> None:
         """It reads evidence, so it is a layer — and it stamps the round."""
-        assert turn_status.is_retrieval_round([{"name": "read_passage", "args": {"document": "x", "clause": "1"}}])
+        assert tool_calls.is_retrieval_round([{"name": "read_passage", "args": {"document": "x", "clause": "1"}}])
         assert (
-            turn_status.emit_retrieval(
+            retrieval_status.emit_retrieval(
                 [{"name": "read_passage", "args": {"document": "x", "clause": "1"}}], round_index=3
             )
             is True
@@ -215,11 +219,11 @@ class TestRetrieval:
         assert turn_status.current_retrieval_round() == 3
 
     def test_a_document_name_never_outgrows_its_slot(self, steps) -> None:
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "read_passage", "args": {"document": "Sehr langer Dokumentname " * 6, "clause": "1"}}],
             round_index=0,
         )
-        assert len(_live(steps)[0].values["document"]) <= turn_status.MAX_DOCUMENT_CHARS
+        assert len(_live(steps)[0].values["document"]) <= tool_calls.MAX_DOCUMENT_CHARS
 
     def test_a_round_that_also_searched_shows_the_search_query(self, steps) -> None:
         """The reader's own words beat an address they never typed.
@@ -227,7 +231,7 @@ class TestRetrieval:
         A locator-only round is the one this tool exists for; a mixed round is
         still a search, and the query is the thing they can still say no to.
         """
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [
                 {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}},
                 {"name": "knowledge_search", "args": {"query": "Fluchtweglänge GK4"}},
@@ -241,7 +245,7 @@ class TestRetrieval:
     def test_a_locator_call_naming_nothing_falls_back_to_the_plain_line(self, steps) -> None:
         """Never a template with a hole in it — and never the document name
         quoted as if it were the reader's search string."""
-        turn_status.emit_retrieval([{"name": "read_passage", "args": {"document": "OIB 2"}}], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "read_passage", "args": {"document": "OIB 2"}}], round_index=0)
         payload = _live(steps)[0]
         assert payload.key == "status.retrieval.plain"
         assert payload.values == {"corpus": "knowledge"}
@@ -249,34 +253,34 @@ class TestRetrieval:
     def test_loading_a_skill_is_not_a_retrieval(self, steps) -> None:
         """The skills substrate narrates that itself, with the skill's human title."""
         read = {"name": "read_file", "args": {"file_path": "/skills/office/x/SKILL.md", "limit": 1000}}
-        turn_status.emit_retrieval([read], round_index=0)
-        turn_status.emit_retrieval([], round_index=1)
-        turn_status.emit_retrieval(None, round_index=2)
+        retrieval_status.emit_retrieval([read], round_index=0)
+        retrieval_status.emit_retrieval([], round_index=1)
+        retrieval_status.emit_retrieval(None, round_index=2)
         assert steps == []
 
     def test_a_draft_read_is_still_narrated_as_one(self, steps) -> None:
-        turn_status.emit_retrieval([{"name": "read_file", "args": {"file_path": "/drafts/a.md"}}], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "read_file", "args": {"file_path": "/drafts/a.md"}}], round_index=0)
         assert _live(steps)[0].key == "status.action.draftRead"
 
     def test_the_skills_root_is_the_skills_packages(self) -> None:
         """Spelled out in turn_status because the skills package imports it; the two must agree."""
         from aiq_agent.skills import SKILLS_ROOT
 
-        assert turn_status.SKILLS_ROOT == SKILLS_ROOT
-        assert turn_status.is_skill_read({"name": "read_file", "args": {"file_path": f"{SKILLS_ROOT}o/x/SKILL.md"}})
-        assert not turn_status.is_skill_read({"name": "read_file", "args": {"file_path": "/drafts/x.md"}})
-        assert not turn_status.is_skill_read({"name": "ls", "args": {"path": SKILLS_ROOT}})
+        assert tool_calls.SKILLS_ROOT == SKILLS_ROOT
+        assert tool_calls.is_skill_read({"name": "read_file", "args": {"file_path": f"{SKILLS_ROOT}o/x/SKILL.md"}})
+        assert not tool_calls.is_skill_read({"name": "read_file", "args": {"file_path": "/drafts/x.md"}})
+        assert not tool_calls.is_skill_read({"name": "ls", "args": {"path": SKILLS_ROOT}})
 
     def test_an_interaction_tool_says_what_it_does(self, steps) -> None:
-        turn_status.emit_retrieval([{"name": "remember", "args": {"text": "Dachneigung 30°"}}], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "remember", "args": {"text": "Dachneigung 30°"}}], round_index=0)
         assert _live(steps)[0].key == "status.action.remember"
 
     def test_a_workspace_call_says_it_works_in_the_workspace_and_its_bookkeeping_says_nothing(self, steps) -> None:
         """Keyed on the qualified name: a bare ``call`` from another group is not the workspace (ADR-0125)."""
         call = {"name": "workspace__call", "args": {"name": "project-members-list", "input": {}}}
-        turn_status.emit_retrieval([call], round_index=0)
-        turn_status.emit_retrieval([{"name": "workspace__search", "args": {"query": "Mitglieder"}}], round_index=1)
-        turn_status.emit_retrieval([{"name": "call", "args": {}}], round_index=2)
+        retrieval_status.emit_retrieval([call], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "workspace__search", "args": {"query": "Mitglieder"}}], round_index=1)
+        retrieval_status.emit_retrieval([{"name": "call", "args": {}}], round_index=2)
         live = _live(steps)
         assert [payload.key for payload in live] == ["status.action.workspaceCall"]
         assert live[0].values == {}
@@ -292,7 +296,7 @@ class TestRetrieval:
         for index, (verb, key) in enumerate(verbs.items()):
             # `ls` takes `path`; on the drafts each verb keeps its draft line (ADR-0133: the mount decides).
             args = {"path": "/drafts/"} if verb == "ls" else {"file_path": "/drafts/a.md"}
-            turn_status.emit_retrieval([{"name": verb, "args": args}], round_index=index)
+            retrieval_status.emit_retrieval([{"name": verb, "args": args}], round_index=index)
         assert [payload.key for payload in _live(steps)] == list(verbs.values())
 
     def test_a_file_verb_is_an_action_and_never_a_retrieval(self, steps) -> None:
@@ -301,7 +305,7 @@ class TestRetrieval:
         The line also carries no ``values``: the file path is the model's own
         invented slug and the query slot belongs to the reader's words.
         """
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "write_file", "args": {"file_path": "/drafts/aktenvermerk.md", "content": "# A"}}],
             round_index=0,
         )
@@ -319,7 +323,7 @@ class TestRetrieval:
         """
         operations = ("move", "rename", "create_folder", "assign")
         for index, operation in enumerate(operations):
-            turn_status.emit_retrieval(
+            retrieval_status.emit_retrieval(
                 [{"name": "propose_file_change", "args": {"operation": operation, "document": "plan.pdf"}}],
                 round_index=index,
             )
@@ -332,7 +336,7 @@ class TestRetrieval:
         What the reader is being told is that THIS turn will not produce the
         answer — something outside the conversation will.
         """
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "create_task", "args": {"title": "Fluchtwege prüfen"}}],
             round_index=0,
         )
@@ -359,7 +363,7 @@ class TestRetrieval:
             ("highlight", {}),
         ]
         for index, (tool, args) in enumerate(calls):
-            turn_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=index)
+            retrieval_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=index)
         keys = [payload.key for payload in _live(steps)]
         assert keys == [
             "status.action.annotationsRead",
@@ -373,7 +377,7 @@ class TestRetrieval:
 
     def test_a_look_has_its_own_line_without_values(self, steps) -> None:
         """Which document and where is the look's own Herleitung step (ADR-0128), not the live line."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "look", "args": {"document": "Grundriss EG.pdf", "page": 2}}], round_index=0
         )
 
@@ -382,7 +386,7 @@ class TestRetrieval:
 
     def test_a_file_proposal_is_an_action_and_never_a_retrieval(self, steps) -> None:
         """Nothing is being read: the file name is a name the reader gave, not a query."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [
                 {
                     "name": "propose_file_change",
@@ -397,9 +401,9 @@ class TestRetrieval:
 
     def test_remember_does_not_steal_the_next_search_slot(self, steps) -> None:
         """``status:retrieval:N`` is the spine. remember used to occupy it."""
-        assert turn_status.emit_retrieval([{"name": "remember", "args": {"text": "x"}}], round_index=0) is False
+        assert retrieval_status.emit_retrieval([{"name": "remember", "args": {"text": "x"}}], round_index=0) is False
         assert (
-            turn_status.emit_retrieval(
+            retrieval_status.emit_retrieval(
                 [{"name": "knowledge_search_tool", "args": {"query": "q"}}],
                 round_index=0,
             )
@@ -421,7 +425,7 @@ class TestRetrieval:
         Same discipline as escalation: it has a language, so it is not a
         live-line value. Absent when the model skipped Thought.
         """
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search_tool", "args": {"query": "Fluchtweglänge GK4"}}],
             round_index=0,
             conclusion="Fluchtweglänge hängt an Nutzung, GK und dem Treppenraum.",
@@ -431,7 +435,7 @@ class TestRetrieval:
         assert "reason" not in payload.values
         assert "text" not in payload.model_dump()
 
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search_tool", "args": {"query": "x"}}],
             round_index=1,
             conclusion="   ",
@@ -445,7 +449,7 @@ class TestRetrieval:
         module exists to remove — and it would be an English-looking identifier
         in a German UI and a German-looking one in an English UI.
         """
-        turn_status.emit_retrieval([{"name": "sql_probe_v2", "args": {"q": "x"}}], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "sql_probe_v2", "args": {"q": "x"}}], round_index=0)
         assert steps == []
 
 
@@ -460,7 +464,7 @@ class TestCheckpointIsCountable:
     """
 
     def test_a_search_round_records_that_its_checkpoint_has_a_body(self, steps) -> None:
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search_tool", "args": {"query": "Fluchtweg"}}],
             round_index=0,
             conclusion="Die Grundregel steht.",
@@ -471,8 +475,8 @@ class TestCheckpointIsCountable:
         assert _started(steps, "status:checkpoint") == ["status:checkpoint:0"]
 
     def test_a_round_the_model_wrote_no_thought_for_records_the_absence(self, steps) -> None:
-        turn_status.emit_retrieval([{"name": "knowledge_search_tool", "args": {"query": "q"}}], round_index=1)
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval([{"name": "knowledge_search_tool", "args": {"query": "q"}}], round_index=1)
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search_tool", "args": {"query": "q"}}],
             round_index=2,
             conclusion="   ",
@@ -481,7 +485,7 @@ class TestCheckpointIsCountable:
 
     def test_it_counts_nothing_the_reader_wrote(self, steps) -> None:
         """A boolean and an index. Never the sentence, in any language."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search_tool", "args": {"query": "Fluchtweglänge GK4"}}],
             round_index=0,
             conclusion="Fluchtweglänge hängt an Nutzung und Geschoss.",
@@ -498,7 +502,7 @@ class TestCheckpointIsCountable:
         thing twice; the argument is what the prompt asked for, so it is what
         the spine renders and what the rate counts.
         """
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [
                 {
                     "name": "knowledge_search",
@@ -511,12 +515,12 @@ class TestCheckpointIsCountable:
         (line,) = _live(steps)
         assert line.reason == "Die Grundregel steht; offen ist der GK."
         (record,) = _technical(steps)
-        assert (record.detail["hasConclusion"], record.detail["source"]) == (True, turn_status.CHECKPOINT_FROM_ARGUMENT)
+        assert (record.detail["hasConclusion"], record.detail["source"]) == (True, tool_calls.CHECKPOINT_FROM_ARGUMENT)
 
     def test_prose_still_carries_a_round_that_filled_no_argument(self, steps) -> None:
         """The fallback is not decoration: a deployment pinned to an older
         prompt has only this channel, and it must not lose its checkpoints."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search", "args": {"query": "Fluchtweg"}}],
             round_index=0,
             conclusion="Ich brauche zuerst die Grundregel.",
@@ -524,23 +528,23 @@ class TestCheckpointIsCountable:
         (line,) = _live(steps)
         assert line.reason == "Ich brauche zuerst die Grundregel."
         (record,) = _technical(steps)
-        assert (record.detail["hasConclusion"], record.detail["source"]) == (True, turn_status.CHECKPOINT_FROM_PROSE)
+        assert (record.detail["hasConclusion"], record.detail["source"]) == (True, tool_calls.CHECKPOINT_FROM_PROSE)
 
     def test_an_empty_first_call_is_recorded_as_no_body_at_all(self, steps) -> None:
         """What the prompt asks for on the FIRST call: nothing is known yet, so
         the slot is left empty rather than filled with a restated question."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search", "args": {"query": "Fluchtweg", "conclusion": "   "}}],
             round_index=0,
         )
         (line,) = _live(steps)
         assert line.reason is None
         (record,) = _technical(steps)
-        assert (record.detail["hasConclusion"], record.detail["source"]) == (False, turn_status.CHECKPOINT_FROM_NONE)
+        assert (record.detail["hasConclusion"], record.detail["source"]) == (False, tool_calls.CHECKPOINT_FROM_NONE)
 
     def test_a_parallel_batch_takes_the_first_conclusion_it_finds(self, steps) -> None:
         """One round is one checkpoint, however many calls it fans out into."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [
                 {"name": "knowledge_search", "args": {"query": "a", "conclusion": ""}},
                 {"name": "ris_search_tool", "args": {"query": "b", "conclusion": "Beide Korpora, ein Schluss."}},
@@ -555,7 +559,7 @@ class TestCheckpointIsCountable:
         the checkpoint is the longest string a retrieval call carries — so
         without the exclusion the model's own reasoning appears on the live line
         as if it were what the reader asked for."""
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "surface_documents", "args": {"conclusion": "Ich brauche den Plan."}}],
             round_index=0,
         )
@@ -565,7 +569,7 @@ class TestCheckpointIsCountable:
 
     def test_an_action_round_draws_no_checkpoint(self, steps) -> None:
         """``remember`` / ``emit_card`` are not layers of the spine."""
-        turn_status.emit_retrieval([{"name": "remember", "args": {"text": "x"}}], round_index=0)
+        retrieval_status.emit_retrieval([{"name": "remember", "args": {"text": "x"}}], round_index=0)
         assert _technical(steps) == []
 
     def test_successive_rounds_each_leave_their_own_record(self, steps) -> None:
@@ -573,7 +577,7 @@ class TestCheckpointIsCountable:
         reason: two steps sharing an id collapse into one row, and a
         three-round spine reporting one checkpoint is not a rate."""
         for index in (0, 1, 2):
-            turn_status.emit_retrieval(
+            retrieval_status.emit_retrieval(
                 [{"name": "knowledge_search_tool", "args": {"query": "q"}}],
                 round_index=index,
                 conclusion="etwas" if index == 1 else None,
@@ -588,7 +592,7 @@ class TestCheckpointIsCountable:
 
 class TestEscalation:
     def test_the_line_says_why_in_the_readers_terms(self, steps) -> None:
-        turn_status.emit_escalation("Shallow agent emitted insufficiency marker")
+        retrieval_status.emit_escalation("Shallow agent emitted insufficiency marker")
         payload = _live(steps)[0]
         assert payload.key == "status.escalation"
         # The internal marker string is telemetry, never the sentence.
@@ -598,7 +602,7 @@ class TestEscalation:
 
 class TestSynthesis:
     def test_the_line_marks_the_answer_being_written(self, steps) -> None:
-        turn_status.emit_synthesis()
+        retrieval_status.emit_synthesis()
         payload = _live(steps)[0]
         assert payload.key == "status.synthesis"
         # Value-less on purpose: what is being written is the reader's answer,
@@ -610,7 +614,7 @@ class TestTheSubjectDocument:
     """Read as bytes because retrieval cannot see it — telemetry, not a line."""
 
     def test_it_is_a_technical_record_with_no_key(self) -> None:
-        step = turn_status.subject_document_step(
+        step = retrieval_status.subject_document_step(
             loaded=True, document_id="doc-9", version_id="ver-9", state="draft", path="/drafts/Befund.md", chars=42
         )
         # No key, therefore no dictionary entry, therefore nothing rendered on
@@ -631,27 +635,30 @@ class TestTheSubjectDocument:
 
     def test_a_miss_carries_a_stable_reason_and_omits_what_is_absent(self) -> None:
         """An operator counting misses by reason must not tell "no state" from "state: None"."""
-        step = turn_status.subject_document_step(
-            loaded=False, version_id="ver-9", reason=turn_status.SUBJECT_UNREACHABLE
+        step = retrieval_status.subject_document_step(
+            loaded=False, version_id="ver-9", reason=retrieval_status.SUBJECT_UNREACHABLE
         )
         assert step.detail == {"loaded": False, "version_id": "ver-9", "reason": "unreachable"}
 
     def test_it_is_its_own_slot(self) -> None:
         """Sharing ``documents`` would replace the shelf line the reader was just shown."""
-        assert turn_status.subject_document_step(loaded=True).id != turn_status.documents_loading_step(["project"]).id
+        assert (
+            retrieval_status.subject_document_step(loaded=True).id
+            != retrieval_status.documents_loading_step(["project"]).id
+        )
 
 
 class TestChannels:
     def test_every_status_here_is_addressed_to_the_reader(self, steps) -> None:
-        turn_status.emit_retrieval([{"name": "knowledge_search_tool", "args": {"query": "q"}}], round_index=0)
-        turn_status.emit_citation_check(source_count=3)
-        turn_status.emit_escalation(None)
+        retrieval_status.emit_retrieval([{"name": "knowledge_search_tool", "args": {"query": "q"}}], round_index=0)
+        retrieval_status.emit_citation_check(source_count=3)
+        retrieval_status.emit_escalation(None)
 
-        payloads = [turn_status.documents_loading_step(["project"]), *_live(steps)]
+        payloads = [retrieval_status.documents_loading_step(["project"]), *_live(steps)]
         assert [payload.kind for payload in payloads] == ["status", "retrieval", "status", "status"]
         for payload in payloads:
             assert getattr(payload, "channel", "live") == turn_status.CHANNEL_LIVE
-            assert payload.key in turn_status.ALL_STATUS_KEYS
+            assert payload.key in status_keys.ALL_STATUS_KEYS
 
 
 # --- The point of the change ------------------------------------------------
@@ -696,60 +703,60 @@ _GERMAN_WORDS = (
 def _every_live_payload(steps) -> list:
     """One of every live step this repo can produce, the setup phase's included."""
     setup = [
-        turn_status.documents_loading_step(["office_shelf"]),
-        turn_status.documents_loading_step(["project"]),
-        turn_status.documents_loading_step(["session"]),
-        turn_status.documents_loading_step(["office_shelf", "project"]),
-        turn_status.documents_waiting_step(file_count=1),
+        retrieval_status.documents_loading_step(["office_shelf"]),
+        retrieval_status.documents_loading_step(["project"]),
+        retrieval_status.documents_loading_step(["session"]),
+        retrieval_status.documents_loading_step(["office_shelf", "project"]),
+        retrieval_status.documents_waiting_step(file_count=1),
     ]
-    turn_status.emit_retrieval(
+    retrieval_status.emit_retrieval(
         [
             {"name": "knowledge_search_tool", "args": {"query": "Fluchtweglänge GK4"}},
             {"name": "ris_search_tool", "args": {"query": "Fluchtweglänge GK4"}},
         ],
         round_index=0,
     )
-    turn_status.emit_retrieval([{"name": "web_search_tool", "args": {}}], round_index=1)
-    turn_status.emit_retrieval(
+    retrieval_status.emit_retrieval([{"name": "web_search_tool", "args": {}}], round_index=1)
+    retrieval_status.emit_retrieval(
         [{"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}}],
         round_index=4,
     )
-    turn_status.emit_retrieval(
+    retrieval_status.emit_retrieval(
         [{"name": "read_passage", "args": {"document": "Brandschutzkonzept.pdf", "page": 12}}],
         round_index=5,
     )
-    turn_status.emit_retrieval([{"name": "remember", "args": {"text": "x"}}], round_index=2)
-    turn_status.emit_retrieval([{"name": "emit_card", "args": {"kind": "x"}}], round_index=3)
-    turn_status.emit_retrieval([{"name": "ls", "args": {"path": "/drafts/"}}], round_index=4)
-    turn_status.emit_retrieval([{"name": "read_file", "args": {"file_path": "/drafts/a.md"}}], round_index=5)
-    turn_status.emit_retrieval([{"name": "write_file", "args": {"file_path": "/drafts/a.md"}}], round_index=6)
-    turn_status.emit_retrieval([{"name": "edit_file", "args": {"file_path": "/drafts/a.md"}}], round_index=7)
-    turn_status.emit_retrieval(
+    retrieval_status.emit_retrieval([{"name": "remember", "args": {"text": "x"}}], round_index=2)
+    retrieval_status.emit_retrieval([{"name": "emit_card", "args": {"kind": "x"}}], round_index=3)
+    retrieval_status.emit_retrieval([{"name": "ls", "args": {"path": "/drafts/"}}], round_index=4)
+    retrieval_status.emit_retrieval([{"name": "read_file", "args": {"file_path": "/drafts/a.md"}}], round_index=5)
+    retrieval_status.emit_retrieval([{"name": "write_file", "args": {"file_path": "/drafts/a.md"}}], round_index=6)
+    retrieval_status.emit_retrieval([{"name": "edit_file", "args": {"file_path": "/drafts/a.md"}}], round_index=7)
+    retrieval_status.emit_retrieval(
         [{"name": "propose_file_change", "args": {"operation": "move", "document": "plan.pdf"}}],
         round_index=8,
     )
-    turn_status.emit_retrieval(
+    retrieval_status.emit_retrieval(
         [{"name": "file_draft", "args": {"path": "/drafts/a.md"}}],
         round_index=9,
     )
-    turn_status.emit_retrieval(
+    retrieval_status.emit_retrieval(
         [{"name": "file_draft", "args": {"path": "/drafts/a.md", "submit": True}}],
         round_index=10,
     )
-    turn_status.emit_retrieval(
+    retrieval_status.emit_retrieval(
         [{"name": "create_task", "args": {"title": "Fluchtwege prüfen"}}],
         round_index=11,
     )
     canvas = (("marks", {}), ("mark", {}), ("mark", {"open": True}), ("update", {}), ("delete", {}), ("reply", {}))
     for index, (tool, args) in enumerate(canvas):
-        turn_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=12 + index)
-    turn_status.emit_retrieval([{"name": "workspace__call", "args": {"name": "tasks-list"}}], round_index=18)
-    turn_status.emit_retrieval([{"name": "look", "args": {"page": 1}}], round_index=19)
-    turn_status.emit_retrieval_requery(query_count=2)
-    turn_status.emit_citation_check(source_count=3)
-    turn_status.emit_answer_repair(quotes=1)
-    turn_status.emit_escalation("Shallow agent emitted insufficiency marker")
-    turn_status.emit_synthesis()
+        retrieval_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=12 + index)
+    retrieval_status.emit_retrieval([{"name": "workspace__call", "args": {"name": "tasks-list"}}], round_index=18)
+    retrieval_status.emit_retrieval([{"name": "look", "args": {"page": 1}}], round_index=19)
+    retrieval_status.emit_retrieval_requery(query_count=2)
+    retrieval_status.emit_citation_check(source_count=3)
+    retrieval_status.emit_answer_repair(quotes=1)
+    retrieval_status.emit_escalation("Shallow agent emitted insufficiency marker")
+    retrieval_status.emit_synthesis()
     return [*setup, *_live(steps)]
 
 
@@ -793,13 +800,13 @@ class TestNothingEmittedIsLanguageSpecific:
         nothing anywhere that says why.
         """
         emitted = {payload.key for payload in _every_live_payload(steps)}
-        assert emitted <= set(turn_status.ALL_STATUS_KEYS)
+        assert emitted <= set(status_keys.ALL_STATUS_KEYS)
         # And the registry claims nothing it cannot produce: every id in it is
         # reachable from the calls above.
-        assert set(turn_status.ALL_STATUS_KEYS) == emitted
+        assert set(status_keys.ALL_STATUS_KEYS) == emitted
 
     def test_the_two_registries_do_not_overlap(self) -> None:
-        assert not set(turn_status.ALL_STATUS_KEYS) & set(ALL_SKILL_KEYS)
+        assert not set(status_keys.ALL_STATUS_KEYS) & set(ALL_SKILL_KEYS)
 
 
 class TestTheRepairRecordCarriesItsCounts:
@@ -812,20 +819,20 @@ class TestTheRepairRecordCarriesItsCounts:
     """
 
     def test_one_step_named_status_repair(self, steps) -> None:
-        turn_status.emit_answer_repair(quotes=1)
+        retrieval_status.emit_answer_repair(quotes=1)
         assert {step.id for step in steps.steps} == {"status:repair"}
 
     def test_the_count_is_the_camel_case_the_detail_panel_reads(self, steps) -> None:
-        turn_status.emit_answer_repair(quotes=1)
+        retrieval_status.emit_answer_repair(quotes=1)
         payload = _live(steps)[0]
         # A removed citation is no longer repaired, so it is no longer counted here.
         assert payload.detail == {"quotesFailed": 1}
 
     def test_the_line_still_resolves_for_the_reader(self, steps) -> None:
         """The record is detail; the sentence is still a dictionary id."""
-        turn_status.emit_answer_repair(quotes=1)
+        retrieval_status.emit_answer_repair(quotes=1)
         payload = _live(steps)[0]
-        assert payload.key == turn_status.KEY_REPAIR
+        assert payload.key == status_keys.KEY_REPAIR
         assert payload.values == {}
 
 
@@ -850,10 +857,10 @@ class TestRoundAnnouncementMirrorsTheLiveFrame:
 
     def test_a_search_round_records_its_facts_and_no_guessed_purpose(self) -> None:
         """Query, tools, corpora and key are recorded; nothing is guessed."""
-        record = turn_status.record_round_announcement(round_index=0, calls=_search_calls(), conclusion=None)
+        record = retrieval_status.record_round_announcement(round_index=0, calls=_search_calls(), conclusion=None)
         assert record == {
             "index": 0,
-            "key": turn_status.KEY_RETRIEVAL_WITH_QUERY,
+            "key": status_keys.KEY_RETRIEVAL_WITH_QUERY,
             "tools": ["knowledge_search"],
             "corpora": ["knowledge"],
             "query": "Fluchtweglänge GK4",
@@ -861,22 +868,22 @@ class TestRoundAnnouncementMirrorsTheLiveFrame:
 
     def test_a_locator_round_records_its_key(self) -> None:
         """A locator round keeps its clause key, not the search template."""
-        record = turn_status.record_round_announcement(round_index=1, calls=_open_calls(), conclusion=None)
+        record = retrieval_status.record_round_announcement(round_index=1, calls=_open_calls(), conclusion=None)
         assert record is not None
-        assert record["key"] == turn_status.KEY_RETRIEVAL_CLAUSE
+        assert record["key"] == status_keys.KEY_RETRIEVAL_CLAUSE
         assert record["tools"] == ["read_passage"]
 
     def test_action_batches_and_empties_record_nothing(self) -> None:
         """Action batches and empty batches record nothing, like the counter skips them."""
         assert (
-            turn_status.record_round_announcement(
+            retrieval_status.record_round_announcement(
                 round_index=0,
                 calls=[{"name": "remember", "args": {}}],
                 conclusion=None,
             )
             is None
         )
-        assert turn_status.record_round_announcement(round_index=0, calls=[], conclusion=None) is None
+        assert retrieval_status.record_round_announcement(round_index=0, calls=[], conclusion=None) is None
 
     def test_the_reason_is_the_ranked_checkpoint_clipped_like_the_frame(self, steps) -> None:
         calls = [
@@ -885,10 +892,12 @@ class TestRoundAnnouncementMirrorsTheLiveFrame:
                 "args": {"query": "q", "conclusion": "Die Grundregel steht."},
             }
         ]
-        record = turn_status.record_round_announcement(round_index=0, calls=calls, conclusion="Prose beside the calls.")
+        record = retrieval_status.record_round_announcement(
+            round_index=0, calls=calls, conclusion="Prose beside the calls."
+        )
         assert record is not None
         assert record["reason"] == "Die Grundregel steht."
-        turn_status.emit_retrieval(calls, round_index=0, conclusion="Prose beside the calls.")
+        retrieval_status.emit_retrieval(calls, round_index=0, conclusion="Prose beside the calls.")
         assert _live(steps)[0].reason == record["reason"]
 
     def test_record_covers_exactly_the_batches_the_counter_skips(self) -> None:
@@ -901,8 +910,8 @@ class TestRoundAnnouncementMirrorsTheLiveFrame:
             [],
         ]
         for index, calls in enumerate(batches):
-            record = turn_status.record_round_announcement(round_index=index, calls=calls, conclusion=None)
-            assert (record is None) == (not turn_status.emit_retrieval(calls, round_index=99))
+            record = retrieval_status.record_round_announcement(round_index=index, calls=calls, conclusion=None)
+            assert (record is None) == (not retrieval_status.emit_retrieval(calls, round_index=99))
 
 
 class TestLaneCaptureKeepsRoundsApart:
@@ -951,12 +960,12 @@ class TestTheFetchFailureMarker:
     """
 
     def test_the_marker_is_a_stable_prefix_both_tools_can_write(self) -> None:
-        assert turn_status.FETCH_FAILED_MARKER == "[fetch failed]"
+        assert tool_calls.FETCH_FAILED_MARKER == "[fetch failed]"
 
     def test_both_retrieval_tools_start_their_failure_string_with_it(self) -> None:
         from knowledge_layer.read_passage import _store_silent_message
 
-        assert _store_silent_message("OIB-Richtlinie 2, Pkt. 3.5.2").startswith(turn_status.FETCH_FAILED_MARKER)
+        assert _store_silent_message("OIB-Richtlinie 2, Pkt. 3.5.2").startswith(tool_calls.FETCH_FAILED_MARKER)
         # The search side is asserted through the agent's graph
         # (`test_repeat_fetch_guard.py`), where the string is produced inside
         # the tool's own except branch.
@@ -977,82 +986,82 @@ class TestFetchSignature:
     """
 
     def test_a_search_folds_case_and_whitespace_in_the_query(self) -> None:
-        first = turn_status.fetch_signature({"name": "knowledge_search", "args": {"query": "Fluchtweglänge GK4"}})
-        second = turn_status.fetch_signature({"name": "knowledge_search", "args": {"query": "  fluchtweglänge   gk4 "}})
+        first = tool_calls.fetch_signature({"name": "knowledge_search", "args": {"query": "Fluchtweglänge GK4"}})
+        second = tool_calls.fetch_signature({"name": "knowledge_search", "args": {"query": "  fluchtweglänge   gk4 "}})
         assert first is not None
         assert first == second
 
     def test_a_narrowing_argument_is_part_of_the_identity(self) -> None:
         """Same words against another file are another corpus and another answer."""
-        plain = turn_status.fetch_signature({"name": "knowledge_search", "args": {"query": "Fluchtweg"}})
-        narrowed = turn_status.fetch_signature(
+        plain = tool_calls.fetch_signature({"name": "knowledge_search", "args": {"query": "Fluchtweg"}})
+        narrowed = tool_calls.fetch_signature(
             {"name": "knowledge_search", "args": {"query": "Fluchtweg", "file_name": "Brandschutz.pdf"}}
         )
-        foldered = turn_status.fetch_signature(
+        foldered = tool_calls.fetch_signature(
             {"name": "knowledge_search", "args": {"query": "Fluchtweg", "folder": "Brandschutz"}}
         )
         assert len({plain, narrowed, foldered}) == 3
 
     def test_a_file_name_is_matched_case_insensitively(self) -> None:
-        upper = turn_status.fetch_signature(
+        upper = tool_calls.fetch_signature(
             {"name": "knowledge_search", "args": {"query": "q", "file_name": "Brandschutz.PDF"}}
         )
-        lower = turn_status.fetch_signature(
+        lower = tool_calls.fetch_signature(
             {"name": "knowledge_search", "args": {"query": "q", "file_name": " brandschutz.pdf"}}
         )
         assert upper == lower
 
     def test_filters_compare_by_content_and_not_by_key_order(self) -> None:
-        one = turn_status.fetch_signature(
+        one = tool_calls.fetch_signature(
             {"name": "knowledge_search", "args": {"query": "q", "filters": {"a": 1, "b": 2}}}
         )
-        other = turn_status.fetch_signature(
+        other = tool_calls.fetch_signature(
             {"name": "knowledge_search", "args": {"query": "q", "filters": {"b": 2, "a": 1}}}
         )
-        unfiltered = turn_status.fetch_signature({"name": "knowledge_search", "args": {"query": "q"}})
+        unfiltered = tool_calls.fetch_signature({"name": "knowledge_search", "args": {"query": "q"}})
         assert one == other
         assert one != unfiltered
 
     def test_an_empty_narrowing_is_the_same_as_none(self) -> None:
         """A model that fills the slot with "" narrowed nothing."""
-        blank = turn_status.fetch_signature(
+        blank = tool_calls.fetch_signature(
             {"name": "knowledge_search", "args": {"query": "q", "doc_class": "  ", "filters": {}}}
         )
-        assert blank == turn_status.fetch_signature({"name": "knowledge_search", "args": {"query": "q"}})
+        assert blank == tool_calls.fetch_signature({"name": "knowledge_search", "args": {"query": "q"}})
 
     def test_a_clause_is_the_same_point_with_or_without_its_trailing_dot(self) -> None:
         """The Richtlinien print both, and so does the model."""
-        dotted = turn_status.fetch_signature(
+        dotted = tool_calls.fetch_signature(
             {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2."}}
         )
-        plain = turn_status.fetch_signature(
+        plain = tool_calls.fetch_signature(
             {"name": "read_passage", "args": {"document": " oib-richtlinie 2 ", "clause": "3.5.2"}}
         )
         assert dotted is not None
         assert dotted == plain
 
     def test_another_page_of_one_document_is_another_passage(self) -> None:
-        twelve = turn_status.fetch_signature({"name": "read_passage", "args": {"document": "plan.pdf", "page": 12}})
-        as_text = turn_status.fetch_signature({"name": "read_passage", "args": {"document": "plan.pdf", "page": "12"}})
-        thirteen = turn_status.fetch_signature({"name": "read_passage", "args": {"document": "plan.pdf", "page": 13}})
+        twelve = tool_calls.fetch_signature({"name": "read_passage", "args": {"document": "plan.pdf", "page": 12}})
+        as_text = tool_calls.fetch_signature({"name": "read_passage", "args": {"document": "plan.pdf", "page": "12"}})
+        thirteen = tool_calls.fetch_signature({"name": "read_passage", "args": {"document": "plan.pdf", "page": 13}})
         assert twelve == as_text
         assert twelve != thirteen
 
     def test_a_group_qualified_tool_name_still_signs(self) -> None:
-        assert turn_status.fetch_signature(
+        assert tool_calls.fetch_signature(
             {"name": "mcp__knowledge_search", "args": {"query": "q"}}
-        ) == turn_status.fetch_signature({"name": "knowledge_search", "args": {"query": "q"}})
+        ) == tool_calls.fetch_signature({"name": "knowledge_search", "args": {"query": "q"}})
 
     def test_every_other_tool_is_never_guarded(self) -> None:
         """Two cards are two cards; two measurements are not the same bytes."""
         for name in ("emit_card", "remember", "ris_search_tool", "web_search_tool", "ifc_measure", "read_file"):
-            assert turn_status.fetch_signature({"name": name, "args": {"query": "q"}}) is None
+            assert tool_calls.fetch_signature({"name": name, "args": {"query": "q"}}) is None
 
     def test_a_call_it_cannot_read_is_not_signed(self) -> None:
         """A guard that cannot read a call must not take it away."""
-        assert turn_status.fetch_signature({"name": "knowledge_search"}) is None
-        assert turn_status.fetch_signature({"name": "knowledge_search", "args": "query=q"}) is None
-        assert turn_status.fetch_signature("knowledge_search") is None
+        assert tool_calls.fetch_signature({"name": "knowledge_search"}) is None
+        assert tool_calls.fetch_signature({"name": "knowledge_search", "args": "query=q"}) is None
+        assert tool_calls.fetch_signature("knowledge_search") is None
 
 
 class TestTheRepeatFetchRecord:
@@ -1066,7 +1075,7 @@ class TestTheRepeatFetchRecord:
     """
 
     def test_it_never_reaches_the_live_line(self, steps) -> None:
-        turn_status.emit_repeat_fetch(round_index=1, withheld=2)
+        turn_notices.emit_repeat_fetch(round_index=1, withheld=2)
         assert _live(steps) == []
         (payload,) = _technical(steps)
         assert payload.channel == turn_status.CHANNEL_TECHNICAL
@@ -1074,8 +1083,8 @@ class TestTheRepeatFetchRecord:
         assert (payload.detail["round"], payload.detail["withheld"]) == (1, 2)
 
     def test_each_round_leaves_its_own_step(self, steps) -> None:
-        turn_status.emit_repeat_fetch(round_index=0, withheld=1)
-        turn_status.emit_repeat_fetch(round_index=1, withheld=1)
+        turn_notices.emit_repeat_fetch(round_index=0, withheld=1)
+        turn_notices.emit_repeat_fetch(round_index=1, withheld=1)
         assert _started(steps, "status:repeat") == ["status:repeat:0", "status:repeat:1"]
 
 
@@ -1084,7 +1093,7 @@ def test_a_call_that_still_names_punkt_reads_as_the_same_clause():
     old = {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "punkt": "3.5.2."}}
     new = {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}}
 
-    assert turn_status.fetch_signature(old) == turn_status.fetch_signature(new)
+    assert tool_calls.fetch_signature(old) == tool_calls.fetch_signature(new)
 
 
 class TestToolBasename:
@@ -1102,4 +1111,4 @@ class TestToolBasename:
         ],
     )
     def test_it_returns_the_final_segment(self, qualified: str, base: str) -> None:
-        assert turn_status.tool_basename(qualified) == base
+        assert tool_calls.tool_basename(qualified) == base
