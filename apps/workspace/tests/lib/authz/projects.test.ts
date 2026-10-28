@@ -1,0 +1,187 @@
+/**
+ * @vitest-environment node
+ */
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { requireProjectAccess } from "@/lib/authz/projects";
+import type { AuthorizedSession } from "@/lib/auth/types";
+
+vi.mock("@/lib/db", () => ({
+  getDb: vi.fn(),
+}));
+
+vi.mock("@/lib/workos/client", () => ({
+  getWorkOS: vi.fn(),
+}));
+
+import { getDb } from "@/lib/db";
+import { getWorkOS } from "@/lib/workos/client";
+
+const mockGetDb = vi.mocked(getDb);
+const mockGetWorkOS = vi.mocked(getWorkOS);
+
+function mockDbSelect(rows: Array<{ organizationId: string }>) {
+  return {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => Promise.resolve(rows)),
+        })),
+      })),
+    })),
+  };
+}
+
+/** What WorkOS answers for the caller's effective permissions on the project. */
+function setupWorkOS(held: Record<string, boolean>) {
+  const effective = vi.fn(async () => ({
+    autoPagination: async () =>
+      Object.entries(held)
+        .filter(([, holds]) => holds)
+        .map(([slug]) => ({ slug })),
+  }));
+  mockGetWorkOS.mockReturnValue({
+    authorization: { listEffectivePermissionsByExternalId: effective },
+  } as unknown as ReturnType<typeof getWorkOS>);
+  return effective;
+}
+
+const baseSession: AuthorizedSession = {
+  userId: "user-1",
+  email: "user@example.com",
+  name: null,
+  accessToken: "tok",
+  organizationId: "org_1",
+  organizationMembershipId: "om_1",
+  role: "viewer",
+  permissions: [],
+  featureFlags: null,
+};
+
+/** A real project id is a uuid; the tenancy probe answers null for anything else. */
+const PROJECT_ID = "00000000-0000-4000-8000-000000000001";
+
+describe("requireProjectAccess", () => {
+  // Every test below asks about the same (session, project) with different
+  // FGA answers, so the authz cache (default TTL 30s) must be off here.
+  beforeEach(() => {
+    process.env.AUTHZ_CACHE_TTL_MS = "0";
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    delete process.env.AUTHZ_CACHE_TTL_MS;
+  });
+
+  test("org admins bypass per-project FGA checks but NOT the tenancy check", async () => {
+    mockGetDb.mockReturnValue(
+      mockDbSelect([{ organizationId: "org_1" }]) as never,
+    );
+
+    const result = await requireProjectAccess(
+      { ...baseSession, role: "admin", permissions: ["org:projects:administer"] },
+      PROJECT_ID,
+    );
+
+    expect(result).toEqual({ role: "project-admin", closed: false, readsBecauseClosed: false });
+    expect(mockGetDb).toHaveBeenCalled();
+    expect(mockGetWorkOS).not.toHaveBeenCalled();
+  });
+
+  test("org admins are denied on another organization's project", async () => {
+    // Regression: the admin fast-path used to return BEFORE the tenancy
+    // check, letting an org-A admin act on an org-B project by id.
+    mockGetDb.mockReturnValue(
+      mockDbSelect([{ organizationId: "org_other" }]) as never,
+    );
+
+    await expect(
+      requireProjectAccess({ ...baseSession, role: "admin", permissions: ["org:projects:administer"] }, PROJECT_ID),
+    ).rejects.toThrow("Not found");
+    expect(mockGetWorkOS).not.toHaveBeenCalled();
+  });
+
+  test("returns project-viewer for a viewer", async () => {
+    mockGetDb.mockReturnValue(
+      mockDbSelect([{ organizationId: "org_1" }]) as never,
+    );
+    const effective = setupWorkOS({
+      "project:view": true,
+      "project:edit": false,
+      "project:manage": false,
+    });
+
+    const result = await requireProjectAccess(baseSession, PROJECT_ID);
+
+    expect(result).toEqual({ role: "project-viewer", closed: false, readsBecauseClosed: false });
+    expect(effective).toHaveBeenCalledWith({
+      organizationMembershipId: "om_1",
+      externalId: PROJECT_ID,
+      resourceTypeSlug: "project",
+    });
+  });
+
+  test("returns project-editor for an editor", async () => {
+    mockGetDb.mockReturnValue(
+      mockDbSelect([{ organizationId: "org_1" }]) as never,
+    );
+    setupWorkOS({
+      "project:view": true,
+      "project:edit": true,
+      "project:manage": false,
+    });
+
+    const result = await requireProjectAccess(baseSession, PROJECT_ID);
+
+    expect(result).toEqual({ role: "project-editor", closed: false, readsBecauseClosed: false });
+  });
+
+  test("returns project-admin for a project manager", async () => {
+    mockGetDb.mockReturnValue(
+      mockDbSelect([{ organizationId: "org_1" }]) as never,
+    );
+    setupWorkOS({
+      "project:view": true,
+      "project:edit": true,
+      "project:manage": true,
+    });
+
+    const result = await requireProjectAccess(baseSession, PROJECT_ID);
+
+    expect(result).toEqual({ role: "project-admin", closed: false, readsBecauseClosed: false });
+  });
+
+  test("throws 'Not found' when the user lacks the requested permission", async () => {
+    mockGetDb.mockReturnValue(
+      mockDbSelect([{ organizationId: "org_1" }]) as never,
+    );
+    setupWorkOS({
+      "project:view": false,
+    });
+
+    await expect(
+      requireProjectAccess(baseSession, PROJECT_ID),
+    ).rejects.toThrow("Not found");
+  });
+
+  test("throws 'Not found' for a project outside the current organization", async () => {
+    mockGetDb.mockReturnValue(
+      mockDbSelect([{ organizationId: "org_2" }]) as never,
+    );
+    setupWorkOS({});
+
+    await expect(
+      requireProjectAccess(baseSession, PROJECT_ID),
+    ).rejects.toThrow("Not found");
+    expect(mockGetWorkOS).not.toHaveBeenCalled();
+  });
+
+  test("throws 'Not found' when the project does not exist", async () => {
+    mockGetDb.mockReturnValue(mockDbSelect([]) as never);
+    setupWorkOS({});
+
+    await expect(
+      requireProjectAccess(baseSession, PROJECT_ID),
+    ).rejects.toThrow("Not found");
+    expect(mockGetWorkOS).not.toHaveBeenCalled();
+  });
+});

@@ -79,15 +79,15 @@ The rules:
   one. The image is CloudNativePG's own build, pinned by tag and digest in
   `config.ts` and scanned by the same trivy job as the other pinned images.
 * **Every DSN states its route.** The `dsn()` helper takes `via: "pooler" | "direct"`
-  with no default. Pooled: `NAT_JOB_STORE_DB_URL`, `AIQ_CHECKPOINT_DB`,
-  `AIQ_DEEP_CHECKPOINT_DB`, `AIQ_SUMMARY_DB`, `GRID_APP_DATABASE_URL`. Direct
-  (`grid-pg-rw`): `AIQ_LISTEN_DB_URL`, the new `AIQ_LOCK_DB_URL`,
+  with no default. Pooled: `NAT_JOB_STORE_DB_URL`, `GRID_CHECKPOINT_DB`,
+  `GRID_DEEP_CHECKPOINT_DB`, `GRID_SUMMARY_DB`, `GRID_APP_DATABASE_URL`. Direct
+  (`grid-pg-rw`): `GRID_LISTEN_DB_URL`, the new `GRID_LOCK_DB_URL`,
   `GRID_APP_MIGRATION_DATABASE_URL`, KEDA's scaler DSNs, the init and grants Jobs,
   Langfuse (Prisma migrates under a session advisory lock of its own) and the
   SeaweedFS filer's store.
 * **Session-scoped features use the direct DSN and nowhere else.** Every session
   advisory lock is taken through `aiq_agent.knowledge.leader_lock` on an engine
-  built from `AIQ_LOCK_DB_URL` that never pools (`NullPool`, autocommit). The
+  built from `GRID_LOCK_DB_URL` that never pools (`NullPool`, autocommit). The
   ghost-job reaper uses it instead of its own SQL. The locks fail closed: when
   a leader election cannot be held nobody leads that cycle (logged, and every
   caller is on a schedule that retries), and `keyed_lock` raises so the file
@@ -211,4 +211,4 @@ code (the allowance can then become a limit).
 
 Related: ADR-0041 (row-level security and the per-transaction tenant context),
 ADR-0079 (the claim queues and KEDA's scaler login), ADR-0043 (the SeaweedFS filer
-store). Scaling review item 8: `docs/architecture/scaling-review-2026-07.md`.
+store). Scaling review item 8: `docs/audit/scaling-review-2026-07.md`.

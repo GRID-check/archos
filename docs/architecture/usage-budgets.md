@@ -32,7 +32,7 @@ Budgets view read-only from Platform → Übersicht (`/app/platform/organization
 aggregates and each organization's limits as an hourly snapshot:
 [`org-spend-in-posthog.md`](../observability/org-spend-in-posthog.md).
 
-There is no currency conversion anywhere. The old `GRID_BUDGET_EUR_PER_USD`
+There is no currency conversion anywhere. The old `BUDGET_EUR_PER_USD`
 rate is gone: a hand-set rate was neither the bank's nor OpenRouter's, and a
 figure nobody is charged is not worth showing. What a credit costs a tenant in
 euros is the contract's business.
@@ -108,12 +108,12 @@ This repo's CI/dev environment cannot reach openrouter.ai, so the contract
 above is **verified against the official documentation and replayed as test
 fixtures**, not against the live API:
 
-- `tests/aiq_agent/common/test_cost_tracking.py` replays a
+- `packages/agent/tests/common/test_cost_tracking.py` replays a
   documentation-exact usage object end-to-end: extraction → budget math →
   the exact JSON batch POSTed to the ledger endpoint.
-- `frontends/ui/src/app/api/internal/usage/route.spec.ts` accepts exactly
+- `apps/workspace/app/api/internal/usage/route.spec.ts` accepts exactly
   that batch shape into the ledger.
-- **Live-Postgres integration tests** (opt-in via `GRID_TEST_DATABASE_URL`,
+- **Live-Postgres integration tests** (opt-in via `TEST_DATABASE_URL`,
   auto-skipped in CI): `src/lib/budgets/service.integration.spec.ts` and
   `src/lib/model-config/service.integration.spec.ts` apply migrations
   0012/0013 to a real Postgres 16 and exercise the actual queries — ledger
@@ -129,19 +129,19 @@ fixtures**, not against the live API:
 
 ## Capture: one handler, zero per-agent code
 
-`src/aiq_agent/common/cost_tracking.py`:
+`packages/agent/src/agent/common/cost_tracking.py`:
 
 ```
-track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
+track_llm_costs()  ──sets──▶  cost_tracker_var (ContextVar)
                                    │ register_configure_hook(…, inheritable=True)
                                    ▼
               EVERY LangChain callback manager configured in-context
-              gets GridCostTracker — all agents, all groups, automatically
+              gets CostTracker — all agents, all groups, automatically
 ```
 
 - **Activation points (the only wiring, 4 total)**:
   - sync chat turn — `piloti/conversation_register.py` around `agent.run(...)`
-  - async research job — `aiq_api/jobs/runner.py` around `_run_agent(...)`
+  - async research job — `agent_host/jobs/runner.py` around `_run_agent(...)`
     (identity + budget captured at submit time via `capture_usage_context()`)
   - background memory reflection — `project_memory/reflection.py` (own
     activation; the turn's tracker is already flushed when it fires)
@@ -159,7 +159,16 @@ track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
   tracker (a no-op outside one), and each event carries its role
   (`ingest_vision`, `ingest_transcription`, `embedding`) into `agent_group`.
   Query-time embeddings in a chat turn are metered by the same wrapper.
-- **Voice dictation** (`aiq_api/routes/dictation.py`) is a single
+- **Direct vision calls over `httpx`**: `look`'s second reader
+  (`tools/look/reading.py`, role `look_reading`) and the Fassung comparison
+  (`agent_host/routes/revision_compare.py`, role `revision_compare`) post to
+  `/chat/completions` themselves and book the reply's `usage` with
+  `record_completion_usage(body, role=…)`. A look reads the turn's tracker; the
+  comparison opens its own for the organization and person the BFF names in
+  `x-grid-organization-id` / `x-grid-user-id`. A tool call through the agent
+  door (`routes/internal_tools.py`) opens a tracker for the person the envelope
+  verified, so a door `document-look` or search is booked like a turn's.
+- **Voice dictation** (`agent_host/routes/dictation.py`) is a single
   transcription call per recording, outside any turn. It opens its own
   tracker, books one event with `activity = 'dictation'`, the provider's cost
   and `audio_seconds`, and flushes it in the background. The BFF prices it at
@@ -183,7 +192,7 @@ track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
   degrade to "not metered"; the endpoint being down loses telemetry, not
   answers.
 
-## Storage (grid_app, migration `0013_budgets.sql`)
+## Storage (`app`, migration `0013_budgets.sql`)
 
 **`budget_policies`** — append-only limit configuration, supersede idiom:
 `(organization_id, scope['organization'|'member'|'project'], subject_id,
@@ -242,7 +251,7 @@ Enforcement points:
    (ADR-0019, `getSpendTotals`), maintained transactionally with every
    ledger insert — the upgrade never scans the month's ledger. Per-model /
    per-member breakdowns (admin views) still read the ledger.
-2. **In-flight** (`GridCostTracker`): cumulative turn spend ≥ remaining →
+2. **In-flight** (`CostTracker`): cumulative turn spend ≥ remaining →
    `BudgetExceededError` **before the next LLM call starts**; the sync path
    catches it and returns a friendly "budget exhausted" chat response; an
    async job fails with the same message. A call already in flight always
@@ -256,6 +265,7 @@ Enforcement points:
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET | `/api/organization/usage` | member (own) / admin (org-wide, `?userId`/`?projectId`) | `unit` plus day+month totals, per-model breakdown, budget status as `{amount, events}` **in that unit only** — cost, price and the other unit never leave the tenant projection |
+| GET | `/api/organization/usage/notice` | member (`project:view` for `?projectId`) | `{ notice }`: the one window worth a notice in the composer, or `null` (see the chat UI section) |
 | GET | `/api/organization/budgets` | member (org limits + own); admin (+ all active policies) | `unit` and the limits in it |
 | PUT | `/api/organization/budgets` | org admin; project scope also project admin | set a policy (supersede), bare `dailyLimit` / `monthlyLimit`; the unit follows the key mode, never the caller |
 | GET | `/api/organization/model-config/models` | org models admin | model search; `creditsPerRequest` (the reference request priced at the active list) for a credit organization, `null` on an own key; never per-token USD |
@@ -288,6 +298,41 @@ saying its usage is on its own bill and Piloti charges no credits.
   (set / remove). Project limits are managed the same way from a project
   picker. Mobile-first: rows and forms stack under the `sm` breakpoint and
   stats carry their own micro-labels.
+
+## UI (chat → the usage notice)
+
+The composer carries one notice about the budget before it stops the person
+typing (`features/chat/components/UsageNotice.tsx`, decided in
+`lib/budgets/usage-notice.ts`, served by `GET /api/organization/usage/notice`).
+It reads the same cached limits and rollup as enforcement
+(`getBudgetUtilisation`), so it cannot disagree with what blocks a turn.
+
+- **Levels**: `forecast` (a monthly window ≥ 50 % used whose month-to-date pace
+  runs it out ≥ 24 h before it renews; days are never forecast, one long run is
+  not a pace), `warning` ≥ 80 %, `critical` ≥ 95 % (adds that a long research
+  run may stop, ADR-0015's call-granular stop), `exhausted` ≥ 100 % (an alert,
+  not dismissible).
+- **One window**: the highest level wins; among exhausted windows the one that
+  renews last (it decides when chat works again); among forecasts the one that
+  runs out first; otherwise the fullest.
+- **The viewer's rights**: a project counts only with `project:view` on it, and
+  is dropped (not refused) otherwise. `canChange` = `canManageBudgets`, or
+  `project:manage` for a project window, and decides between "Raise the limit"
+  (to the project's usage settings, or Organization → budgets) and "an admin
+  can raise it". `used`/`limit` travel only to `canChange` viewers and to a
+  member for their own limit; everyone else gets the percentage.
+- **Freshness**: nothing pushes spend to the browser, so the client re-reads
+  on open and project switch, 3 s after a turn ends (the tracker's final
+  flush), when a tab returns after ≥ 60 s, and when the window renews.
+- **Dismissal**: per `key` = scope, project, window id and level, in
+  `localStorage` (`piloti.usage-notice.dismissed`, the last 20). The next level
+  or window shows again.
+- **PostHog**: `usage_notice_shown` (once per key per page view) and
+  `usage_notice_dismissed`.
+
+The socket refusal and its banner (`budget.exhausted`, via
+`/api/auth/connection-diagnostics`) stay: the notice is advice read ahead of
+time, the refusal is what actually stops a turn.
 
 ## UI (Platform → Overview)
 
@@ -334,6 +379,6 @@ same limits; this is not a separate platform-only commercial ceiling.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `GRID_INTERNAL_API_TOKEN` | dev token | guards `/api/internal/usage` (both services) |
+| `INTERNAL_API_TOKEN` | dev token | guards `/api/internal/usage` (both services) |
 | `OPENROUTER_API_KEY` | — | frontend: catalog listing (model config); backend: LLM calls |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | catalog override for tests/self-hosting |

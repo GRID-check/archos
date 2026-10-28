@@ -1,0 +1,504 @@
+"""Tests for the per-turn agent execution profiler.
+
+Mirrors packages/agent/tests/common/test_cost_tracking.py's structure: unit tests
+on the callback handler directly (no live LangChain run needed), plus the
+context-manager activation contract.
+"""
+
+from unittest.mock import patch
+
+import pytest
+
+from agent.common.profiler import AgentProfiler
+from agent.common.profiler import agent_profiler_var
+from agent.common.profiler import current_span_var
+from agent.common.profiler import profiled_node
+from agent.common.profiler import track_agent_profile
+
+
+class TestAgentProfilerSpans:
+    def _profiler(self) -> AgentProfiler:
+        return AgentProfiler(organization_id="org_1", conversation_id="conv_1", turn_id="turn_1")
+
+    def test_start_end_span_records_duration_and_status(self):
+        profiler = self._profiler()
+        span_id = profiler.start_span("node", "shallow_research")
+        profiler.end_span(span_id, status="ok")
+        assert profiler.spans_recorded == 1
+
+    def test_nesting_via_current_span_var(self):
+        profiler = self._profiler()
+        root_id = profiler.start_span("turn", "chat_researcher")
+        token = current_span_var.set(root_id)
+        try:
+            child_id = profiler.start_span("node", "shallow_research")
+        finally:
+            current_span_var.reset(token)
+        profiler.end_span(child_id, status="ok")
+        profiler.end_span(root_id, status="ok")
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            profiler.flush(wait=True)
+        payload = post.call_args.args[0]
+        spans = {span["spanId"]: span for span in payload["spans"]}
+        assert spans[child_id]["parentSpanId"] == root_id
+        assert spans[root_id]["parentSpanId"] is None
+
+    def test_error_status_carries_message(self):
+        profiler = self._profiler()
+        span_id = profiler.start_span("llm", "vendor/model")
+        profiler.end_span(span_id, status="error", error="boom")
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            profiler.flush(wait=True)
+        span = post.call_args.args[0]["spans"][0]
+        assert span["status"] == "error"
+        assert span["errorMessage"] == "boom"
+
+    def test_end_span_unknown_id_is_a_noop(self):
+        profiler = self._profiler()
+        profiler.end_span("does-not-exist")
+        assert profiler.spans_recorded == 0
+
+    def test_llm_start_end_keyed_by_run_id(self):
+        profiler = self._profiler()
+        profiler.on_chat_model_start({}, [], run_id="A", invocation_params={"model": "vendor/model-a"})
+        profiler.on_chat_model_start({}, [], run_id="B", invocation_params={"model": "vendor/model-b"})
+        profiler.on_llm_end(None, run_id="A")
+        profiler.on_llm_end(None, run_id="B")
+        assert profiler.spans_recorded == 2
+
+    def test_llm_error_marks_span_error(self):
+        profiler = self._profiler()
+        profiler.on_chat_model_start({}, [], run_id="A")
+        profiler.on_llm_error(RuntimeError("rate limited"), run_id="A")
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            profiler.flush(wait=True)
+        span = post.call_args.args[0]["spans"][0]
+        assert span["status"] == "error"
+        assert "rate limited" in span["errorMessage"]
+
+    def test_tool_start_end_keyed_by_run_id(self):
+        profiler = self._profiler()
+        profiler.on_tool_start({"name": "search_documents"}, "{}", run_id="T1")
+        profiler.on_tool_end("result", run_id="T1")
+        assert profiler.spans_recorded == 1
+
+    def test_flush_posts_batch_with_identity(self):
+        profiler = self._profiler()
+        span_id = profiler.start_span("node", "clarifier")
+        profiler.end_span(span_id)
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            profiler.flush(wait=True)
+        assert post.call_count == 1
+        payload = post.call_args.args[0]
+        assert payload["organizationId"] == "org_1"
+        assert payload["conversationId"] == "conv_1"
+        assert payload["turnId"] == "turn_1"
+        assert len(payload["spans"]) == 1
+
+    def test_flush_is_idempotent_when_empty(self):
+        profiler = self._profiler()
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            profiler.flush(wait=True)
+        assert post.call_count == 0
+
+
+class TestProfiledNode:
+    async def test_wraps_and_records_success(self):
+        async def fn(x):
+            return x + 1
+
+        wrapped = profiled_node("my_node", fn)
+        with track_agent_profile(agent_name="test_agent", identity={"organization_id": "org_1"}) as profiler:
+            result = await wrapped(41)
+            assert result == 42
+            assert profiler is not None
+            # profiled_node() closes the span before returning the wrapped result.
+            assert profiler.spans_recorded == 1
+
+    async def test_noop_without_active_profiler(self):
+        async def fn(x):
+            return x * 2
+
+        wrapped = profiled_node("my_node", fn)
+        assert agent_profiler_var.get() is None
+        assert await wrapped(21) == 42
+
+    async def test_propagates_and_records_exception(self):
+        async def fn():
+            raise ValueError("node failed")
+
+        wrapped = profiled_node("failing_node", fn)
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with pytest.raises(ValueError):
+                with track_agent_profile(agent_name="test_agent", identity={"organization_id": "org_1"}):
+                    await wrapped()
+        payload = post.call_args.args[0]
+        node_spans = [s for s in payload["spans"] if s["name"] == "failing_node"]
+        assert len(node_spans) == 1
+        assert node_spans[0]["status"] == "error"
+        # The root turn span is also marked error since the exception propagated out of the block.
+        turn_spans = [s for s in payload["spans"] if s["name"] == "test_agent"]
+        assert turn_spans[0]["status"] == "error"
+
+
+class TestTrackAgentProfile:
+    def test_sets_and_resets_contextvars(self):
+        assert agent_profiler_var.get() is None
+        assert current_span_var.get() is None
+        with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}) as profiler:
+            assert profiler is not None
+            assert agent_profiler_var.get() is profiler
+            assert current_span_var.get() is not None
+        assert agent_profiler_var.get() is None
+        assert current_span_var.get() is None
+
+    def test_flushes_root_span_on_exit(self):
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                pass
+        assert post.call_count == 1
+        spans = post.call_args.args[0]["spans"]
+        assert len(spans) == 1
+        assert spans[0]["kind"] == "turn"
+        assert spans[0]["name"] == "chat_researcher"
+        assert spans[0]["parentSpanId"] is None
+
+    def test_root_span_metadata_is_read_at_teardown(self):
+        """A post-answer stage only knows its outcome once the block is done, so
+        the metadata dict it hands in has to be read at teardown, not at open."""
+        metadata = {"stage": "memory_reflection", "outcome": "pending"}
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(
+                agent_name="stage:memory_reflection",
+                identity={"organization_id": "org_1"},
+                metadata=metadata,
+            ):
+                metadata["outcome"] = "timeout"
+        span = post.call_args.args[0]["spans"][0]
+        assert span["metadata"] == {"stage": "memory_reflection", "outcome": "timeout"}
+
+    def test_configure_hook_attaches_handler_to_langchain_config(self):
+        """The DRY seam: any callback manager configured inside the context
+        must pick up the profiler without agent code opting in."""
+        from langchain_core.callbacks.manager import CallbackManager
+
+        with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}) as profiler:
+            manager = CallbackManager.configure(inheritable_callbacks=None, local_callbacks=None)
+            assert any(handler is profiler for handler in manager.handlers)
+
+
+class TestProfiledSpan:
+    """Setup work that is not a graph node still gets a row in the waterfall."""
+
+    def test_nests_under_the_root_span(self):
+        from agent.common.profiler import profiled_span
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                with profiled_span("setup.project_context"):
+                    pass
+        spans = post.call_args.args[0]["spans"]
+        root = next(s for s in spans if s["kind"] == "turn")
+        setup = next(s for s in spans if s["name"] == "setup.project_context")
+        assert setup["kind"] == "node"
+        assert setup["parentSpanId"] == root["spanId"]
+        assert setup["status"] == "ok"
+
+    def test_noop_without_active_profiler(self):
+        from agent.common.profiler import profiled_span
+
+        assert agent_profiler_var.get() is None
+        with profiled_span("setup.project_context"):
+            assert current_span_var.get() is None
+
+    def test_records_the_error_and_propagates(self):
+        from agent.common.profiler import profiled_span
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with pytest.raises(ValueError):
+                with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                    with profiled_span("setup.ingest_wait"):
+                        raise ValueError("boom")
+        setup = next(s for s in post.call_args.args[0]["spans"] if s["name"] == "setup.ingest_wait")
+        assert setup["status"] == "error"
+
+    async def test_gathered_branches_each_nest_under_the_root(self):
+        """Each gathered branch runs in its own task and its own context copy,
+        so two concurrent spans both parent on the root, never on each other."""
+        import asyncio
+
+        from agent.common.profiler import profiled_span
+
+        async def branch(name: str):
+            with profiled_span(name):
+                await asyncio.sleep(0)
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                await asyncio.gather(branch("setup.a"), branch("setup.b"))
+        spans = post.call_args.args[0]["spans"]
+        root = next(s for s in spans if s["kind"] == "turn")
+        assert {s["parentSpanId"] for s in spans if s["name"].startswith("setup.")} == {root["spanId"]}
+
+
+class TestCancellationStatus:
+    """A cancelled turn is abandoned work, not failed work."""
+
+    async def test_profiled_span_marks_cancelled_not_error(self):
+        import asyncio
+
+        from agent.common.profiler import profiled_span
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with pytest.raises(asyncio.CancelledError):
+                with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                    with profiled_span("setup.project_context"):
+                        raise asyncio.CancelledError()
+        setup = next(s for s in post.call_args.args[0]["spans"] if s["name"] == "setup.project_context")
+        assert setup["status"] == "cancelled"
+        assert setup["errorMessage"] is None
+
+    async def test_profiled_node_marks_cancelled_not_error(self):
+        import asyncio
+
+        async def fn():
+            raise asyncio.CancelledError()
+
+        wrapped = profiled_node("cancelled_node", fn)
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with pytest.raises(asyncio.CancelledError):
+                with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                    await wrapped()
+        node = next(s for s in post.call_args.args[0]["spans"] if s["name"] == "cancelled_node")
+        assert node["status"] == "cancelled"
+        assert node["errorMessage"] is None
+
+    def test_generator_exit_is_not_marked_error(self):
+        from agent.common.profiler import profiled_span
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with pytest.raises(GeneratorExit):
+                with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                    with profiled_span("setup.ingest_wait"):
+                        raise GeneratorExit()
+        spans = post.call_args.args[0]["spans"]
+        assert all(s["status"] != "error" for s in spans)
+        # "not marked error" was also satisfied by not recording the span AT
+        # ALL, which is what narrowing to `except Exception` actually did: the
+        # span stayed open and the waterfall lost the row that says where the
+        # turn stopped. Assert it is present and cancelled, not merely not-error.
+        span = next(s for s in spans if s["name"] == "setup.ingest_wait")
+        assert span["status"] == "cancelled"
+
+    @pytest.mark.parametrize("exc", [KeyboardInterrupt, SystemExit], ids=["keyboard-interrupt", "system-exit"])
+    def test_a_non_exception_unwind_still_closes_the_span(self, exc):
+        from agent.common.profiler import profiled_span
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with pytest.raises(exc):
+                with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                    with profiled_span("setup.ingest_wait"):
+                        raise exc()
+        span = next(s for s in post.call_args.args[0]["spans"] if s["name"] == "setup.ingest_wait")
+        assert span["status"] == "error"
+
+
+class TestDeferredFlush:
+    """The chat turn posts its ledgers AFTER the answer is on the wire, not
+    between the finished answer and its first delta."""
+
+    def test_inline_flush_false_leaves_the_batch_pending(self):
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(
+                agent_name="chat_researcher", identity={"organization_id": "org_1"}, inline_flush=False
+            ) as profiler:
+                pass
+            assert post.call_count == 0
+            assert profiler is not None
+            profiler.flush(wait=True)
+        assert post.call_count == 1
+
+    def test_flush_without_wait_returns_the_workers_future(self):
+        from agent.common.profiler import _flush_executor
+
+        profiler = AgentProfiler(organization_id="org_1", conversation_id="conv_1", turn_id="turn_1")
+        profiler.end_span(profiler.start_span("node", "x"))
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            future = profiler.flush(wait=False)
+            assert future is not None
+            future.result(timeout=5)
+            _flush_executor.submit(lambda: None).result()
+        assert post.call_count == 1
+        assert profiler.flush(wait=False) is None
+
+    async def test_flush_after_answer_posts_every_ledger_off_the_loop(self):
+        import threading
+
+        from agent.common.cost_tracking import track_llm_costs
+        from agent.common.profiler import flush_after_answer
+
+        loop_thread = threading.current_thread().name
+        posting_threads: list[str] = []
+
+        def record(payload):
+            posting_threads.append(threading.current_thread().name)
+
+        with (
+            patch("agent.common.profiler._post_profiler_spans", side_effect=record),
+            patch("agent.common.cost_tracking._post_usage_events", side_effect=record),
+        ):
+            with (
+                track_agent_profile(
+                    agent_name="chat_researcher", identity={"organization_id": "org_1"}, inline_flush=False
+                ) as profiler,
+                track_llm_costs(identity={"organization_id": "org_1"}, inline_flush=False) as tracker,
+            ):
+                pass
+            assert posting_threads == []
+            await flush_after_answer(profiler, tracker)
+        # The profiler always has its root span; the tracker had no events.
+        assert len(posting_threads) == 1
+        assert posting_threads[0] != loop_thread
+
+    async def test_flush_after_answer_tolerates_nothing_to_post(self):
+        from agent.common.profiler import flush_after_answer
+
+        await flush_after_answer(None, None)
+
+    async def test_flush_after_answer_records_the_turn_usage_rollup(self):
+        """Per-turn dollars finalize with the ledgers: the tracker in, a rollup out."""
+        from unittest.mock import patch
+
+        from agent.common.cost_tracking import CostTracker
+        from agent.common.cost_tracking import UsageEvent
+        from agent.common.profiler import flush_after_answer
+
+        tracker = CostTracker(organization_id="org_1")
+        tracker.record(
+            UsageEvent(
+                model="m",
+                requested_model="m",
+                generation_id="gen-1",
+                prompt_tokens=500,
+                completion_tokens=100,
+                total_tokens=600,
+                cached_tokens=0,
+                reasoning_tokens=0,
+                cost_usd=0.001,
+                cost_source="usage_field",
+                is_byok=False,
+            )
+        )
+        with (
+            patch("agent.common.cost_tracking._post_usage_events"),
+            patch(
+                "agent.observability.usage_rollup.record_usage_turn",
+                return_value={"rollup": {}},
+            ) as record,
+        ):
+            await flush_after_answer(tracker)
+
+        assert record.call_count == 1
+        assert record.call_args.kwargs["tracker"] is tracker
+        assert record.call_args.kwargs["agent"] == "chat"
+
+    async def test_flush_after_answer_survives_a_failing_rollup(self):
+        """Telemetry must never take the turn down — not even the usage rollup."""
+        from unittest.mock import patch
+
+        from agent.common.cost_tracking import CostTracker
+        from agent.common.profiler import flush_after_answer
+
+        tracker = CostTracker(organization_id="org_1")
+        with (
+            patch("agent.common.cost_tracking._post_usage_events"),
+            patch(
+                "agent.observability.usage_rollup.record_usage_turn",
+                side_effect=RuntimeError("trace store is gone"),
+            ),
+        ):
+            await flush_after_answer(tracker)
+
+
+class TestAnnotateCurrentSpan:
+    """A TTL-cached reader says whether it hit, on the span that was open."""
+
+    def test_facts_land_on_the_innermost_open_span(self):
+        from agent.common.profiler import annotate_current_span
+        from agent.common.profiler import profiled_span
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                with profiled_span("setup.project_context"):
+                    annotate_current_span(cache_model_config="miss")
+                    annotate_current_span(cache_skills="hit")
+        spans = post.call_args.args[0]["spans"]
+        setup = next(s for s in spans if s["name"] == "setup.project_context")
+        assert setup["metadata"] == {"cache_model_config": "miss", "cache_skills": "hit"}
+        root = next(s for s in spans if s["kind"] == "turn")
+        assert root["metadata"] is None
+
+    def test_noop_without_a_profiler(self):
+        from agent.common.profiler import annotate_current_span
+
+        assert agent_profiler_var.get() is None
+        annotate_current_span(cache_model_config="miss")  # must not raise
+
+    async def test_a_reader_on_a_worker_thread_still_reaches_the_turn_span(self):
+        import asyncio
+
+        from agent.common.profiler import annotate_current_span
+
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                await asyncio.to_thread(annotate_current_span, cache_model_config="hit")
+        root = next(s for s in post.call_args.args[0]["spans"] if s["kind"] == "turn")
+        assert root["metadata"] == {"cache_model_config": "hit"}
+
+
+class TestTheRootSpanCarriesTheCacheCounters:
+    """A warm turn and a cold one must be different rows (latency audit §4.4, E7).
+
+    The counters are the shared cache's own (``common/cache.py``); the profiler
+    only stamps them, and only at teardown, where the turn's totals are final.
+    """
+
+    def _span(self, post):
+        return post.call_args.args[0]["spans"][0]
+
+    def test_a_turn_that_read_the_cache_reports_hits_and_misses(self, monkeypatch):
+        from agent.common import cache
+
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        cache.reset_local_store()
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                cache.get_json("cold")
+                cache.set_json("warm", {"a": 1}, ttl_seconds=60)
+                cache.get_json("warm")
+        metadata = self._span(post)["metadata"]
+        assert metadata["cache_local_hits"] == 1
+        assert metadata["cache_local_misses"] == 1
+
+    def test_a_turn_that_never_touched_the_cache_says_nothing_about_it(self):
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                pass
+        assert not self._span(post)["metadata"]
+
+    def test_two_turns_do_not_count_each_other(self, monkeypatch):
+        """One replica answers several turns at once; the scope is a ContextVar
+        so a turn's row is its own traffic, not the replica's."""
+        from agent.common import cache
+
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        cache.reset_local_store()
+        with patch("agent.common.profiler._post_profiler_spans") as post:
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                cache.get_json("a")
+                cache.get_json("b")
+            with track_agent_profile(agent_name="chat_researcher", identity={"organization_id": "org_1"}):
+                cache.get_json("c")
+        assert post.call_args_list[0].args[0]["spans"][0]["metadata"]["cache_local_misses"] == 2
+        assert post.call_args_list[1].args[0]["spans"][0]["metadata"]["cache_local_misses"] == 1

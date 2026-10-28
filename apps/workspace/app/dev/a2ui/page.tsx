@@ -1,0 +1,125 @@
+'use client'
+
+/**
+ * Dev preview — every card, drawn the way the chat draws it: through A2UI
+ * (`AnswerCardItem` → `A2uiCard` → `A2uiSurface` on the Piloti catalog,
+ * ADR-0065), plus compositions an answer may emit.
+ *
+ * Each section's `data-a2ui-surface` marks a card A2UI drew; a section without
+ * one fell back to the direct component, and the console says why. The
+ * gallery (`/dev/cards`) draws the components directly and is the place to
+ * review a card's own design; this page is the place to review the path.
+ *
+ * 404s outside development. Pinned to German.
+ */
+
+import { notFound } from 'next/navigation'
+
+import { I18nProvider } from '@/i18n'
+import { AnswerCardItem } from '@/features/cards/components/AnswerCards'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
+import { validateAnswerCards, type AnswerCard } from '@/shared/cards/schemas'
+
+const OIB2 = { document: 'OIB-Richtlinie 2', section: 'Tabelle 1b', edition: 'Ausgabe Mai 2023' }
+
+/** Compositions: the shapes ADR-0065 lets an answer build. Values show form only. */
+const COMPOSITIONS = validateAnswerCards([
+  {
+    type: 'surface',
+    title: 'Zweiter Fluchtweg — zwei Varianten',
+    components: [
+      {
+        id: 'root',
+        component: 'Tabs',
+        tabs: [
+          { title: 'Außentreppe', child: 'aussen' },
+          { title: 'Zweites Treppenhaus', child: 'innen' },
+        ],
+      },
+      {
+        id: 'aussen',
+        component: 'Text',
+        text: [
+          'Die Außentreppe ist billiger, hängt aber an den **Öffnungen** in der Fassade.',
+          '',
+          '| Kriterium | Anforderung | Status | Fundstelle |',
+          '|---|---|---|---|',
+          '| Abstand zu Öffnungen | ≥ 2,0 m | offen | Pkt. 5.1 |',
+          '| Baustoff der Treppe | A2 | erfüllt | Pkt. 5.1 |',
+          '| Laufbreite | ≥ 1,20 m | erfüllt | Pkt. 5.1 |',
+        ].join('\n'),
+      },
+      {
+        id: 'innen',
+        component: 'Text',
+        text: [
+          '| Kriterium | Anforderung | Status | Fundstelle |',
+          '|---|---|---|---|',
+          '| Wände des Treppenhauses | REI 90 | erfüllt | Tab. 1b |',
+          '| Rauchabzug | ≥ 1 m² | nicht erfüllt | Pkt. 5.1.4 |',
+          '',
+          '- [ ] Rauchabzug im obersten Geschoß nachweisen',
+        ].join('\n'),
+      },
+    ],
+  },
+  {
+    type: 'surface',
+    title: 'Treppe und Geländer nebeneinander',
+    components: [
+      { id: 'root', component: 'Row', children: ['treppe', 'gelaender'] },
+      {
+        id: 'treppe',
+        component: 'calculation',
+        title: 'Schrittmaßregel',
+        steps: [
+          {
+            label: 'Schrittmaß',
+            operation: 'sum',
+            unit: 'cm',
+            operands: [
+              { label: 'Steigung', value: 17, unit: 'cm', factor: 2, provenance: 'declared' },
+              { label: 'Auftritt', value: 30, unit: 'cm', provenance: 'declared' },
+            ],
+          },
+        ],
+        limit: { comparator: 'between', value: 59, upper: 65, label: 'Schrittmaßregel', reference: OIB2 },
+      },
+      {
+        id: 'gelaender',
+        component: 'guardrail_check',
+        title: 'Geländer Balkon 3. OG',
+        context: 'balcony',
+        fall_height: { label: 'Absturzhöhe', value: 9.2, required: 12, unit: 'm', comparator: '<=', status: 'pass' },
+        rail_height: { label: 'Geländerhöhe', value: 100, required: 100, unit: 'cm', comparator: '>=', status: 'pass' },
+        max_opening: { label: 'max. Öffnungsweite', value: 11, required: 12, unit: 'cm', comparator: '<=', status: 'pass' },
+        reference: { document: 'OIB-Richtlinie 4', section: 'Pkt. 4.1', edition: 'Ausgabe Mai 2023' },
+      },
+    ],
+  },
+]).filter((card): card is AnswerCard => Boolean(card))
+
+const CARDS = Object.entries(CARD_PREVIEW_FIXTURES) as [string, AnswerCard][]
+
+export default function A2uiPreviewPage() {
+  if (process.env.NODE_ENV !== 'development') notFound()
+  return (
+    <I18nProvider initialLocale="de" fixedLocale>
+      <main className="text-foreground mx-auto flex w-full max-w-[680px] flex-col gap-8 p-6">
+        <h1 className="text-lg font-semibold">A2UI — every card through the chat&apos;s path</h1>
+        {COMPOSITIONS.map((card, index) => (
+          <section key={`composition-${index}`} data-card={`composition_${index}`} className="flex flex-col gap-2">
+            <h2 className="text-muted-foreground font-mono text-xs">composition {index + 1}</h2>
+            <AnswerCardItem card={card} index={index} />
+          </section>
+        ))}
+        {CARDS.map(([type, card], index) => (
+          <section key={type} data-card={type} className="flex flex-col gap-2">
+            <h2 className="text-muted-foreground font-mono text-xs">{type}</h2>
+            <AnswerCardItem card={card} index={index + COMPOSITIONS.length} />
+          </section>
+        ))}
+      </main>
+    </I18nProvider>
+  )
+}

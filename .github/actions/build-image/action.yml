@@ -24,7 +24,7 @@ inputs:
     description: The input hash from the plan
     required: true
   registry:
-    description: Lowercase registry prefix, e.g. ghcr.io/grid-check
+    description: Lowercase registry prefix, e.g. ghcr.io/archos-at
     required: true
   push:
     description: >-
@@ -51,16 +51,16 @@ runs:
   using: composite
   steps:
     # The web build reprocesses every blog image on a cold cache, and the layer
-    # cache cannot help it (`COPY . .` comes first). CI's web job writes this
+    # cache cannot help it (`COPY . .` comes first). CI's site job writes this
     # cache; restoring it into the build context lets the container start warm.
-    # frontends/web/.dockerignore leaves `.astro-cache` in the context for this,
+    # apps/site/.dockerignore leaves `.astro-cache` in the context for this,
     # and the runner stage copies only dist/, so it never reaches the image.
     - name: Restore the Astro asset cache into the build context
       if: inputs.name == 'web'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: frontends/web/.astro-cache
-        key: astro-cache-${{ runner.os }}-${{ hashFiles('frontends/web/src/content/blog/_images/**', 'frontends/web/src/assets/**') }}
+        path: apps/site/.astro-cache
+        key: astro-cache-${{ runner.os }}-${{ hashFiles('apps/site/src/content/blog/_images/**', 'apps/site/src/assets/**') }}
         restore-keys: |
           astro-cache-${{ runner.os }}-
 
@@ -101,12 +101,12 @@ runs:
         POSTHOG_PROJECT_ID: ${{ inputs.posthog-project-id }}
       run: |
         {
-          echo "list<<GRID_EOF"
-          echo "GRID_GIT_SHA=$GITHUB_SHA"
+          echo "list<<EOF"
+          echo "GIT_SHA=$GITHUB_SHA"
           if [ "$IMAGE_NAME" = frontend ] && [ -n "$POSTHOG_API_KEY" ] && [ -n "$POSTHOG_PROJECT_ID" ]; then
             echo "POSTHOG_PROJECT_ID=$POSTHOG_PROJECT_ID"
           fi
-          echo "GRID_EOF"
+          echo "EOF"
         } >> "$GITHUB_OUTPUT"
 
     # Layer cache in GHCR, one `buildcache` tag per image, rather than type=gha:
@@ -121,7 +121,7 @@ runs:
     # stage; `image-manifest`/`oci-mediatypes` because GHCR rejects the legacy
     # cache manifest.
     #
-    # GRID_GIT_SHA (set above) is the commit that BUILT the image. An image whose
+    # GIT_SHA (set above) is the commit that BUILT the image. An image whose
     # inputs did not change is not rebuilt, only re-tagged, so a container reports
     # the commit its code came from, which is the one worth reading in a pilot
     # report. It is also the PostHog release of the frontend's source maps, so an

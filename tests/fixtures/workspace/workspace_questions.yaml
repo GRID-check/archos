@@ -1,0 +1,188 @@
+# The workspace eval (`task be:eval:answer-suite -- --set workspace`, ADR-0123): office work
+# asked of Piloti in the fixture office (`apps/workspace/tests/fixtures/workspace/office.json`),
+# its door served by `scripts/turn_census/fixture_workspace.py`.
+#
+# Every run sits in the office's current project („Wohnhaus Mödling"), as Lena Berger, an
+# admin, in a conversation of her own. A row with `turns` is one conversation: each turn runs
+# in it in order, and the checks read the LAST turn (`expect`) unless `expect_turn` names
+# another. What a turn did on the door is read from what the fixture served it, so a
+# proposal counts by what was filed, not by what the model said.
+#
+# Checks (`expect`):
+#   reads:      operations that must have been CALLED and answered (any order)
+#   proposes:   writes that must have been PROPOSED: {operation, input: {dotted.path: value}};
+#               a value matches case-insensitively, a list of values means any one of them.
+#               `or_tool` names a native tool that does the same job (the check passes on it).
+#   uses:       tools the turn must have done the work with: a native tool's name as the model binds
+#               it (`remember`, `canvas__mark`) or a door operation; a list item means any one of them.
+#               Which tool is Piloti's for a job is `apps/workspace/bff/agent-api/exposure.config.ts`
+#               (`piloti: 'native:<tool>'` hides the door's operation from Piloti).
+#   no_write:   true: nothing proposed (an ambiguous target is asked about, not guessed)
+#   no_workspace: true: the door was not used at all
+#   no_repeat:  operations a follow-up must not call again (the earlier turn already read them)
+#   mentions / not_mentions: as the loop set: words the answer must or must not hold
+#   judge:      meanings a model judges (`judge.py`): `pending` (the answer says a proposed change
+#               waits for the person, never that it is done), `asks` (it asks which one is meant)
+#
+# Ids, from office.json: Wohnhaus Mödling 3f0b1c2d-…, Kindergarten Baden 5a6b7c8d-…,
+# Anna Huber om_anna_h, Anna Gruber om_anna_g, Thomas Wagner om_thomas,
+# Baubeschreibung.docx a1b2c3d4-…, folder Einreichung 1b2c3d4e-….
+
+questions:
+  - id: ws-members-de
+    question: Wer arbeitet alles an diesem Projekt mit?
+    expect:
+      reads: [project-member-list]
+      no_write: true
+      mentions: [Thomas Wagner]
+
+  - id: ws-members-en
+    question: Who is working on this project?
+    expect:
+      reads: [project-member-list]
+      no_write: true
+      mentions: [Thomas Wagner]
+
+  # A project role is the person's to grant: project-member-add is `access` (ADR-0122), which
+  # in-product Piloti neither sees nor proposes. It must not file a look-alike instead
+  # (project-person-add is the project record's list of parties, not access).
+  - id: ws-member-add-de
+    question: Füge Anna Huber als Bearbeiterin zu diesem Projekt hinzu.
+    expect:
+      no_write: true
+
+  - id: ws-move-ambiguous
+    question: Verschieb den Grundriss in den anderen Ordner.
+    expect:
+      no_write: true
+      judge: [asks]
+
+  - id: ws-inbox-de
+    question: Was liegt gerade in meinem Eingang?
+    expect:
+      reads: [inbox-list]
+      no_write: true
+      mentions: [Baubeschreibung]
+
+  - id: ws-folder-create-de
+    question: Leg im Projekt einen Ordner Brandschutz an.
+    expect:
+      proposes:
+        - operation: project-folder-create
+          or_tool: propose_file_change
+          input:
+            params.id: 3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+            body.name: Brandschutz
+
+  - id: ws-move-de
+    question: Verschieb die Baubeschreibung in den Ordner Einreichung.
+    expect:
+      proposes:
+        - operation: document-move
+          or_tool: propose_file_change
+          input:
+            params.id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+            body.folderId: 1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
+
+  - id: ws-rename-en
+    question: Rename Statik_Vorbemessung.pdf to Statik_Vorbemessung_Rev1.pdf.
+    expect:
+      proposes:
+        - operation: document-rename
+          or_tool: propose_file_change
+          input:
+            params.id: c3d4e5f6-a7b8-4c9d-8e0f-2a3b4c5d6e7f
+            body.name: Statik_Vorbemessung_Rev1.pdf
+
+  - id: ws-two-writes-de
+    question: Leg im Kindergarten Baden einen Ordner Ausschreibung an, und benenne hier Statik_Vorbemessung.pdf in Statik_Vorbemessung_Rev1.pdf um.
+    expect:
+      proposes:
+        - operation: document-rename
+          or_tool: propose_file_change
+          input:
+            params.id: c3d4e5f6-a7b8-4c9d-8e0f-2a3b4c5d6e7f
+            body.name: Statik_Vorbemessung_Rev1.pdf
+        - operation: project-folder-create
+          input:
+            params.id: 5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d
+            body.name: Ausschreibung
+
+  - id: ws-jobs-de
+    question: Welche Aufträge laufen in diesem Projekt regelmäßig?
+    expect:
+      reads: [task-list]
+      no_write: true
+      mentions: [Fristencheck]
+
+  - id: ws-open-proposals-de
+    question: Welche Vorschläge von dir warten in diesem Projekt noch auf mich?
+    expect:
+      reads: [proposal-list]
+      no_write: true
+      mentions: [Baubeschreibung]
+
+  - id: ws-today-de
+    question: Was steht heute für mich an?
+    expect:
+      reads: [inbox-list]
+      no_write: true
+      mentions: [Baubeschreibung]
+
+  - id: ws-followup-pending
+    turns:
+      - Leg im Projekt einen Ordner Brandschutz an.
+      - Gibt es den Ordner Brandschutz jetzt schon?
+    expect:
+      no_write: true
+      judge: [pending]
+
+  - id: ws-followup-ids
+    turns:
+      - Welche Projekte sind bei uns gerade aktiv?
+      - Leg im Kindergarten-Projekt einen Ordner Fotos an.
+    expect:
+      proposes:
+        - operation: project-folder-create
+          input:
+            params.id: 5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d
+            body.name: Fotos
+      no_repeat: [project-list]
+
+  - id: ws-norm-no-door
+    question: Wie breit muss ein Fluchtweg in einem Wohngebäude der Gebäudeklasse 4 mindestens sein?
+    expect:
+      no_workspace: true
+
+  # The native tools Piloti does office work with (ADR-0122, amendment of 2026-10-21: the
+  # exposure config hides the door's look-alike from Piloti). Each row is the job; the check is
+  # that it got done with Piloti's own tool, not with a door operation it no longer sees.
+  - id: ws-remember-de
+    question: "Merk dir für dieses Projekt: Die Bauherrin will alle Pläne zusätzlich als DWG."
+    expect:
+      uses: [remember]
+
+  - id: ws-task-create-de
+    question: Leg für dieses Projekt einen Auftrag an, der jeden Montag die offenen Fristen prüft.
+    expect:
+      uses: [create_task]
+
+  - id: ws-mark-de
+    question: Markier in der Baubeschreibung auf Seite 1 die Stelle mit der Raumhöhe.
+    expect:
+      uses: [canvas__mark]
+
+  - id: ws-model-count-de
+    question: Wie viele Türen hat das IFC-Modell dieses Projekts?
+    expect:
+      uses: [[ifc_query, ifc_measure]]
+
+  - id: ws-model-measure-de
+    question: Wie groß ist die Nettogrundfläche des Wohnzimmers im IFC-Modell?
+    expect:
+      uses: [[ifc_measure, ifc_query]]
+
+  - id: ws-search-documents-de
+    question: Wo in unseren Projektunterlagen steht etwas zur Dachentwässerung?
+    expect:
+      uses: [knowledge_search]

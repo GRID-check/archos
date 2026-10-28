@@ -18,8 +18,20 @@ whose only job is enforcing the import direction, so a control needing a new
 shape makes the kit grow rather than the organism.
 
 Layers and rules:
-[`../design/grid-design-language.md`](../design/grid-design-language.md#component-layers-atomic-design).
+[`../design/design-language.md`](../design/design-language.md#component-layers-atomic-design).
 **Enforced by:** review only.
+
+## Module seams
+
+The UI's layers point one way, `app` → `features` → `components` → `lib`, and a
+feature reaches another only through its index and never in a circle. In
+Python, `agent` never imports `agent_host` (the API tier owns the request
+identity's writes and hands its capabilities in) and reaches `knowledge_layer`
+only through the port in `knowledge/factory.py` (ADR-0072).
+The rules and the baselines that hold today's exceptions:
+[`../contributing/module-seams.md`](../contributing/module-seams.md).
+**Enforced by:** dependency-cruiser in `task workspace:lint`, import-linter in
+`task be:lint`. Both baselines only shrink.
 
 ## Guard scripts
 
@@ -29,7 +41,7 @@ correctly and the wrong thing happens anyway.
 
 | Script | Catches |
 |---|---|
-| `frontends/ui/scripts/check-static-utility-modifiers.mjs` | `bg-warning/15` against a static Tailwind v4 `@utility`, which matches no rule and is silently dropped. Reads the utility names out of `globals.css`, so it tracks the design system rather than a hardcoded list |
+| `apps/workspace/scripts/check-static-utility-modifiers.mjs` | `bg-warning/15` against a static Tailwind v4 `@utility`, which matches no rule and is silently dropped. Reads the utility names out of `globals.css`, so it tracks the design system rather than a hardcoded list |
 | `scripts/check_agent_docs.py` | An `AGENTS.md` no agent can reach, and a Markdown link to a file git does not track |
 | `scripts/check_adrs.py` | The ADR index disagreeing with the directory |
 | `scripts/validate_skills.py` | A malformed skill bundle |
@@ -50,9 +62,9 @@ fail on a difference.
 
 | Artifact | Generated from | Guarded |
 |---|---|---|
-| `frontends/ui/src/lib/skills/platform-skills.ts` | `src/aiq_agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
-| `shared/cards/schemas.json` | `src/aiq_agent/cards/models.py`, via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
-| `frontends/ui/src/shared/cards/generated.ts` | `shared/cards/schemas.json`, via `frontends/ui/scripts/generate-card-schemas.mjs` | yes, the same hook |
+| `apps/workspace/bff/skills/platform-skills.ts` | `packages/agent/src/agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
+| `contracts/cards/schemas.json` | the card models (`packages/agent/src/agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
+| `apps/workspace/shared/cards/generated.ts` | `contracts/cards/schemas.json`, via `apps/workspace/scripts/generate-card-schemas.mjs` | yes, the same hook |
 
 The card schema is a two-stage pipeline from Pydantic models to Zod. Neither
 generator has a `--check` flag, so the hook simply runs both: pre-commit fails
@@ -70,7 +82,7 @@ cards, resolved citations, cost, traces. Each is a registry created and reset pe
 turn behind a `ContextVar`, never module-level state, because the process serves
 many tenants concurrently and module state leaks across both turns and tenants.
 
-`cards/registry.py` and `common/citation_verification.py` are the reference
+`cards/registry.py` and `citations/session.py` are the reference
 pair; `common/cost_tracking.py`, `common/profiler.py` and
 `tools/bim/measurement_sources.py` follow it. One narrower use of the same
 shape: `turn/answer_stream.py` binds the turn's live prose (`_PROSE`, a
@@ -79,7 +91,7 @@ shape: `turn/answer_stream.py` binds the turn's live prose (`_PROSE`, a
 the graph's tasks copy it, and the token handler mutates the one object.
 (Another, `turn_status.prefetch_scope`, marked the turn decision's prefetch
 for a requery switch that was measured 3.4 s slower and removed with it:
-[`turn-latency-measured-2026-09.md`](turn-latency-measured-2026-09.md) §3.5.)
+[`docs/audit/turn-latency-measured-2026-09.md`](../audit/turn-latency-measured-2026-09.md) §3.5.)
 
 A `ContextVar` set inside `asyncio.gather` (or any task) dies with that task,
 because each task runs in a COPIED context: return the value instead. The entry
@@ -91,12 +103,12 @@ content, whose value is the same whichever tenant or turn asks, or a
 process-lifetime handle holding no tenant or turn data:
 
 - the query-embedding LRU with its in-flight dedupe, keyed by (model, text), on
-  the retriever in `sources/knowledge_layer/src/llamaindex/adapter.py`;
+  the retriever in `packages/knowledge-layer/src/llamaindex/query_embeddings.py`;
 - `knowledge/factory._SEARCH_RETRIEVER`, the retriever handle recorded when the
   knowledge tool is built;
 - `agents/piloti/register._WARMING`, strong references to running warm-ups, so
   the loop does not drop a task it holds only weakly;
-- the parsed-model cache in `frontends/ui/src/features/diagrams/use-diagram-model.ts`,
+- the parsed-model cache in `apps/workspace/ui/features/diagrams/use-diagram-model.ts`,
   keyed by the mermaid source text and capped at 64.
 
 Anything keyed by a tenant, a user, a conversation or a turn goes behind a
@@ -105,7 +117,7 @@ Anything keyed by a tenant, a user, a conversation or a turn goes behind a
 
 ## Idempotent global registration
 
-Registering a converter or an exporter with NAT is a process-global side effect,
+Registering a converter or an exporter with the agent runtime is a process-global side effect,
 and the modules that need it are imported from several entry points. The
 convention is a module-level `ensure_registered()` that is safe to call twice,
 called explicitly by each entry point rather than run at import time.
@@ -119,7 +131,7 @@ called explicitly by each entry point rather than run at import time.
 Agents, tools and data sources are found through `nat.plugins` entry points in
 the root `pyproject.toml`, not by importing a registry module. This is what lets
 a tool with heavy optional dependencies stay independently loadable:
-`aiq_bim_measure` is a second entry point precisely so `ifc_query` keeps working
+`bim_measure` is a second entry point precisely so `ifc_query` keeps working
 where ifcopenshell and shapely are not installed.
 
 A function that is registered but has no entry point does not exist at runtime.
@@ -141,7 +153,7 @@ ADR-0038. **Enforced by:** the `workos-drift` workflow and `authz-coverage.spec.
 
 The platform prompt follows the same shape without the drift gate.
 `scripts/prompts_push.py` (`task prompts:push`) checks by default and publishes
-the committed `piloti_static.md` under a Langfuse label only with `--apply`. It
+the committed `chat_static.md` under a Langfuse label only with `--apply`. It
 never overwrites a Langfuse version that did not come from git. Provenance is
 read off the version itself: what Langfuse serves must be byte-identical to a
 committed text, either the file at the commit the version's message names or
@@ -150,6 +162,31 @@ keeps one tag list per prompt, not per version. Neither arm asks whether the
 commit was reviewed, so text published from a branch that never merges stays
 unreviewed; publish with `--apply` from `develop`. ADR-0060. **Enforced by:** `tests/test_prompts_push.py`; no drift
 workflow runs it on a schedule.
+
+## Headless first: one MCP surface
+
+Every capability a person has is an operation in
+`apps/workspace/bff/agent-api/catalog/`, naming the BFF route the UI calls. The
+MCP server at `/api/mcp` runs that route's handler in-process as the person, so
+authz, rate limit and body schema are the route's own. A route that is not a
+person's act (transport, sign-in plumbing) is exempt with a reason. ADR-0122,
+[`agent-surface.md`](agent-surface.md).
+**Enforced by:** `apps/workspace/bff/agent-api/agent-reachability.spec.ts`; the
+routes that predate it sit in a shrink-only baseline.
+
+## Bulk work is a server run, never a browser loop
+
+A move, a sort, an import or a reindex over many items, or longer than one
+request, is a row the person comes back to, worked by a `bff_job_queue` job in
+bounded slices (root sort is the first). The browser starts it, reads it and
+asks for the next step; it never loops over items or keeps a pool of item
+requests. The decision and its debt are ADR-0121.
+
+`apps/workspace/tests/browser-work-loops.spec.ts` counts the pool signatures per
+browser file against `ci/browser_work_loops.json`, where each count has its
+reason. A count may not grow and a new file may not appear.
+**Enforced by:** that ratchet, for pools only. A sequential browser loop is not
+counted, so review is the gate for it.
 
 ## Already recorded elsewhere
 

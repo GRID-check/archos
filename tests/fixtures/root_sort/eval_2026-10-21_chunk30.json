@@ -1,0 +1,1637 @@
+{
+  "date": "2026-10-21",
+  "model": "openai/gpt-6-luna",
+  "chunk": 30,
+  "sure_confidence_now": 0.6,
+  "target_precision": 0.95,
+  "placement": {
+    "documents": 150,
+    "placeable": 128,
+    "no_fit": 22,
+    "proposals": 128,
+    "correct": 117,
+    "scored": 128,
+    "placement_precision": 0.914,
+    "coverage": 1.0,
+    "wrong_folder": 11,
+    "wrong_folder_rate": 0.086,
+    "false_placement": 0,
+    "false_placement_rate": 0.0
+  },
+  "cuts": [
+    {
+      "cut": 0.3,
+      "sure": 120,
+      "sure_correct": 114,
+      "sure_precision": 0.95,
+      "correct_left_unsure": 3,
+      "correct_left_unsure_share": 0.026,
+      "unsure": 8
+    },
+    {
+      "cut": 0.35,
+      "sure": 120,
+      "sure_correct": 114,
+      "sure_precision": 0.95,
+      "correct_left_unsure": 3,
+      "correct_left_unsure_share": 0.026,
+      "unsure": 8
+    },
+    {
+      "cut": 0.4,
+      "sure": 119,
+      "sure_correct": 113,
+      "sure_precision": 0.95,
+      "correct_left_unsure": 4,
+      "correct_left_unsure_share": 0.034,
+      "unsure": 9
+    },
+    {
+      "cut": 0.45,
+      "sure": 117,
+      "sure_correct": 111,
+      "sure_precision": 0.949,
+      "correct_left_unsure": 6,
+      "correct_left_unsure_share": 0.051,
+      "unsure": 11
+    },
+    {
+      "cut": 0.5,
+      "sure": 114,
+      "sure_correct": 108,
+      "sure_precision": 0.947,
+      "correct_left_unsure": 9,
+      "correct_left_unsure_share": 0.077,
+      "unsure": 14
+    },
+    {
+      "cut": 0.55,
+      "sure": 113,
+      "sure_correct": 107,
+      "sure_precision": 0.947,
+      "correct_left_unsure": 10,
+      "correct_left_unsure_share": 0.085,
+      "unsure": 15
+    },
+    {
+      "cut": 0.6,
+      "sure": 113,
+      "sure_correct": 107,
+      "sure_precision": 0.947,
+      "correct_left_unsure": 10,
+      "correct_left_unsure_share": 0.085,
+      "unsure": 15
+    },
+    {
+      "cut": 0.65,
+      "sure": 112,
+      "sure_correct": 106,
+      "sure_precision": 0.946,
+      "correct_left_unsure": 11,
+      "correct_left_unsure_share": 0.094,
+      "unsure": 16
+    },
+    {
+      "cut": 0.7,
+      "sure": 112,
+      "sure_correct": 106,
+      "sure_precision": 0.946,
+      "correct_left_unsure": 11,
+      "correct_left_unsure_share": 0.094,
+      "unsure": 16
+    },
+    {
+      "cut": 0.75,
+      "sure": 110,
+      "sure_correct": 106,
+      "sure_precision": 0.964,
+      "correct_left_unsure": 11,
+      "correct_left_unsure_share": 0.094,
+      "unsure": 18
+    },
+    {
+      "cut": 0.8,
+      "sure": 107,
+      "sure_correct": 103,
+      "sure_precision": 0.963,
+      "correct_left_unsure": 14,
+      "correct_left_unsure_share": 0.12,
+      "unsure": 21
+    },
+    {
+      "cut": 0.85,
+      "sure": 103,
+      "sure_correct": 101,
+      "sure_precision": 0.981,
+      "correct_left_unsure": 16,
+      "correct_left_unsure_share": 0.137,
+      "unsure": 25
+    },
+    {
+      "cut": 0.9,
+      "sure": 97,
+      "sure_correct": 96,
+      "sure_precision": 0.99,
+      "correct_left_unsure": 21,
+      "correct_left_unsure_share": 0.179,
+      "unsure": 31
+    }
+  ],
+  "recommendation": {
+    "cut": 0.3,
+    "metrics": {
+      "cut": 0.3,
+      "sure": 120,
+      "sure_correct": 114,
+      "sure_precision": 0.95,
+      "correct_left_unsure": 3,
+      "correct_left_unsure_share": 0.026,
+      "unsure": 8
+    },
+    "found": true
+  },
+  "grouping": {
+    "leftover": 22,
+    "grouped": 18,
+    "grouped_share": 0.818,
+    "groups": [
+      {
+        "path": "08 Personal",
+        "description": "Bewerbungen, Dienstverträge und Unterlagen zur Arbeitszeit und Urlaubsplanung des Büroteams.",
+        "documents": 4,
+        "files": [
+          "Bewerbung_Praktikum_Lehmann.pdf",
+          "Dienstvertrag_Entwurf_Mitarbeiterin.docx",
+          "Urlaubsplan_Q4_2026.xlsx",
+          "Zeiterfassung_Export_September.csv"
+        ],
+        "themes": {
+          "Personal": 4
+        },
+        "purity": 1.0,
+        "confidences": {
+          "r134": 0.96,
+          "r135": 1.0,
+          "r136": 1.0,
+          "r137": 0.96
+        }
+      },
+      {
+        "path": "09 Dienstreisen",
+        "description": "Belege und Abrechnungen zu Dienstreisen und den dabei entstandenen Kosten.",
+        "documents": 4,
+        "files": [
+          "Reisekosten_Graz_Sept.xlsx",
+          "Bahntickets_Linz_Abrechnung.pdf",
+          "Hotelrechnung_Salzburg_Oktober.pdf",
+          "Mietwagen_Beleg_Dienstreise.pdf"
+        ],
+        "themes": {
+          "Reisen": 4
+        },
+        "purity": 1.0,
+        "confidences": {
+          "r138": 1.0,
+          "r139": 0.99,
+          "r140": 1.0,
+          "r141": 1.0
+        }
+      },
+      {
+        "path": "10 IT",
+        "description": "Lizenzen sowie Dokumentation und Einstellungen der Büro-IT.",
+        "documents": 3,
+        "files": [
+          "Lizenz_CAD_Verlaengerung_2027.pdf",
+          "Backup_Protokoll_Server_Q3.txt",
+          "Router_Konfiguration_Notiz.txt"
+        ],
+        "themes": {
+          "IT und Software": 3
+        },
+        "purity": 1.0,
+        "confidences": {
+          "r142": 1.0,
+          "r143": 0.98,
+          "r144": 1.0
+        }
+      },
+      {
+        "path": "11 Öffentlichkeitsarbeit",
+        "description": "Materialien zur Außendarstellung des Büros, etwa Visitenkarten und Website-Texte.",
+        "documents": 2,
+        "files": [
+          "Visitenkarten_Druckfreigabe.pdf",
+          "Referenzen_Texte_Website.docx"
+        ],
+        "themes": {
+          "Marketing und Werbung": 2
+        },
+        "purity": 1.0,
+        "confidences": {
+          "r146": 1.0,
+          "r147": 1.0
+        }
+      },
+      {
+        "path": "12 Kammer",
+        "description": "Unterlagen zur Mitgliedschaft und Kommunikation mit der Architektenkammer.",
+        "documents": 3,
+        "files": [
+          "Gewerbeschein_Kopie_2026.pdf",
+          "Kammerbeitrag_Bestaetigung_2026.pdf",
+          "Newsletter_Kammer_September.eml"
+        ],
+        "themes": {
+          "Büroverwaltung": 2,
+          "Marketing und Werbung": 1
+        },
+        "purity": 0.667,
+        "confidences": {
+          "r130": 0.99,
+          "r132": 1.0,
+          "r145": 1.0
+        }
+      },
+      {
+        "path": "13 Bürostandort",
+        "description": "Unterlagen zum Mietverhältnis und zu den Zugängen am Bürostandort.",
+        "documents": 2,
+        "files": [
+          "Mietvertrag_Buero_2026_Verlaengerung.pdf",
+          "Parkkarte_Tiefgarage_Buero.pdf"
+        ],
+        "themes": {
+          "Büroverwaltung": 2
+        },
+        "purity": 1.0,
+        "confidences": {
+          "r129": 1.0,
+          "r133": 1.0
+        }
+      }
+    ]
+  },
+  "seconds": {
+    "chunks": [
+      29.9,
+      29.0,
+      29.4,
+      22.8,
+      16.7
+    ],
+    "grouping": 9.1
+  },
+  "documents": [
+    {
+      "id": "r001",
+      "file": "Bestand_EG_Aufmass_2019.dwg",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Bestandspläne",
+      "confidence": 0.99,
+      "reason": "Das Aufmaß des Erdgeschosses gehört zu den Bestandsunterlagen."
+    },
+    {
+      "id": "r002",
+      "file": "BP_Dachgeschoss_Bestand.pdf",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Bestandspläne",
+      "confidence": 0.98,
+      "reason": "Der Plan dokumentiert den Altbestand des Dachgeschosses."
+    },
+    {
+      "id": "r003",
+      "file": "Bestandsfotos_Hof_01-24.zip",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Bestandspläne",
+      "confidence": 0.99,
+      "reason": "Die Fotodokumentation des Altbestands ist dort ausdrücklich vorgesehen."
+    },
+    {
+      "id": "r004",
+      "file": "Aufmass_Keller_Gewoelbe_v2.pdf",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Bestandspläne",
+      "confidence": 0.96,
+      "reason": "Das Kelleraufmaß gehört zu den Bestandsunterlagen."
+    },
+    {
+      "id": "r005",
+      "file": "Altbestand_Schnitt_Stiege.pdf",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": true,
+      "proposed": "01 Grundlagen/Bestandspläne",
+      "confidence": 0.45,
+      "reason": "Der Schnitt dokumentiert die bestehende Altstiege."
+    },
+    {
+      "id": "r006",
+      "file": "Bestandsplan_UG_Altbau.pdf",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Bestandspläne",
+      "confidence": 0.97,
+      "reason": "Der Plan zeigt den Bestand des Untergeschosses."
+    },
+    {
+      "id": "r007",
+      "file": "Raumbuch_Bestand_2019.xlsx",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen",
+      "confidence": 0.73,
+      "reason": "Das Raumbuch beschreibt Räume und Zustände des Altbestands."
+    },
+    {
+      "id": "r008",
+      "file": "Schadenskartierung_Fassade_Nord.pdf",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Bestandspläne",
+      "confidence": 0.14,
+      "reason": "Die Schadenskartierung dokumentiert den Zustand der Bestandsfassade."
+    },
+    {
+      "id": "r009",
+      "file": "Bestandsplan_Dachstuhl_1932.pdf",
+      "label": "01 Grundlagen/Bestandspläne",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Bestandspläne",
+      "confidence": 0.98,
+      "reason": "Der Plan dokumentiert den vorhandenen Dachstuhl."
+    },
+    {
+      "id": "r010",
+      "file": "Vermessungsplan_Grenzpunkte_2612.pdf",
+      "label": "01 Grundlagen/Vermessung",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Vermessung",
+      "confidence": 0.99,
+      "reason": "Der Plan mit Grenzpunkten und Geländehöhen gehört zur Vermessung."
+    },
+    {
+      "id": "r011",
+      "file": "Grundbuchauszug_Parzelle_Nord.pdf",
+      "label": "01 Grundlagen/Vermessung",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Vermessung",
+      "confidence": 1.0,
+      "reason": "Der Grundbuchauszug ist ausdrücklich den Vermessungsunterlagen zugeordnet."
+    },
+    {
+      "id": "r012",
+      "file": "Kataster_Auszug_GST_1187.pdf",
+      "label": "01 Grundlagen/Vermessung",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Vermessung",
+      "confidence": 1.0,
+      "reason": "Der Grenzkatasterauszug gehört zu den Vermessungsunterlagen."
+    },
+    {
+      "id": "r013",
+      "file": "DKM_Punktliste_Export.csv",
+      "label": "01 Grundlagen/Vermessung",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Vermessung",
+      "confidence": 0.95,
+      "reason": "Die Koordinatenliste enthält Vermessungspunkte der Grundstücksgrenzen."
+    },
+    {
+      "id": "r014",
+      "file": "Geländeschnitt_Vermessung_A.pdf",
+      "label": "01 Grundlagen/Vermessung",
+      "ambiguous": true,
+      "proposed": "01 Grundlagen/Vermessung",
+      "confidence": 0.97,
+      "reason": "Der Geländeschnitt stammt aus der Vermessung."
+    },
+    {
+      "id": "r015",
+      "file": "Vermessung_Auftrag_Ziviltechniker.pdf",
+      "label": "01 Grundlagen/Vermessung",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen",
+      "confidence": 0.26,
+      "reason": "Der Auftrag betrifft Vermessungsleistungen für das Projekt."
+    },
+    {
+      "id": "r016",
+      "file": "Lageplan_Bestand_Einmessung.pdf",
+      "label": "01 Grundlagen/Vermessung",
+      "ambiguous": false,
+      "proposed": "01 Grundlagen/Vermessung",
+      "confidence": 0.9,
+      "reason": "Der eingemessene Lageplan ist ein Vermessungsplan."
+    },
+    {
+      "id": "r017",
+      "file": "2612_EP_Grundriss_EG_rev03.pdf",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 0.99,
+      "reason": "Der Entwurfsplan ist ein Grundriss des Erdgeschosses."
+    },
+    {
+      "id": "r018",
+      "file": "Grundriss_OG1_Wohnungen.dwg",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 1.0,
+      "reason": "Der Plan zeigt den Grundriss des ersten Obergeschosses."
+    },
+    {
+      "id": "r019",
+      "file": "GR_UG_Tiefgarage_Stellplaetze.pdf",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 0.98,
+      "reason": "Der Plan zeigt die Grundrissaufteilung des Untergeschosses."
+    },
+    {
+      "id": "r020",
+      "file": "Wohnungsmix_Grundrisse_Uebersicht.pdf",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": true,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 0.89,
+      "reason": "Die Übersicht enthält Grundrisse der Wohnungen."
+    },
+    {
+      "id": "r021",
+      "file": "Grundriss_DG_Staffel.pdf",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 1.0,
+      "reason": "Der Plan zeigt den Grundriss des Dachgeschosses."
+    },
+    {
+      "id": "r022",
+      "file": "Moebelierungsvariante_OG2.pdf",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 0.78,
+      "reason": "Die Möblierungsvariante ist ein Grundriss des zweiten Obergeschosses."
+    },
+    {
+      "id": "r023",
+      "file": "Scan0042.pdf",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 0.76,
+      "reason": "Das gescannte Dokument ist ein Grundriss des Erdgeschosses."
+    },
+    {
+      "id": "r024",
+      "file": "GR_Barrierefrei_Wohnung_E1.pdf",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 0.98,
+      "reason": "Der Plan zeigt den Grundriss einer barrierefreien Wohnung."
+    },
+    {
+      "id": "r025",
+      "file": "Grundriss_Wohnung_C2_Varianten.pdf",
+      "label": "02 Entwurf/Grundrisse",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Grundrisse",
+      "confidence": 0.37,
+      "reason": "Das Dokument enthält Grundrissvarianten der Wohnung C2."
+    },
+    {
+      "id": "r026",
+      "file": "Schnitt_A-A_Stiege_v3.pdf",
+      "label": "02 Entwurf/Schnitte",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Schnitte",
+      "confidence": 1.0,
+      "reason": "Der Plan zeigt einen Schnitt durch das Stiegenhaus."
+    },
+    {
+      "id": "r027",
+      "file": "2612_Schnitt_B-B_Hof.pdf",
+      "label": "02 Entwurf/Schnitte",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Schnitte",
+      "confidence": 1.0,
+      "reason": "Der Plan zeigt einen Schnitt durch Innenhof und Tiefgaragenabfahrt."
+    },
+    {
+      "id": "r028",
+      "file": "Schnitt_Dachaufbau_Uebersicht.pdf",
+      "label": "02 Entwurf/Schnitte",
+      "ambiguous": true,
+      "proposed": "02 Entwurf/Schnitte",
+      "confidence": 0.98,
+      "reason": "Der Übersichtsschnitt zeigt Dachaufbau und Dachterrasse."
+    },
+    {
+      "id": "r029",
+      "file": "SCH_Lichthof_Ost.pdf",
+      "label": "02 Entwurf/Schnitte",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Schnitte",
+      "confidence": 0.99,
+      "reason": "Das Dokument zeigt einen Schnitt durch den Lichthof."
+    },
+    {
+      "id": "r030",
+      "file": "Schnitt_Gelaende_Tiefgarage.pdf",
+      "label": "02 Entwurf/Schnitte",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Schnitte",
+      "confidence": 0.9,
+      "reason": "Der Plan zeigt einen Schnitt durch Gelände und Tiefgarage."
+    },
+    {
+      "id": "r031",
+      "file": "Schnittvarianten_Stiege_Vergleich.pdf",
+      "label": "02 Entwurf/Schnitte",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Schnitte",
+      "confidence": 0.96,
+      "reason": "Der Variantenvergleich zeigt die Stiege ausdrücklich im Schnitt."
+    },
+    {
+      "id": "r032",
+      "file": "Schnitt_Lichthof_West.pdf",
+      "label": "02 Entwurf/Schnitte",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Schnitte",
+      "confidence": 1.0,
+      "reason": "Das Dokument ist ein Gebäudeschnitt durch den Lichthof."
+    },
+    {
+      "id": "r033",
+      "file": "Ansicht_Sued_Entwurf.pdf",
+      "label": "02 Entwurf/Ansichten",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Ansichten",
+      "confidence": 1.0,
+      "reason": "Die Südansicht gehört zu den Fassadenansichten des Entwurfs."
+    },
+    {
+      "id": "r034",
+      "file": "Fassade_Nord_Ansicht_rev2.pdf",
+      "label": "02 Entwurf/Ansichten",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Ansichten",
+      "confidence": 1.0,
+      "reason": "Das Dokument enthält eine Nordansicht mit Fassadendetails."
+    },
+    {
+      "id": "r035",
+      "file": "Ansichten_West_Ost_Vergleich.pdf",
+      "label": "02 Entwurf/Ansichten",
+      "ambiguous": true,
+      "proposed": "02 Entwurf/Ansichten",
+      "confidence": 0.93,
+      "reason": "Verglichen werden zwei Fassadenansichten."
+    },
+    {
+      "id": "r036",
+      "file": "Visualisierung_Hofseite_Render.jpg",
+      "label": "02 Entwurf/Ansichten",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Ansichten",
+      "confidence": 0.42,
+      "reason": "Das Rendering zeigt die Fassade der Hofseite."
+    },
+    {
+      "id": "r037",
+      "file": "Materialkonzept_Fassade_Ansichten.pdf",
+      "label": "02 Entwurf/Ansichten",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Ansichten",
+      "confidence": 0.88,
+      "reason": "Der Dokumenttyp Ansicht passt zu den Fassadenansichten."
+    },
+    {
+      "id": "r038",
+      "file": "Erlaeuterungsbericht_Entwurf_v1.docx",
+      "label": "02 Entwurf/Konzept",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Konzept",
+      "confidence": 1.0,
+      "reason": "Der Erläuterungsbericht beschreibt Städtebau und Erschließung des Entwurfs."
+    },
+    {
+      "id": "r039",
+      "file": "Skizze_Baukoerper_Varianten_A-C.pdf",
+      "label": "02 Entwurf/Konzept",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Konzept",
+      "confidence": 1.0,
+      "reason": "Die Skizzen stellen mehrere Baukörpervarianten gegenüber."
+    },
+    {
+      "id": "r040",
+      "file": "Moodboard_Materialien_Innen.pdf",
+      "label": "02 Entwurf/Konzept",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Konzept",
+      "confidence": 0.54,
+      "reason": "Das Moodboard hält Material- und Farbstimmungen für den Entwurf fest."
+    },
+    {
+      "id": "r041",
+      "file": "Entwurfskonzept_Freiraum_Erschliessung.pdf",
+      "label": "02 Entwurf/Konzept",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Konzept",
+      "confidence": 0.84,
+      "reason": "Das Freiraum- und Erschließungsdokument ist ein Entwurfskonzept."
+    },
+    {
+      "id": "r042",
+      "file": "Variantenvergleich_Wohnungsschluessel.xlsx",
+      "label": "02 Entwurf/Konzept",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Konzept",
+      "confidence": 0.88,
+      "reason": "Der Vergleich behandelt Varianten des Wohnungsschlüssels im Entwurf."
+    },
+    {
+      "id": "r043",
+      "file": "Konzept_Brandschutz_Erlaeuterung.docx",
+      "label": "02 Entwurf/Konzept",
+      "ambiguous": true,
+      "proposed": "02 Entwurf/Konzept",
+      "confidence": 0.28,
+      "reason": "Der Erläuterungsbericht beschreibt ein Entwurfskonzept und erste Rettungswege."
+    },
+    {
+      "id": "r044",
+      "file": "Bebauungsstudie_Modell_Fotos.zip",
+      "label": "02 Entwurf/Konzept",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Konzept",
+      "confidence": 0.47,
+      "reason": "Die Modellfotos dokumentieren eine Bebauungsstudie."
+    },
+    {
+      "id": "r045",
+      "file": "Konzeptplan_Grundriss_EG_v2.pdf",
+      "label": "02 Entwurf/Konzept",
+      "ambiguous": false,
+      "proposed": "02 Entwurf/Konzept",
+      "confidence": 0.85,
+      "reason": "Der Dokumenttyp Konzept passt trotz des Grundrissbezugs zum Entwurfskonzept."
+    },
+    {
+      "id": "r046",
+      "file": "Baubescheid_GZ-2025-0481.pdf",
+      "label": "03 Einreichung/Baubehörde/Baubescheid",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Baubescheid",
+      "confidence": 1.0,
+      "reason": "Der Baubewilligungsbescheid gehört zu den Bescheiden der Baubehörde."
+    },
+    {
+      "id": "r047",
+      "file": "Bescheid_Nachtrag_Auflagen_2026.pdf",
+      "label": "03 Einreichung/Baubehörde/Baubescheid",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Baubescheid",
+      "confidence": 1.0,
+      "reason": "Der Nachtragsbescheid ergänzt den Baubescheid um Auflagen."
+    },
+    {
+      "id": "r048",
+      "file": "Auflagen_Liste_Baubehoerde.xlsx",
+      "label": "03 Einreichung/Baubehörde/Baubescheid",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Baubescheid",
+      "confidence": 1.0,
+      "reason": "Die Tabelle führt Auflagen aus dem Baubescheid auf."
+    },
+    {
+      "id": "r049",
+      "file": "Scan_Bescheid_Stempel.pdf",
+      "label": "03 Einreichung/Baubehörde/Baubescheid",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Baubescheid",
+      "confidence": 1.0,
+      "reason": "Der Scan ist ein behördlicher Bescheid mit Rechtskraftvermerk."
+    },
+    {
+      "id": "r050",
+      "file": "Benachrichtigung_Nachbarn_Bescheid.pdf",
+      "label": "03 Einreichung/Baubehörde/Baubescheid",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde",
+      "confidence": 0.03,
+      "reason": "Die Benachrichtigung betrifft die Erteilung der Baubewilligung durch die Behörde."
+    },
+    {
+      "id": "r051",
+      "file": "Rechtskraft_Bestaetigung_2026.pdf",
+      "label": "03 Einreichung/Baubehörde/Baubescheid",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Baubescheid",
+      "confidence": 0.99,
+      "reason": "Die Rechtskraftbestätigung bezieht sich auf den Baubescheid."
+    },
+    {
+      "id": "r052",
+      "file": "Bauanzeige_Baubeginn_Formular.pdf",
+      "label": "03 Einreichung/Baubehörde/Baubescheid",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde",
+      "confidence": 0.74,
+      "reason": "Das Formular zeigt den Baubeginn bei der Baubehörde an."
+    },
+    {
+      "id": "r053",
+      "file": "Gutachten_Baubehoerde_Stellungnahme.pdf",
+      "label": "03 Einreichung/Baubehörde/Baubescheid",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde",
+      "confidence": 0.8,
+      "reason": "Die Stellungnahme stammt von einem Amtssachverständigen und betrifft die Baubehörde."
+    },
+    {
+      "id": "r054",
+      "file": "Einreichplan_Grundriss_EG.pdf",
+      "label": "03 Einreichung/Baubehörde/Einreichplan",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Einreichplan",
+      "confidence": 1.0,
+      "reason": "Der Grundriss ist ausdrücklich ein Einreichplan."
+    },
+    {
+      "id": "r055",
+      "file": "Einreichplan_Schnitt_A-A.pdf",
+      "label": "03 Einreichung/Baubehörde/Einreichplan",
+      "ambiguous": true,
+      "proposed": "03 Einreichung/Baubehörde/Einreichplan",
+      "confidence": 0.93,
+      "reason": "Der Schnitt liegt als Einreichplan vor."
+    },
+    {
+      "id": "r056",
+      "file": "EP_Ansichten_Nord_Sued.pdf",
+      "label": "03 Einreichung/Baubehörde/Einreichplan",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Einreichplan",
+      "confidence": 0.95,
+      "reason": "Die Ansichten sind in der Einreichfassung enthalten."
+    },
+    {
+      "id": "r057",
+      "file": "Einreichplan_Lageplan_1-500.pdf",
+      "label": "03 Einreichung/Baubehörde/Einreichplan",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Einreichplan",
+      "confidence": 0.99,
+      "reason": "Der Lageplan ist eine Planunterlage für die Einreichung."
+    },
+    {
+      "id": "r058",
+      "file": "Planbeilagen_Verzeichnis_EP.xlsx",
+      "label": "03 Einreichung/Baubehörde/Einreichplan",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Einreichplan",
+      "confidence": 0.4,
+      "reason": "Das Verzeichnis listet die Planbeilagen der Einreichung."
+    },
+    {
+      "id": "r059",
+      "file": "EP_Dachaufsicht_Entwurf.pdf",
+      "label": "03 Einreichung/Baubehörde/Einreichplan",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde/Einreichplan",
+      "confidence": 0.96,
+      "reason": "Die Dachaufsicht ist ein Einreichplan."
+    },
+    {
+      "id": "r060",
+      "file": "Einreichung_Formular_Teil1.pdf",
+      "label": "03 Einreichung/Baubehörde/Einreichplan",
+      "ambiguous": false,
+      "proposed": "03 Einreichung",
+      "confidence": 0.81,
+      "reason": "Das Antragsformular ist eine Unterlage für die Einreichung."
+    },
+    {
+      "id": "r061",
+      "file": "Statik_Decke_UG_Bericht_v2.pdf",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Tragwerk",
+      "confidence": 1.0,
+      "reason": "Der statische Nachweis der Geschossdecke gehört zur Tragwerksplanung."
+    },
+    {
+      "id": "r062",
+      "file": "Bewehrungsplan_Decke_EG.pdf",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Tragwerk",
+      "confidence": 1.0,
+      "reason": "Der Bewehrungsplan dokumentiert die Bewehrung der Geschossdecke."
+    },
+    {
+      "id": "r063",
+      "file": "Tragwerk_Konzept_Erlaeuterung.docx",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Tragwerk",
+      "confidence": 0.99,
+      "reason": "Die Erläuterung beschreibt das Tragwerkskonzept und den Lastabtrag."
+    },
+    {
+      "id": "r064",
+      "file": "Pruefstatik_Gutachten_Stiege.pdf",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Tragwerk",
+      "confidence": 1.0,
+      "reason": "Die Prüfstatik der Stiege ist ein Nachweis der Tragwerksplanung."
+    },
+    {
+      "id": "r065",
+      "file": "Statik_Attika_Auszug.pdf",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Tragwerk",
+      "confidence": 1.0,
+      "reason": "Der Statikauszug zur Attika gehört zur Tragwerksplanung."
+    },
+    {
+      "id": "r066",
+      "file": "Fundament_Plattenbemessung.pdf",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Tragwerk",
+      "confidence": 1.0,
+      "reason": "Die Bemessung von Bodenplatte und Fundamenten ist Tragwerksplanung."
+    },
+    {
+      "id": "r067",
+      "file": "Stahlbau_Stuetze_Anschluss.pdf",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Detailpläne",
+      "confidence": 0.94,
+      "reason": "Das Anschlussdetail der Stahlstütze gehört zu den Ausführungsdetails."
+    },
+    {
+      "id": "r068",
+      "file": "Tragwerk_Stuetzenraster_EG.dwg",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Tragwerk",
+      "confidence": 0.99,
+      "reason": "Das Stützenraster mit Stützenquerschnitten gehört zur Tragwerksplanung."
+    },
+    {
+      "id": "r069",
+      "file": "Statik_Kellerwand_Erddruck.pdf",
+      "label": "04 Fachplaner/Tragwerk",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Tragwerk",
+      "confidence": 1.0,
+      "reason": "Der Erddrucknachweis der Kellerwand ist Teil der Tragwerksplanung."
+    },
+    {
+      "id": "r070",
+      "file": "BSK_Fluchtweg_Feuerwehrzufahrt.pdf",
+      "label": "04 Fachplaner/Brandschutz",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Brandschutz",
+      "confidence": 1.0,
+      "reason": "Das Dokument enthält ein Brandschutzkonzept mit Fluchtwegen und Feuerwehrzufahrt."
+    },
+    {
+      "id": "r071",
+      "file": "Brandschutzkonzept_v3_final.pdf",
+      "label": "04 Fachplaner/Brandschutz",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Brandschutz",
+      "confidence": 1.0,
+      "reason": "Das Brandschutzkonzept gehört in den Fachbereich Brandschutz."
+    },
+    {
+      "id": "r072",
+      "file": "Brandschutz_Stellungnahme_Behoerde.pdf",
+      "label": "04 Fachplaner/Brandschutz",
+      "ambiguous": true,
+      "proposed": "03 Einreichung/Baubehörde",
+      "confidence": 0.2,
+      "reason": "Die Stellungnahme mit behördlichen Forderungen gehört zum Schriftverkehr mit der Baubehörde."
+    },
+    {
+      "id": "r073",
+      "file": "Feuerwehr_Zufahrt_Lageplan.pdf",
+      "label": "04 Fachplaner/Brandschutz",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Brandschutz",
+      "confidence": 1.0,
+      "reason": "Der Lageplan stellt die Feuerwehrzufahrt und Aufstellflächen dar."
+    },
+    {
+      "id": "r074",
+      "file": "Brandabschnitte_Plan_UG.pdf",
+      "label": "04 Fachplaner/Brandschutz",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Brandschutz",
+      "confidence": 1.0,
+      "reason": "Der Plan der Brandabschnitte ist Teil des Brandschutzkonzepts."
+    },
+    {
+      "id": "r075",
+      "file": "Rauchschutz_Stiegenhaus_Nachweis.pdf",
+      "label": "04 Fachplaner/Brandschutz",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Brandschutz",
+      "confidence": 0.97,
+      "reason": "Der Nachweis zur Rauchfreihaltung des Stiegenhauses ist ein Brandschutzthema."
+    },
+    {
+      "id": "r076",
+      "file": "Brandschutz_Feuerwiderstand_Decken.pdf",
+      "label": "04 Fachplaner/Brandschutz",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Brandschutz",
+      "confidence": 0.99,
+      "reason": "Der Nachweis der Feuerwiderstandsklasse gehört zum Brandschutz."
+    },
+    {
+      "id": "r077",
+      "file": "HKLS_Schema_Heizung_Rev1.pdf",
+      "label": "04 Fachplaner/HKLS",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/HKLS",
+      "confidence": 1.0,
+      "reason": "Das Heizungsschema gehört zur HKLS-Planung."
+    },
+    {
+      "id": "r078",
+      "file": "Lueftung_Konzept_Wohnungen.pdf",
+      "label": "04 Fachplaner/HKLS",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/HKLS",
+      "confidence": 1.0,
+      "reason": "Das Lüftungskonzept für die Wohnungen gehört zur HKLS-Planung."
+    },
+    {
+      "id": "r079",
+      "file": "Sanitaer_Steigstrang_Plan.dwg",
+      "label": "04 Fachplaner/HKLS",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/HKLS",
+      "confidence": 1.0,
+      "reason": "Der Plan der Sanitärstränge gehört zur HKLS-Planung."
+    },
+    {
+      "id": "r080",
+      "file": "Kaelte_Berechnung_Kuehllast.xlsx",
+      "label": "04 Fachplaner/HKLS",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/HKLS",
+      "confidence": 1.0,
+      "reason": "Die Kühllastberechnung betrifft die Kälteplanung."
+    },
+    {
+      "id": "r081",
+      "file": "Anschlussbedingungen_Fernwaerme.pdf",
+      "label": "04 Fachplaner/HKLS",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/HKLS",
+      "confidence": 0.87,
+      "reason": "Die Anschlussbedingungen betreffen den technischen Fernwärmeanschluss."
+    },
+    {
+      "id": "r082",
+      "file": "HKLS_Gewerkeplan_UG_Technik.pdf",
+      "label": "04 Fachplaner/HKLS",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/HKLS",
+      "confidence": 0.94,
+      "reason": "Der Gewerkeplan zeigt HKLS-Leitungen im Technikraum."
+    },
+    {
+      "id": "r083",
+      "file": "Entrauchung_Lueftungsplan_Stiege.pdf",
+      "label": "04 Fachplaner/HKLS",
+      "ambiguous": true,
+      "proposed": "04 Fachplaner/HKLS",
+      "confidence": 0.75,
+      "reason": "Der Plan der Entrauchungsanlage betrifft die Lüftungsplanung."
+    },
+    {
+      "id": "r084",
+      "file": "Brandschutzklappen_Lueftung_Liste.xlsx",
+      "label": "04 Fachplaner/HKLS",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Brandschutz",
+      "confidence": 0.09,
+      "reason": "Die Liste der Brandschutzklappen dokumentiert den baulichen Brandschutz."
+    },
+    {
+      "id": "r085",
+      "file": "Energieausweis_Entwurf_Berechnung.pdf",
+      "label": "04 Fachplaner/Bauphysik",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Bauphysik",
+      "confidence": 1.0,
+      "reason": "Der Energieausweis gehört zum Fachbereich Bauphysik."
+    },
+    {
+      "id": "r086",
+      "file": "Schallschutz_Gutachten_Entwurf.pdf",
+      "label": "04 Fachplaner/Bauphysik",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Bauphysik",
+      "confidence": 1.0,
+      "reason": "Das Schallschutzgutachten behandelt bauphysikalischen Schallschutz."
+    },
+    {
+      "id": "r087",
+      "file": "Waermeschutz_Nachweis_Aussenwand.pdf",
+      "label": "04 Fachplaner/Bauphysik",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Bauphysik",
+      "confidence": 1.0,
+      "reason": "Der Wärmeschutznachweis gehört zum Fachbereich Bauphysik."
+    },
+    {
+      "id": "r088",
+      "file": "Feuchteschutz_Dach_Berechnung.pdf",
+      "label": "04 Fachplaner/Bauphysik",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Bauphysik",
+      "confidence": 1.0,
+      "reason": "Der Feuchteschutznachweis gehört zum Fachbereich Bauphysik."
+    },
+    {
+      "id": "r089",
+      "file": "Schallmessung_Bestand_Protokoll.pdf",
+      "label": "04 Fachplaner/Bauphysik",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Bauphysik",
+      "confidence": 0.97,
+      "reason": "Das Messprotokoll dokumentiert eine Schallmessung und passt zur Bauphysik."
+    },
+    {
+      "id": "r090",
+      "file": "Bauphysik_Gutachten_OIB_Konform.pdf",
+      "label": "04 Fachplaner/Bauphysik",
+      "ambiguous": false,
+      "proposed": "04 Fachplaner/Bauphysik",
+      "confidence": 1.0,
+      "reason": "Das Gutachten zur OIB-Richtlinie 6 gehört zum Fachbereich Bauphysik."
+    },
+    {
+      "id": "r091",
+      "file": "LV_Rohbau_Leistungsbereich_05.xlsx",
+      "label": "05 Ausschreibung/LV",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/LV",
+      "confidence": 0.99,
+      "reason": "Das Rohbau-Leistungsverzeichnis gehört in den Ordner für Leistungsverzeichnisse."
+    },
+    {
+      "id": "r092",
+      "file": "LV_Fenster_Tischlerei_2026.pdf",
+      "label": "05 Ausschreibung/LV",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/LV",
+      "confidence": 1.0,
+      "reason": "Das Leistungsverzeichnis für Fenster und Außentüren gehört in den Ordner für Leistungsverzeichnisse."
+    },
+    {
+      "id": "r093",
+      "file": "LV_Elektro_Entwurf_v2.docx",
+      "label": "05 Ausschreibung/LV",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/LV",
+      "confidence": 0.97,
+      "reason": "Auch im Entwurfsstand gehört das Elektro-Leistungsverzeichnis in den LV-Ordner."
+    },
+    {
+      "id": "r094",
+      "file": "Ausschreibung_Trockenbau_Positionen.xlsx",
+      "label": "05 Ausschreibung/LV",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/LV",
+      "confidence": 0.93,
+      "reason": "Die Positionsliste der Trockenbauarbeiten ist Teil des Leistungsverzeichnisses."
+    },
+    {
+      "id": "r095",
+      "file": "LV_Aufzug_Angebotsanfrage.pdf",
+      "label": "05 Ausschreibung/LV",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung",
+      "confidence": 0.05,
+      "reason": "Die Angebotsanfrage für den Aufzug gehört zu den Ausschreibungsunterlagen."
+    },
+    {
+      "id": "r096",
+      "file": "Fliesen_Bodenbelag_LV.pdf",
+      "label": "05 Ausschreibung/LV",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/LV",
+      "confidence": 1.0,
+      "reason": "Das Fliesen- und Bodenbelags-Leistungsverzeichnis gehört in den LV-Ordner."
+    },
+    {
+      "id": "r097",
+      "file": "LV_Fassade_Daemmung_Entwurf.pdf",
+      "label": "05 Ausschreibung/LV",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/LV",
+      "confidence": 0.97,
+      "reason": "Der Entwurf des Fassaden-Leistungsverzeichnisses gehört in den LV-Ordner."
+    },
+    {
+      "id": "r098",
+      "file": "Vergabevermerk_Rohbau.docx",
+      "label": "05 Ausschreibung/Vergabe",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/Vergabe",
+      "confidence": 1.0,
+      "reason": "Der Vergabevermerk mit Angebotsvergleich gehört in den Vergabeordner."
+    },
+    {
+      "id": "r099",
+      "file": "Angebot_Fenster_Hofer_Tischlerei.pdf",
+      "label": "05 Ausschreibung/Vergabe",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/Vergabe",
+      "confidence": 0.99,
+      "reason": "Das Fensterangebot gehört zu den Angebotsunterlagen der Vergabe."
+    },
+    {
+      "id": "r100",
+      "file": "Angebotsvergleich_Haustechnik.xlsx",
+      "label": "05 Ausschreibung/Vergabe",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/Vergabe",
+      "confidence": 0.99,
+      "reason": "Der Angebotsvergleich für die Haustechnik gehört in den Vergabeordner."
+    },
+    {
+      "id": "r101",
+      "file": "Zuschlag_Elektro_Schreiben.pdf",
+      "label": "05 Ausschreibung/Vergabe",
+      "ambiguous": true,
+      "proposed": "05 Ausschreibung/Vergabe",
+      "confidence": 0.84,
+      "reason": "Das Zuschlagsschreiben dokumentiert die Vergabe des Elektroauftrags."
+    },
+    {
+      "id": "r102",
+      "file": "Angebot_Estrich_Baufirma_Nord.pdf",
+      "label": "05 Ausschreibung/Vergabe",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/Vergabe",
+      "confidence": 1.0,
+      "reason": "Das Estrichangebot gehört zu den Angebotsunterlagen der Vergabe."
+    },
+    {
+      "id": "r103",
+      "file": "Vergabe_Protokoll_Oeffnung.pdf",
+      "label": "05 Ausschreibung/Vergabe",
+      "ambiguous": false,
+      "proposed": "05 Ausschreibung/Vergabe",
+      "confidence": 1.0,
+      "reason": "Das Protokoll dokumentiert die Öffnung der Vergabeangebote."
+    },
+    {
+      "id": "r104",
+      "file": "Protokoll_BB07_20260903.docx",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 1.0,
+      "reason": "Das Protokoll der Baubesprechung gehört in den Protokollordner der Ausführung."
+    },
+    {
+      "id": "r105",
+      "file": "Protokoll_BB08_20260917.docx",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 1.0,
+      "reason": "Das Protokoll der Baubesprechung gehört in den Protokollordner der Ausführung."
+    },
+    {
+      "id": "r106",
+      "file": "Begehung_Protokoll_Rohbau_KW38.pdf",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 1.0,
+      "reason": "Das Begehungsprotokoll gehört in den Protokollordner der Ausführung."
+    },
+    {
+      "id": "r107",
+      "file": "BB_Notizen_Stiege_Grundrissaenderung.docx",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": true,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 0.98,
+      "reason": "Die Notizen stammen aus einer Baubesprechung und gehören zu den Ausführungsprotokollen."
+    },
+    {
+      "id": "r108",
+      "file": "Bautagebuch_KW41.pdf",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 0.21,
+      "reason": "Das Bautagebuch dokumentiert den Arbeitsfortschritt auf der Baustelle."
+    },
+    {
+      "id": "r109",
+      "file": "Protokoll_Uebergabe_Schalung.pdf",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 1.0,
+      "reason": "Das Übergabeprotokoll gehört in den Protokollordner der Ausführung."
+    },
+    {
+      "id": "r110",
+      "file": "Baustelle_Begehung_Fotos_KW42.zip",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 0.95,
+      "reason": "Die Fotos dokumentieren eine Begehung auf der Baustelle."
+    },
+    {
+      "id": "r111",
+      "file": "Abnahme_Protokoll_Estrich.pdf",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 0.99,
+      "reason": "Das Abnahmeprotokoll gehört in den Protokollordner der Ausführung."
+    },
+    {
+      "id": "r112",
+      "file": "Protokoll_BB09_20261001.docx",
+      "label": "06 Ausführung/Protokolle",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Protokolle",
+      "confidence": 1.0,
+      "reason": "Das Protokoll der Baubesprechung gehört in den Protokollordner der Ausführung."
+    },
+    {
+      "id": "r113",
+      "file": "Detail_Fenstersturz_Ost.pdf",
+      "label": "06 Ausführung/Detailpläne",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Detailpläne",
+      "confidence": 1.0,
+      "reason": "Das Fenstersturzdetail gehört zu den Ausführungsdetails."
+    },
+    {
+      "id": "r114",
+      "file": "Werkplan_Stiege_Stahl.dwg",
+      "label": "06 Ausführung/Detailpläne",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Detailpläne",
+      "confidence": 1.0,
+      "reason": "Der Werkplan der Stahlstiege gehört in den Ordner für Ausführungs- und Werkpläne."
+    },
+    {
+      "id": "r115",
+      "file": "Detail_Attika_Dachabschluss.pdf",
+      "label": "06 Ausführung/Detailpläne",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Detailpläne",
+      "confidence": 1.0,
+      "reason": "Das Attikadetail gehört zu den Ausführungsdetails."
+    },
+    {
+      "id": "r116",
+      "file": "Werkplan_Tischler_Einbaukueche.pdf",
+      "label": "06 Ausführung/Detailpläne",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Detailpläne",
+      "confidence": 0.98,
+      "reason": "Der Werkplan der Einbauküche gehört in den Ordner für Ausführungs- und Werkpläne."
+    },
+    {
+      "id": "r117",
+      "file": "Detail_Balkon_Anschluss_v2.pdf",
+      "label": "06 Ausführung/Detailpläne",
+      "ambiguous": true,
+      "proposed": "06 Ausführung/Detailpläne",
+      "confidence": 0.97,
+      "reason": "Das Balkonanschlussdetail gehört zu den Ausführungsdetails."
+    },
+    {
+      "id": "r118",
+      "file": "Detail_Tuer_Wohnung_E1.pdf",
+      "label": "06 Ausführung/Detailpläne",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Detailpläne",
+      "confidence": 1.0,
+      "reason": "Der Detailplan der Wohnungseingangstür gehört zu den Ausführungsdetails."
+    },
+    {
+      "id": "r119",
+      "file": "Fassadenschnitt_Sockel.pdf",
+      "label": "06 Ausführung/Detailpläne",
+      "ambiguous": false,
+      "proposed": "06 Ausführung/Detailpläne",
+      "confidence": 0.99,
+      "reason": "Der Fassadensockelschnitt zeigt ein Ausführungsdetail."
+    },
+    {
+      "id": "r120",
+      "file": "Brief_Bauherr_Terminverschiebung.docx",
+      "label": "07 Korrespondenz",
+      "ambiguous": false,
+      "proposed": "07 Korrespondenz",
+      "confidence": 1.0,
+      "reason": "Der Brief an den Bauherrn gehört in den Korrespondenzordner."
+    },
+    {
+      "id": "r121",
+      "file": "Mail_Bauherr_Plananpassung_Schnitt.msg",
+      "label": "07 Korrespondenz",
+      "ambiguous": true,
+      "proposed": "07 Korrespondenz",
+      "confidence": 0.94,
+      "reason": "Die E-Mail des Bauherrn zur Plananpassung gehört in die Korrespondenz."
+    },
+    {
+      "id": "r122",
+      "file": "RE_Rueckfrage_Tragwerk_Stiege.eml",
+      "label": "07 Korrespondenz",
+      "ambiguous": true,
+      "proposed": "07 Korrespondenz",
+      "confidence": 0.46,
+      "reason": "Die Rückfrage des Statikers ist Schriftverkehr mit einem Fachplaner."
+    },
+    {
+      "id": "r123",
+      "file": "Schreiben_Behoerde_Unterlagen_Anfrage.pdf",
+      "label": "07 Korrespondenz",
+      "ambiguous": false,
+      "proposed": "03 Einreichung/Baubehörde",
+      "confidence": 0.86,
+      "reason": "Das Schreiben der Behörde mit einer Unterlagenanfrage gehört zum Schriftverkehr mit der Baubehörde."
+    },
+    {
+      "id": "r124",
+      "file": "Mail_Ausfuehrende_Firma_Terminplan.msg",
+      "label": "07 Korrespondenz",
+      "ambiguous": false,
+      "proposed": "07 Korrespondenz",
+      "confidence": 0.96,
+      "reason": "Die Terminplan-E-Mail der ausführenden Firma ist Korrespondenz zur Bauausführung."
+    },
+    {
+      "id": "r125",
+      "file": "Bauherr_Entscheidung_Fenster_Mail.eml",
+      "label": "07 Korrespondenz",
+      "ambiguous": false,
+      "proposed": "07 Korrespondenz",
+      "confidence": 1.0,
+      "reason": "Die Entscheidung des Bauherrn zur Fensterausführung gehört in die Korrespondenz."
+    },
+    {
+      "id": "r126",
+      "file": "Brief_Nachbar_Baulaerm_Info.pdf",
+      "label": "07 Korrespondenz",
+      "ambiguous": false,
+      "proposed": "07 Korrespondenz",
+      "confidence": 0.97,
+      "reason": "Das Informationsschreiben an die Nachbarn ist projektbezogene Korrespondenz."
+    },
+    {
+      "id": "r127",
+      "file": "Mail_Vermesser_Rueckmeldung.msg",
+      "label": "07 Korrespondenz",
+      "ambiguous": true,
+      "proposed": "07 Korrespondenz",
+      "confidence": 0.63,
+      "reason": "Die Rückmeldung des Vermessers ist Schriftverkehr zu einem Projektgrundlagenthema."
+    },
+    {
+      "id": "r128",
+      "file": "Schreiben_Netzbetreiber_Hausanschluss.pdf",
+      "label": "07 Korrespondenz",
+      "ambiguous": false,
+      "proposed": "07 Korrespondenz",
+      "confidence": 0.97,
+      "reason": "Das Schreiben des Netzbetreibers zum Hausanschluss ist projektbezogene Korrespondenz."
+    },
+    {
+      "id": "r129",
+      "file": "Mietvertrag_Buero_2026_Verlaengerung.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r130",
+      "file": "Gewerbeschein_Kopie_2026.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r131",
+      "file": "Berufshaftpflicht_Police_2026.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r132",
+      "file": "Kammerbeitrag_Bestaetigung_2026.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r133",
+      "file": "Parkkarte_Tiefgarage_Buero.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r134",
+      "file": "Bewerbung_Praktikum_Lehmann.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r135",
+      "file": "Dienstvertrag_Entwurf_Mitarbeiterin.docx",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r136",
+      "file": "Urlaubsplan_Q4_2026.xlsx",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r137",
+      "file": "Zeiterfassung_Export_September.csv",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r138",
+      "file": "Reisekosten_Graz_Sept.xlsx",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r139",
+      "file": "Bahntickets_Linz_Abrechnung.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r140",
+      "file": "Hotelrechnung_Salzburg_Oktober.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r141",
+      "file": "Mietwagen_Beleg_Dienstreise.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r142",
+      "file": "Lizenz_CAD_Verlaengerung_2027.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r143",
+      "file": "Backup_Protokoll_Server_Q3.txt",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r144",
+      "file": "Router_Konfiguration_Notiz.txt",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r145",
+      "file": "Newsletter_Kammer_September.eml",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r146",
+      "file": "Visitenkarten_Druckfreigabe.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r147",
+      "file": "Referenzen_Texte_Website.docx",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r148",
+      "file": "Einladung_Sommerfest_2026.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r149",
+      "file": "Kantinenspeiseplan_KW42.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    },
+    {
+      "id": "r150",
+      "file": "Angebot_Druckerpatronen_Werbung.pdf",
+      "label": "",
+      "ambiguous": false,
+      "proposed": null,
+      "confidence": null,
+      "reason": null
+    }
+  ]
+}

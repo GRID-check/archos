@@ -14,25 +14,66 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      python-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      # Pinned exactly with the UI's @a2ui packages (ADR-0065): an A2UI upgrade
+      # is its own change, both sides at once, not a line in the weekly group.
+      - dependency-name: "a2ui-core"
+      # deepagents 0.7 removed backend factories and made a draft write
+      # overwrite instead of refusing (the researcher factory and the draft
+      # store's create-only contract fail), and langchain-modal 0.0.6 requires
+      # it. Moving the agent runtime to 0.7 is its own change.
+      - dependency-name: "deepagents"
+        versions: [">=0.7"]
+      - dependency-name: "langchain-modal"
+        versions: [">=0.0.6"]
+      # langfuse 5 pairs with the Langfuse server at 4.59 or later and changes
+      # the score API; it moves with the JS client in one migration (ADR-0044
+      # follow-ups). Minor and patch bumps stay allowed.
+      - dependency-name: "langfuse"
+        update-types: ["version-update:semver-major"]
 
   # Frontend (Next.js UI). bun.lock is its only lockfile; the Docker build and
   # CI install from it.
   - package-ecosystem: bun
-    directory: "/frontends/ui"
+    directory: "/apps/workspace"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
-    # Families that must move together. Bumped one at a time they drift apart
-    # and the build breaks: @aws-sdk/client-s3 alone pulls newer @smithy types
-    # than @aws-sdk/s3-request-presigner was built against, and typecheck fails;
-    # @opentelemetry/sdk-logs alone (0.x, so every minor is breaking) leaves
-    # api-logs and exporter-logs-otlp-http on an incompatible line.
     groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      ui-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      ui-security:
+        applies-to: security-updates
+        patterns: ["*"]
+      # Families that must move together, so a major of one moves the rest.
+      # Bumped one at a time they drift apart and the build breaks:
+      # @aws-sdk/client-s3 alone pulls newer @smithy types than
+      # @aws-sdk/s3-request-presigner was built against, and typecheck fails;
+      # @opentelemetry/sdk-logs alone (0.x, so every minor is breaking) leaves
+      # api-logs and exporter-logs-otlp-http on an incompatible line.
       aws-sdk:
         patterns:
           - "@aws-sdk/*"
@@ -40,6 +81,40 @@ updates:
         patterns:
           - "@opentelemetry/*"
     ignore:
+      # A2UI is pinned exactly (ADR-0065): nearly every 0.x minor has broken its
+      # API (0.13 moved every component into a custom element and changed the
+      # catalog), so an upgrade is its own change gated by the `features/a2ui`
+      # tests, not a line in the weekly group.
+      - dependency-name: "@a2ui/*"
+      # zod 4 is a migration, not a bump: 214 files import it, the card schemas
+      # are generated as zod 3 code (`json-schema-to-zod`), `lib/api/zod-json-schema.ts`
+      # walks zod 3 internals (`_def.typeName`, `ZodFirstPartyTypeKind`), and
+      # A2UI 0.11 types against zod 3. Dependabot's 4.6.7 PR broke 79 types
+      # and 157 spec files. Lift this in the change that does the migration.
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
+      # msw 3 is a migration of the spec setup, not a bump: it intercepts none
+      # of happy-dom's fetches (a mocked handler, relative or absolute, never
+      # sees the request, so 360 specs fail on the network guard's 503). Lift
+      # it in the change that adapts the setup.
+      - dependency-name: "msw"
+        update-types: ["version-update:semver-major"]
+      # From 20.12.0 (and in 21) happy-dom's `Animation.cancel()` rejects the
+      # `finished` promise without marking it handled, which the Web
+      # Animations spec requires and browsers do. `motion` cancels animations
+      # all the time, so every shard floods with "AbortError: The animation
+      # was canceled." and 9 motion specs fail. Our code is not at fault; lift
+      # this when a happy-dom release marks the rejection handled.
+      - dependency-name: "happy-dom"
+        versions: [">=20.12.0"]
+      # @ifc-lite/geometry 7.8.1 spawns a worker it does not ship
+      # ('./geometry.worker.ts'), which fails `next build`, and every renderer
+      # from 6.3.0 to 6.4.0 requires it. Exact versions only, so a release that
+      # fixes the path still arrives (docs/contributing/gotchas.md).
+      - dependency-name: "@ifc-lite/geometry"
+        versions: ["7.8.1"]
+      - dependency-name: "@ifc-lite/renderer"
+        versions: ["6.3.0", "6.3.1", "6.3.2", "6.3.3", "6.4.0"]
       # `typescript-api` is TypeScript 6 under an npm alias, for the specs that
       # parse source with the compiler API TypeScript 7.0 does not ship
       # (ADR-0103). Moving it to 7 removes that API. It goes when 7.1's lands.
@@ -51,17 +126,42 @@ updates:
       # move @types/node with it.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # OpenTelemetry JS 3.x and @langfuse/client 6 are one coordinated
+      # migration: the Langfuse server must be at least 4.59, the score API
+      # changes, and @opentelemetry/api must be at least 1.10. Minor and patch
+      # bumps stay allowed. Lift these in the change that does the migration
+      # (ADR-0044 follow-ups).
+      - dependency-name: "@opentelemetry/sdk-metrics"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@opentelemetry/sdk-logs"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@opentelemetry/resources"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@langfuse/client"
+        update-types: ["version-update:semver-major"]
 
   # Landing site (Astro microservice). bun.lock, like the UI's (ADR-0103).
   - package-ecosystem: bun
-    directory: "/frontends/web"
+    directory: "/apps/site"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      web-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      web-security:
+        applies-to: security-updates
+        patterns: ["*"]
     ignore:
-      # Same reasons as frontends/ui: `astro check` runs on the TypeScript JS
+      # Same reasons as apps/workspace: `astro check` runs on the TypeScript JS
       # API that TypeScript 7 drops, and the runtime is Node 22.
       - dependency-name: "typescript"
         versions: [">=7"]
@@ -77,17 +177,34 @@ updates:
       - "/deploy/pulumi/policy"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
     groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      pulumi-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      pulumi-security:
+        applies-to: security-updates
+        patterns: ["*"]
       pulumi:
         patterns: ["@pulumi/*"]
     ignore:
       # deploy.yml runs the program on Node 22 (node-version "22"); same rule
-      # as frontends/ui above.
+      # as apps/workspace above.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # `pulumi preview`/`up` load TypeScript through ts-node, which calls the
+      # compiler's JS API (@pulumi/pulumi cmd/run/run.js `require(typescriptRequire)`).
+      # TypeScript 7 ships no JS API, so `tsc --noEmit` stays green while every
+      # deploy breaks. Same rule as apps/site.
+      - dependency-name: "typescript"
+        versions: [">=7"]
 
   # Keep the Actions current. They are pinned by commit SHA with a version
   # comment (tests/test_ci_workflows.py), and Dependabot bumps both. "/" reads
@@ -99,5 +216,17 @@ updates:
       - "/.github/actions/*"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
+    groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]

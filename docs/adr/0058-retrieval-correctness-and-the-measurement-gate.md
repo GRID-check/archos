@@ -1,10 +1,13 @@
+---
+status: proposed
+---
+
 # ADR-0058: Retrieval correctness, structure-aware chunking, and the measurement gate
 
-- **Status:** Proposed
 - **Date:** 2026-08-10
 - **Deciders:** Platform / backend
 - **Related:** ADR-0039 (agentic retrieval quality package), ADR-0020 (shared cache),
-  [../architecture/rag-system-audit-2026-08.md](../architecture/rag-system-audit-2026-08.md)
+  [../audit/rag-system-audit-2026-08.md](../audit/rag-system-audit-2026-08.md)
 
 ## Context
 
@@ -54,7 +57,7 @@ Two further forces bear on the decision. The corpus is 946 numbered requirements
 at a median of 128 tokens, cut into 1024-token blocks over per-page Documents:
 57% of pages began mid-Punkt and 92% of chunks did not start on a numbered line,
 so one chunk blended roughly eight unrelated requirements and no citation could
-be finer than a page. And the deployment is not one process — `AIQ_CHROMA_URL`
+be finer than a page. And the deployment is not one process — `GRID_CHROMA_URL`
 points two backend replicas and a 2–8 replica research worker tier at one Chroma —
 while the collection write version the result cache keys on was a module global.
 
@@ -76,7 +79,7 @@ one package, and we will gate tuning on measurement.
    a placeholder rather than dropping the hit — a scoring error must not silently
    shorten a result set.
 4. **Documents with a usable outline are cut on that outline.** `punkt_documents`
-   yields one requirement per chunk with a `punkt_id` to cite; anything it cannot
+   yields one requirement per chunk with a `clause_id` to cite; anything it cannot
    parse keeps the previous per-page behaviour byte-for-byte. That fallback is
    what makes enabling it by default safe.
 

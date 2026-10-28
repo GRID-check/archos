@@ -1,0 +1,116 @@
+"""ADR-0064 use 12: a fingerprint value is suggested only when its quote states it."""
+
+from __future__ import annotations
+
+import pytest
+
+from agent.common.decisions import Decision
+from agent.knowledge import fingerprint_verify
+from agent.knowledge.fingerprint_verify import verify_fingerprint
+from agent.knowledge.project_experience import Evidence
+from agent.knowledge.project_experience import FingerprintValue
+from agent.knowledge.project_experience import VocabularyEntry
+from agent.knowledge.project_experience import VocabularyOption
+
+VOCABULARY = {
+    "federal_state": VocabularyEntry(
+        multiple=False,
+        options=[VocabularyOption(token="vienna", label="Wien"), VocabularyOption(token="tyrol", label="Tirol")],
+    ),
+    "construction_method": VocabularyEntry(
+        multiple=True,
+        options=[
+            VocabularyOption(token="timber", label="Holzbau"),
+            VocabularyOption(token="reinforced_concrete", label="Stahlbeton"),
+        ],
+    ),
+    "building_class": VocabularyEntry(multiple=False, options=[VocabularyOption(token="4", label="4")]),
+}
+
+
+def _value(key: str, value: str | list[str], quote: str) -> FingerprintValue:
+    return FingerprintValue(
+        key=key, value=value, evidence=[Evidence(fileName="Baubeschreibung.pdf", page="1", quote=quote)]
+    )
+
+
+def _answering(monkeypatch: pytest.MonkeyPatch, by_value: dict[str, float | None]) -> list[dict]:
+    """Jev answering p(stated) by the value's label; None for a call that failed."""
+    seen: list[dict] = []
+
+    def decide(states, questions, **kwargs):
+        seen.extend(states)
+        return [
+            None
+            if by_value.get(state["value"]) is None
+            else Decision(answers={"stated": {"type": "noul", "noul": by_value[state["value"]]}})
+            for state in states
+        ]
+
+    monkeypatch.setattr("agent.common.decisions.decide_many_blocking", decide)
+    return seen
+
+
+def test_a_value_its_quote_does_not_state_is_not_suggested(monkeypatch):
+    _answering(monkeypatch, {"Wien": 0.04})
+
+    kept = verify_fingerprint(
+        [_value("federal_state", "vienna", "Baubehörde Wien, MA 37, Gutachten für Baden")], VOCABULARY
+    )
+
+    assert kept == []
+
+
+def test_a_multi_valued_value_keeps_the_tokens_its_quote_states(monkeypatch):
+    _answering(monkeypatch, {"Holzbau": 0.92, "Stahlbeton": 0.05})
+
+    [kept] = verify_fingerprint(
+        [_value("construction_method", ["timber", "reinforced_concrete"], "Brettsperrholz-Wände und -Decken")],
+        VOCABULARY,
+    )
+
+    assert kept.value == ["timber"]
+
+
+def test_the_state_is_the_fact_the_value_and_the_quotes_nothing_else(monkeypatch):
+    seen = _answering(monkeypatch, {"Tirol": 0.9})
+
+    verify_fingerprint([_value("federal_state", "tyrol", "Bauplatz in Seefeld in Tirol")], VOCABULARY)
+
+    assert seen == [
+        {"fact": "Bundesland", "value": "Tirol", "quotes": ["Bauplatz in Seefeld in Tirol"], "language": "de"}
+    ]
+
+
+def test_the_building_class_is_left_to_the_pen_which_may_derive_it(monkeypatch):
+    seen = _answering(monkeypatch, {})
+
+    kept = verify_fingerprint([_value("building_class", "4", "Fluchtniveau 9,8 m, vier Geschoße")], VOCABULARY)
+
+    assert seen == [] and kept[0].value == "4"
+
+
+def test_a_decision_that_did_not_run_leaves_the_reading_as_it_was(monkeypatch):
+    _answering(monkeypatch, {"Wien": None})
+    value = _value("federal_state", "vienna", "Wien 7, Neubaugasse")
+
+    assert verify_fingerprint([value], VOCABULARY) == [value]
+
+
+def test_a_failing_client_leaves_the_reading_as_it_was(monkeypatch):
+    def broken(*args, **kwargs):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr("agent.common.decisions.decide_many_blocking", broken)
+    value = _value("federal_state", "vienna", "Wien 7, Neubaugasse")
+
+    assert verify_fingerprint([value], VOCABULARY) == [value]
+
+
+def test_a_value_stated_only_through_what_a_reader_knows_is_kept(monkeypatch):
+    """Measured: „Stadtgemeinde Mödling" scored 0.24 for Niederösterreich. Only a clear contradiction drops."""
+    _answering(monkeypatch, {"Wien": 0.24})
+    value = _value("federal_state", "vienna", "Magistratsabteilung 37")
+
+    assert verify_fingerprint([value], VOCABULARY) == [value]
+    assert fingerprint_verify.STATED_THRESHOLD < 0.24

@@ -8,7 +8,7 @@ cannot come back:
 
 - the per-document cap is applied to image metadata, so an image that will not
   be analysed is never decoded at all;
-- a raster over the per-raster pixel budget (``AIQ_MAX_IMAGE_PIXELS``) is
+- a raster over the per-raster pixel budget (``MAX_IMAGE_PIXELS``) is
   refused from its metadata too, so a pathological raster never allocates a
   full-resolution bitmap in the first place;
 - a raster's full-resolution bitmap is closed before the next one is opened, so
@@ -203,7 +203,7 @@ def test_the_cap_is_applied_before_any_raster_is_decoded(monkeypatch, ledger) ->
 
 
 def test_a_cap_of_none_reads_no_raster(monkeypatch, ledger) -> None:
-    """``AIQ_MAX_IMAGES_PER_DOCUMENT=0`` analyses none, so it decodes none."""
+    """``MAX_IMAGES_PER_DOCUMENT=0`` analyses none, so it decodes none."""
     _install(monkeypatch, _Document([_Page([_ImageObject((2000, 2000), ledger)])]))
 
     records, over_cap = _extract(max_images=0)

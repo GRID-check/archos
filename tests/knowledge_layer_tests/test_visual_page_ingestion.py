@@ -29,11 +29,11 @@ from knowledge_layer.llamaindex.adapter import _parse_drawing_fields
 from knowledge_layer.llamaindex.adapter import _scrub_watermark_phrases
 from knowledge_layer.llamaindex.adapter import _strip_watermark_lines
 from knowledge_layer.llamaindex.adapter import _summary_from_drawing_fields
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import write
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import write
+from agent.common.credential_resolution import ResolvedCredential
 
 
 def _patch_vlm_credential(monkeypatch, api_key: str):
@@ -207,7 +207,7 @@ class TestParseDrawingFields:
 
 
 class TestSummaryFromDrawingFields:
-    def test_prefers_zusammenfassung_sentences(self):
+    def test_prefers_summary_sentences(self):
         pages = [{"fields": _parse_drawing_fields(_VLM_DRAWING_RESPONSE)}]
         summary = _summary_from_drawing_fields(pages)
         assert summary is not None
@@ -236,7 +236,7 @@ class TestVlmModelOverride:
         assert adapter._resolve_vlm_model_override(None) is None
 
     def test_reads_ingest_vlm_group_for_org(self, monkeypatch):
-        from aiq_agent.common import model_overrides
+        from agent.common import model_overrides
 
         monkeypatch.setattr(
             model_overrides, "resolve_org_model_overrides", lambda org: {"ingest_vlm": "tenant/vision-model"}
@@ -244,7 +244,7 @@ class TestVlmModelOverride:
         assert adapter._resolve_vlm_model_override("org-1") == "tenant/vision-model"
 
     def test_fails_open_to_none_on_error(self, monkeypatch):
-        from aiq_agent.common import model_overrides
+        from agent.common import model_overrides
 
         def boom(org):
             raise RuntimeError("BFF unreachable")
@@ -387,8 +387,8 @@ class TestRenderVisualPagesNoVlm:
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -437,7 +437,7 @@ class TestRunIngestionDrawingBranch:
     def test_summary_comes_from_drawing_not_watermark(self, tmp_path, monkeypatch, ingestor, summary_db):
         """The user-reported bug: a watermark-only vector PDF must be summarised
         from its rendered-page drawing description, never from the watermark."""
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "vlm-key")
         # The rendered-page VLM returns the architectural drawing description.
@@ -485,7 +485,7 @@ class TestRunIngestionDrawingBranch:
 
     def test_missing_vlm_key_skips_render_without_failing(self, tmp_path, monkeypatch, ingestor, summary_db):
         """No VLM key → no page render, but a normal text PDF still ingests."""
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "")
         import knowledge_layer.llamaindex.processing as processing_module
@@ -703,11 +703,14 @@ class TestRunIngestionEmbedsAndChecksWithTheWholePage:
         from llama_index.embeddings import nvidia
 
         made: list[dict] = []
-        monkeypatch.setattr(adapter, "ensure_retrieval_dependencies", lambda: None)
+        from knowledge_layer.llamaindex import dependencies
+        from knowledge_layer.llamaindex import embedding
+
+        monkeypatch.setattr(dependencies, "ensure_retrieval_dependencies", lambda: None)
         monkeypatch.setattr(nvidia, "NVIDIAEmbedding", lambda **kwargs: made.append(kwargs) or MagicMock())
         ing = LlamaIndexIngestor({})
 
         ing._ensure_initialized()
 
-        assert [kwargs["timeout"] for kwargs in made] == [adapter.EMBED_TIMEOUT_SECONDS]
-        assert adapter.EMBED_TIMEOUT_SECONDS > adapter.QUERY_EMBED_TIMEOUT_SECONDS
+        assert [kwargs["timeout"] for kwargs in made] == [embedding.EMBED_TIMEOUT_SECONDS]
+        assert embedding.EMBED_TIMEOUT_SECONDS > embedding.QUERY_EMBED_TIMEOUT_SECONDS

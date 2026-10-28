@@ -16,12 +16,12 @@ from datetime import datetime
 import pytest
 from sqlalchemy import text
 
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
+from agent.knowledge import ingest_status_store
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
 
 DAY = 86400
 LONG_AGO = "2000-01-01 00:00:00"
@@ -30,7 +30,7 @@ LONG_AGO = "2000-01-01 00:00:00"
 @pytest.fixture
 def sqlite_db(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path}/jobs.db"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("SUMMARY_DB", url)
     yield url
     ingest_status_store._initialized.discard(url)
 
@@ -87,7 +87,7 @@ class TestRetention:
         assert ingest_status_store.get("running") is not None
 
     def test_a_job_the_queue_still_holds_is_never_pruned(self, sqlite_db):
-        from aiq_agent.knowledge import ingest_queue
+        from agent.knowledge import ingest_queue
 
         ingest_status_store.put(_job("queued", JobState.PENDING, {"wait.pdf": FileStatus.UPLOADING}))
         ingest_queue.enqueue("queued", None, "payload")
@@ -96,7 +96,7 @@ class TestRetention:
         assert ingest_status_store.prune_expired(DAY) == 0
 
     def test_without_a_database_nothing_is_stored_and_nothing_is_listed(self, monkeypatch):
-        monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+        monkeypatch.delenv("SUMMARY_DB", raising=False)
         monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
 
         assert ingest_status_store.collection_jobs("proj_a", DAY) == []
@@ -151,7 +151,7 @@ class TestForget:
 class TestRowsThatPredateTheCollectionColumn:
     def test_the_migration_files_an_old_row_under_its_collection(self, tmp_path, monkeypatch):
         url = f"sqlite:///{tmp_path}/old.db"
-        monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+        monkeypatch.setenv("SUMMARY_DB", url)
         old = _job("old", JobState.FAILED, {"b.pdf": FileStatus.FAILED})
         engine = DocumentMetadataStore._get_or_create_sync_engine(url)
         with engine.connect() as conn:

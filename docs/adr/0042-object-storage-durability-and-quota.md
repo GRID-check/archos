@@ -1,6 +1,9 @@
+---
+status: proposed
+---
+
 # ADR-0042: Object-storage durability — backup, quota, and least privilege
 
-- **Status:** Proposed
 - **Date:** 2026-08-07
 - **Deciders:** Grid Agent team
 - **Superseded in part by:** [ADR-0043](0043-seaweedfs-split-topology-and-per-tenant-buckets.md) — the topology split this ADR deferred, which is what turns chunk encryption from crypto-erasure into at-rest protection.
@@ -103,7 +106,7 @@ key in that bag, which the generic tenant settings route refuses to write — se
 decision 3.
 
 **There is one way to insert a `documents` row, and it is the admitting one.**
-`insertDocument` and `insertArchivDocument` were removed rather than left beside
+`insertDocument` and `insertOfficeShelfDocument` were removed rather than left beside
 it: a ceiling is only a ceiling if every insert passes through it, and a second
 ungated path is how that stops being true.
 

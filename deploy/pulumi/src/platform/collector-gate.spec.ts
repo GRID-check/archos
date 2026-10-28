@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
+import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
 /**
  * The collector is deployed because something consumes it (ADR-0029).
@@ -125,13 +126,13 @@ describe("a stack with Langfuse and PostHog opted out", () => {
     expect(d.collector).not.toContain("err2issue");
     expect(d.collector).not.toContain("errors_only");
     const secret = RESOURCES.find((r) => r.type === "kubernetes:core/v1:Secret" && r.name === "grid-secrets");
-    expect(Object.keys(unsecret<Record<string, string>>(await resolve(secret?.inputs.stringData)))).not.toContain("GRID_GITHUB_TOKEN");
+    expect(Object.keys(unsecret<Record<string, string>>(await resolve(secret?.inputs.stringData)))).not.toContain("GITHUB_TOKEN");
     const frontend = RESOURCES.find((r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "frontend");
     const env = ((await resolve(frontend?.inputs.spec)) as any).template.spec.containers[0].env.map(
       (e: { name: string }) => e.name,
     );
-    expect(env).not.toContain("GRID_GITHUB_TOKEN");
-    expect(env).not.toContain("GRID_FEEDBACK_ISSUES_REPO");
+    expect(env).not.toContain("GITHUB_TOKEN");
+    expect(env).not.toContain("FEEDBACK_ISSUES_REPO");
   });
 
   it("deploys the collector and Langfuse, and no dashboard whatever the config still says", () => {
@@ -148,15 +149,15 @@ describe("a stack with Langfuse and PostHog opted out", () => {
     expect(d.collector).not.toMatch(/aspire/i);
     expect(d.collector).not.toContain("OTLP_API_KEY");
     expect(d.collectorEnv).toEqual(["LANGFUSE_OTLP_AUTH"]);
-    expect(d.collector).toMatch(/traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/langfuse\]/);
+    expect(parseCollectorConfig(d.collector).service.pipelines.traces).toEqual(pipeline(["otlp_http/langfuse"]));
   });
 
-  it("still takes logs, into the collector's own nop exporter, and carries no metrics pipeline", () => {
+  it("still takes logs and metrics, into the collector's own nop exporter", () => {
     // A signal with no pipeline is an error on every producer's every export.
-    // Metrics are not sent at all (nothing consumes them), so no pipeline.
-    expect(d.collector).toMatch(/exporters:\s*\n\s+nop:/);
-    expect(d.collector).toMatch(/logs:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[nop\]/);
-    expect(d.collector).not.toMatch(/\n    metrics:/);
+    const { exporters, service } = parseCollectorConfig(d.collector);
+    expect(exporters).toHaveProperty("nop");
+    expect(service.pipelines.logs).toEqual(pipeline(["nop"]));
+    expect(service.pipelines.metrics).toEqual(pipeline(["nop"]));
   });
 
   it("rolls the collector when the Langfuse key rotates", () => {
@@ -177,9 +178,10 @@ describe("a stack with PostHog logs and no Langfuse", () => {
   });
 
   it("ends the traces signal in nop and ships logs to PostHog only", () => {
-    expect(d.collector).toMatch(/traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[nop\]/);
-    expect(d.collector).toMatch(/logs\/posthog:/);
-    expect(d.collector).not.toMatch(/\n    logs:/);
+    const { pipelines } = parseCollectorConfig(d.collector).service;
+    expect(pipelines.traces).toEqual(pipeline(["nop"]));
+    expect(pipelines).toHaveProperty("logs/posthog");
+    expect(pipelines).not.toHaveProperty("logs");
   });
 });
 

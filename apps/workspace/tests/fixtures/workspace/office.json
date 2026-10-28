@@ -1,0 +1,103 @@
+{
+  "comment": "The fixture office of the workspace eval (scripts/turn_census/fixture_workspace.py, ADR-0123). Every read the eval's questions need is answered from here, in the shape the route answers; a read with no entry answers with an error the run records. Ids are stable so a check can name them.",
+  "organizationId": "8d6f2a10-6c1b-4c7e-9a51-0b8e1f2d3c40",
+  "userId": "user_lena",
+  "user": { "name": "Lena Berger", "email": "lena.berger@berger-architektur.at", "office": "Berger Architektur ZT GmbH" },
+  "current": "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+  "projects": [
+    { "id": "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "name": "Wohnhaus Mödling", "status": "active" },
+    { "id": "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d", "name": "Kindergarten Baden", "status": "active" },
+    { "id": "7c8d9e0f-1a2b-4c3d-8e4f-5a6b7c8d9e0f", "name": "Bürohaus Wien Landstraße", "status": "active" },
+    { "id": "9e0f1a2b-3c4d-4e5f-8a6b-7c8d9e0f1a2b", "name": "Sanierung Gründerzeithaus Josefstadt", "status": "closed" }
+  ],
+  "reads": {
+    "project-list": {
+      "projects": [
+        { "id": "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "name": "Wohnhaus Mödling", "status": "active" },
+        { "id": "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d", "name": "Kindergarten Baden", "status": "active" },
+        { "id": "7c8d9e0f-1a2b-4c3d-8e4f-5a6b7c8d9e0f", "name": "Bürohaus Wien Landstraße", "status": "active" },
+        { "id": "9e0f1a2b-3c4d-4e5f-8a6b-7c8d9e0f1a2b", "name": "Sanierung Gründerzeithaus Josefstadt", "status": "closed" }
+      ]
+    },
+    "organization-member-list": {
+      "members": [
+        { "userId": "user_lena", "organizationMembershipId": "om_lena", "email": "lena.berger@berger-architektur.at", "name": "Lena Berger", "role": "admin" },
+        { "userId": "user_thomas", "organizationMembershipId": "om_thomas", "email": "thomas.wagner@berger-architektur.at", "name": "Thomas Wagner", "role": "member" },
+        { "userId": "user_anna_h", "organizationMembershipId": "om_anna_h", "email": "anna.huber@berger-architektur.at", "name": "Anna Huber", "role": "member" },
+        { "userId": "user_anna_g", "organizationMembershipId": "om_anna_g", "email": "anna.gruber@berger-architektur.at", "name": "Anna Gruber", "role": "member" },
+        { "userId": "user_markus", "organizationMembershipId": "om_markus", "email": "markus.steiner@berger-architektur.at", "name": "Markus Steiner", "role": "member" }
+      ]
+    },
+    "project-member-list": {
+      "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d": {
+        "members": [
+          { "id": "ra_1", "userId": "user_lena", "organizationMembershipId": "om_lena", "name": "Lena Berger", "email": "lena.berger@berger-architektur.at", "roleSlug": "project-admin" },
+          { "id": "ra_2", "userId": "user_thomas", "organizationMembershipId": "om_thomas", "name": "Thomas Wagner", "email": "thomas.wagner@berger-architektur.at", "roleSlug": "project-editor" }
+        ],
+        "viewerUserId": "user_lena"
+      },
+      "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d": {
+        "members": [
+          { "id": "ra_3", "userId": "user_lena", "organizationMembershipId": "om_lena", "name": "Lena Berger", "email": "lena.berger@berger-architektur.at", "roleSlug": "project-admin" },
+          { "id": "ra_4", "userId": "user_markus", "organizationMembershipId": "om_markus", "name": "Markus Steiner", "email": "markus.steiner@berger-architektur.at", "roleSlug": "project-contributor" }
+        ],
+        "viewerUserId": "user_lena"
+      }
+    },
+    "project-folder-list": {
+      "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d": {
+        "folders": [
+          { "id": "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e", "name": "Einreichung", "parentId": null, "path": "Einreichung", "access": "write" },
+          { "id": "2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f", "name": "Bestand", "parentId": null, "path": "Bestand", "access": "write" },
+          { "id": "3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a", "name": "Korrespondenz", "parentId": null, "path": "Korrespondenz", "access": "write" }
+        ],
+        "rootAccess": "write"
+      },
+      "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d": {
+        "folders": [
+          { "id": "4e5f6a7b-8c9d-4e0f-9a1b-2c3d4e5f6a7b", "name": "Wettbewerb", "parentId": null, "path": "Wettbewerb", "access": "write" }
+        ],
+        "rootAccess": "write"
+      }
+    },
+    "document-list": {
+      "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d": {
+        "documents": [
+          { "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", "name": "Baubeschreibung.docx", "folderId": null, "folderPath": null, "author": "Thomas Wagner", "state": "draft", "versionCount": 2 },
+          { "id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e", "name": "EG_Grundriss_v3.pdf", "folderId": "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e", "folderPath": "Einreichung", "author": "Lena Berger", "state": "released", "versionCount": 3 },
+          { "id": "c3d4e5f6-a7b8-4c9d-8e0f-2a3b4c5d6e7f", "name": "Statik_Vorbemessung.pdf", "folderId": null, "folderPath": null, "author": "Thomas Wagner", "state": "draft", "versionCount": 1 },
+          { "id": "d4e5f6a7-b8c9-4d0e-9f1a-3b4c5d6e7f8a", "name": "Bestandsfotos_2026-03.zip", "folderId": "2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f", "folderPath": "Bestand", "author": "Lena Berger", "state": "released", "versionCount": 1 }
+        ],
+        "nextCursor": null
+      }
+    },
+    "inbox-list": {
+      "items": [
+        { "id": "inb_1", "type": "review_requested", "title": "Thomas Wagner bittet um Freigabe: Baubeschreibung.docx", "project": "Wohnhaus Mödling", "createdAt": "2026-10-20T15:10:00Z", "read": false },
+        { "id": "inb_2", "type": "mention", "title": "Markus Steiner hat Sie erwähnt: „Brandschutzkonzept Kindergarten bis Freitag?“", "project": "Kindergarten Baden", "createdAt": "2026-10-21T07:42:00Z", "read": false },
+        { "id": "inb_3", "type": "run_finished", "title": "Auftrag abgeschlossen: Wöchentlicher Fristencheck", "project": "Wohnhaus Mödling", "createdAt": "2026-10-20T06:05:00Z", "read": true }
+      ],
+      "nextCursor": null
+    },
+    "task-list": {
+      "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d": {
+        "tasks": [
+          { "id": "task_1", "name": "Wöchentlicher Fristencheck", "scheduleCron": "0 6 * * 1", "scheduleTimezone": "Europe/Vienna", "enabled": true, "nextRunAt": "2026-10-26T05:00:00Z", "skillName": null }
+        ],
+        "nextCursor": null
+      }
+    },
+    "proposal-list": {
+      "proposals": [
+        { "id": "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c", "kind": "operation", "status": "proposed", "summary": "Rename a document (name: Baubeschreibung_Einreichung.docx, id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d)", "createdAt": "2026-10-19T10:00:00Z" }
+      ]
+    },
+    "project-memory-list": {
+      "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d": {
+        "items": [
+          { "id": "mem_1", "kind": "decision", "content": "Außenwände in Holzrahmenbauweise, Fassade hinterlüftet.", "confidence": "high", "pinned": false }
+        ]
+      }
+    }
+  }
+}

@@ -579,7 +579,7 @@ Where there are no review rights (the Büroablage, a citation preview) the
 same section shows the timeline and the suggestion, without decision buttons.
 
 How it works underneath, from upload to answer:
-[Fassungen](../architecture/fassungen.md). Why a link and not a merge:
+[Fassungen](../architecture/revisions.md). Why a link and not a merge:
 [ADR-0099](../adr/0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md).
 
 ---
@@ -654,21 +654,21 @@ for indexing.
 |-------|--------------------|------------|-------------|
 | **Büroablage (org-wide)** | `archiv_{orgId}` | Every project in the organization | Never (persistent) |
 | **Project** | `proj_{projectId}` | All project members | Never (persistent) |
-| **Session** | `s_{conversationId}` | Only within that conversation | Deleted after 24 hours (configurable via `AIQ_COLLECTION_TTL_HOURS`) |
+| **Session** | `s_{conversationId}` | Only within that conversation | Deleted after 24 hours (configurable via `COLLECTION_TTL_HOURS`) |
 
-Session-scoped collections are prefixed with `s_` and are automatically reaped by the `TTLCleanupMixin` background thread that runs periodically (every `AIQ_TTL_CLEANUP_INTERVAL_SECONDS`, default 3600s).
+Session-scoped collections are prefixed with `s_` and are automatically reaped by the `TTLCleanupMixin` background thread that runs periodically (every `TTL_CLEANUP_INTERVAL_SECONDS`, default 3600s).
 
 ### The Büroablage (ADR-0024)
 
 The **Büroablage** (English UI: *Office filing*) is a top-level document store
 that lives above projects, reachable from the navigation (Büroablage). Until
-October 2026 it was called „Archiv“; the URL `/app/archiv`, the permission
-`org:archiv:manage` and the collection `archiv_{orgId}` keep that name. It is a
+October 2026 it was called „Archiv“; the URL `/app/office-shelf`, the permission
+`org:office_shelf:manage` and the collection `archiv_{orgId}` keep that name. It is a
 different thing from the „Stilllegen“ action on a project document. Anything uploaded there is shared with **every
 project in your organization** — every project's chat automatically searches the
 Büroablage alongside its own documents and the base corpus, with no per-project
 re-upload. Any member can browse, preview, and download Büroablage documents;
-uploading and deleting require the **`org:archiv:manage`** permission (org admins
+uploading and deleting require the **`org:office_shelf:manage`** permission (org admins
 have it). It is the same workspace as the project Files tab — upload, ingestion, preview and folders. Every organization has one.
 
 The Büroablage is the project Files workspace over the office's shelf: **one
@@ -681,7 +681,7 @@ words. It keeps the gold office mark (the Büroablage provenance signal used
 across the app) and what is specific to the office:
 
 - **Folders** — the office's own tree, separate from every project's. Members
-  with `org:archiv:manage` create, rename, move and delete folders and re-file
+  with `org:office_shelf:manage` create, rename, move and delete folders and re-file
   documents; deleting a folder never deletes documents, it re-files them into the
   parent. Everyone else can open folders, search, filter, preview and download
   but sees no upload, drag, create, rename, move or delete.

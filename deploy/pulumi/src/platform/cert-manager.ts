@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { DeployConfig } from '../config'
 import { GATEWAY_NAME } from "./gateway";
 import { PLATFORM_RESOURCES } from "../constants";
 
@@ -24,7 +24,7 @@ export interface CertManager {
  * enable the integration — pass the controller release in `dependsOn`.
  */
 export function installCertManager(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   gatewayNamespace: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],

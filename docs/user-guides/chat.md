@@ -53,6 +53,14 @@ The composer is a white card with the message field on top and a control row bel
 
 On a phone the control row stays one line. The `@` list keeps the keyboard open when you pick a name.
 
+**Above the composer, a usage notice** appears when a budget that applies to you is close to stopping chat: the office's, your own limit, or the project's, daily or monthly. It shows one budget, the one that matters most:
+
+- **On pace to run out** (blue): a monthly budget is at least half used and, at this month's pace, would run out a day or more before it renews. It names the date.
+- **80 %** (amber) and **95 %** (amber, red meter): how much is used and when it renews. At 95 % it adds that a long research run may stop before it finishes.
+- **Used up** (red): no new message goes out until the budget renews (a day at 00:00 UTC, a month on the 1st, shown in your local time).
+
+Whoever can raise the limit (an organization budget admin, or for a project budget a project admin) gets **Limit erhöhen**, straight to where it is set; everyone else is told an admin can, and gets a link to their usage. Amounts appear only to people who may already read them: whoever can change the limit, and you for your own limit. Everyone else sees the percentage. Each level can be closed with **×** and stays closed for that budget window; the next level, or the next window, shows again. **Used up** cannot be closed.
+
 Under the composer a **Shortcuts** row offers three source presets — *Baurecht & Richtlinien* (base corpus + RIS), *Projektunterlagen* (this project's files, not the Büroablage), and *Büroablage* (the office's own files, not project files). They stay available after the first message. A pressed preset also tells retrieval which knowledge shelves to keep; it is not only an external-source toggle. Any manual change in the Data Sources panel takes you off the preset again. Uploading a file into the chat binds the next send to that file — "Fass den Inhalt zusammen" does not walk the rest of the project or the Büroablage.
 
 Documents sit on four nested shelves. Asking **which files** sit where is answered from that shelf only:
@@ -187,38 +195,86 @@ brief, and „Klären“ on a single finding commissions a run about that one po
 The thread's history row shows a run going or a report ready; stopping a run is
 done from its block, or from the run's row in the history.
 
-## Herleitung: folding a search step
+## Herleitung: what Piloti looked up, and what the answer stands on
 
-Above the answer sits the *Herleitung* — a one-line bar that opens into the
-graph of how the turn got there. A turn that searched once draws a single fan of
-sources. A turn that searched **more than once** draws a spine instead: the
-conclusion that caused each fetch, the files *that* fetch returned, then the
-next conclusion. A step's body is always the model's own sentence, never the
-search query.
+Above the answer sits the *Herleitung*. Folded, it is one line: how many steps
+the turn took, how many sources the answer cites, and at most one warning, the
+worst there is — „1 Abruf fehlgeschlagen“ outranks „1 Punkt offen“. Opened, it
+is the graph of how the turn got there: the question, each step with its calls,
+the sources each step returned, and a last card, „Grundlagen · Entwurf“.
 
-**A step says what Piloti set out to do, then what it read.** The sentence under
-the step number is Piloti's own: why this fetch happened. Under it stands one
-card per document, listing the Punkte or pages that step read in it. Five
-Punkte of the OIB-Richtlinie 2 are one card with five addresses, not five cards.
-„bereits abgerufen“ marks a passage the step fetched again: either that exact
-page or Punkt had already come back, or the step went back into a file an
-earlier step had opened. A file an earlier search merely *listed* does not
-count. Opening it is new work, and carries no marker.
+**A step says what Piloti set out to do, then shows each call as a row.** The
+sentence under „Schritt 1 · Suchen“ is Piloti's own, when it wrote one. Under it
+stands one row per call: the verb muted, then what it was done to, then what came
+back on the right — „Sucht wörtlich „Brandabschnitt“ im Projekt · 14 Treffer in
+3 Dokumenten“, „Liest Einreichplan EG.pdf, S. 2–3 · 2 Stellen“. A search that
+found nothing says where it looked: „Sucht in OIB-RL 2: „Brandabschnitt
+Tiefgarage“ · kein Treffer“; a search of a corpus names it first („Sucht im
+RIS: „Wiener Garagengesetz““). A status is a shape and a word (a ring for no
+hit, a triangle for a failed call with what that means for the answer on a line
+under it, a quiet dot for a call still running, a hollow one and „abgebrochen“
+for a call the turn ended under); colour is kept for where a source comes from.
+A look („Betrachtet …“) shows the crop it read, marked „abgelesen, nicht
+gemessen“, and holds its place while it runs. Three or more calls of one kind
+fold into one row („Liest 7 Dokumente ×7“; searches carry no verb: „4 Suchen
+im RIS ×4“); a step of more than five rows shows the worst three and „+N
+weitere“. No row carries a time: no one checks an answer by its seconds.
 
-**Every step folds.** Clicking a step (or reaching it with Tab and pressing
-Enter — it is a real button and reports its state through `aria-expanded`)
-replaces its fan of file cards with the count of what that fetch returned,
-"3 Dateien". Clicking again brings the cards back. A step that fetched nothing
-has no fold: there is nothing to put away.
+**Rows over your documents name the folder, never a path.** When Piloti opens a
+folder, looks for files by name, searches the wording or reads a document, the
+row names the place as you do: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“,
+„Sucht im Projekt nach PDF-Dateien · 7 Dateien“, „Durchsucht 03 Einreichung
+wörtlich nach „Brandabschnitt“ · 14 Treffer in 3 Dateien“, „Liest
+Baubeschreibung, S. 4–6 · 3 Stellen“ (the document by the name its source card
+gives it, and the pages it actually read). A folder of the Büroablage or of this
+chat carries its place first („Durchsucht die Büroablage › Vorlagen …“); a
+search everywhere says „alle Ablagen“. A simple file-name pattern reads as words
+(„Dateien mit „Brandschutz“ im Namen“), any other as written. These rows count
+files, and a folder counts everything in it, its subfolders too. A wording
+search without a hit says how many files it searched („kein Treffer in 41
+Dateien“), the same number „Öffnet alle Ablagen · 3 Ablagen, 41 Dateien“ shows.
+One that could not search everything (a part of the documents did not answer in
+time, or it stopped at its limit) is marked with a dashed ring, and the line
+under it says what that means: there may be more hits, or a missing hit is no
+proof that the wording is absent; „Offen“ lists it. A folder or document that is
+not there reads „nicht gefunden“; a folder you may not open reads exactly the
+same, so the Herleitung never confirms it exists. A folder that is there and
+holds nothing, such as a new project or a chat without uploads, reads „leer“.
+A listing or a search for file names returns no source card, so its row is no
+button. What Piloti writes into its drafts or reads from a skill draws no row.
 
-**Three or more steps arrive folded**, all but the newest. Two steps are a
-comparison and folding half of one hides it; from the third the graph stops
-being a shape and starts being a scroll, so the older steps arrive as counts and
-the reader opens the one they want. A step opened by hand stays open as later
-steps stream in. The choice lives for as long as the panel is open — it is a
-reading preference for one Herleitung, not a saved setting.
+**The automatic first search has no row.** When Piloti searches before it
+starts thinking (the prefetch), what it found joins the first step's sources
+like any other.
 
-Rendered evidence: capture `/dev/herleitung`.
+**Sources fan out under the step that found them.** Each card carries its kind
+(OIB-Richtlinie, Projektwissen …), the name, the edition when the title states
+one („Ausgabe Mai 2023“), the place („Pkt. 3.1.1“, „S. 7“) and the answer's
+marker („[1]“). What a step retrieved and the answer did not cite folds into one
+dashed card marked „Nicht zitiert“, „+2 abgerufen“; tapping it opens those cards. While
+the answer is still being written nothing is cited yet, so it reads „+2
+weitere“. „bereits abgerufen“ still marks a passage a step fetched again.
+
+**Tap a row and its sources stay bright; tap a source and its row lights up.**
+Everything else steps back until you tap again. Rows and cards are real buttons,
+reachable with Tab. A card still opens its document as before. Turns stored
+before calls carried an id link nothing; there a row about a document opens it.
+
+**„Grundlagen · Entwurf“ closes the graph.** „Rechtsgrundlage“ lists the cited
+law with its edition and place, „Belegt durch“ the cited project and office
+documents with theirs, and „Offen“ every call that failed or found nothing:
+„Nicht beurteilbar, weil die Suche in OIB-RL 2 nach „Brandabschnitt
+Tiefgarage“ keine Fundstelle ergab.“ It is the basis of a draft, never a proof.
+
+**Two turns need no graph.** A turn that looked nothing up says „Ohne Recherche
+beantwortet“ in one line. A turn of a single call is that call, in the past:
+„Gelesen: Brandschutzkonzept · S. 7 · zitiert [1]“. Neither opens.
+
+**Older turns fold by step.** A turn stored before the calls had rows draws its
+steps as before; clicking one (or Enter on it — a real button reporting
+`aria-expanded`) folds its fan to a count and back.
+
+Rendered evidence: capture `/dev/derivation`.
 
 ## After a long answer: "Als Aktenvermerk schreiben"
 
@@ -265,11 +321,55 @@ the end.
 - **Relations are drawn.** A process or decision path, a tree or outline of a
   Regelwerk, a handoff between parties, a schedule of dated phases, and the
   shares of one whole each become a diagram.
+- **A drawing can be reworked by hand.** Inside a project, a drawn process or
+  outline offers „Als Skizze bearbeiten". It opens a drawing canvas
+  (Excalidraw) with Piloti's drawing as the starting point: move boxes, add
+  steps, notes and freehand lines, then „Im Projekt ablegen" files your version
+  as an SVG and a PDF. Both files say „Von Piloti entworfen, von einer Person
+  bearbeitet" and „nicht maßstäblich, ohne Maßangabe". A sketch is never a
+  measured drawing, whatever is drawn on it. Each save files a new document;
+  a filed sketch cannot be reopened yet. Closing with unsaved changes asks
+  first.
 - **Your question stays at the top.** A sent question is anchored near the top
   of the view and the answer grows below it. A short answer does not drop when
   it finishes.
 - **Wide content scrolls sideways.** A wide table or diagram scrolls inside
   its own frame. The frame can take keyboard focus, so arrow keys scroll it.
+
+## What if: changing a value on a card that computes
+
+Some answers carry a card that works a number out by a named rule: a U-value
+from the component's layers (ÖNORM EN ISO 6946, against OIB-RL 6 Pkt. 4.4.1),
+the Schrittmaßregel 2s + a and the stair table (OIB-RL 4 Pkt. 3.2.1), an escape
+route's Gehweglänge (OIB-RL 2 Pkt. 5.1.1 and 5.1.2), or the Lichteintrittsfläche
+against the Bodenfläche (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). The card is headed
+**Was wäre, wenn**.
+
+- **Every input says where it comes from**: the Einreichplan, the Raumbuch, a
+  product data sheet, a norm.
+- **The limit is the Richtlinie's, for your case.** A Wohnungstreppe is held to
+  its own row of Tabelle 3, a ceiling over a passage to its own row of the
+  U-value table (a renovation without a Sanierungskonzept 24 % under it,
+  Pkt. 4.5 b; a größere Renovierung is measured by energy figures, Pkt. 4.3, so
+  the card computes the U-value and does not judge it), a balcony or a deep
+  room raises the required
+  Lichteintrittsfläche. Each limit names its Punkt and row, and it cannot be
+  changed.
+- **Change an input and the card is recomputed**: the Rechenweg, the result and
+  the verdict, as soon as you pause, leave the field or press Enter. The arrow
+  keys step the value at once. Type a comma or a point, either works. Nothing is
+  sent to Piloti and no new answer is written.
+- **A changed value is marked „Ihre Annahme"** beside the field with the
+  source's value, beside every verdict resting on it, and beside the verdict at
+  the top of the card. **Zurücksetzen** restores every source value.
+- **A value the source does not give stays empty**, and the card says it cannot
+  judge without it. A value the field does not accept (outside its range,
+  λ = 0) is said as such.
+- **What the card does not check is said on it**: the free light angle of 45°
+  for a window, a Wintergarten or a verglaste Loggia in front of it, a
+  renovation with a Sanierungskonzept, the other parts of OIB-RL 2.
+- **Nothing is saved.** A reload, a copy or an export shows the source's values
+  again, never your what-if.
 
 ## Answer sources ("Belegt durch")
 
@@ -306,7 +406,7 @@ of the same answer.
 handle: pull it to give the document as much of the row as you want, between
 280px and 960px, and the chat column keeps its own floor (40% of the row), so on
 a smaller window that floor is what stops you first. The width you set is
-remembered — per browser, in `localStorage` (`grid.filePeek.width`) — so the next
+remembered — per browser, in `localStorage` (`filePeek.width`) — so the next
 file opens at the width you read the last one at. Double-click the seam to put
 it back at its default. The seam is also keyboard operable (Tab to it, then the
 arrow keys). Drag it all the way shut and the peek is dismissed exactly as the
@@ -366,6 +466,60 @@ Clicking a source chip opens a preview of the source instead of doing nothing:
 - **A citation of an older Fassung says so.** When the cited document is a Fassung a person has since replaced by a newer one (a link confirmed in Dateien, ADR-0099), the source's preview popover adds one muted line, **Ältere Fassung – aktuell: \<Name\>** (English: *Older revision. Current:*). The name is a button: it opens the current Fassung beside the conversation. The citation itself is unchanged, because an older Fassung is still read when you ask for it; the line only keeps you from relying on a replaced Fassung unawares. It names only a Fassung you may open yourself: a newer file held back by the content check or filed in a folder you cannot open is not named. A document nobody replaced, and a suggestion Piloti made that nobody confirmed, show no line.
 - **Ask for a document's history.** „Welche Fassungen gibt es vom EG-Grundriss?“ and „Was hat sich zwischen Index B und C geändert?“ are answered from the whole chain of Fassungen, newest first, with each one's Index and date (read from the file name and, where there is one, the Plankopf), upload date and the line saying what changed. Answers otherwise use the newest Fassung and name an older one only when you ask for it or Piloti compares; opening an older one by name says in the first line that it is the older and which one is current. The change lines are Piloti's summaries, not a comparison of the files: for a detail it reads both Fassungen.
 - **Anything unresolvable** (unknown document, non-previewable file type) shows a light popover with the source's origin, title, and passage instead — never a broken viewer. Chips with nothing beyond their label stay plain.
+- **Neben dem Chat öffnen / Open beside the chat.** The viewer dialog of a project or Büroablage document offers to open the same place in the peek beside the conversation instead: the page, with the passage or the box marked. It is the same move Piloti makes on its own (below), so it opens nothing you could not open from Dateien. It is offered only while there is room beside the chat; the platform corpus and a file attached to the chat have no peek and do not offer it.
+
+## Piloti takes you to the place
+
+When an answer rests on one place in a document, „Laut Baubeschreibung S. 4 …“,
+Piloti can take you there: once the answer has arrived, the document opens in
+the peek beside the chat at that page, with the passage or the box marked
+(ADR-0144). Under the answer a short row says what it opened.
+**Zurücknehmen / Undo** puts the viewer back as it was; if nothing was open, it
+closes. If you have opened another document since, it leaves yours alone and
+says so.
+
+What Piloti may do is a short, fixed list: open a document at a page, mark a
+passage on a page, mark a box on a page, offer the comparison of two Fassungen,
+and offer a building model with one element selected. Nothing else moves, and
+at most one place opens on its own per answer.
+
+- **It never opens what you could not open yourself.** Before anything moves,
+  your page reads the document in your own session, the way Dateien does. If
+  you may not see it, nothing moves and the row says only that the document is
+  not available.
+- **Not before the answer.** Nothing moves while Piloti is still working. If the
+  answer fails or you stop it, nothing moves at all.
+- **Only your own screen, only while you are here.** It moves the viewer of the
+  person who asked, in the tab they asked in. Someone watching a shared
+  conversation sees the answer without the row, and so does the same answer
+  after a reload: the row described a moment on your screen.
+- **The comparison and the model only offer themselves.** A Fassung comparison
+  covers the conversation and the model view leaves it, so those two wait for
+  **Anzeigen / Show**. A comparison opens only for two Fassungen a person has
+  linked as Fassungen of one document.
+- **Not while you are typing.** A place that is ready while you type in a field
+  waits for a pause; if none comes, the row offers it instead.
+- **You can turn it off.** The switch **Automatisch öffnen / Open automatically**
+  under the answer, and the same switch on your profile page (**Stellen im
+  Viewer / Places in the viewer**), decide whether Piloti opens places on its
+  own; off, the row offers each one with **Anzeigen / Show**. The choice is kept
+  in this browser. With reduced motion set in your system, it starts off.
+- **On a phone** there is no room beside the chat, so Piloti does not propose
+  places there at all. A place offered on a wider screen that you show after
+  the window became narrow opens over the chat instead.
+- **A file attached to the chat** never opens this way; cite it, or open it from
+  the composer.
+
+Other agents connected to your office cannot do this: the agent door does not
+offer your screen to anyone.
+
+## What Piloti noted ("Piloti hat sich gemerkt")
+
+When an answer added something to the project's memory, its footer says so on the answer itself, on the row with the copy actions and **Details**, never inside them: a small chip, **Piloti hat sich gemerkt · 2** (*Piloti noted*). One tap or Enter opens the list of what this turn wrote, each note verbatim with its kind (Entscheidung, Vorgabe, Fakt …) and when it was written: *während der Antwort notiert* for a note you accepted while Piloti answered, *nach der Antwort ergänzt* for one Piloti added after the answer was finished. The chip counts only this answer's notes, not the conversation's, and an answer that noted nothing shows none.
+
+When a note **corrected** an earlier one, the chip reads **Gedächtnis aktualisiert** (*Memory updated*) with its own symbol. The list then shows the correction first, marked *Korrigiert*, with the note it replaced quoted and struck through (*Ersetzt: …*), because something you may have relied on is gone. You manage and delete notes in the project memory.
+
+The chip shows what an answer wrote, not what it read: Piloti does not yet report which remembered notes an answer drew on.
 
 ## Human-in-the-loop (HITL)
 

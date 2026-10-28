@@ -31,10 +31,10 @@ from knowledge_layer.llamaindex.page_triage import PageKind
 from knowledge_layer.llamaindex.page_triage import PageSignals
 from knowledge_layer.llamaindex.page_triage import classify_page
 from knowledge_layer.llamaindex.page_triage import text_quality
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
+from agent.common.credential_resolution import ResolvedCredential
 
 GERMAN = (
     "Gemäß § 70 der Bauordnung für Wien wird die Bewilligung unter folgenden Auflagen erteilt: "
@@ -452,8 +452,8 @@ class TestTranscribePdfPages:
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -573,7 +573,7 @@ class TestScannedPdfIngestion:
 
     def test_ocr_model_setting_is_used(self, tmp_path, monkeypatch, indexed, no_drawing_vlm):
         _credential(monkeypatch)
-        monkeypatch.setenv("AIQ_OCR_MODEL", "mistral/ocr-vision")
+        monkeypatch.setenv("OCR_MODEL", "mistral/ocr-vision")
         live, calls = _fake_live()
         monkeypatch.setattr(transcription, "_transcribe_live", live)
 
@@ -583,7 +583,7 @@ class TestScannedPdfIngestion:
 
     def test_the_org_vision_override_wins(self, tmp_path, monkeypatch, indexed, no_drawing_vlm):
         _credential(monkeypatch)
-        monkeypatch.setenv("AIQ_OCR_MODEL", "mistral/ocr-vision")
+        monkeypatch.setenv("OCR_MODEL", "mistral/ocr-vision")
         monkeypatch.setattr(adapter, "_resolve_vlm_model_override", lambda organization_id=None: "tenant/vision")
         live, calls = _fake_live()
         monkeypatch.setattr(transcription, "_transcribe_live", live)
@@ -668,7 +668,7 @@ class TestGarbledPdfIngestion:
 
 class TestOcrSwitch:
     def test_zero_ocr_pages_stops_transcription_and_keeps_the_text_layer(self, tmp_path, monkeypatch, indexed):
-        # AIQ_MAX_OCR_PAGES=0 is the OCR switch; AIQ_RENDER_VISUAL_PAGES is not.
+        # MAX_OCR_PAGES=0 is the OCR switch; RENDER_VISUAL_PAGES is not.
         _credential(monkeypatch)
         live, calls = _fake_live()
         monkeypatch.setattr(transcription, "_transcribe_live", live)

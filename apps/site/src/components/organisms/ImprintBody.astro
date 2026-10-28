@@ -1,0 +1,43 @@
+---
+import PageHead from '../molecules/PageHead.astro'
+import { ui, type Locale } from '../../i18n/ui'
+import { legalIdentity as id } from '../../data/legal'
+
+interface Props {
+  locale?: Locale
+}
+const { locale = 'de' } = Astro.props
+const t = ui[locale].legal
+---
+
+<section class="frame pb-20 pt-28 sm:pb-28 md:pt-36">
+  <PageHead title={t.impressum.heading} locale={locale} />
+  <div>
+    <div class="prose-measure mt-10">
+      <h2>{t.impressum.ownerHeading}</h2>
+      <p>
+        {id.members.join(', ')}<br />
+        {t.impressum.legalForm}, {t.impressum.brand}<br />
+        {id.seat[locale]}
+      </p>
+      <p>
+        {t.emailLabel}:{' '}
+        {id.emails.map((e, i) => (
+          <>
+            {i > 0 && ', '}
+            <a href={`mailto:${e}`}>{e}</a>
+          </>
+        ))}
+      </p>
+      <h2>{t.impressum.statusHeading}</h2>
+      <p>{t.impressum.status}</p>
+      <h2>{t.impressum.purposeHeading}</h2>
+      <p>{t.impressum.purpose}</p>
+      <h2>{t.impressum.directionHeading}</h2>
+      <p>{t.impressum.direction}</p>
+      <h2>{t.impressum.liabilityHeading}</h2>
+      <p>{t.impressum.liability}</p>
+      <p class="text-sm opacity-70">{t.updated}</p>
+    </div>
+  </div>
+</section>

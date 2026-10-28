@@ -1,0 +1,7 @@
+---
+improvements:
+  - >
+    When Piloti compares two Fassungen of a plan in the chat, you now see the
+    same page of both side by side, with the changes boxed on each, and the
+    changes written out beneath. Pressing a page opens that Fassung with every
+    change marked.

@@ -62,7 +62,7 @@ GENERATED = ("node_modules/", ".claude/", ".agents/", "apm_modules/", ".venv/")
 
 # Vendored verbatim, so its links resolve upstream and not here; the
 # markdown-link-check hook excludes it for the same reason (.pre-commit-config.yaml).
-LINKS_NOT_CHECKED = frozenset({"src/aiq_agent/skills/review/skill-check/SKILL.md"})
+LINKS_NOT_CHECKED = frozenset({"packages/agent/src/agent/skills/review/skill-check/SKILL.md"})
 
 
 def tracked_files() -> set[str]:

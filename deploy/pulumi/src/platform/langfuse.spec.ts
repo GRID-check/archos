@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
+import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
 /**
  * The Langfuse tier (ADR-0044).
@@ -138,19 +139,17 @@ describe("with the Langfuse tier enabled", () => {
 
   describe("collector fan-out", () => {
     it("gives the traces pipeline to Langfuse alone", () => {
-      expect(collectorConfig).toMatch(
-        /traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/langfuse\]/,
-      );
+      expect(parseCollectorConfig(collectorConfig).service.pipelines.traces).toEqual(pipeline(["otlp_http/langfuse"]));
     });
 
     it("sends it no logs and no metrics", () => {
       // Langfuse ingests traces. Pointing logs at it would be silently
       // discarded volume — Langfuse's OTLP receiver is a traces endpoint. Logs
-      // go to PostHog (on by default) or end in the nop exporter, and nothing
-      // consumes metrics at all (collector-gate.spec.ts).
-      expect(collectorConfig).not.toMatch(/\n    logs[^:\n]*:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[[^\]]*\]\s*\n\s*exporters: \[[^\]]*langfuse/);
-      expect(collectorConfig).toMatch(/\n    logs[^:\n]*:\s*\n/);
-      expect(collectorConfig).not.toMatch(/\n    metrics:/);
+      // go to PostHog (on by default) or end in the nop exporter.
+      const users = Object.entries(parseCollectorConfig(collectorConfig).service.pipelines)
+        .filter(([, p]) => p.exporters.includes("otlp_http/langfuse"))
+        .map(([name]) => name);
+      expect(users).toEqual(["traces"]);
     });
 
     it("uses the component's CURRENT type id, not its deprecated alias", () => {
@@ -176,7 +175,10 @@ describe("with the Langfuse tier enabled", () => {
       // Without the header Langfuse v4 still accepts the spans, but routes them
       // through the server-side propagation: traces appear ~15 minutes late and
       // nothing reports it.
-      expect(collectorConfig).toContain('x-langfuse-ingestion-version: "4"');
+      const exporter = parseCollectorConfig(collectorConfig).exporters["otlp_http/langfuse"] as {
+        headers: Record<string, string>;
+      };
+      expect(exporter.headers["x-langfuse-ingestion-version"]).toBe("4");
     });
 
     it("reads its credential from the environment, never the ConfigMap", async () => {
@@ -558,6 +560,8 @@ describe("with the Langfuse tier enabled", () => {
     const BACKEND_TIERS: Array<[string, string]> = [
       ["aiq-agent", "kubernetes:apps/v1:StatefulSet"],
       ["aiq-api", "kubernetes:apps/v1:Deployment"],
+      ["chat", "kubernetes:apps/v1:StatefulSet"],
+      ["api", "kubernetes:apps/v1:Deployment"],
       ["agent-worker", "kubernetes:apps/v1:Deployment"],
     ];
 
@@ -577,13 +581,13 @@ describe("with the Langfuse tier enabled", () => {
       expect(Object.keys(env).filter((k) => k.startsWith("LANGFUSE_"))).toEqual([]);
     });
 
-    it("lets exactly the three key-holding backend roles reach the web tier", async () => {
+    it("lets exactly the three key-holding backend roles reach the web tier, chat and api under both names", async () => {
       const spec = (await resolve(
         find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-backend-to-langfuse").inputs.spec,
       )) as any;
 
       expect(spec.podSelector.matchLabels["app.kubernetes.io/name"]).toBe("langfuse-web");
-      expect(callers(spec)).toEqual(["agent-worker", "aiq-agent", "aiq-api"]);
+      expect(callers(spec)).toEqual(["agent-worker", "aiq-agent", "aiq-api", "api", "chat"]);
       expect(spec.ingress[0].ports).toEqual([{ protocol: "TCP", port: 3000 }]);
     });
 
@@ -622,7 +626,7 @@ describe("with the Langfuse tier enabled", () => {
       spec.template.spec.containers[0].env.map((e: any) => [e.name, e.value ?? e.valueFrom]),
     );
 
-    expect(env.GRID_TRACE_IDENTITY_ATTRIBUTES).toBe("true");
+    expect(env.TRACE_IDENTITY_ATTRIBUTES).toBe("true");
   });
 });
 

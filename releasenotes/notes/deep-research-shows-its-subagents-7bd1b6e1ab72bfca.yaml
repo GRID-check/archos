@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    When Piloti runs a deep research inside the chat, the Herleitung now shows who did the work: the
+    planning, each research question and the report, nested under the deep research, each with whether
+    it is still working, finished or failed. A research question that failed says so, and the answer
+    goes on without it.

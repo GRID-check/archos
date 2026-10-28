@@ -11,6 +11,11 @@ task verify:fast   # the same, minus the slow production build
 task setup         # first-time toolchain install
 ```
 
+Both run `lint:repo` first, then the tiers side by side (`task --parallel
+--output=group`), so a tier's output arrives whole when it finishes. They skip
+the hooks a tier repeats (ruff, the English-names test: `VERIFY_SKIP` in
+`Taskfile.yml`) and run the UI suite without coverage, which CI only comments.
+
 `Taskfile.yml` and the per-tier files in `taskfiles/` (included flat, so task names
 are unchanged) are the source of truth for what each check actually runs, and
 `task --list` prints the full set with descriptions. This page holds only what
@@ -26,25 +31,25 @@ Reach for the narrow task rather than the whole gate:
 
 | Working on | Task |
 |---|---|
-| UI types | `task fe:types` |
-| UI tests | `task fe:test` |
-| UI lint (oxlint; why not ESLint or Biome: [lint-evaluation.md](lint-evaluation.md)) | `task fe:lint` |
-| Backend lint | `task be:lint` |
+| UI types | `task workspace:types` |
+| UI tests | `task workspace:test` |
+| UI lint (oxlint; why not ESLint or Biome: [lint-evaluation.md](lint-evaluation.md)), and the module seams (dependency-cruiser: [module-seams.md](module-seams.md)) | `task workspace:lint` |
+| Backend lint (ruff), and the package seams (import-linter: [module-seams.md](module-seams.md)) | `task be:lint` |
 | Backend tests | `task be:test`, or `task be:test:api` for the plugin suite |
 | The Chroma exporter and the move off Chroma (`deploy/migration/`, `qdrant/import_vectors.py`) | `task be:test:migration`, in its own `chromadb` environment; nothing else imports `chromadb` ([`deploy/migration/README.md`](../../deploy/migration/README.md#tests)) |
 | Pulumi and the policy pack | `task infra:types` |
-| Astro landing site | `task web:verify` |
+| Astro landing site | `task site:verify` |
 
 Then run `task verify:fast` before you push.
 
 ## Traps the task list cannot tell you about
 
-**`next build` does not typecheck the specs; `task fe:types` does.** The build
-reads `frontends/ui/tsconfig.build.json` (`typescript.tsconfigPath` in
+**`next build` does not typecheck the specs; `task workspace:types` does.** The build
+reads `apps/workspace/tsconfig.build.json` (`typescript.tsconfigPath` in
 `next.config.ts`), which leaves specs and test helpers out of its roots, so a
-type error in a test fails `fe:types` and never the production build.
+type error in a test fails `workspace:types` and never the production build.
 
-**`task fe:types` is `bun check`, which is TypeScript 7.** It checks the whole UI
+**`task workspace:types` is `bun check`, which is TypeScript 7.** It checks the whole UI
 in about six seconds with no cache, and the pinned Bun version decides which
 TypeScript that is (`tests/test_bun_version_pin.py`). Your editor runs its own
 TypeScript; without the TypeScript 7 extension it is 6 and the two can disagree
@@ -61,42 +66,53 @@ really about SQL. The script (`scripts/rls-test-db.sh`) runs a fixed list of
 suites, and the memory service's "one fact, one live row" consolidation suite.
 A new database-backed spec has to be added to that list, or it only ever runs
 on a developer's machine. Each of those files also carries a
-`GRID_RLS_SUITE_REQUIRED` guard so the CI job fails if the database goes
+`RLS_SUITE_REQUIRED` guard so the CI job fails if the database goes
 missing instead of skipping green.
 
-**Backend tests run against this checkout's `src/`.** Without a guard, pytest
-resolves `aiq_agent` from whatever the venv has installed, possibly another
+The per-migration sections at the end of that script prove a backfill, a data
+rewrite or a down migration on a clone of the chain. Once the migration has
+been on `prod` for a week (`git merge-base --is-ancestor <commit> origin/prod`
+and the promotion's date), retire its section: production can no longer hold
+the old shape, and nobody runs a down beneath the migrations that followed.
+Keep what the migration put into the database that is still refused today (a
+CHECK, a unique index, a guard trigger) unless a suite on the full chain
+already covers it.
+
+**Backend tests run against this checkout's `packages/agent/src/`.** Without a guard, pytest
+resolves `agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
-`pythonpath` puts `src/` first, so a bare `pytest` is safe as well as the Taskfile.
+`pythonpath` puts `packages/agent/src/` first, so a bare `pytest` is safe as well as the Taskfile.
 
 **The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
-Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
+Backend job.** `packages/agent/tests/common/test_claim_queue.py`,
 `tests/knowledge_layer_tests/test_ingest_queue.py` and
-`frontends/aiq_api/tests/test_research_queue_fair.py` run every scenario on
+`apps/agent-host/tests/test_research_queue_fair.py` run every scenario on
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
-SQL. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
+SQL. The folder card builder's suites (`packages/agent/tests/knowledge/folder_cards/`:
+dirty queue, budget, manifests, worker) run on both too, through the
+`database_url` and `agent_db` fixtures in their `conftest.py`. Without `TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
-scratch database in it. Each file carries an `AIQ_TEST_POSTGRES_REQUIRED` guard,
+scratch database in it. Each file carries an `TEST_POSTGRES_REQUIRED` guard,
 set in CI, that fails instead of skipping. A new suite with a Postgres parameter
 joins the task's list.
 
 **The base-corpus tests run on SQLite by default, and the Postgres paths need
-`GRID_TEST_CORPUS_DB`.** `tests/test_corpus_store.py`, `test_oib_sync.py`,
-`test_oib_status.py` and `frontends/aiq_api/tests/test_oib_documents_routes.py`
+`TEST_CORPUS_DB`.** `tests/test_corpus_store.py`, `test_oib_sync.py`,
+`test_oib_status.py` and `apps/agent-host/tests/test_oib_documents_routes.py`
 keep the corpus table, the ingest queue and the ingest status store in a throwaway SQLite file and the object store in memory.
 The Postgres upsert, the conditional update that records an ingested hash and the
 advisory locks behind `keyed_lock` (SQLite has none) are only exercised when you
-point `GRID_TEST_CORPUS_DB` at a scratch database, for example
+point `TEST_CORPUS_DB` at a scratch database, for example
 `postgresql://postgres@127.0.0.1:5432/corpus_test`. Prefer the IP to `localhost`: in
 the sandbox this was written in, `localhost` resolved to another host under the
-`frontends/aiq_api` suite and the first test hung on the connect. The table is emptied before each test, so never
+`apps/agent-host` suite and the first test hung on the connect. The table is emptied before each test, so never
 aim it at a database that holds a real corpus.
 
 **Lazy schema creation is tested against a real Postgres, from several processes.**
 `tests/test_ddl_concurrency.py` starts 8 processes at once against freshly created
 databases and runs every `_ensure_table` / `_ensure_schema` site, because
 `CREATE TABLE IF NOT EXISTS` races on the `pg_type` catalog and SQLite cannot show
-it. It is skipped unless `GRID_TEST_PG_URL` names a server (for example
+it. It is skipped unless `TEST_PG_URL` names a server (for example
 `postgresql://postgres@127.0.0.1:5432/postgres`) it may create and drop databases on.
 A new site that runs DDL at runtime joins `SITES` in `tests/ddl_race_worker.py`.
 
@@ -109,11 +125,11 @@ release rather than trusting a green suite.
 ## How CI distributes the same tasks
 
 CI calls the Taskfile, so there is no second copy of the commands. Only the
-scheduling differs: the frontend tier's card check, lint, types and the
+scheduling differs: the workspace tier's card check, lint, types and the
 tenant-isolation suite share one job, the suite is sharded six ways
-(`fe:test:shard`) and stitched back together by `fe:test:merge` for the coverage
+(`workspace:test:shard`) and stitched back together by `workspace:test:merge` for the coverage
 comment, and the production UI build runs inside the frontend image build
-rather than as `fe:build`. The backend core suite is sharded four ways too
+rather than as `workspace:build`. The backend core suite is sharded four ways too
 (`be:test:shard`, split by `tests/.test_durations`), and `be:test:coverage`
 combines the shards' data and applies the 65% gate that `be:test:ci` applies
 in one go locally. The tests of `ci/`, the workflows and the release notes run
@@ -123,7 +139,7 @@ reaches (`be:test:affected`, from the database `be:test:testmon` records on
 every push to `develop`); the full suite runs on the push. To run the same
 selection locally, record once with `task be:test:testmon` and then
 `task be:test:affected SUITE=core`. The UI equivalent is
-`task fe:test:related SHARD=1/1 FILES="src/path/changed.ts"`. Locally `task fe:verify` runs lint, types, tests and
+`task workspace:test:related SHARD=1/1 FILES="src/path/changed.ts"`. Locally `task workspace:verify` runs lint, types, tests and
 build in order instead.
 
 What decides which jobs run (a pull request against its base, a push against the
@@ -150,15 +166,16 @@ installs can run them, which is how 830 tests behind a default-ON feature that
 renders OIB compliance verdicts ended up with no gate at all — no Taskfile
 target, no CI job, no pre-commit hook. The same shape as `sources/` before it.
 
-They now run as CI's `packages` job, behind a `packages/**` paths filter, and
-`CI OK` requires it. Locally:
+They now run as CI's `packages` job, behind the `packages` paths filter in
+`.github/filters.yml` (`packages/ifc-spatial*/**`: a new package with a suite
+adds its own line there), and `CI OK` requires it. Locally:
 
 ```bash
 task pkg:install    # both toolchains (`task setup` does this too now)
 task pkg:test       # both suites
 ```
 
-`task verify` deliberately leaves them out. `pkg:test:py` is 636 tests in 3m55s
+`task verify` deliberately leaves them out. `pkg:test:py` is 636 tests in 1m40s on four workers (2026-10-22)
 (measured 2026-09-10) against its own IfcOpenShell/shapely environment; adding
 that to every local gate run is the fastest way to get people to stop running
 the gate. `pkg:test:ts` is ~10 seconds and runs **both** tsconfigs, the source
@@ -176,7 +193,7 @@ Piloti's reading of its own prompt: a greeting or a question
 about the assistant answers without calling a search tool, and a commissioned
 report („erstelle mir einen vollständigen Prüfbericht …") escalates to deep
 research before it retrieves anything.
-[`tests/benchmarks/test_turn_shapes_live.py`](../../tests/benchmarks/test_turn_shapes_live.py)
+[`evals/turn-shapes/test_turn_shapes_live.py`](../../evals/turn-shapes/test_turn_shapes_live.py)
 pins both, plus a control question that must still search. It runs the real
 agent on the real prompt against Piloti's own model through OpenRouter, with
 stub tools in place of retrieval, and reads the trace from the turn's own
@@ -192,7 +209,7 @@ Selected without the key, it skips itself. Locally:
 OPENROUTER_API_KEY=… task be:eval:turn-shapes
 ```
 
-`GRID_DEFAULT_MODEL` moves the model under test, the same way it moves the
+`DEFAULT_MODEL` moves the model under test, the same way it moves the
 config's boot floor. In CI,
 [`turn-shapes-live.yml`](../../.github/workflows/turn-shapes-live.yml) runs
 it weekly and on `workflow_dispatch`, never on a pull request, and fails
@@ -281,24 +298,24 @@ locator (`read_passage`) was used instead of a second search, whether the cited
 Punkt is the one the question is about, whether the Herleitung checkpoint came
 from the tool argument or from prose or from nowhere, and whether the research
 budget ran out. Thirty-one realistic German questions from a Wiener Planungsbüro
-live in [`tests/fixtures/herleitung/loop_eval_questions.yaml`](../../tests/fixtures/herleitung/loop_eval_questions.yaml)
+live in [`tests/fixtures/derivation/loop_eval_questions.yaml`](../../tests/fixtures/derivation/loop_eval_questions.yaml)
 — every expected Punkt in it is read off the committed structural index rather
 than remembered — and [`scripts/loop_eval.py`](../../scripts/loop_eval.py) runs
 them, writes a CSV, and diffs two CSVs with `--compare`. Each question is one
-turn over the chat socket of the `chat` role at `GRID_LOOP_EVAL_URL` (wire v2,
+turn over the chat socket of the `chat` role at `LOOP_EVAL_URL` (wire v2,
 `REQUIRE_AUTH=false`), the only way a turn runs; the columns are read off the
 turn's own steps and its terminal `RUN_FINISHED`. **It cannot run in
 CI**, for the same reason `be:eval:retrieval` no longer does: it needs a
 reachable backend with the operator-provided, gitignored OIB corpus ingested,
 and every question costs real model calls. Run it on either side of a change to
 the answering loop and quote the delta in the PR; the CSV and comparison logic,
-and the reading of a recorded wire v2 turn (`shared/wire/v2/`), are covered
+and the reading of a recorded wire v2 turn (`contracts/wire/v2/`), are covered
 offline by [`tests/test_loop_eval.py`](../../tests/test_loop_eval.py).
 
 ## Cross-service contract fixtures
 
 Where a wire format has a producer in one language and a consumer in another,
-the contract is a JSON fixture under `tests/fixtures/` that **both** suites read,
+the contract is one JSON fixture that **both** suites read,
 never two assertions that each pin their own side. Two tests that agree with
 themselves prove nothing about a boundary: ADR-0046 records the internal-token
 header spelled one way by every caller and read the other way by the guard,
@@ -309,14 +326,16 @@ Two of these exist:
 
 | Fixture | Producer side | Consumer side |
 |---|---|---|
-| `grid_request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
+| `request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
 | `job_fire_headers.json` | `tests/lib/jobs/fire-headers.test.ts` fires a real submit and captures what went out | `test_fire_path_contract.py` asserts each backend-required set is a subset |
 
-Each is duplicated verbatim into `frontends/ui/tests/fixtures/`, because
-`frontends/ui/Dockerfile.typecheck`'s build context is scoped to `frontends/ui`
-and cannot `COPY` from outside it. **Copy the repo-root file over the twin when
-you change it** — `test_fire_path_contract.py` compares the two byte for byte,
-so drift fails a test rather than splitting the contract in half.
+Such a fixture lives in `apps/workspace/tests/fixtures/`, once.
+`apps/workspace/Dockerfile.typecheck`'s build context is scoped to `apps/workspace`
+and cannot `COPY` from outside it, while the Python suite reads the whole
+repository, so that is the one place both can reach. A copy of it anywhere else
+is a second contract that drifts: `tests/test_no_twin_fixtures.py` fails any
+file under the repo-root `tests/` that is byte-identical to one under
+`apps/workspace/tests/fixtures/`.
 
 ## Security and static analysis
 
@@ -330,7 +349,7 @@ CI, with no GitHub Advanced Security licence and no SonarQube subscription.
 
 | Tool | Covers | In CI (blocking) | Weekly |
 |---|---|---|---|
-| gitleaks | Secret scan over full history | **Yes**, every run (Repo checks job) | Yes |
+| gitleaks | Secret scan over the commits a PR adds (a push: its full history; weekly: every branch) | **Yes**, every run (Repo checks job) | Yes |
 | Semgrep | SAST for Python, TS/JS and Actions. Replaces Sonar's security rules | **Yes, on a PR**, diff-aware: blocks a *new* finding without failing on the backlog | Full tree, advisory |
 | trivy | The digest-pinned third-party images in `deploy/pulumi/src` | **Yes**, for the pins a change adds or moves, on fixable HIGH/CRITICAL (`--ignore-unfixed`) | Every pin, blocking |
 | OSV-Scanner | Dependency CVEs from **every** lockfile: both npm ones, `bun.lock`, both `uv.lock`s. Replaces Sonar SCA and the old `pip-audit`/`bun audit`/`npm audit` job | No | Advisory |
@@ -380,8 +399,11 @@ Findings inside those upstream images that no digest bump can clear go in
 `expired_at`. Never by loosening the gate.
 
 Dependabot ([`dependabot.yml`](../../.github/dependabot.yml)) opens the
-dependency fix PRs. Package families that only build at matching versions
-(`@aws-sdk/*`, `@opentelemetry/*`) are grouped into one PR, and majors the
+dependency fix PRs, every Monday at 06:00 Vienna time. Each ecosystem gets one
+PR for all its minor and patch bumps and one for its security fixes; a major
+is its own PR, the only kind that needs reading. Package families that only
+build at matching versions (`@aws-sdk/*`, `@opentelemetry/*`, `@pulumi/*`)
+take their majors together, and majors the
 toolchain cannot take yet (TypeScript 7, an `@types/node` past the Node 22
 runtime) are ignored, each with a comment saying when to lift it. Dependabot
 PRs skip the automatic Claude review: the action refuses a bot actor, and CI
@@ -409,12 +431,12 @@ looking at an attachment is the check.
 
 ## Mobile evidence
 
-Held statically, by `frontends/ui/src/components/ui/mobile-affordances.spec.ts`
-and `frontends/ui/src/components/ui/touch-target.spec.ts`. Capture a 390x844
+Held statically, by `apps/workspace/ui/components/ui/mobile-affordances.spec.ts`
+and `apps/workspace/ui/components/ui/touch-target.spec.ts`. Capture a 390x844
 viewport alongside the desktop shot when you ship a surface — the playbook above
 has the command.
 
-**The browser measurement is gone.** `task fe:touch-audit` loaded the screenshot
+**The browser measurement is gone.** `task workspace:touch-audit` loaded the screenshot
 registry at a phone viewport and reported what neither a spec nor a screenshot
 can: regions whose `touch-action` refuses the vertical pan (a finger lands and
 the page does not move), boxes that stick out past the viewport, and interactive
@@ -461,18 +483,21 @@ its passage; this asks what the reader waited for and what they got.
 - **Output:** `report.md` and `results.json` in `--out`. `--baseline` adds,
   in brackets after the wall-seconds and reasoning-token medians, the change
   against an earlier `results.json`'s median for the same question, when it is
-  1 or more; nothing else is compared. `--report` re-renders a `results.json`
+  1 or more, and writes `compare.md` beside the new run: accuracy, rounds, tool calls,
+  tokens and cost per answer and latency, before, after and the change (the files set
+  below says how to read it; `--compare <before> <after>` renders it from two saved
+  runs). `--report` re-renders a `results.json`
   and re-checks it against the question set as it is now, re-reading each
   run's recording beside it, without paying for the runs again.
 - **Flags:** `--only <id> …` runs the named questions (an unknown id, or
   one that needs a project, exits 2 and says which). `--runs N` sets runs per
   question (default 2), `--workers N` how many run at once (default 3). `--override KEY VALUE` sets a config value for every
-  run, in `nat run` dot notation, and repeats. `--all`, `--baseline`,
+  run, in the dot notation `nat run` takes, and repeats. `--all`, `--baseline`,
   `--report` and `--ingest` are described above and below.
 - **No stack needed:** `--ingest --corpus data/oib` takes the base corpus
   from that directory's PDFs instead of the object store, so the suite runs
   on a machine with no BFF and no SeaweedFS. The table, the ingest queue and
-  the ingestion itself are the real ones (a SQLite `AIQ_SUMMARY_DB` holds
+  the ingestion itself are the real ones (a SQLite `SUMMARY_DB` holds
   them); only the bytes come from the directory. Unchanged files are not
   ingested again on the next run.
 
@@ -484,7 +509,7 @@ task be:eval:answer-suite -- --out /tmp/suite/after --baseline /tmp/suite/before
 **The precedent set** (`-- --set precedent`) asks whether the agent uses the
 office's other projects well (docs/roadmap/office-experience.md, step A). Each
 turn is asked in the current project of a fixture office
-(`frontends/ui/tests/fixtures/precedent/office.json`: a timber GK 4 house in
+(`apps/workspace/tests/fixtures/precedent/office.json`: a timber GK 4 house in
 Niederösterreich, and 24 other projects (23 closed) across all nine Länder with 74 documents:
 Bescheide, Nachforderungen, details, and many passages that answer none of
 the questions, so a search that ranks badly is told apart from a good one). The suite mints a signed envelope per run, and `fixture_bff.py`
@@ -582,14 +607,14 @@ The script
 drafts a case for each down-vote that has a question and an `expected_answer`
 and writes no organisation, conversation or answer text. Nothing is appended to
 the golden set. What the user says the answer should be is a claim: check it
-against the corpus, fill `family`, `punkt` and `expect` from the PDF, and add
-the case to `tests/fixtures/herleitung/loop_eval_questions.yaml` with a
+against the corpus, fill `family`, `clause` and `expect` from the PDF, and add
+the case to `tests/fixtures/derivation/loop_eval_questions.yaml` with a
 `Source: answer feedback <date>` comment. A question answered from the web has no
 `family`, which the suite treats as needing a project, so it cannot be a case.
 
 It needs `OPENROUTER_API_KEY` (or `OPENROUTER_KEY`) and the corpus
 (uploaded with `scripts/upload_oib_corpus.py`, or `-- --corpus data/oib`)
-ingested into the Qdrant at `AIQ_QDRANT_URL` (`-- --ingest` queues the corpus's
+ingested into the Qdrant at `QDRANT_URL` (`-- --ingest` queues the corpus's
 ingest jobs and runs them in the suite's own process first; the 39 OIB PDFs took
 about ten minutes on 4 CPUs on 2026-10-13). Every run costs model calls: the core set
 at two runs is twelve turns, about four minutes three at a time, and a turn
@@ -597,14 +622,16 @@ cost about two US cents on the boot-default models that day.
 
 Run it yourself, before and after, as above, and put the report in the PR.
 Its bookkeeping is also covered offline by
-[`tests/test_answer_suite.py`](../../tests/test_answer_suite.py). The
+[`tests/test_answer_suite.py`](../../tests/test_answer_suite.py), and the
+before/after report and the arms run by
+[`tests/test_answer_suite_compare.py`](../../tests/test_answer_suite_compare.py). The
 September 2026 measurements it grew out of are in
-[turns-per-answer-audit-2026-09.md](../architecture/turns-per-answer-audit-2026-09.md).
+[turns-per-answer-audit-2026-09.md](../audit/turns-per-answer-audit-2026-09.md).
 
 Measure a committed, clean tree, where the document inventory is. Each
 question starts a fresh process from the working tree, so editing code
 mid-run measures two codebases (the report marks the commit `-dirty`). And
-`AIQ_SUMMARY_DB` defaults to a relative `./summaries.db`, so a `git worktree`
+`SUMMARY_DB` defaults to a relative `./summaries.db`, so a `git worktree`
 reads an empty inventory and runs every turn ~7 s slower without family
 overviews; the suite refuses to start on an empty one.
 
@@ -616,7 +643,7 @@ Traps that cost a run:
 - **A second or two between single runs is noise.** Compare medians over
   several runs, never one run against one run.
 - **Which checkout a run measures.** The suite and the census now put this
-  checkout's `src/` and `sources/` packages first on each run's `PYTHONPATH`,
+  checkout's `src/` and workspace packages first on each run's `PYTHONPATH`,
   and run it with this checkout's venv interpreter; the suite refuses to start
   when a run would still import another checkout. Before that, a run from a
   `git worktree` measured the main checkout's code while its report named the
@@ -627,7 +654,115 @@ a slice, `scripts/turn_census/startup_probe.py` prints each turn's provider
 calls and the retriever's embed, store (the one Qdrant query) and retrieve phases in milliseconds,
 several questions in one process so all but the first are warm. What both
 measured on 2026-09-24, and the effort A/B:
-[turn-latency-measured-2026-09.md](../architecture/turn-latency-measured-2026-09.md).
+[turn-latency-measured-2026-09.md](../audit/turn-latency-measured-2026-09.md).
+
+### The workspace set
+
+**The workspace set** (`-- --set workspace`, ADR-0123) asks Piloti for office
+work through its MCP door: reads, writes that must come back as proposals with
+the right input, two writes in one turn, an ambiguous target it must ask about,
+German and English, and follow-up turns in one conversation (a row's `turns`
+run in order; the checkpointer carries the history between processes). Each
+run sits in the current project of a fixture office
+(`apps/workspace/tests/fixtures/workspace/office.json`) as an admin, with a
+signed envelope. `scripts/turn_census/fixture_workspace.py` serves the door from
+the catalog production shows Piloti (`catalog.json`, written by
+`workspace-eval.fixture.spec.ts`) and the turn context with the WORKSPACE block
+the production renderer writes (`rendered.json`); a follow-up turn's block lists
+what the run filed, as production would. A search ranks as `discovery.ts` does
+(`lib/text/operation-search.ts`); `tests/test_workspace_eval.py` holds the
+Python mirror to lists the TypeScript wrote. The questions are `tests/fixtures/workspace/workspace_questions.yaml`;
+the checks (`reads`, `proposes`, `uses`, `no_write`, `no_workspace`, `no_repeat`, the
+judge's `pending` and `asks`) are explained in its header. `uses` names the tool a
+job must be done with, a native one where the exposure config hides the door's
+look-alike from Piloti (`apps/workspace/bff/agent-api/exposure.config.ts`): run
+the set before and after you change a `piloti` entry there. The report's
+`## Workspace` section gives the share of runs where every check held, rounds,
+door calls by kind, searches that found nothing, tokens and seconds. No corpus
+is needed. Run it before and after a change to the prompt's workspace facts,
+the WORKSPACE block, the work report or the catalog's search:
+
+```bash
+task be:eval:answer-suite -- --set workspace --out /tmp/ws/before
+task be:eval:answer-suite -- --set workspace --out /tmp/ws/after --baseline /tmp/ws/before/results.json
+```
+
+**The files set** (`-- --set files --arm semantic|grep|hybrid|all`, ADR-0127, ADR-0133) asks about
+a project's own files: what is in a folder, where a document is, how many, what a
+page range says, every occurrence of a word and how often it stands, an exact lookup
+(a Plannummer, a clause, `REI 90`, "is X mentioned anywhere" with a true negative beside
+a true positive), and a fact outside the document that is open (`open:` on a row, sent
+as the composer's "Asking about"), which tests that a path or open document is a hint
+the agent weighs, never a scope it is locked into. About 30 `pf-*` rows
+(`tests/fixtures/files_eval/files_questions.yaml`, whose header says what each check
+means) run through the real `list_files`, `knowledge_search` and `read_passage` in a
+fixture project (`tests/fixtures/files_eval/project.yaml`, the intake eval's project
+grown to nested folders, a 14-page report, a meeting protocol and a letter). Each row states
+`expect.tools`, the move that fits it, and the report gives pass rate, rounds,
+tokens, seconds, the moves each row made and the `status:budget|repeat|width`
+counts. A row with `needs:` waits for a tool argument a later slice adds and is
+listed as not applicable until the tool schema shows it.
+
+The arms measure each way of finding alone, through `--override` on the knobs the
+agent already reads (`files_eval.arm_overrides`): `semantic` unbinds every listing,
+reading and literal tool (`list_files`, `read_passage`, and ADR-0133's `ls`, `glob`,
+`grep`, `read_file`) and keeps `match=meaning`; `grep` drops the round-0 prefetch
+(`prefetch: false` on the agent) and keeps the literal modes (`match_modes` on
+`knowledge_search`), or unbinds `knowledge_search` once `grep` is a configured tool;
+`hybrid` is production. Both knobs are eval-only and default to today's behaviour.
+`search`, `navigate` and `both` are the arms' earlier names and still work. Run with
+`--runs 3`, as the judge rows are noisy.
+
+The same rows run before and after the ADR-0133 rename. `files_eval.aliases` counts a
+call under its own name and under the names it stands for, both ways (`ls`/`glob` and
+`list_files`, `read_file` and `read_passage`, `grep` and
+`knowledge_search(match=exact|regex)`), and a `path` on the recorded call or in the row's
+expectation is read as its `folder` and `file_name` (`files_eval.path_scope`), so
+`{knowledge_search: {match: exact}}` holds for `grep("Fluchtweg")`. A call under
+`/drafts/` is no file move.
+
+**Before and after the filesystem move, one command each:**
+
+```bash
+task be:eval:answer-suite -- --set files --arm all --runs 3 --out /tmp/fs/before   # on the base commit
+task be:eval:answer-suite -- --set files --arm all --runs 3 --out /tmp/fs/after --baseline /tmp/fs/before
+task be:eval:answer-suite -- --compare /tmp/fs/before /tmp/fs/after                # re-render, no model calls
+```
+
+`--arm all` runs the three arms in turn, each into `<out>/<arm>/` (its own
+`results.json` and `report.md`, and its own conversation ids), and writes
+`<out>/arms.md`, the arms side by side. `--baseline` (a `results.json` or such a
+directory) also writes `<out>/compare.md`; `--compare` writes it beside the second run.
+Paste `compare.md` into the PR. How to read it (`scripts/turn_census/compare.py`):
+
+- **Accuracy** is the share of finished runs whose ANSWER checks all held: the values
+  it must name, the claims it must not make, a judged meaning, a filed proposal. The
+  tool, round and envelope checks are counted apart in **All checks**: an arm that
+  unbinds a tool fails that tool's check by construction, so only accuracy compares
+  across arms. `n` is the runs with an answer check; an errored run is under Errors.
+- **Rounds** (model calls up to the answer), **tool calls**, **input/output tokens**
+  (the research calls') and **cost** are means per finished run; **wall s** is the
+  median. Cost is what the provider billed for every call of the turn, OpenRouter's
+  `usage.cost` on each recorded call (`Run.cost_usd`); a call without it is counted as
+  uncosted, and a `results.json` from before the capture shows `–`.
+- **Δ** rows are after minus before, accuracy in percentage points. **Rows that moved**
+  lists each row whose accuracy changed or whose mean rounds moved by half a round, as
+  `correct/graded · rounds · input tokens`. At three runs a row, one run either way is
+  noise; read the arm totals, and the rows only for why.
+
+The project has to exist where the tools read it. The suite seeds it itself
+(`scripts/turn_census/fixture_files.py`: each file cut by the ingest job's own
+chunkers, `adapter.text_chunks_for_pages`, into the Qdrant at `QDRANT_URL`, the
+documents into the metadata store at `SUMMARY_DB`, which must be a database URL).
+The cut matters: a section chunk repeats its heading breadcrumb and overlaps its
+neighbour, and the `pf-count-*` rows ask for counts that are wrong when either is
+counted. Seeding is idempotent and embeds only what changed; a file cut another way
+before loses its stale points. It needs the deployment's embedding key. Reseed after
+editing `project.yaml` by running the suite again.
+
+The suite starts each run from the working tree: edit nothing under `packages/agent/src/`
+while it runs, or run it from an exported copy of the commit
+(`git archive <sha> | tar -x -C /tmp/copy`).
 
 ## The socket-level streaming harness
 
@@ -639,7 +774,7 @@ store and components.
 
 - The turn is `src/app/dev/_fixtures/v2-turn.ts`: `RUN_STARTED`, the setup and
   three retrieval rounds as typed steps (modelled on
-  `shared/wire/v2/turn-answered.jsonl`), the recorded `oib2` answer mapped onto
+  `contracts/wire/v2/turn-answered.jsonl`), the recorded `oib2` answer mapped onto
   v2 events (masthead, deltas, snapshot, cards, `RUN_FINISHED`) at `speed`
   times its pace, a heartbeat every 20 s and a stage after the terminal.
   `RUN_FINISHED` carries the settled snapshot's text and sources and the
@@ -655,7 +790,7 @@ Run it against a dev server with the WorkOS placeholders
 ([gotchas](gotchas.md)):
 
 ```bash
-cd frontends/ui
+cd apps/workspace
 node scripts/measure-stream-socket.mjs --url http://localhost:3001 --runs 2
 ```
 
@@ -740,7 +875,7 @@ script says so and exits). CPU throttling and `--animations` need Chromium.
 The page is development only, so these are `next dev` numbers: React's dev
 build, whose prop-diff logging alone was a tenth of the profile. Compare runs
 on the same server, never with production. On the old wire (measured
-2026-09-27, NAT's stock step adaptor: 316 step frames of 16 to 33 KB) a phone
+2026-09-27, the agent runtime's stock step adaptor: 316 step frames of 16 to 33 KB) a phone
 spent 48 s in long tasks on one turn; that wire, and the harness's `heavy`
 and `light` modes that replayed it, are gone with the v2 cut.
 
@@ -751,10 +886,10 @@ and `light` modes that replayed it, are gone with the v2 cut.
 | Is the answer right, and did it get slower or more variable? | `task be:eval:answer-suite` | key and ingested corpus | about 4 minutes for the core set at two runs |
 | What did one turn cost, call by call? | `task be:eval:turn-census -- "<question>"` | key and ingested corpus | one turn per run (`--runs`, default 1); writes to `/tmp/turn_census` unless `--out`; `--override KEY VALUE` per census |
 | What happens in the milliseconds before the first model call? | `scripts/turn_census/startup_probe.py` | key, corpus and document inventory | several questions in one process; the first turn is cold |
-| Does Qdrant retrieval still clear gates G1b, G2 and G6, beside the numbers the Chroma path recorded? | `task be:eval:qdrant-parity` (`-- --variants all` adds the ranking sweep) | `data/oib`, a Qdrant 1.19 server, the embeddings key | about 15 minutes on 4 CPUs; the corpus embedding (~$0.12) is cached after the first run. [The gate report](../architecture/qdrant-gates-2026-10.md) |
+| Does Qdrant retrieval still clear gates G1b, G2 and G6, beside the numbers the Chroma path recorded? | `task be:eval:qdrant-parity` (`-- --variants all` adds the ranking sweep) | `data/oib`, a Qdrant 1.19 server, the embeddings key | about 15 minutes on 4 CPUs; the corpus embedding (~$0.12) is cached after the first run. [The gate report](../audit/qdrant-gates-2026-10.md) |
 | Does the Erfassungs-Agent set a project up right from its documents? | `task be:eval:intake` | key and bun | about a cent and two minutes per run of the boot model |
-| What shape did the turn take (rounds, locator, checkpoint)? | `task be:eval:loop` | a running backend at `GRID_LOOP_EVAL_URL` with the corpus | real model calls per question; `--compare` needs no backend |
-| Does the layout shift while an answer streams? | `/dev/stream-replay?fixture=varianten` (or `oib2`), `&speed=N`, `&ending=recorded` for the recording's own terminal (the retired whole-answer rewrite on `oib2`) | the UI dev server | free: the fixtures are recorded frames in `frontends/ui/src/app/dev/_fixtures/stream-frames.ts`, replayed as v2 events through `foldTurnEvent`. `window.__replay` holds `shifts` (each source flagged `edge` when it entered or left the viewport), `anchorTops` and `done` for a headless capture. The answer alone: no Herleitung, no thread scroller |
+| What shape did the turn take (rounds, locator, checkpoint)? | `task be:eval:loop` | a running backend at `LOOP_EVAL_URL` with the corpus | real model calls per question; `--compare` needs no backend |
+| Does the layout shift while an answer streams? | `/dev/stream-replay?fixture=varianten` (or `oib2`), `&speed=N`, `&ending=recorded` for the recording's own terminal (the retired whole-answer rewrite on `oib2`) | the UI dev server | free: the fixtures are recorded frames in `apps/workspace/app/dev/_fixtures/stream-frames.ts`, replayed as v2 events through `foldTurnEvent`. `window.__replay` holds `shifts` (each source flagged `edge` when it entered or left the viewport), `anchorTops` and `done` for a headless capture. The answer alone: no Herleitung, no thread scroller |
 | What does a whole turn cost the page as it arrives over the socket (step frames included), and what does the reader see move until 2.5 s after the settle? | `/dev/stream-socket`, `node scripts/measure-stream-socket.mjs` (`--reader scroll`, `--animations`, and `--scenario`, `--error`, `--drop`, `--reload`, `--switch`, `--toggle`, `--stop` for the [other lifecycles](#every-lifecycle-of-a-turn)) | the UI dev server with the WorkOS placeholders | free: a scripted v2 server behind a stubbed `WebSocket`. [The socket-level streaming harness](#the-socket-level-streaming-harness) |
 
 ## Before opening a PR

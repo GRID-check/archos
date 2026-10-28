@@ -57,7 +57,7 @@ FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtu
 SAMPLE_HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
 #: One wall, no spaces, no property sets at all, IFC2X3 — the richest source of
 #: blind spots in the fixture set.
-NO_SPACES = FIXTURES / "einheiten-fuss.ifc"
+NO_SPACES = FIXTURES / "units-feet.ifc"
 
 IDS_NS = "{http://standards.buildingsmart.org/IDS}"
 
@@ -147,7 +147,7 @@ def test_existence_and_georeference_specifications_pass_where_the_fact_is_presen
 ) -> None:
     """Cross-fixture: the demands made of the poorest file, run on a richer one.
 
-    ``einheiten-fuss.ifc`` has no rooms and no coordinates, so its shopping list
+    ``units-feet.ifc`` has no rooms and no coordinates, so its shopping list
     contains the two specifications no property facet can express — an entity
     that must exist, and an attribute that must be filled. The sample house has
     both (four ``IfcSpace``, 51°30′N), and passes them.

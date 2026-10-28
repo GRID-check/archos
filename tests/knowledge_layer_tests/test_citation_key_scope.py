@@ -16,12 +16,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
-from aiq_agent.common.source_kinds import Shelf
-from sources.knowledge_layer.src.register import _ambiguous_file_names
-from sources.knowledge_layer.src.register import _format_results
+from knowledge_layer.grounding_hits import _ambiguous_file_names
+from knowledge_layer.search_results import format_results
+
+from agent.citations.entries import SourceEntry
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.registry import SourceRegistry
+from agent.common.source_kinds import Shelf
 
 
 def _chunk(*, file_name: str, collection: str, shelf: str | None = None, page: int | None = 3):
@@ -39,7 +40,7 @@ def _chunk(*, file_name: str, collection: str, shelf: str | None = None, page: i
 
 
 def _format(chunks) -> str:
-    return _format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
+    return format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
 
 
 def test_a_name_held_on_one_shelf_is_not_qualified():
@@ -58,7 +59,7 @@ def test_a_name_held_on_two_shelves_is_qualified_on_both():
     text = _format(
         [
             _chunk(file_name="Plan.pdf", collection="proj_alpha", shelf="project"),
-            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="archiv"),
+            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="office_shelf"),
         ]
     )
     assert "Citation: Plan.pdf (Projektwissen), p.3" in text
@@ -71,7 +72,7 @@ def test_only_the_ambiguous_name_is_qualified():
     text = _format(
         [
             _chunk(file_name="Plan.pdf", collection="proj_alpha", shelf="project"),
-            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="archiv"),
+            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="office_shelf"),
             _chunk(file_name="Konzept.pdf", collection="proj_alpha", shelf="project", page=7),
         ]
     )
@@ -79,7 +80,7 @@ def test_only_the_ambiguous_name_is_qualified():
     assert "Citation: Konzept.pdf (Projektwissen)" not in text
 
 
-def test_a_private_session_file_is_not_cited_as_projektwissen():
+def test_a_private_session_file_is_not_cited_as_project_knowledge():
     # The headline defect ADR-0047 fixes: `('s_', 'projekt')` was the only guess
     # available, so a file the user attached privately to THIS chat was cited as
     # project knowledge — after the UI told them it went to a "Private Sitzung".
@@ -126,7 +127,7 @@ def test_the_display_title_is_unaffected():
     text = _format(
         [
             _chunk(file_name="Plan.pdf", collection="proj_alpha", shelf="project"),
-            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="archiv"),
+            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="office_shelf"),
         ]
     )
     assert "Source: Plan.pdf\n" in text
@@ -192,12 +193,12 @@ def test_a_legacy_entry_without_a_shelf_still_resolves_by_collection_name():
             collection="proj_alpha",
         )
     )
-    archiv_hit = registry.entry_for_citation_key("Plan.pdf (Büroablage), p.3")
-    assert archiv_hit is not None and archiv_hit.collection == "archiv_org1"
+    office_shelf_hit = registry.entry_for_citation_key("Plan.pdf (Büroablage), p.3")
+    assert office_shelf_hit is not None and office_shelf_hit.collection == "archiv_org1"
 
 
 def test_the_wire_payload_carries_the_shelf_and_omits_an_unknown_one():
-    from aiq_agent.common.citation_verification import source_entry_to_wire
+    from agent.citations.wire import source_entry_to_wire
 
     stated = SourceEntry(
         citation_key="Plan.pdf, p.3",

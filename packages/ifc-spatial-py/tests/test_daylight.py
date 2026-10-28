@@ -40,8 +40,8 @@ from ifc_spatial.model import WrongKindError
 
 FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtures"
 SAMPLE_HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
-NO_NORTH = FIXTURES / "haus-mit-raeumen.ifc"
-FEET = FIXTURES / "einheiten-fuss.ifc"
+NO_NORTH = FIXTURES / "house-with-rooms.ifc"
+FEET = FIXTURES / "units-feet.ifc"
 
 BEDROOM = "3w0zWKm7n8SB1qbfwUzt0J"
 LIVING_ROOM = "3w0zWKm7n8SB1qbfwUzt0U"
@@ -304,7 +304,7 @@ def test_a_hallucinated_id_raises_rather_than_answering(model: SpatialModel) -> 
 
 
 def test_a_space_the_kernel_cannot_build_is_reported_as_such(no_north: SpatialModel) -> None:
-    """`haus-mit-raeumen.ifc` carries rooms whose bodies OCCT rejects.
+    """`house-with-rooms.ifc` carries rooms whose bodies OCCT rejects.
 
     The refusal has to be about the BODY, not about a missing facade — sending
     the architect to set ``IsExternal`` on a file whose room solids will not
@@ -416,7 +416,7 @@ def test_hits_come_back_nearest_first(model: SpatialModel) -> None:
     assert answer.value[-1]["samples"] >= 20
 
 
-def test_the_overhead_caveat_states_the_grid_and_the_exclusions(model: SpatialModel) -> None:
+def test_the_overhead_caveat_states_the_lattice_and_the_exclusions(model: SpatialModel) -> None:
     caveat = dl.above(model, BEDROOM).caveat
     assert "geom.tree.select_ray" in caveat
     assert "25 von 25 Rasterpunkten" in caveat
@@ -424,7 +424,7 @@ def test_the_overhead_caveat_states_the_grid_and_the_exclusions(model: SpatialMo
     assert "keine Vollständigkeitsaussage" in caveat
 
 
-def test_the_grid_drops_points_that_are_over_the_box_but_not_the_element(model: SpatialModel) -> None:
+def test_the_lattice_drops_points_that_are_over_the_box_but_not_the_element(model: SpatialModel) -> None:
     """A bounding box covers plan area its element does not.
 
     The roof of this fixture fills 24 of the 25 grid points over its own box;

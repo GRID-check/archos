@@ -836,7 +836,7 @@ def _by_type(model: SpatialModel, ifc_type: str) -> list[Any]:
 
     ``IfcMapConversion`` arrived in IFC4, and asking an IFC2X3 file for it raises
     ``RuntimeError: Entity with name 'IfcMapConversion' not found in schema
-    'IFC2X3'`` — not an empty list. ``einheiten-fuss.ifc`` is such a file, and an
+    'IFC2X3'`` — not an empty list. ``units-feet.ifc`` is such a file, and an
     unguarded lookup turns "dieses Modell ist nicht georeferenziert" into a
     traceback. ``operators._has`` guards the same call for the same reason.
     """
@@ -864,7 +864,7 @@ def _compound_angle(value: Any) -> float | None:
         return None
     try:
         parts = [int(component) for component in value]
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     if len(parts) < 3:
         return None
@@ -994,7 +994,7 @@ def _parse_instant(when_iso: str, method: str) -> tuple[dt.datetime | None, Answ
     """
     try:
         parsed = dt.datetime.fromisoformat(str(when_iso).replace("Z", "+00:00"))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, undecidable(
             from_=[],
             method=method,

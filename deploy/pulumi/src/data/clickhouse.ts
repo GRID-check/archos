@@ -1,7 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, pullPolicyFor } from "../config";
+import { DeployConfig } from '../config'
+import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import {
   ROLLOUT,
@@ -11,6 +12,7 @@ import {
   secretChecksumAnnotations,
 } from "../platform/rollout";
 import { DATA_RESOURCES, LANGFUSE, PORT } from "../constants";
+import { scrapeAnnotations } from "../platform/scrape";
 
 /** Secret key holding the ClickHouse login password. */
 export const CLICKHOUSE_PASSWORD_SECRET_KEY = "clickhouse-password"; // pragma: allowlist secret (Secret key name, not a credential)
@@ -63,6 +65,21 @@ const SYSTEM_LOG_TTL_DAYS = 14;
  * with no producer behind it (nothing uses ClickHouse as an OTel
  * backend here), so it cannot fill a disk.
  */
+/**
+ * The server's own metrics, events and asynchronous metrics, on a listener of
+ * their own (`PORT.clickhouseMetrics`) for the node agents to scrape
+ * (ADR-0119). A separate port, not a path on 8123: that one takes queries.
+ */
+const PROMETHEUS_XML = `<clickhouse>
+  <prometheus>
+    <endpoint>/metrics</endpoint>
+    <port>${PORT.clickhouseMetrics}</port>
+    <metrics>true</metrics>
+    <events>true</events>
+    <asynchronous_metrics>true</asynchronous_metrics>
+  </prometheus>
+</clickhouse>`;
+
 const SYSTEM_LOG_TTL_XML = `<clickhouse>
   <asynchronous_insert_log><table>asynchronous_insert_log</table><ttl>event_date + INTERVAL ${SYSTEM_LOG_TTL_DAYS} DAY DELETE</ttl></asynchronous_insert_log>
   <asynchronous_metric_log><table>asynchronous_metric_log</table><ttl>event_date + INTERVAL ${SYSTEM_LOG_TTL_DAYS} DAY DELETE</ttl></asynchronous_metric_log>
@@ -81,7 +98,7 @@ export interface ClickHouse {
   statefulSet: k8s.apps.v1.StatefulSet;
   service: k8s.core.v1.Service;
   secret: k8s.core.v1.Secret;
-  /** `config.d` drop-in bounding the server's own system logs (see SYSTEM_LOG_TTL_XML). */
+  /** The `config.d` drop-ins: the system log bounds and the metrics listener. */
   config: k8s.core.v1.ConfigMap;
   /** `CLICKHOUSE_URL` — the HTTP interface Langfuse's app code queries. */
   httpUrl: pulumi.Output<string>;
@@ -112,7 +129,7 @@ export interface ClickHouse {
  * changes it, and `TZ` is pinned below so a future base-image change cannot.
  */
 export function installClickHouse(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],
@@ -134,16 +151,17 @@ export function installClickHouse(
     { provider, dependsOn },
   );
 
-  // Bounds the server's own logs (see SYSTEM_LOG_TTL_XML). Plain data, never
-  // secrets - but content-hashed into the pod annotation below anyway: a
-  // mounted ConfigMap restarts nothing by itself, and subPath mounts (used
-  // here) do not even refresh in a running pod, so without the checksum a TTL
-  // change would deploy successfully and never take effect anywhere.
-  const syslogTtl = new k8s.core.v1.ConfigMap(
+  // The `config.d` drop-ins: the server's own log bounds (SYSTEM_LOG_TTL_XML)
+  // and its metrics listener (PROMETHEUS_XML). Plain data, never secrets - but
+  // content-hashed into the pod annotation below anyway: a mounted ConfigMap
+  // restarts nothing by itself, and subPath mounts (used here) do not even
+  // refresh in a running pod, so without the checksum a change would deploy
+  // successfully and never take effect anywhere.
+  const configD = new k8s.core.v1.ConfigMap(
     `${name}-config`,
     {
       metadata: { name: `${name}-config`, namespace, labels },
-      data: { "system-log-ttl.xml": SYSTEM_LOG_TTL_XML },
+      data: { "system-log-ttl.xml": SYSTEM_LOG_TTL_XML, "prometheus.xml": PROMETHEUS_XML },
     },
     { provider, dependsOn },
   );
@@ -171,9 +189,16 @@ export function installClickHouse(
             // turn of the screw: subPath mounts never refresh in a running pod,
             // so without this a TTL change would land in the ConfigMap and in
             // nothing else.
-            annotations: secretChecksumAnnotations(
-              secretChecksum({ ...secretValues, "system-log-ttl.xml": SYSTEM_LOG_TTL_XML }),
-            ),
+            annotations: {
+              ...secretChecksumAnnotations(
+                secretChecksum({
+                  ...secretValues,
+                  "system-log-ttl.xml": SYSTEM_LOG_TTL_XML,
+                  "prometheus.xml": PROMETHEUS_XML,
+                }),
+              ),
+              ...scrapeAnnotations(PORT.clickhouseMetrics),
+            },
           },
           spec: {
             enableServiceLinks: false,
@@ -185,7 +210,7 @@ export function installClickHouse(
             securityContext: { runAsNonRoot: true, runAsUser: 101, runAsGroup: 101, fsGroup: 101 },
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.dataPlane).terminationGracePeriodSeconds,
-            volumes: [{ name: "syslog-ttl", configMap: { name: syslogTtl.metadata.name } }],
+            volumes: [{ name: "config-d", configMap: { name: configD.metadata.name } }],
             ...onNodeGroup(cfg.nodeGroups.data),
             containers: [
               {
@@ -195,6 +220,7 @@ export function installClickHouse(
                 ports: [
                   { containerPort: PORT.clickhouseHttp, name: "http" },
                   { containerPort: PORT.clickhouseNative, name: "native" },
+                  { containerPort: PORT.clickhouseMetrics, name: "metrics" },
                 ],
                 env: [
                   { name: "CLICKHOUSE_DB", value: LANGFUSE.clickhouseDatabase },
@@ -233,9 +259,15 @@ export function installClickHouse(
                   // error naming the mount. config.d merging still applies:
                   // drop-ins are read by filename, not by volume shape.
                   {
-                    name: "syslog-ttl",
+                    name: "config-d",
                     mountPath: "/etc/clickhouse-server/config.d/system-log-ttl.xml",
                     subPath: "system-log-ttl.xml",
+                    readOnly: true,
+                  },
+                  {
+                    name: "config-d",
+                    mountPath: "/etc/clickhouse-server/config.d/prometheus.xml",
+                    subPath: "prometheus.xml",
                     readOnly: true,
                   },
                 ],
@@ -282,7 +314,7 @@ export function installClickHouse(
     },
     {
       provider,
-      dependsOn: [...dependsOn, secret, syslogTtl],
+      dependsOn: [...dependsOn, secret, configD],
       // Immutable volumeClaimTemplates — grow via a PVC patch (see seaweedfs.ts).
       ignoreChanges: ["spec.volumeClaimTemplates"],
       // Fixed-name StatefulSet: create-before-delete collides with the existing
@@ -334,7 +366,7 @@ export function installClickHouse(
     statefulSet,
     service,
     secret,
-    config: syslogTtl,
+    config: configD,
     httpUrl: pulumi.output(`http://${name}:${PORT.clickhouseHttp}`),
     migrationUrl: pulumi.output(`clickhouse://${name}:${PORT.clickhouseNative}`),
   };

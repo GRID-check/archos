@@ -2,7 +2,7 @@
 
 > How Piloti produces a diagram an architect can use in a conversation, and then
 > keep as a real file in the project. See also
-> [agent-authored documents](../superpowers/specs/2026-08-20-agent-authored-documents-design.md)
+> [agent-authored documents](agent-authored-documents.md)
 > (the pipeline this is the second and third producer of),
 > [cards.md](cards.md) (the doctrine this must not break) and
 > [ADR-0042](../adr/0042-object-storage-durability-and-quota.md).
@@ -10,7 +10,7 @@
 ## The doctrine, first, because it is the constraint everything else obeys
 
 This repository has fifteen **schematic cards**
-(`frontends/ui/src/features/grid-cards/schematics/`) where the model emits
+(`apps/workspace/ui/features/cards/schematics/`) where the model emits
 **parameters only** and the renderer does every piece of geometry. `cards.md`
 states what that buys: *"a card cannot show a diagram that disagrees with its
 own numbers."* It exists because the card is what gets screenshotted into an
@@ -265,7 +265,7 @@ verification learned this the hard way: a mermaid label is written
 label as a quoted claim, none of them were in a retrieved passage, and the
 annotation went in after the closing quote — inside the bracket. The diagram
 stopped parsing, and the same flags capped the turn's confidence to "low".
-`_code_spans` in `common/citation_verification.py` now excludes fenced and
+`code_spans` in `citations/markdown_code.py` now excludes fenced and
 inline code from that scan. Any future pass over the answer body owes a diagram
 the same courtesy.
 
@@ -356,7 +356,7 @@ refuses, and every diagram already stored in a thread is one.
 ### Since 2026-09-24: the fence first
 
 The chat prompt now teaches the fence as THE way to draw
-(`piloti_static.md` <formatting>), and the chat envelope no longer teaches the
+(`chat_static.md` <formatting>), and the chat envelope no longer teaches the
 `diagram` card (it left the union later that month, `catalog.RETIRED_CARD_TYPES`). Each of the card's three
 arguments above was re-checked against the fence:
 
@@ -454,8 +454,8 @@ transition touches is still drawn.
    caches it at module level keyed by the source text (`MODEL_CACHE_LIMIT`,
    64). A model that depends on anything else is served stale.
 5. **A new grammar**, not only a new view, also needs `DiagramGrammar` in
-   `src/aiq_agent/cards/models.py`, the grammar list in the prompt
-   (`piloti_static.md` `<formatting>`), and a browser capture in
+   `packages/agent/src/agent/cards/models.py`, the grammar list in the prompt
+   (`chat_static.md` `<formatting>`), and a browser capture in
    `lib/diagrams/__fixtures__/` that prints through `svg-to-pdf.spec.tsx`
    (next section).
 
@@ -511,7 +511,7 @@ published bundle, gzipped):
 `@dagrejs/dagre` lays out the flow and map canvases. Graph layout is someone
 else's domain, so it is a dependency; ELK does the same job at about 28 times
 the gzip size. dagre is imported statically by `views/diagram-views.tsx`, so it
-ships with the card components (`GridCards` → `DiagramCard`) as well as with
+ships with the card components (`AnswerCards` → `DiagramCard`) as well as with
 the fence's dynamic import.
 
 `mermaid` is a production dependency, imported dynamically through
@@ -527,6 +527,68 @@ published sixteen months ago, with 32 of 38 published versions carrying a
 today's scene schema. The kind stays in the vocabulary (`DIAGRAM_SOURCE_KINDS`)
 and the server already accepts it, so adding a renderer later is one entry in
 `DIAGRAM_RENDERERS`, not a vocabulary migration over stored rows.
+
+**Since ADR-0141 Excalidraw ships as an editor.** The argument above is about
+drawing a mermaid source through Excalidraw, and it still holds for mermaid. The new use is a person reworking a drawing
+Piloti made. A drawn flow or Gliederung inside a project offers „Als Skizze
+bearbeiten" (`features/diagrams/sketch/`):
+
+- `sketchFromModel` turns the parsed `FlowModel`/`MapModel` into Excalidraw
+  skeleton elements, laid out by dagre in the view's direction, labels in
+  Helvetica. It reads the model, not the source, so the sketch opens in the
+  arrangement the person just saw. `@excalidraw/mermaid-to-excalidraw` would
+  have parsed again with a second mermaid (it depends on `^11`).
+- `sketch-canvas.tsx` is the only importer of `@excalidraw/excalidraw` 0.18.1,
+  loaded by `next/dynamic` when the dialog opens (`sketch-isolation.spec.ts`).
+  Measured with esbuild: the chat gains 2.4 KB gzip; the click loads 2.46 MB
+  gzip.
+- Fonts come from `public/excalidraw/` (`scripts/copy-excalidraw-assets.mjs`,
+  run with `postinstall`, `dev` and `build` like pdf.js's). Without them
+  Excalidraw fetches every font from `esm.sh`.
+- Filing: `exportToSvg` (`skipInliningFonts`, always on paper), then
+  `fileableSketchSvg` removes `<style>` and `<mask>` and runs the server's own
+  parser and serialiser in the browser, then the same `POST` as a fence with
+  `sourceKind: 'excalidraw'` and `edited: true`. The route then marks both files
+  „Von Piloti entworfen, von einer Person bearbeitet … nicht maßstäblich"
+  (`diagrams.markingEdited`). The `<mask>` is Excalidraw's gap in an arrow under
+  its label, so in the file a label sits on its line.
+- Every filing, sketch or not, scores `diagram-filed` (`as_drawn | edited`) on
+  the answer's trace; the browser sends `answerId` for that.
+
+`DIAGRAM_RENDERERS.excalidraw` stays `null`: nothing renders a stored scene
+yet. Reopening a filed sketch, and saving a new Fassung instead of a new pair
+of documents, is the next slice.
+
+**Since ADR-0146 the model writes Excalidraw too, as a sketch.** Mermaid has no
+grammar for what an architect mostly sketches (rooms by adjacency, a site, a
+wireframe, a board), so Piloti writes an ```` ```excalidraw ```` fence of
+Excalidraw's element skeleton when asked for a Skizze or when the picture is
+spatial or free-form; flows and hierarchies stay mermaid. The doctrine holds by
+subject: a sketch claims no dimension, and says so.
+
+- **Taught by a skill.** `excalidraw-sketch`
+  (`packages/agent/src/agent/skills/builtin/drawing/`) holds the format, the layout rules
+  and the recurring shapes, read on demand (ADR-0135); the static prompt only
+  points at it.
+- **Checked twice.** `common/sketch_fence.py` runs in the dialect pass and
+  retags a refused fence `excalidraw-refused` (one quiet line, never the
+  JSON; the Word export prints a label, never the scene); `lib/diagrams/sketch-fence.ts` applies the same rules in the browser
+  and keeps an allow-list of fields, texts in Helvetica. Both run
+  `lib/diagrams/__fixtures__/sketch-fences.json`. Caps: 32 KiB, 150 elements,
+  coordinates within ±10 000.
+- **Drawn as it streams.** `components/sketch-figure.tsx` draws every element
+  that has arrived whole (`streamedSketchElements`), one Excalidraw render at a
+  time, through `sketch/sketch-render.ts` (`convertToExcalidrawElements`,
+  `exportToSvg` on paper, `fileableSketchSvg`). That module is the second
+  importer of `@excalidraw/excalidraw`, reached only by a dynamic import, so
+  the first sketch a reader sees loads the 2.46 MB the editor would.
+- **The sheet is paper.** A sketch shows on white with Excalidraw's own dark
+  filter (`invert(93%) hue-rotate(180deg)`) in dark mode, so the screen, the
+  editor and the file are one drawing. Under it: „Skizze — nicht maßstäblich,
+  ohne Maßangabe.", and inside a project „Im Projekt ablegen" (as drawn, keyed
+  by the fence, marked `diagrams.markingSketch`) and „Als Skizze bearbeiten".
+- **Observable.** `sketch-drawn` per fence and trace metadata `answer_dialect.sketches`
+  (`docs/observability/langfuse.md`).
 
 ## Known limits
 

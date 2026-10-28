@@ -1,9 +1,11 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, backendAutoscaled } from "../config";
-import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
+import { DeployConfig } from '../config'
+import { backendAutoscaled } from '../config/chat-tier'
+import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GEOCODER, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
+import { API_TIERS, CHAT_TIERS, LEGACY_CHAT_TIER } from "../app/tier-names";
 
 /**
  * `app.kubernetes.io/name` of the two Langfuse workloads and their ClickHouse
@@ -14,14 +16,17 @@ const LANGFUSE_WEB = LANGFUSE.web;
 const LANGFUSE_WORKER = LANGFUSE.worker;
 const CLICKHOUSE = LANGFUSE.clickhouse;
 
+/** The per-node metrics agent (ADR-0119), named by the rules that admit its scrape to a withheld pod. */
+const OTEL_AGENT_POD = { podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-agent" } } };
+
 /**
  * The backend roles that carry the Langfuse API keys (`backendEnv`, less the
  * ingest worker) and so are named callers of the web tier in rule 11d.
  */
-export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"] as const;
+export const LANGFUSE_BACKEND_CALLERS = [...CHAT_TIERS, ...API_TIERS, "agent-worker"] as const;
 
 /**
- * The pods that get `AIQ_QDRANT_URL` (every role built from `backendEnv`), the
+ * The pods that get `QDRANT_URL` (every role built from `backendEnv`), the
  * snapshot CronJob, the one-shot Chroma migration's importer, and the
  * operator's throwaway `qdrant-ops` pod (the runbook's restore and shard
  * moves, run from inside the namespace): the named callers of Qdrant's client
@@ -29,11 +34,10 @@ export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"]
  * times out on every call while its plan is green.
  */
 export const QDRANT_CALLERS = [
-  "aiq-agent",
-  "aiq-api",
+  ...CHAT_TIERS,
+  ...API_TIERS,
   "agent-worker",
   "ingest-worker",
-  "legacy-corpus-import",
   QDRANT.snapshotJob,
   CHROMA_MIGRATION.name,
   QDRANT.opsLabel,
@@ -50,8 +54,9 @@ export const QDRANT_CALLERS = [
  *     agent calls many external endpoints (OpenRouter, Tavily, WorkOS, ACME)
  *     plus cluster DNS, and an egress allow-list is the easiest way to silently
  *     break the product. Tightening egress is a follow-up that needs a live
- *     cluster to validate. The exception is Gotenberg (rule 13), which needs no
- *     egress at all, so denying all of it cannot break anything it does.
+ *     cluster to validate. The exceptions are Gotenberg (rule 13), which needs no
+ *     egress at all, so denying all of it cannot break anything it does, and the
+ *     geocoder (rule 20), which needs DNS and HTTPS only.
  *   - **Intra-namespace is allowed wholesale** (frontend→backend, backend→data,
  *     workers→data, backend→frontend BFF). Per-edge micro-policies buy little
  *     here and are far easier to get subtly wrong. The exceptions are the pods
@@ -64,7 +69,7 @@ export const QDRANT_CALLERS = [
  * these policies, so readiness/liveness keep working.
  */
 export function installNetworkPolicies(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): k8s.networking.v1.NetworkPolicy[] {
@@ -118,6 +123,7 @@ export function installNetworkPolicies(
           values: [
             ...langfuseWithheld,
             ...(cfg.gotenberg.enabled ? [GOTENBERG.name] : []),
+            ...(cfg.geocoder.enabled ? [GEOCODER.name] : []),
             QDRANT.name,
           ],
         },
@@ -286,10 +292,10 @@ export function installNetworkPolicies(
 
   // 11d. The backend tiers → Langfuse web public API. The agent writes the
   //      answer pipeline's checks as scores on each turn's trace (ADR-0089,
-  //      `aiq_agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
+  //      `agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
   //      the in-cluster Service, for the reason rule 11c gives. The three roles
-  //      that run answers or serve them: chat (`aiq-agent`), api (`aiq-api`)
-  //      and the research worker (`agent-worker`). The ingest worker is not
+  //      that run answers or serve them: chat and api (each under both names
+  //      while they run side by side, `tier-names.ts`) and the research worker (`agent-worker`). The ingest worker is not
   //      named and does not get the keys (`ingestWorkerEnv`): it writes none.
   const backendToLangfuse = cfg.langfuse.enabled
     ? mk("allow-backend-to-langfuse", {
@@ -344,7 +350,9 @@ export function installNetworkPolicies(
   //     running the background conversions (ADR-0079), so it is named too: a
   //     pool left out here would fail every office file with a green plan. The
   //     agent never calls it (the BFF hands the backend the finished PDF), and
-  //     nothing else has a reason to.
+  //     nothing else has a reason to, except the node agent (`otel-agent`,
+  //     ADR-0119) scraping `/prometheus/metrics`, which Gotenberg serves on the
+  //     same port; named only while it is deployed.
   const gotenberg = cfg.gotenberg.enabled
     ? mk("gotenberg-frontend-only", {
         podSelector: { matchLabels: { "app.kubernetes.io/name": GOTENBERG.name } },
@@ -356,6 +364,7 @@ export function installNetworkPolicies(
               ...(cfg.bffJobs.enabled
                 ? [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "bff-jobs" } } }]
                 : []),
+              ...(cfg.posthog.metricsEnabled ? [OTEL_AGENT_POD] : []),
             ],
             ports: [{ protocol: "TCP", port: PORT.gotenberg }],
           },
@@ -387,8 +396,8 @@ export function installNetworkPolicies(
   //     pods only, and only when that tier autoscales. (Its cpu trigger reads
   //     `metrics.k8s.io`, which is no connection into `grid`.)
   const kedaToBackend = backendAutoscaled(cfg)
-    ? mk("allow-keda-to-aiq-agent", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": "aiq-agent" } },
+    ? mk(`allow-keda-to-${LEGACY_CHAT_TIER}`, {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": LEGACY_CHAT_TIER } },
         policyTypes: ["Ingress"],
         ingress: [{ from: kedaOperator, ports: [{ protocol: "TCP", port: PORT.backend }] }],
       })
@@ -468,6 +477,52 @@ export function installNetworkPolicies(
       })
     : undefined;
 
+  // 20. The geocoder (ADR-0120): the frontend in, DNS and HTTPS out.
+  //
+  //     Every address a person types in the project dialog reaches it, so it
+  //     is withheld from rule 2: the frontend BFF (`/api/geocode`) is its one
+  //     caller. The bff-jobs pool inherits the frontend's environment but
+  //     not `GEOCODER_URL` (`BFF_JOBS_WITHHELD`), so it is not named.
+  //
+  //     Egress is the init container's: the jar from GitHub and the index
+  //     from download1.graphhopper.com, both over HTTPS. Photon itself dials
+  //     nothing. Port-scoped rather than host-scoped, because NetworkPolicy
+  //     has no hostnames and both hosts sit behind CDNs.
+  const geocoder = cfg.geocoder.enabled
+    ? mk("geocoder-frontend-only", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": GEOCODER.name } },
+        policyTypes: ["Ingress", "Egress"],
+        ingress: [
+          {
+            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }],
+            ports: [{ protocol: "TCP", port: PORT.geocoder }],
+          },
+        ],
+        egress: [
+          {
+            ports: [
+              { protocol: "UDP", port: 53 },
+              { protocol: "TCP", port: 53 },
+            ],
+          },
+          { ports: [{ protocol: "TCP", port: 443 }] },
+        ],
+      })
+    : undefined;
+
+  // 21. otel-agent → ClickHouse's metrics listener (ADR-0119), which answers
+  //     `/metrics` without a login and nothing else (`PORT.clickhouseMetrics`).
+  //     Rule 12 keeps the query ports to Langfuse; this admits the node
+  //     agent, and to that port alone, so no scrape can become a query.
+  const agentToClickhouse =
+    cfg.langfuse.enabled && cfg.posthog.metricsEnabled
+      ? mk("allow-agent-to-clickhouse-metrics", {
+          podSelector: { matchLabels: { "app.kubernetes.io/name": CLICKHOUSE } },
+          policyTypes: ["Ingress"],
+          ingress: [{ from: [OTEL_AGENT_POD], ports: [{ protocol: "TCP", port: PORT.clickhouseMetrics }] }],
+        })
+      : undefined;
+
   return [
     deny,
     intra,
@@ -486,9 +541,11 @@ export function installNetworkPolicies(
     ...(backendToLangfuse ? [backendToLangfuse] : []),
     ...(langfuseToClickhouse ? [langfuseToClickhouse] : []),
     ...(gotenberg ? [gotenberg] : []),
+    ...(geocoder ? [geocoder] : []),
     appToQdrant,
     qdrantPeers,
     ...(collectorToQdrant ? [collectorToQdrant] : []),
     ...(edgeQdrant ? [edgeQdrant] : []),
+    ...(agentToClickhouse ? [agentToClickhouse] : []),
   ];
 }

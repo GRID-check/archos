@@ -1,0 +1,269 @@
+"""Tests for the canonical source-kind taxonomy and its wire projection.
+
+Locks the core invariant of the source-system redesign: every source resolves
+to exactly one of the four coarse kinds, and the OIB corpus and RIS share the
+same ``building_law`` kind (they differ only in the fine lane sub-label).
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from agent.citations.entries import SourceEntry
+from agent.citations.wire import source_entry_to_wire
+from agent.common.source_kinds import AGENT_AUTHORED_LANE
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
+from agent.common.source_kinds import DEFAULT_SOURCE_KIND
+from agent.common.source_kinds import SHELF_QUALIFIERS
+from agent.common.source_kinds import SOURCE_KINDS
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import kind_for_lane
+from agent.common.source_kinds import legacy_shelf_for_collection_name
+from agent.common.source_kinds import parse_shelf
+from agent.common.source_kinds import scope_for_qualifier
+from agent.common.source_kinds import shelf_for_qualifier
+from agent.common.source_kinds import shelf_qualifier
+from agent.common.source_kinds import source_kind
+
+
+class TestKindForLane:
+    """Fine lane stratum-keys collapse to the four coarse kinds."""
+
+    @pytest.mark.parametrize(
+        "lane_key,expected",
+        [
+            ("building_law_oib", "building_law"),
+            ("building_law_oib_guide", "building_law"),
+            ("building_law_ris", "building_law"),
+            ("building_law_federal", "building_law"),
+            ("building_law_state", "building_law"),
+            ("building_law_ordinance", "building_law"),
+            ("authority", "building_law"),
+            ("external_standard", "building_law"),
+            ("office", "office"),
+            # A published Piloti document is office knowledge — office colour,
+            # its own sub-label inside the kind. Never a kind of its own.
+            ("office_piloti", "office"),
+            ("project", "project"),
+            ("web", "web"),
+        ],
+    )
+    def test_lane_maps_to_coarse_kind(self, lane_key: str, expected: str):
+        assert kind_for_lane(lane_key) == expected
+
+    def test_unknown_lane_fails_open_to_default(self):
+        assert kind_for_lane("something_new") == DEFAULT_SOURCE_KIND
+
+    def test_none_and_empty_fail_open(self):
+        assert kind_for_lane(None) == DEFAULT_SOURCE_KIND
+        assert kind_for_lane("") == DEFAULT_SOURCE_KIND
+
+    def test_case_insensitive(self):
+        assert kind_for_lane("BUILDING_LAW_OIB") == "building_law"
+
+
+class TestAgentAuthoredLane:
+    """The lane is a SUB-LABEL inside ``office``, and the taxonomy owns both."""
+
+    def test_it_is_a_lane_inside_the_office_kind(self):
+        assert AGENT_AUTHORED_LANE.startswith("office_")
+        assert kind_for_lane(AGENT_AUTHORED_LANE) == "office"
+
+    def test_the_lane_has_exactly_one_label_and_the_registry_carries_it(self):
+        from agent.common.norm_registry import _LANE_LABELS
+
+        assert _LANE_LABELS[AGENT_AUTHORED_LANE] == AGENT_AUTHORED_LANE_LABEL
+
+    def test_the_label_names_no_approver(self):
+        """The approver is appended by whoever renders the line, from the
+        provenance data — the taxonomy is not a sentence with a hole in it."""
+        assert AGENT_AUTHORED_LANE_LABEL == "Piloti-Dokument"
+        assert "{" not in AGENT_AUTHORED_LANE_LABEL
+
+
+class TestSourceKindLookup:
+    def test_known_kind(self):
+        assert source_kind("office").label == "Büroablage"
+
+    def test_unknown_kind_fails_open(self):
+        assert source_kind("nope").key == DEFAULT_SOURCE_KIND
+
+    def test_every_kind_is_self_consistent(self):
+        for key, kind in SOURCE_KINDS.items():
+            assert kind.key == key
+            assert kind.label and kind.description and kind.css_token
+
+
+class TestWireKind:
+    """``source_entry_to_wire`` stamps the coarse kind (+ fine lane) on the wire."""
+
+    def test_oib_corpus_is_baurecht(self):
+        entry = SourceEntry(citation_key="oib-rl_2_ausgabe_mai_2023.pdf, p.12", source_type="knowledge_layer")
+        wire = source_entry_to_wire(entry)
+        assert wire["kind"] == "building_law"
+        assert wire["lane"] == "building_law_oib"
+        assert wire["lane_label"] == "OIB-Richtlinie"
+
+    def test_corpus_collection_is_baurecht(self):
+        entry = SourceEntry(citation_key="anhang.pdf", collection="oib_knowledge", source_type="knowledge_layer")
+        assert source_entry_to_wire(entry)["kind"] == "building_law"
+
+    def test_ris_url_is_baurecht(self):
+        entry = SourceEntry(url="https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR99999999", source_type="generic")
+        assert source_entry_to_wire(entry)["kind"] == "building_law"
+
+    def test_org_office_shelf_is_office(self):
+        entry = SourceEntry(citation_key="detail.pdf", collection="archiv_org123", source_type="knowledge_layer")
+        assert source_entry_to_wire(entry)["kind"] == "office"
+
+    def test_project_collection_is_project(self):
+        entry = SourceEntry(citation_key="einreichplan.pdf", collection="proj_abc", source_type="knowledge_layer")
+        assert source_entry_to_wire(entry)["kind"] == "project"
+
+    def test_web_url_is_web(self):
+        entry = SourceEntry(url="https://example.com/artikel", source_type="generic")
+        assert source_entry_to_wire(entry)["kind"] == "web"
+
+
+class TestBindingNote:
+    """RIS sources catalogued in the norm registry carry their bindingness note."""
+
+    def test_ris_source_matching_registry_gets_binding_note(self):
+        # wbtv (document_number LWI40016790) is the entry that makes the OIB
+        # Richtlinien binding in Wien — the canonical bindingness fact.
+        entry = SourceEntry(
+            url="https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=LWI40016790",
+            source_type="generic",
+        )
+        wire = source_entry_to_wire(entry)
+        assert wire["kind"] == "building_law"
+        assert "verbindlich" in wire["binding_note"].lower()
+
+    def test_non_ris_source_has_no_binding_note(self):
+        entry = SourceEntry(citation_key="oib-rl_2.pdf, p.5", source_type="knowledge_layer")
+        assert "binding_note" not in source_entry_to_wire(entry)
+
+    def test_ris_without_registry_match_has_no_binding_note(self):
+        entry = SourceEntry(url="https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR99999999", source_type="generic")
+        assert "binding_note" not in source_entry_to_wire(entry)
+
+
+class TestShelf:
+    """The shelf — the wire vocabulary of ADR-0047, carried as data."""
+
+    def test_the_enum_holds_exactly_the_four_shelves(self):
+        # A fifth member is a wire change: the header, chunk metadata, the
+        # citation payload and the TS twin all have to learn it together.
+        assert {shelf.value for shelf in Shelf} == {"office_shelf", "project", "session", "base"}
+
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            ("office_shelf", Shelf.OFFICE_SHELF),
+            ("project", Shelf.PROJECT),
+            ("session", Shelf.SESSION),
+            ("base", Shelf.BASE),
+            ("  SESSION ", Shelf.SESSION),
+            (Shelf.BASE, Shelf.BASE),
+        ],
+    )
+    def test_a_stated_shelf_parses(self, value, expected):
+        assert parse_shelf(value) is expected
+
+    @pytest.mark.parametrize("value", [None, "", "projekt", "buero", "baurecht", "proj_alpha", 7, {"shelf": "base"}])
+    def test_anything_else_is_unknown_never_base(self, value):
+        # The pre-ADR defect: an unrecognised value fell open to `baurecht`, so
+        # an unknown document claimed to be authoritative building law.
+        assert parse_shelf(value) is None
+
+    def test_every_shelf_renders_a_qualifier(self):
+        assert {shelf: shelf_qualifier(shelf) for shelf in Shelf} == SHELF_QUALIFIERS
+
+    def test_a_session_file_is_no_longer_project_knowledge(self):
+        # The headline bug: a file the user attached privately to a chat was
+        # cited as "Projektwissen" because `('s_', 'projekt')` was the only guess.
+        assert shelf_qualifier(Shelf.SESSION) == "Private Sitzung"
+        assert shelf_qualifier(Shelf.SESSION) != shelf_qualifier(Shelf.PROJECT)
+
+    def test_an_unknown_shelf_renders_unattributed(self):
+        assert shelf_qualifier(None) is None
+        assert shelf_qualifier("projekt") is None
+        assert shelf_qualifier("proj_alpha") is None
+
+    def test_the_qualifier_round_trips(self):
+        # A citation key carries the qualifier; resolution parses it back. If
+        # these two ever disagree, every qualified key stops resolving.
+        for shelf in Shelf:
+            assert shelf_for_qualifier(shelf_qualifier(shelf)) is shelf
+
+    def test_qualifiers_are_matched_case_insensitively(self):
+        # The qualifier survives a round trip through an LLM, which may recase it.
+        assert shelf_for_qualifier("projektwissen") is Shelf.PROJECT
+        assert shelf_for_qualifier("  BÜROARCHIV  ") is Shelf.OFFICE_SHELF
+        assert shelf_for_qualifier("private sitzung") is Shelf.SESSION
+
+    def test_an_unqualified_or_unknown_key_names_no_shelf(self):
+        assert shelf_for_qualifier(None) is None
+        assert shelf_for_qualifier("Internal") is None
+
+    def test_legacy_qualifier_keys_still_parse_to_the_old_vocabulary(self):
+        # Those strings are persisted inside citation keys in existing messages;
+        # a reader that stops understanding them silently unresolves them.
+        assert scope_for_qualifier("Projektwissen") == "projekt"
+        assert scope_for_qualifier("Büroablage") == "buero"
+        assert scope_for_qualifier("Basiswissen") == "baurecht"
+        assert scope_for_qualifier("Internal") is None
+
+    def test_the_shelfs_retired_name_still_parses_and_is_never_written(self):
+        # The archiv shelf was „Büroarchiv" until 6 Oct 2026. Keys persisted
+        # before the rename carry that qualifier; the writer now says Büroablage.
+        assert shelf_qualifier(Shelf.OFFICE_SHELF) == "Büroablage"
+        assert shelf_for_qualifier("Büroarchiv") is Shelf.OFFICE_SHELF
+        assert scope_for_qualifier("Büroarchiv") == "buero"
+        assert "Büroarchiv" not in SHELF_QUALIFIERS.values()
+
+    @pytest.mark.parametrize("qualifier", ["Büroablage", "Büroarchiv"])
+    def test_a_key_under_either_name_strips_to_the_file(self, qualifier):
+        from agent.citations.citation_keys import parse_citation_ref
+
+        assert parse_citation_ref(f"Plan.pdf ({qualifier}), p.3") == ("Plan.pdf", Shelf.OFFICE_SHELF, 3)
+
+
+class TestLegacyShelfFallback:
+    """The one surviving name→shelf guess, kept for pre-ADR-0047 producers."""
+
+    @pytest.mark.parametrize(
+        "collection,expected",
+        [
+            ("archiv_org1", Shelf.OFFICE_SHELF),
+            ("proj_alpha", Shelf.PROJECT),
+            # NOT `project`: a session collection is its own shelf now.
+            ("s_9f2a4c", Shelf.SESSION),
+        ],
+    )
+    def test_it_reads_the_known_prefixes(self, collection, expected):
+        assert legacy_shelf_for_collection_name(collection) is expected
+
+    @pytest.mark.parametrize("collection", ["oib_knowledge", "some_custom_corpus", "", None])
+    def test_it_fails_closed_on_anything_else(self, collection):
+        # `collection_scope` returned "baurecht" here, which is the fail-open
+        # ADR-0047 calls out: an unknown collection claimed base-law authority.
+        assert legacy_shelf_for_collection_name(collection) is None
+
+
+class TestLegacyShelfValue:
+    """`archiv` was the shelf's wire value before it had an English name."""
+
+    def test_the_old_value_reads_as_the_office_shelf(self):
+        assert parse_shelf("archiv") is Shelf.OFFICE_SHELF
+        assert parse_shelf("office_shelf") is Shelf.OFFICE_SHELF
+
+    def test_both_collection_prefixes_are_an_office_shelf(self):
+        from agent.common.source_kinds import is_office_shelf_collection
+        from agent.common.source_kinds import office_shelf_organization_id
+
+        assert is_office_shelf_collection("archiv_org1") and is_office_shelf_collection("office_shelf_org1")
+        assert not is_office_shelf_collection("proj_x")
+        assert office_shelf_organization_id("office_shelf_org1") == "org1"
+        assert office_shelf_organization_id("archiv_org1") == "org1"
+        assert office_shelf_organization_id("proj_x") is None

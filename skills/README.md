@@ -20,19 +20,19 @@ Today there are none. The last one, `aiq-research`, was an upstream NVIDIA
 catalog skill for driving a blueprint backend, and was removed.
 
 Piloti's own skills, the ones the product reads at run time, are a different
-thing and live in `src/aiq_agent/skills/` (ADR-0046).
+thing and live in `packages/agent/src/agent/skills/` (ADR-0046).
 
 ## Adding one
 
-1. Create `skills/<aiq-skill-name>/SKILL.md` with YAML frontmatter (`name`,
+1. Create `skills/<skill-name>/SKILL.md` with YAML frontmatter (`name`,
    `description`) and a body; longer material goes in `references/*.md`
    beside it, linked from `SKILL.md`, and must stay inside the bundle.
-2. Add `- ./skills/<aiq-skill-name>` to `dependencies.apm` in
+2. Add `- ./skills/<skill-name>` to `dependencies.apm` in
    [`../apm.yml`](../apm.yml).
 3. Run `task agents:audit` until it passes, and commit `apm.lock.yaml` with
    the skill.
 4. Run `.venv/bin/python scripts/validate_skills.py` to check the bundle.
 
-Names are lowercase, hyphen-separated and `aiq-` prefixed; the validator
-enforces it, and `tests/test_agent_skills.py` runs the validator in CI. The
+Names are lowercase and hyphen-separated; the validator
+enforces the format, and `tests/test_agent_skills.py` runs the validator in CI. The
 `writing-for-agents` skill fires when you touch a `SKILL.md`.

@@ -1,0 +1,15 @@
+---
+improvements:
+  - >
+    Piloti can now look things up in your other projects through the
+    workspace, not only through its project search: in a conversation that is
+    yours alone, any project you may chat in; in a shared conversation, a
+    document or the project facts of a closed project, or of one everyone in
+    the conversation may open. The conversation then stays with the people
+    allowed to see what it read.
+security:
+  - >
+    In a shared conversation Piloti never reads a folder with its own access
+    list, a file still being screened, or anything that shows what only you
+    may see, and it no longer proposes a change to a project not everyone in
+    the conversation may open.

@@ -33,7 +33,7 @@ const fixture = (name: string): Uint8Array =>
 describe('length unit: the project assignment, not the first unit in the file', () => {
   let graph: BuildingGraph
   beforeAll(async () => {
-    graph = await buildGraph(fixture('einheiten-fuss.ifc'))
+    graph = await buildGraph(fixture('units-feet.ifc'))
   })
 
   /**
@@ -57,7 +57,7 @@ describe('length unit: the project assignment, not the first unit in the file', 
   })
 
   it('is unchanged on the metric files it was already right about', async () => {
-    const metric = await buildGraph(fixture('haus-mit-raeumen.ifc'))
+    const metric = await buildGraph(fixture('house-with-rooms.ifc'))
     expect(metric.units.length).toEqual({ symbol: 'mm', toMetres: 0.001 })
   })
 })
@@ -66,19 +66,19 @@ describe('length unit: the project assignment, not the first unit in the file', 
 
 describe('declared space boundaries', () => {
   const ID = {
-    wohnen: '4Decke00000Space00001',
-    kueche: '4Decke00000Space00002',
-    bad: '4Decke00000Space00003',
-    langeWand: '4Decke00000Wall000001',
-    trennwand: '4Decke00000Wall000002',
-    decke: '4Decke00000Slab000001',
-    fenster: '4Decke00000Window0001',
-    oeffnung: '4Decke00000Openin0001',
+    living: '4Decke00000Space00001',
+    kitchen: '4Decke00000Space00002',
+    bath: '4Decke00000Space00003',
+    longWall: '4Decke00000Wall000001',
+    partitionWall: '4Decke00000Wall000002',
+    slab: '4Decke00000Slab000001',
+    window: '4Decke00000Window0001',
+    opening: '4Decke00000Openin0001',
   } as const
 
   let graph: BuildingGraph
   beforeAll(async () => {
-    graph = await buildGraph(fixture('geschossdecke-und-fenster.ifc'))
+    graph = await buildGraph(fixture('floor-slab-and-window.ifc'))
   })
 
   /**
@@ -89,11 +89,11 @@ describe('declared space boundaries', () => {
    * On `AC20-FZK-Haus.ifc` all 21 of 21 possible pairs came back adjacent.
    */
   it('does not make two rooms neighbours through the floor slab they stand on', () => {
-    const neighbours = adjacentSpaces(graph, ID.wohnen)
+    const neighbours = adjacentSpaces(graph, ID.living)
     expect(neighbours.decidable).toBe(true)
     const ids = neighbours.value!.map((r) => r.globalId)
-    expect(ids).toContain(ID.kueche) // shares the party wall
-    expect(ids).not.toContain(ID.bad) // shares only the floor slab
+    expect(ids).toContain(ID.kitchen) // shares the party wall
+    expect(ids).not.toContain(ID.bath) // shares only the floor slab
   })
 
   it('the slab under all three rooms produces no adjacency at all', () => {
@@ -123,14 +123,14 @@ describe('declared space boundaries', () => {
    * `Labor K5` was reported as opening into `Labor K1`…`K4` and `WC Damen`.
    */
   it('a window opens into the room its own boundary names, not into every room on its wall', () => {
-    const answer = opensTo(graph, ID.fenster)
+    const answer = opensTo(graph, ID.window)
     expect(answer.decidable).toBe(true)
-    expect(answer.value!.map((r) => r.globalId)).toEqual([ID.kueche])
-    expect(out(graph, 'interfaceOf', ID.wohnen)).toContain(ID.langeWand)
+    expect(answer.value!.map((r) => r.globalId)).toEqual([ID.kitchen])
+    expect(out(graph, 'interfaceOf', ID.living)).toContain(ID.longWall)
   })
 
   it('names the route it took, so a one-room answer is distinguishable from a whole-wall one', () => {
-    const edge = graph.edges.find((e) => e.kind === 'opensTo' && e.from === ID.fenster)
+    const edge = graph.edges.find((e) => e.kind === 'opensTo' && e.from === ID.window)
     expect(edge?.via).toBe('interfaceOf (eigene Raumbegrenzung)')
   })
 
@@ -142,7 +142,7 @@ describe('declared space boundaries', () => {
    * no answer.
    */
   it('falls back to the host wall for an opening the file does not bound', () => {
-    const edges = graph.edges.filter((e) => e.kind === 'opensTo' && e.from === ID.oeffnung)
+    const edges = graph.edges.filter((e) => e.kind === 'opensTo' && e.from === ID.opening)
     expect(edges.length).toBe(2)
     for (const e of edges) expect(e.via).toBe('voids+interfaceOf (Gastbauteil)')
   })
@@ -153,7 +153,7 @@ describe('declared space boundaries', () => {
 describe('IFC4X3 facilities are spatial structure, not components', () => {
   let graph: BuildingGraph
   beforeAll(async () => {
-    graph = await buildGraph(fixture('strasse-ifc4x3.ifc'))
+    graph = await buildGraph(fixture('road-ifc4x3.ifc'))
   })
 
   it('classifies IfcRoad as a container and IfcRoadPart as a storey-level part', () => {
@@ -354,7 +354,7 @@ describe('blind spots know whether geometry ran', () => {
    * (ArchiCAD 18) declares 100 IfcSpaces and the kernel produced a body for 6.
    */
   it('counts the rooms the kernel produced no solid for', async () => {
-    const model = await openModel(fixture('haus-mit-raeumen.ifc'))
+    const model = await openModel(fixture('house-with-rooms.ifc'))
     const spot = model.graph.blindSpots.find((b) => /Räumen ohne Volumenkörper/.test(b.what))
     expect(spot?.what).toBe('2 von 2 Räumen ohne Volumenkörper')
   })

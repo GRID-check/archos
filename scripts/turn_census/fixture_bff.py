@@ -3,7 +3,7 @@
 The answer suite runs the real agent with no BFF, so it cannot ask a single
 question about another project (docs/roadmap/office-experience.md, step A).
 This serves exactly the routes that question needs, from
-``frontends/ui/tests/fixtures/precedent/``:
+``apps/workspace/tests/fixtures/precedent/``:
 
 - ``POST /api/internal/turn-context``: the current project's PROJECT_CONTEXT
   and the reference catalog, both as the production renderers wrote them
@@ -29,6 +29,15 @@ channel alone ranks, and the run's report says so.
 
 Every request is appended to ``requests.jsonl`` beside the run, so a check can
 read which lookups a turn made and with what arguments.
+
+``--set workspace`` hands it a ``fixture_workspace.FixtureWorkspace`` instead:
+then it serves Piloti's MCP door (``POST /api/mcp``) and a turn context with
+the WORKSPACE block, logs what the door answered beside each call, and drops
+every other route the same way.
+
+Every set also files proposals: ``POST /api/internal/proposals`` (ADR-0105) records the proposal a tool
+asks for and answers with its id, as the BFF's route does, so a row can assert that a write was PROPOSED
+(:func:`proposals_filed`) and not made. Nothing is applied; the fixture has no one to accept it.
 """
 
 from __future__ import annotations
@@ -38,6 +47,8 @@ import math
 import re
 import threading
 import unicodedata
+import urllib.parse
+import uuid
 from collections import Counter
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler
@@ -46,7 +57,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-FIXTURES = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
+FIXTURES = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent"
 
 #: The per-project page the BFF searched before ADR-0116 (8 projects). The BFF now ranks a page of
 #: `CROSS_PROJECT_PAGE_PROJECTS` (40, `lib/cross-project/types.ts`) in one grouped query; kept at 8 so
@@ -64,6 +75,16 @@ MAX_PERMIT_REQUIREMENTS = 6
 RRF_K = 60
 _TOKEN = re.compile(r"[a-z0-9]+")
 
+#: The route a tool files a proposal at, and the harness ability it gives a row (``north_star_eval.HARNESS``).
+PROPOSALS_PATH = "/api/internal/proposals"
+ANNOTATIONS_PATH = "/api/internal/document-annotations"
+#: ``proposals``: a write filed as a proposal. ``marks``: the canvas ``mark`` tool's proposals, recorded
+#: (:func:`marks_proposed`).
+ABILITIES = frozenset({"proposals", "marks"})
+#: The kinds the route accepts (``lib/proposals/types.ts``), and the routes by which an agent could write instead.
+PROPOSAL_KINDS = frozenset({"file_operation", "memory", "project_profile"})
+WRITE_PATHS = ("/api/internal/document-versions", "/api/internal/document-annotations", "/api/internal/tasks")
+
 #: Texts to vectors, in order; None when the embedder could not answer.
 Embed = Callable[[list[str]], "list[list[float]] | None"]
 
@@ -71,14 +92,14 @@ Embed = Callable[[list[str]], "list[list[float]] | None"]
 def production_embedder() -> Embed | None:
     """The deployment's embedding model, built as the note-embeddings route builds it; None without a key."""
     try:
-        from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
-        from knowledge_layer.llamaindex.adapter import _resolve_embed_api_key
-        from knowledge_layer.llamaindex.adapter import make_embed_model
+        from knowledge_layer.llamaindex.embedding import make_embed_model
+        from knowledge_layer.llamaindex.embedding import resolve_embed_api_key
+        from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     except ImportError:
         return None
     model = LlamaIndexRetriever.DEFAULT_EMBED_MODEL
     base_url = LlamaIndexRetriever.DEFAULT_EMBED_BASE_URL
-    api_key = _resolve_embed_api_key(base_url, model)
+    api_key = resolve_embed_api_key(base_url, model)
     if not api_key:
         return None
     embedder = make_embed_model(base_url=base_url, model=model, api_key=api_key)
@@ -196,19 +217,19 @@ class FixtureOffice:
             "id": project["id"],
             "name": project["name"],
             "status": project["status"],
-            "bundesland": (project.get("facts") or {}).get("bundesland"),
+            "federal_state": (project.get("facts") or {}).get("federal_state"),
         }
 
     def _listed(self, project: dict[str, Any]) -> dict[str, Any]:
         return {
             **self._ref(project),
             "collection": project["collection"],
-            "address": project.get("facts", {}).get("standort_adresse"),
+            "address": project.get("facts", {}).get("site_address"),
             "period": {"start": project.get("startedOn") or "2013-01-01", "end": project.get("endedOn")},
             # The BFF's oibEdition: a confirmed fact, else no edition (the fixture holds no agent suggestion).
             "oibEdition": (
-                {"value": str(project["facts"]["oib_ausgabe"]), "confirmed": True}
-                if (project.get("facts") or {}).get("oib_ausgabe")
+                {"value": str(project["facts"]["oib_edition"]), "confirmed": True}
+                if (project.get("facts") or {}).get("oib_edition")
                 else None
             ),
             "current": project["id"] == self.current["id"],
@@ -363,7 +384,7 @@ class FixtureOffice:
         needle = _fold(str(body.get("query") or ""))
 
         def found(project: dict[str, Any]) -> bool:
-            address = project.get("facts", {}).get("standort_adresse", "")
+            address = project.get("facts", {}).get("site_address", "")
             if body.get("status") and project["status"] != body["status"]:
                 return False
             return not needle or needle in _fold(f"{project['name']} {address}")
@@ -417,16 +438,77 @@ def lookups_served(log_path: Path, conversation_id: str) -> list[str]:
     return served
 
 
+def proposals_filed(log_path: Path, conversation_id: str) -> list[dict[str, Any]]:
+    """The proposals this fixture stored for one conversation, in order: ``{id, kind, payload, ...}`` each."""
+    return [
+        entry["proposal"]
+        for entry in _served(log_path, conversation_id)
+        if entry.get("path") == PROPOSALS_PATH and isinstance(entry.get("proposal"), dict)
+    ]
+
+
+def writes_attempted(log_path: Path, conversation_id: str) -> list[str]:
+    """The paths of the direct write routes this conversation's turn called, served or not (a proposal is not one)."""
+    return [
+        str(e["path"])
+        for e in _served(log_path, conversation_id, only_served=False)
+        if _is_write(str(e["path"])) and (e.get("body") or {}).get("op") != "propose"
+    ]
+
+
+def _is_write(path: str) -> bool:
+    return any(path == route or path.startswith(route + "/") for route in WRITE_PATHS)
+
+
+def marks_proposed(log_path: Path, conversation_id: str) -> list[dict[str, Any]]:
+    """The marks a conversation's turn proposed on a document (canvas ``propose``), in order.
+
+    A proposal is a suggestion the person takes over, not a write: it is read here and is not in
+    :func:`writes_attempted`.
+    """
+    return [
+        mark
+        for entry in _served(log_path, conversation_id)
+        if entry.get("path") == ANNOTATIONS_PATH and (entry.get("body") or {}).get("op") == "propose"
+        for mark in (entry.get("body") or {}).get("proposals") or []
+        if isinstance(mark, dict)
+    ]
+
+
+def _served(log_path: Path, conversation_id: str, *, only_served: bool = True) -> list[dict[str, Any]]:
+    if not log_path.exists():
+        return []
+    found = []
+    for line in log_path.read_text(encoding="utf-8").splitlines():
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if entry.get("conversation") == conversation_id and (entry.get("served") or not only_served):
+            found.append(entry)
+    return found
+
+
 class FixtureBFF:
     """The fixture office behind a local HTTP server, on a free port, until :meth:`stop`."""
 
     def __init__(
-        self, token: str, log_path: Path, office: FixtureOffice | None = None, embed: Embed | None = None
+        self,
+        token: str,
+        log_path: Path,
+        office: FixtureOffice | None = None,
+        embed: Embed | None = None,
+        workspace: Any = None,
     ) -> None:
         self.embed = embed
+        #: ``fixture_workspace.FixtureWorkspace`` for ``--set workspace``: then this serves Piloti's MCP door
+        #: and a turn context with its WORKSPACE block, in place of the precedent office's routes.
+        self.workspace = workspace
         self.office = office or FixtureOffice(embed=embed)
         self._offices = {self.office.scenario: self.office}
         self._scenario_of: dict[str, str] = {}
+        #: The proposals filed so far, by id: the route is idempotent on (answer, card), as the BFF's is.
+        self._proposals: dict[str, dict[str, Any]] = {}
         self.token = token
         self.log_path = log_path
         self._lock = threading.Lock()
@@ -463,7 +545,71 @@ class FixtureBFF:
             scenario = self._scenario_of.get(conversation_id or "")
             return self._offices.get(scenario or "", self.office)
 
-    def _answer(self, path: str, body: dict[str, Any], office: FixtureOffice) -> tuple[int, dict[str, Any]] | None:
+    def proposal(self, body: dict[str, Any], conversation: str | None) -> tuple[int, dict[str, Any]]:
+        """``POST /api/internal/proposals``, op ``create``: store the proposal, answer ``{id, status}``.
+
+        The same card of the same answer returns the first proposal, and nothing is applied: the status
+        stays ``proposed``. A body the route would refuse (an op other than ``create``, an unknown kind, no
+        payload) is a 422, so a tool that builds a wrong one fails here as it would against the BFF.
+        """
+        payload = body.get("payload")
+        if body.get("op") != "create" or body.get("kind") not in PROPOSAL_KINDS or not isinstance(payload, dict):
+            return 422, {"error": "Invalid proposal request"}
+        key = f"{conversation}/{body.get('answerMessageId')}/{body.get('originCardIndex')}"
+        idempotent = body.get("answerMessageId") is not None and body.get("originCardIndex") is not None
+        with self._lock:
+            made = self._proposals.get(key) if idempotent else None
+            if made is None:
+                identity = key if idempotent else f"{key}/{len(self._proposals)}"
+                made = {
+                    "id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"fixture-proposal/{identity}")),
+                    "status": "proposed",
+                    "kind": body["kind"],
+                    "payload": payload,
+                    "originCardIndex": body.get("originCardIndex"),
+                }
+                self._proposals[key] = made
+        return 200, {"id": made["id"], "status": made["status"]}
+
+    def annotations(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]] | None:
+        """``POST /api/internal/document-annotations``: a ``list`` finds no marks, a ``propose`` is numbered back.
+
+        Only these two ops are served (the rest of the canvas, presence included, is dropped as before), and
+        nothing is stored on a document: the proposals are read from the request log (:func:`marks_proposed`).
+        """
+        if body.get("op") == "list":
+            return 200, {"annotations": []}
+        proposals = body.get("proposals")
+        if body.get("op") != "propose" or not isinstance(proposals, list) or not proposals:
+            return None
+        proposed = [
+            {
+                "id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"fixture-mark/{number}/{json.dumps(item, sort_keys=True)}")),
+                "number": number,
+                **item,
+            }
+            for number, item in enumerate(proposals, 1)
+            if isinstance(item, dict)
+        ]
+        return 200, {"proposed": proposed}
+
+    def _answer(
+        self, path: str, body: dict[str, Any], office: FixtureOffice, conversation: str | None = None
+    ) -> tuple[int, dict[str, Any]] | None:
+        if path == PROPOSALS_PATH:
+            return self.proposal(body, conversation)
+        if path == ANNOTATIONS_PATH:
+            return self.annotations(body)
+        if self.workspace is not None:
+            if path == "/api/mcp":
+                return 200, self.workspace.handle(body, conversation)
+            if path == "/api/internal/turn-context":
+                return 200, self.workspace.turn_context(conversation)
+            # `--set visual`: where `look` finds a file's storage key.
+            document_file = getattr(self.workspace, "document_file", None)
+            if path == "/api/internal/document-file" and document_file is not None:
+                return document_file(body)
+            return None
         if path == "/api/internal/turn-context":
             return 200, office.turn_context()
         if path == "/api/internal/cross-project/search":
@@ -489,11 +635,30 @@ class FixtureBFF:
                     body = json.loads(raw.decode("utf-8") or "{}")
                 except ValueError:
                     body = {}
-                path = self.path.split("?", 1)[0]
+                path, _, query = self.path.partition("?")
+                if query and not body:
+                    body = {key: values[0] for key, values in urllib.parse.parse_qs(query).items()}
+                # `--set visual`: the object store the run reads sheets from, path-style S3, no signature checked.
+                objects = getattr(bff.workspace, "object_bytes", None)
+                blob = objects(path) if objects is not None and self.command == "GET" else None
+                if blob is not None:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/pdf")
+                    self.send_header("Content-Length", str(len(blob)))
+                    self.end_headers()
+                    self.wfile.write(blob)
+                    return
                 conversation = _conversation_of(self.headers.get("X-Grid-Request-Context"))
                 trusted = self.headers.get("X-Grid-Internal-Token") == bff.token
-                answer = bff._answer(path, body, bff.office_for(conversation)) if trusted else None
-                bff._log({"path": path, "body": body, "served": answer is not None, "conversation": conversation})
+                answer = bff._answer(path, body, bff.office_for(conversation), conversation) if trusted else None
+                entry = {"path": path, "body": body, "served": answer is not None, "conversation": conversation}
+                if answer is not None and path == "/api/mcp":
+                    # What the door answered, so a check reads the proposals and refusals a turn met.
+                    entry["result"] = answer[1].get("result")
+                if answer is not None and path == PROPOSALS_PATH and answer[0] == 200:
+                    # What was filed, so a check reads the proposal and not only that one was asked for.
+                    entry["proposal"] = {**answer[1], "kind": body["kind"], "payload": body["payload"]}
+                bff._log(entry)
                 if answer is None:
                     # As unreachable as today's suite's BFF: no status line at all.
                     self.close_connection = True

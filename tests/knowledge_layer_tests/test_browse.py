@@ -16,30 +16,30 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.browse import _LIST_FILES_DESCRIPTION
+from knowledge_layer.browse import MAX_TOPIC_COUNTS
+from knowledge_layer.browse import MAX_TYPE_COUNTS
+from knowledge_layer.browse import ListFilesConfig
+from knowledge_layer.browse import file_row
+from knowledge_layer.browse import file_rows
+from knowledge_layer.browse import group_matches
+from knowledge_layer.browse import list_files
+from knowledge_layer.browse import no_match_message
+from knowledge_layer.browse import phrase_pattern
+from knowledge_layer.browse import pick_passages
+from knowledge_layer.browse import render_listing
+from knowledge_layer.browse import select_files
+from knowledge_layer.browse import split_alternatives
+from knowledge_layer.register import KnowledgeRetrievalConfig
+from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.browse import _LIST_FILES_DESCRIPTION
-from sources.knowledge_layer.src.browse import MAX_TOPIC_COUNTS
-from sources.knowledge_layer.src.browse import MAX_TYPE_COUNTS
-from sources.knowledge_layer.src.browse import ListFilesConfig
-from sources.knowledge_layer.src.browse import file_row
-from sources.knowledge_layer.src.browse import file_rows
-from sources.knowledge_layer.src.browse import group_matches
-from sources.knowledge_layer.src.browse import list_files
-from sources.knowledge_layer.src.browse import no_match_message
-from sources.knowledge_layer.src.browse import phrase_pattern
-from sources.knowledge_layer.src.browse import pick_passages
-from sources.knowledge_layer.src.browse import render_listing
-from sources.knowledge_layer.src.browse import select_files
-from sources.knowledge_layer.src.browse import split_alternatives
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
-from sources.knowledge_layer.src.register import knowledge_retrieval
+from agent.common.source_kinds import Shelf
+from agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.scoping import ScopedCollection
 
 
 def _doc(name: str, folder: str | None = None, *, shelf: str = "project", **extra) -> AvailableDocument:
@@ -59,7 +59,7 @@ PROJECT = [
     _doc("Schnitt_A-A.pdf", "Plaene/Schnitte", doc_class="plan", added_at="2026-08-02"),
     _doc("Brandschutzkonzept.pdf", "Brandschutz", display_title="Brandschutzkonzept Müllerstraße"),
     _doc("Protokoll_Baubesprechung_03.docx", None, added_at="2026-09-28"),
-    _doc("Leitfaden_Buero.pdf", None, shelf="archiv"),
+    _doc("Leitfaden_Buero.pdf", None, shelf="office_shelf"),
     _doc("oib-rl_2.pdf", None, shelf="base"),
 ]
 
@@ -98,7 +98,7 @@ class TestSelectFiles:
 
     def test_an_unknown_folder_is_refused_not_guessed(self):
         text = render_listing(select_files(_rows(), folder="Statik"))
-        assert "Kein Ordner „Statik“" in text
+        assert 'No folder "Statik"' in text
 
     def test_name_words_all_match_in_name_or_title_whatever_the_umlaut_spelling(self):
         listing = select_files(_rows(), name_contains="brandschutz muellerstrasse")
@@ -120,12 +120,12 @@ class TestSelectFiles:
 
     def test_the_listing_says_it_is_an_index_and_names_files_verbatim(self):
         text = render_listing(select_files(_rows(), folder="Brandschutz"))
-        assert "- Brandschutzkonzept.pdf · „Brandschutzkonzept Müllerstraße“" in text
-        assert "keine Quelle" in text
+        assert '- Brandschutzkonzept.pdf · "Brandschutzkonzept Müllerstraße"' in text
+        assert "An index, not a source" in text
 
     def test_files_still_being_read_are_named(self):
         text = render_listing(select_files(_rows()), in_flight=["Neu.pdf"])
-        assert "Noch in Verarbeitung" in text and "Neu.pdf" in text
+        assert "Still processing" in text and "Neu.pdf" in text
 
 
 def _builder() -> MagicMock:
@@ -139,16 +139,16 @@ def _builder() -> MagicMock:
 @pytest.fixture
 def scope(monkeypatch):
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [
             ScopedCollection("oib_knowledge", Shelf.BASE),
             ScopedCollection("proj_1", Shelf.PROJECT),
-            ScopedCollection("archiv_1", Shelf.ARCHIV),
+            ScopedCollection("archiv_1", Shelf.OFFICE_SHELF),
         ],
     )
-    monkeypatch.setattr("aiq_agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
+    monkeypatch.setattr("agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     set_turn_documents(PROJECT)
     yield
     set_turn_documents(None)
@@ -161,7 +161,7 @@ class TestListFilesTool:
 
     async def test_reads_the_turns_uncapped_rows(self, scope):
         text = await self._call(folder="Plaene/Grundrisse")
-        assert "2 Datei(en) auf Projektwissen und Büroablage und Private Sitzung" in text
+        assert "2 file(s) on Projektwissen and Büroablage and Private Sitzung" in text
         assert "Grundriss_OG1.pdf" in text
 
     async def test_falls_back_to_the_scope_when_no_rows_are_bound(self, scope, monkeypatch):
@@ -170,7 +170,7 @@ class TestListFilesTool:
         async def _documents(collection: str):
             return [AvailableDocument(file_name=f"{collection}.pdf")]
 
-        monkeypatch.setattr("aiq_agent.knowledge.get_available_documents_async", _documents)
+        monkeypatch.setattr("agent.knowledge.get_available_documents_async", _documents)
         text = await self._call()
         assert "proj_1.pdf" in text and "archiv_1.pdf" in text
         assert "oib_knowledge.pdf" not in text
@@ -248,10 +248,10 @@ def search_with(monkeypatch, scope):
     """Install a retriever into ``knowledge_search`` and neutralise its boot-time reach."""
 
     def install(retriever):
-        monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: retriever)
-        monkeypatch.setattr("sources.knowledge_layer.src.register._initialize_ingestor", lambda config, llm: None)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
+        monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         return retriever
 
     return install
@@ -277,22 +277,21 @@ class TestExactSearch:
         )
         text = await _exact(query="BA-03")
         assert "Citation: Schnitt_A-A.pdf, p.4" in text
-        assert "## Fundstellen für „BA-03“" in text
-        assert "- Schnitt_A-A.pdf (Projektwissen): 2×, S. 4" in text
-        assert "- Leitfaden_Buero.pdf (Büroablage): 1×, S. 9" in text
+        assert '## Matches for "BA-03"' in text
+        assert "- Schnitt_A-A.pdf (Projektwissen): 2×, p. 4" in text
+        assert "- Leitfaden_Buero.pdf (Büroablage): 1×, p. 9" in text
         # Same scope as the ranked search, but the reader's own files are listed first.
-        table = text[text.index("## Fundstellen") :]
+        table = text[text.index("## Matches") :]
         assert table.index("Schnitt_A-A.pdf") < table.index("oib-rl_2.pdf")
         assert {call["collection"] for call in store.calls} == {"proj_1", "archiv_1", "oib_knowledge"}
 
     async def test_a_folder_narrows_to_the_files_filed_under_it(self, search_with):
         store = search_with(_TextStore([]))
         text = await _exact(query="BA-03", folder="Plaene")
-        assert "Keine Fundstelle" in text
+        assert "No match for" in text
         assert [call["collection"] for call in store.calls] == ["proj_1"]
-        assert store.calls[0]["filters"] == {
-            "file_name": {"$in": ["Grundriss_EG.pdf", "Grundriss_OG1.pdf", "Schnitt_A-A.pdf"]}
-        }
+        # A folder is pushed into the query (ADR-0116), not turned into a file list.
+        assert store.calls[0]["filters"] == {"folder_ancestors": "plaene"}
 
     async def test_a_narrowing_that_names_no_file_says_so(self, search_with):
         search_with(_TextStore([]))
@@ -304,7 +303,7 @@ class TestExactSearch:
                 return None
 
         search_with(_Ranked())
-        assert "nicht verfügbar" in await _exact(query="BA-03")
+        assert "not available" in await _exact(query="BA-03")
 
     async def test_too_short_a_phrase_is_refused(self, search_with):
         search_with(_TextStore([]))
@@ -319,7 +318,7 @@ class TestExactSearch:
 
 
 def test_the_exact_mode_is_never_withheld_as_a_repeat_of_the_ranked_one():
-    from aiq_agent.common.turn_status import fetch_signature
+    from agent.common.tool_calls import fetch_signature
 
     ranked = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03"}})
     exact = fetch_signature({"name": "knowledge_search", "args": {"query": "BA-03", "match": "exact"}})
@@ -358,14 +357,14 @@ def turn_shelves(monkeypatch):
     """Restrict the turn to some shelves, as ``focus_file.set_turn_intent`` does for a focused turn."""
 
     def install(shelves):
-        monkeypatch.setattr("aiq_agent.common.focus_file.get_turn_shelves", lambda: frozenset(shelves))
+        monkeypatch.setattr("agent.common.focus_file.get_turn_shelves", lambda: frozenset(shelves))
 
     return install
 
 
 def _store_retriever():
     """The production retriever over the test's Qdrant (``qdrant_store``), with no embedder: exact mode needs none."""
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
     retriever = LlamaIndexRetriever.__new__(LlamaIndexRetriever)
     retriever._ensure_initialized = lambda: None
@@ -374,8 +373,8 @@ def _store_retriever():
 
 def _seed(name: str, rows: list[tuple[str, str, int, dict]]) -> None:
     """Write ``(file_name, text, page, metadata)`` rows into collection ``name``, as ingestion writes chunks."""
-    from sources.knowledge_layer.tests.qdrant_testing import record
-    from sources.knowledge_layer.tests.qdrant_testing import write
+    from knowledge_layer_testing.qdrant import record
+    from knowledge_layer_testing.qdrant import write
 
     write(name, [record(text, file_name, page_label=str(page), **meta) for file_name, text, page, meta in rows])
 
@@ -390,14 +389,14 @@ class TestExactSearchReadsTheBaseCorpusLikeTheRankedSearch:
         _seed(
             base,
             [
-                ("oib-rl_2_2023.pdf", "Brandabschnitt EI 90 gilt", 3, {"chunking": "punkt"}),
+                ("oib-rl_2_2023.pdf", "Brandabschnitt EI 90 gilt", 3, {"chunking": "clause"}),
                 ("oib-rl_2_2019.pdf", "Brandabschnitt EI 90 alt", 4, {}),
                 ("oib-rl_2_2023.pdf", "Deckblatt EI 90", 1, {"chunking": "page"}),
             ],
         )
         _seed(project, [("Notiz.docx", "Firma Müller, EI 90", 1, {})])
         monkeypatch.setattr(
-            "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+            "agent.knowledge.scoping.get_scoped_collections_from_context",
             lambda: [ScopedCollection(base, Shelf.BASE), ScopedCollection(project, Shelf.PROJECT)],
         )
         search_with(retriever)
@@ -420,7 +419,7 @@ class TestExactSearchReadsTheBaseCorpusLikeTheRankedSearch:
     async def test_unnarrowed_search_drops_excluded_editions_and_page_chunks(self, corpus):
         text = await self._run(corpus, query="EI 90")
         assert "oib-rl_2_2019.pdf" not in text
-        assert "- oib-rl_2_2023.pdf (Basiswissen): 1×, S. 3" in text
+        assert "- oib-rl_2_2023.pdf (Basiswissen): 1×, p. 3" in text
         assert "Deckblatt" not in text
         assert "Notiz.docx" in text  # user collections are never filtered
 
@@ -428,7 +427,7 @@ class TestExactSearchReadsTheBaseCorpusLikeTheRankedSearch:
         text = await self._run(corpus, query="EI 90", file_name="oib-rl_2")
         assert "oib-rl_2_2019.pdf" not in text
         assert "Deckblatt" not in text
-        assert "- oib-rl_2_2023.pdf (Basiswissen): 1×, S. 3" in text
+        assert "- oib-rl_2_2023.pdf (Basiswissen): 1×, p. 3" in text
 
     async def test_the_callers_filters_reach_the_base_collection_only(self, search_with):
         store = search_with(_TextStore([]))
@@ -467,21 +466,21 @@ class TestAStoreOutageIsNeverANo:
     async def test_every_collection_failing_says_the_search_did_not_run(self, search_with):
         search_with(_FailingStore([], {"proj_1", "archiv_1", "oib_knowledge"}))
         text = await _exact(query="BA-03")
-        assert "konnte nicht laufen" in text
-        assert "Keine Fundstelle" not in text and "belastbares Nein" not in text
+        assert "could not run" in text
+        assert "No match for" not in text and "solid no" not in text
 
     async def test_a_partial_failure_counts_only_what_answered_and_says_it_is_incomplete(self, search_with):
         search_with(_FailingStore([], {"archiv_1"}))
         text = await _exact(query="BA-03")
-        assert "in 2 Sammlung(en)" in text
-        assert "UNVOLLSTÄNDIG" in text and "archiv_1" in text
+        assert "in 2 collection(s)" in text
+        assert "INCOMPLETE" in text and "archiv_1" in text
         assert "belastbares Nein" not in text
 
     async def test_a_partial_failure_beside_matches_flags_the_table(self, search_with):
         search_with(_FailingStore([_chunk("Grundriss_EG.pdf", "BA-03", page=1, chunk_id="1")], {"archiv_1"}))
         text = await _exact(query="BA-03")
         assert "- Grundriss_EG.pdf (Projektwissen): 1×" in text
-        assert "UNVOLLSTÄNDIG" in text
+        assert "INCOMPLETE" in text
 
 
 class TestNarrowingLikeTheMeaningMode:
@@ -498,7 +497,7 @@ class TestNarrowingLikeTheMeaningMode:
         assert store.calls[0]["filters"] == {"file_name": {"$in": ["Brandschutzkonzept.pdf"]}}
 
     async def test_a_narrowing_onto_a_shelf_the_turn_dropped_says_so(self, search_with, turn_shelves):
-        turn_shelves({"archiv", "session", "base"})
+        turn_shelves({"office_shelf", "session", "base"})
         search_with(_TextStore([]))
         text = await _exact(query="BA-03", file_name="Grundriss_EG.pdf")
         assert "No file in scope matches that narrowing" in text
@@ -510,11 +509,11 @@ class TestListFilesHonoursTheTurn:
             return await info.single_fn(info.input_schema(**kwargs))
 
     async def test_a_turn_restricted_to_the_office_lists_the_office(self, scope, turn_shelves):
-        turn_shelves({"archiv", "session", "base"})
+        turn_shelves({"office_shelf", "session", "base"})
         text = await self._call()
         assert "Leitfaden_Buero.pdf" in text
         assert "Grundriss_EG.pdf" not in text
-        assert "1 Datei(en) auf Büroablage und Private Sitzung" in text
+        assert "1 file(s) on Büroablage and Private Sitzung" in text
 
     async def test_a_restriction_that_would_leave_nothing_keeps_everything(self, scope, turn_shelves):
         set_turn_documents([_doc("Grundriss_EG.pdf", "Plaene")])
@@ -619,9 +618,9 @@ def test_overlapping_alternatives_are_counted_once_in_python_too():
 
 def test_the_no_says_what_it_tolerated_and_that_a_short_term_is_a_whole_word():
     text = no_match_message(["EG", "Brandschutzplan"], 3)
-    assert "Zeilenumbruch" in text and "ß/ss" in text
-    assert "„EG“ nur als ganzes Wort" in text
-    assert "Brandschutzplan“ nur als ganzes Wort" not in text
+    assert "line break" in text and "ß/ss" in text
+    assert '"EG" was searched as a whole word only' in text
+    assert '"Brandschutzplan" was searched as a whole word only' not in text
 
 
 async def test_a_query_too_long_for_one_pattern_is_refused(search_with):
@@ -637,20 +636,20 @@ class TestAShelfTheTurnRemoved:
             return await info.single_fn(info.input_schema(**kwargs))
 
     async def test_an_explicit_shelf_outside_the_selection_says_so_instead_of_no_files(self, scope, turn_shelves):
-        turn_shelves({"archiv", "session", "base"})
+        turn_shelves({"office_shelf", "session", "base"})
         text = await self._call(shelf="project")
         assert "Keine Datei" not in text
-        assert "auf Büroablage, Private Sitzung und Basiswissen beschränkt" in text
-        assert "Projektwissen hier nicht gelistet" in text
+        assert "to Büroablage, Private Sitzung and Basiswissen" in text
+        assert "so Projektwissen is not listed here" in text
         assert "Grundriss_EG.pdf" not in text
 
     async def test_an_explicit_shelf_inside_the_selection_still_lists(self, scope, turn_shelves):
-        turn_shelves({"archiv", "session", "base"})
-        assert "Leitfaden_Buero.pdf" in await self._call(shelf="archiv")
+        turn_shelves({"office_shelf", "session", "base"})
+        assert "Leitfaden_Buero.pdf" in await self._call(shelf="office_shelf")
 
 
 # ---------------------------------------------------------------------------
-# The Dokumentarten line: what a selection holds, counted over all of it.
+# The Dokumentart line: what a selection holds, counted over all of it.
 # ---------------------------------------------------------------------------
 
 
@@ -659,7 +658,7 @@ def _typed(*tag_sets: tuple[str, ...], folder: str = "Plaene"):
 
 
 def _profile_line(text: str) -> str:
-    return next(line for line in text.splitlines() if line.startswith("Dokumentarten"))
+    return next(line for line in text.splitlines() if line.startswith("Dokumentart ("))
 
 
 class TestTheDokumentartProfile:
@@ -670,13 +669,13 @@ class TestTheDokumentartProfile:
         last = select_files(rows, offset=6, limit=2)
 
         assert first.types == last.types == [("Grundriss", 5), ("Schnitt", 2)]
-        expected = "Dokumentarten (von Piloti zugeordnet): Grundriss 5 · Schnitt 2."
+        expected = "Dokumentart (assigned by Piloti): Grundriss 5 · Schnitt 2."
         assert _profile_line(render_listing(first)) == _profile_line(render_listing(last)) == expected
 
     def test_it_sits_directly_under_the_count_line(self):
         lines = render_listing(select_files(_typed(("Grundriss",)))).splitlines()
-        count = next(index for index, line in enumerate(lines) if " Datei(en) auf " in line)
-        assert lines[count + 1].startswith("Dokumentarten")
+        count = next(index for index, line in enumerate(lines) if " file(s) on " in line)
+        assert lines[count + 1].startswith("Dokumentart (")
 
     def test_the_most_frequent_type_comes_first_and_ties_follow_the_vocabulary(self):
         rows = _typed(
@@ -684,7 +683,7 @@ class TestTheDokumentartProfile:
         )
         assert select_files(rows).types == [("Grundriss", 2), ("Schnitt", 2), ("Ansicht", 2), ("Bescheid", 1)]
 
-    def test_sonstiges_is_named_last_whatever_its_count(self):
+    def test_other_is_named_last_whatever_its_count(self):
         rows = _typed(("Sonstiges",), ("Sonstiges",), ("Sonstiges",), ("Grundriss",))
         assert select_files(rows).types == [("Grundriss", 1), ("Sonstiges", 3)]
 
@@ -700,11 +699,11 @@ class TestTheDokumentartProfile:
 
     def test_the_untyped_count_is_named_on_the_profile_line(self):
         text = render_listing(select_files(_typed(("Grundriss",), ("Brandschutz",))))
-        assert _profile_line(text) == "Dokumentarten (von Piloti zugeordnet): Grundriss 1; ohne Dokumentart: 1."
+        assert _profile_line(text) == "Dokumentart (assigned by Piloti): Grundriss 1; without Dokumentart: 1."
 
     def test_no_untyped_clause_when_every_row_has_a_type(self):
         text = render_listing(select_files(_typed(("Grundriss",), ("Grundriss",))))
-        assert _profile_line(text) == "Dokumentarten (von Piloti zugeordnet): Grundriss 2."
+        assert _profile_line(text) == "Dokumentart (assigned by Piloti): Grundriss 2."
 
     def test_at_most_the_cap_is_named_and_the_listing_keeps_them_all(self):
         types = [tag for tag in DOCUMENT_TYPE_TAGS if tag != "Sonstiges"][:10]
@@ -718,14 +717,14 @@ class TestTheDokumentartProfile:
 
     def test_a_selection_with_no_document_type_says_so_rather_than_saying_nothing(self):
         rendered = render_listing(select_files(_typed((), ("Brandschutz",))))
-        assert "keiner dieser Dateien hat Piloti eine Dokumentart zugeordnet" in rendered
-        assert "Dokumentarten (von Piloti zugeordnet)" not in rendered
+        assert "Piloti has assigned none of these files a Dokumentart" in rendered
+        assert "Dokumentart (assigned by Piloti)" not in rendered
 
     def test_no_profile_line_for_an_empty_selection(self):
-        assert "Dokumentarten" not in render_listing(select_files([]))
+        assert "Dokumentart" not in render_listing(select_files([]))
 
     def test_the_closing_note_says_unreadable_files_are_not_listed_and_names_their_key(self):
-        closing = render_listing(select_files(_rows())).rsplit("Das ist ein Verzeichnis", 1)[1]
+        closing = render_listing(select_files(_rows())).rsplit("An index, not a source", 1)[1]
         assert "documents_unreadable:" in closing
 
 
@@ -763,14 +762,14 @@ class TestTopicsAndCaptureInTheListing:
         )
         line = next(line for line in render_listing(select_files(rows)).splitlines() if line.startswith("- Foto.jpg"))
         assert (
-            "Tags: Foto · Themen: Attika, Fluchtweg · aufgenommen 2026-10-09 (Kamera: Canon EOS R5) "
-            "· hochgeladen 2026-10-10" in line
+            "Tags: Foto · Topics: Attika, Fluchtweg · taken 2026-10-09 (camera: Canon EOS R5) "
+            "· uploaded 2026-10-10" in line
         )
 
     def test_a_camera_without_a_date_is_still_named(self):
         rows = file_rows([_doc("Foto.jpg", "Fotos", capture={"camera": "DJI Mavic 3"})])
-        assert "Kamera: DJI Mavic 3" in render_listing(select_files(rows))
-        assert "aufgenommen" not in render_listing(select_files(rows))
+        assert "camera: DJI Mavic 3" in render_listing(select_files(rows))
+        assert "taken" not in render_listing(select_files(rows))
 
     def test_coordinates_never_appear_in_the_listing_for_a_model_object(self):
         rows = file_rows(
@@ -788,7 +787,7 @@ class TestTopicsAndCaptureInTheListing:
             ]
         )
         text = render_listing(select_files(rows))
-        assert "aufgenommen 2026-10-09" in text
+        assert "taken 2026-10-09" in text
         assert str(LATITUDE) not in text
         assert str(LONGITUDE) not in text
 
@@ -800,7 +799,7 @@ class TestTopicsAndCaptureInTheListing:
             "capture": {"captured_at": "2026-10-09T14:30:00", "latitude": LATITUDE, "longitude": LONGITUDE},
         }
         text = render_listing(select_files(file_rows([row])))
-        assert "aufgenommen 2026-10-09" in text
+        assert "taken 2026-10-09" in text
         assert str(LATITUDE) not in text and str(LONGITUDE) not in text
         assert not hasattr(file_row(row), "latitude")
 
@@ -819,24 +818,24 @@ class TestTopicsAndCaptureInTheListing:
         rows = _topical(("Attika", "Fluchtweg"), ("attika",), ("Holz",))
         listing = select_files(rows)
         assert listing.topics == [("Attika", 2), ("Fluchtweg", 1), ("Holz", 1)]
-        assert "Themen (von Piloti erkannt): Attika 2 · Fluchtweg 1 · Holz 1." in render_listing(listing).splitlines()
+        assert "Topics (recognised by Piloti): Attika 2 · Fluchtweg 1 · Holz 1." in render_listing(listing).splitlines()
 
     def test_the_profile_names_at_most_eight_topics_and_counts_the_whole_selection(self):
         rows = _topical(*[(f"Thema{index:02}",) for index in range(10)])
         listing = select_files(rows, limit=1)
-        line = _profile(render_listing(listing), "Themen (von Piloti erkannt)")
+        line = _profile(render_listing(listing), "Topics (recognised by Piloti)")
         assert len(listing.topics) == 10
         assert line.count(" · ") == MAX_TOPIC_COUNTS - 1
         assert "Thema08" not in line
 
     def test_no_profile_line_without_topics(self):
-        assert "Themen (von Piloti erkannt)" not in render_listing(select_files(_rows()))
+        assert "Topics (recognised by Piloti)" not in render_listing(select_files(_rows()))
 
     def test_the_profile_sits_directly_under_the_dokumentarten_line(self):
         rows = file_rows([_doc("Plan.pdf", "Plaene", tags=["Grundriss"], topics=["Attika"])])
         lines = render_listing(select_files(rows)).splitlines()
-        dokumentarten = next(index for index, line in enumerate(lines) if line.startswith("Dokumentarten"))
-        assert lines[dokumentarten + 1] == "Themen (von Piloti erkannt): Attika 1."
+        dokumentarten = next(index for index, line in enumerate(lines) if line.startswith("Dokumentart ("))
+        assert lines[dokumentarten + 1] == "Topics (recognised by Piloti): Attika 1."
 
 
 class TestTopicsThroughTheTool:
@@ -869,35 +868,81 @@ def _revisions():
             _doc("EG_Grundriss_Index_B_2026-07-02.pdf", "Zeichnungen", added_at="2026-07-02"),
             _doc("Baubeschreibung.pdf", "Zeichnungen", added_at="2026-07-03"),
             # The same name on another shelf is another document, never a Fassung of this one.
-            _doc("EG_Grundriss_Index_C_2026-08-14.pdf", shelf="archiv", added_at="2026-08-14"),
+            _doc("EG_Grundriss_Index_C_2026-08-14.pdf", shelf="office_shelf", added_at="2026-08-14"),
         ]
     )
 
 
-def test_an_older_fassung_is_marked_and_names_the_current_one():
+def test_an_older_revision_is_marked_and_names_the_current_one():
     text = render_listing(select_files(_revisions(), shelf="project"))
     older = next(line for line in text.splitlines() if line.startswith("- EG_Grundriss_Index_A"))
     current = next(line for line in text.splitlines() if line.startswith("- EG_Grundriss_Index_B"))
-    assert "ältere Fassung (Index A · 01.06.2026)" in older
-    assert "aktuell dem Namen nach: EG_Grundriss_Index_B_2026-07-02.pdf" in older
-    assert "aktuelle Fassung (Index B · 02.07.2026; 1 ältere" in current
+    assert "older Fassung (Index A · 01.06.2026)" in older
+    assert "current by file name: EG_Grundriss_Index_B_2026-07-02.pdf" in older
+    assert "current Fassung (Index B · 02.07.2026; 1 older" in current
     assert "Fassung" not in next(line for line in text.splitlines() if line.startswith("- Baubeschreibung"))
-    assert "Fassungen: 1 Dokument(e)" in text
+    assert "Fassungen: 1 document(s)" in text
 
 
-def test_a_folder_filter_keeps_the_mark_of_a_current_fassung_kept_elsewhere():
+def test_a_folder_filter_keeps_the_mark_of_a_current_revision_kept_elsewhere():
     """The older Fassung sits in ``alt/``; listing only it still names the current one."""
     text = render_listing(select_files(_revisions(), shelf="project", folder="alt"))
-    assert "aktuell dem Namen nach: EG_Grundriss_Index_B_2026-07-02.pdf" in text
-    assert "Fassungen: 1 Dokument(e)" in text
+    assert "current by file name: EG_Grundriss_Index_B_2026-07-02.pdf" in text
+    assert "Fassungen: 1 document(s)" in text
 
 
-def test_fassungen_never_span_two_shelves():
-    text = render_listing(select_files(_revisions(), shelf="archiv"))
+def test_revisions_never_span_two_shelves():
+    text = render_listing(select_files(_revisions(), shelf="office_shelf"))
     assert "Fassung" not in text
 
 
-def test_no_file_is_called_a_plan_in_the_fassung_marks():
+def test_no_file_is_called_a_plan_in_the_revision_marks():
     """CONTEXT.md, „Fassung“: a name with an index says a file has Fassungen, not what it is."""
     text = render_listing(select_files(_revisions(), shelf="project"))
     assert not any(word in text for word in ("Plan ", "Planstand", "Pläne"))
+
+
+class TestTheIngestsReadingInAListing:
+    def _row(self, **extra):
+        return file_row(
+            {
+                "file_name": "Baubeschreibung.pdf",
+                "collection": "proj_1",
+                "shelf": "project",
+                "summary": "Text.",
+                **extra,
+            }
+        )
+
+    def test_the_type_facts_references_and_unread_pages_are_on_the_row(self):
+        row = self._row(
+            dossier={
+                "document_type": "building_description",
+                "facts": [
+                    {"key": "building_class", "value": "4", "unit": None, "page": 3},
+                    {"key": "room_height", "value": "2,60", "unit": "m", "page": None},
+                ],
+            },
+            doc_references=[{"kind": "norm", "key": "önorm b 1600", "label": "ÖNORM B 1600", "pages": [2]}],
+            coverage={"pages": 12, "not_read": 1},
+        )
+        line = render_listing(select_files([row]))
+
+        assert "Type: building description" in line
+        assert "States: building_class 4 (p. 3); room_height 2,60 m" in line
+        assert "Refers to: ÖNORM B 1600" in line
+        assert "1 page(s) not fully read" in line
+
+    def test_a_row_without_a_reading_is_unchanged(self):
+        line = render_listing(select_files([self._row()]))
+        assert "Type:" not in line and "States:" not in line and "Refers to:" not in line
+
+    def test_the_facts_and_references_are_bounded(self):
+        from knowledge_layer.browse import MAX_ROW_FACTS
+        from knowledge_layer.browse import MAX_ROW_REFERENCES
+
+        row = self._row(
+            dossier={"facts": [{"key": "units", "value": str(n)} for n in range(20)]},
+            doc_references=[{"label": f"DIN {n}"} for n in range(20)],
+        )
+        assert len(row.facts) == MAX_ROW_FACTS and len(row.references) == MAX_ROW_REFERENCES

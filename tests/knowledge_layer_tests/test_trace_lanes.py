@@ -5,16 +5,16 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from knowledge_layer.search_results import format_results
+from knowledge_layer.trace_lanes import _trace_lanes_for_chunks
 
-from aiq_agent.common.wire_v2 import TraceLane
-from aiq_agent.common.wire_v2 import TraceLaneSource
-from sources.knowledge_layer.src.register import _format_results
-from sources.knowledge_layer.src.register import _trace_lanes_for_chunks
+from agent.common.wire_v2 import TraceLane
+from agent.common.wire_v2 import TraceLaneSource
 
 
 @pytest.fixture(autouse=True)
 def _reset_retrieval_round():
-    from aiq_agent.common.turn_status import _retrieval_round
+    from agent.common.turn_status import _retrieval_round
 
     _retrieval_round.set(None)
     yield
@@ -63,9 +63,9 @@ def test_trace_lanes_lane_is_decided_by_the_stated_shelf_not_a_collection_guess(
     the hit already carries settles it.
     """
     (lane,) = _trace_lanes_for_chunks(
-        [_chunk(file_name="Plan.pdf", page=2, collection="c_9f2a", shelf="project", doc_class="sonstiges")]
+        [_chunk(file_name="Plan.pdf", page=2, collection="c_9f2a", shelf="project", doc_class="other")]
     )
-    assert lane.key == "projekt"
+    assert lane.key == "project"
 
 
 def test_trace_lanes_group_by_lane():
@@ -75,13 +75,13 @@ def test_trace_lanes_group_by_lane():
         _chunk(file_name="Vorlage.pdf", collection="archiv_org1"),
     ]
     lanes = _trace_lanes_for_chunks(chunks)
-    assert [lane.key for lane in lanes] == ["baurecht_oib", "projekt", "buero"]
+    assert [lane.key for lane in lanes] == ["building_law_oib", "project", "office"]
     # `name` is document identity (dedup / preview resolution); `title` is the
     # user-facing display name the Herleitung fan-out renders.
     assert lanes[0] == TraceLane(
-        key="baurecht_oib",
+        key="building_law_oib",
         label="OIB-Richtlinie",
-        kind="baurecht",
+        kind="building_law",
         hit_count=1,
         sources=[TraceLaneSource(name="OIB-RL_2_Brandschutz.pdf", title="OIB-Richtlinie 2", detail="p.12")],
     )
@@ -106,7 +106,7 @@ def test_trace_lanes_omit_title_when_it_would_repeat_the_filename():
 
 def test_trace_lanes_sources_carry_the_retrieval_round():
     """The Herleitung assigns files by this stamp."""
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.turn_status import retrieval_round_scope
 
     with retrieval_round_scope(1):
         (lane,) = _trace_lanes_for_chunks(
@@ -117,10 +117,10 @@ def test_trace_lanes_sources_carry_the_retrieval_round():
 
 def test_emitted_hits_are_captured_for_the_per_round_ledger():
     """The ledger reads the capture, never the prose: same emission, both ships."""
-    from aiq_agent.common.turn_status import begin_lane_capture
-    from aiq_agent.common.turn_status import end_lane_capture
-    from aiq_agent.common.turn_status import get_lane_captures
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.turn_status import begin_lane_capture
+    from agent.common.turn_status import end_lane_capture
+    from agent.common.turn_status import get_lane_captures
+    from agent.common.turn_status import retrieval_round_scope
 
     token = begin_lane_capture()
     try:
@@ -139,13 +139,13 @@ def test_emitted_hits_are_captured_for_the_per_round_ledger():
 
 def test_a_search_result_is_one_sources_step_built_from_its_records(emitted):
     """Through the real producer: the step carries the lanes the records made, and the tool that ran."""
-    from aiq_agent.common.turn_status import READ_PASSAGE_TOOL
-    from aiq_agent.common.turn_status import lane_tool_scope
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.tool_calls import READ_PASSAGE_TOOL
+    from agent.common.turn_status import lane_tool_scope
+    from agent.common.turn_status import retrieval_round_scope
 
     chunks = [_chunk(file_name="OIB-RL_4.pdf", page=3, collection="oib_knowledge")]
     with retrieval_round_scope(2), lane_tool_scope(READ_PASSAGE_TOOL):
-        _format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
+        format_results(SimpleNamespace(success=True, chunks=chunks, error_message=None), "q")
         lanes = list(_trace_lanes_for_chunks(chunks))
     (step,) = emitted.steps
     assert (step.kind, step.round, step.tool, step.lanes) == ("sources", 2, "read_passage", lanes)
@@ -157,24 +157,24 @@ def test_format_results_appends_trace_lanes_block():
         chunks=[_chunk(file_name="OIB-RL_4.pdf", page=3, collection="oib_knowledge")],
         error_message=None,
     )
-    text = _format_results(result, "test query")
+    text = format_results(result, "test query")
     assert "## Trace-Lanes" in text
-    assert "baurecht_oib" in text
+    assert "building_law_oib" in text
     assert "OIB-RL_4.pdf" in text
 
 
 def test_format_results_empty_chunks_skips_trace_block():
     result = SimpleNamespace(success=True, chunks=[], error_message=None)
-    text = _format_results(result, "q")
+    text = format_results(result, "q")
     assert "Trace-Lanes" not in text
 
 
 # ---------------------------------------------------------------------------
-# A document PILOTI wrote, that a person released (docs/architecture/
+# A document AGENT wrote, that a person released (docs/architecture/
 # agent-document-provenance.md)
 # ---------------------------------------------------------------------------
 
-_PILOTI = {
+_AGENT_FILED = {
     "authored_by": "agent",
     "approved_by": "Maria Huber",
     "approved_at": "2026-09-01",
@@ -182,7 +182,7 @@ _PILOTI = {
 }
 
 
-def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
+def test_a_published_agent_document_gets_its_own_lane_inside_the_office_kind():
     (lane,) = _trace_lanes_for_chunks(
         [
             _chunk(
@@ -190,19 +190,21 @@ def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
                 page=1,
                 collection="proj_abc",
                 shelf="project",
-                provenance=_PILOTI,
+                provenance=_AGENT_FILED,
             )
         ]
     )
     # The shelf says project. Without the provenance rule this lane would be
-    # "projekt"/"Projektwissen" and nothing would say who wrote the document.
-    assert (lane.key, lane.label, lane.kind) == ("buero_piloti", "Piloti-Dokument", "buero")
+    # "project"/"Projektwissen" and nothing would say who wrote the document.
+    assert (lane.key, lane.label, lane.kind) == ("office_piloti", "Piloti-Dokument", "office")
 
 
 def test_the_fan_out_carries_the_provenance_as_data_not_as_a_sentence():
     """So a frontend can render the approver in the reader's own locale."""
-    (lane,) = _trace_lanes_for_chunks([_chunk(file_name="Konzept.md", page=1, shelf="project", provenance=_PILOTI)])
-    assert (lane.sources[0].provenance, lane.sources[0].shelf) == (_PILOTI, "project")
+    (lane,) = _trace_lanes_for_chunks(
+        [_chunk(file_name="Konzept.md", page=1, shelf="project", provenance=_AGENT_FILED)]
+    )
+    assert (lane.sources[0].provenance, lane.sources[0].shelf) == (_AGENT_FILED, "project")
 
 
 def test_an_unmarked_hit_carries_no_provenance_at_all():
@@ -213,10 +215,10 @@ def test_an_unmarked_hit_carries_no_provenance_at_all():
 def test_the_grounding_block_states_who_released_the_document_in_one_line():
     result = SimpleNamespace(
         success=True,
-        chunks=[_chunk(file_name="Brandschutzkonzept.md", page=1, shelf="project", provenance=_PILOTI)],
+        chunks=[_chunk(file_name="Brandschutzkonzept.md", page=1, shelf="project", provenance=_AGENT_FILED)],
         error_message=None,
     )
-    text = _format_results(result, "brandschutz")
+    text = format_results(result, "brandschutz")
     assert "Herkunft: Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026" in text
     # One line, and no sentence for the model to copy into an answer.
     assert "freigegeben" not in text.replace(
@@ -227,5 +229,5 @@ def test_the_grounding_block_states_who_released_the_document_in_one_line():
 def test_an_unmarked_hit_is_formatted_exactly_as_before():
     """Every human document in the corpus is this case, and it must not move."""
     chunk = _chunk(file_name="Konzept.pdf", page=1, shelf="project")
-    text = _format_results(SimpleNamespace(success=True, chunks=[chunk], error_message=None), "q")
+    text = format_results(SimpleNamespace(success=True, chunks=[chunk], error_message=None), "q")
     assert "Herkunft" not in text

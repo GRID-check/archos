@@ -2,7 +2,8 @@ import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "./scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
-import { GridConfig, pullPolicyFor } from "../config";
+import { DeployConfig } from '../config'
+import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "./namespaces";
 import {
   ROLLOUT,
@@ -16,6 +17,7 @@ import {
 import { GATEWAY_NAME } from "./gateway";
 import { OBSERVABILITY_VIEW_PERMISSION, OIDC_CLIENT_SECRET_KEY, platformOidcSecurityPolicySpec } from "./platform-oidc";
 import { EDGE_TIMEOUT, LANGFUSE, PORT } from "../constants";
+import { logicalName, objectName } from "../names";
 
 /** Secret name. A constant rather than `secret.metadata.name` because the
  *  SecurityPolicy spec is a plain (typed) object, not a Pulumi resource input. */
@@ -25,8 +27,9 @@ const SECRETS_NAME = "langfuse-secrets"; // pragma: allowlist secret (Kubernetes
 export const LANGFUSE_SECRETS_NAME = SECRETS_NAME;
 
 /**
- * The uid/gid both Langfuse images run as. Re-checked on the 4.63.0 bump from
- * the images' own config, where `User` is `"1001"` on both, and it matches
+ * The uid/gid both Langfuse images run as. Re-checked on the 4.71.0 bump from
+ * the images' own config, where `User` is `"1001"` on both (as on 4.68.0 and 4.63.0,
+ * with identical entrypoints, commands and PATH), and it matches
  * 4.56.0's Dockerfiles (`ARG UID=1001` / `ARG GID=1001`, the `nextjs` and
  * `expressjs` users baked into the UBI 9 micro rootfs, `/app` chowned to them,
  * and a numeric `USER ${UID}`).
@@ -72,7 +75,7 @@ export function langfuseV4MigrationEnv(historicBackfill: boolean): k8s.types.inp
  * org alone.
  */
 export function langfuseDefaultMembershipEnv(
-  lf: Pick<GridConfig["langfuse"], "orgId" | "projectId" | "defaultRole">,
+  lf: Pick<DeployConfig["langfuse"], "orgId" | "projectId" | "defaultRole">,
 ): k8s.types.input.core.v1.EnvVar[] {
   const org: k8s.types.input.core.v1.EnvVar[] = [
     { name: "LANGFUSE_DEFAULT_ORG_ID", value: lf.orgId },
@@ -146,7 +149,7 @@ export function langfuseInClusterUrl(): string {
 /**
  * What the BFF needs to write answer feedback into Langfuse as scores and to
  * link a rated turn to its trace (ADR-0044, Amendment 3;
- * `frontends/ui/src/lib/langfuse/config.ts` reads exactly these names).
+ * `apps/workspace/bff/langfuse/config.ts` reads exactly these names).
  *
  * Empty unless the tier is deployed, so a stack without Langfuse renders the
  * frontend exactly as before and the BFF's scoring stays a no-op.
@@ -160,7 +163,7 @@ export function langfuseInClusterUrl(): string {
  *   non-optional reference: a pod started before the Secret exists waits for it
  *   rather than starting with scoring silently off until its next restart.
  */
-export function frontendLangfuseEnv(cfg: GridConfig): k8s.types.input.core.v1.EnvVar[] {
+export function frontendLangfuseEnv(cfg: DeployConfig): k8s.types.input.core.v1.EnvVar[] {
   if (!cfg.langfuse.enabled) return [];
   const fromSecret = (name: string, key: string): k8s.types.input.core.v1.EnvVar => ({
     name,
@@ -187,7 +190,7 @@ export function frontendLangfuseEnv(cfg: GridConfig): k8s.types.input.core.v1.En
  * Unchanged without the tier, so a stack without Langfuse restarts nothing.
  */
 export function withLangfuseKeysChecksum(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   appChecksum: pulumi.Input<string>,
 ): pulumi.Input<string> {
   if (!cfg.langfuse.enabled) return appChecksum;
@@ -204,7 +207,7 @@ export function withLangfuseKeysChecksum(
  * hash that is supposed to force the collector to re-read it — a drift whose
  * only symptom is telemetry quietly stopping.
  */
-export function langfuseOtlpBasicAuth(cfg: GridConfig): pulumi.Output<string> {
+export function langfuseOtlpBasicAuth(cfg: DeployConfig): pulumi.Output<string> {
   return pulumi
     .all([cfg.langfuse.publicKey, cfg.langfuse.secretKey])
     .apply(([pk, sk]) => `Basic ${Buffer.from(`${pk}:${sk}`).toString("base64")}`);
@@ -283,7 +286,7 @@ export interface LangfuseInputs {
  * continues to work. `docs/deployment/kubernetes.md` §9b lists both.
  */
 export function installLangfuse(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   inputs: LangfuseInputs,
@@ -697,7 +700,7 @@ export function installLangfuse(
     ],
   };
   const route = new k8s.apiextensions.CustomResource(
-    "grid-langfuse-route",
+    logicalName("grid-langfuse-route"),
     {
       apiVersion: "gateway.networking.k8s.io/v1",
       kind: "HTTPRoute",
@@ -708,11 +711,11 @@ export function installLangfuse(
   );
 
   const securityPolicy = new k8s.apiextensions.CustomResource(
-    "grid-langfuse-security-policy",
+    logicalName("grid-langfuse-security-policy"),
     {
       apiVersion: "gateway.envoyproxy.io/v1alpha1",
       kind: "SecurityPolicy",
-      metadata: { name: "grid-langfuse-auth", namespace, labels: webLabels },
+      metadata: { name: objectName("langfuseAuth"), namespace, labels: webLabels },
       spec: platformOidcSecurityPolicySpec(cfg, {
         routeName: LANGFUSE.routeName,
         domain: lf.domain,

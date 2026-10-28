@@ -1,0 +1,6 @@
+---
+features:
+  - >
+    Asked which documents deal with a topic, Piloti can now list each document
+    once, with its best passage and how many matching passages it found there.
+    One long file no longer crowds every other document out of the answer.

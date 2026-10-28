@@ -1,0 +1,275 @@
+"""Tests for the tavily_web_search agent-runtime registration."""
+
+import re
+import sys
+import types
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
+from urllib.parse import urlparse
+
+import pytest
+from pydantic import SecretStr
+from tavily_web_search.register import TavilyWebSearchToolConfig
+from tavily_web_search.register import tavily_web_search
+
+
+@pytest.fixture
+def fake_langchain_tavily(monkeypatch):
+    """Install a fake `langchain_tavily` module so tests never hit the network.
+
+    Returns the `TavilySearch` MagicMock so tests can assert construction kwargs.
+    """
+
+    module = types.ModuleType("langchain_tavily")
+    instance = MagicMock()
+    instance.ainvoke = AsyncMock(
+        return_value={"results": [{"url": "https://a.example", "title": "A", "content": "body a"}]}
+    )
+
+    module.TavilySearch = MagicMock(return_value=instance)
+    monkeypatch.setitem(sys.modules, "langchain_tavily", module)
+    return module.TavilySearch
+
+
+@pytest.fixture(autouse=True)
+def _reset_warn_flag():
+    import tavily_web_search.register as reg
+
+    reg._missing_key_warned = False
+    yield
+    reg._missing_key_warned = False
+
+
+@pytest.fixture(autouse=True)
+def _set_api_key(monkeypatch):
+    # Ensure the live path (not the stub) is exercised in these tests.
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+
+
+async def _run_search(config, query="question"):
+    builder = MagicMock()
+    async with tavily_web_search(config, builder) as info:
+        return await info.single_fn(query)
+
+
+def _construction_kwargs(tavily_search_mock):
+    tavily_search_mock.assert_called_once()
+    _, kwargs = tavily_search_mock.call_args
+    return kwargs
+
+
+class TestTavilyWebSearchToolConfig:
+    def test_domain_defaults_are_empty_lists(self):
+        config = TavilyWebSearchToolConfig()
+        assert config.include_domains == []
+        assert config.exclude_domains == []
+
+    def test_domain_fields_accept_lists(self):
+        config = TavilyWebSearchToolConfig(
+            include_domains=["ris.bka.gv.at"],
+            exclude_domains=["example.com"],
+        )
+        assert config.include_domains == ["ris.bka.gv.at"]
+        assert config.exclude_domains == ["example.com"]
+
+    def test_inherits_from_function_base_config(self):
+        from nat.plugin_api import FunctionBaseConfig
+
+        assert issubclass(TavilyWebSearchToolConfig, FunctionBaseConfig)
+
+
+class TestDomainFilterKwargs:
+    async def test_domains_omitted_kwargs_absent(self, fake_langchain_tavily):
+        config = TavilyWebSearchToolConfig(api_key=SecretStr("tvly-cfg"))
+        await _run_search(config)
+
+        kwargs = _construction_kwargs(fake_langchain_tavily)
+        assert "include_domains" not in kwargs
+        assert "exclude_domains" not in kwargs
+
+    async def test_include_domains_set_kwarg_present(self, fake_langchain_tavily):
+        config = TavilyWebSearchToolConfig(include_domains=["ris.bka.gv.at", "eur-lex.europa.eu"])
+        await _run_search(config)
+
+        kwargs = _construction_kwargs(fake_langchain_tavily)
+        assert kwargs["include_domains"] == ["ris.bka.gv.at", "eur-lex.europa.eu"]
+        assert "exclude_domains" not in kwargs
+
+    async def test_exclude_domains_set_kwarg_present(self, fake_langchain_tavily):
+        config = TavilyWebSearchToolConfig(exclude_domains=["spam.example"])
+        await _run_search(config)
+
+        kwargs = _construction_kwargs(fake_langchain_tavily)
+        assert kwargs["exclude_domains"] == ["spam.example"]
+        assert "include_domains" not in kwargs
+
+    async def test_both_domain_lists_set(self, fake_langchain_tavily):
+        config = TavilyWebSearchToolConfig(
+            include_domains=["a.example"],
+            exclude_domains=["b.example"],
+        )
+        await _run_search(config)
+
+        kwargs = _construction_kwargs(fake_langchain_tavily)
+        assert kwargs["include_domains"] == ["a.example"]
+        assert kwargs["exclude_domains"] == ["b.example"]
+
+    async def test_empty_lists_kwargs_absent(self, fake_langchain_tavily):
+        # Explicitly empty lists must behave like the default: no restriction.
+        config = TavilyWebSearchToolConfig(include_domains=[], exclude_domains=[])
+        await _run_search(config)
+
+        kwargs = _construction_kwargs(fake_langchain_tavily)
+        assert "include_domains" not in kwargs
+        assert "exclude_domains" not in kwargs
+
+
+def _override_setting(monkeypatch, values):
+    """Patch the platform retrieval-settings resolver: only the listed keys are
+    overridden, every other key falls through to its config fallback — exactly
+    what the real resolver does for unpinned keys."""
+    from agent.common import retrieval_settings
+
+    def fake_get(key, fallback):
+        return values.get(key, fallback)
+
+    monkeypatch.setattr(retrieval_settings, "get_retrieval_setting", fake_get)
+
+
+class TestPlatformMaxResultsOverride:
+    """The web-search result count comes from Platform → Retrieval when pinned
+    there, and falls back to the YAML config value otherwise."""
+
+    async def test_platform_override_builds_a_one_off_client(self, fake_langchain_tavily, monkeypatch):
+        _override_setting(monkeypatch, {"web.max_results": 7})
+
+        output = await _run_search(TavilyWebSearchToolConfig(max_results=5))
+
+        assert fake_langchain_tavily.call_count == 2
+        _, second_kwargs = fake_langchain_tavily.call_args_list[1]
+        assert second_kwargs["max_results"] == 7
+        hrefs = re.findall(r'href="([^"]+)"', output)
+        assert [urlparse(h).hostname for h in hrefs] == ["a.example"]
+
+    async def test_no_override_reuses_the_shared_client(self, fake_langchain_tavily):
+        output = await _run_search(TavilyWebSearchToolConfig(max_results=5))
+
+        kwargs = _construction_kwargs(fake_langchain_tavily)
+        assert kwargs["max_results"] == 5
+        hrefs = re.findall(r'href="([^"]+)"', output)
+        assert [urlparse(h).hostname for h in hrefs] == ["a.example"]
+
+    async def test_advanced_search_uses_the_advanced_key(self, fake_langchain_tavily, monkeypatch):
+        _override_setting(monkeypatch, {"web.advanced_max_results": 4})
+
+        await _run_search(TavilyWebSearchToolConfig(max_results=2, advanced_search=True))
+
+        assert fake_langchain_tavily.call_count == 2
+        _, second_kwargs = fake_langchain_tavily.call_args_list[1]
+        assert second_kwargs["max_results"] == 4
+        assert second_kwargs["search_depth"] == "advanced"
+
+    async def test_bff_outage_falls_back_to_config(self, fake_langchain_tavily, monkeypatch):
+        # The real failure mode is an unreachable BFF: the resolver swallows it
+        # (it is contractually never-raising), so the config value stays in force.
+        from agent.common import retrieval_settings
+
+        def boom():
+            raise RuntimeError("BFF unreachable")
+
+        monkeypatch.setattr(retrieval_settings, "_fetch_settings", boom)
+        retrieval_settings.reset_retrieval_settings_cache()
+
+        output = await _run_search(TavilyWebSearchToolConfig(max_results=5))
+
+        kwargs = _construction_kwargs(fake_langchain_tavily)
+        assert kwargs["max_results"] == 5
+        hrefs = re.findall(r'href="([^"]+)"', output)
+        assert [urlparse(h).hostname for h in hrefs] == ["a.example"]
+        # The resolver's cache is process-global; do not leave this outage in it.
+        retrieval_settings.reset_retrieval_settings_cache()
+
+
+class TestLaneCapture:
+    """Shown web hits reach the per-round ledger with their round stamp."""
+
+    async def test_result_urls_are_captured_with_the_round(self, fake_langchain_tavily):
+        """Result URLs are captured with the active round."""
+        from agent.common import turn_status
+
+        token = turn_status.begin_lane_capture()
+        try:
+            with turn_status.retrieval_round_scope(1):
+                await _run_search(TavilyWebSearchToolConfig(max_results=5))
+            hits = turn_status.get_lane_captures()
+        finally:
+            turn_status.end_lane_capture(token)
+        assert hits == [{"round": 1, "name": "https://a.example", "title": "A"}]
+
+
+class TestActionRow:
+    """One ``web`` row per call (ADR-0132): the query, then how many results came back."""
+
+    @pytest.fixture
+    def rows(self, monkeypatch):
+        bodies = []
+        monkeypatch.setattr("agent.common.turn_status.get_stream_writer", lambda: bodies.append)
+        return bodies
+
+    @staticmethod
+    def _call(bodies):
+        actions = [body.step for body in bodies if body.step.kind == "action"]
+        assert len(actions) == 2
+        assert actions[0].status == "running"
+        assert actions[0].id == actions[1].id
+        return actions
+
+    async def test_a_search_states_its_query_and_hits(self, fake_langchain_tavily, rows):
+        await _run_search(TavilyWebSearchToolConfig(), "Stellplatzschlüssel Wien")
+
+        started, finished = self._call(rows)
+        assert (started.verb, started.query) == ("web", "Stellplatzschlüssel Wien")
+        assert (finished.status, finished.counts.hits) == ("ok", 1)
+
+    async def test_no_results_is_empty(self, fake_langchain_tavily, rows):
+        fake_langchain_tavily.return_value.ainvoke.return_value = {"results": []}
+
+        await _run_search(TavilyWebSearchToolConfig())
+
+        assert self._call(rows)[1].status == "empty"
+
+    async def test_a_search_that_keeps_failing_is_an_error(self, fake_langchain_tavily, rows, monkeypatch):
+        fake_langchain_tavily.return_value.ainvoke.side_effect = RuntimeError("boom")
+        monkeypatch.setattr("tavily_web_search.register.asyncio.sleep", AsyncMock())
+
+        await _run_search(TavilyWebSearchToolConfig(max_retries=2))
+
+        assert self._call(rows)[1].status == "error"
+
+
+class TestStandaloneWithoutTheAgent:
+    """The standalone dist depends on no ``agent``: it imports and searches without one, drawing no row."""
+
+    async def test_imports_and_searches_without_agent(self, fake_langchain_tavily, monkeypatch):
+        import importlib.util
+        from pathlib import Path
+
+        import tavily_web_search.register as installed
+
+        from nat.cli.type_registry import GlobalTypeRegistry
+
+        for name in [name for name in sys.modules if name == "agent" or name.startswith("agent.")]:
+            monkeypatch.setitem(sys.modules, name, None)
+        monkeypatch.setitem(sys.modules, "agent", None)
+        spec = importlib.util.spec_from_file_location("tavily_standalone_register", Path(installed.__file__))
+        module = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, spec.name, module)
+        with GlobalTypeRegistry.push():  # the second copy registers itself; the suite's registry never sees it
+            spec.loader.exec_module(module)
+
+        assert module.ActionRow is module._NoRow
+        async with module.tavily_web_search(module.TavilyWebSearchToolConfig(max_results=5), MagicMock()) as info:
+            result = await info.single_fn("Stellplatzschlüssel Wien")
+
+        assert "body a" in result  # the fake result came back through the standalone copy
+        assert fake_langchain_tavily.call_args.kwargs["max_results"] == 5

@@ -83,11 +83,11 @@ tasks, so there is no second copy to drift:
 
 - First time here: `task setup` (backend venv, UI deps, Pulumi deps).
 - Python backend: `task be:lint`, `task be:test`.
-- Frontend: `task fe:lint`, `task fe:types`, `task fe:test`, `task fe:build` —
-  or all four as `task fe:verify`.
+- Frontend: `task workspace:lint`, `task workspace:types`, `task workspace:test`, `task workspace:build` —
+  or all four as `task workspace:verify`.
 - Infra: `task infra:types`.
 - Everything at once: `task verify` — this is the merge gate: repo lint plus the
-  same per-tier groups CI runs (`be:verify` with its coverage gate, `fe:verify`,
+  same per-tier groups CI runs (`be:verify` with its coverage gate, `workspace:verify`,
   `infra:types`). `task verify:fast` omits only the production build.
 - Repo-wide hooks: `task lint:repo` (`pre-commit run --all-files`) — ruff,
   markdown-link-check and more, configured in
@@ -107,6 +107,17 @@ the PR otherwise. Allowed types:
 Example: `ci: replace SonarQube + CodeQL with a free in-CI security stack`. A PR
 opened from the GitHub UI keeps whatever title it was given — fix the title, not
 just the commits.
+
+## Headless first
+
+Every capability a person has in Piloti is an operation, and Piloti's MCP server
+offers agents what only Piloti has: the office's workspace, Piloti's domain
+knowledge and Piloti itself. A new route a person calls ships with its operation
+in `apps/workspace/bff/agent-api/catalog/` in the same change (marked
+`withheld` when it is product configuration, a proxied service, model compute
+or screen state), or with a reason in `NOT_AN_AGENT_CAPABILITY`. Build the route, write the operation, then wire the
+UI. `agent-reachability.spec.ts` fails the PR otherwise. Checklist:
+[docs/contributing/headless-first.md](docs/contributing/headless-first.md).
 
 ## Opening a pull request
 
@@ -138,8 +149,8 @@ just the commits.
 
 ## Secret scanning
 
-Gitleaks scans full history on every PR and push (CI's **Repo checks** job),
-plus a weekly run ([`.github/workflows/security.yml`](.github/workflows/security.yml)). Its
+Gitleaks scans every commit a PR adds, and a push's full history (CI's **Repo checks** job),
+plus a weekly run over every branch ([`.github/workflows/security.yml`](.github/workflows/security.yml)). Its
 allowlist is [`.gitleaks.toml`](.gitleaks.toml): test, doc, mock and fixture
 paths, lockfiles and `.env.example`, one regex for placeholder words (`example`,
 `dummy`, `changeme` and the like), and one exact literal, Pulumi's public secret

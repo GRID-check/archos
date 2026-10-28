@@ -8,12 +8,12 @@
 
 GRID has no working deletion story. Today:
 
-- `DELETE /api/projects/[id]` exists but no UI calls it, and it leaks: SeaweedFS objects (no S3 delete code exists anywhere in the repo), the project's Chroma collection, `document_metadata` rows, `aiq_jobs` rows, and LangGraph checkpoints. `conversations.projectId` is `ON DELETE SET NULL`, so chats become permanent orphans and their checkpoints become unreachable.
+- `DELETE /api/projects/[id]` exists but no UI calls it, and it leaks: SeaweedFS objects (no S3 delete code exists anywhere in the repo), the project's Chroma collection, `document_metadata` rows, `jobs` rows, and LangGraph checkpoints. `conversations.projectId` is `ON DELETE SET NULL`, so chats become permanent orphans and their checkpoints become unreachable.
 - There is no way to delete a single document (no DB delete endpoint, no SeaweedFS delete). The only existing path (`deleteFiles` → `DELETE /v1/collections/{name}/documents`) removes Chroma chunks only.
 - Session/conversation deletion leaks LangGraph checkpoints.
 - There is no organization offboarding at all.
 
-Enterprise customers (~40 target orgs) require reliable data deletion (GDPR Art. 17 / security questionnaires). Deletion must span five stores that cannot be updated atomically: `grid_app` Postgres, `aiq_jobs` Postgres, `aiq_checkpoints` Postgres, SeaweedFS, the vector store (Chroma then, Qdrant since ADR-0115), plus WorkOS (FGA resources / orgs).
+Enterprise customers (~40 target orgs) require reliable data deletion (GDPR Art. 17 / security questionnaires). Deletion must span five stores that cannot be updated atomically: `app` Postgres, `jobs` Postgres, `checkpoints` Postgres, SeaweedFS, the vector store (Chroma then, Qdrant since ADR-0115), plus WorkOS (FGA resources / orgs).
 
 ## Design principles
 
@@ -24,7 +24,7 @@ Enterprise customers (~40 target orgs) require reliable data deletion (GDPR Art.
 
 ## Architecture
 
-### Central deletion queue (grid_app Postgres)
+### Central deletion queue (`app` Postgres)
 
 New table `deletion_queue` — simultaneously tombstone, work queue, and surviving audit record:
 
@@ -44,11 +44,11 @@ New table `deletion_queue` — simultaneously tombstone, work queue, and survivi
 | `last_error` | text nullable | |
 | `payload` | jsonb | pointers snapshot (collection name, SeaweedFS prefix, conversation ids) captured at enqueue time as a fallback |
 
-Rationale for a central table (vs per-table columns only): organizations have **no DB row** in grid_app (ADR-0007 — they live in WorkOS), so there is nothing to put a `deleted_at` column on. The queue also gives one audit trail and one poller for all entity types.
+Rationale for a central table (vs per-table columns only): organizations have **no DB row** in `app` (ADR-0007 — they live in WorkOS), so there is nothing to put a `deleted_at` column on. The queue also gives one audit trail and one poller for all entity types.
 
 Entities that do have rows additionally get a `deleted_at timestamptz` column (`projects`, `conversations`) used **only** for query filtering — the reaper never scans entity tables. `documents` had one too (migration 0009) but never soft-deleted — every document delete is a hard DELETE — and migration 0077 dropped the column, because a filter over a column nothing writes hides rows the day something does.
 
-### Legal holds (grid_app Postgres)
+### Legal holds (`app` Postgres)
 
 New table `legal_holds`: `id`, `entity_type`, `entity_id`, `organization_id`, `reason`, `created_by`, `created_at`, `released_at` (nullable). A hold is **active** while `released_at IS NULL`.
 
@@ -56,7 +56,7 @@ Semantics: a hold does **not** block soft delete (a folder still goes to the Pap
 
 This doubles as GDPR **Art. 18 (restriction of processing)** support: restricted data is preserved but not actively processed.
 
-**What a hold covers, and who asks (migration 0093).** "Covered" is one database function, `grid_legal_hold_blocks(entity_type, entity_id, organization_id)`, and every reader calls it rather than restating it. An entity is covered by an active hold of its own organization on: the organization; the entity itself; what contains it (a document's project and conversation, a conversation's project); what it contains, since erasing it erases that too (a conversation's attachments; a project's documents, chats and the chats' attachments; for an organization, any hold in it at all); and the user who created it (a custodian hold: `documents.created_by`, `conversations.created_by`). Since migration 0115 a **folder** is covered by a hold on the folder, on a folder above it (which contains it) or below it, on a document in its subtree, on the project, on the creator of a document in it, or on the organization; a document is also covered by a hold on any folder on its path, and a project by a hold on any of its folders (`grid_folder_subtree`, `grid_folder_ancestry`). Three readers:
+**What a hold covers, and who asks (migration 0093).** "Covered" is one database function, `legal_hold_blocks(entity_type, entity_id, organization_id)`, and every reader calls it rather than restating it. An entity is covered by an active hold of its own organization on: the organization; the entity itself; what contains it (a document's project and conversation, a conversation's project); what it contains, since erasing it erases that too (a conversation's attachments; a project's documents, chats and the chats' attachments; for an organization, any hold in it at all); and the user who created it (a custodian hold: `documents.created_by`, `conversations.created_by`). Since migration 0115 a **folder** is covered by a hold on the folder, on a folder above it (which contains it) or below it, on a document in its subtree, on the project, on the creator of a document in it, or on the organization; a document is also covered by a hold on any folder on its path, and a project by a hold on any of its folders (`folder_subtree`, `folder_ancestry`). Three readers:
 
 - **The purger** — its claim query and the TOCTOU re-checks in `purge-project.js` and `purge-conversation.js`. The predicate used to be written out in `purger/db.js` and saw only the project and the organization, so a held document inside a deleted project was purged with it.
 - **The BFF's immediate deletes** — documents, Archiv documents, conversations and chat attachments are hard-deleted in the request, not queued, and a folder is purged in the request by „Endgültig löschen", so each calls `assertNoActiveHold` (`lib/compliance/holds.ts`) after its access check and before its first destructive step. A covered entity answers **409** `{ code: 'CONFLICT', details: { reason: 'legal_hold' } }` and nothing is erased; the chat is not even marked deleting. The response never names the hold or its reason.
@@ -75,7 +75,8 @@ All list/get queries for projects and conversations gain `WHERE deleted_at IS NU
 | Entity | Confirm UX | Grace period | Restorable |
 |---|---|---|---|
 | Folder | simple confirm; „Endgültig löschen" (project admins) confirms again | 14 days (config `FOLDER_PURGE_GRACE_DAYS`) in the Papierkorb | yes, with its access, subfolders and documents |
-| Document | simple confirm dialog | 0 (purged on next reaper tick, ≤~60s) | no |
+| Document, deleted | simple confirm dialog | 0 (purged on next reaper tick, ≤~60s) | no |
+| Document, to the bin (`POST /api/documents/[id]/bin`) | none; restorable | the folder grace period: it goes to the Papierkorb in a folder of its own, made in its folder and named after it (as „Ausmisten" does, ADR-0092), and the entry records the document | yes, to the folder it came from (`POST /api/documents/[id]/restore`) |
 | Conversation | simple confirm (existing modal flow, upgraded) | 0 | no |
 | Project | **type-to-confirm** (project name) | 7 days (config `PROJECT_PURGE_GRACE_DAYS`) | yes |
 | Organization | **type-to-confirm** (org name), org owner only | 14 days (config `ORG_PURGE_GRACE_DAYS`) | yes |
@@ -85,7 +86,7 @@ Grace periods are config values; the architecture is identical at 0. All grace p
 
 ### Purger service
 
-New docker-compose service `purger`: **same image as the frontend, different command** (`node purger/index.js`). *(Revised from the original `aiq_api`-image idea during implementation planning: `grid_app` Postgres is owned by the frontend — single-writer rule — so the purger is plain-JS in `frontends/ui/purger/`, and the Python backend instead exposes one internal maintenance endpoint for its stores.)* No new codebase, no inbound ports. It holds all credentials (grid_app DB, aiq_jobs DB, aiq_checkpoints DB, SeaweedFS, the vector store's API, WorkOS API key) — acceptable as a privileged internal service. "Spawn on demand" was rejected: it requires docker-socket access from an app container (root-equivalent, fails enterprise security review). A sleeping poll loop costs ~zero.
+New docker-compose service `purger`: **same image as the frontend, different command** (`node purger/index.js`). *(Revised from the original `agent_host`-image idea during implementation planning: `app` Postgres is owned by the frontend — single-writer rule — so the purger is plain-JS in `apps/workspace/purger/`, and the Python backend instead exposes one internal maintenance endpoint for its stores.)* No new codebase, no inbound ports. It holds all credentials (`app` DB, jobs DB, checkpoints DB, SeaweedFS, the vector store's API, WorkOS API key) — acceptable as a privileged internal service. "Spawn on demand" was rejected: it requires docker-socket access from an app container (root-equivalent, fails enterprise security review). A sleeping poll loop costs ~zero.
 
 Loop, every 60s:
 
@@ -114,7 +115,7 @@ For each row: set `status='purging'`, run the entity's step list, then set `purg
 **Document** (`documents` row still present; pointers from row):
 1. Delete SeaweedFS object at `storage_key`
 2. Delete the file's vector chunks (existing backend `DELETE /v1/collections/{collection}/documents`)
-3. Delete `document_metadata` row (`aiq_jobs`) for (collection, filename)
+3. Delete `document_metadata` row (`jobs`) for (collection, filename)
 4. Delete `documents` row
 
 A re-upload under the same name is not a deletion and takes none of these
@@ -163,7 +164,7 @@ Every step is idempotent; a retry after any failure finishes the work, and a fol
 **GDPR, without a GDPR button.** There is no separate erasure action, and no user-facing copy names the GDPR (product owner, 6 Oct 2026). The ordinary pipeline meets Art. 17: a deleted folder is out of every listing, search and answer at once, and its purge removes the files, every version, renditions and previews, the index entries and (under „Mit dem Ordner entfernen") the derived content and its traces once `FOLDER_PURGE_GRACE_DAYS` is over, which is capped at 23 days so grace plus retries stay inside the one-month response window of Art. 12(3). A request that cannot wait is „Endgültig löschen" by a project admin. A legal hold (Art. 18) stops the purge and nothing else.
 
 **Conversation**:
-1. Delete LangGraph checkpoints (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes` in `aiq_checkpoints`) for `thread_id = conversation id`
+1. Delete LangGraph checkpoints (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes` in `checkpoints`) for `thread_id = conversation id`
 2. Delete the chat's `answer_feedback` rows (a down-vote's `comment` and `expected_answer` quote the chat; no FK) and the `conversations` row (`messages` cascade)
 3. Delete the chat's Langfuse traces (below): in the purger's retry after the BFF's erasure, or, for a chat the delete request erased itself, by the scheduler afterwards; see **Langfuse traces**
 
@@ -185,7 +186,7 @@ claims it like any other row (`FOR UPDATE SKIP LOCKED`, backoff from
 `claimed_at`, `failed` after 10 attempts, `reapStranded`) and runs
 `purger/purge-conversation.js`, which re-checks the hold and calls
 `POST /api/internal/conversations/[id]/erase` on the BFF (`FRONTEND_INTERNAL_URL`,
-`GRID_INTERNAL_API_TOKEN`, the queue row's organization as the tenant scope).
+`INTERNAL_API_TOKEN`, the queue row's organization as the tenant scope).
 That route calls `retryConversationErasure`, which runs the same
 `eraseMarkedConversation`. The steps are not copied into the purger: they need
 the BFF's tenant scope, the session-document ledger and its backend clients, and
@@ -247,7 +248,7 @@ purger never sees it. So the scheduler (`scheduler/index.js`,
 'conversation'`, `status = 'purged'`, `purged_at` within the last 35 days and at
 least 15 minutes ago (a turn that was still streaming exports spans for a
 little after the delete), no `payload.langfuseTracesErasedAt` yet, and not
-blocked by `grid_legal_hold_blocks`. For each it asks the hold predicate once
+blocked by `legal_hold_blocks`. For each it asks the hold predicate once
 more, deletes the chat's traces with the same client, and stamps
 `payload.langfuseTracesErasedAt` on the row (a jsonb merge; no column). A chat
 under a hold keeps its traces and is looked at again, inside the 35 days, after
@@ -264,7 +265,7 @@ is removed by the retention sweep.
 **Trace retention.** Langfuse's own retention is Enterprise-only, so the
 scheduler (`scheduler/index.js`, `sweepTraceRetention`) does it once a day, the
 first run on its first tick: it lists root observations that started before
-`now - GRID_LANGFUSE_TRACE_RETENTION_DAYS` (default 30, never below Langfuse's
+`now - TRACE_RETENTION_DAYS` (default 30, never below Langfuse's
 own minimum of 3) and deletes their traces in batches of 1,000. A run sends at
 most 50 batches, reads at most 100 pages and stops after two minutes, so a
 backlog drains over days; it logs how many it asked Langfuse to delete. A failed
@@ -289,7 +290,7 @@ the row went first that request was refused and the collection was left behind.
 1. Gather pointers: `collectionName`, SeaweedFS prefix `org/{orgId}/project/{projectId}/`, all conversation ids for the project, and every other distinct `documents.collection_name` of the project — the restricted folders' collections, `<collectionName>_r<12 hex>` (ADR-0087), which hold chunks the project's own collection does not
 2. Delete the project's vector collection (existing `DELETE /v1/collections/{name}`; also clears its `document_metadata` rows), then each chat's `s_` collection and each restricted folder's collection, one backend call each with the legal hold re-checked before each; a failure aborts the purge before any row is deleted
 2b. Delete the Langfuse traces of every gathered conversation id, one chat at a time with the hold re-checked before each; a failure aborts the purge before any row is deleted. A logged no-op without Langfuse configured
-3. Delete `aiq_jobs` rows (`job_info`, `job_access`, `job_events`) for jobs referencing that collection
+3. Delete `jobs` rows (`job_info`, `job_access`, `job_events`) for jobs referencing that collection
 4. Delete LangGraph checkpoints for all gathered conversation ids
 5. Delete all SeaweedFS objects under the prefix (paginated `ListObjectsV2` + batched `DeleteObjects` — first S3 delete code in the repo)
 6. Delete WorkOS FGA resource (`deleteResourceByExternalId`, `cascadeDelete: true`)
@@ -312,7 +313,7 @@ Content deletion (their messages' *text*, files they uploaded) stays with the ow
 3. Delete the WorkOS organization (and remaining FGA resources)
 4. Finalize queue row
 
-Python-side steps (vector collection + summaries, `aiq_jobs` rows, LangGraph checkpoints) are performed by the backend's internal `POST /v1/maintenance/purge-project-resources` endpoint, guarded by `GRID_INTERNAL_API_TOKEN`; the purger calls it as its first step. WorkOS calls use the same `@workos-inc/node` SDK and API key the UI uses.
+Python-side steps (vector collection + summaries, `jobs` rows, LangGraph checkpoints) are performed by the backend's internal `POST /v1/maintenance/purge-project-resources` endpoint, guarded by `INTERNAL_API_TOKEN`; the purger calls it as its first step. WorkOS calls use the same `@workos-inc/node` SDK and API key the UI uses.
 
 Beside it, `POST /v1/maintenance/reconcile-summaries` (same guard) forgets summary rows — the agent's document inventory — whose file holds no chunks in the vector store, the rows a per-document delete orphaned before `delete_file` learned to forget both together. Body: `{ collections?: string[], dry_run?: boolean }`; answer: `{ status, dry_run, collections_scanned, orphans_found, orphans_forgotten, forgotten: [{ collection, file_name }], failures: [{ collection, error }], collections_absent: string[] }`. It judges files only inside collections the store holds points of: a collection with none is listed in `collections_absent` and keeps every row, because Qdrant lists no empty collection and absence is what a collection the import from Chroma has not reached, or a restore has not brought back, looks like (a whole collection's rows go with the purge route above, `clear_collection_summaries`). It fails per collection, treats a file that is tracked in any status or still in flight as held, and refuses (503) rather than guesses when the vector store cannot be listed or holds no point at all. The BFF's orphaned-vector sweep (`lib/platform/vector-reconcile.ts`, Platform → Vector maintenance) calls it as its second half over the collections it just chunk-reconciled, so the OIB corpus is never in scope from there. Its third half copies every project's facts onto its chunks (`syncAllProjectFacts`), and its fourth sends the same collections, 25 per call, to `POST /v1/maintenance/refresh-document-facts` (same guard; body `{ collections: string[] }`, 1–100; answer `{ status, collections_scanned, files_refreshed, failures: [{ collection, error }] }`, `409` without a Qdrant store), which copies every document's person-set facts (tags, Dokumentart, the superseded mark, the folder) onto its points again with `writes.copy_facts`: the copy after an edit never raises, so this is what repairs one that failed. The same sweep runs on a clock: `POST /api/internal/maintenance/reconcile-vectors` (token-guarded `internalApiRoute`, cross-tenant by declaration) is called by the `vector-reconcile` CronJob in `deploy/pulumi/src/app/workers.ts` — the `storage-alerts` shape, weekly on Sunday 03:00 UTC by default (`vectorReconcileSchedule`, `vectorReconcileEnabled`; rows in `deploy/pulumi/README.md`). The manual run on the page and the scheduled one are the same function, so the page stays the place to run it now and read the counts. Compose has no scheduler for either sweep; an operator there points `cron` at the internal route.
 
@@ -321,7 +322,8 @@ Beside it, `POST /v1/maintenance/reconcile-summaries` (same guard) forgets summa
 - `DELETE /api/projects/[id]` — reworked: permission check → set `projects.deleted_at` → insert `deletion_queue` row. No hard deletes, no WorkOS call here.
 - `POST /api/projects/[id]/restore` — org admin; within grace; clears `deleted_at`, sets queue row `restored`.
 - `DELETE /api/projects/[id]/folders/[folderId]` — the folder, its subfolders and documents to the Papierkorb; enqueue (grace `FOLDER_PURGE_GRACE_DAYS`).
-- `GET /api/projects/[id]/bin`, `POST /api/projects/[id]/bin/[folderId]/restore`, `DELETE /api/projects/[id]/bin/[folderId]` („Endgültig löschen", `project:manage`).
+- `GET /api/projects/[id]/bin` (paged: `limit`, `cursor`; an entry made for one document names it in `document`), `POST /api/projects/[id]/bin/[folderId]/restore`, `DELETE /api/projects/[id]/bin/[folderId]` („Endgültig löschen", `project:manage`).
+- `POST /api/documents/[id]/bin` and `POST /api/documents/[id]/restore` — one project document to the Papierkorb and back (`lib/projects/document-bin.ts`). A document that went with its folder is restored with the folder (409 `binned-with-folder` names it).
 - `POST /api/internal/folders/[id]/purge` — token-guarded; the purger's purge of a bin entry, in the queue row's organization.
 - `GET`/`PUT /api/organization/deleted-folder-content` — the setting; `PUT` needs `org:settings:manage`.
 - `DELETE /api/documents/[id]` — new; soft-delete + enqueue (grace 0).
@@ -336,7 +338,7 @@ Beside it, `POST /v1/maintenance/reconcile-summaries` (same guard) forgets summa
 - **Delete project** action in project settings; **delete document** in the documents list/file views; conversation delete wired through the upgraded flow; **delete organization** in org settings (owner only).
 - **Recently deleted** (org admins): lists pending project/org deletions with time-remaining and a **Restore** button. Without this, the grace period would require DB surgery to be useful.
 
-### Migrations (grid_app)
+### Migrations (`app`)
 
 1. `deletion_queue` table.
 2. `deleted_at` on `projects`, `documents`, `conversations` (the `documents` one was never written and is dropped again by 0077).
@@ -352,7 +354,7 @@ How the design satisfies the articles enterprise DPAs and security questionnaire
 | **Art. 17** — right to erasure "without undue delay" | Deletion pipeline for all five entity types; grace + retry bounded within the Art. 12(3) one-month response window; `purged_at` timestamps are the evidence of completion |
 | **Art. 17** — erasing a folder and what was derived from it | The folder's purge after at most 23 days (or at once by „Endgültig löschen"): the documents by the document delete's steps, and under „Mit dem Ordner entfernen" the memory notes drawn from it, the answers that drew on it (replaced), the conversations' Langfuse traces; the queue row (ids, counts, who, when; no content) is the proof. A legal hold defers it |
 | **Art. 5(1)(e)** — derived content outliving a deleted folder | The organization's setting „Inhalte aus gelöschten Ordnern": unchanged, project, admins only, or removed with the folder; keeping derived personal data longer than its source is the organization's decision |
-| **Art. 17 / Art. 5(1)(e)** — the prompts and answers in LLM traces | Langfuse traces are deleted by conversation id when the purger erases a chat or a project (native delete API, every edition; asynchronous, usually within about 15 minutes), and by the scheduler's daily sweep once older than `GRID_LANGFUSE_TRACE_RETENTION_DAYS` (default 30, minimum 3). A chat deleted by the request itself is picked up by a scheduler job from its closed queue row, within about the hour (legal-held chats keep theirs); the 30-day sweep is the net behind it. Langfuse does not remove copies saved into datasets; Piloti creates none |
+| **Art. 17 / Art. 5(1)(e)** — the prompts and answers in LLM traces | Langfuse traces are deleted by conversation id when the purger erases a chat or a project (native delete API, every edition; asynchronous, usually within about 15 minutes), and by the scheduler's daily sweep once older than `TRACE_RETENTION_DAYS` (default 30, minimum 3). A chat deleted by the request itself is picked up by a scheduler job from its closed queue row, within about the hour (legal-held chats keep theirs); the 30-day sweep is the net behind it. Langfuse does not remove copies saved into datasets; Piloti creates none |
 | **Art. 12(3)** — respond within one month | Grace periods capped at ≤ 23 days; `attempts`/`failed` status surfaces stuck purges before the deadline |
 | **Art. 18** — restriction of processing | Legal hold: data preserved, hidden from active use, purge blocked until release |
 | **Art. 5(2) / Art. 30** — accountability, records of processing | `deletion_queue` rows survive purge as the record of what was erased, when, by whose request; `legal_holds` records restriction events |
@@ -389,7 +391,7 @@ One caution for honest positioning: this makes the *product capable of* GDPR-con
 
 - Scheduled retention policies ("auto-delete after X days") — the queue supports it later via `purge_after`.
 - Retention periods per folder („aufbewahren bis"); a deletion before it ends would be refused (later phase).
-- LangGraph checkpoints of chats whose answers a folder purge replaced: the agent's per-thread state keeps the original answer until the checkpoint reaper removes the idle thread (`GRID_CHAT_CHECKPOINT_RETENTION_SECONDS`, default 14 days) or the chat is deleted; no per-thread checkpoint delete exists yet.
+- LangGraph checkpoints of chats whose answers a folder purge replaced: the agent's per-thread state keeps the original answer until the checkpoint reaper removes the idle thread (`CHAT_CHECKPOINT_RETENTION_SECONDS`, default 14 days) or the chat is deleted; no per-thread checkpoint delete exists yet.
 - Legal-hold management UI (API only for now; holds are rare, deliberate events).
 - Data export / portability (Art. 20) and export-before-delete — separate feature.
 - Backup scrubbing — deleted data persists in backups until rotation; document the rotation window in the DPA (see GDPR section).

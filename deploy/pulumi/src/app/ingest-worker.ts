@@ -1,6 +1,9 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, assertVlmPeakFitsCeiling, backendImage, toResourceRequirements } from "../config";
+import { DeployConfig } from '../config'
+import { appPullPolicy, backendImage } from '../config/images'
+import { toResourceRequirements } from '../config/resources'
+import { assertVlmPeakFitsCeiling } from '../config/vlm-ceiling'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
@@ -10,7 +13,7 @@ import { JOBS_QUEUE_AUTH } from "./jobs-queue-auth";
 import { installQueueScaledObject, queueDepthQuery } from "./keda-scaling";
 import { UID } from "../constants";
 
-/** The durable queue the tier drains (`aiq_agent.knowledge.ingest_queue.TABLE`). */
+/** The durable queue the tier drains (`agent.knowledge.ingest_queue.TABLE`). */
 export const QUEUE_TABLE = "ingest_job_queue";
 
 /**
@@ -23,7 +26,7 @@ export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
 /**
  * The ingestion tier (ADR-0076), the only process that claims ingestion jobs.
  *
- * Replicas of the backend image with `GRID_ROLE=ingest-worker`: no web port, no PVC. Each builds the ingestor once and its `concurrency` threads
+ * Replicas of the backend image with `PROCESS_ROLE=ingest-worker`: no web port, no PVC. Each builds the ingestor once and its `concurrency` threads
  * claim jobs from Postgres, fairly across organisations (fewest running first,
  * fleet-wide). Vectors live in the shared Qdrant, jobs in Postgres, so a replica
  * is disposable.
@@ -35,9 +38,9 @@ export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  * empty queue shrinks it back to the floor (zero, if the floor is zero).
  *
  * The ceiling that matters is not this one: replicas × concurrency ×
- * `AIQ_VLM_BATCH_WORKERS` VLM calls are in flight at the peak, all on the shared
+ * `VLM_BATCH_WORKERS` VLM calls are in flight at the peak, all on the shared
  * provider key. `assertVlmPeakFitsCeiling` fails the deploy when that product is
- * more than twice `AIQ_VLM_FLEET_CONCURRENCY` (itself held to the limiter ceilings,
+ * more than twice `VLM_FLEET_CONCURRENCY` (itself held to the limiter ceilings,
  * the vision model's own included), so `ingestWorkerMaxReplicas` cannot be raised
  * past what the provider budget can feed.
  *
@@ -48,7 +51,7 @@ export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  */
 export function installIngestWorker(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): {
@@ -104,7 +107,7 @@ export function installIngestWorker(
                   periodSeconds: 30,
                   failureThreshold: 3,
                 },
-                // The first mark appears only after the whole NAT workflow is
+                // The first mark appears only after the whole agent-runtime workflow is
                 // built; hold liveness off until then (up to 10 minutes).
                 startupProbe: {
                   exec: { command: ["python", "-c", `import os,sys; sys.exit(0 if os.path.exists('${liveness}') else 1)`] },

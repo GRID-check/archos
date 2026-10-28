@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    Where your office has switched it on, Piloti now checks a newly uploaded
+    document against the project's other documents. If a key figure disagrees,
+    for example the number of dwellings, it marks the place as a proposal with
+    both sources; when everything agrees it says nothing.

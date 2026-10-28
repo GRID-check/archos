@@ -29,7 +29,7 @@ def forgotten(monkeypatch):
         seen.append((document_id, collection, file_name))
         return True
 
-    monkeypatch.setattr("aiq_agent.knowledge.permit_records_client.store_permit_record", store)
+    monkeypatch.setattr("agent.knowledge.permit_records_client.store_permit_record", store)
     return seen
 
 
@@ -41,7 +41,7 @@ def calls(monkeypatch, forgotten):
         seen.append({"pages": pages, "llm": llm, **kwargs})
         return True
 
-    monkeypatch.setattr("aiq_agent.knowledge.permit_extraction.extract_and_store_permit_record", extract_and_store)
+    monkeypatch.setattr("agent.knowledge.permit_extraction.extract_and_store_permit_record", extract_and_store)
     return seen
 
 
@@ -55,7 +55,7 @@ def _ingestor(*, enabled: bool = True, llm: object | None = "llm") -> LlamaIndex
 CONFIG = {"organization_id": "org_1", "document_id": "d1"}
 
 
-def test_a_bescheid_is_extracted_over_its_pages_and_stored_for_its_document(calls):
+def test_a_permit_decision_is_extracted_over_its_pages_and_stored_for_its_document(calls):
     pages = [_page("1", "Seite eins"), _page("2", "Seite zwei")]
 
     _ingestor()._remember_permit(CONFIG, "proj_1", "Bescheid.pdf", ["Bescheid", "Brandschutz"], pages)
@@ -94,7 +94,7 @@ def test_no_tag_decision_is_no_reason_to_drop_a_record(calls, forgotten, tags):
 
 def test_a_bff_that_never_answers_the_drop_does_not_stall_the_ingest(monkeypatch):
     monkeypatch.setattr(adapter_module, "PERMIT_RECORD_DROP_TIMEOUT_SECONDS", 0.2)
-    monkeypatch.setattr("aiq_agent.knowledge.permit_records_client.store_permit_record", lambda *a, **k: time.sleep(5))
+    monkeypatch.setattr("agent.knowledge.permit_records_client.store_permit_record", lambda *a, **k: time.sleep(5))
 
     started = time.monotonic()
     _ingestor()._remember_permit(CONFIG, "proj_1", "f.pdf", ["Gutachten"], [_page("1", "x")])
@@ -126,7 +126,7 @@ def test_without_the_job_identity_no_record_is_dropped_either(calls, forgotten):
 def test_a_model_that_never_answers_does_not_stall_the_ingest(monkeypatch):
     monkeypatch.setattr(adapter_module, "PERMIT_RECORD_TIMEOUT_SECONDS", 0.2)
     monkeypatch.setattr(
-        "aiq_agent.knowledge.permit_extraction.extract_and_store_permit_record", lambda *a, **k: time.sleep(5)
+        "agent.knowledge.permit_extraction.extract_and_store_permit_record", lambda *a, **k: time.sleep(5)
     )
 
     started = time.monotonic()
@@ -139,6 +139,6 @@ def test_a_fault_in_the_extraction_does_not_reach_the_ingest(monkeypatch):
     def boom(*args, **kwargs):
         raise RuntimeError("provider down")
 
-    monkeypatch.setattr("aiq_agent.knowledge.permit_extraction.extract_and_store_permit_record", boom)
+    monkeypatch.setattr("agent.knowledge.permit_extraction.extract_and_store_permit_record", boom)
 
     _ingestor()._remember_permit(CONFIG, "proj_1", "f.pdf", ["Bescheid"], [_page("1", "x")])

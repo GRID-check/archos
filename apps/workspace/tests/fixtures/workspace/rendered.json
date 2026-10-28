@@ -1,0 +1,6 @@
+{
+ "comment": "Written by bff/turn-context/workspace-block.fixture.spec.ts from office.json; served by scripts/turn_census/fixture_workspace.py. Regenerate with UPDATE_FIXTURES=1.",
+ "workspace": "WORKSPACE v1 (the workspace as of this turn; the proposal list is the newest 8)\nasker: organization role admin · project role project-admin\nproject: Wohnhaus Mödling · id 3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d · active\nconversation: {conversation} · solo (only the asker reads it)\ninbox: 2 item(s) wait for the asker\nruns: 0 queued or running in this project\nproposals made in this conversation: none",
+ "proposalsHeader": "proposals made in this conversation (newest first):",
+ "proposalLine": "- {id} · waiting for the person · operation: {summary}"
+}

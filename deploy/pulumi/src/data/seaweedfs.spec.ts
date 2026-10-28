@@ -112,7 +112,7 @@ function container(spec: ResolvedStatefulSet, name: string): Container {
   return found;
 }
 
-/** A test GridConfig. Only the SeaweedFS surface matters here. */
+/** A test DeployConfig. Only the SeaweedFS surface matters here. */
 function makeConfig(overrides: Record<string, unknown> = {}) {
   const base = {
     protectDataResources: false,
@@ -179,8 +179,8 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     langfuse: { ...base.langfuse, ...(overrides.langfuse as object) },
     qdrant: { ...base.qdrant, ...(overrides.qdrant as object) },
     // The modules under test only read the fields above; the cast is the one
-    // documented boundary between this fixture and the full GridConfig.
-  } as unknown as import("../config").GridConfig;
+    // documented boundary between this fixture and the full DeployConfig.
+  } as unknown as import("../config").DeployConfig;
 }
 
 /**
@@ -623,7 +623,7 @@ describe("single-node topology", () => {
     // stack has, and prod runs `single`.
     expect(args).toBe(
       "exec weed server -dir=/data -volume.max=64 -s3 " +
-        "-s3.config=/etc/seaweedfs/s3.json -s3.port=8333 -filer.encryptVolumeData",
+        "-s3.config=/etc/seaweedfs/s3.json -s3.port=8333 -metricsPort=9327 -filer.encryptVolumeData",
     );
   });
 
@@ -891,8 +891,8 @@ describe("compose stacks match the identity catalogue", () => {
     const { join } = await import("node:path");
     const source = readFileSync(join(process.cwd(), file), "utf8");
     const agentBlock = source.slice(
-      source.indexOf("  aiq-agent:"),
-      source.indexOf("SEAWEED_BUCKET", source.indexOf("  aiq-agent:")),
+      source.indexOf("  chat:"),
+      source.indexOf("SEAWEED_BUCKET", source.indexOf("  chat:")),
     );
     expect(agentBlock).toContain("SEAWEED_READONLY_ACCESS_KEY");
     expect(agentBlock).not.toMatch(/SEAWEED_ACCESS_KEY=\$\{SEAWEED_ACCESS_KEY/);

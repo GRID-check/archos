@@ -5,8 +5,8 @@
  *   platform  → cert-manager (+ Let's Encrypt issuer), Envoy Gateway, metrics-server
  *   data      → CloudNativePG Postgres (3 DBs), Dragonfly cache, SeaweedFS (S3),
  *               Qdrant (the vector store, ADR-0115)
- *   app       → aiq-agent (StatefulSet, the chat role), aiq-api (Deployment +
- *               HPA, the api role), frontend (Deployment + HPA), purger, skill-scheduler, gotenberg (office
+ *   app       → chat (StatefulSet, the chat role), api (Deployment + HPA,
+ *               the api role), each beside its legacy name until the switch, frontend (Deployment + HPA), purger, skill-scheduler, gotenberg (office
  *               → PDF), a migration Job, a WorkOS audit-schema reconcile Job and,
  *               opt-in, the one-shot Chroma-to-Qdrant Job
  *   edge      → Gateway API (Envoy Gateway) + HTTPRoutes with cert-manager TLS,
@@ -19,7 +19,9 @@
  */
 import * as pulumi from "@pulumi/pulumi";
 
-import { backendAutoscaled, backendImage, frontendImage, loadConfig, webImage } from "./src/config";
+import { loadConfig } from './src/config'
+import { backendAutoscaled } from './src/config/chat-tier'
+import { backendImage, frontendImage, webImage } from './src/config/images'
 import { makeProvider } from "./src/platform/providers";
 import { makeAppNamespace } from "./src/platform/namespaces";
 import { installCertManager } from "./src/platform/cert-manager";
@@ -32,15 +34,16 @@ import { installClickHouse } from "./src/data/clickhouse";
 import { installSeaweedFS, type SeaweedFS } from "./src/data/seaweedfs";
 import { installSeaweedFSBackup } from "./src/data/seaweedfs-backup";
 import { installQdrant } from "./src/data/qdrant";
+import { installGeocoder } from "./src/data/geocoder";
 import { AppWiring, PULL_SECRET_NAME, buildRegistryPullSecret, buildScalerSecret, buildSecrets } from "./src/app/config";
 import { runMigrations } from "./src/app/migrations-job";
 import { reconcileAuditSchemas } from "./src/app/audit-schemas-job";
 import { carryOverFolderGrants, reconcileAuthzCatalog } from "./src/app/workos-authz-jobs";
-import { importLegacyCorpus } from "./src/app/legacy-corpus-import-job";
 import { migrateChromaToQdrant } from "./src/app/chroma-migration-job";
 import { installBackend } from "./src/app/backend";
 import { installBackendScaling } from "./src/app/backend-scaling";
 import { installApi } from "./src/app/api";
+import { LEGACY_API_TIER, LEGACY_CHAT_TIER } from "./src/app/tier-names";
 import { installFrontend } from "./src/app/frontend";
 import { installWeb } from "./src/app/web";
 import { installGotenberg } from "./src/app/gotenberg";
@@ -53,6 +56,7 @@ import { installQueueScalerGrants } from "./src/app/queue-scaler-grants";
 import { installKeda } from "./src/platform/keda";
 import { installHttpRoutes } from "./src/app/httproutes";
 import { installOtelCollector } from "./src/platform/otel-collector";
+import { installOtelAgent } from "./src/platform/otel-agent";
 import { installDns, managedRecordNames } from "./src/platform/dns";
 import { installLangfuse } from "./src/platform/langfuse";
 import { installQdrantDashboard } from "./src/platform/qdrant-dashboard";
@@ -187,6 +191,12 @@ const qdrant = installQdrant(cfg, provider, namespace, seaweed.internalEndpoint,
 const gotenberg = cfg.gotenberg.enabled
   ? installGotenberg(cfg, provider, namespace, [ns])
   : undefined;
+// Address search for the project dialog (ADR-0120): Photon over the Austrian
+// extract, in the cluster because an address is client data. Off by default
+// (`geocoderEnabled`). The frontend fails open without it, so nothing waits.
+const geocoder = cfg.geocoder.enabled
+  ? installGeocoder(cfg, provider, namespace, [ns])
+  : undefined;
 
 // ── Shared wiring for the app tier ─────────────────────────────────────────
 // Pull Secret for private app images (no-op when none are configured).
@@ -199,6 +209,7 @@ const wiring: AppWiring = {
   seaweedInternalEndpoint: seaweed.internalEndpoint,
   seaweedPublicEndpoint: seaweed.publicEndpoint,
   gotenbergUrl: gotenberg?.url,
+  geocoderUrl: geocoder?.url,
   qdrantUrl: qdrant.url,
   dsn: postgres.dsn,
   imagePullSecrets: pullSecret ? [{ name: PULL_SECRET_NAME }] : [],
@@ -209,15 +220,20 @@ const wiring: AppWiring = {
 // (src/platform/rollout.ts).
 const secrets = buildSecrets(wiring);
 
-// grid_app DB is created at cluster bootstrap; run drizzle migrations before
+// The `app` DB is created at cluster bootstrap; run drizzle migrations before
 // the frontend/workers that read it. The migrations themselves go straight to
 // the primary; the pooler is listed so everything ordered after them (the BFF
 // tiers, which connect through it) is created after it too (ADR-0083).
-const migrations = runMigrations(wiring, cfg, secrets, [
+const migratedSchema = runMigrations(wiring, cfg, secrets, [
   postgres.cluster,
   postgres.initJob,
   postgres.pooler,
 ]);
+// Then the row-level-security roles take their names without a brand
+// (ADR-0145 row 10d, `src/data/postgres-rename.ts`): the migrations written
+// before the rename grant to the old ones. Everything that waits on the
+// migrations logs in as one of these roles, so it waits on the rename too.
+const migrations = postgres.renameRlsRoles([migratedSchema]);
 
 // WorkOS must know every audit action the code emits, or it rejects the events
 // and the trail silently thins out (issues #255/#256). Reconciled per deploy so
@@ -272,17 +288,23 @@ const afterChromaMigration = chromaMigration ? [chromaMigration] : [];
 
 // The api role: every backend HTTP route but the chat socket, behind the
 // Service BACKEND_URL names.
-const api = installApi(wiring, cfg, secrets, [
+//
+// Each backend tier runs under its new name beside its legacy one (ADR-0145 row
+// 10c, expand): callers still dial the legacy Services, so the new tiers come up
+// idle. `src/app/tier-names.ts` has the three steps.
+const apiDependsOn = [
   postgres.initJob,
   seaweed.bucketInitJob,
   dragonfly.service,
   qdrant.service,
   ...afterChromaMigration,
-]);
+];
+const api = installApi(wiring, cfg, secrets, apiDependsOn);
+const legacyApi = installApi(wiring, cfg, secrets, apiDependsOn, LEGACY_API_TIER);
 
 // Not after `aiq-agent`: the chat tier waits on the frontend (above), so the
 // reverse edge would be a cycle. The old chat pods serve the socket meanwhile.
-const frontend = installFrontend(wiring, cfg, secrets, [migrations, api.service]);
+const frontend = installFrontend(wiring, cfg, secrets, [migrations, api.service, legacyApi.service]);
 
 // Folder lists move from role grants to WorkOS folder roles (ADR-0097). The
 // carry-over runs once the frontend that reads folder roles has rolled out,
@@ -292,26 +314,26 @@ if (authzCatalog) {
   carryOverFolderGrants(wiring, cfg, secrets, [migrations, frontend.deployment, authzCatalog]);
 }
 
-const backend = installBackend(wiring, cfg, secrets, [
+const backendDependsOn = [
   postgres.initJob,
   postgres.pooler,
   seaweed.bucketInitJob,
   dragonfly.service,
   qdrant.service,
-  frontend.deployment,
   ...afterChromaMigration,
-]);
+];
+// The new chat tier serves only the chat socket from its first pod, so it need
+// not wait for the frontend; the switch makes the frontend wait for it instead.
+installBackend(wiring, cfg, secrets, backendDependsOn);
+const legacyBackend = installBackend(
+  wiring,
+  cfg,
+  secrets,
+  [...backendDependsOn, frontend.deployment],
+  LEGACY_CHAT_TIER,
+);
 
-// The pre-A2 base corpus, carried off the old backend data volume once
-// (ADR-0082 A2). Only where that volume exists: see `storage.legacyCorpusClaim`.
-if (cfg.storage.legacyCorpusClaim) {
-  importLegacyCorpus(wiring, cfg, secrets, cfg.storage.legacyCorpusClaim, [
-    backend.statefulSet,
-    frontend.deployment,
-  ]);
-}
-
-// Landing site + blog (Astro, frontends/web) — static-first, no app secrets,
+// Landing site + blog (Astro, apps/site) — static-first, no app secrets,
 // but it pulls from the same registry, so it gets the pull Secret too.
 const web = installWeb(cfg, provider, namespace, wiring.imagePullSecrets, [
   ns,
@@ -368,16 +390,19 @@ const bffJobs = cfg.bffJobs.enabled
   ? installBffJobs(wiring, cfg, secrets, [
       migrations,
       api.service,
+      legacyApi.service,
       ...(keda ? [keda] : []),
       scalerGrants,
       scalerSecret,
     ])
   : undefined;
 
-// Chat tier scale-out (ADR-0080) — KEDA moves the aiq-agent StatefulSet between
-// its floor and ceiling on the fleet's running turns. Only with affinity off.
+// Chat tier scale-out (ADR-0080) — KEDA moves the chat StatefulSet between its
+// floor and ceiling on the fleet's running turns. Only with affinity off. The
+// count is the fleet's, so only the tier that takes the turns scales on it: the
+// legacy one until the switch, and the new one holds its floor meanwhile.
 if (backendAutoscaled(cfg)) {
-  installBackendScaling(wiring, cfg, backend.statefulSet, keda ? [keda] : []);
+  installBackendScaling(wiring, cfg, legacyBackend.statefulSet, keda ? [keda] : [], LEGACY_CHAT_TIER);
 }
 
 // ── Edge (Gateway API) ───────────────────────────────────────────────────────
@@ -406,7 +431,7 @@ if (cfg.qdrant.dashboard.enabled) {
 
 // ── Observability (OTel Collector, ADR-0029) ─────────────────────────────────
 // Deployed when something consumes it (see config.ts): Langfuse for traces,
-// PostHog logs for logs. The Aspire dashboard and err2issue it used to feed are
+// PostHog logs for logs, PostHog metrics for metrics. The Aspire dashboard and err2issue it used to feed are
 // retired.
 if (cfg.observability.enabled) {
   // Langfuse (ADR-0044) before the collector: the collector's `otlp_http/langfuse` exporter starts exporting the moment it
@@ -441,16 +466,24 @@ if (cfg.observability.enabled) {
         )
       : undefined;
 
-  installOtelCollector(
+  const collector = installOtelCollector(
     cfg, provider, namespace,
     [
       ...(langfuse ? [langfuse.webService] : []),
     ],
-    langfuse ? langfuse.secret.metadata.name : undefined,
-    // Every Qdrant peer's metrics port (ADR-0115): the collector's one
-    // metrics pipeline, re-exposed on :8889 for whatever reads metrics.
-    qdrant.metricsTargets,
+    {
+      langfuseSecretName: langfuse ? langfuse.secret.metadata.name : undefined,
+      // Every Qdrant peer's metrics port (ADR-0115), scraped and re-exposed on
+      // :8889 for the alert rules.
+      qdrantMetricsTargets: qdrant.metricsTargets,
+    },
   );
+
+  // One collector per node for what the nodes and their pods are doing, sent to
+  // the collector above. It exists only to feed PostHog Metrics.
+  if (cfg.posthog.metricsEnabled) {
+    installOtelAgent(cfg, provider, namespace, [collector.service]);
+  }
 }
 
 // ── Public DNS ───────────────────────────────────────────────────────────────
@@ -469,8 +502,9 @@ export const s3Url = pulumi.interpolate`https://${cfg.ingress.s3Domain}`;
 export const webUrl = pulumi.interpolate`https://${cfg.ingress.webDomain}`;
 export const appNamespace = namespace;
 export const postgresRwHost = postgres.rwHost;
-export const backendService = backend.service.metadata.name;
-export const apiService = api.service.metadata.name;
+// The Services callers dial: the legacy ones until the switch.
+export const backendService = legacyBackend.service.metadata.name;
+export const apiService = legacyApi.service.metadata.name;
 export const frontendService = frontend.service.metadata.name;
 export const webService = web.service.metadata.name;
 export const purgerDeployment = workers.purger.metadata.name;
@@ -479,6 +513,7 @@ export const appRoute = routes.app.metadata.name;
 export const webRoute = routes.web.metadata.name;
 export const gatewayName = gatewayResources.gateway.metadata.name;
 export const qdrantUrl = qdrant.url;
+export const geocoderUrl = geocoder ? geocoder.url : pulumi.output("(none: geocoderEnabled=false)");
 export const pgInstances = cfg.postgres.instances;
 export const pgBackupsEnabled = cfg.postgres.backups.enabled;
 export const networkPoliciesEnabled = cfg.networkPolicies;

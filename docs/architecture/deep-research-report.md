@@ -13,7 +13,7 @@ report is delivered around a list of them rather than as one wall of Markdown.
 | `answer_meta` | one structured call over the finished report (`deep_researcher/anatomy.py`), gated by `common/answer_envelope.gate_answer_meta` | the same masthead a chat answer has: verdict when there is one copyable value, summary, topic, context; takeaways and callout after the prose |
 | `findings` | the same call, under `common/findings.py` | the Befundmatrix between the masthead and the prose (`FindingsMatrix.tsx`), and a table in the Word export |
 | `stages.followUps` | the follow-ups stage's own handler, run in the job runner under the org flag | the follow-up chips under the report |
-| `retrieval_ledger`, `skills_hidden` | recorded on the deep state; lifted by `runner._extract_answer_transparency` | the Herleitung and the skills disclosure |
+| `retrieval_ledger`, `skills_hidden` | recorded on the deep state; lifted by `run_result.extract_answer_transparency` | the Herleitung and the skills disclosure |
 
 The extraction is post hoc on purpose: the writer's contract and the citation
 verification stay untouched, the extraction cannot change a word of the report,
@@ -28,14 +28,14 @@ memory reflection runs after that gather, because it reads the findings.
 which both sides validate. One row per requirement:
 
 - `requirement`, `value` — the noun phrase and the copyable value.
-- `status` — `erfuellt | nicht_erfuellt | offen | nicht_anwendbar`; `offen`
+- `status` — `met | not_met | open | not_applicable`; `open`
   means the report could not decide (a missing project fact, a pending Behörde).
   Null for a row the report states without judging it — a Vergleich's
   criterion, an Aktenvermerk's point — so the matrix is headed „Ergebnisse"
   rather than „Befunde" and wears no verdict it did not give
   (`Findings.judged()`, `hasFindingStatuses`).
-- `grounding` — `belegt` when a cited passage states it, `abgeleitet` when it is
-  computed from cited values, `offen` when no source carries it.
+- `grounding` — `sourced` when a cited passage states it, `derived` when it is
+  computed from cited values, `open` when no source carries it.
 - `reference`, `citations` — the document and Punkt or page, and the `[N]` the
   report attaches; the matrix links each `[N]` to the answer's sources row.
 - `comment`, `area` — what qualifies the status; the section it belongs to.
@@ -47,9 +47,9 @@ Every string is bounded on both sides, because the payload is jsonb and a table.
 With plan approval on (`configs/*.yml` `enable_plan_approval`), the plan preview
 carries the plan as data beside its text (a `plan_json` fence the client strips),
 and the bubble renders it as controls (`PlanChecklist.tsx`): the sections as a
-list the reader can strike and extend, the genre (`pruefbericht`,
-`aktenvermerk`, `vergleich`, `checkliste`, `bericht`) and the depth
-(`kurzpruefung`, `gutachten`) as choices. An untouched plan approves with the
+list the reader can strike and extend, the genre (`inspection_report`,
+`file_note`, `comparison`, `checklist`, `report`) and the depth
+(`quick_check`, `expert_report`) as choices. An untouched plan approves with the
 bare keyword; an edited one sends the keyword and the edits as JSON
 (`clarify.parse_plan_reply`, `apply_plan_edits`). The decision model
 pre-selects genre and depth before the planner runs (`plan_decisions.py`), and
@@ -58,21 +58,21 @@ the planner is told.
 The approved plan is binding: it reaches the orchestrator, the planner and the
 writer (`factory.py` `prompt_values`); the sections become the required
 components in that order, the genre the answer type, the depth the length. The
-`pruefbericht-writer` skill writes the genre's core, one Befund line per
+`inspection-report-writer` skill writes the genre's core, one Befund line per
 Prüfpunkt in a fixed shape, which is also what the findings extraction reads.
 
 ### Unterlagen: what the run reads, and what it may not
 
 The plan card names documents as well as sections. The fence carries the turn's
-inventory (`unterlagen`, the project's and the Archiv's documents by name,
-title and shelf), and a dialog over the card (`UnterlagenDialog.tsx`, mode
+inventory (`documents`, the project's and the Archiv's documents by name,
+title and shelf), and a dialog over the card (`DocumentsDialog.tsx`, mode
 `pick`) lets the reader mark each one:
 
 - **Grundlage** — read in full, whatever else the research finds. The planner
   is told to plan one dedicated query per document; the finalizer marks any it
   never opened (`## Nicht gelesene Unterlagen`, degraded token
-  `grundlage_unread`), and the block's receipt lists each one as read, with
-  the loci the rounds reached, or unread (`run-vocabulary.grundlageReceipt`).
+  `basis_unread`), and the block's receipt lists each one as read, with
+  the loci the rounds reached, or unread (`run-vocabulary.basisReceipt`).
 - **Ausgeschlossen** — never used, not even when a search returns it. Enforced
   in `SourceRegistryMiddleware`, on the tool result, not in a prompt: a
   passage from an excluded file is refused as a source (a citation to it is
@@ -85,7 +85,7 @@ title and shelf), and a dialog over the card (`UnterlagenDialog.tsx`, mode
 - **Rahmen** — the composer's data-source toggles at the moment of approval,
   shown as chips on the card and carried as `data_sources` in the approval.
 
-The names travel as `grundlage` / `ausgeschlossen` in the approval JSON
+The names travel as `basis` / `excluded` in the approval JSON
 (`clarify.apply_plan_edits`), are resolved against the inventory
 (`common/plan_documents.py` — `documents_from_plan`) and reach the worker as
 `documents` on the submission (`turn/commission.py`, the BFF's `TaskPlan`,
@@ -113,7 +113,7 @@ so far and counts it in the header. The reader has one lever, „Jetzt
 schreiben": the report is written from what is there
 ([`docs/design/run-block.md`](../design/run-block.md), *The actions*). When
 the request made the research tool refuse a batch, the run lands
-`unterbrochen`, with the truncation reason `user_requested` and a banner that
+`interrupted`, with the truncation reason `user_requested` and a banner that
 names the reader's choice rather than a limit. A request that arrives after the
 last batch cut nothing, and the report is not marked.
 
@@ -124,7 +124,7 @@ last batch cut nothing, and the report is not marked.
   Befund, so a value lands as a fact and an open point as an open point
   (`runner._reflection_text`).
 - **An open finding becomes a run.** A row whose status is `offen` or
-  `nicht_erfuellt` offers „Klären": the thread commissions a research run
+  `not_met` offers „Klären": the thread commissions a research run
   briefed with that finding (`POST /api/projects/[id]/runs`,
   `commissionResearchRun`, the same door the agent's escalation uses), and the
   run's block appears in the same thread.

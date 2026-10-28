@@ -27,11 +27,19 @@ while disabled):
 - `app/global-error.tsx` is the boundary above the root layout. Next replaces the
   whole document while it shows, so it renders its own `<html><body>`, imports
   `globals.css` and the theme boot script again, reads the locale from the
-  `grid-locale` cookie (no provider exists) and reuses `errors.appError` for its
+  `locale` cookie (no provider exists) and reuses `errors.appError` for its
   copy, German and English. The prop is `retry` (stable since Next 16.3).
 
-Neither boundary reports an authorization denial (`isAuthzError`: an expected
-outcome) or an error with a `digest` (thrown on the server, where
+Next's control flow (`redirect()`, `notFound()`, `forbidden()`: a throw the
+framework catches and turns into navigation) is never an exception.
+`lib/analytics/control-flow-error.ts` recognises it by `digest` or by the bare
+`NEXT_REDIRECT` message a server action's rejected promise carries, and three
+places drop it: `capturePosthogException`, the browser `before_send`
+(`scrubEvent`, for the unhandled-rejection autocapture) and the server
+`beforeCapture`.
+
+Neither boundary reports an authorization denial (an expected outcome, told by
+its message, since a server-thrown class does not survive the RSC boundary) or an error with a `digest` (thrown on the server, where
 `onRequestError` already reported it with its stack; the client copy is the
 redacted "error occurred in the Server Components render"). PostHog starts in
 the layout's providers, so a crash before they mount is reported by the server
@@ -53,7 +61,7 @@ version); `lib/analytics/request-error.ts` builds it with our configuration:
   `$http_method`, `nextjs_route_path` (the pattern,
   `/api/projects/[projectId]/files`), `nextjs_route_type`, `nextjs_router_kind`,
   `nextjs_render_source`, `nextjs_error_digest`. Ours, from `beforeCapture`:
-  `source`, `release` (`GRID_GIT_SHA`), `service`.
+  `source`, `release` (`GIT_SHA`), `service`.
 - The person is the visitor's: the package reads the PostHog cookie the browser
   writes (`localStorage+cookie` persistence) for the distinct id, the session id
   and the device id, so a server error sits on the same person and replay as
@@ -63,7 +71,8 @@ version); `lib/analytics/request-error.ts` builds it with our configuration:
   error of an opted-out visitor is still reported under their distinct id.
   Moving the opt-out to a cookie (`opt_out_capturing_persistence_type`) would
   forget every opt-out already stored, so it is left as an open decision.
-- Authorization denials are dropped, and each fingerprint (route, error name,
+- Authorization denials (`isAuthzRefusal`: an `ApiError` with status 401, 403
+  or 404, thrown in a page render or a server action) are dropped, and each fingerprint (route, error name,
   message) gets 5 events per 5 minutes, through `@posthog/core`'s
   `BucketedRateLimiter`.
 
@@ -88,7 +97,7 @@ Grid catches and logs its exceptions (`logger.exception` in the job worker, the
 job runner, the stage runner), so they never reach `sys.excepthook`, which is
 all the SDK's own autocapture sees. `PosthogExceptionHandler` is attached to the
 root logger once per process, by `posthog_exceptions.install()`, from the
-`otelcollector_logs` logging method (every NAT process, before its no-collector
+`otelcollector_logs` logging method (every agent runtime process, before its no-collector
 early return) and from the API plugin's `add_routes` (both roles). It is
 idempotent.
 
@@ -99,7 +108,7 @@ inside a traced run, the trace id as `$ai_trace_id` and `langfuse_trace_id`.
 Langfuse exports that trace to PostHog as `langfuse observation` events, so an
 issue links to the trace that produced it. The event is personless.
 `environment` and `service` are super properties of the client, so every
-Python event carries them, and frames under `aiq_agent` and `aiq_api` are
+Python event carries them, and frames under `agent` and `agent_host` are
 marked in-app. posthog-python has no `logging` integration (it ships Django,
 Flask, Celery and ASGI ones), which is why this handler is ours. The release
 is `$release_id`, which the SDK reads from `POSTHOG_RELEASE_ID`; the staging
@@ -107,7 +116,7 @@ deploy resolves it ([`ci.md`](../contributing/ci.md#posthog-releases-and-source-
 `posthog_client` scrubs presigned URLs from every event's text on the way out,
 because `str(httpx.HTTPStatusError)` embeds the request URL.
 
-Records from the `posthog` logger and from `aiq_agent.observability.posthog*` are
+Records from the `posthog` logger and from `agent.observability.posthog*` are
 skipped, so a failure of the reporter cannot report itself.
 
 ## Staying inside the free tier

@@ -1,0 +1,238 @@
+import { render, screen } from '@/test-utils'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { useChatStore } from '../store'
+import type { CitedDocument } from '../lib/citations'
+import { AnswerSourcesRow } from './AnswerSourcesRow'
+import type { SourcePreviewChipProps } from './SourcePreview'
+
+/**
+ * `AnswerSourcesRow` always renders the lane tints — the provenance signal.
+ *
+ * The provenance chips render their tint as a CSS-var inline style, which
+ * jsdom's CSS parser drops, so the signal is read off a wrapper around the
+ * REAL chip instead of off the DOM. Rendering stays real (labels, badges,
+ * anchors, links), which is what the text assertions below pin. What is
+ * asserted here is this row's half of the contract: the row hands every
+ * document through, tint and all — lane tint is provenance, never muted.
+ */
+
+vi.mock('./SourcePreview', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./SourcePreview')>()
+  return {
+    ...actual,
+    SourcePreviewChip: (props: SourcePreviewChipProps) => (
+      <span data-signal={props.citation.document.tint}>
+        <actual.SourcePreviewChip {...props} />
+      </span>
+    ),
+  }
+})
+
+const oibDoc: CitedDocument = {
+  id: 'doc-oib',
+  title: 'OIB-Richtlinie 2',
+  fileName: 'oib-rl_2.pdf',
+  kind: 'building_law',
+  lane: 'building_law_oib',
+  tint: 'oib',
+  authority: 'OIB',
+  loci: [{ key: 'l1', page: 12, number: 1, isCited: true }],
+}
+
+const risDoc: CitedDocument = {
+  id: 'doc-ris',
+  title: 'Wiener Bauordnung',
+  kind: 'building_law',
+  lane: 'building_law_ris',
+  tint: 'law',
+  loci: [{ key: 'l1', page: 3, number: 2, isCited: true }],
+}
+
+const signalOf = (container: HTMLElement, title: string): string | null => {
+  const chips = Array.from(container.querySelectorAll('[data-signal]'))
+  const match = chips.find((chip) => chip.textContent?.includes(title))
+  return match?.getAttribute('data-signal') ?? null
+}
+
+describe('AnswerSourcesRow past the cap', () => {
+  const unnumbered = (n: number): CitedDocument => ({
+    id: `doc-${n}`,
+    title: `Unterlage ${n}`,
+    fileName: `unterlage-${n}.pdf`,
+    kind: 'project',
+    tint: 'project',
+    loci: [{ key: 'l1', page: 1, isCited: true }],
+  })
+
+  test('the sources past the cap fold behind a count and unfold on demand', async () => {
+    const docs = Array.from({ length: 11 }, (_, i) => unnumbered(i + 1))
+    render(<AnswerSourcesRow documents={docs} anchorPrefix="test-" />)
+    expect(screen.queryByText('Unterlage 11')).not.toBeInTheDocument()
+    const more = screen.getByTestId('answer-sources-more')
+    expect(more.textContent).toContain('3')
+    const { default: userEvent } = await import('@testing-library/user-event')
+    await userEvent.setup().click(more)
+    expect(screen.getByText('Unterlage 11')).toBeInTheDocument()
+  })
+
+  test('a row within the cap offers no fold', () => {
+    render(<AnswerSourcesRow documents={[oibDoc, risDoc]} anchorPrefix="test-" />)
+    expect(screen.queryByTestId('answer-sources-more')).not.toBeInTheDocument()
+  })
+})
+
+describe('AnswerSourcesRow lane tints', () => {
+  test('by default the chips keep their lane tints', () => {
+    const { container } = render(
+      <AnswerSourcesRow documents={[oibDoc, risDoc]} anchorPrefix="test-" />
+    )
+
+    expect(signalOf(container, 'OIB-Richtlinie 2')).toBe('oib')
+    expect(signalOf(container, 'Wiener Bauordnung')).toBe('law')
+  })
+
+  test('every chip keeps its tint and what it says beside other chromatic accents', () => {
+    // Evidence blocks, takeaways and frist/achtung callouts spend the hue
+    // budget elsewhere — the provenance row never mutes its signal for them.
+    const { container } = render(
+      <AnswerSourcesRow documents={[oibDoc, risDoc]} anchorPrefix="test-" />
+    )
+
+    expect(signalOf(container, 'OIB-Richtlinie 2')).toBe('oib')
+    expect(signalOf(container, 'Wiener Bauordnung')).toBe('law')
+    // … and the labels, the authority badge, the markers and the anchors stay.
+    expect(container.textContent).toContain('OIB-Richtlinie 2')
+    expect(container.textContent).toContain('Wiener Bauordnung')
+    expect(container.textContent).toContain('OIB')
+    expect(container.querySelector('#test-1')).not.toBeNull()
+    expect(container.querySelector('#test-2')).not.toBeNull()
+  })
+
+  test('an already-neutral chip is passed through untouched', () => {
+    const { container } = render(
+      <AnswerSourcesRow
+        documents={[{ ...oibDoc, id: 'doc-web', title: 'Beispiel', tint: 'auto' }]}
+        anchorPrefix="test-"
+      />
+    )
+
+    expect(signalOf(container, 'Beispiel')).toBe('auto')
+    expect(container.textContent).toContain('Beispiel')
+  })
+
+  test('nothing about the documents changes', () => {
+    // The row hands the documents through, tint and all.
+    const { container } = render(<AnswerSourcesRow documents={[oibDoc]} anchorPrefix="test-" />)
+
+    expect(signalOf(container, 'OIB-Richtlinie 2')).toBe('oib')
+    expect(
+      screen.getByRole('list', { name: 'Sources this answer is backed by' })
+    ).toBeInTheDocument()
+  })
+})
+
+describe('AnswerSourcesRow in a closed project (ADR-0090)', () => {
+  const projectDoc: CitedDocument = {
+    id: 'doc-plan',
+    title: 'Einreichplan EG',
+    fileName: 'einreichplan-eg.pdf',
+    kind: 'project',
+    tint: 'project',
+    loci: [{ key: 'l1', page: 4, number: 1, isCited: true }],
+  }
+
+  test("names the project and that it is closed beside each of its files, and only its files", async () => {
+    const { CurrentProjectProvider } = await import('@/features/projects/lib/current-project')
+    render(
+      <CurrentProjectProvider
+        value={{ id: 'p1', name: 'Seestadt D12', status: 'closed', closedAt: null, readsBecauseClosed: false }}
+      >
+        <AnswerSourcesRow documents={[projectDoc, oibDoc]} anchorPrefix="test-" />
+      </CurrentProjectProvider>
+    )
+    expect(screen.getAllByText(/Seestadt D12 · closed/)).toHaveLength(1)
+  })
+
+  test('says nothing of the kind in an active project', async () => {
+    const { CurrentProjectProvider } = await import('@/features/projects/lib/current-project')
+    render(
+      <CurrentProjectProvider value={{ id: 'p1', name: 'Seestadt D12', status: 'active', closedAt: null, readsBecauseClosed: false }}>
+        <AnswerSourcesRow documents={[projectDoc]} anchorPrefix="test-" />
+      </CurrentProjectProvider>
+    )
+    expect(screen.queryByText(/closed/)).toBeNull()
+  })
+
+  test('judges a file from another project by that project’s status, not the chat’s (ADR-0094)', async () => {
+    const { CurrentProjectProvider } = await import('@/features/projects/lib/current-project')
+    const fromClosed: CitedDocument = { ...projectDoc, id: 'doc-ref', project: { id: 'p9', name: 'Wohnbau Graz', status: 'closed' } }
+    const fromRunning: CitedDocument = { ...projectDoc, id: 'doc-run', project: { id: 'p8', name: 'Schule Linz', status: 'active' } }
+    render(
+      <CurrentProjectProvider value={{ id: 'p1', name: 'Seestadt D12', status: 'closed', closedAt: null, readsBecauseClosed: false }}>
+        <AnswerSourcesRow documents={[fromClosed, fromRunning]} anchorPrefix="test-" />
+      </CurrentProjectProvider>
+    )
+    // The closed reference says so once; the running project's file says nothing of the chat's closed project.
+    expect(screen.getAllByText(/Closed project/)).toHaveLength(1)
+    expect(screen.queryByText(/Seestadt D12 · closed/)).toBeNull()
+  })
+})
+
+describe('AnswerSourcesRow precedents from another project (ADR-0094)', () => {
+  const traufe: CitedDocument = {
+    id: 'doc-traufe',
+    title: 'Detail Traufe',
+    fileName: 'detail-traufe.pdf',
+    kind: 'project',
+    tint: 'project',
+    snippet: 'Die Traufe ist hinterlüftet ausgeführt.',
+    loci: [{ key: 'l1', page: 3, number: 1, isCited: true }],
+  }
+  const current = { id: 'p1', name: 'Seestadt D12', status: 'active' as const, closedAt: null, readsBecauseClosed: false }
+
+  afterEach(() => useChatStore.setState({ projectId: null }))
+
+  test('is labelled a precedent, with its project, that project’s status and the Land the agent stated', async () => {
+    const { CurrentProjectProvider } = await import('@/features/projects/lib/current-project')
+    const user = userEvent.setup()
+    const precedent: CitedDocument = {
+      ...traufe,
+      project: {
+        id: 'p9',
+        name: 'Wohnbau Graz',
+        status: 'closed',
+        federalStateNote: 'Steiermark — nicht das Bundesland dieses Projekts',
+      },
+    }
+    render(
+      <CurrentProjectProvider value={current}>
+        <AnswerSourcesRow documents={[precedent]} anchorPrefix="test-" />
+      </CurrentProjectProvider>
+    )
+
+    await user.hover(await screen.findByRole('button', { name: 'Preview source: Detail Traufe · Wohnbau Graz' }))
+
+    expect(await screen.findByText('Precedent')).toBeInTheDocument()
+    expect(screen.queryByText('Project knowledge')).toBeNull()
+    expect(screen.getAllByText(/Wohnbau Graz · closed · Steiermark — nicht das Bundesland/)).not.toHaveLength(0)
+  })
+
+  test('a file of the chat’s own project stays Project knowledge, with no precedent line', async () => {
+    const { CurrentProjectProvider } = await import('@/features/projects/lib/current-project')
+    const user = userEvent.setup()
+    const own: CitedDocument = { ...traufe, project: { id: 'p1', name: 'Seestadt D12', status: 'active' } }
+    useChatStore.setState({ projectId: 'p1' })
+    render(
+      <CurrentProjectProvider value={current}>
+        <AnswerSourcesRow documents={[own]} anchorPrefix="test-" />
+      </CurrentProjectProvider>
+    )
+
+    await user.hover(await screen.findByRole('button', { name: 'Preview source: Detail Traufe · Seestadt D12' }))
+
+    expect(await screen.findByText('Project knowledge')).toBeInTheDocument()
+    expect(screen.queryByText('Precedent')).toBeNull()
+    expect(screen.queryByText(/Seestadt D12 · active/)).toBeNull()
+  })
+})

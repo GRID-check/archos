@@ -11,7 +11,7 @@ from a blank page.
 | Reader | Arrives with | Needs to leave with | Where the site answers |
 |---|---|---|---|
 | Office principal (buyer) | "Is this worth my team's time, and is it safe?" | Less submission risk, knowledge that does not leave with people, a clear data answer | `/warum-piloti/` (audiences, what Piloti is not), FAQ |
-| Project lead (champion) | A real question on a real project | Proof that the answer is checkable and project-aware, and that work can be handed over | Homepage decision chain, then the week of work (`Arbeit.astro`, on the homepage and atop `/warum-piloti/`), the CTA |
+| Project lead (champion) | A real question on a real project | Proof that the answer is checkable and project-aware, and that work can be handed over | Homepage decision chain, then the week of work (`Handover.astro`, on the homepage and atop `/warum-piloti/`), the CTA |
 | Planner (user) | A search: "Gebäudeklasse …", "ChatGPT Baurecht" | A useful article, then a reason to try | Journal articles, each ending in a real-question invite |
 | Data or IT decider (gatekeeper) | "Where do our drawings go?" | The providers, named, and no training | Quellen section, FAQ, privacy policy |
 | Buyer comparing tools | "Reiner AI Alternative", "Rainer AI" | An honest side-by-side they can trust | `/vergleich/reiner-ai/` |
@@ -49,7 +49,7 @@ One page per query cluster. A new article takes a cluster nobody owns yet.
 | Wissensmanagement Architekturbüro, Projektwissen, Büroarchiv | `/anwendungen/bueroarchiv/`, `/blog/wissen-aus-alten-projekten/` |
 | How Piloti works, RAG for building law | `/blog/wie-piloti-funktioniert/` |
 
-The search pages are data (`frontends/web/src/data/landing/`), one entry per
+The search pages are data (`apps/site/src/data/landing/`), one entry per
 page; the audit behind them, the landscape and the backlog:
 [`seo-geo-audit-2026-09.md`](seo-geo-audit-2026-09.md).
 

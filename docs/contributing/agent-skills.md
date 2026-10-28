@@ -59,7 +59,7 @@ was deleted rather than moved.
 | `aiq-maintain-ci` | moved | CI maintenance is contributor knowledge, and [ci.md](ci.md) already held most of it | [ci.md, "Changing CI"](ci.md#changing-ci) |
 | `aiq-add-tool`, `aiq-add-data-source` | merged and moved | One procedure, needed by anyone extending the agent | [adding-a-tool.md](../architecture/adding-a-tool.md) |
 | `aiq-customize-prompts-models` | moved | Prompt and model configuration is architecture knowledge | [llm-providers.md](../architecture/llm-providers.md#which-model-each-role-uses) and the prompt section of [backend-deep-dive.md](../architecture/backend-deep-dive.md#prompts-three-layers-and-where-each-is-authored) |
-| `aiq-piloti-riso` | moved | A designer making a print needs the series rules as much as an agent does | [`frontends/web/art/riso/README.md`](../../frontends/web/art/riso/README.md#making-a-print) |
+| `aiq-piloti-riso` | moved | A designer making a print needs the series rules as much as an agent does | [`apps/site/art/riso/README.md`](../../apps/site/art/riso/README.md#making-a-print) |
 | `aiq-deploy` | deleted | A deployment runbook, and the upstream blueprint's: it cloned NVIDIA's repository and deployed with Helm | [`docs/deployment/`](../deployment/), [`scripts/README.md`](../../scripts/README.md) |
 
 ## Installed
@@ -71,7 +71,7 @@ Third-party skills sit in the same manifest, pinned to a commit and locked in
 |---|---|---|
 | `unslop` | automatically, on any writing | This repo carries a lot of prose |
 | `writing-for-agents` | automatically, when you touch a skill, `AGENTS.md` or `CLAUDE.md` | The rules `AGENTS.md` is now written to |
-| `typescript-best-practices` | automatically, on any `.ts`/`.tsx` | `frontends/ui` is most of the surface area |
+| `typescript-best-practices` | automatically, on any `.ts`/`.tsx` | `apps/workspace` is most of the surface area |
 | `how` | automatically, on "how does X work" and placement questions | Four layers can own a feature here, so "which layer" recurs |
 | `why` | automatically, on "why does X work this way", rationale, postmortems | The question `docs/adr/` exists to answer. `how` reads the code, `why` reconstructs the forces from history, issues and docs |
 | `technical-writing` | by name | Human-facing prose: docs, RFCs, PR bodies. `writing-for-agents` covers what an agent consumes |
@@ -82,8 +82,21 @@ Third-party skills sit in the same manifest, pinned to a commit and locked in
 | `codebase-design` | by name, and by the skill above | The architecture vocabulary the report is written in |
 | `grilling` | by name, and by the skill above | The decision loop once a candidate is picked |
 | `domain-modeling` | by name, and by the skill above | Keeps a `CONTEXT.md` glossary current as terms sharpen |
+| `emil-design-eng` | automatically, on UI polish and motion work | The bar for interface craft: easing, duration, origin, press feedback, the invisible details |
+| `animate` | automatically, when building a new animation | Walks the decisions in order: should it animate, purpose, curve, duration, interruption, exit |
+| `improve-animations` | automatically, on "audit the motion" or "make this feel better" | Read-only audit that writes self-contained plans for a cheaper executor |
+| `find-animation-opportunities` | automatically, on "what could animate here" | Proposes motion with exact values, and says what must not animate |
+| `animation-performance` | automatically, on jank and dropped frames | The composite-only rules, Motion's main-thread shorthands, inherited CSS variable cost |
+| `animation-vocabulary` | automatically, on "what is it called when" | Names a motion effect so a prompt or a review can ask for it precisely |
+| `apple-design` | automatically, on gestures, springs, sheets, materials, typography | The physical-motion half of the bar; our sheets and spring catalog are its territory |
+| `mobile-native` | automatically, on touch and PWA work | Piloti is a mobile-first PWA: tap highlight, `dvh`, input zoom, safe areas |
+| `break-ui` | automatically, on "stress-test this component" | Worst-case data: long German compound names, empty lists, huge counts |
+| `ask-sonner` | automatically, on toast work | `apps/workspace` uses Sonner (`components/ui/sonner.tsx`) |
+| `review-animations` | by name | The strict reviewer for a motion diff; approval is earned |
+| `pick-ui-library` | by name | A curated list to check before hand-rolling a general component ("Buy, don't build") |
+| `prototype` | by name | Several variants of one piece of UI behind a picker, to choose by feel |
 
-The last four are one capability. `improve-codebase-architecture` calls the
+The four from `improve-codebase-architecture` to `domain-modeling` are one capability. `improve-codebase-architecture` calls the
 Skill tool for the other three by name, so taking it alone leaves three dead
 calls. It also reads and maintains the root [`CONTEXT.md`](../../CONTEXT.md),
 the domain glossary; the engineering vocabulary is in
@@ -92,6 +105,12 @@ the domain glossary; the engineering vocabulary is in
 Eight are from [pstack](https://github.com/cursor/plugins/tree/main/pstack),
 picked out of its 44, and five from
 [mattpocock/skills](https://github.com/mattpocock/skills).
+Thirteen are from [emilkowalski/skills](https://github.com/emilkowalski/skills),
+which is all of it except `animate-expo` and `write-swift`: there is no React
+Native or Swift in this repo. Where one of them disagrees with the motion
+vocabulary in [`design-language.md`](../design/design-language.md#motion-vocabulary),
+the design language wins until it is changed, and changing it is a decision
+recorded there, not a drift in one component.
 `apm install cursor/plugins/pstack` takes the whole plugin in one dependency if
 you want the rest; the cost is context load from the ones that fire on their own.
 
@@ -143,7 +162,7 @@ review, not in a gate. Sweeping a contributor's merged prose to keep the claim
 true is not worth the diff either, so treat it as the house style for anything
 you write here rather than as a property of the directory. The rest of `docs/`
 was never swept at all. Two deliberate exceptions: the `next dev` block at the top of
-`frontends/ui/AGENTS.md`, which regenerates itself, and ADR titles quoted in
+`apps/workspace/AGENTS.md`, which regenerates itself, and ADR titles quoted in
 `docs/adr/README.md`, which have to match the records they point at.
 
 Rule 26 bans some words this repo uses on purpose. "Ratchet" and "substrate

@@ -1,6 +1,6 @@
-"""Tests for the view_knowledge_image NAT function.
+"""Tests for ``view_image``, the renderer behind ``look`` (ADR-0128).
 
-The tool re-renders a base-corpus PDF page as a multimodal image content
+It re-renders a base-corpus PDF page as a multimodal image content
 block. Every failure mode must degrade to a text-only block and never raise.
 """
 
@@ -10,25 +10,20 @@ import base64
 
 import knowledge_layer.llamaindex.adapter as llm_adapter
 import pytest
-
-from sources.knowledge_layer.src.view_image import ViewKnowledgeImageToolConfig
-from sources.knowledge_layer.src.view_image import _find_pdf
-from sources.knowledge_layer.src.view_image import _is_enabled
-from sources.knowledge_layer.src.view_image import _is_standalone_image
-from sources.knowledge_layer.src.view_image import _normalize_image_to_jpeg
-from sources.knowledge_layer.src.view_image import _render_page
-from sources.knowledge_layer.src.view_image import _render_page_from_bytes
-from sources.knowledge_layer.src.view_image import view_knowledge_image
+from knowledge_layer.view_image import ViewLimits
+from knowledge_layer.view_image import _find_pdf
+from knowledge_layer.view_image import _is_enabled
+from knowledge_layer.view_image import _is_standalone_image
+from knowledge_layer.view_image import _normalize_image_to_jpeg
+from knowledge_layer.view_image import _render_page
+from knowledge_layer.view_image import _render_page_from_bytes
+from knowledge_layer.view_image import view_image
 
 _JPEG_BYTES = b"\xff\xd8\xff\xe0test-jpeg-payload"
 
 
-def _config(_tmp_path) -> ViewKnowledgeImageToolConfig:
-    return ViewKnowledgeImageToolConfig()
-
-
 def _patch_env(monkeypatch, *, enabled: bool = True, vlm_key: str = "sk-test") -> None:
-    monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", "true" if enabled else "false")
+    monkeypatch.setenv("VIEW_IMAGES_ENABLED", "true" if enabled else "false")
     monkeypatch.setattr(llm_adapter, "_get_vlm_api_key", lambda: vlm_key)
 
 
@@ -46,7 +41,7 @@ async def _invoke(
     enabled: bool = True,
     vlm_key: str = "sk-test",
 ) -> list[dict] | str:
-    """Drive the NAT async generator and call the wrapped lookup."""
+    """Call the renderer with the file and collection ``look`` would have resolved."""
     _patch_env(monkeypatch, enabled=enabled, vlm_key=vlm_key)
 
     if render_raises is not None:
@@ -54,29 +49,24 @@ async def _invoke(
         def _boom(*_args, **_kwargs):
             raise render_raises
 
-        monkeypatch.setattr("sources.knowledge_layer.src.view_image._render_page", _boom)
-        monkeypatch.setattr("sources.knowledge_layer.src.view_image._render_page_from_bytes", _boom)
+        monkeypatch.setattr("knowledge_layer.view_image._render_page", _boom)
+        monkeypatch.setattr("knowledge_layer.view_image._render_page_from_bytes", _boom)
     else:
         monkeypatch.setattr(
-            "sources.knowledge_layer.src.view_image._render_page",
+            "knowledge_layer.view_image._render_page",
             lambda _pdf_path, _page_number, _max_dim: render_result,
         )
         monkeypatch.setattr(
-            "sources.knowledge_layer.src.view_image._render_page_from_bytes",
+            "knowledge_layer.view_image._render_page_from_bytes",
             lambda _pdf_bytes, _page_number, _max_dim: render_result,
         )
 
     monkeypatch.setattr(
-        "sources.knowledge_layer.src.view_image._find_pdf",
+        "knowledge_layer.view_image._find_pdf",
         lambda _name: pdf_path,
     )
 
-    config = _config(tmp_path)
-    async with view_knowledge_image(config, None) as info:
-        args = info.input_schema(
-            file_name=file_name, page_number=page_number, collection=collection, image_index=image_index
-        )
-        return await info.single_fn(args)
+    return await view_image(file_name, page_number, collection, image_index, limits=ViewLimits())
 
 
 @pytest.mark.asyncio
@@ -98,7 +88,7 @@ async def test_missing_pdf_returns_text_only(monkeypatch, tmp_path) -> None:
     result = await _invoke(monkeypatch, tmp_path, pdf_path=None)
 
     assert isinstance(result, str)
-    assert result.startswith("[view_knowledge_image] Could not find the source PDF")
+    assert result.startswith("[look] Could not find the source PDF")
 
 
 @pytest.mark.asyncio
@@ -115,7 +105,7 @@ async def test_invalid_page_number_returns_text_only(monkeypatch, tmp_path) -> N
     result = await _invoke(monkeypatch, tmp_path, pdf_path="x.pdf", page_number=0)
 
     assert isinstance(result, str)
-    assert result.startswith("[view_knowledge_image] Invalid page number")
+    assert result.startswith("[look] Invalid page number")
 
 
 @pytest.mark.asyncio
@@ -135,14 +125,14 @@ async def test_no_vlm_key_returns_text_only(monkeypatch, tmp_path) -> None:
 
 
 def test_is_enabled_respects_flag(monkeypatch) -> None:
-    monkeypatch.delenv("AIQ_VIEW_IMAGES_ENABLED", raising=False)
+    monkeypatch.delenv("VIEW_IMAGES_ENABLED", raising=False)
     assert _is_enabled() is True
 
     for off in ("0", "false", "no", "off", "OFF"):
-        monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", off)
+        monkeypatch.setenv("VIEW_IMAGES_ENABLED", off)
         assert _is_enabled() is False
 
-    monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", "true")
+    monkeypatch.setenv("VIEW_IMAGES_ENABLED", "true")
     assert _is_enabled() is True
 
 
@@ -344,13 +334,13 @@ def _patch_seaweed_chain(
 
     _patch_seaweed_chain.seen = []
 
-    monkeypatch.setattr("sources.knowledge_layer.src.view_image._resolve_storage_location", _resolve)
+    monkeypatch.setattr("knowledge_layer.view_image._resolve_storage_location", _resolve)
     monkeypatch.setattr(
-        "sources.knowledge_layer.src.view_image._fetch_seaweed_bytes",
+        "knowledge_layer.view_image._fetch_seaweed_bytes",
         lambda _key, _bucket=None: fetched,
     )
     monkeypatch.setattr(
-        "sources.knowledge_layer.src.view_image._normalize_image_to_jpeg",
+        "knowledge_layer.view_image._normalize_image_to_jpeg",
         lambda _bytes, _max_dim: normalized,
     )
 
@@ -371,7 +361,7 @@ async def test_standalone_image_requires_collection(monkeypatch, tmp_path) -> No
     result = await _invoke(monkeypatch, tmp_path, file_name="plan.png")
 
     assert isinstance(result, str)
-    assert "pass the collection" in result
+    assert "none of this turn's collections" in result
 
 
 @pytest.mark.asyncio
@@ -424,12 +414,11 @@ async def test_project_pdf_fetch_failure_returns_text_only(monkeypatch, tmp_path
 @pytest.mark.asyncio
 async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
     import httpx
-
-    from sources.knowledge_layer.src.view_image import _resolve_storage_location as _resolve_storage_key
+    from knowledge_layer.view_image import _resolve_storage_location as _resolve_storage_key
 
     # Unconfigured env -> None without any HTTP call.
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     assert await _resolve_storage_key("proj_1", "plan.png") is None
 
     class _Response:
@@ -460,7 +449,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
             return self.response
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
 
     assert await _resolve_storage_key("proj_1", "plan.png") == ("org/o1/k.png", None)
@@ -507,8 +496,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
 
 def test_fetch_seaweed_bytes_fail_open(monkeypatch) -> None:
     import boto3
-
-    from sources.knowledge_layer.src.view_image import _fetch_seaweed_bytes
+    from knowledge_layer.view_image import _fetch_seaweed_bytes
 
     for env in ("SEAWEED_ENDPOINT", "SEAWEED_ACCESS_KEY", "SEAWEED_SECRET_KEY", "SEAWEED_BUCKET"):
         monkeypatch.delenv(env, raising=False)
@@ -571,7 +559,7 @@ async def test_image_index_requires_a_collection(monkeypatch, tmp_path) -> None:
     result = await _invoke(monkeypatch, tmp_path, file_name="plan.pdf", image_index=0)
 
     assert isinstance(result, str)
-    assert "pass the hit's collection" in result
+    assert "none of this turn's collections" in result
 
 
 @pytest.mark.asyncio
@@ -599,8 +587,8 @@ async def test_stored_raster_fetch_failure_returns_text_only(monkeypatch, tmp_pa
 
 @pytest.mark.asyncio
 async def test_per_turn_cap_stops_the_tool_before_any_work(monkeypatch, tmp_path) -> None:
-    from aiq_agent.common.image_view_budget import begin_image_view_budget
-    from aiq_agent.common.image_view_budget import end_image_view_budget
+    from agent.common.image_view_budget import begin_image_view_budget
+    from agent.common.image_view_budget import end_image_view_budget
 
     calls: list[str] = []
 
@@ -612,9 +600,9 @@ async def test_per_turn_cap_stops_the_tool_before_any_work(monkeypatch, tmp_path
     try:
         for _ in range(2):
             result = await _invoke(monkeypatch, tmp_path, pdf_path="x.pdf")
-            monkeypatch.setattr("sources.knowledge_layer.src.view_image._render_page", _counting_render)
+            monkeypatch.setattr("knowledge_layer.view_image._render_page", _counting_render)
             assert isinstance(result, list)
-        monkeypatch.setattr("sources.knowledge_layer.src.view_image._render_page", _counting_render)
+        monkeypatch.setattr("knowledge_layer.view_image._render_page", _counting_render)
         capped = await _invoke(monkeypatch, tmp_path, pdf_path="x.pdf")
     finally:
         end_image_view_budget(token)
@@ -635,7 +623,7 @@ async def test_per_turn_cap_stops_the_tool_before_any_work(monkeypatch, tmp_path
 
 
 def test_find_pdf_fetches_a_base_corpus_file_that_is_not_local(monkeypatch, tmp_path) -> None:
-    from aiq_agent import corpus_store
+    from agent import corpus_store
     from tests.object_corpus_fakes import install
 
     install(monkeypatch, tmp_path)
@@ -657,7 +645,7 @@ def test_find_pdf_for_a_file_the_corpus_does_not_list_is_none(monkeypatch, tmp_p
 
 
 def test_find_pdf_is_fail_open_when_the_corpus_lookup_breaks(monkeypatch) -> None:
-    from aiq_agent import corpus_store
+    from agent import corpus_store
 
     def broken(_name):
         raise RuntimeError("database down")

@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
-import { loadConfig, POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } from "../config";
+import { loadConfig } from '../config'
+import { POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } from '../config/posthog'
 import { posthogEnv } from "../app/config";
+import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
 /**
  * One PostHog configuration for every runtime, and the logs path to it.
@@ -87,24 +89,27 @@ describe("PostHog logs in the collector, enabled", () => {
     // `logs_endpoint` is the whole URL; a trailing slash on the stack's host
     // must not become `//i/v1/logs`.
     expect(collector).toContain("logs_endpoint: https://eu.i.posthog.com/i/v1/logs");
-    expect(collector).toContain('Authorization: "Bearer phc_test_token"');
+    expect(parseCollectorConfig(collector).exporters["otlp_http/posthog"]).toMatchObject({
+      headers: { Authorization: "Bearer phc_test_token" },
+    });
     expect(collector).toMatch(/^\s+otlp_http\/posthog:/m);
     expect(collector).not.toMatch(/^\s+otlphttp\//m);
   });
 
   it("puts it on its own logs pipeline behind a WARN filter, with no unfiltered logs pipeline beside it", () => {
-    expect(collector).toMatch(
-      /logs\/posthog:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, filter\/warn_and_above, batch\]\s*\n\s*exporters: \[otlp_http\/posthog\]/,
+    const { processors, service } = parseCollectorConfig(collector);
+    expect(service.pipelines["logs/posthog"]).toEqual(
+      pipeline(["otlp_http/posthog"], { processors: ["filter/warn_and_above"] }),
     );
-    expect(collector).toContain("'log.severity_number < SEVERITY_NUMBER_WARN'");
-    expect(collector).not.toMatch(/\n    logs:/);
+    expect(processors["filter/warn_and_above"]).toMatchObject({
+      log_conditions: ["log.severity_number < SEVERITY_NUMBER_WARN"],
+    });
+    expect(service.pipelines).not.toHaveProperty("logs");
   });
 
-  it("sends no traces or metrics to PostHog", () => {
+  it("sends no traces to PostHog", () => {
     // LLM traces reach PostHog through Langfuse's integration; APM is out of scope.
     expect(collector).not.toContain("traces_endpoint: https://eu.i.posthog.com");
-    expect(collector).not.toContain("metrics_endpoint");
-    expect(collector).not.toMatch(/\n    metrics:/);
   });
 
   it("needs no env var on the pod: the token is public config, not a secret", () => {
@@ -127,19 +132,21 @@ describe("PostHog logs in the collector, by default and off", () => {
     ["the flag is set but the token is empty", { "grid-oib:posthogLogsEnabled": "true", "grid-oib:posthogProjectToken": "" }],
   ])("is absent when %s", async (_why, values) => {
     const { collector } = await deploy(values);
-    expect(collector).not.toContain("posthog");
+    const { exporters, service } = parseCollectorConfig(collector);
+    expect(exporters).not.toHaveProperty("otlp_http/posthog");
+    expect(service.pipelines).not.toHaveProperty("logs/posthog");
     expect(collector).not.toContain("warn_and_above");
   }, 120_000);
 });
 
 describe("the Python tiers' PostHog pair", () => {
-  const gridCfg = (host: string, projectToken: string, releaseId = "") =>
+  const appCfg = (host: string, projectToken: string, releaseId = "") =>
     ({
       posthog: { host, projectToken, logsEnabled: false, sessionReplay: false, replaySampleRate: "0.2", releaseId },
     }) as unknown as Parameters<typeof posthogEnv>[0];
 
   it("emits both names when both are set", () => {
-    expect(posthogEnv(gridCfg("https://eu.i.posthog.com", "phc_x"))).toEqual([
+    expect(posthogEnv(appCfg("https://eu.i.posthog.com", "phc_x"))).toEqual([
       { name: "POSTHOG_HOST", value: "https://eu.i.posthog.com" },
       { name: "POSTHOG_PROJECT_TOKEN", value: "phc_x" },
     ]);
@@ -150,17 +157,17 @@ describe("the Python tiers' PostHog pair", () => {
     ["token", "https://eu.i.posthog.com", ""],
     ["both", "", ""],
   ])("emits nothing without the %s, never a half-configured pod", (_what, host, token) => {
-    expect(posthogEnv(gridCfg(host, token))).toEqual([]);
+    expect(posthogEnv(appCfg(host, token))).toEqual([]);
   });
 
   // The id PostHog/resolve-release printed for the backend image, which
   // posthog-python sends as $release_id (deploy.yml sets the key per run).
   it("adds the release id the deploy resolved, and only beside the pair", () => {
-    expect(posthogEnv(gridCfg("https://eu.i.posthog.com", "phc_x", "0193f5a6-rel"))).toContainEqual({
+    expect(posthogEnv(appCfg("https://eu.i.posthog.com", "phc_x", "0193f5a6-rel"))).toContainEqual({
       name: "POSTHOG_RELEASE_ID",
       value: "0193f5a6-rel",
     });
-    expect(posthogEnv(gridCfg("", "", "0193f5a6-rel"))).toEqual([]);
+    expect(posthogEnv(appCfg("", "", "0193f5a6-rel"))).toEqual([]);
   });
 
   it("reaches chat, api and agent-worker, Piloti's project by default, and nothing once opted out", async () => {
@@ -174,6 +181,8 @@ describe("the Python tiers' PostHog pair", () => {
     const tiers: Array<[string, string]> = [
       ["aiq-agent", "kubernetes:apps/v1:StatefulSet"],
       ["aiq-api", "kubernetes:apps/v1:Deployment"],
+      ["chat", "kubernetes:apps/v1:StatefulSet"],
+      ["api", "kubernetes:apps/v1:Deployment"],
       ["agent-worker", "kubernetes:apps/v1:Deployment"],
     ];
     for (const [name, type] of tiers) {

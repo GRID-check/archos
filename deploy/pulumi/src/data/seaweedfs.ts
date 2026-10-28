@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { DeployConfig } from '../config'
 import { commonLabels } from "../platform/namespaces";
 import { hardenedJobSecurityContext } from "../platform/security";
 import { BOOTSTRAP_JOB_RESOURCES, JOB_DEFAULTS, PORT, SEAWEED } from "../constants";
@@ -41,7 +41,7 @@ export interface SeaweedFS extends SeaweedTopology {
  * existing stack's own `Pulumi.<stack>.yaml`.
  */
 export function installSeaweedFS(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   /** Extra buckets to pre-create alongside the documents bucket (e.g. PG backups). */

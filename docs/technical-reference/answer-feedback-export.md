@@ -3,7 +3,7 @@
 The export behind **Plattform → Antwortqualität → Bewertungen → Exportieren…**:
 the votes the ratings tab shows, with the turn each one rated, as an Excel
 workbook for a person or a CSV for a script. The column list is defined once in
-`frontends/ui/src/lib/feedback/export-columns.ts`; both formats and the
+`apps/workspace/bff/feedback/export-columns.ts`; both formats and the
 workbook's own data dictionary are rendered from it. The key tables below
 must list the same keys in the same order. `export-columns.spec.ts` fails
 when they disagree.
@@ -150,14 +150,14 @@ its readers.
 | `message_id` | Id of the rated answer | id | `answer_feedback.message_id` |
 | `voter_key` | Pseudonym, see below | id | `sha256(organization_id:user_id)`, 12 hex |
 | `topics` | OIB topic tags | list | `conversations.tags` |
-| `topic_brandschutz` | 1 when tagged | 1/0 | `conversations.tags` |
-| `topic_schallschutz` | 1 when tagged | 1/0 | `conversations.tags` |
-| `topic_barrierefreiheit` | 1 when tagged | 1/0 | `conversations.tags` |
-| `topic_energie` | 1 when tagged | 1/0 | `conversations.tags` |
-| `topic_statik` | 1 when tagged | 1/0 | `conversations.tags` |
+| `topic_fire_safety` | 1 when tagged | 1/0 | `conversations.tags` |
+| `topic_sound_insulation` | 1 when tagged | 1/0 | `conversations.tags` |
+| `topic_accessibility` | 1 when tagged | 1/0 | `conversations.tags` |
+| `topic_energy` | 1 when tagged | 1/0 | `conversations.tags` |
+| `topic_structural` | 1 when tagged | 1/0 | `conversations.tags` |
 | `topic_hygiene` | 1 when tagged | 1/0 | `conversations.tags` |
-| `topic_nutzungssicherheit` | 1 when tagged | 1/0 | `conversations.tags` |
-| `topic_allgemein` | 1 when tagged | 1/0 | `conversations.tags` |
+| `topic_safety_in_use` | 1 when tagged | 1/0 | `conversations.tags` |
+| `topic_general` | 1 when tagged | 1/0 | `conversations.tags` |
 | `question` | The user message the answer replied to | text | `messages.content` |
 | `answer` | The rated answer; cut at 32,767 characters in Excel | text | `messages.content` |
 | `comment` | The voter's words on a down-vote | text | `answer_feedback.comment` |

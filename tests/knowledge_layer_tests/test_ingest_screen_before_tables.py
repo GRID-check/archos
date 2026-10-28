@@ -24,11 +24,11 @@ from knowledge_layer.llamaindex import processing
 from knowledge_layer.llamaindex import screening
 from knowledge_layer.llamaindex import transcription
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.knowledge.schema import FileStatus
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
+from agent.common.credential_resolution import ResolvedCredential
+from agent.knowledge.schema import FileStatus
 
 from .test_upload_screening_ingestion import _pdf
 from .test_upload_screening_ingestion import _pdf_with_table_page
@@ -41,8 +41,8 @@ _PAYSLIP = ("Gehaltsabrechnung Maerz 2026", "Brutto 4.200,00 EUR", "Projekt Must
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -225,3 +225,29 @@ def test_the_screen_runs_before_the_table_pass(tmp_path, calls, monkeypatch):
     _ingest(calls, path, "Liste.pdf", _TERMS, extract_tables=True)
 
     assert events == ["screen", "tables", "screen"]
+
+
+class TestTheTablePassLeavesTheDrawingsToVision:
+    """A vector drawing is all edges to the table finder: 0.68 s a page for no table. Vision reads it whole."""
+
+    def _triage(self, *drawings: int):
+        from knowledge_layer.llamaindex.page_triage import PageKind
+        from knowledge_layer.llamaindex.page_triage import PdfTriage
+
+        kinds = {page: PageKind.TEXT for page in range(1, 31)}
+        kinds.update({page: PageKind.DRAWING for page in drawings})
+        return PdfTriage(kinds=kinds)
+
+    def test_the_drawings_vision_reads_are_skipped_beside_the_dense_pages(self):
+        skip = adapter._table_pass_skips([7], self._triage(2, 3), vision_reads=True)
+        assert skip == [2, 3, 7]
+
+    def test_a_drawing_past_the_render_cap_keeps_its_table_pass(self, monkeypatch):
+        monkeypatch.setattr(adapter, "MAX_RENDERED_PAGES", 2)
+        assert adapter._table_pass_skips([], self._triage(4, 5, 6), vision_reads=True) == [4, 5]
+
+    def test_without_a_vision_model_no_drawing_is_skipped(self):
+        assert adapter._table_pass_skips([7], self._triage(2, 3), vision_reads=False) == [7]
+
+    def test_an_unmeasured_pdf_skips_only_the_dense_pages(self):
+        assert adapter._table_pass_skips([7], None, vision_reads=True) == [7]

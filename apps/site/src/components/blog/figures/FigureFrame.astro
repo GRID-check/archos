@@ -1,0 +1,263 @@
+---
+/**
+ * The shared frame every blog figure sits in: blueprint paper with a faint
+ * grid and registration rings, a mono kicker line, and an optional caption.
+ *
+ * This file also owns the drawing vocabulary. Every figure is inline SVG built
+ * from the classes below, so a new figure inherits the brand (olive strokes,
+ * IBM Plex Mono labels, surface-tint fills) by construction instead of by
+ * copying hex values around. See README.md next to this file before adding one.
+ *
+ * The drawings are 960 units wide with 11-unit labels, so they are legible only
+ * near full size. From `xl` (1280px) up the figure breaks out of the text column to give
+ * them that. Below `xl` a figure that fills the `mobile` slot shows that
+ * instead: the same content re-set as an HTML flow in the `fpm-*` vocabulary,
+ * rather than a drawing scaled down until its labels are 3px high.
+ */
+interface Props {
+  /** Short mono tag rendered above the drawing, e.g. "FIG. 01". */
+  kicker?: string
+  /** Mono title next to the kicker. */
+  title?: string
+  /** Sentence under the figure, rendered as the visible caption. */
+  caption?: string
+  /** Accessible description of the drawing. Required: SVG text is not enough. */
+  alt: string
+}
+const { kicker, title, caption, alt } = Astro.props
+const hasMobile = Astro.slots.has('mobile')
+---
+
+<figure class:list={['fig-frame', hasMobile && 'fig-frame--has-mobile']}>
+  {
+    (kicker || title) && (
+      <div class="fig-frame__head" aria-hidden="true">
+        {kicker && <span class="fig-frame__kicker">{kicker}</span>}
+        {title && <span class="fig-frame__title">{title}</span>}
+      </div>
+    )
+  }
+  <div class="fig-frame__canvas" role="img" aria-label={alt}>
+    <slot />
+  </div>
+  {
+    hasMobile && (
+      <div class="fig-frame__mobile" role="img" aria-label={alt}>
+        <slot name="mobile" />
+      </div>
+    )
+  }
+  {caption && <figcaption class="fig-frame__caption">{caption}</figcaption>}
+</figure>
+
+<style is:global>
+  .fig-frame {
+    margin: 2.4em 0;
+    overflow: hidden;
+    border: 1px solid var(--color-hairline);
+    border-radius: 14px;
+    background: var(--color-paper-dim);
+  }
+  .fig-frame__head {
+    display: flex;
+    gap: 1em;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-hairline);
+    padding: 10px 16px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .fig-frame__kicker {
+    color: var(--color-accent-600);
+  }
+  .fig-frame__title {
+    color: var(--color-ink-faint);
+    text-align: right;
+  }
+  .fig-frame__canvas {
+    padding: 34px 22px;
+    background-color: var(--color-paper-dim);
+    /* 76px tile: hairline cross plus a quarter ring in each corner; the four
+       quarters of neighbouring tiles meet into full registration rings. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='76' height='76'%3E%3Cpath d='M0 0.5h76M0.5 0v76' stroke='%23eceee2' stroke-width='1'/%3E%3Ccircle cx='0.5' cy='0.5' r='2.5' fill='%23fafaf8' stroke='%23d3ddc0' stroke-width='1'/%3E%3C/svg%3E");
+  }
+  .fig-frame__caption {
+    border-top: 1px solid var(--color-hairline);
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--color-ink-mute);
+  }
+  .fig-frame svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  /* Break out of the 768px text column so a 960-unit drawing renders at about
+     1:1 and its 11-unit labels at about 11px. Centred on the column. */
+  @media (min-width: 1280px) {
+    .fig-frame {
+      position: relative;
+      left: 50%;
+      width: min(1040px, 100vw - 80px);
+      transform: translateX(-50%);
+    }
+  }
+
+  /* The phone and tablet variant. */
+  .fig-frame__mobile {
+    display: none;
+    padding: 20px 12px;
+    background-color: var(--color-paper-dim);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='76' height='76'%3E%3Cpath d='M0 0.5h76M0.5 0v76' stroke='%23eceee2' stroke-width='1'/%3E%3Ccircle cx='0.5' cy='0.5' r='2.5' fill='%23fafaf8' stroke='%23d3ddc0' stroke-width='1'/%3E%3C/svg%3E");
+  }
+  @media (max-width: 1279.98px) {
+    .fig-frame--has-mobile .fig-frame__canvas {
+      display: none;
+    }
+    .fig-frame--has-mobile .fig-frame__mobile {
+      display: block;
+    }
+  }
+  .fig-frame .fpm-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 30rem;
+    margin: 0 auto;
+  }
+  .fig-frame .fpm-box {
+    border: 1.25px solid var(--color-accent-700);
+    border-radius: 6px;
+    background: var(--color-paper);
+    padding: 10px 12px;
+  }
+  .fig-frame .fpm-box--soft {
+    background: var(--color-surface);
+  }
+  .fig-frame .fpm-box--tint {
+    background: var(--color-tint);
+  }
+  .fig-frame .fpm-box--dash {
+    border-style: dashed;
+  }
+  .fig-frame .fpm-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .fig-frame .fpm-row > .fpm-box {
+    padding-inline: 10px;
+  }
+  .fig-frame .fpm-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .fig-frame .fpm-label,
+  .fig-frame .fpm-sub,
+  .fig-frame .fpm-accent {
+    display: block;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  .fig-frame .fpm-label {
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--color-accent-700);
+  }
+  .fig-frame .fpm-sub {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--color-ink-mute);
+  }
+  .fig-frame .fpm-accent {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--color-accent-600);
+  }
+  .fig-frame .fpm-no {
+    margin-right: 8px;
+    color: var(--color-ink-faint);
+  }
+  /* A vertical connector with an arrowhead; `--dash` for a side feed. */
+  .fig-frame .fpm-arrow {
+    position: relative;
+    height: 22px;
+  }
+  .fig-frame .fpm-arrow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 5px;
+    left: 50%;
+    border-left: 1.25px solid var(--color-accent-700);
+  }
+  .fig-frame .fpm-arrow::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: calc(50% - 4px);
+    border: 4px solid transparent;
+    border-top: 6px solid var(--color-accent-700);
+    border-bottom: 0;
+  }
+  .fig-frame .fpm-arrow--dash::before {
+    border-left-style: dashed;
+  }
+  .fig-frame .fpm-note {
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  /* Drawing vocabulary. Labels are authored in uppercase in the markup;
+     SVG text does not reliably obey text-transform. */
+  .fig-frame .fp-stroke {
+    fill: none;
+    stroke: var(--color-accent-700);
+    stroke-width: 1.25;
+  }
+  .fig-frame .fp-stroke--muted {
+    fill: none;
+    stroke: var(--color-tint);
+    stroke-width: 1;
+  }
+  .fig-frame .fp-dash {
+    stroke-dasharray: 4 4;
+  }
+  .fig-frame .fp-fill {
+    fill: var(--color-paper);
+  }
+  .fig-frame .fp-fill--soft {
+    fill: var(--color-surface);
+  }
+  .fig-frame .fp-fill--tint {
+    fill: var(--color-tint);
+  }
+  .fig-frame .fp-label {
+    fill: var(--color-accent-700);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+  .fig-frame .fp-label--muted {
+    fill: var(--color-ink-faint);
+    font-family: var(--font-mono);
+    font-size: 10.75px;
+    letter-spacing: 0.06em;
+  }
+  .fig-frame .fp-label--accent {
+    fill: var(--color-accent-600);
+    font-family: var(--font-mono);
+    font-size: 10.75px;
+    letter-spacing: 0.06em;
+  }
+</style>

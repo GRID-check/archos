@@ -2,29 +2,29 @@
 
 > Authoritative end-to-end map of how GRID's core flows work, why several were
 > broken, and how they were fixed. Written 2026-07-04 from a full source trace
-> (7 parallel explorations + NAT-internals verification). File references are
+> (7 parallel explorations + agent-runtime internals verification). File references are
 > `path:line` at time of writing.
 
 ## 1. System topology
 
 Docker Compose (`deploy/compose/docker-compose.yaml`):
 
-- **postgres** — 3 logical DBs: `aiq_jobs`, `aiq_checkpoints`, `grid_app`.
+- **postgres** — 3 logical DBs: `jobs`, `checkpoints`, `app`.
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
-- **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
+- **aiq-agent** (the chat tier) — FastAPI + the agent runtime (NeMo Agent Toolkit, a third-party library)
   scheduler/worker; every chunk lives in Qdrant (ADR-0115). Runs the LangGraph workflow and the
   async deep-research jobs.
-- **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`frontends/ui/server.js`).
+- **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`apps/workspace/server.js`).
 - **dragonfly** — Redis-protocol shared cache (ADR-0020): read-through caches
   (membership, flags, prompt view, model overrides, budget limits, model
   catalog), the gateway's WS-upgrade rate limiter, and per-conversation
   citation-registry snapshots. Cache-only semantics; both tiers fail open to
   in-process fallbacks when it is down or `REDIS_URL` is unset.
 
-The **real** backend front-end plugin is `frontends/aiq_api` (`_type: aiq_api`).
-(The old `src/aiq_agent/fastapi_extensions/` duplicate was deleted 2026-07-03,
-commit `2570b1b`; its one live route, `/v1/ingest`, was ported into `aiq_api`.)
+The **real** backend front-end plugin is `apps/agent-host` (`_type: agent_host`).
+(The old `packages/agent/src/agent/fastapi_extensions/` duplicate was deleted 2026-07-03,
+commit `2570b1b`; its one live route, `/v1/ingest`, was ported into `agent_host`.)
 
 The working config is `configs/config_oib_openrouter.yml` (OpenRouter DeepSeek +
 OpenRouter embeddings), the only config left in `configs/`.
@@ -32,18 +32,18 @@ OpenRouter embeddings), the only config left in `configs/`.
 ## 2. Chat request lifecycle (WebSocket-only)
 
 Chat is **WebSocket only**. The old SSE `/api/generate` chat path is dead, and
-the backend mounts none of NAT's HTTP turn routes, so the chat socket is the
+the backend mounts none of the runtime's HTTP turn routes, so the chat socket is the
 only way to run a turn; SSE now serves **only** the deep-research job stream (§7).
 
 ```
 Browser WebSocket
-  → frontends/ui/server.js  (WS upgrade proxy)
+  → apps/workspace/server.js  (WS upgrade proxy)
       • calls internal /api/websocket-scope?projectId=…  to fetch:
           - projectContext  → sets header  x-grid-project-context
           - collection scope → sets header  x-grid-collection-scope
       • ALSO sets the signed X-Grid-Request-Context envelope (below)
       • proxies the upgrade to the aiq-agent backend
-  → NAT workflow  chat_deepresearcher_agent
+  → workflow  chat_deepresearcher_agent
       LangGraph:  shallow_research  (Piloti; entry on EVERY turn, full tool set bound)
                     ├─ envelope.escalate_to_deep → clarifier → deep_research → END
                     └─ otherwise                 → END
@@ -60,17 +60,17 @@ Browser WebSocket
     neutrally as "Assistant" (getDisplayName in intermediate-step-parser.ts),
     not "Research Agent" — a greeting is not a research run.
   → the turn's wire bodies, stamped and sent by the chat socket (wire v2, ADR-0068)
-      frontends/aiq_api/src/aiq_api/chat_socket.py
+      apps/agent-host/src/agent_host/chat_socket.py
   → the UI's turn socket and fold (docs/api/websocket-protocol.md, "The client")
-  → frontends/ui/src/features/layout/components/ChatArea.tsx → AgentResponse.tsx
+  → apps/workspace/ui/features/layout/components/ChatArea.tsx → AgentResponse.tsx
 ```
 
 Key files:
-- Graph build: `src/aiq_agent/agents/piloti/conversation.py` (`_build_graph`,
+- Graph build: `packages/agent/src/agent/agents/piloti/conversation.py` (`_build_graph`,
   nodes). The escalation edge and the conversation-scoped state belong to Piloti; the workflow only wires them up.
-- Workflow registration + response creation: `src/aiq_agent/agents/piloti/conversation_register.py`.
-- Wire types: `src/aiq_agent/common/wire_v2.py`, the contract both tiers are
-  generated from and tested against (`shared/wire/v2/`).
+- Workflow registration + response creation: `packages/agent/src/agent/agents/piloti/conversation_register.py`.
+- Wire types: `packages/agent/src/agent/common/wire_v2.py`, the contract both tiers are
+  generated from and tested against (`contracts/wire/v2/`).
 
 ### The terminal result (`TurnResult`)
 
@@ -112,68 +112,47 @@ field at its default, and each is reset at the turn boundary in
   `answer_confidence_reason` alongside the level. Escalated turns drop it.
 - `answer_confidence_capped_reason` (`"ungrounded" | "quote_unverified" |
   "normative_claim_uncited" | "measurement_only" | "citation_fallback"`) — set when
-  `surface_answer_confidence` downgraded the self-report. Gives the confidence
-  chip a machine-readable reason the UI can explain.
-  - `"ungrounded"` — citation verification left the answer without grounding and
-    nothing was measured.
+  the guard downgraded the self-report. Gives the confidence chip a
+  machine-readable reason the UI can explain.
+
+  **Two rules, and the turn says which** (`answer_confidence_version`). Chat
+  surfaces the answer check's level (ADR-0139, `markers.surface_checked_confidence`):
+  one model call on the follow-ups model, at temperature 0 after the prose
+  streamed, grades the final answer against everything the turn registered
+  (`common/claim_judge.py`; passages in full up to a budget, this turn's
+  workspace records from `common/workspace_records.py`, the profile and the
+  inventory, measurements, readings, and what the quote check found), and
+  returns a level and the statements it found unbacked or contradicted
+  (`TurnResult.confidence_check`). The quote gate below is the one rule on top;
+  the self-report sets no level. A check that cannot run surfaces no level.
+  Deep research keeps rule 1, the answer-level floors described in the rest of
+  this entry.
+  - `"ungrounded"` — rule 1: citation verification left the report without
+    grounding.
   - `"quote_unverified"` — a quoted span failed the deterministic
     quote-vs-source check (a grounded answer is held at "medium", an ungrounded
     one at "low"; the span itself is marked inline) (`verify_quoted_spans`, difflib coverage over the
     registry's captured `chunk_text`, fail-open; the offending span is annotated
     inline with `[nicht wörtlich in der Quelle belegt]` and the answer is never
     otherwise altered).
-  - `"normative_claim_uncited"` / `"measurement_only"` — the two reasons about
-    the SECOND kind of grounding, below.
-  - `"citation_fallback"` — the answer's only citation is the single registry
-    source Piloti appended when nothing the model wrote survived
-    verification (`_append_minimal_citation`). The registry is cumulative across
-    the conversation, so that source may have been retrieved on an earlier turn
-    for a different question: it is treated exactly like a measurement (ceiling
-    `"medium"`, and the normative brake still applies), never as the verified
-    citation that "high" is reserved for.
+  - `"normative_claim_uncited"` / `"measurement_only"` — no longer produced;
+    they named rule 1's measurement branches for chat, which the answer check
+    replaced (ADR-0139). Stored turns still carry the tokens.
+  - `"citation_fallback"` — no longer produced. It named the single registry
+    source Piloti appended when nothing the model wrote survived verification;
+    that fallback invented an attribution and was removed (ADR-0125). Stored
+    turns still carry the token.
 
-  **Two kinds of grounding.** The guard was written against one form of
-  evidence: a citation the verifier can resolve to a retrieved passage. An IFC
-  measurement has no passage to quote — it carries a `provenance`, a `tolerance`,
-  a readable `method` and the GlobalIds it was derived from
-  (`ifc_spatial.envelope.Answer`) — so a correctly measured number was capped to
-  `"low"` for lacking evidence it structurally cannot have. Two extra signals
-  travel from Piloti alongside `answer_citation_grounded`:
-  - `answer_measurement_grounded` — this turn produced at least one
-    `declared`/`computed` `ifc_measure` answer. Written by Piloti's
-    tools node (a sticky OR across the tool loop; `piloti/grounding.py`
-    decides what counts — a refusal, an outage, an `inferred` guess and a
-    `decidable: false` finding all do not). Lifts the surfaced confidence off the
-    `"low"` floor to at most `"medium"`; `"high"` still requires a verified
-    citation.
-  - `answer_normative_claim_uncited` — the anti-laundering brake. A single answer
-    routinely mixes „Der Keller ist 2,70 m hoch" (reproducible) with „…und
-    erfüllt damit OIB 4 Punkt 2.1" (a legal claim needing a quote). If the
-    measurement satisfied the gate for the whole answer, the legal claim would
-    ride out confidently on evidence that says nothing about it — worse than the
-    over-hedging it replaces. So when a non-citation-grounded answer mentions
-    regulatory material or passes a verdict at all, the measurement grounding is
-    withheld and the answer keeps its `"low"`, reported as
-    `"normative_claim_uncited"` rather than resolved silently. The `"medium"`
-    ceiling is the structural half of the same defence and does not depend on
-    that text heuristic. The vocabulary is two-tier: named instruments and
-    deontic modals („muss", „darf", `must`, `shall`) fire wherever they appear,
-    while the handful of stems `ifc_measure`'s own renderers use about the
-    APPARATUS („für eine Messung geeignet", „für die Ermittlung … erforderlich",
-    „die Datei ist zu groß") fire only in a sentence that does not name the
-    apparatus — a false fire re-floors exactly the measured answers the signal
-    above exists to un-hedge. The brake reads the answer's PROSE — a trailing
-    reference list is stripped first (`_prose_without_references`), because a
-    source title is a pointer, not a claim the answer makes. Only a GENUINELY
-    trailing list is cut: every line after the heading must be a link, a list
-    entry or blank, or the „**Quellen:**" line is just something the model wrote
-    in the middle of an answer and the verdict after it would be dropped before
-    the brake ever read it.
-  - `answer_citation_fallback_used` — which citation did the grounding. A
-    fallback citation does not disarm the normative brake and does not reach
-    `"high"`: one stale session source used to do both, and „Der Keller ist
-    2,70 m hoch und erfüllt damit OIB 4 Punkt 2.1" surfaced at the model's own
-    self-report with an unrelated Bauordnung link attached to the verdict.
+  **Two kinds of grounding.** An IFC measurement has no passage to quote — it
+  carries a `provenance`, a `tolerance`, a readable `method` and the GlobalIds it
+  was derived from (`ifc_spatial.envelope.Answer`). Piloti's tools node records
+  `answer_measurement_grounded` when this turn produced at least one
+  `declared`/`computed` `ifc_measure` answer (a sticky OR across the tool loop;
+  `piloti/grounding.py` decides what counts — a refusal, an outage, an
+  `inferred` guess and a `decidable: false` finding all do not), and the
+  measured values reach the answer check beside the passages, which is told
+  that a measurement never backs a statement about what a regulation requires.
+  A measurement never enters the `SourceRegistry`, so it is never a passage.
 
   **What counts as a measurement.** `ifc_measure`'s renderer states it: a result
   from an operation that could measure something ends with a line reporting how
@@ -216,12 +195,12 @@ be lifted, and the frontend Zod schema (`schemas.ts`) must declare it.
 Every submission path used to hand-roll its own subset of the `x-grid-*`
 context headers (org/user/project id, collection scope, project
 context/memory, model overrides, budget, disabled sources) — one audited case
-(async-job submit, §8b) simply forgot one. `frontends/ui/src/lib/request-context.ts`
-is now the single builder: `buildGridRequestContextWireHeaders` returns every
+(async-job submit, §8b) simply forgot one. `apps/workspace/bff/request-context.ts`
+is now the single builder: `buildRequestContextWireHeaders` returns every
 individual header PLUS one consolidated, signed `X-Grid-Request-Context`
-header (base64url JSON of the same fields, plus the structured `bundesland`
+header (base64url JSON of the same fields, plus the structured `federal_state`
 fact — §6b) and `X-Grid-Request-Context-Sig` (hex HMAC-SHA256 of the raw
-JSON, keyed on `GRID_INTERNAL_API_TOKEN`). Legacy HTTP/job producers retain
+JSON, keyed on `INTERNAL_API_TOKEN`). Legacy HTTP/job producers retain
 this **dual-write transition**. Authenticated WebSocket handshakes instead
 carry compact claims with `contextTransport: "bff"` and omit project context,
 memory and office instructions from both the individual headers and the
@@ -245,15 +224,15 @@ rather than accepting identity in a body. The JSON response body carries
 growing data; a context-read failure is an explicit turn error. This keeps
 the agent stateless without coupling connection availability to profile size.
 
-On the backend, `aiq_agent.project_context.GridRequestContext.from_context()`
+On the backend, `agent.project_context.RequestContext.from_context()`
 /`from_envelope()` verifies the signature with `hmac.compare_digest` and
 prefers a present-and-valid envelope over the individual headers; an
 invalid/missing signature is treated as an ABSENT envelope (logged as a
 WARNING tamper signal), falling back to the individual headers exactly as
 before the envelope existed.
 
-`frontends/aiq_api/src/aiq_api/context_envelope.py`'s
-`GridContextEnvelopeMiddleware` (raw ASGI, same pattern as `AuthMiddleware` —
+`apps/agent-host/src/agent_host/context_envelope.py`'s
+`RequestContextEnvelopeMiddleware` (raw ASGI, same pattern as `AuthMiddleware` —
 never buffers the response body, so SSE routes are unaffected) fail-closed
 rejects (403 / WS policy-violation close) a workflow-invoking request when
 ALL of: `REQUIRE_AUTH=true`; the caller is a WorkOS-authenticated JWT user;
@@ -262,12 +241,12 @@ is present. It is deny-by-default: the exempt list is the paths that run no
 workflow and that a BFF proxy forwards with the member's bearer alone
 (`/health`, `/v1/collections`, `/v1/documents`, `/v1/data_sources`, the async
 job reads and controls under `/v1/jobs/async/{jobs,job,agents}`, `/v1/drafts`);
-every other path, the WebSocket included, needs the envelope. NAT's HTTP turn
+every other path, the WebSocket included, needs the envelope. The runtime's HTTP turn
 routes (`/chat`, `/generate`, `/v1/chat/completions`, `/v1/workflow`, ...) are
-not mounted at all: a turn runs on the chat socket alone (`AIQAPIConfig`,
-ADR-0068), and deny by default is what closes a route a later NAT adds. Always exempt:
+not mounted at all: a turn runs on the chat socket alone (`AgentHostConfig`,
+ADR-0068), and deny by default is what closes a route the runtime adds later. Always exempt:
 anonymous mode and internal-token-authenticated service calls. Dev fail-open note:
-when `GRID_INTERNAL_API_TOKEN` is unset, signature verification is skipped
+when `INTERNAL_API_TOKEN` is unset, signature verification is skipped
 but envelope *presence* is still required for authenticated requests.
 
 ### 2b-bis. Ingest-only turns: how a message reaches the graph WITHOUT a turn
@@ -305,9 +284,9 @@ no `system_response_message`, no intermediate/status frame, and nothing to strea
 next real turn's `ainvoke` then reads the ingested turns as ordinary history.
 
 Key pieces:
-- Char caps, appender registry: `src/aiq_agent/conversation_context.py`.
-- The appender is *published*, not imported: `aiq_api` owns the socket and
-  `aiq_agent` owns the graph, so `piloti/conversation_register.py` calls
+- Char caps, appender registry: `packages/agent/src/agent/conversation_context.py`.
+- The appender is *published*, not imported: `agent_host` owns the socket and
+  `agent` owns the graph, so `piloti/conversation_register.py` calls
   `register_context_appender(agent.append_context_message)` where the compiled graph
   (and its checkpointer) exists.
 - Fail-soft throughout. A missing appender, a dead checkpointer or a raising append is
@@ -353,9 +332,9 @@ backend pieces live in `chat_socket.py` and `conversation_bus.py`; the design is
   it when the turn ends, a dead owner's expires on its TTL, and a turn that
   cannot get it in time is refused, never run beside the stale one. With the
   bus down the claim fails open to the local registry, and so does the marker
-  while `GRID_CHAT_AFFINITY` is on; with it off the question is refused.
-- **The owner fences itself** (`aiq_api/turn_fence.py`, `aiq_agent/common/write_fence.py`;
-  only with `GRID_CHAT_AFFINITY` off). The marker's TTL can run out under a
+  while `CHAT_AFFINITY` is on; with it off the question is refused.
+- **The owner fences itself** (`agent_host/turn_fence.py`, `agent/common/write_fence.py`;
+  only with `CHAT_AFFINITY` off). The marker's TTL can run out under a
   turn that is still running (a renewal task starved or late, Dragonfly
   unreachable from this replica), and a newer turn on another replica may then
   take it. So the turn keeps a deadline of its own: the start of its last
@@ -369,12 +348,12 @@ backend pieces live in `chat_socket.py` and `conversation_bus.py`; the design is
   it ends with a `cancelled` terminal. A tool's own side effects are stopped by
   that cancel, not by the fence.
 - **Every turn ends.** `run_turn`'s `finally` guarantees one terminal whatever
-  escaped; the turn has a deadline (`GRID_CHAT_TURN_DEADLINE_SECONDS`) on its
+  escaped; the turn has a deadline (`CHAT_TURN_DEADLINE_SECONDS`) on its
   own clock, which stops while it waits on a person; a Stop waits at most
   `workflow_stream.PRODUCER_TEARDOWN_SECONDS` for the workflow's teardown. The
-  chat's NAT session manager runs with `max_concurrency=0`: NAT's semaphore
+  chat's runtime session manager runs with `max_concurrency=0`: the runtime's semaphore
   queued a turn after `RUN_STARTED` behind turns waiting on HITL answers, and
-  ADR-0040's admission (`GRID_MAX_ACTIVE_TURNS`) is the gate that refuses at
+  ADR-0040's admission (`MAX_ACTIVE_TURNS`) is the gate that refuses at
   once instead.
 - **The bus fails fast and its loops are supervised.** Bus commands a turn
   waits on are bounded (`BUS_CALL_TIMEOUT_S`), and a failure marks the bus down
@@ -417,26 +396,26 @@ registry so a new card type = define model + add renderer, no pipeline surgery),
 NOT to bolt on a silently-failing second LLM call.
 
 Cards (`SummaryCard`, `LegalBasisCard`, `ProjectProfilePatchCard`) are defined in
-`src/aiq_agent/cards/models.py` (discriminated union, `validate_cards`); the
-frontend renders them in `frontends/ui/src/features/grid-cards/`.
+`packages/agent/src/agent/cards/models.py` (discriminated union, `validate_cards`); the
+frontend renders them in `apps/workspace/ui/features/cards/`.
 
 ### How generation works
 
 On the sync chat path the answering agent emits cards itself, mid-turn,
-through the `emit_card` tool (`aiq_agent.cards.register`): each card is
+through the `emit_card` tool (`agent.cards.register`): each card is
 validated against the shared schema and pushed into the conversation-scoped
 `CardRegistry`, which the chat entrypoint reads after the turn. There is no
 separate card-generation LLM call on that path, and no `card_generator_llm`
 config key any more. The result rides `ChatResponse.cards` → `message.cards`
-→ the frontend `validateGridCards` → `GridCards.tsx`.
+→ the frontend `validateAnswerCards` → `AnswerCards.tsx`.
 
 ### Deep-research cards (async path: closed; sync inline path: open)
 
 With `use_async_deep_research: true` (the working config), any query routed to
 deep research returns the stub `"Deep research job submitted. Job ID: …"`. The
-**real** answer is produced later by `frontends/aiq_api/src/aiq_api/jobs/runner.py`
+**real** answer is produced later by `apps/agent-host/src/agent_host/jobs/agent_job.py`
 (`run_agent_job`), which now generates cards post-hoc from the final report
-(`_generate_grid_cards` → `aiq_agent.cards.generate_cards`), re-emits the
+(`_generate_answer_cards` → `agent.cards.generate_cards`), re-emits the
 report artifact with cards attached over the job SSE stream, and stores
 `{"report", "cards"}` as the job output. Deep research cannot use the
 `emit_card` tool directly: the conversation-scoped `CardRegistry` is bound
@@ -498,17 +477,17 @@ WebSocket handshake.
 
 ## 5. Project summary / fact-sheet
 
-The Project Overview "Project Brief" panel (`project-brief.tsx`, mounted by
-`project-overview.tsx`) renders the AI `summary` from `projects.profile_display`
-plus a fact sheet derived **at render time from the raw `projects.profile`** via
-`buildProjectBriefView` (`lib/project-profile/brief-view.ts`): facts grouped in
-intake-stage order with question/option labels ("Main use: Residential", not
-"hauptnutzung: wohnen"), goal focus areas, unanswered questions as links back
-into the wizard, a completeness count, and agent-suggested `assumptions` with
-confirm/dismiss actions (confirm graduates the value into a `user_confirmed`
-fact through the same patches endpoint the agent's `project_profile_patch`
-cards use). `buildProjectProfileDisplay` (the stored `profile_display`
-projection) uses the same labels.
+The project brief is the AI `summary` from `projects.profile_display` plus a
+fact sheet derived from the raw `projects.profile` via `buildProjectBriefView`
+(`lib/project-profile/brief-view.ts`): facts grouped in intake-stage order with
+question/option labels ("Main use: Residential", not "hauptnutzung: wohnen"),
+goal focus areas, the unanswered questions, a completeness count, and the
+agent-suggested `assumptions`. The prompt view, the patch preview, the profile
+service and the research report read it; no panel shows it any longer (the
+overview's brief panel, `project-brief.tsx`, was mounted by nothing and was
+removed on 2026-10-22, with its wizard links and confirm/dismiss actions).
+`buildProjectProfileDisplay` (the stored `profile_display` projection) uses the
+same labels.
 
 ### Agent-driven brief updates (project_profile_patch)
 
@@ -516,7 +495,7 @@ The agent keeps the brief current by emitting a `project_profile_patch` card
 (via `emit_card`) whenever the conversation establishes a durable hard fact —
 Piloti's prompt has an explicit "Keeping the Project Brief
 current" policy, and the card model carries the canonical fact-key vocabulary
-(`PROFILE_FACT_VOCABULARY` in `cards/models.py`, mirroring the intake
+(`PROFILE_FACT_VOCABULARY` in `cards/proposal_cards.py`, mirroring the intake
 definition). The card only proposes. At the end of the turn the patch is
 stored as a `project_profile` proposal (`register_envelope_card`,
 [`proposed-changes.md`](proposed-changes.md), ADR-0105) and the card carries its
@@ -528,13 +507,13 @@ confirmation), applies them through the shared patch engine, and prunes unknowns
 the patch just answered. The proposal records who decided and when, and every
 reader of the thread sees it. A card without a `proposal_id` (an older answer, or
 a run that could not store it) posts the patch to the same route from the
-browser, as before. `GridCards` receives the chat store's `projectId` in both the
+browser, as before. `AnswerCards` receives the chat store's `projectId` in both the
 chat bubble and the run block's report (both `AgentResponse.tsx`), so
 Accept is live wherever the card renders.
 
 Summary generation: the intake wizard fires
 `POST /api/projects/{id}/generate-summary` → backend `/v1/generate-summary`
-(`frontends/aiq_api/.../routes/generate_summary.py`, registered in `plugin.py`)
+(`apps/agent-host/.../routes/generate_summary.py`, registered in `plugin.py`)
 → result stored into `profile_display.summary`.
 
 ### The bug that was fixed (summary wiped on every save)
@@ -547,7 +526,7 @@ takes a `previousSummary` and both callers (`profile/route.ts`,
 preserving it across rebuilds.
 
 Operational note: `/v1/generate-summary` fails silently (swallowed try/catch on
-both ends) if the `aiq_api` process has no LLM key. Ensure `OPENROUTER_API_KEY`
+both ends) if the `agent_host` process has no LLM key. Ensure `OPENROUTER_API_KEY`
 (or `SUMMARY_LLM_API_KEY`) is set, else the summary stays empty even though the
 fact-sheet renders.
 
@@ -584,7 +563,7 @@ subfolder" `+` on each folder row and makes root creation explicit.
 (rename and/or move) and `deleteProjectFolder`, which is the Papierkorb's
 `moveFolderToBin` in `folder-bin.ts` (ADR-0088). They sit behind
 `POST`/`PATCH`/`DELETE` on `/api/projects/{id}/folders[/{folderId}]`; the
-Archiv's folders (`/api/archiv/folders`, ADR-0078) share the shelf core in
+Archiv's folders (`/api/office-shelf/folders`, ADR-0078) share the shelf core in
 `lib/documents/shelf-folders.ts`, delete included. Two invariants are
 load-bearing:
 
@@ -673,7 +652,7 @@ the folder.
 
 Every backend call carries a base64url `X-Grid-Collection-Scope` header =
 `[oib_knowledge, archiv_<org>, proj_<id>, s_<conversation>]`, built in
-`src/lib/collection-scope-request.ts` and validated backend-side. This is the core
+`src/lib/retrieval-scope/collection-scope-request.ts` and validated backend-side. This is the core
 RAG multi-tenant boundary. Note `resolveProjectCollectionName` short-circuits to
 no project scope when `session.organizationId` is falsy (anonymous /
 `REQUIRE_AUTH=false`).
@@ -682,13 +661,12 @@ The signed header is the **authorization ceiling**, not the turn's search set.
 The client states **intent** on the user message — `focus_file_name`,
 `focus_shelf` (the composer subject's shelf), `source_preset` (the shortcut
 chip) — never an expanded collection list. `shelves_for_turn`
-(`src/aiq_agent/common/focus_file.py`) is the one mapping from that intent
+(`packages/agent/src/agent/common/focus_file.py`) is the one mapping from that intent
 to the shelves retrieval may keep; the knowledge layer **subtracts** other
 shelves from the ceiling at the retrieve site and, when the focused file has
 hits, does not pad the merge with Archiv/project leftovers (#429, #436).
 A subject shelf wins over a preset. Absence of both leaves the signed scope
-intact (ADR-0024: Archiv stays in every unscoped project turn). The TS twin
-is `includeShelvesForTurn` in `frontends/ui/src/features/layout/lib/retrieval-scope.ts`.
+intact (ADR-0024: Archiv stays in every unscoped project turn).
 
 **A subject file never subtracts `base`.** A subject narrows which *documents*
 a turn reads, which is what #429 and #436 asked for; neither was about the
@@ -718,7 +696,7 @@ Two separate stores back "documents" and are **architecturally distinct**:
 the **Qdrant vector index** that `knowledge_search`/`knowledge_retrieval`
 queries (what's actually retrievable), and a **SQL `document_metadata`
 side-table** (`DocumentMetadataStore`,
-`src/aiq_agent/knowledge/document_metadata_store.py` + `factory.py
+`packages/agent/src/agent/knowledge/document_metadata_store.py` + `factory.py
 get_available_documents_async`; formerly the `document_metadata` table / `SummaryStore`,
 renamed because it now holds summary + tags + `doc_class` + `display_title` +
 `folder_path`) that
@@ -737,11 +715,11 @@ this.
 request's header-based scope (or the base + session collection fallback when
 no scope header is present). Identity is `(collection, file_name)` — the same
 filename on the Büroablage and in a project is two documents (ADR-0047). The
-cap (`GRID_AVAILABLE_DOCUMENTS_MAX`) keeps user-shelf files (archiv / project
+cap (`AVAILABLE_DOCUMENTS_MAX`) keeps user-shelf files (archiv / project
 / session) first so the OIB corpus cannot evict them; a previous
 sort-then-slice let ~40 OIB filenames eat the window and made "welche Dateien
 hast du in der Büroablage" answer from Basiswissen. The prompt block is grouped
-by shelf (`aiq_agent.knowledge.inventory.render_inventory_block`) and empty
+by shelf (`agent.knowledge.inventory.render_inventory_block`) and empty
 in-scope shelves render as empty rather than being omitted. The same list is
 then shared by Piloti, clarifier, and deep-research paths for that turn
 — it is not re-fetched per node.
@@ -785,7 +763,7 @@ research turn renders ~40 real corpus filenames plus their summaries into the
 system prompt. Those filenames are *exactly* the citation keys
 `verify_citations` matches against, and the registry it matches them against
 holds only sources captured from actual tool results
-(`common/citation_verification.py`). A model that cites a filename it read off
+(`citations/references.py`). A model that cites a filename it read off
 the inventory rather than out of a `knowledge_search` result therefore gets
 every such citation dropped with `citation_key_not_in_registry`, and the answer
 ships with the visible "Ohne Quellenangabe" note — while the document sits
@@ -805,7 +783,7 @@ their own listing block: those agents route and plan, they never emit
 citations.
 
 **Silent summary-row loss on double LLM failure — fixed 2026-07-16**:
-ingestion (`sources/knowledge_layer/src/llamaindex/adapter.py`, ~lines
+ingestion (`packages/knowledge-layer/src/llamaindex/adapter.py`, ~lines
 1795–1965) runs summary generation and tag classification as two concurrent
 calls to the same `summary_llm`; both independently swallow
 exceptions/timeouts and return `None` on failure. Previously the
@@ -860,7 +838,7 @@ document summary:
    heuristic, so a drawing that is pure linework plus a stamped watermark does
    not read as "has text". Each line's font size and weight are kept
    (`line_styles`): a tenant PDF is chunked on its own headings
-   (`section_chunking`), an OIB Richtlinie on its Punkte (`punkt_chunking`);
+   (`section_chunking`), an OIB Richtlinie on its Punkte (`clause_chunking`);
    the table of chunk locators is in
    [`document-ingestion.md`](../technical-reference/document-ingestion.md#_run_ingestionjob_id-file_paths-collection_name-config).
 2. **Tables** — `_extract_tables_from_pdf` (pdfplumber), gated on
@@ -869,32 +847,32 @@ document summary:
    XObjects), gated on `extract_images`/`extract_charts` (both on by default).
    Returns raw image bytes — **no VLM call yet**. Pages rendered whole in step 4
    are skipped, so each page is analysed once, and at most
-   `AIQ_MAX_IMAGES_PER_DOCUMENT` (64, largest first) go to the VLM; the rest are
+   `MAX_IMAGES_PER_DOCUMENT` (64, largest first) go to the VLM; the rest are
    counted on the file's job status as `images_over_cap`. A single raster over
-   `AIQ_MAX_IMAGE_PIXELS` (256 MP) is refused from its metadata before it is
+   `MAX_IMAGE_PIXELS` (256 MP) is refused from its metadata before it is
    decoded — pypdfium2 cannot downscale an embedded image on decode, so a
    20000x20000 px raster would be a ~1.6 GiB transient allocation — and counted
    as `images_over_pixel_budget`, with its page, index and pixel size logged. Identical rasters (a logo re-embedded on every
    page, a reused plan) are content-hash deduped (SHA-256 of the re-encoded
    JPEG) so each unique image is captioned and indexed exactly once.
 4. **Rendered visual/vector pages** — `processing.render_visual_pages_no_vlm`,
-   gated on `AIQ_RENDER_VISUAL_PAGES` (default on) **and** a resolvable VLM key.
+   gated on `RENDER_VISUAL_PAGES` (default on) **and** a resolvable VLM key.
    This is the track that captures **vector CAD/architectural drawings** (plans,
    sections, elevations, perspectives): they are thousands of vector *path*
    objects with almost no text and **no embedded raster image**, so tracks 1
    and 3 both miss them entirely. The whole page is composited into one bitmap
-   (`page.render`, scaled so the long edge ≈ `AIQ_PAGE_RENDER_MAX_DIM` px,
+   (`page.render`, scaled so the long edge ≈ `PAGE_RENDER_MAX_DIM` px,
    default 2048) — **no VLM call yet**. A page is routed here only when the
    page triage (`page_triage.classify_page`) calls it a drawing: its
-   watermark-stripped text is below `AIQ_VISUAL_PAGE_MIN_TEXT_CHARS` (200)
-   **and** it has ≥ `AIQ_VISUAL_PAGE_MIN_PATHS` (300) vector paths — so ordinary
+   watermark-stripped text is below `VISUAL_PAGE_MIN_TEXT_CHARS` (200)
+   **and** it has ≥ `VISUAL_PAGE_MIN_PATHS` (300) vector paths — so ordinary
    text PDFs (the bulk OIB corpus) skip rendering at near-zero cost — and at
-   most `AIQ_MAX_RENDERED_PAGES` (20) pages are rendered per document, the rest
+   most `MAX_RENDERED_PAGES` (20) pages are rendered per document, the rest
    counted as `drawing_pages_over_cap`. Scanned pages (text-low, a raster over
    half the page) and garbled text layers (`(cid:n)`, mojibake) are not
    drawings: before track 1 builds its Documents they are rendered and
    transcribed by the same vision endpoint (`transcription.route_pdf_pages`,
-   capped by `AIQ_MAX_OCR_PAGES`), and the transcription is indexed as the
+   capped by `MAX_OCR_PAGES`), and the transcription is indexed as the
    page's text. See [`visual-ingestion.md`](visual-ingestion.md#scans-and-garbled-text-layers). The
    renderer receives track 1's already watermark-stripped page texts
    (`page_texts=…`), so the PDF's text layer is read once per library and the
@@ -905,7 +883,7 @@ document summary:
 
 All image bytes (from track 3) and rendered page bitmaps (from track 4) are
 passed to `processing.enrich_vlm_batch`, which runs every VLM caption call in a
-single `ThreadPoolExecutor` (`AIQ_VLM_BATCH_WORKERS`, default 4) per file, with
+single `ThreadPoolExecutor` (`VLM_BATCH_WORKERS`, default 4) per file, with
 **content-hash caching** via the shared Dragonfly/Redis store (ADR-0020). The
 cache key is `vlm:caption:{model}:{prompt_type}:{sha256(image_bytes)}` with a
 30-day TTL — the model is part of the identity, so a model switch (deployment-
@@ -915,7 +893,7 @@ re-captions its new/modified pages. **Failure placeholders are never cached** �
 a failed analysis (`processing.is_failed_caption`) is returned to the caller but
 not stored, so the re-ingest that recovers the file actually reaches the VLM
 again instead of replaying a transient provider error for the 30-day TTL. Both VLM call sites construct their OpenAI
-client with an explicit timeout (`AIQ_VLM_TIMEOUT_SECONDS`, default 180s) and a
+client with an explicit timeout (`VLM_TIMEOUT_SECONDS`, default 180s) and a
 single retry — previously SDK defaults (≈600s × 2 retries) let one hung
 provider park an ingest worker for ~20 minutes. A response clipped at
 `max_tokens` (`finish_reason == "length"`) is retried **once** with a doubled
@@ -1002,7 +980,7 @@ are gone on that path. The org id rides the job config into the call, so the
 org's BYOK and ZDR policy hold in the detached ingestion thread.
 
 **Org BYOK + runtime model override for the VLM.** The vision model used across
-all VLM call sites (Phase 2 enrichment) is resolved the SAME way the NAT chat
+all VLM call sites (Phase 2 enrichment) is resolved the SAME way the chat agent's
 models resolve theirs. `/v1/ingest` forwards `x-grid-organization-id` (the BFF's
 `dispatchIngest` sets it) into the job config; because `_run_ingestion` runs in a
 detached thread pool with no request context, the org id must be captured at the
@@ -1017,7 +995,7 @@ admins select the model in the model-config picker (`ingest_vlm` group, gated to
 vision-capable models); see `docs/architecture/org-model-configuration.md`.
 
 **Embedding throughput.** Chunks are embedded by `NVIDIAEmbedding` in batches of
-`AIQ_EMBED_BATCH_SIZE` (default 64) per HTTP call instead of the llama-index
+`EMBED_BATCH_SIZE` (default 64) per HTTP call instead of the llama-index
 default of 10 — a 500-chunk document went from ~50 serialized embedding
 round-trips on the ingest worker to ~8. The knob applies to both the ingestor
 and the retriever's embedding client. (Embedding calls remain synchronous on
@@ -1082,7 +1060,7 @@ passage body under that last line, and one `## Trace-Lanes` object at the end.
 The hit is now a record and the text is its rendering.
 `common/grounding_block.py` holds `GroundingHit`, `GroundingBlock` and the one
 renderer, `render_grounding_block`. Both producers build records and call it:
-`knowledge_layer.register._format_results` turns chunks into hits
+`knowledge_layer.search_results.format_results` turns chunks into hits
 (`_grounding_hit`, which is also where the Trace-Lanes fan-out reads a hit's
 shelf, Dokumentart and title from, so the header and the fan-out cannot
 disagree), and `ris_adapter.lookup.render.format_passages` turns `Passage`
@@ -1096,25 +1074,25 @@ Herleitung never reads them back out of the text. It still writes them as the
 (chat-wire-v2.md, F2).
 
 The renderer files each block under the SHA-256 of the exact bytes it returns,
-in a per-turn `ContextVar` that `PilotiAgent.run` opens beside
-`begin_lane_capture`. `citation_verification.extract_sources_from_tool_result`
+in a per-turn `ContextVar` that `ChatAgent.run` opens beside
+`begin_lane_capture`. `citations/extraction.py::extract_sources_from_tool_result`
 looks the block up by that hash and builds `SourceEntry`s by field copy, so a
-passage body cannot supply a header field the producer omitted. `PilotiAgent.run`
+passage body cannot supply a header field the producer omitted. `ChatAgent.run`
 is the only caller that opens the capture, so the structured read is what a
 Piloti turn gets for `knowledge_search`, `read_passage` and `ris_lookup`, and
 the deep researcher, the conversation path and the job runner parse the text.
-The text parsers in `citation_verification`
+The text parsers in `citations/text_parsers.py`
 (`_parse_knowledge_layer` and the eleven `_KL_*` regexes) stay for the callers
 that hold the bytes without the records: a registry hydrated from the shared
 cache, a turn replayed out of Postgres, and the job runner's callback in
-`frontends/aiq_api/src/aiq_api/jobs/callbacks.py`. A text those parsers find no
+`apps/agent-host/src/agent_host/jobs/callbacks.py`. A text those parsers find no
 `Citation:` line in carries no sources at all; the generic URL extractor beneath
 them reads the tools with no registered parser (web search), never a passage
 body. Nothing reads a FAILED call either: both capture loops skip a
 `ToolMessage` whose `status` is `error`, so the words a tool failure returns are
 the model's to act on and nobody's evidence. The contract test asserts the
 two readers produce the same entries
-(`tests/aiq_agent/common/test_citation_pipeline_contract.py`).
+(`packages/agent/tests/common/test_citation_pipeline_contract.py`).
 
 The boundary is worth stating once: the TOOL side is structured, and the ANSWER
 side stays text, because the model writes text and a citation key in prose is
@@ -1136,17 +1114,17 @@ worker that has read a Gliederung and knows the Punkt it needs was still asking
 the corpus to find that passage by similarity, and every batch spent that way is
 a round the run does not get back.
 
-`read_passage` (`sources/knowledge_layer/src/read_passage.py`) is that lookup:
+`read_passage` (`packages/knowledge-layer/src/read_passage.py`) is that lookup:
 `document` (exact indexed name, stored display title, or the derived OIB title)
-plus `punkt` (the `punkt_id` the Punkt chunker verified against the corpus's own
-contents pages) or `page`. `document` with neither is the **outline**: the
+plus `clause` (the `clause_id` the Punkt chunker verified against the corpus's own
+contents pages) or `page` (`punkt` is accepted as the former name of `clause` for one release). `document` with neither is the **outline**: the
 document's scope passage (Punkt 0, else the first top-level Punkt) followed by a
 `## Gliederung` of its depth-1 and depth-2 Punkte with their pages. That is the
 overview question ("worum geht es in der OIB 2?"), which names no Punkt and no
 page; refusing it sent the model to a search that returns cover pages and then to
 a Punkt number it had guessed. The Gliederung is an index, not evidence — only
 the passages carry a Citation, and a listed Punkt is read by calling again with
-`punkt=`. A document with no Punkte at all — most project uploads — returns its
+`clause=`. A document with no Punkte at all — most project uploads — returns its
 opening passages instead: the first chunks in document order, because `page_label` is not always a page number.
 
 The same lookup one granularity up is a whole Richtlinie, and it is reached
@@ -1159,7 +1137,7 @@ words, overview nouns and edition words around it), asks
 `read_passage.family_overview` for every member the corpus holds, and renders
 those members' scope passages ahead of its own hits in ONE grounding block,
 with one `## Gliederung` per member as the trailer. Beside the overview the
-block keeps at most four ranked hits (`_FAMILY_RANKED_HITS`), and the requery
+block keeps at most four ranked hits (`family_branch.FAMILY_RANKED_HITS`), and the requery
 judge never runs on it. One search round, then one round of Punkt opens. Membership is derived from what is indexed
 (`oib_families`), so a deployment without 2.3 is never told it has one, and a
 query that also names a topic, a Punkt, a page, a table or a file is an
@@ -1175,7 +1153,7 @@ Three things make it fit the rest of the tier rather than sit beside it. Its
 output is `_format_results`, so citations, the `Punkt:` line and the
 `## Trace-Lanes` fan-out under the round stamp all work unchanged and nothing
 downstream learns a second shape. That claim was false for one release:
-`citation_verification` registers its knowledge parser on the substring
+`citations/text_parsers.py` registers its knowledge parser on the substring
 `knowledge`, which `read_passage` does not contain, so the locator's passages
 fell to the non-URL fallback and registered one source whose citation key was
 the string `read_passage`. A citation to a passage the turn OPENED rather than
@@ -1196,7 +1174,7 @@ corpus: `status.retrieval.punkt` / `status.retrieval.page`
 ("Liest OIB-Richtlinie 2, Pkt. 3.5.2").
 
 A fetch it already made this turn is not made twice. `piloti/agent.py` derives a
-signature per call (`fetch_signature` in `common/turn_status.py`: the tool plus
+signature per call (`fetch_signature` in `common/tool_calls.py`: the tool plus
 its locus or its query and narrowing) and carries the turn's `executed_fetches`
 on the state; a `knowledge_search` or `read_passage` call whose signature already
 ran is **withheld** — derived once, read in both the agent node and the tools
@@ -1213,8 +1191,8 @@ countable in a trace.
 
 ### Agentic retrieval quality package (ADR-0039)
 
-Five retrieval-quality improvements sit in the knowledge layer's `register.py`
-(`knowledge_search` / `knowledge_retrieval`) and `llamaindex` package, all
+Five retrieval-quality improvements sit in the knowledge layer's ranked search
+(`knowledge_search.py`, `ranked_search.py`, `fusion.py`) and `llamaindex` package, all
 **fail-open** (any error degrades to the previous plain behavior, never raises):
 
 1. **Agentic filters** — `knowledge_search` is the evidence tool (read/cite).
@@ -1229,7 +1207,7 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    over-fetch (`qdrant/prefilter.py`). `doc_class`
    and titles are **store-authoritative**: `_resolve_doc_classes` /
    `_resolve_display_titles` build `(collection, file_name) → value` maps via
-   `aiq_agent.knowledge.factory` (`get_document_doc_classes` /
+   `agent.knowledge.factory` (`get_document_doc_classes` /
    `get_document_display_titles`), so an admin reclassification in the
    base-knowledge panel takes effect immediately with no re-ingest; chunk
    metadata is only the fallback. An invalid `doc_class` value returns the
@@ -1240,12 +1218,12 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    a citation the UI peeks the cited project/Büro file itself
    (`useCitationPeek`) so the two tools are not a pair.
 
-2. **Hybrid lexical + vector retrieval (RRF)** — gated on `AIQ_HYBRID_RETRIEVAL`
+2. **Hybrid lexical + vector retrieval (RRF)** — gated on `HYBRID_RETRIEVAL`
    (default on, config key `hybrid_search` in the knowledge layer YAML block).
    When enabled, `LlamaIndexRetriever` adds lexical channels to the dense one
    in the same Qdrant query: German BM25 over the chunk text, and per selective
    exact term (`extract_exact_terms`, token-based, shared utility in
-   `src/aiq_agent/common/legal_terms.py` — deliberately **no regex**; up to
+   `packages/agent/src/agent/common/legal_terms.py` — deliberately **no regex**; up to
    three technical tokens) the dense ranking restricted to chunks containing
    it (`qdrant/search.py`). The channels are fused server-side by **reciprocal
    rank fusion** (`k=60`). This fixes
@@ -1253,13 +1231,13 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    model did not weight) without an embedding re-index.
 
 3. **Reranker** — a cross-encoder first, the LLM judge as its fallback.
-   `reranker_provider` (config field, env default `AIQ_RERANKER_PROVIDER`; the
+   `reranker_provider` (config field, env default `RERANKER_PROVIDER`; the
    reference config sets `openrouter`, model `cohere/rerank-v3.5`) names
    OpenRouter's reranking endpoint (`knowledge_layer/cross_encoder.py`; a
    self-hosted reranker speaking the same shape fits through
-   `AIQ_RERANKER_BASE_URL`) that scores each
+   `RERANKER_BASE_URL`) that scores each
    (query, passage) pair over the full chunk in ~100ms, bounded by
-   `AIQ_RERANKER_TIMEOUT_SECONDS` (10s). A key that does not resolve, or any
+   `RERANKER_TIMEOUT_SECONDS` (10s). A key that does not resolve, or any
    provider error, falls back to the judge: `rerank_llm` (an LLM alias from the
    config's `llms:` block; the reference config gives it a dedicated
    `rerank_llm` entry) rescores the merged+filtered pool once
@@ -1291,7 +1269,7 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    failed open, keeps the judge. The turn's prefetch is judged like any other
    search: a switch that skipped it (`requery_on_prefetch`) measured 3.4 s
    slower on the turns it applied to and was removed
-   (`turn-latency-measured-2026-09.md` §3.5; it lived in the requery gate of `knowledge_layer/register.py`, marked by a `ContextVar` the prefetch node set). A pinned file (`"file_pinned"`), a requery that already fired this turn
+   (`docs/audit/turn-latency-measured-2026-09.md` §3.5; it lived in the requery gate of `knowledge_layer/register.py`, marked by a `ContextVar` the prefetch node set). A pinned file (`"file_pinned"`), a requery that already fired this turn
    (`"already_fired"`) and the cheap pre-checks of `should_skip_judge` skip it
    too.
 
@@ -1301,13 +1279,16 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    the requery round (`requery.judge_coverage`, one `noul` per passage, the same
    0.55). When every judged passage was decided and none reaches it, the
    preamble reads `Found N document(s); none of the judged ones answers the
-   question:` and the line under it reads `Abdeckung: unzureichend — keine der
-   N gezeigten Passagen enthält die gesuchte Aussage …`, or, for a pool longer
-   than 24, `keine der 24 besten Passagen …; die übrigen K Passagen wurden
-   nicht geprüft` (`GroundingBlock.coverage_gap`). The pool reaches the model whole: a
+   question:` and the line under it reads `Coverage: insufficient — none of the
+   N shown passages contains the statement sought …`, or, for a pool longer
+   than 24, `none of the best 24 passages …; the remaining K passages were not
+   checked` (`GroundingBlock.coverage_gap`), followed by what that means: say so
+   and what was searched, and that it is not „Nicht geregelt“
+   (`COVERAGE_GAP_NOTE`). The pool reaches the model whole: a
    decision never withholds a passage (ADR-0064), so the gap is stated, not
-   enforced. The prompt's `<research_rules>` tell the agent to say it found no
-   supporting passage rather than answer from them. The retrieval span records
+   enforced. The line itself tells the agent to say it found no supporting
+   passage rather than answer from them (since ADR-0133 slice 6; before, a rule in
+   the system prompt did, on every call). The retrieval span records
    `coverage: "insufficient"` and `coverage_best`. Anything short of a
    complete "no" claims nothing:
    a decision that did not run or left a passage unanswered, the LLM decider,
@@ -1317,23 +1298,23 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    rerank scores against labelled unanswerable questions.
 
 4. **Retrieval-precision feedback** — a new `retrieval_precision` event kind in
-   the citation-health pipeline (`src/aiq_agent/common/citation_events.py`):
+   the citation-health pipeline (`packages/agent/src/agent/common/citation_events.py`):
    `build_turn_events` now compares the *retrieved* source labels against the
    *cited* ones per turn and emits an info-severity event when retrieval
    surfaced documents the answer did not use (`retrieved` / `cited` / `uncited`
    counts + the first 10 uncited labels). This closes the retrieval-quality loop
-   on the existing `GRID_CITATION_EVENTS_ENABLED` dashboard surface (frontend:
+   on the existing `CITATION_EVENTS_ENABLED` dashboard surface (frontend:
    `CITATION_PRECISION_KIND` in `lib/db/schema/citation-events.ts`; the defect
    queries and glossary in `lib/citations/{service,repository}.ts` exclude the
    new kind so "precision" is shown as its own diagnostic, not a citation
    defect).
 
-5. **Multimodal answer-time page/image viewing** — a new NAT tool
-   `view_knowledge_image` (`llamaindex/view_image.py`, gated on
-   `AIQ_VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
+5. **Multimodal answer-time page/image viewing** — the `look` tool
+   (`tools/look/`, ADR-0128; renderer `knowledge_layer/view_image.py`, gated on
+   `VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
    knowledge image to the VLM **as an image block during a research turn** —
    not just at ingestion. Three source shapes: **PDF pages** are re-rendered on
-   demand with pypdfium2 (long edge `AIQ_PAGE_RENDER_MAX_DIM`, default 2048) —
+   demand with pypdfium2 (long edge `PAGE_RENDER_MAX_DIM`, default 2048) —
    base-corpus PDFs from this replica's cache of the corpus, which
    `corpus_store.ensure_local` fills from SeaweedFS on demand (the
    `oib_corpus_files` table says what a base-corpus file is), project/Archiv
@@ -1346,10 +1327,10 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    PUT per raster (`POST /api/internal/document-image-upload-url`; the backend
    holds a read-only object-store credential, so it writes the way the
    thumbnail is written) and stores it as `<doc dir>/_img/<index>.jpg`, at most
-   `MAX_STORED_IMAGES_PER_DOCUMENT` (64, `frontends/ui/src/lib/s3.ts`, enforced
+   `MAX_STORED_IMAGES_PER_DOCUMENT` (64, `apps/workspace/bff/s3.ts`, enforced
    by the presign route; the backend stops at the first refusal). The caption
    chunk records `image_key` and `stored_image_index`; `_format_results` shows
-   an `Image: stored (view_knowledge_image image_index=N)` line only for such a
+   an `Image: stored (look image_index=N)` line only for such a
    chunk, and the tool's `image_index` argument fetches that raster through
    `GET /api/internal/document-file?imageIndex=N` — the BFF derives the key
    from the document's own row, so the backend never names an object key. Fail
@@ -1379,7 +1360,7 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
 All five changes are covered by tests under `tests/knowledge_layer_tests/`
 (`test_agent_filters.py`, `test_hybrid.py`, `test_rerank.py`,
 `test_view_image.py`, `test_image_store.py`),
-`tests/aiq_agent/common/test_image_view_budget.py`, and in the BFF
+`packages/agent/tests/common/test_image_view_budget.py`, and in the BFF
 `src/app/api/internal/document-file/route.spec.ts`,
 `src/app/api/internal/document-image-upload-url/route.spec.ts`,
 `src/lib/documents/image-derivatives.spec.ts` and
@@ -1411,12 +1392,12 @@ Country expansion touches data, not architecture: a new
 Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
 
 - **Data** — `configs/norms/<country>/registry.yml` (env override
-  `GRID_NORMS_DIR`; `at` ships 24 entries): per entry `id`, `title`, `short`,
+  `NORMS_DIR`; `at` ships 24 entries): per entry `id`, `title`, `short`,
   `rank` (bundesgesetz | landesgesetz | verordnung — RIS-backed law lanes —
   plus behoerdliche_info for non-RIS practice guidance with a plain
   `source_url`, e.g. the MA-37 Merkblätter, and norm_extern for
   ÖNORM/TRVB stubs without accessible full text),
-  `bundesland` (canonical name, empty = federal), `topics`, `relevance`, the
+  `federal_state` (canonical name, empty = federal), `topics`, `relevance`, the
   **verified** RIS pointer (application, document number, citation URL,
   entire-consolidated-law URL), optional `aliases`, `binding_note` (curated
   prose legal fact rendered into researcher prompts — e.g. how the WBTV makes
@@ -1428,7 +1409,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   BKAG, ZTG, WGG, DMSG, UVP-G, WRG, ForstG, GewO). Pointer index only: full
   texts are still fetched live — by `ris_lookup` on the chat surface (it takes
   the pointer, downloads the law and returns the answering §§ as citable
-  passages: `sources/ris_adapter/src/lookup/`), and by `ris_fetch_document` in
+  passages: `packages/ris-adapter/src/lookup/`), and by `ris_fetch_document` in
   deep research, which still drives the three older RIS tools itself.
 - **The OIB corpus is not in the catalog.** The `oib_corpus_files` table and its
   objects → `oib_knowledge` are its own source of truth; what a corpus file *is* (Richtlinie / Leitfaden /
@@ -1439,7 +1420,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   config (a `file_name NOT IN [...]` filter on the base collection only —
   session/project collections are never filtered). The same base-collection
   filter always carries `chunking != "page"`
-  (`_NON_EVIDENCE_CHUNKING` in the knowledge layer's `register.py`): the Punkt
+  (`_NON_EVIDENCE_CHUNKING` in the knowledge layer's `search_scope.py`): the Punkt
   chunker emits each Richtlinie's cover page and Impressum as per-page chunks,
   they are the only chunks still carrying the running title, and a title-shaped
   query therefore returned four cover pages at page 1 and nothing citable. `$ne`
@@ -1472,21 +1453,21 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   already holds, and the doctrine is constant per deployment, so it belongs in
   the cacheable prefix. Piloti renders the applicability section alone
   (`prompt.oib_applicability`, derived from this project's `confirmed:` facts)
-  and keeps the doctrine above the KV-cache boundary in `piloti_static.md`
-  (`<dokumentrollen>`). See the ADR-0060 amendment.
+  and keeps the doctrine in its system prompt, `chat_static.md`
+  (`<building_law>`). See the ADR-0060 amendment.
 - **Jurisdiction** — `resolve_country(project_context)` regexes the structured
    `country=<cc>` fact from the prompt text (`at`/`de`/`ch`/`other`, authored
    by the intake wizard's new A2_country question); absent → `"at"`. Every
    prompt now carries a **Jurisdiction & Country Handling** block that instructs
    the agent: for `at` → full OIB/RIS pipeline, binding precision; for non-AT →
    Austrian corpus only, comparative guidance, recommend local verification.
-- **Bundesland** — `resolve_bundesland`: the validated envelope token wins
+- **Bundesland** — `resolve_federal_state`: the validated envelope token wins
    (`ausserhalb_oesterreichs` → None is final), then the structured
-   `bundesland=<token>` prompt fact, then free-text state-name probing.
+   `federal_state=<token>` prompt fact, then free-text state-name probing.
    `focus_entries` drops other states' law and sorts the project's state first;
    the same rule filters `ris_search`'s catalog short-circuit and
    `ris_catalog_lookup` before truncation. When the country is non-AT, the
-   profile save derives `bundesland=ausserhalb_oesterreichs`, so the downstream
+   profile save derives `federal_state=ausserhalb_oesterreichs`, so the downstream
    pipeline consistently treats non-Austrian projects as jurisdiction-neutral.
 - **Hard limits** — Every research-facing prompt now includes a **Project Hard
    Limits & Grounding** block that instructs agents to treat confirmed wizard
@@ -1498,7 +1479,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   `applicable-standards.ts`), German trigger hints for the four boolean intake
   facts (Kleingarten, Denkmalschutz, Betriebsanlage, Stellplatz), and the
   prompt section Piloti renders from the project context.
-- **Display tagging** — `lane_for_hit` / `citation_verification.source_lane`
+- **Display tagging** — `lane_for_hit` / `citations/binding.py::source_lane`
   map a retrieval or citation hit to a stratum + lane label (Bundesrecht /
   Landesrecht / Verordnung via catalog rank; OIB lanes via filename class;
   Projektwissen / Büroablage / Web via collection origin) for the research
@@ -1543,7 +1524,7 @@ same thing.
 | "How many external walls on the ground floor?" | `lib/bim/query.ts` → SQL over `bim_elements`. A `COUNT(*)` with a `WHERE`; an LLM summing forty thousand elements from retrieved prose is a fact turned into a guess. |
 
 The agent reaches the second through the `ifc_query` tool
-(`src/aiq_agent/tools/bim/register.py`), which posts to
+(`packages/agent/src/agent/tools/bim/register.py`), which posts to
 `POST /api/internal/bim/query` with the shared service token — the same
 single-writer separation the `remember` tool uses. Models are addressed by
 project and file name; no UUID travels through a conversation.
@@ -1658,7 +1639,7 @@ therefore read identical numbers from one code path.
 Each carries its own blind spot in the payload rather than in a footnote:
 `roomsWithoutArea` per storey and per building, `missing` per take-off row, and
 an `evidence` string plus a confidence on every derived fact. `profile` is
-deliberately advisory — `geschosse_oberirdisch` picks a Gebäudeklasse, so the
+deliberately advisory — `storeys_above_ground` picks a Gebäudeklasse, so the
 suggestions travel to the user through the existing `project_profile_patch`
 confirm-the-patch card (ADR-0030), never as a direct write.
 
@@ -1698,8 +1679,8 @@ A compliance answer carries one more path: `_bcf_link` appends a
 the open requirements can also hand over the BCF file that puts them back in
 ArchiCAD or Revit. It is addressed by file NAME for the same reason the tool
 itself is — a UUID carried through a conversation is a reliable source of
-hallucinated identifiers — and it carries the same `gebaeudeklasse` /
-`hauptnutzung` the run used, so the archive can never be built against
+hallucinated identifiers — and it carries the same `building_class` /
+`main_use` the run used, so the archive can never be built against
 thresholds the answer did not apply.
 
 ### Geometry stays in the browser
@@ -1768,13 +1749,13 @@ T3-11).** The worker makes three writes when a run ends: the outcome
 `task_runs` row, files the report, tells the requester), the report into the
 run's message (`conversation_output.py` → `/api/internal/runs/by-job/{id}/report`)
 and the ledger's terminal op. The first two, and the thread-turn fallback, go
-through `aiq_api/internal_retry.py`: three attempts over about 25 s on a
+through `agent_host/internal_retry.py`: three attempts over about 25 s on a
 transport failure or a 5xx, and on a 404 too when the job was submitted for a
 run (the runner holds a `run_id`), because then the 404 means the BFF has not
 yet written the backend job id onto the row. The ledger client keeps its single
 short attempt; a lost terminal op is settled by the reconciler below.
 What the retry does not heal the BFF's run reconciler does
-(`frontends/ui/src/lib/runs/reconcile.ts`, driven by the `skill-scheduler`
+(`apps/workspace/bff/runs/reconcile.ts`, driven by the `skill-scheduler`
 tick): it asks the job store for the verdict of every run still active after
 ten minutes without a check (`GET /v1/internal/jobs/{id}/outcome`, service
 token, tenant checked against `job_access`), which also hands back the run
@@ -1791,8 +1772,8 @@ runner). And the research tab can 403 — see §9.
 `f8093a0`)**: the `X-Grid-Collection-Scope` header is captured once at submit
 time (`piloti/conversation_register.py`) and threaded into the async job payload
 as `collection_scope`. The research worker only re-injects it into its own
-request context conditionally — `frontends/aiq_api/src/aiq_api/jobs/runner.py:641`
-does `if collection_scope is not None:` before base64url-encoding it back
+request context conditionally — `apps/agent-host/src/agent_host/jobs/agent_job_setup.py`
+(`_inject_scope_headers`) does `if collection_scope is not None:` before base64url-encoding it back
 onto the header. When the scope is absent, `knowledge_retrieval` inside the
 worker falls back to legacy config-based resolution (base collection +
 session collection only — see `docs/technical-reference/collection-scoping.md`).
@@ -1805,7 +1786,7 @@ the point the re-injection would otherwise be skipped.
 
 **Durable checkpointing (backlog T3-8, 2026-07-16, `5bea711`)**: optional
 LangGraph checkpointing for the deep-research graph, configured via
-`deep_research_agent.checkpoint_db` (env `AIQ_DEEP_CHECKPOINT_DB`; unset by
+`deep_research_agent.checkpoint_db` (env `DEEP_CHECKPOINT_DB`; unset by
 default) — see §9's "Async deep-research jobs are not restart-safe" bullet
 for the full mechanism and its manual-resubmit resume contract. A run's rows
 (`thread_id == job_id`) are purged when it ends, by the runner's `finally`
@@ -1816,7 +1797,7 @@ job, so after a reclaim they are the new owner's resume point.
 **Agent Skills and Jobs (ADR-0046)**: project-level **jobs** — a prompt on a
 timer, with a skill optionally attached — can fire this same async pipeline on
 a cron schedule. A dedicated `skill-scheduler` container claims due `jobs` rows
-in `grid_app` (`FOR UPDATE SKIP LOCKED`) and fires through the BFF's internal
+in `app` (`FOR UPDATE SKIP LOCKED`) and fires through the BFF's internal
 endpoint into `POST /v1/internal/skills/submit` (internal-token-guarded wrapper
 around `submit_agent_job`, so admission control and cost tracking apply
 unchanged). The agent follows the job's `output` (`chat` →
@@ -1825,21 +1806,21 @@ the run inside the composed `input` — the BFF concatenates the job prompt and
 the skill body — and the `skills` array on the submit body is a name list for
 the log; nothing is forced onto the worker's state. A `chat` job additionally carries a `conversation_id`,
 and the worker writes the question and answer into that thread at completion
-(`aiq_api/jobs/conversation_output.py`, best-effort — it can never fail a run).
+(`agent_host/jobs/conversation_output.py`, best-effort — it can never fail a run).
 This replaces the ADR-0023 Workflows scheduler, which was removed. See
 `docs/architecture/agent-skills.md`.
 
 **Deep-research agent graph internals**: the orchestrator/planner/researcher/
 writer middleware stack, structured-output contracts, and graph invariants
 (concurrency, recursion limit, skill filesystem permissions) live in
-`src/aiq_agent/agents/deep_researcher/README.md`. Its "Known limitations"
+`packages/agent/src/agent/agents/deep_researcher/README.md`. Its "Known limitations"
 section covers the remaining open defects found by a source audit against the
 installed `deepagents`/`langchain`/`langgraph` versions, several of which are
 now fixed — summarized in §9 below.
 
 ## 8. Backend agent architecture & DRY debt
 
-Registered agents (via NAT `@register_function` + `FunctionBaseConfig`):
+Registered agents (via the runtime's `@register_function` + `FunctionBaseConfig`):
 `chat_deepresearcher_agent` (entrypoint), `shallow_research_agent`,
 `deep_research_agent` (+ eval/placeholder wrappers). The clarifier is no longer
 among them: it is a step of the conversation graph
@@ -1850,10 +1831,10 @@ No shared base-agent class exists; the remaining agent classes each repeat: tool
 resolution/exclusion, `LLMProvider` construction, verbose/trace callback setup,
 per-request data-source-filtered rebuild, tool-availability validation, and
 prompt-loading fallbacks. Good shared primitives already live in
-`src/aiq_agent/common/` (`llm_provider`, `data_source_registry`, `tool_validation`,
-`prompt_utils`, `citation_verification`).
+`packages/agent/src/agent/common/` (`llm_provider`, `data_source_registry`, `tool_validation`,
+`prompt_utils`, `citations`).
 
-**Recommended (not yet implemented):** a `src/aiq_agent/common/agent_base.py`
+**Recommended (not yet implemented):** a `packages/agent/src/agent/common/agent_base.py`
 providing `resolve_tools()`, `build_llm_provider()`, `with_tool_guard()`, a
 prompt-loading mixin, and an eval-wrapper factory — collapsing the duplication
 without touching the genuinely agent-specific LangGraph node logic. This is a
@@ -1861,46 +1842,57 @@ refactor that should be verified against a running stack before merge.
 
 ### Prompts: three layers, and where each is authored
 
-What reaches a model as its system prompt is assembled from three layers with
-three different owners. Confusing them is how a prompt change lands in the
-wrong place and appears not to work.
+What reaches a model besides the transcript is assembled from three layers
+with three different owners, in two messages. Confusing them is how a prompt
+change lands in the wrong place and appears not to work.
 
-1. **The platform prompt** — the static half of `piloti.j2`, everything above
-   the `KV CACHE BOUNDARY` marker. Identical for every tenant and every turn,
-   which is what makes it both cacheable by the provider and manageable outside
-   a release. **Authored and versioned in Langfuse**, under the prompt name
-   `piloti-system-static` and the label `production`, and pulled by the agent
-   at render time (`src/aiq_agent/common/prompt_store.py`).
+A request is `[system prompt, *earlier turns, turn context, newest question,
+*this turn]` (`prompt.request_messages`). The system prompt is the static half
+alone, the same bytes on every turn; the turn context (`piloti.j2`) is its own
+message right before the newest question, request-only (never stored in the
+transcript). So the system prompt and every earlier turn are a prefix the next
+round and the next turn share byte for byte, and the provider's cache reaches
+past the system prompt into the history.
+
+1. **The platform prompt** — the system prompt, `chat_static.md` (≤ 5,000
+   tokens plus the envelope schema rendered from the models). Identical for
+   every tenant and every turn, which is what makes it both cacheable by the
+   provider and manageable outside a release. **Authored and versioned in
+   Langfuse**, under the prompt name `piloti-system-static` and the label
+   `production`, and pulled by the agent at render time
+   (`packages/agent/src/agent/common/prompt_store.py`). What each line of it is for, and
+   what was cut and why: [`docs/audit/prompt-value-audit-2026-10.md`](../audit/prompt-value-audit-2026-10.md).
 2. **The office's standing instructions** — the tenant's own preferences,
    arriving per request on the `x-grid-org-instructions` header
-   (`project_context.py`, bounded at 1500 characters) and rendered BELOW the
-   boundary, because they vary per tenant. The template frames them as
+   (`project_context.py`, bounded at 1500 characters) and rendered in the turn
+   context, because they vary per tenant. The template frames them as
    preferences that neither supply a normative value nor outrank the static
-   rules.
+   rules, and the system prompt's `<rules>` says so too.
 3. **Skills** — chosen by the model, per turn, from the L1 catalog the register
    layer collates (ADR-0046, §8d). Nothing here is authored in a prompt file at
    all: a skill is a document the agent decides to read.
 
-**What the dynamic half still carries, and why it is short.** Below the
-boundary `piloti.j2` renders per-turn FACTS and nothing standing: the date and
-user, the tool-name index (the model's only namespace listing under deferred
-loading, ADR-0048), the skills catalog, which file the composer has open, the
-knowledge-base inventory, what this conversation already read, the project's
-parcel documents, the OIB-Richtlinien this project's own facts make applicable,
-the platform lessons, the office block and the Project Context. Two sentences
-of rule survive, in `<entwuerfe>`: what „mach daraus ein File" refers to, which
-only the transcript knows, and that filing needs a project.
+**What the turn context carries, and why it is short.** `piloti.j2`
+renders per-turn FACTS and nothing standing: the date and user, what this turn
+cannot do (a restricted conversation, deep research off), the one drafting
+sentence no tool can carry (what „mach daraus ein File" refers to), the skills
+catalog, which file the composer has open, the knowledge-base inventory, what
+this conversation already read, the project's parcel documents, the
+OIB-Richtlinien this project's own facts make applicable, the platform lessons,
+the office block and the Project Context, followed by a one-line legend for
+each record block the Project Context actually holds (`PROJECT_MEMORY`,
+`PROPOSAL_DECISIONS`, `REVIEW_DECISIONS`, `FOLDER_DESCRIPTIONS`,
+`documents_missing:`). It lists no tool names: the bound schemas carry them.
+When a tool search arrives (ADR-0048's deferred loading was removed on
+2026-10-27; a standards-based one replaces it in its own change), check whether
+the model still finds the deferred tools without a name index.
 
-Everything else that used to sit here is either a tool's own contract, which
-now lives in the tool description that owns it (ADR-0060 (d)), or standing
-platform doctrine, which moved ABOVE the boundary into `piloti_static.md`
-(`<dokumentrollen>`, `<project_record>`). The measured dynamic half on a
-realistic turn fell from 7,724 tokens to 2,962. The amendment section of
-[ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md)
-records what moved where.
+Everything else that used to sit in the prompt is either a tool's own contract,
+which lives in the tool description that owns it (ADR-0060 (d)), a rail code
+enforces, or gone; the 2026-10 audit lists each line.
 
 **Git is the source of truth** (ADR-0060 (a)).
-`src/aiq_agent/agents/piloti/prompts/piloti_static.md` is the prompt review
+`packages/agent/src/agent/agents/piloti/prompts/chat_static.md` is the prompt review
 reads, and it is pushed to Langfuse, where labels carry experiments. It is also
 what a process renders when prompt management is off (the default), when the
 Langfuse keys are absent, when Langfuse is unreachable, or when it holds no
@@ -1939,7 +1931,7 @@ fallback is in the trace METADATA instead, as `prompt_name` and
 §Prompt management.
 
 **Editing a template.** Each agent keeps its Jinja2 templates in
-`src/aiq_agent/agents/<agent>/prompts/`; `load_prompt` reads one and
+`packages/agent/src/agent/agents/<agent>/prompts/`; `load_prompt` reads one and
 `render_prompt_template` renders it (`common/prompt_utils.py`). The `.j2` file
 is the authority on the variables it uses, so keep every one the agent passes,
 and keep standing instructions above per-call content so the provider's prompt
@@ -1955,23 +1947,25 @@ loads and renders it. Which model each role runs on is config:
 The agent can now persist curated findings across turns. Full design:
 `docs/architecture/project-memory-design.md`. Key facts:
 
-- **Single-writer**: the `grid_app` DB has exactly one writer, the Next.js BFF.
+- **Single-writer**: the `app` DB has exactly one writer, the Next.js BFF.
   The backend `remember` tool never touches the DB — it POSTs to the internal
   BFF endpoint `POST /api/internal/memory`
-  (`frontends/ui/src/app/api/internal/memory/route.ts`), authenticated by the
-  shared service token `GRID_INTERNAL_API_TOKEN` (`x-grid-internal-token`
+  (`apps/workspace/app/api/internal/memory/route.ts`), authenticated by the
+  shared service token `INTERNAL_API_TOKEN` (`x-grid-internal-token`
   header; the route fails closed with 503 when the token is unconfigured).
-  Backend client: `src/aiq_agent/knowledge/project_memory.py` (base URL from
-  `FRONTEND_INTERNAL_URL`, default `http://frontend:3000`).
+  Backend client: `packages/agent/src/agent/knowledge/project_memory.py`, over
+  `packages/agent/src/agent/common/bff_http.py`, the one client every agent-side call to
+  the BFF goes through (base URL from `FRONTEND_INTERNAL_URL`, then
+  `FRONTEND_URL`, default `http://frontend:3000`; redirects refused).
 - **Two scopes**: the `project_memory` table has a `scope` column —
   `project` (requires `projectId`) or `organization` (org-wide, requires
   `organizationId`, `projectId` null).
 - **Read path**: `buildProjectMemoryDigest()`
-  (`frontends/ui/src/lib/projects/memory-service.ts`) merges org-wide +
+  (`apps/workspace/bff/projects/memory-service.ts`) merges org-wide +
   project items (active only; pinned first, then most recently updated,
   bounded), tags each line with scope/kind/confidence/verification, and the
   digest rides the WS upgrade as the `x-grid-project-memory` header
-  (`server.js` → `src/aiq_agent/project_context.py`), injected into prompts
+  (`server.js` → `packages/agent/src/agent/project_context.py`), injected into prompts
   alongside `x-grid-project-context`.
 
 ## 8b. Runtime model overrides & usage metering (2026-07-07)
@@ -1982,12 +1976,12 @@ full specs in `org-model-configuration.md` (ADR-0014) and
 
 - **Model overrides**: `x-grid-model-overrides` (base64url JSON
   `{agentGroup: openrouterModelId}`) is parsed by
-  `src/aiq_agent/common/model_overrides.py` and applied request-scoped:
+  `packages/agent/src/agent/common/model_overrides.py` and applied request-scoped:
   `LLMProvider.with_model_overrides()` (group-tagged roles; identity when
   nothing applies) in Piloti/deep `_run` closures and in
   `clarify.Clarifier.deps_for`, plus `apply_model_override()` at the clarifier
   planner and the reflection scheduling site. Async jobs carry
-  the map through `submit_agent_job` → `jobs/runner.py` (provider + header
+  the map through `submit_agent_job` → `jobs/agent_job_setup.py` (provider + header
   re-injection). Only the model id changes; params/keys stay from YAML. When
   no header/envelope carries the map (e.g. the generic async-job proxy before
   2026-07-16, or any future endpoint the BFF doesn't front),
@@ -2004,8 +1998,8 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   `max_results`/`page_size`, `ris_catalog_lookup` `max_matches` — are no
   longer only build-time YAML. The BFF's Platform → Retrieval surface
   (`/api/platform/retrieval-settings`, catalog + bounds in
-  `frontends/ui/src/lib/retrieval-settings/catalog.ts`) pins keys; the backend
-  resolves them through `src/aiq_agent/common/retrieval_settings.py`
+  `apps/workspace/bff/retrieval-settings/catalog.ts`) pins keys; the backend
+  resolves them through `packages/agent/src/agent/common/retrieval_settings.py`
   (`get_retrieval_setting(key, fallback)`), which pulls the pinned set from
   the token-guarded `GET /api/internal/retrieval-settings` just like
   `model_overrides` does, TTL-cached in-process (60s positive / 30s negative)
@@ -2014,8 +2008,8 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   resolver never raises, so a BFF outage cannot break retrieval. Platform-only
   by design: there is no org layer (ADR-0016) — every tenant's queries share
   the fleet counts.
-- **Cost capture (DRY)**: `src/aiq_agent/common/cost_tracking.py` installs
-  `GridCostTracker` through LangChain's `register_configure_hook` ContextVar
+- **Cost capture (DRY)**: `packages/agent/src/agent/common/cost_tracking.py` installs
+  `CostTracker` through LangChain's `register_configure_hook` ContextVar
   seam — every callback manager configured inside the request picks it up,
   so agents contain no metering code. Activated in exactly three places:
   the chat workflow `_run`, the research job runner, and the reflection task.
@@ -2026,12 +2020,12 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   next LLM call once exhausted (sync path returns a friendly chat response);
   the BFF refuses the WS upgrade outright when already over. A separate,
   per-run **completion-token** ceiling (backlog T4-4, 2026-07-16) —
-  `GRID_MAX_RUN_COMPLETION_TOKENS`, default `0` = disabled — bounds one job's
+  `MAX_RUN_COMPLETION_TOKENS`, default `0` = disabled — bounds one job's
   total output tokens across every LLM call including concurrent researcher
-  workers (`BudgetGuardCallback`, `src/aiq_agent/common/budget_guard.py`),
+  workers (`BudgetGuardCallback`, `packages/agent/src/agent/common/budget_guard.py`),
   independent of the USD budget ledger.
 - **Phase progress events** (backlog T4-4, 2026-07-16): `PhaseProgressCallback`
-  (`aiq_api.jobs.phase_events`) observes the deep-research orchestrator's
+  (`agent_host.jobs.phase_events`) observes the deep-research orchestrator's
   existing task-dispatch and `run_research_batch` callback events to detect
   planning/research/writing/citation-verification/done transitions, without
   any change to the `deep_researcher` package itself, and persists each as a
@@ -2045,7 +2039,7 @@ The staged OIB Soll-Ist pipeline (`agents/compliance_checker/`, backlog T4-3)
 was retired as a chat tool and then deleted, with its `compliance_llm` role
 and its `compliance_check` model group. A norm check is now a task of kind
 `compliance_check`, run by the general agent with its retrieval tools
-(`TASK_ENGINES` in `frontends/ui/src/lib/tasks/delegation.ts`). The code is in
+(`TASK_ENGINES` in `apps/workspace/bff/tasks/delegation.ts`). The code is in
 git history.
 
 ## 8d. Agent skills (ADR-0046)
@@ -2056,26 +2050,28 @@ nothing can require one. The model picks from the L1 catalog, which lists every
 resolved skill — nothing a person sets takes a row out of it — and `/name` in
 the composer inserts a mention into the message text rather than a force list on
 the wire. Delivery is
-**progressive disclosure**: L1 is a one-line-per-skill catalog in the system
-prompt (`## Available skills`), L2 is the full body, loaded only when the model
-calls the `use_skill` tool. Per-run `SkillRuntime` (ADR-0018 — never cached on
-the shared agent) records what was DELIVERED for `skills_activated` on the
-terminal frame. Standing instructions are prompt text instead: the platform
+**progressive disclosure** on Deep Agents' `SkillsMiddleware` (ADR-0135): L1
+is the middleware's catalog (`## Skills`, name, description and path per skill),
+L2 is the full `SKILL.md`, read only when the model calls `read_file` on it.
+Per-run `SkillRuntime` (ADR-0018 — never cached on the shared agent) owns the
+run's read-only `SkillsBackend` and records what was DELIVERED for
+`skills_activated` on the terminal frame. Standing instructions are prompt text instead: the platform
 prompt, and the office's own bounded block (`X-Grid-Org-Instructions`, rendered
-below the KV-cache boundary as `## Anweisungen des Büros`).
+in the turn context as `## Office instructions`).
 
-The set per run = builtin (`src/aiq_agent/skills/builtin/`, discovered
+The set per run = builtin (`packages/agent/src/agent/skills/builtin/`, discovered
 deterministically, validated strictly) + org rows from the BFF internal
 `GET /api/internal/skills/resolve` (org shadows builtin by name), resolved
 fail-open and cached in the shared cache
-(`GRID_SKILLS_CACHE_TTL_SECONDS`, default 60). `shallow_research_agent`
+(`SKILLS_CACHE_TTL_SECONDS`, default 60). `shallow_research_agent`
 config gate: `skills_enabled` (default true) + `skill_allowlist` (empty =
-all). `use_skill` is bound on every turn like every other tool; whether a
-greeting loads a skill is the model's call (ADR-0052). Deep research loads
-machinery from the filesystem (`DeepResearchSkillsConfig` mounts `oib`/`bim`
-on Piloti and `synthesis` on the writer; curated dirs 404) and
-loads house voice, offers and org skills through `use_skill`
-(`resolve_served_skills`). Full design and tests:
+all). The catalog and the skill `read_file` are there on every turn; whether a
+greeting reads a skill is the model's call (ADR-0052). Piloti renders the
+catalog into its turn context, because its graph cannot host the middleware.
+Deep research lists the same backend through the middleware in each subagent:
+`DeepResearchSkillsConfig` assigns `oib`/`bim` to the researcher and `synthesis`
+to the writer (curated builtins left out), and the writer also lists the
+office's skills (`resolve_served_skills`) under `/skills/office/`. Full design and tests:
 `docs/architecture/agent-skills.md`.
 
 ## 9. Known issues / open items
@@ -2109,7 +2105,7 @@ loads house voice, offers and org skills through `use_skill`
   `collection_scope` is still only re-injected into the research worker context
   when present (behavior unchanged: absent scope still drops
   project-collection search for that job, §7), but the degradation is no
-  longer silent: `runner.py` logs a one-time WARNING (job id, whether the
+  longer silent: `agent_job_setup.py` logs a one-time WARNING (job id, whether the
   request looked authenticated/project-scoped) at the point it would
   otherwise skip re-injection, so the gap is diagnosable from logs instead of
   invisible.
@@ -2124,10 +2120,10 @@ loads house voice, offers and org skills through `use_skill`
   It still runs uncoordinated with deepagents' own (stable-cutoff)
   summarization middleware, and no call site sets provider prompt-caching
   hints yet (that's a separate, still-open lever — see
-  `docs/architecture/llm-providers.md` and `scaling-review-2026-07.md` §6.1).
+  `docs/architecture/llm-providers.md` and `docs/audit/scaling-review-2026-07.md` §6.1).
   Model-call retries were narrowed in the same change: `ModelRetryMiddleware`
   now retries only rate limits, timeouts, transport errors, and 5xx (was any
-  exception). See `src/aiq_agent/agents/deep_researcher/README.md`
+  exception). See `packages/agent/src/agent/agents/deep_researcher/README.md`
   "Known limitations" for details.
 - **Researcher-worker step cap — fixed 2026-07-27 (`tools/research.py`)** —
   each single-query researcher runnable now receives an explicit
@@ -2183,30 +2179,32 @@ loads house voice, offers and org skills through `use_skill`
   parser remains as a second line of defense for non-conformant completions
   in general. See the same README section.
 - **Deep-research planner ceremony overhead** — deepagents' `StateBackend`
-  is write-once (a second `write_file` to an existing path errors; recovery
-  is via `edit_file`); the planner prompt mandates `write_todos` before
-  decomposing. As of the 2026-07-16 prompt pass (`77a4d7a`) the todo-list
+  was write-once up to 0.6 (a second `write_file` to an existing path
+  errored; recovery was via `edit_file`; since 0.7.0 it overwrites, see the
+  deep researcher README); the planner prompt mandated `write_todos` before
+  decomposing (`write_todos` itself is no longer a deepagents default since
+  0.7.0 and is added back by `factory.planning_middleware`). As of the 2026-07-16 prompt pass (`77a4d7a`) the todo-list
   ceremony is optional rather than mandatory, the planner's after-every-search
   `think` call is consolidated into a single pre-finalize `think`, and
   orchestrator `write_todos` updates are phase-level instead of per-step —
   reducing but not eliminating pure-ceremony LLM turns per planning run.
-- **NAT step-tree/span corruption after a retried call — root cause fixed
+- **Step-tree/span corruption in the runtime after a retried call — root cause fixed
   2026-07-16 (`6e57c08`)** — the log warnings `Step id ... not the last step
-  in the stack` / `span ID stack is not equal` had two causes. (1) NAT's
+  in the stack` / `span ID stack is not equal` had two causes. (1) The runtime's
   `LangchainProfilerHandler` (`nat/plugins/langchain/callback_handler.py`,
   `nvidia-nat==1.7.0`) implements `on_llm_start`/`on_tool_start` etc. but no
   `on_llm_error`/`on_tool_error`, so an errored (then retried) model or tool
   attempt never closed its intermediate-step span, corrupting the stack for
   every later step — this is now fixed by
-  `SpanClosingProfilerHandler` (`src/aiq_agent/common/nat_step_repair.py`), a
+  `SpanClosingProfilerHandler` (`packages/agent/src/agent/common/nat_step_repair.py`), a
   local subclass adding `on_llm_error`/`on_tool_error` overrides that push
   the matching `END` event, mirroring the installed handler's
   `on_llm_end`/`on_tool_end` construction field-for-field. (2) The remaining
   cause is NOT a bug: the deep-research pipeline legitimately runs sibling
   steps concurrently (parallel researcher workers, batched source-tool
-  fan-out), which NAT's single-chain step model cannot represent — those
+  fan-out), which the runtime's single-chain step model cannot represent — those
   residual warnings are deliberately suppressed (raised to `ERROR` level,
-  `src/aiq_agent/common/logging_utils.py`) rather than fixed, since the steps
+  `packages/agent/src/agent/common/logging_utils.py`) rather than fixed, since the steps
   themselves are still recorded correctly. `run_id`-keyed token/cost
   accounting (§8b) was never corrupted by either cause.
 - **Shared trace-callback state across concurrent researcher workers — fixed
@@ -2221,7 +2219,7 @@ loads house voice, offers and org skills through `use_skill`
   instance for callbacks without it) before each `researcher_runnable.ainvoke()`
   call — the outer/batch-level callbacks list itself is untouched. This
   applies uniformly to both the sync chat path and the async job runner
-  (both go through the same `_run_research_query`), so `runner.py` building
+  (both go through the same `_run_research_query`), so `agent_job.py` building
   one `VerboseTraceCallback()`/`LangchainProfilerHandler()` per job (not per
   worker) no longer means those workers race on shared state.
 - **Async deep-research jobs are not restart-safe — mitigated 2026-07-16
@@ -2230,7 +2228,7 @@ loads house voice, offers and org skills through `use_skill`
   an optional `checkpointer` (per-thread execution state, an independent axis
   from `store`) passed through to `create_deep_agent`. When
   `deep_research_agent.checkpoint_db` is configured (env
-  `AIQ_DEEP_CHECKPOINT_DB`; unset by default, opt-in since jobs run in
+  `DEEP_CHECKPOINT_DB`; unset by default, opt-in since jobs run in
   ephemeral research worker processes — the reference config sets it to
   `./deep_research_checkpoints.db`), `DeepResearcherAgent.run()` wires
   `configurable.thread_id = job_id` and `durability="async"` (LangGraph's
@@ -2243,7 +2241,7 @@ loads house voice, offers and org skills through `use_skill`
   checkpointed thread via the state schema's reducers rather than continuing
   exactly from the interrupted step — there is no automatic queueing/resume
   entry point yet, and the ghost-job reaper (ADR-0021,
-  `scaling-review-2026-07.md` §2.4) still flips an orphaned `RUNNING` row to
+  `docs/audit/scaling-review-2026-07.md` §2.4) still flips an orphaned `RUNNING` row to
   `FAILURE` after its timeout. A future DB-claimed-worker migration
   (ADR-0021) fixes replica pinning/cross-node cancel but is orthogonal to
   this checkpointing layer.
@@ -2255,10 +2253,10 @@ loads house voice, offers and org skills through `use_skill`
 `task verify` is the local gate: host-native, defined once in the root
 `Taskfile.yml`. CI calls the same definitions but schedules them differently, so
 a local pass is strong evidence rather than a guarantee. `task verify:fast`
-skips two production builds, `fe:build` and `web:build`. Full command list, the
+skips two production builds, `workspace:build` and `site:build`. Full command list, the
 checks that sit outside `verify`, and the traps `task --list` does not carry:
 `docs/contributing/testing-and-verification.md`.
 
 Runtime-behavioural changes (deep-research cards, agent refactor, research 403)
 still need a running stack before merge: the `.devcontainer` (VS Code,
-`deploy/Dockerfile` target `dev-builder`) or `docker compose … up -d --build`.
+`apps/agent-host/Dockerfile` target `dev-builder`) or `docker compose … up -d --build`.

@@ -1,5 +1,5 @@
 /**
- * `buildGraph` over `fixtures/haus-mit-raeumen.ifc`.
+ * `buildGraph` over `fixtures/house-with-rooms.ifc`.
  *
  * The fixture is hand-written so every assertion here can be checked by reading
  * 90 lines of STEP rather than trusting an exporter. Two rooms, four walls, one
@@ -25,28 +25,28 @@ import { buildGraph } from '../src/graph/build.js'
 import { out, into, around, label } from '../src/graph/types.js'
 import type { BuildingGraph, GraphEdge, NodeKind } from '../src/graph/types.js'
 
-const FIXTURE = fileURLToPath(new URL('./fixtures/haus-mit-raeumen.ifc', import.meta.url))
+const FIXTURE = fileURLToPath(new URL('./fixtures/house-with-rooms.ifc', import.meta.url))
 
 /** GlobalIds, verbatim from the fixture. */
 const ID = {
   project: '2Haus0Raeume00Project0',
   site: '2Haus0Raeume00Site0001',
   building: '2Haus0Raeume00Building',
-  storeyEG: '2Haus0Raeume00StoreyEG',
-  storeyOG: '2Haus0Raeume00StoreyOG',
-  wandSued: '2Haus0Raeume00Wall0001',
-  wandNord: '2Haus0Raeume00Wall0002',
-  trennwand: '2Haus0Raeume00Wall0003',
-  wandWest: '2Haus0Raeume00Wall0004',
-  bodenplatte: '2Haus0Raeume00Slab0001',
-  fenster: '2Haus0Raeume00Window01',
-  tuer: '2Haus0Raeume00Door0001',
-  wohnzimmer: '2Haus0Raeume00Space001',
-  kueche: '2Haus0Raeume00Space002',
-  kuechenzeile: '2Haus0Raeume00Furnit01',
-  spuele: '2Haus0Raeume00Sanit001',
-  fensteroeffnung: '2Haus0Raeume00Openin01',
-  tueroeffnung: '2Haus0Raeume00Openin02',
+  storeyGround: '2Haus0Raeume00StoreyEG',
+  storeyUpper: '2Haus0Raeume00StoreyOG',
+  wallSouth: '2Haus0Raeume00Wall0001',
+  wallNorth: '2Haus0Raeume00Wall0002',
+  partitionWall: '2Haus0Raeume00Wall0003',
+  wallWest: '2Haus0Raeume00Wall0004',
+  groundSlab: '2Haus0Raeume00Slab0001',
+  window: '2Haus0Raeume00Window01',
+  door: '2Haus0Raeume00Door0001',
+  livingRoom: '2Haus0Raeume00Space001',
+  kitchen: '2Haus0Raeume00Space002',
+  kitchenUnit: '2Haus0Raeume00Furnit01',
+  sink: '2Haus0Raeume00Sanit001',
+  windowOpening: '2Haus0Raeume00Openin01',
+  doorOpening: '2Haus0Raeume00Openin02',
   zone: '2Haus0Raeume00Zone0001',
   wallType: '2Haus0Raeume00WallTyp1',
   pset: '2Haus0Raeume00Pset0001',
@@ -97,13 +97,13 @@ describe('nodes', () => {
   })
 
   it('calls an IfcSpace a space, an IfcOpeningElement an opening, an IfcZone a group', () => {
-    expect(kindOf(ID.wohnzimmer)).toBe('space')
-    expect(kindOf(ID.kueche)).toBe('space')
-    expect(kindOf(ID.fensteroeffnung)).toBe('opening')
-    expect(kindOf(ID.tueroeffnung)).toBe('opening')
+    expect(kindOf(ID.livingRoom)).toBe('space')
+    expect(kindOf(ID.kitchen)).toBe('space')
+    expect(kindOf(ID.windowOpening)).toBe('opening')
+    expect(kindOf(ID.doorOpening)).toBe('opening')
     expect(kindOf(ID.zone)).toBe('group')
-    expect(kindOf(ID.fenster)).toBe('element')
-    expect(kindOf(ID.wandSued)).toBe('element')
+    expect(kindOf(ID.window)).toBe('element')
+    expect(kindOf(ID.wallSouth)).toBe('element')
   })
 
   it('does not make nodes out of type definitions, relations or property sets', () => {
@@ -133,22 +133,22 @@ describe('nodes', () => {
   })
 
   it('reads PredefinedType by attribute NAME, not by position', () => {
-    expect(graph.nodes.get(ID.wandSued)?.predefinedType).toBe('SOLIDWALL')
-    expect(graph.nodes.get(ID.bodenplatte)?.predefinedType).toBe('BASESLAB')
-    expect(graph.nodes.get(ID.fensteroeffnung)?.predefinedType).toBe('OPENING')
+    expect(graph.nodes.get(ID.wallSouth)?.predefinedType).toBe('SOLIDWALL')
+    expect(graph.nodes.get(ID.groundSlab)?.predefinedType).toBe('BASESLAB')
+    expect(graph.nodes.get(ID.windowOpening)?.predefinedType).toBe('OPENING')
     // The two that a positional read gets wrong, and why this is name-based:
     // IfcDoor's PredefinedType is followed by OperationType and
     // UserDefinedOperationType, so reading the tail attribute returned null;
     // IfcSpace's is followed by ElevationWithFlooring and PRECEDED by the
     // CompositionType enum, so a scan backwards for "something enum-shaped"
     // returned ELEMENT for every room in the building.
-    expect(graph.nodes.get(ID.tuer)?.predefinedType).toBe('DOOR')
-    expect(graph.nodes.get(ID.wohnzimmer)?.predefinedType).toBe('INTERNAL')
+    expect(graph.nodes.get(ID.door)?.predefinedType).toBe('DOOR')
+    expect(graph.nodes.get(ID.livingRoom)?.predefinedType).toBe('INTERNAL')
   })
 
   it('indexes by canonical type name', () => {
     expect(graph.byType.get('IfcWall')).toHaveLength(4)
-    expect(graph.byType.get('IfcSpace')).toEqual([ID.wohnzimmer, ID.kueche])
+    expect(graph.byType.get('IfcSpace')).toEqual([ID.livingRoom, ID.kitchen])
     expect(graph.byType.get('IfcOpeningElement')).toHaveLength(2)
     expect(graph.byType.get('IfcZone')).toEqual([ID.zone])
   })
@@ -159,35 +159,35 @@ describe('storeys', () => {
     expect(graph.storeys.map((s) => s.name)).toEqual(['Erdgeschoss', 'Obergeschoss'])
     // The parser normalises the file's millimetres to metres, so 3000. reads 3.
     expect(graph.storeys.map((s) => s.elevation)).toEqual([0, 3])
-    expect(graph.storeys[0]!.globalId).toBe(ID.storeyEG)
+    expect(graph.storeys[0]!.globalId).toBe(ID.storeyGround)
   })
 
   it('resolves the storey of an element contained in a storey', () => {
-    expect(graph.nodes.get(ID.wandSued)?.storeyGlobalId).toBe(ID.storeyEG)
-    expect(graph.nodes.get(ID.wandSued)?.storeyName).toBe('Erdgeschoss')
-    expect(graph.nodes.get(ID.wohnzimmer)?.storeyGlobalId).toBe(ID.storeyEG)
+    expect(graph.nodes.get(ID.wallSouth)?.storeyGlobalId).toBe(ID.storeyGround)
+    expect(graph.nodes.get(ID.wallSouth)?.storeyName).toBe('Erdgeschoss')
+    expect(graph.nodes.get(ID.livingRoom)?.storeyGlobalId).toBe(ID.storeyGround)
   })
 
   it('walks the spatial chain project → site → building → storey → space', () => {
     expect(out(graph, 'hasSubElement', ID.project)).toEqual([ID.site])
     expect(out(graph, 'hasSubElement', ID.site)).toEqual([ID.building])
-    expect(out(graph, 'hasSubElement', ID.building)).toEqual([ID.storeyEG, ID.storeyOG])
-    expect(out(graph, 'hasSubElement', ID.storeyEG)).toEqual([ID.wohnzimmer, ID.kueche])
+    expect(out(graph, 'hasSubElement', ID.building)).toEqual([ID.storeyGround, ID.storeyUpper])
+    expect(out(graph, 'hasSubElement', ID.storeyGround)).toEqual([ID.livingRoom, ID.kitchen])
   })
 })
 
 describe('containsElement', () => {
   it('reaches elements contained in a SPACE, not only in a storey', () => {
-    expect(out(graph, 'containsElement', ID.kueche).sort()).toEqual([ID.kuechenzeile, ID.spuele].sort())
-    expect(into(graph, 'containsElement', ID.kuechenzeile)).toEqual([ID.kueche])
+    expect(out(graph, 'containsElement', ID.kitchen).sort()).toEqual([ID.kitchenUnit, ID.sink].sort())
+    expect(into(graph, 'containsElement', ID.kitchenUnit)).toEqual([ID.kitchen])
   })
 
   it('still carries the storey containment', () => {
-    expect(out(graph, 'containsElement', ID.storeyEG).sort()).toEqual(
-      [ID.wandSued, ID.wandNord, ID.trennwand, ID.wandWest, ID.bodenplatte, ID.fenster, ID.tuer].sort()
+    expect(out(graph, 'containsElement', ID.storeyGround).sort()).toEqual(
+      [ID.wallSouth, ID.wallNorth, ID.partitionWall, ID.wallWest, ID.groundSlab, ID.window, ID.door].sort()
     )
     // The two fittings belong to the Kueche, not directly to the storey.
-    expect(out(graph, 'containsElement', ID.storeyEG)).not.toContain(ID.kuechenzeile)
+    expect(out(graph, 'containsElement', ID.storeyGround)).not.toContain(ID.kitchenUnit)
   })
 
   it('is oriented container → element', () => {
@@ -200,30 +200,30 @@ describe('containsElement', () => {
 
 describe('hostedIn — the window↔wall chain', () => {
   it('resolves the window to the wall it is cut into', () => {
-    expect(out(graph, 'hostedIn', ID.fenster)).toEqual([ID.wandSued])
+    expect(out(graph, 'hostedIn', ID.window)).toEqual([ID.wallSouth])
   })
 
   it('marks it computed, via voids+fills', () => {
-    const edge = edgesOf('hostedIn').find((e) => e.from === ID.fenster)
+    const edge = edgesOf('hostedIn').find((e) => e.from === ID.window)
     expect(edge).toBeDefined()
-    expect(edge!.to).toBe(ID.wandSued)
+    expect(edge!.to).toBe(ID.wallSouth)
     expect(edge!.provenance).toBe('computed')
     expect(edge!.via).toBe('voids+fills')
   })
 
   it('resolves the door to the party wall too, and nothing else is hosted', () => {
-    expect(out(graph, 'hostedIn', ID.tuer)).toEqual([ID.trennwand])
+    expect(out(graph, 'hostedIn', ID.door)).toEqual([ID.partitionWall])
     expect(edgesOf('hostedIn')).toHaveLength(2)
   })
 
   it('is oriented filler → host, never host → filler', () => {
-    expect(out(graph, 'hostedIn', ID.wandSued)).toEqual([])
-    expect(into(graph, 'hostedIn', ID.wandSued)).toEqual([ID.fenster])
+    expect(out(graph, 'hostedIn', ID.wallSouth)).toEqual([])
+    expect(into(graph, 'hostedIn', ID.wallSouth)).toEqual([ID.window])
   })
 
   it('rests on declared voids and fills, each read once', () => {
-    expect(out(graph, 'voids', ID.wandSued)).toEqual([ID.fensteroeffnung])
-    expect(out(graph, 'fills', ID.fensteroeffnung)).toEqual([ID.fenster])
+    expect(out(graph, 'voids', ID.wallSouth)).toEqual([ID.windowOpening])
+    expect(out(graph, 'fills', ID.windowOpening)).toEqual([ID.window])
     expect(edgesOf('voids')).toHaveLength(2)
     expect(edgesOf('fills')).toHaveLength(2)
     // voids goes element → opening; fills goes opening → filler. Not the reverse.
@@ -244,25 +244,25 @@ describe('interfaceOf', () => {
   })
 
   it('lists the bounding elements of each room, deduplicated', () => {
-    expect(out(graph, 'interfaceOf', ID.wohnzimmer).sort()).toEqual(
-      [ID.wandSued, ID.wandNord, ID.trennwand, ID.fenster].sort()
+    expect(out(graph, 'interfaceOf', ID.livingRoom).sort()).toEqual(
+      [ID.wallSouth, ID.wallNorth, ID.partitionWall, ID.window].sort()
     )
-    expect(out(graph, 'interfaceOf', ID.kueche).sort()).toEqual([ID.trennwand, ID.wandWest].sort())
+    expect(out(graph, 'interfaceOf', ID.kitchen).sort()).toEqual([ID.partitionWall, ID.wallWest].sort())
     // Each IfcRelSpaceBoundary is visited from both endpoints; six relations
     // must still yield six edges.
     expect(edgesOf('interfaceOf')).toHaveLength(6)
   })
 
   it('links the window to its space', () => {
-    expect(into(graph, 'interfaceOf', ID.fenster)).toEqual([ID.wohnzimmer])
+    expect(into(graph, 'interfaceOf', ID.window)).toEqual([ID.livingRoom])
   })
 })
 
 describe('adjacentZone', () => {
   it('links Wohnzimmer and Kueche through the party wall', () => {
     // Necessary condition only — the exact contract is the suite below.
-    expect(around(graph, 'adjacentZone', ID.wohnzimmer)).toContain(ID.kueche)
-    expect(into(graph, 'interfaceOf', ID.trennwand).sort()).toEqual([ID.wohnzimmer, ID.kueche].sort())
+    expect(around(graph, 'adjacentZone', ID.livingRoom)).toContain(ID.kitchen)
+    expect(into(graph, 'interfaceOf', ID.partitionWall).sort()).toEqual([ID.livingRoom, ID.kitchen].sort())
   })
 
   /**
@@ -292,7 +292,7 @@ describe('adjacentZone', () => {
   it('stores the pair exactly once and never a room next to itself', () => {
     const adjacent = edgesOf('adjacentZone')
     expect(adjacent).toHaveLength(1)
-    expect(pair(adjacent[0]!)).toEqual(new Set([ID.wohnzimmer, ID.kueche]))
+    expect(pair(adjacent[0]!)).toEqual(new Set([ID.livingRoom, ID.kitchen]))
     for (const e of adjacent) expect(e.from).not.toBe(e.to)
     expect(adjacent[0]!.provenance).toBe('computed')
     // Names the TYPE of the separator, because only a vertical one may create
@@ -303,22 +303,22 @@ describe('adjacentZone', () => {
 
 describe('opensTo', () => {
   it('gets the door to BOTH spaces', () => {
-    expect(out(graph, 'opensTo', ID.tuer).sort()).toEqual([ID.wohnzimmer, ID.kueche].sort())
+    expect(out(graph, 'opensTo', ID.door).sort()).toEqual([ID.livingRoom, ID.kitchen].sort())
   })
 
   it('gets the window to the one room its wall bounds', () => {
-    expect(out(graph, 'opensTo', ID.fenster)).toEqual([ID.wohnzimmer])
+    expect(out(graph, 'opensTo', ID.window)).toEqual([ID.livingRoom])
   })
 
   it('gets the openings themselves too, not only their fillers', () => {
-    expect(out(graph, 'opensTo', ID.fensteroeffnung)).toEqual([ID.wohnzimmer])
-    expect(out(graph, 'opensTo', ID.tueroeffnung).sort()).toEqual([ID.wohnzimmer, ID.kueche].sort())
+    expect(out(graph, 'opensTo', ID.windowOpening)).toEqual([ID.livingRoom])
+    expect(out(graph, 'opensTo', ID.doorOpening).sort()).toEqual([ID.livingRoom, ID.kitchen].sort())
   })
 
   it('never makes a bounding wall "open into" the rooms it encloses', () => {
     // The party wall bounds both rooms and hosts the door. The DOOR opens into
     // them; the wall is what separates them.
-    expect(out(graph, 'opensTo', ID.trennwand)).toEqual([])
+    expect(out(graph, 'opensTo', ID.partitionWall)).toEqual([])
     for (const e of edgesOf('opensTo')) {
       expect(['element', 'opening']).toContain(kindOf(e.from))
       expect(graph.nodes.get(e.from)?.ifcType).not.toBe('IfcWall')
@@ -352,19 +352,19 @@ describe('connects', () => {
   it('is stored once per pair, in express-id order', () => {
     const connects = edgesOf('connects')
     expect(connects).toHaveLength(1)
-    expect(connects[0]!.from).toBe(ID.wandSued)
-    expect(connects[0]!.to).toBe(ID.wandNord)
+    expect(connects[0]!.from).toBe(ID.wallSouth)
+    expect(connects[0]!.to).toBe(ID.wallNorth)
     expect(connects[0]!.provenance).toBe('declared')
     // Both walls can find each other, but only one edge exists.
-    expect(around(graph, 'connects', ID.wandNord)).toEqual([ID.wandSued])
+    expect(around(graph, 'connects', ID.wallNorth)).toEqual([ID.wallSouth])
   })
 })
 
 describe('inGroup', () => {
   it('points member → zone for both rooms', () => {
-    expect(out(graph, 'inGroup', ID.wohnzimmer)).toEqual([ID.zone])
-    expect(out(graph, 'inGroup', ID.kueche)).toEqual([ID.zone])
-    expect(into(graph, 'inGroup', ID.zone).sort()).toEqual([ID.wohnzimmer, ID.kueche].sort())
+    expect(out(graph, 'inGroup', ID.livingRoom)).toEqual([ID.zone])
+    expect(out(graph, 'inGroup', ID.kitchen)).toEqual([ID.zone])
+    expect(into(graph, 'inGroup', ID.zone).sort()).toEqual([ID.livingRoom, ID.kitchen].sort())
     expect(edgesOf('inGroup')).toHaveLength(2)
   })
 })
@@ -463,7 +463,7 @@ describe('contentHash', () => {
     expect(other.contentHash).not.toBe(graph.contentHash)
     // …and the graph is otherwise the same shape.
     expect(other.nodes.size).toBe(graph.nodes.size)
-    expect(other.nodes.get(ID.fenster)?.name).toBe('Fenster Nord')
+    expect(other.nodes.get(ID.window)?.name).toBe('Fenster Nord')
   })
 })
 
@@ -528,7 +528,7 @@ describe('hasSubElement direction', () => {
 
   it('has exactly the six spatial edges the file declares', () => {
     expect(graph.edges.filter((e) => e.kind === 'hasSubElement')).toHaveLength(6)
-    expect(out(graph, 'hasSubElement', ID.wohnzimmer)).toEqual([])
+    expect(out(graph, 'hasSubElement', ID.livingRoom)).toEqual([])
   })
 })
 
@@ -550,10 +550,10 @@ describe('hasSubElement direction', () => {
  */
 describe('longName', () => {
   it('resolves the human label of a room whose Name is a code', () => {
-    expect(graph.nodes.get(ID.wohnzimmer)?.name).toBe('R.01')
-    expect(graph.nodes.get(ID.wohnzimmer)?.longName).toBe('Wohnzimmer')
-    expect(graph.nodes.get(ID.kueche)?.longName).toBe('Kueche')
-    expect(label(graph.nodes.get(ID.wohnzimmer)!)).toBe('Wohnzimmer (IfcSpace)')
+    expect(graph.nodes.get(ID.livingRoom)?.name).toBe('R.01')
+    expect(graph.nodes.get(ID.livingRoom)?.longName).toBe('Wohnzimmer')
+    expect(graph.nodes.get(ID.kitchen)?.longName).toBe('Kueche')
+    expect(label(graph.nodes.get(ID.livingRoom)!)).toBe('Wohnzimmer (IfcSpace)')
   })
 
   it('resolves the zone label too', () => {

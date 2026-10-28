@@ -1,7 +1,7 @@
 # Audit — async memory-reflection stage & the memory write path
 
 > Multi-persona audit of the post-answer memory-reflection stage
-> (`src/aiq_agent/memory/reflection.py`) and the surrounding
+> (`packages/agent/src/agent/memory/reflection.py`) and the surrounding
 > project-memory system. Records the findings, what was hardened in code, and
 > what remains a deliberate follow-up. See also
 > [project-memory-design.md](./project-memory-design.md) §3.5.
@@ -32,7 +32,7 @@ privacy/GDPR, UX, backend/SRE, adversarial user, end-user architect.
 
 | # | Sev | Finding | Status |
 |---|-----|---------|--------|
-| S1 | HIGH | Org-wide writes have no authorization gate and no human-in-the-loop; an autonomous, prompt-injectable stage could plant `organization`-scoped memory that poisons every project in the tenant. Contradicts design §8 (org memory = Phase 4) and multitenancy-spec §6/§11 (cross-project mutation needs an org role). | **Fixed.** Reflection is project-scope only, AND the internal endpoint now **default-denies** agent-authored org writes (403 unless `GRID_ALLOW_AGENT_ORG_MEMORY=true`). Org-wide memory is a human-only action via the panel. |
+| S1 | HIGH | Org-wide writes have no authorization gate and no human-in-the-loop; an autonomous, prompt-injectable stage could plant `organization`-scoped memory that poisons every project in the tenant. Contradicts design §8 (org memory = Phase 4) and multitenancy-spec §6/§11 (cross-project mutation needs an org role). | **Fixed.** Reflection is project-scope only, AND the internal endpoint now **default-denies** agent-authored org writes (403 unless `ALLOW_AGENT_ORG_MEMORY=true`). Org-wide memory is a human-only action via the panel. |
 | S2 | MED-HIGH | Prompt-injectable: the reflection LLM's output is the sole driver of writes, fed user/answer/digest text. | **Reduced** — project-scope-only bounds blast radius to the current project; prompt now tells it not to treat embedded instructions as findings; digest-dedup drops echoed items. Residual: a semantically valid attacker-chosen *project* finding can still be written (same as the `remember` tool). |
 | INFORM | HIGH (UX/trust) | Reflection-phase writes are surfaced to the user **nowhere** — no tool step (it's not a tool call), no WS event, no toast/badge; the memory panel fetches once on mount and never refreshes. | **Built, and since rebuilt on a real channel.** The chip first shipped as a three-shot poll of conversation-scoped memory (`[0, 1500, 4000]` ms, one mount per rendered answer) because there was no post-answer channel to deliver on. There is one now: the reflection stage declares `delivery="frame"` and the frame carries the rows it wrote, so the chip is a fact about the TURN (`message.stages.memoryReflection`) and the poll is deleted — see post-answer-stages.md §5.1. It still labels the two paths apart, but the in-turn half is now the memory_proposal card the reader **accepted**, not every `agent`-provenance row of the conversation: a row carries only `source_conversation_id`, so a silent in-turn write cannot be attributed to one turn, and the old chip only appeared to by showing the whole thread's memory against every answer. Panel auto-refresh remains a nice-to-have. |
 | DEDUP | HIGH (correctness) | No write-time consolidation (design §3.2 unbuilt); no uniqueness constraint; digest is bounded (20 items / 1800 chars) so reflection is blind to older items; in-turn `remember` writes aren't in the pre-turn digest → double-store. | **Reduced** — write-time normalized de-duplication now runs on **every** write (`createProjectMemoryItem`): a normalized-equal active item updates in place instead of inserting a duplicate. Full embed/contradiction gate + a DB uniqueness constraint remain follow-ups. |
@@ -56,7 +56,7 @@ Round 1 (reflection stage):
 Round 2 (system-wide):
 4. **Endpoint org default-deny (S1).** `POST /api/internal/memory` rejects
    agent-authored `organization` writes with 403 unless
-   `GRID_ALLOW_AGENT_ORG_MEMORY=true`.
+   `ALLOW_AGENT_ORG_MEMORY=true`.
 5. **Write-time de-duplication (DEDUP).** `createProjectMemoryItem` finds a
    normalized-equal active item and updates it in place (recency + best-known
    confidence) instead of inserting a duplicate — applies to BOTH the in-turn
@@ -108,7 +108,11 @@ Round 6:
 - **STALE follow-on**: a superseded entry vanishes from the panel (it filters
   `status !== 'superseded'`), so a user cannot see or undo an agent's correction.
   Surfacing "replaced an earlier note" — in the panel and on the memory chip —
-  is the natural next step now that `supersedes_id` is populated.
+  is the natural next step now that `supersedes_id` is populated. The chip's
+  half is done for in-turn corrections (2026-10): an accepted
+  `memory_proposal` with `supersedes` turns the chip into „Gedächtnis
+  aktualisiert" and quotes the retired note struck through. The reflection
+  stage's frame carries no supersede, and the panel still hides the row.
 - **INFORM polish**: live memory-panel refresh/badge when the panel is open.
 - **S1 (remember tool)**: a proper org-admin permission gate (with role
   propagation) so org writes can be *enabled* safely rather than all-or-nothing.

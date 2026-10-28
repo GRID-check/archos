@@ -4,7 +4,7 @@ The gateway server (`server.js`) is a Node.js HTTP server on port 3000 that acts
 
 ## server.js architecture
 
-`frontends/ui/server.js`
+`apps/workspace/server.js`
 
 **Development mode** (`NODE_ENV !== 'production'`):
 - Gateway runs on port 3000
@@ -44,12 +44,12 @@ The `BACKEND_WS_URL` is derived from `BACKEND_CHAT_URL` by replacing `http` with
 
 ## Scope resolution
 
-`frontends/ui/src/app/api/auth/websocket-scope/route.ts`
+`apps/workspace/app/api/auth/websocket-scope/route.ts`
 
 Called internally (no external route) by `server.js` during WebSocket upgrade. Resolves the collection scope for the backend:
 
 1. Reads `projectId` and `conversationId` from query params
-2. Calls `getGridSession()` to resolve the WorkOS session (or null in anonymous mode)
+2. Calls `getUserSession()` to resolve the WorkOS session (or null in anonymous mode)
 3. If `REQUIRE_AUTH=true` and no session: returns `401`
 4. If project access required: calls `requireProjectAccess()` → returns `403` on failure
 5. Calls `buildCollectionScopeFromRequest(session, { projectId, conversationId })` to build the ordered scope
@@ -75,14 +75,14 @@ The socket speaks chat wire v2: the upgrade asks for `?v=2`, and any other
 version is closed with `4426`. The event set, the five client messages and
 the rejection codes are the contract in
 [`websocket-protocol.md`](../api/websocket-protocol.md); the design, and why
-it replaced NAT's frames, is [`chat-wire-v2.md`](../design/chat-wire-v2.md).
+it replaced the runtime's frames, is [`chat-wire-v2.md`](../design/chat-wire-v2.md).
 
-The client is `createTurnSocket` (`frontends/ui/src/adapters/api/turn-socket.ts`):
+The client is `createTurnSocket` (`apps/workspace/ui/adapters/api/turn-socket.ts`):
 
 - **Hello.** The socket is open, and sends, only once the server's first frame
   is a v2 `hello`. Silence for 5 s, or any other first frame, fails the
   attempt: the server behind the gateway does not speak this wire (an agent
-  rolled back to NAT's stock socket passes the upgrade and ignores `?v=2`).
+  rolled back to the runtime's stock socket passes the upgrade and ignores `?v=2`).
 - **Reconnect.** A jittered ladder (`createRetryLadder`, 1 s doubling to 30 s,
   12 attempts), with the auth cookie refreshed before each attempt, since the
   handshake is the only point where the gateway reads it. A `rejected{auth_expired}`
@@ -103,7 +103,7 @@ The client is `createTurnSocket` (`frontends/ui/src/adapters/api/turn-socket.ts`
 { "v": 2, "type": "CUSTOM", "name": "heartbeat", "conversation_id": "s_<uuid>", "turn_id": "<message_id>", "seq": 10, "ts": 1759000016777, "value": { "every_ms": 20000 } }
 ```
 
-Stamped by the turn's own sequencer (`aiq_api.chat_socket.TurnWire`) every
+Stamped by the turn's own sequencer (`agent_host.chat_socket.TurnWire`) every
 `TURN_HEARTBEAT_SECONDS`, by a task that lives exactly as long as the turn does,
 so it covers what the answer stream cannot: context loading before the graph
 starts, a ten-minute tool call, and the whole of a deep-research turn that runs

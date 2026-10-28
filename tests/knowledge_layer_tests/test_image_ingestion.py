@@ -23,10 +23,11 @@ from knowledge_layer.llamaindex.adapter import _build_image_caption_document
 from knowledge_layer.llamaindex.adapter import _looks_like_image
 from knowledge_layer.llamaindex.adapter import _read_image_as_jpeg
 from knowledge_layer.llamaindex.adapter import _strip_visual_marker
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from PIL import ExifTags
 from PIL import Image
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
+from agent.common.credential_resolution import ResolvedCredential
 
 
 def _patch_vlm_credential(monkeypatch, api_key: str):
@@ -328,8 +329,8 @@ class TestExtractImagesFromPdfDownscale:
 @pytest.fixture
 def summary_db(tmp_path):
     """Isolate the summary registry in a temp SQLite DB for each test."""
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -377,7 +378,7 @@ def _wait_terminal(ing, job_id, timeout=30):
 
 class TestRunIngestionImageBranch:
     def test_happy_path_registers_summary_and_tags(self, tmp_path, monkeypatch, ingestor, summary_db):
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "vlm-key")
         monkeypatch.setattr(
@@ -399,6 +400,26 @@ class TestRunIngestionImageBranch:
         assert docs[0].summary == "An image of a floor plan."
         assert docs[0].tags == ["Foto", "Grundriss"]
 
+    def test_a_photo_keeps_the_capture_its_camera_wrote(self, tmp_path, monkeypatch, ingestor, summary_db):
+        """Regression: the per-file reset after the type branch wiped the EXIF facts the image branch read."""
+        from agent.knowledge import get_available_documents
+
+        _patch_vlm_credential(monkeypatch, "vlm-key")
+        monkeypatch.setattr(adapter, "_analyze_image_with_vlm", lambda *a, **k: ("image", "Baustellenfoto."))
+        exif = Image.Exif()
+        exif.get_ifd(ExifTags.IFD.Exif)[ExifTags.Base.DateTimeOriginal] = "2026:09:14 10:32:05"
+        exif[ExifTags.Base.Model] = "Canon EOS R5"
+        img = tmp_path / "baustelle.jpg"
+        Image.new("RGB", (64, 48), "gray").save(img, "JPEG", exif=exif)
+
+        job_id = ingestor.submit_job([str(img)], "coll_capture", config={"original_filenames": ["baustelle.jpg"]})
+        assert _wait_terminal(ingestor, job_id).is_success
+
+        capture = get_available_documents("coll_capture")[0].capture
+        assert capture is not None
+        assert capture["captured_at"].startswith("2026-09-14T10:32:05")
+        assert "Canon EOS R5" in capture["camera"]
+
     def test_watermark_caption_scrubbed_before_becoming_fallback_summary(
         self, tmp_path, monkeypatch, ingestor, summary_db
     ):
@@ -408,7 +429,7 @@ class TestRunIngestionImageBranch:
         the document summary — otherwise the summary reads e.g. "... VECTORWORKS
         EDUCATIONAL VERSION ...". Fails without the _scrub_watermark_phrases fix.
         """
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "vlm-key")
         # Summarisation disabled -> the caption itself is the only summary source.
@@ -450,7 +471,7 @@ class TestRunIngestionImageBranch:
         the very end of the string). This is exactly the scenario
         _scrub_watermark_phrases exists to handle, so it must catch this too.
         """
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "vlm-key")
         # Summarisation disabled -> the caption itself is the only summary source.
@@ -495,13 +516,13 @@ class TestRunIngestionImageBranch:
         assert not status.is_success
         detail = status.file_details[0]
         assert detail.status.value == "failed"
-        assert detail.error_message == "vlm_not_configured: image ingestion requires AIQ_VLM_API_KEY"
+        assert detail.error_message == "vlm_not_configured: image ingestion requires VLM_API_KEY"
 
     def test_summary_fail_but_tags_succeed_persists_fallback_summary(self, tmp_path, monkeypatch, ingestor, summary_db):
         """Fix 1: when the summary LLM call fails but tag classification
         succeeds, the row still persists (tags are not wasted) using a
         deterministic, LLM-free fallback summary from the extracted text."""
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         # Summary call fails; tag call returns valid tags. Same LLM, routed by
         # the prompt content (the tag prompt contains "klassifizierst").
@@ -535,7 +556,7 @@ class TestRunIngestionImageBranch:
         fail; the deterministic text fallback must still register a summary
         row (tags stay None) so the file remains visible in
         available_documents even though it is fully searchable in Qdrant."""
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         def both_fail(prompt):
             raise RuntimeError("LLM completely unavailable")
@@ -576,7 +597,7 @@ class TestRunIngestionImageBranch:
 
     def test_a_caption_fallback_summary_drops_the_retrieval_marker(self, tmp_path, monkeypatch, ingestor, summary_db):
         """With summarisation off the caption is the summary; the page marker is not part of what people read."""
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "vlm-key")
         ingestor.generate_summary_enabled = False
@@ -592,12 +613,12 @@ class TestRunIngestionImageBranch:
         assert not summary.startswith("[IMAGE from page")
         assert summary == "Ein Grundriss EG."
 
-    def test_a_photo_of_a_plan_gets_foto_beside_the_classifiers_grundriss(
+    def test_a_photo_of_a_plan_gets_foto_beside_the_classifiers_floor_plan(
         self, tmp_path, monkeypatch, ingestor, summary_db
     ):
         """The vision model typed the pixels a photograph; the classifier only read the caption and said Grundriss."""
-        from aiq_agent.knowledge import document_classification
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import document_classification
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "vlm-key")
         reply = json.dumps(

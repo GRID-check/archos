@@ -8,8 +8,15 @@ alias switch. The old collection stays: switching back is the rollback.
     python scripts/qdrant_rebuild.py office --switch-to piloti_office_v2      # then backfill --prune --verify
     python scripts/qdrant_rebuild.py office --switch-to piloti_office_v1      # rollback
 
-It reads the environment the backend reads: ``AIQ_QDRANT_URL`` and
-``AIQ_QDRANT_API_KEY``. The full procedure is ``docs/deployment/qdrant-runbook.md``.
+A copy also tunes the BM25 channel to the chunks it copies: it measures their
+mean length and, when that is more than 10 % from the live collection's
+``avg_len``, recomputes every lexical vector with the measured one (ADR-0127).
+``--bm25-avg-len``, ``--bm25-k`` and ``--bm25-b`` set the values outright (a
+parity sweep's result); ``--keep-bm25`` copies the lexical vectors as stored.
+``scripts/qdrant_chunk_length_stats.py`` shows the measurement without copying.
+
+It reads the environment the backend reads: ``QDRANT_URL`` and
+``QDRANT_API_KEY``. The full procedure is ``docs/deployment/qdrant-runbook.md``.
 
 EXIT CODES: ``0`` done (a copy with equal counts); ``1`` the copy's counts
 differ, or the target is refused; ``2`` Qdrant could not be reached.
@@ -22,6 +29,7 @@ import logging
 import sys
 
 from knowledge_layer.qdrant import rebuild
+from knowledge_layer.qdrant import schema
 from knowledge_layer.qdrant.schema import Physical
 from knowledge_layer.qdrant.store import make_client
 
@@ -37,7 +45,21 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--shards", type=int, help="Shard count of the new collection (office only).")
     parser.add_argument("--replication", type=int, help="Replication factor of the new collection.")
     parser.add_argument("--page-size", type=int, default=rebuild.DEFAULT_PAGE_SIZE)
+    bm25 = parser.add_argument_group("BM25 length normalisation of the new collection")
+    bm25.add_argument("--bm25-avg-len", type=float, help="avg_len outright, instead of the measured mean.")
+    bm25.add_argument("--bm25-k", type=float, help="k (term saturation); default: the live collection's.")
+    bm25.add_argument("--bm25-b", type=float, help="b (length normalisation); default: the live collection's.")
+    bm25.add_argument("--keep-bm25", action="store_true", help="Copy the lexical vectors as stored; measure nothing.")
     return parser.parse_args(argv)
+
+
+def _bm25_length(client, live: str, args: argparse.Namespace) -> dict[str, float] | None:
+    """The new collection's BM25 length when one is given on the command line, else None (measure, or keep)."""
+    if args.keep_bm25 or (args.bm25_avg_len is None and args.bm25_k is None and args.bm25_b is None):
+        return None
+    source = schema.bm25_length_of(client.get_collection(live).config.metadata)
+    measured = None if args.bm25_avg_len is not None else rebuild.measure_lengths(client, live)
+    return rebuild.tuned_length(measured, source, k=args.bm25_k, b=args.bm25_b, avg_len=args.bm25_avg_len)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -57,7 +79,14 @@ def main(argv: list[str] | None = None) -> int:
             logger.info("Switched; roll back with --switch-to %s", previous)
             return 0
         report = rebuild.copy_collection(
-            client, physical, args.copy_to, shards=args.shards, replication=args.replication, page_size=args.page_size
+            client,
+            physical,
+            args.copy_to,
+            shards=args.shards,
+            replication=args.replication,
+            page_size=args.page_size,
+            bm25_length=_bm25_length(client, live, args),
+            retune_bm25=not args.keep_bm25,
         )
     except (ValueError, RuntimeError) as exc:
         logger.error("%s", exc)
@@ -71,6 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         report.source_count,
         report.target_count,
     )
+    logger.info("BM25 length %s (%s)", report.bm25_length, "recomputed" if report.relexed else "copied as stored")
     return 0 if report.complete else 1
 
 

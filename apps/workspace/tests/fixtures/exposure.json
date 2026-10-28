@@ -1,0 +1,3636 @@
+{
+ "comment": "Who sees each capability: apps/workspace/bff/agent-api/exposure.config.ts, written by exposure.config.spec.ts (UPDATE_FIXTURES=1). `piloti` is true, false or \"native:<tool>\" (Piloti uses that tool; the door hides the operation from it). `appTools` are the MCP Apps views’ app-only tools (ADR-0142), each running the operation it names.",
+ "operations": {
+  "project-cleanup-confirm": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-cleanup-propose": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-consistency-check": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-create": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-delete": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-experience-extract": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-intake-complete": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-intake-decide": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-intake-definition-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-intake-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-intake-start": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-list": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-member-add": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "project-member-list": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-member-remove": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "project-memory-create": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:remember",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project"
+  },
+  "project-memory-delete": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-memory-list": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-memory-update": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-overview-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-period-set": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-person-add": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-person-delete": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-person-update": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-profile-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-profile-patch": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-profile-replace": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-record-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-reindex": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-rename": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-restore": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-same-address-list": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-standards-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-status-set": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-summary-generate": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-upload-screening-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "a project’s upload screening override; how Piloti treats uploads, set by a person"
+   },
+   "reason": null
+  },
+  "project-upload-screening-set": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": "control",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "a project’s upload screening override; how Piloti treats uploads, set by a person"
+   },
+   "reason": null
+  },
+  "deletion-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-archive": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-bin": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-by-name-resolve": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-delete": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-download": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-file-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-ingest-cancel": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-model-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-move": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-name-match": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-preview-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-reingest": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-rename": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-restore": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-role-clear": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-role-declare": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-role-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-status": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-summary-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-tags-update": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-text-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-thumbnail-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "a link to the file grid’s thumbnail image, which an agent cannot look at; document-look shows a page"
+   },
+   "reason": null
+  },
+  "document-unarchive": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-upload": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-visual-details-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "hold-create": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "hold-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "hold-release": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": "control",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "mail-import-cancel": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "mail-import-complete": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "mail-import-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "mail-import-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "mail-import-part-upload": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "mail-import-start": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-document-findings": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-upload-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "quarantine-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-create": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-delete": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "saved-search-update": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "session-document-upload": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "upload-batch-get": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "upload-batch-open": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "upload-batch-seal": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search-export": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "workspace-search-suggest": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-shelf-folder-create": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-shelf-folder-delete": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-shelf-folder-ensure": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-shelf-folder-list": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-shelf-folder-update": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-shelf-root-sort-get": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-shelf-root-sort-start": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-access-get": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-access-set": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "project-folder-bin-list": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-bin-purge": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-create": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-delete": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-ensure": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-list": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-restore": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-folder-update": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-root-sort-get": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-root-sort-start": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "root-sort-run-apply": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "root-sort-run-cancel": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "root-sort-run-get": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "root-sort-run-undo": {
+   "kind": "catalog",
+   "domain": "folders",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "annotation-create": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:canvas__mark",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
+  },
+  "annotation-delete": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:canvas__delete",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
+  },
+  "annotation-get": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "annotation-list": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "annotation-reply-create": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:canvas__reply",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
+  },
+  "annotation-reply-delete": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "annotation-reply-update": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "annotation-update": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:canvas__update",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked"
+  },
+  "document-annotations-export": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-quarantine-allow": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": "control",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "document-quarantine-allow-request": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-quarantine-get": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-review-list": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-revision-candidates": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-revision-compare": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-revision-link-set": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-thread-ensure": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-approve": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-content-get": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-content-replace": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-diff": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-fork": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-get": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-list": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-publish": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-reject": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-request-changes": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-reviewer-list": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-version-submit": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-annotation-list": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "project-annotations-export": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "agent-ask-cancel": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+  },
+  "agent-ask-create": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+  },
+  "agent-ask-get": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "how another agent consults Piloti; Piloti never asks Piloti (ADR-0124, the recursion lock)"
+  },
+  "answer-feedback-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "answer-feedback-retract": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "answer-feedback-submit": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "citation-format": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "model-compute",
+    "reason": "formats the sources it is sent as APA, BibTeX or RIS; any agent can do that itself"
+   },
+   "reason": null
+  },
+  "conversation-create": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-delete": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-draft-file": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-draft-get": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-get": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-message-add": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-message-changes": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-message-export": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-message-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-message-update": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-message-usage": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "what one Piloti answer cost; billing, not office work"
+   },
+   "reason": null
+  },
+  "conversation-read-mark": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "what the person has seen; an agent marking it read hides news from them"
+   },
+   "reason": null
+  },
+  "conversation-title-generate": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "model-compute",
+    "reason": "a model names the conversation; the caller can name it and save it with conversation-update"
+   },
+   "reason": null
+  },
+  "conversation-update": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-office-report-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-report-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-report-submit": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-thread-get": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-thread-reply": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "passage-similar-search": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "agent-change-undo": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them"
+  },
+  "assignment-add": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "assignment-candidate-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "assignment-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "assignment-remove": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-awaiting-get": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "conversation-mention-candidate-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "inbox-item-archive": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "puts a request away from the person, who has not seen it; the same reason mark-read is withheld"
+   },
+   "reason": null
+  },
+  "inbox-item-mark-read": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "what the person has seen; an agent marking it read hides news from them"
+   },
+   "reason": null
+  },
+  "inbox-item-mark-unread": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "what the person has seen; theirs to mark"
+   },
+   "reason": null
+  },
+  "inbox-item-restore": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the reverse of archive, which an agent cannot do; what the person put away is theirs to bring back"
+   },
+   "reason": null
+  },
+  "inbox-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "inbox-summary-get": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "inbox-unread-anchor-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the unread markers the document viewer draws; screen state"
+   },
+   "reason": null
+  },
+  "mention-request-release": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "proposal-apply": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them"
+  },
+  "proposal-dismiss": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "the person decides a proposal, or undoes a change, on its own card; Piloti never decides it for them"
+  },
+  "proposal-get": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "proposal-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "push-device-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the person’s own browsers registered for push; device state"
+   },
+   "reason": null
+  },
+  "push-device-remove": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the person’s own browsers registered for push; device state"
+   },
+   "reason": null
+  },
+  "push-preference-get": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "which notifications reach the person’s devices; theirs to set"
+   },
+   "reason": null
+  },
+  "push-preference-update": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "which notifications reach the person’s devices; theirs to set"
+   },
+   "reason": null
+  },
+  "session-document-delete": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "session-document-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "sharing-candidate-list": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "sharing-get": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "sharing-grant-add": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "sharing-grant-revoke": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "sharing-grant-update": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "sharing-visibility-set": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "user-preference-get": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the person’s interface preferences (language, active project); screen state"
+   },
+   "reason": null
+  },
+  "user-preference-update": {
+   "kind": "catalog",
+   "domain": "collaboration",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the person’s interface preferences (language, active project); screen state"
+   },
+   "reason": null
+  },
+  "project-task-run-list": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-create": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:create_task",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms"
+  },
+  "task-delete": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-get": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-list": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-run-cancel": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-run-commission": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:create_task",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms"
+  },
+  "task-run-document-add": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-run-get": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-run-review": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-run-start": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-run-write-now": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "task-update": {
+   "kind": "catalog",
+   "domain": "tasks",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-category-create": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-category-delete": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-category-list": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-category-update": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-create": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-curated-set-enabled": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "switches a platform-curated skill of Piloti’s on or off; product configuration"
+   },
+   "reason": null
+  },
+  "skill-delete": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-get": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
+  },
+  "skill-invocable-list": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-list": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "skill-review": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "model-compute",
+    "reason": "a model critiques a skill draft and stores nothing; the calling agent can review its own draft"
+   },
+   "reason": null
+  },
+  "skill-search": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
+  },
+  "skill-update": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "address-search": {
+   "kind": "catalog",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "external-service",
+    "reason": "proxies a public geocoder; a calling agent has its own map and web tools"
+   },
+   "reason": null
+  },
+  "knowledge-base-get": {
+   "kind": "catalog",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "knowledge-document-get": {
+   "kind": "catalog",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "norm-list": {
+   "kind": "catalog",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "widget-token-get": {
+   "kind": "catalog",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "external-service",
+    "reason": "mints a token for the WorkOS widgets the browser renders; the identity provider’s UI, not office work"
+   },
+   "reason": null
+  },
+  "bim-check-confirm": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "bim-check-list": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "bim-check-withdraw": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "bim-checks-export": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "bim-model-get": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "bim-model-list": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "bim-model-query": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:ifc_query",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti counts and reads the model with its own `ifc_query`, which says what the export cannot answer"
+  },
+  "bim-model-source-get": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "diagram-file": {
+   "kind": "catalog",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-conventions-decide": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-conventions-list": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-audit-portal-link-create": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "secret",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "external-service",
+    "reason": "a link into the identity provider’s audit-log portal, not the office’s workspace"
+   },
+   "reason": null
+  },
+  "organization-budget-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "spend limits on Piloti itself; a refused call says when one stops work"
+   },
+   "reason": null
+  },
+  "organization-budget-remove": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "spend limits on Piloti itself; product configuration"
+   },
+   "reason": null
+  },
+  "organization-budget-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "spend limits on Piloti itself; product configuration"
+   },
+   "reason": null
+  },
+  "organization-deleted-folder-content-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "what Piloti keeps of a purged folder; a retention policy a person sets"
+   },
+   "reason": null
+  },
+  "organization-deleted-folder-content-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "control",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "what Piloti keeps of a purged folder; a retention policy a person sets"
+   },
+   "reason": null
+  },
+  "organization-download-log-list": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-download-log-retention-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "control",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "how long Piloti keeps the download log; a retention policy a person sets"
+   },
+   "reason": null
+  },
+  "organization-failed-document-reingest": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-instructions-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the standing instructions shape every Piloti answer; they configure the product, and Piloti already reads them"
+   },
+   "reason": null
+  },
+  "organization-instructions-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the standing instructions shape every Piloti answer; configuring the product is a person’s act"
+   },
+   "reason": null
+  },
+  "organization-llm-credential-create": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "secret",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the LLM provider keys Piloti runs on; product configuration and a credential"
+   },
+   "reason": null
+  },
+  "organization-llm-credential-list": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "secret",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the LLM provider keys Piloti runs on; product configuration and a credential"
+   },
+   "reason": null
+  },
+  "organization-llm-credential-revoke": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "secret",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the LLM provider keys Piloti runs on; product configuration and a credential"
+   },
+   "reason": null
+  },
+  "organization-llm-credential-verify": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "secret",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the LLM provider keys Piloti runs on; product configuration and a credential"
+   },
+   "reason": null
+  },
+  "organization-llm-provider-mode-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "secret",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "whether Piloti runs on the platform’s or the office’s provider key; product configuration"
+   },
+   "reason": null
+  },
+  "organization-member-list": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-memory-create": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:remember",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project"
+  },
+  "organization-memory-delete": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-memory-list": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-memory-update": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-model-config-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "which models Piloti runs on; product configuration"
+   },
+   "reason": null
+  },
+  "organization-model-config-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "which models Piloti runs on; product configuration"
+   },
+   "reason": null
+  },
+  "organization-model-config-version-activate": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "which models Piloti runs on; product configuration"
+   },
+   "reason": null
+  },
+  "organization-model-config-version-list": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the history of which models Piloti ran on; product configuration"
+   },
+   "reason": null
+  },
+  "organization-model-search": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the model catalog the model configuration picks from; product configuration"
+   },
+   "reason": null
+  },
+  "organization-role-create": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "organization-role-delete": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "organization-role-list": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-role-update": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "access",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
+  "organization-settings-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "how Piloti works for the office (language, effort and other defaults); a person sets it in Settings"
+   },
+   "reason": null
+  },
+  "organization-settings-update": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "how Piloti works for the office (language, effort and other defaults); a person sets it in Settings"
+   },
+   "reason": null
+  },
+  "organization-storage-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "organization-upload-screening-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the office’s upload screening policy; how Piloti treats uploads, set by a person"
+   },
+   "reason": null
+  },
+  "organization-upload-screening-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "control",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the office’s upload screening policy; how Piloti treats uploads, set by a person"
+   },
+   "reason": null
+  },
+  "organization-usage-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "what the office spent on Piloti itself, by model and day; billing, not office work"
+   },
+   "reason": null
+  },
+  "organization-usage-notice-get": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "the budget window close to stopping the person; a refused call says so itself"
+   },
+   "reason": null
+  },
+  "organization-web-search-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "control",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "external-service",
+    "reason": "switches the web search provider Piloti answers with; a calling agent has its own web search"
+   },
+   "reason": null
+  },
+  "organization-zdr-set": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": "control",
+   "external": false,
+   "piloti": false,
+   "platform": false,
+   "withheld": {
+    "category": "product-config",
+    "reason": "whether model providers may keep data; a product privacy setting a person decides"
+   },
+   "reason": null
+  },
+  "platform-answer-feedback-digest-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-answer-feedback-export": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-answer-feedback-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-answer-feedback-options-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-audit-portal-link": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": "secret",
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-card-list": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-citation-health-export": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-citation-health-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-feedback-claim": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-feedback-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-feedback-list": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-feedback-triage": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-kill-runs": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-knowledge-doc-class-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-knowledge-document-delete": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-knowledge-document-upload": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-knowledge-reingest": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-knowledge-sync": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-knowledge-title-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-lesson-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-lesson-list": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-lesson-sweep-run": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-lesson-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-model-defaults-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-model-defaults-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-model-search": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-norm-registry-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-norm-registry-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-norm-verify": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-org-budget-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-org-budget-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-org-storage-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-org-storage-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-org-upload-limit-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-org-usage-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-overview-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-pricing-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-pricing-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-profiler-conversation-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-profiler-conversation-list": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-quality-scope-options": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-reasoning-efforts-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-reasoning-efforts-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-retrieval-settings-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-retrieval-settings-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-skill-category-create": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-skill-category-delete": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-skill-category-list": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-skill-category-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-skill-create": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-skill-delete": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-skill-list": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-skill-update": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-storage-overview": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-vectors-reconcile": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "knowledge-search": {
+   "kind": "backend",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:knowledge_search",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  },
+  "passage-read": {
+   "kind": "backend",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:read_file",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  },
+  "files-list": {
+   "kind": "backend",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:list_files",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  },
+  "document-look": {
+   "kind": "backend",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:look",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  },
+  "ifc-query": {
+   "kind": "backend",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:ifc_query",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  },
+  "ifc-measure": {
+   "kind": "backend",
+   "domain": "bim",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:ifc_measure",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  },
+  "law-lookup": {
+   "kind": "backend",
+   "domain": "knowledge",
+   "sensitivity": null,
+   "external": true,
+   "piloti": "native:ris_lookup_tool",
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
+  }
+ },
+ "appTools": {
+  "proposal-card-apply": {
+   "view": "ui://piloti/proposal-card",
+   "operation": "proposal-apply",
+   "app": true,
+   "reason": "pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
+  },
+  "proposal-card-dismiss": {
+   "view": "ui://piloti/proposal-card",
+   "operation": "proposal-dismiss",
+   "app": true,
+   "reason": "pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: [\"app\"]`, so the host keeps it from the model, and it runs the catalog operation it names through that operation’s route"
+  }
+ }
+}

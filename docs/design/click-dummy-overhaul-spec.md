@@ -3,7 +3,7 @@
 **Status:** Accepted working spec (2026-07-17). Owner: product/frontend.
 **Sources:** the team's click dummy `Ask_Piloti_v6_standalone2.html` (external, not in
 repo — a self-contained React bundle; fully reverse-engineered for this spec),
-the current `frontends/ui` implementation, `docs/design/grid-design-language.md`,
+the current `apps/workspace` implementation, `docs/design/design-language.md`,
 `docs/audit/feedback-backlog.md` (FB-2/4/6/8/9/10/11/12), `docs/audit/ux-system-audit.md`.
 
 **Scope guard:** the **Herleitung reasoning-trace** (chain-of-thought UI, §7) is
@@ -209,7 +209,7 @@ paired with icon + label so color is never the only carrier (a11y).
 | Home project grid + Archiv card | `/app/projects` grid exists (create, soft-delete, restore) | Restyle; add status chip, last-activity, per-card settings, Archiv entry card |
 | Sidebar: Frag Piloti/Workflows/Dateien/Archiv/Historie + Einstellungen | Overview/Chat/Files/Knowledge/Research/Workflows/Members | **Re-cut nav** (FB-9): Chat, Files, Workflows*, Archiv*, History, Settings. Research merges into history (FB-10). Overview+Members fold into Settings |
 | Composer: scope/sources/deep-research/shortcuts | DataSourcesPanel exists; deep research auto-escalates; no scope UI; no shortcuts | Restyle composer; sources chip = existing panel; scope picker display-only; DR toggle = intent hint; shortcut chips = data-source presets |
-| Herleitung trace | ChatThinking (per-turn steps) + ResearchPanel (Tasks/Thinking/Report) | **Shipped (source-hero):** `docs/superpowers/specs/2026-07-18-herleitung-source-hero-design.md` — bar + per-doc source cards; full stage spine/gaps deferred |
+| Herleitung trace | ChatThinking (per-turn steps) + ResearchPanel (Tasks/Thinking/Report) | **Shipped (source-hero):** `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329` — bar + per-doc source cards; full stage spine/gaps deferred |
 | Folgewege branch picker | HITL `system_interaction` (choice prompts) exists, plainly styled | Restyle as branch cards when backend sends decision-class interactions (part of §7 contract, UI shell can come earlier) |
 | Ergebnis structured card | grid-cards: LegalBasis, RequirementChecklist, Summary + roughjs schematics | Compose + restyle; add "Belegt durch" chip row + status chip |
 | Citation chips → source preview modal | Origin badges behind flag; **no click-through** (FB-4); PdfViewerDialog exists unwired | Build source-preview popover/modal wired to citations (high value, independent of CoT) |
@@ -241,7 +241,7 @@ don't churn):
   slightly darker, white cards; dark mode: warm charcoal equivalents, derived,
   not shipped-in-dummy — we design them, `.dark` stays).
 - `--primary`/action → near-black ink (dark mode: paper-white on ink).
-  `--grid-blue` ceases to be the action color; blue is reassigned to the
+  `--law-blue` ceases to be the action color; blue is reassigned to the
   **Baurecht** source signal.
 - New token family:
   `--source-law`, `--source-project`, `--source-office`, `--source-auto`,
@@ -255,7 +255,7 @@ don't churn):
   `--elevation-*`; retune values).
 - Motion: keep 150–250ms vocabulary; add `nodeIn`-style fade-rise for
   cards/trace nodes; respect reduced motion (existing infra).
-- `docs/design/grid-design-language.md` is updated in the same change as the
+- `docs/design/design-language.md` is updated in the same change as the
   token retune (docs obligation).
 
 ---
@@ -266,7 +266,7 @@ don't churn):
 /                          marketing (unchanged)
 /app/projects              Home: project grid + Archiv entry card   [OrgTopbar]
 /app/organization          org settings (restyle only)              [OrgTopbar]
-/app/archiv                Archiv, org scope (library restyle)      [OrgTopbar]
+/app/office-shelf                Archiv, org scope (library restyle)      [OrgTopbar]
 /app/platform, /app/profile, onboarding, legal   (unchanged)
 /app/projects/[id]/
   chat        ← project landing (root redirects here)               [Sidebar]
@@ -296,7 +296,7 @@ string in the WS's own namespace files, dark mode + mobile + a11y parity,
 update user-guide docs it invalidates.
 
 - **WS-1 Design tokens & language** — `src/styles/tokens.css`,
-  `src/app/globals.css`, `docs/design/grid-design-language.md`. Retune to §4.
+  `src/app/globals.css`, `docs/design/design-language.md`. Retune to §4.
   No component file changes.
 - **WS-2 IA / navigation** — `src/components/shell/*`, project `layout.tsx`,
   new `settings/` + `history/` pages, `research` redirect, `i18n/*/nav.ts`,
@@ -330,11 +330,11 @@ WS-2..WS-6 in parallel, WS-7/8/9 as a second wave.
 ## 7. Herleitung / chain-of-thought — contract (+ source-hero v1)
 
 Owner: was deferred to backend-overhaul; **v1 (source-hero) is live** in chat.
-Design: `docs/superpowers/specs/2026-07-18-herleitung-source-hero-design.md`.
+Design: `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329`.
 
 **Shipped in v1:** collapsible bar `Herleitung · n Zwischenschritte · m Quellen`;
 parallel per-document source cards (lane tab · name · detail · Treffer) from KB
-`## Trace-Lanes` (+ FE fallbacks); technical NAT steps secondary; multi-turn safe;
+`## Trace-Lanes` (+ FE fallbacks); technical agent runtime steps secondary; multi-turn safe;
 no timer theatrics. Captured lanes survive storage prune.
 
 **Still contract target (not v1):** full stage spine
@@ -348,7 +348,7 @@ deep-research DAG (graph lib) that must not drop ResearchPanel capabilities
 1. Product name/wordmark: DECIDED (2026-07-17): user-facing brand is
    **Piloti**; internal/platform name stays GRID (env vars, headers, CSS
    variables, storage keys, DB identifiers, repo/product-platform name are
-   untouched). Single source of truth: `frontends/ui/src/lib/brand.ts`.
+   untouched). Single source of truth: `apps/workspace/bff/brand.ts`.
 2. `sourceColors`: spec says keep (§1) — confirm with design.
 3. Sharing model for chats ("Privater Workspace") — undesigned.
 4. Insights telemetry: which aggregates are acceptable org-policy-wise?

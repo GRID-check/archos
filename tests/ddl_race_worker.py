@@ -4,7 +4,7 @@ A module of its own, because ``multiprocessing`` ("spawn") imports the target by
 name in the child and the test modules are collected with ``importlib`` mode.
 Imports of the code under test are inside the functions: a child must import
 THIS checkout's packages, and only after :func:`worker` has put them first on
-its path (``aiq_api`` is a workspace package the venv may have installed from
+its path (``agent_host`` is a workspace package the venv may have installed from
 another checkout).
 """
 
@@ -34,49 +34,49 @@ SITES: dict[str, tuple[str, ...]] = {
 
 
 def _ingest_status_store(url: str) -> bool:
-    from aiq_agent.knowledge import ingest_status_store
+    from agent.knowledge import ingest_status_store
 
     ingest_status_store._ensure_table(url)
     return url in ingest_status_store._initialized
 
 
 def _research_queue(url: str) -> bool:
-    from aiq_api.jobs import queue
+    from agent_host.jobs import queue
 
     queue.ensure_research_queue_table(url)
     return url in queue.queue_for(url).initialized
 
 
 def _norm_store(url: str) -> bool:
-    from aiq_agent.knowledge.norm_store import NormRegistryStore
+    from agent.knowledge.norm_store import NormRegistryStore
 
     NormRegistryStore(url)
     return url in NormRegistryStore._tables_initialized
 
 
 def _document_metadata_store(url: str) -> bool:
-    from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+    from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
     DocumentMetadataStore(url)
     return url in DocumentMetadataStore._tables_initialized
 
 
 def _corpus_store(url: str) -> bool:
-    from aiq_agent import corpus_store
+    from agent import corpus_store
 
     corpus_store._ensure_table(url)
     return url in corpus_store._initialized
 
 
 def _event_store_instance(url: str) -> bool:
-    from aiq_api.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     EventStore(url)
     return url in EventStore._tables_initialized
 
 
 def _event_store_class(url: str) -> bool:
-    from aiq_api.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     EventStore._ensure_table_exists(url)
     return url in EventStore._tables_initialized
@@ -85,14 +85,14 @@ def _event_store_class(url: str) -> bool:
 def _event_store_async(url: str) -> bool:
     import asyncio
 
-    from aiq_api.jobs.event_store import EventStore
+    from agent_host.jobs.event_store import EventStore
 
     asyncio.run(EventStore._ensure_table_async(url))
     return url in EventStore._tables_initialized
 
 
 def _job_access(url: str) -> bool:
-    from aiq_api.jobs import access
+    from agent_host.jobs import access
 
     access.ensure_job_access_table(url)
     return url in access._job_access_schema_initialized
@@ -101,7 +101,7 @@ def _job_access(url: str) -> bool:
 def _langgraph_checkpointer(url: str) -> bool:
     import asyncio
 
-    from aiq_agent import common
+    from agent import common
 
     async def ensure() -> None:
         try:
@@ -116,8 +116,8 @@ def _langgraph_checkpointer(url: str) -> bool:
 def _langgraph_store(url: str) -> bool:
     import asyncio
 
-    from aiq_agent import common
-    from aiq_agent.tools.documents import draft_store
+    from agent import common
+    from agent.tools.documents import draft_store
 
     async def ensure() -> None:
         try:
@@ -173,7 +173,7 @@ def worker(index: int, barrier, tasks: list[tuple[str, str]], results) -> None:
     Puts ``(site, url, index, error, ensured)`` on ``results``: ``error`` is the
     exception that escaped, ``ensured`` whether the site marked ``url`` as ensured.
     """
-    sys.path[:0] = [str(_REPO / "src"), str(_REPO / "frontends" / "aiq_api" / "src")]
+    sys.path[:0] = [str(_REPO / "src"), str(_REPO / "apps" / "agent-host" / "src")]
     _track_engines()
     for site, url in tasks:
         barrier.wait(timeout=_TIMEOUT_SECONDS)

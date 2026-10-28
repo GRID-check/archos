@@ -15,7 +15,7 @@
 #   esc env init matthiasbigl/grid-oib/dev
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:kubeconfig            "$(cat /path/to/kubeconfig)" --secret
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:pgAppPassword         "$(openssl rand -base64 24)" --secret
-#   # Password for the least-privilege `grid_app_rw` runtime role (ADR-0041).
+#   # Password for the least-privilege `app_rw` runtime role (ADR-0041).
 #   # Required, no fallback — a stack without it fails at `pulumi preview`:
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:pgRuntimePassword     "$(openssl rand -base64 32)" --secret
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:seaweedfsSecretKey    "$(openssl rand -base64 24)" --secret
@@ -50,17 +50,13 @@ environment:
 config:
   grid-oib:namespace: grid
   # ── Images (GHCR) ──
-  grid-oib:imageRegistry: ghcr.io/grid-check
+  grid-oib:imageRegistry: ghcr.io/archos-at
   grid-oib:imageTag: latest
   # ── Storage (provider CSI, NVMe/TCP) ──
   # Classes: premium (default, 3 replicas) / standard (2) / single-replica (1).
   # `lightbits` is the VolumeSnapshotClass, not a StorageClass. All reclaim
   # `Delete` (PVC delete = data gone). Staging can use the cheaper single-replica.
   grid-oib:storageClass: single-replica
-  # The pre-A2 backend's data volume, which still holds the base corpus. The
-  # one-shot legacy-corpus-import Job carries it into SeaweedFS and the corpus
-  # table (ADR-0082 A2). Remove this key with the importer once it has run here.
-  grid-oib:legacyCorpusClaim: data-aiq-agent-0
   # ── Ingress / TLS ── One key moves every public host: app./s3./otel. derive
   # from baseDomain (per-host appDomain/s3Domain/otelDomain keys remain as overrides).
   grid-oib:baseDomain: dev.piloti.at
@@ -71,8 +67,8 @@ config:
   # ── Postgres ──
   grid-oib:pgInstances: "1"
   grid-oib:pgStorageSize: 10Gi
-  # Password for `grid_app_rw`, the least-privilege RLS role (ADR-0041).
-  # Distinct from pgAppPassword — see src/config.ts. Set per config.ts:191.
+  # Password for `app_rw`, the least-privilege RLS role (ADR-0041).
+  # Distinct from pgAppPassword — see src/config/postgres.ts (`runtimePassword`).
   grid-oib:pgRuntimePassword:
     secure: AAABAP+0FzCMfjSbTI4yV5tfwQm7hUmPVKhdCgc0z5GaOc37WV51A2FHivbTrBWNpLHmMg4AsX4=
   # ── SeaweedFS ──
@@ -93,7 +89,7 @@ config:
   grid-oib:seaweedfsStorageSize: 10Gi
   grid-oib:seaweedfsBucket: grid-documents
   grid-oib:seaweedfsAccessKey: grid
-  # Read-only identity for the aiq-agent tier (view_knowledge_image, ADR-0039).
+  # Read-only identity for the aiq-agent tier (the `look` tool, ADR-0039).
   grid-oib:seaweedfsBackendReadSecretKey:
     secure: AAABAMgLCSPRIGVbS+2Qqu/PaTFNt6j3hrxVVJ5q4noYPVAHqbOErFG7vBMa8KN/e+wmVSy5uybmUvk0FgSeE0TNvRELoEnJLMf+Az7WREs=
   # Set NOW rather than during the migration window. Both are inert while the
@@ -179,6 +175,8 @@ config:
   # ── Auth / platform ──
   grid-oib:requireAuth: "true"
   grid-oib:workosClientId: client_01KEF0YGNPX7S4SF952ZX46V1K # pragma: allowlist secret (public OAuth client id)
+  # AuthKit domain of this stack's WorkOS environment: the agent doors' authorization server (ADR-0122).
+  grid-oib:workosAuthkitDomain: grateful-view-25-staging.authkit.app
   grid-oib:registryUsername: matthiasbigl
   # ── Observability / OTel Collector + Aspire dashboard (ADR-0029) ──
   # Deployed only when the flag is on AND every dependency is set; otherwise
@@ -187,12 +185,12 @@ config:
   # Secrets (otelPrimaryApiKey, otelOidcClientSecret) live in the ESC env —
   # rotate with:
   #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:otelPrimaryApiKey "$(openssl rand -hex 32)" --secret
-  # dashboardImage/collectorImage default to digest-pinned versions in src/config.ts —
+  # dashboardImage/collectorImage default to digest-pinned versions in src/config/ —
   # only override here when deliberately upgrading.
   # Dashboard auth runs on the Gateway, against a dedicated WorkOS **Connect**
   # application (ADR-0029 Amendment 2 — the app's own AuthKit client cannot
   # serve this flow). Created by
-  # `WORKOS_API_KEY=sk_… npm run provision:workos-env -- --apply` (frontends/ui)
+  # `WORKOS_API_KEY=sk_… npm run provision:workos-env -- --apply` (apps/workspace)
   # with WORKOS_CONNECT_APP_NAME / WORKOS_CONNECT_REDIRECT_URIS set — it
   # matches by name, creates a CONFIDENTIAL OAuth client whose sign-in callback
   # is https://<otelDomain>/oauth2/callback, and prints the client id + secret

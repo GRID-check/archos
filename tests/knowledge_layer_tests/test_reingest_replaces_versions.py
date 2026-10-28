@@ -39,18 +39,22 @@ import json
 import threading
 import time
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from knowledge_layer.llamaindex import adapter as adapter_module
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer.llamaindex.adapter import _PreviousVersion
 from knowledge_layer.qdrant import store as store_module
+from knowledge_layer_testing import reingest as harness
+from knowledge_layer_testing.qdrant import chunk_texts
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import write
+from knowledge_layer_testing.reingest import _seed_previous_version
+from knowledge_layer_testing.reingest import _wait_terminal
 
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import chunk_texts
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import write
+# The harness's fixtures, under the names these tests ask for.
+live_ingestor = harness.live_ingestor
+stores = harness.stores
 
 
 @pytest.fixture()
@@ -70,7 +74,7 @@ def registries(monkeypatch):
     unregistered: list[tuple[str, str]] = []
     bumped: list[str] = []
 
-    from aiq_agent import knowledge
+    from agent import knowledge
 
     monkeypatch.setattr(
         knowledge,
@@ -201,7 +205,7 @@ def test_a_transient_failure_of_the_lookup_is_retried(ingestor, registries, monk
 
 def test_a_failed_tmp_name_lookup_still_finds_the_chunks_under_the_plain_name(ingestor, registries, monkeypatch):
     """The metadata store only adds legacy ``tmp…_`` spellings; its outage costs those, not the replacement."""
-    from aiq_agent import knowledge
+    from agent import knowledge
 
     _collection("proj_1", {"c1": "statik.pdf"})
 
@@ -241,8 +245,8 @@ def test_a_persons_tags_on_the_previous_version_are_carried_as_json(ingestor, re
 
 
 def test_a_persons_tags_are_carried_from_the_real_store(ingestor, stores):
-    from aiq_agent.knowledge import register_summary
-    from aiq_agent.knowledge import set_document_tags_by_person
+    from agent.knowledge import register_summary
+    from agent.knowledge import set_document_tags_by_person
 
     register_summary("proj_p", "statik.pdf", "Die alte Statik.", tags=["Grundriss"])
     set_document_tags_by_person("proj_p", "statik.pdf", ["Schnitt"])
@@ -255,7 +259,7 @@ def test_a_persons_tags_are_carried_from_the_real_store(ingestor, stores):
 
 def test_the_classifiers_tags_on_the_previous_version_are_not_carried(ingestor, stores):
     """Machine tags are re-derived from the new bytes; only a person's choice is carried."""
-    from aiq_agent.knowledge import register_summary
+    from agent.knowledge import register_summary
 
     register_summary("proj_m", "statik.pdf", "Die alte Statik.", tags=["Grundriss"])
     _collection("proj_m", {"c1": "statik.pdf"})
@@ -267,7 +271,7 @@ def test_the_classifiers_tags_on_the_previous_version_are_not_carried(ingestor, 
 
 
 def test_a_failed_metadata_read_still_finds_the_chunks(ingestor, registries, monkeypatch):
-    from aiq_agent import knowledge
+    from agent import knowledge
 
     def broken(coll, names):
         raise RuntimeError("metadata store down")
@@ -331,66 +335,14 @@ def test_a_retirement_failure_never_fails_the_ingest(ingestor, registries, monke
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
-def stores(tmp_path):
-    """A temp SQLite metadata store for the whole job."""
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
-
-    factory._document_metadata_store = None
-    configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
-    yield
-    factory._document_metadata_store = None
-
-
-@pytest.fixture()
-def live_ingestor(qdrant_store):
-    llm = MagicMock()
-    llm.invoke.return_value = MagicMock(content="Eine Statik.")
-    ing = LlamaIndexIngestor({"generate_summary": False, "summary_llm": llm})
-    ing._embed_model = FakeEmbedder()
-    ing._initialized = True
-    return ing
-
-
-def _seed_previous_version(ing, stores, collection_name: str, file_name: str) -> None:
-    """The version already live: two chunks and a row a person edited."""
-    from aiq_agent.knowledge import register_summary
-    from aiq_agent.knowledge import set_document_display_title
-    from aiq_agent.knowledge import set_document_doc_class
-    from aiq_agent.knowledge import set_document_folder_path
-
-    write(
-        collection_name,
-        [
-            record("Alte Fassung Seite eins", file_name, chunk_id="old-1", page_label="1"),
-            record("Alte Fassung Seite zwei", file_name, chunk_id="old-2", page_label="2"),
-        ],
-    )
-    register_summary(collection_name, file_name, "Die alte Statik.")
-    set_document_doc_class(collection_name, file_name, "tragwerk")
-    set_document_display_title(collection_name, file_name, "Statik Bauteil B")
-    set_document_folder_path(collection_name, file_name, "/Einreichung")
-
-
-def _wait_terminal(ing, job_id, timeout=30):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        status = ing.get_job_status(job_id)
-        if status.is_terminal:
-            return status
-        time.sleep(0.05)
-    raise AssertionError("ingestion job did not terminate in time")
-
-
 def _chunks(ing, collection_name: str) -> dict[str, str]:
     return chunk_texts(collection_name)
 
 
 def test_a_reupload_that_fails_keeps_the_previous_version(tmp_path, monkeypatch, live_ingestor, stores):
     """An encrypted PDF extracts nothing; the version it was meant to replace stays whole."""
-    from aiq_agent.knowledge import get_available_documents
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_available_documents
+    from agent.knowledge import get_document_doc_class
 
     _seed_previous_version(live_ingestor, stores, "proj_fail", "statik.pdf")
 
@@ -416,7 +368,7 @@ def test_a_reupload_that_fails_keeps_the_previous_version(tmp_path, monkeypatch,
 def test_a_reupload_whose_predecessor_cannot_be_read_fails_and_writes_nothing(
     tmp_path, monkeypatch, live_ingestor, stores
 ):
-    from aiq_agent.knowledge import get_available_documents
+    from agent.knowledge import get_available_documents
 
     _seed_previous_version(live_ingestor, stores, "proj_down", "statik.txt")
 
@@ -438,7 +390,7 @@ def test_a_reupload_whose_predecessor_cannot_be_read_fails_and_writes_nothing(
 
 def test_a_reupload_with_no_vlm_key_keeps_the_previous_image(tmp_path, monkeypatch, live_ingestor, stores):
     """A failure reported by status rather than raised takes the same path."""
-    from aiq_agent.common.credential_resolution import ResolvedCredential
+    from agent.common.credential_resolution import ResolvedCredential
 
     _seed_previous_version(live_ingestor, stores, "proj_img", "grundriss.png")
     no_key = ResolvedCredential(api_key="", base_url="https://vlm.test/v1", model="test-vlm", source="none")
@@ -462,8 +414,8 @@ def test_a_quarantined_reupload_retires_the_previous_version_and_keeps_its_row(t
     lands. The metadata row stays: it carries the Dokumentart and the title a
     person set, which the release's reading keeps.
     """
-    from aiq_agent.knowledge import get_document_display_title
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_display_title
+    from agent.knowledge import get_document_doc_class
 
     _seed_previous_version(live_ingestor, stores, "proj_held", "lohn.txt")
     upload = tmp_path / "tmp_upload.txt"
@@ -506,10 +458,10 @@ def test_a_reupload_that_passes_its_screen_replaces_the_previous_version(tmp_pat
 
 def test_a_reupload_that_indexes_replaces_the_previous_version(tmp_path, live_ingestor, stores):
     """Old chunks go; the new ones and the row a person edited stay."""
-    from aiq_agent.knowledge import get_available_documents
-    from aiq_agent.knowledge import get_document_display_title
-    from aiq_agent.knowledge import get_document_doc_class
-    from aiq_agent.knowledge import get_document_folder_paths
+    from agent.knowledge import get_available_documents
+    from agent.knowledge import get_document_display_title
+    from agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_folder_paths
 
     _seed_previous_version(live_ingestor, stores, "proj_ok", "statik.txt")
     upload = tmp_path / "tmp_upload.txt"
@@ -535,14 +487,14 @@ def _classify_tags_as(monkeypatch, ing, tags: list[str]) -> None:
     The summary is switched on so the job reaches the classifier at all; the
     summary LLM is the fixture's stub.
     """
-    from aiq_agent.knowledge import document_classification
+    from agent.knowledge import document_classification
 
     ing.generate_summary_enabled = True
     monkeypatch.setattr(document_classification, "classify_document_tags", lambda *_args, **_kwargs: tags)
 
 
 def _tags_of(collection_name: str, file_name: str):
-    from aiq_agent.knowledge import get_available_documents
+    from agent.knowledge import get_available_documents
 
     return {doc.file_name: doc.tags for doc in get_available_documents(collection_name)}[file_name]
 
@@ -561,7 +513,7 @@ def test_a_reupload_with_no_person_choice_takes_the_classifiers_tags(tmp_path, m
 
 def test_a_person_tagged_document_keeps_its_tags_when_reingested(tmp_path, monkeypatch, live_ingestor, stores):
     """The classifier's new guess for the same file name does not overwrite what a person chose."""
-    from aiq_agent.knowledge import set_document_tags_by_person
+    from agent.knowledge import set_document_tags_by_person
 
     _classify_tags_as(monkeypatch, live_ingestor, ["Bescheid"])
     _seed_previous_version(live_ingestor, stores, "proj_tags", "statik.txt")
@@ -578,7 +530,7 @@ def test_a_person_tagged_document_keeps_its_tags_when_reingested(tmp_path, monke
 
 def test_a_legacy_tmp_prefixed_version_is_replaced_through_its_metadata_row(tmp_path, live_ingestor, stores):
     """The filtered read cannot match a random prefix; the row it left behind names it."""
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_doc_class
 
     _seed_previous_version(live_ingestor, stores, "proj_tmp", "tmpa1b2c3d4_statik.txt")
     upload = tmp_path / "tmp_upload.txt"
@@ -598,7 +550,7 @@ def test_a_person_tagged_legacy_tmp_version_keeps_its_tags_under_the_new_name(
     tmp_path, monkeypatch, live_ingestor, stores
 ):
     """The tags a person chose on the old spelling's row move to the new name when that row is retired."""
-    from aiq_agent.knowledge import set_document_tags_by_person
+    from agent.knowledge import set_document_tags_by_person
 
     _classify_tags_as(monkeypatch, live_ingestor, ["Bescheid"])
     _seed_previous_version(live_ingestor, stores, "proj_tmp_tags", "tmpa1b2c3d4_statik.txt")
@@ -641,9 +593,9 @@ def _one_point_per_request(monkeypatch) -> list[list[str]]:
     requests: list[list[str]] = []
     real = store_module.QdrantStore._point
 
-    def recorded(scope, chunk, enrichment):
+    def recorded(scope, chunk, *rest):
         requests.append([chunk.chunk_id])
-        return real(scope, chunk, enrichment)
+        return real(scope, chunk, *rest)
 
     monkeypatch.setattr(store_module.QdrantStore, "_point", staticmethod(recorded))
     return requests
@@ -747,8 +699,8 @@ def _dispatched(file_name: str, **extra) -> dict:
 
 
 def _no_metadata_row(collection_name: str, file_name: str) -> None:
-    from aiq_agent.knowledge import get_available_documents
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_available_documents
+    from agent.knowledge import get_document_doc_class
 
     assert get_available_documents(collection_name) == []
     assert get_document_doc_class(collection_name, file_name) is None
@@ -815,8 +767,8 @@ def test_a_deleted_document_does_not_retire_what_now_answers_to_its_name(tmp_pat
     would delete a document somebody just uploaded; only the attempt's own
     chunk goes.
     """
-    from aiq_agent.knowledge import get_available_documents
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_available_documents
+    from agent.knowledge import get_document_doc_class
 
     _seed_previous_version(live_ingestor, stores, "proj_new", "statik.txt")
     upload = tmp_path / "tmp_upload.txt"
@@ -835,7 +787,7 @@ def test_an_unreachable_bff_keeps_the_new_version(tmp_path, monkeypatch, live_in
     """No answer is not "gone": the re-upload replaces its predecessor as it always did."""
     # Nothing listens on port 9: the real client gets a refused connection.
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://127.0.0.1:9")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "secret")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "secret")
     _seed_previous_version(live_ingestor, stores, "proj_down", "statik.txt")
     upload = tmp_path / "tmp_upload.txt"
     upload.write_text("Neue Fassung der Statik.", encoding="utf-8")
@@ -848,7 +800,7 @@ def test_an_unreachable_bff_keeps_the_new_version(tmp_path, monkeypatch, live_in
 
 
 def test_a_document_that_still_exists_is_replaced_as_before(tmp_path, live_ingestor, stores, presence):
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_doc_class
 
     _seed_previous_version(live_ingestor, stores, "proj_live", "statik.txt")
     upload = tmp_path / "tmp_upload.txt"
@@ -951,24 +903,24 @@ def _ingest_base_corpus(ing, tmp_path, file_name: str, config: dict | None = Non
 
 
 def test_the_dokumentart_an_admin_chose_at_upload_is_stamped_by_the_job(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_doc_class
 
-    _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "gesetz"})
+    _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "law"})
 
-    assert get_document_doc_class("oib_knowledge", "statik.txt") == "gesetz"
+    assert get_document_doc_class("oib_knowledge", "statik.txt") == "law"
 
 
 def test_the_admins_choice_beats_the_class_a_replaced_version_carried(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_doc_class
 
     _seed_previous_version(live_ingestor, stores, "oib_knowledge", "statik.txt")  # a person set "tragwerk"
-    _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "gesetz"})
+    _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "law"})
 
-    assert get_document_doc_class("oib_knowledge", "statik.txt") == "gesetz"
+    assert get_document_doc_class("oib_knowledge", "statik.txt") == "law"
 
 
 def test_a_replacement_with_no_choice_keeps_what_a_person_set(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_doc_class
 
     _seed_previous_version(live_ingestor, stores, "oib_knowledge", "statik.txt")
     _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt")
@@ -977,23 +929,23 @@ def test_a_replacement_with_no_choice_keeps_what_a_person_set(tmp_path, live_ing
 
 
 def test_without_a_choice_the_class_is_guessed_from_the_file_name(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_doc_class
 
     _ingest_base_corpus(live_ingestor, tmp_path, "oib-rl_2_ausgabe_mai_2023.txt")
 
-    assert get_document_doc_class("oib_knowledge", "oib-rl_2_ausgabe_mai_2023.txt") == "oib_richtlinie"
+    assert get_document_doc_class("oib_knowledge", "oib-rl_2_ausgabe_mai_2023.txt") == "oib_guideline"
 
 
 def test_a_class_outside_the_vocabulary_is_not_stamped(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_doc_class
 
     _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "not_a_real_class"})
 
-    assert get_document_doc_class("oib_knowledge", "statik.txt") == "sonstiges"
+    assert get_document_doc_class("oib_knowledge", "statik.txt") == "other"
 
 
 def test_an_oib_document_gets_its_starting_display_title_from_its_name(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_display_title
+    from agent.knowledge import get_document_display_title
 
     _ingest_base_corpus(live_ingestor, tmp_path, "oib-rl_2_ausgabe_mai_2023.txt")
 
@@ -1003,7 +955,7 @@ def test_an_oib_document_gets_its_starting_display_title_from_its_name(tmp_path,
 
 
 def test_a_name_that_gives_no_default_title_gets_none(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_display_title
+    from agent.knowledge import get_document_display_title
 
     _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt")
 
@@ -1011,7 +963,7 @@ def test_a_name_that_gives_no_default_title_gets_none(tmp_path, live_ingestor, s
 
 
 def test_a_title_an_admin_set_survives_the_replacement_of_the_document(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_display_title
+    from agent.knowledge import get_document_display_title
 
     _seed_previous_version(live_ingestor, stores, "oib_knowledge", "statik.txt")  # "Statik Bauteil B"
     _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt")
@@ -1020,8 +972,8 @@ def test_a_title_an_admin_set_survives_the_replacement_of_the_document(tmp_path,
 
 
 def test_a_project_document_is_not_given_a_base_corpus_title_or_class(tmp_path, live_ingestor, stores):
-    from aiq_agent.knowledge import get_document_display_title
-    from aiq_agent.knowledge import get_document_doc_class
+    from agent.knowledge import get_document_display_title
+    from agent.knowledge import get_document_doc_class
 
     upload = tmp_path / "tmp_project.txt"
     upload.write_text("Ein Projektdokument.", encoding="utf-8")

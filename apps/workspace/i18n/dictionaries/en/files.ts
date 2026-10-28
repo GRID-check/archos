@@ -1,0 +1,2126 @@
+/** files namespace — populated during component i18n. */
+export const files = {
+  uploadZone: {
+    clickToUpload: 'Click to upload',
+    orDragAndDrop: ' or drag and drop',
+    /** `size` is formatted with its unit ("100 MB"); the limit is per file. */
+    maxSize: 'Up to {size} per file',
+    accepts: 'Accepts: {types}',
+    dragOrBrowse: 'Drag files here or browse',
+    maxSizeShort: 'max. {size} per file',
+  },
+  // The upload tray. Wording follows the surface's one rule: a number is
+  // stated only where one was measured. "Reading" is what the backend does to a
+  // document, and it has no ETA — so the copy says so instead of implying one.
+  uploads: {
+    region: 'Uploads',
+    // Not an error and nothing to retry: the document is still being read,
+    // the tray has only stopped following it every few seconds.
+    stillReading: 'Reading is taking longer than usual and continues in the background.',
+    heading: {
+      transferringOne: 'Uploading 1 document',
+      transferringOther: 'Uploading {count} documents',
+      processingOne: '{productName} is reading 1 document',
+      processingOther: '{productName} is reading {count} documents',
+      doneOne: '1 document added',
+      doneOther: '{count} documents added',
+      mixed: '{ready} added · {failed} failed',
+      failedOne: '1 document could not be added',
+      failedOther: '{count} documents could not be added',
+      // Held back by the content check (ADR-0086): not a failure, nothing to
+      // retry. Never "release", which collides with approving a revision.
+      heldOne: '1 document held back',
+      heldOther: '{count} documents held back',
+      mixedHeld: '{ready} added · {held} held back',
+      canceled: 'Upload canceled',
+    },
+    detail: {
+      bytes: '{done} of {total}',
+      eta: '{time} left',
+      queued: '{count} waiting',
+      // Deliberately not a percentage: reading progress is reported by the
+      // backend in bursts, so any bar drawn from it stalls and then jumps.
+      processing: 'Reading. There is no time estimate, so you can keep working.',
+      elapsed: '{time} so far',
+      // The browser reports no connection while bytes should be moving.
+      offline: 'No connection, waiting. Please keep this page open.',
+      settled: '{total} transferred',
+    },
+    row: {
+      queued: 'Waiting',
+      uploading: 'Sending',
+      processing: 'Reading',
+      ready: 'Citable',
+      unchanged: 'Unchanged – already here',
+      // The content check matched; what it found is listed beneath the row.
+      held: 'Held back',
+      // Kept, never read: neither a success nor a failure (as `status.stored`).
+      stored: 'Filed',
+      canceled: 'Canceled',
+      failed: 'Failed',
+    },
+    actions: {
+      expand: 'Show files',
+      collapse: 'Hide files',
+      cancelAll: 'Cancel all',
+      cancel: 'Cancel upload of {name}',
+      // Not "cancel upload": the bytes are on the server and the ingest job is
+      // what is stopped. Said as what it is, so the reader knows what ends.
+      stop: 'Stop reading {name}',
+      retryAll: 'Retry failed',
+      retryFile: 'Try again',
+      dismiss: 'Dismiss {name}',
+      dismissAll: 'Dismiss',
+    },
+  },
+  status: {
+    // "Citable" (not a bare "Ready") answers the one question that matters to a
+    // compliance user: the document is now in Piloti's knowledge and can be
+    // cited in an answer.
+    ready: 'Citable',
+    processing: 'Reading',
+    uploading: 'Uploading',
+    failed: 'Failed',
+    // A report Piloti wrote: the file is in the project but deliberately not in
+    // the knowledge base. Neither a success ("Citable" would promise a citation
+    // retrieval cannot make) nor a failure — nothing went wrong.
+    stored: 'Filed',
+    // A person stopped the read before it finished: the bytes are here, nothing
+    // was indexed, and nothing went wrong — so never "Failed". Neutral, like
+    // `stored`, and its own word so a reader can tell the two apart.
+    cancelled: 'Cancelled',
+    // The content check (ADR-0086) matched: the file is in the project, no
+    // model has seen it, and someone has to decide.
+    quarantined: 'Held back',
+    unknown: 'Unknown',
+    // Only the office's own uploads: inside one office the queue reads in
+    // order, across offices it takes turns (ADR-0076).
+    queuedAhead: '{count, plural, one {Waiting · # file ahead} other {Waiting · # files ahead}}',
+  },
+  toast: {
+    // Fired the instant async ingestion finishes and the document becomes
+    // citable — the confirmation the completion moment previously lacked.
+    ingestionComplete: '“{name}” is now in {productName}’s knowledge — citable',
+    modelReady: '“{name}” has been read. You can now ask about the building.',
+  },
+  // Card thumbnail fallbacks: a warm placeholder chip when no thumbnail exists,
+  // and an honest "couldn't load" label for a genuine failure (never a broken
+  // image look). `image` is the generic chip when there is no file extension.
+  thumbnail: {
+    image: 'Image',
+    unavailable: 'Preview unavailable',
+  },
+  preview: {
+    closePreview: 'Close preview',
+    expandPreview: 'Open large preview',
+    loadFailed: "Preview couldn't be loaded. You can still download the file below.",
+    /**
+     * Not a failure to retry: the service answers 404 both for a deleted
+     * document and for one this reader may no longer open, and neither changes
+     * by asking again. Said plainly, with the only move that is left.
+     */
+    gone: 'This document is no longer available. It may have been deleted, or you may no longer have access to it.',
+    goneAction: 'Stop asking about it',
+    goneCleared: 'No longer asking about that file.',
+    goneUndo: 'Undo',
+    tryAgain: 'Try again',
+    // An office file is shown through a PDF the BFF makes from it (ADR-0070).
+    renditionPending: 'Creating PDF preview…',
+    renditionNote: 'PDF preview · Original: {name}',
+    noInlinePreview: 'No inline preview for this file type. Download the file to view the full document.',
+    textTruncated:
+      'Only the beginning of this file is shown. Download it to read the whole thing.',
+    status: 'Status',
+    // Heading for the rail's one remaining file fact (where it came from),
+    // distinct from "On the pages" (what the VLM saw on each page).
+    properties: 'Properties',
+    summaryMore: 'Show full summary',
+    summaryLess: 'Show less',
+    originPath: 'Came from',
+    originPathCopied: 'Path copied',
+    originPathCopyFailed: "Path couldn't be copied",
+    tags: 'Tags',
+    noTags: 'No tags',
+    tagsSaveError: "Tags couldn't be saved. Please try again.",
+    addTagPlaceholder: 'Add tag',
+    addTagLabel: 'Add tag',
+    removeTag: 'Remove tag {tag}',
+    suggestionsLabel: 'Tag suggestions',
+    noTagMatch: 'No matching tag — pick one of the suggested labels.',
+    reading: {
+      classifiedAs: '{productName} reads this as',
+      noType: '{productName} did not recognize a document type.',
+      correct: 'Correct',
+      assign: 'Assign',
+      done: 'Done',
+      correctionKept: 'Your choice stays, even when {productName} reads the file again.',
+      topics: 'Topics',
+      addTopic: 'Add topic',
+      topicsSaveError: 'The topics could not be saved.',
+      capturedAt: 'Taken on {when}',
+      location: 'Location',
+    },
+    /** Where the document stands among its Fassungen (document-fassungen.tsx). Never „plan“: a name does not say what a file is. */
+    revision: {
+      unlink: 'Remove link',
+      timeline: 'All revisions of this document',
+      current: 'current',
+      open: 'Open',
+      compare: 'Compare',
+      changedSince: 'What changed since {name}:',
+      changedSincePrevious: 'What changed since the previous revision:',
+      changeHint: 'Summarized by {productName} from both revisions. Check dimensions and values in the document itself.',
+      suggestion: 'Is this a newer revision of {name}?',
+      basisTitleBlock: 'The drawing number and index in the title block suggest so.',
+      basisName: 'The index and date in the file name suggest so.',
+      basisContent: '{productName} read both:',
+      confirm: 'Yes, newer revision',
+      dismiss: 'No',
+      askEditor: 'Anyone who may edit this folder can confirm it.',
+      saveError: 'The link could not be saved. Please try again.',
+      versions: {
+        open: 'Open',
+        download: 'Download',
+        compareText: 'Compare text with revision {number}',
+      },
+      /** The section in the rail (document-fassungen.tsx). Revisions are numbered newest first, across same-name uploads and linked documents; the header says where the NEWEST stands. */
+      rail: {
+        number: 'Revision {number}',
+        dateTag: 'as of {date}',
+        stepOf: 'Step {step} of {total}: {stage}',
+        next: {
+          approve: 'Next step: approval by {who}',
+          approveYou: 'Next step: your approval',
+          approveOpen: 'Next step: approval',
+          revise: 'Next step: rework by {who}',
+          reviseYou: 'Next step: your rework',
+          submit: 'Next step: submission for approval by {who}',
+          submitYou: 'Next step: submit it for approval',
+          publish: 'Next step: publication',
+          publishYou: 'Next step: publish it',
+        },
+        whoMore: '{names} or {count} others',
+        /** Only when the name is truly unknown. Never “someone”. */
+        someone: 'a team member',
+        answer: {
+          this: '{productName} answers from this revision.',
+          older: '{productName} still answers from revision {number}.',
+          newer: '{productName} answers from the newer revision {number}; this one stays readable, also for comparing.',
+          notYet: '{productName} answers from it only once it is approved.',
+          notYetRead: '{productName} answers from it once it has been read.',
+          never: '{productName} does not answer from it.',
+        },
+        /** {name} arrives with the date: “Anna Berger · 14 Aug 2026”, kept on one line. */
+        act: '{act} by {name}',
+        actAnonymous: '{act} on {date}',
+        byYou: 'you',
+        bySomeone: 'a team member',
+        rowMenu: 'More actions for revision {number}',
+        approveExplain:
+          'Approving means the office stands behind the content. From then on, {productName} answers from this revision.',
+        changedSince: 'Changed since revision {number}:',
+        archive: 'Retire this file …',
+      },
+    },
+    indexed: {
+      title: 'Read by {productName}',
+      documentType: 'Document type',
+      pending: '{productName} is still reading this document – its summary and properties appear here once it is done.',
+    },
+    contentTypeNames: {
+      text: 'Text',
+      table: 'Tables',
+      chart: 'Charts',
+      image: 'Images',
+      drawing: 'Drawings',
+    },
+    visualDetails: {
+      title: 'On the pages',
+      loading: 'Loading descriptions…',
+      failed: 'The descriptions could not be loaded.',
+      page: 'Page {page}',
+      scale: 'Scale {scale}',
+      pageShort: 'p. {page}',
+      showPage: 'Show page {page} in the document',
+      showAll: 'Show all {count}',
+      showFewer: 'Show fewer',
+      // The drawing types the vision pass names. A type not listed here is
+      // humanized from its key, like the structured vocabulary below.
+      segmentTypes: {
+        floor_plan: 'Floor plan',
+        section: 'Section',
+        elevation: 'Elevation',
+        detail: 'Construction detail',
+        site_plan: 'Site plan',
+        perspective: 'Perspective',
+        axonometric: 'Axonometric',
+        drawing: 'Technical drawing',
+        map: 'Map',
+        photo: 'Photo or rendering',
+        diagram: 'Diagram',
+        table: 'Table',
+        legend: 'Legend',
+        screenshot: 'Screenshot',
+        other: 'Other',
+      },
+      structured: {
+        toggle: 'Structured data',
+        composition: 'Build-up {component}',
+        states: 'Existing / new',
+        relations: 'Relations',
+        annotations: 'Annotations',
+        project: 'Project',
+        credits: 'Details',
+        slogans: 'Headlines',
+        strategies: 'Strategies',
+        processSteps: 'Process',
+        provenance: 'Source',
+        confidenceValue: 'confidence {level}',
+        // Vocabulary terms. A domain added on the backend brings keys that are
+        // not here yet; the UI humanizes those from the key, so this list is a
+        // courtesy for the domains we ship, never a gate on new ones.
+        categories: {
+          space: 'Spaces and uses',
+          circulation: 'Circulation',
+          structure: 'Structure',
+          envelope: 'Envelope',
+          services: 'Building services',
+          building_physics: 'Building physics',
+          finish: 'Finishes',
+          landscape: 'Outdoor space',
+          material: 'Materials',
+          object: 'Objects',
+          part: 'Parts',
+          person: 'People and roles',
+          place: 'Places',
+          other: 'Other',
+        },
+        state: {
+          existing: 'existing',
+          new: 'new',
+          demolished: 'demolished',
+          reused: 'reused',
+          transformed: 'transformed',
+        },
+        source: {
+          text: 'labeled text',
+          visual: 'read from the drawing',
+          inferred: 'inferred',
+        },
+        confidence: {
+          high: 'high',
+          medium: 'medium',
+          low: 'low',
+        },
+      },
+    },
+    // The facts line under the name names the format, never the MIME type (that is the tooltip).
+    formats: {
+      pdf: 'PDF',
+      word: 'Word document',
+      excel: 'Excel spreadsheet',
+      powerpoint: 'PowerPoint presentation',
+      odText: 'OpenDocument text',
+      odSpreadsheet: 'OpenDocument spreadsheet',
+      odPresentation: 'OpenDocument presentation',
+      rtf: 'Rich Text document',
+      csv: 'CSV table',
+      tsv: 'TSV table',
+      markdown: 'Markdown',
+      plainText: 'Text file',
+      ifc: 'IFC model',
+      email: 'Email',
+      image: 'Image ({format})',
+      extension: '{ext} file',
+      raw: '{type}',
+    },
+    download: 'Download',
+    downloadFailed: "The download couldn't be started. Please try again.",
+    ingestionFailed: 'Reading failed',
+    heldTitle: 'Held back by the content check',
+    heldDecided: 'Someone has already decided about this file.',
+    ingestionFailedPreviousVersionKept:
+      'Search and {productName} still use the previous revision. The download serves the new file.',
+    retryIngestion: 'Read again',
+    retryWouldFailAgain: 'Reading this file again would give the same result. Upload a new revision instead.',
+    retryingIngestion: 'Retrying…',
+    retryIngestionError: "Reading couldn't be restarted. Please try again.",
+    dialogLabel: 'File preview: {name}',
+    // The two faces of the file beside the chat: the document, and what is known about it.
+    peekViews: {
+      label: 'File view',
+      document: 'Document',
+      details: 'Details',
+    },
+    // The length, in the facts line under the name in the chat peek.
+    pageCount: '{count, plural, one {# page} other {# pages}}',
+    /**
+     * The seam between the conversation and the file. It is a tab stop (the
+     * panel library makes every separator one), so it needs a name — an
+     * unlabelled separator is announced as nothing at all.
+     */
+    resizePeek: 'Resize file preview',
+    /**
+     * The CONSEQUENCE of the status badge beside them in the chat peek. The
+     * badge already says what the state is ("Reading", "Failed"); repeating
+     * that in the sentence would spend the one line on the half the reader can
+     * already see. What it cannot see is what the state costs: the answer it is
+     * about to ask for will not use this file.
+     */
+    peekIndexingHint: '{productName} cannot cite this file until it has been read.',
+    peekFailedHint: 'Reading failed. {productName} cannot cite this file.',
+    /**
+     * The same failure on a document with an earlier revision: the index keeps
+     * that revision's passages, so the file is still citable, just not the new
+     * bytes. Mirrors `ingestionFailedPreviousVersionKept` in the pane.
+     */
+    peekFailedPreviousVersionHint:
+      'The new file could not be read — {productName} is still citing the previous revision.',
+    /** The way out of that: the enlarged view carries the error and the retry. */
+    peekFailedAction: 'Details',
+  },
+  /**
+   * Why a document could not be read, by the category
+   * `features/documents/lib/ingest-failure.ts` gives the stored error. The raw
+   * text stays behind `details`.
+   */
+  ingestFailure: {
+    rendition_failed: "The PDF preview of this file couldn't be created. Try reading it again, or upload it as a PDF.",
+    download_failed: "The uploaded file couldn't be fetched from storage. Try reading it again, or upload it once more.",
+    interrupted: 'Reading stopped when the service restarted. Read it again to finish.',
+    unreadable_pages:
+      "{failed} of {total} pages couldn't be read. Try reading it again. If that fails too, the PDF is probably damaged.",
+    vision_not_configured:
+      'Scanned pages and images need a vision model, and none is set up. Ask your admins to configure one.',
+    dispatch_failed: "Reading couldn't be started. Try again.",
+    timeout: 'Reading took too long and was stopped. Try again. Splitting a very large file helps.',
+    empty: 'No text was found in this file. It may be password-protected, damaged or empty.',
+    deleted: 'The file was deleted while {productName} was reading it.',
+    quarantined:
+      'This file contains something your office marks as sensitive. {productName} showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // Found in the text a vision model read off scanned pages (`after_transcription`):
+    // that model saw those pages, no other did.
+    quarantinedAfterTranscription:
+      'This file contains something your office marks as sensitive, found in the text of scanned pages. A vision model read those pages so they could be checked; no other model saw them. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // The reason is not stored or cannot be read: claim nothing the line above does not show.
+    quarantinedUnreadable:
+      'The content check held this file back. Its reason is not stored or cannot be read. While it is held back, {productName} shows it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // The office's screening rules could not be applied: the file was not read at
+    // all and waits like a held one (ADR-0086).
+    screening_unavailable:
+      "The check for sensitive data couldn't run, so {productName} didn't read this file or show it to any model. Read it again, or an office or project admin decides whether it stays.",
+    unknown: "{productName} couldn't read this document, so search can't find it.",
+    details: 'Details',
+  },
+  screening: {
+    // Why a file was held back, by the content check (in the text) or the
+    // name check (in the file or folder name), ADR-0086.
+    reasonTerm: '“{term}” in the text',
+    reasonIban: 'IBAN {sample}',
+    reasonSvnr: 'Social security number {sample}',
+    reasonCard: 'Card number {sample}',
+    reasonPages: '{count, plural, one {page {pages}} other {pages {pages}}}',
+    // Spreadsheets and text files have no pages, so a finding has no place to open.
+    reasonNoPages: 'no page given',
+    // A rule this build does not know (the job may report a new kind of finding first).
+    reasonOther: 'A rule not described here',
+    // How the content check came to the finding: who set the rule, and what a
+    // number had to pass. It lets a reader tell a real account number from an
+    // order number that only looks like one.
+    basisTerm: 'This term is on the list your office marked as sensitive.',
+    basisIban:
+      'The number is laid out like an IBAN and its check digits are valid, so it is no random string of digits. Your office marked account numbers as sensitive.',
+    basisSvnr:
+      'The number is laid out like an Austrian social security number and its check digit is valid. Your office marked it as sensitive.',
+    basisCard:
+      'The number is laid out like a card number and its check digit is valid. Your office marked card numbers as sensitive.',
+    basisOther: 'The content check applied a rule not described here.',
+    omitted:
+      '{count, plural, one {One more reason is not listed.} other {# more reasons are not listed.}}',
+    nameInFile: 'File name contains “{term}”',
+    nameInFolder: 'Folder “{segment}” contains “{term}”',
+    // Scanned pages are checked once read (ADR-0086, 2026-10-17): "not checked" was no longer true, "first" is.
+    partial: 'Not everything could be checked first: a vision model sees scanned pages, images and drawings before the check.',
+    unchecked: 'The content could not be read without a model and was checked by name only.',
+    // A content-check finding, the way a chat source is shown: the page, and on
+    // it, marked, what the office listed as sensitive.
+    findingsLabel: 'Where the content check found it',
+    findingPage: 'p. {page}',
+    showFinding: 'Show the finding on page {page}',
+    morePages: 'Found on further pages too',
+  },
+  browser: {
+    folderEmptyTitle: 'This folder is empty',
+    folderEmptyDescription: 'Upload documents here, or pick another folder from the sidebar.',
+    noDocumentsTitle: 'No documents yet',
+    noDocumentsDescription:
+      'Upload your project’s documents: drawings, official notices, expert reports. {productName} reads them and cites them instead of answering from generic guidance.',
+    searchPlaceholder: 'Search…',
+    /** The field of a shelf that has the workspace search: typing filters names, Enter searches everything. */
+    searchPlaceholderEverything: 'Filter, Enter searches all…',
+    searchLabel: 'Search files',
+    noMatch: 'No files match “{query}”',
+    noMatchDescription:
+      'Try a different name, tag or description, or clear the search to see every file.',
+    clearSearch: 'Clear search',
+    clearFilters: 'Clear filters',
+    resetSearch: 'Reset search',
+    recentlyUploaded: 'Recently uploaded',
+    /** Empty search when the search matches names only (the folder loads page by page, ADR-0102). */
+    noMatchNamesDescription:
+      'The search looks at file names. Press Enter to search the contents too, or clear the search to see every file.',
+    /** The end of a large folder's list: the rest arrives as you scroll. */
+    loadMore: 'Load more',
+    loadingMore: 'Loading more documents…',
+    loadMoreFailed: 'More documents could not be loaded.',
+    semantic: {
+      searchPlaceholder: 'Search files — press Enter for semantic search…',
+      run: 'Search',
+      reset: 'Show all files',
+      noResults: 'No semantic matches for “{query}”',
+      /**
+       * A search that could not RUN, held apart from one that ran and found
+       * nothing. The hook fails open to an empty result set — which is right,
+       * it must not crash the pane — and the pane used to render that as "no
+       * matches", telling the reader something about their own corpus that the
+       * app had no way of knowing.
+       */
+      failed: 'The search could not be run',
+      failedDescription:
+        'Something went wrong on the way to the index. Your files are untouched — try the same search again, or go back to all of them.',
+      retry: 'Try again',
+      noResultsDescription:
+        'Nothing in this project matched the meaning of your query. Try different wording, or clear the search to browse every file.',
+      page: 'Page {page}',
+      rank: 'Match {rank} in the ranking',
+    },
+  },
+  folders: {
+    rename: 'Rename…',
+    renameLabel: 'Rename folder “{name}”',
+    renaming: 'Renaming…',
+    delete: 'Delete…',
+    actions: 'Folder actions',
+    actionsFor: 'Actions for folder “{name}”',
+    heading: 'Folders',
+    namePlaceholder: 'Folder name',
+    newFolderName: 'New folder name',
+    creating: 'Creating folder…',
+    moveUndo: 'Undo',
+    movedBack: '“{name}” is back in “{folder}”.',
+    moveRefusedReadOnly: 'Nothing was moved: you may only read one of the two folders.',
+    moveRefusedGone: 'Nothing was moved: that folder no longer exists.',
+    nameTaken: '“{parent}” already has a folder named “{name}”.',
+    allFiles: 'All Files',
+    // The way up, named. The breadcrumb says where you ARE, which is a map,
+    // and three levels deep the parent is a truncated word mid-row.
+    backTo: 'Back to {name}',
+    newFolder: 'New folder',
+    newInside: 'New folder inside',
+    open: 'Open',
+    move: 'Move to folder',
+    items: '{count, plural, one {# item} other {# items}}',
+    openFolder: 'Open folder “{name}”',
+    breadcrumb: 'Folder path',
+    movedFolder: '“{name}” moved to “{parent}”.',
+    moveFolderError: 'The folder could not be moved. Please try again.',
+    /** Folder access (ADR-0088, ADR-0097): restricting a folder to people. */
+    access: {
+      menu: 'Access…',
+      /** The lock on a folder: who is on the list only the dialog says. */
+      ownList: 'Own access: only the listed people',
+      ownListEveryoneReads: 'Own access: all project members read, only the listed people edit',
+      openRestricted: 'Open folder “{name}”. {access}',
+      title: 'Access to “{name}”',
+      description: 'Who in this project may read and edit this folder, its subfolders and their documents.',
+      inherit: 'Same as the parent folder',
+      inheritHint:
+        'The folder takes the access of the folder above it. At the top, the project applies: whoever may read reads, whoever may edit edits.',
+      custom: 'Custom access',
+      customHint:
+        'Only the listed people get into the folder, each with “Read” or “Edit”. Anyone not listed does not see it, unless all project members may read. Organization admins may always do everything.',
+      everyoneReads: 'All project members may read',
+      everyoneReadsHint: 'The list then decides only who may edit.',
+      people: 'People',
+      unknownPerson: 'Person without project access',
+      levelRead: 'Read',
+      levelWrite: 'Edit',
+      levelFor: 'Access for {name}',
+      remove: 'Remove {name}',
+      add: 'Add a person…',
+      pickOne: 'Add at least one person, or let all project members read.',
+      nesting: 'A subfolder can only be narrower than its parent folder, never wider.',
+      ceiling: '“Edit” applies only to people who may edit in the project; everyone else reads.',
+      lockout:
+        'If you are not on the list yourself, the folder disappears for you too once you save, unless you are an organization admin.',
+      lockoutEveryoneReads:
+        'If you are not on the list with “Edit” yourself, you may only read the folder once you save, unless you are an organization admin.',
+      moveNotice:
+        'If who may read changes, {productName} moves the folder’s documents and reads them again. For a large folder that takes a few minutes; meanwhile the documents show as “Reading”.',
+      ifcNotice:
+        'Folders not every project member may read cannot hold building models (IFC) yet. Keep IFC models in folders everyone may read.',
+      /** The 409 from the IFC guard (ADR-0087): restricting, uploading or moving into a restricted folder. */
+      ifcRefused:
+        'Building models (IFC) cannot be filed in a folder not everyone may read yet: their building data is not protected by folder access. Keep IFC models in folders everyone may read.',
+      readOnlyBadge: 'Read only',
+      readOnlyHint: 'You may read this folder, but not upload, rename, move or delete anything in it.',
+      readOnlyMenu: 'Read only',
+      readOnlyRefused: 'You may only read in this folder.',
+      save: 'Save access',
+      saving: 'Saving…',
+      loadError: 'The access list could not be loaded.',
+      savedCustom: '“{name}” now has its own access.',
+      savedInherit: '“{name}” now takes the access of its parent folder.',
+      moving: '{count, plural, one {# document is} other {# documents are}} being moved and read again.',
+      failed:
+        '{count, plural, one {# document} other {# documents}} could not be moved yet. Save again to retry.',
+      saveError: 'Access could not be changed. Please try again.',
+      forbidden: 'Only project admins can change who may read and edit a folder.',
+    },
+    describe: 'Description…',
+    /** What belongs in a folder (migration 0145): Piloti files uploads by it. */
+    description: {
+      title: 'What belongs in “{name}”?',
+      hint: 'A sentence or two on what this folder holds. Everyone who opens the folder reads it, and {productName} suggests where an upload belongs by it.',
+      label: 'Description',
+      placeholder: 'e.g. Permits and statements from the building authority',
+      count: '{count} / {max} characters',
+      tooLong: 'At most {max} characters.',
+      save: 'Save',
+      saveError: 'The description could not be saved. Please try again.',
+      edit: 'Edit description',
+      empty: 'Describe what belongs here',
+    },
+  },
+  /**
+   * Piloti's filing suggestion: the chip on a card, a list row and an upload
+   * row, the popover it opens, and the filing bar that decides per folder.
+   */
+  filing: {
+    label: 'Filing suggestion from {productName}',
+    /** The chip's accessible name; it shows only the folder's last segment. */
+    chip: 'Filing suggestion: {folder}',
+    new: 'new',
+    /** Where a file at the top level of a shelf is now, struck through in the popover. */
+    rootProject: 'Project folder (top level)',
+    rootOffice: 'Office filing (top level)',
+    /** Spoken before the two paths of the popover, which a screen reader cannot see struck through. */
+    from: 'Now in',
+    to: 'Would move to',
+    barHeading: '{count, plural, one {{productName} suggests filing # file} other {{productName} suggests filing # files}}',
+    fileCount: '{count, plural, one {# file} other {# files}}',
+    others: '{count, plural, one {with # more file} other {with # more files}}',
+    move: 'Move',
+    moveAll: 'Move all {count}',
+    createAndMove: 'Create and move',
+    keep: 'Leave it',
+    moved: 'Moved to “{folder}”.',
+    kept: 'Stays where it is.',
+    failed: 'Could not be moved.',
+    error: 'That did not work. Please try again.',
+    readOnly: 'Only people who may file here can move it.',
+  },
+  /** The Papierkorb of a project (ADR-0088). */
+  bin: {
+    title: 'Bin',
+    subtitle:
+      'Deleted folders with their subfolders and documents. Until they are permanently deleted they can be restored with their access.',
+    back: 'Back to files',
+    empty: 'The bin is empty.',
+    emptyHint: 'Deleted folders appear here and can be restored.',
+    deletedBy: 'Deleted by {name} on {date}',
+    deletedOn: 'Deleted on {date}',
+    contents:
+      '{documents, plural, one {# document} other {# documents}} · {folders, plural, one {# folder} other {# folders}}',
+    purgeOn: 'Permanently deleted on {date}',
+    purging: 'Being permanently deleted',
+    failed: 'The permanent deletion has stopped. An admin is looking into it.',
+    restore: 'Restore',
+    restored: '“{name}” is restored. Its documents are being read again.',
+    restoredToRoot: '“{name}” is restored at the top of the project, because its parent folder is deleted.',
+    restoreNameTaken: 'A folder named “{name}” already exists there. Rename it, then restore again.',
+    restoreReadOnly: 'It can be restored by someone who could edit the folder.',
+    restoreError: 'The folder could not be restored. Please try again.',
+    purge: 'Delete permanently',
+    purgeTitle: 'Permanently delete “{name}”?',
+    purgeDescription:
+      'The folder, its subfolders and {documents, plural, one {# document} other {# documents}} are deleted now, with every revision and preview. This cannot be undone. What {productName} derived from them follows your organization’s setting.',
+    purged: '“{name}” is permanently deleted.',
+    held: 'This folder is under a retention obligation and cannot be deleted right now.',
+    purgeError: 'The folder could not be permanently deleted. Please try again.',
+    cancel: 'Cancel',
+    loadError: 'The bin could not be loaded.',
+    retry: 'Try again',
+    document: 'Document · goes back to its folder when restored',
+    loadMore: 'Load more',
+  },
+  workspace: {
+    more: 'More',
+    renameFolderError: 'The folder could not be renamed. Please try again.',
+    deleteFolderError: 'The folder could not be deleted. Please try again.',
+    deleteFolderConfirm: 'Delete the folder “{name}”?',
+    deleteFolderConfirmWithContents:
+      'Delete the folder “{name}”?\n\nIts {documents} document(s) and {folders} subfolder(s) are not deleted — they move to “{parent}”.',
+    deleteFolderDone: '“{name}” deleted.',
+    deleteFolderMoved: 'Folder deleted. {count} document(s) moved to “{parent}”.',
+    binFolderConfirm:
+      'Move the folder “{name}” to the bin?\n\nIts subfolders and documents go with it. From the bin it can be restored with its access until it is permanently deleted.',
+    binFolderDone: '“{name}” is in the bin. Restorable until {date}.',
+    deleteFolderProtected:
+      'This folder holds content you may not delete. It can be deleted by someone who may edit all of its subfolders.',
+    deleteFolderIndexDown: 'The folder was not deleted because the search index did not answer. Please try again.',
+    openBin: 'Bin',
+    corpusSubtitle: 'Project knowledge: documents {productName} reads and cites.',
+    uploadDocuments: 'Upload documents',
+    uploadProblem: 'Upload problem',
+    dismissError: 'Dismiss error',
+    createFolderError: 'Could not create folder. Please try again.',
+    foldersLoadError: "Folders couldn't be loaded.",
+    documentsLoadError: "Documents couldn't be loaded.",
+    listTruncated: 'Showing the newest {count} documents. Older ones are missing from this list, from search and filters, and from the folder-upload comparison.',
+    tryAgain: 'Try again',
+    dropToUpload: 'Drop files to upload to this project',
+    dropUnsupported: 'Some files are not a supported type',
+    dropInto: 'Drop into “{name}”',
+    dropRefusedHere: 'Read only: you can’t drop files here.',
+    dropRefusedFolder: '“{name}” is read only: nothing can be dropped there.',
+    dropQueued: 'The dropped files will upload as soon as the current upload has finished.',
+    dropTruncated:
+      'The dropped folder was too large or too deeply nested. {count, plural, one {# file was} other {# files were}} taken; upload the rest in a second step.',
+    dropUnreadable:
+      '{count, plural, one {One dropped file} other {# dropped files}} could not be read and {count, plural, one {was} other {were}} not uploaded. Save {count, plural, one {it} other {them}} locally first (from Outlook or a cloud folder, for example).',
+    view: {
+      label: 'View',
+      cards: 'Cards',
+      list: 'List',
+    },
+  },
+  // Explorer detail view — column headings for the sortable listing.
+  selection: {
+    start: 'Select',
+    done: 'Done',
+    all: 'All',
+    move: 'Move',
+    column: 'Selected',
+    count: '{count} selected',
+    moved: '{count, plural, one {# file moved to “{folder}”.} other {# files moved to “{folder}”.}}',
+    moveFailed: '{count, plural, one {# file could not be moved.} other {# files could not be moved.}} Please try again.',
+  },
+  picker: {
+    titleOne: 'Move “{name}” to …',
+    titleMany: '{count, plural, one {Move # file to …} other {Move # files to …}}',
+    description: 'Choose the folder the files are moved to.',
+    search: 'Search folders',
+    list: 'Folders',
+    empty: 'No folder matches “{query}”.',
+    here: 'Here',
+    close: 'Close',
+  },
+  list: {
+    columns: {
+      relevance: 'Relevance',
+      name: 'Name',
+      status: 'Status',
+      // The editorial state (Freigabe), beside the ingestion status: the column
+      // that makes bulk approval state visible where bulk work happens.
+      approval: 'Approval',
+      pages: 'Pages',
+      size: 'Size',
+      added: 'Added',
+    },
+  },
+  // The overflow menu every document surface carries.
+  actions: {
+    reingest: 'Read again',
+    move: 'Move to folder',
+    moved: '“{name}” moved to {folder}',
+    moveError: 'The document could not be moved. Please try again.',
+    reingesting: 'Retrying…',
+    reingestRunning: 'Already being read',
+    reingestAlreadyDone: 'Already finished',
+    reingestWouldFailAgain: 'Reading this file again would give the same result. Upload a new revision instead.',
+    reingestConfirmTitle: 'Read “{name}” again?',
+    reingestConfirmDescription:
+      '{productName} reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, {productName} keeps answering from what it read before.',
+    reingestConfirmAction: 'Read again',
+    reingestError: "Reading couldn't be restarted. Please try again.",
+    // Stop a read that has not finished: the bytes stay, nothing was indexed,
+    // and a re-ingest reads them again. Neutral, like `reingest`, never a
+    // destructive red.
+    cancel: 'Stop reading',
+    cancelling: 'Stopping…',
+    cancelled: 'Reading “{name}” stopped',
+    cancelFinished: 'Nothing to stop — the reading had already finished',
+    cancelUnavailable: "Reading can’t be stopped for this file — {productName} is converting it on this server",
+    cancelError: "Reading couldn't be stopped. Please try again.",
+    label: 'File actions for “{name}”',
+    menuLabel: 'File actions',
+    download: 'Download',
+    open: 'Open',
+    ask: 'Ask about this',
+    select: 'Select',
+    copyOriginPath: 'Copy origin path',
+    rename: 'Rename…',
+    delete: 'Delete…',
+  },
+  rename: {
+    title: 'Rename document',
+    description:
+      'Changes the name shown everywhere in {productName}, including on citations. The file itself and everything read from it stay as they are.',
+    label: 'Name',
+    hint: 'The file extension stays as it is.',
+    save: 'Rename',
+    saving: 'Saving…',
+    cancel: 'Cancel',
+    restore: 'Restore original name',
+    success: 'Now called “{name}”',
+    restored: 'Back to “{name}”',
+    error: 'The document could not be renamed',
+    errors: {
+      empty: 'Please enter a name.',
+      tooLong: 'That name is too long.',
+      invalidCharacters: 'A name cannot contain slashes or line breaks.',
+    },
+  },
+  delete: {
+    action: 'Delete document',
+    title: 'Delete “{name}”?',
+    confirm: 'This removes the document from this project. This cannot be undone.',
+    confirmAction: 'Delete',
+    cancel: 'Cancel',
+    deleting: 'Deleting…',
+    success: '“{name}” was removed from the project',
+    error: 'The document could not be deleted',
+    legalHold: 'The document is under a legal hold and cannot be deleted',
+  },
+  /**
+   * A ZIP dropped on a shelf. It is unpacked in the browser and then handled as
+   * the folder it contains (`folderUpload.*`), so these are only the sentences
+   * for an archive that gave nothing.
+   */
+  zip: {
+    reading: 'Reading the ZIP…',
+    unreadable: '“{name}” could not be read. Is it a valid ZIP without a password?',
+    empty: '“{name}” contains no files.',
+    tooManyFiles: '“{name}” contains more than {limit} files, so nothing was taken from it. Split it into smaller ZIPs.',
+    tooLarge: '“{name}” unpacks to more than {limit}, so nothing was taken from it. Split it into smaller ZIPs.',
+  },
+  /**
+   * The folder-upload plan — the dialog a dropped directory tree opens before
+   * anything moves. `folderUpload.*` rather than under `upload.*` because it
+   * describes a PLAN, not the transfer: the words here name what is about to
+   * happen to documents that already exist.
+   */
+  folderUpload: {
+    title: 'Upload “{name}”?',
+    titleGeneric: 'Upload this folder?',
+    // Loose files, at least one of which meets an existing document.
+    titleFiles: '{count, plural, one {Upload # file?} other {Upload # files?}}',
+    titleFilesGeneric: 'Upload files?',
+    destinationFiles: 'The files go into “{folder}”.',
+    close: 'Close',
+    compareError: 'Could not compare with what is already here. Nothing was uploaded.',
+    planChanged: 'The preview has changed. Nothing was uploaded. Please review it and confirm again.',
+    single: {
+      // One dropped file that is a new revision of a document here, by its name
+      // (same name, `update`) or by the name series it continues (`fassung`).
+      newRevisionTitle: 'New revision of “{name}”?',
+      updateExplain:
+        '“{name}” is already here under this name. The new file becomes the current revision; the previous one stays readable under “Revisions and approval”.',
+      revisionExplain:
+        '“{file}” continues “{name}”: the index or date in its name is newer. The older revision stays readable, {productName} answers from the new one and notes what changed; the link can be undone later.',
+      unclearTitle: 'Is “{file}” a new revision?',
+      unclearExplain:
+        'By its name, several documents could be meant. Choose the one this file continues, or upload it as a separate document.',
+      notNewerExplain:
+        'By its name, “{file}” is not newer than “{name}”. Filed as a new revision, it would still become the current one.',
+      unchangedTitle: 'Unchanged – already here',
+      unchangedExplain: '“{name}” is identical to this file. Nothing is uploaded.',
+      refiled: 'The document is currently in another folder and moves to “{folder}”.',
+      archived: 'The document is archived. The new revision is added to it and only shows in the list again once the document is restored.',
+      confirmRevision: 'File as a new revision',
+      confirmSeparate: 'Upload as a separate document',
+    },
+    destination: 'Its folder structure is recreated inside “{folder}”.',
+    // The re-sync fold: the dropped folder IS the folder they are standing in,
+    // so its contents go in rather than a folder of the same name inside it.
+    destinationMerged: 'Its contents go straight into “{folder}” — the folders inside it are matched.',
+    planning: 'Comparing with what is already here…',
+    counts: {
+      new: 'new documents',
+      update: 'already here, changed',
+      unchanged: 'unchanged, skipped',
+      foldersCreated: 'folders created',
+      foldersMatched: '{count} matched',
+    },
+    // What the project calls the document a row is about to touch, when
+    // somebody has renamed it here and the name in the drop no longer says so.
+    alreadyHereAs: 'here as “{name}”',
+    archivedMatch: 'archived document',
+    refiled:
+      '{count, plural, one {# of them is filed elsewhere at the moment and moves to where this folder puts it.} other {# of them are filed elsewhere at the moment and move to where this folder puts them.}}',
+    // The unchanged ones send no bytes, so nothing about the upload would move
+    // them — they are moved on their own, or the tree is not really recreated.
+    moving:
+      '{count, plural, one {# unchanged document is filed elsewhere and is moved to where this folder puts it.} other {# unchanged documents are filed elsewhere and are moved to where this folder puts them.}}',
+    duplicates:
+      '{count, plural, one {# file is already in the project under a different name} other {# files are already in the project under a different name}}',
+    duplicatesExplain:
+      'Uploading them would add a second copy rather than replace anything, so they are not sent. Rename the document here, or the file on disk, so the two agree.',
+    collisions: '{count} files share a name with another file in this upload',
+    collisionsExplain:
+      'A project holds one document per filename, so these are not uploaded. Rename them and drop them again.',
+    // Not uploaded by the name check (ADR-0086): the files do not leave this
+    // computer unless someone uploads one anyway. "Held back" is the content check's.
+    excluded: '{count, plural, one {# file not uploaded} other {# files not uploaded}}',
+    excludedExplain:
+      'Your office marks these terms as sensitive, so these files are not uploaded: they do not leave your computer. If one of them belongs in {productName} after all, tick it.',
+    releaseFile: 'Upload anyway',
+    // Files that come in as a new revision of a document already here: by the
+    // same name (ADR-0054) or by a name series under another name (ADR-0099).
+    // One concept, one word, whichever way Piloti recognised it (ADR-0099). Say
+    // document, file, revision: a name with an index does not say what a file is.
+    revision: {
+      title: '{count, plural, one {# new revision} other {# new revisions}}',
+      consequence:
+        'The older revision stays readable, {productName} answers from the new one and notes what changed; unticked files come in as separate documents, and any link can be undone later.',
+      sameNameTitle:
+        '{count, plural, one {# file of the same name as a new revision} other {# files of the same name as new revisions}}',
+      sameNameReason:
+        'Same name as a document here: each keeps its name, citations and assignments, and its previous revision stays readable under “Revisions and approval”. Unticked, these are not uploaded.',
+      masterAll: '{count, plural, one {As a new revision} other {All # as new revisions}}',
+      masterSome: '{ticked} of {count} as new revisions',
+      masterNone: '{count, plural, one {Not as a new revision} other {None of # as new revisions}}',
+      seriesReason: 'Name series: an index or date in the name continues a document here.',
+      ofPrefix: 'Revision of',
+      offer: 'File as a new revision of “{name}”',
+      unclearTitle: '{count, plural, one {# file needs your choice} other {# files need your choice}}',
+      unclearHint: 'Nothing is ticked for you. Choose a document or tick the file, and it is filed as a new revision.',
+      reasonNotNewer: 'Not newer than the current revision “{name}”',
+      reasonSeveral: 'Several documents could be meant',
+      pick: 'Choose the document…',
+    },
+    showAll: '{count, plural, one {Show the file} other {Show all # files}}',
+    action: {
+      new: 'New',
+      revision: 'New revision',
+      unchanged: 'Unchanged',
+      collision: 'Conflict',
+      duplicate: 'Already here',
+      skipped: 'Skipped',
+      excluded: 'Not uploaded',
+    },
+    confirm: '{count, plural, one {Upload # file} other {Upload # files}}',
+    // The same, when some of them come in as a new revision: the button moves with the boxes.
+    confirmWithRevisions:
+      '{count, plural, one {Upload # file} other {Upload # files}}, {revisions, plural, one {# as a new revision} other {# as new revisions}}',
+    // Nothing to upload, but the tree still says these belong elsewhere.
+    confirmMoveOnly: '{count, plural, one {Move # document} other {Move # documents}}',
+    nothingToDo: 'Nothing to upload',
+    cancel: 'Cancel',
+    // The summary after the plan has been applied.
+    done: '{uploaded, plural, one {# file uploaded} other {# files uploaded}}, {skipped} unchanged.',
+    doneMoved: '{uploaded, plural, one {# file uploaded} other {# files uploaded}}, {skipped} unchanged, {moved} moved.',
+    foldersError: 'The folders for this upload could not be created. Nothing was uploaded.',
+    // Distinct from `foldersError`: the folders were made and the upload itself
+    // is what went wrong, which is a different thing to retry.
+    applyError: 'This folder could not be uploaded completely. Check the list and try again.',
+  },
+  /**
+   * The Outlook archive import (ADR-0085): a .pst or .ost sent in parts, then
+   * filed by a background job, one folder per mail.
+   */
+  mailImport: {
+    action: 'Import Outlook archive',
+    title: 'Import an Outlook archive',
+    description:
+      'Choose a .pst or .ost file. Each email becomes a folder under “E-Mail-Import” with its attachments and a note holding its text and headers.',
+    privacy:
+      'An archive holds the correspondence of everyone who wrote to this mailbox. Import what the project needs, not a whole mailbox.',
+    choose: 'Choose archive…',
+    maxSize: 'Up to {size}.',
+    // Touch only: an archive this size is best sent from a desk, on a steady line.
+    desktopHint: 'Large archives are best sent from a desk. If the connection drops, pick the same file again and it carries on from there.',
+    notAnArchive: '“{name}” is not an Outlook archive (.pst or .ost).',
+    tooLarge: '“{name}” is larger than {size}.',
+    sending: 'Sending {sent} of {total}…',
+    sendingHint:
+      'You can go on working in {productName} meanwhile; just keep this tab open until the archive is sent. Filing then runs in the background.',
+    sendingLabel: 'Sending “{name}”',
+    joining: 'Sent. {productName} is putting the archive together…',
+    sendErrors: {
+      busy: 'This tab is still sending another archive. Wait until it is sent, then choose this one.',
+      alreadyRunning: 'An import of yours is still running in this project. Continue or cancel it first.',
+      cancelled: 'The import was cancelled while it was being sent.',
+      quota: 'The organization’s storage is full, so the archive cannot be imported.',
+      forbidden: 'You may not add documents to this project.',
+      rejected: '{productName} did not accept this archive. Check that it is an Outlook .pst or .ost file.',
+      connection: 'The connection broke off. Choose the file again with “Continue sending” to pick up where it stopped.',
+      unknown: 'The archive could not be sent. Try again with “Continue sending”.',
+    },
+    resume: 'Continue sending',
+    resumeNamed: 'Continue sending “{name}”',
+    resumeHint: 'Choose “{name}” again to continue where sending stopped.',
+    resumeMismatch: 'That is not the same file. Choose “{name}” ({size}).',
+    resumeChanged:
+      '“{name}” has changed since sending began, so its parts no longer fit together. Cancel this import and start a new one.',
+    cancel: 'Cancel',
+    cancelNamed: 'Cancel the import of “{name}”',
+    cancelConfirm: {
+      title: 'Cancel this import?',
+      description:
+        'What has been filed so far stays. The archive is deleted from {productName}, so importing the rest means sending “{name}” again.',
+      confirm: 'Cancel import',
+      keep: 'Keep importing',
+    },
+    cancelError: 'The import could not be cancelled.',
+    close: 'Close',
+    history: 'Imports in this project',
+    empty: 'No archive has been imported into this project yet.',
+    loadError: 'The imports could not be loaded.',
+    openFolder: 'Open folder',
+    openFolderNamed: 'Open the folder of “{name}”',
+    importingLabel: 'Importing “{name}”',
+    startedBy: 'Started by {email}',
+    progress: '{done} of {total} items',
+    filed: '{mails, plural, one {# email} other {# emails}}, {files, plural, one {# attachment} other {# attachments}}',
+    skipped: '{count, plural, one {# skipped} other {# skipped}}',
+    skippedItem: '{file} in {mail}: {reason}',
+    skippedMail: '{mail}: {reason}',
+    status: {
+      uploading: 'Sending',
+      queued: 'Waiting',
+      importing: 'Importing',
+      completed: 'Imported',
+      failed: 'Failed',
+      cancelled: 'Cancelled',
+    },
+    errors: {
+      unreadable: 'This file could not be read as an Outlook archive. Export it again from Outlook as a .pst file.',
+      quota: 'The organization’s storage is full. What was imported until then stays.',
+      access: 'The person who started the import may not add documents to this project or its “E-Mail-Import” folder.',
+      requester_left: 'The person who started the import is no longer a member of the organization.',
+      stopped: 'The import stopped after repeated errors.',
+      stalled: 'The import stopped without finishing.',
+      upload_expired: 'The archive was not sent completely within two days.',
+    },
+    reasons: {
+      embedded_message: 'attached email',
+      type: 'file type not accepted',
+      size: 'too large',
+      unreadable: 'damaged in the archive',
+      screened: 'not uploaded by the name check',
+      access: 'folder is read-only',
+      name_taken: 'name already used in the project',
+    },
+  },
+  upload: {
+    uploading: 'Uploading…',
+    upload: 'Upload',
+    uploadFolder: 'Upload folder',
+    uploadFiles: 'Choose files',
+  },
+  errors: {
+    projectClosed: 'This project is closed and read-only. Whoever manages it can reopen it from the notice at the top or in the Overview.',
+    // The transport's messages are English and for logs; the person on site reads
+    // these. A failure with no answer (network, stall, time) can be retried, and
+    // the row offers it.
+    uploadFailed: 'The upload failed.',
+    uploadNetwork: 'No connection while uploading. Please try again.',
+    uploadStalled: 'The connection stopped sending, so the upload was stopped.',
+    uploadTimeout: 'The upload took too long.',
+    // The server's size and storage refusals; their own words are for logs
+    // (`lib/upload-failure.ts`).
+    uploadTooLarge: '“{name}” is larger than your office may upload.',
+    uploadTooLargeLimit: '“{name}” is larger than your office may upload: at most {limit} per file.',
+    uploadStorageFull: "Your office's storage is full. Nothing was uploaded.",
+    // Not uploaded by the name check (ADR-0086): on a path with no upload
+    // dialog, such as a chat attachment, or by the server's repeat of it.
+    screenedOut: '{count} file(s) not uploaded because your office marks them as sensitive: {files}',
+    screenedOutFile: '“{name}” ({reason})',
+    // The office's list could not be read: without it nothing is sent, not
+    // even against Piloti's suggestion (ADR-0086).
+    screeningPolicyUnavailable:
+      "Your office's list of sensitive data could not be loaded. Nothing was uploaded. Please try again.",
+    validation: {
+      duplicateInBatch: '“{name}” is in this selection more than once',
+      duplicateExisting: '“{name}” has already been added',
+      invalidType: '“{name}” is not a supported file type. Accepted: {accepted}',
+      fileTooLarge: '“{name}” is {size} — the limit is {limit}',
+      totalSizeExceeded:
+        'That would come to {total}; only {available} of the {limit} limit is free',
+      totalSizeExceededFirst: '{total} is over the {limit} limit',
+      maxFilesExceeded: 'That would be {total} files; only {available} more fit ({limit} maximum)',
+      maxFilesExceededFirst: '{total} files is over the limit of {limit}',
+      several: '{count} files have issues',
+    },
+    someUploadsFailed:
+      '{failed} of {total} documents could not be uploaded. First reason: {reason}',
+    uploadingSkipped: 'Uploading {uploading} {fileLabel}, skipped {skipped} ({summary})',
+    // The file this upload would replace is held back by the content check
+    // (ADR-0086). The state is "held back", the place "quarantine".
+    quarantinedReplace:
+      '“{name}” would replace a file that is held back and waits in quarantine for review. Once someone allows it through or deletes it, you can upload the new one.',
+    // Another document holds the name. No place and no reason on purpose: it may
+    // be one this person may not see.
+    nameTaken: 'Another document already has the name “{name}”. Rename the file and upload it again.',
+    // Somebody filed or deleted the same file while this one was uploading.
+    uploadChangedMeanwhile: 'Something changed here while the file was uploading. Please try again.',
+    cannotRetryServerFile: 'Cannot retry server-loaded files. Please upload the file again.',
+    imageVlmUnavailable:
+      'Images cannot be uploaded here: this deployment has no image recognition set up.',
+    fileSingular: 'file',
+    filePlural: 'files',
+  },
+  /**
+   * Provenance — who wrote the bytes. Deliberately its own group and NOT part
+   * of `assignment`: a face says who is responsible for a file, this says who
+   * made it, and the file-native design is explicit that provenance is never
+   * rendered as responsibility. A generated report is an ordinary UNASSIGNED
+   * file, so the footer still says `Unassigned` beside this line.
+   */
+  /**
+   * The Files header's filter/sort menu.
+   *
+   * Replaces the open filter strip: the header already carried a view switch, a
+   * search field and an upload button, and had no room left for the filters
+   * people asked for. The count on the button is the price of hiding them — a
+   * filter nobody can see is worse than a crowded strip.
+   */
+  // The folder brief: what Piloti knows about a folder and everything under it.
+  brief: {
+    scopeFolder: 'in “{name}” and its subfolders',
+    scopeProject: 'in this project',
+    scopeOffice: 'in Office filing',
+    headlineAll: '{count, plural, one {The document is read} other {All # documents read}}',
+    headlineSome: '{readable} of {count, plural, one {# document} other {# documents}} read',
+    headlineNone: '{count, plural, one {The document is not read yet} other {None of the # documents read yet}}',
+    headlineNothingToRead: '{count, plural, one {# document, not part of the knowledge base} other {# documents, none part of the knowledge base}}',
+    states: {
+      readable: '{count} read',
+      reading: '{count} being read',
+      failed: '{count} failed',
+      held: '{count} held back',
+      unindexed: '{count} not in the knowledge base',
+    },
+    allRead: 'All read',
+    unplacedShort: '{count} without a document type',
+    /** Beside the legend: documents Piloti never reads. Not part of the headline's “of N”. */
+    unindexedAside: 'plus {count} not in the knowledge base',
+    /** Run-in labels of the two chip families under “What this is about”. */
+    typesLabel: 'Document type',
+    disciplinesLabel: 'Discipline',
+    /** Accessible names of the “Show” buttons: three identical buttons are three different things. */
+    showFailed: '{count, plural, one {Show the failed document} other {Show the # failed documents}}',
+    showHeld: '{count, plural, one {Show the held-back document} other {Show the # held-back documents}}',
+    showUnplaced: '{count, plural, one {Show the document without a document type} other {Show the # documents without a document type}}',
+    showState: 'Show “{state}” documents across all subfolders',
+    showTag: 'Show every “{tag}” document in this folder and its subfolders',
+    pages: '{count, plural, one {{formatted} page read} other {{formatted} pages read}}',
+    aboutTitle: 'What this is about',
+    noTypes: '{productName} has not recognized a document type here yet.',
+    /** "What this is about" while only the folder's counts are loaded (ADR-0102). */
+    aboutDeferred: 'Document types, disciplines and topics',
+    aboutDeferredHint:
+      'What {productName} recognized in the documents is kept with each document. For a large folder it is loaded only when you want to see it.',
+    loadDetails: 'Load',
+    loadingDetails: 'Loading…',
+    contains: 'Contains {list}',
+    needsTitle: 'Needs your attention',
+    failedLine: '{count, plural, one {{productName} could not read # document.} other {{productName} could not read # documents.}}',
+    readAgainAll: '{count, plural, one {Read again} other {Read all # again}}',
+    readAgainProgress: 'Starting {done} of {count}…',
+    readAgainDone: '{count, plural, one {# document is being read again} other {# documents are being read again}}',
+    readAgainPartial: '{count, plural, one {# document could not be restarted} other {# documents could not be restarted}}',
+    heldLine:
+      '{count, plural, one {# document is held back by the content check until someone reviews it.} other {# documents are held back by the content check until someone reviews them.}}',
+    unplacedLine:
+      '{count, plural, one {{productName} could not assign # document to a document type.} other {{productName} could not assign # documents to a document type.}}',
+    unplacedHint:
+      'You don’t have to enter anything, {productName} assigns types on its own. For these, only you can: open the document and choose “Assign”.',
+    show: 'Show',
+    missingTitle: 'What {productName} is still missing',
+    missingLead: 'From the project details, {productName} expects these documents and does not know them yet:',
+    missingMore: '+{count} more',
+    missingHint:
+      'If one of them is already here, {productName} just doesn’t know which file it is, and will call it missing in answers. Read does not mean matched to its role.',
+    topicsTitle: 'Topics {productName} recognized',
+    photos: '{count, plural, one {# photo} other {# photos}} from {span}',
+    whereTitle: 'Where it’s stuck',
+    expand: 'Expand',
+    collapse: 'Collapse',
+    slice: {
+      readable: 'Read',
+      reading: 'Being read',
+      failed: 'Failed',
+      held: 'Held back',
+      unindexed: 'Not in the knowledge base',
+      unplaced: 'Without a document type',
+      photos: 'Photos with a date taken',
+    },
+    sliceScopeFolder: '“{name}” and its subfolders',
+    sliceScopeRoot: 'all folders',
+    sliceClear: 'Back to the folder',
+    sliceEmpty: 'Nothing left here.',
+  },
+  /** The count on a document's card and row when it has Fassungen under other file names (ADR-0099). */
+  revisionBadge: {
+    count: '{count, plural, one {# revision} other {# revisions}}',
+    countTitle: '{count, plural, one {# revision of this document} other {# revisions of this document}}',
+    older: 'Older revision',
+    /** Tooltip of an older revision: what replaced it. {name} is the newer one's file name. */
+    olderTitle: 'Replaced by “{name}”',
+  },
+  /** Visual comparison of two Fassungen: side by side, overlaid, swiped (fassung-compare/). */
+  compare: {
+    title: 'Compare revisions',
+    olderLabel: 'Older',
+    newerLabel: 'Newer',
+    close: 'Close',
+    viewMode: 'View mode',
+    modeSide: 'Side by side',
+    modeOverlay: 'Overlay',
+    modeSwipe: 'Swipe',
+    legendOlder: 'Older (cyan)',
+    legendNewer: 'Newer (orange)',
+    legendLabel: 'Color key',
+    legendUnchanged: 'Unchanged (dark)',
+    captionOlder: 'Older revision',
+    captionNewer: 'Newer revision',
+    paneOlder: 'Older revision: {name}',
+    paneNewer: 'Newer revision: {name}',
+    pageOf: 'Page {n} of {m}',
+    pageOfTotal: 'of {m}',
+    pageInput: 'Page, {m} in total',
+    pageNavigation: 'Page',
+    previousPage: 'Previous page',
+    nextPage: 'Next page',
+    pageCountDiffers: 'These revisions differ in page count: {older} against {newer}.',
+    pageMissing: 'This revision has no page {n}.',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    zoomLabel: 'Zoom',
+    zoomFit: 'Fit',
+    zoomPercent: '{percent}%',
+    zoomFitActive: 'Whole page fitted',
+    zoomFitAction: '{percent}% of the fitted size. Fit the whole page',
+    zoomHint: 'Ctrl + scroll or two fingers to zoom, drag to pan',
+    opacity: 'Show newer revision',
+    opacityValue: '{percent}%',
+    swipeDivider: 'Divider between the older and the newer revision',
+    swipeValue: '{percent}% older revision',
+    swipeHint: 'Drag or use ← → to move, double-click to centre',
+    keysHint: 'Arrow keys change the page, 1, 2 and 3 the view, Esc closes the comparison.',
+    keysHintVisible: '← → change page · 1 2 3 view · Esc close',
+    loading: 'Loading the pages…',
+    failedFile: 'The pages of {name} could not be loaded.',
+    failedBoth: 'The pages of both revisions could not be loaded.',
+    failedDescription: 'Often the connection only dropped for a moment. If a second try does not help, open the file on its own.',
+    retry: 'Try again',
+    notComparableTitle: 'These files cannot be compared visually',
+    notComparableDescription:
+      'Only pages and images can be laid over each other. The text comparison in the revision history shows what changed in the wording.',
+    openTextCompare: 'Open text comparison',
+    backToHistory: 'Back to the revision history',
+    changesRegion: 'Changes',
+    changesHeading: 'Changes ({count})',
+    pageGroup: 'Page {page}',
+    pageGroupShown: 'on screen',
+    changeShow: 'Change {number}: {label}. Show on the page.',
+    changeTag: 'Change {number}: {label}',
+    markPage: 'Compare page {page} with {productName}',
+    markingPage: '{productName} is comparing page {page}…',
+    markedPage: 'Page {page} is marked',
+    markPageMissing: 'Only one revision has page {page}',
+    markSlow: 'This usually takes a few seconds.',
+    caveat: 'Marked by {productName}. Check dimensions in the document.',
+    markNotRead: 'This revision is still being read. You can compare as soon as it is citable.',
+    markUnavailable: '{productName} is not reachable right now. Try again in a minute.',
+    markFailed: 'The comparison failed. Please try again.',
+  },
+  filters: {
+    label: 'Filter',
+    labelActive: 'Filters ({count} active)',
+    reset: 'Reset filters',
+    // The two toggles that WIDEN: retired files are not in the listing at all,
+    // and older revisions are one entry with the current one (ADR-0099). Worded
+    // alike under one heading, so neither reads as a narrowing.
+    alsoShowLabel: 'Also show',
+    alsoShow: {
+      retired: 'Retired',
+      olderRevisions: 'Older revisions',
+    },
+    // What the reader is missing when type or status emptied the level: the
+    // fact that a filter, and not an empty folder, is the reason.
+    emptyTitle: 'No file matches these filters',
+    emptyDescription:
+      'This folder holds documents, but none matches the current selection. Reset the filters to see everything again.',
+    sortLabel: 'Sort',
+    ascending: 'Ascending',
+    descending: 'Descending',
+    statusLabel: 'Status',
+    // The three questions actually asked, not the ten pipeline states that
+    // differ only in which stage reported them.
+    status: {
+      failed: 'Failed',
+      processing: 'Reading',
+      ready: 'Citable',
+    },
+    originLabel: 'Origin and approval',
+    tagLabel: 'Category',
+    kindLabel: 'File type',
+    kind: {
+      floorplan: 'Floor plan',
+      section: 'Section / elevation',
+      siteplan: 'Site plan',
+      notice: 'Official notice',
+      photo: 'Photo',
+      model: '3D model (IFC)',
+      sheet: 'Spreadsheet',
+      text: 'Text / note',
+      document: 'Document',
+    },
+  },
+  authorship: {
+    byAgent: 'Created by {productName}',
+    /** Filter chip beside All · Mine · Unassigned. */
+    filter: 'By {productName}',
+    /** The question this filter left unanswered: WHICH files those would be. */
+    emptyTitle: '{productName} has filed nothing here yet',
+    emptyDescription:
+      'This is where the files {productName} wrote itself appear: filed research reports and diagrams. Documents you uploaded do not count, even where {productName} has read them.',
+    /**
+     * Why Ask is disabled on a generated report — and it is disabled, not
+     * hidden, following the pattern the citable-yet case already set. The
+     * difference is that there is no "yet": the report was never indexed, on
+     * purpose, so that the agent cannot cite its own writing back as evidence.
+     */
+    notInKnowledge: 'Created by {productName} — not in the knowledge base',
+  },
+  /**
+   * Fassungen und Freigabe — the editorial state of a document (ADR-0054).
+   *
+   * A separate vocabulary from `status`, which is where a document is in the
+   * INGESTION pipeline. „Freigegeben" and „Zitierbar" answer different
+   * questions, and the two word lists must not borrow from each other.
+   */
+  lifecycle: {
+    title: 'Revisions and approval',
+    /** Hover text on the badge; the state word is interpolated. */
+    badgeTitle: 'Approval status: {state}',
+    /** The filter chip, beside By Piloti. */
+    filter: 'Awaiting approval',
+    states: {
+      draft: 'Draft',
+      inReview: 'In review',
+      changesRequested: 'Changes requested',
+      approved: 'Approved',
+      published: 'Published',
+      rejected: 'Rejected',
+      superseded: 'Replaced',
+      /**
+       * NOT "archived". Office filing (Büroablage, once "Archiv") is where a
+       * document is placed so that it BECOMES cross-project office knowledge.
+       * This state is the opposite: the file leaves the working set and its
+       * knowledge-base entries are purged. One word for both would be the same
+       * verb for a thing and its inverse. The column value stays `archived` —
+       * that is wire and database, not the reader's language.
+       */
+      archived: 'Retired',
+    },
+    actions: {
+      submit: 'Submit for approval',
+      approve: 'Approve',
+      requestChanges: 'Request changes',
+      /** The same decision, plus one thing: Piloti writes the next revision. */
+      delegateRevision: 'Have {productName} revise it',
+      reject: 'Reject',
+      publish: 'Publish',
+      archive: 'Retire',
+      /** The ⋯ beside “Request changes”: have Piloti revise it, reject. */
+      more: 'More decisions',
+    },
+    /** Who should approve the revision. Everyone who may is the default. */
+    reviewer: {
+      every: 'All editors',
+    },
+    /**
+     * Submitting for approval is a liability-adjacent act: the submitter names
+     * a reviewer and states the order in one sentence. Both gate the button —
+     * a disabled button with its reason, never a silent refusal or an open
+     * round nobody was told about.
+     */
+    submit: {
+      reviewerLabel: 'Reviewer',
+      reviewerPlaceholder: 'Choose a reviewer',
+      orderLabel: 'Order for the reviewer',
+      orderPlaceholder: 'In one sentence: what should be checked?',
+      dueLabel: 'Due date (optional)',
+      needReviewer: 'Choose who should review this revision.',
+      needOrder: 'State the order in one sentence.',
+      selfReviewNote:
+        'No other editors — the approval will be recorded as a self-review.',
+    },
+    /**
+     * Approving is the office asserting the content, so it is never one click:
+     * the act names its stand (revision + date), the acting person and the
+     * moment, and the checkbox is the signature.
+     */
+    approveConfirm: {
+      asOf: 'Revision {number} · as of {date}',
+      actingWithName: 'Acting: {name} · {date}',
+      actingDateOnly: 'Acting: {date}',
+      checkbox: 'I approve this revision',
+      // Before the signature, never a block: approving with open points is allowed, missing them is not.
+      // {marks}: “2 open annotations and 12 proposals from Piloti”, as the chip in Files says it.
+      openMarks: '{marks} – approve anyway?',
+      openMarksLoading: 'Still reading the open annotations …',
+      openMarksUnavailable: 'Could not read whether any annotations are open.',
+    },
+    /**
+     * Publication is its own act in its own section — never a sibling button
+     * beside approval. Approving asserts the content; publishing makes the
+     * revision the one Piloti answers from: only a published revision is read
+     * into the knowledge base (ADR-0054).
+     */
+    publishSection: {
+      heading: 'Publication',
+      blurb: 'Publishing makes revision {number} the one {productName} answers from.',
+    },
+    /**
+     * Archiving is the one act in this section that cannot be taken back from
+     * inside the product: the knowledge-base entries are purged and no route
+     * brings them back. So it stands apart and states its consequences before
+     * it runs — never a fifth button in a row of review decisions.
+     */
+    archiveSection: {
+      heading: 'Take out of the file list',
+      blurb:
+        'Retiring removes the file from the file list and from the knowledge base. Nothing is deleted.',
+      confirmTitle: 'Retire this file?',
+      confirmTitleNamed: 'Retire “{filename}”?',
+      consequences: {
+        listing:
+          'The file leaves the file list. The “Also show retired” filter brings it back into view.',
+        knowledge: '{productName} stops citing it: its knowledge-base entries are removed.',
+        kept: 'The file and every revision are kept. This is not a delete.',
+        permanent: 'This cannot be undone here.',
+      },
+    },
+    /**
+     * What a state means for the reader, in one sentence. The state words
+     * („In review", „Approved") are only informative to somebody who knows what
+     * a state changes, and exactly one thing changes: whether Piloti answers
+     * from this revision. Only a published revision is read into the knowledge
+     * base (ADR-0054); when none stands behind the newest one, the sentence
+     * cannot point at it („Alone").
+     */
+    meaning: {
+      draftLive: 'A draft of a new revision. {productName} keeps answering from the published revision.',
+      draftAlone: 'A draft. {productName} answers from it only once it is approved.',
+      inReviewLive: 'Waiting for approval. {productName} answers from the published revision.',
+      inReviewAlone: 'Waiting for approval. Until then {productName} does not answer from it.',
+      changesRequestedLive:
+        'Changes requested. {productName} answers from the published revision until the reworked one is approved.',
+      changesRequestedAlone:
+        'Changes requested. {productName} answers from the reworked revision only once it is approved.',
+      approvedLive:
+        'Approved, waiting to be published. Until then {productName} answers from the published revision.',
+      approvedAlone: 'Approved, waiting to be published. Only then does {productName} answer from it.',
+      published: '{productName} answers from this revision.',
+      rejectedLive: 'Rejected. {productName} answers from the published revision.',
+      rejectedAlone: 'Rejected. {productName} does not answer from it.',
+      superseded: 'Replaced by a newer revision.',
+      archived: 'Retired. Gone from the file list; {productName} stops citing it.',
+      none: 'No revision yet.',
+      olderRevision: 'An older revision. {productName} answers from the newer one.',
+    },
+    comment: {
+      /** Rejecting needs a reason; asking for changes needs the changes. */
+      reasonLabel: 'Reason for rejection',
+      changesLabel: 'What needs to change',
+      /** Said where the decision is taken, not in a tooltip. */
+      delegateNote: '{productName} then drafts the next revision and submits it for approval.',
+      placeholder: 'The next revision reads this.',
+      cancel: 'Cancel',
+    },
+    versions: {
+      number: 'Revision {number}',
+      comparing: 'Loading both revisions…',
+      compareFailed: 'The two revisions could not be loaded.',
+      /**
+       * The line diff. No red and no green anywhere in it: chroma belongs to
+       * provenance, and an editorial change is not provenance, so a changed line
+       * is marked by a left rule, a `+`/`−` gutter and its ink weight instead.
+       * `addedLine` / `removedLine` are the screen-reader words behind the two
+       * markers — nothing here may depend on seeing a glyph.
+       */
+      diff: {
+        heading: 'What changed',
+        between: 'Revision {from} → revision {to}',
+        added: '{count, plural, one {# line added} other {# lines added}}',
+        removed: '{count, plural, one {# line removed} other {# lines removed}}',
+        gap: '{count, plural, one {# line unchanged} other {# lines unchanged}}',
+        identical: 'The two revisions are identical, line for line.',
+        truncated: 'This comparison is long — showing the first {count} lines.',
+        addedLine: 'added',
+        removedLine: 'removed',
+      },
+      uploaded: 'Uploaded',
+      created: 'Created',
+      submitted: 'Submitted',
+      approved: 'Approved',
+      published: 'Published',
+      // Refusals leave milestones too: a revision sent back must name who sent
+      // it and when, or the refusal is invisible in the history.
+      changesRequested: 'Changes requested',
+      rejected: 'Rejected',
+      byAt: 'by {name}, {time}',
+      you: 'you',
+      someone: 'someone',
+    },
+    errors: {
+      /** The compare-and-swap lost: somebody decided first, so re-read. */
+      conflict: 'Someone decided first. Reloading the current revision.',
+      /** The file has not passed its upload screening yet (ADR-0086). */
+      held: 'This file is still being checked. You can submit it once the check is complete.',
+      actionFailed: 'That did not go through. Nothing has changed.',
+      loadFailed: 'The revision history could not be loaded.',
+    },
+  },
+  assignment: {
+    unassigned: 'Unassigned',
+    assign: 'Assign',
+    edit: 'Edit',
+    assignToMe: 'Assign to me',
+    filterAll: 'All',
+    filterMine: 'Mine',
+    filterUnassigned: 'Unassigned',
+    emptyUnassigned: 'Every file has someone',
+    emptyMine: 'Nothing is assigned to you yet',
+    emptyDescription:
+      'Another filter brings back every file in this folder.',
+    responsible: 'Responsible',
+    // One word for one gesture, on all three surfaces: the file pane, the report
+    // card and the inbox row. It names Piloti: „Discuss" alone did not say with
+    // whom, and beside „Ask a colleague" it read as a meeting with the team.
+    discuss: 'Discuss with {productName}',
+    askColleague: 'Ask a colleague',
+    copyLink: 'Copy link',
+    linkCopied: 'Link copied',
+    alsoAssign: 'Also assign',
+    send: 'Send',
+    to: 'To',
+    message: 'Message',
+    starterKeyPoints: 'What are the key points?',
+    starterOib: 'Which OIB provisions apply here?',
+    starterKeyPointsNamed: 'What are the key points in “{name}”?',
+    starterOibNamed: 'Which OIB provisions apply to “{name}”?',
+    askingAbout: 'Asking about {name}',
+    askingAboutPrefix: 'Asking about',
+    thisFile: 'this file',
+    showFile: 'Show file',
+    expandFile: 'Open larger',
+    resizeFile: 'Resize file pane',
+    welcomeAbout:
+      'This thread is about {name}. Ask it something — answers will cite the file and the law.',
+    subjectHint:
+      '{productName} searches this document. Other project files and Office filing stay out.',
+    subjectClear: 'Stop focusing on this file',
+    loadingPeople: 'Loading people…',
+    noPeople: 'No one in this project yet',
+    peopleLoadError: 'Could not load people',
+    assignError: '“{name}” could not be made responsible',
+    unassignError: '“{name}” could not be removed',
+    tryAgain: 'Try again',
+  },
+  // Annotations: marks at a place on a page, a point or a region, with what is
+  // to be done there (CONTEXT.md „Anmerkung“).
+  annotations: {
+    section: 'Annotations',
+    kind: 'Kind',
+    kinds: {
+      hint: 'Note',
+      question: 'Question',
+      defect: 'Defect',
+    },
+    cancel: 'Cancel',
+    earlierRevision: 'set on revision {number}',
+    earlierRevisionUnnumbered: 'set on an earlier revision',
+    earlierRevisionHint:
+      'Set before the current revision arrived. The place may have moved, so it is not drawn.',
+    loadError: 'Annotations could not be loaded.',
+    retry: 'Try again',
+    // The ways into the review from the preview, and what it shows inline.
+    openReview: 'Open review',
+    openReviewHint: 'Full screen with annotations',
+    annotate: 'Annotate',
+    annotateHint: 'Put an annotation on the page',
+    workOn: 'Annotate and review',
+    workOnAll: 'See and review all {count}',
+    empty: 'Put annotations right on pages and areas – for yourself, with colleagues or with {productName}.',
+    joinIn: 'Join',
+    peopleHere: '{count, plural, one {{names} is in this document right now} other {{names} are in this document right now}}',
+    replies: '{count, plural, one {# reply} other {# replies}}',
+    openInReview: 'Open in the review',
+    loading: 'Loading annotations',
+    readerCount: '{count, plural, one {# annotation} other {# annotations}}',
+    // In Files beside the name: what is still open on the document, on every revision.
+    listedOpen: '{count, plural, one {# open annotation} other {# open annotations}}',
+    listedOpenForYou: '{count, plural, one {# open annotation} other {# open annotations}}, {mine} for you',
+    listedOpenIn: '{marks} in “{name}”',
+    // What the chip itself says, short enough for a card; the tooltip carries the whole sentence.
+    listedOpenShort: '{count} open',
+    listedOpenShortForYou: '{count} open · {mine} for you',
+    // Piloti's proposals nobody took over: counted apart from “open”, as Offene Punkte and the minutes count them.
+    listedProposedShort: '{count, plural, one {# proposal} other {# proposals}}',
+  },
+  // Open points: the open annotations of every document of a project, for the site meeting.
+  openPoints: {
+    open: 'Open points',
+    title: 'Open points',
+    subtitle: 'What is open in this project’s documents, across all of them: the list for the site meeting.',
+    back: 'Back to files',
+    filters: {
+      assignee: 'Assignee',
+      due: 'Due',
+      all: 'All',
+      // The same predicate as „For you“ in the review and in Files (`isForReader`), so the same words.
+      me: 'For you',
+      overdue: 'Overdue',
+      soon: 'Soon',
+      soonHint: 'Due today or in the next seven days',
+    },
+    openReview: 'Open review',
+    openReviewOf: 'Open the review of “{name}”',
+    loading: 'Loading open points',
+    loadError: 'The open points could not be loaded.',
+    retry: 'Try again',
+    loadMore: 'Load more',
+    loadingMore: 'Loading more …',
+    loadMoreFailed: 'More could not be loaded.',
+    empty: {
+      noneTitle: 'Nothing open',
+      noneBody: 'No annotation is open on this project’s documents.',
+      filteredTitle: 'Nothing in this selection',
+      filteredBody: 'Nothing is open with these filters. Other filters show more.',
+    },
+    export: {
+      button: 'Export minutes',
+      formatLabel: 'Download as',
+      hint: 'With the filters set now',
+      failed: 'The minutes could not be exported.',
+      tooMany: 'Too many open points for one set of minutes. Narrow them with a filter.',
+      title: 'Open points – {name}',
+      fileName: 'Open points – {name}',
+      // Filed in the project: the file's name, {date} as YYYY-MM-DD on the office's calendar.
+      filedName: 'Open points – {name} – {date}',
+      // Why “File in the project” is withheld: the minutes quote documents not everyone may open.
+      fileRestricted: 'Not possible: some points are on documents not everyone in the project may open. Filed in the project, their text would be readable by all.',
+      documents: 'Documents',
+      status: {
+        open: 'Open annotations',
+        proposed: '{productName}’s proposals',
+        'all-live': 'Open annotations and {productName}’s proposals',
+      },
+      assignee: 'Assignee: {name}',
+      due: {
+        overdue: 'Overdue',
+        soon: 'Due today or in the next seven days',
+      },
+    },
+  },
+  // The review: a document full screen, the annotations on it, the threads
+  // under them, and who is looking with you.
+  review: {
+    open: 'Open review',
+    openAll: 'All {count} in the review',
+    othersHere: '{count, plural, one {# other person is looking at this now} other {# other people are looking at this now}}',
+    close: 'Close review',
+    nothingOpen: 'Nothing open',
+    /** The list button on a phone shows the open count; its name says the chip's whole sentence. */
+    listOpen: 'Annotations: {marks}',
+    revision: 'Revision {number}',
+    offline: 'Connection interrupted',
+    toolsLabel: 'Tools',
+    offlineHint: 'Not connected right now. You can still annotate; what others do appears on the next load.',
+    follow: 'Follow {name}',
+    unfollow: 'Stop following {name}',
+    following: 'Following {name} · Esc to stop',
+    agentWorking: '{productName} is working on the document',
+    reviewWithAgent: 'Have {productName} review',
+    reviewSeed:
+      'Go through this document and set what you find as annotations at the places they concern, looking at each page first: defects, questions for the consultants and notes. Cite the clause when a finding rests on a standard.',
+    tools: {
+      select: 'Select',
+      point: 'Comment',
+      region: 'Comment on area',
+      ask: 'Ask {productName}',
+    },
+    // Under each tool on a touch screen: one word that fits under 56px.
+    toolsShort: {
+      select: 'Select',
+      point: 'Comment',
+      region: 'Area',
+      ask: '{productName}',
+      chat: 'Say',
+    },
+    toolsIntroFold: 'Hide labels',
+    // What the tool in hand does next, at the top of the canvas.
+    toolHint: {
+      point: 'Click the place · Esc cancels',
+      region: 'Drag a frame around the detail · Esc cancels',
+      ask: 'Drag a frame around the detail to ask {productName} about · Esc cancels',
+    },
+    toolHintTouch: {
+      point: 'Tap the place',
+      region: 'Drag a frame around the detail with one finger',
+      ask: 'Drag a frame around the detail to ask {productName} about, with one finger',
+    },
+    popout: 'Open in a new window',
+    copyReviewLink: 'Copy link to the review',
+    // Mentioning colleagues on an annotation or in its thread with "@", as in the chat.
+    // Only people who can open the document can be mentioned. Whom the server did not keep is
+    // named without a reason: the folder may be why, or collaboration switched off.
+    mentions: {
+      othersHeading: 'Can open this document',
+      noResultsHint: 'You can mention anyone who can open this document.',
+      untoldOne: '{name} was not told.',
+      untoldMany: '{names} were not told.',
+      tooMany: 'Mention at most {max} people at once.',
+      peopleFailed: 'Could not load the people. Type "@" again.',
+    },
+    // Piloti on the canvas: a box asked about, the answer beside it, and Piloti in a thread.
+    piloti: {
+      conversationTitle: '{name} · Review',
+      ask: 'Ask {productName}',
+      mention: 'Mention {productName}',
+      mentionHint: '{productName} answers in this thread',
+      replying: '{productName} is answering …',
+      replyFailed: '{productName} could not answer.',
+      replyingFor: '{productName} is answering … · for {name}',
+      workQueued: '{productName} is on it · for {name}',
+      // Why a woken Piloti did not answer, by the class of the stored reason (`wakeEndReasonKind`).
+      workFailed: {
+        budget: '{productName} could not answer: the usage budget is used up. Whoever manages the organization can raise it.',
+        busy: '{productName} did not get to it in time. Ask again later.',
+        access: '{productName} could not sign in for {name}. Ask again.',
+        error: '{productName} broke off before it had an answer. Ask again, or work on it yourself.',
+      },
+      wakeHeld: '{productName} is not answering here right now: too many requests in a short time.',
+      delegateChip: '{productName} is working on it · for {name}',
+      retry: 'Ask again',
+      close: 'Close',
+      stop: 'Stop',
+      regionLabel: 'Detail on page {page}',
+      placeholder: 'What would you like to know about this detail?',
+      send: 'Ask',
+      quickLabel: 'Quick questions',
+      quick: {
+        what: 'What is this?',
+        dimensions: 'Check dimensions',
+        oib: 'Check against OIB',
+        question: 'Draft a query',
+      },
+      quickPrompts: {
+        what: 'What does this detail show?',
+        dimensions: 'Check the dimensions in this detail: are they complete, consistent and plausible?',
+        oib: 'Check this detail against the relevant OIB guidelines and cite the clause.',
+        question: 'Draft a precise query to the consultants about this detail.',
+      },
+      busy: '{productName} is still answering the previous question.',
+      // While Piloti works, what the person adds goes into the running answer
+      // instead of becoming a new question: Piloti reads it before its next step.
+      busySteer: '{productName} is still working: your question goes into the running answer as a note.',
+      steerPlaceholder: 'Steer {productName} …',
+      steerSend: 'Add',
+      steerNotes: 'Your notes',
+      steerWaiting: 'being taken into account',
+      steerApplied: 'applied in round {round}',
+      thinking: 'Looking at the detail …',
+      thinkingDocument: 'Going through the document …',
+      needsInput: '{productName} has a question for you. You can answer it in the chat.',
+      failed: '{productName} could not answer.',
+      sources: 'Sources',
+      source: 'Source',
+      adopt: 'Keep as annotation',
+      adoptReply: 'Add to the thread',
+      continueInChat: 'Open in chat',
+      reopen: "Open {productName}'s answer",
+      reviewing: '{productName} is reviewing the document …',
+      reviewDone: '{productName} is done',
+      reviewFound: '{count, plural, one {{productName} found # point} other {{productName} found # points}}',
+      busyTooltip: '{productName} is answering your question',
+      reviewFailed: 'Review failed',
+      checkingFixed: '{productName} is checking what is fixed …',
+      checkFixedDone: '{productName} answered in the threads',
+      openConversation: 'Conversation',
+      declined: '{productName} did not take this on. The reason is above.',
+      handedOff: '{productName} is researching this in depth. The result arrives in the chat.',
+      stopped: 'This answer was stopped.',
+      empty: '{productName} answered by working on the document, not in words.',
+      degradedRegion: '{productName} could not see the marked detail and answered about the whole document.',
+      degradedThread: 'This answer did not reach the thread. You can add it yourself.',
+      failedConnection: 'The connection to {productName} broke off. What arrived is kept.',
+      failedSession: 'Your session expired. Reload the page and ask again.',
+    },
+    peerSelected: '{names} has this open',
+    chatOpen: 'Say something quickly',
+    chatPlaceholder: 'Say something …',
+    chatHint: 'Everyone sees it as you type · Esc clears',
+    elsewhere: '{name} · page {page}',
+    elsewhereJump: 'Go to page {page}, where {name} is',
+    onPage: '{name} · page {page}',
+    peerPoint: 'is placing an annotation',
+    peerRegion: 'is marking a region',
+    // Piloti says on the document whom it writes for (ADR-0105; EU AI Act Art. 50).
+    attribution: {
+      agentFor: '{productName} · for {name}',
+      proposalFor: 'Proposal by {productName} · for {name}',
+      woken: {
+        thread_mention: 'Woken by a mention',
+        thread_reply: 'Woken by a reply',
+        assigned: 'Woken by the delegation',
+      },
+      wokenTitle: 'Woken by {name} in annotation {number}',
+      wokenTitleNameless: 'Woken in annotation {number}',
+    },
+    pinLabel: 'Annotation {number}: {kind}',
+    pinState: {
+      proposed: 'proposal',
+      resolved: 'resolved',
+      dismissed: 'dismissed',
+      ghost: 'from revision {number}',
+      ghostUnnumbered: 'from an earlier revision',
+      unread: 'unread',
+    },
+    pinOpenBy: 'open for {names}',
+    draftCard: 'New annotation',
+    aim: {
+      label: {
+        point: 'Choose a spot. Arrow keys move the crosshair, with Shift in larger steps. Enter places the point, Escape cancels.',
+        region: 'Choose a region. Arrow keys move the crosshair. Enter holds the first corner, the arrow keys draw the box out, Enter places it. Escape cancels.',
+        ask: 'Choose a region for {productName}. Arrow keys move the crosshair. Enter holds the first corner, the arrow keys draw the box out, Enter asks {productName} about it. Escape cancels.',
+      },
+      hint: {
+        point: 'Click or ↵ · Arrow keys · Esc',
+        region: 'Drag or ↵ · Arrow keys · ↵ · Esc',
+        ask: 'Drag or ↵ · Arrow keys · ↵ · Esc',
+      },
+      where: 'Page {page}, {x} % from the left, {y} % from the top',
+      box: 'Box {w} % wide, {h} % high',
+    },
+    announce: {
+      agentProposed: '{productName} set {count, plural, one {a proposal} other {# proposals}}',
+      created: '{name}: {count, plural, one {new annotation {numbers}} other {# new annotations}}',
+      replied: '{name}: {count, plural, one {new reply on annotation {numbers}} other {new replies on annotations {numbers}}}',
+      updated: '{name} changed {count, plural, one {annotation {numbers}} other {annotations {numbers}}}',
+      deleted: '{name} deleted {count, plural, one {annotation {numbers}} other {annotations {numbers}}}',
+      agentAnswered: '{productName} answered',
+    },
+    page: 'Page {page}',
+    draftPlaceholder: 'Write an annotation … (Enter to save)',
+    set: 'Place',
+    replyPlaceholder: 'Reply …',
+    send: 'Send',
+    sendFailed: 'Could not be sent. Your text is still here.',
+    /** A mark or a reply its author rewords: saved, not sent. */
+    saveFailed: 'Could not be saved. Your text is still here.',
+    actionFailed: 'That did not work. Please try again.',
+    conflict: 'Someone just changed this annotation. You are seeing the current state now.',
+    someone: 'Unknown',
+    assign: 'Responsible',
+    unassign: 'Remove responsible person',
+    due: 'Due',
+    setDue: 'Due date',
+    overdue: 'overdue',
+    proposal: 'Proposal',
+    proposalHint: 'Accept it to count it among the open annotations.',
+    accept: 'Accept',
+    dismiss: 'Dismiss',
+    dismissKey: 'Del',
+    resolve: 'Resolve',
+    reopen: 'Reopen',
+    resolved: 'Resolved',
+    dismissed: 'Dismissed',
+    more: 'More',
+    closeThread: 'Close',
+    makeKind: 'Make it a {kind}',
+    askAgent: 'Ask {productName} about it',
+    delegateToPiloti: 'Delegate to {productName}',
+    takeBackFromAgent: 'Take back from {productName}',
+    copyLink: 'Copy link',
+    linkCopied: 'Link copied',
+    linkCopyFailed: 'The link could not be copied.',
+    earlierRevision: 'From revision {number}. Not drawn on this sheet.',
+    earlierRevisionGhost: 'From revision {number}. The hollow pin shows where it stood there.',
+    carry: 'Carry to the current revision',
+    carryTo: 'Carry to “{name}”',
+    carryMark: 'Carry annotation {number} to the current revision',
+    carryMarkTo: 'Carry annotation {number} to “{name}”',
+    carryAll: 'Carry all',
+    carryFailed: 'Not every annotation could be carried on. Please try again.',
+    compareRevisions: 'Compare revisions',
+    earlierOpen: 'Open from earlier revisions: {count}',
+    carriedGroup: 'From revision “{name}”',
+    carriedGroupHint:
+      'Set on “{name}”, which this document replaces. Carry on what still holds: the annotation comes here at its place, its thread stays there.',
+    carriedLoadError: 'The annotations from “{name}” could not be loaded.',
+    carriedFrom: 'Carried on from “{name}”, annotation {number}',
+    carriedTo: 'Continues in “{name}” as annotation {number}',
+    replacedBy: 'Replaced by “{name}”',
+    replaces: 'Replaces “{name}”',
+    replacedNotice: 'This document was replaced by “{name}”.',
+    checkFixed: {
+      action: 'Have {productName} check what is fixed',
+      running: '{productName} is checking what is fixed …',
+      currentRevision: 'the current revision',
+      seed:
+        'Check whether {count, plural, one {open annotation {numbers}} other {open annotations {numbers}}} from an earlier revision {count, plural, one {is} other {are}} fixed in {current}. For each one, read it, look at the place in this document and answer in its thread, starting with “Fixed in {current}:” or “Still open:”, saying in one sentence how you can tell. Do not resolve or otherwise change any annotation: we decide that ourselves.',
+      seedFrom:
+        'Check whether {count, plural, one {open annotation {numbers}} other {open annotations {numbers}}} on “{from}” {count, plural, one {is} other {are}} fixed in this document, “{current}”. For each one, read it on “{from}”, look at the place here and answer in its thread on “{from}”, starting with “Fixed in {current}:” or “Still open:”, saying in one sentence how you can tell. Do not resolve or otherwise change any annotation: we decide that ourselves.',
+      verdict: '{productName}’s answer',
+      resolve: 'Resolve',
+      resolveMark: 'Resolve annotation {number} on “{name}”',
+      resolveFailed: 'The annotation could not be resolved. Please try again.',
+    },
+    delete: 'Delete',
+    deleteConfirm: 'Delete annotation {number}?',
+    deleteRefused: {
+      discussed: 'Others have answered in its thread. Resolve the annotation instead.',
+      carried: 'It was carried over between documents. Resolve it instead.',
+    },
+    resolveInstead: 'Resolve instead',
+    edit: 'Edit',
+    editLabel: 'Text of annotation {number}',
+    save: 'Save',
+    editCancel: 'Cancel',
+    replyMore: 'More for your reply',
+    replyEditLabel: 'Your reply',
+    replyEditNoWake: 'An edited reply does not reach {productName}. Ask {productName} in a new reply.',
+    replyDeleteConfirm: 'Delete your reply?',
+    replyDeleteHint: 'People it mentioned no longer see the notice about it.',
+    replyTakenUp: '{productName} has already taken this reply up. It stays as it is; write a new one.',
+    edited: 'edited',
+    assigneeYou: 'You',
+    clearDue: 'Remove due date',
+    decided: {
+      accepted: 'Annotation {number} taken over',
+      resolved: 'Annotation {number} resolved',
+      dismissed: 'Annotation {number} dismissed',
+    },
+    undo: 'Undo',
+    filter: 'Show',
+    filters: {
+      open: 'Open',
+      closed: 'Done',
+    },
+    mine: 'For you',
+    proposalsGroup: '{count, plural, one {# proposal from {productName}} other {# proposals from {productName}}}',
+    walkProposals: 'Go through',
+    walkPosition: '{index}/{total}',
+    walkNext: 'Next',
+    proposalsLegend: 'Dashed = proposed by {productName}, not accepted yet',
+    empty: {
+      noneTitle: 'No annotations yet',
+      noneBody: 'Press C and click the place it is about, or R and drag out a region.',
+      noneBodyTouch: 'Tap ‘Comment’, then the place.',
+      readOnlyTitle: 'No annotations yet',
+      readOnlyBody: 'Nobody has annotated anything here yet.',
+      mineTitle: 'Nothing for you',
+      mineBody: 'You are not responsible for any annotation here.',
+      doneTitle: 'All done',
+      doneBody: 'Nothing is open on this document any more.',
+      openTitle: 'Nothing open',
+      openBody: 'Every annotation is resolved or dismissed.',
+      closedTitle: 'Nothing done yet',
+      closedBody: 'What is resolved or dismissed collects here.',
+    },
+    // The review's annotations as minutes, for a site meeting or to send to
+    // the client: the menu in the review, and the words in the file itself.
+    export: {
+      button: 'Export minutes',
+      scopeLabel: 'Which annotations',
+      scopes: {
+        open: 'Open only',
+        all: 'Resolved ones too',
+      },
+      revisionLabel: 'Revision',
+      revisions: {
+        current: 'Current revision',
+        all: 'All revisions',
+      },
+      includeProposals: 'Add {productName}’s proposals',
+      formatLabel: 'Download as',
+      formats: {
+        pdf: 'PDF',
+        docx: 'Word (.docx)',
+        md: 'Markdown',
+      },
+      failed: 'The minutes could not be exported.',
+      tooLongForPdf: 'Too long for a PDF. Export them as Word or Markdown.',
+      fileInto: 'File in the project',
+      filing: 'Filing …',
+      fileName: 'Minutes – {name} – {date}',
+      filed: 'Filed as “{name}”',
+      filedAgain: 'Filed as a new revision of “{name}”',
+      filedUnchanged: '“{name}” is already in the project as it is.',
+      openFiled: 'Open',
+      fileFailed: 'The minutes could not be filed.',
+      fileNameTaken: 'Another document in the project is already called “{name}”. The minutes were not filed.',
+      document: {
+        title: 'Annotations – {name}',
+        fileName: 'Annotations – {name}',
+        fileNameRevision: 'Annotations – {name} – Revision {number}',
+        fileNameAll: 'Annotations – {name} – all revisions',
+        document: 'Document',
+        revision: 'Revision',
+        revisionOf: 'Revision {number} of {total} · as of {date}',
+        project: 'Project',
+        scope: 'Contents',
+        scopes: {
+          open: 'Open annotations',
+          all: 'All annotations, resolved and dismissed ones too',
+        },
+        revisions: {
+          current: 'current revision',
+          all: 'all revisions',
+          // Closed ones too, of the current revision only: what is still open from earlier ones is in it anyway.
+          currentWithOpenFromEarlier: 'current revision, plus what is still open from earlier ones',
+        },
+        withProposals: 'with {productName}’s proposals',
+        exportedAt: 'Exported on',
+        exportedBy: 'Exported by',
+        marks: 'Annotations',
+        none: 'No annotations in this selection.',
+        entry: 'No. {number} · Page {page} · {kind} · {status}',
+        status: {
+          open: 'open',
+          resolved: 'resolved',
+          dismissed: 'dismissed',
+          proposed: 'proposal',
+        },
+        setBy: 'Set by {name} · {date}',
+        agentSetFor: 'Set by {productName} · for {name} · {date}',
+        agentSet: 'Set by {productName} · {date}',
+        proposalFor: 'Proposed by {productName} · for {name} · {date}',
+        proposal: 'Proposed by {productName} · {date}',
+        closedResolved: 'Resolved by {name} · {date}',
+        closedDismissed: 'Dismissed by {name} · {date}',
+        delegated: '{productName} is working on it · for {name}',
+        basis: 'Basis',
+        assignee: 'Responsible',
+        due: 'Due',
+        thread: 'Thread',
+        proposals: 'Proposals by {productName}, not reviewed',
+        proposalsNote:
+          '{productName} proposed these places and nobody in the office has taken them over. They are not the office’s annotations.',
+      },
+    },
+  },
+  // Sorting the shelf's root into folders (the Advanced menu). One run, one review, one undo.
+  rootSort: {
+    advanced: 'Advanced',
+    menuItem: 'Sort all files into folders…',
+    title: 'Sort files into folders',
+    description: '{productName} proposes a folder for each file in the root. Nothing moves until you apply.',
+    close: 'Close',
+    cancel: 'Cancel',
+    start: 'Start',
+    restart: 'Start again',
+    retry: 'Try again',
+    errors: {
+      conflict: 'A sort of this shelf is already running.',
+      generic: 'That did not work. Please try again.',
+    },
+    intro: {
+      reading: 'The root is being read …',
+      files: '{count, plural, one {# file in the root} other {# files in the root}}',
+      folders: '{count, plural, one {# folder} other {# folders}}',
+      unreadable: '{count, plural, one {# file is not read yet and stays out of this run.} other {# files are not read yet and stay out of this run.}}',
+      truncated: 'The root holds more files than one run sorts. The rest waits for the next run.',
+      noFolders: 'Create the folders first. {productName} sorts files into folders that exist, and there is nowhere to sort them without any.',
+      nothing: 'No file is in the root. There is nothing to sort.',
+      loadFailed: 'The root could not be read.',
+      steps: '{productName} first assigns each file to a folder and proposes new folders for the rest. Then you review everything: nothing moves until you apply. With many files this takes a few minutes, and you can keep working meanwhile.',
+    },
+    stages: {
+      judge: 'Assign',
+      group: 'New folders',
+      review: 'Review',
+      move: 'Move',
+    },
+    progress: {
+      judging: '{productName} is assigning the files to folders',
+      grouping: '{productName} is proposing new folders',
+      applying: '{productName} is moving the files',
+      undoing: '{productName} is putting the files back',
+      count: '{done} of {total}',
+      starting: '{productName} is reading the first files …',
+      groupingDetail: '{count, plural, one {No existing folder fits # file.} other {No existing folder fits # files.}} With many files this takes up to four minutes.',
+      elapsed: 'Running for {duration}',
+      remaining: 'About {duration} left',
+      waiting: 'Queued: the sort starts by itself as soon as a slot is free.',
+      recent: 'Just assigned',
+      recentItem: '{name} to {folder}',
+      keepOpen: 'You can close this window and keep working. {productName} tells you in your inbox once the review is ready.',
+      keepOpenMoving: 'You can close this window and keep working. {productName} keeps going, and you will find the state here again.',
+    },
+    cancelled: 'The sort was cancelled. Nothing was moved.',
+    failed: 'The sort failed.',
+    failedReason: {
+      generic: 'The sort could not finish. You can start it again.',
+      stalled: 'The sort stopped making progress and was ended. You can start it again.',
+      notQueued: 'The sort could not be started. Please try again.',
+      requesterLeft: 'The person who started the sort is no longer part of the office. The sort was ended.',
+      partlyMoved: '{count, plural, one {# file was already moved; Undo puts it back.} other {# files were already moved; Undo puts them back.}}',
+    },
+    review: {
+      sure: '{count} sure',
+      unsure: '{count} unsure',
+      newFolders: '{count, plural, one {# new folder} other {# new folders}}',
+      stays: '{count, plural, one {# stays in the root} other {# stay in the root}}',
+      onlyUnsure: 'Show unsure only',
+      hint: 'Uncheck what should stay. Use “Move to …” to pick another folder for a file.',
+      newFoldersNote: 'New folders are created when you move the files.',
+      empty: '{productName} found no folder for any file.',
+      allFailed: '{productName} could not judge any of the files. They all stay in the root.',
+      failed: '{count, plural, one {# file could not be judged and stays in the root.} other {# files could not be judged and stay in the root.}}',
+      groupingFailed: '{productName} could not propose new folders for the remaining files. They stay in the root; a new run can try again.',
+      onlyUnsureEmpty: 'Nothing is unsure. {productName} is sure of every proposal.',
+      treeLabel: 'Proposal as a folder tree',
+      staysLabel: 'Stays in the root',
+    },
+    tree: {
+      newBadge: 'new',
+      switchedOffBadge: 'not created',
+      heldBack: '{count, plural, one {# file stays in the root} other {# files stay in the root}}',
+      fileCount: '{count, plural, one {# file} other {# files}}',
+      expand: 'Expand “{name}”',
+      collapse: 'Collapse “{name}”',
+      keepFolder: 'Move all files of “{name}”',
+      keepFile: 'Move “{name}”',
+      sure: 'sure',
+      unsure: 'unsure',
+      changed: 'changed by you',
+      moveTo: 'Move to …',
+      moveAria: 'Choose a folder for “{name}”',
+      stayInRoot: 'Stays in the root',
+      restore: 'Back to {productName}’s proposal',
+      noReason: 'No folder fits.',
+    },
+    apply: {
+      move: '{count, plural, one {Move # file} other {Move # files}}',
+      nothing: 'Nothing to move',
+    },
+    done: {
+      moved: '{count, plural, one {# file moved} other {# files moved}}',
+      failed: '{count, plural, one {# file could not be moved} other {# files could not be moved}}',
+      more: 'and {count} more',
+      foldersKept: 'Folders that were created stay.',
+      undo: 'Undo',
+      undone: 'Undone. The files are back in the root.',
+      undoFailed: '{count, plural, one {# file could not be moved back and stays in the folder the sort put it in.} other {# files could not be moved back and stay in the folders the sort put them in.}}',
+    },
+  },
+}

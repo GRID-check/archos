@@ -1,0 +1,69 @@
+/** Keyboard shortcuts: command palette, cheatsheet, and the profile toggle. */
+export const shortcuts = {
+  palette: {
+    title: 'Command palette',
+    description: 'Search for a project or action and jump straight to it.',
+    placeholder: 'Type a command or search…',
+    empty: 'No results found.',
+    groups: {
+      projects: 'Projects',
+      currentProject: 'Current project',
+      general: 'General',
+    },
+    /** The intake wizard section (labelled "Setup" in the product). */
+    intake: 'Setup',
+    toggleTheme: 'Toggle theme',
+    hints: {
+      move: 'to move',
+      open: 'to open',
+      close: 'to close',
+    },
+  },
+  cheatsheet: {
+    title: 'Keyboard shortcuts',
+    description: 'Navigate {productName} without leaving the keyboard.',
+    thenSeparator: 'then',
+    /** The control key as the keyboard prints it; `⌘` on a Mac. */
+    controlKey: 'Ctrl',
+    orSeparator: 'or',
+    groups: {
+      general: 'General',
+      navigation: 'Jump to',
+      search: 'Search',
+      chat: 'Chat',
+      review: 'Review',
+      inbox: 'Inbox',
+    },
+    /** Shown under the navigation group, which mixes scoped and global jumps. */
+    projectScopeNote: 'Section jumps open that section of the project you are in.',
+    items: {
+      palette: 'Open the command palette',
+      cheatsheet: 'Show this overview',
+      dismiss: 'Close a dialog or menu',
+      sendMessage: 'Send message',
+      newLine: 'New line',
+      reference: 'Insert a document',
+      searchHitActions: 'Actions of the chosen result',
+      mention: 'Mention a colleague',
+      chooseOption: 'Pick a numbered option',
+      reviewPoint: 'Annotate',
+      reviewRegion: 'Annotate an area',
+      reviewAsk: 'Ask {productName} about an area',
+      reviewStep: 'Next or previous annotation',
+      reviewSettle: 'Take over a proposal or resolve an annotation',
+      reviewDismiss: 'Dismiss a proposal',
+      reviewChat: 'Say something briefly',
+      inboxStep: 'Next or previous item',
+      inboxOpen: 'Open the item',
+      inboxArchive: 'Archive the item',
+      inboxToggleRead: 'Mark as read or unread',
+    },
+    disableHint: 'You can turn shortcuts off in your profile settings.',
+  },
+  preference: {
+    title: 'Keyboard shortcuts',
+    description: 'Quick navigation with the command palette and shortcut keys.',
+    label: 'Enable keyboard shortcuts',
+    hint: 'Turns the command palette (Ctrl+K / ⌘K) and all shortcut keys on or off on this device.',
+  },
+}

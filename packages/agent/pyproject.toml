@@ -1,0 +1,165 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=83.0.0", "setuptools-scm>=10.3.4"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+"agent.agents.deep_researcher" = ["skills/**/*"]
+
+[project]
+name = "agent"
+version = "2.0.0"
+description = "Piloti, the workspace for architects: the agent, its tools and the knowledge it reads"
+# 3.14.1, not 3.14: uv lets a pre-release interpreter satisfy `>=3.14`, and on
+# 3.14.0rc2 pydantic calls `typing._eval_type` with `prefer_fwd_module`, a
+# keyword that landed after rc2, so every backend test died at import.
+requires-python = ">=3.14.1,<3.15"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "nvidia-nat-core==1.9.0",
+    "nvidia-nat[async-endpoints,phoenix,mcp]==1.9.0",
+    # `[openai]` only: every LLM runs as `_type: openai`, and `[langchain]` on
+    # the meta package is `[all]`, nine provider stacks we never import.
+    "nvidia-nat-langchain[openai]==1.9.0",
+    "nvidia-nat-eval==1.9.0",
+    "nvidia-nat-profiler==1.9.0",
+    # Exact: every 0.7 patch release changed a default, a tool's output or a
+    # builder we call. Bump on purpose, then run packages/agent/tests/test_deepagents_contract.py.
+    # langchain-modal moves with it (0.0.7 needs deepagents>=0.7.32,<0.8).
+    "deepagents==0.7.32",
+    "langgraph-checkpoint-postgres>=3.2.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+    "langchain-modal==0.0.7",
+    "psycopg[binary]>=3.3.6",
+    "asyncpg>=0.29.0",
+    "redis>=5.0.0,<9",
+    "aiosqlite>=0.19.0",
+    "aiofiles>=23.0.0",
+    "python-multipart>=0.0.27,<0.1",
+    "knowledge-layer[all]",
+    # Prompt management only (`common/prompt_store.py`): constructed with
+    # `tracing_enabled=False`, so it never registers a tracer provider or hangs
+    # a span processor on ours. Traces keep going out through NAT + the OTel
+    # collector.
+    "langfuse>=4.15.3,<5",
+    # CVE version floors for transitive dependencies
+    "cryptography>=50.0.0,<51",
+    "pillow>=12.2.0,<14",
+    "pygments>=2.20.0,<3",
+    "a2ui-core==0.4.0",
+    # Arrives through nvidia-nat-langchain[openai]; the floor is ours. Below 1.6.6 a
+    # STREAMED Responses call drops the model's encrypted reasoning items, so
+    # every tool round thinks from scratch and nothing fails
+    # (docs/contributing/gotchas.md, a0ec99d2).
+    "langchain-openai>=1.6.6",
+    # 7.59 reads POSTHOG_RELEASE_ID, which links an exception to its release.
+    "posthog>=7.59,<8",
+    # The language of the person's newest message (`common/question_language.py`).
+    # Pure Python on numpy, a 4 MB wheel with its model inside: lingua's wheel is
+    # 160 MB and fast-langdetect downloads its model at runtime.
+    "py3langid>=0.4.0,<0.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-env>=1.8.1",
+    "pre-commit>=3.5.0",
+    "ruff~=0.17.0",
+    "yapf>=0.40.0",
+    "mypy>=2.3.0",
+    "fakeredis[lua]>=2.40.0",
+]
+docs = [
+    "sphinx>=7.0",
+    "myst-parser>=3.0",
+    "sphinx-copybutton>=0.5",
+    "sphinx-mermaid>=0.0.8",
+    "sphinx-rtd-theme>=2.0",
+    "sphinx-autobuild>=2025.8.25",
+    "nvidia-sphinx-theme>=0.0.9.post1",
+    "sphinx-design>=0.7.0",
+    "sphinxcontrib-mermaid>=2.0.3",
+]
+viz = [
+    "pygraphviz>=2.0",
+]
+
+[project.entry-points."nat.plugins"]
+# Named for the job, with no product name. `researcher*` and not `piloti*`
+# although the package moved to `agents/piloti`: an entry-point name is what the
+# installed dist-info carries, and a stale `<pkg>.egg-info/entry_points.txt`
+# from an older checkout is exactly the ModuleNotFoundError-from-nowhere in
+# `docs/contributing/gotchas.md` (re-run `uv sync` after this rename).
+researcher_conversation = "agent.agents.piloti.conversation_register"
+researcher = "agent.agents.piloti.register"
+deep_researcher = "agent.agents.deep_researcher.register"
+data_source_registry = "agent.common.data_source_registry"
+project_memory = "agent.memory.register"
+cards = "agent.cards.register"
+bim = "agent.tools.bim.register"
+# The spatial half of the BIM surface (`ifc_measure`). A second entry point
+# rather than an import from `register`: NAT discovers plugins by loading the
+# module a plugin names, so the fast metadata tool and the geometry tool stay
+# independently loadable — and `ifc_query` keeps working on a deployment where
+# the spatial engine (ifcopenshell, shapely) is not installed at all.
+bim_measure = "agent.tools.bim.measure_register"
+# The write-side workspace tool, `propose_file_change` (move, rename,
+# create_folder, assign as one `operation` argument).
+files = "agent.tools.files.register"
+# The working directory's door into the project (`file_draft`, which files a
+# draft and, with `submit`, sends it for review). Its OTHER four verbs are stock
+# DeepAgents tools bound directly by Piloti's register and are not NAT
+# functions at all, so this entry point covers exactly the one that calls the BFF.
+documents = "agent.tools.documents.register"
+# Delegation (`create_task`). Its own entry point rather than a member of
+# `documents`: the two call different BFF routes with different contracts,
+# and a deployment that turns one off must be able to keep the other.
+tasks = "agent.tools.tasks.register"
+# Cross-project lookups for a chat, shared or solo (`project_lookup`, ADR-0094). Its own
+# entry point: it imports the knowledge layer's lane fan-out lazily, and a
+# deployment without the lookups must keep every other tool.
+cross_project = "agent.tools.cross_project.register"
+# The review canvas (`canvas` function group, `tools/canvas`): see who is in the
+# document, point and highlight, read and propose Anmerkungen, set, change or
+# delete one when the person asks, answer in a thread. Its own entry point: it
+# calls its own BFF route, and a deployment without it keeps every other tool.
+canvas = "agent.tools.canvas.register"
+# `look` (`tools/look`, ADR-0128): a page, a region of it or an embedded image,
+# as an image the model sees, in every context. Its own entry point, not a
+# member of the canvas group: a deployment without one keeps the other.
+look = "agent.tools.look.register"
+# `show_in_viewer` (`tools/viewer`, ADR-0144): Piloti proposes to move the asker's
+# own document viewer, one allow-listed action as an AG-UI frontend tool call.
+# Its own entry point: it reuses `look`'s resolver, and a deployment can drop it alone.
+viewer = "agent.tools.viewer.register"
+# Piloti as a client of its own MCP server (`workspace` function group,
+# `tools/workspace`, ADR-0122): search, describe and call the operations a person
+# can do in the product. Its own entry point: it calls the BFF's `/api/mcp`, and a
+# deployment without it keeps every other tool.
+workspace = "agent.tools.workspace.register"
+# The Erfassungs-Agent's config (`_type: project_intake_agent`, ADR-0111). The
+# research worker reads it by name and runs the agent; NAT only has to know the
+# type, or `load_config` refuses the YAML that names it.
+project_intake = "agent.agents.intake.register"
+# Grid telemetry `_type`s named in the shipped YAML. They register at import
+# via NAT decorators and used to ride in on `chat_researcher.register`. After
+# that package dissolved, `load_config` in a clean interpreter (the container's
+# `start_web.py`) raised ValidationError and the pod CrashLoopBackOff'd.
+# Discovery loads `nat.plugins`; without these they do not exist at runtime.
+# The RIS chat surface (`ris_lookup`). The three older RIS tools ride in on
+# `ris-adapter`'s own entry point (`packages/ris-adapter/pyproject.toml`); this
+# one is separate because `ris_adapter.lookup` hard-imports the knowledge layer
+# for the passage bound and the lane fan-out, and a deployment without it must
+# lose this tool alone rather than `ris_search` and `ris_fetch_document` with
+# it — the `bim_measure` split, for the same reason.
+ris_lookup = "ris_adapter.lookup"
+otel_logs = "agent.observability.otlp_logging_method"
+otel_redaction = "agent.observability.otel_header_redaction_exporter"
+
+[tool.uv.sources]
+knowledge-layer = { workspace = true }

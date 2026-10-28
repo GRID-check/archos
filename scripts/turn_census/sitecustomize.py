@@ -13,6 +13,8 @@ import time
 
 import httpx
 
+#: Eval-only. The file holds every request body in full, base64 page images included: point it at
+#: scratch space for a census over test fixtures, never at a run over a customer's documents.
 _OUT = os.environ.get("REC_OUT", "")
 _SEQ = itertools.count(1)
 _HOSTS = ("openrouter.ai", "api.typesafe.ai", "api.openai.com")
@@ -177,18 +179,18 @@ if _OUT:  # only when the census asked for a record
 def _eval_envelope():
     """The precedent eval's signed envelope, handed to the agent as the BFF would hand it.
 
-    Only when the suite sets ``GRID_EVAL_ENVELOPE`` (``suite.py --set
+    Only when the suite sets ``EVAL_ENVELOPE`` (``suite.py --set
     precedent``): the agent then reads the two request headers a chat turn
     carries (``X-Grid-Request-Context`` and its signature) from these
     variables, and every other header as before. The envelope is signed with
-    the run's ``GRID_INTERNAL_API_TOKEN``, so the agent verifies it like a
+    the run's ``INTERNAL_API_TOKEN``, so the agent verifies it like a
     real one; nothing else about the turn is faked here.
     """
-    header = os.environ.get("GRID_EVAL_ENVELOPE")
+    header = os.environ.get("EVAL_ENVELOPE")
     if not header:
         return
-    signature = os.environ.get("GRID_EVAL_ENVELOPE_SIG", "")
-    from aiq_agent import project_context
+    signature = os.environ.get("EVAL_ENVELOPE_SIG", "")
+    from agent import project_context
 
     original = project_context._read_header
     given = {
@@ -203,3 +205,17 @@ def _eval_envelope():
 
 
 _eval_envelope()
+
+
+def _eval_user_message():
+    """A row's drawn box, handed to the turn as the chat socket would (``turn_input.py``).
+
+    Only when the suite sets ``EVAL_USER_MESSAGE`` (a north-star row with ``box: given``).
+    """
+    if os.environ.get("EVAL_USER_MESSAGE"):
+        import turn_input
+
+        turn_input.install()
+
+
+_eval_user_message()

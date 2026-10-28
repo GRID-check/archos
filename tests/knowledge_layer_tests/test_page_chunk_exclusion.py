@@ -1,12 +1,12 @@
 """The base corpus never answers with a cover page or an Impressum.
 
-``punkt_documents`` tags the Punkt body chunks ``chunking: "punkt"`` and the
+``clause_documents`` tags the Punkt body chunks ``chunking: "clause"`` and the
 matter around them — the cover page, the Impressum — ``chunking: "page"``.
 Neither of the latter is citable evidence, and a title-shaped query
 ("OIB-Richtlinie 2 Ausgabe Mai 2023") matched exactly them, so an overview
 question came back as four garbled cover pages at page 1.
 
-``_base_collection_filters`` now carries ``chunking != "page"`` on every
+``base_collection_filters`` now carries ``chunking != "page"`` on every
 base-corpus search. The load-bearing claim is that ``$ne`` KEEPS records that
 have no ``chunking`` key at all — Begriffsbestimmungen, Zitierte Normen,
 project uploads and office files never carry one, and a filter that dropped
@@ -23,12 +23,12 @@ from unittest.mock import MagicMock
 import pytest
 from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.register import KnowledgeRetrievalConfig
-from knowledge_layer.register import _base_collection_filters
 from knowledge_layer.register import knowledge_retrieval
+from knowledge_layer.search_scope import base_collection_filters
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import write
 
-from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import write
+from agent.common.retrieval_settings import reset_retrieval_settings_cache
 
 BASE = "oib_knowledge"
 PROJECT = "proj_abc"
@@ -72,7 +72,7 @@ class TestQdrantNeSemantics:
         )
         config = KnowledgeRetrievalConfig(collection_name=BASE, exclude_file_names=["drop_me.pdf"])
 
-        assert _kept(BASE, _base_collection_filters(config, {"content_type": "text"})) == ["glossar", "punkt"]
+        assert _kept(BASE, base_collection_filters(config, {"content_type": "text"})) == ["glossar", "punkt"]
 
 
 class _StoreBackedRetriever:
@@ -101,7 +101,7 @@ class _StoreBackedRetriever:
 
 
 def _chunk(chunk_id: str, content: str, metadata: dict, collection_name: str):
-    from aiq_agent.knowledge.schema import Chunk
+    from agent.knowledge.schema import Chunk
 
     return Chunk(
         chunk_id=chunk_id,
@@ -122,9 +122,9 @@ def search_harness(monkeypatch, qdrant_store):
     def install(retriever):
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 
     return install

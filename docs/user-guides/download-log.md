@@ -4,7 +4,7 @@ Who took which document out of Piloti, and who opened one in a folder the office
 gave its own access list. This page says what is recorded and why, how long it
 is kept, who sees it, and what an office with a works council should settle
 before it relies on it. The decision behind it is ADR-0088 and its plan,
-[`plans/2026-10-06-folder-access-lifecycle.md`](../../plans/2026-10-06-folder-access-lifecycle.md)
+`docs/plans/2026-10-06-folder-access-lifecycle.md` (removed; in git history at `56ee3329`)
 (decision 4).
 
 ## What is recorded
@@ -122,7 +122,7 @@ organization is shown by id. The project and folder names are today's, so a
 deleted project or folder shows up as gone.
 
 Developers: the one writer is `recordDocumentAccess`
-(`frontends/ui/src/lib/download-log/service.ts`), and
+(`apps/workspace/bff/download-log/service.ts`), and
 `download-log/coverage.spec.ts` fails when a new function reads or presigns an
 object, or a new route reaches one, without being classified there. It also
 fails when a logged function does not ask `getAccessibleDocument` (itself, or

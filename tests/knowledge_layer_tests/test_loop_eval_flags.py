@@ -32,7 +32,7 @@ def _steps(*payloads: tuple[str, dict]) -> list[dict]:
 
 
 def _question(text="?", family="OIB-RL 2"):
-    return loop_eval.Question(id="q", question=text, family=family, punkt=None, kind="walkthrough")
+    return loop_eval.Question(id="q", question=text, family=family, clause=None, kind="walkthrough")
 
 
 class TestRepeatQuery:
@@ -56,7 +56,7 @@ class TestRepeatQuery:
 
 
 class TestLocatorEligible:
-    def test_a_punkt_question_without_locator_is_eligible(self):
+    def test_a_clause_question_without_locator_is_eligible(self):
         payloads = loop_eval._status_payloads(
             _steps(("status:retrieval:0", {"tools": ["knowledge_search"], "values": {"query": "x"}}))
         )
@@ -161,13 +161,13 @@ class TestObserveAndCsv:
             base = {
                 "id": "a",
                 "expected_family": "OIB-RL 2",
-                "expected_punkt": "",
+                "expected_clause": "",
                 "expected_kind": "walkthrough",
                 "kind": "walkthrough",
                 "verdict": "no",
                 "rounds": "2",
                 "read_passage": "no",
-                "punkt_match": "",
+                "clause_match": "",
                 "truncated": "no",
                 "checkpoint_sources": "",
                 "family_coverage": "",

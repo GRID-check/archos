@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-10-06
+status: accepted
+date: 2026-10-27
 decision-makers: Grid engineering
 consulted: product owner
 informed: everyone working in this repo
@@ -122,8 +122,9 @@ each file), there is no switch and no disk mode, and local files are only a
 cache. The files on the old volume are carried over once, outside the running
 code: a one-shot `legacy-corpus-import` Job (Compose: service) reads the
 retained claim read-only and stores them through the admin-upload path
-(`aiq_agent.legacy_corpus_import`). It is deleted, with its stack key, once
-every environment has run it. It removes the PVC but not the StatefulSet: chat affinity hashes a
+(`aiq_agent.legacy_corpus_import`). The Kubernetes Job is deleted, with its
+Pulumi stack key, once every Kubernetes stack has run it; the Compose service
+stays for Compose installs. A2 removes the PVC but not the StatefulSet: chat affinity hashes a
 conversation onto a pod ordinal (ADR-0028, ADR-0080), so the tier becomes a
 Deployment when that routing is gone.
 
@@ -152,15 +153,16 @@ Each step adds its own gate as it lands:
   volume mounted at `/app/data`, and `config.spec.ts` that the Pulumi config refuses to run without the shared
   Chroma server (`chromaEnabled=false`), since a tier with no volume cannot keep an embedded store.
   `housekeeping.spec.ts` asserts that the CronJobs and the Compose clock call the four routes the backend
-  registers, `base-corpus` among them. `index-legacy-corpus.spec.ts` asserts that the import Job mounts
-  the named claim read-only and runs the importer on it, and `tests/test_legacy_corpus_import.py` that it
-  honours the old exclusions, lets an upload win and stores nothing on a rerun.
+  registers, `base-corpus` among them. `tests/test_legacy_corpus_import.py` asserts that the importer
+  honours the old exclusions, lets an upload win and stores nothing on a rerun. The Kubernetes import Job
+  and its `index-legacy-corpus.spec.ts` were removed once both stacks had run it (2026-10); the Compose
+  service remains.
 - B: `frontends/aiq_api/tests/test_roles.py` builds the real app for each
   `GRID_ROLE` and asserts that the two route sets overlap only in `/health` and
   FastAPI's documentation routes, and that their union equals a baseline mounted
   the way the single process did it: every `add_*_routes` / `register_*_routes`
-  function found under `aiq_api/routes/`, NAT's own routes, the chat socket and the
-  debug console. A router assigned to both roles, or to none, or a route added
+  function found under `aiq_api/routes/`, NAT's own routes, the chat socket and,
+  until it was removed in 2026-10, the debug console. A router assigned to both roles, or to none, or a route added
   outside the two lists, fails it. `deploy/pulumi/src/app/api.spec.ts` holds the
   `aiq-api` Deployment, Service and HPA, `GRID_ROLE` on each workload, the
   frontend's two URLs and the CronJobs' target; `compose-roles.spec.ts` holds both

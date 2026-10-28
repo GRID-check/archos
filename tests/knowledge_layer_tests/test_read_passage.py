@@ -21,21 +21,21 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.read_passage import _MAX_PASSAGE_CHUNKS
+from knowledge_layer.read_passage import _READ_PASSAGE_DESCRIPTION
+from knowledge_layer.read_passage import ReadPassageConfig
+from knowledge_layer.read_passage import _clause_sort_key
+from knowledge_layer.read_passage import _document_names
+from knowledge_layer.read_passage import _matches
+from knowledge_layer.read_passage import _passage_filters
+from knowledge_layer.read_passage import read_passage
+from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.read_passage import _MAX_PASSAGE_CHUNKS
-from sources.knowledge_layer.src.read_passage import _READ_PASSAGE_DESCRIPTION
-from sources.knowledge_layer.src.read_passage import ReadPassageConfig
-from sources.knowledge_layer.src.read_passage import _document_names
-from sources.knowledge_layer.src.read_passage import _matches
-from sources.knowledge_layer.src.read_passage import _passage_filters
-from sources.knowledge_layer.src.read_passage import _punkt_sort_key
-from sources.knowledge_layer.src.read_passage import read_passage
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
+from agent.common.source_kinds import Shelf
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 OIB = "oib-rl_2_ausgabe_mai_2023.pdf"
 
@@ -44,7 +44,7 @@ def _document(file_name: str, display_title: str | None = None) -> SimpleNamespa
     return SimpleNamespace(file_name=file_name, display_title=display_title, summary=None, tags=None)
 
 
-def _chunk(*, punkt: str | None = None, page: int | None = None, content: str = "Text", chunk_id: str = "c1") -> Chunk:
+def _chunk(*, clause: str | None = None, page: int | None = None, content: str = "Text", chunk_id: str = "c1") -> Chunk:
     """A real :class:`Chunk`, because that is what the store hands back.
 
     A SimpleNamespace would pass every assertion here and hide the one thing
@@ -52,8 +52,8 @@ def _chunk(*, punkt: str | None = None, page: int | None = None, content: str = 
     ``RetrievalResult``, which validates them.
     """
     metadata: dict[str, object] = {}
-    if punkt:
-        metadata["punkt_id"] = punkt
+    if clause:
+        metadata["clause_id"] = clause
     if page is not None:
         metadata["page_label"] = str(page)
     return Chunk(
@@ -85,25 +85,25 @@ class _Store:
 def store(monkeypatch):
     """One project-scoped OIB document with two Punkte on two pages."""
     chunks = [
-        _chunk(punkt="3.5.2", page=12, content="Fluchtweglänge …", chunk_id="a"),
-        _chunk(punkt="3.5.3", page=12, content="Notwendiger Treppenraum …", chunk_id="b"),
-        _chunk(punkt="4.1", page=13, content="Rauchabzug …", chunk_id="c"),
+        _chunk(clause="3.5.2", page=12, content="Fluchtweglänge …", chunk_id="a"),
+        _chunk(clause="3.5.3", page=12, content="Notwendiger Treppenraum …", chunk_id="b"),
+        _chunk(clause="4.1", page=13, content="Rauchabzug …", chunk_id="c"),
     ]
     handle = _Store(chunks, [_document(OIB, "OIB-Richtlinie 2, Ausgabe Mai 2023")])
 
     async def _documents(collection: str):
         return list(handle.documents)
 
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: handle)
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+    monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: handle)
+    monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection("oib_knowledge", Shelf.BASE)],
     )
     # The formatter's three store lookups are not what these tests are about;
     # an empty map is the documented fail-open and keeps the run database-free.
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     return handle
 
 
@@ -149,7 +149,7 @@ class TestResolution:
     def test_a_parts_alias_never_opens_its_sibling(self, wanted: str):
         assert not _matches(_document("oib-rl_2.1_ausgabe_mai_2023.pdf"), wanted.casefold())
 
-    def test_a_leitfaden_gets_no_member_alias(self):
+    def test_a_guide_gets_no_member_alias(self):
         names = _document_names(_document("oib-rl_2_leitfaden_ausgabe_mai_2023.pdf"))
         assert not any(name.startswith(("OIB 2", "OIB-RL 2")) for name in names)
 
@@ -165,7 +165,7 @@ class TestResolution:
         assert not _matches(_document("oib-rl_2.3_ausgabe_mai_2023.pdf"), "oib-richtlinie 2, ausgabe mai 2023")
 
     async def test_an_unknown_document_is_refused_and_names_no_substitute(self, store):
-        out = await _read(document="Brandschutzkonzept Wien.pdf", punkt="3.5.2")
+        out = await _read(document="Brandschutzkonzept Wien.pdf", clause="3.5.2")
 
         assert "No document in scope is named" in out
         assert "knowledge_search" in out
@@ -174,10 +174,10 @@ class TestResolution:
         assert store.calls == []
         assert "--- Result 1 ---" not in out
 
-    async def test_a_document_with_no_such_punkt_says_so_rather_than_returning_a_neighbour(self, store):
+    async def test_a_document_with_no_such_clause_says_so_rather_than_returning_a_neighbour(self, store):
         store.chunks = []
 
-        out = await _read(document=OIB, punkt="9.9.9")
+        out = await _read(document=OIB, clause="9.9.9")
 
         assert "carries no passage at" in out
         assert "Pkt. 9.9.9" in out
@@ -186,9 +186,9 @@ class TestResolution:
 class TestTheFilterIsTheAnswer:
     """What comes back is what was addressed, decided by the store, not by rank."""
 
-    def test_a_punkt_request_filters_on_file_and_punkt(self):
+    def test_a_clause_request_filters_on_file_and_clause(self):
         assert _passage_filters(OIB, "3.5.2", None) == {
-            "$and": [{"file_name": {"$eq": OIB}}, {"punkt_id": {"$eq": "3.5.2"}}]
+            "$and": [{"file_name": {"$eq": OIB}}, {"clause_id": {"$eq": "3.5.2"}}]
         }
 
     def test_a_page_request_compares_page_label_as_a_STRING(self):
@@ -199,30 +199,44 @@ class TestTheFilterIsTheAnswer:
             "$and": [{"file_name": {"$eq": OIB}}, {"page_label": {"$in": labels}}]
         }
 
-    def test_both_together_read_that_punkt_on_that_page(self):
+    def test_both_together_read_that_clause_on_that_page(self):
         clauses = _passage_filters(OIB, "3.5.2", 12)["$and"]
         assert clauses == [
             {"file_name": {"$eq": OIB}},
-            {"punkt_id": {"$eq": "3.5.2"}},
+            {"clause_id": {"$eq": "3.5.2"}},
             {"page_label": {"$in": [str(number) for number in range(4, 13)]}},
         ]
 
-    async def test_a_punkt_request_drops_the_page_beside_it(self, store):
+    async def test_a_clause_request_drops_the_page_beside_it(self, store):
         """Every chunk of a Punkt is filed under its first page, so a page next
         to the number can only repeat it or empty the read."""
-        await _read(document="OIB-Richtlinie 2, Ausgabe Mai 2023", punkt="3.5.2", page=13)
+        await _read(document="OIB-Richtlinie 2, Ausgabe Mai 2023", clause="3.5.2", page=13)
 
         (call,) = store.calls
-        assert {"punkt_id": {"$eq": "3.5.2"}} in call["filters"]["$and"]
+        assert {"clause_id": {"$eq": "3.5.2"}} in call["filters"]["$and"]
         assert not any("page_label" in clause for clause in call["filters"]["$and"])
 
-    async def test_the_punkt_reaches_the_store_as_a_filter(self, store):
-        await _read(document="OIB-Richtlinie 2, Ausgabe Mai 2023", punkt="3.5.2")
+    async def test_the_clause_reaches_the_store_as_a_filter(self, store):
+        await _read(document="OIB-Richtlinie 2, Ausgabe Mai 2023", clause="3.5.2")
 
         (call,) = store.calls
         assert call["collection"] == "oib_knowledge"
         assert call["top_k"] == _MAX_PASSAGE_CHUNKS
-        assert {"punkt_id": {"$eq": "3.5.2"}} in call["filters"]["$and"]
+        assert {"clause_id": {"$eq": "3.5.2"}} in call["filters"]["$and"]
+
+    async def test_the_former_argument_name_still_opens_the_clause(self, store):
+        """``punkt`` was the argument's name until the rename; a replayed turn still sends it."""
+        await _read(document="OIB-Richtlinie 2, Ausgabe Mai 2023", punkt="3.5.2")
+
+        (call,) = store.calls
+        assert {"clause_id": {"$eq": "3.5.2"}} in call["filters"]["$and"]
+
+    async def test_the_schema_names_only_the_new_argument(self):
+        async with read_passage(ReadPassageConfig(), _builder()) as info:
+            properties = info.input_schema.model_json_schema()["properties"]
+
+        assert "clause" in properties
+        assert "punkt" not in properties
 
     async def test_a_page_reaches_the_store_as_a_filter(self, store):
         await _read(document=OIB, page=12)
@@ -236,7 +250,7 @@ class TestTheFilterIsTheAnswer:
         spans = [(1, 1), (1, 2), (3, 3), (3, 4), (4, 4), (4, 4)]
         store.chunks = []
         for index, (label, end) in enumerate(spans):
-            chunk = _chunk(punkt="1", page=label, content=f"Teil {index}", chunk_id=f"s{index}")
+            chunk = _chunk(clause="1", page=label, content=f"Teil {index}", chunk_id=f"s{index}")
             chunk.metadata["page_end"] = str(end)
             store.chunks.append(chunk)
 
@@ -247,18 +261,25 @@ class TestTheFilterIsTheAnswer:
         (call,) = store.calls
         assert call["top_k"] > _MAX_PASSAGE_CHUNKS, "the window is fetched whole, then filtered"
 
+    async def test_a_passage_read_says_it_read_a_locus_not_that_it_found_documents(self, store):
+        """The header of a read names what was opened, in reading order; it is not a search's count."""
+        out = await _read(document=OIB, page=13)
+
+        assert out.startswith(f"Read 1 passage(s) of {OIB}, S. 13, in reading order:")
+        assert "relevant document(s)" not in out
+
     async def test_a_page_read_keeps_a_chunk_without_page_end_to_its_own_page(self, store):
         out = await _read(document=OIB, page=13)
         assert "Rauchabzug" in out and "Fluchtweglänge" not in out
 
     def test_a_paragraph_locator_asks_for_both_spellings(self):
-        assert _passage_filters(OIB, "§3", None)["$and"][1] == {"punkt_id": {"$in": ["§ 3", "§3"]}}
+        assert _passage_filters(OIB, "§3", None)["$and"][1] == {"clause_id": {"$in": ["§ 3", "§3"]}}
 
-    async def test_neither_punkt_nor_page_outlines_the_document_instead_of_refusing(self, store):
+    async def test_neither_clause_nor_page_outlines_the_document_instead_of_refusing(self, store):
         """Naming only the document is the OVERVIEW question, not a malformed call.
 
         It used to be refused, and the model answered the refusal by guessing a
-        Punkt. These chunks carry no `punkt_depth`, so the outline finds no
+        Punkt. These chunks carry no `clause_depth`, so the outline finds no
         heading structure and falls back to the document's opening pages — two
         fetches, and a block that says plainly there is no Gliederung to list.
         """
@@ -266,25 +287,25 @@ class TestTheFilterIsTheAnswer:
 
         out = await _read(document=OIB)
 
-        assert "Provide `punkt=`" not in out
-        assert "nicht nach Punkten gegliedert" in out
+        assert "Provide `clause=`" not in out
+        assert "not structured in Punkte" in out
         assert "## Gliederung" not in out
         assert len(store.calls) == 2
 
-    def test_the_order_is_page_then_punkt_numerically(self):
+    def test_the_order_is_page_then_clause_numerically(self):
         """`3.10` after `3.9`, which a string sort gets backwards."""
         chunks = [
-            _chunk(punkt="3.10", page=5, chunk_id="x"),
-            _chunk(punkt="3.9", page=5, chunk_id="y"),
-            _chunk(punkt="1.1", page=4, chunk_id="z"),
+            _chunk(clause="3.10", page=5, chunk_id="x"),
+            _chunk(clause="3.9", page=5, chunk_id="y"),
+            _chunk(clause="1.1", page=4, chunk_id="z"),
         ]
-        assert [c.chunk_id for c in sorted(chunks, key=_punkt_sort_key)] == ["z", "y", "x"]
+        assert [c.chunk_id for c in sorted(chunks, key=_clause_sort_key)] == ["z", "y", "x"]
 
     def test_a_long_tables_row_groups_come_back_in_order(self):
-        """Every row group of a table shares page and ``punkt_id`` and its chunk
+        """Every row group of a table shares page and ``clause_id`` and its chunk
         id is a random uuid: "Teil 1 von N" … "Teil N von N" came back shuffled."""
         from knowledge_layer.llamaindex.captioned_tables import PageTable
-        from knowledge_layer.llamaindex.punkt_chunking import punkt_documents
+        from knowledge_layer.llamaindex.clause_chunking import clause_documents
 
         body = "\n".join(f"{n} Punkt Nummer {n}\nText zu Punkt {n}, lang genug um zu zählen." for n in range(1, 8))
         rows = [[f"{n} Bauteil mit einer längeren Bezeichnung", "REI 60", "REI 90"] for n in range(120)]
@@ -293,50 +314,50 @@ class TestTheFilterIsTheAnswer:
             {"page_number": 1, "text": "OIB-Richtlinie 9 Ausgabe Mai 2023\n" + body},
             {"page_number": 2, "text": "", "tables": [table]},
         ]
-        groups = [d for d in punkt_documents(pages, OIB, 1) if d.metadata["chunking"] == "table"]
+        groups = [d for d in clause_documents(pages, OIB, 1) if d.metadata["chunking"] == "table"]
         assert len(groups) > 2
         # Chunk ids that sort against the parts, as a uuid may.
         chunks = [
-            _chunk(punkt="Tabelle 1a", page=2, content=doc.text, chunk_id=f"{9 - index}")
+            _chunk(clause="Tabelle 1a", page=2, content=doc.text, chunk_id=f"{9 - index}")
             for index, doc in enumerate(groups)
         ]
         for chunk, doc in zip(chunks, groups, strict=True):
             chunk.metadata["table_part"] = doc.metadata["table_part"]
 
-        ordered = sorted(chunks, key=_punkt_sort_key)
+        ordered = sorted(chunks, key=_clause_sort_key)
 
         assert [f"Teil {n} von {len(groups)}" in c.content for n, c in enumerate(ordered, start=1)] == [True] * len(
             groups
         )
 
     def test_a_long_sections_parts_come_back_in_order(self):
-        """A tenant section cut into parts shares page and ``punkt_id``; ``section_part`` orders them."""
-        chunks = [_chunk(punkt="3.2", page=7, chunk_id=f"{9 - n}") for n in range(1, 4)]
+        """A tenant section cut into parts shares page and ``clause_id``; ``section_part`` orders them."""
+        chunks = [_chunk(clause="3.2", page=7, chunk_id=f"{9 - n}") for n in range(1, 4)]
         for part, chunk in enumerate(chunks, start=1):
             chunk.metadata["section_part"] = part
-        assert [c.metadata["section_part"] for c in sorted(chunks, key=_punkt_sort_key)] == [1, 2, 3]
+        assert [c.metadata["section_part"] for c in sorted(chunks, key=_clause_sort_key)] == [1, 2, 3]
 
     def test_pageless_sections_come_back_in_document_order_not_alphabetically(self):
         """A Markdown file has no page and its sections no number to sort on."""
         titles = ["Modellangaben", "Geschoße", "Bauteile nach Typ", "Materialien"]
-        chunks = [_chunk(punkt=title, chunk_id=title) for title in titles]
+        chunks = [_chunk(clause=title, chunk_id=title) for title in titles]
         for order, chunk in enumerate(chunks):
             chunk.metadata["section_order"] = order
-        assert [c.chunk_id for c in sorted(reversed(chunks), key=_punkt_sort_key)] == titles
+        assert [c.chunk_id for c in sorted(reversed(chunks), key=_clause_sort_key)] == titles
 
 
 class TestFormatParity:
     """The block is the search's block. Nothing downstream learns a second shape."""
 
     async def test_the_located_passage_renders_exactly_as_a_searched_one(self, store):
-        from sources.knowledge_layer.src.register import _format_results
+        from knowledge_layer.search_results import format_results
 
-        out = await _read(document=OIB, punkt="3.5.2")
+        out = await _read(document=OIB, clause="3.5.2")
 
-        located = _chunk(punkt="3.5.2", page=12, content="Fluchtweglänge …", chunk_id="a")
+        located = _chunk(clause="3.5.2", page=12, content="Fluchtweglänge …", chunk_id="a")
         located.metadata["collection"] = "oib_knowledge"
         located.metadata["shelf"] = str(Shelf.BASE)
-        expected = _format_results(
+        expected = format_results(
             RetrievalResult(
                 chunks=[located],
                 query="Pkt. 3.5.2",
@@ -344,11 +365,12 @@ class TestFormatParity:
                 success=True,
             ),
             f"{OIB}, Pkt. 3.5.2",
+            reading_of=f"{OIB}, Pkt. 3.5.2",
         )
         assert out == expected
 
-    async def test_the_block_carries_the_citation_the_punkt_and_the_trace_lanes(self, store):
-        out = await _read(document=OIB, punkt="3.5.2")
+    async def test_the_block_carries_the_citation_the_clause_and_the_trace_lanes(self, store):
+        out = await _read(document=OIB, clause="3.5.2")
 
         assert f"Citation: {OIB}, p.12" in out
         assert "Punkt: 3.5.2" in out
@@ -366,11 +388,11 @@ class TestLaneToolStamp:
     """
 
     async def test_the_captured_hit_names_read_passage_as_its_tool(self, store):
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         token = turn_status.begin_lane_capture()
         try:
-            await _read(document=OIB, punkt="3.5.2")
+            await _read(document=OIB, clause="3.5.2")
             captured = turn_status.get_lane_captures()
         finally:
             turn_status.end_lane_capture(token)
@@ -382,7 +404,7 @@ class TestLaneToolStamp:
         assert {hit.get("tool") for hit in captured} == {"read_passage"}
 
     async def test_the_stamp_stays_out_of_the_block_the_model_reads(self, store):
-        out = await _read(document=OIB, punkt="3.5.2")
+        out = await _read(document=OIB, clause="3.5.2")
 
         # The Trace-Lanes payload is the frontend's and the model's; which tool
         # fetched a passage is how a repeat is derived, not something either is
@@ -390,42 +412,38 @@ class TestLaneToolStamp:
         assert '"tool"' not in out
 
     async def test_the_scope_does_not_outlive_the_call(self, store):
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
-        await _read(document=OIB, punkt="3.5.2")
+        await _read(document=OIB, clause="3.5.2")
 
         assert turn_status.current_lane_tool() is None
 
-    async def test_only_the_addressed_punkt_is_returned(self, store):
+    async def test_only_the_addressed_clause_is_returned(self, store):
         """The stub store ignores filters, so the tool must not.
 
         A real store applies the metadata filter; this one hands back all three
         chunks, which is the honest worst case for a locator that trusted rank.
         """
-        out = await _read(document=OIB, punkt="3.5.2")
+        out = await _read(document=OIB, clause="3.5.2")
 
         assert "Fluchtweglänge" in out
         assert "Rauchabzug" not in out
 
 
 class TestTheContract:
-    def test_the_description_says_when_not_to_call_it(self):
-        assert "WHEN NOT TO CALL" in _READ_PASSAGE_DESCRIPTION
-        assert "knowledge_search" in _READ_PASSAGE_DESCRIPTION
+    def test_the_description_names_the_search_as_the_boundary(self):
+        assert "WHEN NOT TO CALL" not in _READ_PASSAGE_DESCRIPTION
+        assert "cannot find a document from a topic (`knowledge_search` does)" in _READ_PASSAGE_DESCRIPTION
 
-    def test_it_names_the_search_as_the_tool_for_an_unknown_document(self):
-        when_not = _READ_PASSAGE_DESCRIPTION.split("WHEN NOT TO CALL")[1]
-        assert "do not know WHICH document" in when_not
-
-    def test_it_asks_for_the_checkpoint_sentence_in_an_argument(self):
-        """The slot, not a hope that the model narrates."""
-        assert "`conclusion=`" in _READ_PASSAGE_DESCRIPTION
+    def test_the_checkpoint_sentence_is_an_optional_argument(self):
+        """The slot exists; the model is not required to fill it."""
+        assert "`conclusion=` is optional" in _READ_PASSAGE_DESCRIPTION
 
     async def test_a_conclusion_changes_nothing_about_what_is_opened(self, store):
         """It is a checkpoint channel. A sentence that steered retrieval would
         make the Herleitung a cause rather than a record of one."""
-        with_sentence = await _read(document=OIB, punkt="3.5.2", conclusion="Ich brauche den Treppenraum.")
-        without = await _read(document=OIB, punkt="3.5.2")
+        with_sentence = await _read(document=OIB, clause="3.5.2", conclusion="Ich brauche den Treppenraum.")
+        without = await _read(document=OIB, clause="3.5.2")
 
         assert with_sentence == without
         assert all("conclusion" not in str(call["filters"]) for call in store.calls)

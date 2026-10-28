@@ -54,7 +54,9 @@ htmlcov/
 .tox/
 .ruff_cache/
 tests/
-frontends/benchmarks/
+evals/
+# The suites' support packages (ADR-0145 row 5); no package lists them.
+packages/*/testing/
 
 # ---- Documentation (not needed at runtime) ----
 *.md
@@ -66,7 +68,7 @@ license_report.pdf
 .gitlab-ci.yml
 .github/
 .pre-commit-config.yaml*
-deploy/Dockerfile
+apps/agent-host/Dockerfile
 deploy/compose/
 deploy/helm/
 deploy/*.sh
@@ -94,6 +96,6 @@ temp/
 external/
 
 # ---- Evaluation outputs ----
-frontends/benchmarks/*/results/
-frontends/benchmarks/*/aggregated_results_*/
-frontends/benchmarks/*/analysis/
+evals/*/results/
+evals/*/aggregated_results_*/
+evals/*/analysis/

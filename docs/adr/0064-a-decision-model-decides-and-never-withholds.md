@@ -16,7 +16,7 @@ enough" — a yes/no — with a frontier call on every search
 (`requery_llm: rerank_llm`, the default model at reasoning `none`), and the
 turn's first LLM call is spent deciding what the question needs before
 anything has been read: which corpus, which Richtlinie, whether to read at
-all. The turns audit (`docs/architecture/turns-per-answer-audit-2026-09.md`)
+all. The turns audit (`docs/audit/turns-per-answer-audit-2026-09.md`)
 found the search-before-reading round on every researched shape and the
 judge on every search.
 
@@ -73,7 +73,7 @@ its own search (`agents/piloti/decisions.py::_undecided_prefetch`). It is the
 evidence question by construction, and the decision missed its 1.5 s budget
 in 10 of 12 live calls (p50 2.7 s, measured 2026-09-23). The next day's suites
 measured it at a median 0.54 s, p90 0.62 s
-([turn-latency §3.1](../architecture/turn-latency-measured-2026-09.md#31-the-sequence)),
+([turn-latency §3.1](../audit/turn-latency-measured-2026-09.md#31-the-sequence)),
 with the same endpoint (OpenRouter's alpha `/decisions`), timeout and shared
 client; the one change to `common/decisions.py` in between logs a skipped
 decision and does not touch the call. The difference is
@@ -296,7 +296,7 @@ corpus `baurecht` on ≥ 90 % of the regulation rows, and `needs_evidence`
 never below 0.5 on a ruling row. Below them, `turn_decisions: false`.
 
 **Measured 2026-09-22** from the branch that introduced this, committed as
-`tests/fixtures/herleitung/decision_eval_2026-09-22.csv`: 27 of 27
+`tests/fixtures/derivation/decision_eval_2026-09-22.csv`: 27 of 27
 decided; family top-1 **1.00** (the expected family's probability ran
 0.54–0.97; no Bauordnung row's top family passed 0.49); corpus `baurecht`
 on **1.00** of the regulation rows and `projekt` (0.91) on the one
@@ -386,7 +386,7 @@ numbers above are one run on German questions the product actually gets.
   `frontends/aiq_api/tests/conftest.py`): the suites never reach the live
   endpoint unless a test turns decisions on and stubs it.
 - `tests/test_decision_eval.py`: the adoption gate's arithmetic;
-  `tests/fixtures/herleitung/decision_eval_2026-09-22.csv`: its last result.
+  `tests/fixtures/derivation/decision_eval_2026-09-22.csv`: its last result.
 
 ## Pros and Cons of the Options
 

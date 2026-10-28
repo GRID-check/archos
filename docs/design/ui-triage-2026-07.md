@@ -7,7 +7,7 @@ aesthetic–usability, peak-end) — read through *value* and *actual user flow*
 an architect doing Austrian building-compliance work under enterprise scrutiny.
 
 Every recommendation stays inside the existing design language
-(`grid-design-language.md`): warm-paper monochrome + provenance signal colors,
+(`design-language.md`): warm-paper monochrome + provenance signal colors,
 tokens only. This is refinement within the system, not a redesign — the app is
 already unusually mature (streaming status, EU AI-Act disclosure, iOS-zoom
 prevention, safe-area insets, per-session drafts, HITL, drag-drop upload).
@@ -131,7 +131,7 @@ documented `text-xl` title-size question becomes a single knob.
   still report, all deliberate: inline mention pills and citation markers in
   running prose (the WCAG 2.2 inline exception), a 24×24 source chip that meets
   the AA minimum, and one chip-internal icon button capped at 36px by its chip.
-  Guarded by `frontends/ui/src/components/ui/touch-target.spec.ts`.
+  Guarded by `apps/workspace/ui/components/ui/touch-target.spec.ts`.
 
   **Corrected by the pass below.** "All deliberate" did not survive re-measuring.
   The Herleitung's source row — the control the whole surface exists to offer —
@@ -174,9 +174,9 @@ documented `text-xl` title-size question becomes a single knob.
   takes every tap meant for the earlier, which is worse than a small target.
   See the note in `CitationMarker.tsx`.
 
-  Ratcheted by `frontends/ui/src/components/ui/mobile-affordances.spec.ts` (hover reveals need
+  Ratcheted by `apps/workspace/ui/components/ui/mobile-affordances.spec.ts` (hover reveals need
   a touch escape; hand-written fields need the 16px floor; the shared molecules
-  declare their `enterKeyHint`) and by `task fe:touch-audit` (since deleted), which was the
+  declare their `enterKeyHint`) and by `task workspace:touch-audit` (since deleted), which was the
   measurement half and is deliberately not in `verify`.
 - **[done] M · The Herleitung ate the scroll** — reported from a phone, and the
   worst of the lot: a drag anywhere on the reasoning graph moved nothing, so the
@@ -195,7 +195,7 @@ documented `text-xl` title-size question becomes a single knob.
 
   Fixed with a scoped `touch-action: auto` the graph opts into by class, so a
   future graph that genuinely wants to pan keeps the library default by saying
-  nothing. Guarded three ways in `frontends/ui/src/components/ui/mobile-affordances.spec.ts` — the class, the
+  nothing. Guarded three ways in `apps/workspace/ui/components/ui/mobile-affordances.spec.ts` — the class, the
   rule, and a stale-check on the upstream default so the override cannot outlive
   its cause.
 
@@ -259,7 +259,7 @@ documented `text-xl` title-size question becomes a single knob.
   deterministic checks per-stage as calm in-context help; **no exit / save-and-
   leave** (a room with one door, acute in edit mode).
 - **[backlog] componentization** · the 1601-line monolith → extract field
-  renderers, `BauwerkStage`, `ReviewStep`, `ConflictFindings`, `IntakeStepper`,
+  renderers, `BuildingStage`, `ReviewStep`, `ConflictFindings`, `IntakeStepper`,
   and `useIntakeDraft`/`useStageValidation`/`useIntakeSubmit`. Reuse the `Chip`
   primitive instead of the hand-rolled `Segmented`/`ChipMultiSelect`. Share a
   `FactGrid` between `project-brief` and the wizard Review.

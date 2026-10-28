@@ -1,5 +1,5 @@
 import type { ISecurityPolicySpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/SecurityPolicySpec";
-import { GridConfig } from "../config";
+import { DeployConfig } from '../config'
 
 /**
  * WorkOS permission that grants platform-tier access — the same value the app
@@ -12,7 +12,7 @@ export const PLATFORM_VIEW_PERMISSION = "platform:organizations:view";
  * The narrower permission that admits read-only observability users (business
  * analysts, the Fachbereich) to Langfuse without the platform-operator one.
  * Mirrors `PLATFORM_PERMISSIONS.observabilityView` in
- * frontends/ui/src/lib/authz/permissions.ts. Only routes that pass it in
+ * apps/workspace/bff/authz/permissions.ts. Only routes that pass it in
  * `alsoAdmit` accept it.
  */
 export const OBSERVABILITY_VIEW_PERMISSION = "platform:observability:view";
@@ -101,7 +101,7 @@ export interface PlatformOidcGate {
  * (`docs/deployment/kubernetes.md` §9).
  */
 export function platformOidcSecurityPolicySpec(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   gate: PlatformOidcGate,
 ): ISecurityPolicySpec {
   // Every endpoint hangs off the one issuer, so there is no way for them to
@@ -168,7 +168,7 @@ export function platformOidcSecurityPolicySpec(
       //
       // The gate is the permission, not membership of the platform org. Bare
       // membership does not match how the application decides platform access:
-      // `isPlatformOwner` (frontends/ui/src/lib/authz/platform.ts) accepts the
+      // `isPlatformOwner` (apps/workspace/bff/authz/platform.ts) accepts the
       // `org-platform-owner` role OR this permission. Gating on the org alone
       // would mean anyone added to the platform org with WorkOS's default
       // `member` role — which grants nothing in the app, and so reads as
@@ -202,7 +202,7 @@ export function platformOidcSecurityPolicySpec(
           // `scopes` matches the space-delimited `scope`/`scp` claim per
           // RFC 6749, which is how granted permissions arrive on an OAuth
           // access token. These mirror PLATFORM_PERMISSIONS in
-          // frontends/ui/src/lib/authz/permissions.ts.
+          // apps/workspace/bff/authz/permissions.ts.
           jwt: { provider: jwtProviderName, scopes: [permission] },
         },
       })),

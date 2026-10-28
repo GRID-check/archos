@@ -1,0 +1,251 @@
+# The office-file eval (`task be:eval:answer-suite -- --set files --arm semantic|grep|hybrid|all`, ADR-0127, ADR-0133):
+# questions about the files of a project, asked in the fixture project of `project.yaml` beside this
+# file, seeded by `scripts/turn_census/fixture_files.py`. Every run sits in that project's
+# collection with a signed envelope, as the workspace and precedent sets do.
+#
+# `expect` uses the suite's own checks (`suite.check`) and adds, in `scripts/turn_census/files_eval.py`:
+#   tools:      what the MODEL called (the round-0 prefetch is not in it).
+#     must:     every item must have been called
+#     any:      at least one item must have been called
+#     must_not: none may have been called
+#     An item is a tool name (`list_files`) or `{tool: {argument: value | [values]}}`, matched
+#     against the recorded arguments, case-insensitively.
+#   max_research_calls: the turn answers within this many model calls (rounds)
+#   mentions / not_mentions: as the loop set: words the answer must or must not hold
+#   at_least:   `{n: 4, of: [..]}`, at least n of the words appear (a chapter-by-chapter summary)
+#   judge:      meanings a model judges (`judge.py`)
+#   no_repeat:  tools a follow-up must not call again
+# `needs: [pages|cursor|regex|group_by|view]` names an argument that exists only after its slice
+# lands (ADR-0127 S3, S5, S6, S7); until then the row is reported "not applicable on this commit"
+# and counts neither way, so the baseline is honest. A row with `turns` is one conversation; the
+# checks read the last turn.
+#
+# Facts, read off the fixture: six top folders (Einreichung, Bestand, Behörde, Nachbarn, Gutachten,
+# Korrespondenz); Einreichung holds 6 documents in all (3 directly, 3 in Pläne); EP-01 Index B is
+# current; the Brandschutzkonzept has 14 pages and says „Fluchtweg“ on pages 3, 7 and 11; the newest
+# upload is the MA-37 letter; „Sprinkler“ is written nowhere. „Rettungsweg“ stands five times in the
+# Brandschutzkonzept (pages 3, 7, 9), „Kopfbolzendübel“ and „Verbunddecke“ once each in the
+# Besprechungsprotokoll (page 2). The `pf-count-*` rows ask for those counts: on chunks cut as
+# production cuts them, a count that read the breadcrumb or the overlap says 8, 2 and 3.
+# The exact and outside rows read: „REI 90“ stands in four documents (Baubeschreibung, Bescheid,
+# Brandschutzkonzept, Brandschutzgutachten of Hubergasse 16); „§ 9“ only in the Bebauungsbestimmungen;
+# „Wärmepumpe“ only in the Baubeschreibung; „Tiefgarage“ nowhere (the Baubeschreibung's
+# „Garagengesetz“ is the near miss); „EI 60“ in the Brandschutzkonzept; the Bescheid's number 567812
+# in the Bescheid and the MA-37 letter; „Rauchansaug“ only in the neighbour's Gutachten; „C25/30“
+# only in the Besprechungsprotokoll.
+#
+# `open: <file>` asks the row with that document open; `turn_input.py` sends it.
+#
+# The tool names are today's. A call by an ADR-0133 name (`ls`, `glob`, `grep`, `read_file`,
+# `knowledge_search(path=)`) is read as the call it stands for (`files_eval.canonical`), so these rows
+# run unchanged before and after the rename, and a row may be written with the new names too.
+
+questions:
+  - id: pf-orient-project
+    question: Was liegt alles in diesem Projekt?
+    expect:
+      tools: {any: [list_files]}
+      max_research_calls: 2
+      mentions: [Einreichung, Bestand, Behörde, Nachbarn, Gutachten, Korrespondenz]
+
+  - id: pf-orient-folder
+    question: Was ist im Ordner Einreichung?
+    expect:
+      tools: {any: [list_files]}
+      mentions: [Pläne]
+
+  - id: pf-locate-report
+    question: Wo liegt das Brandschutzgutachten?
+    expect:
+      tools: {any: [list_files, knowledge_search]}
+      mentions: [Nachbarn]
+
+  - id: pf-locate-name
+    question: Wie heißt die Datei mit dem Schnitt genau?
+    expect:
+      tools: {any: [list_files, knowledge_search]}
+      mentions: [EP-02_Schnitt_A-A.pdf]
+
+  - id: pf-aggregate-count
+    question: Wie viele Unterlagen liegen in der Einreichung, und welcher Index der Grundrisse ist aktuell?
+    expect:
+      tools: {any: [list_files]}
+      mentions: [["6", "sechs"], "Index B"]
+
+  - id: pf-aggregate-newest
+    question: Was ist zuletzt dazugekommen?
+    expect:
+      tools: {any: [list_files]}
+      mentions: [Schreiben_MA37_Baubeginn]
+
+  - id: pf-aggregate-pages
+    question: Wie viele Seiten hat das Brandschutzkonzept?
+    expect:
+      tools: {any: [list_files, read_passage, knowledge_search]}
+      mentions: ["14"]
+
+  - id: pf-read-range
+    question: Was steht im Brandschutzkonzept auf Seite 4 bis 6?
+    needs: [pages]
+    expect:
+      tools: {must: [read_passage]}
+      mentions: ["REI 60", "BA-03", ["EI2 30", "rauchdicht"]]
+
+  - id: pf-read-through
+    question: Fass das Brandschutzkonzept Kapitel für Kapitel zusammen.
+    needs: [pages]
+    expect:
+      tools: {must: [read_passage]}
+      max_research_calls: 3
+      # One marker per chapter; the summary must reach at least four of the six.
+      at_least: {n: 4, of: [Brandabschnitt, Sicherheitsbeleuchtung, Aufzug, Rauchwarnmelder, Löschwasser, Brandschutzordnung]}
+
+  - id: pf-read-outline
+    question: Worum geht es in der Baubeschreibung?
+    expect:
+      tools: {any: [read_passage]}
+
+  - id: pf-exact-term
+    question: Finde jede Stelle, an der „Fluchtweg“ vorkommt.
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: ["3", "7", "11"]
+
+  - id: pf-exact-number
+    question: Wo kommt die EZ 1234 vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+
+  - id: pf-exact-absent
+    question: Steht irgendwo etwas von einer Sprinkleranlage?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      judge: [none_found]
+
+  - id: pf-regex
+    question: Welche Geschäftszahlen der MA 37 kommen in den Unterlagen vor?
+    expect:
+      tools: {any: [{knowledge_search: {match: [regex, exact]}}]}
+      mentions: ["567812", "123456", "654321"]
+
+  - id: pf-scoped-search
+    question: Was sagt die Behörde zur Gebäudehöhe?
+    expect:
+      tools: {any: [{knowledge_search: {folder: Behörde}}, read_passage]}
+
+  - id: pf-scoped-folder
+    question: Was steht in den Unterlagen der Nachbarn zum Brandschutz?
+    expect:
+      tools: {any: [{knowledge_search: {folder: Nachbarn}}, {knowledge_search: {file_name: Brandschutzgutachten_Hubergasse16.pdf}}, read_passage]}
+
+  - id: pf-group-docs
+    question: Welche Dokumente behandeln den Aufzug?
+    needs: [group_by]
+    expect:
+      tools: {any: [{knowledge_search: {group_by: document}}, knowledge_search]}
+      at_least: {n: 2, of: [Baubeschreibung, Bescheid, Brandschutzkonzept]}
+
+  - id: pf-revisions
+    question: Was hat sich zwischen Index A und B der Grundrisse geändert?
+    expect:
+      tools: {any: [{list_files: {revisions_of: [EP-01_Grundrisse_Index-B.pdf, EP-01_Grundrisse_Index-A.pdf]}}, {list_files: {compare_to: "*"}}, read_passage]}
+
+  - id: pf-followup
+    turns: ["Was liegt im Ordner Gutachten?", "Lies mir das erste davon ganz vor."]
+    expect:
+      tools: {must: [read_passage]}
+      no_repeat: [list_files]
+
+  - id: pf-mixed-law
+    question: Hält die Fluchtweglänge im Brandschutzkonzept die OIB-Richtlinie 2 ein?
+    expect:
+      tools: {must: [knowledge_search]}
+      mentions: ["Brandschutzkonzept", "OIB"]
+
+  - id: pf-count-overlap
+    question: Wie oft kommt „Kopfbolzendübel“ im Besprechungsprotokoll zur Tragwerksplanung vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["einmal", "ein Mal", "1 Mal", "1-mal", "1×", "eine Stelle", "einer Stelle", "ein Treffer", "1 Treffer", "eine Fundstelle", "1 Fundstelle"]]
+      not_mentions: ["zweimal", "zwei Mal", "2 Mal", "2-mal", "2×", "zwei Stellen", "2 Stellen", "zwei Treffer", "2 Treffer", "zwei Fundstellen", "2 Fundstellen"]
+
+  - id: pf-count-heading
+    question: Wie oft steht „Rettungsweg“ im Brandschutzkonzept, und auf welchen Seiten?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["5", "fünf"], "3", "7", "9"]
+      not_mentions: ["achtmal", "acht Mal", "8 Mal", "8-mal", "8×", "acht Stellen", "8 Stellen", "8 Treffer", "acht Treffer", "Seite 8", "S. 8"]
+
+  - id: pf-count-heading-section
+    question: Wie oft kommt das Wort „Verbunddecke“ im Besprechungsprotokoll vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["einmal", "ein Mal", "1 Mal", "1-mal", "1×", "eine Stelle", "einer Stelle", "ein Treffer", "1 Treffer", "eine Fundstelle", "1 Fundstelle"]]
+      not_mentions: ["dreimal", "drei Mal", "3 Mal", "3-mal", "3×", "drei Stellen", "3 Stellen", "drei Treffer", "3 Treffer", "Seite 3", "S. 3"]
+
+  # Asked with a document open (`open:`, sent as the composer's "Asking about"), about a fact that
+  # stands only in ANOTHER document: the open one is a hint, never the scope (ADR-0133 §3), so a turn
+  # that searches only the open document cannot answer. `pf-inside-open` is the control: the fact is
+  # in the open document, so a turn that ignores the hint and still answers counts the same.
+  - id: pf-inside-open
+    open: Brandschutzkonzept_Hubergasse14.pdf
+    question: Welche Feuerwiderstandsklasse haben die Wände des Aufzugsschachts?
+    expect:
+      tools: {any: [knowledge_search, read_passage, list_files]}
+      mentions: ["EI 60"]
+      # "EI 60" is a substring of "REI 60" (a load-bearing wall), which would be a wrong answer.
+      not_mentions: ["REI 60"]
+
+  - id: pf-outside-open-number
+    open: Brandschutzkonzept_Hubergasse14.pdf
+    question: Welche Geschäftszahl hat der Baubewilligungsbescheid?
+    expect:
+      tools: {any: [knowledge_search, read_passage, list_files]}
+      mentions: ["567812"]
+
+  - id: pf-outside-open-neighbour
+    open: Bescheid_MA37_Baubewilligung.pdf
+    question: Welche Brandmeldeanlage hat das Nachbarhaus Hubergasse 16?
+    expect:
+      tools: {any: [knowledge_search, read_passage, list_files]}
+      mentions: [Rauchansaug]
+
+  - id: pf-outside-open-protocol
+    open: Baubeschreibung_Hubergasse14.pdf
+    question: Welche Betonfestigkeitsklasse bekommt die Aufbetonschicht der Holz-Beton-Verbunddecke?
+    expect:
+      tools: {any: [knowledge_search, read_passage, list_files]}
+      mentions: ["C25/30"]
+
+  # Exact lookups: an identifier, a clause, a rating, and „is X written anywhere" with a true positive
+  # beside a true negative, so an agent that always says „nothing found" does not pass both. The
+  # Plannummer stands as „Plan Nr. B-01" in the drawing and as the title block's document number.
+  - id: pf-exact-plan-number
+    question: Welcher Plan hat die Plannummer B-01?
+    expect:
+      tools: {any: [{knowledge_search: {match: [exact, regex]}}, list_files]}
+      mentions: [Bestandsplan]
+
+  - id: pf-exact-clause
+    question: In welchem Dokument wird § 9 der Bauordnung für Wien genannt?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [Bebauungsbestimmungen]
+
+  - id: pf-exact-rating
+    question: In welchen Unterlagen kommt REI 90 vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      at_least: {n: 4, of: [Baubeschreibung, Bescheid, Brandschutzkonzept, Brandschutzgutachten]}
+
+  - id: pf-exact-present
+    question: Wird in den Unterlagen irgendwo eine Wärmepumpe erwähnt?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [Baubeschreibung]
+
+  - id: pf-exact-absent-near
+    question: Wird in den Unterlagen irgendwo eine Tiefgarage erwähnt?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      judge: [none_found]

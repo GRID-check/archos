@@ -5,7 +5,7 @@
     "skipLibCheck": true,
     "target": "es2020",
     "module": "commonjs",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "sourceMap": true,
     "experimentalDecorators": true,

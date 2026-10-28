@@ -4,7 +4,7 @@ import * as path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import { load } from "js-yaml";
 import { baseStackConfig } from "../test-support/stack-config";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 import { QDRANT_ALERT_THRESHOLDS, qdrantAlertNames, qdrantAlertRules, quantityBytes } from "./qdrant-alerts";
 
 /**

@@ -1,0 +1,352 @@
+"""Tests for the conversation-scoped CardRegistry and the emit_card tool path."""
+
+import json
+import logging
+
+import pytest
+
+from agent.cards.models import answer_card_adapter
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import get_card_registry
+from agent.cards.registry import get_or_create_card_registry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+
+
+def _emit(card_json: str) -> str:
+    """Mirror the emit_card tool body against the active registry."""
+    try:
+        payload = json.loads(card_json)
+    except (json.JSONDecodeError, TypeError) as exc:
+        return f"Error: card_json is not valid JSON ({exc})."
+    if not isinstance(payload, dict):
+        return "Error: card_json must be a single JSON object with a 'type' field."
+    try:
+        validated = answer_card_adapter.validate_python(payload).model_dump(exclude_none=True)
+    except Exception as exc:
+        return f"Error: card failed validation: {exc}."
+    registry = get_card_registry()
+    if registry is None:
+        return "Noted, but no card channel is available."
+    registry.add(validated)
+    return f"Card '{validated['type']}' will be shown with your answer."
+
+
+class TestCardRegistry:
+    def test_add_and_snapshot(self):
+        reg = CardRegistry()
+        reg.add({"type": "summary", "title": "A"})
+        reg.add({"type": "legal_basis", "law": "OIB-2"})
+        assert [c["type"] for c in reg.snapshot()] == ["summary", "legal_basis"]
+
+    def test_len_is_the_position_of_the_next_card(self):
+        # emit_card hands the model `[[card:N]]` with N read off this count.
+        reg = CardRegistry()
+        assert len(reg) == 0
+        reg.add({"type": "summary", "title": "A"})
+        assert len(reg) == 1
+
+    def test_clear(self):
+        reg = CardRegistry()
+        reg.add({"type": "summary", "title": "A"})
+        reg.clear()
+        assert reg.snapshot() == []
+
+    def test_snapshot_is_a_copy(self):
+        reg = CardRegistry()
+        reg.add({"type": "summary", "title": "A"})
+        snap = reg.snapshot()
+        snap.append({"type": "summary", "title": "B"})
+        assert len(reg.snapshot()) == 1
+
+    def test_same_conversation_shares_registry(self):
+        a = get_or_create_card_registry("conv-1")
+        b = get_or_create_card_registry("conv-1")
+        assert a is b
+
+    def test_none_conversation_is_isolated(self):
+        a = get_or_create_card_registry(None)
+        b = get_or_create_card_registry(None)
+        assert a is not b
+
+
+class TestEmitCardBody:
+    def test_valid_card_is_registered(self):
+        reg = get_or_create_card_registry("conv-emit-1")
+        reg.clear()
+        token = set_card_registry(reg)
+        try:
+            msg = _emit('{"type": "ifc_model_picker", "title": "Answer"}')
+        finally:
+            reset_card_registry(token)
+        assert "will be shown" in msg
+        cards = reg.snapshot()
+        assert len(cards) == 1
+        assert cards[0]["type"] == "ifc_model_picker"
+
+    def test_invalid_json_registers_nothing(self):
+        reg = get_or_create_card_registry("conv-emit-2")
+        reg.clear()
+        token = set_card_registry(reg)
+        try:
+            msg = _emit("not valid json")
+        finally:
+            reset_card_registry(token)
+        assert msg.startswith("Error")
+        assert reg.snapshot() == []
+
+    def test_unknown_card_type_registers_nothing(self):
+        reg = get_or_create_card_registry("conv-emit-3")
+        reg.clear()
+        token = set_card_registry(reg)
+        try:
+            msg = _emit('{"type": "not_a_real_card", "foo": "bar"}')
+        finally:
+            reset_card_registry(token)
+        assert msg.startswith("Error")
+        assert reg.snapshot() == []
+
+    def test_no_active_registry_does_not_raise(self):
+        # No set_card_registry -> get_card_registry() is None
+        msg = _emit('{"type": "ifc_model_picker", "title": "A"}')
+        assert "no card channel" in msg
+
+    @pytest.mark.parametrize(
+        "card_json",
+        [
+            '{"type": "ifc_model_picker", "title": "Egress widths"}',
+            '{"type": "ifc_model_picker", "title": "Welches Modell?", "note": "Haus A"}',
+        ],
+    )
+    def test_multiple_real_types(self, card_json):
+        reg = get_or_create_card_registry("conv-emit-multi")
+        reg.clear()
+        token = set_card_registry(reg)
+        try:
+            msg = _emit(card_json)
+        finally:
+            reset_card_registry(token)
+        assert "will be shown" in msg
+        assert len(reg.snapshot()) == 1
+
+
+class TestEmitCardRejectsSystemCards:
+    """The real emit_card tool must refuse to emit a system-only card type."""
+
+    @pytest.mark.asyncio
+    async def test_memory_proposal_is_rejected(self):
+        from unittest.mock import MagicMock
+
+        from agent.cards.register import EmitCardConfig
+        from agent.cards.register import emit_card
+
+        reg = get_or_create_card_registry("conv-emit-system")
+        reg.clear()
+        token = set_card_registry(reg)
+        payload = json.dumps(
+            {
+                "type": "memory_proposal",
+                "title": "Save this finding?",
+                "content": "The firm always uses REI 90 for GK4.",
+                "kind": "preference",
+            }
+        )
+        try:
+            async with emit_card(EmitCardConfig(), MagicMock()) as info:
+                msg = await info.single_fn(card_json=payload)
+        finally:
+            reset_card_registry(token)
+        # It validated as a real union member but was rejected as system-emitted.
+        assert msg.startswith("Error")
+        assert "system-emitted" in msg
+        # Nothing was added to the registry.
+        assert reg.snapshot() == []
+
+
+class TestARefusedCardIsVisibleAfterTheTurn:
+    """ "The model never tried" and "we refused it" must not look the same in a log.
+
+    Diagnosing a turn that shipped without its card ran into this: only the
+    SUCCESS path logged, so a turn where the model called ``emit_card`` and got a
+    validation error back left exactly the same silence as one where it never
+    called at all. The two have opposite fixes — the first is a shape the model
+    cannot fill in, the second is a doctrine that never got the card named — and
+    with nothing to separate them the choice is a guess.
+
+    ``warning`` rather than ``info``: each of these is a card the reader was
+    meant to get and did not, and it is invisible from the answer, which reads
+    as a perfectly ordinary reply with no card on it.
+    """
+
+    @staticmethod
+    async def _emit_real(registry, payload) -> str:
+        from unittest.mock import MagicMock
+
+        from agent.cards.register import EmitCardConfig
+        from agent.cards.register import emit_card
+
+        token = set_card_registry(registry)
+        try:
+            async with emit_card(EmitCardConfig(), MagicMock()) as info:
+                return await info.single_fn(card_json=payload if isinstance(payload, str) else json.dumps(payload))
+        finally:
+            reset_card_registry(token)
+
+    @pytest.mark.asyncio
+    async def test_a_validation_failure_logs_the_type_the_model_reached_for(self, caplog):
+        reg = get_or_create_card_registry("conv-refusal-1")
+        reg.clear()
+        with caplog.at_level(logging.WARNING, logger="agent.cards"):
+            msg = await self._emit_real(reg, {"type": "stair_diagram", "title": "Treppe"})
+
+        assert msg.startswith("Error")
+        records = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert records, "a refused card left no trace at all — the exact gap this closes"
+        # The TYPE is the load-bearing half: it says which card the model knew it
+        # wanted, which is the one thing a silent turn cannot tell you.
+        assert "stair_diagram" in records[0].getMessage()
+        assert "rejected" in records[0].getMessage()
+
+    @pytest.mark.asyncio
+    async def test_a_validation_refusal_carries_no_link(self):
+        """Pydantic links to its error index from every message it renders.
+
+        The refusal is a tool result, and a URL in a tool result used to be
+        captured as a web source: the reader got a source card for
+        ``errors.pydantic.dev`` beside an answer nothing had searched the web
+        for. The model needs the field and the problem, never the link.
+        """
+        reg = get_or_create_card_registry("conv-refusal-5")
+        reg.clear()
+
+        msg = await self._emit_real(reg, {"type": "stair_diagram", "title": "Treppe"})
+
+        assert msg.startswith("Error: card of type 'stair_diagram' failed validation:")
+        assert "http" not in msg
+        assert "For further information" not in msg
+
+    @pytest.mark.asyncio
+    async def test_unparseable_json_logs_too(self, caplog):
+        reg = get_or_create_card_registry("conv-refusal-2")
+        reg.clear()
+        with caplog.at_level(logging.WARNING, logger="agent.cards"):
+            msg = await self._emit_real(reg, "{not json")
+
+        assert msg.startswith("Error")
+        assert any("not valid JSON" in r.getMessage() for r in caplog.records if r.levelno == logging.WARNING)
+
+    @pytest.mark.asyncio
+    async def test_a_system_card_refusal_logs_too(self, caplog):
+        reg = get_or_create_card_registry("conv-refusal-3")
+        reg.clear()
+        with caplog.at_level(logging.WARNING, logger="agent.cards"):
+            msg = await self._emit_real(
+                reg, {"type": "memory_proposal", "title": "X", "content": "Y", "scope": "project"}
+            )
+
+        assert msg.startswith("Error")
+        assert any("memory_proposal" in r.getMessage() for r in caplog.records if r.levelno == logging.WARNING)
+
+    @pytest.mark.asyncio
+    async def test_a_successful_card_logs_at_info_and_not_as_a_warning(self, caplog):
+        # The success line predates this and stays where it is: a refusal is the
+        # abnormal outcome and has to be greppable apart from the normal one.
+        reg = get_or_create_card_registry("conv-refusal-4")
+        reg.clear()
+        with caplog.at_level(logging.INFO, logger="agent.cards.register"):
+            msg = await self._emit_real(reg, {"type": "ifc_model_picker", "title": "Treppe"})
+
+        assert not msg.startswith("Error")
+        assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+        assert any("registered a 'ifc_model_picker' card" in r.getMessage() for r in caplog.records)
+
+
+class TestEmitCardPlacementMarker:
+    """The marker is how a card reaches the paragraph it belongs to.
+
+    Without it every card renders as a block after the answer, which is where a
+    stair diagram helps least — so ``emit_card`` must hand the agent the exact
+    marker to write, and it must name the card's own position.
+    """
+
+    @staticmethod
+    async def _emit_real(registry, payload: dict) -> str:
+        from unittest.mock import MagicMock
+
+        from agent.cards.register import EmitCardConfig
+        from agent.cards.register import emit_card
+
+        token = set_card_registry(registry)
+        try:
+            async with emit_card(EmitCardConfig(), MagicMock()) as info:
+                return await info.single_fn(card_json=json.dumps(payload))
+        finally:
+            reset_card_registry(token)
+
+    @pytest.mark.asyncio
+    async def test_first_card_is_card_one(self):
+        reg = get_or_create_card_registry("conv-marker-1")
+        reg.clear()
+        msg = await self._emit_real(reg, {"type": "ifc_model_picker", "title": "Treppe"})
+        assert "[[card:1]]" in msg
+        # The agent has to be told what to DO with it, not just handed it.
+        assert "line of its own" in msg
+
+    @pytest.mark.asyncio
+    async def test_marker_counts_with_the_registry(self):
+        reg = get_or_create_card_registry("conv-marker-2")
+        reg.clear()
+        first = await self._emit_real(reg, {"type": "ifc_model_picker", "title": "Eins"})
+        second = await self._emit_real(reg, {"type": "ifc_model_picker", "title": "Zwei"})
+        assert "[[card:1]]" in first
+        assert "[[card:2]]" in second
+        # The number IS the position in the array the frontend receives; the two
+        # drifting apart would draw the wrong card at the marker.
+        assert [c["title"] for c in reg.snapshot()] == ["Eins", "Zwei"]
+
+    @pytest.mark.asyncio
+    async def test_a_rejected_card_does_not_consume_a_number(self):
+        reg = get_or_create_card_registry("conv-marker-3")
+        reg.clear()
+        await self._emit_real(reg, {"type": "ifc_model_picker", "title": "Eins"})
+        rejected = await self._emit_real(reg, {"type": "ifc_model_picker"})
+        assert rejected.startswith("Error")
+        assert "[[card:2]]" in await self._emit_real(reg, {"type": "ifc_model_picker", "title": "Zwei"})
+
+    @pytest.mark.asyncio
+    async def test_an_envelope_shape_is_refused_with_the_channel_that_takes_it(self):
+        """The redirect the doctrine used to carry up front, on the call that needs it.
+
+        A model that correctly recognised "this answer has a verdict" must not be
+        merely refused — it has the content, and it needs to be told where it
+        goes. The up-front paragraph is the answering prompt's now; this is the
+        tool's own statement, and it fires exactly when it is relevant.
+        """
+        reg = get_or_create_card_registry("conv-envelope-1")
+        reg.clear()
+        refusal = await self._emit_real(reg, {"type": "callout", "kind": "warning", "text": "Frist läuft."})
+        assert "answer_json" in refusal
+        assert "no longer exists" in refusal
+        assert reg.snapshot() == []
+
+    def test_the_marker_contract_is_paid_per_CALL_and_not_per_TURN(self):
+        """The doctrine no longer carries the placement paragraph; the return does.
+
+        It used to be stated twice: once up front in ``_CARD_DOCTRINE``, which
+        every turn pays whether or not it emits a card, and once in the success
+        message of every call, which only a turn that emitted one pays. The
+        answering prompt keeps the up-front sentence — placement is a fact about
+        the answer being written, and the post-hoc surface has no answer to place
+        a marker into — so the tool's own description does not restate it.
+
+        What the tool must still do is hand back a marker the agent knows what to
+        do with, which the three tests above assert on live returns.
+        """
+        from agent.cards.register import _CARD_DOCTRINE
+
+        assert "[[card:" not in _CARD_DOCTRINE
+        assert "WHERE IT GOES" not in _CARD_DOCTRINE
+        # And the doctrine is still the whole of WHEN, WHICH and HOW WELL.
+        assert "WHEN TO EMIT ONE" in _CARD_DOCTRINE
+        assert "WHEN NOT TO" in _CARD_DOCTRINE
+        assert "there is no result field" in _CARD_DOCTRINE

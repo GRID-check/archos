@@ -69,7 +69,7 @@ dependencies:
     - cursor/plugins/pstack/skills/blast-radius#bdf7aa355337897f167153e05069aca505dae17c
     - cursor/plugins/pstack/skills/principle-model-the-domain#bdf7aa355337897f167153e05069aca505dae17c
 
-    # UI evidence. These two replace the `frontends/ui/visual/` harness: one
+    # UI evidence. These two replace the `apps/workspace/visual/` harness: one
     # drives a real browser, the other puts what it captured in the PR.
     #
     # `agent-browser` is a native CLI, NOT an npm library the repo imports — it
@@ -108,6 +108,26 @@ dependencies:
     # the wart costs is the name you would type to invoke it by hand.
     - vercel-labs/agent-browser/skills/agent-browser#aff6125c023b810ea3f2e5deec5379e9a4270bdc
     - vercel-labs/before-and-after/skill#8306d34f459b6704e08e6adb5829fcddb0dc3557
+
+    # Interface craft, from Emil Kowalski (Vercel, Linear): motion, polish and
+    # the small details that decide whether the UI feels finished. `apps/workspace`
+    # already ships `motion` and `sonner`, and is a mobile-first PWA, which is
+    # why those three skills are in. `animate-expo` and `write-swift` are not:
+    # there is no React Native or Swift here. `review-animations`,
+    # `pick-ui-library` and `prototype` run only when asked for by name.
+    - emilkowalski/skills/skills/emil-design-eng#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/animate#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/review-animations#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/improve-animations#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/find-animation-opportunities#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/animation-performance#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/animation-vocabulary#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/apple-design#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/break-ui#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/mobile-native#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/ask-sonner#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/pick-ui-library#2d228630ba1446365f614a108cb8252f1feda202
+    - emilkowalski/skills/skills/prototype#2d228630ba1446365f614a108cb8252f1feda202
   mcp: []
 
 includes: auto

@@ -129,7 +129,7 @@ NO_THRESHOLD_NOTE = (
 #:
 #: The entity facet would technically accept ``IFCRELSPACEBOUNDARY`` as an
 #: applicability, and ``ifctester`` even evaluates it correctly — measured, it
-#: fails the sample house and passes ``haus-mit-raeumen.ifc``. It is still not
+#: fails the sample house and passes ``house-with-rooms.ifc``. It is still not
 #: emitted: the IDS user manual describes the entity facet in terms of object
 #: occurrences throughout, so a conforming checker is free to find no applicable
 #: entities and report the specification as passed. A silent pass on the finding
@@ -975,7 +975,7 @@ def _classes_of(model: SpatialModel | None, global_ids: Sequence[str] | None) ->
     for global_id in global_ids:
         try:
             found.append(model.file.by_guid(global_id).is_a())
-        except (RuntimeError, KeyError):
+        except RuntimeError, KeyError:
             continue
     return sorted(dict.fromkeys(found))
 

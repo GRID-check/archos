@@ -99,7 +99,7 @@ capabilities of its own — it is a faster route to the ones you have.
 ## For maintainers
 
 The bindings and the cheatsheet share one source of truth,
-`frontends/ui/src/components/shell/shortcuts.ts`. Its navigation half is derived
+`apps/workspace/ui/components/shell/shortcuts.ts`. Its navigation half is derived
 from `project-sections.ts` — the same module the rail and the palette render — via
 each section's `shortcutKey`. Adding a section with a `shortcutKey` therefore
 gives it a working jump and a cheatsheet row (with the rail's own label and icon)

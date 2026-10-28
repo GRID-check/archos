@@ -4,7 +4,7 @@
 # `sonstiges`). `doc_class` is what a platform owner would pick. Re-run with
 # `task be:eval:decisions:offpath`.
 - file_name: RL_Brand_2023_final.pdf
-  doc_class: oib_richtlinie
+  doc_class: oib_guideline
   text: >-
     OIB-Richtlinie 2 Brandschutz. Ausgabe: Mai 2023. Diese Richtlinie basiert auf den Beratungen
     der von der Landesamtsdirektorenkonferenz zur Ausarbeitung eines Vorschlages für
@@ -12,34 +12,34 @@
     Es gelten die Begriffsbestimmungen des Dokumentes „OIB-Richtlinien – Begriffsbestimmungen“.
     2 Allgemeine Anforderungen und Tragfähigkeit im Brandfall.
 - file_name: leitfaden_abweichungen.pdf
-  doc_class: oib_leitfaden
+  doc_class: oib_guide
   text: >-
     OIB-Leitfaden Abweichungen im Brandschutz und Brandschutzkonzepte. Ausgabe Mai 2023. Dieser
     Leitfaden dient als Hilfestellung bei der Erstellung von Brandschutzkonzepten, wenn von den
     Anforderungen der OIB-Richtlinie 2 abgewichen wird, und beschreibt, wie die Gleichwertigkeit
     nachgewiesen werden kann.
 - file_name: RL4_erl.pdf
-  doc_class: oib_erlaeuterung
+  doc_class: oib_explanatory_note
   text: >-
     Erläuternde Bemerkungen zu OIB-Richtlinie 4 „Nutzungssicherheit und Barrierefreiheit“, Ausgabe
     Mai 2023. Allgemeines: Die Richtlinie wurde im Hinblick auf ... Zu Punkt 2.1: Die Anforderung an
     die Stufenhöhe wurde beibehalten, weil ... Zu Punkt 4.2: Die Erhöhung der Geländerhöhe begründet sich ...
 - file_name: begriffe_2023.pdf
-  doc_class: oib_begriffe
+  doc_class: oib_definitions
   text: >-
     OIB-Richtlinien Begriffsbestimmungen, Ausgabe Mai 2023. Aufenthaltsraum: Raum, der zum längeren
     Aufenthalt von Personen bestimmt ist. Brandabschnitt: Bereich, der durch brandabschnittsbildende
     Wände und Decken von Teilen eines Gebäudes getrennt ist. Fluchtniveau: Höhendifferenz zwischen
     der Fußbodenoberkante des höchstgelegenen oberirdischen Geschoßes und dem tiefsten Punkt ...
 - file_name: nachweis_waermeschutz_ref.pdf
-  doc_class: oib_referenz
+  doc_class: oib_reference
   text: >-
     OIB-Dokument zur Definition des Niedrigstenergiegebäudes und zur Festlegung von
     Zwischenzielen in einem „Nationalen Plan“ gemäß Artikel 9 (3) zu 2010/31/EU. Referenzdokument
     zur OIB-Richtlinie 6. Tabellen mit Referenzwerten für den Heizwärmebedarf und den
     Gesamtenergieeffizienz-Faktor.
 - file_name: aenderungen_rl2_2019_2023.pdf
-  doc_class: oib_aenderung
+  doc_class: oib_amendment
   text: >-
     Änderungen der OIB-Richtlinie 2 Ausgabe Mai 2023 gegenüber der Ausgabe April 2019. Die folgende
     Gegenüberstellung zeigt die geänderten Textstellen: Punkt 3.1.2 alt: ... neu: ... Punkt 5.1.1

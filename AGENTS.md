@@ -3,9 +3,9 @@
 Piloti is the workspace for architects: a planning office runs its work in it, every project and
 every process, and Piloti, the agent, is a colleague in that office. Building law is one capability
 among many. [`VISION.md`](VISION.md) says what the product is; read it before you describe Piloti
-anywhere. The code: a Next.js UI and BFF (`frontends/ui`), a Python agent on the NeMo Agent Toolkit
-(`src/aiq_agent`), and the knowledge layer that reads the office's documents and the legal corpus
-(`sources/knowledge_layer`).
+anywhere. The code: a Next.js UI and BFF (`apps/workspace`), a Python agent on a third-party agent runtime
+(`packages/agent/src/agent`), and the knowledge layer that reads the office's documents and the legal corpus
+(`packages/knowledge-layer`).
 
 ## Setup
 
@@ -25,9 +25,11 @@ Node must already be on the PATH. Install lines:
 | Question | Go to |
 |---|---|
 | Where does X live in the code | [`docs/architecture/where-is-what.md`](docs/architecture/where-is-what.md) |
+| Where a directory is headed, and the checklist for moving one | [ADR-0145](docs/adr/0145-the-repository-is-laid-out-by-job.md): the target layout and the move order |
 | What is Piloti, and what is it not | [`VISION.md`](VISION.md) |
 | What does this word mean | [`CONTEXT.md`](CONTEXT.md) for the domain, [`docs/glossary.md`](docs/glossary.md) for the code |
 | Set up, branch, commit, get a PR merged | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| What an agent can do in the workspace, and how to add it | [`docs/architecture/agent-surface.md`](docs/architecture/agent-surface.md) |
 | Everything written down, by the question you arrived with | [`docs/README.md`](docs/README.md) |
 | How the system works | [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) |
 | Why it is like that | [`docs/adr/`](docs/adr/) |
@@ -40,7 +42,7 @@ to add here has no home yet: give it one under
 ## Where the scoped guides are
 
 Each service keeps its own `AGENTS.md` beside the code, and inside
-`src/aiq_agent/` so do the packages with invariants of their own, for what holds
+`packages/agent/src/agent/` so do the packages with invariants of their own, for what holds
 only there. **Read the one for the area you are about to touch, before you touch
 it.** They are additive: this file still applies.
 
@@ -60,6 +62,13 @@ writing the code, and say what would. Name the gap and let the user decide which
 one they are paying for. This neither widens a task because you spotted
 something adjacent, nor narrows it to the comfortable part.
 
+**Aim at the north star, land on the clouds.** Design a capability twice:
+first the scene a person would experience if anything were buildable, with
+technology as the enabler and never the objection; then the slices we can
+build, measure and ship now, each naming the part of the star it serves. Keep
+both written down, the star above the plan. Show the person what supports the
+answer, not every step taken.
+
 **Prefer visuals.** For architecture, data flow, deployment topology or
 sequence, render an Excalidraw diagram (`create_view`) rather than prose alone:
 layered left to right, aligned, orthogonal arrows that miss the boxes, short
@@ -74,6 +83,27 @@ library, and say in the PR what you found and why it did or did not fit. Write
 it yourself when the library's shape does not answer your question, when it
 drags a native toolchain into the image, or when the thing *is* the product.
 Then keep the library in the suite as the oracle you check against.
+
+**Industry standard first.** Where a published standard or the dominant
+convention covers the problem, use it and its vocabulary: MCP for agents,
+A2A for agent-to-agent work, OAuth 2.1 and the RFCs behind it for delegation,
+OpenAPI for HTTP contracts, the vendor's own product (a WorkOS feature) before
+our own. Look the standard up before you design; a name we invent for a thing
+the standard already names is a translation every agent and new colleague pays
+for. Deviate only with the reason written in an ADR. Anything an agent reads
+(tool names, descriptions, errors, cards over the wire) is English, with one
+word per concept; German is for people, through i18n, and for domain data.
+
+**Prompting advice is dated.** Advice on prompts, tool descriptions or context
+comes from the vendor's live sources of the last three months, each cited with
+its date; the consultant that gathers it runs on the strongest model. Say what
+the agent is for and give it tools; do not script how it thinks.
+[`working-style.md`](docs/contributing/working-style.md#prompting-advice-has-a-three-month-shelf-life).
+
+**Question the rules, including these.** A rule here records a decision someone
+made with what they knew then. When one blocks the better result, or a new
+standard makes it wrong, say so and change the rule in the same change, with the
+reason; do not contort the code around it and do not break it silently.
 
 **Fix causes, not symptoms.** Establish what a measurement is *of* before
 optimising it. A change that improves a number without changing what produced it
@@ -105,7 +135,7 @@ asked for it in this session:
 
 | Run it freely | Ask first |
 |---|---|
-| `task fe:provision:authz` and its siblings, which check | the same task with `-- --apply`, which writes the catalog into WorkOS (every deploy also runs it, as the Job `grid-app-authz-catalog`) |
+| `task workspace:provision:authz` and its siblings, which check | the same task with `-- --apply`, which writes the catalog into WorkOS (every deploy also runs it, as the Job `grid-app-authz-catalog`) |
 | `npm run preview` in `deploy/pulumi` | `npm run up`, which mutates the cluster, and `npm run destroy`, which deletes it |
 | writing a migration file | `bun run db:migrate` or `migrate:storage` against a database you did not create |
 | `task prompts:push`, which checks | the same task with `-- --apply`, which publishes the platform prompt to Langfuse |
@@ -138,15 +168,18 @@ ones that will fail your PR.
 | When you | You must | What fails you |
 |---|---|---|
 | Write a commit, or open **or rename** a PR | Conventional Commits — `feat` `fix` `docs` `refactor` `perf` `test` `ci` `build` `chore` `revert`. The **PR title** most of all: the repo squash-merges it, so the title is the commit that lands on `develop`. [`CONTRIBUTING.md`](CONTRIBUTING.md#commits-and-pr-titles) | The **Conventional PR title** job blocks the PR. A prose title is the one that keeps slipping through, because nothing local checks it |
-| Name anything in code | English only. German just in UI copy, answers, domain data | Review |
-| Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `tests/aiq_agent/test_product_framing.py` (agent prompts), `frontends/web/scripts/lint-claims.mjs` (the site); review elsewhere |
-| Describe what Piloti is, in a doc, a prompt or copy | Lead with the workspace for architects; building law is one capability, never the frame ([`VISION.md`](VISION.md)) | `tests/aiq_agent/test_product_framing.py` on the first-impression docs and every agent prompt; review elsewhere |
+| Add or change something a person can do (a route, a button, a setting) | Give it an operation in `apps/workspace/bff/agent-api/catalog/` in the same change, or a reason in `NOT_AN_AGENT_CAPABILITY`. Headless first: the operation is the capability, the UI one client of it. Who sees it (an outside agent, Piloti, a native tool of Piloti's instead, the platform door, or nobody: `withheld`, with category and reason) is its entry in `apps/workspace/bff/agent-api/exposure.config.ts`, the one file that decides it. [`docs/contributing/headless-first.md`](docs/contributing/headless-first.md) | `agent-reachability.spec.ts`; the config does not compile without the entry, and `exposure.config.spec.ts` fails a missing reason or a stale `exposure.json` |
+| Name anything in code: a file, folder, identifier, type, enum token, test id, route, API or schema field | **English only, no exceptions for domain words.** `profile-review.ts`, never `steckbrief.ts`; `buildingClass`, never `gebaeudeklasse`. German lives in the i18n dictionaries and in domain data (document names, addresses, legal citations), nowhere else. A German name you meet is a rename in your change; a persisted German key (a profile key such as `standort_adresse`, a stored JSON field) is renamed with its migration and the agent's side in the same change, never by adding a second name beside it German domain term to English code name: [`docs/glossary.md`](docs/glossary.md#german-domain-term-english-code-name) | `tests/test_english_names.py` (Python) and `apps/workspace/tests/english-names.spec.ts` (UI), a per-file ratchet on identifiers with German stems (`ci/german_stems.json`); review for file names, routes and string tokens |
+| Name anything in code or infrastructure | **No product name**: no `aiq`, `grid` or `piloti` in an identifier, file, folder, environment variable, route, header, table, event or tool name. Name it for what it does; the product's name is copy, read from one place. [`code-conventions.md`](docs/contributing/code-conventions.md#no-brand-names) | The `brand-names` hook (`scripts/check_brand_names.py` against `ci/brand_names_baseline.json`) in `task lint:repo` and CI's **Repo checks** job |
+| Write a file or a function | A source file (Python, TypeScript or JavaScript) stays at or under 600 lines and a Python function at or under 60; one already over may not grow, and when it shrinks you lower its entry with `--update`. Generated files, tests, fixtures, migrations and copy are exempt. [`code-conventions.md`](docs/contributing/code-conventions.md#size-limits) | The `file-size` hook (`scripts/check_file_size.py` against `ci/size_baseline.json`) in `task lint:repo` and CI's **Repo checks** job |
+| Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `packages/agent/tests/test_product_framing.py` (agent prompts), `apps/site/scripts/lint-claims.mjs` (the site); review elsewhere |
+| Describe what Piloti is, in a doc, a prompt or copy | Lead with the workspace for architects; building law is one capability, never the frame ([`VISION.md`](VISION.md)) | `packages/agent/tests/test_product_framing.py` on the first-impression docs and every agent prompt; review elsewhere |
 | Add an environment variable | Add its row to [`docs/deployment/environment-variables.md`](docs/deployment/environment-variables.md) in the same change | The `env-docs` pre-commit hook (`scripts/check_env_docs.py`) for the queue-worker files; review elsewhere |
 | Change what a customer can notice | `task release:note -- <slug>` | The `release-notes` pre-commit hook (house rules), then CI's **Repo checks** job (its release-note step) |
 | Change what a customer can **see** | Capture it and attach it to the PR — `agent-browser` to shoot, `before-and-after` to publish. Commit no image files. [`docs/ux/visual-screenshots.md`](docs/ux/visual-screenshots.md) | Review |
 | Add or edit anything under `skills/` | Add a skill only for agent-specific procedure; anything a contributor needs too is a document ([the rule](docs/contributing/agent-skills.md#skill-or-document)). Commit the re-locked `apm.lock.yaml` with it — `task agents:audit` rewrites it for you. The deployment is gitignored, so nothing else in your diff shows the lockfile went stale | `task lint:repo` and CI's **Repo checks** job for the lockfile; review for the rule |
 | Change behaviour a doc describes | Update the doc in the same commit | Review. Stale docs are a bug, because an agent acts on them |
-| Add a model call, a quality check, an agent step or a surface | Make it observable in Langfuse: a model call is a generation (`observed_generation` outside a NAT run), a check is a score declared in `SCORE_DEFINITIONS`, a dimension is trace metadata. Langfuse is our observability platform and this is not optional. [`docs/observability/langfuse.md`](docs/observability/langfuse.md) | `test_model_calls_are_traced.py`, `test_langfuse_scores.py`, review |
+| Add a model call, a quality check, an agent step or a surface | Make it observable in Langfuse: a model call is a generation (`observed_generation` outside a workflow run), a check is a score declared in `SCORE_DEFINITIONS`, a dimension is trace metadata. Langfuse is our observability platform and this is not optional. [`docs/observability/langfuse.md`](docs/observability/langfuse.md) | `test_model_calls_are_traced.py`, `test_langfuse_scores.py`, review |
 | Change what shapes an answer: the prompt, the card or envelope contract, retrieval, ingestion, the answer pipeline, a model or effort default | Run `task be:eval:answer-suite` before and after yourself and put the report in the PR. [The answer suite](docs/contributing/testing-and-verification.md#the-answer-suite) | Review. Nothing else sees seconds, reasoning spikes or a wrong value in a real answer |
 | Say a change is done, finished or ready, or open a PR | Clear [`definition-of-done.md`](docs/contributing/definition-of-done.md) and put its closing checklist, every line filled with evidence or with why not, in your summary | Review. "Done" without evidence is the one way to fail it |
 | Learn something the repo could have told you | Write it down where the next agent will already be looking, before you carry on | Nothing, once. Then everyone re-earns it. [The ratchet](docs/contributing/correction-ratchet.md#human-intervention-is-a-failure-signal) |
@@ -154,7 +187,7 @@ ones that will fail your PR.
 `task verify` is the local gate: host-native, defined once in `Taskfile.yml`. CI
 calls the same definitions but schedules them differently, so a local pass is
 strong evidence rather than a guarantee. `task verify:fast` skips two production
-builds, `fe:build` and `web:build`.
+builds, `workspace:build` and `site:build`.
 
 Three gates sit outside `task verify` and are still required: `task db:test:rls`
 whenever you touch the tenant boundary, `task be:test:postgres` whenever you touch
@@ -165,12 +198,16 @@ for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 
 ## Two rules that span services
 
-**One coarse `SourceKind` drives all rendering** (`baurecht | buero | projekt |
-web`), defined in `src/aiq_agent/common/source_kinds.py`, mirrored in
-`frontends/ui/src/features/chat/lib/source-kinds.ts`. The fine `norm_registry`
-lanes are a sub-label within a kind. `doc_class` is human-set and beats every
-filename guess. There is no shared schema between the two files: changing one
-and not the other renders the chip as unknown.
+**One coarse `SourceKind` drives all rendering** (`building_law | office |
+project | web | measurement`), defined in `packages/agent/src/agent/common/source_kinds.py`.
+The UI's `SOURCE_KINDS` and `SHELVES` are generated from it into
+`apps/workspace/shared/vocabularies.generated.ts` by
+`scripts/generate_vocabularies.py` (the `vocabularies` pre-commit hook), so a
+kind added in Python reaches the chip without a second edit;
+`apps/workspace/bff/source-kinds.ts` holds what the UI makes of each kind. The
+fine `norm_registry` lanes are a sub-label within a kind, and the lane→kind table
+is still a mirror, held by `test_collection_scope_parity.py`. `doc_class` is
+human-set and beats every filename guess.
 
 **Correlated substrate debt belongs in the change that tripped over it.** YAGNI
 forbids unused features, not known defects on the path you are walking. If B
@@ -184,6 +221,23 @@ holds the register.
 UI, the agent's tools, tasks and any later integration are equal clients of it;
 no service function is reached from a second path, and no contract is written
 twice. [`docs/adr/0055-api-first-workspace-primitives.md`](docs/adr/0055-api-first-workspace-primitives.md).
+
+**The agent door offers what only Piloti has** (ADR-0122 and its amendment). One
+MCP server at `/api/mcp` is the agent surface; Claude, Cursor and Piloti itself
+are clients of it, and the UI is another. Each tool is an operation in
+`apps/workspace/bff/agent-api/catalog/` that names a route the UI already
+calls; the route stays the gate, so authz, rate limit and body schema apply
+unchanged. Writes need the person's yes. The door offers the office's workspace
+(its data and the actions on it), Piloti's domain knowledge (the legal corpus,
+BIM/IFC analysis of the office's models) and Piloti itself (`agent-ask-*`). It
+does not offer what a calling agent already has or what is how Piloti itself
+works: a service we only proxy (web search, geocoding), product configuration
+(models, keys, budgets, screening and retention policies, settings), model work
+whose result is no office artifact, a person's own screen state. Such an
+operation stays catalogued with `withheld: { category, reason }`; deleting the
+line offers it again. The operator console is for a separate platform server,
+never the office door. A new capability is a route plus an operation, not a
+Python tool. [`docs/architecture/agent-surface.md`](docs/architecture/agent-surface.md).
 
 ## Scope
 

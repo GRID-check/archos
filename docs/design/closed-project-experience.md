@@ -14,7 +14,7 @@ project's own documents, once, as suggestions a person confirms.
 close dialog ──POST /api/projects/{id}/experience──▶ BFF (lib/project-experience)
                                                       │  vocabulary from the intake definition
                                                       ▼
-                         POST {backend}/v1/internal/project-experience   (aiq_api)
+                         POST {backend}/v1/internal/project-experience   (agent_host)
                                                       │  the ingest's summary model, the project's collection
                          choose documents ─▶ fingerprint pen ─▶ decision pen
                                                       │
@@ -76,12 +76,12 @@ Request:
   "collection": "the project's main collection",
   "fileNames": ["Baubeschreibung.pdf", "Bescheid.pdf"],
   "vocabulary": {
-    "bundesland":     { "multiple": false, "options": [{ "token": "niederoesterreich", "label": "Niederösterreich" }] },
-    "gebaeudeklasse": { "multiple": false, "options": [{ "token": "4", "label": "GK 4" }] },
-    "bauweise":       { "multiple": true,  "options": [{ "token": "holzbau", "label": "Holzbau" }] },
-    "nutzungen":      { "multiple": true,  "options": [] },
-    "vorhabensart":   { "multiple": true,  "options": [] },
-    "oib_ausgabe":    { "multiple": false, "options": [{ "token": "2019", "label": "OIB-Richtlinien 2019" }] }
+    "federal_state":     { "multiple": false, "options": [{ "token": "niederoesterreich", "label": "Niederösterreich" }] },
+    "building_class": { "multiple": false, "options": [{ "token": "4", "label": "GK 4" }] },
+    "construction_method":       { "multiple": true,  "options": [{ "token": "holzbau", "label": "Holzbau" }] },
+    "uses":      { "multiple": true,  "options": [] },
+    "work_type":   { "multiple": true,  "options": [] },
+    "oib_edition":    { "multiple": false, "options": [{ "token": "2019", "label": "OIB-Richtlinien 2019" }] }
   },
   "knownFacts": ["bundesland"],
   "knownDecisions": ["Brandsperre je Geschoß aus 1 mm Stahlblech …"]
@@ -141,7 +141,7 @@ Response:
   not cleared for it; the decision stays, since it was read while the file was
   open to every member. A document's name is restricted information as the
   audit trail and the download log treat it (ADR-0087).
-* A hit from another project stays kind `projekt`; what marks it is the
+* A hit from another project stays kind `project`; what marks it is the
   project it carries (`SourceProject`, on the wire `{id, name, status,
   landNote}`). The answer's source chips label it „Präzedenzfall" with the
   project's status and Bundesland (`features/chat/lib/precedent.ts`), and the

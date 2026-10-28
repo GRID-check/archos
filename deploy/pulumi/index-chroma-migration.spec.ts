@@ -167,8 +167,8 @@ describe("the Chroma migration Job, switched on", () => {
     expect(importer.image).toMatch(/aiq-agent|backend/);
     expect(importer.command).toEqual(["python", "scripts/import_vectors.py", "--in", "/exchange/export", "--verify"]);
     const env = envOf(importer);
-    expect(env.AIQ_QDRANT_URL.value).toBe("http://qdrant.grid.svc.cluster.local:6333");
-    expect(env.AIQ_QDRANT_API_KEY.valueFrom!.secretKeyRef).toEqual({ name: "grid-secrets", key: "AIQ_QDRANT_API_KEY" });
+    expect(env.QDRANT_URL.value).toBe("http://qdrant.grid.svc.cluster.local:6333");
+    expect(env.QDRANT_API_KEY.valueFrom!.secretKeyRef).toEqual({ name: "grid-secrets", key: "QDRANT_API_KEY" });
   });
 
   it("runs as a non-root user with no privilege, on read-only roots where the image allows", () => {

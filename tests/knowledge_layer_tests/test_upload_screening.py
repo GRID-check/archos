@@ -17,7 +17,7 @@ from knowledge_layer.llamaindex.screening import ScreeningVerdict
 from knowledge_layer.llamaindex.screening import quarantine_error
 from knowledge_layer.llamaindex.screening import screen_pages
 
-from aiq_agent.common.content_screen import screening_config_unusable
+from agent.common.content_screen import screening_config_unusable
 
 _IBAN_AT = "AT61 1904 3002 3457 3201"
 _IBAN_AT_COMPACT = "AT611904300234573201"

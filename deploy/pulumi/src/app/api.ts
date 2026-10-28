@@ -1,13 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import {
-  GridConfig,
-  appPullPolicy,
-  assertHpaTargetIsProportional,
-  assertMemoryFitsLimit,
-  backendImage,
-  toResourceRequirements,
-} from "../config";
+import { DeployConfig } from '../config'
+import { appPullPolicy, backendImage } from '../config/images'
+import { assertHpaTargetIsProportional, assertMemoryFitsLimit, toResourceRequirements } from '../config/resources'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
@@ -22,6 +17,7 @@ import {
 import { withLangfuseKeysChecksum } from "../platform/langfuse";
 import { AppSecrets, AppWiring, apiEnv } from "./config";
 import { PORT, UID } from "../constants";
+import { API_TIER } from "./tier-names";
 
 export interface Api {
   deployment: k8s.apps.v1.Deployment;
@@ -35,10 +31,10 @@ const STARTUP_PERIOD_SECONDS = 10;
 const STARTUP_FAILURE_THRESHOLD = 60;
 
 /**
- * The api tier (ADR-0082 step B): `GRID_ROLE=api` of the backend image, every
+ * The api tier (ADR-0082 step B): `PROCESS_ROLE=api` of the backend image, every
  * HTTP route the backend serves except the chat socket. It is what
  * `BACKEND_URL` names: the BFF, the housekeeping CronJobs, the purger and the
- * workers' callers all reach it through the `aiq-api` Service.
+ * workers' callers all reach it through its Service, under `name` (`tier-names.ts`).
  *
  * Stateless: a Deployment without a volume, like the worker tiers, behind a
  * Service. Its work is request-bound (knowledge lookups, LLM utilities, job
@@ -52,27 +48,28 @@ const STARTUP_FAILURE_THRESHOLD = 60;
  */
 export function installApi(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
+  name: string = API_TIER,
 ): Api {
-  const labels = commonLabels("aiq-api");
+  const labels = commonLabels(name);
   const shutdown = gracefulShutdown(ROLLOUT.api, "python");
 
   // Fail the preview, not production: a CPU request far below steady-state
   // usage turns the HPA below into an on/off switch to maxReplicas.
-  assertHpaTargetIsProportional("aiq-api", cfg.api.resources, cfg.api.hpaCpuTargetPercent);
-  assertMemoryFitsLimit("aiq-api", cfg.api.resources);
+  assertHpaTargetIsProportional(name, cfg.api.resources, cfg.api.hpaCpuTargetPercent);
+  assertMemoryFitsLimit(name, cfg.api.resources);
   assertStartupFitsRollout(
-    "aiq-api",
+    name,
     ROLLOUT.api,
     startupBudgetSeconds(STARTUP_PERIOD_SECONDS, STARTUP_FAILURE_THRESHOLD),
   );
 
   const deployment = new k8s.apps.v1.Deployment(
-    "aiq-api",
+    name,
     {
-      metadata: { name: "aiq-api", namespace: w.namespace, labels },
+      metadata: { name, namespace: w.namespace, labels },
       spec: {
         // Initial size; the HPA owns replica count thereafter.
         replicas: cfg.api.minReplicas,
@@ -96,7 +93,7 @@ export function installApi(
             ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
-                name: "aiq-api",
+                name,
                 image: backendImage(cfg),
                 imagePullPolicy: appPullPolicy(cfg, backendImage(cfg)),
                 securityContext: hardenedContainerSecurityContext(),
@@ -104,7 +101,7 @@ export function installApi(
                 env: apiEnv(w),
                 resources: toResourceRequirements(cfg.api.resources),
                 lifecycle: shutdown.lifecycle,
-                // Boot builds the NAT workflow and opens Qdrant, as the chat
+                // Boot builds the agent-runtime workflow and opens Qdrant, as the chat
                 // tier's does: the same window before liveness kicks in.
                 startupProbe: {
                   httpGet: { path: "/health", port: PORT.backend },
@@ -144,9 +141,9 @@ export function installApi(
   // Load-balanced ClusterIP: what BACKEND_URL names. Every caller is a plain
   // HTTP client, so no per-pod address and no headless Service.
   const service = new k8s.core.v1.Service(
-    "aiq-api",
+    name,
     {
-      metadata: { name: "aiq-api", namespace: w.namespace, labels },
+      metadata: { name, namespace: w.namespace, labels },
       spec: {
         selector: labels,
         ports: [{ port: PORT.backend, targetPort: PORT.backend, name: "http" }],
@@ -156,9 +153,9 @@ export function installApi(
   );
 
   const hpa = new k8s.autoscaling.v2.HorizontalPodAutoscaler(
-    "aiq-api",
+    name,
     {
-      metadata: { name: "aiq-api", namespace: w.namespace, labels },
+      metadata: { name, namespace: w.namespace, labels },
       spec: {
         scaleTargetRef: {
           apiVersion: "apps/v1",
@@ -183,7 +180,7 @@ export function installApi(
 
   // Cap voluntary disruptions at one pod so an automatic-upgrade node drain
   // cannot evict every api replica at once.
-  const pdb = installPdb("aiq-api", w.namespace, w.provider, labels, [deployment]);
+  const pdb = installPdb(name, w.namespace, w.provider, labels, [deployment]);
 
   return { deployment, service, hpa, pdb };
 }

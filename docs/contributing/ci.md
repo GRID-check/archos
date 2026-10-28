@@ -32,6 +32,13 @@ starts, and every other job reads its answers.
   push. When there is no such commit, or the lookup fails, it diffs against the
   root commit and everything runs.
 
+A skipped tier counts as passed, so a path no tier names is a path whose
+change merges untested. [`tests/test_ci_filter_coverage.py`](../../tests/test_ci_filter_coverage.py)
+fails on any tracked path outside every test tier unless its `UNFILTERED` list
+says why no tier needs it; moving a directory without moving its filter line
+turns Repo checks red. It matches with wcmatch and checks that against
+picomatch, which is what `dorny/paths-filter` uses, wherever node is installed.
+
 The second rule is what makes the rest safe. A push that diffed only against
 its parent let a red commit's tier stop running as soon as an unrelated commit
 landed on top of it, and the deploy shipped the broken code under a green run.
@@ -60,19 +67,19 @@ It also lists the third-party image pins the change adds or moves
 | Job | Runs when | What it does |
 |---|---|---|
 | Plan (`changes`) | always | the three answers above, written to the run summary with the reason for each |
-| Repo checks (`repo`) | unless reused | pre-commit on all files, the agent-skill lockfile, ruff, the tests of `ci/`, the workflows and the release-note pipeline (`task be:test:harness`), release-note lint and (PRs) the release-note requirement, gitleaks over the full history of the commit under test |
+| Repo checks (`repo`) | unless reused | pre-commit on all files, the agent-skill lockfile, ruff, the tests of `ci/`, the workflows and the release-note pipeline (`task be:test:harness`), release-note lint and (PRs) the release-note requirement, gitleaks over the commits a PR adds (a push: its full history) |
 | SAST (`semgrep`) | PRs touching code | Semgrep, diff-aware: blocks findings the PR introduces |
-| Backend affected tests (`backend-affected`) | PRs, backend tier, selection possible | per suite (core, aiq_api, `sources/`), only the tests the change reaches (`task be:test:affected`), plus the claim queues on Postgres |
+| Backend affected tests (`backend-affected`) | PRs, backend tier, selection possible | per suite (core, agent_host, `sources`, the Python packages), only the tests the change reaches (`task be:test:affected`), plus the claim queues on Postgres |
 | Backend test database (`backend-testmon`) | every push to `develop` | records which test runs which code (`task be:test:testmon`) and caches it when green. Not a check |
 | Backend core (`backend`) | backend tier: pushes, and PRs testmon cannot select for | the core suite in 4 shards (`task be:test:shard`), each writing coverage data |
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
-| Backend suites (`backend-suites`) | backend tier | the aiq_api suite, the `sources/` suites, the migration test, and the claim-queue suites on a real Postgres (`task be:test:postgres`) |
-| Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
-| Frontend tests (`frontend-test`) | frontend tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 6 shards; on a PR whose change a selection can see, only the specs it reaches (`task fe:test:related`) |
-| Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
-| Web, Infra, Standalone packages | their tier | `task web:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
+| Backend suites (`backend-suites`) | backend tier | three jobs side by side: the agent_host suite, the Python packages' suites (`sources`), and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
+| Workspace (`workspace`) | workspace tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
+| Workspace tests (`workspace-test`) | workspace tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task workspace:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task workspace:test:related`) |
+| Workspace coverage | PRs, workspace tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
+| Site, Infra, Standalone packages | their tier | `task site:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |
-| Image build (`image`) | PRs that change an image's inputs | builds it, read-only token, no push. For the UI this IS the production build check: `fe:build` is not run separately |
+| Image build (`image`) | PRs that change an image's inputs | builds it, read-only token, no push. For the UI this IS the production build check: `workspace:build` is not run separately |
 | Image build + push (`image-push`) | pushes, image not in GHCR | builds and pushes `inputs-<hash>` and the layer cache |
 | Tag images (`publish`) | pushes, after every check passed | `sha-<commit>` on all three images, and `latest` on `develop` |
 | `CI OK` (`ci-ok`) | always | fails unless every needed job passed or was skipped; on a green PR, records the tested tree for reuse |
@@ -106,7 +113,7 @@ a changelog commit. It built the web image. The frontend and backend changes of
 five merged pull requests were never built, and staging kept running the old
 images until someone dispatched a rebuild by hand.
 
-`GRID_GIT_SHA` inside an image is the commit that *built* it. An image whose
+`GIT_SHA` inside an image is the commit that *built* it. An image whose
 inputs did not change is re-tagged, not rebuilt, so a container reports the
 commit its code came from.
 
@@ -120,7 +127,7 @@ deploy exactly as before.
 
 | Piece | Where | What it does |
 |---|---|---|
-| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `frontends/ui/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GRID_GIT_SHA` the container reports |
+| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `apps/workspace/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GIT_SHA` the container reports |
 | Backend release | `deploy.yml` (staging), before the plan (`PostHog/resolve-release`) | Finds or creates release `grid-agent` at the backend image's commit and hands its id to the Python tiers as `POSTHOG_RELEASE_ID` (below) |
 | Deploy marker | `deploy.yml`, after each `Pulumi up` (`deploy/pulumi/scripts/posthog-annotate.sh`) | A project annotation `deploy dev <sha>` or `deploy prod <sha>` at the time the apply finished. `continue-on-error`: a PostHog outage never turns a deploy red |
 
@@ -175,7 +182,7 @@ Why it is built this way:
   the binary. It has to: `bun install --production` over an existing
   `node_modules` does not prune devDependencies (measured with bun 1.3.11), so
   the later production install would let it ship in the runtime image.
-- Caching: `ARG GRID_GIT_SHA` is declared before `bun run build`, because the
+- Caching: `ARG GIT_SHA` is declared before `bun run build`, because the
   release version is read during the build. That costs nothing a rebuild did
   not already pay: an image is rebuilt only when its inputs changed, and then
   the build layer re-runs anyway. `POSTHOG_PROJECT_ID` is an arg before the
@@ -185,7 +192,7 @@ An image already in GHCR under its `inputs-<hash>` is not rebuilt when the
 secret is added later, so its maps are never uploaded. Wait for the weekly
 rebuild, or bump `SCHEME` in `ci/image_inputs.py`.
 
-Python (`aiq_agent`) has no source maps; PostHog links its exceptions to a
+Python (`agent`) has no source maps; PostHog links its exceptions to a
 release through `POSTHOG_RELEASE_ID`, which the SDK (`posthog>=7.59`) sends as
 `$release_id`. The staging deploy runs
 [`PostHog/resolve-release`](https://posthog.com/docs/error-tracking/link-releases/python)
@@ -250,8 +257,8 @@ replace CodeQL. Turning one of them off is a setting
 ## The backend lane
 
 Measured on 2026-10-19: CI runs took 13 to 15 minutes, and the one `backend`
-job was 13 to 14 of them. It ran the core suite (7:30 to 8:00), then aiq_api
-(1:20), then `sources/` (3:30), in one job, while every other check was done by
+job was 13 to 14 of them. It ran the core suite (7:30 to 8:00), then agent_host
+(1:20), then the Python packages (`sources`, 3:30), in one job, while every other check was done by
 minute three. Job-level queueing was under three seconds in every run looked at,
 so the runner cap was not what made the run long; this one job was.
 
@@ -267,7 +274,7 @@ What it was made of, and what was done about each:
   at the average, so a stale file unbalances the shards and never drops a test.
   Each shard writes coverage data and `backend-coverage` combines it and
   applies the 65% gate, so the gate still sees the whole suite.
-- **`sources/` is Qdrant collection setup.** About 130 tests each create and
+- **The `sources` suite (the Python packages) is Qdrant collection setup.** About 130 tests each create and
   drop collections, and each collection was ~47 sequential payload-index
   calls. It runs in its own job beside the shards.
 - **Most PRs ran the lane without touching backend code.** The backend filter
@@ -279,6 +286,14 @@ What it was made of, and what was done about each:
   16 MB); the steps that read a file at the base fetch it on demand, with the
   job token handed to git through that step's env (`ci/git_auth.sh`) rather
   than written to `.git/config`.
+- **Repo checks and SAST cloned the whole history**, ~75 s and ~72 s of every
+  PR's critical path (`docs/audit/blast-radius-2026-10.md` §7). A pull
+  request's Repo checks now start at depth 1 and `ci/fetch_merge_base.sh`
+  deepens them only down to the merge base, which the release-note rule and
+  gitleaks read; reno's own lint, which walks the whole history, runs only
+  when the notes, reno's config or its pin change (`release:lint:house` is the
+  rest). A push keeps the full clone. `semgrep ci` finds its merge base itself,
+  from the GitHub API (`GH_TOKEN`) or by deepening the shallow clone.
 
 **A pull request runs only the Python tests its change reaches.** Sharding
 made the full suite ~5 minutes; a typical change reaches a few dozen tests.
@@ -291,30 +306,54 @@ and the 65% coverage gate run on every push to `develop`, which the deploy
 waits for, so a test a selection missed turns `develop` red before staging,
 not production. [`ci/pr_selection.py`](../../ci/pr_selection.py) decides, and
 runs the full suite on a pull request whenever testmon cannot see the change:
-a conftest, the lockfile or a `pyproject.toml`, how the backend jobs run,
-Python outside the tested packages (tests load `scripts/` and
-`frontends/benchmarks/` by path or in a subprocess), package data no test
-names, or no recorded database. Known blind spot: a test that only exercises
+a conftest, a Python fixture, the lockfile or a `pyproject.toml`, how the
+backend jobs run, Python outside the tested packages (tests load `scripts/` and
+`deploy/` by path or in a subprocess), package data or a fixture
+no test names, or no recorded database. A data fixture under `tests/fixtures/`
+adds the tests that name it or one of its directories, as tests read whole
+fixture directories. A non-Python file that a helper or conftest reads (a
+quoted name) runs the full suite, since nothing says which tests load it. Known blind spot: a test that only exercises
 code in a subprocess is selected when its own file changes, not when the code
 it spawns does; the push run is what catches that.
 
 **The UI suite selects the same way, by import graph.** `vitest related`
-keeps the specs whose imports reach a changed file, split over the same six
-shards. Every spec that reads the tree from disk instead of importing it (the
-route, key and migration walkers; ~100 found by what they call, not by a
-list) runs on every selection, because no import graph connects them to a
-change. Changes to what every spec loads (the manifest, the vitest config and
+keeps the specs whose imports reach a changed file, split over the same eight
+shards. A spec that reads the tree from disk instead of importing it (the
+route, key and migration walkers; ~120, found by what they call, not by a
+list) has inputs no import graph sees, so it declares them in its first line,
+`// @disk-inputs: src/app/api/**, ../../contracts/wire/v2/**` (globs relative to
+`apps/workspace`), and runs when a changed path matches one, wherever in the
+repository it is. `config/vitest/disk-inputs.ts` records what every declaring
+spec reads while it runs and fails it on a path the line leaves out; `node
+scripts/declare-disk-inputs.mjs <spec>` rewrites the line from a recorded run.
+A spec that declares nothing runs on every selection, as all of them used to:
+one that starts a process (the recorder cannot see the child's reads), one
+that reads from a file list (over 60 inputs: `english-names.spec.ts`), and one
+that read nothing in the recording run. Changes to what every spec loads (the manifest, the vitest config and
 setup, the mocks the setup installs, tsconfig) run the whole suite. A median
-change still reaches ~45% of the specs, because shared modules sit behind
-barrels; the saving is the other half, and a leaf change reaches a handful.
-The coverage comment comes only from a full run.
+squash commit that touches the UI still selected 815 of 1,644 specs, 86% of
+the suite's time, in October 2026: half of them change a dictionary string,
+which reaches ~720 specs, and the rest mostly touch a module behind
+`lib/api/errors.ts` or the schema barrel. A leaf change reaches a handful.
+`task workspace:blast-radius` holds each hub to the specs it reached when recorded;
+the hubs, and the splits that would cut them, are in
+[`docs/audit/blast-radius-2026-10.md`](../audit/blast-radius-2026-10.md). The
+coverage comment comes only from a full run.
 
-**What a later push to the same pull request re-runs.** Both selections are
-taken against the pull request's last green run, not its base: the tests that
-run passed, so the next push owes only what changed since. That set is the pull
-request's own diff since that run's head, plus every file the base branch
+**What a later push to the same pull request re-runs.** Two references are
+sound, and the Plan job takes the one that forces fewer full suites, then the
+one with fewer files. One is the whole pull request against its base: a test
+that reaches none of its files answers on the merge commit what it answers on
+`develop`, whose own full run is the deploy gate. The other is the pull
+request's last green run: the tests that ran passed, so the next push owes the
+pull request's own diff since that run's head, plus every file the base branch
 changed since an hour before that run started (the merge commit CI tests
-carries both). The backend keeps its testmon database per pull request for the
+carries both). The second wins while `develop` stands still. When it moved, the
+hour of `develop` it adds (a median 83 files) used to force the full Python
+suite on 90 of 113 re-runs, where the pull request's own diff forces it on 27.
+The first holds only measured from `develop`'s testmon database, so when it
+wins (`reference: base`) the api and sources suites restore that one instead
+of their own. The backend keeps its testmon database per pull request for the
 same reason, so tests that failed keep running until they pass. A push that
 only answers a review comment runs the few tests that comment touched, and one
 that touches nothing a UI spec reads runs no UI spec at all.

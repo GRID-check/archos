@@ -1,6 +1,6 @@
 """The three drafting turn shapes, and the one assertion both harnesses make.
 
-A drafting turn is the shape the Piloti-writes work added and nothing measured:
+A drafting turn is the shape the agent-writes work added and nothing measured:
 someone commissions a document, has it revised, and files it into the project.
 Ledger row 5 asked for the three against a live model; this module is what
 keeps that eval and the scripted one from drifting into two different tests.
@@ -22,9 +22,9 @@ a turn that has nothing to rule on.
 
 Used by:
 
-* ``tests/benchmarks/test_turn_shapes_live.py`` — the real model, stub
+* ``evals/turn-shapes/test_turn_shapes_live.py`` — the real model, stub
   retrieval, real working directory (skips without ``OPENROUTER_API_KEY``).
-* ``tests/aiq_agent/agents/piloti/test_agent.py`` — the same three through the
+* ``packages/agent/tests/agents/piloti/test_agent.py`` — the same three through the
   compiled graph on a scripted LLM, which is what runs in CI.
 """
 
@@ -78,7 +78,7 @@ class DraftingCase:
     card: str = UNFILED
 
 
-_AKTENVERMERK = "/entwuerfe/aktenvermerk-ma37-fluchtweg.md"
+_FILE_NOTE = "/drafts/aktenvermerk-ma37-fluchtweg.md"
 
 _SEEDED_DRAFT = (
     "# Aktenvermerk – Besprechung MA 37\n\n"
@@ -109,7 +109,7 @@ REVISE = DraftingCase(
     # rather than a shortened paragraph.
     required_tools=("edit_file",),
     forbidden_tools=("write_file", "file_draft", SUBMITTING),
-    seed={_AKTENVERMERK: _SEEDED_DRAFT},
+    seed={_FILE_NOTE: _SEEDED_DRAFT},
     card=UNFILED,
 )
 
@@ -120,7 +120,7 @@ FILE = DraftingCase(
     # Filing is not submitting. „Ablegen" asks nobody to review anything, and
     # a turn that submits has put an item in a colleague's inbox uninvited.
     forbidden_tools=(SUBMITTING,),
-    seed={_AKTENVERMERK: _SEEDED_DRAFT},
+    seed={_FILE_NOTE: _SEEDED_DRAFT},
     card=FILED,
 )
 
@@ -128,7 +128,7 @@ DRAFTING_CASES: tuple[DraftingCase, ...] = (COMMISSION, REVISE, FILE)
 
 #: The path the seeded cases hand the model, so a test that needs to name it
 #: (a scripted tool call) and the seed itself cannot disagree.
-SEEDED_DRAFT_PATH = _AKTENVERMERK
+SEEDED_DRAFT_PATH = _FILE_NOTE
 
 
 def draft_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:

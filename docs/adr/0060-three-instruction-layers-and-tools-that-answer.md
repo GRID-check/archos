@@ -82,7 +82,7 @@ turn, an unopened document is never described, an overview is complete when
 every member of the family was opened — and what each corpus holds. It no longer
 says what to call, in what order, or how many times. It is managed as a Langfuse
 prompt with **git as the source of truth**: the static half lives in
-`prompts/piloti_static.md`, CI checks that file and review reads it, a merge
+`prompts/chat_static.md`, CI checks that file and review reads it, a merge
 pushes it to Langfuse, and labels carry experiments. Unset or unreachable,
 every process falls back to the committed file. This is ADR-0014's shape one
 layer over: the repo holds the boot fallback, the live value is set where it can
@@ -177,7 +177,7 @@ buys the turn nothing and the guard measures the call, not the reasoning.
   cached-token share now reported per turn. A prompt edit that re-teaches a
   sequence shows up there or nowhere.
 - **The published prompt comes from git.** `task prompts:push` (2026-09-24)
-  checks a label against the committed `piloti_static.md` and, with `--apply`,
+  checks a label against the committed `chat_static.md` and, with `--apply`,
   publishes it as a `git`-tagged version naming its commit (the tag is not
   provenance; see the 2026-09-25 amendment); it refuses a label
   whose version was edited in Langfuse until `task prompts:pull` has brought it
@@ -228,7 +228,7 @@ written for.
 three PROJECT_MEMORY / PROPOSAL_DECISIONS / REVIEW_DECISIONS explanations (718)
 were identical bytes on every turn, rendered below the marker where identical
 bytes cost the most. They are now `<dokumentrollen>` and `<project_record>` in
-`prompts/piloti_static.md`: cacheable, and editable in Langfuse, which is where
+`prompts/chat_static.md`: cacheable, and editable in Langfuse, which is where
 platform doctrine belongs under (a). The doctrine's first paragraph was dropped
 rather than moved — it reintroduced the retrieval order „Wissensbasis → RIS →
 Web" that this ADR deleted from the static half, and its other half (the

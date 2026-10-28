@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    When another AI assistant searches your documents through Piloti, a long
+    result now keeps every hit with its citation instead of losing the last
+    ones, and the assistant is no longer asked for a note it never needed.

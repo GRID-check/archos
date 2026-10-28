@@ -18,7 +18,7 @@ import { DependencyGraph } from "./src/test-support/dependency-graph";
 
 const JOB = "kubernetes:batch/v1:Job";
 const DEPLOYMENT = "kubernetes:apps/v1:Deployment";
-const UI = resolve(__dirname, "../../frontends/ui");
+const UI = resolve(__dirname, "../../apps/workspace");
 
 let graph: DependencyGraph;
 const commands = new Map<string, string[]>();

@@ -1,0 +1,261 @@
+import asyncio
+import logging
+import os
+from typing import Any
+
+from pydantic import Field
+from pydantic import SecretStr
+
+from nat.plugin_api import Builder
+from nat.plugin_api import FunctionBaseConfig
+from nat.plugin_api import FunctionInfo
+from nat.plugin_api import register_function
+
+logger = logging.getLogger(__name__)
+
+
+class _NoRow:
+    """The Herleitung row where there is no Grid agent to draw it: takes the calls, emits nothing."""
+
+    def __init__(self, *_args: Any, **_fields: Any) -> None:
+        pass
+
+    def finish(self, *_args: Any, **_fields: Any) -> None:
+        pass
+
+
+class _NoOutcome:
+    """What a call found, kept for a row nobody draws."""
+
+    def __init__(self) -> None:
+        self.hits: int | None = None
+        self.failed = False
+
+    def settle(self, *_args: Any, **_fields: Any) -> None:
+        pass
+
+
+try:  # the Grid agent draws one row per call (ADR-0132); the standalone dist has no agent package
+    from agent.common.action_outcome import ActionOutcome
+    from agent.common.action_rows import ActionRow
+except ImportError:
+    ActionOutcome = _NoOutcome  # type: ignore[assignment,misc]
+    ActionRow = _NoRow  # type: ignore[assignment,misc]
+
+# Track if we've already warned about missing API key to avoid duplicate warnings
+_missing_key_warned = False
+
+
+class TavilyWebSearchToolConfig(FunctionBaseConfig, name="tavily_web_search"):
+    """
+    Tool that retrieves relevant contexts from web search (using Tavily) for the given question.
+    Requires a TAVILY_API_KEY environment variable or api_key config.
+    """
+
+    include_answer: str = Field(default="advanced", description="Whether to include answers in the search results")
+    max_results: int = Field(default=3, description="Maximum number of search results to return")
+    api_key: SecretStr | None = Field(default=None, description="The API key for the Tavily service")
+    max_retries: int = Field(default=3, ge=1, description="Maximum number of retries for the search request")
+    advanced_search: bool = Field(default=False, description="Whether to use advanced search")
+    max_content_length: int | None = Field(
+        default=None,
+        description="Max characters per result content. If set, truncates each result to reduce token usage.",
+    )
+    api_base_url: str | None = Field(default=None, description="API base URL to use for Tavily Client constructor")
+    include_domains: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Restrict results to these domains only. Empty (default) applies no restriction. "
+            "This is a hard filter: results from any domain not in the list are dropped."
+        ),
+    )
+    exclude_domains: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Drop results from these domains. Empty (default) applies no restriction. "
+            "This is a hard filter: matching domains are removed from the results."
+        ),
+    )
+
+
+@register_function(config_type=TavilyWebSearchToolConfig)
+async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Builder):
+    from langchain_tavily import TavilySearch
+
+    if not os.environ.get("TAVILY_API_KEY") and tool_config.api_key:
+        os.environ["TAVILY_API_KEY"] = tool_config.api_key.get_secret_value()
+
+    # Check if API key is available
+    if not os.environ.get("TAVILY_API_KEY"):
+        # Log warning only once to avoid duplicate warnings when multiple tools use Tavily
+        global _missing_key_warned
+        if not _missing_key_warned:
+            logger.warning(
+                "TAVILY_API_KEY not found. The web search tool will be registered but will "
+                "return an error when called. To enable: set TAVILY_API_KEY in your environment, "
+                ".env file, or specify api_key in your workflow config."
+            )
+            _missing_key_warned = True
+
+        # Yield a stub function that returns an error message
+        async def _tavily_web_search_stub(question: str) -> str:
+            """Web search tool (unavailable - missing TAVILY_API_KEY)."""
+            return (
+                "Error: Web search is unavailable because TAVILY_API_KEY is not set.\n"
+                "To enable this tool:\n"
+                "1. Get an API key from https://tavily.com/\n"
+                "2. Set the API key in your environment or in your .env file\n"
+                "3. Restart the application"
+            )
+
+        yield FunctionInfo.from_fn(
+            _tavily_web_search_stub,
+            description=_tavily_web_search_stub.__doc__,
+        )
+        return
+
+    # Build the Tavily client once per registration rather than per call.
+    # tavily_kwargs depends only on tool_config (constant after registration),
+    # and TavilySearch.ainvoke takes the query per call, so a single reused
+    # client is byte-identical in behavior. Latency: avoids a fresh TCP+TLS
+    # handshake to api.tavily.com on every web search (connection keep-alive).
+    tavily_kwargs = {
+        "max_results": tool_config.max_results,
+        "search_depth": "advanced" if tool_config.advanced_search else "basic",
+        "include_answer": tool_config.include_answer,
+    }
+
+    if tool_config.api_base_url:
+        tavily_kwargs["api_base_url"] = tool_config.api_base_url
+    if tool_config.include_domains:
+        tavily_kwargs["include_domains"] = tool_config.include_domains
+    if tool_config.exclude_domains:
+        tavily_kwargs["exclude_domains"] = tool_config.exclude_domains
+    tavily_search = TavilySearch(**tavily_kwargs)
+
+    # Platform-tunable result count (Platform → Retrieval), resolved per call.
+    # The shared client covers the build-time default; an admin override builds
+    # a one-off client so the shared one is never mutated under concurrency.
+    settings_key = "web.advanced_max_results" if tool_config.advanced_search else "web.max_results"
+
+    def _max_results() -> int:
+        try:
+            from agent.common.retrieval_settings import get_retrieval_setting
+        except ImportError:  # standalone dist: the configured count is the only one there is
+            return tool_config.max_results
+        return get_retrieval_setting(settings_key, tool_config.max_results)
+
+    def _client_for(max_results: int):
+        if max_results == tool_config.max_results:
+            return tavily_search
+        return TavilySearch(**(tavily_kwargs | {"max_results": max_results}))
+
+    async def _tavily_web_search(question: str) -> str:
+        """Retrieves relevant contexts from web search (using Tavily) for the given question.
+
+        Args:
+            question (str): The question to be answered. Will be truncated to 400 characters if longer.
+
+        Returns:
+            str: The web search results containing relevant documents and their URLs.
+        """
+        outcome = ActionOutcome()
+        row = ActionRow("web", query=question)
+        try:
+            result = await _search(question, outcome)
+        except BaseException:
+            row.finish("error")
+            raise
+        outcome.settle(row, default="error")
+        return result
+
+    async def _search(question: str, outcome: ActionOutcome) -> str:
+        client = _client_for(_max_results())
+
+        # Tavily API requires queries under 400 characters
+        if len(question) > 400:
+            question = question[:397] + "..."
+
+        def _truncate_content(content: str) -> str:
+            """Truncate content if max_content_length is set."""
+            if tool_config.max_content_length and len(content) > tool_config.max_content_length:
+                return content[: tool_config.max_content_length - 3] + "..."
+            return content
+
+        for attempt in range(tool_config.max_retries):
+            try:
+                search_docs = await client.ainvoke({"query": question})
+                # Handle cases where response is not a dict (e.g., error string from API)
+                if isinstance(search_docs, str):
+                    raise ValueError(f"Search returned an error: {search_docs}")
+
+                if not isinstance(search_docs, dict):
+                    raise ValueError(f"Search returned unexpected response type: {type(search_docs).__name__}")
+
+                # Handle error responses from TavilySearch
+                if "error" in search_docs:
+                    raise ValueError(f"Search error: {search_docs['error']}")
+
+                if "results" not in search_docs:
+                    raise ValueError("Search returned no results")
+
+                results = search_docs.get("results", [])
+                if not isinstance(results, list):
+                    raise ValueError(f"Tavily API returned unexpected results format: {type(results)}")
+
+                outcome.hits = len(results)
+                try:
+                    from agent.common.turn_status import record_lane_hit as capture_lane_hit
+                except ImportError:  # standalone dist without the Grid agent package
+                    capture_lane_hit = None
+                if capture_lane_hit is not None:
+                    # The per-round ledger reads this, never the prose.
+                    for doc in results:
+                        if not isinstance(doc, dict):
+                            continue
+                        url = doc.get("url") or ""
+                        if url:
+                            capture_lane_hit(url, title=doc.get("title") or None)
+
+                answer_text = ""
+                if search_docs.get("answer"):
+                    answer_text = f"<Answer>\n{search_docs['answer']}\n</Answer>\n\n---\n\n"
+
+                web_search_results = "\n\n---\n\n".join(
+                    [
+                        f'<Document href="{doc.get("url", "")}">\n'
+                        f"<title>\n{doc.get('title')}\n</title>\n"
+                        f"{_truncate_content(doc.get('content') or '')}\n</Document>"
+                        for doc in results
+                    ]
+                )
+                combined = answer_text + web_search_results
+                return combined if combined else "Search returned no results"
+
+            except Exception as e:
+                if attempt == tool_config.max_retries - 1:
+                    outcome.failed = True
+                    # On final attempt, return a user-friendly error message
+                    error_msg = str(e)
+                    if isinstance(e, ValueError):
+                        return error_msg
+                    if "401" in error_msg or "Unauthorized" in error_msg:
+                        return (
+                            "Error: Web search failed due to invalid API key (401 Unauthorized).\n"
+                            "Please check your TAVILY_API_KEY and ensure it is valid.\n"
+                        )
+                    elif "error" in error_msg.lower():
+                        return f"Error: Web search failed - {error_msg}"
+                    else:
+                        return f"Error: Web search failed - {error_msg}"
+                await asyncio.sleep(2**attempt)
+
+        # Unreachable when max_retries >= 1 (enforced by config), but a tool
+        # must always hand the agent a string, never None.
+        outcome.failed = True
+        return "Error: Web search failed - no attempts were made"
+
+    yield FunctionInfo.from_fn(
+        _tavily_web_search,
+        description=_tavily_web_search.__doc__,
+    )

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def store():
                     disposed = engine.dispose()
                     if asyncio.iscoroutine(disposed):
                         asyncio.run(disposed)
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
         DocumentMetadataStore._tables_initialized.discard(db_url)
 
@@ -192,7 +192,7 @@ class TestSubtreeRewrite:
 class TestRowsOfSomeFiles:
     """``get_many``: one file's facts without reading the collection."""
 
-    def test_reads_only_the_named_rows_and_guards_the_fassung_link(self, store):
+    def test_reads_only_the_named_rows_and_guards_the_revision_link(self, store):
         _file(store, "alt.pdf", "Statik")
         _file(store, "neu.pdf", None)
         _file(store, "verwaist.pdf", None)

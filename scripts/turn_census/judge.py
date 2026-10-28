@@ -22,7 +22,7 @@ import os
 import urllib.error
 import urllib.request
 
-from aiq_agent.common.openrouter import PLATFORM_FIXED
+from agent.common.openrouter import PLATFORM_FIXED
 
 JUDGE_MODEL = os.environ.get("SUITE_JUDGE_MODEL", "openai/gpt-6-luna")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -39,6 +39,34 @@ RUBRICS: dict[str, str] = {
         "Does the ANSWER warn that a precedent it relies on was decided under an earlier edition of a rule, "
         "another law or another Bundesland, or that the rules may have changed since, so it must be checked "
         "before it is reused?"
+    ),
+    # The workspace eval (`workspace_eval.py`): what an office-operations answer says about its writes.
+    "pending": (
+        "The assistant cannot change the workspace itself: every change it asks for is a proposal that waits "
+        "until the person accepts it. Does the ANSWER present the change the QUESTION is about as proposed or "
+        "waiting for the person's acceptance, and nowhere claim that it has already been made?"
+    ),
+    # The office-file eval (`files_eval.py`): a search that came back empty must be reported as empty.
+    "none_found": (
+        "Does the ANSWER tell the reader that nothing was found: that the thing the QUESTION asks about "
+        "is written nowhere in the documents searched? Answer no when it names a passage that says it."
+    ),
+    "asks": (
+        "Does the ANSWER ask the reader which of several people, documents or projects is meant (or otherwise "
+        "ask for the one detail it needs) instead of choosing one itself?"
+    ),
+    # The north-star set (`north_star_eval.py`, docs/architecture/north-star-answers.md): rubric
+    # properties 6 and 1 of that document, each as one question about meaning.
+    "separates_sources": (
+        "Does the ANSWER keep apart what a project document states, what the law or a guideline requires, and "
+        "what is the writer's own estimate or inference, so a reader can tell which is which; and does it say "
+        "plainly what remains open instead of presenting an estimate or a document's claim as a legal finding? "
+        "Answer no when it declares compliance or non-compliance as settled on a value it only estimated or "
+        "took from a project document."
+    ),
+    "flags_mismatch": (
+        "Does the ANSWER point out, on its own, that two of the project's documents disagree on a fact (a "
+        "number, a count, an index or a date), naming both values or both documents?"
     ),
 }
 
@@ -86,7 +114,7 @@ def ask(kind: str, question: str, answer: str, *, timeout: float = 60.0) -> bool
         with urllib.request.urlopen(request, timeout=timeout) as response:
             reply = json.loads(response.read().decode("utf-8"))
         text = str(reply["choices"][0]["message"]["content"]).strip().casefold()
-    except (urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError):
+    except urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError:
         return None
     if text.startswith("yes"):
         return True

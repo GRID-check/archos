@@ -13,7 +13,7 @@ informed: everyone working in this repo
 `knowledge_search` fills `top_k` with whatever it found. A question the corpus
 cannot answer still gets sixteen formatted excerpts, and the model reads them
 as evidence: fill@16 is 1.000 on the golden set's should-refuse rows
-([rag-system-audit-2026-08.md](../architecture/rag-system-audit-2026-08.md)
+([rag-system-audit-2026-08.md](../audit/rag-system-audit-2026-08.md)
 §20). A cosine floor cannot separate the two cases, because the top-1
 similarities overlap: 0.799 to 0.933 for answerable questions, 0.795 to 0.865
 for should-refuse ones.
@@ -70,7 +70,7 @@ Chosen option: 3, **state the verdict, never enforce it**.
 * **Nothing is removed.** Every passage still reaches the model, and the
   citation registry reads the same records. ADR-0064 is untouched.
 * **The prompt names the label.** `COVERAGE_GAP_LABEL` in
-  `grounding_block.py` is the one spelling, and `piloti_static.md`
+  `grounding_block.py` is the one spelling, and `chat_static.md`
   `<research_rules>` tells the model what to do with it: say no supporting
   passage was found, name what was searched, answer from none of the
   passages, and do not call it „Nicht geregelt“, because the rule may sit in
@@ -132,4 +132,4 @@ would let the threshold be set for this question rather than borrowed, and when
 rerank scores are carried and measured, which would make option 4 a real
 candidate.
 
-The code-level rule for producers: [`sources/AGENTS.md`](../../sources/AGENTS.md).
+The code-level rule for producers: [`sources/AGENTS.md`](../../packages/AGENTS.md).

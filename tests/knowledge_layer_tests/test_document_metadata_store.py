@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.document_metadata_store import _normalize_db_url
-from aiq_agent.knowledge.schema import AvailableDocument
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.document_metadata_store import _normalize_db_url
+from agent.knowledge.schema import AvailableDocument
 
 # =============================================================================
 # URL Normalization Tests
@@ -141,6 +141,10 @@ class TestAvailableDocument:
             "supersedes": None,
             "revision_suggestion": None,
             "revision_facts": None,
+            "page_count": None,
+            "dossier": None,
+            "doc_references": None,
+            "coverage": None,
             "change_summary": None,
             "change_basis": None,
             "added_at": None,
@@ -165,6 +169,10 @@ class TestAvailableDocument:
             "supersedes": None,
             "revision_suggestion": None,
             "revision_facts": None,
+            "page_count": None,
+            "dossier": None,
+            "doc_references": None,
+            "coverage": None,
             "change_summary": None,
             "change_basis": None,
             "added_at": None,
@@ -330,36 +338,150 @@ class TestDocumentMetadataStore:
             engine.dispose()
             DocumentMetadataStore.dispose_engine(db_url)
 
+    def test_the_retained_table_is_renamed_in_place_and_keeps_its_rows(self):
+        """`document_fassung_retained` became `document_revision_retained` (migration 0165 era)."""
+        from sqlalchemy import create_engine
+        from sqlalchemy import inspect
+        from sqlalchemy import text
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url = f"sqlite:///{Path(tmpdir) / 'retained.db'}"
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)  # a current database
+            engine = create_engine(db_url)
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE document_revision_retained RENAME TO document_fassung_retained"))
+                conn.execute(
+                    text(
+                        "INSERT INTO document_fassung_retained (collection, filename, superseded_by) "
+                        "VALUES ('c', 'neu.pdf', 'alt.pdf')"
+                    )
+                )
+
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)
+
+            inspector = inspect(engine)
+            assert inspector.has_table("document_revision_retained")
+            assert not inspector.has_table("document_fassung_retained")
+            with engine.connect() as conn:
+                rows = conn.execute(text("SELECT filename, superseded_by FROM document_revision_retained")).all()
+            assert [tuple(row) for row in rows] == [("neu.pdf", "alt.pdf")]
+            engine.dispose()
+            DocumentMetadataStore.dispose_engine(db_url)
+
+    def test_a_german_doc_class_is_rewritten_to_its_english_key_and_others_are_left(self):
+        """A row written before the English Dokumentart keys is honest again on the next start."""
+        from sqlalchemy import create_engine
+        from sqlalchemy import text
+
+        from agent.knowledge.document_metadata_store import TABLE_NAME
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url = f"sqlite:///{Path(tmpdir) / 'classes.db'}"
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            store = DocumentMetadataStore(db_url)
+            store.register("c", "rl.pdf", "OIB-RL 2")
+            store.register("c", "plan.pdf", "Grundriss")
+            store.register("c", "own.pdf", "Eigenes")
+            engine = create_engine(db_url)
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        f"UPDATE {TABLE_NAME} SET doc_class = 'oib_richtlinie', "
+                        "doc_class_suggestion = 'oib_leitfaden' WHERE filename = 'rl.pdf'"
+                    )
+                )
+                conn.execute(text(f"UPDATE {TABLE_NAME} SET doc_class = 'law' WHERE filename = 'own.pdf'"))
+
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)
+
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    text(f"SELECT filename, doc_class, doc_class_suggestion FROM {TABLE_NAME} ORDER BY filename")
+                ).all()
+            assert [tuple(row) for row in rows] == [
+                ("own.pdf", "law", None),
+                ("plan.pdf", None, None),
+                ("rl.pdf", "oib_guideline", "oib_guide"),
+            ]
+            engine.dispose()
+            DocumentMetadataStore.dispose_engine(db_url)
+
+    def test_a_pod_that_has_not_rolled_yet_recreates_the_old_table_and_its_rows_are_moved_across(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy import text
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url = f"sqlite:///{Path(tmpdir) / 'both.db'}"
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)
+            engine = create_engine(db_url)
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "CREATE TABLE document_fassung_retained (collection VARCHAR(256) NOT NULL, "
+                        "filename VARCHAR(512) NOT NULL, superseded_by TEXT, revision_suggestion TEXT, "
+                        "change_summary TEXT, change_basis TEXT, PRIMARY KEY (collection, filename))"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO document_revision_retained (collection, filename, superseded_by) "
+                        "VALUES ('c', 'kept.pdf', 'new-table.pdf')"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO document_fassung_retained (collection, filename, superseded_by) "
+                        "VALUES ('c', 'kept.pdf', 'old-table.pdf'), ('c', 'moved.pdf', 'x.pdf')"
+                    )
+                )
+
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)
+
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT filename, superseded_by FROM document_revision_retained ORDER BY filename")
+                ).all()
+                left = conn.execute(text("SELECT count(*) FROM document_fassung_retained")).scalar()
+            assert [tuple(row) for row in rows] == [("kept.pdf", "new-table.pdf"), ("moved.pdf", "x.pdf")]
+            assert left == 0
+            engine.dispose()
+            DocumentMetadataStore.dispose_engine(db_url)
+
     def test_set_and_get_doc_class_roundtrip(self, store):
         """set_doc_class updates an existing row; get_doc_class reads it back."""
         store.register("coll", "doc.pdf", "A summary.")
         assert store.get_doc_class("coll", "doc.pdf") is None  # default null
-        assert store.set_doc_class("coll", "doc.pdf", "oib_richtlinie") is True
-        assert store.get_doc_class("coll", "doc.pdf") == "oib_richtlinie"
+        assert store.set_doc_class("coll", "doc.pdf", "oib_guideline") is True
+        assert store.get_doc_class("coll", "doc.pdf") == "oib_guideline"
         # It also surfaces on the AvailableDocument read.
         docs = store.get_all("coll")
-        assert docs[0].doc_class == "oib_richtlinie"
+        assert docs[0].doc_class == "oib_guideline"
 
     def test_set_doc_class_without_row_returns_false(self, store):
         """set_doc_class never creates a row: no summary → False, still null."""
-        assert store.set_doc_class("coll", "missing.pdf", "gesetz") is False
+        assert store.set_doc_class("coll", "missing.pdf", "law") is False
         assert store.get_doc_class("coll", "missing.pdf") is None
 
     def test_a_doc_class_suggestion_is_stored_beside_the_class_never_as_it(self, store):
         """ADR-0064 use 8: the decided Dokumentart waits for a person."""
         store.register("coll", "doc.pdf", "A summary.")
-        store.set_doc_class("coll", "doc.pdf", "sonstiges")
-        assert store.set_doc_class_suggestion("coll", "doc.pdf", "gesetz") is True
-        assert store.get_doc_class("coll", "doc.pdf") == "sonstiges"
-        assert store.get_doc_class_suggestions_batch("coll", ["doc.pdf", "other.pdf"]) == {"doc.pdf": "gesetz"}
+        store.set_doc_class("coll", "doc.pdf", "other")
+        assert store.set_doc_class_suggestion("coll", "doc.pdf", "law") is True
+        assert store.get_doc_class("coll", "doc.pdf") == "other"
+        assert store.get_doc_class_suggestions_batch("coll", ["doc.pdf", "other.pdf"]) == {"doc.pdf": "law"}
         assert store.set_doc_class_suggestion("coll", "doc.pdf", None) is True
         assert store.get_doc_class_suggestions_batch("coll", ["doc.pdf"]) == {}
-        assert store.set_doc_class_suggestion("coll", "missing.pdf", "gesetz") is False
+        assert store.set_doc_class_suggestion("coll", "missing.pdf", "law") is False
 
     def test_set_doc_class_clear(self, store):
         """A None value clears the stored doc_class back to null."""
         store.register("coll", "doc.pdf", "A summary.")
-        store.set_doc_class("coll", "doc.pdf", "gesetz")
+        store.set_doc_class("coll", "doc.pdf", "law")
         assert store.set_doc_class("coll", "doc.pdf", None) is True
         assert store.get_doc_class("coll", "doc.pdf") is None
 
@@ -411,8 +533,8 @@ class TestDocumentMetadataStore:
 
             # Existing rows survive with a null doc_class; new writes round-trip.
             assert store.get_doc_class("c", "old.pdf") is None
-            store.set_doc_class("c", "old.pdf", "oib_leitfaden")
-            assert store.get_doc_class("c", "old.pdf") == "oib_leitfaden"
+            store.set_doc_class("c", "old.pdf", "oib_guide")
+            assert store.get_doc_class("c", "old.pdf") == "oib_guide"
 
             engine.dispose()
             DocumentMetadataStore.dispose_engine(db_url)
@@ -785,7 +907,7 @@ class TestReSummarisingKeepsTheHumanColumns:
     rename, the platform owner's reclassification, and (once folders travelled)
     the user's filing. Postgres, on its `ON CONFLICT DO UPDATE` branch, kept all
     three. Same store, same call, two different outcomes, and the SQLite one is
-    what the default `AIQ_SUMMARY_DB` uses.
+    what the default `SUMMARY_DB` uses.
     """
 
     @pytest.fixture
@@ -818,7 +940,7 @@ class TestFactoryFunctions:
     @pytest.fixture(autouse=True)
     def reset_summary_store(self):
         """Reset the global summary store before each test."""
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         factory._document_metadata_store = None
         yield
@@ -834,20 +956,20 @@ class TestFactoryFunctions:
 
     def test_configure_summary_db(self, temp_db_url):
         """Test configuring the summary database."""
-        from aiq_agent.knowledge import configure_summary_db
+        from agent.knowledge import configure_summary_db
 
         configure_summary_db(temp_db_url)
 
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         assert factory._document_metadata_store is not None
         assert factory._document_metadata_store.db_url == temp_db_url
 
     def test_register_summary(self, temp_db_url):
         """Test registering a summary via factory function."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("test_collection", "test.pdf", "Test summary")
@@ -859,9 +981,9 @@ class TestFactoryFunctions:
 
     def test_register_summary_none_skipped(self, temp_db_url):
         """Test that None summaries are not registered."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("collection", "doc.pdf", None)
@@ -871,9 +993,9 @@ class TestFactoryFunctions:
 
     def test_register_summary_empty_string_skipped(self, temp_db_url):
         """Test that empty string summaries are not registered."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("collection", "doc.pdf", "")
@@ -883,9 +1005,9 @@ class TestFactoryFunctions:
 
     def test_get_available_documents(self, temp_db_url):
         """Test getting available documents via factory function."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("my_collection", "file1.pdf", "Summary for file 1")
@@ -899,9 +1021,9 @@ class TestFactoryFunctions:
     @pytest.mark.asyncio
     async def test_get_available_documents_async(self, temp_db_url):
         """Test async retrieval of available documents."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge.factory import get_available_documents_async
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge.factory import get_available_documents_async
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("async_test", "doc.pdf", "Async test summary")
@@ -912,10 +1034,10 @@ class TestFactoryFunctions:
 
     def test_unregister_summary(self, temp_db_url):
         """Test unregistering a summary via factory function."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import register_summary
-        from aiq_agent.knowledge.factory import unregister_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import register_summary
+        from agent.knowledge.factory import unregister_summary
 
         configure_summary_db(temp_db_url)
         register_summary("collection", "doc1.pdf", "Summary 1")
@@ -929,10 +1051,10 @@ class TestFactoryFunctions:
 
     def test_clear_collection_summaries(self, temp_db_url):
         """Test clearing collection summaries via factory function."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import clear_collection_summaries
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import clear_collection_summaries
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("coll1", "doc1.pdf", "Summary 1")
@@ -945,10 +1067,10 @@ class TestFactoryFunctions:
 
     def test_clear_all_summaries(self, temp_db_url):
         """Test clearing all summaries via factory function."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import clear_all_summaries
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import clear_all_summaries
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("coll1", "doc1.pdf", "Summary 1")
@@ -961,13 +1083,13 @@ class TestFactoryFunctions:
 
     def test_lazy_initialization(self):
         """Test that summary store is lazily initialized with default DB."""
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         # Don't call configure_summary_db - should auto-initialize
         docs = get_available_documents("test_collection")
         assert docs == []  # Empty but works
 
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         assert factory._document_metadata_store is not None
 
@@ -989,7 +1111,7 @@ class TestReconcileCollectionSummaries:
     @pytest.fixture(autouse=True)
     def reset_summary_store(self):
         """Reset the global summary store before each test."""
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         factory._document_metadata_store = None
         yield
@@ -1005,8 +1127,8 @@ class TestReconcileCollectionSummaries:
 
     @staticmethod
     def _file_info(file_name, status=None):
-        from aiq_agent.knowledge.schema import FileInfo
-        from aiq_agent.knowledge.schema import FileStatus
+        from agent.knowledge.schema import FileInfo
+        from agent.knowledge.schema import FileStatus
 
         return FileInfo(
             file_id=file_name,
@@ -1032,9 +1154,9 @@ class TestReconcileCollectionSummaries:
     def test_backfills_missing_document_with_text_sample(self, temp_db_url):
         """A document present in the index but absent from summaries gets a
         deterministic fallback summary derived from its sampled text."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import reconcile_collection_summaries
 
         configure_summary_db(temp_db_url)
 
@@ -1053,9 +1175,9 @@ class TestReconcileCollectionSummaries:
     def test_no_sampler_falls_back_to_filename(self, temp_db_url):
         """Backends without the optional text-sampling hook still get a row —
         visibility beats a perfect summary."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import reconcile_collection_summaries
 
         configure_summary_db(temp_db_url)
 
@@ -1071,10 +1193,10 @@ class TestReconcileCollectionSummaries:
 
     def test_noop_when_already_consistent(self, temp_db_url):
         """A document already present in the summaries table is left alone."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
         register_summary("coll", "already.pdf", "Already has a summary.")
@@ -1091,10 +1213,10 @@ class TestReconcileCollectionSummaries:
     def test_ignores_files_not_indexed_successfully(self, temp_db_url):
         """A FAILED file was never actually indexed, so it must never get a
         fallback summary row."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
-        from aiq_agent.knowledge.schema import FileStatus
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge.schema import FileStatus
 
         configure_summary_db(temp_db_url)
 
@@ -1108,9 +1230,9 @@ class TestReconcileCollectionSummaries:
     def test_sampler_exception_falls_back_to_filename(self, temp_db_url):
         """A broken ``get_document_text_sample`` must not break reconciliation
         (fail-open, same contract as the primary summary path)."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import reconcile_collection_summaries
 
         configure_summary_db(temp_db_url)
 
@@ -1129,8 +1251,8 @@ class TestReconcileCollectionSummaries:
 
     def test_list_files_exception_returns_zero(self, temp_db_url):
         """A backend that cannot list files at all fails open (never raises)."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge.factory import reconcile_collection_summaries
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge.factory import reconcile_collection_summaries
 
         configure_summary_db(temp_db_url)
 
@@ -1160,7 +1282,7 @@ class TestSummaryIntegration:
     @pytest.fixture(autouse=True)
     def reset_store(self):
         """Reset global store before each test."""
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         factory._document_metadata_store = None
         yield
@@ -1168,11 +1290,11 @@ class TestSummaryIntegration:
 
     def test_full_workflow(self, temp_db_url):
         """Test complete summary storage workflow."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import clear_collection_summaries
-        from aiq_agent.knowledge.factory import register_summary
-        from aiq_agent.knowledge.factory import unregister_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import clear_collection_summaries
+        from agent.knowledge.factory import register_summary
+        from agent.knowledge.factory import unregister_summary
 
         # 1. Configure database
         configure_summary_db(temp_db_url)
@@ -1199,9 +1321,9 @@ class TestSummaryIntegration:
 
     def test_multiple_collections_isolation(self, temp_db_url):
         """Test that different sessions/collections are isolated."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import get_available_documents
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
 
@@ -1226,9 +1348,9 @@ class TestSummaryIntegration:
     @pytest.mark.asyncio
     async def test_mixed_sync_async_operations(self, temp_db_url):
         """Test mixing sync registration with async retrieval."""
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge.factory import get_available_documents_async
-        from aiq_agent.knowledge.factory import register_summary
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge.factory import get_available_documents_async
+        from agent.knowledge.factory import register_summary
 
         configure_summary_db(temp_db_url)
 
@@ -1378,6 +1500,24 @@ class TestTopicsAndCapture:
     def test_register_without_topics_is_none_not_empty(self, store):
         store.register("coll", "plan.pdf", "A plan.")
         assert store.get_all("coll")[0].topics is None
+
+    def test_the_reading_is_written_together_and_read_back(self, store):
+        store.register("coll", "bsk.pdf", "Ein Brandschutzkonzept.")
+        dossier = {"version": 1, "document_type": "fire_safety_concept", "facts": []}
+        references = [{"kind": "norm", "key": "trvb 124 f", "label": "TRVB 124 F", "pages": [2]}]
+        coverage = {"pages": 4, "not_read": 0, "reasons": {}}
+
+        assert store.set_reading("coll", "bsk.pdf", dossier=dossier, references=references, coverage=coverage)
+        doc = store.get_all("coll")[0]
+        assert (doc.dossier, doc.doc_references, doc.coverage) == (dossier, references, coverage)
+
+        # A re-ingest that read nothing of the kind clears the old reading.
+        store.set_reading("coll", "bsk.pdf", dossier=None, references=[], coverage=None)
+        doc = store.get_all("coll")[0]
+        assert (doc.dossier, doc.doc_references, doc.coverage) == (None, None, None)
+
+    def test_a_reading_for_a_document_without_a_row_is_refused(self, store):
+        assert store.set_reading("coll", "ghost.pdf", dossier={"version": 1}, references=None, coverage=None) is False
 
     async def test_get_all_async_decodes_topics_and_capture(self, store):
         store.register("acoll", "plan.pdf", "A plan.", topics=["Attika"])
@@ -1619,8 +1759,8 @@ class TestTopicsAndCaptureThroughTheFactory:
 
     @pytest.fixture
     def db_url(self):
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import factory
 
         with tempfile.TemporaryDirectory() as tmpdir:
             url = f"sqlite:///{Path(tmpdir) / 'factory_topics.db'}"
@@ -1630,11 +1770,11 @@ class TestTopicsAndCaptureThroughTheFactory:
             DocumentMetadataStore.dispose_engine(url)
 
     def test_register_summary_carries_topics_and_the_person_seams_round_trip(self, db_url):
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge import get_document_person_topics
-        from aiq_agent.knowledge import get_topic_vocabulary
-        from aiq_agent.knowledge import register_summary
-        from aiq_agent.knowledge import set_document_topics_by_person
+        from agent.knowledge import get_available_documents
+        from agent.knowledge import get_document_person_topics
+        from agent.knowledge import get_topic_vocabulary
+        from agent.knowledge import register_summary
+        from agent.knowledge import set_document_topics_by_person
 
         register_summary("coll", "plan.pdf", "A plan.", tags=["Grundriss"], topics=["Attika"])
         assert get_available_documents("coll")[0].topics == ["Attika"]
@@ -1645,12 +1785,110 @@ class TestTopicsAndCaptureThroughTheFactory:
         assert set_document_topics_by_person("coll", "ghost.pdf", ["Fluchtweg"]) is False
 
     def test_set_document_capture_is_visible_on_the_available_document(self, db_url):
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge import register_summary
-        from aiq_agent.knowledge import set_document_capture
+        from agent.knowledge import get_available_documents
+        from agent.knowledge import register_summary
+        from agent.knowledge import set_document_capture
 
         register_summary("coll", "foto.jpg", "Baustelle.")
         capture = {"captured_at": "2026-10-09T14:30:00", "latitude": 47.8, "longitude": 13.0}
         assert set_document_capture("coll", "foto.jpg", capture) is True
         assert get_available_documents("coll")[0].capture == capture
         assert set_document_capture("coll", "ghost.jpg", capture) is False
+
+
+# =============================================================================
+# Page count per document
+# =============================================================================
+
+
+class TestPageCount:
+    """``page_count`` is an INTEGER column, written by the ingest and by the backfill, read into the listing."""
+
+    @staticmethod
+    def _legacy_db_without_page_count(dir_path):
+        """A ``summaries`` table from before the page count (and the other optional columns)."""
+        from sqlalchemy import create_engine
+        from sqlalchemy import text
+
+        db_url = f"sqlite:///{dir_path / 'legacy.db'}"
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE summaries ("
+                    "collection VARCHAR(256) NOT NULL, "
+                    "filename VARCHAR(512) NOT NULL, "
+                    "summary TEXT NOT NULL, "
+                    "created_at DATETIME, "
+                    "PRIMARY KEY (collection, filename))"
+                )
+            )
+            conn.execute(
+                text("INSERT INTO summaries (collection, filename, summary) VALUES ('oib', 'old.pdf', 'Alt.')")
+            )
+            conn.commit()
+        return db_url, engine
+
+    @pytest.fixture
+    def store(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url = f"sqlite:///{Path(tmpdir) / 'page_counts.db'}"
+            store = DocumentMetadataStore(db_url)
+            yield store
+            DocumentMetadataStore.dispose_engine(db_url)
+
+    def test_migration_adds_an_integer_column_and_keeps_old_rows(self):
+        from sqlalchemy import inspect
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url, engine = self._legacy_db_without_page_count(Path(tmpdir))
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            try:
+                store = DocumentMetadataStore(db_url)
+                columns = {c["name"]: str(c["type"]) for c in inspect(engine).get_columns("document_metadata")}
+                assert columns["page_count"].upper().startswith("INTEGER")
+                (old,) = store.get_all("oib")
+                assert old.file_name == "old.pdf"
+                assert old.page_count is None
+            finally:
+                engine.dispose()
+                DocumentMetadataStore.dispose_engine(db_url)
+                DocumentMetadataStore._tables_initialized.discard(db_url)
+
+    def test_set_and_read_back_through_the_listing(self, store):
+        store.register("oib", "plan.pdf", "Grundriss.")
+        assert store.set_page_count("oib", "plan.pdf", 14) is True
+        assert store.get_page_count("oib", "plan.pdf") == 14
+        (doc,) = store.get_all("oib")
+        assert doc.page_count == 14
+        (batch,) = store.get_many("oib", ["plan.pdf"])
+        assert batch.page_count == 14
+
+    def test_a_re_ingest_overwrites_with_the_newest_count(self, store):
+        store.register("oib", "plan.pdf", "Grundriss.")
+        store.set_page_count("oib", "plan.pdf", 4)
+        store.register("oib", "plan.pdf", "Grundriss, neu gelesen.")
+        assert store.get_page_count("oib", "plan.pdf") == 4
+        store.set_page_count("oib", "plan.pdf", 6)
+        assert store.get_page_count("oib", "plan.pdf") == 6
+
+    def test_none_clears_the_count(self, store):
+        store.register("oib", "plan.pdf", "Grundriss.")
+        store.set_page_count("oib", "plan.pdf", 4)
+        store.set_page_count("oib", "plan.pdf", None)
+        assert store.get_page_count("oib", "plan.pdf") is None
+
+    def test_a_text_file_has_no_count(self, store):
+        store.register("oib", "notiz.txt", "Notiz.")
+        assert store.set_page_count("oib", "notiz.txt", 0) is True
+        assert store.get_page_count("oib", "notiz.txt") is None
+
+    def test_set_is_update_only(self, store):
+        assert store.set_page_count("oib", "missing.pdf", 3) is False
+        assert store.get_page_count("oib", "missing.pdf") is None
+
+    def test_invalid_values_are_not_stored(self, store):
+        store.register("oib", "plan.pdf", "Grundriss.")
+        for bad in (True, -2, "7"):
+            store.set_page_count("oib", "plan.pdf", bad)
+            assert store.get_page_count("oib", "plan.pdf") is None

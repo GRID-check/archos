@@ -361,7 +361,7 @@ Two things changed, and the order matters:
   card. A skeleton is close to the height of the sentence it stands in for but
   never exactly it, and a two-line summary next to a one-line one has the same
   problem — so the row still needs the block to grow. The same block in
-  `DocumentGridCard`'s unresolved tile got the same treatment, for the same
+  `DocumentAnswerCard`'s unresolved tile got the same treatment, for the same
   reason. This is a property of the shared card, so the Büroablage (which draws the same `FileCard`, with its gold kind chip passed in) is fixed by the same change.
 
 **The second half of the same moment:** the thumbnail cache treated "no
@@ -583,7 +583,7 @@ Piloti suggests in two ways:
   suggestion only above a confidence threshold. The preview names the basis:
   the name, or what Piloti read.
 
-The preview's one section „Fassungen und Freigabe“ (`document-fassungen.tsx`,
+The preview's one section „Fassungen und Freigabe“ (`document-revisions.tsx`,
 below) asks the question. „Ja,
 neuere Fassung“ links the two, and „Nein“ is remembered, so the same pair is not
 suggested again. Once linked:
@@ -596,13 +596,13 @@ suggested again. Once linked:
 A same-name re-upload (ADR-0054's version chain) gets the same change line
 against its previous version.
 
-**One section, not two: „Fassungen und Freigabe“** (`document-fassungen.tsx`,
+**One section, not two: „Fassungen und Freigabe“** (`document-revisions.tsx`,
 mounted once in `file-preview-pane.tsx`, directly under Piloti's reading).
 It replaced „Fassungen“ (the older documents linked under other names) and
 „Freigabe und Fassungen“ (this document's own uploads and the approval
 controls, last in the rail), which described one history in two places.
 
-- **Header, always visible, about the NEWEST Fassung only** (`lib/fassung-standing.ts`):
+- **Header, always visible, about the NEWEST Fassung only** (`lib/revision-standing.ts`):
   „Fassung 2 · In Prüfung“; the track with its four stages named (Entwurf, In
   Prüfung, Freigegeben, Veröffentlicht), the last one reached in ink; the next
   step with a person („Nächster Schritt: Freigabe durch Sabine Gruber“, from the
@@ -623,9 +623,9 @@ controls, last in the rail), which described one history in two places.
   „Änderungen anfordern“ visible, „Piloti überarbeiten lassen“ and „Ablehnen“
   behind ⋯, and one line on what approving means.
 - **Body, a disclosure:** the suggestion card, then ONE timeline, newest first and
-  numbered „Fassung 3, 2, 1“ (`buildFassungTimeline`) across the uploads under
+  numbered „Fassung 3, 2, 1“ (`buildRevisionTimeline`) across the uploads under
   this name (`useDocumentLifecycle`) and the older documents under other names
-  (`file.fassung.history`), merged by date. An older Fassung that was opened has
+  (`file.revision.history`), merged by date. An older Fassung that was opened has
   the newer document as its top row. The index or date is a secondary tag;
   „aktuell“ marks only the Fassung Piloti answers from; no row says „Ersetzt“.
   Each fact once: the person and date on the act line („Hochgeladen von Anna
@@ -646,9 +646,9 @@ controls, last in the rail), which described one history in two places.
   controls; the uploads under the name are read only when the listing says there
   is more than one.
 
-Preview: `/dev/fassungen` (nine states at the rail's real 248px, `?locale=en`), `/dev/document-lifecycle`.
+Preview: `/dev/revisions` (nine states at the rail's real 248px, `?locale=en`), `/dev/document-lifecycle`.
 
-**Looking at two Fassungen together** (`fassung-compare/`, „Fassungen
+**Looking at two Fassungen together** (`revision-compare/`, „Fassungen
 vergleichen“). A full-screen dialog with three views: *Nebeneinander* (two
 sheets that scroll and zoom as one; stacked on a phone, each fitted to half the
 height, which is why a phone opens in *Wischen* instead), *Überlagert* (older inked cyan, newer orange, multiplied, so unchanged
@@ -671,7 +671,7 @@ middle (`MiddleTruncate`, `lib/text/middle-truncate.ts`) from where the two
 names first differ, so the index survives. Both pages are drawn at one scale
 in a shared box; when the page counts differ the dialog says so. „Seite N mit
 Piloti vergleichen“ asks the vision comparison for that page
-(`useFassungVisualChanges`); each answered page is kept, so marking page 2
+(`useRevisionVisualChanges`); each answered page is kept, so marking page 2
 keeps page 1's boxes. The boxes are numbered outlines in the mark ink (dashed
 in the overlay) on the newer sheet, and the list beside it (under it below
 1024 px) groups them by page, with Piloti's sentence under its box's label when
@@ -689,19 +689,68 @@ the preview URL; a page load that fails names the file and offers „Erneut
 versuchen“, anything that cannot be drawn shows „Diese Dateien lassen sich
 nicht visuell vergleichen“ with „Textvergleich öffnen“ (when the surface passes
 `onOpenTextCompare`) or „Zum Fassungsverlauf“. A surface mounts it with
-`useFassungCompare(loadSource?, { onOpenTextCompare? })`
-(`openFassungCompare(older, newer, overlays?)` plus `{compareElement}` once).
+`useRevisionCompare(loadSource?, { onOpenTextCompare? })`
+(`openRevisionCompare(older, newer, overlays?)` plus `{compareElement}` once).
 A link can open it too: `?doc=<newer>&compare=<older>` on the files page, which
 the inbox's „Fassungen vergleichen“ uses (`use-compare-param.ts`).
-Preview: `/dev/fassung-compare`.
+Preview: `/dev/revision-compare`.
 
 **Names are never more than the reader may see.** The BFF resolves each linked
 name to a document the reader can open. A reference to a held, restricted or
-archived document is dropped, not shown (`lib/documents/fassung.ts`).
+archived document is dropped, not shown (`lib/documents/revision-links.ts`).
 
 **Naming.** No surface calls a file a plan. A name with an index says a file
 has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 `src/i18n/forbidden-file-words.spec.ts` holds the copy to it.
+
+## Sorting the root
+
+„Alle Dateien in Ordner einsortieren…“ (⋯ → Erweitert) sorts up to 5000 loose
+files into the shelf's folders as a server run (ADR-0121,
+[`proposed-changes.md`](../architecture/proposed-changes.md#sorting-the-root)).
+
+**Preview:** `/dev/root-sort` (the review; `?variant=unsure`), and every
+working state: `?variant=starting`, `waiting`, `working`, `grouping`,
+`applying`, `done`.
+
+**The complaint.** The first version felt broken. A session on 21 October 2026
+(PostHog) shows why: the person started a sort, saw a bar at „0 von 24“ and
+nothing else for thirteen seconds, closed the dialog, and started it again. The
+cursor a slice commits only moved when the slice ended, three calls of 60 files
+that each took 35 to 53 s, so the count jumped once a minute and stood still in
+between. Grouping was a spinner with no number. And after they had applied, the
+Postfach still said the review was ready.
+
+**What it does now, law by law:**
+
+- **Visibility of system status, Doherty threshold.** Something on screen
+  changes every few seconds: the count and the bar after each call of 30 files
+  (the server writes its progress per call, migration 0174), the files just
+  placed below them, and during grouping a clock („Läuft seit 42 Sek.“), because
+  a number that visibly moves is the difference between working and hung. A run
+  whose job waits for a free worker says so instead of sitting at zero.
+- **Goal-gradient, Zeigarnik.** The four steps (Zuordnen, Neue Ordner,
+  Durchsehen, Verschieben) are one track (`StageTrack`) shown from the intro to
+  the end, so the review reads as step three of four, and the person sees how
+  much is behind them. Time left („Noch etwa 2 Min.“) appears once there is a
+  rate to read it from, rounded up, read over two minutes because progress
+  arrives in steps rather than as a stream.
+- **Labor illusion, operational transparency.** „Zuletzt zugeordnet“ names the
+  last four files and the folder each went to. The work is seen happening, and
+  a wrong guess is visible before the review.
+- **User control and freedom.** The dialog says, in every working state, that
+  closing it is safe, and where the result will arrive (the Postfach for a
+  review, the dialog for a move).
+- **Peak-end rule.** The end is a checkmark and a count, with Undo beside it
+  whenever something moved; a notice that has done its job is resolved, so the
+  last thing the Postfach says about a run is true.
+- **Tesler's law, error prevention.** The intro says what will happen before
+  anything does: assignment, new folders, a review, and nothing moves until the
+  person applies.
+
+The run also got faster where it was slow: calls of 30 files, six at a time
+(measured: as accurate as 60 and a quarter faster per call), and moves four at a
+time.
 
 ## Where the code lives
 
@@ -711,8 +760,8 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 | A folder's description: the line, the dialog, the edit (`describe`) | `src/features/documents/components/folder-description-dialog.tsx`; `src/features/documents/hooks/use-folder-tree.ts` |
 | Piloti's filing suggestion: the chip and its popover, the highlight, the filing bar, the shelf's open suggestions | `src/features/documents/components/filing-suggestion.tsx`; `src/features/documents/components/filing-bar.tsx`; the kit: `src/components/ui/filing-chip.tsx`, `path-change.tsx`, `suggestion-panel.tsx`, `highlight.ts`; `src/features/documents/hooks/use-filing-suggestions.ts`; `src/features/documents/lib/filing-suggestions.ts` |
 | The folder brief: a folder's subtree tally, the brief, what each count selects | `src/features/documents/lib/folder-knowledge.ts`; `src/features/documents/components/folder-brief.tsx` |
-| Revision series read from file names (TS twin of `sources/knowledge_layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
-| The preview's Fassungen und Freigabe section; the timeline rule; the lifecycle data; the link request | `src/features/documents/components/document-fassungen.tsx`; `src/features/documents/lib/fassung-timeline.ts`; `src/features/documents/hooks/use-document-lifecycle.ts`; `src/features/documents/lib/fassung-request.ts` |
+| Revision series read from file names (TS twin of `packages/knowledge-layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
+| The preview's Fassungen und Freigabe section; the timeline rule; the lifecycle data; the link request | `src/features/documents/components/document-revisions.tsx`; `src/lib/documents/revision-timeline.ts`; `src/features/documents/hooks/use-document-lifecycle.ts`; `src/features/documents/lib/revision-request.ts` |
 | A folder's read state: the dot on its tile, the dot and phrase on its list-view row | `src/features/documents/components/folder-read-state.tsx` |
 | Bulk re-read, four requests at a time, and the one request each sends | `src/features/documents/hooks/use-bulk-reingest.ts`; `src/features/documents/lib/reingest-request.ts` |
 | The missing list, shared with the agent's prompt | `src/lib/document-roles/prompt-loader.ts` (`loadMissingDocuments`); `src/features/documents/hooks/use-missing-documents.ts` |
@@ -759,14 +808,14 @@ Archiv now has all of them because it is the same component.
 
 `FileWorkspace` (`features/documents/components/file-workspace.tsx`) takes a
 `FileShelf` descriptor (`lib/file-shelf.ts`). `ProjectFileWorkspace` and
-`ArchivWorkspace` are adapters that build one and supply the header. Shared, and
+`OfficeShelfWorkspace` are adapters that build one and supply the header. Shared, and
 therefore no longer able to drift: `useLevelListing` and `useShelfSummary`
 (one folder level page by page and the shelf's counts, ADR-0102),
 `useFileListing` (the paged drain with its generation guard and settling poll,
 now the fallback), `useFolderTree` (load, create, rename,
 move, delete, with the `files` strings), `useDocumentMoves`, `useShelfUpload`
 (the plan, the ensure request, moves of unchanged documents, `folderIdFor`),
-`useFolderParam` (`?folder=`), `useViewPreference` (`grid.files.view`),
+`useFolderParam` (`?folder=`), `useViewPreference` (`files.view`),
 `useFileSearch` (takes the shelf's search route), `usePreviewChannel` and
 `useDocParamSync` (`?doc=`), `useModelStage` (`?model=`), and the one row mapper
 `toFileItem`.
@@ -775,8 +824,8 @@ What a shelf may differ in is exactly the fields of `FileShelf`:
 
 | Field | Project | Archiv | Why it is inherent |
 |---|---|---|---|
-| `endpoints` | `/api/documents?projectId`, `/api/projects/{id}/folders` | `/api/archiv/documents`, `/api/archiv/folders` | Two stores |
-| `canManage` | always | `org:archiv:manage` | Archiv writes are an org permission; a read-only member sees folders, search, filters, preview and download, nothing that mutates |
+| `endpoints` | `/api/documents?projectId`, `/api/projects/{id}/folders` | `/api/documents?scope=office_shelf`, `/api/office-shelf/folders` | Two stores |
+| `canManage` | always | `org:office_shelf:manage` | Archiv writes are an org permission; a read-only member sees folders, search, filters, preview and download, nothing that mutates |
 | `canCollaborate`, `currentUserId` | collaboration flag | off | Assignment is project-scoped |
 | `askAbout` | opens the project chat | absent | There is no Archiv chat to open |
 | `preview` | `store` (the project shell hosts it; chat shares it) | `dialog` (the sheet has no host) | Where a preview can be mounted |
@@ -787,11 +836,12 @@ What a shelf may differ in is exactly the fields of `FileShelf`:
 
 The tag chips of the old Archiv grid are „Kategorie" in the shared filter menu
 (`FileFilters.tags`, any-of), so they work under folders and on every shelf. The
-Archiv's semantic search is the pane's own, pointed at `/api/archiv/documents/search`
-(`projectSearchScope` / `ARCHIV_SEARCH_SCOPE`); a search is shelf-wide and
-escapes the open folder exactly as in Dateien.
+Archiv's semantic search is the pane's own: the one search (`POST /api/search`, ADR-0136) for
+documents only, with `?scope=office_shelf` or `?projectId=` (`projectSearchScope` /
+`OFFICE_SHELF_SEARCH_SCOPE`); a search is shelf-wide and escapes the open folder exactly as in
+Dateien. A result shows the passage and its page and keeps the search's order; it shows no score.
 
-**Preview:** `/dev/archiv-library` renders the real workspace over fixtures
+**Preview:** `/dev/office-shelf-library` renders the real workspace over fixtures
 (`?state=readonly|loading|empty`, `?folder=f-plan`).
 
 ### A ZIP is a folder that has not been unpacked yet
@@ -960,7 +1010,7 @@ never drains the shelf for the default view.
   A move or delete patches the loaded rows at once and re-reads the summary, so
   the tiles' counts follow.
 - **Changes made elsewhere arrive live.** The workspace joins its shelf's live
-  channel (`shelf:project-<id>` or `shelf:archiv`, ADR-0110) through
+  channel (`shelf:project-<id>` or `shelf:office_shelf`, ADR-0110) through
   `useShelfLive`. The server says `shelf.changed` after every write to the
   shelf: a new or replaced document (a person's, a mail import, one Piloti
   filed), a rename, a delete, a move, a folder made, renamed, moved, binned,

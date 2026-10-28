@@ -1,0 +1,199 @@
+/**
+ * Client-side i18n context.
+ *
+ * The root layout resolves the initial locale on the server (from the user's
+ * saved preference cookie or the Accept-Language header) and hands it to
+ * {@link I18nProvider}. Both dictionaries are bundled, so switching language is
+ * instant on the client; the choice is then mirrored to a cookie (for SSR) and
+ * persisted against the user (for cross-device continuity).
+ */
+
+'use client'
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import {
+  defaultLocale,
+  isLocale,
+  LEGACY_LOCALE_COOKIE,
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE_SECONDS,
+  localeNames,
+  type Locale,
+} from './config'
+import { translatorFor, type Namespace } from './namespace'
+import type { Translator } from './translate'
+import { fetchUserPreferences, patchUserPreferences } from '@/lib/user-preferences/client'
+import { fetchOrgDefaultLocale } from '@/lib/organizations/client'
+
+/**
+ * The locale only. The copy is not here: each caller imports the namespace it
+ * reads (`namespace.ts`), so the provider holds no dictionary at all.
+ */
+interface I18nContextValue {
+  locale: Locale
+  localeNames: Record<Locale, string>
+  setLocale: (locale: Locale) => void
+}
+
+const I18nContext = createContext<I18nContextValue | null>(null)
+
+function writeLocaleCookie(locale: Locale): void {
+  if (typeof document === 'undefined') return
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE_SECONDS}; samesite=lax`
+  document.cookie = `${LEGACY_LOCALE_COOKIE}=; path=/; max-age=0; samesite=lax`
+}
+
+export interface I18nProviderProps {
+  initialLocale: Locale
+  /**
+   * Pin the locale to {@link initialLocale}: skip the first-mount reconciliation
+   * against the user's saved preference and their organization's default.
+   *
+   * For the `/dev/*` preview routes only. Those pages exist to produce screenshot
+   * evidence, so the copy they render must be the same on every machine rather
+   * than whatever language the developer's own account happens to prefer.
+   */
+  fixedLocale?: boolean
+  children: ReactNode
+}
+
+export function I18nProvider({
+  initialLocale,
+  fixedLocale = false,
+  children,
+}: I18nProviderProps): ReactNode {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale)
+  const hydratedRef = useRef(false)
+  /** The CURRENT locale, readable from the run-once effect's stale closure. */
+  const localeRef = useRef(initialLocale)
+  localeRef.current = locale
+
+  const applyLocale = useCallback((next: Locale): void => {
+    setLocaleState(next)
+    writeLocaleCookie(next)
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = next
+    }
+  }, [])
+
+  /**
+   * Set once the user picks a language themselves, and never unset.
+   *
+   * Reconciliation below is a *guess* at what they would have wanted; an explicit
+   * choice is the answer. Once the answer exists the guess must be abandoned, even
+   * mid-flight — see the effect.
+   */
+  const chosenRef = useRef(false)
+
+  const setLocale = useCallback(
+    (next: Locale): void => {
+      chosenRef.current = true
+      applyLocale(next)
+      // Persist against the user for cross-device continuity. Fails soft.
+      void patchUserPreferences({ locale: next })
+    },
+    [applyLocale]
+  )
+
+  // On first mount, reconcile the active locale with the user's context:
+  //   1. their saved personal preference (cross-device), else
+  //   2. their organization's default language, when an admin chose one (so a
+  //      new member starts in the org's configured language until they pick
+  //      their own; null until chosen, and then the browser's language stands).
+  // The server already resolved the same two facts for a signed-in render
+  // (`request-locale.ts`), so this normally changes nothing. It is the
+  // fallback for a render that could not read them.
+  //
+  // `fixedLocale` opts out: a preview route asked for one specific language and
+  // must keep it, whoever is looking at it.
+  useEffect(() => {
+    if (fixedLocale || hydratedRef.current) return
+    hydratedRef.current = true
+
+    let cancelled = false
+    void (async () => {
+      const prefs = await fetchUserPreferences()
+      // `chosenRef` is checked after EVERY await, not just at the start. Both
+      // lookups are in flight for real time, and the user can pick a language
+      // while they are — at which point this reconciliation is answering a
+      // question that has since been answered properly. Applying it anyway flips
+      // the UI and rewrites the cookie moments after an explicit choice, using a
+      // value that was already stale when it was read (the `setLocale` PATCH does
+      // not necessarily land before this GET returns).
+      if (cancelled || chosenRef.current) return
+
+      if (isLocale(prefs.locale)) {
+        if (prefs.locale !== localeRef.current) applyLocale(prefs.locale)
+        return
+      }
+
+      // No personal locale yet — inherit the org default. applyLocale writes the
+      // cookie, so subsequent loads render server-side in this language with no
+      // flash. We intentionally do NOT persist it as a chosen preference, so an
+      // admin changing the org default still reaches members who never picked.
+      const orgLocale = await fetchOrgDefaultLocale()
+      if (cancelled || chosenRef.current || !isLocale(orgLocale)) return
+      if (orgLocale !== localeRef.current) applyLocale(orgLocale)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // Runs once. The comparisons above go through `localeRef`, NOT the `locale`
+    // closed over here: with an empty dependency list that binding is the
+    // MOUNT-time value, so comparing against it asks "did this differ when the
+    // page opened?" when the question is "does it differ now?".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const value = useMemo<I18nContextValue>(
+    () => ({ locale, localeNames, setLocale }),
+    [locale, setLocale]
+  )
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+}
+
+const OUTSIDE_PROVIDER: I18nContextValue = {
+  locale: defaultLocale,
+  localeNames,
+  setLocale: () => {},
+}
+
+function useI18nContext(): I18nContextValue {
+  // Degrade gracefully outside a provider (e.g. isolated unit tests): use the
+  // default locale rather than throwing.
+  return useContext(I18nContext) ?? OUTSIDE_PROVIDER
+}
+
+/** Access the active locale and the setter. */
+export function useLocale(): {
+  locale: Locale
+  setLocale: (locale: Locale) => void
+  localeNames: Record<Locale, string>
+} {
+  const { locale, setLocale, localeNames: names } = useI18nContext()
+  return { locale, setLocale, localeNames: names }
+}
+
+/**
+ * Get a translator over one namespace, optionally narrowed to a scope inside it.
+ *
+ * @example
+ * import { profileCopy } from '@/i18n/namespaces/profile'
+ * const t = useTranslations(profileCopy)
+ * t('appearance.title') // "Appearance"
+ */
+export function useTranslations(namespace: Namespace, scope?: string): Translator {
+  const { locale } = useI18nContext()
+  return useMemo(() => translatorFor(namespace, locale, scope), [namespace, locale, scope])
+}

@@ -22,20 +22,20 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.browse import ListFilesConfig
+from knowledge_layer.browse import list_files
+from knowledge_layer.read_passage import ReadPassageConfig
+from knowledge_layer.read_passage import read_passage
+from knowledge_layer.register import KnowledgeRetrievalConfig
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge import restricted_use as ru
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.browse import ListFilesConfig
-from sources.knowledge_layer.src.browse import list_files
-from sources.knowledge_layer.src.read_passage import ReadPassageConfig
-from sources.knowledge_layer.src.read_passage import read_passage
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
+from agent.common.source_kinds import Shelf
+from agent.knowledge import restricted_use as ru
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.scoping import ScopedCollection
 
 PROJ = "proj_11111111-1111-1111-1111-111111111111"
 R = PROJ + "_rabcdefabcdef"
@@ -60,7 +60,7 @@ def _chunk(collection: str, *, punkt: str = "1", page: int = 1, content: str = S
         page_number=page,
         display_citation=f"{SALARIES}, p.{page}",
         content_type=ContentType.TEXT,
-        metadata={"punkt_id": punkt, "page_label": str(page), "collection": collection},
+        metadata={"clause_id": punkt, "page_label": str(page), "collection": collection},
     )
 
 
@@ -80,16 +80,16 @@ class _Store:
 def scope(monkeypatch):
     """A turn whose scope carries the base corpus, the project and one restricted folder."""
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping._parse_scope_payload",
+        "agent.knowledge.scoping._parse_scope_payload",
         lambda _s: [
             ScopedCollection("oib_knowledge", Shelf.BASE),
             ScopedCollection(PROJ, Shelf.PROJECT),
             ScopedCollection(R, Shelf.PROJECT),
         ],
     )
-    monkeypatch.setattr("aiq_agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
+    monkeypatch.setattr("agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
 
     async def _docs(collection):
         if collection == R:
@@ -98,10 +98,10 @@ def scope(monkeypatch):
             return [AvailableDocument(file_name="Grundriss_EG.pdf")]
         return []
 
-    monkeypatch.setattr("aiq_agent.knowledge.get_available_documents_async", _docs)
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _docs)
+    monkeypatch.setattr("agent.knowledge.get_available_documents_async", _docs)
+    monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _docs)
     store = _Store([])
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: store)
+    monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: store)
     set_turn_documents(None)
     yield store
     set_turn_documents(None)
@@ -155,7 +155,7 @@ async def _read(**kwargs) -> str:
 
 async def test_the_scope_really_carries_the_restricted_folder(scope, use):
     """The precondition every case below stands on: the turn may draw on R."""
-    from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+    from agent.knowledge.scoping import get_scoped_collections_from_context
 
     assert R in [entry.collection for entry in get_scoped_collections_from_context()]
 
@@ -268,7 +268,7 @@ async def test_read_passage_withholds_a_restricted_passage_the_bff_refuses(scope
 
 
 async def test_exact_search_reports_every_collection_its_match_table_names(monkeypatch):
-    from sources.knowledge_layer.src import browse
+    from knowledge_layer import browse
 
     class _Retriever:
         async def find_text(self, collection, pattern, *, filters, limit):
@@ -276,7 +276,7 @@ async def test_exact_search_reports_every_collection_its_match_table_names(monke
 
     # The passages are rendered (and reported) by the grounding block; stubbed
     # here so what is left to report is the match table alone.
-    monkeypatch.setattr(importlib.import_module(f"{browse.__package__}.register"), "_format_results", _no_passages)
+    monkeypatch.setattr(importlib.import_module(f"{browse.__package__}.search_results"), "format_results", _no_passages)
     monkeypatch.setattr(
         importlib.import_module(f"{browse.__package__}.read_passage"), "_passage_result", lambda chunks, query: None
     )
@@ -295,7 +295,7 @@ def _no_passages(*_args, **_kwargs) -> str:
 
 
 def test_a_failed_restricted_collection_is_never_named_in_a_message():
-    from sources.knowledge_layer.src import browse
+    from knowledge_layer import browse
 
     text = browse.search_failed_message(["Gehalt"], [PROJ, R])
 
@@ -303,7 +303,7 @@ def test_a_failed_restricted_collection_is_never_named_in_a_message():
 
 
 # ---------------------------------------------------------------------------
-# view_knowledge_image: the model's collection is checked against the turn
+# look's renderer (view_image): the collection is checked against the turn
 # ---------------------------------------------------------------------------
 
 
@@ -317,8 +317,8 @@ def _png() -> bytes:
 
 @pytest.fixture
 def image_tool(monkeypatch):
-    """``view_knowledge_image`` with storage faked: every lookup it makes is recorded."""
-    import sources.knowledge_layer.src.view_image as vi
+    """``look``'s renderer with storage faked: every lookup it makes is recorded."""
+    import knowledge_layer.view_image as vi
 
     asked: list[tuple[str, str]] = []
 
@@ -329,11 +329,10 @@ def image_tool(monkeypatch):
     monkeypatch.setattr(vi, "_resolve_storage_location", _resolve)
     monkeypatch.setattr(vi, "_fetch_seaweed_bytes", lambda key, bucket=None: _png())
     monkeypatch.setattr("knowledge_layer.llamaindex.adapter._get_vlm_api_key", lambda: "k")
-    monkeypatch.setattr(vi, "try_consume_image_view", lambda: True)
+    monkeypatch.setattr(vi, "try_consume_image_view", lambda *_kind: True)
 
-    async def view(**kwargs):
-        async with vi.view_knowledge_image(vi.ViewKnowledgeImageToolConfig(), MagicMock()) as info:
-            return await info.single_fn(info.input_schema(**kwargs))
+    async def view(*, file_name: str, collection: str):
+        return await vi.view_image(file_name, 1, collection)
 
     view.asked = asked  # type: ignore[attr-defined]
     return view
@@ -341,7 +340,7 @@ def image_tool(monkeypatch):
 
 def _scope_of(monkeypatch, *names: str) -> None:
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping._parse_scope_payload",
+        "agent.knowledge.scoping._parse_scope_payload",
         lambda _s: [ScopedCollection(name, Shelf.PROJECT) for name in names],
     )
 
@@ -350,10 +349,10 @@ async def test_view_image_refuses_a_restricted_collection_outside_the_turn_befor
     """The asker is cleared for nothing restricted: no use bound, R not in scope."""
     _scope_of(monkeypatch, PROJ)
 
-    message, admitted = await _round(lambda: image_tool(file_name="Gehalt.png", collection=R), "view_knowledge_image")
+    message, admitted = await _round(lambda: image_tool(file_name="Gehalt.png", collection=R), "look")
 
     assert image_tool.asked == []
-    assert isinstance(message.content, str) and "not one this turn may read" in message.content
+    assert isinstance(message.content, str) and "not in a collection this turn may read" in message.content
     assert R not in message.content
     assert admitted[0] is message
 
@@ -382,7 +381,7 @@ async def test_view_image_refuses_an_open_collection_outside_the_scope(monkeypat
 async def test_view_image_of_a_drawable_restricted_folder_is_reported_and_admitted(monkeypatch, image_tool, use):
     _scope_of(monkeypatch, PROJ, R)
 
-    message, admitted = await _round(lambda: image_tool(file_name="Gehalt.png", collection=R), "view_knowledge_image")
+    message, admitted = await _round(lambda: image_tool(file_name="Gehalt.png", collection=R), "look")
 
     assert image_tool.asked == [(R, "Gehalt.png")]
     assert ru.collections_read(message) == {R}
@@ -393,7 +392,7 @@ async def test_view_image_of_a_drawable_restricted_folder_is_reported_and_admitt
 async def test_view_image_reaches_an_open_collection_in_scope_without_admitting_anything(monkeypatch, image_tool, use):
     _scope_of(monkeypatch, PROJ, R)
 
-    message, admitted = await _round(lambda: image_tool(file_name="plan.png", collection=PROJ), "view_knowledge_image")
+    message, admitted = await _round(lambda: image_tool(file_name="plan.png", collection=PROJ), "look")
 
     assert image_tool.asked == [(PROJ, "plan.png")]
     assert ru.collections_read(message) == {PROJ}
@@ -403,8 +402,7 @@ async def test_view_image_reaches_an_open_collection_in_scope_without_admitting_
 async def test_the_lookup_echoes_the_turns_signed_envelope(monkeypatch):
     """The BFF answers only inside the scope the envelope signs; the tool sends it byte-for-byte."""
     import httpx
-
-    from sources.knowledge_layer.src.view_image import _resolve_storage_location
+    from knowledge_layer.view_image import _resolve_storage_location
 
     seen: list[dict[str, str]] = []
 
@@ -423,14 +421,46 @@ async def test_the_lookup_echoes_the_turns_signed_envelope(monkeypatch):
             return SimpleNamespace(status_code=200, json=lambda: {"storageKey": "k"})
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
-    monkeypatch.setattr("aiq_agent.project_context.get_request_envelope_from_context", lambda: ("ZW52ZWxvcGU", "c2ln"))
+    monkeypatch.setattr("agent.project_context.get_request_envelope_from_context", lambda: ("ZW52ZWxvcGU", "c2ln"))
 
     assert await _resolve_storage_location(PROJ, "plan.png") == ("k", None)
     assert seen[-1]["x-grid-request-context"] == "ZW52ZWxvcGU"
     assert seen[-1]["x-grid-request-context-sig"] == "c2ln"
 
-    monkeypatch.setattr("aiq_agent.project_context.get_request_envelope_from_context", lambda: (None, None))
+    monkeypatch.setattr("agent.project_context.get_request_envelope_from_context", lambda: (None, None))
     await _resolve_storage_location(PROJ, "plan.png")
     assert "x-grid-request-context" not in seen[-1]
+
+
+async def test_the_lookup_carries_the_revision_the_bff_names(monkeypatch):
+    """``versionId`` rides on the location, so ``look`` can record which Fassung it rendered (ADR-0128)."""
+    import httpx
+    from knowledge_layer.view_image import _resolve_storage_location
+    from knowledge_layer.view_image import location_version
+
+    body = {"storageKey": "k", "versionId": "v-7"}
+
+    class _Client:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+        async def get(self, url, *, params, headers):
+            return SimpleNamespace(status_code=200, json=lambda: body)
+
+    monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+
+    location = await _resolve_storage_location(PROJ, "plan.png")
+    assert location == ("k", None) and location_version(location) == "v-7"
+
+    del body["versionId"]
+    assert location_version(await _resolve_storage_location(PROJ, "plan.png")) is None

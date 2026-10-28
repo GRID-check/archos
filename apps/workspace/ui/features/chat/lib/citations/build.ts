@@ -1,0 +1,375 @@
+/**
+ * The single derivation: every producer → one {@link CitedDocument} list.
+ *
+ * Three things in a turn can claim to know about a source, and each knows a
+ * different part:
+ *
+ *  | producer                     | knows                                  |
+ *  |------------------------------|----------------------------------------|
+ *  | structured wire (`sources`)  | identity, title, kind/lane, page, `[N]` |
+ *  | written `## Quellen` list    | `[N]` ↔ locator binding, as prose       |
+ *  | `sources` step lanes         | what was RETRIEVED (cited or not)       |
+ *
+ * They used to be consumed by three different surfaces with three different
+ * matching rules, which is why a document could be complete in one place and
+ * degraded in another. Here they are folded into ONE model in a fixed order —
+ * richest producer first, so every later contribution can only ADD facts, never
+ * replace better ones. What each surface then renders is a projection, and two
+ * projections of the same model cannot disagree.
+ */
+
+import type { ReportSourceEntry } from '@/features/layout/lib/report-citations'
+import type { CitationSource } from '../../types'
+import type { TraceLaneCard } from '@/lib/conversations/message-provenance'
+import {
+  CitationAccumulator,
+  isHttpUrl,
+  normalizeFileName,
+  stripOriginToken,
+  type CitedDocument,
+} from './model'
+import { locatorFromPseudoUrl, parseKbLocator } from './locator'
+
+/** Everything a turn can offer about its sources. All parts optional. */
+export interface CitationInputs {
+  /** Structured wire sources (WS `sources` / SSE citation_source + citation_use). */
+  citations?: CitationSource[]
+  /** Entries parsed out of the answer's written sources section. */
+  entries?: ReportSourceEntry[]
+  /** Retrieved-document fan-out from the thinking steps. */
+  traceLanes?: TraceLaneCard[]
+}
+
+/** A markdown link, e.g. "[OIB RL 4](https://…)". */
+const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/i
+/** A bare URL anywhere in the entry text. */
+const BARE_URL_RE = /(https?:\/\/[^\s)>\]]+)/i
+/** Trailing " — url" / " - url" separator before a bare URL. */
+const URL_SEPARATOR_RE = /[\s]*[-–—:]?[\s]*$/
+/** Markdown emphasis/code markers a written entry may carry. */
+const MD_MARKERS_RE = /[*`]/g
+
+/** Written source-entry origin token → the wire origin. */
+const ENTRY_KIND_TO_ORIGIN = { kb: 'kb', web: 'web', ris: 'ris' } as const
+
+/**
+ * Build the turn's citation model.
+ *
+ * Producer order is deliberate and is the whole reason this reads as one
+ * document instead of several: the structured wire goes first because it is the
+ * only producer that carries the backend's own classification and display
+ * title, so everything after it merges INTO a complete document rather than
+ * creating a bare one. The written list contributes `[N]` bindings the wire may
+ * not have; the trace contributes retrieved-but-uncited loci.
+ */
+export const buildCitationModel = (inputs: CitationInputs): CitedDocument[] => {
+  const accumulator = new CitationAccumulator()
+
+  addWireCitations(accumulator, inputs.citations)
+  addWrittenEntries(accumulator, inputs.entries)
+  addTraceLanes(accumulator, inputs.traceLanes)
+
+  return accumulator.build()
+}
+
+/**
+ * The structured wire — the authoritative producer.
+ *
+ * One wire source is one LOCUS, not one document: the backend registry keys
+ * entries on `(collection, filename, page)`, so a document read at four pages
+ * arrives as four sources. Folding them onto one document here is what stops
+ * the same Richtlinie rendering as four separate chips.
+ */
+const addWireCitations = (
+  accumulator: CitationAccumulator,
+  citations: CitationSource[] | undefined
+): void => {
+  if (!citations?.length) return
+
+  for (const citation of citations) {
+    // `fileName` is the structured truth; fall back to parsing the key or the
+    // content line only when the wire did not carry one (legacy messages).
+    const parsed =
+      (citation.citationKey ? parseKbLocator(citation.citationKey) : null) ??
+      (citation.content ? parseKbLocator(citation.content) : null) ??
+      (citation.url && !isHttpUrl(citation.url) ? locatorFromPseudoUrl(citation.url) : null)
+    const fileName = citation.fileName?.trim() || parsed?.filename
+    const page = typeof citation.page === 'number' ? citation.page : parsed?.page
+    const label = citation.title || citation.citationKey || stripOriginToken(citation.content ?? '')
+
+    accumulator.add({
+      identity: {
+        documentId: citation.documentId,
+        fileName,
+        collection: citation.collection,
+        url: isHttpUrl(citation.url) ? citation.url : undefined,
+        label,
+      },
+      title: citation.title,
+      fileName,
+      collection: citation.collection,
+      // The payload's own field is the EXPLICIT shelf (ADR-0047); a legacy key's
+      // German qualifier is a separate, weaker channel — for messages persisted
+      // before the wire carried the field. They are handed over as two fields,
+      // never collapsed with `??`: one document is assembled from many wire
+      // sources, and collapsing here made whichever arrived first the winner, so
+      // a qualifier on source #1 could beat the real shelf on source #2.
+      shelf: citation.shelf,
+      shelfFallback: parsed?.shelf,
+      url: isHttpUrl(citation.url) ? citation.url : undefined,
+      kind: citation.kind,
+      lane: citation.lane,
+      laneLabel: citation.laneLabel,
+      bindingNote: citation.bindingNote,
+      bindingStatus: citation.bindingStatus,
+      project: citation.project,
+      origin: citation.origin,
+      tool: citation.tool,
+      locus: {
+        page,
+        clause: citation.clause,
+        score: citation.score,
+        number: citation.number,
+        // A wire source with no explicit flag is a source the backend chose to
+        // send for THIS answer, so it counts as used; `isCited === false` is
+        // only ever set deliberately (discovery events on the deep path).
+        isCited: citation.isCited !== false,
+        // The STATED passage wins. `citationSnippet` derives one out of the
+        // human-readable locator line, which is what a message persisted before
+        // the wire carried `snippet` has — and for a live turn it derives
+        // nothing, because a locator is not a passage.
+        snippet: citation.snippet?.trim() || citationSnippet(citation),
+        citationKey: citation.citationKey,
+        regions: citation.regions,
+      },
+    })
+  }
+}
+
+/**
+ * The answer's written sources section — a FALLBACK carrier, never a rival.
+ *
+ * The `[N]` ↔ document binding belongs to the backend: `verify_citations`
+ * resolves every written line against the registry of what was retrieved and
+ * the wire carries the result as `number` on the source. A written line whose
+ * `[N]` the wire already numbers is therefore that binding restated in prose,
+ * and it joins the wire's document by number alone, whatever it says — the
+ * spelling of the filename, a title in front of it, a page the model
+ * misremembered. The line used to be matched by FILENAME, so a spelling the
+ * matcher could not read minted a second document for a `[N]` the wire had
+ * already bound, and the row showed the same source twice, once dead.
+ *
+ * The written list matters only where the wire has no number for `[N]`: a
+ * message persisted before the wire numbered sources, or a sparse number map
+ * on the shallow path. There the filename is the only bridge, and a line that
+ * bridges to nothing becomes a document of its own — a complete one, because
+ * title, kind and tint come from the same resolution every producer uses.
+ */
+/** Trailing page token of a written source line, when the strict locator rejects it. */
+const LOOSE_PAGE_RE = /[,\s]\s*(?:p\.?|page)\s*(\d+)\s*$/i
+
+/**
+ * Filename + page of a written source line the strict locator could not read.
+ *
+ * `parseKbLocator` demands a dotted extension, which the model routinely
+ * drops (`oib-rl-2 ausgabe mai 2023, p.1`). What remains is still a reference:
+ * a name and a trailing page token. Splitting them here is what lets the line
+ * meet its wire document by filename + number instead of becoming a second,
+ * dead chip for the same `[N]`.
+ */
+const splitWrittenRef = (text: string): { name: string; page?: number } => {
+  const match = LOOSE_PAGE_RE.exec(text)
+  if (!match) return { name: text }
+  const page = Number(match[1])
+  return {
+    name: text.slice(0, match.index).trim(),
+    page: Number.isFinite(page) ? page : undefined,
+  }
+}
+
+/**
+ * A separator the model puts between a display title and the locator:
+ * `OIB-Richtlinie 2 – oib-rl_2_ausgabe_mai_2023.pdf, p.1`. Spaced dashes and a
+ * colon-space only, so a hyphen inside a filename (`oib-rl_2`) never splits it.
+ * Mirrors the backend's `_title_prefix_tails`.
+ */
+const TITLE_SEPARATOR_RE = /\s+[-–—]\s+|:\s+/g
+
+/**
+ * Every filename a written name could mean, the literal reading first.
+ *
+ * The prompt asks for `filename.pdf, p.X` and its examples once showed
+ * `Title – filename.pdf, p.X`; the model copies examples, and the locator's
+ * filename test (`anything.ext`) accepted the decorated string whole. That
+ * reading meets no wire document. The tails after each separator are the
+ * other readings; which one is the document is decided against the wire
+ * (`findByFile`), never by the shape of the string, so a filename that
+ * genuinely contains ` - ` still resolves to itself when the wire spells it so.
+ * Only consulted when the wire carries no number for the line's `[N]`.
+ */
+export const writtenNameCandidates = (name: string): string[] => {
+  const candidates = [name]
+  for (const match of name.matchAll(TITLE_SEPARATOR_RE)) {
+    const tail = name.slice((match.index ?? 0) + match[0].length).trim()
+    if (tail && !candidates.includes(tail)) candidates.push(tail)
+  }
+  return candidates
+}
+
+const addWrittenEntries = (
+  accumulator: CitationAccumulator,
+  entries: ReportSourceEntry[] | undefined
+): void => {
+  if (!entries?.length) return
+
+  for (const entry of entries) {
+    const text = entry.markdown.replace(MD_MARKERS_RE, '').trim()
+
+    let title = text
+    let url: string | undefined
+    const linkMatch = MARKDOWN_LINK_RE.exec(text)
+    if (linkMatch) {
+      url = linkMatch[2]
+      title = text.replace(MARKDOWN_LINK_RE, linkMatch[1]).trim()
+    } else {
+      const urlMatch = BARE_URL_RE.exec(text)
+      if (urlMatch) {
+        url = urlMatch[1]
+        title = text.slice(0, urlMatch.index).replace(URL_SEPARATOR_RE, '').trim()
+      }
+    }
+
+    const locator = parseKbLocator(title || text)
+    const ref = locator
+      ? { name: locator.filename, page: locator.page }
+      : splitWrittenRef(stripOriginToken(title || text))
+    // The wire numbers this `[N]`: the backend already bound it, and the line
+    // can add at most a page the wire lacks.
+    const bound = accumulator.findByNumber(entry.number)
+    if (bound) {
+      accumulator.adoptWrittenLocus(bound, { number: entry.number, page: ref.page })
+      continue
+    }
+    // No wire number for `[N]`: the filename is the only bridge. Every name
+    // the line could mean is tried, the literal one first — a title in front
+    // of the filename is read as part of it by the locator.
+    const byFile = writtenNameCandidates(ref.name)
+      .map((name) => accumulator.findByFile(normalizeFileName(name)))
+      .find((doc) => doc !== undefined)
+    if (byFile) {
+      accumulator.attachLocus(byFile, { page: ref.page, number: entry.number, isCited: true })
+      continue
+    }
+    const origin = entry.sourceKind ? ENTRY_KIND_TO_ORIGIN[entry.sourceKind] : undefined
+
+    accumulator.add({
+      identity: {
+        fileName: locator?.filename,
+        url: isHttpUrl(url) ? url : undefined,
+        // A pure locator ("plan.pdf, p.4") is a reference, not a title — the
+        // filename is the identity and the page travels as the locus.
+        label: locator ? locator.filename : title || url || text,
+      },
+      // Never pass the locator line as a title: `resolveTitle` would keep the
+      // raw filename, which is the exact regression this list used to cause.
+      title: locator ? undefined : title || undefined,
+      fileName: locator?.filename,
+      // A written entry is prose the model wrote, so it can never STATE a shelf:
+      // the only one it carries is a legacy qualifier inside the locator it
+      // quotes, which is an inference and travels as the fallback. Passing it as
+      // explicit would let a sentence overrule the wire.
+      shelfFallback: locator?.shelf,
+      url: isHttpUrl(url) ? url : undefined,
+      origin,
+      locus: {
+        page: locator?.page,
+        number: entry.number,
+        isCited: true,
+      },
+    })
+  }
+}
+
+/**
+ * The Herleitung fan-out — what retrieval actually returned.
+ *
+ * These loci are RETRIEVED, not cited: a lane hit only becomes cited if a wire
+ * source or a written entry says so, and the accumulator's sticky `isCited`
+ * means contributing them can never downgrade a document. This is what finally
+ * lets one surface answer both "what did you read?" and "what did you use?" —
+ * the two questions that used to live in two disconnected pipelines.
+ */
+const addTraceLanes = (
+  accumulator: CitationAccumulator,
+  lanes: TraceLaneCard[] | undefined
+): void => {
+  if (!lanes?.length) return
+
+  for (const lane of lanes) {
+    for (const source of lane.sources) {
+      const name = source.name?.trim()
+      if (!name) continue
+      // `detail` is either a page marker ("p.12") or the source URL.
+      const detail = source.detail?.trim()
+      const isUrl = isHttpUrl(detail)
+      const page = !isUrl && detail ? Number(/p\.?\s*(\d+)/i.exec(detail)?.[1]) : NaN
+      const looksLikeFile = /\.\w{2,5}$/.test(name)
+
+      accumulator.add({
+        identity: {
+          fileName: looksLikeFile ? name : undefined,
+          url: isUrl ? detail : undefined,
+          label: source.title || name,
+        },
+        title: source.title,
+        fileName: looksLikeFile ? name : undefined,
+        url: isUrl ? detail : undefined,
+        // Stated by the backend for this hit (ADR-0047): the only channel a
+        // document the answer never cited has for its shelf.
+        shelf: source.shelf,
+        kind: lane.kind,
+        lane: lane.key,
+        laneLabel: lane.label,
+        locus: {
+          page: Number.isFinite(page) ? page : undefined,
+          isCited: false,
+        },
+      })
+    }
+  }
+}
+
+/** Longest snippet shown in a preview surface. */
+const MAX_SNIPPET_LENGTH = 600
+
+/**
+ * Cited-passage text carried by a citation's `content` line, if any.
+ *
+ * A LAST RESORT, not the source of truth: the wire states the passage on its own
+ * `snippet` field now, and this only reads messages persisted before it did.
+ *
+ * `content` is a locator — `origin_token + (citation_key or title or url)` — so
+ * for a live citation it holds a reference and never a quotation. Every shape it
+ * can take must therefore be rejected, or a reference ends up rendered under
+ * „Zitierte Stelle" and, worse, handed to the passage matcher as the sentence to
+ * mark: a RIS source's `content` is its TITLE, and a title occurs throughout the
+ * document it titles, so the first match is marked with full confidence in the
+ * wrong place. The audit's own rule is that over a legal quotation a
+ * confidently wrong mark is worse than none.
+ */
+export const citationSnippet = (
+  citation: Pick<CitationSource, 'url' | 'content' | 'title' | 'citationKey'>
+): string | undefined => {
+  const text = stripOriginToken(citation.content ?? '')
+  const url = citation.url?.trim() ?? ''
+  if (!text || (url && text === url)) return undefined
+  // The three other things `content` is built from. Compared whole, because a
+  // passage that merely CONTAINS the title is still a passage.
+  if (text === citation.title?.trim() || text === citation.citationKey?.trim()) return undefined
+  const lines = text.split('\n')
+  const firstLine = lines[0]?.trim() ?? ''
+  // A leading locator line ("file.pdf, p.3") is a reference, not a passage.
+  const body = parseKbLocator(firstLine) ? lines.slice(1).join('\n').trim() : text
+  if (!body) return undefined
+  return body.length > MAX_SNIPPET_LENGTH ? `${body.slice(0, MAX_SNIPPET_LENGTH - 1)}…` : body
+}

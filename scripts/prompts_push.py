@@ -6,7 +6,7 @@ Why this exists
 ---------------
 
 ADR-0060 (a) decided the platform prompt's source of truth: **git**. The static
-half lives in ``src/aiq_agent/agents/piloti/prompts/piloti_static.md``, review
+half lives in ``packages/agent/src/agent/agents/piloti/prompts/chat_static.md``, review
 reads it, and it is PUSHED to Langfuse, where labels carry experiments. Only
 the pull (``task prompts:pull``) was ever built, so with prompt management on,
 every change to that file — including the ones code depends on, like the

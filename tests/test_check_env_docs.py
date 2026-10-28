@@ -10,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "check_env_docs.py"
 
-DOC = "| Variable | Required | Default | Description |\n|---|---|---|---|\n| `GRID_KNOWN` | No | `3` | Known. |\n"
+DOC = "| Variable | Required | Default | Description |\n|---|---|---|---|\n| `KNOWN` | No | `3` | Known. |\n"
 
 
 @pytest.fixture
@@ -25,23 +25,23 @@ def checker():
 @pytest.mark.parametrize(
     ("path", "source"),
     [
-        ("w.py", 'os.environ.get("GRID_NEW", "1")'),
-        ("w.py", 'os.environ["GRID_NEW"]'),
-        ("w.py", 'lease_policy.int_env("GRID_NEW", 3, floor=1)'),
-        ("w.py", '_flag("GRID_NEW", True)'),
-        ("w.py", '_CAP_ENV = "GRID_NEW"'),
-        ("w.js", "toInt(env.GRID_NEW, 60)"),
-        ("w.js", "process.env.GRID_NEW || '60000'"),
-        ("w.ts", "env['GRID_NEW']"),
+        ("w.py", 'os.environ.get("NEW", "1")'),
+        ("w.py", 'os.environ["NEW"]'),
+        ("w.py", 'lease_policy.int_env("NEW", 3, floor=1)'),
+        ("w.py", '_flag("NEW", True)'),
+        ("w.py", '_CAP_ENV = "NEW"'),
+        ("w.js", "toInt(env.NEW, 60)"),
+        ("w.js", "process.env.NEW || '60000'"),
+        ("w.ts", "env['NEW']"),
     ],
 )
 def test_a_read_without_a_row_is_reported_with_its_file(checker, path, source):
-    assert checker.undocumented({path: source}, DOC) == {"GRID_NEW": [path]}
+    assert checker.undocumented({path: source}, DOC) == {"NEW": [path]}
 
 
 def test_a_documented_name_and_a_constant_that_is_no_env_var_pass(checker):
     sources = {
-        "w.py": 'int_env("GRID_KNOWN", 3)\nPOISON_CLAIM_MARKER = "poison"\nts = "DATETIME DEFAULT CURRENT_TIMESTAMP"',
+        "w.py": 'int_env("KNOWN", 3)\nPOISON_CLAIM_MARKER = "poison"\nts = "DATETIME DEFAULT CURRENT_TIMESTAMP"',
         "w.js": "workerPrefix: `bff-jobs-${env.HOSTNAME}`",
     }
 
@@ -57,5 +57,5 @@ def test_the_queue_workers_read_nothing_the_reference_leaves_out(checker, monkey
 def test_scope_reaches_the_top_level_worker_files(checker):
     """A git pathspec ``**/`` needs a subdirectory: ``workers/*.js`` must name job-queue.js itself."""
     files = checker._scoped_files()
-    assert "frontends/ui/workers/job-queue.js" in files
-    assert "frontends/ui/workers/jobs/runner.js" in files
+    assert "apps/workspace/workers/job-queue.js" in files
+    assert "apps/workspace/workers/jobs/runner.js" in files

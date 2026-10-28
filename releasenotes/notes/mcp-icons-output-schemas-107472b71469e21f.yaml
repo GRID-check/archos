@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    Claude, Cursor and other assistants now show Piloti with its own name and
+    icon, and its search and lookup results come back in a structured form they
+    can read reliably.

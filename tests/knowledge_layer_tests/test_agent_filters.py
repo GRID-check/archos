@@ -11,12 +11,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
-from sources.knowledge_layer.src.register import _AGENT_FILTER_OVERFETCH
-from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION
-from sources.knowledge_layer.src.register import _apply_agent_filters
-from sources.knowledge_layer.src.register import _empty_search_message
-from sources.knowledge_layer.src.register import _file_name_matches
+from knowledge_layer.hit_metadata import _file_name_matches
+from knowledge_layer.hit_metadata import apply_agent_filters
+from knowledge_layer.ranked_search import AGENT_FILTER_OVERFETCH
+from knowledge_layer.register import _KNOWLEDGE_SEARCH_DESCRIPTION
+from knowledge_layer.search_results import empty_search_message
+
+from agent.knowledge.document_classification import DOCUMENT_CLASSES
 
 
 def _chunk(
@@ -38,30 +39,30 @@ def _chunk(
 
 
 def test_overfetch_constant() -> None:
-    assert _AGENT_FILTER_OVERFETCH == 3
+    assert AGENT_FILTER_OVERFETCH == 3
 
 
 def test_doc_class_filter_uses_store_value_when_available(monkeypatch) -> None:
-    # Store says oib_richtlinie for this file even though chunk metadata disagrees.
-    chunk = _chunk(file_name="oib-3.pdf", doc_class="sonstiges")
+    # Store says oib_guideline for this file even though chunk metadata disagrees.
+    chunk = _chunk(file_name="oib-3.pdf", doc_class="other")
     monkeypatch.setattr(
-        "aiq_agent.knowledge.factory.get_document_doc_classes",
-        lambda *args, **kwargs: {"oib-3.pdf": "oib_richtlinie"},
+        "agent.knowledge.factory.get_document_doc_classes",
+        lambda *args, **kwargs: {"oib-3.pdf": "oib_guideline"},
     )
-    # The resolved store value must win, so the oib_richtlinie filter keeps it.
-    kept = _apply_agent_filters([chunk], doc_class="oib_richtlinie", title_contains=None)
+    # The resolved store value must win, so the oib_guideline filter keeps it.
+    kept = apply_agent_filters([chunk], doc_class="oib_guideline", title_contains=None)
     assert len(kept) == 1
 
 
 def test_doc_class_filter_drops_non_matching() -> None:
-    chunks = [_chunk(file_name="a.pdf", doc_class="oib_richtlinie"), _chunk(file_name="b.pdf", doc_class="gesetz")]
-    kept = _apply_agent_filters(chunks, doc_class="oib_richtlinie", title_contains=None)
+    chunks = [_chunk(file_name="a.pdf", doc_class="oib_guideline"), _chunk(file_name="b.pdf", doc_class="law")]
+    kept = apply_agent_filters(chunks, doc_class="oib_guideline", title_contains=None)
     assert [c.file_name for c in kept] == ["a.pdf"]
 
 
 def test_title_contains_matches_file_name_case_insensitive() -> None:
     chunks = [_chunk(file_name="OIB-3-Brandschutz.pdf"), _chunk(file_name="Wiener Bauordnung.pdf")]
-    kept = _apply_agent_filters(chunks, doc_class=None, title_contains="oib-3")
+    kept = apply_agent_filters(chunks, doc_class=None, title_contains="oib-3")
     assert [c.file_name for c in kept] == ["OIB-3-Brandschutz.pdf"]
 
 
@@ -69,34 +70,34 @@ def test_title_contains_matches_display_title(monkeypatch) -> None:
     # Display title (store) is preferred over the raw file name.
     chunks = [_chunk(file_name="norms_2023.pdf"), _chunk(file_name="other.pdf")]
     monkeypatch.setattr(
-        "aiq_agent.knowledge.factory.get_document_display_titles",
+        "agent.knowledge.factory.get_document_display_titles",
         lambda *args, **kwargs: {"norms_2023.pdf": "OIB Richtlinie 3"},
     )
-    kept = _apply_agent_filters(chunks, doc_class=None, title_contains="richtlinie")
+    kept = apply_agent_filters(chunks, doc_class=None, title_contains="richtlinie")
     assert [c.file_name for c in kept] == ["norms_2023.pdf"]
 
 
 def test_no_filters_keeps_all() -> None:
     chunks = [_chunk(file_name="a.pdf"), _chunk(file_name="b.pdf")]
-    kept = _apply_agent_filters(chunks, doc_class=None, title_contains=None)
+    kept = apply_agent_filters(chunks, doc_class=None, title_contains=None)
     assert len(kept) == 2
 
 
 def test_doc_class_and_title_combined() -> None:
     chunks = [
-        _chunk(file_name="a.pdf", doc_class="oib_richtlinie"),
-        _chunk(file_name="b.pdf", doc_class="gesetz"),
-        _chunk(file_name="c.pdf", doc_class="oib_richtlinie"),
+        _chunk(file_name="a.pdf", doc_class="oib_guideline"),
+        _chunk(file_name="b.pdf", doc_class="law"),
+        _chunk(file_name="c.pdf", doc_class="oib_guideline"),
     ]
-    kept = _apply_agent_filters(chunks, doc_class="oib_richtlinie", title_contains="c")
+    kept = apply_agent_filters(chunks, doc_class="oib_guideline", title_contains="c")
     assert [c.file_name for c in kept] == ["c.pdf"]
 
 
 def test_document_classes_vocabulary_is_known() -> None:
     # Guards the vocabulary the tool validates against.
-    assert "oib_richtlinie" in DOCUMENT_CLASSES
-    assert "gesetz" in DOCUMENT_CLASSES
-    assert "sonstiges" in DOCUMENT_CLASSES
+    assert "oib_guideline" in DOCUMENT_CLASSES
+    assert "law" in DOCUMENT_CLASSES
+    assert "other" in DOCUMENT_CLASSES
 
 
 def test_file_name_matches_exact_and_contained() -> None:
@@ -109,56 +110,43 @@ def test_file_name_matches_exact_and_contained() -> None:
 
 def test_file_name_filter_keeps_only_the_named_file() -> None:
     chunks = [_chunk(file_name="Brandschutzplan_EG.pdf"), _chunk(file_name="Schnitt.pdf")]
-    kept = _apply_agent_filters(chunks, doc_class=None, title_contains=None, file_name="Brandschutzplan")
+    kept = apply_agent_filters(chunks, doc_class=None, title_contains=None, file_name="Brandschutzplan")
     assert [c.file_name for c in kept] == ["Brandschutzplan_EG.pdf"]
 
 
 def test_empty_search_message_steers_and_forbids_invented_citations() -> None:
-    text = _empty_search_message("Fluchtwege", file_name="fehlend.pdf")
+    text = empty_search_message("Fluchtwege", file_name="fehlend.pdf")
     assert "fehlend.pdf" in text
     assert "inventory" in text
     assert "do not invent" in text.lower()
     assert "surface_documents" in text
 
 
-def test_knowledge_search_description_is_the_evidence_tool() -> None:
+def test_knowledge_search_description_is_a_contract_for_the_evidence_tool() -> None:
     desc = _KNOWLEDGE_SEARCH_DESCRIPTION
     assert "evidence" in desc.lower()
+    # The boundary with the nearest tool, stated once.
     assert "surface_documents" in desc
-    assert "file_name=" in desc
-    assert "do not also call" in desc.lower() or "do not also call" in desc
-    assert "WHEN TO CALL" in desc
-    assert "WHEN NOT TO CALL" in desc
+    assert "file_name=" in desc and "never invent" in desc
     assert "Citation" in desc
-    # The numeric budget is the ceiling. A two-call cap here told the model
-    # not to loop even after the prompt stopped saying so.
-    assert "At most 2 calls" not in desc
-    # …and a conclusion that NAMES its passage is now a lookup rather than a
-    # tighter search: `read_passage` opens it, and this description is where
-    # the model is told so. Searching again for a passage you can already
-    # address is the round the second landing exists to remove.
-    assert "`read_passage`" in desc
-    assert "search again only when you still do not know" in desc
+    # A contract, not a procedure: no when-to blocks and no sequencing.
+    assert "WHEN TO CALL" not in desc and "WHEN NOT TO CALL" not in desc
+    assert "ALWAYS" not in desc
 
 
-def test_knowledge_search_asks_for_the_checkpoint_in_an_argument() -> None:
-    """The Herleitung checkpoint has a SLOT now.
-
-    Prose beside the tool calls was the only channel, and a tool-calling model
-    routinely writes none — which is why `hasConclusion` was worth counting at
-    all. A declared argument is filled the way every other argument is filled.
-    """
+def test_knowledge_search_takes_the_checkpoint_as_an_optional_argument() -> None:
+    """The Herleitung checkpoint has a slot, and filling it is the model's option."""
     desc = _KNOWLEDGE_SEARCH_DESCRIPTION
-    assert "`conclusion=`" in desc
-    assert "Empty on your first call" in desc
-    assert "never appears in `answer`" in desc
+    assert "`conclusion=`: Optional" in desc
+    assert "No effect on the result" in desc
 
 
-def test_the_description_says_what_a_piloti_document_may_be_cited_for() -> None:
-    """The tool description is the prompt for the tool, and this is the one
-    sentence that separates "the office decided this" from "the OIB requires
-    this" for a document the office approved but Piloti wrote."""
-    desc = _KNOWLEDGE_SEARCH_DESCRIPTION
-    assert "Piloti-Dokument" in desc
-    assert "never a source for a normative value" in desc
-    assert "what the office decided" in desc and "what the OIB requires" in desc
+def test_the_description_says_what_an_agent_document_may_be_cited_for() -> None:
+    """The sentence that separates "the office decided this" from "the OIB requires this" for a
+    document the office approved but Piloti wrote. Since ADR-0133 slice 6 it rides the hit's own
+    `Herkunft:` line, so every tool that returns such a passage says it where it is read."""
+    from agent.common.grounding_block import AGENT_DOCUMENT_NOTE
+
+    assert "Piloti-Dokument" not in _KNOWLEDGE_SEARCH_DESCRIPTION
+    assert "never a source for a normative value" in AGENT_DOCUMENT_NOTE
+    assert "what the office decided" in AGENT_DOCUMENT_NOTE

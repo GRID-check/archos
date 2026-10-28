@@ -1,23 +1,23 @@
 -- =============================================================================
--- AI-Q Blueprint - Database Initialization (idempotent — safe to re-run)
+-- Piloti - Database Initialization (idempotent — safe to re-run)
 -- =============================================================================
 --
 -- Run by the backend init container on every pod start. All statements are
 -- idempotent (IF NOT EXISTS) so re-runs are safe.
 --
 -- Databases:
---   - aiq_jobs         (job metadata, events, document metadata)
---   - aiq_checkpoints  (LangGraph conversation state)
---   - grid_app         (Next.js BFF application state)
+--   - jobs         (job metadata, events, document metadata)
+--   - checkpoints  (LangGraph conversation state)
+--   - app          (Next.js BFF application state)
 --
--- Tables in aiq_jobs:
+-- Tables in jobs:
 --   - job_info      — NAT JobStore metadata (status, timestamps, expiry)
---   - job_access    — AIQ-owned job ownership/access control metadata
+--   - job_access    — agent-host-owned job ownership/access control metadata
 --   - job_events    — SSE streaming events and job event persistence
 --   - document_metadata — Per-document metadata: summary, tags, doc_class,
 --                     display_title (collection + filename keyed; was `summaries`)
 --
--- Tables in aiq_checkpoints:
+-- Tables in checkpoints:
 --   - checkpoints           — LangGraph conversation checkpoints
 --   - checkpoint_blobs      — LangGraph binary state data
 --   - checkpoint_writes     — LangGraph pending writes
@@ -26,15 +26,15 @@
 -- =============================================================================
 
 -- Create checkpoints database if it doesn't exist
-SELECT 'CREATE DATABASE aiq_checkpoints' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'aiq_checkpoints')\gexec
+SELECT 'CREATE DATABASE checkpoints' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'checkpoints')\gexec
 
--- Create grid_app database if it doesn't exist
-SELECT 'CREATE DATABASE grid_app' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'grid_app')\gexec
+-- Create app database if it doesn't exist
+SELECT 'CREATE DATABASE app' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'app')\gexec
 
 -- Grant permissions
-GRANT ALL PRIVILEGES ON DATABASE aiq_jobs TO aiq;
-GRANT ALL PRIVILEGES ON DATABASE aiq_checkpoints TO aiq;
-GRANT ALL PRIVILEGES ON DATABASE grid_app TO aiq;
+GRANT ALL PRIVILEGES ON DATABASE jobs TO agent;
+GRANT ALL PRIVILEGES ON DATABASE checkpoints TO agent;
+GRANT ALL PRIVILEGES ON DATABASE app TO agent;
 
 -- =============================================================================
 -- Langfuse (ADR-0044) — its own role, its own database
@@ -45,10 +45,10 @@ GRANT ALL PRIVILEGES ON DATABASE grid_app TO aiq;
 -- directory, so making it conditional would mean anyone who enables the
 -- profile later has to drop their volume or run this by hand.
 --
--- Separate from `aiq` on the same reasoning Kubernetes uses (see
+-- Separate from `agent` on the same reasoning Kubernetes uses (see
 -- `LANGFUSE.databaseUser`): Langfuse runs its own Prisma migrations, so its
 -- credential is one with DDL rights, and that has no business reaching
--- `grid_app` where every tenant's conversations live. NOCREATEDB / NOCREATEROLE
+-- `app` where every tenant's conversations live. NOCREATEDB / NOCREATEROLE
 -- keeps it confined to the database it owns.
 --
 -- The dev password matches `aiq_dev` alongside it: a compose stack on a laptop.
@@ -73,12 +73,12 @@ SELECT 'CREATE DATABASE langfuse OWNER langfuse_app' WHERE NOT EXISTS (SELECT FR
 -- Kubernetes does the same job through CloudNativePG's managed roles.
 --
 -- Note this file runs ONLY when Postgres initialises a fresh data directory.
--- On an existing volume the `grid-migrate` service's `ensure-rls-roles.mjs`
+-- On an existing volume the `migrate` service's `ensure-rls-roles.mjs`
 -- creates whichever roles are absent and keeps `grid_app_rw`'s password in step
--- with GRID_APP_DATABASE_URL instead.
+-- with APP_DATABASE_URL instead.
 --
--- WHO ACTUALLY OWNS THE SCHEMA HERE: `aiq`, the compose superuser — not
--- `grid_app_owner`. This stack points GRID_APP_MIGRATION_DATABASE_URL at `aiq`,
+-- WHO ACTUALLY OWNS THE SCHEMA HERE: `agent`, the compose superuser — not
+-- `grid_app_owner`. This stack points APP_MIGRATION_DATABASE_URL at `agent`,
 -- and only the test harness (`scripts/rls-test-db.sh`) migrates as
 -- `grid_app_owner`. That is deliberate: the harness runs the restricted shape on
 -- purpose, because it is the shape that catches privilege mistakes a
@@ -95,6 +95,11 @@ SELECT 'CREATE DATABASE langfuse OWNER langfuse_app' WHERE NOT EXISTS (SELECT FR
 -- The dev password below is exactly that: a DEV default, matching `aiq_dev`
 -- alongside it, for a compose stack on a laptop.
 
+-- Created under their OLD names on purpose (ADR-0145 row 10d): the migrations
+-- written before the rename grant to `grid_app_rw` and `grid_app_platform` by
+-- name, so those are the names a fresh volume migrates with. The service
+-- `postgres-rename-roles` renames them to `app_owner`, `app_platform` and
+-- `app_rw` once the migrations have run.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grid_app_owner') THEN
@@ -107,7 +112,7 @@ BEGIN
     CREATE ROLE grid_app_platform NOLOGIN BYPASSRLS;
   END IF;
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grid_app_rw') THEN
-    CREATE ROLE grid_app_rw LOGIN NOINHERIT PASSWORD 'grid_app_rw_dev';  -- pragma: allowlist secret (dev default; real deployments set GRID_APP_RUNTIME_PASSWORD)
+    CREATE ROLE grid_app_rw LOGIN NOINHERIT PASSWORD 'grid_app_rw_dev';  -- pragma: allowlist secret (dev default; real deployments set APP_RUNTIME_PASSWORD)
   END IF;
 END
 $$;
@@ -117,9 +122,9 @@ $$;
 GRANT grid_app_platform TO grid_app_rw;
 
 -- =============================================================================
--- Create tables in aiq_jobs database
+-- Create tables in jobs database
 -- =============================================================================
-\connect aiq_jobs
+\connect jobs
 
 -- Job metadata table (NAT JobStore)
 CREATE TABLE IF NOT EXISTS job_info (
@@ -176,12 +181,12 @@ CREATE TABLE IF NOT EXISTS document_metadata (
 CREATE INDEX IF NOT EXISTS idx_document_metadata_collection ON document_metadata(collection);
 
 -- =============================================================================
--- Create LangGraph checkpoint tables in aiq_checkpoints database
+-- Create LangGraph checkpoint tables in checkpoints database
 -- These must exist before backends connect. Previously left to the app,
 -- but if postgres restarts without a backend restart, the tables are lost
 -- and running backends crash with "relation checkpoints does not exist".
 -- =============================================================================
-\connect aiq_checkpoints
+\connect checkpoints
 
 CREATE TABLE IF NOT EXISTS checkpoint_migrations (
     v INTEGER PRIMARY KEY

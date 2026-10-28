@@ -26,7 +26,7 @@ The behaviour itself is pinned by
 [`tests/knowledge_layer_tests/test_heavy_document_memory.py`](../../tests/knowledge_layer_tests/test_heavy_document_memory.py)
 and by `test_image_extraction_memory.py`, which run against the real `pypdfium2`.
 The generated plan set they use is in
-[`pdf_fixtures.py`](../../tests/knowledge_layer_tests/pdf_fixtures.py)
+[`pdf_fixtures.py`](../../packages/knowledge-layer/testing/knowledge_layer_testing/pdf_fixtures.py)
 (`write_plan_set`, also runnable from a shell with `--plan-set`).
 
 ## 0. Setup
@@ -49,7 +49,7 @@ kubectl -n grid get deploy ingest-worker \
 The tag is `sha-<commit>`. Two ways to tell whether that commit carries the fix:
 
 ```bash
-git log --oneline <commit> -- sources/knowledge_layer/src/llamaindex/adapter.py
+git log --oneline <commit> -- packages/knowledge-layer/src/llamaindex/adapter.py
 git merge-base --is-ancestor <commit> origin/develop && echo "on develop"
 ```
 
@@ -112,7 +112,7 @@ One file on the fixed build produces four lines:
 What each tells you:
 
 - `rasters:start … over_cap=m` — the document held more than
-  `AIQ_MAX_IMAGES_PER_DOCUMENT` (64) rasters and `m` were dropped **before** any
+  `MAX_IMAGES_PER_DOCUMENT` (64) rasters and `m` were dropped **before** any
   decode. `over_cap=0` means the cap was not in play for this file.
 - `rss` at `rasters:start` against `rss` at `rasters:done` — the decode of the
   kept rasters. Bounded, this is a flat step of about one raster (tens of MiB)
@@ -153,7 +153,7 @@ The fixed build adds three lines, so the window between `file:start` and
 ```
 
 - `text:done` should sit within a few hundred MiB of `file:start` whatever the
-  page count. `without_layout=m` is the pages over `AIQ_PDF_PAGE_MAX_OBJECTS`
+  page count. `without_layout=m` is the pages over `PDF_PAGE_MAX_OBJECTS`
   that were read by PDFium instead (their text only); the same count is on the
   file's job status as `pages_read_without_layout`.
 - `file:released` comes after `gc.collect()` and `malloc_trim(0)`. It should
@@ -165,12 +165,12 @@ The fixed build adds three lines, so the window between `file:start` and
 ## 4. Queue depth and dead jobs
 
 The scaler reads `ingest_job_queue`, so the same table is what to look at when
-pods are restarting. It lives in the `aiq_jobs` database in the app Postgres,
+pods are restarting. It lives in the `jobs` database in the app Postgres,
 which is the CloudNativePG cluster `grid-pg`:
 
 ```bash
 PRIMARY=$(kubectl -n grid get cluster grid-pg -o jsonpath='{.status.currentPrimary}')
-kubectl -n grid exec "$PRIMARY" -- psql -U postgres -d aiq_jobs -Atc \
+kubectl -n grid exec "$PRIMARY" -- psql -U postgres -d jobs -Atc \
   "SELECT status, count(*) FROM ingest_job_queue GROUP BY status ORDER BY status;"
 ```
 

@@ -1,0 +1,769 @@
+"""Shelf-aware knowledge-base inventory for agent prompts.
+
+The signed collection scope is an authorization ceiling. The inventory is how
+the agent *sees* that ceiling. ADR-0047 already travels the shelf as data on
+the wire; this module is the missing half: each listed file carries its shelf,
+the prompt is grouped by shelf, and a listing question about the Büroablage
+cannot be answered with OIB or project files.
+
+Identity is ``(collection, filename)``. A 50-row cap that sorted the mixed
+list evicted user-shelf files whenever the OIB corpus filled the window —
+so the agent answered "what's in the archive" from Basiswissen. User shelves
+are allocated first.
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from collections.abc import Iterable
+from collections.abc import Sequence
+from contextvars import ContextVar
+from datetime import datetime
+from typing import Any
+
+from agent.common.source_kinds import SHELF_QUALIFIERS
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import parse_shelf
+
+_listing_shelf: ContextVar[Shelf | None] = ContextVar("listing_shelf", default=None)
+
+# How many files the cap dropped, per shelf, for the turn being rendered.
+#
+# A contextvar for the same reason ``_listing_shelf`` is one: the cap is applied
+# at AGGREGATION time (``agents.piloti.conversation_register``) and the block is rendered
+# much later, by ``render_prompt_template``, with no call path between them that
+# could carry an extra argument.
+_inventory_drops: ContextVar[dict[Shelf | None, int]] = ContextVar("inventory_drops", default={})
+
+# The turn's inventory ROWS, for the tools that have to resolve a file name the
+# reader typed against the files the reader actually has.
+#
+# The rendered block above is prose: it is what the MODEL reads, and a tool
+# cannot parse a shelf heading back into a document. The rows are what the
+# write-side workspace tools (`tools/files/`) resolve against, so a proposal
+# names a file that exists on a shelf the turn can see, and „verschieb den
+# Brandschutzplan" resolves or is refused rather than guessed.
+#
+# A ContextVar for the third time in this module and for the same reason: the
+# rows are aggregated in `turn/inventory.py` and read inside a tool call, with
+# a LangGraph run and a tool node between the two and no argument that could
+# travel. Set once per turn (`piloti/conversation_register.py`), so a turn
+# with no inventory reads the empty tuple rather than the previous turn's.
+_turn_documents: ContextVar[tuple[Any, ...]] = ContextVar("turn_documents", default=())
+
+# The Richtlinien-Familien the base shelf holds, for the turn being rendered.
+#
+# A contextvar for the same reason as the two above, plus one of its own: it is
+# derived from the base shelf BEFORE the cap runs. The cap drops base rows
+# first (user shelves are the priority), so a family list derived from what
+# survives would lose members on exactly the projects with the most files —
+# which is the same silent-incompleteness failure the cap notice exists to
+# prevent, one level down.
+_norm_families: ContextVar[tuple[Any, ...]] = ContextVar("norm_families", default=())
+
+# User-facing shelves first; base last so the OIB corpus cannot evict them.
+_USER_SHELF_ORDER: tuple[Shelf, ...] = (Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION)
+_INVENTORY_ORDER: tuple[Shelf, ...] = (*_USER_SHELF_ORDER, Shelf.BASE)
+
+#: How many in-flight filenames the prompt names before it counts the rest.
+#:
+#: Same rule as every other block here: carry the shape, not the list. A bulk
+#: upload can have hundreds of files in flight, and the model needs to know
+#: THAT rather than WHICH — past a handful the names stop informing the answer
+#: and start being paid for on every turn.
+_IN_FLIGHT_MAX_NAMED = 5
+
+_SHELF_BLURBS: dict[Shelf, str] = {
+    Shelf.BASE: (
+        "always on this request — platform OIB / law corpus. Every turn has this, project or not. Never the Büroablage."
+    ),
+    Shelf.OFFICE_SHELF: (
+        "on every project in this organization — the office's own files. NOT base/OIB, NOT this project's files."
+    ),
+    Shelf.PROJECT: ("on every session of this project — this project's files only. NOT the Büroablage, NOT base/OIB."),
+    Shelf.SESSION: ("only this chat — attachments uploaded here. Not visible in other sessions."),
+}
+
+# Listing questions only. Content questions ("was sagt OIB-RL 2") must not match.
+_LISTING_CUES = (
+    "welche datei",
+    "welche unterlagen",
+    "welche dokumente",
+    "welche oib",
+    "was hast du",
+    "was liegt",
+    "was ist im",
+    "was ist in der",
+    "hast du was",
+    "zeig mir die datei",
+    "zeig die datei",
+    "zeig mir die unterlagen",
+    "liste das",
+    "liste die",
+    "liste ",
+    "und im",
+    "und in der",
+    "what files",
+    "which files",
+    "what's in",
+    "whats in",
+    "what do you have",
+    "what have you",
+)
+
+# Short follow-ups that name a shelf and nothing else ("und im archiv?"). The
+# shelf is called „Büroablage" since 6 Oct 2026; people still say „Archiv" and
+# „Büroarchiv", so the old names keep matching beside the new one.
+_SHELF_ONLY_FOLLOWUPS = frozenset(
+    {
+        "bueroablage",
+        "buroablage",
+        "die bueroablage",
+        "in der bueroablage",
+        "und in der bueroablage",
+        "und die bueroablage",
+        "im archiv",
+        "ins archiv",
+        "das archiv",
+        "bueroarchiv",
+        "buroarchiv",
+        "bro archiv",
+        "und im archiv",
+        "und das archiv",
+        "im bueroarchiv",
+        "im buroarchiv",
+        "im bro archiv",
+    }
+)
+
+_SHELF_HINTS: tuple[tuple[Shelf, tuple[str, ...]], ...] = (
+    (
+        Shelf.OFFICE_SHELF,
+        (
+            "büroablage",
+            "bueroablage",
+            "büro-ablage",
+            "office filing",
+            "büroarchiv",
+            "bueroarchiv",
+            "büro archiv",
+            "buero archiv",
+            "bro archiv",
+            "büro-archiv",
+            "office archive",
+            "im archiv",
+            "ins archiv",
+            "im archive",
+        ),
+    ),
+    (
+        Shelf.PROJECT,
+        (
+            "projektarchiv",
+            "projektunterlagen",
+            "im projekt",
+            "dieses projekt",
+            "this project",
+            "projektwissen",
+        ),
+    ),
+    (
+        Shelf.BASE,
+        (
+            "basiswissen",
+            "oib-richtlinien",
+            "oib richtlinien",
+            "welche oib",
+            "base corpus",
+        ),
+    ),
+    (
+        Shelf.SESSION,
+        (
+            "dieser sitzung",
+            "dieser unterhaltung",
+            "this chat",
+            "this session",
+            "private sitzung",
+        ),
+    ),
+)
+
+
+def _shelf_of(doc: Any) -> Shelf | None:
+    return parse_shelf(getattr(doc, "shelf", None) if not isinstance(doc, dict) else doc.get("shelf"))
+
+
+def _file_name_of(doc: Any) -> str:
+    if isinstance(doc, dict):
+        return str(doc.get("file_name") or "")
+    return str(getattr(doc, "file_name", "") or "")
+
+
+def _collection_of(doc: Any) -> str:
+    if isinstance(doc, dict):
+        return str(doc.get("collection") or "")
+    return str(getattr(doc, "collection", "") or "")
+
+
+def _summary_of(doc: Any) -> str:
+    if isinstance(doc, dict):
+        return str(doc.get("summary") or "").strip()
+    return str(getattr(doc, "summary", "") or "").strip()
+
+
+def _folder_of(doc: Any) -> str:
+    """Materialised folder path a file is filed under, or ``""`` for the root.
+
+    ADR-0049: the backend carries the PATH (``Brandschutz/Fluchtwege``), not a
+    folder id, precisely so it can be printed here without a join and so a
+    prefix match is the subtree.
+    """
+    raw = doc.get("folder_path") if isinstance(doc, dict) else getattr(doc, "folder_path", None)
+    return str(raw or "").strip()
+
+
+def _list_of(doc: Any, name: str) -> list[str]:
+    raw = doc.get(name) if isinstance(doc, dict) else getattr(doc, name, None)
+    if not raw:
+        return []
+    return [str(term) for term in raw if term]
+
+
+def _tags_of(doc: Any) -> list[str]:
+    return _list_of(doc, "tags")
+
+
+def _topics_of(doc: Any) -> list[str]:
+    return _list_of(doc, "topics")
+
+
+def _reading_bit(doc: Any) -> str:
+    """`` · Typ: fire safety concept · 2 von 40 Seiten nicht vollständig gelesen``, from the ingest's reading.
+
+    The type is the dossier's (finer than the tags), the unread pages its coverage: a model
+    that is told a document was not fully read can say so instead of answering from a gap.
+    """
+    dossier = doc.get("dossier") if isinstance(doc, dict) else getattr(doc, "dossier", None)
+    coverage = doc.get("coverage") if isinstance(doc, dict) else getattr(doc, "coverage", None)
+    bits = []
+    document_type = dossier.get("document_type") if isinstance(dossier, dict) else None
+    if isinstance(document_type, str) and document_type not in ("", "other"):
+        bits.append(f"Typ: {document_type.replace('_', ' ')}")
+    if isinstance(coverage, dict) and isinstance(coverage.get("not_read"), int) and coverage["not_read"] > 0:
+        bits.append(f"{coverage['not_read']} von {coverage.get('pages', '?')} Seiten nicht vollständig gelesen")
+    return "".join(f" · {bit}" for bit in bits)
+
+
+def _captured_on_of(doc: Any) -> str | None:
+    """The ``YYYY-MM-DD`` a camera gave the photo, or ``None``.
+
+    Reads ``captured_at`` and nothing else of ``capture``. The coordinates are
+    never read here: this line is rendered into the prompt, and a site's
+    position is not something a model is given (see ``PhotoFacts``).
+    """
+    capture = doc.get("capture") if isinstance(doc, dict) else getattr(doc, "capture", None)
+    if not isinstance(capture, dict) or not isinstance(capture.get("captured_at"), str):
+        return None
+    try:
+        return datetime.fromisoformat(capture["captured_at"]).date().isoformat()
+    except ValueError:
+        return None
+
+
+#: Replaced file names one inventory row names before it counts the rest.
+_MAX_REPLACED_NAMED = 3
+
+
+def _confirmed_revision_bit(doc: Any) -> str:
+    """What a person confirmed about this file's Fassungen, as a short row suffix.
+
+    Only the confirmed link: a suggestion is not shown to the model, and a name
+    series is `list_files`'s to mark. The older file says which one replaced it,
+    the newer says which it replaced, so the model leans on the current one.
+    """
+    newer = doc.get("superseded_by") if isinstance(doc, dict) else getattr(doc, "superseded_by", None)
+    older = _list_of(doc, "supersedes")
+    parts: list[str] = []
+    if newer:
+        parts.append(f"ersetzt durch {newer} (bestätigt)")
+    if older:
+        named = ", ".join(older[:_MAX_REPLACED_NAMED])
+        rest = len(older) - _MAX_REPLACED_NAMED
+        parts.append(f"ersetzt {named}{f' und {rest} weitere' if rest > 0 else ''} (bestätigt)")
+    return f" · {'; '.join(parts)}" if parts else ""
+
+
+def document_identity(doc: Any) -> tuple[str, str]:
+    """Primary key of an inventory row: ``(collection, file_name)``."""
+    return (_collection_of(doc), _file_name_of(doc))
+
+
+def stamp_document(doc: Any, *, collection: str, shelf: Shelf | None) -> Any:
+    """Return a copy of *doc* carrying ``collection`` and ``shelf``.
+
+    Does not mutate the input when the object supports ``model_copy``
+    (``AvailableDocument``). Duck-typed stand-ins used in tests get attributes
+    set in place only when they have no copy protocol.
+    """
+    shelf_value = shelf.value if isinstance(shelf, Shelf) else None
+    if hasattr(doc, "model_copy"):
+        return doc.model_copy(update={"collection": collection, "shelf": shelf_value})
+    try:
+        doc.collection = collection
+        doc.shelf = shelf_value
+    except Exception:
+        pass
+    return doc
+
+
+def _dedupe(docs: Iterable[Any]) -> list[Any]:
+    seen: set[tuple[str, str]] = set()
+    out: list[Any] = []
+    for doc in docs:
+        key = document_identity(doc)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(doc)
+    return out
+
+
+def _sort_key(doc: Any) -> str:
+    return _file_name_of(doc).lower()
+
+
+def _is_user_priority(shelf: Shelf | None) -> bool:
+    return shelf is None or shelf in _USER_SHELF_ORDER
+
+
+def allocate_inventory(docs: Sequence[Any], max_documents: int | None) -> list[Any]:
+    """The kept files. See :func:`allocate_inventory_detailed` for what was dropped."""
+    return allocate_inventory_detailed(docs, max_documents)[0]
+
+
+def allocate_inventory_detailed(
+    docs: Sequence[Any], max_documents: int | None
+) -> tuple[list[Any], dict[Shelf | None, int]]:
+    """Dedupe by ``(collection, file_name)``, keep user shelves, then spend the cap on base.
+
+    Returns the kept files AND how many were dropped per shelf.
+
+    ``max_documents`` ``None``/``0``/negative disables the cap. When user-shelf
+    files alone overflow the cap, each non-empty user shelf keeps at least one
+    file (a whole shelf must not vanish so the agent can still say what is on it).
+
+    The per-shelf drop count is not bookkeeping. The block tells the model to
+    "answer ONLY from that shelf's group. If the group is empty, say so" — so a
+    shelf that silently lost its alphabetical tail produces a confidently
+    complete-looking, wrong answer, on exactly the turn class that cannot fall
+    back to retrieval (a listing question is routed to ``meta``, which strips
+    every search tool). A GLOBAL count would not fix that: the model needs to
+    know WHICH answer is incomplete.
+    """
+    unique = _dedupe(docs)
+    groups: dict[Shelf | None, list[Any]] = defaultdict(list)
+    for doc in unique:
+        groups[_shelf_of(doc)].append(doc)
+    for group in groups.values():
+        group.sort(key=_sort_key)
+
+    user_shelves: list[Shelf | None] = [None, *_USER_SHELF_ORDER]
+    user_docs = [doc for shelf in user_shelves for doc in groups.get(shelf, [])]
+    base_docs = list(groups.get(Shelf.BASE, []))
+
+    def drops(kept: Sequence[Any]) -> dict[Shelf | None, int]:
+        """Per-shelf shortfall between what exists and what survived the cap."""
+        kept_per_shelf: dict[Shelf | None, int] = defaultdict(int)
+        for doc in kept:
+            kept_per_shelf[_shelf_of(doc)] += 1
+        return {shelf: len(group) - kept_per_shelf[shelf] for shelf, group in groups.items()}
+
+    if not max_documents or max_documents < 0:
+        return user_docs + base_docs, {}
+
+    if len(user_docs) <= max_documents:
+        leftover = max_documents - len(user_docs)
+        kept = user_docs + base_docs[:leftover]
+        return kept, drops(kept)
+
+    nonempty = [shelf for shelf in user_shelves if groups.get(shelf)]
+    if not nonempty:
+        kept = base_docs[:max_documents]
+        return kept, drops(kept)
+
+    share = max(1, max_documents // len(nonempty))
+    kept = []
+    remainder_pool: list[Any] = []
+    for shelf in nonempty:
+        group = groups[shelf]
+        kept.extend(group[:share])
+        remainder_pool.extend(group[share:])
+    leftover = max_documents - len(kept)
+    if leftover > 0:
+        kept.extend(remainder_pool[:leftover])
+    kept = kept[:max_documents]
+    return kept, drops(kept)
+
+
+def _query_variants(query: str) -> tuple[str, str]:
+    raw = (query or "").strip().lower()
+    folded = raw.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+    return raw, folded
+
+
+def shelf_hint_from_query(query: str) -> Shelf | None:
+    """Shelf a *listing* question is about, or ``None`` for a content question.
+
+    "welche Dateien hast du in der Büroablage" → ``office_shelf``.
+    "was sagt OIB-RL 2 zum Brandschutz" → ``None``.
+    When both project and office shelf are mentioned ("nicht im projekt … im archiv")
+    the archive token wins — that is the clarification the user just made.
+    """
+    raw, folded = _query_variants(query)
+    haystacks = (raw, folded)
+    cleaned = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in folded)
+    cleaned = " ".join(cleaned.split())
+    is_listing = any(cue in text for text in haystacks for cue in _LISTING_CUES) or (cleaned in _SHELF_ONLY_FOLLOWUPS)
+    if not is_listing:
+        return None
+    for shelf, tokens in _SHELF_HINTS:
+        for token in tokens:
+            token_l = token.lower()
+            token_folded = token_l.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue")
+            if any(token_l in text or token_folded in text for text in haystacks):
+                return shelf
+    return None
+
+
+def set_inventory_drops(drops: dict[Shelf | None, int] | None) -> None:
+    """Remember how many files the cap dropped per shelf, or clear it."""
+    _inventory_drops.set({shelf: n for shelf, n in (drops or {}).items() if n > 0})
+
+
+def get_inventory_drops() -> dict[Shelf | None, int]:
+    return _inventory_drops.get()
+
+
+def set_turn_documents(docs: Sequence[Any] | None) -> None:
+    """Bind the inventory rows this turn may resolve names against.
+
+    Called once per turn with whatever the inventory load produced — including
+    ``None``, which binds the empty tuple. That is the reset: a turn that
+    resolved nothing must not inherit the last turn's shelves.
+    """
+    _turn_documents.set(tuple(docs or ()))
+
+
+def get_turn_documents() -> tuple[Any, ...]:
+    """The inventory rows bound for this turn; empty when there are none."""
+    return _turn_documents.get()
+
+
+def set_norm_families(families: Sequence[Any] | None) -> None:
+    """Remember which Richtlinien-Familien the base shelf holds, or clear it."""
+    _norm_families.set(tuple(families or ()))
+
+
+def get_norm_families() -> tuple[Any, ...]:
+    """The turn's families (:class:`~agent.common.norm_registry.NormFamily`)."""
+    return _norm_families.get()
+
+
+def _family_lines(families: Sequence[Any]) -> list[str]:
+    """One line per Richtlinie, naming every part of it the corpus holds.
+
+    "OIB-Richtlinien 1–6" is a range, and a range names no members. OIB-RL 2 is
+    four documents — 2, 2.1, 2.2, 2.3 — and until this line the prompt never
+    said so, so „Was weißt du über die OIB 2?“ could open three of them and
+    read as complete. The rule that acts on this is in ``<rules>``;
+    this is the fact it needs.
+    """
+    if not families:
+        return []
+    lines = [
+        "The Richtlinien families of this corpus, with all parts that are actually "
+        "indexed (not the series „1–6“, but the members):"
+    ]
+    lines += [f"- {family.label}: {', '.join(family.members)}" for family in families]
+    lines.append(
+        "A question about a whole Richtlinie is answered only once every member named "
+        "here has been read. A member that was not read may be named, "
+        "but not described."
+    )
+    return lines
+
+
+def set_listing_shelf(shelf: Shelf | str | None) -> None:
+    """Remember the shelf this turn is listing, or clear it."""
+    _listing_shelf.set(parse_shelf(shelf))
+
+
+def get_listing_shelf() -> Shelf | None:
+    return _listing_shelf.get()
+
+
+def _parse_scope_shelves(values: Sequence[Any] | None) -> list[Shelf]:
+    if not values:
+        return []
+    seen: set[Shelf] = set()
+    out: list[Shelf] = []
+    for value in values:
+        shelf = parse_shelf(value)
+        if shelf is None or shelf in seen:
+            continue
+        seen.add(shelf)
+        out.append(shelf)
+    return out
+
+
+def _heading(shelf: Shelf) -> str:
+    return SHELF_QUALIFIERS[shelf]
+
+
+def _implied_shelves(groups: dict[Shelf, list[Any]]) -> list[Shelf]:
+    """Shelves that must exist given the ones we already have files for.
+
+    Every request has Basiswissen. Every project has a Büroablage. A turn
+    that already listed project or session files is therefore a project
+    turn, even if the signed envelope did not arrive and the archive is
+    empty — omitting the empty group is how the model fills it with OIB.
+    """
+    present = {shelf for shelf, rows in groups.items() if rows}
+    if not present:
+        return []
+    implied: set[Shelf] = set(present)
+    implied.add(Shelf.BASE)
+    if present & {Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION}:
+        implied.add(Shelf.OFFICE_SHELF)
+        implied.add(Shelf.BASE)
+    if present & {Shelf.PROJECT, Shelf.SESSION}:
+        implied.add(Shelf.PROJECT)
+    return [shelf for shelf in _INVENTORY_ORDER if shelf in implied]
+
+
+def _folded_base_lines(count: int) -> list[str]:
+    """The base shelf as a shape, not a list of filenames.
+
+    Basiswissen is a platform constant: the same ~39 OIB files on every
+    request, project or not. Spelling them out costs the same tokens on a
+    Brandschutz question, on a greeting, and on a question about the user's own
+    plans — and buys nothing the retrieval layer does not already give, because
+    a ``knowledge_search`` with no ``file_name`` fans out across exactly this
+    corpus and its hits name the file they came from. This is the one shelf
+    where "that is what RAG is for" is straightforwardly true.
+
+    The user shelves stay spelled out. They are small, they are the reason the
+    model can cite a document by name, and they are what the model cannot
+    reconstruct from anywhere else.
+
+    A listing question about THIS shelf ("welche OIB-Richtlinien hast du")
+    names it (``shelf_hint_from_query`` → ``set_listing_shelf``), and then
+    ``focus_shelf`` prints the full list. The fold applies to every other turn.
+    """
+    n = f"{count} file" if count == 1 else f"{count} files"
+    return [
+        f"{n} — the platform corpus (OIB guidelines with explanatory notes, guides "
+        "and definitions). Constant on every request and deliberately not "
+        "listed here.",
+        "Search it with `knowledge_search` without `file_name`; every hit names "
+        "the file it comes from, and that file is then citable.",
+        f"If the user asks what is on this shelf: say that it is {n} of the "
+        "OIB corpus and that you reach them through search. Do not invent "
+        "file names.",
+        # The one thing the fold may NOT leave out. Everything above is a shape
+        # retrieval can recover; which parts a Richtlinie HAS is not — a search
+        # that never returns 2.3 looks exactly like a Richtlinie that has none.
+        *_family_lines(get_norm_families()),
+    ]
+
+
+def render_inventory_block(
+    docs: Sequence[Any],
+    *,
+    in_scope_shelves: Sequence[Any] | None = None,
+    focus_shelf: Shelf | str | None = None,
+    in_flight: Sequence[str] | None = None,
+) -> str:
+    """Markdown inventory grouped by shelf, including empty in-scope shelves.
+
+    An omitted empty Büroablage section is how the model fills the gap with
+    OIB. In-scope empty shelves therefore render as ``(empty)``.
+
+    ``focus_shelf`` is a listing question about ONE shelf: only that group is
+    printed, so OIB filenames cannot be recited as Büroablage.
+
+    ``in_flight`` names files whose ingestion has not finished. THE ABSENCE OF
+    A FILE IS NOT THE SAME FACT AS ITS NON-EXISTENCE, and this inventory could
+    only ever state the second. It is built from the summaries table, written
+    when a job COMPLETES, so a plan attached moments ago is missing here in
+    exactly the way it is missing from retrieval — and the model, seeing a
+    complete-looking shelf, answered confidently without the one document the
+    question was about. Naming those files lets the answer say what it could
+    not see.
+    """
+    groups: dict[Shelf, list[Any]] = {shelf: [] for shelf in _INVENTORY_ORDER}
+    unknown: list[Any] = []
+    for doc in docs:
+        if not _file_name_of(doc):
+            continue
+        shelf = _shelf_of(doc)
+        if shelf is None:
+            unknown.append(doc)
+        else:
+            groups.setdefault(shelf, []).append(doc)
+
+    scoped = _parse_scope_shelves(in_scope_shelves)
+    if not scoped:
+        scoped = _implied_shelves(groups)
+    focused = parse_shelf(focus_shelf)
+
+    show: list[Shelf] = []
+    for shelf in _INVENTORY_ORDER:
+        if focused is not None:
+            if shelf == focused:
+                show.append(shelf)
+            continue
+        if shelf in scoped or groups[shelf]:
+            show.append(shelf)
+    if not show and not unknown and not (in_flight or []):
+        return ""
+    if focused is not None:
+        unknown = []
+
+    lines = [
+        "## Knowledge-base inventory (index — NOT sources)",
+        "These files exist and are searchable. This is an index of what is available, "
+        "not evidence you may cite: the one-line summaries are not quotable, and a "
+        "filename here is not a citable source until a retrieval result has returned "
+        "a passage from it.",
+        "",
+        "Files sit on four nested shelves. A wider shelf is NOT the narrower one:",
+        "- **Basiswissen** (base) — always on this request. Platform OIB / law. Every turn has this.",
+        "- **Büroablage** (office_shelf) — on every project in this organization. "
+        "The office's own files. NOT base/OIB, NOT this project.",
+        "- **Projektwissen** (project) — on every session of this project. This project's files. NOT the Büroablage.",
+        "- **Private Sitzung** (session) — only this chat. Attachments uploaded here.",
+        "",
+        'When the user asks which files you have on a shelf (e.g. "welche Dateien '
+        'hast du in der Büroablage", "was liegt im Projekt", "welche OIB-Richtlinien '
+        "hast du\"), answer ONLY from that shelf's files. If the group is empty, say "
+        "so. Never fill a gap with another shelf. Büroablage is never the OIB corpus. "
+        "When the group says it is incomplete, or the question narrows by folder, name, "
+        "kind or date, `list_files` returns the complete, filtered list.",
+        "",
+    ]
+    if any(_folder_of(doc) for doc in docs):
+        lines.append(
+            "Files the user filed into a folder show it as `(Ordner: Pfad/Unterpfad)`. "
+            "A folder is a path, so `Brandschutz` also means everything under "
+            "`Brandschutz/…`. You may name folders when you talk about the files, and "
+            "you may pass `folder=` to `knowledge_search` to read only what is filed "
+            "there. Files with no `(Ordner: …)` sit at the top level."
+        )
+        lines.append("")
+
+    pending = [name for name in (in_flight or []) if name]
+    if pending:
+        shown = pending[:_IN_FLIGHT_MAX_NAMED]
+        rest = len(pending) - len(shown)
+        tail = f", und {rest} weitere" if rest > 0 else ""
+        lines.append(
+            "**Still being read.** These files were uploaded but their indexing has not "
+            f"finished, so they are NOT in the inventory above and a search will not find "
+            f"them yet: {', '.join(f'`{name}`' for name in shown)}{tail}. If the question "
+            "depends on one of them, say plainly that it is still being processed and "
+            "answer what you can without it — do not present an answer that omits it as "
+            "though the file had been read."
+        )
+        lines.append("")
+
+    if focused is not None:
+        other = [SHELF_QUALIFIERS[s] for s in _INVENTORY_ORDER if s != focused]
+        lines.append(
+            f"This question asked only about **{SHELF_QUALIFIERS[focused]}**. "
+            f"Other shelves ({', '.join(other)}) exist on this request but are not listed."
+        )
+        lines.append("")
+
+    dropped = get_inventory_drops()
+    for shelf in show:
+        rows = groups.get(shelf, [])
+        lines.append(f"### {_heading(shelf)}")
+        lines.append(_SHELF_BLURBS[shelf])
+        base_total = len(rows) + dropped.get(Shelf.BASE, 0)
+        # `base_total`, not `rows`: when user shelves spend the whole cap, every
+        # base row is dropped and the old `rows` guard fell through to
+        # "(empty — no files on this shelf)" plus a bare omission notice. That
+        # tells the model the OIB corpus is GONE, on the one shelf that is a
+        # platform constant present on every single request.
+        if shelf is Shelf.BASE and focused is not Shelf.BASE and base_total:
+            lines.extend(_folded_base_lines(base_total))
+            lines.append("")
+            continue
+        if not rows:
+            lines.append("(empty — no files on this shelf)")
+        else:
+            for doc in rows:
+                tags = _tags_of(doc)
+                tag_bit = f" [{', '.join(tags)}]" if tags else ""
+                topics = _topics_of(doc)
+                topic_bit = f" Themen: {', '.join(topics)}" if topics else ""
+                captured = _captured_on_of(doc)
+                captured_bit = f" · aufgenommen {captured}" if captured else ""
+                folder = _folder_of(doc)
+                folder_bit = f" (Ordner: {folder})" if folder else ""
+                summary = _summary_of(doc) or "No summary available"
+                revision_bit = _confirmed_revision_bit(doc)
+                reading_bit = _reading_bit(doc)
+                lines.append(
+                    f"- **{_file_name_of(doc)}**{folder_bit}{tag_bit}{topic_bit}{captured_bit}{revision_bit}"
+                    f"{reading_bit}: {summary}"
+                )
+        # Never a silent cap. Without this line the model reads a truncated
+        # shelf as the whole shelf, and the listing instruction above ("answer
+        # ONLY from that shelf's group") turns that into a confident wrong
+        # answer with no way to hedge.
+        missing = dropped.get(shelf, 0)
+        if missing > 0:
+            lines.append(
+                f"- (and {missing} more file(s) on this shelf, not listed here — "
+                f'this list is incomplete. `list_files(shelf="{shelf.value}")` shows all, '
+                f"also filtered by folder, name or date; without that call do not treat the list "
+                f"as complete)"
+            )
+        lines.append("")
+
+    if unknown:
+        lines.append("### Unattributed")
+        lines.append("Shelf was not stated for these files — do not assign them to Büroablage or Basiswissen.")
+        for doc in unknown:
+            summary = _summary_of(doc) or "No summary available"
+            lines.append(f"- **{_file_name_of(doc)}**: {summary}")
+        # Shelf-less files are capped like any other, and their drops are
+        # recorded under `None` — a key no shelf in `show` ever looks up. Without
+        # this the section presents a truncated list as the whole of it, which is
+        # the exact defect the per-shelf notice exists to prevent.
+        missing_unknown = dropped.get(None, 0)
+        if missing_unknown > 0:
+            lines.append(
+                f"- (and {missing_unknown} more file(s) with no shelf stated, not "
+                f"listed here — this list is incomplete; say so instead of treating it as "
+                f"complete)"
+            )
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def in_scope_shelves_from_context() -> list[Shelf]:
+    """Shelves the current turn is authorized to read, or empty when unknown."""
+    try:
+        from agent.knowledge.scoping import get_scoped_collections_from_context
+
+        entries = get_scoped_collections_from_context()
+    except Exception:
+        return []
+    if not entries:
+        return []
+    return [entry.shelf for entry in entries if entry.shelf]

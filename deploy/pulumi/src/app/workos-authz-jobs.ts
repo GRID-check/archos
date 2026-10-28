@@ -1,11 +1,13 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, frontendImage } from "../config";
+import { DeployConfig } from '../config'
+import { appPullPolicy, frontendImage } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { JOB_DEFAULTS, LIGHT_WORKER_RESOURCES, UID } from "../constants";
 import { AppSecrets, AppWiring, authzCatalogEnv, folderGrantsCarryOverEnv } from "./config";
+import { logicalName } from "../names";
 
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
@@ -13,7 +15,7 @@ type EnvVar = k8s.types.input.core.v1.EnvVar;
  * One run-to-completion Job from the frontend image. Bare `node` on a bundle:
  * the runtime image drops bun, npx, tsx and every devDependency, so the
  * TypeScript scripts are bundled to plain ESM at image build time
- * (`frontends/ui/deploy/Dockerfile`, `dist-scripts/`), with their packages
+ * (`apps/workspace/deploy/Dockerfile`, `dist-scripts/`), with their packages
  * resolved from the production `node_modules`.
  */
 function workosJob(
@@ -22,7 +24,7 @@ function workosJob(
   script: string,
   env: EnvVar[],
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
@@ -62,7 +64,7 @@ function workosJob(
 
 /**
  * Makes the WorkOS environment hold every permission and role of the app's
- * authorization catalog (`frontends/ui/src/lib/authz/catalog.ts`) once per
+ * authorization catalog (`apps/workspace/bff/authz/catalog.ts`) once per
  * deploy: `provision:authz --apply`, which used to be a runbook step per
  * environment and was skipped often enough that Production lacked a permission
  * the code already checked.
@@ -85,12 +87,12 @@ function workosJob(
  */
 export function reconcileAuthzCatalog(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   return workosJob(
-    "grid-app-authz-catalog",
+    logicalName("grid-app-authz-catalog"),
     "authz-catalog",
     "provision-workos-authz.mjs",
     authzCatalogEnv(cfg),
@@ -119,12 +121,12 @@ export function reconcileAuthzCatalog(
  */
 export function carryOverFolderGrants(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   return workosJob(
-    "grid-app-folder-grants",
+    logicalName("grid-app-folder-grants"),
     "folder-grants",
     "migrate-folder-grants-to-workos.mjs",
     folderGrantsCarryOverEnv(),

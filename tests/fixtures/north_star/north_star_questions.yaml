@@ -1,0 +1,291 @@
+# The north-star set (`task be:eval:answer-suite -- --set north-star`): one row per exemplar of
+# docs/architecture/north-star-answers.md, asked in the fixture projects the office-file and visual sets
+# already seed. The document is the bar; these rows are the part of it a run can check. Change both
+# together: `tests/test_north_star_rows.py` fails when an exemplar has no row or a row no exemplar.
+#
+# A row is a files-set or visual-set row (`files_eval.py`, `visual_eval.py`; their headers describe
+# `expect`, `tools`, `gold` and `box`) plus:
+#   scene:      the scene(s) of agent-capabilities.md it serves (1-7), or `restraint`
+#   capability: what it exercises, in a few words
+#   fixture:    files | visual, the project it is asked in; the suite runs each group with its own BFF
+#   maps_to:    the existing pf-*/pv-* rows it extends, if any
+#   needs:      what the commit or the harness must offer before the row can run. A tool argument
+#               (`files_eval.NEEDS`: pages, cursor, view, group_by, context, regex) or a harness
+#               ability (`north_star_eval.HARNESS`): given_box (a turn with a drawn box), canvas (a
+#               turn sent from the canvas), proposals (the fixture BFF files a proposal), upload (a
+#               turn an upload starts), second_project (a second project of the same office).
+#               A row whose needs are missing is "not applicable on this commit" and counts neither way.
+#   horizon:    true for a scene that is the next horizon; listed in the report, never run
+#   region:     with `box: given`, the box the person drew, in shares of the page
+#
+#   trigger:    `new_document`: the row is the headless turn an upload starts, asked with `focus_document`
+#               open (`turn_input.py`); its `question` is the fixed instruction below
+#   expect.marks: `none`, or `{mentions: [[...], [...]]}` (one mark proposed on the document states something
+#               of every list); the marks are what the fixture BFF recorded (`fixture_bff.marks_proposed`)
+#
+# Every check below is the exemplar's, not today's behaviour: a failing row is the gap to the star.
+
+# The instruction of the document check, as `checkInstruction` in
+# apps/workspace/bff/document-check/check.ts words it. `${document.name}` and `${document.id}` are filled
+# from the row's `focus_document`; `${MAX_FINDINGS}` is already 4. `tests/test_north_star_rows.py` fails when
+# this text and check.ts differ.
+document_check_instruction: &document_check_instruction |-
+  A new document was just uploaded to this project and indexed: "${document.name}" (document id ${document.id}).
+  Check it against the project's other documents, as a careful colleague would.
+  1. Read the new document and find the 2 to 4 load-bearing facts it states: counts, areas, heights, classes, dates, named standards or approvals, anything other documents also depend on.
+  2. Check each fact against the project's other documents: where else the fact is stated, and the passage itself. Compare with the newest Fassung of each document.
+  3. Only where a fact contradicts another document, propose a mark on the new document with canvas__mark (kind hint, on the place that states the fact, at most 4 marks). The body names both values; the basis cites both sources by file name and page. Never open a mark and never say a deviation is allowed or forbidden.
+  4. Where everything agrees, or nothing comparable exists, propose nothing and answer with the single word "Agrees".
+  Nobody watches this turn and nobody answers questions: do not ask anything, and do not change anything except by proposing marks.
+
+questions:
+  # --- scene 1: it knows every project the way the project lead does -------------------
+  - id: ns-orient-project
+    scene: [1]
+    capability: orient in a project
+    fixture: files
+    maps_to: [pf-orient-project]
+    needs: [view]
+    question: Ich übernehme die Hubergasse ab morgen. Was liegt da alles, und wo steht das Projekt?
+    expect:
+      tools: {must: [{list_files: {view: tree}}], must_not: [look]}
+      max_research_calls: 3
+      mentions: [Einreichung, Bestand, Behörde, Nachbarn, Gutachten, Korrespondenz, "Index B"]
+
+  - id: ns-current-fassung
+    scene: [1]
+    capability: aggregate counts and the current Fassung
+    fixture: files
+    maps_to: [pf-aggregate-count]
+    needs: [view]
+    question: Wie viele Unterlagen liegen in der Einreichung, und welcher Index der Grundrisse gilt?
+    expect:
+      tools: {must: [{list_files: {view: tree}}], must_not: [read_passage, look]}
+      max_research_calls: 2
+      mentions: [["6", "sechs"], "Index B", ["03.02.2026", "3. Februar 2026"]]
+
+  # --- scene 2: it works the way a person at a desk works ------------------------------
+  - id: ns-read-through
+    scene: [2, 6]
+    capability: read a long report through, with continuation
+    fixture: files
+    maps_to: [pf-read-through]
+    needs: [pages, cursor]
+    question: Fass mir das Brandschutzkonzept Kapitel für Kapitel zusammen, ich telefoniere morgen mit Dr. Pichler.
+    expect:
+      tools: {must: [{read_passage: {pages: "*"}}], must_not: [look]}
+      max_research_calls: 4
+      at_least: {n: 5, of: [Brandabschnitt, Sicherheitsbeleuchtung, Aufzug, Rauchwarnmelder, Löschwasser, Brandschutzordnung]}
+      judge: [flags_mismatch]
+
+  - id: ns-geschaeftszahlen
+    scene: [2]
+    capability: find every instance of a pattern
+    fixture: files
+    maps_to: [pf-regex]
+    needs: [regex]
+    question: Welche Geschäftszahlen der MA 37 kommen in unseren Unterlagen vor? Ich brauch sie für das nächste Schreiben an die Baupolizei.
+    expect:
+      tools: {must: [{knowledge_search: {match: [regex, exact]}}], must_not: [look]}
+      max_research_calls: 2
+      mentions: ["567812-2026-1", "654321-2026", "123456-2026"]
+
+  - id: ns-not-in-documents
+    scene: [2]
+    capability: prove an absence, invent nothing
+    fixture: files
+    maps_to: [pf-exact-absent]
+    question: Ist im Brandschutzkonzept eine Sprinkleranlage vorgesehen? Die Haustechnik fragt für die Ausschreibung.
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}], must_not: [look]}
+      mentions: [Rauchwarnmelder]
+      not_mentions: [Rauchansaugsystem]
+      judge: [none_found]
+
+  # --- scene 3: it sees a drawing the way an architect does ----------------------------
+  - id: ns-dimension
+    scene: [3]
+    capability: a dimension read off a drawing
+    fixture: visual
+    maps_to: [pv-dim-wohnen]
+    question: Wie breit ist der Wohnraum im Erdgeschoß?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: dim-wohnen}
+    expect:
+      tools: {must: [look]}
+      mentions: [["5,24", "5.24"]]
+      not_mentions: ["5,04"]
+
+  - id: ns-door-count
+    scene: [3]
+    capability: count on a drawing, overview then regions
+    fixture: visual
+    maps_to: [pv-count-doors-eg-b]
+    question: Wie viele Türen hat das Erdgeschoß?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: plan-area}
+    expect:
+      tools: {must: [look]}
+      mentions: [["5 Türen", "fünf Türen"]]
+      not_mentions: ["4 Türen", "vier Türen"]
+
+  - id: ns-plankopf
+    scene: [3]
+    capability: read the Plankopf
+    fixture: visual
+    maps_to: [pv-title-scale, pv-title-date]
+    question: Welcher Maßstab und welches Datum stehen im Plankopf vom Schnitt A-A?
+    box: found
+    gold:
+      - {document: EP-02_Schnitt_A-A.pdf, page: 1, element: title-scale}
+      - {document: EP-02_Schnitt_A-A.pdf, page: 1, element: title-date}
+    expect:
+      tools: {must: [look]}
+      mentions: [["1:50"], ["03.02.2026", "3. Februar 2026"]]
+      not_mentions: ["1:100"]
+
+  - id: ns-fassung-compare
+    scene: [3, 4]
+    capability: compare two Fassungen, the change shown
+    fixture: visual
+    maps_to: [pv-fassung-overall, pv-fassung-dimension, pv-fassung-door]
+    question: Was hat sich im Erdgeschoß zwischen Index A und Index B geändert?
+    box: found
+    gold:
+      - {document: EP-01_Grundrisse_Index-A.pdf, page: 1, element: dim-wohnen}
+      - {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: dim-wohnen}
+      - {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: door-5}
+    expect:
+      tools: {must: [look]}
+      mentions: [["Tür"], ["5,04", "5.04"], ["5,24", "5.24"]]
+
+  - id: ns-drawn-box
+    scene: [3, 4]
+    capability: a box the person drew, put in context
+    fixture: visual
+    needs: [given_box, canvas]
+    question: Was ist das hier? War das in Index A schon so?
+    box: given
+    region: [0.30, 0.60, 0.10, 0.16]
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: door-5}
+    expect:
+      tools: {must: [look]}
+      mentions: [["Tür"], ["dazu", "neu", "hinzu", "ergänzt"]]
+
+  # --- scene 4: it points, in the chat as on the canvas --------------------------------
+  # The chat half of the exemplar. The canvas half needs a canvas turn, and the card half V3's look
+  # card (`visual_eval.parity_available`); the report shows card parity as n/a until both exist.
+  - id: ns-parity
+    scene: [4]
+    capability: chat and canvas as mirrors
+    fixture: visual
+    maps_to: [pv-dim-galerie]
+    question: Wo ist im Obergeschoß die Galerie bemaßt, und wie lang ist sie?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 2, element: dim-galerie}
+    expect:
+      tools: {must: [look]}
+      mentions: [["9,02", "9.02"]]
+
+  # --- scene 2: the law, held apart from the project and from inference ----------------
+  - id: ns-escape-route-law
+    scene: [2]
+    capability: a project fact against OIB-RL 2, honest uncertainty
+    fixture: files
+    maps_to: [pf-mixed-law]
+    question: Hält der Fluchtweg laut Brandschutzkonzept die OIB-RL 2 ein?
+    expect:
+      tools: {must: [knowledge_search]}
+      mentions: [["12 m", "12 Meter", "12,0 m"], "OIB"]
+      not_mentions: ["13,80"]
+      judge: [separates_sources]
+
+  - id: ns-gk-unstated
+    scene: [2, 1]
+    capability: the decisive fact no document states
+    fixture: files
+    question: Das Brandschutzkonzept setzt GK 4 an. Passt das?
+    expect:
+      tools: {any: [read_passage, knowledge_search]}
+      mentions: [Fluchtniveau, ["10,65"], ["11 m", "11 Meter", "11,0 m", "11,00 m"]]
+      judge: [separates_sources]
+
+  # --- writes, the door, restraint -----------------------------------------------------
+  - id: ns-propose-move
+    scene: [1]
+    capability: a write as a proposal the person accepts
+    fixture: files
+    needs: [proposals]
+    question: Leg die Bestätigung der Baubeginnsanzeige zum Bescheid in den Ordner Behörde.
+    expect:
+      tools: {must: [{propose_file_change: {operation: move}}], must_not: [look]}
+      proposals:
+        - {operation: move, document: Schreiben_MA37_Baubeginn.pdf, target_folder: Behörde}
+      mentions: [Behörde]
+      judge: [pending]
+
+  # The turn a `piloti-ask` starts, asked as the chat turn it is (same prompt, tools and turn). The
+  # door around it is held by apps/workspace/bff/agent-asks/service.spec.ts.
+  - id: ns-chat-ask
+    scene: [4]
+    capability: an outside agent consults Piloti
+    fixture: files
+    question: Welche Geschäftszahl hat die Baubewilligung für die Hubergasse 14, und welche Fassung der Einreichpläne hat sie bewilligt?
+    expect:
+      tools: {any: [read_passage, knowledge_search], must_not: [look]}
+      max_research_calls: 2
+      mentions: ["567812", "Index B"]
+
+  - id: ns-trivial
+    scene: [restraint]
+    capability: a trivial question stays fast
+    fixture: files
+    maps_to: [pf-locate-name]
+    question: Wie heißt die Datei mit dem Schnitt genau?
+    expect:
+      tools: {must_not: [knowledge_search, read_passage, look]}
+      max_research_calls: 2
+      mentions: [EP-02_Schnitt_A-A.pdf]
+
+  # --- noticing: the headless turn an upload starts (ADR-0130) --------------------------
+  # Scene 5 as the check runs it today: the Konzept (11 Wohnungen) against Index B (10), asked as
+  # `checkTurnMessage` asks it. The answer is not the check: the proposed marks are (`expect.marks`).
+  - id: ns-notice-new-document
+    scene: [5]
+    capability: notice without being asked
+    fixture: files
+    trigger: new_document
+    focus_document: Brandschutzkonzept_Hubergasse14.pdf
+    needs: [trigger, marks]
+    question: *document_check_instruction
+    expect:
+      tools: {must: [read_passage, canvas__mark], must_not: [look]}
+      marks: {mentions: [["11"], ["10"]]}
+      judge: [flags_mismatch]
+
+  # Silence is a result: a document whose facts agree with the others gets no mark and the word „Agrees“.
+  # The letter's Geschäftszahl is the Bescheid's; it states nothing else the project contradicts.
+  - id: ns-notice-agrees
+    scene: [5]
+    capability: stay silent when everything agrees
+    fixture: files
+    trigger: new_document
+    focus_document: Schreiben_MA37_Baubeginn.pdf
+    needs: [trigger, marks]
+    question: *document_check_instruction
+    expect:
+      tools: {must_not: [canvas__mark, look]}
+      marks: none
+      mentions: [Agrees]
+
+  # --- the next horizon: listed, never run ---------------------------------------------
+  - id: ns-learn-office
+    scene: [7]
+    capability: learn the office's conventions
+    fixture: files
+    horizon: true
+    needs: [upload, second_project, proposals]
+    question: "(kein Auftrag: ein Schreiben der Baubehörde wurde in einem neuen Projekt in Korrespondenz hochgeladen)"
+    expect:
+      tools: {must: [{propose_file_change: {operation: move}}]}
+      judge: [pending]

@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    When a document is open next to the chat and you have drawn a box or
+    selected a mark on it, a question typed in the chat now means that place,
+    so "here" works the same as in the document's own question box.

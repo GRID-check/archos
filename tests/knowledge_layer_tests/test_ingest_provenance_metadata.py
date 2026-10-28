@@ -14,13 +14,13 @@ Two destinations, and they answer different questions:
   the chunks (``unregister_summary``), which is what makes a superseded or
   archived version's provenance go with the passages it described.
 
-The keys are spelled once, in ``aiq_agent.common.provenance``, and both sides
+The keys are spelled once, in ``agent.common.provenance``, and both sides
 read them from there.
 """
 
 import pytest
-from knowledge_layer.llamaindex.adapter import EMBED_EXCLUDED_METADATA_KEYS
-from knowledge_layer.llamaindex.adapter import _provenance_from_config
+from knowledge_layer.llamaindex.chunk_metadata import EMBED_EXCLUDED_METADATA_KEYS
+from knowledge_layer.llamaindex.chunk_metadata import provenance_from_config
 
 _STAMPED = {
     "authored_by": "agent",
@@ -32,21 +32,21 @@ _STAMPED = {
 
 class TestProvenanceFromConfig:
     def test_the_four_keys_come_off_the_job_config(self):
-        assert _provenance_from_config({"cleanup_files": True, **_STAMPED}) == _STAMPED
+        assert provenance_from_config({"cleanup_files": True, **_STAMPED}) == _STAMPED
 
     def test_a_human_document_yields_nothing_to_stamp(self):
         # Which is what makes the stamping loop a no-op for every human
         # document: `doc.metadata.update({})` changes nothing.
-        assert _provenance_from_config({"cleanup_files": True}) == {}
+        assert provenance_from_config({"cleanup_files": True}) == {}
 
     def test_a_non_agent_author_yields_nothing_either(self):
-        assert _provenance_from_config({"authored_by": "user", "approved_by": "Maria Huber"}) == {}
+        assert provenance_from_config({"authored_by": "user", "approved_by": "Maria Huber"}) == {}
 
     def test_a_missing_approver_does_not_lose_the_author(self):
         # The lifecycle CHECK forbids a published version with no approver, and
         # a parser that trusted the producer is a parser that raises in
         # production.
-        assert _provenance_from_config({"authored_by": "agent"}) == {"authored_by": "agent"}
+        assert provenance_from_config({"authored_by": "agent"}) == {"authored_by": "agent"}
 
 
 class TestEmbedExclusions:
@@ -70,7 +70,7 @@ class TestDocumentMetadataStore:
 
     @pytest.fixture()
     def store(self, tmp_path):
-        from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+        from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
         store = DocumentMetadataStore(f"sqlite:///{tmp_path / 'meta.db'}")
         store.register("proj_abc", "piloti/doc_1/aktenvermerk-2026-09-01.md", "Ein Aktenvermerk.")

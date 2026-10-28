@@ -40,6 +40,10 @@
     "de": "Ein Postfach-Eintrag wie „Anna hat 15 Anmerkungen gesetzt“ zeigt in der Prüfansicht nicht mehr nur bei der neuesten dieser Anmerkungen einen Ungelesen-Punkt. Er gilt als gelesen, sobald Sie die Prüfansicht des Dokuments öffnen."
   },
   {
+    "en": "A U-value, the Schrittmaßregel, an escape route's length or a room's glazing share now comes as a „Was wäre, wenn“ card, held to the Richtlinie's limit for your stair type, component or room. Change an input and the result and the verdict are recomputed on the spot; your value is marked „Ihre Annahme“ beside the source's figure, and nothing is saved.",
+    "de": "Ein U-Wert, die Schrittmaßregel, die Länge eines Fluchtwegs oder der Verglasungsanteil eines Raums wird jetzt als „Was wäre, wenn“-Karte angezeigt und mit dem Grenzwert der Richtlinie für Ihren Treppentyp, Ihr Bauteil oder Ihren Raum abgeglichen. Ändern Sie eine Eingabe, werden Ergebnis und Bewertung sofort neu berechnet; Ihr Wert ist neben dem Quellenwert als „Ihre Annahme“ gekennzeichnet, und nichts wird gespeichert."
+  },
+  {
     "en": "A Viewer who opens a project's chat now sees the message box locked, with the reason, instead of typing a question that fails when sent. The member list shows the role each person really holds, instead of rounding narrower roles down to \"Viewer\".",
     "de": "Wenn Sie als Viewer den Chat eines Projekts öffnen, sehen Sie jetzt, dass das Eingabefeld mit Begründung gesperrt ist, statt eine Frage einzugeben, die beim Senden fehlschlägt. Die Mitgliederliste zeigt die Rolle, die jede Person tatsächlich hat, statt engere Rollen auf „Viewer“ abzurunden."
   },
@@ -86,6 +90,10 @@
   {
     "en": "A chat whose deletion failed while Piloti was briefly unreachable is now deleted automatically once Piloti is back, instead of staying hidden until someone deleted it again.",
     "de": "Ein Chat, dessen Löschung fehlschlug, weil Piloti kurz nicht erreichbar war, wird jetzt automatisch gelöscht, sobald Piloti wieder erreichbar ist, statt ausgeblendet zu bleiben, bis jemand ihn erneut löscht."
+  },
+  {
+    "en": "A citation Piloti could not verify is now marked „Beleg nicht verifiziert\" where it stood, instead of disappearing unnoticed. Piloti no longer attaches a source the answer did not cite.",
+    "de": "Eine Quellenangabe, die Piloti nicht verifizieren konnte, wird nun an ihrer Stelle als „Beleg nicht verifiziert“ markiert, statt unbemerkt zu verschwinden. Piloti fügt einer Antwort keine Quelle mehr hinzu, die in der Antwort nicht zitiert wurde."
   },
   {
     "en": "A copied annotation link now opens only that annotation, and new annotations a colleague sets while you have the document open in the review no longer stay unread in your inbox.",
@@ -164,12 +172,20 @@
     "de": "Ein von Piloti verfasstes Dokument wird erst durchsuchbar, wenn jemand in Ihrem Büro es freigegeben und veröffentlicht hat. Entwürfe, Dokumente in Prüfung und abgelehnte bleiben außerhalb der Suche."
   },
   {
+    "en": "A document found by the search opens a menu with Ask Piloti, Open current version and Open points, also with Shift+F10 on the chosen result. In the chat, type # and a word to pick a document from the workspace and ask about it.",
+    "de": "Ein gefundenes Dokument hat ein Menü mit „Piloti fragen“, „Aktuelle Fassung öffnen“ und „Offene Punkte“, auch mit Umschalt+F10 auf dem gewählten Treffer. Im Chat holen # und ein Wort ein Dokument aus der Arbeitsfläche in die Frage."
+  },
+  {
     "en": "A document from a folder not everyone may read cannot be added to a research run. The list marks it, and Piloti says why if you try.",
     "de": "Ein Dokument aus einem Ordner, den nicht alle lesen dürfen, lässt sich keinem Rechercheauftrag hinzufügen. Die Liste kennzeichnet es, und Piloti sagt beim Versuch, warum."
   },
   {
     "en": "A document is now one entry, however many revisions it has. The entry shows how many, and opening it lists every revision on one timeline, newest first, with who added it, when, and what changed.",
     "de": "Ein Dokument ist jetzt ein einziger Eintrag, egal wie viele Fassungen es hat. Der Eintrag zeigt, wie viele es sind, und beim Öffnen stehen alle Fassungen in einem Verlauf, die neueste zuerst, mit Angabe, wer sie wann eingestellt hat und was sich geändert hat."
+  },
+  {
+    "en": "A document says how many of its pages were fully read, and why the rest were not, instead of looking complete when a drawing or scan could not be read.",
+    "de": "Ein Dokument weist aus, wie viele seiner Seiten vollständig gelesen wurden und warum die übrigen nicht gelesen wurden, statt vollständig zu erscheinen, wenn eine Zeichnung oder ein Scan nicht gelesen werden konnte."
   },
   {
     "en": "A document stuck in processing can now be retried from its menu, instead of being deleted and uploaded again. The retry keeps the document, so its sources, chat references and assignments stay intact, and Piloti declines the retry while reading is still under way.",
@@ -180,12 +196,20 @@
     "de": "Ein Dokument, das nicht durchsuchbar gemacht werden konnte oder noch gelesen wird, bleibt jetzt mit seinem Status in der Projektdateiliste. So wird es nicht mehr mit einer Datei verwechselt, die nie hochgeladen wurde."
   },
   {
+    "en": "A document that is no longer a building permit no longer keeps showing the permit conditions read from it earlier.",
+    "de": "Ein Dokument, das nicht mehr als Baubewilligung gilt, zeigt die zuvor daraus ausgelesenen Bewilligungsauflagen nicht mehr an."
+  },
+  {
     "en": "A document that never became citable no longer carries the green badge that marks it as citable. It now shows a failure with a retry option, or a neutral status for documents filed before this change.",
     "de": "Ein Dokument, das nie zitierfähig wurde, trägt nicht mehr das grüne Abzeichen, das es als zitierfähig ausweist. Stattdessen zeigt es einen Fehler mit der Möglichkeit, es erneut zu versuchen, oder einen neutralen Status für Dokumente, die vor dieser Änderung abgelegt wurden."
   },
   {
     "en": "A document whose reading failed can be read again from its own card: \"Erneut lesen\" is in the ⋯ menu, beside rename and delete, wherever the failure is shown. Until now the card only said it had failed, and the one retry was two clicks inside a viewer you had no reason to open.",
     "de": "Ein Dokument, dessen Lesen fehlgeschlagen ist, lässt sich direkt auf seiner Karte erneut lesen: „Erneut lesen“ steht im ⋯-Menü neben Umbenennen und Löschen, überall dort, wo der Fehler angezeigt wird. Bisher meldete die Karte nur den Fehler, und der einzige Versuch führte über zwei Klicks in einer Ansicht, die Sie ohne Grund öffnen mussten."
+  },
+  {
+    "en": "A document whose reading failed for a passing reason is read again on its own, and drawing sets are read faster while several offices upload at once.",
+    "de": "Ein Dokument, dessen Einlesen vorübergehend fehlgeschlagen ist, wird automatisch erneut eingelesen, und Plansätze werden schneller eingelesen, wenn mehrere Büros gleichzeitig Uploads durchführen."
   },
   {
     "en": "A document's revisions and their approval now use one word each, everywhere: every state of a document is a revision, numbered \"Revision 3 of 5\", and a revision sent back reads \"Changes requested\", matching the button.",
@@ -352,6 +376,10 @@
     "de": "Ein vor diesem Release gelöschter Ordner bleibt endgültig gelöscht. Ein Projektordner lässt sich nicht mehr löschen, solange er einen Unterordner enthält, den Sie nicht bearbeiten dürfen; Ordner im Archiv werden wie bisher gelöscht."
   },
   {
+    "en": "A folder dropped on the new-project dialog now lands only in the project it was dropped for. Before, if its setup page did not take it, the next new project could.",
+    "de": "Ein in den Dialog für ein neues Projekt gezogener Ordner wird jetzt nur dem Projekt zugeordnet, für das er abgelegt wurde. Bisher konnte er beim nächsten neuen Projekt landen, wenn die Setup-Seite ihn nicht übernommen hat."
+  },
+  {
     "en": "A folder that holds subfolders you cannot read can only be moved by an organization admin, and a demoted admin loses access to the folders shortly after the change. Review requests go only to people who may read the folder, and the projects overview counts only the documents you may read.",
     "de": "Ein Ordner mit Unterordnern, die Sie nicht lesen dürfen, kann nur ein Administrator der Organisation verschieben, und wer herabgestuft wird, verliert den Zugriff auf die Ordner kurz nach der Änderung. Prüfanfragen gehen nur an Personen, die den Ordner lesen dürfen, und die Projektübersicht zählt nur die Dokumente, die Sie lesen dürfen."
   },
@@ -374,6 +402,10 @@
   {
     "en": "A follow-up like \"kürze Punkt 3\" changes that document in place instead of producing a second version of it, so the conversation keeps working on one draft rather than on a growing pile of near-copies.",
     "de": "Eine Folgeanweisung wie „kürze Punkt 3“ ändert das Dokument direkt, statt eine zweite Version zu erstellen, sodass Sie im Gespräch an einem Entwurf weiterarbeiten, statt immer mehr nahezu identische Kopien anzuhäufen."
+  },
+  {
+    "en": "A follow-up question now builds on the earlier question and answer, also after an answer that read long passages, in the chat and when another agent asks Piloti.",
+    "de": "Eine Folgefrage baut jetzt auf der vorherigen Frage und Antwort auf – auch nach einer Antwort, bei der lange Passagen gelesen wurden, sowohl im Chat als auch, wenn ein anderer Agent Piloti fragt."
   },
   {
     "en": "A large upload no longer shows as failed while it is still being read: it stays at Wird gelesen, a notice says reading continues in the background, and the file becomes citable once it is ready.",
@@ -416,6 +448,10 @@
     "de": "Eine einmalige Aufgabe trägt auf ihrer Karte jetzt dieselbe Farbe wie ihr Block im Stundenplan."
   },
   {
+    "en": "A passage that runs over a page break now shows its page range, for example pages 4 to 5, instead of only the first page.",
+    "de": "Ein Textabschnitt, der über einen Seitenumbruch reicht, zeigt jetzt den Seitenbereich an, zum Beispiel Seiten 4 bis 5, statt nur die erste Seite."
+  },
+  {
     "en": "A password-protected PDF asks for its password instead of failing. A PDF that cannot be opened offers to try again, or to open it in the browser.",
     "de": "Ein passwortgeschütztes PDF fordert zur Eingabe des Passworts auf, statt einen Fehler auszugeben. Lässt sich ein PDF nicht öffnen, können Sie es erneut versuchen oder im Browser öffnen."
   },
@@ -428,6 +464,10 @@
     "de": "Ein Foto wird jetzt zusätzlich zum dargestellten Inhalt als „Foto“ gekennzeichnet: Ein Foto eines Grundrisses ist sowohl „Foto“ als auch „Grundriss“."
   },
   {
+    "en": "A place Piloti wants to show you appears under the answer as soon as the answer starts, marked as waiting, and you can open it right away.",
+    "de": "Ein Ort, den Piloti Ihnen zeigen möchte, wird direkt unter der Antwort angezeigt, sobald diese beginnt, als wartend markiert und kann sofort geöffnet werden."
+  },
+  {
     "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
     "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
   },
@@ -436,12 +476,20 @@
     "de": "Ein Präzedenzfall aus einem anderen Bundesland ist jetzt als nach einer anderen Bauordnung entschieden gekennzeichnet."
   },
   {
+    "en": "A process or outline Piloti drew in a project can now be reworked by hand: „Als Skizze bearbeiten“ opens it on a drawing canvas, and your version is filed into the project as an SVG and a PDF marked as drafted by Piloti and edited by you.",
+    "de": "Eine von Piloti in einem Projekt gezeichnete Prozessdarstellung oder Kontur lässt sich jetzt manuell überarbeiten: „Als Skizze bearbeiten“ öffnet sie auf einer Zeichenfläche, und Ihre Version wird als SVG und PDF im Projekt abgelegt – gekennzeichnet als von Piloti entworfen und von Ihnen bearbeitet."
+  },
+  {
     "en": "A project admin reviewing a colleague's image that is still being checked sees the image.",
     "de": "Ein Projektadministrator, der das Bild eines Kollegen prüft, sieht es, solange dessen Prüfung noch läuft."
   },
   {
     "en": "A project link with a mistyped or truncated address now shows the same \"no access\" page as any project you cannot open, instead of a general error page.",
     "de": "Ein Projektlink mit einer falsch eingegebenen oder abgeschnittenen Adresse zeigt jetzt dieselbe Seite „Kein Zugriff“ wie jedes Projekt, das Sie nicht öffnen können, statt einer allgemeinen Fehlerseite."
+  },
+  {
+    "en": "A project lists findings from its documents: a referenced document or plan number the project does not hold, and two documents that state the same fact differently, each with the pages it rests on.",
+    "de": "Ein Projekt listet Erkenntnisse aus seinen Dokumenten auf: ein referenziertes Dokument oder eine Plannummer, die dem Projekt nicht vorliegt, sowie zwei Dokumente, die denselben Sachverhalt unterschiedlich darstellen – jeweils mit den Seiten, auf die sich der Befund stützt."
   },
   {
     "en": "A project now has a page of similar past projects: the closed projects most like it that you may open, with what they share, the OIB edition they were planned under, what the authority demanded there, and the decisions they recorded.",
@@ -456,8 +504,16 @@
     "de": "Der Abschlussmonat eines Projekts wird jetzt beim Schließen festgelegt. Ein laufendes Projekt zeigt „laufend“, und ein früher eingetragener Monat wird nicht mehr angezeigt; beim Schließen des Projekts wird er erneut abgefragt."
   },
   {
+    "en": "A project's findings now show where a document states a different building class, storey count, plot area, construction method, use or federal state than the project profile, side by side with links to both.",
+    "de": "Die Ergebnisse eines Projekts zeigen jetzt nebeneinander, wo ein Dokument eine andere Gebäudeklasse, Geschossanzahl, Grundstücksfläche, Bauweise, Nutzung oder ein anderes Bundesland als im Projektprofil angibt, jeweils mit Links zu beiden."
+  },
+  {
     "en": "A project's Übersicht opens again when your office has a closed project to compare it with. Before, the similar-projects tile failed to load and took the whole Übersicht down with an error page.",
     "de": "Die Übersicht eines Projekts öffnet sich wieder, wenn Ihr Büro ein abgeschlossenes Projekt zum Vergleich hat. Zuvor konnte die Kachel für ähnliche Projekte nicht geladen werden und brachte die gesamte Übersicht mit einer Fehlerseite zum Absturz."
+  },
+  {
+    "en": "A proposed action's card in the chat now names each input in words, such as Folder or Project, instead of its technical name, in German and English.",
+    "de": "Die Karte einer vorgeschlagenen Aktion im Chat benennt nun jede Eingabe auf Deutsch und Englisch ausgeschrieben, etwa als Ordner oder Projekt, statt mit ihrem technischen Namen."
   },
   {
     "en": "A question about a file you just attached now waits until the file can be searched, instead of being answered from everything except that document. The chat says what it is waiting for, and one click asks right away.",
@@ -484,6 +540,14 @@
     "de": "Bei einer Frage zu mehreren Paragraphen, etwa „§§ 3 bis 8“, werden jetzt bis zu sechs in einem Schritt gelesen statt nur der erste."
   },
   {
+    "en": "A question another agent puts to Piloti now always ends with an answer or a reason, also when Piloti restarts while answering it.",
+    "de": "Eine Frage, die ein anderer Agent Piloti jetzt stellt, wird immer mit einer Antwort oder einer Begründung abgeschlossen – auch wenn Piloti während der Beantwortung neu startet."
+  },
+  {
+    "en": "A question asked in English, or another language, in a project whose documents are German is now answered in the language you asked in. Short replies such as \"ok\" or a name still get a German answer.",
+    "de": "Fragen, die Sie in einem Projekt mit deutschen Dokumenten auf Englisch oder in einer anderen Sprache stellen, werden jetzt in der jeweiligen Sprache beantwortet. Auf kurze Antworten wie „ok“ oder einen Namen erhalten Sie weiterhin eine Antwort auf Deutsch."
+  },
+  {
     "en": "A question in the chat no longer keeps showing „Denkt nach“ when no answer comes. It ends with an error that you can retry.",
     "de": "Eine Frage im Chat zeigt nicht mehr dauerhaft „Denkt nach“, wenn keine Antwort kommt. Sie endet mit einer Fehlermeldung, die Sie wiederholen können."
   },
@@ -492,8 +556,20 @@
     "de": "Eine Frage, die nach einem kurzen Verbindungsabbruch erneut gesendet wird, wird nicht mehr doppelt beantwortet. Der Chat führt die bereits laufende Antwort fort."
   },
   {
+    "en": "A question sent the moment the chat opens now searches your sources like any other, instead of sometimes answering without consulting any of them.",
+    "de": "Eine Frage, die beim Öffnen des Chats sofort gesendet wird, durchsucht jetzt wie jede andere Frage Ihre Quellen, statt manchmal beantwortet zu werden, ohne dass eine davon herangezogen wird."
+  },
+  {
     "en": "A question that touches the Richtlinien, the RIS and the web now checks all three in its first round instead of saving one for later.",
     "de": "Berührt eine Frage die Richtlinien, das RIS und das Web, prüft Piloti alle drei gleich in der ersten Runde, statt eine davon auf später zu verschieben."
+  },
+  {
+    "en": "A question your connected assistant asks Piloti now always ends with an answer or a reason, and one Piloti could not take leaves no empty conversation behind. Stopping a question takes effect at once.",
+    "de": "Eine Frage, die Ihr verbundener Assistent jetzt an Piloti stellt, endet immer mit einer Antwort oder einer Begründung. Kann Piloti eine Frage nicht bearbeiten, bleibt kein leerer Gesprächsverlauf zurück. Das Abbrechen einer Frage wird sofort wirksam."
+  },
+  {
+    "en": "A quotation that drops a „nicht\", „kein\" or „un-\" from the source, or a paragraph number that is not in the cited passage, is now flagged.",
+    "de": "Ein Zitat, bei dem ein „nicht“, „kein“ oder „un-“ aus der Quelle weggelassen wird, oder eine Absatznummer, die in der zitierten Passage nicht vorkommt, wird jetzt markiert."
   },
   {
     "en": "A quote that is not word for word in its source is marked as soon as the answer is finished. A slightly misremembered quote is corrected to the source's wording, but only if the source the sentence names contains it.",
@@ -572,6 +648,10 @@
     "de": "Ein geplanter Rechercheauftrag legt seinen Bericht jetzt unter „Berichte“ im Projekt ab, mit den Rechten der Person, die ihn eingerichtet hat. Bisher verfiel der Bericht eines nächtlichen Laufs nach einem Tag, wenn ihn niemand öffnete."
   },
   {
+    "en": "A search for a word no document contains no longer fills the list with unrelated files, while a question asked in other words still finds the passages that answer it.",
+    "de": "Eine Suche nach einem Wort, das in keinem Dokument vorkommt, füllt die Liste nicht mehr mit irrelevanten Dateien, während eine anders formulierte Frage weiterhin die passenden Passagen findet."
+  },
+  {
     "en": "A search over your files or the Archiv that failed to run, for instance because it timed out, used to report \"no matches for …\", a statement about your own documents that Piloti had no way of making. Now it says the search failed and offers to run the same query again.",
     "de": "Eine Suche in Ihren Dateien oder im Archiv, die nicht laufen konnte, etwa weil die Zeit abgelaufen ist, meldete bisher „keine Treffer für …“. Das war eine Aussage über Ihre eigenen Dokumente, die Piloti gar nicht beurteilen konnte. Jetzt sagt Piloti, dass die Suche fehlgeschlagen ist, und bietet an, dieselbe Anfrage erneut auszuführen."
   },
@@ -590,6 +670,10 @@
   {
     "en": "A short outage now shows as a temporary problem with a request to try again. A task started during an outage no longer shows as failed while it is still running.",
     "de": "Eine kurze Störung wird jetzt als vorübergehendes Problem mit der Bitte angezeigt, es erneut zu versuchen. Eine Aufgabe, die während einer Störung gestartet wurde, wird während ihres Laufs nicht mehr als fehlgeschlagen angezeigt."
+  },
+  {
+    "en": "A single document can now go to the bin and come back from it: the bin lists it by name, and restoring it files it back in the folder it came from.",
+    "de": "Ein einzelnes Dokument kann jetzt in den Papierkorb verschoben und von dort wiederhergestellt werden: Im Papierkorb wird es mit Namen angezeigt und beim Wiederherstellen wieder in dem Ordner abgelegt, aus dem es stammt."
   },
   {
     "en": "A single source that does not answer in time no longer ends a deep research; the run carries on without it.",
@@ -652,6 +736,10 @@
     "de": "Ein Auftrag, den Sie Piloti übergeben, erscheint jetzt als Block in der Unterhaltung, in der Sie ihn erteilt haben: Titel, Stand, Phasen und Laufzeit, laufend aktualisiert, mit dem fertigen Bericht darunter."
   },
   {
+    "en": "A task's run history now shows how each run actually ended, so a failed run reads as failed with its reason instead of as submitted.",
+    "de": "Der Ausführungsverlauf einer Aufgabe zeigt jetzt, wie jeder Durchlauf tatsächlich geendet hat: Fehlgeschlagene Durchläufe werden mit ihrem Grund als fehlgeschlagen statt als übermittelt angezeigt."
+  },
+  {
     "en": "A thumbs-down with a short note helps improve answers.",
     "de": "Eine negative Bewertung mit einer kurzen Notiz hilft, Antworten zu verbessern."
   },
@@ -662,6 +750,10 @@
   {
     "en": "A wide view shows every page down its left edge, so a page in a long document is found by how it looks rather than by its number.",
     "de": "In der Breitansicht sehen Sie alle Seiten am linken Rand, sodass Sie eine Seite in einem langen Dokument anhand ihres Aussehens statt anhand ihrer Nummer finden."
+  },
+  {
+    "en": "A word search that could not search all your documents no longer looks complete in the Herleitung. It is drawn with a dashed ring and says that a missing hit is no proof; an incomplete search without a hit appears under „Offen“.",
+    "de": "Eine Wortsuche, die nicht alle Ihre Dokumente durchsuchen konnte, wird in der Herleitung nicht mehr als vollständig angezeigt. Sie ist mit einem gestrichelten Ring markiert und weist darauf hin, dass ein fehlender Treffer kein Beweis ist; eine unvollständige Suche ohne Treffer erscheint unter „Offen“."
   },
   {
     "en": "Above the folder view, a named way back such as „Zurück zu Planung“ now accompanies the breadcrumb trail.",
@@ -728,8 +820,16 @@
     "de": "Wenn Sie die Anmerkungen im Review bearbeiten, zeigt die Zahl neben dem Dokument unter „Dateien“ an, was noch offen ist. Schließen Sie ein Review, das Sie über den Posteingang oder die offenen Punkte geöffnet haben, gelangen Sie mit Ihrem Filter in einem einzigen Schritt zurück."
   },
   {
+    "en": "Agents connected to Piloti now get the purpose of a field quoted back when their input is refused, and large operation inputs are described in layers they can open one part at a time. They can also report a confusing description or error message, not only a missing operation.",
+    "de": "Agents, die mit Piloti verbunden sind, erhalten bei abgelehnten Eingaben nun den Zweck des betreffenden Feldes zurückgemeldet; umfangreiche Operationseingaben werden in Ebenen beschrieben, die sie einzeln öffnen können. Außerdem können sie verwirrende Beschreibungen oder Fehlermeldungen melden, nicht nur fehlende Operationen."
+  },
+  {
     "en": "Almost every answer now opens with a one- or two-sentence summary of the result and its decisive limitation, right under the verdict when there is one.",
     "de": "Praktisch jede Antwort beginnt jetzt mit einer Zusammenfassung in ein, zwei Sätzen, die das Ergebnis samt entscheidender Einschränkung vorwegnimmt, direkt unter dem Urteil, wenn es eines gibt."
+  },
+  {
+    "en": "An AI assistant connected to your workspace now asks you in its own chat before it deletes or overwrites something, when the assistant supports such questions. Nothing changes unless you confirm, and your answer is recorded in your organization's audit log.",
+    "de": "Ein mit Ihrem Workspace verbundener KI-Assistent fragt Sie jetzt in seinem eigenen Chat, bevor er etwas löscht oder überschreibt – sofern der Assistent solche Rückfragen unterstützt. Es wird erst etwas geändert, wenn Sie bestätigen, und Ihre Antwort wird im Audit-Log Ihrer Organisation protokolliert."
   },
   {
     "en": "An Anmerkung opened from the keyboard takes the focus, and closing it returns you to where you were, so Enter never resolves one by accident. A screen reader hears what colleagues and Piloti change on the drawing.",
@@ -746,6 +846,14 @@
   {
     "en": "An Outlook archive import ends with the same summary, once everything it filed has been read.",
     "de": "Ein Outlook-Archivimport endet mit derselben Zusammenfassung, sobald alles gelesen ist, was er abgelegt hat."
+  },
+  {
+    "en": "An agent connected to Piloti, such as Claude or Cursor, now learns when a project it has open changes: a new name, status, profile or document. It hears only about projects the signed-in person may open.",
+    "de": "Ein mit Piloti verbundener Agent wie Claude oder Cursor wird jetzt informiert, wenn sich ein geöffnetes Projekt ändert – etwa Name, Status, Profil oder Dokument. Er erhält nur Informationen zu Projekten, die die angemeldete Person öffnen darf."
+  },
+  {
+    "en": "An agent that lists a project's members now gets the people who hold a role, with the id it needs to remove one, and long memory lists come in pages.",
+    "de": "Ein Agent, der die Mitglieder eines Projekts auflistet, erhält jetzt Personen mit einer Rolle samt der zum Entfernen benötigten ID; lange Listen aus dem Langzeitgedächtnis werden seitenweise ausgegeben."
   },
   {
     "en": "An answer being written no longer stalls while someone in the office loads the document list, deletes files or starts a research with a follow-up question.",
@@ -772,12 +880,20 @@
     "de": "Eine Antwort springt nicht mehr zurück und schreibt sich neu, wenn am Ende ihre Quellen neu nummeriert werden. Die fertige Antwort erscheint jetzt, während sich die Herleitung zusammenklappt, und die ersten Wörter erscheinen sofort."
   },
   {
+    "en": "An answer no longer loses a source because Piloti cited a document by its place in the folders instead of by its name.",
+    "de": "Eine Antwort lässt eine Quelle nicht mehr aus, wenn Piloti ein Dokument anhand seiner Position in der Ordnerstruktur statt anhand seines Namens zitiert."
+  },
+  {
     "en": "An answer now appears calmly where you are reading: the Herleitung folds away before the first word, nothing above the line you are on moves, and the sources, actions and cards arrive together once the answer is done.",
     "de": "Eine Antwort erscheint jetzt ruhig an der Stelle, an der Sie lesen: Die Herleitung klappt vor dem ersten Wort zusammen, nichts über der Zeile, auf der Sie sind, bewegt sich, und die Quellen, Aktionen und Karten erscheinen gemeinsam, sobald die Antwort fertig ist."
   },
   {
     "en": "An answer now appears word by word at an even pace, each word fading in softly. When it is finished, the last words follow quickly, and then the Herleitung folds away and the actions below the answer appear in one smooth step instead of several jumps.",
     "de": "Eine Antwort erscheint jetzt Wort für Wort in gleichmäßigem Tempo, und jedes Wort blendet sanft ein. Ist sie fertig, laufen die letzten Worte schnell durch, danach klappt die Herleitung zusammen, und die Schaltflächen unter der Antwort erscheinen in einem Zug statt in mehreren Sprüngen."
+  },
+  {
+    "en": "An answer read from your workspace, such as who is on a project or which approvals are open, no longer shows as low confidence. The confidence tooltip now says what the answer rests on, for example „3 Aussagen belegt · 1 Rechtsaussage ohne Beleg\".",
+    "de": "Eine Antwort aus Ihrem Workspace, etwa dazu, wer an einem Projekt arbeitet oder welche Freigaben offen sind, wird nicht mehr als wenig zuverlässig angezeigt. Der Tooltip zur Vertrauenswürdigkeit zeigt jetzt, worauf die Antwort basiert, zum Beispiel „3 Aussagen belegt · 1 Rechtsaussage ohne Beleg“."
   },
   {
     "en": "An answer that is still being written is kept when the connection drops briefly, for instance when you switch apps or lock your iPhone. When you return, the rest of the answer appears, even after reloading the page.",
@@ -808,12 +924,24 @@
     "de": "Die Details einer Antwort zeigen jetzt, was sie in Punkten gekostet hat, und bei Ihrem eigenen KI-Schlüssel, wie viel davon er verbraucht hat. Beim Überfahren der Zeile mit der Maus sehen Sie, wie viel auf Lesen, Schreiben und Denken entfällt."
   },
   {
+    "en": "An archived document can be brought back into the working set, and Piloti reads it again so it answers questions as before.",
+    "de": "Ein archiviertes Dokument lässt sich wieder in den Arbeitsbestand aufnehmen, und Piloti liest es erneut ein, damit es Fragen wieder wie zuvor beantworten kann."
+  },
+  {
     "en": "An archived document no longer shows as citable, and uploading a new version of it no longer puts it back into Piloti's answers while it stays archived.",
     "de": "Ein archiviertes Dokument wird nicht mehr als zitierfähig angezeigt, und auch das Hochladen einer neuen Version sorgt nicht dafür, dass es wieder in Piloti-Antworten aufgenommen wird, solange es archiviert bleibt."
   },
   {
     "en": "An archived document no longer turns up as a source in answers, whoever wrote it. The file and its versions stay where they were; archiving is not deleting.",
     "de": "Ein archiviertes Dokument taucht nicht mehr als Quelle in Antworten auf, gleich wer es verfasst hat. Die Datei und ihre Fassungen bleiben erhalten; Archivieren ist kein Löschen."
+  },
+  {
+    "en": "An assistant connected to your workspace that asks Piloti a question can now show that Piloti is still working on the answer, or come back for it later without waiting.",
+    "de": "Ein mit Ihrem Workspace verbundener Assistent, der Piloti eine Frage stellt, kann jetzt anzeigen, dass Piloti noch an der Antwort arbeitet, oder die Antwort später abrufen, ohne warten zu müssen."
+  },
+  {
+    "en": "An assistant such as Claude or Cursor that asks Piloti now receives the answer as plain Markdown, its check and action tables intact, instead of Piloti's own display markup.",
+    "de": "Ein Assistent wie Claude oder Cursor, der jetzt Piloti befragt, erhält die Antwort als einfaches Markdown mit intakten Prüf- und Aktionstabellen statt im Piloti-eigenen Darstellungs-Markup."
   },
   {
     "en": "An empty Von Piloti filter explains what it would show: research reports and diagrams Piloti filed, not the documents you uploaded.",
@@ -832,6 +960,10 @@
     "de": "Ein Eintrag wird unabhängig davon, wie Sie ihn aufrufen, als gelesen markiert: über eine Benachrichtigung auf Ihrem Gerät oder durch Öffnen der zugehörigen Anmerkung in der Prüfansicht."
   },
   {
+    "en": "An office's default language under Organisation → Einstellungen is now \"Nicht festgelegt\" until an administrator picks one, and each person then starts in their browser's language. Offices that had the English preset stored have it reset; set it again there if your office wants English.",
+    "de": "Die Standardsprache eines Büros unter Organisation → Einstellungen ist jetzt „Nicht festgelegt“, bis ein Administrator eine Sprache auswählt. Anschließend startet jede Person in der Sprache ihres Browsers. Bei Büros, bei denen Englisch als Voreinstellung gespeichert war, wird diese zurückgesetzt. Wählen Sie Englisch dort erneut aus, wenn Ihr Büro Englisch verwenden möchte."
+  },
+  {
     "en": "An open annotation from an earlier revision can now be carried over to the current one from its card, or all of them at once from the list, keeping its number, its place and its thread.",
     "de": "Eine offene Anmerkung aus einer früheren Revision lässt sich jetzt über ihre Karte in die aktuelle Revision übernehmen – oder alle auf einmal über die Liste. Nummer, Position und Kommentarverlauf bleiben dabei erhalten."
   },
@@ -846,6 +978,10 @@
   {
     "en": "An open file shows its summary, page count and tags as soon as Piloti has finished reading it, without closing and reopening it.",
     "de": "Eine geöffnete Datei zeigt ihre Zusammenfassung, Seitenzahl und Schlagwörter, sobald Piloti sie fertig gelesen hat, ohne dass Sie sie schließen und neu öffnen müssen."
+  },
+  {
+    "en": "An outside agent can now ask which OIB guidelines apply to a project and what would settle the open ones, and read the register of laws Piloti knows by number. It can also search the shared building-law corpus without choosing a project first.",
+    "de": "Ein externer Agent kann jetzt abfragen, welche OIB-Richtlinien für ein Projekt gelten und was offene Fragen klären würde, sowie das nach Nummern geordnete Gesetzesverzeichnis lesen, das Piloti kennt. Außerdem kann er die gemeinsame Sammlung zum Baurecht durchsuchen, ohne zuerst ein Projekt auszuwählen."
   },
   {
     "en": "An overview now shows its parts as a table or as a mindmap, never both. A mindmap that would only repeat the table is now rare, so a mindmap no longer appears on screen only to vanish when the answer finishes.",
@@ -968,6 +1104,14 @@
     "de": "Beim Archivieren einer Datei wird diese nun aus der Dateiliste entfernt – so, wie es immer gedacht war. Mit einem neuen Filter können Sie archivierte Dateien jederzeit wieder anzeigen; gelöscht wird dabei nichts."
   },
   {
+    "en": "Ask Piloti for a Skizze, such as rooms by how they connect, a site with its access or two options side by side, and it draws one in Excalidraw right in the chat, never to scale. Inside a project you can file the sketch, or open it in Excalidraw, change it and file your version.",
+    "de": "Bitten Sie Piloti um eine Skizze, etwa von Räumen und ihren Verbindungen, einem Grundstück mit seiner Zufahrt oder zwei Optionen nebeneinander. Piloti erstellt sie direkt im Chat in Excalidraw, nie maßstabsgetreu. In einem Projekt können Sie die Skizze ablegen oder in Excalidraw öffnen, bearbeiten und Ihre Version ablegen."
+  },
+  {
+    "en": "Ask Piloti to do office work in plain German, such as creating a folder or renaming a document, and it proposes the change for you to accept and closes with a short report of what waits for you, what is blocked and what comes next.",
+    "de": "Bitten Sie Piloti, Büroarbeiten in einfachem Deutsch zu erledigen, etwa einen Ordner anzulegen oder ein Dokument umzubenennen. Piloti schlägt die Änderung zur Annahme vor und schließt mit einem kurzen Bericht darüber ab, was noch auf Sie wartet, was blockiert ist und was als Nächstes ansteht."
+  },
+  {
     "en": "Ask Piloti to set, resolve, reopen, assign, date or delete an annotation and it does so in your name, with your rights, leaving a short note in the annotation's thread; the chat lists each change with a way to undo it.",
     "de": "Bitten Sie Piloti, eine Anmerkung festzulegen, als erledigt zu markieren, wieder zu öffnen, zuzuweisen, zu datieren oder zu löschen. Piloti führt die Änderungen in Ihrem Namen und mit Ihren Rechten aus, hinterlässt eine kurze Notiz im Thread der Anmerkung und listet im Chat jede Änderung mit der Möglichkeit auf, sie rückgängig zu machen."
   },
@@ -988,8 +1132,20 @@
     "de": "Bitten Sie um ein Diagramm, ein Schaubild oder eine Grafik, und Piloti antwortet mit einer echten Zeichnung statt mit Textkunst aus Strichen und Pfeilen."
   },
   {
+    "en": "Asked for an Excalidraw diagram or a sketch, Piloti now draws it, and you can open the drawing as a sketch to rework it, instead of being told it cannot. Asked about itself, such as whether it works inside your own assistant, Piloti now answers instead of searching your files.",
+    "de": "Wenn Sie Piloti um ein Excalidraw-Diagramm oder eine Skizze bitten, erstellt es diese jetzt. Sie können die Zeichnung als Skizze öffnen und weiterbearbeiten, statt die Meldung zu erhalten, dass dies nicht möglich ist. Fragen Sie Piloti nach sich selbst, etwa ob es in Ihrem eigenen Assistenten funktioniert, antwortet es jetzt, statt Ihre Dateien zu durchsuchen."
+  },
+  {
+    "en": "Asked from your own agent (Claude, Cursor or another MCP client), Piloti reads the building-law corpus, the project's documents and RIS again instead of answering that these sources were switched off. Comment threads that wake Piloti and the check of a new document read every source your office allows as well.",
+    "de": "Wenn Sie Piloti über Ihren eigenen Agenten (Claude, Cursor oder einen anderen MCP-Client) fragen, greift Piloti wieder auf den Baurechtskorpus, die Projektdokumente und RIS zu, statt zu melden, dass diese Quellen deaktiviert sind. Auch Kommentar-Threads, die Piloti aktivieren, und die Prüfung neuer Dokumente berücksichtigen alle Quellen, die Ihr Büro freigegeben hat."
+  },
+  {
     "en": "Asked which OIB-Richtlinien it has, Piloti now lists every one of them, and it still names each of your own documents individually.",
     "de": "Auf die Frage, welche OIB-Richtlinien vorliegen, zählt Piloti jetzt alle vollständig auf und nennt Ihre eigenen Unterlagen weiterhin einzeln beim Namen."
+  },
+  {
+    "en": "Asked which documents deal with a topic, Piloti can now list each document once, with its best passage and how many matching passages it found there. One long file no longer crowds every other document out of the answer.",
+    "de": "Wenn Sie fragen, welche Dokumente ein Thema behandeln, kann Piloti jetzt jedes Dokument einmal mit der passendsten Textstelle und der Anzahl der darin gefundenen passenden Textstellen auflisten. Eine lange Datei verdrängt nicht mehr alle anderen Dokumente aus der Antwort."
   },
   {
     "en": "Asking Piloti about a file from Dateien no longer blinks: the file stays on screen while the chat loads beside it.",
@@ -1004,12 +1160,24 @@
     "de": "Wenn Sie eine vollständige Soll-Ist- oder Konformitätsprüfung anfordern, prüft Piloti dieses Projekt jetzt vollständig, statt die sechs Richtlinien von Hand durchzugehen."
   },
   {
+    "en": "Asking for the documents that refer to a plan finds them when the plan is named the way a person writes it, such as \"Plan Nr. EP-05\" or \"siehe EP-05\".",
+    "de": "Wenn Sie nach Dokumenten fragen, die sich auf einen Plan beziehen, werden diese auch gefunden, wenn der Plan so bezeichnet ist, wie man ihn schreiben würde, etwa „Plan Nr. EP-05“ oder „siehe EP-05“."
+  },
+  {
+    "en": "Asking which documents deal with a topic lists each document once again, even when two folders hold a file of the same name.",
+    "de": "Bei der Frage, welche Dokumente ein Thema behandeln, wird jedes Dokument erneut aufgelistet, auch wenn sich in zwei Ordnern Dateien mit demselben Namen befinden."
+  },
+  {
     "en": "Assigning existing drawings to a building under Projektgrundlagen no longer fails with an error when the project brief has not been saved yet. Drawings for a building you have just added are shown as waiting and assigned when you save, and removing a building also removes its drawing assignments.",
     "de": "Bestehende Zeichnungen einem Gebäude unter Projektgrundlagen zuzuweisen, führt nicht mehr zu einem Fehler, wenn der Projektbrief noch nicht gespeichert ist. Zeichnungen für ein gerade angelegtes Gebäude werden als wartend angezeigt und beim Speichern zugewiesen, und beim Entfernen eines Gebäudes fallen auch seine Zeichnungszuweisungen weg."
   },
   {
     "en": "Assigning someone to a file now says when it did not work, names the person and offers to try again. A refused assignment used to change nothing on screen, which read as success.",
     "de": "Wenn das Zuweisen einer Datei scheitert, sagt Piloti das jetzt, nennt die Person und bietet einen neuen Versuch an. Bisher änderte sich dann nichts, was wie ein Erfolg aussah."
+  },
+  {
+    "en": "Assistants connected to Piloti can now read what a task run produced before accepting or rejecting it, and page through all of a project's tasks and runs.",
+    "de": "Mit Piloti verbundene Assistenten können jetzt vor dem Annehmen oder Ablehnen die Ergebnisse eines Task-Runs lesen und alle Tasks und Runs eines Projekts durchblättern."
   },
   {
     "en": "Austrian legal texts from the RIS are now part of every task, like your project documents; only web search remains optional. Existing tasks use the RIS the next time they run.",
@@ -1048,6 +1216,10 @@
     "de": "Schaltflächen an Codeblöcken und Zeitangaben bei Chat-Fehlern folgen jetzt der eingestellten Sprache. Wenn Sie auf Chinesisch, Japanisch oder Koreanisch schreiben, schickt Enter zur Bestätigung eines Zeichens die Nachricht nicht mehr ab."
   },
   {
+    "en": "Buttons, chips and tabs now give way softly when you press them, and dialogs and menus get out of the way the moment you dismiss them. The whole workspace answers your hand a little faster.",
+    "de": "Buttons, Chips und Tabs geben jetzt sanft nach, wenn Sie darauf drücken, und Dialoge und Menüs verschwinden sofort, sobald Sie sie schließen. Der gesamte Arbeitsbereich reagiert etwas schneller auf Ihre Eingaben."
+  },
+  {
     "en": "Card headers with buttons in them no longer run past the edge of a narrow screen. Where there is not room for the title and the buttons on one line, the buttons move underneath.",
     "de": "Kartenüberschriften mit Schaltflächen ragen nicht mehr über den Rand schmaler Bildschirme hinaus. Wenn Titel und Schaltflächen nicht in eine Zeile passen, werden die Schaltflächen darunter angezeigt."
   },
@@ -1060,8 +1232,16 @@
     "de": "Karten zeigen keine störenden Zeichen mehr, etwa einen Link in rohen Klammern neben dem eigenen, funktionierenden Link der Karte. Eine Karte bietet nur die Links an, die sie aus der genannten Quelle baut."
   },
   {
+    "en": "Changes Piloti proposes are filed again in every chat, and a proposed action now shows every value it would set in full and names the project or document it changes, so you never apply text you were not shown.",
+    "de": "Von Piloti vorgeschlagene Änderungen werden in jedem Chat erneut erfasst. Eine vorgeschlagene Aktion zeigt jetzt alle Werte, die sie festlegen würde, vollständig an und nennt das Projekt oder Dokument, das sie ändert – so wenden Sie nie Text an, der Ihnen nicht angezeigt wurde."
+  },
+  {
     "en": "Chat answers can now show requirement checks, procedure steps, option comparisons and key figures as their own blocks. Each check shows whether its value meets the limit, and copying or exporting an answer keeps that status.",
     "de": "Chat-Antworten zeigen Anforderungsprüfungen, Verfahrensschritte, Variantenvergleiche und Kennzahlen jetzt als eigene Blöcke. Jede Prüfung zeigt, ob ihr Wert den Grenzwert einhält, und beim Kopieren oder Exportieren einer Antwort bleibt dieser Status erhalten."
+  },
+  {
+    "en": "Chat answers on a Claude model now use considerably less of your office's monthly budget, because the parts Piloti sends again on every step of an answer are now billed at a tenth of the price.",
+    "de": "Chat-Antworten mit einem Claude-Modell belasten Ihr monatliches Bürobudget jetzt deutlich weniger, da die Teile, die Piloti bei jedem Antwortschritt erneut sendet, nun nur noch mit einem Zehntel des Preises verrechnet werden."
   },
   {
     "en": "Chat history now includes this project's deep-research runs in the same list as your conversations, grouped by day, with the research runs shown first. The project's separate History page is gone — everything it showed is in the chat history panel now.",
@@ -1096,6 +1276,14 @@
     "de": "Wer auf der Piloti-Website die Anmeldung startet, landet wieder auf der Anmeldeseite."
   },
   {
+    "en": "Claude, Cursor and other assistants connected to Piloti now find your office's skills on their own and read the right one before they start a task, so they work the way your office has written down.",
+    "de": "Claude, Cursor und andere mit Piloti verbundene Assistenten finden jetzt selbstständig die Skills Ihres Büros und lesen vor Beginn einer Aufgabe den passenden Skill, damit sie so arbeiten, wie Ihr Büro es festgelegt hat."
+  },
+  {
+    "en": "Claude, Cursor and other assistants now show Piloti with its own name and icon, and its search and lookup results come back in a structured form they can read reliably.",
+    "de": "Claude, Cursor und andere Assistenten zeigen Piloti jetzt mit eigenem Namen und Icon an und erhalten Such- und Abfrageergebnisse in einem strukturierten Format, das sie zuverlässig auslesen können."
+  },
+  {
     "en": "Click a passage to open its document at that spot; only documents you may open are listed.",
     "de": "Klicken Sie auf eine Textstelle, um das zugehörige Dokument an dieser Stelle zu öffnen; aufgelistet werden nur Dokumente, die Sie öffnen dürfen."
   },
@@ -1114,6 +1302,10 @@
   {
     "en": "Clicking a row in the task list now opens the run itself, with the same rounds, sources and references as in the conversation, and a link to that conversation.",
     "de": "Ein Klick auf eine Zeile der Aufträge-Liste öffnet jetzt den Lauf selbst, mit denselben Runden, Quellen und Fundstellen wie im Verlauf, und einem Link in diesen Verlauf."
+  },
+  {
+    "en": "Closing a document or annotation opened from the search returns to the search as you left it, with its words, filters, view and sort.",
+    "de": "Wer ein Dokument oder eine Anmerkung aus der Suche öffnet und wieder schließt, kehrt zur Suche zurück, wie sie war: mit Suchbegriff, Filtern, Ansicht und Sortierung."
   },
   {
     "en": "Closing a project now asks how it ended, completed or not realized, and in which month, then what the office keeps, then what to clear out, one step at a time.",
@@ -1180,8 +1372,16 @@
     "de": "Wenn Sie einen Ordner mit einem Namen anlegen, der dort schon vergeben ist, sagt Piloti jetzt, dass der Name vergeben ist, statt einen Fehler anzuzeigen."
   },
   {
+    "en": "Creating a project asks for its name, its address, whether it is running or finished, and optionally its folder. The setup that follows has five short steps (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), each on one screen with one button to go on, and you can leave at any point with „Später fortsetzen“.",
+    "de": "Beim Anlegen eines Projekts geben Sie den Namen und die Adresse an, wählen aus, ob es laufend oder abgeschlossen ist, und können optional einen Ordner zuordnen. Die anschließende Einrichtung umfasst fünf kurze Schritte (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), jeweils auf einem Bildschirm mit nur einer Schaltfläche zum Fortfahren. Sie können die Einrichtung jederzeit mit „Später fortsetzen“ verlassen."
+  },
+  {
     "en": "Ctrl+F (Cmd+F on a Mac) inside a PDF searches the document. It counts the matches and steps through them.",
     "de": "Ctrl+F (Cmd+F am Mac) durchsucht ein PDF. Die Suche zählt die Treffer und springt zwischen ihnen."
+  },
+  {
+    "en": "Custom roles grant the Büroablage under a new permission name. Roles that hold the old one keep their access; the role editor offers only the new one.",
+    "de": "Benutzerdefinierte Rollen gewähren unter einem neuen Berechtigungsnamen Zugriff auf die Büroablage. Rollen mit der alten Berechtigung behalten ihren Zugriff; der Rollen-Editor bietet nur die neue Berechtigung an."
   },
   {
     "en": "Dateien and the Archiv now update while you look at them: a colleague's upload, a file Piloti filed, a move, a rename or a new folder appears without reloading the page, and a file's status changes as soon as it has been read.",
@@ -1516,6 +1716,10 @@
     "de": "Das Ablegen geschieht unter Ihrem Namen und mit Ihren eigenen Berechtigungen. Piloti legt im Namen der Person ab, die gefragt hat, sodass ein Dokument, das es ins Projekt legt, eines ist, das Sie selbst dort hätten ablegen können, und der Verlauf zeigt, wer darum gebeten hat."
   },
   {
+    "en": "Filter documents by type, drawing number, revision, scale, parties, place, stated facts such as building class, cited norms, dates and status, and sort them like a drawing register with one row per document. Save the search, or export the result as a CSV or Excel drawing list that names each document's folder path.",
+    "de": "Filtern Sie Dokumente nach Dokumentart, Plannummer, Index, Maßstab, Beteiligten, Ort, Angaben wie der Gebäudeklasse, zitierten Normen, Daten und Status, und sortieren Sie sie wie eine Planliste mit einer Zeile je Dokument. Speichern Sie die Suche oder exportieren Sie das Ergebnis als CSV- oder Excel-Planliste mit dem Ordnerpfad jedes Dokuments."
+  },
+  {
     "en": "Filtering the file browser no longer blanks the listing when files match; the empty notice only appears when the filter truly emptied it.",
     "de": "Beim Filtern im Dateibrowser bleibt die Liste sichtbar, wenn Dateien den Filterkriterien entsprechen; der Hinweis auf leere Ergebnisse erscheint nur, wenn der Filter tatsächlich keine Dateien findet."
   },
@@ -1538,6 +1742,10 @@
   {
     "en": "Finishing a new task now offers \"Create and run now\", so you can see the first result immediately instead of waiting for the next scheduled time to find out whether the request says what you meant.",
     "de": "Beim Abschließen einer neuen Aufgabe gibt es jetzt die Option „Jetzt erstellen und ausführen“. So sehen Sie sofort das erste Ergebnis, statt bis zum nächsten geplanten Zeitpunkt zu warten und erst dann zu prüfen, ob die Anfrage Ihrer Vorstellung entspricht."
+  },
+  {
+    "en": "Finishing the project intake now ends on a check that lands on the save button before the project opens, and moving between intake steps no longer pauses on an empty form.",
+    "de": "Beim Abschließen der Projektaufnahme endet der Ablauf jetzt mit einer Prüfung, bei der der Fokus auf der Schaltfläche „Speichern“ liegt, bevor das Projekt geöffnet wird; beim Wechsel zwischen den Schritten bleibt der Ablauf nicht mehr bei einem leeren Formular stehen."
   },
   {
     "en": "Folder names of a folder dropped into a chat, and folder names far down a long path, are now checked against your office's list on the server too.",
@@ -1600,12 +1808,20 @@
     "de": "Bei einer sehr langen Textdatei steht jetzt unter dem Text, dass nur der Anfang angezeigt wird, damit die letzte sichtbare Zeile nicht wie das Ende des Dokuments wirkt."
   },
   {
+    "en": "For people who work in more than one office, the top bar above the projects filled the whole window and hid the page. The bar is back to its normal height, and switching offices now lives in the menu behind your picture.",
+    "de": "Wenn Sie in mehreren Büros arbeiten, nimmt die obere Leiste über den Projekten nicht mehr das ganze Fenster ein und verdeckt die Seite nicht mehr. Sie hat wieder ihre normale Höhe, und den Wechsel zwischen Büros finden Sie jetzt im Menü hinter Ihrem Profilbild."
+  },
+  {
     "en": "Forecast and prediction-report skills no longer come along automatically with every deep research run. They sit on the Skills tab, for the tasks that need them.",
     "de": "Die Skills für Prognosen und Prognoseberichte kommen nicht mehr automatisch mit jeder Tiefenrecherche mit. Sie liegen im Skills-Tab, für die Aufgaben, die sie brauchen."
   },
   {
     "en": "Freigeben now names the Anmerkungen still open on the document before you sign, such as „4 offene Anmerkungen – trotzdem freigeben?“, with a link to the Prüfansicht. It does not stop the Freigabe.",
     "de": "Beim Freigeben werden jetzt die noch offenen Anmerkungen zum Dokument angezeigt, bevor Sie unterschreiben, z. B. „4 offene Anmerkungen – trotzdem freigeben?“, mit einem Link zur Prüfansicht. Die Freigabe wird dadurch nicht verhindert."
+  },
+  {
+    "en": "Going back in the browser returns a page to where you had scrolled it, instead of keeping the scroll position of the page you just left.",
+    "de": "Wenn Sie im Browser zurückgehen, springt die Seite zu ihrer vorherigen Scrollposition zurück, statt die Scrollposition der gerade verlassenen Seite beizubehalten."
   },
   {
     "en": "Hold a file or folder you are dragging over a folder for a moment and it opens, so you can move things into folders that are not on screen. Every move now offers to undo it.",
@@ -1672,6 +1888,10 @@
     "de": "Wechseln Sie während einer Antwort in eine andere Unterhaltung und zurück, erscheint die fertige Antwort statt eines halben Satzes mit blinkendem Cursor."
   },
   {
+    "en": "If you work in more than one office, you can now switch between them from the menu behind your picture, under „Switch organization“.",
+    "de": "Wenn Sie in mehreren Büros arbeiten, können Sie jetzt im Menü hinter Ihrem Profilbild unter „Organisation wechseln“ zwischen den Büros wechseln."
+  },
+  {
     "en": "If you write in a conversation before its history has arrived, the earlier messages still appear.",
     "de": "Schreiben Sie in einer Unterhaltung, bevor ihr Verlauf da ist, erscheinen die früheren Nachrichten trotzdem."
   },
@@ -1704,12 +1924,20 @@
     "de": "In einer schmalen Dateienliste, etwa neben dem Chat, werden Dateinamen nicht mehr vom Status überlagert und lange Namen nicht mehr mitten in einem Buchstaben abgeschnitten: Die Liste zeigt weniger Spalten an und hält das Ende jedes Namens lesbar."
   },
   {
+    "en": "In a project without saved notes, Piloti starts answering up to a second sooner, because it no longer waits to compare your question with notes that are not there.",
+    "de": "In einem Projekt ohne gespeicherte Notizen antwortet Piloti bis zu einer Sekunde schneller, weil es nicht mehr darauf wartet, Ihre Frage mit nicht vorhandenen Notizen abzugleichen."
+  },
+  {
     "en": "In a shared chat Piloti searches only what everyone in it may open.",
     "de": "In einem geteilten Chat durchsucht Piloti nur, was alle Beteiligten öffnen dürfen."
   },
   {
     "en": "In exported PDFs, the signs for less than or equal to and greater than or equal to appeared as stray letters. A limit of at most forty metres came out with an unrelated character in place of its sign, while the number beside it stayed correct.",
     "de": "In exportierten PDFs erschienen die Zeichen für „kleiner oder gleich“ und „größer oder gleich“ als fremde Buchstaben. Eine Grenze von höchstens 40 Metern erschien mit einem fremden Zeichen an der Stelle des Vergleichszeichens, während die Zahl daneben stimmte."
+  },
+  {
+    "en": "In some projects Piloti treated its saved notes as confirmed project facts. It no longer does, so the facts it works from are the ones confirmed in the project profile.",
+    "de": "In manchen Projekten behandelt Piloti gespeicherte Notizen als bestätigte Projektfakten. Das ist nicht mehr der Fall: Piloti arbeitet nun mit den im Projektprofil bestätigten Fakten."
   },
   {
     "en": "In the Herleitung a passage read by point now shows the point, such as „Pkt. 3.5.2“, before the page.",
@@ -1766,6 +1994,10 @@
   {
     "en": "Jobs and Skills now sit together in one Automation section, as two tabs instead of two places in the sidebar. Jobs comes first, since a job is the instruction this project runs on a timer, and Skills is one click away.",
     "de": "Jobs und Skills liegen jetzt gemeinsam im Bereich Automation, als zwei Tabs statt an zwei Stellen in der Seitenleiste. Jobs steht vorn, weil ein Job die Anweisung ist, die dieses Projekt zeitgesteuert ausführt, und Skills ist mit einem Klick erreichbar."
+  },
+  {
+    "en": "Large counts on filters, tabs and the inbox now read 99+ so they never stretch the row, while the exact number stays available on hover and to screen readers.",
+    "de": "Hohe Zahlen in Filtern, Tabs und Inbox werden jetzt als 99+ angezeigt, damit sie die Zeile nicht mehr verbreitern; die genaue Zahl bleibt beim Hover und für Screenreader verfügbar."
   },
   {
     "en": "Large files full of CAD drawings, such as a project's collected documents or a fire safety concept with many drawing sheets, now upload and become searchable. Before, such a file could fail every time it was read, and a retry failed the same way.",
@@ -1836,8 +2068,16 @@
     "de": "Beim Verschieben oder Umbenennen eines Ordners wird jetzt angezeigt, welcher Name am Zielort bereits vergeben ist, statt dass der Vorgang ohne Begründung fehlschlägt."
   },
   {
+    "en": "My feedback now lists your open cases first, each with where it stands, its number and when it last moved. Office admins can switch to Our office and follow every case their colleagues reported.",
+    "de": "Mein Feedback zeigt jetzt zuerst Ihre offenen Fälle an – jeweils mit Status, Nummer und Zeitpunkt der letzten Änderung. Büro-Admins können zu „Unser Büro“ wechseln und alle Fälle verfolgen, die ihre Kolleginnen und Kollegen gemeldet haben."
+  },
+  {
     "en": "Naming a skill with a slash now simply writes its name into your message, and Piloti picks that skill from there. What reaches Piloti is exactly the text you sent.",
     "de": "Einen Skill mit Schrägstrich zu nennen schreibt jetzt einfach seinen Namen in Ihre Nachricht, und Piloti greift von dort zum gemeinten Skill. Bei Piloti kommt genau der Text an, den Sie abgeschickt haben."
+  },
+  {
+    "en": "New Postfach entries, mentions and shares now reach colleagues right away again, without a reload.",
+    "de": "Neue Postfach-Einträge, Erwähnungen und geteilte Inhalte erreichen Kolleginnen und Kollegen jetzt wieder sofort – ohne Neuladen."
   },
   {
     "en": "New annotations on a document now reach the people responsible for it and the person who uploaded it, as one inbox entry per document and per person who set them, such as „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“. Annotations Piloti sets for someone count the same way, and Piloti's proposals only once someone takes them over.",
@@ -1952,6 +2192,10 @@
     "de": "Sobald eine neuere Fassung veröffentlicht ist, antwortet Piloti nicht mehr aus der ersetzten Fassung. Die ältere Fassung bleibt im Fassungsverlauf und lässt sich weiter öffnen."
   },
   {
+    "en": "Once your organization switches it on, your own AI assistant can also share documents, set folder access, edit roles and manage your provider keys for you, and it asks you before every one of these changes.",
+    "de": "Sobald Ihre Organisation die Funktion aktiviert, kann Ihr eigener KI-Assistent auch Dokumente freigeben, Ordnerzugriffe festlegen, Rollen bearbeiten und Ihre Provider-Keys verwalten – und fragt Sie vor jeder dieser Änderungen."
+  },
+  {
     "en": "One chat loading its organization's settings no longer briefly holds up everyone else's conversations.",
     "de": "Ein Chat, der die Einstellungen seiner Organisation nachlädt, hält die Gespräche aller anderen nicht mehr kurz an."
   },
@@ -2000,6 +2244,10 @@
     "de": "Organisations-Admins können jetzt alle fehlgeschlagenen Dateien gemeinsam erneut lesen lassen, unter Organisation, Enterprise. Jede Datei, die nicht gelesen werden konnte, wird unter ihrem eigenen Namen erneut gelesen."
   },
   {
+    "en": "Organization admins can now see what Piloti has learned about the office's filing and naming habits, and confirm or decline each line. Declined lines are never used again, and moves you accepted teach Piloti where documents belong.",
+    "de": "Organisationsadmins sehen jetzt, was Piloti über die Ablage- und Benennungsgewohnheiten des Büros gelernt hat, und können jede Zeile bestätigen oder ablehnen. Abgelehnte Zeilen werden nie wieder verwendet, und von Ihnen bestätigte Verschiebungen zeigen Piloti, wo Dokumente hingehören."
+  },
+  {
     "en": "Organization admins choose who still sees chats, answers and notes drawn from a deleted folder, under Sensible Daten. Such content shows „Quelle gelöscht am …“, or is removed with the folder if they choose so.",
     "de": "Organisations-Admins legen unter Sensible Daten fest, wer Chats, Antworten und Notizen aus einem gelöschten Ordner noch sieht. Solche Inhalte zeigen „Quelle gelöscht am …“ oder werden, wenn sie es so wählen, mit dem Ordner entfernt."
   },
@@ -2030,6 +2278,10 @@
   {
     "en": "People who are invited or join an existing project also get the tours, once each, on their first visit.",
     "de": "Auch wer eingeladen wird oder einem bestehenden Projekt beitritt, bekommt die Touren, jeweils einmal beim ersten Besuch."
+  },
+  {
+    "en": "Permit notices with several conditions are remembered in full again.",
+    "de": "Bewilligungsbescheide mit mehreren Auflagen werden wieder vollständig berücksichtigt."
   },
   {
     "en": "Photos show when and with which camera they were taken, and link to the place where they were taken. Piloti uses the date to describe a photo, but never passes its location on to the AI.",
@@ -2088,12 +2340,20 @@
     "de": "Piloti kann sich jetzt Ihre Zeichnungen ansehen. Hängt eine Frage davon ab, was ein Grundriss oder Schnitt zeigt, öffnet Piloti die Seite als Bild, statt sich auf die Textbeschreibung zu verlassen, die beim Hochladen entstanden ist."
   },
   {
+    "en": "Piloti can now look things up in your other projects through the workspace, not only through its project search: in a conversation that is yours alone, any project you may chat in; in a shared conversation, a document or the project facts of a closed project, or of one everyone in the conversation may open. The conversation then stays with the people allowed to see what it read.",
+    "de": "Piloti kann jetzt über den Workspace auch in Ihren anderen Projekten nachsehen, nicht nur über die Projektsuche: In einer Unterhaltung nur für Sie kann Piloti in jedem Projekt nachsehen, in dem Sie chatten dürfen; in einer geteilten Unterhaltung in einem Dokument oder den Projektinformationen eines geschlossenen Projekts oder eines Projekts, das alle Beteiligten öffnen dürfen. Die Unterhaltung bleibt anschließend den Personen vorbehalten, die sehen dürfen, was Piloti gelesen hat."
+  },
+  {
     "en": "Piloti can now notify you on your phone or computer as soon as something lands in your Postfach, even when Piloti is closed. Turn it on per device under Profil, Benachrichtigungen; on iPhone and iPad, add Piloti to the Home Screen first.",
     "de": "Piloti kann Sie jetzt auf Ihrem Smartphone oder Computer benachrichtigen, sobald etwas in Ihrem Postfach landet – auch wenn Piloti geschlossen ist. Aktivieren Sie die Benachrichtigungen pro Gerät unter Profil, Benachrichtigungen; fügen Sie Piloti auf iPhone und iPad zuerst zum Home-Bildschirm hinzu."
   },
   {
     "en": "Piloti can now search every file in a project for a word, name or number and list each place it appears, and it goes through all of a project's files, not only the first 50 or so names. Word, Excel and PowerPoint files open as a PDF preview, and pictures inside Word and PowerPoint files can be cited. A scanned PDF is now read word for word, up to 500 pages.",
     "de": "Piloti findet jetzt jede Stelle, an der ein Wort, ein Name oder eine Zahl in den Dateien eines Projekts vorkommt, und listet jede Fundstelle mit Seitenzahl auf. Piloti geht außerdem alle Dateien eines Projekts durch, nicht nur die ersten rund 50 Namen. Word-, Excel- und PowerPoint-Dateien öffnen sich als PDF-Vorschau, Bilder in Word- und PowerPoint-Dateien lassen sich zitieren, und ein gescanntes PDF wird Wort für Wort bis zu 500 Seiten gelesen."
+  },
+  {
+    "en": "Piloti can now sort all the loose files at the top of a project's Dateien or the Archiv into folders in one go, proposing a folder for each file and moving nothing until you apply the reviewed result. The sort keeps running when you close the window, and you can undo it afterwards.",
+    "de": "Piloti kann jetzt alle losen Dateien auf oberster Ebene im Bereich „Dateien“ eines Projekts oder im Archiv auf einmal in Ordner einsortieren, schlägt für jede Datei einen Ordner vor und verschiebt nichts, bevor Sie das geprüfte Ergebnis anwenden. Die Sortierung läuft weiter, wenn Sie das Fenster schließen, und lässt sich anschließend rückgängig machen."
   },
   {
     "en": "Piloti can now view a photo or scanned drawing inside an uploaded PDF on its own and at full resolution, not only as part of the page.",
@@ -2106,6 +2366,10 @@
   {
     "en": "Piloti can open a draft it wrote earlier in the conversation again. Asking it to shorten or rework part of an Aktenvermerk used to end with Piloti saying it could not read the document and asking you to paste the text.",
     "de": "Piloti kann einen Entwurf, den es zuvor im Gespräch erstellt hat, erneut öffnen. Bisher sagt Piloti oft, dass es das Dokument nicht lesen kann, und bittet Sie, den Text einzufügen, wenn Sie es bitten, einen Teil eines Aktenvermerks zu kürzen oder zu überarbeiten."
+  },
+  {
+    "en": "Piloti can search the office's documents, or one folder of them, for a pattern such as every Geschäftszahl of a given form, and shows each hit with the lines around it. When there are more hits than it can count, it says \"at least\" instead of giving a number that only looks exact.",
+    "de": "Piloti kann die Dokumente des Büros oder einen einzelnen Ordner darin nach einem Muster durchsuchen, etwa nach allen Geschäftszahlen in einem bestimmten Format, und zeigt jeden Treffer mit den umliegenden Zeilen an. Wenn es mehr Treffer gibt, als Piloti zählen kann, zeigt es „mindestens“ statt einer scheinbar exakten Zahl an."
   },
   {
     "en": "Piloti can set up a new project from its documents: give a name and the address, add the files, and Piloti suggests every value with the page it found it on and asks only what would change the Gebäudeklasse.",
@@ -2126,6 +2390,10 @@
   {
     "en": "Piloti deletes its own record of a held-back upload as soon as the audit log holds it, and within seven days at the latest, because the record names the file and its uploader.",
     "de": "Piloti löscht seine eigene Aufzeichnung zu einem zurückgehaltenen Upload, sobald das Audit-Protokoll sie hat, spätestens aber nach sieben Tagen, weil sie den Dateinamen und die hochladende Person nennt."
+  },
+  {
+    "en": "Piloti finds its way around a project's folders: asked what a project holds, it can show the folder tree with a short card per folder (how many documents, which kinds, the date range, the latest Fassung and the page counts). It can also read a long document through by page range and continue where it stopped, instead of only reading the passages a search returned.",
+    "de": "Piloti findet sich in den Ordnern eines Projekts zurecht: Wenn Sie fragen, welche Inhalte ein Projekt enthält, kann Piloti die Ordnerstruktur mit einer kurzen Infokarte pro Ordner anzeigen (Anzahl der Dokumente, Dokumentarten, Zeitraum, neueste Fassung und Seitenanzahl). Außerdem kann Piloti ein langes Dokument anhand von Seitenbereichen vollständig lesen und dort fortsetzen, wo es aufgehört hat, statt nur die von einer Suche gefundenen Passagen zu lesen."
   },
   {
     "en": "Piloti has its own mark: a column whose capital is a rolled drawing. It appears in the browser tab, on the home screen, next to the name and in PDF exports.",
@@ -2172,20 +2440,44 @@
     "de": "Piloti speichert aus einer abgebrochenen Antwort keine Notizen mehr im Projektgedächtnis. Bisher konnte eine Frage, deren Recherchebudget aufgebraucht war, bevor sie vollständig beantwortet war, Notizen hinterlassen, die wie feststehende Tatsachen klangen."
   },
   {
+    "en": "Piloti no longer switches to English on its own: pages open in the language you or your office chose, also after a redirect and on Safari.",
+    "de": "Piloti wechselt nicht mehr eigenständig zu Englisch: Seiten öffnen sich in der Sprache, die Sie oder Ihr Büro gewählt haben – auch nach einer Weiterleitung und in Safari."
+  },
+  {
+    "en": "Piloti now always uses its own tools to keep notes, search your documents, set up tasks, mark documents and answer in their threads, and count in your BIM model, so each of these works the same way every time. Assistants you connect to Piloti can still do all of them.",
+    "de": "Piloti verwendet jetzt immer seine eigenen Tools, um Notizen zu machen, Ihre Dokumente zu durchsuchen, Aufgaben einzurichten, Dokumente zu markieren, in den jeweiligen Threads zu antworten und in Ihrem BIM-Modell zu zählen. So funktioniert all das jedes Mal gleich. Mit Piloti verbundene Assistenten können weiterhin all das erledigen."
+  },
+  {
     "en": "Piloti now answers as a colleague in the planning office rather than as a compliance checker, so summarising a document or sorting drawings no longer ends in a verdict. It helps you apply a rule and does not replace the Entwurfsverfasser or the Behörde.",
     "de": "Piloti antwortet jetzt als Kollege im Planungsbüro statt als Konformitätsprüfer, sodass das Zusammenfassen eines Dokuments oder das Sortieren von Zeichnungen nicht mehr mit einem Urteil endet. Piloti hilft Ihnen, eine Regel anzuwenden, und ersetzt weder den Entwurfsverfasser noch die Behörde."
+  },
+  {
+    "en": "Piloti now answers in the language you ask in, also when the project's documents are in German, and no longer writes an internal project field name into an answer.",
+    "de": "Piloti antwortet jetzt in der Sprache, in der Sie fragen, auch wenn die Projektdokumente auf Deutsch sind, und nennt interne Projektfeldnamen nicht mehr in Antworten."
   },
   {
     "en": "Piloti now chooses the working methods itself when they fit your question, and the answer still names the methods it used.",
     "de": "Piloti wählt die Methoden jetzt selbst, wenn sie zur Frage passen; die Antwort nennt weiterhin, welche Methoden es verwendet hat."
   },
   {
+    "en": "Piloti now finds and reads your documents the same way on every question: it lists a folder, searches the wording, and opens the pages it needs, and the Herleitung shows each of those steps by what it looked at. When no passage answers what you asked, Piloti says so and names what it searched, rather than calling the matter unregulated.",
+    "de": "Piloti findet und liest Ihre Dokumente jetzt bei jeder Frage auf dieselbe Weise: Es listet Ordner auf, durchsucht den Wortlaut und öffnet die benötigten Seiten. Die Herleitung zeigt jeden dieser Schritte anhand der Inhalte, die Piloti dafür herangezogen hat. Wenn keine Textstelle Ihre Frage beantwortet, sagt Piloti das und nennt, wonach es gesucht hat, statt den Sachverhalt als ungeregelt zu bezeichnen."
+  },
+  {
     "en": "Piloti now finds comparable past projects by each building's construction, use and building class, as entered in the briefing. Before, it compared projects only by Bundesland and kind of work.",
     "de": "Piloti findet vergleichbare frühere Projekte jetzt anhand der im Briefing angegebenen Bauweise, Nutzung und Gebäudeklasse jedes einzelnen Gebäudes. Bisher verglich Piloti nur nach Bundesland und Art der Leistung."
   },
   {
+    "en": "Piloti now goes through your documents like a colleague on the drive: it lists a folder, finds every place a word stands across the shelves you may see, and reads the pages that hold it. Each quote names its page, and a search that could not reach everything says what it left out instead of answering that nothing was found.",
+    "de": "Piloti durchsucht Ihre Dokumente jetzt wie ein Kollege im Laufwerk: Es listet Ordnerinhalte auf, findet alle Vorkommen eines Begriffs in den für Sie sichtbaren Ablagen und liest die entsprechenden Seiten. Jedes Zitat nennt die Seitenzahl. Kann eine Suche nicht alles erfassen, weist sie darauf hin, was ausgelassen wurde, statt zu melden, dass nichts gefunden wurde."
+  },
+  {
     "en": "Piloti now knows how you filed your project documents: it can say what is in Brandschutz, name the folder when it points at a file, and search one folder including its subfolders. Renaming or moving a folder updates what it sees without re-uploading anything.",
     "de": "Piloti kennt jetzt Ihre Ablage: Es sagt, was im Ordner Brandschutz liegt, nennt den Ordner, wenn es auf eine Datei verweist, und durchsucht einen Ordner samt Unterordnern. Umbenennen oder Verschieben eines Ordners übernimmt es sofort, ohne dass etwas neu hochgeladen werden muss."
+  },
+  {
+    "en": "Piloti now knows which of its proposals in a chat are still waiting, applied or failed, so it no longer proposes the same change twice or reports a failed change as done.",
+    "de": "Piloti erkennt jetzt, welche seiner Vorschläge in einem Chat noch offen, umgesetzt oder fehlgeschlagen sind, sodass es dieselbe Änderung nicht mehr zweimal vorschlägt und eine fehlgeschlagene Änderung nicht als erledigt meldet."
   },
   {
     "en": "Piloti now knows who it is talking to: your first and last name and your office. In a shared conversation it knows who asked each question.",
@@ -2204,6 +2496,10 @@
     "de": "Piloti öffnet jetzt genau die Fundstelle, die eine Herleitung nennt, etwa „OIB-Richtlinie 2, Pkt. 3.5.2“, statt sie ein zweites Mal zu suchen."
   },
   {
+    "en": "Piloti now opens your office's skills the same way in chat and in deep research, and a deep research report's \"Skills used\" now names every working method it followed, including the report formats Piloti brings along.",
+    "de": "Piloti stellt die Skills Ihres Büros jetzt im Chat und in Deep Research auf dieselbe Weise bereit. Unter „Verwendete Skills“ werden in einem Deep-Research-Bericht nun alle angewandten Arbeitsmethoden genannt, einschließlich der von Piloti bereitgestellten Berichtsformate."
+  },
+  {
     "en": "Piloti now picks where to look based on your question rather than following a fixed order, so a question about the Bauordnung goes straight to the Bauordnung. Values in an answer are taken from passages Piloti read for that answer, and a reference that still fails the check is marked.",
     "de": "Piloti wählt jetzt anhand Ihrer Frage, wo es sucht, statt einer festen Reihenfolge zu folgen, sodass eine Frage zur Bauordnung direkt bei der Bauordnung landet. Werte in einer Antwort stammen aus Textstellen, die Piloti für diese Antwort gelesen hat, und ein Verweis, der die Prüfung auch nach einem zweiten Anlauf nicht besteht, wird markiert."
   },
@@ -2216,6 +2512,10 @@
     "de": "Piloti liest Word-Dokumente jetzt richtig, sodass Antworten sie zitieren können. Früher wurden sie beim Hochladen angenommen und dann als fehlgeschlagen markiert."
   },
   {
+    "en": "Piloti now reads each document whole and shows what it is, who and what it names, the facts it states with their page, and which norms, laws, plans and documents it refers to, so a document is understood without opening it.",
+    "de": "Piloti liest jetzt jedes Dokument vollständig und zeigt, um welche Art von Dokument es sich handelt, wen und was es nennt, welche Fakten auf welcher Seite stehen und auf welche Normen, Gesetze, Pläne und Dokumente es verweist – so verstehen Sie ein Dokument, ohne es zu öffnen."
+  },
+  {
     "en": "Piloti now remembers what authorities demanded in your past Bescheide and Nachforderungen, and when you ask „Fragt die Behörde das wieder nach?“ it answers with the Auflagen of comparable projects, each citing its Bescheid. Reading a Bescheid at upload takes one extra step.",
     "de": "Piloti merkt sich jetzt, was Behörden in Ihren früheren Bescheiden und Nachforderungen verlangt haben, und beantwortet Ihre Frage „Fragt die Behörde das wieder nach?“ mit den Auflagen vergleichbarer Projekte, jeweils mit Verweis auf ihren Bescheid. Das Lesen eines Bescheids beim Hochladen braucht einen Schritt mehr."
   },
@@ -2226,6 +2526,10 @@
   {
     "en": "Piloti now takes on work that lasts longer than an answer: „Mach den Einreichcheck bis Freitag“ creates a task that runs on its own, under your name and permissions, and reports back when done.",
     "de": "Piloti nimmt jetzt Arbeit an, die länger dauert als eine Antwort: „Mach den Einreichcheck bis Freitag“ legt einen Auftrag an, der unter Ihrem Namen und mit Ihren Rechten selbständig läuft und sich meldet, wenn er fertig ist."
+  },
+  {
+    "en": "Piloti now tells you in the app when something important changes, such as a new guideline or a different model, once and only to the offices, roles or language it concerns. The privacy notice lists the browser entries that remember which notices you have already closed.",
+    "de": "Piloti informiert Sie jetzt in der App einmalig über wichtige Änderungen, etwa eine neue Richtlinie oder ein anderes Modell, und nur die betroffenen Büros, Rollen oder Sprachen. Der Datenschutzhinweis listet die Browser-Einträge auf, die speichern, welche Hinweise Sie bereits geschlossen haben."
   },
   {
     "en": "Piloti now works properly on a phone. Answers can be downloaded as Word documents, and diagrams are real drawings. Excel, PowerPoint and CSV files can be uploaded, and answers cite the right sheet or slide.",
@@ -2248,12 +2552,40 @@
     "de": "Piloti überspringt in diesen Projekten Ordner, die Sie nicht lesen dürfen, sowie Dateien, die noch zur Prüfung zurückgehalten sind, auch Ihre eigenen Uploads."
   },
   {
+    "en": "Piloti starts on the first question of a chat sooner: the first answer after an update or a restart no longer waits several seconds before Piloti begins to look things up.",
+    "de": "Piloti beginnt bei der ersten Frage in einem Chat schneller mit der Suche: Bei der ersten Antwort nach einem Update oder Neustart wartet Piloti nicht mehr mehrere Sekunden, bis die Suche beginnt."
+  },
+  {
     "en": "Piloti starts reading before it starts thinking: for a question about a regulation or a project file, it fetches the likely passages first, so questions can be answered one step sooner. The derivation (Herleitung) shows this as the first search step.",
     "de": "Piloti beginnt mit dem Lesen, bevor es zu denken beginnt: Bei einer Frage zu einer Vorschrift oder einer Projektdatei holt es zuerst die wahrscheinlich passenden Textstellen, sodass Fragen einen Schritt früher beantwortet werden können. Die Herleitung zeigt dies als ersten Suchschritt."
   },
   {
+    "en": "Piloti works from a shorter set of standing instructions, and what changes from one question to the next, such as your project's details and the files, now reaches it separately from them.",
+    "de": "Piloti arbeitet mit einem kürzeren Satz dauerhafter Anweisungen. Informationen, die sich von einer Frage zur nächsten ändern, etwa Projektdetails und Dateien, werden nun getrennt davon übermittelt."
+  },
+  {
+    "en": "Piloti's German screens now use one word for each thing: a task is an Aufgabe and one attempt at it a Lauf, a conversation is a Chat, and the person assigned to something is zuständig.",
+    "de": "Die deutschen Oberflächen von Piloti verwenden jetzt einheitliche Begriffe: Eine Aufgabe heißt „Aufgabe“, ein einzelner Versuch „Lauf“, eine Unterhaltung „Chat“ und die zugewiesene Person ist „zuständig“."
+  },
+  {
+    "en": "Piloti's connector in Claude and other AI assistants now shows the Piloti icon instead of a blank tile.",
+    "de": "Der Piloti-Connector in Claude und anderen KI-Assistenten zeigt jetzt das Piloti-Icon statt einer leeren Kachel."
+  },
+  {
     "en": "Piloti's project memory now recalls what is relevant to your question rather than only the twenty most recent notes, and it recognizes a note you have already saved even when it is worded differently, so the same fact is usually stored once. Notes that are used stay current, and notes nothing needs quietly fade into the background.",
     "de": "Der Projektspeicher von Piloti ruft jetzt ab, was für Ihre Frage relevant ist, statt nur die zwanzig neuesten Notizen. Außerdem erkennt er eine Notiz, die Sie schon gespeichert haben, auch wenn sie anders formuliert ist, sodass derselbe Sachverhalt meist nur einmal gespeichert wird. Genutzte Notizen bleiben aktuell, und Notizen, die niemand braucht, treten still in den Hintergrund."
+  },
+  {
+    "en": "Piloti's web addresses now forward plain http links to the secure site instead of showing an empty page, which also lets Claude and other apps find the Piloti icon for the connector.",
+    "de": "Die Webadressen von Piloti leiten unverschlüsselte HTTP-Links jetzt auf die sichere Website weiter, statt eine leere Seite anzuzeigen. So können auch Claude und andere Apps das Piloti-Symbol für den Connector finden."
+  },
+  {
+    "en": "Piloti's word search can now also find the other forms of a German word, so a search for „Fluchtwegbreite“ finds „Fluchtwegbreiten“ as well. Without being asked to, it still finds exactly what was typed.",
+    "de": "Die Wortsuche von Piloti findet jetzt auch andere Formen eines deutschen Wortes. Eine Suche nach „Fluchtwegbreite“ findet also auch „Fluchtwegbreiten“. Auch ohne explizite Aufforderung findet sie weiterhin genau den eingegebenen Begriff."
+  },
+  {
+    "en": "Piloti's work steps say \"in the office filing\" where they still said \"in the office archive\".",
+    "de": "In Piloti steht in den Arbeitsschritten jetzt „in der Büroablage“ statt „im Büroarchiv“."
   },
   {
     "en": "Previews of spreadsheets and text files saved on Windows show euro signs, dashes and curly quotes again instead of leaving them blank.",
@@ -2316,6 +2648,10 @@
     "de": "Zitate aus einer Stelle, die Piloti direkt geöffnet hat, bleiben jetzt in der Antwort. Bisher hat eine Prüfung sie verworfen, sodass die Antwort ohne Beleg blieb."
   },
   {
+    "en": "Quotes, notes, callouts, messages and schedule entries no longer have a coloured bar down their left edge. Quoted words are set in italics, excerpts from a source sit on a quiet background, an unread message shows a dot, and a confirmation or warning says what it is with an icon and a word instead of a coloured stripe.",
+    "de": "Zitate, Notizen, Hinweise, Nachrichten und Termineinträge haben keine farbige Leiste mehr am linken Rand. Zitierte Wörter sind kursiv gesetzt, Auszüge aus einer Quelle heben sich durch einen dezenten Hintergrund ab, ungelesene Nachrichten sind mit einem Punkt gekennzeichnet, und Bestätigungen oder Warnungen werden mit einem Symbol und einer Bezeichnung statt mit einem farbigen Streifen kenntlich gemacht."
+  },
+  {
     "en": "Rating an answer as not helpful no longer pulls the layout beneath it out of shape. The question about what went wrong, its four reasons and the note field now open on their own line, aligned with the answer above them, while the copy and export buttons stay where they were.",
     "de": "Wenn Sie eine Antwort als nicht hilfreich bewerten, gerät der Bereich darunter nicht mehr aus der Form. Die Frage nach dem Fehler, die vier Gründe und das Notizfeld erscheinen auf einer eigenen Zeile, bündig mit der Antwort darüber, während die Schaltflächen zum Kopieren und Exportieren an ihrer Stelle bleiben."
   },
@@ -2350,6 +2686,10 @@
   {
     "en": "Replaced versions keep their files and count towards your organization's storage quota.",
     "de": "Ersetzte Fassungen behalten ihre Dateien und zählen weiter auf das Speicherkontingent Ihrer Organisation."
+  },
+  {
+    "en": "Replying to the Piloti team on a phone works: the reply box stays above the keyboard, the keyboard stays up after sending, and a reply from the team now marks your avatar so you notice it.",
+    "de": "Wenn Sie dem Piloti-Team am Handy antworten, bleibt das Antwortfeld über der Tastatur, die Tastatur bleibt nach dem Senden geöffnet und eine Antwort des Teams hebt jetzt Ihren Avatar hervor, damit Sie sie bemerken."
   },
   {
     "en": "Reports Piloti writes are not cited as sources until someone approves and publishes them. To use one sooner, upload it yourself once you have checked it.",
@@ -2396,6 +2736,10 @@
     "de": "Der Rechtsklick im Bereich Dateien eines Projekts funktioniert wie im Finder und im Explorer: Eine Datei, ein Ordner und die leere Liste öffnen jeweils ein eigenes Menü. Die Schaltfläche ⋯ an einer Datei oder einem Ordner bietet dieselben Aktionen, sodass das Menü auch dann erreichbar bleibt, wenn Sie nie mit der rechten Maustaste klicken."
   },
   {
+    "en": "Saving organization settings, standing instructions or the price list now shows Saved on the button itself rather than in a separate message, and a usage or storage panel that fails to load offers a retry in place.",
+    "de": "Beim Speichern von Organisationseinstellungen, dauerhaften Anweisungen oder der Preisliste wird „Gespeichert“ jetzt direkt auf der Schaltfläche statt in einer separaten Meldung angezeigt. Ein Nutzungs- oder Speicher-Panel, das nicht geladen werden kann, bietet direkt dort die Möglichkeit, es erneut zu versuchen."
+  },
+  {
     "en": "Scanned pages are now checked once the vision model has read them, before anything else uses their text. A file held back for what was found there says that the vision model read those pages.",
     "de": "Gescannte Seiten werden jetzt geprüft, sobald das Vision-Modell sie gelesen hat und bevor etwas anderes ihren Text verwendet. Bei einer Datei, die aufgrund der darin gefundenen Inhalte zurückgehalten wird, steht nun, dass das Vision-Modell diese Seiten gelesen hat."
   },
@@ -2420,8 +2764,20 @@
     "de": "Geplante Aufgaben werden nicht mehr übersprungen, wenn die Recherchekapazität ausgelastet ist: Ein Lauf, der warten muss, wird in Aufgaben als wartend angezeigt und startet, sobald wieder Kapazität frei ist. Die geplanten Läufe eines Büros kommen nach dessen eigenen Fragen und nie vor der Arbeit eines anderen Büros."
   },
   {
+    "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents by their name, by what they are and by what they say, with the matching passage and page, plus annotations, folders, projects and conversations. It searches every project and the office shelf at once, or inside one project or folder.",
+    "de": "Die Suche findet alles, was das Büro hat, von überall mit Strg+K: Dokumente nach ihrem Namen, nach ihrer Art und nach ihrem Inhalt, mit der passenden Fundstelle und Seite, dazu Anmerkungen, Ordner, Projekte und Unterhaltungen. Sie durchsucht alle Projekte und die Büroablage auf einmal oder nur ein Projekt oder einen Ordner."
+  },
+  {
+    "en": "Searching a project's documents or the Archiv now also finds a document by its name and by what it is, not only by what it says. Each result shows the matching passage and its page in ranked order, without a relevance percentage.",
+    "de": "Bei der Suche in den Dokumenten eines Projekts oder im Archiv werden Dokumente jetzt nicht nur anhand ihres Inhalts, sondern auch anhand ihres Namens und Dokumenttyps gefunden. Die Ergebnisse zeigen den passenden Textabschnitt und die Seitenzahl und sind nach Relevanz sortiert – ohne Prozentangabe zur Relevanz."
+  },
+  {
     "en": "Searching your files keeps the view you chose, list or cards. In the list, you can sort by relevance, and each row shows the matching passage and its page.",
     "de": "Die Suche in Ihren Dateien behält die gewählte Ansicht bei, Liste oder Karten. In der Liste lässt sich nach Relevanz sortieren, und jede Zeile zeigt die passende Textstelle samt Seite."
+  },
+  {
+    "en": "See what a new version of a document changed: filter for documents whose stated facts differ from the version they replaced, such as a new building class or one more storey, and each result names the change, before and after. The filter panel also says how many documents Piloti has not read yet, so a count never suggests they lack a value.",
+    "de": "Sehen Sie, was eine neue Fassung geändert hat: Filtern Sie nach Dokumenten, deren Angaben von der ersetzten Fassung abweichen, etwa eine neue Gebäudeklasse oder ein Geschoss mehr, und jeder Treffer nennt die Änderung mit altem und neuem Wert. Die Filterleiste sagt außerdem, wie viele Dokumente Piloti noch nicht gelesen hat, damit eine Zahl nie den Eindruck erweckt, ihnen fehle ein Wert."
   },
   {
     "en": "Send a draft back with Änderungen anfordern and Piloti revises it from your reason, producing the next version of the same document rather than a second one.",
@@ -2440,6 +2796,10 @@
     "de": "Wenn Sie eine Fassung zur Überarbeitung zurücksenden, gibt es dafür jetzt eine zweite Möglichkeit: „Piloti überarbeiten lassen“ steht in Freigabe und Fassungen neben „Änderungen anfordern“, fragt nach derselben schriftlichen Begründung und lässt Piloti anschließend die nächste Fassung erstellen und zur Freigabe einreichen, statt die Arbeit der Person zu überlassen, die sie verfasst hat."
   },
   {
+    "en": "Settings, platform and project panels that fail to load now say what failed and offer the same Try again button, which keeps its place and focus while it works instead of greying out.",
+    "de": "Einstellungs-, Plattform- und Projektbereiche, die nicht geladen werden, zeigen jetzt an, was fehlgeschlagen ist, und bieten dieselbe Schaltfläche „Erneut versuchen“, die während des Vorgangs an ihrer Stelle und im Fokus bleibt, statt ausgegraut zu werden."
+  },
+  {
     "en": "Several annotations reaching you at once, such as the morning's due date reminders or a batch handed over to you, now arrive as one notification on your devices that says how many are due and how many are overdue.",
     "de": "Mehrere Anmerkungen, die Sie gleichzeitig erreichen, etwa die morgendlichen Fälligkeitserinnerungen oder ein an Sie übergebener Stapel, werden auf Ihren Geräten nun in einer einzigen Benachrichtigung zusammengefasst, die angibt, wie viele fällig und wie viele überfällig sind."
   },
@@ -2452,8 +2812,16 @@
     "de": "Kürzere Antworten behalten ihre Karten. Eine Antwort von etwa drei Sätzen mit einer Tabelle, Checkliste oder einem Diagramm hat ihre Karte früher verloren, und die eigenen Karten der Arbeitsmethoden, etwa Brandabschnitte, Geländer und Abstandsflächen, kehren bei den Fragen zurück, zu denen sie gehören."
   },
   {
+    "en": "Signing in from a new browser or a private window no longer bounces back and forth until the browser gives up with too many redirects.",
+    "de": "Wenn Sie sich über einen neuen Browser oder ein privates Fenster anmelden, kommt es nicht mehr zu endlosen Weiterleitungen, bis der Browser abbricht."
+  },
+  {
     "en": "Signing in from the Piloti website works again. Visitors who chose Anmelden on piloti.at were shown an error screen instead of the login page and could not reach the app; they now land on the normal sign-in flow as intended.",
     "de": "Die Anmeldung über die Piloti-Website funktioniert wieder. Besucherinnen und Besucher, die auf piloti.at „Anmelden“ gewählt haben, sahen statt der Login-Seite einen Fehlerbildschirm und konnten die App nicht erreichen. Jetzt gelangen sie wie vorgesehen zum regulären Login-Ablauf."
+  },
+  {
+    "en": "Signing in no longer bounces between Piloti and the login page. If a sign-in is interrupted, you now see what happened and a Try Again button instead of an error page with no way forward.",
+    "de": "Beim Anmelden wechseln Sie nicht mehr zwischen Piloti und der Login-Seite hin und her. Wird die Anmeldung unterbrochen, sehen Sie jetzt, was passiert ist, und eine Schaltfläche „Erneut versuchen“ statt einer Fehlerseite ohne Möglichkeit fortzufahren."
   },
   {
     "en": "Similar projects now shows what each comparison is based on and which facts in your brief would sharpen it. Projects with nothing in common are set apart from the rest, and you can ask Piloti about any of them in this project's chat.",
@@ -2474,6 +2842,10 @@
   {
     "en": "Some PDFs, exported by certain drawing programs or scanners, contain text that comes out as gibberish. Piloti now reads such a PDF as page images, and the gibberish no longer ends up in search.",
     "de": "Manche PDFs, die bestimmte Zeichnungsprogramme oder Scanner exportieren, enthalten Text, der als Kauderwelsch herauskommt. Piloti liest ein solches PDF jetzt als Seitenbilder, und das Kauderwelsch landet nicht mehr in der Suche."
+  },
+  {
+    "en": "Sorting all files into folders now shows its progress as it happens: the four steps, how many files are done, about how long is left and the files it just placed, and it finishes noticeably sooner. Once you apply or cancel a sort, its notice in your inbox is cleared.",
+    "de": "Das Sortieren aller Dateien in Ordnern zeigt jetzt den Fortschritt live an: die vier Schritte, die Anzahl der erledigten Dateien, die ungefähre Restdauer und die zuletzt abgelegten Dateien. Außerdem ist der Vorgang spürbar schneller abgeschlossen. Sobald Sie eine Sortierung anwenden oder abbrechen, wird die entsprechende Benachrichtigung in Ihrem Posteingang entfernt."
   },
   {
     "en": "Sorting now applies to both the list and the card view, so switching views keeps the order you chose.",
@@ -2522,6 +2894,14 @@
   {
     "en": "Tables without a caption in an uploaded PDF are now found as tables, rather than as scrambled text from the page. Charts in a PDF are now found too: before, they were read and then left out of search.",
     "de": "Tabellen ohne Beschriftung in einem hochgeladenen PDF werden nun als Tabellen statt als unstrukturierter Seitentext erkannt. Auch Diagramme in PDFs werden nun gefunden: Bisher werden sie zwar gelesen, aber bei der Suche ausgelassen."
+  },
+  {
+    "en": "Taking back a model view Piloti opened works again after you selected another element there, and once you have left the model view the chat no longer offers to take it back.",
+    "de": "Das Zurückholen einer von Piloti geöffneten Modellansicht funktioniert wieder, nachdem Sie darin ein anderes Element ausgewählt haben. Sobald Sie die Modellansicht verlassen haben, bietet der Chat nicht mehr an, sie zurückzuholen."
+  },
+  {
+    "en": "Tap a line in the Herleitung to see which sources it found, or a source to see where it came from; when folded, the Herleitung names the steps, the cited sources and its one most important warning.",
+    "de": "Tippen Sie auf eine Zeile in der Herleitung, um zu sehen, welche Quellen sie gefunden hat, oder auf eine Quelle, um zu sehen, woher sie stammt; im eingeklappten Zustand nennt die Herleitung die Schritte, die zitierten Quellen und ihren einen wichtigsten Warnhinweis."
   },
   {
     "en": "Tapping a source number in an answer opens the passage in a sheet with a button to open it at that place, long answers offer a list of their sections, and charts and tables fit the width of the phone.",
@@ -2592,8 +2972,24 @@
     "de": "Der Bereich Automation eines Projekts hat einen neuen Tab „Tasks“. Er listet die Aufgaben auf, die Sie an Piloti übergeben haben, aus einem Chat, aus einer Prüfentscheidung oder aus einem Zeitplan, mit Aufgabenstellung, Fortschritt, Bewertung und einem Link zu dem Dokument oder Chat, in dem das Ergebnis gelandet ist."
   },
   {
+    "en": "The BCF file of open BIM check items downloads as compliance-checks-<model>-<revision>.bcfzip instead of pruefbuch-….",
+    "de": "Die BCF-Datei der offenen BIM-Prüfpunkte wird als compliance-checks-<model>-<revision>.bcfzip statt als pruefbuch-… heruntergeladen."
+  },
+  {
     "en": "The Belegt durch line shows „+N weitere“ beyond eight sources and expands on request, and Alle Quellen kopieren always copies every source.",
     "de": "Die Zeile „Belegt durch“ zeigt ab acht Quellen „+N weitere“ und klappt auf Wunsch alle auf, und „Alle Quellen kopieren“ übernimmt stets jede Quelle."
+  },
+  {
+    "en": "The Büroablage now opens at /app/office-shelf. Bookmarks, shared links and Postfach entries that point to /app/archiv keep working and lead there.",
+    "de": "Die Büroablage öffnet sich jetzt unter /app/office-shelf. Lesezeichen, geteilte Links und Postfach-Einträge, die auf /app/archiv verweisen, funktionieren weiterhin und führen dorthin."
+  },
+  {
+    "en": "The English website now has English addresses, for example /en/use-cases/ and /en/why-piloti/ instead of German words after /en/. Links you saved or shared before still work and lead to the new address.",
+    "de": "Die englische Website verwendet jetzt englische URLs, zum Beispiel /en/use-cases/ und /en/why-piloti/ statt deutscher Begriffe nach /en/. Links, die Sie zuvor gespeichert oder geteilt haben, funktionieren weiterhin und führen zur neuen Adresse."
+  },
+  {
+    "en": "The Herleitung draws its graph again: the sources sit side by side under the question and the lines join them, instead of sliding down the page in a staircase that the panel cut off.",
+    "de": "Die Herleitung zeichnet ihr Diagramm neu: Die Quellen stehen nebeneinander unter der Frage und sind durch Linien verbunden, statt treppenförmig nach unten zu rutschen und vom Panel abgeschnitten zu werden."
   },
   {
     "en": "The Herleitung names what was actually searched instead of calling every search OIB knowledge.",
@@ -2606,6 +3002,14 @@
   {
     "en": "The Herleitung no longer shows empty \"Search\" steps for answers that read the building model or put files on screen. Those steps now list the model or the files they read, and a step that found nothing says \"No hits\" instead of looking like an unfinished search.",
     "de": "Die Herleitung zeigt keine leeren Schritte „Suche“ mehr für Antworten, die das Gebäudemodell auswerten oder Dateien einblenden. Diese Schritte nennen jetzt das Modell oder die Dateien, die sie gelesen haben, und ein Schritt ohne Treffer zeigt „Keine Treffer“, statt wie eine unfertige Suche auszusehen."
+  },
+  {
+    "en": "The Herleitung now shows each search, folder and document Piloti opened as one line saying what came back, and ends with the basis of the draft: the cited regulation with its edition, the documents that support it, and what stayed open.",
+    "de": "Die Herleitung zeigt jetzt jede Suche, jeden Ordner und jedes Dokument, die Piloti geöffnet hat, jeweils in einer Zeile mit dem Ergebnis und endet mit der Grundlage des Entwurfs: der zitierten Vorschrift samt Fassung, den sie stützenden Dokumenten und den noch offenen Punkten."
+  },
+  {
+    "en": "The Herleitung now shows what Piloti read from your workspace, such as a project's member list, as its own step beside the documents it read.",
+    "de": "Die Herleitung zeigt jetzt als eigenen Schritt neben den gelesenen Dokumenten, was Piloti aus Ihrem Workspace ausgelesen hat, etwa die Mitgliederliste eines Projekts."
   },
   {
     "en": "The Herleitung shows for every research step what was opened in each document, by page or point.",
@@ -2660,12 +3064,24 @@
     "de": "Die Prüfansicht funktioniert ohne Maus: Wählen Sie den Kommentar, den Bereich oder das Piloti-Tool mit der jeweiligen Taste aus. Ein Fadenkreuz erscheint, das Sie mit den Pfeiltasten bewegen und mit Enter setzen. Markierungen lassen sich allein über die Tastatur setzen und abfragen."
   },
   {
+    "en": "The Rückfragen ask one question at a time, together with the documents the location calls for and any values the documents contradict each other on.",
+    "de": "Die Rückfragen stellen jeweils eine Frage nach der anderen und nennen dazu die am Standort erforderlichen Dokumente sowie Werte, bei denen sich die Dokumente widersprechen."
+  },
+  {
     "en": "The Schnitt filter in the Archiv now reads Schnitt / Ansicht, as in Dateien, because it also finds elevations.",
     "de": "Der Filter „Schnitt“ im Archiv heißt jetzt „Schnitt / Ansicht“, wie in Dateien, weil er auch Ansichten findet."
   },
   {
+    "en": "The Steckbrief shows the Gebäudeklasse with how it was worked out, which OIB-Richtlinien apply, and the values Piloti found in one table. Pointing at a source shows the passage on its page.",
+    "de": "Der Steckbrief zeigt in einer Tabelle die Gebäudeklasse samt Herleitung, die geltenden OIB-Richtlinien und die von Piloti ermittelten Werte. Wenn Sie mit der Maus auf eine Quelle zeigen, wird die Passage auf der entsprechenden Seite angezeigt."
+  },
+  {
     "en": "The address field in the new project dialog suggests Austrian addresses as you type and fills in the Bundesland.",
     "de": "Das Adressfeld im Dialog für ein neues Projekt schlägt während der Eingabe österreichische Adressen vor und füllt das Bundesland automatisch aus."
+  },
+  {
+    "en": "The address in the new-project dialog keeps what you type. Before, it turned into a Bundesland list after three letters and dropped the text.",
+    "de": "Die Adresse im Dialog für ein neues Projekt behält Ihre Eingabe bei. Bisher wurde nach drei Buchstaben eine Liste der Bundesländer angezeigt und der Text gelöscht."
   },
   {
     "en": "The answer details now open by themselves when an answer carries something that must not be missed: research that was cut short, removed evidence or low confidence.",
@@ -2674,6 +3090,10 @@
   {
     "en": "The answer details now show how long Piloti took, from sending the question to the finished answer. The figure stays after the conversation is reloaded.",
     "de": "Die Antwortdetails zeigen jetzt, wie lange Piloti gebraucht hat, vom Absenden der Frage bis zur fertigen Antwort. Die Angabe bleibt nach dem Neuladen des Gesprächs erhalten."
+  },
+  {
+    "en": "The assistant you connected to Piloti, such as Claude or Cursor, can now ask Piloti a question for you and gets Piloti's own answer, with your rights; each question and answer is kept in a private conversation of yours. Agents built on the Agent2Agent standard can ask Piloti the same way.",
+    "de": "Der mit Piloti verbundene Assistent, z. B. Claude oder Cursor, kann jetzt in Ihrem Namen Fragen an Piloti stellen und erhält Antworten direkt von Piloti – mit Ihren Berechtigungen. Jede Frage und Antwort wird in einer privaten Unterhaltung mit Ihnen gespeichert. Agents auf Basis des Agent2Agent-Standards können Piloti auf dieselbe Weise fragen."
   },
   {
     "en": "The banner names where a report will be filed while the research is starting, when you can still stop it, and links to the finished file with „Im Projekt öffnen“. If nothing could be filed, it promises nothing.",
@@ -2686,6 +3106,10 @@
   {
     "en": "The built-in Project Editor and Project Admin roles receive the new filing permission. Grant it to a custom project role yourself, or leave it out if Piloti should only answer.",
     "de": "Die eingebauten Rollen Project Editor und Project Admin erhalten die neue Berechtigung zum Ablegen. Einer eigenen Projektrolle erteilen Sie sie selbst, oder Sie lassen sie weg, wenn Piloti nur antworten soll."
+  },
+  {
+    "en": "The built-in skills have English names: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development and /inspection-report-writer. The old names, such as /einreichcheck, still work when typed and in scheduled tasks, and typing one still finds the skill in the menu.",
+    "de": "Die integrierten Skills haben englische Namen: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development und /inspection-report-writer. Die bisherigen Namen, etwa /einreichcheck, funktionieren weiterhin bei der Eingabe und in geplanten Aufgaben. Wenn Sie einen davon eingeben, wird der Skill weiterhin im Menü angezeigt."
   },
   {
     "en": "The button that starts a conversation about a document now reads „Mit Piloti besprechen“, so it is clear it opens a chat with Piloti and not with a colleague.",
@@ -2716,6 +3140,10 @@
     "de": "Der Chatverlauf gibt nicht mehr an, dass Ihre Chats nur in diesem Browser gespeichert sind. Sie werden in Ihrem Arbeitsbereich gespeichert und sind auf jedem Gerät verfügbar, auf dem Sie sich anmelden."
   },
   {
+    "en": "The chat now tells you before a usage budget runs out: at 80 and 95 percent, when the month's pace would use it up early, and once it is spent, with when it renews and who can raise it.",
+    "de": "Der Chat informiert Sie jetzt, bevor Ihr Nutzungskontingent aufgebraucht ist: bei 80 und 95 Prozent, wenn es bei aktuellem Verbrauchstempo vor Monatsende erschöpft wäre, und nach dem Verbrauch – mit Angabe, wann es erneuert wird und wer es erhöhen kann."
+  },
+  {
     "en": "The chat stays open during and after a deep research, so you can keep asking beside the run, and Bericht fortschreiben runs in the same chat.",
     "de": "Der Chat bleibt während und nach einer Tiefenrecherche offen: Sie fragen neben dem Durchlauf weiter, und „Bericht fortschreiben“ läuft im selben Chat."
   },
@@ -2728,8 +3156,16 @@
     "de": "Die zitierte Stelle ist im Dokument wieder markiert und bleibt auch nach einem Neuladen markiert. „Zitat kopieren“ kopiert jetzt das Zitat selbst und nicht nur die Quellenangabe."
   },
   {
+    "en": "The command palette opens instantly on Cmd+K, and once one tooltip is showing, the next one appears as soon as you point at it.",
+    "de": "Die Command-Palette öffnet sich sofort mit Cmd+K. Sobald ein Tooltip angezeigt wird, erscheint der nächste, sobald Sie mit dem Mauszeiger darüberfahren."
+  },
+  {
     "en": "The compliance check now takes requirements only from the Richtlinien and evidence only from your own documents, including the office archive. A requirement can no longer count as documented just because the Richtlinie states it.",
     "de": "Die Konformitätsprüfung nimmt Anforderungen jetzt nur aus den Richtlinien und Nachweise nur aus Ihren eigenen Unterlagen, einschließlich des Büroarchivs. Eine Anforderung gilt nicht mehr als nachgewiesen, bloß weil die Richtlinie sie nennt."
+  },
+  {
+    "en": "The confidence under an answer is now a check of the whole answer against everything Piloti read for it, and the chip names the statements nothing backs or a source contradicts. A listing of your files or an answer drawn from the project details no longer shows low confidence for a suggested next step.",
+    "de": "Die Konfidenz unter einer Antwort prüft jetzt die gesamte Antwort anhand aller Inhalte, die Piloti dafür gelesen hat. Der Chip kennzeichnet Aussagen, die unbelegt sind oder denen eine Quelle widerspricht. Eine Dateiliste oder eine Antwort auf Basis der Projektdetails zeigt bei einem vorgeschlagenen nächsten Schritt nicht mehr eine niedrige Konfidenz an."
   },
   {
     "en": "The content check now finds a term whose word is split once by a space or hyphen, an IBAN printed in pairs, a card number wrapped onto a second line, and a number split across a page break. A table of years is no longer mistaken for a card number.",
@@ -2810,6 +3246,10 @@
   {
     "en": "The file list keeps its final layout while it loads. Before, loading and searching showed placeholder cards even in the detail view, so the list appeared only after a flash of cards that were never going to be there.",
     "de": "Die Dateiliste behält beim Laden ihr endgültiges Layout. Bisher zeigten Laden und Suchen auch in der Detailansicht Platzhalterkarten, sodass die Liste erst nach einem Aufblitzen von Karten erschien, die gar nicht dort hätten stehen sollen."
+  },
+  {
+    "en": "The file list no longer flashes a browser error when it opens: dates in the list read in Vienna time on the first paint, whatever time zone your computer is set to. Sign-in redirects are also no longer reported to us as errors.",
+    "de": "Beim Öffnen der Dateiliste wird kein Browserfehler mehr kurz angezeigt: Die Datumsangaben erscheinen bereits beim ersten Laden in Wiener Zeit – unabhängig von der Zeitzone Ihres Computers. Auch Anmelde-Weiterleitungen werden uns nicht mehr als Fehler gemeldet."
   },
   {
     "en": "The file preview beside a chat can be resized again. The divider used to stop after a short distance and now follows your pointer across the whole width.",
@@ -2928,6 +3368,10 @@
     "de": "Die Seite bleibt flüssig, während eine Antwort erscheint, auch in einem langen Verlauf; bisher stockte sie und reagierte verzögert auf Eingaben."
   },
   {
+    "en": "The permission reference on the Access tab no longer lists skill-schedule permissions that no role could ever hold. Who may run and change a schedule is decided by the project, as it always was.",
+    "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
+  },
+  {
     "en": "The plan preview is in your language, and after a click the card states your decision in words rather than as a technical keyword.",
     "de": "Die Planvorschau spricht Ihre Sprache, und nach einem Klick nennt die Karte Ihre Entscheidung in Worten statt als technisches Schlüsselwort."
   },
@@ -2984,8 +3428,16 @@
     "de": "Die Rechercheschritte hinter einer Antwort kosten jetzt weniger und dauern kürzer. Die Antwort selbst ändert sich nicht."
   },
   {
+    "en": "The search filters now complete as you type: party names, place, cited norms and drawings, drawing number, revision, scale and stated facts offer the values your documents actually hold, each with how many documents hold it, so you pick the exact spelling instead of guessing it.",
+    "de": "Die Suchfilter ergänzen jetzt beim Tippen: Beteiligte, Ort, zitierte Normen und Pläne, Plannummer, Index, Maßstab und Angaben schlagen die Werte vor, die in Ihren Dokumenten tatsächlich stehen, jeweils mit der Zahl der Dokumente, die ihn enthalten. So wählen Sie die genaue Schreibweise, statt sie zu erraten."
+  },
+  {
     "en": "The search in Dateien now sits in the header, next to the view switcher, the Alle / Meine / Nicht zugewiesen filter and Hochladen. The documents start a row higher, and there is one search on the page instead of two.",
     "de": "Die Suche in „Dateien“ sitzt jetzt in der Kopfzeile, neben dem Ansichtsumschalter, dem Filter Alle / Meine / Nicht zugewiesen und Hochladen. Die Dokumente beginnen eine Zeile höher, und es gibt nur noch eine Suche auf der Seite statt zwei."
+  },
+  {
+    "en": "The search now finds the same documents whether you type Flächenwidmung or Flaechenwidmung, and \"current only\" keeps every matching document instead of dropping older uploads.",
+    "de": "Die Suche findet jetzt dieselben Dokumente, egal ob Sie Flächenwidmung oder Flaechenwidmung eingeben, und die Einstellung „nur aktuelle“ berücksichtigt alle passenden Dokumente, statt ältere Uploads auszuschließen."
   },
   {
     "en": "The settings overview of a project whose intake was never completed no longer shows an error. Its similar closed projects load again.",
@@ -3010,6 +3462,10 @@
   {
     "en": "The source list of a research report now uses the same numbers as the text, so [3] in the text points to the third entry.",
     "de": "Die Quellenliste eines Rechercheberichts nutzt jetzt dieselben Nummern wie der Text, sodass [3] im Text auf den dritten Eintrag verweist."
+  },
+  {
+    "en": "The source numbers in the Herleitung are the same markers the answer uses: hover or tap one to preview the passage, and open the document at the cited page.",
+    "de": "Die Quellenzahlen in der Herleitung sind dieselben Markierungen wie in der Antwort: Bewegen Sie den Mauszeiger darüber oder tippen Sie darauf, um die Passage in der Vorschau anzuzeigen und das Dokument auf der zitierten Seite zu öffnen."
   },
   {
     "en": "The source picker in the message box is hidden for now. Piloti draws on every available source, and the Herleitung still shows which ones it used.",
@@ -3148,8 +3604,16 @@
     "de": "Fehler beim Hochladen stehen jetzt in Ihrer Sprache und in einem Satz: zu groß, falscher Dateityp, bereits vorhanden oder kein Platz mehr. Bisher stand mitten in der deutschen Meldung ein englischer Nebensatz."
   },
   {
+    "en": "Upload problems, such as a file that is too large or a full storage, are now named in your language.",
+    "de": "Upload-Probleme wie eine zu große Datei oder fehlender Speicherplatz werden jetzt in Ihrer Sprache angezeigt."
+  },
+  {
     "en": "Uploaded files get their tags for document type and discipline faster and more accurately. A discipline such as Brandschutz is only assigned when the document is actually about it.",
     "de": "Hochgeladene Dateien bekommen ihre Schlagwörter für Dokumenttyp und Fachbereich schneller und treffsicherer. Ein Fachbereich wie Brandschutz wird nur vergeben, wenn das Dokument tatsächlich davon handelt."
+  },
+  {
+    "en": "Uploaded photos show again when they were taken and with which camera.",
+    "de": "Hochgeladene Fotos zeigen wieder, wann und mit welcher Kamera sie aufgenommen wurden."
   },
   {
     "en": "Uploading a corrected version of a file that is already in a project works again. The upload was refused while the previous version was still the published one.",
@@ -3232,6 +3696,10 @@
     "de": "Was im Gespräch schon geklärt wurde, etwa Ihre Antworten auf Pilotis Rückfragen, geht in die Recherche ein, statt noch einmal gefragt zu werden."
   },
   {
+    "en": "When Piloti compares two Fassungen of a plan in the chat, you now see the same page of both side by side, with the changes boxed on each, and the changes written out beneath. Pressing a page opens that Fassung with every change marked.",
+    "de": "Wenn Piloti im Chat zwei Planfassungen vergleicht, sehen Sie jetzt dieselbe Seite beider Fassungen nebeneinander, mit eingerahmten Änderungen auf jeder Seite und einer Auflistung der Änderungen darunter. Wenn Sie auf eine Seite klicken, wird diese Fassung mit allen markierten Änderungen geöffnet."
+  },
+  {
     "en": "When Piloti could not start on an annotation you delegated, for example because the budget was used up, you now hear about it in the inbox, and the annotation no longer keeps showing „Piloti arbeitet daran“.",
     "de": "Konnte Piloti mit einer Anmerkung, die Sie delegiert haben, nicht beginnen, etwa weil das Budget aufgebraucht war, erfahren Sie das jetzt im Postfach, und die Anmerkung zeigt nicht mehr dauerhaft „Piloti arbeitet daran“."
   },
@@ -3252,6 +3720,10 @@
     "de": "Kennt Piloti eine Tatsache schon und liegt sie nur mit neuen Worten vor, wird der vorhandene Eintrag im Projektgedächtnis aktualisiert, statt sie doppelt zu speichern."
   },
   {
+    "en": "When Piloti looks at a page of a drawing or a detail of it, the chat now says so while it happens, and the answer shows where it looked: the document, the page, the place on it, and what Piloti was looking for. A box or pointer Piloti showed on the review canvas appears there too.",
+    "de": "Wenn Piloti eine Zeichnungsseite oder ein Detail davon betrachtet, zeigt der Chat das jetzt währenddessen an. In der Antwort sehen Sie, wo Piloti nachgesehen hat: das Dokument, die Seite, die Stelle darauf und wonach Piloti gesucht hat. Auch ein Kasten oder Zeiger, den Piloti auf dem Review-Canvas angezeigt hat, erscheint dort."
+  },
+  {
     "en": "When Piloti looks into past projects on its own, it now starts with the ones most like yours, not the most recent ones.",
     "de": "Wenn Piloti selbstständig frühere Projekte durchsucht, beginnt es jetzt mit den Projekten, die Ihren am ähnlichsten sind, statt mit den neuesten."
   },
@@ -3260,8 +3732,32 @@
     "de": "Wenn Piloti frühere Projekte des Büros durchsucht, zitiert es jetzt zuerst die dort im Projektgedächtnis festgehaltenen Entscheidungen und Anforderungen, nach Projekt benannt, und danach die Dokumente. Eingeschränkte Notizen werden nur in einem Chat angezeigt, den nur Sie sehen, und nur dann, wenn Sie den Ordner lesen dürfen, aus dem sie stammen."
   },
   {
+    "en": "When Piloti looks through your documents, the Herleitung names folders and files the way you do: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“ or „Sucht im Projekt nach PDF-Dateien“. A folder that is not there reads „nicht gefunden“, and one that is there but empty reads „leer“.",
+    "de": "Wenn Piloti Ihre Dokumente durchsucht, nennt die Herleitung Ordner und Dateien so, wie Sie es tun: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“ oder „Sucht im Projekt nach PDF-Dateien“. Ein nicht vorhandener Ordner wird als „nicht gefunden“ angezeigt, ein vorhandener, aber leerer als „leer“."
+  },
+  {
+    "en": "When Piloti looks up every place a word appears in your documents, each place now counts once. A word in a chapter heading, or in a passage that runs on to the next page, was counted two or more times and could be listed on pages where it does not stand.",
+    "de": "Wenn Piloti alle Stellen in Ihren Dokumenten ermittelt, an denen ein Wort vorkommt, zählt jede Stelle jetzt nur einmal. Ein Wort in einer Kapitelüberschrift oder in einem Textabschnitt, der auf der nächsten Seite weitergeht, wurde bisher zwei- oder mehrmals gezählt und konnte auf Seiten aufgeführt werden, auf denen es nicht vorkommt."
+  },
+  {
+    "en": "When Piloti may not show you something, you now see that access was refused instead of a general error. A file that fails more than one upload check is now refused for the same reason in project files, the Archiv and the chat.",
+    "de": "Kann Piloti Ihnen etwas nicht anzeigen, sehen Sie jetzt statt einer allgemeinen Fehlermeldung, dass der Zugriff verweigert wurde. Eine Datei, die mehrere Upload-Prüfungen nicht besteht, wird jetzt in Projektdateien, im Archiv und im Chat aus demselben Grund abgelehnt."
+  },
+  {
+    "en": "When Piloti notes something about your project during an answer, you now see it right on the answer instead of inside Details, and one tap shows what was noted. When a note corrects an earlier one, the answer says Memory updated and shows the old note struck through.",
+    "de": "Wenn Piloti während einer Antwort etwas zu Ihrem Projekt festhält, sehen Sie es jetzt direkt bei der Antwort statt unter „Details“. Mit einem Tippen sehen Sie, was festgehalten wurde. Korrigiert eine Notiz eine frühere, steht in der Antwort „Memory aktualisiert“, und die alte Notiz wird durchgestrichen angezeigt."
+  },
+  {
+    "en": "When Piloti proposes a change, the card now names the projects, folders, documents and people it affects instead of showing their ids.",
+    "de": "Wenn Piloti eine Änderung vorschlägt, nennt die Karte jetzt die betroffenen Projekte, Ordner, Dokumente und Personen, statt ihre IDs anzuzeigen."
+  },
+  {
     "en": "When Piloti proposes a research plan and you reply in your own words, it now revises the plan with your answer. A plain no still skips the plan and answers directly.",
     "de": "Schlägt Piloti einen Rechercheplan vor und Sie antworten in eigenen Worten, überarbeitet es den Plan jetzt mit Ihrer Antwort. Ein schlichtes Nein überspringt den Plan weiterhin und führt zur direkten Antwort."
+  },
+  {
+    "en": "When Piloti proposes moving, renaming or assigning a file, the proposal now says why, for example that the file belongs with the Bescheid of 12 March. Piloti remembers the reason in later turns.",
+    "de": "Wenn Piloti vorschlägt, eine Datei zu verschieben, umzubenennen oder zuzuweisen, nennt Piloti jetzt auch den Grund dafür – etwa, dass die Datei zum Bescheid vom 12. März gehört. Piloti behält den Grund auch im weiteren Gesprächsverlauf im Gedächtnis."
   },
   {
     "en": "When Piloti proposes to move, rename, file or assign documents, everyone in the conversation now sees the same proposal and the same decision: once someone accepts it, it is applied in that person's name and with their rights, and the card shows who decided and what landed.",
@@ -3270,6 +3766,10 @@
   {
     "en": "When Piloti researches a question in depth, it now shows as a task in the conversation, with phases, rounds, documents and running time; it can be cancelled and its report is filed.",
     "de": "Recherchiert Piloti eine Frage gründlich, erscheint das jetzt als Auftrag im Verlauf, mit Phasen, Runden, Dokumenten und Laufzeit; er lässt sich abbrechen, und der Bericht wird abgelegt."
+  },
+  {
+    "en": "When Piloti runs a deep research inside the chat, the Herleitung now shows who did the work: the planning, each research question and the report, nested under the deep research, each with whether it is still working, finished or failed. A research question that failed says so, and the answer goes on without it.",
+    "de": "Wenn Piloti im Chat eine Deep Research durchführt, zeigt die Herleitung jetzt die einzelnen Arbeitsschritte: die Planung, jede Recherchefrage und den Bericht, verschachtelt unter der Deep Research und jeweils mit dem Status „in Bearbeitung“, „abgeschlossen“ oder „fehlgeschlagen“. Eine fehlgeschlagene Recherchefrage wird entsprechend gekennzeichnet, und die Antwort wird ohne sie fortgesetzt."
   },
   {
     "en": "When Piloti searches more than once, the Herleitung now shows the conclusion behind each new search: what it already knew and what it still needed, instead of repeating the search query.",
@@ -3316,6 +3816,10 @@
     "de": "Wenn ein Dokument nicht gelesen werden kann, sagen die Dateikarte, die Vorschau, die Upload-Liste und die Dateiliste im Chat jetzt in einfachen Worten, warum, und was hilft, etwa es erneut zu lesen oder Ihre Admins zu bitten, das Lesen gescannter Seiten einzurichten. Die ursprüngliche Fehlermeldung steht weiterhin unter „Details“."
   },
   {
+    "en": "When a document is open next to the chat and you have drawn a box or selected a mark on it, a question typed in the chat now means that place, so \"here\" works the same as in the document's own question box.",
+    "de": "Wenn ein Dokument neben dem Chat geöffnet ist und Sie darin einen Rahmen gezogen oder eine Markierung ausgewählt haben, bezieht sich eine im Chat eingegebene Frage jetzt auf diese Stelle – „hier“ funktioniert genauso wie im Fragenfeld des Dokuments."
+  },
+  {
     "en": "When a document is too long for Piloti to revise as a task, the task now says so and leaves the version as it was, instead of failing with a technical error. Long documents can still be revised section by section through „Besprechen“.",
     "de": "Wenn ein Dokument zu lang ist, um von Piloti als Aufgabe überarbeitet zu werden, weist die Aufgabe jetzt darauf hin und lässt die Version unverändert, statt mit einem technischen Fehler abzubrechen. Lange Dokumente können weiterhin Abschnitt für Abschnitt über „Besprechen“ überarbeitet werden."
   },
@@ -3338,6 +3842,10 @@
   {
     "en": "When a new version of a file cannot be read, the file preview beside the chat now says that Piloti is still citing the previous version, instead of saying the file cannot be cited at all.",
     "de": "Lässt sich eine neue Fassung einer Datei nicht lesen, sagt die Dateivorschau neben dem Chat jetzt, dass Piloti weiterhin die vorige Fassung zitiert, statt zu melden, die Datei sei gar nicht zitierbar."
+  },
+  {
+    "en": "When a newer revision of a drawing is filed, Piloti can now compare it with the previous one on its own and mark what changed as suggestions on the new revision, which you take over or dismiss in the review. You get one inbox message, and nothing when nothing visible changed.",
+    "de": "Wenn eine neuere Revision einer Zeichnung abgelegt wird, kann Piloti sie jetzt automatisch mit der vorherigen vergleichen und Änderungen als Vorschläge in der neuen Revision markieren, die Sie im Review übernehmen oder verwerfen. Sie erhalten eine Nachricht in Ihrer Inbox – und keine, wenn keine sichtbaren Änderungen vorliegen."
   },
   {
     "en": "When a project has more notes than fit in one answer, Piloti now says so instead of silently showing a partial list, and pinned notes can no longer push everything else out of view.",
@@ -3364,6 +3872,10 @@
     "de": "Ist ein geplanter Auftrag fertig oder fehlgeschlagen, erfahren Sie es jetzt im Posteingang, mit einem Link zur Laufhistorie des Projekts."
   },
   {
+    "en": "When a search finds no sources, Piloti now shows its answer with a note that it rests on general knowledge, instead of only saying that nothing was found. A ruling without a source is still not shown.",
+    "de": "Wenn eine Suche keine Quellen findet, zeigt Piloti jetzt die Antwort mit einem Hinweis an, dass sie auf allgemeinem Wissen beruht, statt nur mitzuteilen, dass nichts gefunden wurde. Eine Entscheidung ohne Quelle wird weiterhin nicht angezeigt."
+  },
+  {
     "en": "When an answer fails partway, the words already written stay on screen, dimmed above the error, and Erneut versuchen replaces them with a fresh answer.",
     "de": "Wenn eine Antwort mittendrin fehlschlägt, bleiben die bereits geschriebenen Wörter oberhalb des Fehlers abgeblendet am Bildschirm, und „Erneut versuchen“ ersetzt sie durch eine neue Antwort."
   },
@@ -3372,8 +3884,32 @@
     "de": "Nennt eine Antwort eine Datei beim Namen, etwa „Beginnen Sie mit pd8280-2.pdf“, ist der Name jetzt ein Link, der das Dokument neben der Antwort öffnet, im Fließtext wie in Tabellen."
   },
   {
+    "en": "When an answer numbers its sources without listing them, each number now points to the passage this answer read that says what the sentence says, and the source list is added for you, instead of an unrelated source from earlier in the conversation.",
+    "de": "Wenn eine Antwort ihre Quellen nummeriert, ohne sie aufzulisten, verweist nun jede Nummer auf die gelesene Passage, die die jeweilige Aussage belegt, und die Quellenliste wird automatisch ergänzt – statt auf eine unpassende Quelle aus dem früheren Gespräch."
+  },
+  {
+    "en": "When an answer rests on one place in a document, Piloti now opens it beside the chat once the answer is there, at that page with the passage or area marked, and a row under the answer undoes it in one click. It opens only what you may see yourself and never while you are typing, and a switch under the answer or on your profile page turns it off.",
+    "de": "Wenn eine Antwort auf einer Stelle in einem Dokument beruht, öffnet Piloti das Dokument jetzt neben dem Chat, sobald die Antwort vorliegt – auf der entsprechenden Seite und mit markierter Textstelle oder Fläche. Über eine Zeile unter der Antwort können Sie das mit einem Klick rückgängig machen. Es werden nur Inhalte geöffnet, die Sie selbst sehen dürfen, und nie während Sie tippen. Über einen Schalter unter der Antwort oder auf Ihrer Profilseite können Sie die Funktion deaktivieren."
+  },
+  {
+    "en": "When an upload to a project has been read, its inbox notice says what it brought: how many documents of which kind, the findings it opened or settled, references the project cannot answer and pages not read in full, with a link to the project's findings.",
+    "de": "Wenn ein Upload zu einem Projekt eingelesen wurde, zeigt der Hinweis im Posteingang, was er beigetragen hat: wie viele Dokumente welcher Art, welche Feststellungen er eröffnet oder erledigt hat, Verweise, die das Projekt nicht beantworten kann, und Seiten, die nicht vollständig gelesen wurden – mit einem Link zu den Feststellungen des Projekts."
+  },
+  {
+    "en": "When another AI assistant passes Piloti a setting an action does not have, such as a page size on the project list, Piloti now says so and names the settings it does take, instead of quietly ignoring it.",
+    "de": "Wenn ein anderer KI-Assistent Piloti eine Einstellung übergibt, die eine Aktion nicht unterstützt, etwa eine Seitengröße für die Projektliste, weist Piloti jetzt darauf hin und nennt die unterstützten Einstellungen, statt sie stillschweigend zu ignorieren."
+  },
+  {
+    "en": "When another AI assistant searches your documents through Piloti, a long result now keeps every hit with its citation instead of losing the last ones, and the assistant is no longer asked for a note it never needed.",
+    "de": "Wenn ein anderer KI-Assistent Ihre Dokumente über Piloti durchsucht, bleiben bei langen Ergebnissen jetzt alle Treffer samt Quellenangaben erhalten, statt dass die letzten verloren gehen, und der Assistent wird nicht mehr nach einer Notiz gefragt, die er nie benötigt hat."
+  },
+  {
     "en": "When everything an upload brought in has been read, your inbox tells you, with a summary of what arrived, where it was filed, what each file is, and what was held back or failed. Project settings list every upload with its outcome and who uploaded it.",
     "de": "Sobald alles gelesen ist, was ein Upload gebracht hat, meldet es Ihr Postfach – mit einer Zusammenfassung, was angekommen ist, wo es abgelegt wurde, was jede Datei ist und was zurückgehalten wurde oder fehlgeschlagen ist. Die Projekteinstellungen listen jeden Upload mit seinem Ergebnis und der Person, die ihn hochgeladen hat."
+  },
+  {
+    "en": "When reading a project's documents stops before it finishes, the person who started it now gets a Postfach entry saying so, instead of nothing.",
+    "de": "Wenn das Einlesen der Projektdokumente vorzeitig abbricht, erhält die Person, die es gestartet hat, jetzt einen entsprechenden Eintrag im Postfach statt gar keiner Nachricht."
   },
   {
     "en": "When something fails, the error message now carries a short reference for support that you can copy with one click.",
@@ -3388,8 +3924,24 @@
     "de": "Wenn die KI kurz überlastet ist, bricht Piloti Ihre Frage nicht mehr mit einem Fehler ab, sondern wartet einen Moment und versucht es erneut."
   },
   {
+    "en": "When the Piloti team answers feedback you sent, you now get a notification in your inbox and on your devices, and it opens the conversation under My feedback.",
+    "de": "Wenn das Piloti-Team auf Ihr Feedback antwortet, erhalten Sie jetzt eine Benachrichtigung in Ihrem Posteingang und auf Ihren Geräten. Sie öffnet die Unterhaltung unter „Mein Feedback“."
+  },
+  {
+    "en": "When the Piloti team answers your feedback, you now read the answer in Piloti under My feedback and can reply right there in the chat; a count shows when something new arrived.",
+    "de": "Wenn das Piloti-Team auf Ihr Feedback antwortet, sehen Sie die Antwort jetzt in Piloti unter „Mein Feedback“ und können direkt im Chat darauf antworten. Ein Zähler zeigt an, wenn es etwas Neues gibt."
+  },
+  {
+    "en": "When the Tasks list updates while you read it, a card that changes place now glides there and the cards around it make room, instead of jumping. Switching the filter still simply fades the new list in.",
+    "de": "Wenn die Aufgabenliste aktualisiert wird, während Sie sie lesen, gleitet eine Karte, die ihre Position ändert, nun an ihre neue Stelle, während die umliegenden Karten Platz machen, statt zu springen. Beim Wechsel des Filters wird die neue Liste weiterhin einfach eingeblendet."
+  },
+  {
     "en": "When the building-regulation search finds nothing that answers your question, Piloti now tells you it found no supporting passage, instead of answering from loosely related text.",
     "de": "Wenn die Suche in den Bauvorschriften keine Antwort auf Ihre Frage findet, teilt Piloti Ihnen jetzt mit, dass keine passende Textstelle gefunden wurde, statt anhand lose verwandter Texte zu antworten."
+  },
+  {
+    "en": "When the confidence check cannot run, the chip says so instead of showing a level.",
+    "de": "Wenn die Konfidenzprüfung nicht ausgeführt werden kann, zeigt der Chip dies an, statt eine Stufe anzuzeigen."
   },
   {
     "en": "When the content check holds a file back for more reasons than it lists, the audit log now records how many it left out. A shortened list of reasons no longer reads as the complete one.",
@@ -3398,6 +3950,10 @@
   {
     "en": "When the office's past projects hold nothing comparable, Piloti now says so. It used to answer that the search was unavailable and ask you to try again.",
     "de": "Wenn die bisherigen Projekte des Büros nichts Vergleichbares enthalten, sagt Piloti das jetzt. Bisher meldet es, dass die Suche nicht verfügbar ist, und bittet Sie, es erneut zu versuchen."
+  },
+  {
+    "en": "When the office's usage budget runs out while Piloti is reading a new project's documents, the reading now says the budget is used up instead of reporting an error.",
+    "de": "Wenn das Nutzungsbudget des Büros aufgebraucht ist, während Piloti die Dokumente eines neuen Projekts liest, wird nun angezeigt, dass das Budget aufgebraucht ist, statt einen Fehler zu melden."
   },
   {
     "en": "When the on-screen keyboard opens, the app now makes room for it instead of letting it cover the composer, so you can see what you are typing.",
@@ -3424,6 +3980,10 @@
     "de": "Widersprechen sich zwei Quellen, zeigt Piloti den Unterschied jetzt an, nennt beide mit Fundstelle und sagt, welche Regel den Vorrang entscheidet, oder dass sich der Widerspruch aus den Quellen nicht auflösen lässt."
   },
   {
+    "en": "When you ask Piloti to show you files on a topic, it now finds them with the same search you use, in the language of your documents, and the files it offers carry a link that opens that search with every result.",
+    "de": "Wenn Sie Piloti bitten, Ihnen Dateien zu einem Thema anzuzeigen, findet es diese jetzt über dieselbe Suche, die Sie selbst verwenden, und in der Sprache Ihrer Dokumente. Die angezeigten Dateien enthalten einen Link, der diese Suche mit allen Ergebnissen öffnet."
+  },
+  {
     "en": "When you ask for changes to a document Piloti wrote, Piloti can now revise it and submit it again instead of saying it is still under review.",
     "de": "Wenn Sie Änderungen an einem von Piloti erstellten Dokument anfordern, kann Piloti es jetzt überarbeiten und erneut einreichen, statt mitzuteilen, dass es noch geprüft wird."
   },
@@ -3432,12 +3992,20 @@
     "de": "Wenn Sie fragen, wie etwas früher gelöst wurde, zeigt Piloti jetzt zuerst frühere Projekte, die zu Ihrer Frage passen – nicht nur jene, die Ihrem Gebäude am ähnlichsten sind – und stellt Passagen, die eine Lösung zeigen, an den Anfang."
   },
   {
+    "en": "When you ask whether something appears in your own documents, Piloti can now search only the project or only the office shelf, and the answer says how many documents it searched and how many matched on each shelf. A pattern search also lists each distinct match with its count and pages, and folder overviews name the files of small folders.",
+    "de": "Wenn Sie fragen, ob etwas in Ihren eigenen Dokumenten vorkommt, kann Piloti jetzt nur im Projekt oder nur in der Büroablage suchen. Die Antwort gibt an, wie viele Dokumente in jeder Ablage durchsucht wurden und wie viele Treffer es gab. Eine Mustersuche führt außerdem jeden eindeutigen Treffer samt Anzahl und Seiten auf, und Ordnerübersichten nennen bei kleinen Ordnern die Dateinamen."
+  },
+  {
     "en": "When you close a project, Piloti can read its documents and suggest its Bundesland, building class, construction, uses, OIB edition and the decisions it made, each with the document and page it comes from. You confirm each one, and similar projects are then found by what they are.",
     "de": "Wenn Sie ein Projekt schließen, kann Piloti dessen Dokumente lesen und das Bundesland, die Gebäudeklasse, die Bauweise, die Nutzungen, die OIB-Ausgabe sowie die darin getroffenen Entscheidungen vorschlagen – jeweils mit dem Dokument und der Seite, aus denen die Information stammt. Sie bestätigen jeden Vorschlag; ähnliche Projekte werden anschließend anhand dieser Merkmale gefunden."
   },
   {
     "en": "When you close a project, Piloti now proposes which files it no longer needs, such as working copies, older versions, duplicates and temporary files. It is marked as an AI proposal, you decide about every file, and what you confirm goes to the Papierkorb for 14 days.",
     "de": "Wenn Sie ein Projekt abschließen, schlägt Piloti jetzt vor, welche Dateien es nicht mehr braucht, etwa Arbeitskopien, ältere Fassungen, Duplikate und temporäre Dateien. Der Vorschlag ist als KI-Vorschlag gekennzeichnet, Sie entscheiden über jede Datei, und was Sie bestätigen, kommt für 14 Tage in den Papierkorb."
+  },
+  {
+    "en": "When you connect Claude, Cursor or another agent to Piloti, it can now read a short guide to your workspace, a glossary of the office's terms and the list of what it may do. It also offers ready workflows (a project briefing, a building-law check, what is on your plate) and your office's own skills by name.",
+    "de": "Wenn Sie Claude, Cursor oder einen anderen Agenten mit Piloti verbinden, kann dieser jetzt einen kurzen Leitfaden zu Ihrem Arbeitsbereich, ein Glossar der bürointernen Begriffe und eine Liste der erlaubten Aktionen lesen. Außerdem stellt er fertige Workflows (Projektbriefing, baurechtliche Prüfung, Ihre anstehenden Aufgaben) sowie die Skills Ihres Büros unter ihren jeweiligen Namen bereit."
   },
   {
     "en": "When you draw a box and ask Piloti about it, Piloti answers about that box again, and an @Piloti question in an Anmerkung is answered in its thread. Everyone sees in the thread when Piloti is working on it, also after reloading, and the thread says why when Piloti could not answer.",
@@ -3454,6 +4022,14 @@
   {
     "en": "When you send a new question while Piloti is still answering the previous one, the earlier answer is now stopped completely before the new one starts, so the two can no longer mix in one conversation. In the rare case that the earlier answer does not stop within a few seconds, Piloti says it is still finishing and asks you to send the question again.",
     "de": "Wenn Sie eine neue Frage senden, während Piloti noch die vorherige beantwortet, wird die frühere Antwort vollständig beendet, bevor die neue beginnt. So können sich die beiden nicht mehr in einer Unterhaltung vermischen. Falls die frühere Antwort ausnahmsweise nicht innerhalb weniger Sekunden stoppt, teilt Piloti Ihnen mit, dass sie noch abgeschlossen wird, und bittet Sie, die Frage erneut zu senden."
+  },
+  {
+    "en": "When you set up a project, the questions step now also names the documents its location calls for, such as the Grundbuchauszug or the Flächenwidmungs- und Bebauungsplan, with the reason for your Bundesland. Hand each document in right at its entry, answer directly, or mark it as not known, and the step counts what is done.",
+    "de": "Beim Anlegen eines Projekts nennt der Schritt „Fragen“ jetzt auch die für den Standort erforderlichen Unterlagen, etwa den Grundbuchauszug oder den Flächenwidmungs- und Bebauungsplan, und erklärt, warum sie in Ihrem Bundesland benötigt werden. Laden Sie jedes Dokument direkt beim entsprechenden Eintrag hoch, beantworten Sie die Frage direkt oder markieren Sie sie als nicht bekannt. Der Schritt zeigt an, was bereits erledigt ist."
+  },
+  {
+    "en": "When you set up a project, you see the project folder as a tree before anything is uploaded and switch whole folders on or off, with backups and old states proposed off. Beside it you see what the office's sensitive-data list holds back, can change that list for this project, and restrict a folder before its files arrive.",
+    "de": "Beim Einrichten eines Projekts sehen Sie die Projektordner als Baumstruktur, bevor etwas hochgeladen wird, und können ganze Ordner aktivieren oder deaktivieren. Backups und ältere Versionen sind dabei standardmäßig deaktiviert. Daneben sehen Sie, welche Inhalte die Liste sensibler Daten des Büros zurückhält, können diese Liste für das Projekt anpassen und den Zugriff auf einen Ordner einschränken, bevor dessen Dateien eintreffen."
   },
   {
     "en": "When you share a chat that drew on a restricted folder, Piloti offers only colleagues who may read all of those folders, and shows the others greyed out with \"Has no access to a folder this chat draws on\". It never names the folder.",
@@ -3480,12 +4056,24 @@
     "de": "Wenn im Browser der Speicherplatz knapp wird, geht Ihr Chatverlauf nicht verloren: Piloti entfernt nur den Text der ältesten Chats, Titel, Entwürfe und Listeneinträge bleiben erhalten, und der Text eines Chats lädt wieder, wenn Sie ihn öffnen."
   },
   {
+    "en": "When your connected assistant finds a project, a document, a task run or a conversation in Piloti, it can now give you a link that opens it right there.",
+    "de": "Wenn Ihr verbundener Assistent in Piloti ein Projekt, ein Dokument, eine Task-Ausführung oder eine Unterhaltung findet, kann er Ihnen jetzt einen Link bereitstellen, über den Sie den jeweiligen Eintrag direkt öffnen können."
+  },
+  {
     "en": "When your office checks chat messages for sensitive data, Piloti now says plainly that a dictated message is first transcribed by an external provider. Only that text is checked before it is sent.",
     "de": "Wenn Ihr Büro Chat-Nachrichten auf sensible Daten prüft, sagt Piloti jetzt ausdrücklich, dass eine diktierte Nachricht zuerst von einem externen Anbieter transkribiert wird. Vor dem Senden wird nur dieser Text geprüft."
   },
   {
+    "en": "When your office gives someone a role of its own, Piloti now acts with exactly what that role allows, as the person does themselves.",
+    "de": "Wenn Ihr Büro einer Person eine eigene Rolle zuweist, handelt Piloti jetzt genau so, wie es diese Rolle erlaubt – genauso wie die Person selbst."
+  },
+  {
     "en": "When your office's screening rules cannot be applied to an upload, its files are now held unread instead of being read unchecked. Reading them again applies the rules afresh.",
     "de": "Wenn die Prüfvorgaben Ihres Büros auf einen Upload nicht angewendet werden können, werden dessen Dateien nun ungelesen zurückgehalten, statt ungeprüft eingelesen zu werden. Beim erneuten Einlesen werden die Vorgaben erneut angewendet."
+  },
+  {
+    "en": "When your own assistant is connected to Piloti, Piloti's proposals now appear as Piloti's card inside Claude, ChatGPT and VS Code, in your assistant's colours and language. You apply or discard the change there with one press, with your rights, and the assistant keeps the card's buttons from its own model.",
+    "de": "Wenn Ihr eigener Assistent mit Piloti verbunden ist, erscheinen die Vorschläge von Piloti jetzt als Piloti-Karte in Claude, ChatGPT und VS Code – in den Farben und der Sprache Ihres Assistenten. Mit einem Klick übernehmen oder verwerfen Sie die Änderung dort, mit Ihren Berechtigungen. Die Schaltflächen auf der Karte stammen weiterhin vom eigenen Modell des Assistenten."
   },
   {
     "en": "Where a text does not show a structure well, Piloti draws its own diagram, such as for a branching procedure, for who hands what to whom, or for a construction schedule from the project documents. You can file the drawing in the project.",
@@ -3494,6 +4082,14 @@
   {
     "en": "Where an office has upload screening switched on, Piloti checks the text of each upload on its servers before any AI model reads it. A file the check holds back waits in Quarantine, where no model reads it, until an office or project admin releases or deletes it under Organization → Quarantine.",
     "de": "Wo eine Organisation die Prüfung von Uploads eingeschaltet hat, prüft Piloti den Text jedes Uploads auf Pilotis Servern, bevor ein KI-Modell ihn liest. Eine Datei, die die Prüfung zurückhält, wartet unter Organisation → Quarantäne, wo kein Modell sie liest, bis ein Büro- oder Projekt-Admin sie freigibt oder löscht."
+  },
+  {
+    "en": "Where your office has switched it on, Piloti now checks a newly uploaded document against the project's other documents. If a key figure disagrees, for example the number of dwellings, it marks the place as a proposal with both sources; when everything agrees it says nothing.",
+    "de": "Wenn Ihr Büro die Funktion aktiviert hat, gleicht Piloti ein neu hochgeladenes Dokument jetzt mit den übrigen Projektdokumenten ab. Weicht eine Kennzahl ab, etwa die Anzahl der Wohneinheiten, markiert Piloti die betreffende Stelle als Vorschlag und nennt beide Quellen; stimmen alle Angaben überein, gibt es keinen Hinweis."
+  },
+  {
+    "en": "While Piloti reads a new project's documents, the setup shows how far it has got: the site, how many documents are read, and the values, contradictions and gaps found so far. You can leave and ask the project chat meanwhile; your Postfach tells you when Piloti is done.",
+    "de": "Während Piloti die Dokumente eines neuen Projekts liest, zeigt das Setup den aktuellen Stand: das Grundstück, die Anzahl der bereits gelesenen Dokumente sowie die bisher gefundenen Werte, Widersprüche und Lücken. Sie können die Ansicht verlassen und in der Zwischenzeit den Projekt-Chat befragen; Ihr Postfach informiert Sie, wenn Piloti fertig ist."
   },
   {
     "en": "While Piloti works on your question, you can steer it from the chat or from its card on a document („nicht die Tür, die Treppe“), and it takes your note into its next step instead of starting over. A mark or reply it had already chosen waits for your note, and a note that arrives after the answer is asked as your next question.",
@@ -3538,6 +4134,10 @@
   {
     "en": "Whole folders can now be uploaded, with Ordner hochladen or by dragging the folder onto the file list, with every level beneath it. Files Piloti cannot read are rejected one by one, not the whole folder.",
     "de": "Ganze Ordner lassen sich jetzt hochladen, über „Ordner hochladen“ oder per Drag & Drop, mit allen Ebenen darunter. Was Piloti nicht lesen kann, wird einzeln abgelehnt statt des ganzen Ordners."
+  },
+  {
+    "en": "With no project yet, the projects page shows one button to create the first project instead of two.",
+    "de": "Wenn noch kein Projekt vorhanden ist, wird auf der Projektseite statt zwei Schaltflächen nur eine zum Erstellen des ersten Projekts angezeigt."
   },
   {
     "en": "Word, Excel and PowerPoint files now open in the document viewer as a PDF preview, and a reference to one opens that preview instead of only offering a download. Download still gives you the original file, unchanged.",
@@ -3628,6 +4228,10 @@
     "de": "Piloti erhält Ihre Antwort auf eine in einer Anmerkung gestellte Frage und antwortet im Thread. Im Postfach führt eine solche Frage zur Prüfansicht, wo Sie sie beantworten können; eine Zeile zeigt „Antworten“ und „Erledigen“ nur an, wenn diese Aktionen für Sie verfügbar sind."
   },
   {
+    "en": "Your connected assistant now works with what only Piloti has: your office's projects, documents, reviews and tasks, Piloti's building-law knowledge and BIM analysis, and Piloti itself. Your organization's settings, models, budgets and policies, web search and your notifications stay with you in Piloti.",
+    "de": "Ihr verbundener Assistent arbeitet jetzt mit dem, was es nur bei Piloti gibt: den Projekten, Dokumenten, Prüfungen und Aufgaben Ihres Büros, dem baurechtlichen Wissen und der BIM-Analyse von Piloti sowie Piloti selbst. Die Einstellungen, Modelle, Budgets und Richtlinien Ihrer Organisation, die Websuche und Ihre Benachrichtigungen bleiben bei Ihnen in Piloti."
+  },
+  {
     "en": "Your office can now build its own roles in Piloti, under Organisation → Personen & Zugriff → Eigene Rollen, and decide per project folder which roles may read it and which may edit it. A role not on a folder's list does not see the folder, its files or what Piloti finds in them, and organization admins may read and edit everything.",
     "de": "Ihr Büro kann jetzt unter Organisation → Personen & Zugriff → Eigene Rollen eigene Rollen in Piloti anlegen und je Projektordner festlegen, welche Rollen ihn lesen und welche ihn bearbeiten dürfen. Eine Rolle, die nicht auf der Liste eines Ordners steht, sieht weder den Ordner noch seine Dateien noch das, was Piloti darin findet, und Organisations-Admins dürfen alles lesen und bearbeiten."
   },
@@ -3652,6 +4256,18 @@
     "de": "Die Wahl des KI-Modells Ihrer Organisation lässt sich wieder speichern. Das Speichern war fehlgeschlagen, solange noch eine Einstellung einer ausgemusterten Funktion gespeichert war."
   },
   {
+    "en": "Your own AI assistant now sees English operation names and descriptions; tasks are named task and task-run, and a held upload is allowed, not released. Old names keep working for one release.",
+    "de": "Ihr eigener KI-Assistent zeigt jetzt englische Operationsnamen und -beschreibungen; Aufgaben heißen task und task-run, und ein zurückgehaltener Upload ist zulässig, aber nicht freigegeben. Alte Namen funktionieren noch ein Release lang."
+  },
+  {
+    "en": "Your own AI assistant, such as Claude or Cursor, can now work in Piloti: it does anything you can do in the workspace, in your name and with your rights, once your office switches the connection on. Changes still wait for your yes.",
+    "de": "Ihr eigener KI-Assistent, etwa Claude oder Cursor, kann jetzt in Piloti arbeiten: Er erledigt im Arbeitsbereich alles, was Sie selbst tun können – in Ihrem Namen und mit Ihren Berechtigungen, sobald Ihr Büro die Verbindung aktiviert. Änderungen werden weiterhin erst nach Ihrer Zustimmung umgesetzt."
+  },
+  {
+    "en": "Your own AI assistant, such as Claude, ChatGPT or Cursor, can now work in Piloti for you with your rights, set up from Connect your agent on your profile once your organization switches it on. It asks you before it changes or deletes anything, so you stay in charge.",
+    "de": "Ihr eigener KI-Assistent, etwa Claude, ChatGPT oder Cursor, kann jetzt mit Ihren Berechtigungen für Sie in Piloti arbeiten. Richten Sie ihn einmalig über „Agent verbinden“ in Ihrem Profil ein, sobald Ihre Organisation die Funktion aktiviert. Bevor er etwas ändert oder löscht, fragt er Sie – so behalten Sie die Kontrolle."
+  },
+  {
     "en": "Your own annotation can no longer be deleted once a colleague has answered in it or it has been carried over to another document. Its menu says why and offers to resolve it instead, so their answers and the numbering in the minutes stay intact.",
     "de": "Ihre eigene Anmerkung lässt sich nicht mehr löschen, sobald eine Kollegin oder ein Kollege darauf geantwortet hat oder sie in ein anderes Dokument übernommen wurde. Im Menü erfahren Sie den Grund und können sie stattdessen als erledigt markieren, damit Antworten und Nummerierung im Protokoll erhalten bleiben."
   },
@@ -3674,6 +4290,10 @@
   {
     "en": "„Erstelle ein Dokument über …“ now starts a deep research whose finished report is filed in the project under Berichte. If you only want a thorough answer, you still get it in the chat.",
     "de": "„Erstelle ein Dokument über …“ startet jetzt eine Tiefenrecherche, deren fertiger Bericht im Projekt unter „Berichte“ abgelegt wird. Wer nur eine gründliche Antwort will, bekommt sie weiterhin im Chat."
+  },
+  {
+    "en": "„Mein Feedback“ now opens as a window with your reports on the left and the chat with the Piloti team on the right, and on a phone it fills the screen. You write new feedback in the same window, so your menu has one feedback entry, and once a report is sent its chat opens right there.",
+    "de": "„Mein Feedback“ öffnet sich jetzt in einem Fenster: Ihre Berichte links, der Chat mit dem Piloti-Team rechts. Am Smartphone nimmt es den ganzen Bildschirm ein. Neues Feedback verfassen Sie im selben Fenster, sodass Ihr Menü nur einen Feedback-Eintrag enthält. Sobald Sie einen Bericht absenden, öffnet sich der zugehörige Chat direkt dort."
   },
   {
     "en": "„Mir zugewiesen“ in the Prüfansicht finds your Anmerkungen also while the connection to your colleagues is down.",

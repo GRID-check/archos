@@ -34,7 +34,7 @@ def test_only_a_down_vote_with_a_question_and_an_expectation_is_a_case(tmp_path)
     cases = yaml.safe_load(_run(tmp_path, CSV))["questions"]
     assert [c["question"] for c in cases] == ["Wie hoch muss das Geländer sein?"]
     case = cases[0]
-    assert (case["family"], case["punkt"], case["kind"]) == (None, None, "walkthrough")
+    assert (case["family"], case["clause"], case["kind"]) == (None, None, "walkthrough")
     assert case["draft"] == {
         "expected_answer": "Ab 12 m Absturzhöhe 1,10 m",
         "reason": "inaccurate",

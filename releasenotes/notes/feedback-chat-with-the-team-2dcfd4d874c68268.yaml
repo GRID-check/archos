@@ -1,0 +1,12 @@
+---
+features:
+  - >
+    When the Piloti team answers your feedback, you now read the answer in
+    Piloti under My feedback and can reply right there in the chat; a count
+    shows when something new arrived.
+operators:
+  - >
+    Every feedback message posts to the posthog-inbox Slack channel through a
+    PostHog workflow, bugs paging the channel; its Take over button assigns the
+    ticket to whoever clicks, which needs the organization members read scope on
+    the PostHog personal API key.

@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0056: Unified Document Processing Pipeline with Concurrent VLM Enrichment
 
-- **Status:** Accepted
 - **Date:** 2026-07-27
 - **Deciders:** Engineering team
 - **Related:** ADR-0020 (shared cache), ADR-0025 (norm registry), ADR-0026 (source kinds), `docs/architecture/backend-deep-dive.md`
@@ -41,7 +44,7 @@ We will introduce a new module `processing.py` in the llamaindex package that ow
 
 ### Server-side size enforcement
 
-New `assertFileSizeAllowed(file.size)` function in the BFF documents service, called by both `uploadDocument` and `uploadArchivDocument`. Uses the same `getFileUploadConfigFromEnv` config that drives the client-side limit.
+New `assertFileSizeAllowed(file.size)` function in the BFF documents service, called by both `uploadDocument` and `uploadOfficeShelfDocument`. Uses the same `getFileUploadConfigFromEnv` config that drives the client-side limit.
 
 ## Consequences
 
@@ -74,7 +77,7 @@ New `assertFileSizeAllowed(file.size)` function in the BFF documents service, ca
 ## Open Questions / Follow-ups
 
 - ~~`VLM_BATCH_WORKERS = 4` is hardcoded in `processing.py`.~~ **Resolved**
-  (2026-07 pipeline hardening): now `AIQ_VLM_BATCH_WORKERS` (default 4).
+  (2026-07 pipeline hardening): now `GRID_VLM_BATCH_WORKERS` (default 4).
 - ~~The content-hash VLM cache key does not include the VLM model name.~~
   **Resolved** (2026-07 pipeline hardening): the key is now
   `vlm:caption:{model}:{prompt_type}:{sha256(bytes)}`, so model switches and
@@ -84,9 +87,9 @@ New `assertFileSizeAllowed(file.size)` function in the BFF documents service, ca
   (so a transient provider error is not replayed from cache for the TTL and
   re-ingest can recover the file), adds a truncation
   retry on `finish_reason == "length"`, sets an explicit VLM client timeout
-  (`AIQ_VLM_TIMEOUT_SECONDS`), dedupes identical embedded rasters, scopes the
+  (`GRID_VLM_TIMEOUT_SECONDS`), dedupes identical embedded rasters, scopes the
   end-of-job summary reconciliation to the job's own files, and raises the
-  embedding batch size (`AIQ_EMBED_BATCH_SIZE`, default 64). See
+  embedding batch size (`GRID_EMBED_BATCH_SIZE`, default 64). See
   `docs/architecture/backend-deep-dive.md` §"Multimodal & visual/vector-drawing
   ingestion".
 

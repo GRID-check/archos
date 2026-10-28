@@ -1,7 +1,7 @@
 # Standalone packages (packages/).
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`pkg:test`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`pkg:test`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 
@@ -12,7 +12,7 @@ tasks:
   # OUTSIDE the workspace it sits next to: `ifc-spatial` has its own
   # bun.lock and is not in the UI's bun workspace; `ifc-spatial-py` has
   # its own uv.lock and is not in the root uv workspace. That is why they get
-  # their own tasks instead of riding `fe:*` or `be:*` — neither toolchain can
+  # their own tasks instead of riding `workspace:*` or `be:*` — neither toolchain can
   # see them.
   #
   # Until now nothing ran either suite: no Taskfile target, no CI job, no
@@ -40,14 +40,16 @@ tasks:
       - bun run --cwd packages/ifc-spatial typecheck
 
   pkg:test:py:
-    desc: 'packages/ifc-spatial-py: pytest against its own uv.lock (636 tests, ~4 min)'
+    desc: 'packages/ifc-spatial-py: pytest against its own uv.lock (636 tests, ~2 min on four workers)'
     cmds:
       # `--all-extras`, NOT `--extra dev`: pytest is the `dev` extra, and the
       # suite also collects test_ids_export.py, which needs `ifctester` from the
       # `ids` extra. Plain `uv run pytest` installs neither and collection dies.
       # `--project` rather than a `dir:`, so the path in the failure output is
       # the one you can paste back.
-      - uv run --project packages/ifc-spatial-py --all-extras pytest packages/ifc-spatial-py/tests -q
+      # Whole files per worker (loadfile): the modules build their IFC models
+      # in module-scoped fixtures, so a file stays on the worker that built them.
+      - uv run --project packages/ifc-spatial-py --all-extras pytest packages/ifc-spatial-py/tests -q -n logical --dist loadfile
 
   pkg:test:
     desc: Both standalone package suites (packages/ifc-spatial + ifc-spatial-py)

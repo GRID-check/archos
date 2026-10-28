@@ -6,7 +6,7 @@ Why this exists
 ---------------
 
 A user's down-vote is evidence that an answer failed. The answer suite
-(`task be:eval:answer-suite`, cases in `tests/fixtures/herleitung/loop_eval_questions.yaml`)
+(`task be:eval:answer-suite`, cases in `tests/fixtures/derivation/loop_eval_questions.yaml`)
 is where a failure stays caught. This script is the first step between the two.
 
 It reads the platform's feedback export as CSV (Plattform → Antwortqualität →
@@ -19,7 +19,7 @@ writes a draft file of cases for a human to review. It never touches the
 golden set: what a user says the answer should have been is a claim, and the
 suite's rule is that an expectation is read off the corpus, never taken on
 trust. A draft therefore carries the claim as
-`draft.expected_answer` and leaves `family`, `punkt` and `expect` for the
+`draft.expected_answer` and leaves `family`, `clause` and `expect` for the
 reviewer to fill from the corpus.
 
 The export already leaves out every vote on an answer the server marked as
@@ -64,7 +64,7 @@ def slug(question: str) -> str:
 
 
 #: The export prefixes a cell starting with one of these with an apostrophe, so a
-#: spreadsheet opens it as text (``frontends/ui/src/lib/text/csv-cell.ts``).
+#: spreadsheet opens it as text (``apps/workspace/bff/text/csv-cell.ts``).
 _FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
 
 
@@ -97,7 +97,7 @@ def draft_cases(rows: Iterable[dict[str, str]]) -> list[dict[str, Any]]:
                 "id": case_id,
                 "question": question,
                 "family": None,
-                "punkt": None,
+                "clause": None,
                 "kind": "walkthrough",
                 "draft": {
                     "expected_answer": expected,
@@ -113,9 +113,9 @@ def render(cases: list[dict[str, Any]]) -> str:
     header = (
         "# DRAFT answer-suite cases from down-voted answers. Not part of the golden set.\n"
         "# `draft.expected_answer` is what the user said the answer should be: a claim.\n"
-        "# Verify it against the corpus, then fill `family`, `punkt` and `expect` (values read\n"
+        "# Verify it against the corpus, then fill `family`, `clause` and `expect` (values read\n"
         "# off the PDF), drop `draft`, add the comment `Source: answer feedback <date>`, and move\n"
-        "# the case into tests/fixtures/herleitung/loop_eval_questions.yaml.\n"
+        "# the case into tests/fixtures/derivation/loop_eval_questions.yaml.\n"
     )
     return header + yaml.safe_dump({"questions": cases}, allow_unicode=True, sort_keys=False, width=100)
 

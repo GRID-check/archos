@@ -511,7 +511,7 @@ def test_a_regular_flight_is_measured_off_its_own_solid(stairs: SpatialModel) ->
     assert value["totalGoing"] == pytest.approx(9 * GOING, abs=1e-9)
 
 
-def test_the_nutzbreite_is_the_tread_surface_and_not_the_bounding_box(stairs: SpatialModel) -> None:
+def test_the_usable_width_is_the_tread_surface_and_not_the_bounding_box(stairs: SpatialModel) -> None:
     """1.200 m — the number the golden benchmark's question is about.
 
     Measured across the tread faces, so a flight whose stringers stand outside
@@ -721,7 +721,7 @@ def test_ramp_slope_refuses_a_stair(stairs: SpatialModel) -> None:
 # ════════════════════════════════════════════════════════════════════════════
 
 
-def test_the_durchgangshoehe_is_perpendicular_to_the_pitch_and_not_vertical(stairs: SpatialModel) -> None:
+def test_the_headroom_is_perpendicular_to_the_pitch_and_not_vertical(stairs: SpatialModel) -> None:
     """1.348 m against 1.645 m — 27 cm of headroom that is not there.
 
     The expected value is arithmetic, not a rerun: the perpendicular distance
@@ -1111,7 +1111,7 @@ class TestADoglegWrittenAsOneBodyIsThreeFlightsAndNotOne:
     free use) — 200 KB, and it reproduces all four numbers exactly.
     """
 
-    FIXTURE = FIXTURES / "treppe-dreilaeufig.ifc"
+    FIXTURE = FIXTURES / "stair-three-flight.ifc"
     STAIR = "1Kl5_Wzb98HOSGZ8eaBX2f"
     RAILING = "01e2zHdgn5GRyyfNksJ$8a"
     SLAB = "2Og5$70yb1DxR1TY1w8bzN"
@@ -1157,7 +1157,7 @@ class TestADoglegWrittenAsOneBodyIsThreeFlightsAndNotOne:
         assert value["riserHeight"]["measured"] == pytest.approx(self.RISER, abs=1e-4)
         assert value["riserHeight"]["spread"] == pytest.approx(0.0, abs=1e-6)
 
-    def test_the_nutzbreite_is_the_flight_and_not_the_going(self, model: SpatialModel) -> None:
+    def test_the_usable_width_is_the_flight_and_not_the_going(self, model: SpatialModel) -> None:
         """1.500 m. The number that came back before was 0.3175 m — the GOING.
 
         Asserted against the going explicitly, because „a bit too small" and
@@ -1183,7 +1183,7 @@ class TestADoglegWrittenAsOneBodyIsThreeFlightsAndNotOne:
         assert value["totalRise"] == pytest.approx(3.0 - self.RISER, abs=1e-3)
         assert value["treadDepth"]["measured"] == pytest.approx(self.GOING, abs=0.005)
 
-    def test_both_podeste_are_found_although_the_file_declares_none(self, model: SpatialModel) -> None:
+    def test_both_landings_are_found_although_the_file_declares_none(self, model: SpatialModel) -> None:
         """`landings: 0` on a stair with two Podeste is a claim about a building.
 
         OIB 4 limits the risers of a flight WITHOUT an intervening landing, so a
@@ -1256,7 +1256,7 @@ class TestAWinderIsRefusedRatherThanAveraged:
     (KIT/IFC Wiki example, free use).
     """
 
-    FIXTURE = FIXTURES / "wendeltreppe.ifc"
+    FIXTURE = FIXTURES / "spiral-stair.ifc"
     STAIR = "38a9vdh9bF5Qg28GWyHhlr"
 
     @pytest.fixture(scope="class")

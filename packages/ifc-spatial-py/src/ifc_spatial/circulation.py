@@ -238,7 +238,7 @@ class DoorEdge:
             "name": self.name,
             "ifcType": self.ifc_type,
             "predefinedType": self.predefined_type,
-            "verbindet": [self.a, self.b],
+            "connects": [self.a, self.b],
             "length": self.length,
             "external": self.external,
             "via": self.via,
@@ -272,8 +272,8 @@ class DoorGraph:
         return {
             "nodes": [ref.to_dict() for ref in self.nodes],
             "edges": [edge.to_dict() for edge in self.edges],
-            "unbestimmt": list(self.unresolved),
-            "ausgeschlossen": list(self.excluded),
+            "undetermined": list(self.unresolved),
+            "excluded": list(self.excluded),
             "buildSeconds": round(self.build_seconds, 3),
         }
 
@@ -416,8 +416,8 @@ def _build(model: SpatialModel) -> _Build:
                     "name": model.label(door),
                     "ifcType": door.is_a(),
                     "predefinedType": predefined,
-                    "warum": (
-                        "PredefinedType = TRAPDOOR: eine Boden- oder Deckenluke verbindet zwar, ist aber "
+                    "why": (
+                        "PredefinedType = TRAPDOOR: eine Boden- oder Deckenluke connects zwar, ist aber "
                         "nicht begehbar — ein Fluchtweg führt nicht über eine Leiter."
                     ),
                 }
@@ -431,8 +431,8 @@ def _build(model: SpatialModel) -> _Build:
                     "globalId": door.GlobalId,
                     "name": model.label(door),
                     "ifcType": door.is_a(),
-                    "warum": touching.missing.what if touching.missing else "opensTo() war nicht entscheidbar",
-                    "abhilfe": touching.missing.remedy if touching.missing else None,
+                    "why": touching.missing.what if touching.missing else "opensTo() war nicht entscheidbar",
+                    "remedy": touching.missing.remedy if touching.missing else None,
                 }
             )
             continue
@@ -448,8 +448,8 @@ def _build(model: SpatialModel) -> _Build:
                     "globalId": door.GlobalId,
                     "name": model.label(door),
                     "ifcType": door.is_a(),
-                    "warum": (
-                        "Diese Tür berührt keinen der modellierten Räume. Sie verbindet in dieser Datei "
+                    "why": (
+                        "Diese Tür berührt keinen der modellierten Räume. Sie connects in dieser Datei "
                         "nichts — möglicherweise fehlt der Raum dahinter im Export."
                     ),
                 }
@@ -468,12 +468,12 @@ def _build(model: SpatialModel) -> _Build:
                         "globalId": door.GlobalId,
                         "name": model.label(door),
                         "ifcType": door.is_a(),
-                        "warum": (
+                        "why": (
                             f"Diese Tür berührt nur einen Raum, liegt aber nicht außen ({why}). Der Bereich "
                             "auf der anderen Seite ist im Export nicht als IfcSpace modelliert. Als Ausgang "
                             "ins Freie wird sie deshalb NICHT gewertet — das wäre ein erfundener Ausweg."
                         ),
-                        "abhilfe": (
+                        "remedy": (
                             "Den Bereich hinter dieser Tür als IfcSpace modellieren, oder an der zugehörigen "
                             "Wand Pset_WallCommon.IsExternal setzen, wenn sie tatsächlich ins Freie führt."
                         ),
@@ -750,7 +750,7 @@ def egress_path(model: SpatialModel, space_global_id: str) -> Answer[dict[str, A
             method,
             "egressPath",
             "einen Raum (IfcSpace)",
-            "für eine Tür: opensTo() liefert die Räume, die sie verbindet",
+            "für eine Tür: opensTo() liefert die Räume, die sie connects",
         )
 
     build = _cached_build(model)
@@ -786,15 +786,15 @@ def egress_path(model: SpatialModel, space_global_id: str) -> Answer[dict[str, A
         other = edge.b if edge.a == node else edge.a
         legs.append(
             {
-                "von": by_id[node].to_dict(),
-                "tuer": {
+                "from": by_id[node].to_dict(),
+                "door": {
                     "globalId": edge.global_id,
                     "name": edge.name,
                     "ifcType": edge.ifc_type,
                     "external": edge.external,
                     "via": edge.via,
                 },
-                "nach": by_id[other].to_dict(),
+                "to": by_id[other].to_dict(),
                 "length": None if edge.length is None else round(edge.length, 3),
             }
         )
@@ -814,7 +814,7 @@ def egress_path(model: SpatialModel, space_global_id: str) -> Answer[dict[str, A
         "doorCount": len(route),
         "length": None if total is None else round(total, 3),
         "legs": legs,
-        "spaces": [space_global_id, *[leg["nach"]["globalId"] for leg in legs if leg["nach"]["globalId"] != OUTSIDE]],
+        "spaces": [space_global_id, *[leg["to"]["globalId"] for leg in legs if leg["to"]["globalId"] != OUTSIDE]],
         "doors": [edge.global_id for edge in route],
     }
     return computed(
@@ -857,7 +857,7 @@ def reachable_from(model: SpatialModel, space_global_id: str) -> Answer[dict[str
             method,
             "reachableFrom",
             "einen Raum (IfcSpace)",
-            "für eine Tür: opensTo() liefert die Räume, die sie verbindet",
+            "für eine Tür: opensTo() liefert die Räume, die sie connects",
         )
 
     build = _cached_build(model)

@@ -12,12 +12,12 @@ runs:
   steps:
     - name: Setup Python
       id: python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: ${{ inputs.python-version }}
 
     - name: Setup uv
-      uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
       with:
         enable-cache: true
 
@@ -25,13 +25,15 @@ runs:
     # mode (below) writes ~900 MB on every job even when every wheel is cached,
     # ~20s of a job that has a minute. Keyed on everything a sync reads, and
     # the exact interpreter, because a venv names the interpreter it was built
-    # on. `uv sync` still runs after a hit, as a no-op that proves the venv
-    # matches the lock (and repairs it if not).
+    # on, and the checkout path, because a venv's scripts and `activate` name the
+    # directory it was built in (a venv cached before the repository was renamed
+    # left `pre-commit: command not found`). `uv sync` still runs after a hit,
+    # as a no-op that proves the venv matches the lock (and repairs it if not).
     - name: Restore the synced venv
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: .venv
-        key: venv-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('uv.lock', 'pyproject.toml', '**/pyproject.toml') }}
+        key: venv-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ github.workspace }}-${{ hashFiles('uv.lock', 'pyproject.toml', '**/pyproject.toml') }}
 
     - name: Create venv and sync dev deps
       shell: bash

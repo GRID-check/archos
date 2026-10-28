@@ -107,7 +107,7 @@ affordances.
 fallback when WorkOS cannot be asked. A role taken away stops opening a folder
 within a minute, not at the next token refresh. **The admin bypass is derived
 the same way**: `clearanceOf` asks what the membership's roles hold now
-(`orgRoleHoldsPermission`, whose role-to-permission map is cached at most 60 s)
+(`rolesHoldPermission`, whose role-to-permission map is cached at most 60 s)
 rather than reading `org:projects:administer` from the token, so a demoted
 admin stops reaching every folder within a minute. Only when WorkOS cannot be
 asked is the token's permission the answer, as it is for the roles. This
@@ -473,7 +473,7 @@ recorded folders.
   [`database/schema.md`](../database/schema.md#document_access_log-migration-0114-adr-0085), and
   `lib/download-log/service.ts` — `recordDocumentAccess` is called by every function that hands a
   document's bytes to a person, held to the list by `coverage.spec.ts`.
-* Decided by the product owner on 6 Oct 2026 (`plans/2026-10-06-folder-access-lifecycle.md`):
+* Decided by the product owner on 6 Oct 2026 (`docs/plans/2026-10-06-folder-access-lifecycle.md` at `56ee3329`):
   the share dialog lists only people who qualify, a chat shared with someone who later loses a
   folder stays in their list without its content, and deleting a role folders name asks first.
 * Where a later lifecycle feature would attach (participant notices, retention

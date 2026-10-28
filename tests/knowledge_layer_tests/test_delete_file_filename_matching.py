@@ -15,11 +15,11 @@ import threading
 
 from knowledge_layer.llamaindex import adapter as adapter_mod
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
+from knowledge_layer_testing.qdrant import chunk_texts
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import write
 
-import aiq_agent.knowledge as knowledge_pkg
-from sources.knowledge_layer.tests.qdrant_testing import chunk_texts
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import write
+import agent.knowledge as knowledge_pkg
 
 
 class _Collection:

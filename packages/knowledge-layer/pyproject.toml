@@ -1,0 +1,60 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=84.2.1", "setuptools-scm>=10.3.4"]
+
+[tool.setuptools]
+packages = ["knowledge_layer", "knowledge_layer.llamaindex", "knowledge_layer.qdrant"]
+package-dir = {"knowledge_layer" = "src"}
+
+[project]
+name = "knowledge-layer"
+version = "1.0.0"
+description = "Piloti's knowledge layer: reads the office's documents and the legal corpus, and finds the passages Piloti cites"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    # src/view_image.py imports boto3 lazily to fetch image bytes from
+    # SeaweedFS. It was reaching us only as a transitive of langchain-aws, so
+    # the one S3 code path in the Python tier would have vanished the day an
+    # unrelated LLM provider dependency was dropped.
+    "boto3>=1.43.116",
+    # match="regex": a person's pattern runs under a match timeout (`timeout=`), which `re` has not. Already
+    # in the lock as a transitive of tiktoken; the search must not lose it with that.
+    "regex>=2026.5.9",
+]
+
+[project.optional-dependencies]
+llamaindex = [
+    "llama-index>=0.14.23",
+    "llama-index-embeddings-nvidia>=0.1.0",
+    # The vector store (ADR-0115), reached directly rather than through
+    # llama-index-vector-stores-qdrant, which uses none of the Query API
+    # (prefetch, server fusion, group_by, server-side BM25).
+    "qdrant-client>=1.19.1,<2",
+    "pdfplumber>=0.11.10",
+    "pypdfium2>=5.12.1",
+    "Pillow>=9.0.0",
+    "openai>=2.53.0",
+    # Office extractors (office_extractors.py): openpyxl reads .xlsx/.xlsm
+    # sheets, python-pptx reads a deck's speaker notes. Word and presentation
+    # TEXT comes from the PDF rendition (ADR-0071), so docx2txt is gone.
+    # SimpleDirectoryReader's own readers are an optional distribution this
+    # deployment does not install.
+    "openpyxl>=3.1",
+    "python-pptx>=0.6.21",
+]
+all = [
+    "knowledge-layer[llamaindex]",
+]
+
+[project.entry-points."nat.plugins"]
+# One per module that registers a tool (packages/AGENTS.md). `browse` and
+# `read_passage` used to register only because the package `__init__` imported
+# them; it loads lazily now (docs/audit/blast-radius-2026-10.md).
+knowledge_layer = "knowledge_layer.register"
+knowledge_layer_browse = "knowledge_layer.browse"
+knowledge_layer_read_passage = "knowledge_layer.read_passage"

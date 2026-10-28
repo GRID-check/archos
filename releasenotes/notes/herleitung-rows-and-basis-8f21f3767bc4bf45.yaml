@@ -1,0 +1,15 @@
+---
+improvements:
+  - >
+    The Herleitung now shows each search, folder and document Piloti opened as
+    one line saying what came back, and ends with the basis of the draft: the
+    cited regulation with its edition, the documents that support it, and what
+    stayed open.
+  - >
+    Tap a line in the Herleitung to see which sources it found, or a source to
+    see where it came from; when folded, the Herleitung names the steps, the
+    cited sources and its one most important warning.
+  - >
+    The source numbers in the Herleitung are the same markers the answer uses:
+    hover or tap one to preview the passage, and open the document at the
+    cited page.

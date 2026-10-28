@@ -1,6 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, backendImage, toResourceRequirements } from "../config";
+import { DeployConfig } from '../config'
+import { appPullPolicy, backendImage } from '../config/images'
+import { toResourceRequirements } from '../config/resources'
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
@@ -16,7 +18,7 @@ import { JOBS_QUEUE_AUTH } from "./jobs-queue-auth";
 import { installQueueScaledObject, queueDepthQuery } from "./keda-scaling";
 import { UID } from "../constants";
 
-/** The durable queue the tier drains (`aiq_api.jobs.queue.TABLE`). */
+/** The durable queue the tier drains (`agent_host.jobs.queue.TABLE`). */
 export const QUEUE_TABLE = "research_job_queue";
 
 /**
@@ -30,7 +32,7 @@ export const RESEARCH_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
 /**
  * Research worker tier (ADR-0021, ADR-0079).
  *
- * Dedicated worker replicas (same backend image, `GRID_ROLE=worker`) claim
+ * Dedicated worker replicas (same backend image, `PROCESS_ROLE=worker`) claim
  * deep-research jobs from Postgres and execute them, so the token-heavy
  * workload scales horizontally and independently of the chat/web tier. No web
  * port, no PVC — workers are stateless (vectors live in shared Qdrant,
@@ -42,11 +44,11 @@ export const RESEARCH_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  * and asks for ceil(depth / concurrency) replicas between `minReplicas` and
  * `maxReplicas`; an empty queue shrinks the tier to its floor (zero in dev).
  * The claim is fair across organizations and holds one to
- * `GRID_MAX_ACTIVE_JOBS_PER_ORG` jobs at once, so a deep queue from one office
+ * `MAX_ACTIVE_JOBS_PER_ORG` jobs at once, so a deep queue from one office
  * does not make the tier scale past what any single office may use of it.
  *
  * ROLLOUT NOTE — on SIGTERM the worker stops claiming and awaits its in-flight
- * research jobs (`aiq_api/jobs/worker.py`), which routinely run for minutes; the
+ * research jobs (`agent_host/jobs/worker.py`), which routinely run for minutes; the
  * Kubernetes default `terminationGracePeriodSeconds` of 30 SIGKILLs it long
  * before that drain finishes. The drain budget is `agentWorkerDrainSeconds`; the
  * grace period is that plus time to give back what is still running
@@ -57,7 +59,7 @@ export const RESEARCH_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  */
 export function installAgentWorker(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): {
@@ -123,7 +125,7 @@ export function installAgentWorker(
                   failureThreshold: 3,
                 },
                 // The marker only appears on the FIRST claim-loop tick, which is
-                // gated behind importing the full aiq_api stack + connecting to
+                // gated behind importing the full agent_host stack + connecting to
                 // Postgres/Qdrant. On a cold node that can exceed the liveness
                 // window and crash-loop the pod before it ever works. A startup
                 // probe holds liveness off until first boot completes (up to

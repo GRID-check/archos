@@ -24,7 +24,7 @@ from knowledge_layer.requery import CoverageGap
 from knowledge_layer.requery import judge_coverage
 from knowledge_layer.requery import judge_sufficiency
 
-from aiq_agent.common.decisions import Decision
+from agent.common.decisions import Decision
 
 
 def _chunk(text: str, chunk_id: str = "c1", file_name: str = "oib-rl_2.pdf"):
@@ -158,20 +158,20 @@ class TestTheJevReranker:
 
 
 class TestTheCoverageCheck:
-    """„Abdeckung: unzureichend" is claimed on a complete "no", and on nothing less."""
+    """ "Coverage: insufficient" is claimed on a complete "no", and on nothing less."""
 
     async def test_every_passage_below_the_threshold_is_a_gap(self, client):
         client.decide_many.return_value = [_decision(answers=0.2), _decision(answers=0.31)]
         gap = await judge_coverage("q", [_chunk("a"), _chunk("b", "c2")], threshold=0.55, widened=True)
         assert gap == CoverageGap(judged=2, best=0.31, threshold=0.55, widened=True)
-        assert "keine der 2 gezeigten Passagen" in gap.reason()
-        assert "nicht geprüft" not in gap.reason()
-        assert "auch nach Umformulierung" in gap.reason()
+        assert "none of the 2 shown passages" in gap.reason()
+        assert "were not checked" not in gap.reason()
+        assert "even after reformulating the search" in gap.reason()
 
     async def test_an_unwidened_gap_does_not_claim_a_rewording(self, client):
         client.decide_many.return_value = [_decision(answers=0.1)]
         gap = await judge_coverage("q", [_chunk("a")], threshold=0.55, widened=False)
-        assert gap is not None and "Umformulierung" not in gap.reason()
+        assert gap is not None and "reformulating" not in gap.reason()
 
     async def test_one_passage_that_answers_is_no_gap(self, client):
         client.decide_many.return_value = [_decision(answers=0.1), _decision(answers=0.7)]
@@ -203,11 +203,11 @@ class TestTheCoverageCheck:
         assert set(questions) == {"answers"}
         assert len(states) == gap.judged == 16
         assert client.decide_many.call_count == 1, "one decider batch"
-        assert gap.unjudged == 0 and "keine der 16 gezeigten Passagen" in gap.reason()
+        assert gap.unjudged == 0 and "none of the 16 shown passages" in gap.reason()
 
     async def test_past_the_bound_the_unjudged_rest_is_named(self, client):
         client.decide_many.side_effect = lambda states, questions, **_: [_decision(answers=0.1)] * len(states)
         gap = await judge_coverage("q", [_chunk(str(i), str(i)) for i in range(50)], threshold=0.55, widened=False)
         assert (gap.judged, gap.unjudged) == (24, 26)
-        assert "keine der 24 besten Passagen" in gap.reason()
-        assert gap.reason().endswith("; die übrigen 26 Passagen wurden nicht geprüft")
+        assert "none of the best 24 passages" in gap.reason()
+        assert gap.reason().endswith("; the remaining 26 passages were not checked")

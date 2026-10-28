@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-UI_DIR="$PROJECT_ROOT/frontends/ui"
+UI_DIR="$PROJECT_ROOT/apps/workspace"
 
 # Default config file
 CONFIG_FILE="configs/config_oib_openrouter.yml"
@@ -68,8 +68,8 @@ echo "================================================"
 echo ""
 
 check_env() {
-    export AIQ_DEV_ENV=e2e
-    echo "Set AIQ_DEV_ENV=e2e"
+    export DEV_ENV=e2e
+    echo "Set DEV_ENV=e2e"
 
     if [ -f "./deploy/.env" ]; then
         set -a  # Automatically export all variables
@@ -144,11 +144,11 @@ start_backend() {
     echo "Config: $CONFIG_FILE"
     echo ""
 
-    GRID_ROLE=api nat serve --config_file "$CONFIG_FILE" --host 0.0.0.0 --port 8000 &
+    PROCESS_ROLE=api nat serve --config_file "$CONFIG_FILE" --host 0.0.0.0 --port 8000 &
     BACKEND_PID=$!
     echo "Backend api PID: $BACKEND_PID"
 
-    GRID_ROLE=chat nat serve --config_file "$CONFIG_FILE" --host 0.0.0.0 --port 8001 &
+    PROCESS_ROLE=chat nat serve --config_file "$CONFIG_FILE" --host 0.0.0.0 --port 8001 &
     CHAT_PID=$!
     echo "Backend chat PID: $CHAT_PID"
 }
@@ -220,7 +220,7 @@ main() {
         echo ""
         echo "WARNING: Frontend will NOT be started."
         echo "   Reason: UI dependencies not available (missing npm or node_modules)"
-        echo "   To fix: install Node.js 22+ and run 'npm ci' in frontends/ui/"
+        echo "   To fix: install Node.js 22+ and run 'npm ci' in apps/workspace/"
         echo "   The backend will still run at http://localhost:8000"
         echo ""
     fi

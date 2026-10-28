@@ -68,7 +68,7 @@ CI = load("ci.yml")
 JOBS = CI["jobs"]
 PLAN = JOBS["changes"]
 STEPS = {step["id"]: step for step in PLAN["steps"] if "id" in step}
-TIERS = ["backend", "frontend", "web", "infra", "packages", "sast"]
+TIERS = ["backend", "workspace", "site", "infra", "packages", "sast"]
 BUILD = json.dumps([{"name": "backend"}])
 
 
@@ -80,6 +80,7 @@ def plan(
     build: str = BUILD,
     py_mode: str | None = None,
     ui_mode: str | None = None,
+    reference: str | None = None,
 ) -> dict:
     """The plan job's outputs, given what each of its scripts would answer."""
     github = {"event_name": event}
@@ -91,7 +92,7 @@ def plan(
     if evaluate(STEPS["filter"]["if"], github=github, steps=steps):
         steps["filter"] = {"outputs": dict.fromkeys(TIERS, "true")}
     if evaluate(STEPS["pysel"]["if"], github=github, steps=steps) and (py_mode or ui_mode):
-        steps["pysel"] = {"outputs": {"py_mode": py_mode or "", "ui_mode": ui_mode or ""}}
+        steps["pysel"] = {"outputs": {"py_mode": py_mode or "", "ui_mode": ui_mode or "", "reference": reference or ""}}
     steps["images"] = {"outputs": {"build": build, "images": "[]"}}
     if evaluate(STEPS["pins"]["if"], github=github, steps=steps):
         steps["pins"] = {"outputs": {"pins": '["x@sha256:' + "0" * 64 + '"]'}}
@@ -188,7 +189,7 @@ def test_a_pull_request_result_counts_only_on_a_green_parent():
     assert outputs["reused"] == "false"
     assert [job for job in CHECKS if not runs(job, event="push", outputs=outputs) and job != "semgrep"] == [
         "backend-affected",
-        "frontend-coverage",
+        "workspace-coverage",
     ]
 
 
@@ -199,7 +200,7 @@ def test_a_miss_runs_every_check_the_filter_selects(hit):
 
     # Diff-aware SAST, the coverage comment and the selected Python run have
     # nothing to do on a push: a push runs the full suite.
-    assert skipped == ["semgrep", "backend-affected", "frontend-coverage"]
+    assert skipped == ["semgrep", "backend-affected", "workspace-coverage"]
 
 
 def test_a_pull_request_runs_every_check_the_filter_selects():
@@ -220,6 +221,19 @@ def test_a_selected_pull_request_runs_the_affected_tests_instead_of_the_full_sui
     assert not any(runs(job, event="pull_request", outputs=selected) for job in FULL_PY)
     assert not runs("backend-affected", event="pull_request", outputs=full)
     assert all(runs(job, event="pull_request", outputs=full) for job in FULL_PY)
+
+
+@pytest.mark.parametrize(("reference", "own"), [("green", True), ("base", False), (None, False)])
+def test_a_suite_reads_its_own_database_only_against_the_last_green_run(reference, own):
+    # A selection against the whole pull request is sound only measured from
+    # develop's database: from the pull request's own, a test reaching a file
+    # an earlier push changed would not be selected again.
+    outputs = plan(event="pull_request", py_mode="select", reference=reference)
+    step = next(s for s in JOBS["backend-affected"]["steps"] if s.get("id") == "own-db")
+    needs = {"changes": {"outputs": outputs}}
+
+    assert bool(evaluate(step["if"], matrix={"suite": "api"}, needs=needs)) is own
+    assert not evaluate(step["if"], matrix={"suite": "core", "shard": 1}, needs=needs)
 
 
 def test_a_push_always_runs_the_full_python_suite():
@@ -252,20 +266,20 @@ def test_a_ui_selection_runs_the_shards_without_the_coverage_comment():
     nothing = plan(event="pull_request", ui_mode="none")
     full = plan(event="pull_request", ui_mode="full")
 
-    assert runs("frontend-test", event="pull_request", outputs=selected)
-    assert not runs("frontend-coverage", event="pull_request", outputs=selected)
-    assert not runs("frontend-test", event="pull_request", outputs=nothing)
-    assert runs("frontend-test", event="pull_request", outputs=full)
-    assert runs("frontend-coverage", event="pull_request", outputs=full)
+    assert runs("workspace-test", event="pull_request", outputs=selected)
+    assert not runs("workspace-coverage", event="pull_request", outputs=selected)
+    assert not runs("workspace-test", event="pull_request", outputs=nothing)
+    assert runs("workspace-test", event="pull_request", outputs=full)
+    assert runs("workspace-coverage", event="pull_request", outputs=full)
     # Lint, types and tenant isolation are not selected: they always run.
-    assert runs("frontend", event="pull_request", outputs=nothing)
+    assert runs("workspace", event="pull_request", outputs=nothing)
 
 
 def test_a_push_always_runs_every_ui_spec():
     outputs = plan(event="push", ui_mode="none")
 
-    assert runs("frontend-test", event="push", outputs=outputs)
-    steps = {step.get("name", ""): step for step in JOBS["frontend-test"]["steps"]}
+    assert runs("workspace-test", event="push", outputs=outputs)
+    steps = {step.get("name", ""): step for step in JOBS["workspace-test"]["steps"]}
     full = next(step for name, step in steps.items() if name.startswith("All specs"))
     assert evaluate(full["if"], github={"event_name": "push"}, needs={"changes": {"outputs": outputs}})
 
@@ -291,7 +305,7 @@ def test_the_marker_is_uploaded_only_by_a_passing_pull_request_gate():
 
     assert JOBS["ci-ok"]["if"] == "always()"
     # Every job gates the marker, bar the coverage comment (see CI OK).
-    assert set(JOBS["ci-ok"]["needs"]) == set(JOBS) - {"ci-ok", "frontend-coverage", "backend-testmon"}
+    assert set(JOBS["ci-ok"]["needs"]) == set(JOBS) - {"ci-ok", "workspace-coverage", "backend-testmon"}
     assert len(uploads) == 1 and uploads[0] > check
     upload = steps[uploads[0]]
     # No status function: the implicit success() keeps a failed check from uploading.
@@ -330,7 +344,7 @@ def test_the_commit_is_tagged_only_after_every_check_on_its_push_passed():
     publish = JOBS["publish"]
     can_run_on_push = {job for job in CHECKS if runs(job, event="push", outputs=plan(event="push"))}
 
-    assert can_run_on_push - {"frontend-coverage"} <= set(publish["needs"])
+    assert can_run_on_push - {"workspace-coverage"} <= set(publish["needs"])
     assert "image-push" in publish["needs"]
     condition = " ".join(publish["if"].split())
     assert "github.event_name == 'push'" in condition
@@ -346,15 +360,51 @@ def test_the_commit_is_tagged_only_after_every_check_on_its_push_passed():
 
 def test_a_push_lints_its_release_notes_and_a_pull_request_must_add_one():
     steps = JOBS["repo"]["steps"]
-    lint = next(step for step in steps if step.get("run") == "task release:lint")
+    lint = next(step for step in steps if step.get("name") == "Release notes (lint)")
     require = next(step for step in steps if "require_release_note.py" in step.get("run", ""))
 
     assert "if" not in lint
+    # The house rules on every run; reno's history-walking lint whenever the
+    # notes, reno's config or its pin change, and on every push.
+    assert "task release:lint:house" in lint["run"]
+    assert "task release:lint\n" in lint["run"]
+    assert "releasenotes/ Taskfile.yml taskfiles/repo.yml" in lint["run"]
     assert evaluate(require["if"], github={"event_name": "pull_request"})
     assert not evaluate(require["if"], github={"event_name": "push"})
     # The label is read live, so labelling and re-running is enough.
     assert "labels.*.name" not in require["if"]
     assert "no-release-note" in require["run"]
+
+
+def test_a_pull_requests_repo_checks_fetch_only_down_to_the_merge_base():
+    """Full history was ~75 s of every PR's critical path (docs/audit/blast-radius-2026-10.md §7)."""
+    steps = JOBS["repo"]["steps"]
+    checkout = steps[0]
+    depth = checkout["with"]["fetch-depth"]
+    assert evaluate(depth.removeprefix("${{").removesuffix("}}"), github={"event_name": "pull_request"}) == 1
+    # A push's gitleaks scan reads its whole history.
+    assert evaluate(depth.removeprefix("${{").removesuffix("}}"), github={"event_name": "push"}) == 0
+
+    fetch = steps[1]
+    assert evaluate(fetch["if"], github={"event_name": "pull_request"})
+    assert 'ci/fetch_merge_base.sh "$BASE_SHA" "$HEAD_SHA"' in fetch["run"]
+    assert ". ci/git_auth.sh" in fetch["run"]
+    # Before every step that reads the merge base.
+    readers = [
+        i
+        for i, step in enumerate(steps)
+        if "require_release_note.py" in step.get("run", "") or "gitleaks" in step.get("run", "")
+    ]
+    assert readers and min(readers) > 1
+
+
+def test_semgrep_finds_its_own_merge_base_from_a_shallow_clone():
+    steps = JOBS["semgrep"]["steps"]
+    checkout = steps[0]
+    assert "fetch-depth" not in checkout.get("with", {})
+    scan = next(step for step in steps if "semgrep ci" in step.get("run", ""))
+    # The API lookup semgrep tries before deepening the clone.
+    assert scan["env"]["GH_TOKEN"] == "${{ github.token }}"
 
 
 # --- Security -----------------------------------------------------------------------
@@ -363,9 +413,13 @@ def test_a_push_lints_its_release_notes_and_a_pull_request_must_add_one():
 def test_the_pr_secret_scan_reads_only_the_history_under_test():
     # A full-depth checkout fetches every branch, and gitleaks scans `--all`
     # unless told otherwise, so one PR's fixture used to fail everyone's run.
+    # A pull request reads the commits it adds; a push its own history.
     scan = next(step for step in JOBS["repo"]["steps"] if "gitleaks" in step.get("run", ""))
 
-    assert '--log-opts="--full-history HEAD"' in scan["run"]
+    assert scan["env"]["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
+    assert 'range="$BASE_SHA..HEAD"' in scan["run"]
+    assert 'range="--full-history HEAD"' in scan["run"]
+    assert '--log-opts="$range"' in scan["run"]
 
 
 def test_security_is_surveillance_and_the_gate_lives_in_ci():

@@ -19,7 +19,7 @@
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:pgAppPassword         "$(openssl rand -base64 24)" --secret
 
-#   # Password for the least-privilege `grid_app_rw` runtime role (ADR-0041).
+#   # Password for the least-privilege `app_rw` runtime role (ADR-0041).
 
 #   # Required, no fallback — a stack without it fails at `pulumi preview`:
 
@@ -91,7 +91,7 @@ config:
   grid-oib:namespace: grid
   # ── Images (tagged by CI's publish job → GHCR) ──
 
-  grid-oib:imageRegistry: ghcr.io/grid-check
+  grid-oib:imageRegistry: ghcr.io/archos-at
   # This line IS the promotion mechanism: every develop→prod promotion PR must
 
   # bump it to a develop sha CI passed (CI tags all three images sha-<full sha>
@@ -101,7 +101,7 @@ config:
   # dynamically from the merge commit — prod merge shas never have GHCR images;
 
   # only develop tips do.
-  grid-oib:imageTag: sha-9454c7a816bba4d56728752bcbeadb13062ce8a5
+  grid-oib:imageTag: sha-b1ac55a86c517cd8530f749b6d4653c495f064de
   # ── Storage (provider CSI, NVMe/TCP) ──
 
   # Classes offered by the provider (see `kubectl get storageclass`):
@@ -116,10 +116,6 @@ config:
 
   # All classes reclaim `Delete` — deleting a PVC destroys its data irreversibly.
   grid-oib:storageClass: premium
-  # The pre-A2 backend's data volume, which still holds the base corpus. The
-  # one-shot legacy-corpus-import Job carries it into SeaweedFS and the corpus
-  # table (ADR-0082 A2). Remove this key with the importer once it has run here.
-  grid-oib:legacyCorpusClaim: data-aiq-agent-0
   # ── Ingress / TLS ── One key moves every public host: app./s3./otel. derive
 
   # from baseDomain (per-host appDomain/s3Domain/otelDomain keys remain as overrides).
@@ -324,14 +320,14 @@ config:
 
   # claiming. Peak VLM calls in flight = replicas × concurrency × 4
 
-  # (AIQ_VLM_BATCH_WORKERS), all on the shared OpenRouter key; the
+  # (VLM_BATCH_WORKERS), all on the shared OpenRouter key; the
 
   # cluster-autoscaler adds nodes for Pending replicas up to the worker group's
 
   # max, so size that group for maxReplicas × the limits below.
   # Wide and small (2026-10-19): eight pods of two files, not three of three.
   # The 8Gi/12Gi sizing paid for a parse that held the whole document; the text
-  # pass now holds one page (AIQ_PDF_PAGE_MAX_OBJECTS, #1095), so a file peaks
+  # pass now holds one page (PDF_PAGE_MAX_OBJECTS, #1095), so a file peaks
   # at about one raster decode (<= 1 GiB) plus a page and its embeddings, and
   # two files fit 6Gi. Memory request = limit, so the scheduler never places
   # more than a node holds: overcommitted limits took the 16 GB app nodes down
@@ -365,6 +361,8 @@ config:
 
   grid-oib:requireAuth: "true"
   grid-oib:workosClientId: client_01KEF0YGXCZ6QCJGGBWD7Z266J # pragma: allowlist secret (public OAuth client id)
+  # AuthKit domain of this stack's WorkOS environment: the agent doors' authorization server (ADR-0122).
+  grid-oib:workosAuthkitDomain: prestigious-energy-03.authkit.app
   # ── Observability / OTel Collector + Aspire dashboard (ADR-0029) ──
 
   # Deployed only when grid-oib:observabilityEnabled (default true) AND every
@@ -379,7 +377,7 @@ config:
 
   #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:otelPrimaryApiKey "$(openssl rand -hex 32)" --secret
 
-  # dashboardImage/collectorImage default to digest-pinned versions in src/config.ts —
+  # dashboardImage/collectorImage default to digest-pinned versions in src/config/ —
 
   # only override here when deliberately upgrading.
 
@@ -389,7 +387,7 @@ config:
 
   # serve this flow). Created by
 
-  # `WORKOS_API_KEY=sk_… npm run provision:workos-env -- --apply` (frontends/ui)
+  # `WORKOS_API_KEY=sk_… npm run provision:workos-env -- --apply` (apps/workspace)
 
   # with WORKOS_CONNECT_APP_NAME / WORKOS_CONNECT_REDIRECT_URIS set — it
 
@@ -464,7 +462,7 @@ config:
   grid-oib:langfuseInitUserEmail: matthias@bigls.net
   grid-oib:langfuseOrgId: grid
   grid-oib:langfuseProjectId: grid-oib
-  # ClickHouse PVC for Langfuse. Matches the program default (src/config.ts);
+  # ClickHouse PVC for Langfuse. Matches the program default (src/config/langfuse.ts);
   # pinned here so the prod size is visible. Live volume was grown 20Gi -> 50Gi.
   grid-oib:clickhouseStorageSize: 50Gi
   grid-oib:otelOidcIssuer: https://prestigious-energy-03.authkit.app

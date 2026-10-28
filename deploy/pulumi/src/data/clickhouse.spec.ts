@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { loadConfig } from "../config";
+import { loadConfig } from '../config'
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
 import { installClickHouse } from "./clickhouse";
 
@@ -150,7 +150,7 @@ describe("ClickHouse system-log TTLs", () => {
       name: string;
       configMap: { name: string };
     }>;
-    expect(volumes.find((v) => v.name === "syslog-ttl")?.configMap.name).toBe("clickhouse-config");
+    expect(volumes.find((v) => v.name === "config-d")?.configMap.name).toBe("clickhouse-config");
   });
 
   it("rolls the pod when the TTL file changes", async () => {

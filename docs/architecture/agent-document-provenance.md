@@ -12,7 +12,7 @@ look like they could say it both fail:
 
 | Axis | Why it cannot carry authorship |
 |---|---|
-| `doc_class` ("Dokumentart") | A closed nine-value NORM-HIERARCHY vocabulary (`knowledge/document_classification.py`), human-set, whose fail-open lane is `baurecht_basis` — "Basisdokument", in law blue. Filing authorship here files it under authority, where an unknown value reads as a weak norm. `agent_authored` is deliberately NOT a member |
+| `doc_class` ("Dokumentart") | A closed nine-value NORM-HIERARCHY vocabulary (`knowledge/document_classification.py`), human-set, whose fail-open lane is `building_law_base` — "Basisdokument", in law blue. Filing authorship here files it under authority, where an unknown value reads as a weak norm. `agent_authored` is deliberately NOT a member |
 | Shelf (ADR-0047) | The shelf says WHERE the document sits, and a published Piloti document really does sit on the project or the Archiv shelf. It would render as Projektwissen or Büroablage, both true and both silent about the author |
 
 So authorship is its own axis, and it beats both.
@@ -20,7 +20,7 @@ So authorship is its own axis, and it beats both.
 ## The metadata contract
 
 Four keys, stamped by the BFF at publish and parsed by
-`src/aiq_agent/common/provenance.py`:
+`packages/agent/src/agent/common/provenance.py`:
 
 | Key | Value |
 |---|---|
@@ -35,9 +35,9 @@ unchanged through the whole pipeline.
 
 ## The lane
 
-`buero_piloti`, label "Piloti-Dokument", inside the `buero` source kind
+`office_piloti`, label "Piloti-Dokument", inside the `office` source kind
 (`common/source_kinds.py`, mirrored in
-`frontends/ui/src/features/chat/lib/source-kinds.ts`). It is a sub-label within
+`apps/workspace/bff/source-kinds.ts`). It is a sub-label within
 a coarse kind, never a kind of its own — the document IS office knowledge and
 paints in the office colour.
 
@@ -49,7 +49,7 @@ doc_class stamped at ingest would place it in the norm hierarchy under the
 
 ## What retrieval says
 
-`sources/knowledge_layer/src/register.py` adds one line to a marked hit's
+`packages/knowledge-layer/src/register.py` adds one line to a marked hit's
 grounding block, and nothing to an unmarked one:
 
 ```
@@ -57,7 +57,7 @@ Herkunft: Piloti-Dokument · freigegeben von Maria Huber am 01.09.2026
 ```
 
 One line, not a sentence: the block is text a model copies. The leading
-`Piloti-Dokument` token is the contract — `citation_verification` reads exactly
+`Piloti-Dokument` token is the contract — `citations/grounding_text.py` reads exactly
 that token back into `SourceEntry.authored_by`, the way a shelf qualifier is
 read out of a citation key — and the machine-readable fields travel structured,
 as `provenance` on the Trace-Lanes source entry. The `knowledge_search` tool
@@ -95,5 +95,5 @@ yields `null` and the label degrades to the bare `Piloti-Dokument` rather than
 printing a WorkOS id at an architect.
 
 See ADR-0054 § Indexing for the door, and
-[`docs/roadmap/piloti-writes-artifacts-and-approval.md`](../roadmap/piloti-writes-artifacts-and-approval.md)
+[`docs/roadmap/agent-writes-artifacts-and-approval.md`](../roadmap/agent-writes-artifacts-and-approval.md)
 §3 for the design of record.

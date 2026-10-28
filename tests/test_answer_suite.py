@@ -162,8 +162,8 @@ def test_a_second_kind_the_question_accepts_holds(tmp_path):
     assert suite.check(both, run, run.envelope)["kind"] is True
 
 
-def test_a_question_about_a_richtlinie_the_corpus_lacks_is_skipped_by_name(tmp_path, monkeypatch):
-    from aiq_agent import corpus_store
+def test_a_question_about_a_guideline_the_corpus_lacks_is_skipped_by_name(tmp_path, monkeypatch):
+    from agent import corpus_store
     from tests.object_corpus_fakes import install
 
     install(monkeypatch, tmp_path)
@@ -173,7 +173,7 @@ def test_a_question_about_a_richtlinie_the_corpus_lacks_is_skipped_by_name(tmp_p
     assert suite.lacking_family({"family": "OIB-RL 5"}, families) == "OIB-RL 5"
     assert suite.lacking_family(QUESTION, families) is None
     assert suite.lacking_family({"family": "Bauordnung"}, families) is None
-    monkeypatch.delenv("AIQ_SUMMARY_DB")
+    monkeypatch.delenv("SUMMARY_DB")
     monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
     assert suite.lacking_family({"family": "OIB-RL 5"}, suite.corpus_families()) is None
     report = suite.render([], [], {"started": "t", "runs_per_question": 1}, None, ["schallschutz (OIB-RL 5)"])
@@ -317,10 +317,10 @@ def test_the_inventory_checked_is_the_one_the_runs_read(monkeypatch, tmp_path):
     # Every run's `nat run` starts in the repo root, so a relative path means
     # the root's file, wherever the suite itself was started from.
     monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("SUMMARY_DB", raising=False)
     assert suite.inventory_database() == (suite.ROOT / "summaries.db").resolve()
 
-    monkeypatch.setenv("AIQ_SUMMARY_DB", f"sqlite+aiosqlite:///{tmp_path}/elsewhere.db")
+    monkeypatch.setenv("SUMMARY_DB", f"sqlite+aiosqlite:///{tmp_path}/elsewhere.db")
     assert suite.inventory_database() == tmp_path / "elsewhere.db"
 
 
@@ -331,9 +331,9 @@ def test_the_runs_import_this_checkout(tmp_path):
 
     path = census.tree_pythonpath(tmp_path).split(os.pathsep)
     shim = Path(path[1])
-    assert path[0] == str(census.HERE) and path[2] == str(census.ROOT / "src")
+    assert path[0] == str(census.HERE) and path[2] == str(census.ROOT / "packages" / "agent" / "src")
     assert shim.parent == tmp_path and shim.name.startswith(".tree-")
-    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "sources/knowledge_layer/src").resolve()
+    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
     assert suite.foreign_imports(tmp_path) == []
 
 
@@ -374,14 +374,13 @@ def test_every_linked_package_is_checked_for_a_foreign_import():
 
 
 def test_the_frontend_plugins_a_run_loads_come_from_this_checkout():
-    # From a worktree, the main checkout's editable `aiq_api` met the worktree's
-    # `aiq_agent` and every turn died, reported as a 0.0 s run.
+    # From a worktree, the main checkout's editable `agent_host` met the worktree's
+    # `agent` and every turn died, reported as a 0.0 s run.
     import census
 
     packages = census.source_packages()
-    for name in ("aiq_api", "aiq_debug"):
-        assert packages[name].is_relative_to(census.ROOT.resolve())
-        assert (packages[name] / "__init__.py").exists()
+    assert packages["agent_host"].is_relative_to(census.ROOT.resolve())
+    assert (packages["agent_host"] / "__init__.py").exists()
 
 
 def test_one_failing_run_does_not_sink_the_suite(tmp_path, monkeypatch):
@@ -556,7 +555,7 @@ def test_the_startup_probe_reexecutes_into_this_checkout(monkeypatch, tmp_path):
     assert seen["env"][startup_probe._IN_TREE] == "1" and "REC_OUT" not in seen["env"]
     shim = Path(seen["env"]["PYTHONPATH"].split(os.pathsep)[1])
     assert shim.is_relative_to(tmp_path)
-    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "sources/knowledge_layer/src").resolve()
+    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
 
     # The re-executed process does not re-execute.
     monkeypatch.setenv(startup_probe._IN_TREE, "1")
@@ -610,13 +609,13 @@ def test_a_foreign_checkout_is_refused_before_the_ingest(monkeypatch, tmp_path):
     # this process, and only then did the import check refuse.
     import types
 
-    import aiq_agent
+    import agent
 
     monkeypatch.setattr(suite, "ensure_key", lambda: True)
-    monkeypatch.setattr(suite, "foreign_imports", lambda out: ["aiq_agent: /elsewhere/aiq_agent/__init__.py"])
+    monkeypatch.setattr(suite, "foreign_imports", lambda out: ["agent: /elsewhere/agent/__init__.py"])
     sync = types.SimpleNamespace(sync=lambda: pytest.fail("ingested before the import check"))
-    monkeypatch.setitem(sys.modules, "aiq_agent.oib_sync", sync)
-    monkeypatch.setattr(aiq_agent, "oib_sync", sync, raising=False)
+    monkeypatch.setitem(sys.modules, "agent.oib_sync", sync)
+    monkeypatch.setattr(agent, "oib_sync", sync, raising=False)
     assert suite._preflight(tmp_path, ingest=True) == 2
 
 
@@ -647,23 +646,24 @@ def test_a_summary_db_given_as_a_path_is_refused_before_any_run(monkeypatch, tmp
     monkeypatch.setattr(suite, "ensure_key", lambda: True)
     monkeypatch.setattr(suite, "foreign_imports", lambda out: [])
     monkeypatch.setattr(suite, "_corpus_ready", lambda: True)
-    monkeypatch.setenv("AIQ_SUMMARY_DB", str(tmp_path / "summaries.db"))
+    monkeypatch.setenv("SUMMARY_DB", str(tmp_path / "summaries.db"))
 
     assert suite._preflight(tmp_path, ingest=False) == 2
     assert "not a database URL" in capsys.readouterr().err
 
 
 def test_the_suite_reads_the_dialect_the_validator_holds():
-    from aiq_agent.common.answer_dialect import DIRECTIVE_BLOCKS
+    from agent.common.answer_dialect import DIRECTIVE_BLOCKS
 
     assert suite._DIALECT_BLOCKS == frozenset(DIRECTIVE_BLOCKS)
 
 
 def test_a_corpus_in_the_store_reads_as_ready(qdrant_store):
     """Readiness is the corpus's chunk count in the store the ingest writes through."""
-    from aiq_agent import oib_sync
-    from sources.knowledge_layer.tests.qdrant_testing import record
-    from sources.knowledge_layer.tests.qdrant_testing import write
+    from knowledge_layer_testing.qdrant import record
+    from knowledge_layer_testing.qdrant import write
+
+    from agent import oib_sync
 
     assert not suite._corpus_ready()
     write(oib_sync.COLLECTION_NAME, [record("Punkt 12", "oib-rl_2.pdf")])
@@ -672,9 +672,9 @@ def test_a_corpus_in_the_store_reads_as_ready(qdrant_store):
 
 def _ingest_in_this_process(monkeypatch, tmp_path, *, succeed: bool):
     """A corpus of one file, the real queue, and a "claiming source" that runs what is queued."""
-    from aiq_agent import corpus_store
-    from aiq_agent import oib_sync
-    from aiq_api.jobs import ingest_dispatch
+    from agent import corpus_store
+    from agent import oib_sync
+    from agent_host.jobs import ingest_dispatch
     from tests.corpus_job_fakes import FakeIngestor
     from tests.corpus_job_fakes import run_worker
     from tests.object_corpus_fakes import install
@@ -717,7 +717,7 @@ def test_ingest_reports_a_file_whose_job_failed_instead_of_waiting_for_it(monkey
 def test_the_turn_decisions_precedent_is_read_off_its_log_line():
     """Beside the lookups a run made, p(precedent) calibrates the prefetch threshold (ADR-0064)."""
     line = (
-        "INFO aiq_agent.agents.piloti.decisions: Turn decision in 431 ms: evidence=0.97 corpus=referenz(0.92) "
+        "INFO agent.agents.piloti.decisions: Turn decision in 431 ms: evidence=0.97 corpus=referenz(0.92) "
         "families=[] skill=None cards=[] self_contained=0.9 precedent=0.83\n"
     )
 
@@ -729,9 +729,9 @@ def test_the_turn_decisions_precedent_is_read_off_its_log_line():
 def test_a_local_corpus_directory_is_ingested_without_a_bff_or_an_object_store(monkeypatch, tmp_path):
     # `--ingest` read the corpus from SeaweedFS through the BFF, so the suite
     # could not run without a deployed stack (gate G1 waited on one for that).
-    from aiq_agent import corpus_store
-    from aiq_agent import oib_sync
-    from aiq_api.jobs import ingest_dispatch
+    from agent import corpus_store
+    from agent import oib_sync
+    from agent_host.jobs import ingest_dispatch
     from tests.corpus_job_fakes import FakeIngestor
     from tests.corpus_job_fakes import run_worker
     from tests.object_corpus_fakes import install
@@ -774,7 +774,7 @@ def test_the_startup_probe_times_only_methods_the_retriever_has():
     import re
 
     import startup_probe
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
     timed = re.findall(r"retriever\.(\w+) = timed\(", Path(startup_probe.__file__).read_text())
     assert timed, "the probe times no retriever method; this test reads its source"

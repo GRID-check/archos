@@ -28,7 +28,7 @@ THE FLOORS
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-``OPENROUTER_API_KEY`` (or ``GRID_DECISIONS_API_KEY``); well under a cent for
+``OPENROUTER_API_KEY`` (or ``DECISIONS_API_KEY``); well under a cent for
 both sets. Exit 0 when the floors hold, 1 when they do not.
 
 USAGE
@@ -53,7 +53,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from aiq_agent.knowledge import document_classification as dc  # noqa: E402
+from agent.knowledge import document_classification as dc  # noqa: E402
 
 FIXTURES = ROOT / "tests" / "fixtures" / "decisions"
 
@@ -91,7 +91,7 @@ def eval_feedback_causes() -> bool:
     import asyncio
     from types import SimpleNamespace
 
-    from aiq_agent.common import feedback_causes
+    from agent.common import feedback_causes
 
     rows = yaml.safe_load((FIXTURES / "feedback_causes.yaml").read_text(encoding="utf-8"))
     samples = [SimpleNamespace(question=r["question"], reason=r["reason"], comment=r["comment"]) for r in rows]

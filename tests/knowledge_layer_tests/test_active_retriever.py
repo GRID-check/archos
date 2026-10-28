@@ -23,17 +23,17 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.knowledge import factory
-from aiq_agent.knowledge.base import BaseRetriever
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import clear_active_retriever
-from aiq_agent.knowledge.factory import get_active_retriever
-from aiq_agent.knowledge.factory import get_retriever
-from aiq_agent.knowledge.factory import register_retriever
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_agent.knowledge.factory import set_active_retriever
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import RetrievalResult
+from agent.knowledge import factory
+from agent.knowledge.base import BaseRetriever
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import clear_active_retriever
+from agent.knowledge.factory import get_active_retriever
+from agent.knowledge.factory import get_retriever
+from agent.knowledge.factory import register_retriever
+from agent.knowledge.factory import set_active_ingestor
+from agent.knowledge.factory import set_active_retriever
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import RetrievalResult
 
 
 @register_retriever("fake_search_backend")

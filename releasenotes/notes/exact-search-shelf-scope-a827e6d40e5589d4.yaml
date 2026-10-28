@@ -1,0 +1,12 @@
+---
+features:
+  - >
+    When you ask whether something appears in your own documents, Piloti can
+    now search only the project or only the office shelf, and the answer says
+    how many documents it searched and how many matched on each shelf. A
+    pattern search also lists each distinct match with its count and pages, and
+    folder overviews name the files of small folders.
+fixes:
+  - >
+    A passage that runs over a page break now shows its page range, for
+    example pages 4 to 5, instead of only the first page.

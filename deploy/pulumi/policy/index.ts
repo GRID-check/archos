@@ -44,6 +44,9 @@ function forEachWorkload(check: (workload: WorkloadProps, report: ReportViolatio
     validateResourceOfType(k8s.apps.v1.StatefulSet, (props, _args, report) =>
       check(props as unknown as WorkloadProps, report),
     ),
+    validateResourceOfType(k8s.apps.v1.DaemonSet, (props, _args, report) =>
+      check(props as unknown as WorkloadProps, report),
+    ),
   ];
 }
 
@@ -270,7 +273,7 @@ export default new PolicyPack("grid-oib-guardrails", {
               `Container "${container.name}" in "${name}" uses the moving reference ` +
                 `"${container.image}" with imagePullPolicy=` +
                 `${container.imagePullPolicy ?? "unset"}. Use pullPolicyFor() from ` +
-                `src/config.ts, or pin the tag.`,
+                `src/config/images.ts, or pin the tag.`,
             );
           }
         }

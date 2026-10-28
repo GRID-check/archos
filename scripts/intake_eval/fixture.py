@@ -7,8 +7,8 @@ the same four tools it binds in production:
 * ``read_document`` is the agent's own tool, run unchanged: only where its
   pages come from is replaced (``reading.project_documents`` and
   ``reading.fetch_document_pages``, the seams the agent's own suite fakes in
-  ``tests/aiq_agent/agents/intake/conftest.py``).
-* ``list_files``, ``knowledge_search`` and ``read_passage`` are the shared NAT
+  ``agent_testing.intake``).
+* ``list_files``, ``knowledge_search`` and ``read_passage`` are the shared agent-runtime
   tools, which need a vector store and a database. They are rebuilt here with
   the production descriptions (imported, so they cannot drift) and the
   production renderers: ``list_files`` through the knowledge layer's own
@@ -94,7 +94,7 @@ def load_answer_key(path: Path = FIXTURE_DIR / "answer_key.yaml") -> dict[str, A
 
 
 def available_document(fixture: Fixture, file: FixtureFile) -> Any:
-    from aiq_agent.knowledge.schema import AvailableDocument
+    from agent.knowledge.schema import AvailableDocument
 
     return AvailableDocument(
         file_name=file.name,
@@ -108,7 +108,7 @@ def available_document(fixture: Fixture, file: FixtureFile) -> Any:
 
 def project_documents_for(fixture: Fixture):
     """``reading.project_documents``, answered from the fixture."""
-    from aiq_agent.agents.intake.reading import ProjectDocument
+    from agent.agents.intake.reading import ProjectDocument
 
     async def project_documents() -> list[Any]:
         return [ProjectDocument(fixture.collection, available_document(fixture, f)) for f in fixture.files]
@@ -206,10 +206,10 @@ class PassageIndex:
 
 def render_passages(fixture: Fixture, hits: list[tuple[Passage, float]], tool: str, trailer: str = "") -> str:
     """Hits as ``knowledge_search`` renders them (``_format_results``), filed for the read log."""
-    from aiq_agent.common.grounding_block import GroundingBlock
-    from aiq_agent.common.grounding_block import GroundingHit
-    from aiq_agent.common.grounding_block import render_grounding_block
-    from aiq_agent.common.source_kinds import Shelf
+    from agent.common.grounding_block import GroundingBlock
+    from agent.common.grounding_block import GroundingHit
+    from agent.common.grounding_block import render_grounding_block
+    from agent.common.source_kinds import Shelf
 
     records = tuple(
         GroundingHit(
@@ -221,7 +221,7 @@ def render_passages(fixture: Fixture, hits: list[tuple[Passage, float]], tool: s
             doc_class=None,
             display_title=passage.file.name,
             folder_path=passage.file.folder or None,
-            punkt=None,
+            clause=None,
             score=score,
             content_type="text",
             provenance=None,
@@ -284,15 +284,15 @@ def read_passage_tool(fixture: Fixture, index: PassageIndex) -> StructuredTool:
     from knowledge_layer.read_passage import _READ_PASSAGE_DESCRIPTION
 
     async def read_passage(
-        document: str, punkt: str | int | None = None, page: int | str | None = None, conclusion: str = ""
+        document: str, clause: str | int | None = None, page: int | str | None = None, conclusion: str = ""
     ) -> str:
         file = fixture.file(document)
         if file is None:
             close = difflib.get_close_matches(document, fixture.names, n=3, cutoff=0.5)
             guesses = f" Vermutlich gemeint: {', '.join(close)}." if close else ""
             return f"Kein Dokument „{document}“ in diesem Umfang.{guesses}"
-        if punkt not in (None, ""):
-            return f"„{file.name}“ hat keinen Punkt „{punkt}“; lies es mit `page=`."
+        if clause not in (None, ""):
+            return f"„{file.name}“ hat keinen Punkt „{clause}“; lies es mit `page=`."
         wanted = int(page) if str(page or "").strip().isdigit() else 1
         hits = [(p, 1.0) for p in index.passages if p.file is file and p.page == wanted]
         if not hits:
@@ -323,15 +323,20 @@ def list_files_tool(fixture: Fixture) -> StructuredTool:
         offset: int | None = None,
         limit: int | None = None,
         topic: str | None = None,
-        fassungen_of: str | None = None,
+        revisions_of: str | None = None,
         compare_to: str | None = None,
+        view: str | None = None,
+        depth: int | None = None,
     ) -> str:
-        from knowledge_layer.browse import render_fassungen
+        from knowledge_layer.browse import DEFAULT_TREE_DEPTH
+        from knowledge_layer.browse import folder_cards
         from knowledge_layer.browse import render_listing
+        from knowledge_layer.browse import render_revisions
+        from knowledge_layer.browse import render_tree
         from knowledge_layer.browse import select_files
 
-        if fassungen_of:
-            return render_fassungen(rows, fassungen_of, default_shelves=("project",))
+        if revisions_of:
+            return render_revisions(rows, revisions_of, default_shelves=("project",))
         listing = select_files(
             rows,
             default_shelves=("project",),
@@ -342,8 +347,13 @@ def list_files_tool(fixture: Fixture) -> StructuredTool:
             topic=topic,
             sort=sort or "folder",
             offset=int(offset or 0),
-            limit=int(limit or 40),
+            limit=len(rows) + 1 if view == "tree" else int(limit or 40),
         )
+        if view == "tree":
+            cards = folder_cards(
+                listing.rows, root=listing.folder, depth=int(depth or DEFAULT_TREE_DEPTH), series_rows=rows
+            )
+            return render_tree(cards, total_rows=listing.total, notes=listing.notes)
         return render_listing(listing)
 
     return StructuredTool.from_function(coroutine=list_files, name="list_files", description=_LIST_FILES_DESCRIPTION)

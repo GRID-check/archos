@@ -1,7 +1,7 @@
 # UX System Audit — Run Log (append-only, one entry per round)
 
 > **Archived.** Frozen record of a finished loop, moved here from `ux_audit_log.md`
-> in the repo root. Do not append. Live loop state is `backlog.md` at the root.
+> in the repo root. Do not append. Live loop state is `docs/audit/overnight-run-backlog.md` at the root.
 > Context: [`README.md`](README.md).
 
 Run started: 2026-07-10. Branch: `claude/ux-system-audit-taqedy`.
@@ -109,7 +109,7 @@ the maintained path.
   (fail-open sync with unset token). HARDENED: proxy denylists both prefixes
   (404 before fetch, 5 tests); coolify compose now requires GRID_ADMIN_TOKEN
   (`:?`), defaults REQUIRE_AUTH=true on both services (also re-enables job
-  ownership checks), sets AIQ_EXTERNAL_HOSTNAMES defense-in-depth, and carries
+  ownership checks), sets GRID_EXTERNAL_HOSTNAMES defense-in-depth, and carries
   do-not-add-ports warnings; coolify.md updated (firewall note, auth-required
   posture, preview opt-out). Residual (flagged, future work): MinIO S3 stays
   public for presigned URLs — closing it needs an authenticated frontend

@@ -1,0 +1,478 @@
+import { render, screen } from '@/test-utils'
+import userEvent from '@testing-library/user-event'
+import { vi, describe, test, expect, beforeEach } from 'vitest'
+import { FileSourcesTab } from './FileSourcesTab'
+
+// Mock the chat store
+const callOrder: string[] = []
+const mockEnsureConversationExists = vi.fn(async () => {
+  callOrder.push('ensureConversation')
+})
+let mockProjectId: string | null = null
+vi.mock('@/features/chat/store', () => ({
+  useChatStore: vi.fn((selector) => {
+    const state = {
+      currentConversation: { id: 'session-1' },
+      ensureSession: vi.fn(() => 'session-1'),
+      _ensureConversationExists: mockEnsureConversationExists,
+      projectId: mockProjectId,
+    }
+    return selector(state)
+  }),
+}))
+
+// Mock useAppConfig
+vi.mock('@/shared/context', () => ({
+  useAppConfig: () => ({
+    authRequired: true,
+    fileUpload: {
+      acceptedTypes: '.pdf,.docx,.txt,.md',
+      acceptedMimeTypes: ['application/pdf', 'text/plain', 'text/markdown'],
+      maxTotalSizeMB: 100,
+      maxFileSize: 100 * 1024 * 1024,
+      maxTotalSize: 100 * 1024 * 1024,
+      maxFileCount: 10,
+    },
+  }),
+}))
+
+
+// Mock the file upload hook
+const mockUploadFiles = vi.fn()
+const mockDeleteFile = vi.fn()
+const mockClearError = vi.fn()
+
+vi.mock('@/features/documents', () => ({
+  useFileUpload: vi.fn(() => ({
+    uploadFiles: mockUploadFiles,
+    deleteFile: mockDeleteFile,
+    sessionFiles: [],
+    isUploading: false,
+    isPolling: false,
+    error: null,
+    clearError: mockClearError,
+  })),
+  FileUploadZone: ({ onUpload }: { onUpload: (files: File[]) => void }) => (
+    <button onClick={() => onUpload([new File([''], 'test.pdf')])}>Upload Zone</button>
+  ),
+}))
+vi.mock('@/features/documents/store', () => ({
+  useDocumentsStore: vi.fn((selector) => {
+    const state = { currentCollectionName: 'session-1' }
+    return selector(state)
+  }),
+}))
+vi.mock('@/features/documents/utils', () => ({
+  mapToDisplayStatus: (status: string) => status,
+}))
+
+// Mock the layout store
+vi.mock('../store', () => ({
+  useLayoutStore: vi.fn((selector) => {
+    const state = {
+      knowledgeLayerAvailable: true,
+    }
+    return selector(state)
+  }),
+}))
+
+// Mock child components
+vi.mock('./FileSourceCard', () => ({
+  FileSourceCard: ({
+    title,
+    onDelete,
+    onOpen,
+    id,
+    errorMessage,
+    quarantine,
+  }: {
+    title: string
+    onDelete?: (id: string) => void
+    onOpen?: (id: string) => void
+    id: string
+    errorMessage?: string
+    quarantine?: { reasons: { term?: string }[] } | null
+  }) => (
+    <div data-testid={`file-card-${id}`}>
+      {onOpen ? (
+        <button onClick={() => onOpen(id)}>Open {title}</button>
+      ) : (
+        <span>{title}</span>
+      )}
+      {onDelete && <button onClick={() => onDelete(id)}>Delete</button>}
+      {errorMessage && <span>{errorMessage}</span>}
+      {quarantine?.reasons.map((reason) => <span key={reason.term}>{reason.term}</span>)}
+    </div>
+  ),
+  FileSourceCardSkeleton: () => <div data-testid="file-card-skeleton" />,
+}))
+
+// FilePreviewDialog pulls the heavy preview-pane graph; stub it to a marker that
+// surfaces the previewed file name so the row-open path can be asserted.
+vi.mock('@/features/documents/components/file-preview-dialog', () => ({
+  FilePreviewDialog: ({ file }: { file: { filename: string } | null }) =>
+    file ? <div data-testid="file-preview">{file.filename}</div> : null,
+}))
+
+vi.mock('./DeleteFileConfirmationModal', () => ({
+  DeleteFileConfirmationModal: ({
+    open,
+    onConfirm,
+    onOpenChange,
+  }: {
+    open: boolean
+    onConfirm: () => void
+    onOpenChange: (open: boolean) => void
+  }) =>
+    open ? (
+      <div data-testid="delete-modal">
+        <button onClick={onConfirm}>Confirm Delete</button>
+        <button onClick={() => onOpenChange(false)}>Cancel</button>
+      </div>
+    ) : null,
+}))
+
+import { useFileUpload } from '@/features/documents'
+import { useDocumentsStore } from '@/features/documents/store'
+
+describe('FileSourcesTab', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockProjectId = null
+    // `mockReturnValue` is permanent; start every test from an empty list.
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [],
+      isUploading: false,
+      isPolling: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+  })
+
+  /**
+   * Project files listed in the chat's file dialog are not deleted from it. The
+   * delete here went through the proxy's chunk-only file delete with a document
+   * id where a filename was expected, so it removed nothing. A project document
+   * is deleted in the project's Files, where the delete checks legal holds and
+   * erases every version; this dialog says so instead of offering a control.
+   */
+  test('offers no delete for project files, and says where they are deleted', async () => {
+    mockProjectId = 'project-1'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ collectionName: 'proj_1' }) })
+    )
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        { id: 'file-1', fileName: 'plan.pdf', status: 'success', collectionName: 'proj_1' },
+      ],
+      isUploading: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(await screen.findByText('Delete project files in the project’s files.')).toBeInTheDocument()
+    expect(screen.getByText('Open plan.pdf')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+
+  test('still deletes the chat’s own attachments', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        { id: 'file-1', fileName: 'doc.pdf', status: 'success', collectionName: 'session-1' },
+      ],
+      isUploading: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+    await user.click(screen.getByRole('button', { name: /^delete$/i }))
+    await user.click(screen.getByRole('button', { name: /confirm delete/i }))
+
+    expect(mockDeleteFile).toHaveBeenCalledWith('file-1')
+  })
+
+  test('renders empty state when no files', () => {
+    render(<FileSourcesTab />)
+
+    expect(screen.getByText('No Attached Files')).toBeInTheDocument()
+    expect(
+      screen.getByText('Files uploaded here go to private session unless removed.')
+    ).toBeInTheDocument()
+  })
+
+  test('renders file upload zone in empty state', () => {
+    render(<FileSourcesTab />)
+
+    expect(screen.getByText('Upload Zone')).toBeInTheDocument()
+  })
+
+  // An attachment is authorized on its conversation, which a chat does not have
+  // on the server until its first message. So the row is made real first.
+  test('makes the conversation real on the server before uploading into it', async () => {
+    callOrder.length = 0
+    mockUploadFiles.mockImplementation(async () => {
+      callOrder.push('upload')
+    })
+    const user = userEvent.setup()
+    render(<FileSourcesTab />)
+
+    await user.click(screen.getByText('Upload Zone'))
+
+    expect(callOrder).toEqual(['ensureConversation', 'upload'])
+    expect(mockUploadFiles).toHaveBeenCalledWith(expect.any(Array), { collectionOverride: 'session-1' })
+  })
+
+  test('renders file list when files exist', () => {
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        { id: 'file-1', fileName: 'document.pdf', status: 'success', collectionName: 'session-1' },
+        { id: 'file-2', fileName: 'report.txt', status: 'uploading', collectionName: 'session-1' },
+      ],
+      isUploading: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(screen.getByTestId('file-card-file-1')).toHaveTextContent('document.pdf')
+    expect(screen.getByTestId('file-card-file-2')).toHaveTextContent('report.txt')
+  })
+
+  // ADR-0113: a held attachment says why from its typed verdict, and its
+  // legacy `quarantined:` message never reaches the card as text.
+  test('shows why a held file is held, never its stored message', () => {
+    const legacy = 'quarantined:{"reasons":[{"kind":"term","term":"Altbegriff","count":1,"pages":[9]}],"checked":"full"}'
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        {
+          id: 'file-h',
+          fileName: 'Lohn.pdf',
+          status: 'held',
+          collectionName: 'session-1',
+          errorMessage: legacy,
+          quarantine: { reasons: [{ kind: 'term', term: 'Lohnzettel', count: 1, pages: [2] }], checked: 'full' },
+        },
+      ],
+      isUploading: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    const card = screen.getByTestId('file-card-file-h')
+    expect(card).toHaveTextContent('Lohnzettel')
+    expect(card).not.toHaveTextContent('Altbegriff')
+    expect(card).not.toHaveTextContent('quarantined:')
+  })
+
+  test('shows file count in header', () => {
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        { id: 'file-1', fileName: 'doc.pdf', status: 'success', collectionName: 'session-1' },
+      ],
+      isUploading: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(screen.getByText(/private session files \(1\)/i)).toBeInTheDocument()
+  })
+
+  test('opens delete confirmation modal when delete is clicked', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        { id: 'file-1', fileName: 'doc.pdf', status: 'success', collectionName: 'session-1' },
+      ],
+      isUploading: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    await user.click(screen.getByRole('button', { name: /delete/i }))
+
+    expect(screen.getByTestId('delete-modal')).toBeInTheDocument()
+  })
+
+  test('calls deleteFile when delete is confirmed', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        { id: 'file-1', fileName: 'doc.pdf', status: 'success', collectionName: 'session-1' },
+      ],
+      isUploading: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    await user.click(screen.getByRole('button', { name: /delete/i }))
+    await user.click(screen.getByRole('button', { name: /confirm delete/i }))
+
+    expect(mockDeleteFile).toHaveBeenCalledWith('file-1')
+  })
+
+  test('opens the read-only preview when a file row is opened', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        { id: 'file-1', fileName: 'doc.pdf', status: 'success', collectionName: 'session-1' },
+      ],
+      isUploading: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /open doc\.pdf/i }))
+
+    expect(screen.getByTestId('file-preview')).toHaveTextContent('doc.pdf')
+  })
+
+  test('renders skeleton rows (not a bare spinner) while awaiting files', () => {
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [],
+      isUploading: true,
+      isPolling: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(screen.getAllByTestId('file-card-skeleton').length).toBeGreaterThan(0)
+    // The status text is retained for screen readers.
+    expect(screen.getByText('Checking for files...')).toBeInTheDocument()
+  })
+
+  test('shows processing spinner when uploading but sessionFiles is empty', () => {
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [],
+      isUploading: true,
+      isPolling: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(screen.getByText('Checking for files...')).toBeInTheDocument()
+    expect(screen.queryByText(/no files/i)).not.toBeInTheDocument()
+  })
+
+  test('shows processing spinner when polling but sessionFiles is empty', () => {
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [],
+      isUploading: false,
+      isPolling: true,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(screen.getByText('Checking for files...')).toBeInTheDocument()
+    expect(screen.queryByText(/no files/i)).not.toBeInTheDocument()
+  })
+
+  test('does not show processing spinner when sessionFiles exist', () => {
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [
+        { id: 'file-1', fileName: 'doc.pdf', status: 'uploading', collectionName: 'session-1' },
+      ],
+      isUploading: true,
+      isPolling: false,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(screen.queryByText('Checking for files...')).not.toBeInTheDocument()
+    expect(screen.getByTestId('file-card-file-1')).toBeInTheDocument()
+  })
+
+  test('does not show spinner when upload belongs to a different session', () => {
+    // Active collection is a different session than the one rendered
+    vi.mocked(useDocumentsStore).mockImplementation((selector) => {
+      const state = { currentCollectionName: 'other-session-99' }
+      return (selector as (s: typeof state) => unknown)(state)
+    })
+
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [],
+      isUploading: true,
+      isPolling: true,
+      error: null,
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    // Spinner should NOT appear because the upload is for a different session
+    expect(screen.queryByText('Checking for files...')).not.toBeInTheDocument()
+    expect(screen.getByText('No Attached Files')).toBeInTheDocument()
+  })
+
+  test('displays upload error when present', () => {
+    vi.mocked(useFileUpload).mockReturnValue({
+      uploadFiles: mockUploadFiles,
+      deleteFile: mockDeleteFile,
+      sessionFiles: [],
+      isUploading: false,
+      error: 'File too large',
+      clearError: mockClearError,
+    } as unknown as ReturnType<typeof useFileUpload>)
+
+    render(<FileSourcesTab />)
+
+    expect(screen.getByText('File too large')).toBeInTheDocument()
+  })
+})

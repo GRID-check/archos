@@ -22,7 +22,7 @@ they are not targets.
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); a few cents. Exit 0
+OPENROUTER_API_KEY (or DECISIONS_API_KEY); a few cents. Exit 0
 when every floor holds.
 
 THE LAST RUN
@@ -46,8 +46,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
-from aiq_agent.common.decisions import choice  # noqa: E402
-from aiq_agent.common.decisions import decide_many  # noqa: E402
+from agent.common.decisions import choice  # noqa: E402
+from agent.common.decisions import decide_many  # noqa: E402
 
 H = ROOT / "tests" / "fixtures" / "decisions" / "holdout"
 T = 0.8
@@ -58,7 +58,7 @@ def load(name):
 
 
 async def tags():
-    from aiq_agent.knowledge import document_classification as dc
+    from agent.knowledge import document_classification as dc
 
     rows = load("document_tags.yaml")
     states = [{"file_name": r["file_name"], "text": r["text"][:4000]} for r in rows]
@@ -91,7 +91,7 @@ async def tags():
 
 
 async def doc_class():
-    from aiq_agent.knowledge import document_classification as dc
+    from agent.knowledge import document_classification as dc
 
     rows = load("doc_class.yaml")
     q = {
@@ -107,7 +107,7 @@ async def doc_class():
     bad = []
     for r, d in zip(rows, ds):
         c, dist = d.choice("doc_class")
-        if c != "sonstiges" and dist.get(c, 0) >= dc.DOC_CLASS_SUGGESTION_THRESHOLD:
+        if c != "other" and dist.get(c, 0) >= dc.DOC_CLASS_SUGGESTION_THRESHOLD:
             offered += 1
             if c == r["doc_class"]:
                 right += 1
@@ -116,7 +116,7 @@ async def doc_class():
                 bad.append((r["file_name"], c, r["doc_class"]))
     return {
         "rows": len(rows),
-        "non_default": sum(1 for r in rows if r["doc_class"] != "sonstiges"),
+        "non_default": sum(1 for r in rows if r["doc_class"] != "other"),
         "offered": offered,
         "right": right,
         "wrong": wrong,
@@ -125,7 +125,7 @@ async def doc_class():
 
 
 async def causes():
-    from aiq_agent.common import feedback_causes as fc
+    from agent.common import feedback_causes as fc
 
     rows = load("feedback_causes.yaml")
     labels_state = [

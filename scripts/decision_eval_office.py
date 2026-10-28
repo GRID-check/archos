@@ -26,10 +26,10 @@ office's experience (ADR-0094, ADR-0096, docs/roadmap/office-experience.md):
     hand-labelled quotes.
 
 Every part reads fixtures that exist for their own sake: the precedent eval's
-fixture office (``frontends/ui/tests/fixtures/precedent/office.json``), its
+fixture office (``apps/workspace/tests/fixtures/precedent/office.json``), its
 catalog as the production renderer writes it (``rendered.json``) and its
 labelled questions (``tests/fixtures/precedent/precedent_questions.yaml``);
-the loop-eval questions (``tests/fixtures/herleitung/loop_eval_questions.yaml``)
+the loop-eval questions (``tests/fixtures/derivation/loop_eval_questions.yaml``)
 are rule questions that must NOT look; ``verify`` reads
 ``tests/fixtures/decisions/fingerprint_quotes.yaml``. The questions asked are
 the production ones, imported, so a change to a question's wording is
@@ -43,7 +43,7 @@ and chose the same corpus on every row.
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-``OPENROUTER_API_KEY`` (or ``GRID_DECISIONS_API_KEY``). A few cents for every
+``OPENROUTER_API_KEY`` (or ``DECISIONS_API_KEY``). A few cents for every
 part together. It cannot run in CI for that reason alone.
 
 USAGE
@@ -72,11 +72,10 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(REPO_ROOT / "sources"))
 
-FIXTURES = REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
+FIXTURES = REPO_ROOT / "apps" / "workspace" / "tests" / "fixtures" / "precedent"
 QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "precedent" / "precedent_questions.yaml"
-NORM_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "herleitung" / "loop_eval_questions.yaml"
+NORM_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.yaml"
 FINGERPRINT_QUOTES = REPO_ROOT / "tests" / "fixtures" / "decisions" / "fingerprint_quotes.yaml"
 
 PARTS = ("precedent", "fit", "hits", "verify")
@@ -199,16 +198,16 @@ def _precedent_cases() -> list[tuple[str, str, str, bool, bool]]:
 
 
 async def evaluate_precedent() -> dict[str, Any]:
-    from aiq_agent.agents.piloti.decisions import PRECEDENT_THRESHOLD
-    from aiq_agent.agents.piloti.decisions import PRECEDENT_THRESHOLD_LAW
-    from aiq_agent.agents.piloti.decisions import TurnFacts
-    from aiq_agent.agents.piloti.decisions import decide_turn
-    from aiq_agent.cards.catalog import card_index_entries
-    from aiq_agent.cards.envelope import ENVELOPE_SHAPE_TYPES
-    from aiq_agent.common.applicability import facts_from_project_context
-    from aiq_agent.common.norm_registry import oib_families
-    from aiq_agent.skills.builtin import discover_builtin_skills
-    from aiq_agent.skills.resolver import _skill_applies_to_agent
+    from agent.agents.piloti.decisions import PRECEDENT_THRESHOLD
+    from agent.agents.piloti.decisions import PRECEDENT_THRESHOLD_LAW
+    from agent.agents.piloti.decisions import TurnFacts
+    from agent.agents.piloti.decisions import decide_turn
+    from agent.cards.catalog import card_index_entries
+    from agent.cards.envelope import ENVELOPE_SHAPE_TYPES
+    from agent.common.applicability import facts_from_project_context
+    from agent.common.norm_registry import oib_families
+    from agent.skills.builtin import discover_builtin_skills
+    from agent.skills.resolver import _skill_applies_to_agent
     from scripts.decision_eval import CORPUS_FILES
 
     _, rendered = _office()
@@ -306,12 +305,12 @@ class FitRow:
 
 
 async def evaluate_fit() -> dict[str, Any]:
-    from aiq_agent.agents.piloti.reference_fit import FITS_QUESTION
-    from aiq_agent.agents.piloti.reference_fit import SLOT
-    from aiq_agent.agents.piloti.reference_fit import line_state
-    from aiq_agent.agents.piloti.reference_fit import parse_catalog
-    from aiq_agent.agents.piloti.reference_fit import reorder
-    from aiq_agent.common.decisions import decide_many
+    from agent.agents.piloti.reference_fit import FITS_QUESTION
+    from agent.agents.piloti.reference_fit import SLOT
+    from agent.agents.piloti.reference_fit import line_state
+    from agent.agents.piloti.reference_fit import parse_catalog
+    from agent.agents.piloti.reference_fit import reorder
+    from agent.common.decisions import decide_many
 
     office, rendered = _office()
     names = {project["id"]: project["name"] for project in office["projects"]}
@@ -397,8 +396,8 @@ def _hit_of(project: dict[str, Any], document: dict[str, Any]) -> dict[str, Any]
 
 
 async def evaluate_hits() -> dict[str, Any]:
-    from aiq_agent.tools.cross_project.hit_judge import INJECTION_THRESHOLD
-    from aiq_agent.tools.cross_project.hit_judge import judge_hits
+    from agent.tools.cross_project.hit_judge import INJECTION_THRESHOLD
+    from agent.tools.cross_project.hit_judge import judge_hits
 
     office, _ = _office()
     by_doc = {
@@ -467,10 +466,10 @@ async def evaluate_hits() -> dict[str, Any]:
 
 
 async def evaluate_verify() -> dict[str, Any]:
-    from aiq_agent.common.decisions import decide_many
-    from aiq_agent.knowledge.fingerprint_verify import SLOT
-    from aiq_agent.knowledge.fingerprint_verify import STATED_QUESTION
-    from aiq_agent.knowledge.fingerprint_verify import token_state
+    from agent.common.decisions import decide_many
+    from agent.knowledge.fingerprint_verify import SLOT
+    from agent.knowledge.fingerprint_verify import STATED_QUESTION
+    from agent.knowledge.fingerprint_verify import token_state
 
     rows = list((_load_yaml(FINGERPRINT_QUOTES) or {}).get("quotes") or [])
     states = [token_state(row["fact"], str(row["value"]), [row["quote"]]) for row in rows]
@@ -514,8 +513,8 @@ def main(argv: list[str] | None = None) -> int:
     unknown = [part for part in args.parts if part not in PARTS]
     if unknown:
         parser.error(f"unknown part(s): {', '.join(unknown)}")
-    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GRID_DECISIONS_API_KEY")):
-        print("decision_eval_office: set OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); nothing to measure.")
+    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("DECISIONS_API_KEY")):
+        print("decision_eval_office: set OPENROUTER_API_KEY (or DECISIONS_API_KEY); nothing to measure.")
         return 2
     results = asyncio.run(_run(list(args.parts or PARTS)))
     if args.out:

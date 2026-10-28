@@ -1,7 +1,7 @@
-# GRID — System Overview
+# Piloti — System Overview
 
 > **The single source of truth for the shape of the system.** An enterprise
-> architecture view: what GRID is, its major components, how they fit together,
+> architecture view: what Piloti is, its major components, how they fit together,
 > the key flows, and the boundaries that matter. Written to let a new senior
 > engineer or a stakeholder *understand the system* without reading the code.
 > For implementation detail, follow the links to the subsystem docs.
@@ -53,7 +53,7 @@ flowchart TB
     Architect["👤 Architect / Org member<br/>works in a project, talks to Piloti"]
     Admin["👤 Org admin<br/>manages projects, members, memory"]
 
-    subgraph GRID["GRID"]
+    subgraph APP["Piloti"]
         SYS["Workspace for planning offices"]
     end
 
@@ -94,13 +94,13 @@ flowchart TB
     end
 
     subgraph Tier2["Tier 2 · Python AI backend (port 8000)"]
-        API["FastAPI (aiq_api plugin)"]
-        NAT["NeMo Agent Toolkit + LangGraph agents"]
+        API["FastAPI (agent_host plugin)"]
+        AGENT["Agent runtime + LangGraph agents"]
         JOBS["Research queue (Postgres) — deep-research jobs"]
     end
 
     subgraph Data["Stateful infrastructure"]
-        PG[("PostgreSQL<br/>grid_app · aiq_jobs · aiq_checkpoints")]
+        PG[("PostgreSQL<br/>`app` · jobs · checkpoints")]
         SEAWEED[("SeaweedFS — grid-documents bucket")]
         QDRANT[("Qdrant — vector store")]
     end
@@ -112,11 +112,11 @@ flowchart TB
     BFF <-->|Drizzle| PG
     BFF -->|presign / put| SEAWEED
     GW -->|"proxy WS upgrade + REST"| API
-    API --> NAT --> JOBS
-    NAT <--> QDRANT
-    NAT -->|"job store / checkpoints"| PG
+    API --> AGENT --> JOBS
+    AGENT <--> QDRANT
+    AGENT -->|"job store / checkpoints"| PG
     BFF -.->|"internal memory write API (token)"| BFF
-    NAT -.->|"remember tool → internal API"| BFF
+    AGENT -.->|"remember tool → internal API"| BFF
     PURGER --> PG
     PURGER --> SEAWEED
     PURGER -->|"purge-project-resources"| API
@@ -124,9 +124,9 @@ flowchart TB
 
 | Container | Tech | Responsibility |
 |---|---|---|
-| **frontend** | Next.js 16, React 18, TypeScript | The UI, the BFF (all `/api/*`), and the `server.js` gateway. System of record for `grid_app`. |
-| **aiq-agent / aiq-api** | Python 3.14, FastAPI, NAT, LangGraph | Stateless AI orchestration, one image run as separate roles (ADR-0082): `aiq-agent` is the `chat` role (the chat socket), `aiq-api` the `api` role (every other HTTP route), beside the `agent-worker` and `ingest-worker`. Owns the vector store and the job/checkpoint DBs. |
-| **postgres** | PostgreSQL 16 | Three logical DBs: `grid_app` (app state), `aiq_jobs` (jobs/events/summaries), `aiq_checkpoints` (LangGraph state). |
+| **frontend** | Next.js 16, React 18, TypeScript | The UI, the BFF (all `/api/*`), and the `server.js` gateway. System of record for `app`. |
+| **aiq-agent / aiq-api** | Python 3.14, FastAPI, the agent runtime, LangGraph | Stateless AI orchestration, one image run as separate roles (ADR-0082): `aiq-agent` is the `chat` role (the chat socket), `aiq-api` the `api` role (every other HTTP route), beside the `agent-worker` and `ingest-worker`. Owns the vector store and the job/checkpoint DBs. |
+| **postgres** | PostgreSQL 16 | Three logical DBs: `app` (app state), `jobs` (jobs/events/summaries), `checkpoints` (LangGraph state). |
 | **seaweedfs** | SeaweedFS (S3-compatible) | Object storage for OIB PDFs and uploaded documents (`grid-documents` bucket). |
 | **Qdrant** | shared `qdrant` server (HTTP) | Vector store: two physical collections behind aliases, `piloti_corpus` and `piloti_office`, persisted to a volume and queried by every backend role (ADR-0115). |
 | **purger** | same image as frontend, `node purger/index.js` | Scheduled worker that hard-deletes soft-deleted projects after the grace period. |
@@ -137,7 +137,7 @@ The **gateway (`server.js`)** is the seam that makes the two-tier model work:
 on each WebSocket upgrade (and REST proxy) it calls an internal BFF endpoint to
 resolve the caller's session, computes the collection scope + project context +
 memory digest, and forwards them to the Python backend as headers. The backend
-never opens a session or a `grid_app` connection itself.
+never opens a session or a `app` connection itself.
 
 ---
 
@@ -146,15 +146,15 @@ never opens a session or a `grid_app` connection itself.
 This is the decision everything else hangs off (ADR 0003).
 
 - **The BFF owns tenancy and durability.** Auth (WorkOS AuthKit), authorization
-  (WorkOS FGA), the application database (`grid_app` via Drizzle), file storage
+  (WorkOS FGA), the application database (`app` via Drizzle), file storage
   (SeaweedFS presigning), and all write paths live here. There is exactly **one
-  writer** of `grid_app`.
+  writer** of `app`.
 - **The agent backend is stateless per request.** It receives *what it may see*
   (collection scope) and *what it knows* (project context + memory) as headers,
   does its work, and returns. Its only durable stores are the vector index and
   its own job/checkpoint DBs — not tenant data.
 - **The one exception, made explicit:** the agent's `remember` tool must persist
-  memory into `grid_app`. Rather than give the backend a database connection, it
+  memory into `app`. Rather than give the backend a database connection, it
   calls a **token-guarded internal BFF endpoint**. The single-writer rule holds;
   the boundary is an HTTP call, not a shared DB. (ADR 0008.)
 
@@ -168,7 +168,7 @@ or security, and every tenant-data mutation goes through one audited layer.
 The workspace surfaces, each with its own doc:
 
 - **Projects and intake:** [projects guide](../user-guides/projects.md)
-- **Files, Büroablage and document roles:** [documents guide](../user-guides/documents.md), [Piloti in the file system](piloti-filesystem-design.md), [document roles](document-roles.md)
+- **Files, Büroablage and document roles:** [documents guide](../user-guides/documents.md), [Piloti in the file system](filesystem-design.md), [document roles](document-roles.md)
 - **Building model (IFC):** [IFC models guide](../user-guides/bim-models.md)
 - **Tasks and jobs:** §5.12 below, and [projects guide, Jobs](../user-guides/projects.md#jobs-feature-flagged)
 - **Research and reports:** [reports Piloti writes](../user-guides/agent-authored-reports.md), [deep research report](deep-research-report.md)
@@ -184,7 +184,7 @@ no classifier in front of it: the agent decides per turn, in its answer
 envelope, whether to reply directly, to research and cite, or to hand off to
 deep research. Research answers directly from retrieval; deep research is
 dispatched as an async job (§5.5). Responses stream back through a monkeypatched
-NAT WebSocket handler that lifts structured fields (cards, deep-research job id)
+agent-runtime WebSocket handler that lifts structured fields (cards, deep-research job id)
 onto the message. → `docs/architecture/backend-deep-dive.md` §2.
 
 ### 5.2 The two knowledge systems
@@ -192,7 +192,7 @@ Every normative claim is grounded in a passage retrieved this turn from the
 project, the Büroablage, or the Austrian building-regulation corpus. Not every
 answer is a ruling.
 
-GRID deliberately separates **retrieval** from **memory** — they answer
+Piloti deliberately separates **retrieval** from **memory** — they answer
 different questions and reach the agent differently:
 
 - **Retrieval (RAG) — "the library, searched on demand."** The OIB corpus,
@@ -210,10 +210,10 @@ different questions and reach the agent differently:
 Both systems follow the same **scope hierarchy** — each level nests inside the
 one above it, a question searches every level it sits in, and tenancy makes a
 level invisible outside its owner. This containment is the structural fact of
-the knowledge architecture; the source-kind chips (`baurecht | buero | projekt
-| web`) are a labelling dimension *within* it, not a second hierarchy:
+the knowledge architecture; the source-kind chips (`building_law | office |
+project | web`) are a labelling dimension *within* it, not a second hierarchy:
 
-| Level | Documents (Qdrant) | Learned state (`grid_app`) | Visible to |
+| Level | Documents (Qdrant) | Learned state (`app`) | Visible to |
 |---|---|---|---|
 | Platform | `oib_knowledge` (OIB corpus) | platform lessons | everyone |
 | Organization | `archiv_<org>` (Archiv, ADR-0024, feature-gated) | — | that org |
@@ -265,7 +265,7 @@ The project row is deleted last so a failed purge stays recoverable. (ADR 0011.)
 ### 5.8 Auth & multi-tenancy
 Identity is **WorkOS AuthKit** (SSO); authorization is **WorkOS FGA**
 (fine-grained, per-project permissions like `project:view/edit/manage`). Tenancy
-is enforced two ways: every `grid_app` row carries an `organization_id`, and
+is enforced two ways: every `app` row carries an `organization_id`, and
 every backend request is bounded by the collection scope the BFF computed under
 `requireProjectAccess`. Projects map to a WorkOS FGA resource. (ADRs 0002, 0004.)
 
@@ -308,7 +308,7 @@ interchangeable (ADR-0051):
   attempt and a chat delegation are the same row.
 
 `fireJob` inserts the run and submits it; a chat delegation (`create_task`:
-`compliance_check | einreichcheck | document | revision`) does the same with
+`compliance_check | submission_check | document | revision`) does the same with
 `trigger: delegated`, and with an optional cadence it writes a `schedule`
 definition instead and dispatches nothing — the scheduler fires it. Reviewer
 rejections of earlier runs of the same definition are quoted into the next
@@ -322,8 +322,8 @@ The Jobs tab retired into Aufgaben; `?tab=jobs` still lands there. Review
 happens in the inbox, where the person was told about the result.
 
 Two naming collisions to keep straight. The `task_definitions`/`task_runs`
-tables live in `grid_app` (the collapsed successor of `jobs`/`job_runs`/
-`tasks`); the backend async jobs live in `aiq_jobs` (deep-research runs,
+tables live in `app` (the collapsed successor of `jobs`/`job_runs`/
+`tasks`); the backend async jobs live in `jobs` (deep-research runs,
 §5.5) — a `task_runs.backend_job_id` value names one of the latter. And
 `compliance_check` is a **task kind**, not a chat tool or an agent: the
 purpose-built compliance checker is deleted, and a full Soll-Ist runs as a
@@ -358,7 +358,7 @@ as the memory header.
 **Project deletion.** User deletes a project → BFF soft-deletes it and enqueues
 `deletion_queue` with `purge_after = now + grace` → after the grace period the
 purger claims the row (backoff + legal-hold check), destroys external stores
-(backend resources, SeaweedFS prefix, WorkOS resource) then `grid_app` rows, and
+(backend resources, SeaweedFS prefix, WorkOS resource) then `app` rows, and
 marks it purged. Restore is possible only while the row is un-claimed.
 
 ---
@@ -367,25 +367,25 @@ marks it purged. Restore is possible only while the row is un-claimed.
 
 | Store | Owner | Holds |
 |---|---|---|
-| **`grid_app`** (Postgres) | BFF (single writer) | projects, conversations, messages, documents, folders, **project_memory**, **platform_lessons** (+ reports/events), **deletion_queue**, **legal_holds**, user_preferences, **tasks** (the work object), **jobs** (recurring triggers) + **job_runs** (receipts), **skills** |
-| **`aiq_jobs`** (Postgres) | backend | backend async-run info/access/events (deep research) — not the BFF `jobs` schedule table (§5.12), document summaries |
-| **`aiq_checkpoints`** (Postgres) | backend | LangGraph conversation checkpoints (thread state) |
+| **`app`** (Postgres) | BFF (single writer) | projects, conversations, messages, documents, folders, **project_memory**, **platform_lessons** (+ reports/events), **deletion_queue**, **legal_holds**, user_preferences, **tasks** (the work object), **jobs** (recurring triggers) + **job_runs** (receipts), **skills** |
+| **`jobs`** (Postgres) | backend | backend async-run info/access/events (deep research) — not the BFF `jobs` schedule table (§5.12), document summaries |
+| **`checkpoints`** (Postgres) | backend | LangGraph conversation checkpoints (thread state) |
 | **SeaweedFS** (`grid-documents`) | BFF writes, backend/purger read | OIB PDFs + uploaded documents, keyed by org/project |
-| **Qdrant** | backend | two physical collections, `piloti_corpus` (the legal corpus, `oib_knowledge`) and `piloti_office` (everything an office uploads). The logical collections `archiv_<org>`, `proj_<id>`, `<proj>_r<folder>` and `s_<conversation>` are payload fields, and a request's scope is one filter compiled in `scope_filter` (ADR-0116). Memory and lessons are not in Qdrant — they live in `grid_app`, with row-resident embeddings for recall ([semantic-notes.md](./semantic-notes.md)). |
+| **Qdrant** | backend | two physical collections, `piloti_corpus` (the legal corpus, `oib_knowledge`) and `piloti_office` (everything an office uploads). The logical collections `archiv_<org>`, `proj_<id>`, `<proj>_r<folder>` and `s_<conversation>` are payload fields, and a request's scope is one filter compiled in `scope_filter` (ADR-0116). Memory and lessons are not in Qdrant — they live in `app`, with row-resident embeddings for recall ([semantic-notes.md](./semantic-notes.md)). |
 
-Schema evolves via Drizzle migrations (`frontends/ui/drizzle/`, applied on
+Schema evolves via Drizzle migrations (`apps/workspace/migrations/`, applied on
 frontend start). → `docs/database/`.
 
 ---
 
 ## 8. Cross-cutting concerns
 
-- **Security boundaries.** One writer for `grid_app`; the backend reaches it only
+- **Security boundaries.** One writer for `app`; the backend reaches it only
   through the token-guarded internal API (the well-known dev token is refused
   outside dev). Multi-line context headers are base64url-encoded (ADR 0013) so
   they can't break the HTTP/WS layer. Legal claims cite the OIB corpus, never
   unverified memory. Tenancy on every row + every request scope.
-- **Tenancy.** `organization_id` on every `grid_app` row; collection scope +
+- **Tenancy.** `organization_id` on every `app` row; collection scope +
   `requireProjectAccess` on every backend request; org-scoped memory never
   crosses organizations.
 - **Verification / CI.** `task verify` is the local gate, host-native, defined
@@ -401,7 +401,7 @@ frontend start). → `docs/database/`.
 |---|---|
 | Frontend | Next.js 16, React 18, TypeScript, shadcn/ui + Tailwind v4 |
 | BFF / gateway | Next.js app-router API routes + a Node `server.js` WS/HTTP proxy |
-| AI orchestration | NeMo Agent Toolkit (NAT) + LangGraph; the Postgres research queue for async jobs |
+| AI orchestration | The agent runtime + LangGraph; the Postgres research queue for async jobs |
 | LLM | any OpenAI-compatible endpoint (reference boot floor: OpenAI GPT-5.6 Luna via OpenRouter; the served model is an admin decision at runtime) |
 | Embeddings | any OpenAI-compatible endpoint (reference: OpenAI text-embedding-3-large via OpenRouter) |
 | RAG / vector store | Qdrant via `qdrant-client` (+ LlamaIndex ingestion) |
@@ -457,17 +457,16 @@ What lives where in the checkout.
 | Path | Purpose |
 |------|---------|
 | `.devcontainer/` | VS Code dev container configuration |
-| `src/aiq_agent/` | Backend agent (LangGraph agents, cards, knowledge layer) |
-| `sources/` | NAT data-source packages (web search, knowledge layer, RIS adapter, grid cards) |
-| `frontends/ui/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
-| `frontends/web/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
-| `frontends/aiq_api/` | The backend FastAPI front-end plugin (`_type: aiq_api`): REST routes, async jobs, `/v1/ingest` |
-| `frontends/debug/` | Debug console mounted at `/debug` |
-| `frontends/cli/` | `aiq-research` CLI |
-| `frontends/benchmarks/` | Evaluation harnesses |
-| `configs/` | Workflow configs. **LLM-agnostic** — any OpenAI-compatible endpoint (set `base_url`/key per config). **`config_oib_openrouter.yml` is the working reference config** (`config_grid_oib.yml`/Kimi is currently unmaintained). The `model_name` values are only the **boot fallback**: the live default per agent group is admin-controlled (Platform → Models, `platform_model_defaults`) and a tenant may override it (Organization → Models) — see `docs/architecture/org-model-configuration.md`. Do not edit the YAML to move the fleet to a new model. |
+| `packages/agent/src/agent/` | Backend agent (LangGraph agents, cards, knowledge layer) |
+| `packages/knowledge-layer`, `packages/ris-adapter`, `packages/tavily-web-search` | The Python packages of the uv workspace: the knowledge layer, the RIS adapter and web search, each a plugin entry point |
+| `apps/workspace/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
+| `apps/site/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
+| `apps/agent-host/` | The backend FastAPI front-end plugin (`_type: agent_host`): REST routes, async jobs, `/v1/ingest` |
+| `evals/` | Piloti's evals, each with its tests: `oib-retrieval` and the live `turn-shapes` check |
+| `packages/` | Libraries outside the uv and bun workspaces: `ifc-spatial` and `ifc-spatial-py` (the IFC spatial engine, ADR-0045) and `brand` (the Piloti mark and the script that renders every icon from it) |
+| `configs/` | Workflow configs. **LLM-agnostic** — any OpenAI-compatible endpoint (set `base_url`/key per config). **`config_oib_openrouter.yml` is the working reference config** (the legacy Kimi config is currently unmaintained). The `model_name` values are only the **boot fallback**: the live default per agent group is admin-controlled (Platform → Models, `platform_model_defaults`) and a tenant may override it (Organization → Models) — see `docs/architecture/org-model-configuration.md`. Do not edit the YAML to move the fleet to a new model. |
 | `deploy/` | Docker Compose assets and environment templates; `deploy/pulumi/` holds the Pulumi (TypeScript) Kubernetes deployment (see `docs/deployment/kubernetes.md`) |
-| `docs/architecture/` | Architecture docs (see `backend-deep-dive.md`, `project-memory-design.md`, `citation-system-audit-2026-07.md` for the citation pipeline as built) |
+| `docs/architecture/` | Architecture docs (see `backend-deep-dive.md`, `project-memory-design.md`, `docs/audit/citation-system-audit-2026-07.md` for the citation pipeline as built) |
 | `skills/` | API-consumer skill examples |
 | `scripts/` | Utility scripts, including `scripts/upload_oib_corpus.py` |
 | `releasenotes/` | reno release notes — one YAML file per user-visible change, published to piloti.at/changelog |

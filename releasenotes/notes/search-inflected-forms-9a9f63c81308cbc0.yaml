@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    Piloti's word search can now also find the other forms of a German word, so
+    a search for „Fluchtwegbreite“ finds „Fluchtwegbreiten“ as well. Without
+    being asked to, it still finds exactly what was typed.
+operators:
+  - >
+    Documents indexed before this release are found by the new option only
+    literally until the search index is rebuilt. The rebuild described in the
+    Qdrant runbook fills them in; nothing else has to run.

@@ -1,6 +1,6 @@
 # Development Scripts
 
-This directory contains helper scripts for developing and running the AI-Q blueprint.
+Helper scripts for developing and running Piloti. `task --list` is the entry point; these are what some tasks call.
 
 ## Available Scripts
 
@@ -33,26 +33,9 @@ Main development command hub for common tasks.
 | `clean` | Remove build artifacts |
 | `help` | Show help message |
 
-### `start_cli.sh` - CLI Mode
-
-Starts the agent in CLI mode with browser-based authentication.
-
-```bash
-./scripts/start_cli.sh
-./scripts/start_cli.sh --verbose
-```
-
-**Options:**
-
-| Option | Description |
-|--------|-------------|
-| `--verbose` or `-v` | Enable verbose logging |
-| `--config_file <path>` | Use a custom configuration file |
-
-
 ### `start_server_in_debug_mode.sh` - Server Mode
 
-Starts the NAT FastAPI server for deep research with async job support.
+Starts the FastAPI server for deep research with async job support.
 
 ```bash
 ./scripts/start_server_in_debug_mode.sh
@@ -72,7 +55,6 @@ Starts the NAT FastAPI server for deep research with async job support.
 | Endpoint | Description |
 |----------|-------------|
 | `http://localhost:8000/docs` | API Documentation (Swagger UI) |
-| `http://localhost:8000/debug` | Debug Console for testing async jobs |
 | `http://localhost:8000/health` | Health check |
 | `http://localhost:8000/v1/jobs/async/agents` | List available agent types |
 | `http://localhost:8000/v1/jobs/async/submit` | Submit async job (POST) |
@@ -114,7 +96,5 @@ When developing new features:
    ```
 4. **Run the agent**:
    ```bash
-   ./scripts/start_cli.sh
-   # OR
    ./scripts/start_e2e.sh
    ```

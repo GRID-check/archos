@@ -14,21 +14,21 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.hit_metadata import _folder_matches
+from knowledge_layer.hit_metadata import apply_agent_filters
+from knowledge_layer.register import _KNOWLEDGE_SEARCH_DESCRIPTION
+from knowledge_layer.register import KnowledgeRetrievalConfig
+from knowledge_layer.register import knowledge_retrieval
+from knowledge_layer.search_results import empty_search_message
+from knowledge_layer.search_results import format_results
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
-from sources.knowledge_layer.src.register import _apply_agent_filters
-from sources.knowledge_layer.src.register import _empty_search_message
-from sources.knowledge_layer.src.register import _folder_matches
-from sources.knowledge_layer.src.register import _format_results
-from sources.knowledge_layer.src.register import knowledge_retrieval
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 
 def _chunk(file_name: str, collection: str = "proj_abc") -> SimpleNamespace:
@@ -46,7 +46,7 @@ def _chunk(file_name: str, collection: str = "proj_abc") -> SimpleNamespace:
 def _folders(monkeypatch, mapping: dict[str, str]) -> None:
     """Stub the batched store read the folder filter and the Ordner line use."""
     monkeypatch.setattr(
-        "aiq_agent.knowledge.factory.get_document_folder_paths",
+        "agent.knowledge.factory.get_document_folder_paths",
         lambda collection, file_names: {k: v for k, v in mapping.items() if k in file_names},
     )
 
@@ -94,7 +94,7 @@ class TestFolderFilter:
             },
         )
 
-        kept = _apply_agent_filters(chunks, doc_class=None, title_contains=None, folder="Brandschutz")
+        kept = apply_agent_filters(chunks, doc_class=None, title_contains=None, folder="Brandschutz")
 
         assert [c.file_name for c in kept] == ["in.pdf", "nested.pdf"]
 
@@ -102,7 +102,7 @@ class TestFolderFilter:
         chunks = [_chunk("in.pdf"), _chunk("sibling.pdf")]
         _folders(monkeypatch, {"in.pdf": "Brandschutz", "sibling.pdf": "Brandschutzkonzepte"})
 
-        kept = _apply_agent_filters(chunks, doc_class=None, title_contains=None, folder="Brandschutz")
+        kept = apply_agent_filters(chunks, doc_class=None, title_contains=None, folder="Brandschutz")
 
         assert [c.file_name for c in kept] == ["in.pdf"]
 
@@ -110,7 +110,7 @@ class TestFolderFilter:
         chunks = [_chunk("in.pdf"), _chunk("root.pdf")]
         _folders(monkeypatch, {"in.pdf": "Brandschutz"})
 
-        kept = _apply_agent_filters(chunks, doc_class=None, title_contains=None, folder=None)
+        kept = apply_agent_filters(chunks, doc_class=None, title_contains=None, folder=None)
 
         assert [c.file_name for c in kept] == ["in.pdf", "root.pdf"]
 
@@ -118,7 +118,7 @@ class TestFolderFilter:
         chunks = [_chunk("plan.pdf"), _chunk("schnitt.pdf")]
         _folders(monkeypatch, {"plan.pdf": "Brandschutz", "schnitt.pdf": "Brandschutz"})
 
-        kept = _apply_agent_filters(
+        kept = apply_agent_filters(
             chunks,
             doc_class=None,
             title_contains="plan",
@@ -135,9 +135,9 @@ class TestFolderFilter:
         def _boom(collection, file_names):
             raise RuntimeError("store down")
 
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_document_folder_paths", _boom)
+        monkeypatch.setattr("agent.knowledge.factory.get_document_folder_paths", _boom)
 
-        kept = _apply_agent_filters([_chunk("in.pdf")], doc_class=None, title_contains=None, folder="Brandschutz")
+        kept = apply_agent_filters([_chunk("in.pdf")], doc_class=None, title_contains=None, folder="Brandschutz")
 
         assert kept == []
 
@@ -150,7 +150,7 @@ class TestFolderReachesTheModel:
         assert "Ordner" in _KNOWLEDGE_SEARCH_DESCRIPTION
 
     def test_an_empty_folder_scoped_search_names_the_folder_and_the_way_out(self) -> None:
-        message = _empty_search_message("Fluchtwege", folder="Brandschutz")
+        message = empty_search_message("Fluchtwege", folder="Brandschutz")
         assert "folder='Brandschutz'" in message
         assert "drop `folder=`" in message
         assert "Do not invent a citation." in message
@@ -159,17 +159,17 @@ class TestFolderReachesTheModel:
         _folders(monkeypatch, {"plan.pdf": "Brandschutz/Fluchtwege"})
         result = SimpleNamespace(success=True, chunks=[_chunk("plan.pdf")])
 
-        rendered = _format_results(result, "Fluchtwege")
+        rendered = format_results(result, "Fluchtwege")
 
         assert "Ordner: Brandschutz/Fluchtwege" in rendered
 
-    def test_a_document_at_the_root_gets_no_ordner_line_at_all(self, monkeypatch) -> None:
+    def test_a_document_at_the_root_gets_no_folder_line_at_all(self, monkeypatch) -> None:
         # Absence must read as absence. An "Ordner: /" or "Ordner: -" would be a
         # folder the user never made.
         _folders(monkeypatch, {})
         result = SimpleNamespace(success=True, chunks=[_chunk("plan.pdf")])
 
-        rendered = _format_results(result, "Fluchtwege")
+        rendered = format_results(result, "Fluchtwege")
 
         assert "Ordner:" not in rendered
 
@@ -231,7 +231,7 @@ class _RankedStore:
         self.calls: list[dict] = []
 
     async def retrieve(self, query, collection_name, top_k, filters=None):
-        from sources.knowledge_layer.src.qdrant.prefilter import folder_ancestors
+        from knowledge_layer.qdrant.prefilter import folder_ancestors
 
         self.calls.append({"collection": collection_name, "top_k": top_k, "filters": filters})
         pool = self.pools.get(collection_name, [])
@@ -249,19 +249,19 @@ class _RankedStore:
 def ranked(monkeypatch):
     """A project shelf beside the base corpus, the turn's inventory, and the store's folder map."""
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection(BASE, Shelf.BASE), ScopedCollection(PROJECT, Shelf.PROJECT)],
     )
     for name in ("get_document_doc_classes", "get_document_display_titles"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-    monkeypatch.setattr("sources.knowledge_layer.src.register._initialize_ingestor", lambda config, llm: None)
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
 
     def install(documents: list[AvailableDocument], pools: dict[str, list[Chunk]]) -> _RankedStore:
         store = _RankedStore(pools, {doc.file_name: doc.folder_path for doc in documents if doc.folder_path})
         set_turn_documents(documents)
-        monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: store)
+        monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: store)
         _folders(monkeypatch, {doc.file_name: doc.folder_path for doc in documents if doc.folder_path})
         return store
 

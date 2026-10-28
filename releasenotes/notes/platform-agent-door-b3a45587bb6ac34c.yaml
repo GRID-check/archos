@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Your own agent can now work the operator console through its own MCP server,
+    /api/platform/mcp (ADR-0126): platform operations only, for platform staff
+    signed in to the GRID Platform organization. Switch on platform-agent-mcp for
+    that organization and register the URL in WorkOS; see
+    docs/deployment/platform-agent-door-runbook.md.

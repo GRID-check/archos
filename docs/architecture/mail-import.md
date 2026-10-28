@@ -34,7 +34,7 @@ browser                     BFF (frontend)                     object store     
   that broke off is resumed by choosing the same file again (`GET …/[importId]`
   lists the held parts); a file whose modification time changed since is
   refused, because its parts would not fit the ones already sent.
-- **Reading.** `aiq_api.mail_archive` opens the staged object through
+- **Reading.** `agent_host.mail_archive` opens the staged object through
   `RangeFile`, a file object over presigned range GETs with a 64 MiB block cache.
   Items are numbered depth-first over the mail tree, so a position is a cursor.
 - **Filing.** `lib/mail-import/job.ts` runs on the BFF job queue as the person
@@ -165,5 +165,5 @@ there (`purger/storage.js`, `abortMultipartUploads`).
 - The BFF carries the archive's bytes; twenty gigabytes is twenty gigabytes
   through the frontend pods.
 - `libpff-python` is pinned to its first cp314 release and is labelled alpha
-  upstream; `GRID_PST_FIXTURE_DIR` runs `test_mail_archive_reader.py` over real
+  upstream; `PST_FIXTURE_DIR` runs `test_mail_archive_reader.py` over real
   archives when it moves.

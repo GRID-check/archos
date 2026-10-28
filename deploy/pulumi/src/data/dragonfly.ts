@@ -1,7 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, pullPolicyFor } from "../config";
+import { DeployConfig } from '../config'
+import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import {
   ROLLOUT,
@@ -12,6 +13,7 @@ import {
   surgeRollout,
 } from "../platform/rollout";
 import { DATA_RESOURCES, EDGE_RATE_LIMIT, LANGFUSE, PORT } from "../constants";
+import { scrapeAnnotations } from "../platform/scrape";
 
 const DRAGONFLY_IMAGE = "docker.dragonflydb.io/dragonflydb/dragonfly:latest";
 
@@ -82,7 +84,7 @@ interface DragonflyOptions {
    * pod dial 6379.
    */
   password?: pulumi.Output<string>;
-  /** The worker group the pod runs on (`GridConfig.nodeGroups.data`). */
+  /** The worker group the pod runs on (`DeployConfig.nodeGroups.data`). */
   nodeGroup: string | undefined;
 }
 
@@ -158,7 +160,11 @@ function installDragonflyInstance(
           : surgeRollout(ROLLOUT.dataPlane)),
         selector: { matchLabels: labels },
         template: {
-          metadata: { labels, annotations: authAnnotations },
+          // Memory, keys, hit rate, clients and command latency. Dragonfly
+          // serves `/metrics` over HTTP on its main port without the password
+          // (its console there answers 401; checked against v2.0.2), so the
+          // node agents scrape it holding no credential (ADR-0119).
+          metadata: { labels, annotations: { ...authAnnotations, ...scrapeAnnotations(PORT.redis) } },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             terminationGracePeriodSeconds:
@@ -275,7 +281,7 @@ function installDragonflyInstance(
  * plaintext RESP (see docs/deployment/kubernetes.md § Encryption posture).
  */
 export function installDragonfly(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): Dragonfly {
@@ -318,7 +324,7 @@ export function installDragonfly(
  * wired in `platform/gateway.ts`.
  */
 export function installRateLimitStore(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): Dragonfly {
@@ -362,7 +368,7 @@ export function installRateLimitStore(
  * silently bisected queue is not.
  */
 export function installLangfuseQueue(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): Dragonfly {

@@ -41,7 +41,7 @@ them.
 
 ## Decision Outcome
 
-Chosen option: 3, `piloti_changes` (migration 0142).
+Chosen option: 3, `agent_changes` (migration 0142).
 
 * **One row per applied change**, written by the BFF in the route Piloti
   calls (`lib/annotations/agent.ts`): `create`, `update` or `delete` of a mark,
@@ -71,7 +71,7 @@ Chosen option: 3, `piloti_changes` (migration 0142).
 * Good, because undo is safe on shared work, and its refusal says why.
 * Good, because Langfuse sees which of Piloti's changes people keep, take back
   or undo, per turn.
-* Bad, because one more table inside the tenant boundary (`grid_secure_table`
+* Bad, because one more table inside the tenant boundary (`secure_table`
   over the document's organization, `rls-coverage.spec.ts`).
 * Neutral, because only Anmerkungen and their threads are recorded today. A
   second object Piloti applies changes to adds an `object_kind` and its state

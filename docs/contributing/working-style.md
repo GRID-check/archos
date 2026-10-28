@@ -39,6 +39,49 @@ the part that is comfortable. It obliges you to name the gap between what was
 asked and what was expected, then let the user decide which one they are paying
 for.
 
+## Aim at the north star, land on the clouds
+
+A capability gets designed twice, on purpose, and the two passes must not be
+mixed.
+
+**First pass: the north star, with no technical limits.** Describe what the
+person would experience if anything were buildable: what the colleague in the
+office would do, see and show. Write it as a scene, not a feature list. In this
+pass, technology is what makes the scene possible, never a reason against it.
+"We have no page-range read" belongs in the second pass. In the first it only
+means "something has to read a document through".
+
+**Second pass: the landing.** Take the scene apart into what we can build now,
+measure, and ship, and say which part of the star each slice moves toward.
+This is where realism belongs: cost, latency, staleness, what the evidence
+supports, and what has to be measured before anyone calls it better. A slice
+that cannot name the part of the star it serves is not on the path.
+
+Keep both written down. The star goes at the top of the design (the ADR's
+context, or the capability register in
+[`agent-capabilities.md`](../architecture/agent-capabilities.md)), and the
+landing is the plan underneath it. When later work lands short, the star is
+still there to say how far short.
+
+Why both, and why in this order. Starting from the realistic version anchors the
+design on today's tools: you extend what exists by a step and call that the
+roadmap. Starting from the star alone produces a vision nobody can ship. The
+star sets the direction; the landing keeps it honest, including the honest
+sentence "this is not measured yet".
+
+The case: Piloti could already render any region of a page at 1200 dpi, but
+only looked when a person had drawn a box, and the chat never showed a look at
+all. The realistic framing ("the tool exists, add a prompt line") would have
+stopped there. The north star ("talk to a senior architect who opens the
+folder, reads the report through, looks at the stairwell on plan 03 and puts
+a finger on it") turned the same tool into four slices: a standing look rule,
+a card for the look that supports the answer, a Herleitung step, and parity
+between chat and canvas. See ADR-0127 and ADR-0128.
+
+One restraint survives the star: show what supports the answer, not
+everything that happened. An expert shows you the crop that proves the point.
+Every glance goes in the notebook (the Herleitung), not the answer.
+
 ## Prefer visuals
 
 The maintainer values visual explanations. When explaining architecture, data
@@ -229,14 +272,14 @@ an hour of work, not "the backend half".
 The case: the Anmerkungen canvas was built by three builders each owning a
 large area. Every later piece touched one of those areas and queued behind it,
 so the work ran mostly in series and took far longer than it needed to. The
-fix was a contract file (`frontends/ui/src/lib/proposals/types.ts`) written
+fix was a contract file (`apps/workspace/bff/proposals/types.ts`) written
 first, and five slices started at once, each told which files it owns and which
 it must not touch.
 
 Rules that kept the parallel slices from colliding:
 
 * **Hot files have one owner at a time:** migration bookkeeping
-  (`drizzle/meta/_journal.json`, `rls-coverage.spec.ts`, `scripts/rls-test-db.sh`),
+  (`migrations/meta/_journal.json`, `rls-coverage.spec.ts`, `scripts/rls-test-db.sh`),
   `lib/db/schema/index.ts`, each i18n namespace, a shared service. A slice that
   needs one reports the exact lines instead of editing.
 * **Only the integrator touches git.** Builders make file changes; a shared
@@ -262,3 +305,50 @@ only lacked an end. Twenty minutes of design went into the wrong record before
 the question was asked. The decision, and the shape that answered it (Linear's:
 work is delegated to an agent, the agent's activity is a session on the issue),
 is in ADR-0106.
+
+## Prompting advice has a three-month shelf life
+
+Guidance on how to prompt a model, write its tool descriptions or size its
+context goes stale with every model generation. Before a prompt or a tool
+description changes on the strength of outside advice, the advice comes from
+the vendor's live documentation or engineering posts published or updated in
+the last three months, each source cited with its date; anything older or
+undated is listed as excluded, not used. A consultant agent asked for this
+research runs on the strongest model available, never a small one.
+
+The case: on 2026-10-22 a prompt rewrite for the chat agent was briefed from a
+consultant that ran on a small model with undated sources. The product owner
+stopped it; the research was redone with dated, in-window sources only.
+
+The philosophy those sources serve, in the owner's words: unhobble the model.
+Say what the agent is for, what a good answer is and which rails hold, give it
+well-described tools, and leave the thinking to it. A rule earns its place by
+the reason it states, once, where it applies.
+
+## A rejection names its premise
+
+An ADR's rejected option is only as durable as the reason it was rejected for.
+Write that reason as a premise that can turn false: a version, a measurement, a
+property of one tool, a constraint that holds today. A later reader then checks
+the premise in a minute, where a bare verdict ("too costly", "doesn't fit")
+invites re-arguing the whole option, or worse, treating it as settled forever.
+
+The cases, both found on 2026-10-27 while deciding how Piloti reads the office's
+documents ([ADR-0133](../adr/0133-piloti-reads-the-estate-through-standard-filesystem-tools.md)):
+
+* [ADR-0046](../adr/0046-agent-skills.md) rejected Deep Agents'
+  `SkillsMiddleware` for the chat because it had no request-driven forcing and
+  "offers the skill filesystem as tool content rather than a catalog". By then
+  the forcing was gone from our own code (`packages/agent/src/agent/skills/runtime.py`: "Nothing in this
+  module can REQUIRE a skill"), and the middleware rendered a name and
+  description catalog with progressive disclosure. The rejection still read as
+  in force.
+* [ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md) rejected "a
+  shell over a virtual projection of the files". Its three reasons were
+  properties of `just-bash` (grep materialising every document, `cat` without
+  chunk identity, no isolation), and none of them holds for standard
+  filesystem tools served by our own backend. Because the reasons were written
+  as facts about that tool, the re-check took one paragraph.
+
+The rule lives in [`docs/adr/AGENTS.md`](../adr/AGENTS.md) and in the
+template's comments.

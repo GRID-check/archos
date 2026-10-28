@@ -1,0 +1,470 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grid estate tree wire contract",
+  "description": "Generated from apps/workspace/bff/estate-tree/types.ts. Do not edit by hand: estate-tree-schema.spec.ts rewrites this file and fails when it is stale.",
+  "$defs": {
+    "EstateTreeRequest": {
+      "type": "object",
+      "properties": {
+        "shelf": {
+          "type": "string",
+          "enum": [
+            "project",
+            "office_shelf",
+            "session"
+          ]
+        },
+        "folder_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "required": [
+        "shelf"
+      ],
+      "additionalProperties": false
+    },
+    "EstateTreeFolder": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "parent_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "card": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "fresh",
+                    "stale",
+                    "failed"
+                  ]
+                },
+                "generated_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "status",
+                "generated_at"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "parent_id",
+        "name",
+        "path",
+        "description",
+        "card"
+      ]
+    },
+    "EstateTreeDocument": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "folder_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folder_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "collection": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "file_size": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "authored_by": {
+          "type": "string"
+        },
+        "document_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "page_count": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "superseded": {
+          "type": "boolean"
+        },
+        "plan_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "plan_index": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "plan_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "published_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "version_count": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "filename",
+        "display_name",
+        "folder_id",
+        "folder_path",
+        "collection",
+        "content_type",
+        "file_size",
+        "status",
+        "authored_by",
+        "document_type",
+        "page_count",
+        "superseded",
+        "plan_number",
+        "plan_index",
+        "plan_date",
+        "published_version",
+        "version_count",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "EstateTreeResponse": {
+      "type": "object",
+      "properties": {
+        "shelf": {
+          "type": "string",
+          "enum": [
+            "project",
+            "office_shelf",
+            "session"
+          ]
+        },
+        "collection": {
+          "type": "string"
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "parent_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "card": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "fresh",
+                          "stale",
+                          "failed"
+                        ]
+                      },
+                      "generated_at": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "generated_at"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "parent_id",
+              "name",
+              "path",
+              "description",
+              "card"
+            ]
+          }
+        },
+        "folders_truncated": {
+          "type": "boolean"
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "filename": {
+                "type": "string"
+              },
+              "display_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "folder_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "folder_path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "collection": {
+                "type": "string"
+              },
+              "content_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "file_size": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "status": {
+                "type": "string"
+              },
+              "authored_by": {
+                "type": "string"
+              },
+              "document_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "page_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "superseded": {
+                "type": "boolean"
+              },
+              "plan_number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "plan_index": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "plan_date": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "published_version": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "version_count": {
+                "type": "integer"
+              },
+              "created_at": {
+                "type": "string"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "filename",
+              "display_name",
+              "folder_id",
+              "folder_path",
+              "collection",
+              "content_type",
+              "file_size",
+              "status",
+              "authored_by",
+              "document_type",
+              "page_count",
+              "superseded",
+              "plan_number",
+              "plan_index",
+              "plan_date",
+              "published_version",
+              "version_count",
+              "created_at",
+              "updated_at"
+            ]
+          }
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "shelf",
+        "collection",
+        "folders",
+        "folders_truncated",
+        "documents",
+        "next_cursor"
+      ]
+    }
+  }
+}

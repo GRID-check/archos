@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    A search index rebuild now measures how long the stored passages really
+    are and tunes keyword ranking to that length instead of the generic
+    default. Measure first and schedule the rebuild as the Qdrant runbook
+    describes; until the rebuilt index is switched in, ranking is unchanged.

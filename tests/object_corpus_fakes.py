@@ -6,7 +6,7 @@
 gives the cache a fresh directory and points the corpus table at a throwaway
 SQLite file, so the store's own logic (table, cache, hash checks) runs for real.
 
-Set ``GRID_TEST_CORPUS_DB`` to a Postgres URL to run the same tests against a
+Set ``TEST_CORPUS_DB`` to a Postgres URL to run the same tests against a
 real server: the Postgres upsert, the conditional update and the advisory
 locks of ``keyed_lock`` (SQLite has none) are then exercised too. The corpus table, the
 ingest status store and the ingest queue (one database, as in deployment) are emptied
@@ -21,10 +21,10 @@ from pathlib import Path
 from sqlalchemy import delete
 from sqlalchemy import text
 
-from aiq_agent import corpus_store
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent import corpus_store
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
 
 class FakeBucket:
@@ -60,7 +60,7 @@ class FakeBucket:
 def install(monkeypatch, tmp_path: Path) -> FakeBucket:
     """A fresh database, an empty cache directory and a fake bucket."""
     bucket = FakeBucket()
-    monkeypatch.setenv("AIQ_SUMMARY_DB", os.environ.get("GRID_TEST_CORPUS_DB") or f"sqlite:///{tmp_path / 'corpus.db'}")
+    monkeypatch.setenv("SUMMARY_DB", os.environ.get("TEST_CORPUS_DB") or f"sqlite:///{tmp_path / 'corpus.db'}")
     monkeypatch.setenv(corpus_store.CACHE_DIR_ENV, str(tmp_path / "cache"))
     monkeypatch.setattr(corpus_store, "_request_upload_url", bucket.request_upload_url)
     monkeypatch.setattr(corpus_store, "_put_object", bucket.put_object)

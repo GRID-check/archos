@@ -38,9 +38,9 @@ This spec defines the **target design** for:
 
 - **Identity & authentication** — outsourced to WorkOS (AuthKit + Organizations +
   Memberships + RBAC).
-- **Multitenancy & ownership** — organisations, Grid‑owned projects, and per‑resource
+- **Multitenancy & ownership** — organisations, app‑owned projects, and per‑resource
   ownership.
-- **Authorization** — request‑time access checks from JWT claims plus Grid‑owned project
+- **Authorization** — request‑time access checks from JWT claims plus app‑owned project
   membership.
 - **Knowledge & document storage** — server‑authoritative collection naming, SeaweedFS
   for durable document bytes, layered/scoped retrieval.
@@ -63,13 +63,13 @@ the cards schema mechanics (already implemented; treated here as a foundation).
   isolation.
 - Establish **ownership** at the row level: every owned resource carries both an
   `organization_id` and a `created_by` user.
-- Authorize each request from **JWT claims + Grid‑owned project membership**, with no local
+- Authorize each request from **JWT claims + app‑owned project membership**, with no local
   mirror of WorkOS identity.
 - Durably store original document **bytes** (SeaweedFS) instead of discarding them.
 - Keep the Python agent **stateless** — no identity, tenancy, or system‑of‑record state.
 - Preserve a thin, explicit API boundary so a dedicated app server (Option B) can be
   extracted later without a rewrite.
-- Keep all regulatory **content** and customer data in EU‑hostable, Grid‑controlled stores.
+- Keep all regulatory **content** and customer data in EU‑hostable, app‑controlled stores.
 
 ### Non‑Goals
 
@@ -78,7 +78,7 @@ the cards schema mechanics (already implemented; treated here as a foundation).
 - Mirroring WorkOS users/memberships into our database (see
   [ADR‑0007](../adr/0007-no-local-identity-sync.md)).
 - Event‑driven deprovisioning in the MVP (deprovisioning is **lazy**).
-- Modelling projects/teams inside WorkOS (projects are a **Grid** concept).
+- Modelling projects/teams inside WorkOS (projects are an **app** concept).
 - Re‑architecting the agent pipeline or the cards schema.
 
 ---
@@ -103,8 +103,8 @@ An honest snapshot of what exists today.
   per‑session collection TTL‑reaped after 24h.
 - **No "project" concept** exists anywhere. **No object store** is wired (only an
   aspirational `image_storage_uri` schema field + transitive `boto3`).
-- **Postgres is wired** in `docker-compose` (`postgres:16-alpine`, DBs `aiq_jobs` +
-  `aiq_checkpoints`) but holds **no app/identity data**. No Alembic, no ORM models
+- **Postgres is wired** in `docker-compose` (`postgres:16-alpine`, DBs `jobs` +
+  `checkpoints`) but holds **no app/identity data**. No Alembic, no ORM models
   (SQLAlchemy Core + raw SQL).
 
 ### Already‑committed foundations to build on
@@ -116,8 +116,8 @@ An honest snapshot of what exists today.
   `project_collections`.
 - **TTL reaper** now deletes only `s_`‑prefixed (session) collections; base/project corpora
   persist.
-- **Cards are a single source of truth.** Pydantic models in `src/aiq_agent/cards/models.py`
-  are canonical → generate `shared/cards/schemas.json` → generate frontend Zod.
+- **Cards are a single source of truth.** Pydantic models in `packages/agent/src/agent/cards/models.py`
+  are canonical → generate `contracts/cards/schemas.json` → generate frontend Zod.
 
 These are **done** and form the foundation this spec builds on.
 
@@ -131,7 +131,7 @@ Three tiers plus an external identity provider.
 | --- | --- | --- |
 | **Next.js (UI + Application/BFF)** | Owns the WorkOS session, orgs/projects CRUD, document upload, conversation persistence, and the **collection‑naming / scoping policy**. Calls Postgres and SeaweedFS **directly**. Calls Python over HTTP/WS with a Bearer JWT + explicit context. | System of record (via Postgres/SeaweedFS) |
 | **Python AI‑Q agent** | Stateless inference + embedding microservice. Two contracts: `infer` and `ingest`. Receives user **context** for attribution/personalization but **trusts the caller** and is not the system of record. Writes vectors to Qdrant **only**. | Stateless |
-| **Data stores** | PostgreSQL server with `grid_app` (app/identity metadata), `aiq_jobs` (agent job metadata + summaries), and `aiq_checkpoints` (LangGraph checkpoints); SeaweedFS (document bytes); Qdrant (vectors). | Authoritative for app + agent data |
+| **Data stores** | PostgreSQL server with `app` (app/identity metadata), `jobs` (agent job metadata + summaries), and `checkpoints` (LangGraph checkpoints); SeaweedFS (document bytes); Qdrant (vectors). | Authoritative for app + agent data |
 | **WorkOS** | External identity provider. | Authoritative for identity |
 
 We chose **Option A** (Next.js as the application/BFF) over a separate dedicated app server,
@@ -164,7 +164,7 @@ flowchart LR
     UI["Next.js UI"]
     BFF["Next.js BFF<br/>(authz + scoping policy)"]
     PGApp[("PostgreSQL\ngrid_app")]
-    PGAgent[("PostgreSQL\naiq_jobs + aiq_checkpoints")]
+    PGAgent[("PostgreSQL\naiq_jobs + checkpoints")]
     Obj[("SeaweedFS")]
     Py["Python agent\n(stateless)"]
     Vec[("Qdrant")]
@@ -185,7 +185,7 @@ flowchart LR
 
 ## 5. Identity & Auth (WorkOS)
 
-Grid outsources identity to **WorkOS** — AuthKit + Organizations + Organization Memberships
+The app outsources identity to **WorkOS** — AuthKit + Organizations + Organization Memberships
 + RBAC. SSO (SAML/OIDC), Directory Sync (SCIM), and Admin Portal are **per‑customer
 add‑ons** enabled later with **no re‑architecture**. The decision rationale lives in
 [ADR‑0002](../adr/0002-outsource-identity-to-workos.md); this section describes the design.
@@ -216,7 +216,7 @@ erDiagram
 - **User** (`user_...`), **Organization** (`org_...`), **Organization Membership**
   (`om_...`) = a many‑to‑many **join** carrying role/roles/status.
 - A user can belong to **many** organisations.
-- WorkOS has **no** native sub‑org "project/team" — **Grid models projects itself**
+- WorkOS has **no** native sub‑org "project/team" — **The app models projects itself**
   (see [§6](#6-tenancy-ownership--access-model)).
 
 ### Session & tokens
@@ -238,7 +238,7 @@ erDiagram
 | `exp`, `iat` | Expiry / issued‑at | Yes |
 
 > **Critical edge case.** `org_id` / `role` / `permissions` exist **only when an org is
-> active**. A brand‑new user with no org gets a token **without** `org_id` → Grid must run a
+> active**. A brand‑new user with no org gets a token **without** `org_id` → the app must run a
 > **"create an org, then refresh the token"** onboarding flow before any tenant‑scoped action
 > is possible. See [§11](#11-security--edge-cases).
 
@@ -322,12 +322,12 @@ See [ADR‑0004](../adr/0004-tenancy-ownership-and-access-model.md).
   `organization_id` (`org_...`) **and** an owner `created_by` (`user_...`).
 - **Access is resolved via membership** — the user's role in the org (from the JWT) **plus**
   project‑level membership.
-- **Projects are a Grid‑owned concept** (WorkOS doesn't know them), scoped by
+- **Projects are an app‑owned concept** (WorkOS doesn't know them), scoped by
   `organization_id`. A project's members are a **subset** of the org's users.
 - Because *"the scoped approach is only as good as the context"* and we need **user‑level**
-  resolution (not just org‑level), Grid owns one membership table:
-  **`project_members(project_id, user_id, role)`**. This is the **one** membership table Grid
-  owns — it is a Grid concept, **distinct** from WorkOS org memberships, which Grid does
+  resolution (not just org‑level), the app owns one membership table:
+  **`project_members(project_id, user_id, role)`**. This is the **one** membership table the app
+  owns — it is an app concept, **distinct** from WorkOS org memberships, which the app does
   **not** mirror.
 
 ### Resource hierarchy
@@ -335,7 +335,7 @@ See [ADR‑0004](../adr/0004-tenancy-ownership-and-access-model.md).
 ```mermaid
 flowchart TD
     Org["Organization (org_...)<br/>WorkOS-authoritative identity<br/>optional thin app-settings row"]
-    Proj["Project (Grid-owned, uuid)<br/>organization_id + created_by"]
+    Proj["Project (app-owned, uuid)<br/>organization_id + created_by"]
     PM["project_members<br/>(project_id, user_id, role)"]
     Conv["Conversation<br/>organization_id + project_id + created_by"]
     Doc["Document<br/>organization_id + project_id + created_by<br/>storage_key + collection_name"]
@@ -356,7 +356,7 @@ For a resource `R` and a request token `{ sub = user_id, org_id, role, permissio
 >
 > **Since ADR-0041 this is no longer only an application rule.** PostgreSQL
 > enforces the same predicate underneath, on every **tenant-scoped** table in
-> `grid_app`: the app connects as `grid_app_rw`, which is subject to a
+> `app`: the app connects as `app_rw`, which is subject to a
 > row-level-security policy per table, so a query over tenant data that loses
 > its `organization_id` filter returns **no rows** rather than another tenant's.
 > The application check remains — it produces the right *error* — but it is no
@@ -485,13 +485,13 @@ sequenceDiagram
 
 ## 8. Data Model
 
-App‑owned schema lives in the **`grid_app` database** on the same PostgreSQL server as the
-agent's existing `aiq_jobs` and `aiq_checkpoints` databases. The BFF owns `grid_app`; the
+App‑owned schema lives in the **`app` database** on the same PostgreSQL server as the
+agent's existing `jobs` and `checkpoints` databases. The BFF owns `app`; the
 Python agent continues to own its own databases.
 
 **WorkOS IDs are stored as opaque `text` FKs.** There is **no users table** and **no
 org‑memberships mirror table** — WorkOS is authoritative for those. `project_members` **is**
-app‑owned because **projects are a Grid concept**. See
+app‑owned because **projects are an app concept**. See
 [ADR‑0007](../adr/0007-no-local-identity-sync.md).
 
 ```mermaid
@@ -559,7 +559,7 @@ erDiagram
 
 ### Tables
 
-#### `organizations` — *Grid app settings row, not a WorkOS mirror*
+#### `organizations` — *App settings row, not a WorkOS mirror*
 
 | Column | Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -570,7 +570,7 @@ erDiagram
 | `created_at` | `timestamptz` | | |
 
 > **This table does not store identity.** Users, memberships, roles, and permissions live in
-> WorkOS. The `organizations` row only holds Grid-specific app settings keyed by the WorkOS
+> WorkOS. The `organizations` row only holds app-specific app settings keyed by the WorkOS
 > org ID: default project, retention policy, base knowledge config, etc. See
 > [ADR‑0007](../adr/0007-no-local-identity-sync.md).
 
@@ -585,7 +585,7 @@ erDiagram
 | `collection_name` | `text` | | e.g. `proj_<id>` |
 | `created_at` | `timestamptz` | | |
 
-#### `project_members` — *the one membership table Grid owns*
+#### `project_members` — *the one membership table the app owns*
 
 | Column | Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -646,9 +646,9 @@ erDiagram
 
 ## 9. Service Contracts
 
-A thin, explicit boundary. **BFF → Postgres (`grid_app`)** and **BFF → SeaweedFS** are **direct**;
+A thin, explicit boundary. **BFF → Postgres (`app`)** and **BFF → SeaweedFS** are **direct**;
 only **embedding / inference** goes to Python. The Python agent continues to own its existing
-`aiq_jobs` and `aiq_checkpoints` databases directly.
+`jobs` and `checkpoints` databases directly.
 
 ### BFF responsibilities
 
@@ -707,7 +707,7 @@ classDiagram
 flowchart LR
     BFF["Next.js BFF"]
     PGApp[("PostgreSQL\ngrid_app")]
-    PGAgent[("PostgreSQL\naiq_jobs + aiq_checkpoints")]
+    PGAgent[("PostgreSQL\naiq_jobs + checkpoints")]
     Obj[("SeaweedFS")]
     Py["Python agent"]
     Vec[("Qdrant")]
@@ -799,7 +799,7 @@ flowchart TD
 flowchart LR
     subgraph MVP["MVP"]
         A1["AuthKit + Organizations"]
-        A2["Grid projects + project_members"]
+        A2["App projects + project_members"]
         A3["Per-resource ownership<br/>(organization_id + created_by)"]
         A4["SeaweedFS durable document bytes"]
         A5["Server-authoritative collection names"]
@@ -814,7 +814,7 @@ flowchart LR
     MVP --> Later
 ```
 
-- **MVP:** AuthKit + orgs + Grid projects + ownership + SeaweedFS + server‑authoritative
+- **MVP:** AuthKit + orgs + app projects + ownership + SeaweedFS + server‑authoritative
   collections + server‑side conversation persistence.
 - **Later:** SSO/SCIM/Admin Portal per enterprise customer; WorkOS Events API reconciliation
   (active offboarding cleanup); optional dedicated app server (Option B); RIS data source.
@@ -857,7 +857,7 @@ The authorization model above is now PERMISSION-driven. Full decision record:
 `docs/adr/0016-platform-tier-and-permission-registry.md`; provisioning state:
 `docs/deployment/workos-provisioning.md`. Summary:
 
-- **Registry**: `frontends/ui/src/lib/authz/permissions.ts` defines the
+- **Registry**: `apps/workspace/bff/authz/permissions.ts` defines the
   `org:*` and `platform:*` permission slugs (provisioned in WorkOS, delivered
   via the AuthKit JWT `permissions` claim). Routes/pages check permissions via
   granular helpers (`canManageModels`, `canManageBudgets`,
@@ -872,13 +872,13 @@ The authorization model above is now PERMISSION-driven. Full decision record:
   organizations — WorkOS itself enforces the exclusivity. Resolution
   (`lib/authz/platform.ts`): JWT claims when the platform org is active, a
   cached membership lookup cross-org, or the break-glass
-  `GRID_PLATFORM_OWNER_EMAILS` allowlist (bootstrap only). WorkOS cannot
+  `PLATFORM_OWNER_EMAILS` allowlist (bootstrap only). WorkOS cannot
   model a resource type above its Organization root (API-verified), which is
   why the tier is an organization, not an FGA type.
 - **Platform surface**: `/app/platform` + `GET /api/platform/overview`
   (cross-org directory + ledger spend), platform-org widget tokens via
   `/api/widgets/token?org=platform` (users-table scope only).
-- **Sign-up policy**: `GRID_DISABLE_SELF_SERVE_ORGS=true` turns the platform
+- **Sign-up policy**: `DISABLE_SELF_SERVE_ORGS=true` turns the platform
   invite-only at the org-creation layer; account-level sign-up control
   (allowSignUp, waitlist, domain auto-join) is native WorkOS configuration —
   see the provisioning runbook.

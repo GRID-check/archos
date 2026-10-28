@@ -12,7 +12,7 @@ never a capability — but a decider that is wrong most of the time wastes a
 fetch most of the time, and the vendor says German is "accepted but currently
 [of] lower accuracy". So the adoption rule is written down here, and this
 script measures against it on the loop-eval questions
-(`tests/fixtures/herleitung/loop_eval_questions.yaml`), which already carry the
+(`tests/fixtures/derivation/loop_eval_questions.yaml`), which already carry the
 family the answer must be grounded in.
 
 THE ADOPTION RULE (audit §4.4, ADR-0064)
@@ -28,7 +28,7 @@ IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
 Unlike `loop_eval.py`, nothing here needs the corpus or a running backend: the
 decision reads the question and a fixed description of the six families. It
-needs `OPENROUTER_API_KEY` (or `GRID_DECISIONS_API_KEY`) and costs about a
+needs `OPENROUTER_API_KEY` (or `DECISIONS_API_KEY`) and costs about a
 cent for the whole set. It cannot run in CI for that reason alone.
 
 USAGE
@@ -42,7 +42,7 @@ USAGE
 THE LAST RUN
 ------------
 2026-09-22, from the branch that introduced the decisions, committed beside
-the questions as `tests/fixtures/herleitung/decision_eval_2026-09-22.csv`:
+the questions as `tests/fixtures/derivation/decision_eval_2026-09-22.csv`:
 27/27 decided, family top-1 1.00, corpus `baurecht` 1.00 on the regulation
 rows, the ruling floor held, latency 467-899 ms (mean 614). The family
 threshold sweep put recall at 1.00 for thresholds up to 0.5 and at 0.90 at
@@ -64,8 +64,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT))
 
-DEFAULT_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "herleitung" / "loop_eval_questions.yaml"
-DEFAULT_FOLLOW_UPS = REPO_ROOT / "tests" / "fixtures" / "herleitung" / "follow_up_questions.yaml"
+DEFAULT_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.yaml"
+DEFAULT_FOLLOW_UPS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "follow_up_questions.yaml"
 
 #: The six families as the platform corpus holds them, so the eval asks the
 #: same questions a turn asks. Synthetic filenames in the corpus's own shape.
@@ -91,7 +91,13 @@ FOLLOW_UP_FLOOR = 0.80
 #: Which chat skill a family's question is the subject of — for REPORTING
 #: skill top-1, not for the gate: the loop-eval rows carry no expected skill,
 #: and OIB-RL 1 has no skill of its own.
-FAMILY_SKILL = {"2": "brandschutz", "3": "hygiene", "4": "nutzungssicherheit", "5": "waermeschutz", "6": "waermeschutz"}
+FAMILY_SKILL = {
+    "2": "fire-safety",
+    "3": "hygiene",
+    "4": "safety-in-use",
+    "5": "thermal-protection",
+    "6": "thermal-protection",
+}
 
 
 @dataclass
@@ -123,8 +129,8 @@ class Row:
 
     @property
     def skill_loaded(self) -> bool:
-        from aiq_agent.agents.piloti.decisions import SKILL_FIT_THRESHOLD
-        from aiq_agent.agents.piloti.decisions import SKILL_THRESHOLD
+        from agent.agents.piloti.decisions import SKILL_FIT_THRESHOLD
+        from agent.agents.piloti.decisions import SKILL_THRESHOLD
 
         return bool(
             self.skill
@@ -168,13 +174,13 @@ def load_follow_ups(path: Path) -> list[dict[str, Any]]:
 
 
 async def _evaluate(questions_path: Path, follow_ups_path: Path | None = None) -> list[Row]:
-    from aiq_agent.agents.piloti.decisions import TurnFacts
-    from aiq_agent.agents.piloti.decisions import decide_turn
-    from aiq_agent.cards.catalog import card_index_entries
-    from aiq_agent.cards.envelope import ENVELOPE_SHAPE_TYPES
-    from aiq_agent.common.norm_registry import oib_families
-    from aiq_agent.skills.builtin import discover_builtin_skills
-    from aiq_agent.skills.resolver import _skill_applies_to_agent
+    from agent.agents.piloti.decisions import TurnFacts
+    from agent.agents.piloti.decisions import decide_turn
+    from agent.cards.catalog import card_index_entries
+    from agent.cards.envelope import ENVELOPE_SHAPE_TYPES
+    from agent.common.norm_registry import oib_families
+    from agent.skills.builtin import discover_builtin_skills
+    from agent.skills.resolver import _skill_applies_to_agent
     from scripts.loop_eval import load_questions
 
     families = oib_families(CORPUS_FILES)
@@ -320,8 +326,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--follow-ups", type=Path, default=DEFAULT_FOLLOW_UPS)
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
-    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GRID_DECISIONS_API_KEY")):
-        print("decision_eval: set OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); nothing to measure without one.")
+    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("DECISIONS_API_KEY")):
+        print("decision_eval: set OPENROUTER_API_KEY (or DECISIONS_API_KEY); nothing to measure without one.")
         return 2
     rows = asyncio.run(_evaluate(args.questions, args.follow_ups))
     summary = summarise(rows)

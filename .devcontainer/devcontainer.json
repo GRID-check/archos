@@ -1,7 +1,7 @@
 {
   "name": "Grid OIB Agent Dev Container",
   "build": {
-    "dockerfile": "deploy/Dockerfile",
+    "dockerfile": "apps/agent-host/Dockerfile",
     "context": "..",
     "target": "dev-builder"
   },
@@ -13,7 +13,7 @@
     "8000": { "label": "AI-Q Backend" },
     "5432": { "label": "PostgreSQL" }
   },
-  "postCreateCommand": "uv pip install ruff~=0.16.9 pytest pytest-asyncio pytest-cov >/dev/null 2>&1; cd frontends/ui && npm install",
+  "postCreateCommand": "uv pip install ruff~=0.16.9 pytest pytest-asyncio pytest-cov >/dev/null 2>&1; cd apps/workspace && npm install",
   "postStartCommand": "git config --global --add safe.directory /app || true",
   "remoteUser": "root",
   "customizations": {
@@ -28,7 +28,7 @@
       "settings": {
         "python.defaultInterpreterPath": "/app/.venv/bin/python",
         "python.analysis.typeCheckingMode": "basic",
-        "oxc.path.oxlint": "${workspaceFolder}/frontends/ui/node_modules/.bin/oxlint",
+        "oxc.path.oxlint": "${workspaceFolder}/apps/workspace/node_modules/.bin/oxlint",
         "terminal.integrated.defaultProfile.linux": "bash"
       }
     }

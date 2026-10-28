@@ -137,7 +137,7 @@ folder role on it and are not an organization admin (ADR-0097). The UI shows
 them disabled with „Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat
 stammt“ and never names the folder. At most 200 people are evaluated, a bounded
 number at a time, each against their folder roles (cached for
-`GRID_AUTHZ_CACHE_TTL_MS`) and the membership roles behind the admin bypass
+`AUTHZ_CACHE_TTL_MS`) and the membership roles behind the admin bypass
 (cached for 60 s); anyone beyond that, or whose lookup fails, is reported as
 lacking access. Absent for a document.
 
@@ -285,7 +285,7 @@ asked in it (spec IB-9).
 
 ## Inbox
 
-Every route below has one typed client, `frontends/ui/src/lib/inbox/client.ts`
+Every route below has one typed client, `apps/workspace/bff/inbox/client.ts`
 (ADR-0055): the inbox list and badge, the review (which marks have unread
 news, and opening a mark reads it) and the shell's notification offer call it, and `app/api/inbox/routes.spec.ts`
 drives the real handlers through it. The service worker posts a tapped
@@ -322,7 +322,7 @@ For every distinct target on the page — resolved **once per resource**, not on
 per item — access is re-derived; anything unreachable, or already marked inert,
 comes back with `href: null`, `subject: null`, `related: null`, `excerpt: null` and `variant: null`. Such rows are **redacted, not
 dropped**: a redacted row explains itself, a vanished one looks like a bug.
-A run's row (`job.completed`, `job.failed`, `job.waiting`) targets its project,
+A run's row (`task_run.completed`, `task_run.failed`, `task_run.waiting`; `job.*` before migration 0177) targets its project,
 and is also judged by the run it names: a revision task whose document now sits
 in a folder the reader may not read is redacted like a revoked target
 (`unreadableRunIds`, `lib/tasks/subject-access.ts`, ADR-0093), as the task list
@@ -333,10 +333,10 @@ and the run view withhold it.
 row whose target went away reads `state: 'inert'` and is still restored, never
 archived again), `actionable`, `count`, `actorName`, `actorUserId`, `subject`,
 `related` (the second name a type shows, e.g. the newer document of a
-`document.new_fassung`), `excerpt`, `variant` (which wording of its type the
+`document.new_revision`), `excerpt`, `variant` (which wording of its type the
 row reads, a key segment: why Piloti could not work a mark, what a proposal
 changes), `dueOn` (the date of the mark a Zuständige is asked about, so the row
-says by when), `openMarks` and `marksFassung` (for a new Fassung, how many open
+says by when), `openMarks` and `marksRevision` (for a new Fassung, how many open
 marks it leaves to check and the Fassung they sit on), `answerIn` (where an open request on a mark may be answered: `row`,
 `review` for Piloti's Rückfrage while events do not wake Piloti, or null when
 the reader may not write the document; see
@@ -489,8 +489,8 @@ the answer being written, with the asker's masthead, verified sources and cards
 (ADR-0066), rather than a spinner followed by a finished block of text. The view
 is read-only: no feedback row, and a card cannot apply anything. Requires `viewer`.
 
-- Frames are `data: {"kind":"frame","seq":N,"payload":<NAT frame>}`. The payload is
-  the raw NAT WebSocket frame (`system_response_message`,
+- Frames are `data: {"kind":"frame","seq":N,"payload":<agent runtime frame>}`. The payload is
+  the raw agent runtime WebSocket frame (`system_response_message`,
   `system_intermediate_message`, `system_interaction_message`, `error_message`) —
   the same bytes the asker's own socket carries, documented in
   [`websocket-protocol.md`](websocket-protocol.md).
@@ -521,20 +521,20 @@ Three things to know before consuming it:
    socket does resume (`/frames`, below), because it knows where it stopped: the
    entry id of the last frame it applied, or the id its question went out under.
 
-### `GET /api/conversations/{id}/frames?after=<entry id>`
+### `GET /api/conversations/{id}/frames?peek=1`
 
-What a dropped socket missed. Every frame the agent sends over the asker's
+Is a turn still producing frames? Every event the agent sends over the asker's
 WebSocket is also appended to the conversation's replay stream (`conv:<id>:stream`,
-ADR-0028) and reaches the socket tagged `grid_frame_id`, the stream entry id. A
-client that lost its socket asks for every frame after the last id it applied and
-feeds them to its live frame handler. Requires `viewer`.
+ADR-0028). This route reads only the newest entry of it, so a client whose socket is
+gone can tell a turn still working (a heartbeat every 20 s) from one that has ended.
+Requires `viewer`.
 
-- `{"frames": [<NAT frame>, ...]}`, oldest first, each with `grid_frame_id` set.
-  Without `after`, every frame the stream still holds (a reload, which lost its
-  cursor; the client applies them from its question's first frame on).
-- `{"frames": null}`: nothing to read (no `REDIS_URL`, or the read failed). The
-  client falls back to fetching the finished answer.
-- `400` when `after` is not an entry id (`<ms>-<n>`). `Cache-Control: no-store`.
+- `{"available": true, "newest": "<ms>-<n>", "now": <epoch ms>}`; `available: false`
+  and `newest: null` when there is no stream to ask (no `REDIS_URL`, or the read
+  failed). `Cache-Control: no-store`.
+- `400` for any other query. Resume is not served here: a client that lost its socket
+  sends `attach{turn_id, after_seq}` on the new one and the agent tier replays that
+  turn (chat wire v2 §d).
 
 ### `POST /api/internal/collaboration/prune`
 

@@ -1,0 +1,391 @@
+/**
+ * Server Message Mapper
+ *
+ * Maps server-persisted conversation messages (BFF `messages` rows) back into
+ * the client `ChatMessage` shape so past chats can repopulate when
+ * localStorage no longer has them (quota cleanup, new device, cleared site
+ * data). The server stores a deliberately small payload — role, content,
+ * timestamps plus a metadata jsonb (messageType, errorData, fileData, cards,
+ * cardInteractions, enabledDataSources, messageFiles, citations, provenance) —
+ * so the heaviest stream state (a deep-research report's body) is not restored
+ * here; it is refetched on demand like the localStorage pruning path already does.
+ *
+ * The **provenance** IS restored (ADR-0037): the Herleitung in its compact form,
+ * the confidence self-assessment, the routing transparency and the deep-research
+ * job pointer. Without it a shared thread showed a colleague a bare answer — they
+ * hold no agent socket by design (ADR-0033 §7), so the intermediate frames never
+ * reach them and this row is the only place the reasoning could come from. It also
+ * fixes the same loss for the ASKER on a second device, which predates sharing.
+ *
+ * Citations ARE restored, and are not optional in the way the rest of that
+ * payload is: an answer that comes back without its provenance is an answer
+ * making an ungrounded claim, which is the one thing this product must never
+ * render. They are decoded through the same versioned contract the write path
+ * encodes with — see `lib/citations/persistence`.
+ *
+ * Authorship (`authorUserId`) and the collaboration metadata (`mentions`,
+ * `addressees`) ride along too, because for a SHARED thread this mapper is not a
+ * fallback but the PRIMARY load path (ADR-0033): the rows it maps are the truth,
+ * and a message whose author it drops cannot be attributed to the colleague who
+ * wrote it. The display *name* and avatar are deliberately not mapped — they are
+ * not on the message row; the shared-thread hook resolves them from the
+ * conversation's roster, so a renamed colleague is renamed everywhere at once.
+ */
+
+/** What the mapper reads of a stored message: a database row and an API message view both fit. */
+export interface ServerMessageInput {
+  id: string
+  role: string
+  content: string
+  createdAt: Date | string
+  metadata?: unknown
+  authorUserId?: string | null
+}
+import { CAPPED_REASONS, sanitizeThinkingSteps } from '@/lib/conversations/message-provenance'
+import { sanitizeAnswerMeta } from '@/lib/conversations/message-answer-meta'
+import { sanitizeFindings } from '@/lib/conversations/message-findings'
+import { sanitizeRetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
+import { sanitizeQuoteStamps } from '@/lib/conversations/message-quote-stamps'
+import { sanitizeConfidenceCheck } from '@/lib/conversations/confidence-check'
+import { isChatEffort } from '@/lib/reasoning-settings/catalog'
+import { sanitizeStages } from '@/lib/conversations/message-stages'
+import { sanitizePromptOptions } from '@/lib/conversations/message-prompt'
+import { sanitizeRunLedger, sanitizeRunTitle } from '@/lib/runs/run-ledger'
+
+import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
+import type { ChatMessage, ErrorCardData, FileCardData, MessageType } from '../types'
+import { validateAnswerCards } from '@/shared/cards/schemas'
+import { sanitizeCardInteractions } from '@/features/cards/card-decision'
+import { decodeCitations } from './citations'
+
+const MESSAGE_TYPES: ReadonlySet<string> = new Set([
+  'user',
+  'assistant',
+  'status',
+  'prompt',
+  'agent_response',
+  'file',
+  'error',
+])
+
+const asMessageType = (value: unknown): MessageType | undefined =>
+  typeof value === 'string' && MESSAGE_TYPES.has(value) ? (value as MessageType) : undefined
+
+/**
+ * Structured mentions carried on the row (spec MN-3), narrowed rather than cast:
+ * this jsonb is read back by a build that may not be the one that wrote it, and a
+ * malformed entry must not reach a renderer that indexes into it.
+ */
+const asMentions = (value: unknown): ChatMessage['mentions'] | undefined => {
+  if (!Array.isArray(value)) return undefined
+  const mentions = value.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return []
+    const { targetId, display } = entry as { targetId?: unknown; display?: unknown }
+    if (typeof targetId !== 'string' || targetId.length === 0) return []
+    return [{ targetId, display: typeof display === 'string' ? display : targetId }]
+  })
+  return mentions.length > 0 ? mentions : undefined
+}
+
+/**
+ * The server's addressee ruling, stored on the message at persist time (spec
+ * MN-2). Read for RENDERING only — the decision it drove (whether to open an
+ * agent turn) was made when the message was written and is never re-derived here.
+ */
+const asAddressees = (value: unknown): ChatMessage['addressees'] | undefined => {
+  if (!value || typeof value !== 'object') return undefined
+  const { agent, users } = value as { agent?: unknown; users?: unknown }
+  if (typeof agent !== 'boolean' || !Array.isArray(users)) return undefined
+  return { agent, users: users.filter((user): user is string => typeof user === 'string') }
+}
+
+/** The `at` of a `{ folderId, at }` mark the purge writes, when it is a real date. */
+function markedAt(mark: unknown): string | undefined {
+  if (typeof mark !== 'object' || mark === null || Array.isArray(mark)) return undefined
+  const at = (mark as { at?: unknown }).at
+  return typeof at === 'string' && !Number.isNaN(Date.parse(at)) ? at : undefined
+}
+
+/**
+ * Map one server message row to a ChatMessage.
+ *
+ * Returns null for roles the chat window never renders (system/tool) so a
+ * future backend writer can't inject blank bubbles into restored history.
+ */
+export const mapServerMessageToChatMessage = (message: ServerMessageInput): ChatMessage | null => {
+  if (message.role !== 'user' && message.role !== 'assistant') return null
+
+  const metadata = (message.metadata ?? {}) as Record<string, unknown>
+
+  const messageType =
+    asMessageType(metadata.messageType) ?? (message.role === 'user' ? 'user' : 'agent_response')
+  // Over JSON the timestamp arrives as an ISO string despite the Date type.
+  const timestamp = new Date(message.createdAt)
+  // The message's own time, not the clock: a citation restored from history was
+  // captured when the answer was written, not when the page was reopened.
+  const citations = decodeCitations(metadata.citations, timestamp)
+  // Retrieved-but-uncited documents, stored under their own key in the same
+  // envelope: the reloaded thread says what else the turn read, or nothing.
+  const readSources = decodeCitations(metadata.readSources, timestamp)
+
+  return {
+    id: String(message.id),
+    role: message.role,
+    content: message.content,
+    timestamp,
+    messageType,
+    // WHICH person wrote this (spec CC-3). Carried through unconditionally, so a
+    // colleague's message arrives attributable in a shared thread — the server
+    // has already attributed legacy rows to the conversation's creator (MG-3),
+    // and NULL on an assistant row is correct and stays null.
+    ...(message.authorUserId ? { authorUserId: message.authorUserId } : {}),
+    ...(() => {
+      const mentions = asMentions(metadata.mentions)
+      return mentions ? { mentions } : {}
+    })(),
+    ...(() => {
+      const addressees = asAddressees(metadata.addressees)
+      return addressees ? { addressees } : {}
+    })(),
+    ...(citations ? { citations } : {}),
+    ...(readSources ? { readSources } : {}),
+    ...(metadata.errorData ? { errorData: metadata.errorData as ErrorCardData } : {}),
+    ...(metadata.fileData ? { fileData: metadata.fileData as FileCardData } : {}),
+    // Validated, not cast. The live websocket path runs `validateAnswerCards`;
+    // this one — every card read back out of the database — did not, so a
+    // single row written under a different schema version reached a renderer
+    // that indexes a lookup table by an unvalidated field, threw during
+    // render, and blanked the WHOLE conversation rather than that one card.
+    ...(Array.isArray(metadata.cards) ? { cards: validateAnswerCards(metadata.cards) } : {}),
+    // Re-sanitized on read like `cards`: a stored row is client-written jsonb,
+    // and the renderer must never meet an unbounded shape.
+    ...(() => {
+      const answerMeta = sanitizeAnswerMeta(metadata.answerMeta)
+      return answerMeta ? { answerMeta } : {}
+    })(),
+    ...(() => {
+      const findings = sanitizeFindings(metadata.findings)
+      return findings ? { findings } : {}
+    })(),
+    // Re-sanitized on read like `answerMeta`: the backend's account of the
+    // turn's retrieval rounds, written by the BFF persist path. A row from any
+    // other build is still whatever it was.
+    ...(() => {
+      const ledger = sanitizeRetrievalLedger(metadata.retrieval_ledger)
+      return ledger ? { retrievalLedger: ledger } : {}
+    })(),
+    // The server's quote checks, when a row kept them in the wire spelling.
+    ...(() => {
+      const stamps = sanitizeQuoteStamps(metadata.quote_stamps)
+      return stamps ? { quoteStamps: stamps } : {}
+    })(),
+    // The run's own account of itself, on the one message a run owns
+    // (`messages.run_id`). Re-sanitized on read for the same reason its
+    // neighbour is, and one reason more: this payload is written by the PYTHON
+    // tier's fold, so the build that wrote it is not even the same deployable.
+    ...(() => {
+      const runLedger = sanitizeRunLedger(metadata.run_ledger)
+      return runLedger ? { runLedger } : {}
+    })(),
+    // The run's title, written once at mint time by the BFF. Bounded on read
+    // like the ledger: one line, 200 characters.
+    ...(() => {
+      const runTitle = sanitizeRunTitle(metadata.run_title)
+      return runTitle ? { runTitle } : {}
+    })(),
+    // Restored WITH their answers: a card whose patch was already applied must
+    // not come back offering the button again (see card-decision.ts). Narrowed
+    // rather than cast — this jsonb blob is the only card state not written by
+    // the current build.
+    ...(() => {
+      const interactions = sanitizeCardInteractions(metadata.cardInteractions)
+      return interactions ? { cardInteractions: interactions } : {}
+    })(),
+    ...(Array.isArray(metadata.enabledDataSources)
+      ? { enabledDataSources: metadata.enabledDataSources as string[] }
+      : {}),
+    ...(Array.isArray(metadata.messageFiles)
+      ? { messageFiles: metadata.messageFiles as Array<{ id: string; fileName: string }> }
+      : {}),
+    // What a post-answer stage computed for this turn. Re-sanitised on the way
+    // OUT as well as in, for the same reason `cards` is re-validated here: this
+    // jsonb blob is the only stage state not written by the current build, and a
+    // row written under an older bound is still whatever it was.
+    ...(() => {
+      const stages = sanitizeStages(metadata.stages)
+      return stages ? { stages } : {}
+    })(),
+    // Content drawn from a deleted folder (ADR-0088): the purge's mark, and a
+    // removal of what was derived from it („Mit dem Ordner entfernen“).
+    // Dates only, read as such.
+    ...(() => {
+      const at = markedAt(metadata.sourceDeleted)
+      return at ? { sourceDeletedAt: at } : {}
+    })(),
+    ...(() => {
+      const at = markedAt(metadata.sourceRemoved)
+      return at ? { erasedAt: at } : {}
+    })(),
+    // What the answer rested on. Spread last so a future metadata key cannot
+    // silently shadow one of the fields above.
+    ...restoreProvenance(metadata.provenance),
+    ...restorePrompt(metadata.prompt, metadata.promptState),
+  }
+}
+
+/**
+ * Rebuild a human-in-the-loop prompt and its answer (ADR-0037).
+ *
+ * `promptFor` is the person the agent asked, and it is what lets every other reader
+ * be shown the question read-only: the agent tier refuses an answer from anybody
+ * else (`_may_answer_interaction`), so offering them the buttons would be offering a
+ * refusal.
+ *
+ * `isPromptResponded` is derived from the stored answer rather than stored
+ * separately — two fields that can disagree about the same fact is one field too
+ * many.
+ */
+const restorePrompt = (prompt: unknown, promptState: unknown): Partial<ChatMessage> => {
+  const out: Partial<ChatMessage> = {}
+
+  if (typeof prompt === 'object' && prompt !== null && !Array.isArray(prompt)) {
+    const detail = prompt as Record<string, unknown>
+    if (typeof detail.promptId === 'string') out.promptId = detail.promptId
+    if (typeof detail.promptParentId === 'string') out.promptParentId = detail.promptParentId
+    if (detail.promptInputType === 'text' || detail.promptInputType === 'choice') {
+      out.promptInputType = detail.promptInputType
+    }
+    const options = sanitizePromptOptions(detail.promptOptions)
+    if (options) out.promptOptions = options
+    if (typeof detail.promptPlaceholder === 'string') {
+      out.promptPlaceholder = detail.promptPlaceholder
+    }
+    if (typeof detail.promptFor === 'string') out.promptFor = detail.promptFor
+  }
+
+  if (typeof promptState === 'object' && promptState !== null && !Array.isArray(promptState)) {
+    const answer = (promptState as { response?: unknown }).response
+    // Non-empty, matching what `sanitizePromptState` will store: `''` would render
+    // as "responded" with nothing to show, which is worse than still asking. The
+    // read has to agree with the write, or a row from another build renders wrong.
+    if (typeof answer === 'string' && answer.length > 0) {
+      out.promptResponse = answer
+      out.isPromptResponded = true
+    }
+  }
+
+  return out
+}
+
+/**
+ * Unpack the stored provenance onto the message shape the renderers already read.
+ *
+ * Flattened rather than nested under a `provenance` key, because `ChatThinking`,
+ * the confidence chip and the routing line each take their own prop and none of
+ * them should have to know that this arrived from a server row rather than from a
+ * live stream. Steps are the stored v2 shape the turn fold also writes, so a
+ * restored step and a live one are the same object shape.
+ *
+ * Narrowed, not cast: the server bounds this on write (`sanitizeProvenance`), but
+ * a row written by an older build is still whatever it was.
+ */
+const restoreProvenance = (value: unknown): Partial<ChatMessage> => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+  const provenance = value as Record<string, unknown>
+  const out: Partial<ChatMessage> = {}
+
+  // The same gate the write ran (`sanitizeProvenance`): the v2 step shape only,
+  // bounded. Migration 0097 rewrote the rows written before it, so a step
+  // without a known `kind` is dropped here rather than interpreted.
+  const steps = sanitizeThinkingSteps(provenance.thinkingSteps)
+  if (steps) out.thinkingSteps = steps
+
+  if (isConfidence(provenance.answerConfidence)) out.answerConfidence = provenance.answerConfidence
+  if (typeof provenance.answerConfidenceReason === 'string') {
+    out.answerConfidenceReason = provenance.answerConfidenceReason
+  }
+  if (isCappedReason(provenance.answerConfidenceCappedReason)) {
+    out.answerConfidenceCappedReason = provenance.answerConfidenceCappedReason
+  }
+  if (isRoutingDecision(provenance.routingDecision)) {
+    out.routingDecision = provenance.routingDecision
+  }
+  if (typeof provenance.escalationReason === 'string') {
+    out.escalationReason = provenance.escalationReason
+  }
+  if (
+    typeof provenance.answerDurationMs === 'number' &&
+    Number.isFinite(provenance.answerDurationMs) &&
+    provenance.answerDurationMs > 0
+  ) {
+    out.answerDurationMs = provenance.answerDurationMs
+  }
+  if (isChatEffort(provenance.reasoningEffort)) out.reasoningEffort = provenance.reasoningEffort
+  if (Array.isArray(provenance.skillsActivated) && provenance.skillsActivated.length > 0) {
+    out.skillsActivated = provenance.skillsActivated.filter(
+      (s): s is string => typeof s === 'string'
+    )
+  }
+  if (Array.isArray(provenance.skillsHidden) && provenance.skillsHidden.length > 0) {
+    out.skillsHidden = provenance.skillsHidden.filter((s): s is string => typeof s === 'string')
+  }
+  if (
+    typeof provenance.citationsRemoved === 'object' &&
+    provenance.citationsRemoved !== null &&
+    typeof (provenance.citationsRemoved as { count?: unknown }).count === 'number'
+  ) {
+    out.citationsRemoved = provenance.citationsRemoved as { count: number; reasons: string[] }
+  }
+  if (provenance.researchTruncated === true) {
+    out.researchTruncated = true
+  }
+  if (provenance.stopped === true) out.stopped = true
+  // The cause and the degradations restore INDEPENDENTLY of the flag, the way
+  // the backend extracts them: a run can be degraded without being truncated.
+  if (typeof provenance.truncationReason === 'string' && provenance.truncationReason) {
+    out.truncationReason = provenance.truncationReason
+  }
+  if (Array.isArray(provenance.degradedReasons) && provenance.degradedReasons.length > 0) {
+    out.degradedReasons = provenance.degradedReasons.filter(
+      (reason): reason is string => typeof reason === 'string' && reason.length > 0
+    )
+  }
+  if (typeof provenance.deepResearchJobId === 'string') {
+    out.deepResearchJobId = provenance.deepResearchJobId
+  }
+  // The backend's account of the turn's rounds, restored beside the thinking
+  // steps it replaces reading from: re-sanitized on read, narrowed not cast.
+  const ledger = sanitizeRetrievalLedger(provenance.retrievalLedger)
+  if (ledger) out.retrievalLedger = ledger
+  const stamps = sanitizeQuoteStamps(provenance.quoteStamps)
+  if (stamps) out.quoteStamps = stamps
+  const check = sanitizeConfidenceCheck(provenance.confidenceCheck)
+  if (check) out.confidenceCheck = check
+  if (provenance.answerConfidenceVersion === 1 || provenance.answerConfidenceVersion === 2) {
+    out.answerConfidenceVersion = provenance.answerConfidenceVersion
+  }
+  if (provenance.lookupFoundNothing === true) out.lookupFoundNothing = true
+
+  return out
+}
+
+const isConfidence = (value: unknown): value is 'low' | 'medium' | 'high' =>
+  value === 'low' || value === 'medium' || value === 'high'
+
+const isRoutingDecision = (value: unknown): value is 'meta' | 'shallow' | 'deep' | 'error' =>
+  value === 'meta' || value === 'shallow' || value === 'deep' || value === 'error'
+
+/**
+ * The five causes the overconfidence guard can report. An allowlist rather than
+ * a cast because this reads a persisted jsonb column: an older row, or a newer
+ * server, can carry anything, and a value the chip has no copy for would render
+ * a cap with no explanation.
+ */
+const isCappedReason = (value: unknown): value is AnswerConfidenceCappedReason =>
+  CAPPED_REASONS.includes(value as AnswerConfidenceCappedReason)
+
+/** Map a full server history, dropping rows the chat window can't render. */
+export const mapServerMessagesToChatMessages = (messages: ServerMessageInput[]): ChatMessage[] =>
+  messages
+    .map(mapServerMessageToChatMessage)
+    .filter((message): message is ChatMessage => message !== null)

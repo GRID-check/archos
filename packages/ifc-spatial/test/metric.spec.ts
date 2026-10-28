@@ -218,7 +218,7 @@ describe('metric operators on a file without a declared north', () => {
   let geometry: GeometryIndex
 
   beforeAll(async () => {
-    ;({ graph, geometry } = await load('haus-mit-raeumen.ifc'))
+    ;({ graph, geometry } = await load('house-with-rooms.ifc'))
   }, 300_000)
 
   it('refuses every compass bearing rather than defaulting north to +Y', () => {

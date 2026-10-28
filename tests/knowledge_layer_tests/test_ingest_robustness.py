@@ -23,12 +23,12 @@ from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer.llamaindex.adapter import PdfTextPages
 from knowledge_layer.llamaindex.adapter import unreadable_pdf_verdict
 
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_agent.knowledge.schema import stable_file_id
+from agent.knowledge import ingest_status_store
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from agent.knowledge.schema import stable_file_id
 
 # ---------------------------------------------------------------------------
 # Per-page PDF reading
@@ -127,8 +127,8 @@ def test_a_plain_page_list_has_nothing_to_report():
 
 @pytest.fixture()
 def stores(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -138,7 +138,7 @@ def stores(tmp_path):
 
 @pytest.fixture()
 def live_ingestor(tmp_path, monkeypatch, qdrant_store):
-    from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
+    from knowledge_layer_testing.qdrant import FakeEmbedder
 
     ing = LlamaIndexIngestor({"generate_summary": False})
     ing._embed_model = FakeEmbedder()
@@ -151,7 +151,7 @@ def quiet_pdf_pipeline(monkeypatch):
     """No images, no rendered pages, no VLM: only the text stage speaks."""
     import knowledge_layer.llamaindex.processing as processing_module
 
-    from aiq_agent.common.credential_resolution import ResolvedCredential
+    from agent.common.credential_resolution import ResolvedCredential
 
     none = ResolvedCredential(api_key="", base_url="https://vlm.test/v1", model="test-vlm", source="none")
     monkeypatch.setattr(adapter_module, "resolve_vlm_credential", lambda organization_id=None: none)
@@ -192,7 +192,7 @@ def test_chunks_created_counts_the_nodes_stored(tmp_path, live_ingestor, stores)
     )
     status = _wait_terminal(live_ingestor, job_id)
 
-    from sources.knowledge_layer.tests.qdrant_testing import chunk_texts
+    from knowledge_layer_testing.qdrant import chunk_texts
 
     stored = len(chunk_texts("proj_count", {"file_name": "statik.txt"}))
     assert status.file_details[0].status == FileStatus.SUCCESS
@@ -265,7 +265,7 @@ def test_a_job_a_dead_process_left_processing_reads_interrupted(tmp_path, monkey
     from sqlalchemy import text
 
     url = f"sqlite:///{tmp_path / 'jobs.db'}"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("SUMMARY_DB", url)
     try:
         stranded = IngestionJobStatus(
             job_id="stranded",
@@ -313,7 +313,7 @@ def test_startup_settles_and_each_beat_vouches_for_live_jobs_only(monkeypatch, h
 @pytest.fixture()
 def status_db(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path / 'jobs.db'}"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("SUMMARY_DB", url)
     yield url
     ingest_status_store._initialized.discard(url)
 
@@ -438,7 +438,7 @@ def test_a_submitted_job_waits_in_its_organisations_lane(tmp_path, held_ingestor
 
 def test_a_prepared_job_is_vouched_for_by_the_process_that_runs_it(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path / 'jobs.db'}"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("SUMMARY_DB", url)
     upload = tmp_path / "a.txt"
     upload.write_text("x", encoding="utf-8")
     accepting = LlamaIndexIngestor({})

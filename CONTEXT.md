@@ -9,7 +9,15 @@ in conversation about it. The engineering vocabulary (tenancy helpers, CI,
 deploys, tooling) is in [`docs/glossary.md`](docs/glossary.md).
 
 Product copy is German, so many terms are German. The English gloss follows the
-term.
+term, and the English word is the canonical one for anything an agent reads:
+an operation's name and description, a tool's text, a refusal (AGENTS.md,
+"Industry standard first"). The German word is what a person reads, through
+i18n; the English word is what an agent reads and what the code says. Until
+October 2026 the German word was canonical everywhere, and agents read German
+descriptions and refusals; every agent client then paid a translation, and one
+concept had two or three names. The agent's words and their standard
+equivalents are in
+[`docs/glossary.md`](docs/glossary.md#agent-surface-and-standard-terms).
 
 ## The office and its work
 
@@ -25,6 +33,12 @@ _Avoid_: tenant, in product copy.
 **Project** (Projekt):
 One building project inside an organization, with its own documents, intake
 facts and members, who are a subset of the organization's people.
+
+**Steckbrief** (project record):
+The project's profile page: its facts (federal state, building class, plot,
+planned work) and the people on it, kept apart from them (ADR-0091, ADR-0101).
+_Code_: `projectRecord` (`lib/projects/project-record-*`, `ProjectRecordView`);
+the Bundesland is `federalState`, the Gebäudeklasse `buildingClass`.
 
 **Aktiv / Ruhend / Abgeschlossen** (active / paused / closed):
 The three states of a project's lifecycle, moved between only on purpose: a
@@ -94,10 +108,17 @@ verdict.
 
 **Shelf**:
 Where a document lives, which decides who may read it and what a search reaches:
-the *Büroablage* (the organization's shelf, formerly „Archiv"; the code keeps
-`archiv`), a project, a single chat, or the shared OIB base every organization
+the *Büroablage* (the organization's shelf, formerly „Archiv"; code name
+`officeShelf`, never `archive`, which already means soft-archived), a project, a single chat, or the shared OIB base every organization
 sees. The Büroablage can hold norms an office uploaded itself (ÖNORMEN,
 Weisungen) that the OIB base does not carry.
+_Code_: `officeShelf` in identifiers, file names and modules (`lib/office-shelf`,
+`OfficeShelfWorkspace`, `canManageOfficeShelf`). Stored and public forms are
+`office_shelf` (scope value, wire value), `/app/office-shelf` and
+`/api/office-shelf`, and the permission `org:office_shelf:manage`. Still `archiv`,
+read beside the new name until an operator moves them
+([runbook](docs/deployment/office-shelf-rename-runbook.md)): the collection
+prefix `archiv_<org>`, the old permission slug, and the history of audit rows.
 _Avoid_: folder; folders organise documents within a shelf, a shelf decides who sees them.
 
 **Dokumentart** (document type):
@@ -115,6 +136,11 @@ _Avoid_: Plan, Planstand, for any file. A name with an index says a file has
 Fassungen, not that it is a drawing; only its Dokumentart says what it is. Say
 Dokument, Datei, Fassung or Stand. Also avoid „Version“ and “version” where a
 reader sees it, „Upload 3“ as the name of a Fassung, and „Stand“ for a state.
+_Code_: `revision`. The links between the Fassungen of one document are
+`RevisionLinks` (`lib/documents/revision-links.ts`); `RevisionFacts` is the
+Index and Rev read off a title block, a different thing. The routes are
+`/api/documents/{id}/revision`, `…/revision-compare` and `…/revision-candidates`
+(the `fassung` paths redirect for one release), and the listing property is `revision`.
 
 **Freigabe** (approval):
 The office approving one Fassung, and only that. Its status (*Freigabestatus*)
@@ -192,19 +218,30 @@ settled answer.
 **Herleitung** (derivation):
 The visible trace of a turn above its answer: what Piloti searched, what it
 found, where it checked.
+_Code_: `derivation`.
 
 **Belegt durch** (backed by):
 The row of source chips under an answer, one per document that backs its claims.
 
 **Citation**:
-A pointer from a claim to a document and a place in it. A quote that does not
-match the source word for word is marked *nicht wörtlich in der Quelle belegt*
-(not verbatim in the source) and lowers the answer's confidence.
+A pointer from a claim to a document and a place in it. It must resolve to a
+passage the turn read, and a § or Punkt written beside it must stand in that
+passage. A pointer that does not hold is not removed silently: it is replaced
+by *Beleg nicht verifiziert* (citation not verified) where it stood. A quote
+that does not match the source word for word, or changes what it negates
+(*nicht*, *kein*, *nur*, *außer*), is marked *nicht wörtlich in der Quelle
+belegt* (not verbatim in the source) and lowers the answer's confidence.
 
 **Confidence** (Sicherheit):
-How far an answer can be relied on: high, medium or low. A legal answer without
-verified citations cannot be high, and a model measurement alone caps it at
-medium.
+How far an answer can be relied on: high, medium or low. A grading model reads
+the answer against everything its turn retrieved and read (passages, workspace
+records, the project profile, measurements, readings off drawings) and names
+the statements it relies on that nothing backs or that a source contradicts.
+A statement about the law needs a passage of that law; a record or a
+measurement backs a fact about the office or the building, never the law. A
+quote the source does not hold word for word lowers the level. When the check
+cannot run, no level is shown (*Belegprüfung nicht verfügbar*).
+_Code_: `claim_judge`, `confidence_check`.
 
 **Answer kind**:
 The shape of an answer: *direct*, *walkthrough*, *ruling* or *handoff*. Only a
@@ -260,27 +297,56 @@ the run may draw on at all.
 One requirement checked: *erfüllt* (met), *nicht erfüllt* (not met), *offen*
 (open) or *nicht anwendbar* (not applicable), with its Fundstelle. The
 *Befundmatrix* is the table of all of a report's findings.
+_Code_: `finding`, `findingsMatrix`; the four results are `met`, `notMet`, `open`
+and `notApplicable` in identifiers.
 
 **Abdeckung** (coverage):
 Whether the sources a search found answer the question. *Abdeckung:
-unzureichend* says they do not, without hiding what was found.
+unzureichend* says they do not, without hiding what was found; the agent reads it
+as the result's `Coverage: insufficient —` line.
 
 ## Delegated work
 
 **Aufgabe** (task):
 Work handed to Piloti to carry out, such as a *Soll-Ist* check (target against
-actual), an *Einreichcheck* (submission check), a document or a revision.
-_Avoid_: job; a job is a recurring prompt, which is something else.
+actual), an *Einreichcheck* (submission check), a document or a revision. A
+*stehende Aufgabe* (standing task) runs on a *Zeitplan* (schedule); a one-off
+runs once, at a due time or by hand. Agents read "task" (the task definition).
+_Avoid_: Auftrag, for this or for a run (the word stays only for a client's
+commission to the office); job, which is a claim-queue item in the code and
+nothing a person or an agent reads.
 
-**Run** (Lauf):
-One commissioned piece of long work (a deep research or an Aufgabe), which lives
-as a single message in the thread that asked for it.
+**Lauf** (task run):
+One attempt at an Aufgabe, or one commissioned deep research: a single message
+in the thread that asked for it. Agents read "task run".
+_Avoid_: Auftrag; "Aufgabe" for one attempt; job.
 
 **Laufblock** (run block):
 The element in the thread that shows a run: *angelegt* (created), *läuft*
 (running), *wartet* (waiting), *fertig* (done), *fehlgeschlagen* (failed),
 *abgebrochen* (cancelled) or *unterbrochen* (stopped early, with a report from
 what was there).
+_Code_: `RunBlock`; the states are `running`, `waiting`, `done`, `cancelled` and
+`interrupted`.
+
+**Chat** (conversation):
+A thread with Piloti and the people in it, in a project, in the office or on
+its own. Agents read "conversation".
+_Avoid_: Unterhaltung, Gespräch.
+
+**Zuständig** (assignee):
+The person an Anmerkung or a document is assigned to, who answers it. Agents
+read "assignee".
+_Avoid_: Verantwortlich.
+**Anfrage eines Agenten** (ask):
+A question an agent the person connected (Claude, Cursor, an A2A agent) puts
+to Piloti on their behalf. Piloti answers it like a typed question, as that
+person and on their budget, in a private conversation of theirs.
+In the A2A protocol an ask is a *task*, its conversation the *context*, and
+its answer an *artifact*; that is the protocol's word, not an Aufgabe.
+_Avoid_: task, Aufgabe or job for an ask, outside the A2A wire.
+_Code_: `agent_asks`; the states are A2A's: `submitted`, `working`,
+`completed`, `canceled`, `failed`, `rejected`.
 
 ## Sharing and keeping
 

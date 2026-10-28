@@ -4,17 +4,20 @@
 backend:
   - changed-files:
       - any-glob-to-any-file:
-          - "src/**"
-          - "frontends/aiq_api/**"
-          - "sources/**"
+          - "packages/agent/**"
+          - "apps/agent-host/**"
+          - "packages/knowledge-layer/**"
+          - "packages/ris-adapter/**"
+          - "packages/tavily-web-search/**"
+          - "evals/**"
           - "pyproject.toml"
           - "uv.lock"
 
 frontend:
   - changed-files:
       - any-glob-to-any-file:
-          - "frontends/ui/**"
-          - "frontends/web/**"
+          - "apps/workspace/**"
+          - "apps/site/**"
 
 ci:
   - changed-files:
@@ -35,7 +38,7 @@ deploy:
 database:
   - changed-files:
       - any-glob-to-any-file:
-          - "**/drizzle/**"
+          - "**/migrations/**"
           - "**/db/schema/**"
 
 tests:

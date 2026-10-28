@@ -100,12 +100,12 @@ does not have.
   `POST /api/projects/[id]/tasks/[taskId]/review`); the UI for it belongs to
   the UI workstream.
 - Bad: one more table inside the tenant boundary (secured by
-  `grid_secure_table`, listed in `rls-coverage.spec.ts`).
+  `secure_table`, listed in `rls-coverage.spec.ts`).
 
 ### Confirmation
 
 The tenant boundary is a CHECK plus a test, not a comment. Migration
-`0075_tasks.sql` calls `grid_secure_table` with the same org-and-project
+`0075_tasks.sql` calls `secure_table` with the same org-and-project
 predicate `jobs` uses, and names today's `status` / `review` /
 `filing_status` members as CHECKs. `rls-coverage.spec.ts` lists `0075` in
 `BOUNDARY_MIGRATIONS`; `task db:test:rls` (CI's tenant-isolation job) is
@@ -259,4 +259,4 @@ message, and the 404 that keeps the old path alive), `lib/tasks/task-thread.spec
   publish door), ADR-0055 (one HTTP surface per primitive), the
   agent-authored-documents design (decision 10),
   `docs/roadmap/agentic-workspace-architecture.md` §6 and Loop C, and
-  `docs/roadmap/piloti-writes-artifacts-and-approval.md` §5.
+  `docs/roadmap/agent-writes-artifacts-and-approval.md` §5.

@@ -3,7 +3,7 @@ name: Release notes
 # Publishes the reno notes to the marketing site.
 #
 # On every merge to `develop` that touched `releasenotes/`, this regenerates
-# `frontends/web/src/data/changelog.json` (translating the new English sentences
+# `apps/site/src/data/changelog.json` (translating the new English sentences
 # into German once, and caching the result in `releasenotes/translations/de.json`)
 # and commits it back. That commit is what puts the note in front of a reader:
 # it triggers CI, which rebuilds the web image, which the staging deploy rolls
@@ -32,7 +32,7 @@ name: Release notes
 # The commit is made with `[skip actions]`-free, ordinary content: it must
 # trigger the downstream image build, or the note never reaches the website. It
 # cannot loop, because the path filter below only fires on `releasenotes/**` and
-# this job only ever writes under `frontends/web/src/data/` and
+# this job only ever writes under `apps/site/src/data/` and
 # `releasenotes/translations/`.
 
 on:
@@ -70,7 +70,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
 
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
           enable-cache: true
 
@@ -100,7 +100,7 @@ jobs:
           REQUIRE: ${{ secrets.OPENROUTER_API_KEY != '' && '--require-translations' || '' }}
         run: |
           set -euo pipefail
-          files=(frontends/web/src/data/changelog.json releasenotes/translations/)
+          files=(apps/site/src/data/changelog.json releasenotes/translations/)
           for attempt in 1 2 3 4; do
             git fetch -q origin develop
             # The changelog is a function of the notes at the tip. When develop

@@ -23,9 +23,8 @@ from pathlib import Path
 
 import yaml
 
-# Skill name contract: lowercase, hyphen-separated, ``aiq-`` prefixed.
-NAME_PREFIX = "aiq-"
-NAME_RE = re.compile(r"^aiq-[a-z0-9]+(?:-[a-z0-9]+)*$")
+# Skill name contract: lowercase and hyphen-separated, with no product prefix.
+NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 # Names that predate the contract and are allowed to keep their existing form.
 GRANDFATHERED_NAMES: set[str] = set()
@@ -116,7 +115,7 @@ def validate_skill(skill_dir: Path, report: Report) -> None:
         if name != dir_name:
             report.fail(dir_name, f"frontmatter name '{name}' does not match directory '{dir_name}'")
         if name not in GRANDFATHERED_NAMES and not NAME_RE.match(name):
-            report.fail(dir_name, f"name '{name}' must be lowercase-hyphenated and start with '{NAME_PREFIX}'")
+            report.fail(dir_name, f"name '{name}' must be lowercase-hyphenated")
 
     description = frontmatter.get("description")
     if not description or not isinstance(description, str) or not description.strip():

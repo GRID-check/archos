@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0044: Langfuse as the durable LLM-observability backend
 
-- **Status:** Proposed
 - **Date:** 2026-08-09
 - **Deciders:** Platform
 - **Related:** ADR-0029 (Aspire dashboard telemetry), ADR-0031 (err2issue),
@@ -315,6 +318,9 @@ Two gaps this amendment deliberately does NOT close:
 - **Prompt management is deployed but not adopted.** Moving the agent's prompts
   behind Langfuse's registry is a separate decision with its own failure mode
   (a runtime dependency on the trace store for serving traffic).
+- **OTel 3 + Langfuse 6 (JS) / langfuse 5 (Python) migration**, deferred (was
+  #1413–#1416, #1209). Dependabot ignores their semver-major updates until it
+  lands.
 
 ## Amendment (2026-09-12): ClickHouse system logs TTL-bounded
 
@@ -437,6 +443,17 @@ writes scores since Amendment 3, but deletes nothing). Its cost is
 that the traces go within the hour, not in the request, and a span exported
 after the stamp waits for the retention sweep. Copies saved into Langfuse
 datasets would survive a trace delete; Piloti creates none.
+
+## Confirmation
+
+Added on acceptance (2026-10-27). `deploy/pulumi/src/platform/langfuse.spec.ts`
+holds the deployment to this record: the whole tier (web, worker, ClickHouse,
+a dedicated queue), the traces pipeline to Langfuse alone, credentials by
+reference and never as literal values, and an S3 identity scoped to its own
+bucket. That nothing configures a licence key is checked by review only. What
+reaches Langfuse is ADR-0089's to enforce
+(`frontends/aiq_api/tests/test_model_calls_are_traced.py`,
+`tests/aiq_agent/observability/test_langfuse_scores.py`).
 
 ## References
 

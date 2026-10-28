@@ -1,0 +1,906 @@
+{
+  "tools": [
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Searches the ingested knowledge base (the office's files and the OIB corpus) and returns quotable passages, each with a Citation key: the evidence tool. It does not put a file on screen (`surface_documents` does).\nInputs: `query`, a search query in the documents' language (topic, jurisdiction, year), not the raw user message. Narrow with `file_name=` (an indexed name from the inventory or the user; never invent one), `folder=` (a path as the inventory prints it after 'Ordner:'; includes everything filed beneath it; never invent one), `doc_class=` (Dokumentart key, e.g. oib_guideline), `title_contains=`, and `shelf=` (project, office or base; omitted, every shelf is read), or with `path=` as a hit's `Path:` line names a place, a folder or one file. `group_by=\"document\"` (ranked search only) returns one entry per document: its best passage and how many passages of the ranked pool it held.\n`match=\"exact\"` returns EVERY passage that contains the query literally, plus a table of the matching files with count and pages, and shows a term is written nowhere. Several spellings go in one query separated by '|'; case, ä/ae, ß/ss and a line break, space or hyphen between words are matched for you; a term of two or three characters matches as a whole word only. `stemmed=true` also finds inflected forms. Per shelf it states how many documents were searched and how many matched.\n`match=\"regex\"` is the same search with a regex in Python syntax, case-insensitive, for a pattern (a Geschäftszahl `MA 37/\\d{6}`, a fire door `\\bT30-\\d+`); `|` is then regex alternation. It needs one literal whole word or number it must contain (`37`, `T30`), or a `folder=`, `file_name=` or `doc_class=` to read in; a pattern that backtracks is refused. `context=` (0 to 3) adds the lines around every hit. A search that stops at its limit says so, and its counts are then lower bounds.\nReturns: numbered passages with Source, Citation (cite this key verbatim), Dokumentart, Ordner, page and text. A query that names a Richtlinie and nothing else ('OIB 2') returns every part of it the corpus holds, each with its Geltungsbereich and Gliederung: every member is then open at the level a read of one document opens it, and what is left to open is a Punkt by number.\n`conclusion=`: Optional: one line on what you are looking for, shown to the person. No effect on the result. Returns up to 16 excerpts by default (platform-configurable up to 50; the result header counts them), spread across multiple distinct documents (at most 5 per document where possible), so cross-cutting questions see every relevant Richtlinie.",
+      "inputSchema": {
+        "properties": {
+          "conclusion": {
+            "default": "",
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context"
+          },
+          "doc_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Doc Class"
+          },
+          "document_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Document Type"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File Name"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Filters"
+          },
+          "folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Folder"
+          },
+          "group_by": {
+            "anyOf": [
+              {
+                "const": "document",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Group By"
+          },
+          "match": {
+            "default": "meaning",
+            "title": "Match",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Path"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "refers_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Refers To"
+          },
+          "shelf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Shelf"
+          },
+          "stemmed": {
+            "default": false,
+            "title": "Stemmed",
+            "type": "boolean"
+          },
+          "title_contains": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Title Contains"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "InputArgsSchema",
+        "type": "object"
+      },
+      "name": "knowledge_search"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Opens a document by name: `document=` alone returns its OUTLINE, the document's opening passage plus a Gliederung of its top-level Punkte, and `document=` with `clause=` or `page=` returns exactly that passage. A lookup, not a search: no ranking, and it cannot find a document from a topic (`knowledge_search` does).\nInputs: `document`, the exact name or display title as the inventory or a hit printed it (e.g. 'OIB-Richtlinie 2, Ausgabe Mai 2023' or 'oib-rl_2_ausgabe_mai_2023.pdf'). `clause`, the number alone ('3.5.2', no 'Pkt.') or a table's caption ('Tabelle 3'), or for a project document what a hit's `Punkt:` line printed ('§ 4', 'Zeilen 2-41'); with `clause=`, `page=` is ignored. `page`, one page number. `pages`, a range ('4-6', at most 30 pages) in reading order without the overlap between neighbouring chunks, up to about 6k tokens; a read that stopped early ends with a `cursor` to pass back with the same `document=`.\nReturns: the passages, each with Source, Citation (copy verbatim), Dokumentart, Punkt and page. The Gliederung is an index, not evidence: only passages carry a Citation; a Punkt it lists, or one an outline in a `knowledge_search` result lists, opens here by its number (`clause=`). An unknown document name is refused, with up to three labelled guesses from this turn's readable inventory when anything is close.\n`conclusion=` is optional: one line on what you are looking for; it has no effect on the call.",
+      "inputSchema": {
+        "properties": {
+          "clause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Clause"
+          },
+          "conclusion": {
+            "default": "",
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
+          "document": {
+            "title": "Document",
+            "type": "string"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Page"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pages"
+          }
+        },
+        "required": [
+          "document"
+        ],
+        "title": "ReadPassageInput",
+        "type": "object"
+      },
+      "name": "read_passage"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Lists the reader's OWN files the way the Files pane shows them: which files exist, in which folder, of which Dokumentart, uploaded when. A deterministic listing, paged, not capped by the prompt inventory. It says which files exist, not what they say: reading or searching the documents does.\nInputs, all optional: with none, every file on Projektwissen, Büroablage and Private Sitzung, ordered by folder, after an overview of the top-level folders with file counts. `folder=` one folder and everything below it. `name_contains=` words that must all appear in the file name or title (case and umlaut spelling do not matter). `doc_class=` a Dokumentart key. `added_since=` YYYY-MM-DD. `sort=newest`. `topic=` a Thema Piloti recognised (Attika, Holzrahmenbau). `shelf=` project | office_shelf | session | base (base, the platform OIB corpus, is listed only when asked). `offset=` the next page, as the result says.\n`view=\"tree\"` (`depth=` 1-4, default 2) returns a card per folder instead of file lines: counts, Dokumentart mix, pages, dates, the current Fassung; filters apply, no paging.\n`revisions_of=` a file name returns that document's whole chain of Fassungen, newest first, each with Index/Datum, upload date and what changed against the one before; every other filter is ignored. With `compare_to=` another Fassung of the chain (its file name, or \"previous\"), it returns what changed, page by page, in the printed text and in the reading of the drawings, with the Plankopf's Index and Stand („was hat sich zwischen Index B und C geändert“).\nReturns: a count, the subfolders, then one line per file: exact file name, title, folder, Dokumentart, page count, topics, the date a photo was taken, a Fassung mark (read from the name, or a replacement a person confirmed, with what changed), upload date, a one-line summary. An index, not a source: it is never cited, and a summary does not say what a file contains. File names are written exactly as returned; each becomes a link the reader can open.",
+      "inputSchema": {
+        "properties": {
+          "added_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Added Since"
+          },
+          "compare_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Compare To"
+          },
+          "depth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Depth"
+          },
+          "doc_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Doc Class"
+          },
+          "folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Folder"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Limit"
+          },
+          "name_contains": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name Contains"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Offset"
+          },
+          "revisions_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Revisions Of"
+          },
+          "shelf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Shelf"
+          },
+          "sort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sort"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Topic"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "enum": [
+                  "files",
+                  "tree"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "View"
+          }
+        },
+        "title": "InputArgsSchema",
+        "type": "object"
+      },
+      "name": "list_files"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Shows you a page of a document as an image; with `region=[x, y, w, h]` only that box, sharper. `document`: the file name from the inventory or from a hit's `Citation:` line, or a document id; empty means the document open on the canvas, then this chat's document. `page` starts at 1. `region` is shares of the page as shown: 0 to 1, origin top left, never pixels. `image_index` shows the embedded image a hit's `Image:` line names, at its own resolution; a hit's `Region:` line gives the numbers for the place it sits. Where something lies on a sheet is read off the image, not off the text. `question` (optional): a second reader, the office's vision model, answers it from the same crop as short lines starting `Gelesen:`, a reading of the drawing and never a measurement; a reading does not cost a look. A look's result carries its `[N]` to cite. A look that finds nothing is reported as absence in the prose, not shown as a card. At most 6 looks per turn, at most 2 of them whole pages; every result says how many are left. Fails open with a sentence saying why.",
+      "inputSchema": {
+        "properties": {
+          "document": {
+            "default": "",
+            "title": "Document",
+            "type": "string"
+          },
+          "image_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Image Index"
+          },
+          "page": {
+            "default": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "question": {
+            "default": "",
+            "title": "Question",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Region"
+          }
+        },
+        "title": "InputArgsSchema",
+        "type": "object"
+      },
+      "name": "look"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Query the project's IFC/BIM model for EXACT facts about the building: element counts, rooms and their areas, storeys, property values (fire rating, U-value, load-bearing, …), materials and classifications. Use this INSTEAD of knowledge_search whenever the question is about THIS building rather than about a regulation — 'how many escape doors', 'net floor area per storey', 'which walls are external', 'what is the U-value of the windows'.\n\nAn IFC model is a TREE: project → site → building → storey → elements, and rooms are IfcSpace elements sitting in a storey. 'which storey is this on' and 'which rooms are in the Erdgeschoss' are answered by that containment, not by geometry.\n\noperation:\n  'overview'   — what the model is: project/site/building names, storeys, totals, areas. Start here when you do not yet know what the model contains.\n  'health'     — the model's VALIDATION report: elements assigned to no storey, rooms with no published area, duplicated GlobalIds, missing standard property sets. Read this before making a claim about model coverage, and never present a model as complete without it.\n  'types'      — element counts per IFC type (IfcWall: 128, IfcDoor: 34, …).\n  'properties' — the model's OWN property vocabulary: which property sets exist, which properties they carry, and the values those properties actually take, with counts. ALWAYS call this before filtering on a property you have not seen — guessing a plausible property name returns zero rows, which reads like 'the building has none'.\n  'elements'   — list matching elements (name, type, storey, tag).\n  'element'    — everything about ONE element, addressed by its IFC GlobalId.\n  'schedule'   — the Raumbuch: every room with its storey, area and volume, plus the per-storey and building totals. Use for 'Flächenaufstellung', 'welche Räume', 'wie groß ist'. The totals already say how many rooms publish no area — report that too.\n  'takeoff'    — Massenermittlung: one quantity summed per element type, optionally split by material. Set 'quantity' (NetSideArea, NetVolume, …) and group_by=\"material\" for a cost-estimate breakdown. The material split matches the material NAMES the export wrote (a substring match on names like 'Beton C25/30'); it does not read the layer structure, so a wall counts once under its first material rather than per layer.\n  'profile'    — project facts the MODEL implies: storeys above/below ground, the Fluchtniveau band, the main use. These are PROPOSALS with their evidence — offer them through a project_profile_patch card for the user to confirm, never state them as settled.\n  'compliance' — run the OIB rule catalogue against the model and report, per requirement, how many elements are met / not met / UNDECIDABLE. The third state is the important one: it means the model does not publish the value, NOT that the building fails. Each row names the exact property (e.g. Pset_WallCommon.FireRating) that would settle it — report that list, it is what the architect has to add in their CAD. Pass building_class and main_use from the project data when you know them; a rule that needs a fact it was not given stands down WITH its reason rather than guessing. main_use must be one of residential, office, lodging, assembly, healthcare, agriculture, manufacturing, storage, other — anything else makes rules stand down as 'not applicable', which reads as a verdict and is not one. building_class is 1-5.\n  'compliance-diff' — the same catalogue over two revisions, reporting only the requirements whose STATUS MOVED. Set 'compare_with' to a substring of the OLDER file's name. This answers 'was hat sich der letzte Stand kaputt gemacht' — including a requirement that stopped being decidable because the re-export dropped a property.\n  'compare'    — what changed between TWO revisions of the same building. Set 'compare_with' to a substring of the OLDER file's name; this model is the newer one. Matched by IFC GlobalId, so a re-export that renumbers everything still reports zero changes. This is the question no pair of PDFs can answer — use it for 'what changed since the last submission'.\n  'aggregate'  — count/sum/avg/min/max over the matching elements, optionally grouped by ifcType, storey, predefinedType, typeName or material. This is how you answer 'how many' and 'how much' — never add up an element list yourself.\n\nfilters (JSON object, all optional): {\"ifcTypes\": [\"IfcWall\"], \"storeys\": [\"Erdgeschoss\"], \"nameContains\": \"Flucht\", \"material\": \"Beton\", \"classification\": \"B.1.2\", \"properties\": [{\"set\": \"Pset_WallCommon\", \"name\": \"IsExternal\", \"operator\": \"eq\", \"value\": true}]}. Property operators: eq, neq, contains, gt, gte, lt, lte, exists, missing. 'set' may be omitted to search every property set. Use \"source\": \"quantity\" inside a property filter to match a quantity instead.\n\nSTOREY NAMES are matched exactly, and exports name storeys whatever the modeller typed — 'EG', '00 Erdgeschoss', 'Level 0', 'Niveau 0'. Call 'overview' first and copy the storey names it returns verbatim; a name that is not in that list matches nothing, and an empty result reads like 'the ground floor has no walls'. The same warning as for property names, for the same reason.\n\nEvery filter key is validated. An unknown key is REJECTED, not ignored — if the tool says a key was not recognised, fix the spelling and call again rather than reporting the result of a query that never ran. Only 'elements', 'aggregate' and 'takeoff' take filters at all; the rest read the whole model and refuse one rather than quietly answering a wider question.\n\nIf a result says its figures cover only PART of the model, say so in the answer. Those are not the building's totals and must not be presented as such.\n\nFor aggregate: metric is count (default), sum, avg, min or max; sum/avg/min/max need 'quantity' (e.g. NetFloorArea, NetSideArea, NetVolume). groupBy is optional. sum and avg SKIP elements that do not publish the quantity, and the summary says so as 'über X von Y Bauteilen' — report both numbers, because the gap between them is a fact about the export the architect needs.\n\nNever turn a compliance result into a statement that the building complies. The catalogue is an orienting check (orientierende Prüfung) over the values the model publishes, it reads no geometry, and escape-route lengths, parapet heights and fire-compartment sizes are not in it at all. Say what was checked, what was not, and what could not be decided.\n\nReport the caveat line verbatim whenever one comes back — it says which parts of the building the numbers do NOT cover, and an answer that drops it is wrong.\n\nA missing value is a fact about the EXPORT, not about the building. IFC2X3 models in particular rarely publish Qto_* quantity sets at all, so 'no NetFloorArea' on a 2X3 file usually means the exporter did not write quantities — not that the rooms have no area. Check 'overview' for the schema version and say which of the two it is rather than reporting zero.\n\nWhenever a row comes back with a 'Link:' value, the path is data: copy it verbatim if you name that element in a sentence. Never invent a path.\n\nHow a query becomes a card is `ifc-spatial-reasoning`, not this description. Load that skill before emitting a model card. Highlight a set with the same filter that found it, rather than a list of ids. A highlight group takes exactly one of the two per group.\n\nWhen a compliance result comes back with a 'BCF export of the open issues:' path, OFFER it as a link at the end of the answer — `[offene Punkte als BCF](/api/projects/…/bim/checks/export?…)` using that exact path. It downloads the open requirements as a BCF 2.1 file that opens in ArchiCAD, Revit, Solibri or BIMcollab with the affected elements selected, which is how the missing properties actually get authored. Copy the path verbatim. The export is ONE-WAY: nothing reads the topics back, so a resolved item shows up here only after the corrected model is re-uploaded and checked again — say that rather than implying the BCF tracks status.\n\nmodel_name selects one model when the project has several (a substring of the file name); leave it empty when there is only one. Report the numbers this tool returns as they are — do not recompute, round differently, or extrapolate them.",
+      "inputSchema": {
+        "description": "The arguments of one ``ifc_query`` call. Every default is written here and nowhere else.",
+        "properties": {
+          "building_class": {
+            "default": 0,
+            "title": "Building Class",
+            "type": "integer"
+          },
+          "compare_with": {
+            "default": "",
+            "title": "Compare With",
+            "type": "string"
+          },
+          "filters": {
+            "default": "",
+            "title": "Filters",
+            "type": "string"
+          },
+          "global_id": {
+            "default": "",
+            "title": "Global Id",
+            "type": "string"
+          },
+          "group_by": {
+            "default": "",
+            "title": "Group By",
+            "type": "string"
+          },
+          "ifc_type": {
+            "default": "",
+            "title": "Ifc Type",
+            "type": "string"
+          },
+          "limit": {
+            "default": 0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "main_use": {
+            "default": "",
+            "title": "Main Use",
+            "type": "string"
+          },
+          "metric": {
+            "default": "count",
+            "title": "Metric",
+            "type": "string"
+          },
+          "model_name": {
+            "default": "",
+            "title": "Model Name",
+            "type": "string"
+          },
+          "operation": {
+            "default": "overview",
+            "title": "Operation",
+            "type": "string"
+          },
+          "quantity": {
+            "default": "",
+            "title": "Quantity",
+            "type": "string"
+          }
+        },
+        "title": "IfcQueryInput",
+        "type": "object"
+      },
+      "name": "ifc_query"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "MEASURE the project's IFC/BIM model — geometry, topology and spatial relationships — and report every number with the provenance it came with. Use this when the answer is a DIMENSION, a DISTANCE, an AREA the export may not have published, or a spatial relationship ('which room does this window open into', 'wie hoch ist der Raum wirklich', 'wie weit ist die Tür von der Wand', 'welche Bauteile begrenzen diesen Raum').\n\nThis is NOT a replacement for ifc_query. ifc_query reads the extracted index: it is fast, it covers the whole model, and it answers what the export WROTE DOWN — counts, storeys, property values, published quantities. Reach for it first for 'how many' and 'which ones'. Reach for ifc_measure when the file does not state the number and the geometry has to be read, or when a declared number needs a second, independent route to check it against.\n\nCALL 'briefing' FIRST, once per model, before anything else. The briefing is this FILE speaking: it names the storeys with their elevations, the property vocabulary this exporter actually used (DIALEKT), and — the part that saves whole turns — the BLIND section, which says which questions this file cannot answer at all. Storey and property names come from THERE, copied verbatim. A storey name you invented matches nothing, and an empty result reads like 'the building has none'.\n\nThe parameter list says WHICH arguments each operation takes and what every enum value means. What follows is what each operation is FOR — the judgement the schema cannot carry.\n\n  'briefing'       — this file speaking about itself. Free, no geometry. START HERE.\n  'find_elements'  — GlobalIds by type, name, storey or spatial role. The input every other operation needs. Free, no geometry.\n  'element'        — everything about ONE element, including which relations it actually has, so a relation that would come back empty need not be guessed at. Free, no geometry.\n  'relations'      — one topological question about one element.\n  'measure'        — one measurement of one element, or of an already-known set of them.\n  'survey'         — ONE measure across ALL elements of a selection, each named, with the SPREAD over the set. Reach for this the moment the question is plural — 'wie hoch ist der Keller' names one room and means seventeen, and 'all 17 at 2.70 m' and '16 at 2.70 m, one at 0.25 m' are different answers to it. Measuring one element and generalising supports neither, whichever element you picked. The spread IS the finding; report it.\n  'element_profile' — the reverse: EVERY measure that applies to ONE element, in one call. Which measures apply follows from the element's IFC type, so a door is not asked for its lichte Raumhöhe. Reach for it once an element has become interesting — the outlier a survey named — instead of guessing one measure at a time.\n  'distance'       — the distance between TWO elements, along an axis, between centroids or boxes. An Achsabstand, never a clear dimension.\n  'clearance'      — the LICHTE dimension between TWO elements: the smallest SURFACE-to-SURFACE gap. This is the number 'distance' does not have — its 'min' is a gap between BOUNDING BOXES, and on the sample house's pitched roof against the interior partition that reads 0.000 m where the clear dimension is 0.995 m, because the roof's box swallows the wall's. A box gap is a lower bound on a clearance and never an upper one, so it errs in the direction where too tight passes as free. For the clear width of ONE opening use 'measure' with clearWidth instead — an opening has two reveals but is one element.\n  'sun_position'   — where the sun stood over this building at an instant: azimuth, altitude, and the direction TOWARDS the sun in THIS model's coordinates. NOT a Besonnungsstudie: it says where the sun was, never whether the neighbour's gable was in the way — that needs everything outside the property line, which is not in the file, and the caveat says so. Undecidable without IfcSite.RefLatitude/RefLongitude, and no latitude is assumed: an assumed Vienna on a Vorarlberg project is 1.4° out in altitude and would come back as a measured number with a tolerance. This tool therefore takes no coordinates at all.\n  'storey_heights' — the storey pitch (slab top to slab top) for every storey. This is the STRUCTURAL height, NOT the lichte Raumhöhe — never use it for a Raumhöhennachweis, use 'measure' with clearHeight.\n  'room_inventory' — rooms grouped by a SUSPECTED use, inferred from their names. A proposal for a human to confirm, never a finding.\n  'fire'           — the OIB 2 (Brandschutz) geometry. NO Gebäudeklasse: escape_level returns a HEIGHT, and which class follows from it is a legal classification under OIB 2 plus Landesrecht.\n  'envelope'       — the OIB 6 (Wärmeschutz) geometry of the WHOLE building. Asking wall by wall is how the wall that was left out stays invisible, so it takes no element. No U-value is CALCULATED: a declared one is repeated, a missing one is missing and is never derived from the layer set, because a U-value computed from a material list is a different number from the one the architect signed and looks identical. Costs geometry (seconds).\n  'overhang'       — how far one element projects past another's facade plane. The Dachüberstand, the balcony, the canopy.\n  'light_incidence' — builds the light prism over an opening's lower edge and reports which elements reach into it and how deep. The result is GEOMETRY: a cut prism enlarges the required Lichteintrittsfläche under OIB 3, it does not ban the window. Report what intrudes and how far, then apply the clause yourself. The host wall is deliberately not excluded on its own, because a window set deep in a thick wall genuinely is shaded by its own reveal — but if the wall comes back as an obstruction, re-run with it excluded (keeping any other exclusion you already had), and say in the answer that you did and why.\n  'view'           — LOOK at a floor plan. Returns the storey as an IMAGE you can actually see, cut at 1.2 m so door and window openings appear as gaps. Use it to settle which element is meant, to sanity-check that a measured arrangement looks the way the numbers imply, or before measuring at all. ~6 s. NEVER read a number off it — a dimension taken from a picture is guessed even when it happens to be right.\n  'draw'           — the same floor plan as an SVG FILE for the USER (~5 s). It returns a path, not an image: you cannot see it. Use 'view' when YOU need to look, 'draw' when the user wants the file.\n  'shopping_list'  — writes the model's blind spots as a buildingSMART IDS 1.0 file the architect can run in Solibri/BIMcollab/ifctester against their own model, and re-run after fixing to prove it landed. Offer it when several answers came back undecidable, or when asked what to fix in the export. It requires only that a property EXISTS and is evaluable, never what value it must have — the thresholds are in the OIB Bestimmung. Not every blind spot is expressible; the summary says how many are and names the rest.\n\nPROVENANCE — the reason this tool exists. Every answer says HOW it was obtained, and the three are three different sentences in German that must not be swapped:\n  'declared' → „laut Modell …“ / „das Modell deklariert …“. The file states it.\n  'computed' → „gemessen: … (±Toleranz)“. WE measured it from the geometry. The tolerance is part of the claim — quote it. NEVER write a computed number as something the model states.\n  'inferred' → „vermutlich …“ plus the reasons. A heuristic, offered for confirmation, never a finding. room_inventory is always this: whether a room is an Aufenthaltsraum is a LEGAL classification, not a geometric one.\nThe rendered summary line already carries the right verb — quote that line rather than reassembling the claim yourself.\n\n'decidable: false' is NOT an error and NOT a fact about the building. It means the question was well formed and THIS EXPORT cannot answer it. Report it as a finding about the export, name what is missing, and pass on 'missing.remedy' verbatim — that sentence is what the architect changes in their CAD to make the question answerable. Saying 'the building has no sill height' when the file merely does not publish one is a wrong answer.\n\nNEVER recompute, round, convert or extrapolate a number this tool returns. Do not add two areas together, do not derive a third dimension from two others, do not restate a millimetre value in centimetres. If a question needs a number that was not returned, make another call — arithmetic done in an answer is a guess wearing the tool's authority. And NEVER read a measurement off a drawing: 'draw' shows the arrangement, 'measure' and 'distance' give the numbers, and a value read off an image is guessed even when it happens to be right.\n\nCOST — plan the calls before making them. 'briefing', 'find_elements' and 'element' are free (pure topology). The first 'measure' or 'distance' on a model tessellates it (~2 s for a single-family house). The geometric relations opensTo / bounds / enclosedBy / adjacentSpaces build a space-contact map on first use — around 7 seconds on a cold model — because most exports write no IfcRelSpaceBoundary and it has to be derived. 'draw' is ~5 s. After that everything is milliseconds, because the model stays parsed. Do NOT call the geometric relations speculatively or 'to see what is there' — call them when the answer needs them.\n\nEvery GlobalId you pass must come from 'find_elements', from 'element', or from an ifc_query result in THIS turn. An invented GlobalId is refused by name, not guessed at.\n\nA typical chain — 'ist die Raumhöhe im Wohnzimmer ausreichend?':\n  1. operation='briefing' → the storey names and what this file cannot answer\n  2. operation='find_elements' ifc_type='IfcSpace' name_contains='Wohn' storey='Erdgeschoss'\n  3. operation='measure' global_id='<the GlobalId from step 2>' measure='clearHeight' — or, if the question is really about the storey and not that one room, operation='survey' measure='clearHeight' storey='Erdgeschoss', which measures all of them and gives the spread\n  4. report the rendered line as it stands — gemessen, with its tolerance and its caveat\n\nWhen the model cannot be resolved the tool says so in German — report that sentence rather than answering from your own knowledge of buildings.\n\nA measurement that contradicts a declared quantity is reported as a contradiction ('Widerspruch'), and that is a FINDING an architect wants before submission: their schedule and their geometry disagree. Report both numbers and which one the tool preferred; do not silently pick one.",
+      "inputSchema": {
+        "description": "The arguments of one ``ifc_measure`` call, as the model sees them.",
+        "properties": {
+          "angle_deg": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 90.0,
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "'light_incidence' only — the Lichteinfallswinkel in degrees, strictly between 0 and 90. It is a fact about the BESTIMMUNG and not about the model (OIB 3: 45, with swivel_deg 30). This tool refuses without it rather than defaulting, because supplying it would be applying the clause.",
+            "title": "Angle Deg"
+          },
+          "global_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "default": "",
+            "description": "The element's IFC GlobalId, from 'find_elements', from 'element', or from an ifc_query result in THIS turn — an invented id is refused by name, not guessed at. Usually ONE id. A list (or one comma-separated string) where the question is about a set: 'measure' over an already-known selection (at most 50, each element keeping its own answer, tolerance and refusal), 'view' to mark several at once, 'fire' with kind='compartmentArea' for the rooms of the compartment — and exactly two rooms for kind='separatingElements'. 'envelope' takes none: an envelope is not a property of an element. The selecting operations ('find_elements', 'survey', 'draw') and the whole-model ones need none either.",
+            "title": "Global Id"
+          },
+          "ifc_type": {
+            "default": "",
+            "description": "'find_elements', 'survey' and 'draw' — the IFC CLASS, e.g. IfcSpace, IfcWindow, IfcDoor. The spatial role goes in 'kind' instead.",
+            "title": "Ifc Type",
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "project",
+                  "site",
+                  "building",
+                  "storey",
+                  "space",
+                  "element",
+                  "opening",
+                  "group",
+                  "escape_level",
+                  "compartmentArea",
+                  "separatingElements",
+                  "siteBoundary",
+                  "doorGraph",
+                  "thermalEnvelope",
+                  "areaByOrientation",
+                  "compactness",
+                  "expensive"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Three vocabularies on one field, scoped by operation.\n  'find_elements' and 'survey' — the spatial ROLE, not the IFC type (a room is 'space'): project, site, building, storey, space, element, opening, group.\n  'fire' — which OIB 2 (Brandschutz) geometry, default 'escape_level':\n    escape_level — height of the topmost occupied floor above the lowest adjoining ground — the number the Gebäudeklasse hangs on. Returns a HEIGHT and never a class\n    compartmentArea — floor area of a fire compartment across several rooms, each room listed\n    separatingElements — what lies BETWEEN two rooms — wall, slab, and the doors in them — each with its DECLARED FireRating, and explicitly with its absence\n    siteBoundary — distance to the site boundary (Brandübertragung). Undecidable on most exports, because a parcel boundary is rarely exported — and it is not guessed here\n    doorGraph — the WHOLE building's walkable graph: rooms as nodes, OUTSIDE as its own node, doors as edges — plus the doors that became NEITHER (unbestimmt, ausgeschlossen). A room with no edge has no way out; an unresolved door is a hole in EVERY route through this building. measure/egressPath gives one route, this says how sound the basis of all routes is. Takes no global_id\n  'envelope' — which OIB 6 (Wärmeschutz) geometry of the WHOLE building, default 'thermalEnvelope':\n    thermalEnvelope — which elements form the boundary between heated inside and outside, grouped by kind, each with its area and its DECLARED U-value. Every entry says which rung decided it — declared IsExternal and inferred from room contact are not the same claim — and the two lists that make the total checkable come back with it: interior (decided, left out) and unbestimmt (not decided, so neither counted nor discarded)\n    areaByOrientation — envelope area per compass bearing, opaque and transparent apart, with the window-to-wall ratio per facade. Needs a declared TrueNorth; without one the bearing is refused, not guessed\n    compactness — A/V in 1/m, with the characteristic length (V over A) beside it. A and V come back separately, because a ratio whose inputs are invisible cannot be checked by whoever signs it. V is the NET volume (the sum of the IfcSpace solids)\n  'element_profile' — 'expensive' to include escape route, reachability, turning circle and door approach, which are left out otherwise.\nUnused by every other operation.",
+            "title": "Kind"
+          },
+          "limit": {
+            "default": 0,
+            "description": "How many rows: 'find_elements' up to 500, 'survey' up to 50 — every row there is a real geometric measurement and not an index lookup. 0 leaves the server's default.",
+            "title": "Limit",
+            "type": "integer"
+          },
+          "measure": {
+            "anyOf": [
+              {
+                "enum": [
+                  "extent",
+                  "floorArea",
+                  "sillAndHead",
+                  "elevation",
+                  "clearHeight",
+                  "azimuth",
+                  "lightEntryArea",
+                  "egressPath",
+                  "reachableFrom",
+                  "clearWidth",
+                  "orientedExtent",
+                  "roomDepth",
+                  "stairGeometry",
+                  "rampSlope",
+                  "headroom",
+                  "stepsOf",
+                  "turningCircle",
+                  "thresholdHeight",
+                  "balustrade",
+                  "clearApproach"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "'measure' (one element) and 'survey' (a whole selection) — WHICH quantity:\n    extent — width, depth, height and centroid of one element\n    floorArea — a room's floor area FROM THE GEOMETRY — available even when the export publishes no quantity. When it publishes one, both routes are compared and a contradiction is reported\n    sillAndHead — Brüstungs- und Sturzhöhe of a window/door above ITS OWN storey\n    elevation — underside and top, absolute and above the element's own storey\n    clearHeight — lichte Raumhöhe — floor to the LOWEST thing hanging into the room (suspended ceiling, downstand, duct). NOT the height of the space solid, which is what 'extent' gives and what a Raumhöhennachweis must not use\n    azimuth — which way a facade faces. Undecidable without TrueNorth in the file\n    lightEntryArea — a ROOM's light-entry area and what percent of its floor area that is — the number an OIB 3 daylight check comes down to. Sums only the EXTERNAL openings (an internal door lights nothing) and measures the structural clear opening, not the glazed area. Applies no threshold: the percentage is in the Bestimmung, not in the model\n    egressPath — a ROOM's shortest WALKABLE route to the outside through doors, with the rooms, the doors and a length. Adjacency is not walkability — two rooms sharing a wall with no door between them are adjacent and unreachable. The length is a polyline through room and door centres, so it is a LOWER BOUND and explicitly not a Fluchtweglänge under OIB 2\n    reachableFrom — every room reachable from this one through doors, with door counts. Answers 'which rooms are behind this door', and finds rooms with no way out at all — itself a finding\n    clearWidth — the LICHTE Breite and Höhe of an opening, measured on the aperture itself. THIS is what a door-width or escape-route-width check needs — 'distance' measures centroids and boxes and gives an Achsabstand\n    orientedExtent — length/width/height along the ELEMENT's own axes plus its bearing from north. Use for anything skewed to the model grid, where 'extent' is axis-aligned and systematically too large\n    roomDepth — how deep a room runs back from its daylight facade, the width along that facade, and the ratio to the clear height. Names which facade it chose and, for a corner room, the runner-up\n    stairGeometry — riser height, tread depth, riser count and the NUTZBREITE of a stair flight — plus the SPREAD of the risers, because a stair can be right on average and still unwalkable. Declared values are checked against the geometry and a contradiction is reported\n    rampSlope — a ramp's slope as a percentage AND as a ratio, with run, rise and clear width\n    headroom — clear height over a stair flight or ramp, measured PERPENDICULAR to the pitch rather than vertically — a vertical ray from the tread misses the tight point (1.35 m vs 1.65 m measured)\n    stepsOf — the flights and landings a stair is made of, so one flight can be asked about\n    turningCircle — the largest circle that fits on a ROOM's free floor — what a Wendekreis check comes down to. Counts fixed built-ins only; furniture is reported beside it, because a permit is granted on the building and not on the chairs. Applies no threshold\n    thresholdHeight — the step at a door. Where the export models no floor build-up this is a STRUCTURAL number and the answer says so — screed, covering and seal are what make the step, so 0 mm on raw slabs says nothing about the finished threshold\n    balustrade — where there is a fall at an opening, how far, and what stands there. Undecidable when the export contains no IfcRailing at all — no railing in the model is not no railing on site\n    clearApproach — the free floor in front of a door on each side, and what ends it",
+            "title": "Measure"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "min",
+                  "centroid",
+                  "horizontal",
+                  "vertical",
+                  "highlight",
+                  "only"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Two vocabularies on one field, scoped by operation.\n  'distance' (default 'min'):\n    min — gap between the two axis-aligned BOUNDING BOXES. 0 means the boxes overlap — it does NOT prove the solids touch, and on a skewed element the true gap is larger\n    centroid — centre to centre in 3D (Achsabstand). NOT a clear dimension\n    horizontal — centre to centre in plan, Z ignored (Achsabstand) — what a plan drawing scales off. NOT a lichte Breite: for a clear width use measure/clearWidth on the opening\n    vertical — difference in centre HEIGHT — what a section scales off. NOT a lichte Höhe: for that use measure/clearHeight on the room\n  NONE of those four is a clear dimension. For a lichte Breite use measure='clearWidth' on the opening, for a lichte Höhe measure='clearHeight' on the room, and for the smallest surface-to-surface gap between two elements operation='clearance'.\n  'view' (default 'highlight'):\n    highlight — mark these elements red on the full plan — 'where is this in the building'\n    only — draw nothing but these elements — 'what does this look like'\nUnused by every other operation.",
+            "title": "Mode"
+          },
+          "model_name": {
+            "default": "",
+            "description": "A substring of the file name, to pick one model when the project has several. Leave it empty when there is only one.",
+            "title": "Model Name",
+            "type": "string"
+          },
+          "name_contains": {
+            "default": "",
+            "description": "'find_elements' and 'survey' — a substring of the element's name. Take it from the briefing or from an earlier result; an invented fragment matches nothing.",
+            "title": "Name Contains",
+            "type": "string"
+          },
+          "operation": {
+            "description": "WHICH question to ask. The only required argument — every other field is scoped by this one. On a model you have not looked at yet, 'briefing'.",
+            "enum": [
+              "briefing",
+              "find_elements",
+              "element",
+              "relations",
+              "measure",
+              "survey",
+              "element_profile",
+              "distance",
+              "clearance",
+              "sun_position",
+              "storey_heights",
+              "room_inventory",
+              "draw",
+              "view",
+              "shopping_list",
+              "fire",
+              "envelope",
+              "overhang",
+              "light_incidence"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "other_global_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "default": "",
+            "description": "The SECOND element, and it means a different thing per operation. 'distance' and 'clearance': the element to measure against. 'overhang': the element whose outer face is the REFERENCE plane, while global_id is the projecting one (get it from relations/hostedIn on the window). 'light_incidence': the elements EXCLUDED from the test — a list, or several ids separated by commas. Unused by every other operation.",
+            "title": "Other Global Id"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "hostedIn",
+                  "hosts",
+                  "fillerOf",
+                  "bounds",
+                  "enclosedBy",
+                  "opensTo",
+                  "connects",
+                  "contains",
+                  "containerOf",
+                  "adjacentSpaces",
+                  "elementsOfStorey",
+                  "above",
+                  "below"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "'relations' only — which topological question to ask about global_id:\n    hostedIn — which wall carries this window/door (from voids+fills)\n    hosts — which openings are cut out of this element\n    fillerOf — what fills this opening\n    bounds — which elements bound this room  [geometry, see below]\n    enclosedBy — which rooms this element bounds  [geometry, see below]\n    opensTo — which rooms this window/door opens into  [geometry, see below]\n    connects — which elements butt onto this one\n    contains — which elements sit in this storey or room\n    containerOf — which storey or room this element sits in\n    adjacentSpaces — which rooms border this room  [geometry, see below]\n    elementsOfStorey — every element of this storey, including those in rooms\n    above — what is directly ABOVE this element or room  [geometry, rays; furniture excluded]\n    below — what is directly BELOW it  [geometry, rays]\nThe ones marked [geometry] cost seconds on a cold model — see COST.",
+            "title": "Relation"
+          },
+          "room_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "habitable_room",
+                  "ancillary_room",
+                  "circulation"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "'room_inventory' only — which SUSPECTED use to group the rooms by. Inferred from their names: a proposal for a human to confirm, never a finding.",
+            "title": "Room Kind"
+          },
+          "storey": {
+            "default": "",
+            "description": "'find_elements', 'survey', 'draw' and 'view' — the storey name EXACTLY as the briefing spells it. A storey name you invented matches nothing, and an empty result reads like 'the building has none'.",
+            "title": "Storey",
+            "type": "string"
+          },
+          "swivel_deg": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 90.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "'light_incidence' only — the lateral Verschwenkung in degrees, from 0 to under 90. From the Bestimmung as well (OIB 3: 30).",
+            "title": "Swivel Deg"
+          },
+          "when": {
+            "default": "",
+            "description": "'sun_position' only — an ISO 8601 instant WITH a time zone, e.g. '2026-06-21T12:00:00+02:00' (Austrian summer time) or '2026-06-21T10:00:00Z'. A timestamp without a zone is refused rather than read as UTC: Austria runs UTC+1 and UTC+2, so reading 12:00 as UTC moves the sun 30° east of where it stood.",
+            "title": "When",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "title": "IfcMeasureInput",
+        "type": "object"
+      },
+      "name": "ifc_measure"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Answers a question about Austrian law from RIS (Rechtsinformationssystem des Bundes) with the actual paragraphs, quotable and citable: Bauordnungen, Bautechnikgesetze, Garagengesetze and other Landesgesetze, the federal acts behind them, and court decisions; also whether an OIB requirement binds. The text of the OIB-Richtlinien themselves and the office's uploads are in knowledge_search, not here.\n\nOne call covers the whole path: it reads the address out of the question (§/Artikel, the named law, the Bundesland), takes the verified catalog pointer or searches RIS live, downloads at most two documents and cuts the paragraphs that answer the question out of them. No document number is passed.\n\nArgs:\n    question (str): The legal question, in German, as the user means it, not a search string.\n    conclusion (str): Optional. One line on what you are looking for; no effect on the call.\n    jurisdiction (str): The Bundesland (\"Wien\", \"Tirol\", …). When omitted it is taken from the instrument, the question, then the project brief, and the answer states which.\n    instrument (str): An address: \"Bauordnung für Wien\", \"§ 63 BO Wien\", a RIS document number or a ris.bka.gv.at URL. Naming a § makes the lookup deterministic: the paragraph is cut out by its number. Up to six §§ in one call (\"§§ 75 und 81 BO Wien\", \"§§ 2 bis 4 Baupolizeigesetz Salzburg\"); past six it names those it did not read.\n    application (str): Only for the non-statute corpora: \"Vfgh\", \"Vwgh\", \"Justiz\", \"Bvwg\", \"Lvwg\" for case law, \"BgblAuth\"/\"LgblAuth\" for the authentic gazettes, \"Begut\"/\"RegV\" for drafts. Empty for statute law.\n\nReturns:\n    str: Numbered passages, each with Source, Dokumentart, Punkt, a Citation key to copy verbatim, and the paragraph text. A miss says what was searched, which Bundesland was assumed and where that came from, what matched but was not read, and one concrete retry.",
+      "inputSchema": {
+        "properties": {
+          "application": {
+            "default": "",
+            "title": "Application",
+            "type": "string"
+          },
+          "conclusion": {
+            "default": "",
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "instrument": {
+            "default": "",
+            "title": "Instrument",
+            "type": "string"
+          },
+          "jurisdiction": {
+            "default": "",
+            "title": "Jurisdiction",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "InputArgsSchema",
+        "type": "object"
+      },
+      "name": "ris_lookup_tool"
+    }
+  ],
+  "version": 1
+}

@@ -22,13 +22,12 @@ from knowledge_layer.llamaindex import page_triage
 from knowledge_layer.llamaindex import transcription
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer.llamaindex.screening import QUARANTINED_PREFIX
+from knowledge_layer_testing.pdf_fixtures import build_pdf
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.knowledge.schema import FileStatus
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
-
-from .pdf_fixtures import build_pdf
+from agent.common.credential_resolution import ResolvedCredential
+from agent.knowledge.schema import FileStatus
 
 _IBAN = "AT61 1904 3002 3457 3201"
 _TERMS = {"content_terms": ["Gehaltsabrechnung"], "detectors": []}
@@ -37,8 +36,8 @@ _IBAN_ONLY = {"content_terms": [], "detectors": ["iban"]}
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -311,7 +310,7 @@ class TestOutcomes:
 
 def _ruled_table(rows: list[list[str]]) -> bytes:
     """Content-stream ops for a grid of ruled cells with ``rows`` of text, the shape pdfplumber's table finder reads."""
-    from .pdf_fixtures import _escape
+    from knowledge_layer_testing.pdf_fixtures import _escape
 
     ops = bytearray()
     width, height, top = 150, 20, 700
@@ -325,7 +324,7 @@ def _ruled_table(rows: list[list[str]]) -> bytes:
 
 def _pdf_with_table_page(tmp_path, monkeypatch, rows: list[list[str]]):
     """Five pages: four of body text, and page 2 holding nothing but a ruled table of ``rows``."""
-    from . import pdf_fixtures
+    from knowledge_layer_testing import pdf_fixtures
 
     plain = pdf_fixtures._content
 
@@ -554,11 +553,11 @@ def permits(monkeypatch, calls):
 
     seen: dict[str, list] = {"extracted": [], "dropped": []}
     monkeypatch.setattr(
-        "aiq_agent.knowledge.permit_extraction.extract_and_store_permit_record",
+        "agent.knowledge.permit_extraction.extract_and_store_permit_record",
         lambda pages, llm, **kwargs: seen["extracted"].append(kwargs["file_name"]) or True,
     )
     monkeypatch.setattr(
-        "aiq_agent.knowledge.permit_records_client.store_permit_record",
+        "agent.knowledge.permit_records_client.store_permit_record",
         lambda *args, **kwargs: seen["dropped"].append(args) or True,
     )
     monkeypatch.setattr(document_presence, "document_still_exists", lambda *args, **kwargs: True)

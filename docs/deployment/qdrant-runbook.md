@@ -619,7 +619,7 @@ cannot reshard. `init_from` is no shortcut: 1.19.2 accepts it and ignores it
 creates the next `_vN` in the live collection's shape (or the one you ask
 for), copies every point with both stored vectors and its payload, and moves
 the alias in one atomic request; the old collection stays, and switching back
-is the rollback. It reads `AIQ_QDRANT_URL` and `AIQ_QDRANT_API_KEY`, which
+is the rollback. It reads `QDRANT_URL` and `QDRANT_API_KEY`, which
 every backend pod has. **Drilled: `piloti_office_v1` (6 shards) → `_v2` with 3
 shards, RF 2 kept, 1,500 points in 8 s; switch and rollback, each instant.**
 
@@ -637,6 +637,57 @@ repeat any delete or fact change made while it ran. Drop
 the old collection once you are sure: `q -X DELETE $P0/collections/piloti_office_v1`.
 A copy of a large collection runs for a while: run it in a pod that survives
 your terminal (`kubectl exec` dies with it).
+
+### Tune BM25 to the chunks (and fill in the stemmed text) in the same rebuild
+
+Every copy also tunes the keyword channel (ADR-0127). Qdrant's `qdrant/bm25`
+weighs a term by the chunk's length against `avg_len`, default 256, counted in
+its own tokens: the words left after the German analysis, about 0.30 per model
+token on our text. A copy reads each chunk's length back out of the weights it
+stored, and when the mean is more than 10 % from the live collection's
+`avg_len` it creates the target with the measured mean (recorded in the
+collection metadata as `bm25_length`) and recomputes every lexical vector
+from the chunk text, server side; dense vectors are copied as stored. The same
+copy gives every chunk written before the stemmed exact search existed its
+`text_stem` field, which `knowledge_search(match="exact", stemmed=true)` needs
+to find it in inflected form. **Drilled on a local 1.19.2 only; never run against
+a deployment as part of the change that added it.**
+
+Measured from the chunking constants, before any deployment was read: a
+640-token section chunk is about 210 BM25 tokens, a full 1,024-token split about
+310, a median 128-token OIB Punkt about 41. Expect the office collection near the
+default and the corpus well below it. Read the real numbers first; nothing is
+written:
+
+```bash
+kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_chunk_length_stats.py
+# office: 5000 chunks, mean …, p50 …, p90 …, written with {...}; a rebuild would write {...}
+```
+
+Then schedule it like any rebuild above (snapshot, stop ingestion, copy, check,
+switch). The copy log says `BM25 length … (recomputed)` or `(copied as stored)`.
+`--bm25-avg-len`, `--bm25-k` and `--bm25-b` set the values outright (a parity
+sweep's result, `evals/oib-retrieval`); `--keep-bm25` copies the
+lexical vectors untouched.
+
+```bash
+kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_rebuild.py corpus --copy-to piloti_corpus_v2
+kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_rebuild.py corpus --switch-to piloti_corpus_v2
+kubectl -n grid rollout restart deploy/aiq-api deploy/ingest-worker
+```
+
+Every process reads a collection's BM25 length from its metadata and trusts it
+for five minutes, so restart the backend and the ingest workers after the switch
+(and after a rollback): a writer that still holds the old length would write
+vectors the new collection does not expect. Gate it with the parity harness and
+the answer suite (`--set loop` and `--set files`) before and after.
+
+## Rename payload keys
+
+The knowledge layer's payload keys were renamed to English
+(`project_facts.federal_state`, `clause_id`, `guideline` ...). Reads accept
+both spellings until the points are rewritten:
+[`qdrant-payload-rename-runbook.md`](qdrant-payload-rename-runbook.md).
 
 ## OOM crash loop
 
@@ -710,7 +761,7 @@ Qdrant cannot skip a minor, and a snapshot restores only into the same or the
 next minor, so a failed upgrade is undone by restoring the snapshot taken
 before it, on the old version.
 
-1. Read the release notes of the next minor, and diff `data/qdrant.ts` against
+1. Read the release notes of the next minor, and diff `deploy/pulumi/src/data/qdrant.ts` against
    `qdrant-helm` at that version (probes, the bootstrap script, new config).
 2. If the notes change internal (p2p) authentication, the roll must run with
    `ENFORCE_INTERNAL_AUTH` off (remove it in `qdrantEnv` for this deploy and
@@ -793,7 +844,7 @@ From `deploy/compose`, with `DC="docker compose --env-file ../.env -f docker-com
 > app tiers would also answer from an empty store meanwhile. `$DC run` in
 > step 4 starts only what the import needs, never the clock. If the new
 > release must run before the import (as on Coolify, below), set
-> `AIQ_VECTOR_IMPORT_PENDING=true` in `../.env` first, and remove it after.
+> `VECTOR_IMPORT_PENDING=true` in `../.env` first, and remove it after.
 
 1. **Stop every writer**, on the release that still runs Chroma. Stopping the
    whole stack is the simple way to be sure nothing uploads, deletes or
@@ -866,7 +917,7 @@ default `/tmp/chroma_data`):
 
 ```bash
 uv run --script deploy/migration/chroma_export.py --persist-dir /tmp/chroma_data --out vector-export/export
-AIQ_QDRANT_URL=http://localhost:6333 .venv/bin/python scripts/import_vectors.py --in vector-export/export --verify
+QDRANT_URL=http://localhost:6333 .venv/bin/python scripts/import_vectors.py --in vector-export/export --verify
 ```
 
 ### On Coolify
@@ -877,7 +928,7 @@ is deployed, and a deploy starts every service, the `housekeeping` clock
 included, which calls the base-corpus sync the moment `aiq-api` is healthy.
 The procedure therefore takes the application offline for the import (a
 maintenance window: announce it; users get no answers until step 6) and sets
-`AIQ_VECTOR_IMPORT_PENDING` so that first sync does not queue the corpus for
+`VECTOR_IMPORT_PENDING` so that first sync does not queue the corpus for
 re-embedding. Coolify names everything after the resource's UUID (in its URL
 and in `docker ps`); `<uuid>` below is that.
 
@@ -893,7 +944,7 @@ and in `docker ps`); `<uuid>` below is that.
      uv run --script /migration/chroma_export.py --persist-dir /chroma --out /exchange/export
    ```
 
-3. **Set `AIQ_VECTOR_IMPORT_PENDING=true`** in the resource's Environment
+3. **Set `VECTOR_IMPORT_PENDING=true`** in the resource's Environment
    Variables, then point the resource at the release with Qdrant and
    **deploy**. Coolify generates `SERVICE_PASSWORD_QDRANT` for it.
 4. **Take the application offline** at once: stop every service that serves
@@ -909,9 +960,9 @@ and in `docker ps`); `<uuid>` below is that.
 5. **Import** in the image the deploy built, with `aiq-api`'s own
    environment, on the stack's network (Coolify's managed network is named
    `<uuid>`). That environment carries what the importer reads:
-   `AIQ_QDRANT_URL=http://qdrant:6333`, `AIQ_QDRANT_API_KEY` (the value of
+   `QDRANT_URL=http://qdrant:6333`, `QDRANT_API_KEY` (the value of
    `SERVICE_PASSWORD_QDRANT`), and the metadata store's DSN
-   (`AIQ_SUMMARY_DB`, `NAT_JOB_STORE_DB_URL`, on `pgbouncer`, with
+   (`SUMMARY_DB`, `NAT_JOB_STORE_DB_URL`, on `pgbouncer`, with
    `SERVICE_PASSWORD_POSTGRES`):
 
    ```bash
@@ -925,7 +976,7 @@ and in `docker ps`); `<uuid>` below is that.
    ```
 
    The exit codes are step 4's above.
-6. **Remove `AIQ_VECTOR_IMPORT_PENDING`** from the Environment Variables and
+6. **Remove `VECTOR_IMPORT_PENDING`** from the Environment Variables and
    **restart** the resource, which starts everything again. Then verify in
    the product as in step 5 above. Leaving the variable set would stop a
    store that really is reset from ever being refilled.
@@ -975,7 +1026,7 @@ fails the deploy, and the Job keeps running in the cluster.
 pod (`chromaMigrationScratchSize`, 50Gi by default): the export (about 16 KB
 per chunk at 3072 dimensions) and about 2 GiB of `chromadb`. The Job mounts no
 Chroma volume. The importer gets the backend's environment, so the same
-`AIQ_QDRANT_URL` and key, and the `allow-app-to-qdrant` NetworkPolicy names
+`QDRANT_URL` and key, and the `allow-app-to-qdrant` NetworkPolicy names
 `chroma-migration` as a caller; Chroma is not withheld from the
 same-namespace allow, so the export reaches `chroma:8000`. Pulumi does not
 replace the Job on a later deploy while the flag stays on: it runs once.
@@ -1149,7 +1200,7 @@ Chroma above.
 **Never roll back by deploying an older image tag** (a Deploy (staging)
 dispatch with `imageTag`, or pinning `imageTag` in `Pulumi.prod.yaml`). That
 deploys the current program, which has no Chroma, with a backend image from
-before the change, which has no Qdrant code. Without `AIQ_CHROMA_URL` that
+before the change, which has no Qdrant code. Without `CHROMA_URL` that
 backend falls back to an embedded Chroma per pod under `/tmp/chroma_data`:
 every retrieval answers from nothing, without an error, and every upload is
 written into a pod's temporary directory and lost with the pod. Both deploy

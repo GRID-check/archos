@@ -1,0 +1,197 @@
+# The office-file eval's fixture project (`task be:eval:answer-suite -- --set files`, ADR-0127).
+#
+# The intake eval's project (`tests/fixtures/intake_eval/project.yaml`, which this extends and
+# which stays untouched, its answer key depends on it), grown to the shape of an office's drive:
+# nested folders, a 14-page report to read through, and a later letter. Every name, number and
+# party is invented. `scripts/turn_census/fixture_files.py` seeds it into the Qdrant and the
+# metadata store the suite's runs read, each file cut by the ingest job's own chunkers: a file
+# with headings gets section chunks with a breadcrumb and an overlap, as production stores it.
+#
+# `refile` moves a base file into a folder (name -> path); `files` adds new ones. A file's
+# `pages` are its pages in order. The questions are `files_questions.yaml` beside this file;
+# change both together.
+#
+# Planted on purpose, and what the questions read off:
+#   - „Fluchtweg“ stands on pages 3, 7 and 11 of the Brandschutzkonzept and nowhere else.
+#   - „Sprinkler“ stands nowhere.
+#   - The Brandschutzkonzept has 14 pages and six chapters; its Aufzug page (9) never says „Fluchtweg“.
+#   - Three Geschäftszahlen of the MA 37: one in the base Bescheid, two in the new letter.
+#   - EP-01 exists as Index A and Index B; B is the current one. The letter is the newest upload.
+#   - „Rettungsweg“ stands five times in the Brandschutzkonzept, on pages 3, 7 and 9; the chapter
+#     heading „3. Rettungswege und Aufzug“ is restated in the breadcrumb of its three subsections.
+#   - The Besprechungsprotokoll's section 3 is long enough to be cut in two: „Kopfbolzendübeln“
+#     (once, page 2) stands in the overlap both parts hold, and „Verbunddecke“ only in the
+#     section's heading (once, page 2), which both parts and subsection 3.1 restate.
+
+extends: ../intake_eval/project.yaml
+
+project:
+  collection: proj_files_eval
+  description: "Aufstockung des Wohnhauses in der Hubergasse, Unterlagen der Einreichung"
+
+refile:
+  EP-01_Grundrisse_Index-A.pdf: Einreichung/Pläne
+  EP-01_Grundrisse_Index-B.pdf: Einreichung/Pläne
+  EP-02_Schnitt_A-A.pdf: Einreichung/Pläne
+
+files:
+  - name: Brandschutzkonzept_Hubergasse14.pdf
+    folder: Gutachten/Brandschutz
+    added_at: "2026-06-02"
+    tags: [Gutachten]
+    pages:
+      - |
+        BRANDSCHUTZKONZEPT
+        Aufstockung Wohnhaus Hubergasse 14, 1160 Wien
+        Verfasser: Brandschutz Ziviltechniker Dr. Pichler GmbH, Margaretenstraße 70, 1050 Wien
+        Stand: 20.02.2026, Fassung 1
+
+        1. Vorhaben und Grundlagen
+        Dieses Konzept beschreibt den baulichen, anlagentechnischen und abwehrenden Brandschutz der Aufstockung des
+        Wohnhauses Hubergasse 14 (EZ 1234, KG Ottakring). Grundlage sind die Einreichpläne EP-01 und EP-02, Index B, und
+        die OIB-Richtlinie 2 (Ausgabe Mai 2023).
+      - |
+        Gebäudekenndaten
+        Gebäudeklasse 4 nach Aufstockung (Fußboden des obersten Aufenthaltsraums unter 22 m über dem Gelände).
+        Geschoße: Keller, Erdgeschoß, 1. bis 3. Obergeschoß. Wohnungen: 11. Nutzung: ausschließlich Wohnen.
+        Das Konzept gilt für die Aufstockung und für die Teile des Bestands, die vom Umbau der Erschließung berührt werden.
+      - |
+        2. Bauliche Maßnahmen
+        2.1 Rettungsweg
+        Der Fluchtweg aller Wohnungen führt über das bestehende Stiegenhaus ins Freie. Das Stiegenhaus bleibt der einzige
+        vertikale Rettungsweg; die Aufstockung erhält keine zweite Stiege.
+        Die Rettungsweglänge von der Wohnungseingangstür bis zum Stiegenhaus beträgt im 3. Obergeschoß höchstens 12 m.
+      - |
+        2.2 Tragwerk und Decken
+        Die Decken der Aufstockung aus Brettsperrholz erreichen REI 60, die Decken über dem Erdgeschoß als ertüchtigte
+        Dippelbaumdecken ebenfalls REI 60. Tragende Bauteile der Aufstockung werden in R 60 ausgeführt.
+        Die Holzoberflächen im Stiegenhaus werden mit nichtbrennbarer Bekleidung (A2) versehen.
+      - |
+        2.3 Brandabschnitte
+        Das Gebäude bildet drei Brandabschnitte: den Keller (BA-01), das Stiegenhaus (BA-02) und die Wohngeschoße je
+        Geschoß (BA-03). Wohnungstrennwände und Trenndecken zwischen Wohnungen sind in REI 60 ausgeführt, die Feuermauern
+        zu Hubergasse 12 und 16 in REI 90.
+      - |
+        2.4 Öffnungen und Durchführungen
+        Türen von den Wohnungen zum Stiegenhaus sind rauchdicht und selbstschließend (EI2 30-C). Leitungsdurchführungen
+        durch Trennbauteile werden mit zugelassenen Abschottungen verschlossen. Die Dachfläche der Aufstockung erhält
+        eine Bedachung, die gegen Flugfeuer und strahlende Wärme widerstandsfähig ist.
+      - |
+        3. Rettungswege und Aufzug
+        3.1 Sicherheitsbeleuchtung
+        Im Stiegenhaus wird auf jedem Geschoß eine Sicherheitsbeleuchtung angeordnet, damit der Fluchtweg bei
+        Stromausfall erkennbar bleibt. Die Kennzeichnung erfolgt mit Rettungszeichen nach ISO 7010.
+        Die Tür zum Hof im Erdgeschoß öffnet in Fluchtrichtung und ist ohne Schlüssel zu bedienen.
+      - |
+        3.2 Stiegenhaus
+        Das Stiegenhaus erhält an oberster Stelle eine Rauchabzugsöffnung mit mindestens 1 m² geometrischer Fläche, die vom
+        Erdgeschoß aus ausgelöst werden kann. Die Stufen und Podeste der bestehenden Treppe bleiben unverändert.
+      - |
+        3.3 Aufzug
+        Der neue Personenaufzug im Stiegenhausauge ist kein Rettungsweg und im Brandfall nicht zu benutzen. Der Schacht
+        erhält Wände in EI 60, die Schachttüren sind in E 30 ausgeführt. Ein Hinweis am Aufzug weist auf das Benutzungsverbot
+        im Brandfall hin. Der Aufzugsvorraum entfällt, weil jede Haltestelle in das Stiegenhaus mündet.
+      - |
+        4. Anlagentechnischer Brandschutz
+        4.1 Rauchwarnmelder
+        In allen Aufenthaltsräumen der Wohnungen und in den Gängen, über die Fluchtrichtungen laufen, werden vernetzte
+        Rauchwarnmelder montiert. Eine Brandmeldeanlage ist für ein Wohngebäude dieser Größe nicht erforderlich.
+      - |
+        5. Abwehrender Brandschutz
+        5.1 Einsatzkräfte
+        Die Zufahrt für die Feuerwehr erfolgt über die Hubergasse. Der Fluchtweg im Stiegenhaus darf durch abgestellte
+        Gegenstände nicht eingeengt werden; die Hausordnung weist darauf hin. Eine trockene Steigleitung ist nicht
+        erforderlich, weil das oberste Geschoß vom Gelände aus mit der Drehleiter erreichbar ist.
+      - |
+        5.2 Löschwasser
+        Hydranten in der Hubergasse (Abstand etwa 60 m) stellen die Löschwasserversorgung sicher. Tragbare
+        Feuerlöscher (je Geschoß einer, 6 kg) werden im Stiegenhaus an gut sichtbarer Stelle angebracht.
+      - |
+        6. Organisatorischer Brandschutz
+        Die Hausverwaltung erstellt eine Brandschutzordnung Teil A und B und aktualisiert sie nach jeder Änderung der
+        Nutzung. Die Wartung der Rauchabzugsöffnung und der Rauchwarnmelder erfolgt jährlich und wird dokumentiert.
+      - |
+        7. Schlussbemerkung
+        Das Konzept ist mit der Baubehörde abgestimmt und wird mit dem Bescheid der MA 37 verbindlich. Änderungen der
+        Pläne nach Index B sind dem Verfasser vorzulegen.
+
+        Wien, am 20.02.2026
+        Brandschutz Ziviltechniker Dr. Pichler GmbH
+
+  - name: Schreiben_MA37_Baubeginn.pdf
+    folder: Korrespondenz/Behörde
+    added_at: "2026-06-10"
+    tags: [Schriftverkehr]
+    pages:
+      - |
+        MAGISTRAT DER STADT WIEN
+        Magistratsabteilung 37 – Baupolizei, Gebietsgruppe West
+        Zahl: MA 37/654321-2026
+        Wien, 02. Juni 2026
+
+        Hubergasse 14 Projektentwicklungs GmbH, Thaliastraße 120, 1160 Wien
+
+        Betrifft: Hubergasse 14, EZ 1234, KG Ottakring – Bestätigung der Baubeginnsanzeige
+
+        Die Anzeige des Beginns der Bauführung wurde zur Kenntnis genommen. Die Entscheidung stützt sich auf den Bescheid
+        zur Zahl MA 37/567812-2026-1 und auf das Vorverfahren zur Zahl MA 37/123456-2026.
+
+        Für den Abteilungsleiter: Ing. Huber
+
+  - name: Besprechungsprotokoll_Tragwerk_2026-04-28.pdf
+    folder: Korrespondenz/Planung
+    added_at: "2026-05-06"
+    tags: [Schriftverkehr]
+    pages:
+      - |
+        BESPRECHUNGSPROTOKOLL
+        Aufstockung Wohnhaus Hubergasse 14, 1160 Wien – Tragwerksplanung der Aufstockung
+        Besprechung am 28.04.2026 im Baubüro Thaliastraße 120, Protokoll: Arch. DI Lena Wagner
+
+        1 Teilnehmer
+        Für den Bauherrn: Mag. Stefan Steiner, Hubergasse 14 Projektentwicklungs GmbH.
+        Für die Tragwerksplanung: DI Karl Hofer, Ziviltechniker für Bauingenieurwesen.
+        Für die Architektur: Arch. DI Lena Wagner und DI Paul Novak.
+
+        2 Bestandsdecken
+        Die Dippelbaumdecken über dem obersten Bestandsgeschoß wurden an vier Stellen geöffnet. Die Tramlage ist trocken,
+        die Auflager in der Mittelmauer sind intakt, an der Hoffassade ist ein Tramkopf angemorscht und wird ersetzt.
+        Die Beschüttung wird vollständig entfernt, damit die neue Decke direkt auf der Tramlage aufliegen kann.
+      - |
+        3 Holz-Beton-Verbunddecke
+        Über dem obersten Bestandsgeschoß wird die bestehende Tramlage zu einer Decke im Verbund ertüchtigt. Auf die Trame
+        kommt eine Schalung aus Dreischichtplatten, darauf eine Trennlage und eine Aufbetonschicht von zwölf Zentimetern
+        aus Beton der Festigkeitsklasse C25/30. Herr Hofer erläutert, dass das Holz die Zugkräfte und der Beton die
+        Druckkräfte übernimmt, solange die Fuge zwischen beiden schubfest ausgebildet ist. Ohne diese Verbindung
+        würden Holz und Beton als zwei getrennte Bauteile wirken und die Durchbiegung wäre rund dreimal so groß.
+        Die Bewehrung der Aufbetonschicht besteht aus einer Lage Baustahlgitter, die an den Rändern in die neuen
+        Ringbalken eingebunden wird. Die Ringbalken liegen auf den Hauptmauern und verteilen die Lasten der Aufstockung
+        gleichmäßig auf das Mauerwerk. Die Hauptmauern wurden im Februar beprobt; die Druckfestigkeit des Mauerwerks
+        reicht nach der Berechnung für die zusätzlichen Lasten aus, wenn die Fugen an zwei Stellen saniert werden.
+        Die Trame werden vor dem Betonieren im Abstand von höchstens einem Meter unterstellt. Die Unterstellung bleibt
+        stehen, bis der Beton nach sieben Tagen ausreichend erhärtet ist, und wird erst nach Freigabe durch die
+        Tragwerksplanung entfernt. Herr Novak weist darauf hin, dass die Wohnungen im obersten Bestandsgeschoß in dieser
+        Zeit bewohnt sind; die Unterstellung muss daher so angeordnet werden, dass die Wohnungen zugänglich bleiben.
+        Die Hausverwaltung wird die Mieter zwei Wochen vorher schriftlich informieren.
+        Zur Schalldämmung erhält die Decke oberseitig eine Trittschalldämmung und einen schwimmenden Estrich. Die
+        Gesamthöhe des neuen Aufbaus beträgt rund fünfundzwanzig Zentimeter; die Fußbodenoberkante der Aufstockung
+        steigt dadurch gegenüber der Einreichplanung nicht, weil die Beschüttung entfällt.
+        Die Schubverbindung zwischen Holz und Beton wird mit Kopfbolzendübeln hergestellt, die in die Trame eingeschraubt
+        werden. Ihr Abstand beträgt im Auflagerbereich zehn Zentimeter und in Feldmitte zwanzig Zentimeter.
+        Die Verbindungsmittel werden vor dem Betonieren von der Tragwerksplanung abgenommen und fotografisch dokumentiert.
+      - |
+        Fortsetzung Punkt 3
+        Für den Brandschutz der Decke ist die Holzunterseite maßgebend. Die Trame bleiben im Bestand sichtbar, werden
+        aber mit einer Bekleidung aus Gipsfaserplatten versehen, damit die geforderte Feuerwiderstandsdauer erreicht wird.
+        Der Nachweis wird gemeinsam mit dem Brandschutzplaner geführt und dem Konzept als Beilage angeschlossen.
+        Die Baufirma hat angefragt, ob statt der Aufbetonschicht eine Brettsperrholzplatte verwendet werden kann. Herr
+        Hofer lehnt das ab: die Platte wäre leichter, würde aber die Steifigkeit der Decke nicht erreichen, und die
+        Anschlüsse an die Ringbalken wären aufwendiger. Die Variante wird nicht weiter verfolgt.
+
+        3.1 Schwingungsnachweis
+        Der Schwingungsnachweis ergibt eine Eigenfrequenz von über acht Hertz. Damit ist die Decke für Wohnnutzung
+        ausreichend steif, eine zusätzliche Masse auf dem Estrich ist nicht erforderlich.
+
+        4 Termine und nächste Schritte
+        Die Ausführungsstatik wird bis 22.05.2026 übermittelt. Die Baufirma legt bis dahin den Bauablauf für die
+        Unterstellung vor. Nächste Besprechung: 03.06.2026, gleicher Ort.

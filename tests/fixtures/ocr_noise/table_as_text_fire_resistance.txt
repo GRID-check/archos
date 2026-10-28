@@ -1,0 +1,16 @@
+Tabelle 1b: Allgemeine Anforderungen an den Feuerwiderstand von Bauteilen
+Gebäudeklassen (GK) GK 1 GK 2 GK 3 GK 4 GK 5
+1 tragende Bauteile (ausgenommen Decken und brandabschnittsbildende Wände)
+1.1 im obersten Geschoß - R 30 R 30 R 30 R 60
+1.2 in sonstigen oberirdischen Geschoßen R 30 R 30 R 60 R 60 R 90
+1.3 in unterirdischen Geschoßen R 60 R 60 R 90 R 90 R 90
+2 Trennwände (ausgenommen Wände von Treppenhäusern)
+2.1 im obersten Geschoß - REI 30 REI 30 REI 60 REI 60
+EI 30 EI 30 EI 60 EI 60
+2.2 in sonstigen oberirdischen Geschoßen - REI 30 REI 60 REI 60 REI 90
+EI 30 EI 60 EI 60 EI 90
+2.3 in unterirdischen Geschoßen - REI 60 REI 60 REI 90 REI 90
+EI 60 EI 60 EI 90 EI 90
+3 brandabschnittsbildende Wände und Decken
+3.1 brandabschnittsbildende Wände an der Nachbargrundstücks- bzw. Bauplatzgrenze REI 60 REI 90 REI 90 REI 90 REI 90
+EI 60 EI 90 EI 90 EI 90 EI 90

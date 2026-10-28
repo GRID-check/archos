@@ -12,15 +12,15 @@ from unittest.mock import MagicMock
 
 import pytest
 from knowledge_layer.register import KnowledgeRetrievalConfig
-from knowledge_layer.register import _coverage_gap
 from knowledge_layer.register import knowledge_retrieval
 from knowledge_layer.requery import SUFFICIENT
 from knowledge_layer.requery import SufficiencyVerdict
 from knowledge_layer.requery import _parse_verdict
 from knowledge_layer.requery import judge_sufficiency
 from knowledge_layer.requery import requery_notice
+from knowledge_layer.search_results import coverage_gap
 
-from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
+from agent.common.retrieval_settings import reset_retrieval_settings_cache
 
 
 class _FakeLLM:
@@ -40,7 +40,7 @@ class _RaisingLLM:
 
 def _chunk(text: str, chunk_id: str = "c1"):
     # A real Chunk: the merge builds a real RetrievalResult, which validates.
-    from aiq_agent.knowledge.schema import Chunk
+    from agent.knowledge.schema import Chunk
 
     return Chunk(
         chunk_id=chunk_id,
@@ -169,7 +169,7 @@ def _grounding(merged, query, notice="", trailer="", preamble_note="", opened_fi
     )
 
 
-_NOTICE_MARK = "Hinweis: die Suche wurde um"
+_NOTICE_MARK = "Note: the search was widened by"
 
 
 def _body(out: str) -> str:
@@ -182,16 +182,16 @@ def loop_harness(monkeypatch):
     def install(retriever, judge):
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-        monkeypatch.setattr("knowledge_layer.register._format_results", _grounding)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.setattr("knowledge_layer.search_results.format_results", _grounding)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 
         async def _resolve(_builder, name):
             return judge
 
-        monkeypatch.setattr("aiq_agent.common.get_langchain_llm", _resolve)
+        monkeypatch.setattr("agent.common.get_langchain_llm", _resolve)
 
     return install
 
@@ -299,14 +299,14 @@ class TestTheNoticeTheModelReads:
 
     def test_the_line_names_every_alternative_formulation(self):
         notice = requery_notice(["Gehweglänge Gebäudeklasse 4", "Fluchtweglänge GK4"])
-        assert notice.startswith("Hinweis: die Suche wurde um 2 Umformulierungen erweitert (")
+        assert notice.startswith("Note: the search was widened by 2 reformulations (")
         assert "„Gehweglänge Gebäudeklasse 4“" in notice
         assert "„Fluchtweglänge GK4“" in notice
-        assert "weil die ersten Treffer die Frage nicht abdeckten." in notice
+        assert "because the first hits did not cover the question." in notice
         assert notice.endswith("\n\n"), "the notice is a LEADING line, not part of the first excerpt"
 
     def test_one_formulation_reads_as_one(self):
-        assert "um eine Umformulierung erweitert" in requery_notice(["Gehweglänge"])
+        assert "widened by one reformulation" in requery_notice(["Gehweglänge"])
 
     async def test_a_one_shot_search_carries_no_notice(self, loop_harness):
         retriever = _FakeRetriever({"Fluchtweg GK4": [_chunk("a", "a")]})
@@ -353,7 +353,7 @@ class TestLaneToolScope:
 
     It rides this harness because this is where a real ``search()`` is driven
     against a fake store. What it pins is placement, not plumbing: the scope
-    has to be open when ``_format_results`` runs, and that render happens in
+    has to be open when ``format_results`` runs, and that render happens in
     ``asyncio.to_thread``, which copies the context AT CALL TIME. A scope
     entered inside the thread, or after the await, is a copy nobody reads back
     and every hit of every search would reach the ledger unstamped — where it
@@ -361,7 +361,7 @@ class TestLaneToolScope:
     """
 
     async def test_the_renderer_sees_the_tool_that_called_it(self, loop_harness, monkeypatch):
-        from aiq_agent.common.turn_status import current_lane_tool
+        from agent.common.turn_status import current_lane_tool
 
         seen: list[str | None] = []
 
@@ -371,14 +371,14 @@ class TestLaneToolScope:
 
         retriever = _FakeRetriever({"Fluchtweg GK4": [_chunk("a", "a")]})
         loop_harness(retriever, None)
-        monkeypatch.setattr("knowledge_layer.register._format_results", _spy)
+        monkeypatch.setattr("knowledge_layer.search_results.format_results", _spy)
 
         await _search(_config())
 
         assert seen == ["knowledge_search"]
 
     async def test_the_scope_does_not_outlive_the_search(self, loop_harness):
-        from aiq_agent.common.turn_status import current_lane_tool
+        from agent.common.turn_status import current_lane_tool
 
         loop_harness(_FakeRetriever({"Fluchtweg GK4": [_chunk("a", "a")]}), None)
 
@@ -404,7 +404,7 @@ class _Decider:
         return {"type": "noul", "instructions": instructions}
 
     async def decide_many(self, states, questions, **_):
-        from aiq_agent.common.decisions import Decision
+        from agent.common.decisions import Decision
 
         self.calls.append({"count": len(states), "questions": set(questions)})
         p = self.rounds[min(len(self.calls), len(self.rounds)) - 1]
@@ -434,7 +434,7 @@ class TestTheCoverageSignal:
         out = _body(await _search(_config(requery_llm="judge", requery_decider="jev")))
 
         gap, _, rest = out.partition("]")
-        assert gap.startswith("GAP[keine der 8 gezeigten Passagen") and "auch nach Umformulierung" in gap
+        assert gap.startswith("GAP[none of the 8 shown passages") and "even after reformulating the search" in gap
         assert len(rest.split("|")) == 8
         assert decider.calls[-1] == {"count": 8, "questions": {"answers"}}
 
@@ -486,7 +486,7 @@ class TestTheCoverageSignal:
 
 
 class TestTheCoverageGate:
-    """``_coverage_gap`` asks only where the judge ran, said no, and the pool is whole."""
+    """``coverage_gap`` asks only where the judge ran, said no, and the pool is whole."""
 
     CONFIG = SimpleNamespace(requery_decider="jev", decision_sufficiency_threshold=0.55)
 
@@ -505,25 +505,25 @@ class TestTheCoverageGate:
             raise AssertionError("coverage asked")
 
         monkeypatch.setattr("knowledge_layer.requery.judge_coverage", _never)
-        assert await _coverage_gap("q", pool, verdict, self.CONFIG, widened=False) is None
+        assert await coverage_gap("q", pool, verdict, self.CONFIG, widened=False) is None
 
     def test_the_real_renderer_states_the_gap_and_stops_calling_the_hits_relevant(self):
-        from knowledge_layer.register import _format_results
+        from knowledge_layer.search_results import format_results
 
         result = SimpleNamespace(success=True, error_message=None, chunks=[_chunk("nah", "a")])
-        rendered = _format_results(result, "q", coverage_gap="kein Beleg")
+        rendered = format_results(result, "q", coverage_gap="kein Beleg")
         assert rendered.startswith(
             "Found 1 document(s); none of the judged ones answers the question:\n"
-            "Abdeckung: unzureichend — kein Beleg\n\n"
+            "Coverage: insufficient — kein Beleg. No passage here states what was asked"
         )
-        assert _format_results(result, "q").startswith("Found 1 relevant document(s):\n\n--- Result 1 ---")
+        assert format_results(result, "q").startswith("Found 1 relevant document(s):\n\n--- Result 1 ---")
 
 
 class TestTheSearchRetrieverHandle:
     async def test_teardown_clears_the_warm_up_handle(self, loop_harness):
         """The handle was last-wins and never cleared: a torn-down tool's
         retriever stayed alive and kept being warmed."""
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         retriever = _FakeRetriever({})
         loop_harness(retriever, None)
@@ -534,7 +534,7 @@ class TestTheSearchRetrieverHandle:
         assert factory._SEARCH_RETRIEVER is None
 
     async def test_teardown_leaves_a_later_tools_handle(self, loop_harness, monkeypatch):
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         # Restored even when the assert fails, so no later test inherits the handle.
         monkeypatch.setattr(factory, "_SEARCH_RETRIEVER", None)
@@ -552,7 +552,7 @@ def test_the_prefetch_requery_switch_stays_removed():
     applied to (turn-latency-measured-2026-09.md §3.5) and removed with its
     marker; the PR that measured it carries the
     implementation if it is ever needed again."""
-    from aiq_agent.common import turn_status
+    from agent.common import turn_status
 
     assert "requery_on_prefetch" not in KnowledgeRetrievalConfig.model_fields
     assert not hasattr(turn_status, "in_prefetch") and not hasattr(turn_status, "prefetch_scope")

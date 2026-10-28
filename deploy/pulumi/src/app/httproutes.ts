@@ -3,7 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 // Compile-time spec typing from the upstream CRD schemas (see gateway.ts).
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
 import type { IBackendTrafficPolicySpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/BackendTrafficPolicySpec";
-import { GridConfig } from "../config";
+import { DeployConfig } from '../config'
 import { commonLabels } from "../platform/namespaces";
 import type { ICompression } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/Compression";
 import type { IRetry } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/Retry";
@@ -11,6 +11,7 @@ import type { IRateLimitRule } from "@kubernetes-models/envoy-gateway/gateway.en
 import type { IRateLimitSpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/RateLimitSpec";
 import { GATEWAY_NAME } from "../platform/gateway";
 import { EDGE_RATE_LIMIT, EDGE_RETRY, EDGE_TIMEOUT, PORT } from "../constants";
+import { logicalName, objectName } from "../names";
 
 /**
  * Retry policy applied to both public routes.
@@ -84,7 +85,7 @@ export const WEB_COMPRESSOR: ICompression[] = [{ type: "Brotli" }, { type: "Gzip
  * not exempt it from the route's overall budget.
  */
 function perClientIpRule(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   requestsPerMinute: number,
   cidr: string,
   pathPrefix?: string,
@@ -117,7 +118,7 @@ function perClientIpRule(
  * 2 replicas behind one LoadBalancer, so a "30/min" local limit is really
  * 60/min — and changes meaning the moment the fleet scales.
  */
-function edgeRateLimit(cfg: GridConfig, rules: IRateLimitRule[]): { rateLimit?: IRateLimitSpec } {
+function edgeRateLimit(cfg: DeployConfig, rules: IRateLimitRule[]): { rateLimit?: IRateLimitSpec } {
   if (!cfg.rateLimit.enabled) return {};
   return { rateLimit: { type: "Global", global: { rules } } };
 }
@@ -136,7 +137,7 @@ function edgeRateLimit(cfg: GridConfig, rules: IRateLimitRule[]): { rateLimit?: 
  * uncovered the day the cluster gains an IPv6 address.
  */
 function perClientRules(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   requestsPerMinute: number,
   pathPrefix?: string,
 ): IRateLimitRule[] {
@@ -150,14 +151,14 @@ function perClientRules(
  * Gateway API HTTPRoutes (replacing the legacy Ingress resources):
  *   - appDomain → frontend:3000 (UI + BFF + WebSocket chat upgrades)
  *   - s3Domain  → seaweedfs:8333 (browser presigned preview/download URLs)
- *   - webDomain → web:4321 (landing site + blog, frontends/web)
+ *   - webDomain → web:4321 (landing site + blog, apps/site)
  *
  * Each route attaches to its dedicated HTTPS listener on the shared Gateway.
  * WebSocket upgrades pass through natively; Envoy Gateway streams large bodies
  * with no request-size cap.
  */
 export function installHttpRoutes(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],
@@ -165,6 +166,7 @@ export function installHttpRoutes(
   app: k8s.apiextensions.CustomResource;
   s3: k8s.apiextensions.CustomResource;
   web: k8s.apiextensions.CustomResource;
+  httpsRedirect: k8s.apiextensions.CustomResource;
 } {
   const appRouteSpec: IHTTPRouteSpec = {
     parentRefs: [{ name: GATEWAY_NAME, sectionName: "https-app" }],
@@ -172,11 +174,11 @@ export function installHttpRoutes(
     rules: [{ backendRefs: [{ name: "frontend", port: PORT.frontend }] }],
   };
   const app = new k8s.apiextensions.CustomResource(
-    "grid-app-route",
+    logicalName("grid-app-route"),
     {
       apiVersion: "gateway.networking.k8s.io/v1",
       kind: "HTTPRoute",
-      metadata: { name: "grid-app", namespace, labels: commonLabels("frontend") },
+      metadata: { name: objectName("appRoute"), namespace, labels: commonLabels("frontend") },
       spec: appRouteSpec,
     },
     { provider, dependsOn },
@@ -186,7 +188,7 @@ export function installHttpRoutes(
   // responses and WS sessions on the app route. Give upstream requests the same
   // 3600s budget as the client-side policy.
   const appBackendPolicySpec: IBackendTrafficPolicySpec = {
-    targetRefs: [{ group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "grid-app" }],
+    targetRefs: [{ group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: objectName("appRoute") }],
     timeout: { http: { requestTimeout: EDGE_TIMEOUT } },
     // Ride out the endpoint-programming race on every frontend rolling update
     // instead of surfacing it to the browser.
@@ -208,11 +210,11 @@ export function installHttpRoutes(
     ]),
   };
   new k8s.apiextensions.CustomResource(
-    "grid-app-backend-traffic-policy",
+    logicalName("grid-app-backend-traffic-policy"),
     {
       apiVersion: "gateway.envoyproxy.io/v1alpha1",
       kind: "BackendTrafficPolicy",
-      metadata: { name: "grid-app-timeouts", namespace, labels: commonLabels("frontend") },
+      metadata: { name: objectName("appTimeouts"), namespace, labels: commonLabels("frontend") },
       spec: appBackendPolicySpec,
     },
     { provider, dependsOn: app },
@@ -222,7 +224,7 @@ export function installHttpRoutes(
   // download/preview of a large PDF (or a slow client) would be reset
   // mid-body. Same 3600s budget as the app route.
   const s3BackendPolicySpec: IBackendTrafficPolicySpec = {
-    targetRefs: [{ group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "grid-s3" }],
+    targetRefs: [{ group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: objectName("s3Route") }],
     timeout: { http: { requestTimeout: EDGE_TIMEOUT } },
     // Same race, and a presigned GET is idempotent besides.
     retry: edgeRetry,
@@ -238,11 +240,11 @@ export function installHttpRoutes(
     rules: [{ backendRefs: [{ name: "seaweedfs", port: PORT.seaweedS3 }] }],
   };
   const s3 = new k8s.apiextensions.CustomResource(
-    "grid-s3-route",
+    logicalName("grid-s3-route"),
     {
       apiVersion: "gateway.networking.k8s.io/v1",
       kind: "HTTPRoute",
-      metadata: { name: "grid-s3", namespace, labels: commonLabels("seaweedfs") },
+      metadata: { name: objectName("s3Route"), namespace, labels: commonLabels("seaweedfs") },
       spec: s3RouteSpec,
     },
     { provider, dependsOn },
@@ -254,22 +256,22 @@ export function installHttpRoutes(
     rules: [{ backendRefs: [{ name: "web", port: PORT.web }] }],
   };
   const web = new k8s.apiextensions.CustomResource(
-    "grid-web-route",
+    logicalName("grid-web-route"),
     {
       apiVersion: "gateway.networking.k8s.io/v1",
       kind: "HTTPRoute",
-      metadata: { name: "grid-web", namespace, labels: commonLabels("web") },
+      metadata: { name: objectName("webRoute"), namespace, labels: commonLabels("web") },
       spec: webRouteSpec,
     },
     { provider, dependsOn },
   );
 
   new k8s.apiextensions.CustomResource(
-    "grid-s3-backend-traffic-policy",
+    logicalName("grid-s3-backend-traffic-policy"),
     {
       apiVersion: "gateway.envoyproxy.io/v1alpha1",
       kind: "BackendTrafficPolicy",
-      metadata: { name: "grid-s3-timeouts", namespace, labels: commonLabels("seaweedfs") },
+      metadata: { name: objectName("s3Timeouts"), namespace, labels: commonLabels("seaweedfs") },
       spec: s3BackendPolicySpec,
     },
     { provider, dependsOn: s3 },
@@ -282,7 +284,7 @@ export function installHttpRoutes(
   // update (surge-only, one pod at a time) would otherwise surface to visitors
   // as a failed page load.
   const webBackendPolicySpec: IBackendTrafficPolicySpec = {
-    targetRefs: [{ group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "grid-web" }],
+    targetRefs: [{ group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: objectName("webRoute") }],
     retry: edgeRetry,
     compressor: WEB_COMPRESSOR,
     // Prerendered marketing pages: a human reads a few per minute, a scraper
@@ -291,15 +293,37 @@ export function installHttpRoutes(
     ...edgeRateLimit(cfg, perClientRules(cfg, cfg.rateLimit.limits.web)),
   };
   new k8s.apiextensions.CustomResource(
-    "grid-web-backend-traffic-policy",
+    logicalName("grid-web-backend-traffic-policy"),
     {
       apiVersion: "gateway.envoyproxy.io/v1alpha1",
       kind: "BackendTrafficPolicy",
-      metadata: { name: "grid-web-timeouts", namespace, labels: commonLabels("web") },
+      metadata: { name: objectName("webTimeouts"), namespace, labels: commonLabels("web") },
       spec: webBackendPolicySpec,
     },
     { provider, dependsOn: web },
   );
 
-  return { app, s3, web };
+  // Plain HTTP answers with a permanent redirect to HTTPS, on every host the
+  // port-80 listener serves. It answered 404 before: the listener existed only
+  // for cert-manager's HTTP-01 challenge. Google's favicon service fetches
+  // `http://<apex>`, and Claude's connector tile takes its icon from that
+  // service, so the 404 left Piloti's connector with a blank globe. The ACME
+  // solver's own route matches its token path Exactly, which outranks this
+  // catch-all prefix, so certificate renewal keeps working.
+  const httpsRedirectSpec: IHTTPRouteSpec = {
+    parentRefs: [{ name: GATEWAY_NAME, sectionName: "http" }],
+    rules: [{ filters: [{ type: "RequestRedirect", requestRedirect: { scheme: "https", statusCode: 301 } }] }],
+  };
+  const httpsRedirect = new k8s.apiextensions.CustomResource(
+    logicalName("grid-https-redirect-route"),
+    {
+      apiVersion: "gateway.networking.k8s.io/v1",
+      kind: "HTTPRoute",
+      metadata: { name: objectName("httpsRedirectRoute"), namespace, labels: commonLabels("gateway") },
+      spec: httpsRedirectSpec,
+    },
+    { provider, dependsOn },
+  );
+
+  return { app, s3, web, httpsRedirect };
 }

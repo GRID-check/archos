@@ -24,7 +24,7 @@ and dispatches it into `s_{conversationId}`, the listing and delete go through
 collection. The `/api/v1` proxy only reads an `s_` collection
 ([BFF routes](../api/bff-routes.md#chat-attachments-session-documents-adr-0047-phase-2)).
 
-The Archiv collection is injected in `buildCollectionScopeFromRequest` (which has `session.organizationId`) and passed to `computeCollectionScope` as `archivCollectionName`; it rides right after the base corpus, so every project in the org retrieves across the shared Archiv with no per-project configuration.
+The Archiv collection is injected in `buildCollectionScopeFromRequest` (which has `session.organizationId`) and passed to `computeCollectionScope` as `officeShelfCollectionName`; it rides right after the base corpus, so every project in the org retrieves across the shared Archiv with no per-project configuration.
 
 ---
 
@@ -43,7 +43,7 @@ The Archiv collection is injected in `buildCollectionScopeFromRequest` (which ha
      │ X-Grid-Collection-Scope header                          │ calls /api/auth/websocket-scope
      ▼                                                          ▼
 ┌────────────────────────────────────────────────────────────────┐
-│                   Python Backend (NAT context)                  │
+│                   Python Backend (runtime context)              │
 │                                                                  │
 │  get_collection_scope_from_context() → list[str] | None         │
 │    Reads X-Grid-Collection-Scope from Context.metadata.headers   │
@@ -61,7 +61,7 @@ The Archiv collection is injected in `buildCollectionScopeFromRequest` (which ha
 
 ## Frontend: `collection-scope.ts`
 
-**File**: `frontends/ui/src/lib/collection-scope.ts`
+**File**: `apps/workspace/bff/retrieval-scope/collection-scope.ts`
 
 ### `computeCollectionScope(session, context)`
 
@@ -69,7 +69,7 @@ Builds an ordered deduplicated list of collection names:
 
 ```typescript
 function computeCollectionScope(
-  session: GridSession | null,
+  session: UserSession | null,
   context: ScopeContext
 ): string[]
 ```
@@ -96,7 +96,7 @@ function buildCollectionScopeHeader(scope: string[]): string
 
 ## Frontend BFF: `collection-scope-request.ts`
 
-**File**: `frontends/ui/src/lib/collection-scope-request.ts`
+**File**: `apps/workspace/bff/retrieval-scope/collection-scope-request.ts`
 
 ### `buildCollectionScopeFromRequest(session, context)`
 
@@ -114,7 +114,7 @@ The main entry point for SSE and WebSocket routes. It:
 
 ```typescript
 async function buildCollectionScopeFromRequest(
-  session: GridSession | null,
+  session: UserSession | null,
   context: RequestContext
 ): Promise<{ scope: string[], headerValue: string, projectId?: string, conversationId?: string }>
 ```
@@ -143,7 +143,7 @@ shelf `project`, only when ALL of these hold:
   the whole project;
 - the session may read the folder (`effectiveFolderLevel` over the levels its
   folder roles give, ADR-0097: read from WorkOS by `heldFolderLevels` in
-  `lib/authz/folder-roles.ts`, cached for `GRID_AUTHZ_CACHE_TTL_MS`; a lookup
+  `lib/authz/folder-roles.ts`, cached for `AUTHZ_CACHE_TTL_MS`; a lookup
   that fails clears nothing);
 - everyone the conversation is shared with may read it too
   (`restrictedCollectionsForChatScope` in `lib/conversations/restricted-use.ts`).
@@ -166,13 +166,13 @@ share and an admission cannot both go through:
 - at turn start the agent offers the restricted collections of its signed
   scope and gets back the ones it may draw on (`drawable`) and whether the
   conversation already recorded a folder (`recorded`). It binds the answer per
-  turn (`aiq_agent.knowledge.restricted_use`), and
+  turn (`agent.knowledge.restricted_use`), and
   `get_scoped_collections_from_context` keeps only the drawable ones, so every
   read path searches only what everyone reading the conversation may read. A
   thread shared since the socket was signed loses those collections from the
   next turn on; the socket is not closed;
 - a tool round's results are admitted before the model reads them
-  (`PilotiAgent._tools_node` → `admit_tool_results`); a result carrying a
+  (`ChatAgent._tools_node` → `admit_tool_results`); a result carrying a
   refused collection is replaced by a notice;
 - restricted memory served into the digest, and a subject document from a
   restricted folder, are admitted by the BFF before they are sent;
@@ -195,7 +195,7 @@ different thread over the same socket.
 
 ## WebSocket Scope
 
-**File**: `frontends/ui/server.js` (lines 198–258)
+**File**: `apps/workspace/server.js` (lines 198–258)
 
 During WebSocket upgrade (`/websocket` path):
 
@@ -205,7 +205,7 @@ During WebSocket upgrade (`/websocket` path):
 4. `server.js` injects `x-grid-collection-scope` into the proxied WebSocket upgrade request headers
 5. Also forwards `x-grid-organization-id`, `x-grid-user-id`, and `authorization` (Bearer token) for user context
 
-**File**: `frontends/ui/src/app/api/auth/websocket-scope/route.ts`
+**File**: `apps/workspace/app/api/auth/websocket-scope/route.ts`
 
 Internal endpoint that:
 - Reads `projectId` and `conversationId` from query params
@@ -233,18 +233,18 @@ const { headerValue } = await buildCollectionScopeFromRequest(session, {
 ```
 
 The pattern is used in:
-- `frontends/ui/src/app/api/v1/[...path]/route.ts` — generic API proxy
-- `frontends/ui/src/app/api/jobs/async/[...path]/route.ts` — async job proxy
+- `apps/workspace/app/api/v1/[...path]/route.ts` — generic API proxy
+- `apps/workspace/app/api/jobs/async/[...path]/route.ts` — async job proxy
 
 ---
 
 ## Python: `scoping.py`
 
-**File**: `src/aiq_agent/knowledge/scoping.py`
+**File**: `packages/agent/src/agent/knowledge/scoping.py`
 
 ### `get_collection_scope_from_context()`
 
-Reads and decodes the `X-Grid-Collection-Scope` header from NAT context:
+Reads and decodes the `X-Grid-Collection-Scope` header from the runtime context:
 
 ```python
 def get_collection_scope_from_context() -> list[str] | None:
@@ -272,7 +272,7 @@ The fallback calls `_resolve_target_collections()` from the `knowledge_layer` re
 
 ## Python Legacy: `_resolve_target_collections()`
 
-**File**: `sources/knowledge_layer/src/register.py` (line 220)
+**File**: `packages/knowledge-layer/src/register.py` (line 220)
 
 Config-based collection resolution when no scope header is present:
 
@@ -310,13 +310,13 @@ read **once, at job submit time**, in `piloti/conversation_register.py`, and
 carried through as a `collection_scope` field on the job payload rather than
 as a live header.
 
-When the research worker later runs the job, `frontends/aiq_api/src/aiq_api/jobs/runner.py:641`
+When the research worker later runs the job, `apps/agent-host/src/agent_host/jobs/runner.py:641`
 re-injects it into the worker's own request context **only when present**:
 
 ```python
 if collection_scope is not None:
     encoded = base64.urlsafe_b64encode(json.dumps(collection_scope).encode()).rstrip(b"=").decode()
-    # ... set back onto the header the worker's NAT context reads
+    # ... set back onto the header the worker's runtime context reads
 ```
 
 If `collection_scope` is `None` at submit time (e.g. the request bypassed the
@@ -342,4 +342,4 @@ invisible.
 | 1 (highest) | `X-Grid-Collection-Scope` header | Present on proxied HTTP requests and WebSocket upgrades |
 | 2 | `_resolve_target_collections()` config | Header absent (legacy/fallback) |
 
-The header is always set for proxied HTTP requests (`/api/v1/*`, `/api/jobs/async/*`) and WebSocket upgrades. It is absent only when requests bypass the BFF or when the NAT context has no metadata headers.
+The header is always set for proxied HTTP requests (`/api/v1/*`, `/api/jobs/async/*`) and WebSocket upgrades. It is absent only when requests bypass the BFF or when the runtime context has no metadata headers.

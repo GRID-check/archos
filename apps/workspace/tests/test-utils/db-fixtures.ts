@@ -1,0 +1,177 @@
+/**
+ * Complete database-row fixtures for specs that mock the repository layer.
+ *
+ * A repository mock has to resolve to a whole row — the service code under test
+ * reads fields the assertion does not care about. Specs used to paper over that
+ * with `{ collectionName: 'x' } as any`, which meant a schema change could not
+ * break them. These factories return real rows, so a renamed or retyped column
+ * surfaces as a compile error, while `overrides` keeps each test's intent to
+ * the one or two fields it is actually about.
+ */
+
+import type { getDb } from '@/lib/db'
+import type { findLiveDocumentByFilename } from '@/lib/documents/repository'
+import type { Document } from '@/lib/db/schema/documents'
+import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
+import type { Project } from '@/lib/db/schema/projects'
+
+/**
+ * The one place a hand-built drizzle query-builder stub widens to the real
+ * database handle.
+ *
+ * A spec that mocks `getDb` asserts on which chain the code under test walks
+ * (`select().from().where()`, `update().set().where()`, …) and on the conditions
+ * it builds, so each stub implements only the links its test traverses — no
+ * partial stub can satisfy drizzle's own type. Keeping the assertion here rather
+ * than re-deriving it per spec means the escape hatch stays a single audited
+ * boundary instead of drifting into a different shape in every file.
+ */
+export const asDb = (stub: Record<string, unknown>): ReturnType<typeof getDb> =>
+  stub as unknown as ReturnType<typeof getDb>
+
+/** A `projects` row as `findProjectInOrg` returns it. */
+export const makeProject = (overrides: Partial<Project> = {}): Project => ({
+  id: 'proj-1',
+  organizationId: 'org-1',
+  name: 'Test project',
+  createdBy: 'user-1',
+  collectionName: 'proj_abc',
+  workosResourceId: null,
+  profile: { facts: {}, goals: {}, unknowns: [], assumptions: {} },
+  profileVersion: 1,
+  profilePromptView: null,
+  profileDisplay: null,
+  profileUpdatedAt: null,
+  status: 'active',
+  pausedAt: null,
+  closedAt: null,
+  closedBy: null,
+  closedOutcome: null,
+  startedOn: null,
+  endedOn: null,
+  deletedAt: null,
+  createdAt: new Date('2026-07-01T00:00:00Z'),
+  ...overrides,
+})
+
+/** A `project_memory` row as the memory service returns it. */
+export const makeMemoryItem = (
+  overrides: Partial<ProjectMemoryItem> = {},
+): ProjectMemoryItem => ({
+  id: 'item-1',
+  scope: 'project',
+  projectId: 'proj-1',
+  organizationId: 'org-1',
+  kind: 'derived_fact',
+  content: 'The roof load is 2 kN/m2.',
+  status: 'active',
+  confidence: 'medium',
+  verification: 'unverified',
+  provenanceType: 'agent',
+  sourceConversationId: null,
+  supersedesId: null,
+  conflictsWithId: null,
+  // Open memory unless a test restricts it (ADR-0087, migration 0113).
+  restrictedFolderIds: null,
+  restrictionJudge: null,
+  evidence: null,
+  salience: 0.5,
+  pinned: false,
+  createdBy: null,
+  lastReferencedAt: null,
+  // Recall bookkeeping and the semantic vector (migration 0069). Unembedded by
+  // default so a fixture exercises the lexical fallback unless a test opts in.
+  recallCount: 0,
+  embedding: null,
+  embeddingModel: null,
+  embeddedAt: null,
+  createdAt: new Date('2026-07-01T00:00:00Z'),
+  updatedAt: new Date('2026-07-01T00:00:00Z'),
+  ...overrides,
+})
+
+type LiveDocumentMatch = NonNullable<Awaited<ReturnType<typeof findLiveDocumentByFilename>>>
+
+/** A row as `findLiveDocumentByFilename` returns it: a screened, person-uploaded project document. */
+export const makeLiveDocumentMatch = (overrides: Partial<LiveDocumentMatch> = {}): LiveDocumentMatch => ({
+  id: 'doc-1',
+  storageKey: 'org/org-1/project/proj-1/doc/doc-1/plan.pdf',
+  storageBucket: null,
+  fileSize: 1024,
+  contentHash: null,
+  folderId: null,
+  status: 'completed',
+  authoredBy: 'user',
+  screeningOutcome: null,
+  createdBy: 'user-1',
+  scope: 'project',
+  projectId: 'proj-1',
+  ...overrides,
+  screenedHash: 'screenedHash' in overrides ? (overrides.screenedHash ?? null) : (overrides.contentHash ?? null),
+})
+
+/** A `documents` row as `findDocumentInOrg` returns it. */
+export const makeDocument = (overrides: Partial<Document> = {}): Document => ({
+  id: 'doc-1',
+  organizationId: 'org-1',
+  projectId: 'proj-1',
+  scope: 'project',
+  // Only a `scope: 'session'` row names a conversation (migration 0049's CHECK
+  // constraint says so in both directions), and the default fixture is an
+  // ordinary project document.
+  conversationId: null,
+  createdBy: 'user-1',
+  // A person uploaded it, which is what every row means until a commissioned run
+  // writes one. `documents_authorship_requires_provenance` ties the other two to
+  // that choice, so an override that makes this anything but `user` has to set
+  // both of them or the fixture describes a row the database would reject
+  // (migration 0063).
+  authoredBy: 'user',
+  authoredByProducer: null,
+  authoredByRef: null,
+  authoredByRefKind: null,
+  filename: 'plan.pdf',
+  // Not renamed — what every document is until somebody renames it.
+  displayName: null,
+  storageKey: 'org/org-1/project/proj-1/doc/doc-1/plan.pdf',
+  // NULL is what every row written before migration 0033 carries, and it means
+  // the shared bucket — so it is the right default for a fixture standing in
+  // for "an ordinary existing document".
+  storageBucket: null,
+  collectionName: 'proj_abc',
+  fileSize: 1024,
+  contentType: 'application/pdf',
+  // Null is the honest default: only a folder upload records where a file came
+  // from, and the fixture is a single picked file.
+  originPath: null,
+  contentHash: null,
+  status: 'completed',
+  // Nothing published, and `active`, which is what a row written before
+  // migration 0082 means and what the backfill then gives it. A test that cares
+  // about the lifecycle sets both explicitly.
+  publishedVersionId: null,
+  lifecycle: 'active',
+  createdAt: new Date('2026-01-01T00:00:00Z'),
+  updatedAt: new Date('2026-01-02T00:00:00Z'),
+  errorMessage: null,
+  quarantine: null,
+  metadata: null,
+  screeningOutcome: null,
+  screeningReleasedHash: null,
+  screeningReleasedBy: null,
+  screeningReleasedAt: null,
+  // Never failed, and never dispatched since migration 0134: what every row
+  // from before the columns carries, and what the retry rule reads as "retry".
+  ingestFailureCategory: null,
+  ingestRetryable: null,
+  ingestReaderVersion: null,
+  ingestAttempts: null,
+  uploadBatchId: null,
+  folderId: null,
+  ...overrides,
+  // The verdict on record is about the bytes the row holds unless a test says
+  // otherwise (migration 0123): a fixture that sets a digest has been screened
+  // as that digest.
+  screenedHash: 'screenedHash' in overrides ? (overrides.screenedHash ?? null) : (overrides.contentHash ?? null),
+  visibility: overrides.visibility ?? 'project',
+})
