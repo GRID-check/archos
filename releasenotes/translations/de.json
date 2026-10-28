@@ -1512,6 +1512,10 @@
     "de": "Dokumente lassen sich jetzt auch in der Listenansicht per Drag & Drop in einen Ordner ziehen, nicht nur in der Kachelansicht."
   },
   {
+    "en": "Documents from a large upload (more than 200 files at once) no longer stay on \"pending\" after Piloti has finished reading them. They now show their real state, ready or failed, like those of a smaller upload.",
+    "de": "Dokumente aus großen Uploads (mehr als 200 Dateien auf einmal) werden nach dem Einlesen durch Piloti nicht mehr als „Ausstehend“ angezeigt. Stattdessen zeigen sie wie bei kleineren Uploads ihren tatsächlichen Status: bereit oder fehlgeschlagen."
+  },
+  {
     "en": "Documents that were being processed while Piloti was updated now resume straight away instead of after several minutes. An interruption like this no longer uses up one of a document's retry attempts.",
     "de": "Dokumente, die gerade gelesen wurden, als Piloti aktualisiert wurde, werden jetzt sofort weitergelesen, statt erst nach mehreren Minuten. Eine solche Unterbrechung verbraucht keinen der Wiederholungsversuche eines Dokuments mehr."
   },

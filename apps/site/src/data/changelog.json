@@ -241,6 +241,10 @@
               "de": "Eine Antwort lässt eine Quelle nicht mehr aus, wenn Piloti ein Dokument anhand seiner Position in der Ordnerstruktur statt anhand seines Namens zitiert."
             },
             {
+              "en": "Documents from a large upload (more than 200 files at once) no longer stay on \"pending\" after Piloti has finished reading them. They now show their real state, ready or failed, like those of a smaller upload.",
+              "de": "Dokumente aus großen Uploads (mehr als 200 Dateien auf einmal) werden nach dem Einlesen durch Piloti nicht mehr als „Ausstehend“ angezeigt. Stattdessen zeigen sie wie bei kleineren Uploads ihren tatsächlichen Status: bereit oder fehlgeschlagen."
+            },
+            {
               "en": "The Herleitung draws its graph again: the sources sit side by side under the question and the lines join them, instead of sliding down the page in a staircase that the panel cut off.",
               "de": "Die Herleitung zeichnet ihr Diagramm neu: Die Quellen stehen nebeneinander unter der Frage und sind durch Linien verbunden, statt treppenförmig nach unten zu rutschen und vom Panel abgeschnitten zu werden."
             },
