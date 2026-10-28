@@ -5,7 +5,7 @@
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { probeProjectDocumentNames } from '@/lib/documents/service'
+import { probeProjectDocumentNames } from '@/lib/documents/document-listing'
 import { nameProbeRequestSchema, type NameProbeResponse } from '@/lib/documents/name-probe-types'
 import { shelfOf } from '@/lib/documents/shelf-scope'
 import { probeOfficeShelfDocumentNames } from '@/lib/office-shelf/service'

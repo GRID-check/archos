@@ -518,7 +518,7 @@ Decision 4 gated the filing on `project:documents:write` and called that "a
 capability an organization can withhold, which is what ADR-0038 §3 created
 `project:documents:write` for". The second half was false. That permission also
 authorizes an ordinary **human upload**, a delete and a whole-project re-index
-(`lib/documents/service.ts`), so an organization that wanted Piloti to answer
+(`lib/documents/document-dispatch.ts`, `document-edits.ts`, `reindex.ts`), so an organization that wanted Piloti to answer
 without writing into its file system had exactly one lever, and pulling it
 stopped its own architects uploading plans.
 

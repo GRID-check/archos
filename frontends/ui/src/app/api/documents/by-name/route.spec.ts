@@ -26,14 +26,16 @@ vi.mock('@/lib/auth/require-auth', () => ({
     featureFlags: null,
   }),
 }))
-vi.mock('@/lib/documents/service', () => ({ resolveProjectDocumentsByName: vi.fn() }))
+vi.mock('@/lib/documents/document-listing', () => ({
+  resolveProjectDocumentsByName: vi.fn(),
+}))
 vi.mock('@/lib/documents/lifecycle', () => ({
   summarizeDocumentVersions: vi.fn().mockResolvedValue(new Map([['doc_1', { versionCount: 2, state: 'published' }]])),
 }))
 vi.mock('@/lib/office-shelf/service', () => ({ resolveOfficeShelfDocumentsByName: vi.fn() }))
 
 import { ForbiddenError } from '@/lib/api/errors'
-import { resolveProjectDocumentsByName, type ListedDocument } from '@/lib/documents/service'
+import { resolveProjectDocumentsByName, type ListedDocument } from '@/lib/documents/document-listing'
 import { resolveOfficeShelfDocumentsByName } from '@/lib/office-shelf/service'
 import {
   BY_NAME_PATH,

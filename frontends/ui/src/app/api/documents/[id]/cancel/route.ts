@@ -1,11 +1,11 @@
 /**
  * Document cancel API — stop a running or queued ingestion for one document.
  * Thin handler; all logic (access check, in-flight guard, the durable-queue
- * call, settling the row `cancelled`) lives in `@/lib/documents/service`.
+ * call, settling the row `cancelled`) lives in `@/lib/documents/reingest`.
  */
 
 import { apiRoute } from '@/lib/api/handler'
-import { cancelDocumentIngest } from '@/lib/documents/service'
+import { cancelDocumentIngest } from '@/lib/documents/reingest'
 
 type Params = { id: string }
 

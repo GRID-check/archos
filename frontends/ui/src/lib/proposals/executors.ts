@@ -51,7 +51,8 @@ import { addResourceAssignment, listAssignmentCandidates } from '@/lib/assignmen
 import { ensureOfficeShelfFolderPaths, listOfficeShelfFolders, updateOfficeShelfFolder } from '@/lib/office-shelf/folder-service'
 import { resolveOfficeShelfDocumentsByName } from '@/lib/office-shelf/service'
 import { moveDocumentToFolder } from '@/lib/documents/move-to-folder'
-import { renameDocument, resolveProjectDocumentsByName } from '@/lib/documents/service'
+import { renameDocument } from '@/lib/documents/document-edits'
+import { resolveProjectDocumentsByName } from '@/lib/documents/document-listing'
 import type { FolderRow } from '@/lib/documents/shelf-folders'
 import {
   createProjectFolder,

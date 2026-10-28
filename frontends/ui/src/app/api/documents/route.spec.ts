@@ -27,14 +27,14 @@ vi.mock('@/lib/auth/require-auth', () => ({
     featureFlags: null,
   }),
 }))
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-listing', () => ({
   listDocumentsPage: vi.fn().mockResolvedValue({ documents: [], nextCursor: null }),
 }))
 vi.mock('@/lib/documents/lifecycle', () => ({
   summarizeDocumentVersions: vi.fn().mockResolvedValue(new Map()),
 }))
 
-import { listDocumentsPage } from '@/lib/documents/service'
+import { listDocumentsPage } from '@/lib/documents/document-listing'
 import { encodeDocumentLevelCursor, encodeDocumentListCursor } from '@/lib/documents/list-cursor'
 import { GET } from './route'
 

@@ -156,7 +156,6 @@
   "src/lib/documents/revision-series.ts": 321,
   "src/lib/documents/revision-upload.ts": 284,
   "src/lib/documents/revision.ts": 283,
-  "src/lib/documents/service.ts": 283,
   "src/lib/documents/shelf-authz.ts": 285,
   "src/lib/documents/shelf-collection.ts": 285,
   "src/lib/documents/shelf-folders.ts": 285,

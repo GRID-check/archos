@@ -36,9 +36,11 @@ vi.mock('@/lib/sharing/access', () => ({ requireResourceAccess: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/conversations/repository', () => ({ findConversationInOrg: vi.fn() }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
-vi.mock('@/lib/documents/service', () => ({
-  resolveProjectDocumentsByName: vi.fn(),
+vi.mock('@/lib/documents/document-edits', () => ({
   renameDocument: vi.fn(),
+}))
+vi.mock('@/lib/documents/document-listing', () => ({
+  resolveProjectDocumentsByName: vi.fn(),
 }))
 vi.mock('@/lib/office-shelf/service', () => ({ resolveOfficeShelfDocumentsByName: vi.fn() }))
 vi.mock('@/lib/office-shelf/folder-service', () => ({ listOfficeShelfFolders: vi.fn() }))
@@ -99,7 +101,8 @@ import type { ProposedChangeRow } from '@/lib/db/schema/proposed-changes'
 import { patchProjectProfile, type PatchedProjectProfile } from '@/lib/project-profile/profile-service'
 import { addProjectMemoryItem, createOrganizationMemoryItem } from '@/lib/projects/service'
 import { moveDocumentToFolder } from '@/lib/documents/move-to-folder'
-import { renameDocument, resolveProjectDocumentsByName } from '@/lib/documents/service'
+import { renameDocument } from '@/lib/documents/document-edits'
+import { resolveProjectDocumentsByName } from '@/lib/documents/document-listing'
 import type { ListedDocument } from '@/lib/documents/shelf-listing'
 import { createProjectFolder, listProjectFolders, type ProjectFolderRow } from '@/lib/projects/folder-service'
 import { applyProposal, dismissProposal, getProposal, ProposalRequestError } from '@/lib/proposals/client'
