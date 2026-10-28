@@ -616,7 +616,7 @@ export async function deleteConversation(
  *   bring the chat back (the requester already saw it go, and its attachments
  *   may be half-erased); it stops the erasure. The 409 tells the purger to put
  *   the row back to `pending` without spending an attempt, and the purger's claim
- *   skips it (`grid_legal_hold_blocks`) until the hold is released — the same
+ *   skips it (`legal_hold_blocks`) until the hold is released — the same
  *   semantics a held project purge has.
  * - **A conversation that is not marked is refused.** Only a deleting chat is
  *   erased from here; a queue row naming a live one is a bug to surface, not an

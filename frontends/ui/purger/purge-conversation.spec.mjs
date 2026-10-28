@@ -115,7 +115,7 @@ describe('purgeConversation (the retry of a chat erasure)', () => {
     const error = await purgeConversation(tx, entry, deps).catch((e) => e)
 
     expect(error.code).toBe(LEGAL_HOLD_CODE)
-    expect(executed[0].text).toContain('grid_legal_hold_blocks')
+    expect(executed[0].text).toContain('legal_hold_blocks')
     expect(executed[0].values).toEqual(['conversation', 's_conv/1', 'org_1'])
     expect(fetchImpl).not.toHaveBeenCalled()
     expect(deps.eraseConversationTraces).not.toHaveBeenCalled()

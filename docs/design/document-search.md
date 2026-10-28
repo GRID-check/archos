@@ -175,7 +175,7 @@ passages as hits.
 
 The words are matched in one German spelling: ä ö ü ß and ae oe ue ss are the
 same letters in a name, in the reading's full-text vector (both through
-`grid_fold_german`, migration 0188) and in the BM25 channel, which asks both
+`fold_german`, migration 0188) and in the BM25 channel, which asks both
 spellings and keeps the one the documents hold
 (`german_text.umlaut_spellings`).
 

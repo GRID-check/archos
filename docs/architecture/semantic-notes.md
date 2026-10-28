@@ -52,7 +52,7 @@ question for data that is tenant-scoped and RLS-guarded — which is precisely
 the cost that kept F2 unbuilt for a year. A `real[]` column is transactional
 with the note, inherits its policy and its cascade, and cannot drift.
 
-`grid_cosine_similarity(real[], real[])` (migration 0069) is a set-based
+`cosine_similarity(real[], real[])` (migration 0069) is a set-based
 `IMMUTABLE PARALLEL SAFE` SQL function, so scoring happens in the database and
 the vectors never cross the wire.
 

@@ -49,7 +49,7 @@ const SPAN_ORGANIZATION = sql`coalesce(${conversations.organizationId}, ${agentP
 
 /**
  * The span's conversation drew on a folder with restricted access, as the
- * database's one rule answers it (`grid_conversation_restricted_use`,
+ * database's one rule answers it (`conversation_restricted_use`,
  * migration 0124, ADR-0093): a restricted-use record, or a revision task
  * whose document now sits where not every member may read. Its
  * title is a person's words about that conversation, often the first question,
@@ -58,7 +58,7 @@ const SPAN_ORGANIZATION = sql`coalesce(${conversations.organizationId}, ${agentP
  * would otherwise confirm a word of it. The id stays, the operator's handle on
  * the timeline.
  */
-const RESTRICTED_USE = sql`grid_conversation_restricted_use(${SPAN_ORGANIZATION}, ${agentProfilerSpans.conversationId})`
+const RESTRICTED_USE = sql`conversation_restricted_use(${SPAN_ORGANIZATION}, ${agentProfilerSpans.conversationId})`
 
 /**
  * Which conversations the directory lists: those with a turn that STARTED in

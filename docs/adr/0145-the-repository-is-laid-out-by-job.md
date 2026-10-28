@@ -326,9 +326,9 @@ release that put it there has run there:
 - [ ] **Table views.** 0189 leaves `piloti_wakes`, `piloti_changes` and
   `piloti_asks` as views over the `agent_*` tables (#1338). The next release
   drops them in a migration.
-- [ ] **Function wrappers.** 0189 keeps each `grid_` function's old name as a
+- [ ] **Function wrappers.** 0190 keeps each `grid_` function's old name as a
   wrapper (#1342). The next release drops every function whose comment starts
-  `Old name, kept for one release by migration 0189`.
+  `Old name, kept for one release by migration 0190`.
 - [ ] **Browser keys.** `storage-rename-boot.ts` and the `grid-locale` cookie
   read (#1358) are deleted the release after.
 

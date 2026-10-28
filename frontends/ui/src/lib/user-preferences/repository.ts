@@ -15,7 +15,7 @@ export async function findUserPreferences(
   organizationId: string,
 ): Promise<Record<string, unknown> | null> {
   const db = getDb()
-  // The `user_preferences` policy is `workos_user_id = grid_current_user_id()`,
+  // The `user_preferences` policy is `workos_user_id = current_user_id()`,
   // so the scope has to carry the USER, not just the organization.
   const [row] = await withTenant({ organizationId, userId: workosUserId }, () =>
     db
