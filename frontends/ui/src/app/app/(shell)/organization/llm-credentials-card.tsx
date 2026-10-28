@@ -31,6 +31,8 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 
 interface CredentialView {
@@ -62,9 +64,9 @@ export function isKnownProvider(id: string | null): id is (typeof PROVIDERS)[num
 const NEEDS_BASE_URL = new Set(['azure-openai', 'custom'])
 
 export const LlmCredentialsCard: FC = () => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
-  const tc = useTranslations('common')
+  const tc = useTranslations(commonCopy)
 
   const [revokeOpen, setRevokeOpen] = useState(false)
   const [loading, setLoading] = useState(true)

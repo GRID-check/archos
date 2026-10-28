@@ -59,6 +59,7 @@
 
 import { createContext, useContext, type FC, type ReactNode } from 'react'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { motion, springPress } from '@/components/motion'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
@@ -118,7 +119,7 @@ const FileReferenceChip: FC<{
   fileName: string
   label: ReactNode
 }> = ({ stored, fileName, label }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const peek = useHoverPopover()
   const openFile = useOpenStoredFile()
   // The label has to name the whole act, and for most files the act is two

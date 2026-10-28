@@ -1,5 +1,8 @@
 // @disk-inputs: AGENTS.md
 /**
+ * @vitest-environment node
+ */
+/**
  * `next dev` rewrites `AGENTS.md` when it detects a coding agent, unless
  * `agentRules` is off (`node_modules/next/dist/server/lib/start-server.js`,
  * `syncAgentRulesForDev`). It upserted a managed block whose `##` heading

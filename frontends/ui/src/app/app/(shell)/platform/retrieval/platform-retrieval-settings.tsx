@@ -41,6 +41,8 @@ import { Switch } from '@/components/ui/switch'
 import { SectionCard } from '@/features/platform/components/section-card'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { isSwitchSetting } from '@/lib/retrieval-settings/catalog'
 
@@ -85,8 +87,8 @@ const draftOf = (body: PayloadDto): Record<string, string> =>
   Object.fromEntries(body.settings.map((setting) => [setting.key, String(setting.value)]))
 
 export const PlatformRetrievalSettings: FC = () => {
-  const t = useTranslations('platform')
-  const tc = useTranslations('common')
+  const t = useTranslations(platformCopy)
+  const tc = useTranslations(commonCopy)
   const { locale } = useLocale()
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.settingsManage)
   const [payload, setPayload] = useState<PayloadDto | null>(null)

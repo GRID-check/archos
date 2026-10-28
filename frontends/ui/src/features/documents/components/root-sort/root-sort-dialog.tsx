@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   applyRootSortRun,
   cancelRootSortRun,
@@ -82,7 +83,7 @@ export function RootSortDialog({
   onOpenChange,
   onApplied,
 }: RootSortDialogProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [summary, setSummary] = useState<RootSortSummary | null>(null)
   const [run, setRun] = useState<RootSortRunView | null>(null)
   // The last review the dialog saw: kept after the run moves on, to name files that failed to move.

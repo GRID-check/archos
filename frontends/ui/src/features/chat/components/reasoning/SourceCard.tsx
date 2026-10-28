@@ -26,6 +26,7 @@ import { Scale, FileText, Archive, Globe, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { sourceSignalStyle } from '@/features/layout/components/SourceSignalChip'
 import { SectionLabel } from '@/components/ui/section-label'
 import { AuthorityTag } from '../AuthorityTag'
@@ -141,7 +142,7 @@ export const SourceCard: FC<{
    */
   onSelect?: () => void
 }> = ({ document: doc, live = false, loci, link, onSelect }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // The tab states the document's provenance: its fine lane, else the SHELF the
   // wire carried (ADR-0047 — read as data, never prefix-matched off a collection
   // id), else the coarse display stratum. A document with no shelf on the wire
@@ -326,7 +327,7 @@ export const BareSourceCard: FC<{ name: string; loci?: RoundLocus[]; workspace?:
   loci,
   workspace,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // The same verdict the carded slot draws, through the same component — a
   // slot without a card still knows what its round did, and dropping the
   // marker here would make a re-fetch look like a first read on exactly the

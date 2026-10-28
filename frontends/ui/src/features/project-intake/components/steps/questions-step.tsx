@@ -8,6 +8,7 @@ import { CountPill } from '@/components/ui/count-pill'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { intakeQuestionsStepCopy } from '@/i18n/namespaces/intake-questions-step'
 import type { IntakeView } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 import { displayValue } from '../../lib/display'
@@ -44,7 +45,7 @@ function placeOf(view: IntakeView): string | null {
  * open needs stay reachable, folded into a sheet.
  */
 export function QuestionsStep({ view, canDecide, busy, canUpload, onDecide, onFiles, onNext }: SetupStepProps): JSX.Element {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   const isMobile = useIsMobile()
   const round = questionRound(view)
   const contradictionTitle = useContradictionTitle()

@@ -24,6 +24,7 @@ import { useEffect, useRef, useState, type JSX } from 'react'
 import { toast } from 'sonner'
 
 import { useTranslations } from '@/i18n'
+import { notificationsCopy } from '@/i18n/namespaces/notifications'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
 import { usePushNotifications } from '../hooks/use-push-notifications'
@@ -108,7 +109,7 @@ export function InboxPushOffer({
 
 /** Reads this device, and makes the offer once if it is due. */
 function OfferWhenDue({ client }: { client: InboxClient }): JSX.Element | null {
-  const t = useTranslations('notifications')
+  const t = useTranslations(notificationsCopy)
   const push = usePushNotifications()
   const { dismissed, dismiss } = usePushPromptDismissal()
   const promptOnScreen = usePromptOnScreen()

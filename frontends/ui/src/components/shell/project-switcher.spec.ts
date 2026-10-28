@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The switcher offers where one works (ADR-0098): active and paused projects,
  * and a closed one only while it is the one open.
  */

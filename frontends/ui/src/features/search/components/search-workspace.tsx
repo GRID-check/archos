@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { SEARCH_LIMIT_DEFAULT } from '@/lib/search/search-wire'
 import { SuggestSourceProvider, type SuggestSource } from '../hooks/use-filter-suggestions'
@@ -48,7 +49,7 @@ export interface SearchWorkspaceProps {
  * the office-wide page, a project's Dateien → Suche and the office shelf's.
  */
 export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = false, inset = false }: SearchWorkspaceProps): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const { state, setState, fieldValue, setFieldValue } = useSearchUrlState()
   const scope = useMemo(() => surfaceScope(surface, state), [surface, state])
   const body = useMemo(

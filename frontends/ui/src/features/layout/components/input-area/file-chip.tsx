@@ -8,6 +8,8 @@ import { failedWhileReading } from '@/features/documents/lib/ingest-failure'
 import { useIngestFailureText } from '@/features/documents/components/ingest-failure-notice'
 import { heldSentenceKey, quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { researchCopy } from '@/i18n/namespaces/research'
 
 /**
  * The photo itself, small, on its chip: a site photo is recognised by what it
@@ -65,7 +67,7 @@ export const FileChip: FC<{
    */
   readOnly?: boolean
 }> = ({ file, onOpen, onRemove, onRetry, readOnly = false }) => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const isPending = file.status === 'uploading' || file.status === 'ingesting'
   const isFailed = file.status === 'failed'
   // Held back by the content check (ADR-0086): a reason, not a failure, and
@@ -85,7 +87,7 @@ export const FileChip: FC<{
   // sentence, not a verdict (ADR-0086): it is said as it is.
   // A file the content check held says why from its verdict, with the same
   // sentence the findings use (`heldSentenceKey`), never from its message.
-  const tFiles = useTranslations('files')
+  const tFiles = useTranslations(filesCopy)
   const heldSentence = isHeld
     ? file.replacesHeld
       ? file.errorMessage

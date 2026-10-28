@@ -25,6 +25,7 @@ import dynamic from 'next/dynamic'
 import { MonitorX, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { cn } from '@/lib/utils'
 import { useModelViewport, type UseModelViewportOptions } from '../hooks/use-model-viewport'
 import { formatDownloadProgress } from '../lib/format-value'
@@ -55,7 +56,7 @@ export interface IfcModelViewerProps extends UseModelViewportOptions {
 }
 
 export function IfcModelViewer({ className, onRetry, ...options }: IfcModelViewerProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const viewport = useModelViewport({ ...options, compact: options.compact ?? true })
 
   /*
@@ -163,7 +164,7 @@ export function IfcModelViewer({ className, onRetry, ...options }: IfcModelViewe
 
 /** The one way forward every viewer failure offers. */
 export function ViewerRetry({ onClick, label }: { onClick: () => void; label?: string }): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   return (
     <Button variant="outline" size="sm" onClick={onClick}>
       <RotateCcw className="size-3.5" aria-hidden="true" />
@@ -198,7 +199,7 @@ export function ModelViewportProgress({
    */
   onCancel?: () => void
 }): JSX.Element | null {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
   if (phase === 'ready' || phase === 'error') return null
   const downloading = phase === 'downloading'

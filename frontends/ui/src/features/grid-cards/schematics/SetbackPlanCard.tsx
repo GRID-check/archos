@@ -35,6 +35,7 @@ import {
 } from './kit'
 import { sketchRect } from './rough'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { DimensionCheckData, NormReferenceData, SetbackSideData } from '@/shared/cards/schemas'
 
 interface SetbackPlanCardProps {
@@ -121,7 +122,7 @@ const sideName = (side: SetbackSideData['side'], t: Translator): string => {
 
 export const SetbackPlanCard: FC<SetbackPlanCardProps> = (props) => {
   const { title, sides, reference, coverage, density } = props
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const readout = densityReadout({
     parcelArea: props.parcel_area_m2 ?? product(props.parcel_width_m, props.parcel_depth_m),
     footprintArea: props.footprint_area_m2 ?? product(props.building_width_m, props.building_depth_m),
@@ -165,7 +166,7 @@ const SetbackPlanDrawing: FC<{
   buildingW: number
   buildingD: number
 }> = ({ title, sides, parcelW, parcelD, buildingW, buildingD }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const side = (name: SetbackSideData['side']): SetbackSideData | undefined =>
     sides.find((s) => s.side === name)
   const left = side('left')

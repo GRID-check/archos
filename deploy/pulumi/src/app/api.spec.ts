@@ -119,7 +119,7 @@ describe("the api tier", () => {
     find(PDB, "api");
 
     const container = (await resolve(deployment.inputs.spec)).template.spec.containers[0];
-    const { backendImage } = await import("../config");
+    const { backendImage } = await import("../config/images");
     expect(container.image).toBe(backendImage(cfg));
     expect(container.ports).toEqual([{ containerPort: 8000, name: "http" }]);
     expect((await resolve(service.inputs.spec)).ports).toEqual([{ port: 8000, targetPort: 8000, name: "http" }]);

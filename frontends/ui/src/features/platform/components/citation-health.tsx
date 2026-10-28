@@ -80,6 +80,7 @@ import { CitationDefectChart } from '@/components/charts/citation-defect-chart'
 import { SeriesPaletteStyle } from '@/components/charts/palette'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { qualityScopeQuery, readQualityScope, type QualityScope } from '@/lib/quality/scope'
 import { useQualityScopeLabel } from './quality-scope-label'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
@@ -432,7 +433,7 @@ function FindingsCard({
   findings: FindingDto[]
   copyFor: (finding: FindingDto) => FindingCopy
 }): JSX.Element | null {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const [expanded, setExpanded] = useState(false)
   const sorted = useMemo(
     () =>
@@ -527,7 +528,7 @@ function MissingSourcesCard({
   inventoryKnown: boolean
   locale: string
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.settingsManage)
   const { count } = useNumberFormats(locale)
 
@@ -680,7 +681,7 @@ function OrganizationsCard({
   total: number
   locale: string
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { count, percent } = useNumberFormats(locale)
   // The server already orders by flagged turns; that is the default view.
   const [sort, setSort] = useState<{ key: OrgSortKey; desc: boolean }>({
@@ -804,7 +805,7 @@ function RecentCard({
   /** The scope as a query string, carried into the runtime view's links. */
   scopeQuery: string
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { count } = useNumberFormats(locale)
 
   return (
@@ -948,7 +949,7 @@ function LoadingState(): JSX.Element {
 }
 
 export function CitationHealth({ scope }: { scope: QualityScope }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const { count, percent, decimal } = useNumberFormats(locale)
   const scopeLabel = useQualityScopeLabel()

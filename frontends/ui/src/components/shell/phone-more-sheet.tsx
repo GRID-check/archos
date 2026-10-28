@@ -40,6 +40,10 @@ import {
 } from '@/features/product-feedback/components'
 import { CountPill } from '@/components/ui/count-pill'
 import { locales, useLocale, useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { feedbackCopy } from '@/i18n/namespaces/feedback'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { cn } from '@/lib/utils'
 import { isCurrentDestination, moreDestinations, type MoreDestination, type MoreFlags } from './phone-more'
 import { useShellOverlays } from './shell-overlays'
@@ -66,10 +70,10 @@ export function PhoneMoreSheet({
   pathname: pinnedPathname,
   ...flags
 }: PhoneMoreSheetProps): JSX.Element {
-  const t = useTranslations('nav')
-  const tc = useTranslations('common')
-  const tCollaboration = useTranslations('collaboration')
-  const tFeedback = useTranslations('feedback')
+  const t = useTranslations(navCopy)
+  const tc = useTranslations(commonCopy)
+  const tCollaboration = useTranslations(collaborationCopy)
+  const tFeedback = useTranslations(feedbackCopy)
   const currentPathname = usePathname() ?? ''
   const pathname = pinnedPathname ?? currentPathname
   const open = useShellOverlays((s) => s.moreSheetOpen)

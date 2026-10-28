@@ -18,13 +18,13 @@ from pydantic import ValidationError
 
 from aiq_agent.cards.envelope import render_envelope_cards_contract
 from aiq_agent.cards.envelope import validate_model_card
-from aiq_agent.cards.models import SURFACE_EXCLUDED_LEAVES
-from aiq_agent.cards.models import SURFACE_MAX_CHILDREN
-from aiq_agent.cards.models import SURFACE_MAX_LEAVES
-from aiq_agent.cards.models import SURFACE_MAX_TABS
-from aiq_agent.cards.models import SURFACE_TEXT_MAX
-from aiq_agent.cards.models import SurfaceCard
 from aiq_agent.cards.models import grid_card_adapter
+from aiq_agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
+from aiq_agent.cards.surface_card import SURFACE_MAX_CHILDREN
+from aiq_agent.cards.surface_card import SURFACE_MAX_LEAVES
+from aiq_agent.cards.surface_card import SURFACE_MAX_TABS
+from aiq_agent.cards.surface_card import SURFACE_TEXT_MAX
+from aiq_agent.cards.surface_card import SurfaceCard
 
 BASIS_A = {"id": "a", "component": "ifc_model_picker", "title": "Haus A", "note": "GK 4: REI 60."}
 BASIS_B = {"id": "b", "component": "ifc_model_picker", "title": "Haus B", "note": "GK 5: R 90."}
@@ -470,12 +470,12 @@ class TestWhereASurfaceIsTaught:
         assert '"surface"' in render_envelope_cards_contract()
 
     def test_the_compose_rule_states_the_validators_limits(self):
-        from aiq_agent.cards import models
+        from aiq_agent.cards import surface_card
 
         contract = render_envelope_cards_contract()
-        assert f"2 to {models.SURFACE_MAX_CHILDREN} children" in contract
-        assert f"2 to {models.SURFACE_MAX_TABS} tabs" in contract
-        assert f"at most {models.SURFACE_TEXT_MAX} characters" in contract
+        assert f"2 to {surface_card.SURFACE_MAX_CHILDREN} children" in contract
+        assert f"2 to {surface_card.SURFACE_MAX_TABS} tabs" in contract
+        assert f"at most {surface_card.SURFACE_TEXT_MAX} characters" in contract
         assert "envelope field" in contract
 
 
@@ -593,7 +593,7 @@ class TestSurfaceLimits:
 
 
 def test_a_tab_title_is_plain_text_like_every_other_card_string():
-    from aiq_agent.cards.models import SurfaceCard
+    from aiq_agent.cards.surface_card import SurfaceCard
 
     card = SurfaceCard(
         type="surface",

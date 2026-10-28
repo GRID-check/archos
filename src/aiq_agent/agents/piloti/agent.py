@@ -1543,7 +1543,7 @@ class PilotiAgent:
         # this tenant shares; naming it keeps the provider's cache key, and so
         # its shard, stable across turns while the turn context (already-read
         # digest, date, inventory) moves in its own message.
-        stable_prefix = begin_stable_prefix(await stamp_static_prompt_for_turn())
+        stable_prefix = begin_stable_prefix(await stamp_static_prompt_for_turn(state.messages))
         registry, registry_token = _bind_registry()
         turn_capture = begin_turn_capture()
         measurement_capture = begin_measurement_capture()

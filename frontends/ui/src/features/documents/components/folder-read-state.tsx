@@ -3,6 +3,7 @@
 import type { JSX } from 'react'
 import { ToneSwatch, type MeterTone } from '@/components/ui/segment-meter'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { readMarkOf, type KnowledgeTally, type ReadMark } from '../lib/folder-knowledge'
 
@@ -46,7 +47,7 @@ export function FolderReadState({
   dotOnly?: boolean
   className?: string
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const mark = tally ? readMarkOf(tally, { withUnplaced }) : null
   if (!mark) return null
   const words = t(READ_MARK_KEY[mark.state], { count: mark.count })

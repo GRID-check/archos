@@ -52,6 +52,8 @@ import { PHONE_QUERY } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useFitToVisualViewport } from '@/hooks/use-visual-viewport'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { feedbackCopy } from '@/i18n/namespaces/feedback'
 import { cn } from '@/lib/utils'
 import {
   fetchOfficeFeedback,
@@ -146,8 +148,8 @@ export function FeedbackThreadsDialog({
   onUpdatedCount,
   api = LIVE_API,
 }: FeedbackThreadsDialogProps): JSX.Element {
-  const t = useTranslations('feedback')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(feedbackCopy)
+  const tCommon = useTranslations(commonCopy)
   const [pane, setPane] = React.useState<Pane>(() => startPane(initialReportId, initialCompose))
   const [scope, setScope] = React.useState<FeedbackScope>(initialScope)
   // Bumped after a send, so the list reads again and holds the new case.
@@ -324,7 +326,7 @@ function PaneHeader({
   className?: string
   children?: React.ReactNode
 }): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   return (
     <header
       className={cn(
@@ -380,7 +382,7 @@ function CaseList({
   onUpdatedCount?: (count: number) => void
   onCanViewOffice?: (can: boolean) => void
 }): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const [load, setLoad] = React.useState<Load<OwnProductFeedbackListResponse>>({ kind: 'loading' })
   const [more, setMore] = React.useState<{ loading: boolean; failed: boolean }>({ loading: false, failed: false })
   const office = scope === 'office'
@@ -522,7 +524,7 @@ function CaseRow({
   selected: boolean
   onSelect: () => void
 }): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const { locale } = useLocale()
   const Icon = FEEDBACK_KIND_ICONS[report.kind]
   return (
@@ -596,7 +598,7 @@ function ThreadView({
   onBack: () => void
   onNewFeedback: () => void
 }): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const { locale } = useLocale()
   const [load, setLoad] = React.useState<Load<OwnProductFeedbackThread>>({ kind: 'loading' })
   const [echoes, setEchoes] = React.useState<Echo[]>([])
@@ -733,7 +735,7 @@ function ThreadMessages({
   onReply: (message: string) => Promise<ReplyToFeedbackResult>
   onNewFeedback: () => void
 }): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const contentRef = React.useRef<HTMLDivElement>(null)
   const answered = messages.some((message) => message.author === 'team')
   const mine = thread.report.mine

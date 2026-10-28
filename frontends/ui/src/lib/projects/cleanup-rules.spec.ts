@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { ruleCandidates, versionOf, type CleanupDocumentFacts } from './cleanup-rules'
 

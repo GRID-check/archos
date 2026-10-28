@@ -40,6 +40,9 @@ import {
 } from '@/features/product-feedback/components'
 import type { ThemeMode } from '@/features/layout/types'
 import { useTranslations, useLocale, locales } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { feedbackCopy } from '@/i18n/namespaces/feedback'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { cn } from '@/lib/utils'
 import type { SwitchableOrganization } from '@/lib/organizations/switchable'
 import { OrganizationSwitcherMenu } from './organization-switcher'
@@ -112,15 +115,15 @@ export function SidebarUserMenu({
   const { user: authUser, signOut } = useAuth()
   const theme = useLayoutStore((s) => s.theme)
   const setTheme = useLayoutStore((s) => s.setTheme)
-  const t = useTranslations('nav')
-  const tc = useTranslations('common')
+  const t = useTranslations(navCopy)
+  const tc = useTranslations(commonCopy)
   const { locale, setLocale, localeNames } = useLocale()
   const ActiveThemeIcon = THEME_ICONS[theme]
   const startTour = useStartProductTour()
   const openFeedbackThreads = useOpenFeedbackThreads()
   const feedbackUpdatedCount = useFeedbackUpdatedCount()
   const feedbackAvailable = useFeedbackAvailable()
-  const tFeedback = useTranslations('feedback')
+  const tFeedback = useTranslations(feedbackCopy)
 
   const displayName = user?.name || user?.email || t('userMenu.defaultUser')
   // Two-letter monogram from the first two words (e.g. "Anna Kaufmann" → "AK"),

@@ -24,6 +24,7 @@ import { notFound } from 'next/navigation'
 import { PlatformCards } from '@/app/app/(shell)/platform/cards/platform-cards'
 import { PageHeader } from '@/components/ui/page-header'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 
 const FIELDS = {
   stair_diagram: [
@@ -165,7 +166,7 @@ function installShim(): void {
 installShim()
 
 export default function PlatformCardsDevPage(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   if (process.env.NODE_ENV !== 'development') {
     notFound()
   }

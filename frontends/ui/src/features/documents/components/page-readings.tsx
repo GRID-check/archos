@@ -8,6 +8,7 @@ import { ClampedText } from '@/components/ui/clamped-text'
 import { InspectorGroup, InspectorSection } from '@/components/ui/inspector-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   humanizeTerm,
   hasStructuredDetail,
@@ -69,7 +70,7 @@ export function PageReadings({
   onShowPage?: (page: number) => void
   className?: string
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [expanded, setExpanded] = useState(false)
   useEffect(() => setExpanded(false), [details])
 
@@ -137,7 +138,7 @@ function PageReading({
   detail: VisualDetail
   onShowPage?: (page: number) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   /**
    * The drawing type's label. A type this build has no translation for is
    * humanized from its key, the same contract as the structured vocabulary:

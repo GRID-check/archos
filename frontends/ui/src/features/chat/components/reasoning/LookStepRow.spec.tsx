@@ -8,7 +8,7 @@
 import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { fakePdfjsRuntime, type FakePdfState } from '@/test-utils/pdfjs-fake'
 import { storedSteps } from '@/test-utils/wire-v2-steps'
@@ -103,7 +103,7 @@ describe('LookStepRows', () => {
   })
 
   test('the German wording: the verb of a look row, and the region as the backend words it', () => {
-    expect(de.chat.thinking.work.verb.look).toBe('Betrachtet')
-    expect(de.chat.thinking.look.region.topRight).toBe('oben rechts')
+    expect(chatCopy.messages.de.thinking.work.verb.look).toBe('Betrachtet')
+    expect(chatCopy.messages.de.thinking.look.region.topRight).toBe('oben rechts')
   })
 })

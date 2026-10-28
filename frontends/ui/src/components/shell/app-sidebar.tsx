@@ -45,6 +45,8 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { pruneProjectSections, useRecordProjectSection } from '@/hooks/use-last-project-section'
 import { useLayoutStore } from '@/features/layout/store'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
@@ -192,8 +194,8 @@ function AppSidebarFrame({
   canAccessInbox,
 }: AppSidebarProps) {
   const pathname = usePathname() ?? ''
-  const t = useTranslations('nav')
-  const tCollaboration = useTranslations('collaboration')
+  const t = useTranslations(navCopy)
+  const tCollaboration = useTranslations(collaborationCopy)
   const { state, isMobile } = useSidebar()
   const { pending: inboxPending } = useInboxBadge(canAccessInbox)
 
@@ -499,7 +501,7 @@ function MobileNavSync({ pathname }: { pathname: string }) {
 }
 
 function SidebarBrand({ iconRail }: { iconRail: boolean }) {
-  const t = useTranslations('nav')
+  const t = useTranslations(navCopy)
   const { state, toggleSidebar, isMobile } = useSidebar()
   const collapsed = state === 'collapsed'
 

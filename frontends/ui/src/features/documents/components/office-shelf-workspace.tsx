@@ -5,6 +5,7 @@ import { Archive } from 'lucide-react'
 import { sourceTint } from '@/lib/ui/source-tint'
 import { CountPill } from '@/components/ui/count-pill'
 import { useTranslations } from '@/i18n'
+import { officeShelfCopy } from '@/i18n/namespaces/office-shelf'
 import { createDocumentNameProbeClient } from '@/lib/documents/name-probe-client'
 import { inferDocumentKind } from '../document-kind'
 import type { FileItem } from '../file-types'
@@ -47,7 +48,7 @@ export function OfficeShelfWorkspace({
   showModels = false,
   trailingActions,
 }: OfficeShelfWorkspaceProps) {
-  const t = useTranslations('officeShelf')
+  const t = useTranslations(officeShelfCopy)
   const probe = useMemo(() => createDocumentNameProbeClient(), [])
   // „Suche“ in place of the listing (`?mode=search`), scoped to the shelf and the open folder.
   const search = useShelfSearchMode()

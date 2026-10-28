@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * A card on the sheet keeps inside the review's free stage: never under the
  * toolbars at the canvas's foot, nor under the chips of who is out of view
  * below them (at 1440x900 „Lena · Seite 2" lay over the open card's reply

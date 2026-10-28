@@ -32,6 +32,7 @@ import type { LucideIcon } from 'lucide-react'
 
 import { Chip } from '@/components/ui/chip'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import type { ResourceAccessEntry, ResourceVisibility } from '@/lib/sharing/types'
 import { cn } from '@/lib/utils'
 
@@ -82,7 +83,7 @@ export function AccessChip({
   size = 'sm',
   className,
 }: AccessChipProps): JSX.Element {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
 
   const count = Number.isFinite(sharedWith) ? Math.max(0, Math.floor(sharedWith)) : 0
   const state =

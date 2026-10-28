@@ -8,6 +8,7 @@ import type { ActionMenuEntry } from '@/components/ui/action-menu'
 import { askAboutFile } from '@/features/documents/lib/ask-about-file'
 import { fileItemFromStatus } from '@/features/documents/lib/document-question'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import type { DocumentHit } from '@/lib/search/search-wire'
 import { documentHitActionEntries } from '../lib/hit-actions'
 import { documentFolderHref, documentHitHref, documentLinkHref, documentReviewHitHref } from '../lib/search-hrefs'
@@ -57,7 +58,7 @@ function copyToClipboard(text: string, messages: { done: string; failed: string 
  * folder it lies in; and its link.
  */
 export function useDocumentHitActions(hit: DocumentHit): ActionMenuEntry[] {
-  const t = useTranslations('search.hitActions')
+  const t = useTranslations(searchCopy, 'hitActions')
   const router = useRouter()
   const from = useSearchReturn()
   return useMemo(() => {

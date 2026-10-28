@@ -26,7 +26,7 @@ import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { FEATURE_FLAGS, isFeatureEnabled, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
 import { getLocale } from '@/i18n/server'
-import { getDictionary } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 import './globals.css'
 import { isAuthRequired } from '@/lib/auth/auth-required'
 import { postHogConfigFromEnv, type PostHogConfig, type PostHogIdentity } from '@/lib/analytics/posthog-config'
@@ -229,7 +229,7 @@ const RootLayout = async ({ children }: RootLayoutProps): Promise<ReactNode> => 
   await connection()
   const locale = await getLocale()
   const config = await getAppConfig(locale)
-  const t = getDictionary(locale).common
+  const t = commonCopy.messages[locale]
 
   return (
     <html

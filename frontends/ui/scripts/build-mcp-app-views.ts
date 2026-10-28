@@ -63,20 +63,20 @@ const inlineStyle = (css: string): string => css.replace(/<\/style/gi, '<\\/styl
 /**
  * Modules a view never needs whole, resolved to a small stand-in: the answer's
  * Markdown renderer, which the A2UI catalog imports for its `Text` leaf and
- * which carries mermaid, KaTeX and the chat stores (~7 MB), and every
- * dictionary namespace but the three the card reads (~850 KB). Why each is
- * safe is in the stand-in's own header.
+ * which carries mermaid, KaTeX and the chat stores (~7 MB). Why it is safe is
+ * in the stand-in's own header. The dictionaries need none: each component
+ * imports the namespace it reads (`src/i18n/namespace.ts`), so a view bundles
+ * the copy it draws and no other.
  */
-const STAND_INS: ReadonlyArray<{ filter: RegExp; importer?: RegExp; path: string }> = [
+const STAND_INS: ReadonlyArray<{ filter: RegExp; path: string }> = [
   { filter: /MarkdownRenderer\/MarkdownRenderer$/, path: 'src/features/mcp-apps/markdown-stand-in.tsx' },
-  { filter: /^\.\/dictionaries$/, importer: /src[\\/]i18n[\\/][^\\/]+$/, path: 'src/features/mcp-apps/dictionaries-stand-in.ts' },
 ]
 
 const standIns: BunPlugin = {
   name: 'mcp-app-view-stand-ins',
   setup(build) {
-    for (const { filter, importer, path } of STAND_INS) {
-      build.onResolve({ filter }, (args) => (!importer || importer.test(args.importer) ? { path: join(ROOT, path) } : undefined))
+    for (const { filter, path } of STAND_INS) {
+      build.onResolve({ filter }, () => ({ path: join(ROOT, path) }))
     }
   },
 }

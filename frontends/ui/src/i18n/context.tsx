@@ -29,18 +29,19 @@ import {
   localeNames,
   type Locale,
 } from './config'
-import { getDictionary, type Dictionary } from './dictionaries'
-import { createTranslator, type Translator } from './translate'
+import { translatorFor, type Namespace } from './namespace'
+import type { Translator } from './translate'
 import { fetchUserPreferences, patchUserPreferences } from '@/lib/user-preferences/client'
 import { fetchOrgDefaultLocale } from '@/lib/organizations/client'
 
+/**
+ * The locale only. The copy is not here: each caller imports the namespace it
+ * reads (`namespace.ts`), so the provider holds no dictionary at all.
+ */
 interface I18nContextValue {
   locale: Locale
-  dictionary: Dictionary
   localeNames: Record<Locale, string>
   setLocale: (locale: Locale) => void
-  /** Root translator (unscoped). Prefer {@link useTranslations} for a namespace. */
-  t: Translator
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null)
@@ -154,32 +155,24 @@ export function I18nProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const dictionary = useMemo(() => getDictionary(locale), [locale])
-  const t = useMemo(() => createTranslator(dictionary), [dictionary])
-
   const value = useMemo<I18nContextValue>(
-    () => ({ locale, dictionary, localeNames, setLocale, t }),
-    [locale, dictionary, setLocale, t]
+    () => ({ locale, localeNames, setLocale }),
+    [locale, setLocale]
   )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
 
+const OUTSIDE_PROVIDER: I18nContextValue = {
+  locale: defaultLocale,
+  localeNames,
+  setLocale: () => {},
+}
+
 function useI18nContext(): I18nContextValue {
-  const ctx = useContext(I18nContext)
-  if (!ctx) {
-    // Degrade gracefully outside a provider (e.g. isolated unit tests): use the
-    // default locale rather than throwing.
-    const dictionary = getDictionary(defaultLocale)
-    return {
-      locale: defaultLocale,
-      dictionary,
-      localeNames,
-      setLocale: () => {},
-      t: createTranslator(dictionary),
-    }
-  }
-  return ctx
+  // Degrade gracefully outside a provider (e.g. isolated unit tests): use the
+  // default locale rather than throwing.
+  return useContext(I18nContext) ?? OUTSIDE_PROVIDER
 }
 
 /** Access the active locale and the setter. */
@@ -193,18 +186,14 @@ export function useLocale(): {
 }
 
 /**
- * Get a translator, optionally scoped to a namespace.
+ * Get a translator over one namespace, optionally narrowed to a scope inside it.
  *
  * @example
- * const t = useTranslations('profile')
+ * import { profileCopy } from '@/i18n/namespaces/profile'
+ * const t = useTranslations(profileCopy)
  * t('appearance.title') // "Appearance"
  */
-export function useTranslations(namespace?: string): Translator {
-  const { dictionary } = useI18nContext()
-  return useMemo(() => createTranslator(dictionary, namespace), [dictionary, namespace])
-}
-
-/** Full context accessor for advanced use. */
-export function useI18n(): I18nContextValue {
-  return useI18nContext()
+export function useTranslations(namespace: Namespace, scope?: string): Translator {
+  const { locale } = useI18nContext()
+  return useMemo(() => translatorFor(namespace, locale, scope), [namespace, locale, scope])
 }

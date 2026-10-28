@@ -25,14 +25,12 @@ Chart extraction uses the VLM to:
 2. Extract structured data (chart type, axis labels, data points, trends)
 """
 
-import asyncio
 import base64
 import contextlib
 import dataclasses
 import hashlib
 import json
 import logging
-import math
 import os
 import random
 import re
@@ -50,99 +48,42 @@ from pathlib import Path
 from typing import Any
 from typing import NamedTuple
 
-from aiq_agent.common.cost_tracking import USAGE_ROLE_EMBEDDING
 from aiq_agent.common.cost_tracking import USAGE_ROLE_INGEST_VISION
 from aiq_agent.common.cost_tracking import meter_openai_client
 from aiq_agent.knowledge import ingest_status_store
 from aiq_agent.knowledge.base import BaseIngestor
-from aiq_agent.knowledge.base import BaseRetriever
 from aiq_agent.knowledge.base import PreparedIngestJob
 from aiq_agent.knowledge.base import TTLCleanupMixin
 from aiq_agent.knowledge.factory import register_ingestor
-from aiq_agent.knowledge.factory import register_retriever
 from aiq_agent.knowledge.ingest_scheduler import FairIngestScheduler
 from aiq_agent.knowledge.ingest_scheduler import JobSource
 from aiq_agent.knowledge.ingest_scheduler import per_org_cap_from_env
-from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import CollectionInfo
-from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.schema import FileInfo
 from aiq_agent.knowledge.schema import FileProgress
 from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
 from aiq_agent.knowledge.schema import QuarantineVerdict
-from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.schema import stable_file_id
 
+from . import dependencies
+from . import embedding
 from . import revisions
+from .chunk_metadata import provenance_from_config
+from .chunk_metadata import stamp_chunk_metadata
+from .dependencies import retrieval_dependency_error
+from .embedding import EMBED_BATCH_SIZE
+from .embedding import EMBED_MAX_RETRIES
+from .embedding import EMBED_TIMEOUT_SECONDS
+from .embedding import embed_fingerprint_metadata
+from .env import env_float
+from .env import env_int
+from .env import env_switch
 from .pdfium_lock import detached_pil
 from .pdfium_lock import pdfium_lock
 
 logger = logging.getLogger(__name__)
-
-
-#: Sentinel for "strictly positive", which is not expressible as a `minimum`
-#: float: 0 must be rejectable for a timeout and accepted for a count.
-_POSITIVE = float("-inf")
-
-
-def _env_float(name: str, fallback: float, *, minimum: float = _POSITIVE) -> float:
-    """Read a finite float from the environment, failing open to ``fallback``.
-
-    A module-scope ``float(os.environ[...])`` makes a typo'd env var raise at IMPORT
-    time, taking down the whole knowledge layer. A misconfiguration must degrade to
-    the default, not to an unimportable module.
-
-    ``minimum`` defaults to "strictly positive", which is right for a timeout or a
-    batch size but WRONG for a count whose zero means "off": rejecting
-    ``GRID_MAX_RENDERED_PAGES=0`` silently restored the default of 20 and the
-    deployment paid VLM cost it had explicitly opted out of. Pass ``minimum=0``
-    for those.
-    """
-    raw = os.environ.get(name, "")
-    try:
-        value = float(raw)
-    except TypeError, ValueError:
-        if raw:
-            logger.warning("%s=%r is not a number; using %s", name, raw, fallback)
-        return fallback
-    if not math.isfinite(value):
-        logger.warning("%s=%r must be finite; using %s", name, raw, fallback)
-        return fallback
-    if minimum is _POSITIVE:
-        if value <= 0:
-            logger.warning("%s=%r must be positive and finite; using %s", name, raw, fallback)
-            return fallback
-    elif value < minimum:
-        logger.warning("%s=%r must be >= %s; using %s", name, raw, minimum, fallback)
-        return fallback
-    return value
-
-
-def _env_int(name: str, fallback: int, *, minimum: float = _POSITIVE) -> int:
-    """Integer half of :func:`_env_float`: garbage degrades to ``fallback``.
-
-    Truncates (never rounds up) so a fractional value cannot exceed the stated
-    budget. Clamping stays at the call site, where the existing ``max(1, ...)``
-    guards already live.
-    """
-    return int(_env_float(name, float(fallback), minimum=minimum))
-
-
-#: The values that switch an extraction capability off. Nothing else does.
-_OFF_VALUES = frozenset({"false", "0", "no", "off"})
-
-
-def _env_switch(name: str) -> bool:
-    """An extraction capability that is ON unless the environment switches it off.
-
-    Every capability defaults on in code, so a deployment that forgets a flag
-    gets the full index rather than a silently degraded one. Only an explicit
-    ``false``/``0``/``no``/``off`` turns it off; unset, empty or anything else
-    leaves it on.
-    """
-    return os.environ.get(name, "").strip().lower() not in _OFF_VALUES
 
 
 # Default VLM model for image captioning: the house model every deployment
@@ -152,117 +93,6 @@ def _env_switch(name: str) -> bool:
 DEFAULT_VLM_MODEL = os.environ.get("GRID_VLM_MODEL", "openai/gpt-6-luna")
 # Default VLM model base URL
 DEFAULT_VLM_BASE_URL = os.environ.get("GRID_VLM_BASE_URL", "https://openrouter.ai/api/v1")
-
-
-def retrieval_dependency_faults() -> list[tuple[str, BaseException]]:
-    """Describe, per required module, what is actually wrong with it right now.
-
-    ``llama_index`` is a PEP-420 namespace package: the parent import succeeds
-    whenever *any* ``llama-index-*`` distribution is present, even when the
-    pieces we need are absent. A partial install therefore fails deep inside a
-    submodule with ``cannot import name 'core' from 'llama_index' (unknown
-    location)`` rather than at the obvious place, so "is it installed?" has to
-    be answered per module.
-
-    Each probe is a literal import rather than a loop over module names: the
-    three are known when this is written, so computing them bought nothing and
-    made the dependency graph invisible to both readers and static analysis.
-    The exception type carries the distinction the report needs —
-    ``ModuleNotFoundError`` means the module is genuinely absent, any other
-    import failure means it is present but cannot be loaded, which is the case
-    that was misreported as "not installed" for days.
-    """
-    faults: list[tuple[str, BaseException]] = []
-
-    def _probe(distribution: str, module: str, load) -> None:
-        try:
-            load()
-        except ModuleNotFoundError as exc:
-            # A ModuleNotFoundError does NOT automatically mean this
-            # distribution is absent: it also fires when the module imports
-            # fine but one of ITS dependencies is missing. Only a failure
-            # naming this module (or a parent of it) means "not installed";
-            # anything else is a present-but-unusable install, which is the
-            # case that has to stay distinguishable because it is the one the
-            # old message got wrong.
-            missing = exc.name or ""
-            if missing and (module == missing or module.startswith(f"{missing}.")):
-                faults.append((f"{distribution}: not installed ({exc})", exc))
-            else:
-                faults.append((f"{distribution}: installed but broken (missing dependency {missing or exc!r})", exc))
-        except Exception as exc:  # noqa: BLE001 - the point is to report, not to handle
-            faults.append((f"{distribution}: installed but broken ({type(exc).__name__}: {exc})", exc))
-
-    def _core() -> None:
-        import llama_index.core  # noqa: F401
-
-    def _embeddings() -> None:
-        from llama_index.embeddings.nvidia import NVIDIAEmbedding  # noqa: F401
-
-    def _vector_store() -> None:
-        # A presence probe only: every read and write goes through ``..qdrant``,
-        # the one package that imports the client (ADR-0115).
-        __import__("qdrant_client")
-
-    _probe("llama-index-core", "llama_index.core", _core)
-    _probe("llama-index-embeddings-nvidia", "llama_index.embeddings.nvidia", _embeddings)
-    _probe("qdrant-client", "qdrant_client", _vector_store)
-    return faults
-
-
-def retrieval_dependency_report() -> list[str]:
-    """The human-readable half of :func:`retrieval_dependency_faults`."""
-    return [finding for finding, _ in retrieval_dependency_faults()]
-
-
-def ensure_retrieval_dependencies() -> None:
-    """Fail now, with the whole picture, rather than deep in a later call.
-
-    Both initialization paths import only the piece they need first
-    (``NVIDIAEmbedding``), so a missing vector-store package used to sail
-    through ``_ensure_initialized`` and surface much later inside a retrieval
-    or ``_run_ingestion`` — outside the handler that produces the good
-    diagnostic, and after the component had already reported itself ready.
-    Probing the full set up front means "initialized" means usable.
-    """
-    faults = retrieval_dependency_faults()
-    if not faults:
-        return
-    # Chained from the FIRST probe failure. Running before the try/except that
-    # `_retrieval_dependency_error` serves means this is now the raise most
-    # operators will actually see, so it has to carry the original traceback
-    # too -- a summary string alone would drop the one frame that says where
-    # the import broke.
-    raise RuntimeError(
-        "LlamaIndex retrieval stack is unusable in this environment.\nModule status:\n  "
-        + "\n  ".join(finding for finding, _ in faults)
-        + "\nA module reported 'installed but broken' means the distribution is present but incomplete "
-        "(commonly a missing llama-index-core under the llama_index namespace package) -- reinstalling "
-        "the whole extra, not adding a package, is the fix: uv sync --extra llamaindex"
-    ) from faults[0][1]
-
-
-def _retrieval_dependency_error(cause: BaseException) -> RuntimeError:
-    """Build a truthful error for a failed LlamaIndex import.
-
-    The previous message claimed "LlamaIndex dependencies not installed" for
-    every ``ImportError``. In production the packages *were* installed and one
-    of them was broken (``llama-index-core`` missing under an otherwise
-    populated ``llama_index`` namespace), so the advice to reinstall them was
-    wrong and the real cause -- present in the chained exception all along --
-    went unread for days (issues #330, #331). A diagnostic that misdescribes the
-    fault costs more than no diagnostic at all, so this one reports what is
-    actually true of the running environment.
-    """
-    findings = retrieval_dependency_report() or ["no per-module fault found; see the chained exception"]
-    return RuntimeError(
-        "LlamaIndex retrieval stack is unusable in this environment.\n"
-        f"Triggering import error: {type(cause).__name__}: {cause}\n"
-        "Module status:\n  " + "\n  ".join(findings) + "\n"
-        "A module reported 'installed but broken' means the distribution is present but incomplete "
-        "(commonly a missing llama-index-core under the llama_index namespace package) -- reinstalling "
-        "the whole extra, not adding a package, is the fix: uv sync --extra llamaindex"
-    )
 
 
 # Image extraction settings - filters out small icons/logos
@@ -280,7 +110,7 @@ MIN_IMAGE_HEIGHT_PX = 100
 # that is analysed can also be stored for `look`. The largest
 # are kept (see `cap_images`); the count left out is recorded on the file's
 # job status as `images_over_cap`. 0 analyses none.
-MAX_IMAGES_PER_DOCUMENT = _env_int("GRID_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
+MAX_IMAGES_PER_DOCUMENT = env_int("GRID_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
 
 # @environment_variable GRID_MAX_IMAGE_PIXELS
 # @category Knowledge Layer
@@ -307,7 +137,7 @@ MAX_IMAGES_PER_DOCUMENT = _env_int("GRID_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0
 # A raster refused here is counted on the file's job status as
 # `images_over_pixel_budget` and logged with its page, index and pixel size; its
 # page keeps its text layer. 0 refuses every embedded raster.
-MAX_IMAGE_PIXELS = _env_int("GRID_MAX_IMAGE_PIXELS", 268_435_456, minimum=0)
+MAX_IMAGE_PIXELS = env_int("GRID_MAX_IMAGE_PIXELS", 268_435_456, minimum=0)
 
 # Cap on the longest edge (px) of an image before it is JPEG-re-encoded and sent
 # to the VLM. Larger images are downscaled (aspect preserved, never upscaled) to
@@ -345,20 +175,20 @@ RENDER_VISUAL_PAGES = os.environ.get("GRID_RENDER_VISUAL_PAGES", "true").lower()
 # or below the vision-encoder caps of current VLMs (above this the provider
 # just downsamples). Scale is computed per page from its point size so an A0
 # sheet and an A4 sheet both land near this target.
-PAGE_RENDER_MAX_DIM = _env_int("GRID_PAGE_RENDER_MAX_DIM", 2048)
+PAGE_RENDER_MAX_DIM = env_int("GRID_PAGE_RENDER_MAX_DIM", 2048)
 
 # Page triage (`page_triage.classify_page`). A page with less watermark-stripped
 # text than this is "text-low": a scan when a raster covers most of it...
-VISUAL_PAGE_MIN_TEXT_CHARS = _env_int("GRID_VISUAL_PAGE_MIN_TEXT_CHARS", 200, minimum=0)
+VISUAL_PAGE_MIN_TEXT_CHARS = env_int("GRID_VISUAL_PAGE_MIN_TEXT_CHARS", 200, minimum=0)
 # ...a drawing when it also carries at least this many vector path objects (a
 # plan/section/elevation is typically hundreds-to-tens-of-thousands of paths).
 # Both, not either: a table-ruled text page has hundreds of cell borders.
-VISUAL_PAGE_MIN_PATHS = _env_int("GRID_VISUAL_PAGE_MIN_PATHS", 300, minimum=0)
+VISUAL_PAGE_MIN_PATHS = env_int("GRID_VISUAL_PAGE_MIN_PATHS", 300, minimum=0)
 # Hard cap on DRAWING pages rendered for the drawing analysis per document, to
 # bound VLM cost/latency on large plan sets. Pages past it are counted on the
 # file's job status (`drawing_pages_over_cap`); their text layer is still
 # indexed. Scanned pages are not drawings and are not under this cap.
-MAX_RENDERED_PAGES = _env_int("GRID_MAX_RENDERED_PAGES", 20, minimum=0)
+MAX_RENDERED_PAGES = env_int("GRID_MAX_RENDERED_PAGES", 20, minimum=0)
 
 # @environment_variable GRID_MAX_OCR_PAGES
 # @category Knowledge Layer
@@ -370,7 +200,7 @@ MAX_RENDERED_PAGES = _env_int("GRID_MAX_RENDERED_PAGES", 20, minimum=0)
 # are counted on the file's job status (`pages_over_ocr_cap`), never dropped
 # quietly. 0 transcribes none: the OCR switch, independent of
 # GRID_RENDER_VISUAL_PAGES.
-MAX_OCR_PAGES = _env_int("GRID_MAX_OCR_PAGES", 500, minimum=0)
+MAX_OCR_PAGES = env_int("GRID_MAX_OCR_PAGES", 500, minimum=0)
 
 # @environment_variable GRID_PDF_PAGE_MAX_OBJECTS
 # @category Knowledge Layer
@@ -384,7 +214,7 @@ MAX_OCR_PAGES = _env_int("GRID_MAX_OCR_PAGES", 500, minimum=0)
 # paths costs about 2 GiB and minutes for its title block. Such a page keeps
 # its text, without captioned tables or line styles, and is counted on the
 # file's job status (`pages_read_without_layout`). 0 lifts the ceiling.
-PDF_PAGE_MAX_OBJECTS = _env_int("GRID_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
+PDF_PAGE_MAX_OBJECTS = env_int("GRID_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
 
 # @environment_variable GRID_VLM_TIMEOUT_SECONDS
 # @category Knowledge Layer
@@ -402,7 +232,7 @@ PDF_PAGE_MAX_OBJECTS = _env_int("GRID_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
 # placeholders are skipped, not embedded. Clamped like the sibling knobs: a
 # misconfigured 0 or negative value would fail every VLM request immediately and
 # silently disable captioning altogether.
-VLM_REQUEST_TIMEOUT_SECONDS = max(1, _env_int("GRID_VLM_TIMEOUT_SECONDS", 180))
+VLM_REQUEST_TIMEOUT_SECONDS = max(1, env_int("GRID_VLM_TIMEOUT_SECONDS", 180))
 
 # @environment_variable GRID_VLM_FLEET_CONCURRENCY
 # @category Knowledge Layer
@@ -416,7 +246,7 @@ VLM_REQUEST_TIMEOUT_SECONDS = max(1, _env_int("GRID_VLM_TIMEOUT_SECONDS", 180))
 # Every vision call also holds a slot in its model's own provider-limiter pool
 # (`GRID_PROVIDER_MODEL_LIMIT_CEILING`, 32), so a pool above that never fills:
 # keep the two together.
-VLM_FLEET_CONCURRENCY = _env_int("GRID_VLM_FLEET_CONCURRENCY", 32)
+VLM_FLEET_CONCURRENCY = env_int("GRID_VLM_FLEET_CONCURRENCY", 32)
 
 # @environment_variable GRID_VLM_RATE_LIMIT_RETRIES
 # @category Knowledge Layer
@@ -425,49 +255,11 @@ VLM_FLEET_CONCURRENCY = _env_int("GRID_VLM_FLEET_CONCURRENCY", 32)
 # @required false
 # Retries of a vision-model call the provider rate-limited (HTTP 429), with
 # exponential backoff or the provider's Retry-After, before the caption fails.
-VLM_RATE_LIMIT_RETRIES = max(0, _env_int("GRID_VLM_RATE_LIMIT_RETRIES", 4))
+VLM_RATE_LIMIT_RETRIES = max(0, env_int("GRID_VLM_RATE_LIMIT_RETRIES", 4))
 
 _VLM_SLOT_KEY = "ingest:vlm:inflight"
 _VLM_BACKOFF_CAP_SECONDS = 60.0
 
-# @environment_variable GRID_EMBED_BATCH_SIZE
-# @category Knowledge Layer
-# @type int
-# @default 64
-# @required false
-# Texts per embedding API request. The llama-index default (10) serialises far
-# too many round-trips on large documents — a 500-chunk PDF costs ~50
-# sequential HTTP calls. Every OpenAI-compatible embeddings endpoint accepts
-# far more per call (OpenAI 2048, NVIDIA NIM 259); 64 is conservative.
-EMBED_BATCH_SIZE = max(1, _env_int("GRID_EMBED_BATCH_SIZE", 64))
-
-# @environment_variable GRID_EMBED_TIMEOUT_SECONDS
-# @category Knowledge Layer
-# @type float
-# @default 60
-# @required false
-# Per-request timeout on the embeddings client. The client's own defaults are
-# 120s with five retries, so a hung embeddings endpoint could hold the query
-# embedding, and with it the whole chat turn, for ten minutes; retrieval fails
-# open everywhere else, and this is what lets it fail open here. Two retries
-# stay for the transient 5xx a batch of EMBED_BATCH_SIZE texts occasionally
-# meets; 60s covers such a batch with room.
-EMBED_TIMEOUT_SECONDS = max(1.0, _env_float("GRID_EMBED_TIMEOUT_SECONDS", 60.0))
-EMBED_MAX_RETRIES = 2
-
-# @environment_variable GRID_QUERY_EMBED_TIMEOUT_SECONDS
-# @category Knowledge Layer
-# @type float
-# @default 3
-# @required false
-# Per-request timeout for the QUERY embeddings a chat turn waits on, as opposed
-# to the ingestion batches above. A query is one short text: 0.66 s at the
-# median across 276 live calls (September 2026 census), but 8.5 s at p99 and
-# 11.8 s at worst, and a turn makes 5-15 of them before the model starts, so a
-# single tail request held a whole turn for 11 s. At 3 s the client gives up on
-# that one and retries (EMBED_MAX_RETRIES), which a fresh request answers in
-# well under a second: the worst turn pays ~4 s instead of 11.
-QUERY_EMBED_TIMEOUT_SECONDS = max(0.5, _env_float("GRID_QUERY_EMBED_TIMEOUT_SECONDS", 3.0))
 
 # pypdfium2 page-object type constants (the C API values are not always exposed
 # as Python attributes across versions).
@@ -508,7 +300,7 @@ WATERMARK_LINE_PATTERNS = [
 # @default 24
 # @required false
 # Hours before stale collections are deleted by the TTL cleanup thread.
-COLLECTION_TTL_HOURS = _env_float("GRID_COLLECTION_TTL_HOURS", 24.0)
+COLLECTION_TTL_HOURS = env_float("GRID_COLLECTION_TTL_HOURS", 24.0)
 
 # @environment_variable GRID_TTL_CLEANUP_INTERVAL_SECONDS
 # @category Knowledge Layer
@@ -516,7 +308,7 @@ COLLECTION_TTL_HOURS = _env_float("GRID_COLLECTION_TTL_HOURS", 24.0)
 # @default 3600
 # @required false
 # Seconds between TTL cleanup runs.
-TTL_CLEANUP_INTERVAL_SECONDS = _env_int("GRID_TTL_CLEANUP_INTERVAL_SECONDS", 3600)
+TTL_CLEANUP_INTERVAL_SECONDS = env_int("GRID_TTL_CLEANUP_INTERVAL_SECONDS", 3600)
 
 # Terminal jobs are retained this long for status polling/file listings, then
 # pruned so in-memory job tracking doesn't grow for the life of the process.
@@ -563,7 +355,7 @@ class _ClaimLost(Exception):  # noqa: N818 - a signal, not an error
 # record of a file that failed, so the file drops off the listing with it.
 # SUCCESS files stay listed: `list_files` reads them from the indexed chunks.
 # Bounds the `ingest_jobs` table (scaling review phase-2, #13).
-FILE_TRACKING_RETENTION_SECONDS = _env_int("GRID_FILE_TRACKING_RETENTION_SECONDS", 86400)  # 24h
+FILE_TRACKING_RETENTION_SECONDS = env_int("GRID_FILE_TRACKING_RETENTION_SECONDS", 86400)  # 24h
 
 # The heartbeat prunes expired job rows every this many beats (hourly).
 _PRUNE_EVERY_BEATS = 120
@@ -587,312 +379,6 @@ def bump_collection_version(collection_name: str) -> None:
     from aiq_agent.knowledge import collection_version as _collection_version
 
     _collection_version.bump(collection_name)
-
-
-def collection_version(collection_name: str) -> int | None:
-    """The collection's write version, or ``None`` when it cannot be resolved.
-
-    NOTE the contract: ``None`` means UNKNOWN, not 0. A caller must not build a cache
-    key from it and must not store a result. Coercing unknown to 0 is precisely how a
-    replica keeps serving superseded legal text through a cache outage -- every entry
-    another replica stored under version 0 would match again.
-    """
-    from aiq_agent.knowledge import collection_version as _collection_version
-
-    return _collection_version.current(collection_name)
-
-
-def unit_score(score: Any) -> float:
-    """A hit's cosine as ``Chunk.score`` holds it: within ``[0, 1]``, total on every input.
-
-    Anti-correlated results floor at ``0.0`` rather than going negative:
-    ``Chunk.score`` is contractually ``[0, 1]``, and "worse than unrelated" and
-    "unrelated" are the same decision for every consumer. ``None``, ``NaN`` and
-    garbage return ``0.0`` and never raise: ``normalize``'s except-branch does
-    not drop a bad chunk, it substitutes one whose content is
-    ``str(raw_result)``, which then occupies a top-k slot and can be cited.
-    """
-    try:
-        value = float(score)
-    except TypeError, ValueError:
-        return 0.0
-    if not math.isfinite(value):
-        return 0.0
-    return min(1.0, max(0.0, value))
-
-
-def _filters_fingerprint(filters: dict[str, Any] | None) -> str:
-    """Stable cache-key fragment for a filter dict (empty string when unfiltered)."""
-    if not filters:
-        return ""
-    return json.dumps(filters, sort_keys=True, default=str)
-
-
-#: Metadata keys that exist for filtering, citation or diagnostics and must never be
-#: embedded or shown to the LLM.
-#:
-#: LlamaIndex prepends the whole metadata dict to a node's text before embedding
-#: (``MetadataMode.EMBED``) unless a key is excluded, and nothing here set any
-#: exclusions -- so every OIB chunk's vector was shifted by ``file_size: 1975942``, and
-#: table/image/drawing chunks additionally carried row counts and pixel dimensions.
-#: A byte count and a render's pixel width carry no retrieval signal; they are also
-#: charged against the chunk's token budget, because ``SentenceSplitter`` subtracts the
-#: metadata header from ``chunk_size`` before splitting.
-#:
-#: ``file_path`` is the sharpest one: ``SimpleDirectoryReader`` sets it to the ingest
-#: temp file, so non-PDF uploads embedded a random ``/tmp/tmpk3n8w1qz.docx`` -- different
-#: on every re-upload of the same document.
-#:
-#: ``drawing_type``/``drawing_scale`` are excluded because the VLM caption already states
-#: both verbatim in the chunk body; embedding them again only doubles their weight.
-#: ``file_name``, ``page_label``, ``content_type`` and ``doc_class`` stay: those are what
-#: users actually ask by, and they are the closest thing this corpus has to a context
-#: header.
-EMBED_EXCLUDED_METADATA_KEYS = (
-    "file_size",
-    "file_path",
-    "table_index",
-    "rows",
-    "cols",
-    "image_index",
-    "image_format",
-    "image_width",
-    "image_height",
-    # Where the stored raster lives (image_store.py): an object key and an
-    # ordinal, addressing for the view tool and not a word of what the image
-    # shows.
-    "image_key",
-    "stored_image_index",
-    "drawing_type",
-    "drawing_scale",
-    # A photo's camera facts (photo_facts.py): metadata to filter and show by,
-    # not words of what the photo depicts.
-    "captured_at",
-    "camera",
-    # The v2 structured payload: multi-KB JSON for the detail view / later
-    # re-mapping, plus per-sheet segment bookkeeping. Embedding any of it
-    # would double the segment text's weight (drawing_data restates the chunk
-    # body as JSON) and burn the chunk's token budget on braces.
-    "drawing_data",
-    "segment_index",
-    "segment_count",
-    # Provenance (ADR-0054). Excluded from both renderings and STORED anyway:
-    # exclusion governs what the splitter renders into the embedded text and
-    # the LLM header, not what the vector store keeps, and retrieval reads
-    # these off `Chunk.metadata` directly. A release date and a producer id
-    # carry no retrieval signal, and embedding an approver's name would shift
-    # every chunk of the document toward whoever signed it — the German line
-    # the reader and the model see is built once, in the grounding block, from
-    # the stored fields.
-    "authored_by",
-    "approved_by",
-    "approved_at",
-    "producer",
-)
-
-
-def _provenance_from_config(config: dict) -> dict[str, str]:
-    """The provenance keys a job config carries, or an empty dict.
-
-    Read through ``aiq_agent.common.provenance`` rather than by picking four
-    strings out of ``config``, so the ingest side and the retrieval side spell
-    the keys once. Empty for every human document, which is what makes the
-    stamping loop a no-op for them.
-    """
-    from aiq_agent.common.provenance import parse_agent_provenance
-    from aiq_agent.common.provenance import provenance_metadata
-
-    provenance = parse_agent_provenance(config)
-    return provenance_metadata(provenance) if provenance else {}
-
-
-def _apply_metadata_exclusions(document: Any) -> None:
-    """Exclude non-semantic metadata from a document's embed and LLM renderings.
-
-    Extends rather than replaces any existing exclusions -- ``SimpleDirectoryReader``
-    already populates ``excluded_embed_metadata_keys`` on the non-PDF path, and
-    clobbering it would re-embed the reader's own bookkeeping.
-
-    Both lists are set because the splitter budgets on whichever of the two renderings
-    is longer, so excluding from only one would leave the token cost in place.
-    """
-    for attribute in ("excluded_embed_metadata_keys", "excluded_llm_metadata_keys"):
-        existing = list(getattr(document, attribute, None) or [])
-        merged = existing + [key for key in EMBED_EXCLUDED_METADATA_KEYS if key not in existing]
-        try:
-            setattr(document, attribute, merged)
-        except AttributeError, ValueError:  # pragma: no cover - non-llama-index document
-            logger.debug("Could not set %s on %r", attribute, type(document).__name__)
-
-
-#: Keys rendered into the header whatever its length: what users ask by, short by
-#: construction, and ``file_name`` is how a file's chunks are found and deleted.
-_ALWAYS_RENDERED_METADATA_KEYS = frozenset({"file_name", "page_label", "content_type", "doc_class"})
-
-
-def _rendered_metadata_tokens(document: Any) -> int:
-    """Tokens of the longer of the document's two metadata renderings, as the splitter counts them."""
-    from llama_index.core.schema import MetadataMode
-    from llama_index.core.utils import get_tokenizer
-
-    tokenizer = get_tokenizer()
-    return max(len(tokenizer(document.get_metadata_str(mode=mode))) for mode in (MetadataMode.EMBED, MetadataMode.LLM))
-
-
-def _fit_rendered_metadata(document: Any, limit: int) -> list[str]:
-    """Stop rendering the longest free-text keys until the metadata header fits ``limit`` tokens.
-
-    ``SentenceSplitter`` prepends the rendered metadata to every chunk and raises when it
-    alone exceeds the chunk size, which fails the whole file, not the one chunk. Keys
-    such as ``clause_title``/``clause_path`` carry text read out of the document, so their
-    length is the document's to choose. The value stays stored for display and
-    filtering; it only leaves the embedded header, and the chunk body already starts
-    with the same breadcrumb. Returns the keys dropped, for the caller to log.
-
-    The header can stay over ``limit`` when only ``_ALWAYS_RENDERED_METADATA_KEYS``
-    remain; the caller measures and reports that (``_stamp_chunk_metadata``).
-    """
-    if limit <= 0:
-        raise ValueError(f"Metadata token budget must be positive, got {limit}")
-    dropped: list[str] = []
-    while _rendered_metadata_tokens(document) > limit:
-        rendered = [
-            key
-            for key in document.metadata
-            if key not in _ALWAYS_RENDERED_METADATA_KEYS
-            and (key not in document.excluded_embed_metadata_keys or key not in document.excluded_llm_metadata_keys)
-        ]
-        if not rendered:
-            break
-        key = max(rendered, key=lambda name: len(str(document.metadata[name])))
-        for attribute in ("excluded_embed_metadata_keys", "excluded_llm_metadata_keys"):
-            excluded = getattr(document, attribute)
-            if key not in excluded:
-                excluded.append(key)
-        dropped.append(key)
-    return dropped
-
-
-def _stamp_chunk_metadata(
-    documents: list[Any], *, doc_class: Any, provenance: dict[str, Any], chunk_size: int, file_name: str
-) -> None:
-    """Stamp ``doc_class`` and provenance on a file's documents and fit each header to half of ``chunk_size``.
-
-    ``chunk_size`` is the one this job's splitter runs with (the job config's, which
-    ``_ingest_job`` also sets on ``Settings``), not the ingestor's default: budgeted
-    against a larger default, a header passes here and still fails the file in the
-    splitter. Logs once per file, not once per page: the keys left out of the header,
-    and a header still over budget with only the always-rendered keys left.
-    """
-    limit = chunk_size // 2
-    unrendered: set[str] = set()
-    longest = 0
-    for doc in documents:
-        doc.metadata["doc_class"] = doc_class
-        doc.metadata.update(provenance)
-        _apply_metadata_exclusions(doc)
-        unrendered.update(_fit_rendered_metadata(doc, limit))
-        longest = max(longest, _rendered_metadata_tokens(doc))
-    if unrendered:
-        logger.warning(
-            "Metadata too long to embed in %s; left out of the header: %s", file_name, ", ".join(sorted(unrendered))
-        )
-    if longest > limit:
-        # "tokens" here are tokenizer counts; the line logs a file name and integers only.
-        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
-        logger.warning(
-            "Metadata header of %s stays at %d tokens with only %s rendered, over its %d-token budget "
-            "(chunk size %d); past the chunk size the splitter fails the file",
-            file_name,
-            longest,
-            ", ".join(sorted(_ALWAYS_RENDERED_METADATA_KEYS)),
-            limit,
-            chunk_size,
-        )
-
-
-#: Collection-metadata keys recording which embedding produced a collection's vectors
-#: (``qdrant.schema.EMBED_IDENTITY_KEYS``): stamped when a Qdrant collection is
-#: created, compared before every write and every read of it.
-EMBED_FINGERPRINT_KEY = "embed_fingerprint"
-EMBED_MODEL_KEY = "embed_model"
-
-
-def embed_fingerprint(model: str, base_url: str) -> str:
-    """Stable digest of the embedding identity a collection's vectors were written with.
-
-    A same-dimension model swap, or a repointed base URL, produces no error at
-    all, only silently wrong retrieval at a score distribution that looks
-    normal; this digest is what makes it fail loudly
-    (``qdrant.schema.identity_mismatch``). ``base_url`` is part of the
-    identity, not decoration: the same model name served by
-    a different provider is a different vector space. The model default
-    (``openai/text-embedding-3-large`` on OpenRouter) once differed from the code default
-    (``nvidia/llama-nemotron-embed-vl-1b-v2`` on NVIDIA), so a deployment path that missed
-    the env var wrote foreign vectors into a shared collection; a repointed base URL can
-    still do the same.
-    """
-    payload = json.dumps({"model": model, "base_url": (base_url or "").rstrip("/")}, sort_keys=True)
-    return hashlib.sha256(payload.encode()).hexdigest()[:16]
-
-
-def embed_fingerprint_metadata(model: str, base_url: str) -> dict[str, str]:
-    """Collection metadata recording the embedding identity, human-readable digest first."""
-    return {EMBED_FINGERPRINT_KEY: embed_fingerprint(model, base_url), EMBED_MODEL_KEY: model}
-
-
-def _resolve_embed_api_key(base_url: str, model: str) -> str:
-    """Resolve the embeddings API key through the shared credential resolver.
-
-    Chain: explicit ``GRID_EMBED_API_KEY`` → provider inference from
-    ``base_url`` (``OPENROUTER_API_KEY`` for the default OpenRouter host).
-    Inference only selects the KEY for the configured embeddings endpoint; it
-    NEVER changes ``base_url`` (embeddings need an embeddings-capable endpoint,
-    so the caller keeps its configured base).
-
-    BYOK is intentionally NOT wired here, but no longer for want of an org id:
-    ``/v1/ingest`` forwards ``x-grid-organization-id`` into the ingest thread's
-    job config, which is what lets :func:`resolve_vlm_credential` reach BYOK on
-    the same pipeline. The blocker is the endpoint — a BYOK credential names a
-    chat-completions base URL, and embeddings need an embeddings-capable one, so
-    there is nothing to point this at yet. Known follow-up — see docs.
-    """
-    from aiq_agent.common.credential_resolution import resolve_llm_credential
-
-    return resolve_llm_credential(
-        primary_env="GRID_EMBED_API_KEY",
-        default_base_url=base_url,
-        default_model=model,
-        organization_id=None,
-    ).api_key
-
-
-def make_embed_model(*, base_url: str, model: str, api_key: str, **kwargs: Any):
-    """The embedding client. Every one in the process is built here.
-
-    Its HTTP clients pin every OpenRouter request to zero-data-retention
-    endpoints (``openrouter.PLATFORM_FIXED``): the embedding model is the
-    platform's, not an organization's choice, and document chunks and queries
-    of every tenant pass through it. ``NVIDIAEmbedding`` hard-codes its own
-    ``extra_body``, so the pin rides on the transport instead.
-    """
-    from llama_index.embeddings.nvidia import NVIDIAEmbedding
-
-    from aiq_agent.common.openrouter import pinned_async_http_client
-    from aiq_agent.common.openrouter import pinned_http_client
-
-    embed_model = NVIDIAEmbedding(
-        base_url=base_url,
-        model=model,
-        api_key=api_key,
-        http_client=pinned_http_client(),
-        async_http_client=pinned_async_http_client(),
-        **kwargs,
-    )
-    # Metered: llama-index calls the OpenAI SDK itself, so no callback sees an
-    # embedding; its usage lands in whatever tracker is active (ingest job or turn).
-    meter_openai_client(getattr(embed_model, "_client", None), role=USAGE_ROLE_EMBEDDING)
-    return embed_model
 
 
 def resolve_vlm_credential(organization_id: str | None = None):
@@ -1828,7 +1314,7 @@ def text_chunks_for_pages(
     (``scripts/turn_census/fixture_files.py``).
     """
     documents = text_documents_for_pages(text_pages, file_name, file_size)
-    _stamp_chunk_metadata(documents, doc_class=doc_class, provenance={}, chunk_size=chunk_size, file_name=file_name)
+    stamp_chunk_metadata(documents, doc_class=doc_class, provenance={}, chunk_size=chunk_size, file_name=file_name)
     return split_documents(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
 
@@ -3244,7 +2730,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     # @default true
     # @required false
     # Index a PDF's uncaptioned tables as table chunks. On unless set to false.
-    DEFAULT_EXTRACT_TABLES = _env_switch("GRID_EXTRACT_TABLES")
+    DEFAULT_EXTRACT_TABLES = env_switch("GRID_EXTRACT_TABLES")
 
     # @environment_variable GRID_INGEST_MAX_WORKERS
     # @category Knowledge Layer
@@ -3253,7 +2739,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     # @required false
     # Maximum concurrent ingestion jobs per process. Excess uploads queue
     # (job status stays PENDING) instead of each spawning a thread.
-    INGEST_MAX_WORKERS = max(1, _env_int("GRID_INGEST_MAX_WORKERS", 2))
+    INGEST_MAX_WORKERS = max(1, env_int("GRID_INGEST_MAX_WORKERS", 2))
 
     # Most ingestion jobs one organisation may run at once in this process's
     # own pool; 0 for no cap. `GRID_INGEST_MAX_PER_ORG`, the setting the
@@ -3267,7 +2753,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     # @required false
     # Analyse a PDF's embedded rasters with the VLM and index them. On unless
     # set to false.
-    DEFAULT_EXTRACT_IMAGES = _env_switch("GRID_EXTRACT_IMAGES")
+    DEFAULT_EXTRACT_IMAGES = env_switch("GRID_EXTRACT_IMAGES")
 
     # @environment_variable GRID_EXTRACT_CHARTS
     # @category Knowledge Layer
@@ -3276,7 +2762,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     # @required false
     # Index a visual the VLM types as a chart as a `chart` chunk. On unless set
     # to false; off, a chart is indexed as an image (see `indexed_visual_type`).
-    DEFAULT_EXTRACT_CHARTS = _env_switch("GRID_EXTRACT_CHARTS")
+    DEFAULT_EXTRACT_CHARTS = env_switch("GRID_EXTRACT_CHARTS")
 
     backend_name = "llamaindex"
     supports_durable_jobs = True
@@ -3455,17 +2941,17 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         # The whole stack, not just the import this method happens to need --
         # otherwise a missing vector-store package is only discovered later, in
         # a call site with no dependency diagnostic around it.
-        ensure_retrieval_dependencies()
+        dependencies.ensure_retrieval_dependencies()
 
         try:
-            embed_api_key = _resolve_embed_api_key(self.embed_base_url, self.embed_model_name)
+            embed_api_key = embedding.resolve_embed_api_key(self.embed_base_url, self.embed_model_name)
             if not embed_api_key:
                 logger.error(
                     "No embeddings API key resolved (GRID_EMBED_API_KEY / "
                     "the provider key for GRID_EMBED_BASE_URL) - ingestion/retrieval will fail."
                 )
 
-            self._embed_model = make_embed_model(
+            self._embed_model = embedding.make_embed_model(
                 base_url=self.embed_base_url,
                 model=self.embed_model_name,
                 api_key=embed_api_key,
@@ -3478,7 +2964,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             logger.info(f"LlamaIndex components initialized with model: {self.embed_model_name}")
 
         except ImportError as e:
-            raise _retrieval_dependency_error(e) from e
+            raise retrieval_dependency_error(e) from e
 
     @staticmethod
     def _store():
@@ -4737,7 +4223,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         overlap, built per job here instead of set on the process-wide
         ``Settings`` two concurrent jobs shared. What is embedded is each
         chunk's EMBED rendering (its metadata header, minus the keys
-        ``_stamp_chunk_metadata`` excluded, then its text); what is stored is
+        ``stamp_chunk_metadata`` excluded, then its text); what is stored is
         the bare text. The model is passed explicitly, never read off a global.
         ``documents`` are one file's, so a record's ``ordinal`` (its index in
         the chunker's output) is its place in the file: what orders the chunks
@@ -4939,7 +4425,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             self._ensure_initialized()
 
             # Resolved once: the splitter runs with it, and the metadata header is
-            # budgeted against it (`_stamp_chunk_metadata`), never the default.
+            # budgeted against it (`stamp_chunk_metadata`), never the default.
             chunk_size = config.get("chunk_size", self.chunk_size)
             chunk_overlap = config.get("chunk_overlap", self.chunk_overlap)
 
@@ -5725,8 +5211,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # and the grounding block both see a chunk, not a metadata
                     # row — and an empty dict for every human document leaves
                     # those chunks byte-for-byte unchanged.
-                    provenance = _provenance_from_config(config)
-                    _stamp_chunk_metadata(
+                    provenance = provenance_from_config(config)
+                    stamp_chunk_metadata(
                         all_documents,
                         doc_class=doc_class,
                         provenance=provenance,
@@ -6156,750 +5642,3 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 # =============================================================================
 # LlamaIndex Retriever
 # =============================================================================
-
-
-#: Entries in the exact-term document-frequency cache before it is cleared. The live
-#: key set is a handful of terms per collection; the cap only bounds a pathological
-#: run of one-off terms.
-_EXACT_TERM_DF_CACHE_MAX = 512
-
-
-class _InflightEmbedding:
-    """One query embedding being computed, and what it came to.
-
-    Every caller that finds it waits on ``done`` and then reads the outcome
-    here, never the LRU: a failure is re-raised to all of them at once, so a
-    down embedding API fails every waiter after ONE bounded call instead of
-    handing the key to the next waiter and serialising the failures, and a
-    success reaches them even if the LRU evicted it in between.
-    """
-
-    __slots__ = ("done", "embedding", "error")
-
-    def __init__(self) -> None:
-        self.done = threading.Event()
-        self.embedding: list[float] | None = None
-        self.error: BaseException | None = None
-
-    def result(self) -> list[float]:
-        self.done.wait()
-        if self.error is not None:
-            raise self.error
-        assert self.embedding is not None
-        return self.embedding
-
-
-@register_retriever("llamaindex")
-class LlamaIndexRetriever(BaseRetriever):
-    """
-    LlamaIndex-based document retriever.
-
-    Embeds the query through an OpenAI-compatible endpoint and reads Qdrant
-    (``knowledge_layer.qdrant``, ADR-0115).
-
-    Configuration options:
-        embed_model: Embedding model id (default from GRID_EMBED_MODEL)
-        top_k: Default number of results (default: 10)
-        hybrid_search: Enable lexical+vector hybrid retrieval (default from GRID_HYBRID_RETRIEVAL)
-
-    Environment variables:
-        GRID_QDRANT_URL: The Qdrant cluster every chunk is written to
-        GRID_EMBED_MODEL: Default embedding model name
-        GRID_EMBED_BASE_URL: Default embedding model base URL
-        GRID_RETRIEVER_TOP_K: Default top_k value
-        GRID_HYBRID_RETRIEVAL: Enable hybrid lexical+vector retrieval (default: true)
-    """
-
-    # Default configuration from environment variables
-    DEFAULT_EMBED_MODEL = os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large")
-    DEFAULT_EMBED_BASE_URL = os.environ.get("GRID_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
-    # @environment_variable GRID_RETRIEVER_TOP_K
-    # @category Knowledge Layer
-    # @type int
-    # @default 10
-    # @required false
-    # Default number of results returned by the LlamaIndex retriever.
-    DEFAULT_TOP_K = _env_int("GRID_RETRIEVER_TOP_K", 10)
-    # @environment_variable GRID_HYBRID_RETRIEVAL
-    # @category Knowledge Layer
-    # @type bool
-    # @default true
-    # @required false
-    # Enable the lexical channels beside the dense one: German BM25 and the
-    # exact-term phrase channels, fused in Qdrant by reciprocal rank fusion.
-    DEFAULT_HYBRID_SEARCH = os.environ.get("GRID_HYBRID_RETRIEVAL", "true").strip().lower() not in {
-        "0",
-        "false",
-        "no",
-        "off",
-    }
-
-    backend_name = "llamaindex"
-
-    def __init__(self, config: dict[str, Any] | None = None):
-        super().__init__(config)
-
-        self.embed_model_name = self.config.get("embed_model", self.DEFAULT_EMBED_MODEL)
-        self.embed_base_url = self.config.get("embed_base_url", self.DEFAULT_EMBED_BASE_URL)
-        self.default_top_k = self.config.get("top_k", self.DEFAULT_TOP_K)
-        # Explicit config wins; otherwise the environment default (on).
-        self.hybrid_search = bool(self.config.get("hybrid_search", self.DEFAULT_HYBRID_SEARCH))
-
-        # Lazy-loaded components
-        self._embed_model = None
-        self._initialized = False
-        self._init_lock = threading.Lock()
-
-        # Query-embedding LRU: the knowledge tool fans one query out across
-        # every collection in scope, and each retrieval embedded the same
-        # string again through the remote embedding API. Keyed by
-        # (embed model, query) so a model change never serves stale vectors.
-        self._embed_cache: dict[tuple[str, str], list[float]] = {}
-        self._embed_cache_order: list[tuple[str, str]] = []
-        self._embed_cache_lock = threading.Lock()
-        # An embedding being computed, by key: a second caller for the same
-        # query waits for it instead of paying the round trip again, and
-        # shares its outcome, error included (``_InflightEmbedding``). The
-        # turn-start warm-up (``warm_query``) races the turn's own search for
-        # the same question, and without this the loser embedded twice.
-        self._embed_inflight: dict[tuple[str, str], _InflightEmbedding] = {}
-
-        # Document frequency of each BM25 and exact term, per collection size,
-        # as Qdrant counts it (a phrase on the word-tokenized text index), so
-        # pricing a term costs one count per new term rather than one per
-        # retrieval (`_qdrant_lexical_inputs`).
-        self._qdrant_term_df: dict[tuple[str, int, str], int] = {}
-
-        # Result cache for static corpora (the shared OIB knowledge base):
-        # identical questions recur across users and conversations, and the
-        # corpus only changes on re-sync. Keyed on the collection write
-        # version, so in-process ingestion invalidates immediately.
-        self._result_cache: dict[tuple[str, int, str, int, str], tuple[float, RetrievalResult]] = {}
-        self._result_cache_order: list[tuple[str, int, str, int, str]] = []
-        self._result_cache_lock = threading.Lock()
-
-        logger.info("LlamaIndexRetriever initialized")
-
-    # @environment_variable GRID_QUERY_EMBED_CACHE_SIZE
-    # @category Knowledge Layer
-    # @type int
-    # @default 512
-    # @required false
-    # Maximum cached query embeddings per retriever (LRU).
-    EMBED_CACHE_MAX = _env_int("GRID_QUERY_EMBED_CACHE_SIZE", 512, minimum=0)
-    # @environment_variable GRID_STATIC_RESULT_CACHE_COLLECTIONS
-    # @category Knowledge Layer
-    # @type str
-    # @default oib_knowledge
-    # @required false
-    # Comma-separated collections whose retrieval results may be cached
-    # (static corpora only — never project/session collections).
-    STATIC_RESULT_CACHE_COLLECTIONS = frozenset(
-        name.strip()
-        for name in os.environ.get("GRID_STATIC_RESULT_CACHE_COLLECTIONS", "oib_knowledge").split(",")
-        if name.strip()
-    )
-    # @environment_variable GRID_STATIC_RESULT_CACHE_TTL_SECONDS
-    # @category Knowledge Layer
-    # @type int
-    # @default 3600
-    # @required false
-    # TTL for cached static-collection retrieval results.
-    STATIC_RESULT_CACHE_TTL_SECONDS = int(os.environ.get("GRID_STATIC_RESULT_CACHE_TTL_SECONDS", "3600"))
-    RESULT_CACHE_MAX = 256
-
-    def _ensure_initialized(self):
-        """Lazy initialization of components. Thread-safe: retrieval runs off-loop."""
-        if self._initialized:
-            return
-
-        with self._init_lock:
-            if self._initialized:
-                return
-            self._initialize_components()
-
-    def _initialize_components(self):
-        # Same complete preflight as the ingestion path: "initialized" has to
-        # mean usable, not "the first import worked".
-        ensure_retrieval_dependencies()
-
-        try:
-            embed_api_key = _resolve_embed_api_key(self.embed_base_url, self.embed_model_name)
-            if not embed_api_key:
-                logger.error(
-                    "No embeddings API key resolved (GRID_EMBED_API_KEY / "
-                    "the provider key for GRID_EMBED_BASE_URL) - retrieval/ingestion will fail."
-                )
-
-            self._embed_model = make_embed_model(
-                base_url=self.embed_base_url,
-                model=self.embed_model_name,
-                api_key=embed_api_key,
-                embed_batch_size=EMBED_BATCH_SIZE,
-                # The retriever embeds queries a reader is waiting on: bounded
-                # tightly and retried, never the ingestion batch's 60 s.
-                timeout=QUERY_EMBED_TIMEOUT_SECONDS,
-                max_retries=EMBED_MAX_RETRIES,
-            )
-            # Not installed as the process-wide `Settings.embed_model`: the
-            # global would put this 3 s query model under anything else in the
-            # process that reads it.
-
-            self._initialized = True
-            logger.info("LlamaIndex retriever components initialized")
-
-        except ImportError as e:
-            raise _retrieval_dependency_error(e) from e
-
-    async def retrieve(
-        self,
-        query: str,
-        collection_name: str,
-        top_k: int = 10,
-        filters: dict[str, Any] | None = None,
-    ) -> RetrievalResult:
-        """Retrieve documents matching the query.
-
-        The embedding call and the Qdrant query are synchronous; they run in a
-        worker thread so a retrieval never stalls the server's event loop (and
-        the per-collection fan-out in the knowledge tool actually parallelizes).
-        """
-        return await asyncio.to_thread(self._retrieve_sync, query, collection_name, top_k, filters)
-
-    async def warm_query(self, query: str) -> None:
-        """Embed ``query`` ahead of the search that will ask for it; never raises.
-
-        The query embedding is a remote round trip (280-980 ms measured
-        2026-09-24) that the knowledge tool pays before it can rank anything.
-        A caller that knows the query before the search starts runs it here,
-        and the search then finds it in the LRU (or waits for it in flight).
-        It also absorbs the adapter's lazy initialisation on a cold process.
-        """
-        try:
-            await asyncio.to_thread(self._warm_sync, query)
-        except Exception:  # noqa: BLE001 - a warm-up is worth less than the turn
-            logger.debug("Query warm-up failed", exc_info=True)
-
-    async def find_text(
-        self,
-        collection_name: str,
-        pattern: str,
-        filters: dict[str, Any] | None = None,
-        limit: int = 500,
-        user_regex: bool = False,
-        stem_phrases: list[str] | None = None,
-    ) -> list[Chunk] | None:
-        """Every chunk matching the regex ``pattern`` (``qdrant.retrieval.find_text``).
-
-        ``user_regex`` marks a person's own pattern (``match="regex"``), which is read
-        with a match timeout and raises ``PatternTooCostly`` when it backtracks.
-        ``stem_phrases`` adds the chunks holding an inflected form of those phrases
-        (the German-stemmed index, ``knowledge_search(stemmed=true)``).
-
-        The vector store is the source of truth for chunk text, so this reads it
-        there. No embedding, no ranking: a scroll over the collection, narrowed
-        on the server by the words every match must hold and decided by the
-        regex. A collection with no chunks is an empty answer, not a failure;
-        a store error raises, so the caller can say the search did not run.
-        """
-        return await asyncio.to_thread(
-            self._find_text_sync, collection_name, pattern, filters, limit, user_regex, stem_phrases
-        )
-
-    async def candidate_counts(
-        self, collection_name: str, pattern: str, filters: dict[str, Any] | None = None, user_regex: bool = False
-    ) -> dict[str, int] | None:
-        """``file_name -> chunks that hold the pattern's words`` (``qdrant.retrieval.candidate_counts``), or None."""
-        from ..qdrant import retrieval as qdrant_retrieval
-
-        return await asyncio.to_thread(
-            qdrant_retrieval.candidate_counts, collection_name, pattern, filters, user_regex=user_regex
-        )
-
-    async def fetch(
-        self,
-        collection_name: str,
-        filters: dict[str, Any] | None,
-        limit: int,
-        order_by: str | None = None,
-        start_from: tuple[int, int] | None = None,
-    ) -> list[Chunk] | None:
-        """The chunks ``filters`` admits, by scroll, with no query vector and no ranking.
-
-        No embedding and no lazy adapter start-up: nothing here needs the
-        embedder (``qdrant/reads.py``).
-        """
-        return await asyncio.to_thread(self._fetch_sync, collection_name, filters, limit, order_by, start_from)
-
-    def _fetch_sync(
-        self,
-        collection_name: str,
-        filters: dict[str, Any] | None,
-        limit: int,
-        order_by: str | None,
-        start_from: tuple[int, int] | None = None,
-    ) -> list[Chunk]:
-        from ..qdrant import reads as qdrant_reads
-        from ..qdrant.schema import CHUNK_ORDINAL_FIELD
-
-        if start_from is None:
-            hits = qdrant_reads.fetch(collection_name, filters, limit, order_by)
-        else:
-            hits = qdrant_reads.fetch_from(collection_name, filters, start_from, limit)
-        chunks = [self._chunk_from_hit(hit) for hit in hits]
-        for rank, (chunk, hit) in enumerate(zip(chunks, hits, strict=True)):
-            chunk.retrieval_rank = rank
-            # A reader that continues a read needs the chunk's place in its file, which the hit's
-            # metadata leaves out as store-only (``payload.STORE_ONLY_FIELDS``).
-            if isinstance(hit.payload.get(CHUNK_ORDINAL_FIELD), int):
-                chunk.metadata.setdefault(CHUNK_ORDINAL_FIELD, hit.payload[CHUNK_ORDINAL_FIELD])
-        return chunks
-
-    def _find_text_sync(
-        self,
-        collection_name: str,
-        pattern: str,
-        filters: dict[str, Any] | None,
-        limit: int,
-        user_regex: bool = False,
-        stem_phrases: list[str] | None = None,
-    ) -> list[Chunk]:
-        if not pattern or limit <= 0:
-            return []
-        from ..qdrant import retrieval as qdrant_retrieval
-        from ..qdrant.schema import CHUNK_ORDINAL_FIELD
-
-        # Every returned chunk matches, so none ranks above another; the
-        # caller orders them by document and page (cosine 1.0).
-        hits = qdrant_retrieval.find_text(
-            collection_name, pattern, filters, limit, user_regex=user_regex, stem_phrases=stem_phrases
-        )
-        chunks = [self._chunk_from_hit(hit) for hit in hits]
-        for chunk, hit in zip(chunks, hits, strict=True):
-            # The count finds a chunk's overlap by its place in the file (``chunk_positions``), which
-            # the hit's metadata leaves out as store-only.
-            if isinstance(hit.payload.get(CHUNK_ORDINAL_FIELD), int):
-                chunk.metadata.setdefault(CHUNK_ORDINAL_FIELD, hit.payload[CHUNK_ORDINAL_FIELD])
-        return chunks
-
-    def warm_components(self) -> None:
-        """Pay the lazy initialisation now, so the first search of the process does not. Blocking.
-
-        The preflight imports ``llama_index.core`` and ``qdrant_client`` and
-        the embedding client is built (``_initialize_components``); the Qdrant
-        read path is imported with them. None of it touches the network.
-        Measured 2026-10-27 in a process that had done the boot imports:
-        1.0 s + 0.6 s + 0.4 s from a warm disk cache, 6.1 s for the
-        ``llama_index.core`` import alone from a cold one. On the first turn
-        of a process that sat inside the round-0 prefetch, before its
-        embedding call. The knowledge tool calls this at build time
-        (``knowledge_layer.register``).
-        """
-        self._ensure_initialized()
-        from ..qdrant import retrieval  # noqa: F401 - the read path's imports, paid here
-
-    def _warm_sync(self, query: str) -> None:
-        self._ensure_initialized()
-        self._embed_query_cached(query)
-
-    def _embed_query_cached(self, query: str) -> list[float]:
-        """Embed a query once per (model, text); LRU-bounded, one computation in flight per key.
-
-        A caller that finds the key in flight shares that computation's
-        outcome: its vector, or its exception re-raised. The owner's call is
-        bounded by the embed model's own timeout and retries, so the wait is.
-        """
-        key = (self.embed_model_name, query)
-        # With the LRU off (``EMBED_CACHE_MAX`` 0) the owner's entry is evicted
-        # as it lands, but the in-flight record still carries the vector to
-        # every waiter: parallel searches for one query embed it once.
-        with self._embed_cache_lock:
-            cached = self._embed_cache.get(key)
-            if cached is not None:
-                self._embed_cache_order.remove(key)
-                self._embed_cache_order.append(key)
-                return cached
-            pending = self._embed_inflight.get(key)
-            if pending is None:
-                owned = self._embed_inflight[key] = _InflightEmbedding()
-        if pending is not None:
-            return pending.result()
-        return self._embed_as_owner(key, query, owned)
-
-    def _embed_as_owner(self, key: tuple[str, str], query: str, record: _InflightEmbedding) -> list[float]:
-        """Compute the embedding ``record`` stands for, cache it, and release every waiter."""
-        try:
-            embedding = self._embed_model.get_query_embedding(query)
-        except BaseException as exc:
-            record.error = exc
-            raise
-        else:
-            record.embedding = embedding
-            with self._embed_cache_lock:
-                self._embed_cache[key] = embedding
-                self._embed_cache_order.append(key)
-                while len(self._embed_cache_order) > self.EMBED_CACHE_MAX:
-                    self._embed_cache.pop(self._embed_cache_order.pop(0), None)
-            return embedding
-        finally:
-            with self._embed_cache_lock:
-                self._embed_inflight.pop(key, None)
-            record.done.set()
-
-    def _cached_static_result(self, key: tuple[str, int, str, int, str]) -> RetrievalResult | None:
-        with self._result_cache_lock:
-            entry = self._result_cache.get(key)
-            if entry is None:
-                return None
-            cached_at, result = entry
-            if time.monotonic() - cached_at >= self.STATIC_RESULT_CACHE_TTL_SECONDS:
-                self._result_cache.pop(key, None)
-                if key in self._result_cache_order:
-                    self._result_cache_order.remove(key)
-                return None
-            # Deep copy: callers merge/annotate results and must never mutate
-            # the cached object.
-            return result.model_copy(deep=True)
-
-    def _store_static_result(self, key: tuple[str, int, str, int, str], result: RetrievalResult) -> None:
-        with self._result_cache_lock:
-            self._result_cache[key] = (time.monotonic(), result.model_copy(deep=True))
-            if key in self._result_cache_order:
-                self._result_cache_order.remove(key)
-            self._result_cache_order.append(key)
-            while len(self._result_cache_order) > self.RESULT_CACHE_MAX:
-                evicted = self._result_cache_order.pop(0)
-                self._result_cache.pop(evicted, None)
-
-    def _retrieve_sync(
-        self,
-        query: str,
-        collection_name: str,
-        top_k: int = 10,
-        filters: dict[str, Any] | None = None,
-    ) -> RetrievalResult:
-        try:
-            self._ensure_initialized()
-
-            logger.info(f"LlamaIndexRetriever.retrieve: query='{query[:50]}...', collection={collection_name}")
-
-            # No resolvable write version => no cache key at all. `None` is unknown,
-            # not 0: an entry stored or matched against a version we cannot vouch for
-            # is how one replica keeps answering from a corpus another replica has
-            # already changed. Read through instead -- the cache is an optimisation,
-            # the version is a correctness invariant.
-            #
-            # Membership is tested FIRST because resolving the version is a shared-cache
-            # round trip. Every query also fans out across the per-conversation session
-            # collection and any project collections, and none of those is cacheable, so
-            # resolving first spent one EVAL per non-cacheable collection per query on the
-            # retrieval hot path -- and grew a permanent memo entry for each -- to discard
-            # the answer immediately afterwards.
-            cache_key: tuple[str, int, str, int, str] | None = None
-            version = (
-                collection_version(collection_name) if collection_name in self.STATIC_RESULT_CACHE_COLLECTIONS else None
-            )
-            if version is not None:
-                cache_key = (
-                    collection_name,
-                    version,
-                    query,
-                    top_k,
-                    _filters_fingerprint(filters),
-                )
-                cached = self._cached_static_result(cache_key)
-                if cached is not None:
-                    logger.info(f"Static retrieval cache hit for collection {collection_name}")
-                    return cached
-
-            chunks = self._qdrant_chunks(query, collection_name, top_k, filters)
-
-            # State each hit's rank in this collection's FINAL order, after the lexical
-            # fusion has had its say. `_rank_channel` in register.py documents reading it
-            # here and nothing ever wrote it, so every cross-collection merge fell back to
-            # list position. That fallback happens to be correct today -- position is the
-            # final order -- but it made the field dead weight and the docstring false,
-            # and it left the fuser unable to tell a genuine rank from a coincidence.
-            for rank, chunk in enumerate(chunks):
-                chunk.retrieval_rank = rank
-
-            logger.info(f"LlamaIndex retrieval returned {len(chunks)} chunks")
-
-            result = RetrievalResult(
-                chunks=chunks,
-                query=query,
-                backend=self.backend_name,
-                success=True,
-            )
-            if cache_key is not None:
-                self._store_static_result(cache_key, result)
-            return result
-
-        except Exception as e:
-            # ``exception``, not ``error``: these failures are routinely chained
-            # (a RuntimeError raised *from* the ImportError that actually
-            # explains it), and the bare f-string dropped the chain. Combined
-            # with the 100-char cut below, issue #330 reached us as the string
-            # "LlamaIndex retrieval failed: LlamaIndex dependencies not instal"
-            # -- truncated mid-word, cause discarded, and the surviving half was
-            # a misdescription of the fault. The log now carries the whole chain;
-            # the caller-facing summary stays bounded.
-            logger.exception("LlamaIndex retrieval failed")
-            return RetrievalResult(
-                chunks=[],
-                query=query,
-                backend=self.backend_name,
-                success=False,
-                error_message=f"Retrieval failed: {str(e)[:500]}",
-            )
-
-    def _identity(self) -> dict[str, str]:
-        """The embedder this retriever's query vectors come from, as Qdrant collection metadata holds it."""
-        return embed_fingerprint_metadata(self.embed_model_name, self.embed_base_url)
-
-    def _qdrant_chunks(
-        self, query: str, collection_name: str, top_k: int, filters: dict[str, Any] | None
-    ) -> list[Chunk]:
-        """One Query API call fusing dense, German BM25 and exact-term channels.
-
-        The channels run server-side: the dense ranking, BM25 over the chunk
-        text (with the EN->DE glossary terms), and per selective exact term the
-        dense ranking restricted to chunks containing it. ``hybrid_search`` off
-        leaves the dense channel alone.
-        """
-        from ..qdrant import retrieval as qdrant_retrieval
-
-        embedding = self._embed_query_cached(query)
-        lexical_text, terms = "", []
-        if self.hybrid_search:
-            lexical_text, terms = self._qdrant_lexical_inputs(query, collection_name)
-        hits = qdrant_retrieval.search(
-            collection_name,
-            vector=embedding,
-            lexical_text=lexical_text,
-            top_k=top_k,
-            filters=filters,
-            exact_terms=terms,
-            identity=self._identity(),
-        )
-        return [self._chunk_from_hit(hit) for hit in hits]
-
-    async def search_grouped(
-        self,
-        query: str,
-        collection_names: list[str],
-        groups: int,
-        group_size: int,
-        filters: dict[str, Any] | None = None,
-        boost: dict[str, Any] | None = None,
-    ) -> list[tuple[str, list[Chunk]]]:
-        """One fused ranking over ``collection_names``, grouped per collection."""
-        return await asyncio.to_thread(
-            self._search_grouped_sync, query, collection_names, groups, group_size, filters, boost
-        )
-
-    def _search_grouped_sync(
-        self,
-        query: str,
-        collection_names: list[str],
-        groups: int,
-        group_size: int,
-        filters: dict[str, Any] | None,
-        boost: dict[str, Any] | None,
-    ) -> list[tuple[str, list[Chunk]]]:
-        from ..qdrant import retrieval as qdrant_retrieval
-
-        self._ensure_initialized()
-        lexical_text, terms = "", []
-        if self.hybrid_search:
-            lexical_text, terms = self._qdrant_lexical_inputs(query, collection_names)
-        grouped = qdrant_retrieval.search_grouped(
-            collection_names,
-            vector=self._embed_query_cached(query),
-            lexical_text=lexical_text,
-            groups=groups,
-            group_size=group_size,
-            identity=self._identity(),
-            filters=filters,
-            boost=boost,
-            exact_terms=terms,
-        )
-        return [(scope, [self._grouped_chunk(hit) for hit in hits]) for scope, hits in grouped]
-
-    def _grouped_chunk(self, hit: Any) -> Chunk:
-        """A grouped hit as a Chunk stating its place in the fused ranking and whether it holds the words."""
-        from aiq_agent.knowledge.base import FUSED_SCORE_KEY
-        from aiq_agent.knowledge.base import LEXICAL_MATCH_KEY
-
-        chunk = self._chunk_from_hit(hit)
-        chunk.metadata.update({FUSED_SCORE_KEY: float(hit.fused), LEXICAL_MATCH_KEY: bool(hit.lexical)})
-        return chunk
-
-    def embed_query(self, text: str) -> list[float]:
-        """``text`` as the production embedder's query vector, from the same LRU and in-flight dedupe a search uses."""
-        self._ensure_initialized()
-        return self._embed_query_cached(text)
-
-    def embedding_identity(self) -> dict[str, str]:
-        """The embedder behind :meth:`embed_query`, as Qdrant collection metadata records it."""
-        return self._identity()
-
-    def _qdrant_lexical_inputs(self, query: str, collection_names: str | Sequence[str]) -> tuple[str, list[str]]:
-        """The BM25 query text and the selective exact terms, both priced against the searched collections.
-
-        The BM25 terms go through the rule the German mirror has always applied
-        (``german_text.select_terms``): a term absent from the collection or on
-        more than a quarter of it is dropped, and with no alphabetic term left
-        BM25 is not asked at all. Empty beats noisy. Sent unpriced, BM25 ranked
-        whole Richtlinien for „OIB-RL 2“ on the digit and for a file name on
-        „ausgabe mai 2023“, and fusion promoted that over the dense hits:
-        exact-id MRR 0.30 against Chroma's 0.53 (``qdrant-gates-2026-10.md``).
-        The candidates leave out what BM25 must not be asked for at any price
-        (``retrieval.bm25_candidates``: umlaut stopwords, file-name pieces).
-
-        Several collections (cross-project grouped search) are priced over their
-        union, the corpus BM25's IDF is computed over.
-
-        Fails open to the unpriced inputs: pricing sharpens the channels, it
-        never gates a search.
-        """
-        from aiq_agent.common import german_text
-
-        from ..qdrant import retrieval as qdrant_retrieval
-        from .hybrid import extract_exact_terms
-        from .hybrid import selective_terms
-
-        exact = extract_exact_terms(query) if extract_exact_terms is not None else []
-        candidates = qdrant_retrieval.bm25_candidates(query, extra_terms=self._expansion_terms(query))
-        try:
-            if len(self._qdrant_term_df) >= _EXACT_TERM_DF_CACHE_MAX:
-                self._qdrant_term_df.clear()
-            total, frequencies = qdrant_retrieval.term_frequencies(
-                collection_names, [*candidates, *exact], cache=self._qdrant_term_df
-            )
-        except Exception as e:  # noqa: BLE001 - same fail-open as the Chroma path's pricing
-            logger.warning("Term frequencies unavailable (%s); BM25 and exact terms unpriced", e)
-            return self._bm25_text(query), exact
-        lexical = german_text.select_terms(candidates, frequencies, total)
-        terms = selective_terms({term: frequencies[term] for term in exact}, total) if exact else []
-        return " ".join(lexical), terms
-
-    @staticmethod
-    def _expansion_terms(query: str) -> list[str]:
-        """The EN->DE glossary terms the German mirror is given for ``query``; none when unavailable."""
-        try:
-            from aiq_agent.common.query_expansion import expansion_terms
-
-            return list(expansion_terms(query))
-        except Exception:  # noqa: BLE001 - the glossary widens recall, it never gates a search
-            logger.debug("Query expansion unavailable for the BM25 channel", exc_info=True)
-            return []
-
-    @classmethod
-    def _bm25_text(cls, query: str) -> str:
-        """The unpriced BM25 query: the question plus the EN->DE glossary terms the German mirror was given.
-
-        What BM25 receives only when pricing fails (``_qdrant_lexical_inputs``).
-        """
-        return " ".join([query, *cls._expansion_terms(query)])
-
-    def _chunk_from_hit(self, hit: Any) -> Chunk:
-        """A Qdrant hit as a Chunk, through ``normalize``, with the hit's true cosine as its score."""
-        from llama_index.core.schema import NodeWithScore
-        from llama_index.core.schema import TextNode
-
-        from ..qdrant.payload import chunk_metadata
-
-        node = TextNode(text=hit.text, id_=hit.chunk_id, metadata=chunk_metadata(hit.payload))
-        return self.normalize(NodeWithScore(node=node, score=float(hit.cosine)))
-
-    def normalize(self, raw_result: Any) -> Chunk:
-        """Convert LlamaIndex NodeWithScore to universal Chunk."""
-        try:
-            if raw_result is None:
-                raise ValueError("raw_result is None")
-            # LlamaIndex returns NodeWithScore objects
-            node = getattr(raw_result, "node", None)
-            if node is None:
-                raise ValueError("raw_result.node is None")
-            score = raw_result.score if hasattr(raw_result, "score") else 0.0
-
-            # Extract metadata (node.metadata can be None or non-dict for some nodes)
-            _meta = getattr(node, "metadata", None)
-            metadata = _meta if isinstance(_meta, dict) else {}
-            file_name = metadata.get("file_name", "unknown")
-            page_number = metadata.get("page_label")
-
-            # Try to convert page_number to int
-            if page_number is not None:
-                try:
-                    page_number = int(page_number)
-                except ValueError, TypeError:
-                    page_number = None
-
-            # Determine content type from metadata
-            content_type_str = metadata.get("content_type", "text")
-            if content_type_str == "table":
-                content_type = ContentType.TABLE
-            elif content_type_str == "image":
-                content_type = ContentType.IMAGE
-            elif content_type_str == "chart":
-                content_type = ContentType.CHART
-            elif content_type_str == "drawing":
-                content_type = ContentType.DRAWING
-            else:
-                content_type = ContentType.TEXT
-
-            # Create display citation based on content type
-            if content_type == ContentType.TABLE and "table_index" not in metadata:
-                # A captioned table (``captioned_tables``) is addressed by its
-                # ``clause_id`` („Tabelle 3"), not by an index on the page, and
-                # is cited by the page key every other hit renders under.
-                display_citation = f"{file_name}, p.{page_number}" if page_number else file_name
-            elif content_type == ContentType.TABLE:
-                table_idx = metadata.get("table_index", 0)
-                display_citation = f"{file_name}, p.{page_number}, Table {table_idx + 1}"
-            elif content_type == ContentType.IMAGE:
-                img_idx = metadata.get("image_index", 0)
-                display_citation = f"{file_name}, p.{page_number}, Image {img_idx + 1}"
-            elif content_type == ContentType.DRAWING:
-                drawing_type = metadata.get("drawing_type", "Zeichnung")
-                display_citation = f"{file_name}, p.{page_number}, {drawing_type}"
-            elif page_number:
-                # Add text anchor for easier verification (Ctrl+F in source)
-                node_content = node.get_content() if hasattr(node, "get_content") else str(node)
-                text_preview = node_content[:40].replace("\n", " ").strip()
-                if text_preview:
-                    display_citation = f"{file_name}, p.{page_number} ('{text_preview}...')"
-                else:
-                    display_citation = f"{file_name}, p.{page_number}"
-            else:
-                display_citation = file_name
-
-            return Chunk(
-                chunk_id=node.node_id if hasattr(node, "node_id") else str(uuid.uuid4()),
-                content=node.get_content() if hasattr(node, "get_content") else str(node),
-                score=unit_score(score),
-                file_name=file_name,
-                page_number=page_number,
-                display_citation=display_citation,
-                content_type=content_type,
-                metadata=metadata,
-            )
-
-        except Exception as e:
-            logger.error(f"Error normalizing LlamaIndex result: {e}")
-            return Chunk(
-                chunk_id=str(uuid.uuid4()),
-                content=str(raw_result),
-                score=0.0,
-                file_name="unknown",
-                display_citation="Unknown Result",
-                content_type=ContentType.TEXT,
-            )
-
-    async def health_check(self) -> bool:
-        """Whether Qdrant, the one store this retriever reads, answers."""
-        from ..qdrant import retrieval as qdrant_retrieval
-
-        return await asyncio.to_thread(qdrant_retrieval.healthy)

@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 import { FolderInput, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 
 export interface SelectionBarProps {
   /** How many documents are picked. */
@@ -35,7 +36,7 @@ export function SelectionBar({
   onDone,
   canMove,
 }: SelectionBarProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div
       className="bg-background animate-in fade-in-0 slide-in-from-bottom-2 duration-base flex shrink-0 items-center gap-2 border-t px-3 pb-[max(0.5rem,var(--shell-inset-bottom,env(safe-area-inset-bottom)))] pt-2 ease-out motion-reduce:animate-none sm:px-4"

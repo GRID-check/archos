@@ -19,13 +19,14 @@ import { ProjectOverview } from '@/features/projects/components/overview/project
 import { SimilarProjectsTile } from '@/features/projects/components/overview/similar-projects-tile'
 import { settingsSectionHref } from '@/features/projects/lib/settings-sections'
 import { getTranslations } from '@/i18n/server'
+import { navCopy } from '@/i18n/namespaces/nav'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
+  const t = await getTranslations(navCopy)
   return { title: t('sections.settings') }
 }
 

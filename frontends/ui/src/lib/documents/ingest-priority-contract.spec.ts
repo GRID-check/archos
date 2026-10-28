@@ -1,5 +1,8 @@
 // @disk-inputs: ../aiq_api/src/aiq_api/models/requests.py
 /**
+ * @vitest-environment node
+ */
+/**
  * The ingest priority the BFF sends, pinned to the one the backend accepts.
  *
  * The reindex and rescan jobs send `priority: "bulk"` on `POST /v1/ingest`

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import type { DerivationReview } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 import { buildingNumber, displayValue, keyLabel } from '../../lib/display'
@@ -28,8 +30,8 @@ interface ClassCardProps {
  * what it lacks and where that is asked.
  */
 export function ClassCard({ derivations, onAnswer }: ClassCardProps): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
-  const tIntake = useTranslations('projectIntake')
+  const t = useTranslations(intakeProfileStepCopy)
+  const tIntake = useTranslations(projectIntakeCopy)
   const lead = leadDerivation(derivations)
   const [chosen, setChosen] = useState<string | null>(null)
   const derivation = derivations.find((candidate) => candidate.buildingId === chosen) ?? lead
@@ -78,7 +80,7 @@ export function ClassCard({ derivations, onAnswer }: ClassCardProps): JSX.Elemen
 
 /** The big tile: ink for a class, quiet while it is open. */
 function ClassTile({ value, highRise = false }: { value: number | null; highRise?: boolean }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const known = value !== null || highRise
   return (
     <div
@@ -97,7 +99,7 @@ function ClassTile({ value, highRise = false }: { value: number | null; highRise
 }
 
 function useReason(derivation: DerivationReview): string {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   if (derivation.highRise) return t('class.highRiseReason')
   if (derivation.value === null) {
     if (derivation.missing.length === 0) return t('class.none')
@@ -118,7 +120,7 @@ function ClassResult({
   onAnswer,
   switcher,
 }: Omit<ClassCardProps, 'derivations'> & { derivation: DerivationReview; switcher: ReactNode }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const [open, setOpen] = useState(false)
   const reason = useReason(derivation)
   const suggestion = derivation.suggestion

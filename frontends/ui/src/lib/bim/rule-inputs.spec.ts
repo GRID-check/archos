@@ -1,5 +1,8 @@
 // @disk-inputs: src/lib/bim/rules.ts
 /**
+ * @vitest-environment node
+ */
+/**
  * The precomputed rule inputs.
  *
  * One property matters more than all the others: **the catalogue must produce

@@ -34,6 +34,7 @@ import { EyeOff, MessageSquarePlus, Scan } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { elementQuestionHref } from '../lib/element-question'
 import { formatPropertyValue } from '../lib/format-value'
 import { humaniseIfcType } from '../lib/stage-model'
@@ -110,7 +111,7 @@ export function ModelInspector({
   sheet,
   className,
 }: ModelInspectorProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const { locale } = useLocale()
 
   // The heading has to say something before the fetch lands, and it must not
@@ -303,7 +304,7 @@ function ModelInspectorDetails({
   locale: string
   label: string
 }): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   const propertySets = Object.entries(element.properties)
 
   return (

@@ -31,6 +31,7 @@ import { NoSourcesBanner, ChatUsageNotice } from '@/features/chat'
 import { useSessionUrl } from '@/hooks/use-session-url'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
 import { ViewerActionHost } from '@/features/documents/components/viewer-action-host'
 import { useComposerMetrics } from '../hooks/use-composer-metrics'
@@ -112,7 +113,7 @@ export const MainLayout: FC<MainLayoutProps> = ({
   const previewHidden = useFilePreviewStore((s) => s.hidden)
   const previewMode = useFilePreviewStore((s) => s.mode)
   const expandFile = useFilePreviewStore((s) => s.expand)
-  const tFiles = useTranslations('files')
+  const tFiles = useTranslations(filesCopy)
 
   // Composer geometry (--composer-h, --welcome-offset, and the lift the stack
   // travels on) — see useComposerMetrics.

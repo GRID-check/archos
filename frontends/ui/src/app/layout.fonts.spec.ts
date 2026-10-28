@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Which fonts the root layout asks the browser to preload.
  *
  * `next/font` preloads a font on every route unless told not to, and a

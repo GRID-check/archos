@@ -24,6 +24,7 @@ import { Bell, BellOff } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { notificationsCopy } from '@/i18n/namespaces/notifications'
 import { cn } from '@/lib/utils'
 import { usePushNotifications, type UsePushNotificationsResult } from '../hooks/use-push-notifications'
 
@@ -108,7 +109,7 @@ export function NotificationPromptView({
   onDismiss: () => void
   className?: string
 }): JSX.Element | null {
-  const t = useTranslations('notifications')
+  const t = useTranslations(notificationsCopy)
   if (push.phase === 'denied' && !push.thisDeviceOn && !dismissed) {
     return (
       <p className={cn('flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground', className)} data-testid="push-blocked">

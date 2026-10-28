@@ -49,6 +49,7 @@ import {
   type RoleSpec,
 } from '@/lib/authz/catalog'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { groupByTier } from './role-catalog'
 
 export interface PermissionReferenceProps {
@@ -80,7 +81,7 @@ export function PermissionReference({
   permissions = ALL_PERMISSION_SPECS,
   roles = ROLES,
 }: PermissionReferenceProps): JSX.Element {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const granting = invertRoles(roles)
   const groups = groupByTier(permissions)
 

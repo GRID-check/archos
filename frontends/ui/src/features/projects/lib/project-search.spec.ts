@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, test } from 'vitest'
 import type { ProjectProfile } from '@/lib/project-profile/types'
 import { projectMatchesQuery, type SearchableProject } from './project-search'

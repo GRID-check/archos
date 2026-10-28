@@ -30,6 +30,7 @@ import {
   SuggestionPanelSubject,
 } from '@/components/ui/suggestion-panel'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { filingBarEntries, type FilingFolderSuggestion } from '../lib/filing-suggestions'
 import { useFilingDecision, useFilingSuggestionsContext, useLightWhile } from './filing-suggestion'
 
@@ -46,7 +47,7 @@ export function FilingBar({
   showNames?: boolean
   className?: string
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const headingId = useId()
   if (entries.length === 0) return null
   const total = entries.reduce((sum, entry) => sum + entry.suggestion.fileCount, 0)
@@ -69,7 +70,7 @@ function FilingBarLine({
   onSettled: () => void
   showNames: boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const decision = useFilingDecision(suggestion, onSettled)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)

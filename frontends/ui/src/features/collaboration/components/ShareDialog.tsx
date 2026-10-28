@@ -86,6 +86,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { commonCopy } from '@/i18n/namespaces/common'
 import {
   SHARING_ERROR_REASONS,
   type ResourceAccessEntry,
@@ -169,7 +171,7 @@ export interface ShareDialogProps {
  * "Link kopiert" has every reason to believe the colleague can now read it.
  */
 function ShareLink({ url }: { url: string }): JSX.Element {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   const [outcome, setOutcome] = useState<ShareLinkOutcome | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Decided after mount: the server render has no `navigator`, and a label that
@@ -226,8 +228,8 @@ export function ShareDialog({
   currentUserId = null,
   shareUrl,
 }: ShareDialogProps): JSX.Element | null {
-  const t = useTranslations('collaboration')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(collaborationCopy)
+  const tCommon = useTranslations(commonCopy)
 
   const { state, loading, loadError, failure, saving, refresh } = sharing
   const canManage = state?.canManage ?? false

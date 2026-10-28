@@ -17,9 +17,10 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
 import { useShortcutsPreference } from '@/hooks/use-shortcuts-preference'
 import { useTranslations } from '@/i18n'
+import { shortcutsCopy } from '@/i18n/namespaces/shortcuts'
 
 export function ShortcutSettings() {
-  const t = useTranslations('shortcuts.preference')
+  const t = useTranslations(shortcutsCopy, 'preference')
   const { enabled, setEnabled } = useShortcutsPreference()
 
   return (

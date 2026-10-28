@@ -10,6 +10,7 @@ import { formatBytes } from '@/lib/format'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { documentDragProps } from '../hooks/use-document-drag'
 import { sourceTint } from '@/lib/ui/source-tint'
@@ -132,7 +133,7 @@ function loadThumbnail(fileId: string, provisional = false): Promise<string | nu
  * means asked at once, for a surface that only ever shows a handful.
  */
 export function ThumbnailWithFallback({ file, visible = true }: { file: FileItem; visible?: boolean }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const kind = inferDocumentKind(file)
   // Office files too: ingest renders their `_thumb.jpg` from the PDF rendition
   // (ADR-0070). One uploaded before that, or with conversion off, has none, and
@@ -312,7 +313,7 @@ export const FileCard = memo(function FileCard({
   draggable = false,
   selection,
 }: FileCardProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const name = documentDisplayName(file)
   const ext = fileExtensionLabel(file.filename)
   const isFailed = file.status === 'failed'

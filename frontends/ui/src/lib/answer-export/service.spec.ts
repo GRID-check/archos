@@ -48,10 +48,10 @@ vi.mock('@/lib/sharing/repository', () => ({ findGrantForSubject: vi.fn() }))
 // service spec has no business standing up. Bound to the REAL dictionaries so
 // the document still fails here if a key is missing.
 vi.mock('@/i18n/server', async () => {
-  const { createTranslator } = await import('@/i18n/translate')
-  const { de } = await import('@/i18n/dictionaries')
+  const { translatorFor } = await import('@/i18n/namespace')
+  const { answerExportCopy } = await import('@/i18n/namespaces/answer-export')
   return {
-    getTranslations: vi.fn(async () => createTranslator(de, 'answerExport')),
+    getTranslations: vi.fn(async () => translatorFor(answerExportCopy, 'de')),
     getLocale: vi.fn(async () => 'de'),
   }
 })

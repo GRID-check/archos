@@ -7,7 +7,7 @@
 
 import { render, screen } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { vi, describe, test, expect } from 'vitest'
 import { AgentResponse } from './AgentResponse'
 import { asStoreState, type DeepPartial, type StoreSelector } from '@/test-utils/store-fixtures'
@@ -30,7 +30,7 @@ vi.mock('@/shared/components/MarkdownRenderer', () => ({
 }))
 
 const answeredIn = (duration: string) =>
-  en.chat.answerDetails.duration.replace('{duration}', duration)
+  chatCopy.messages.en.answerDetails.duration.replace('{duration}', duration)
 
 describe.each(['default', 'inline'] as const)('the %s answer variant', (variant) => {
   test('shows how long the answer took inside the details', async () => {

@@ -21,6 +21,6 @@ export {
   useDocumentActions,
   type ActionableDocument,
   type DocumentActions,
-  type DocumentScope,
   type UseDocumentActionsOptions,
 } from './use-document-actions'
+export type { DocumentScope } from './document-scope'

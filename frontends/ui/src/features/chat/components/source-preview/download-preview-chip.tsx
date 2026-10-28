@@ -3,6 +3,7 @@
 import type { FC, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import type { CitationRef } from '../../lib/citations'
@@ -61,7 +62,7 @@ export const DownloadPreviewChip: FC<{
   bindingNote,
   meta,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { isDownloading, download } = useCitationDownload(target)
   const peek = useHoverPopover()
 
