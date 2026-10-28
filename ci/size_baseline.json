@@ -231,7 +231,7 @@
     "apps/backend/src/aiq_api/jobs/outcome_notify.py::notify_job_outcome": 61,
     "apps/backend/src/aiq_api/jobs/run_ledger_fold.py::RunLedgerFold.__init__": 61,
     "apps/backend/src/aiq_api/jobs/submit.py::_build_run_agent_payload": 85,
-    "apps/backend/src/aiq_api/jobs/submit.py::submit_agent_job": 316,
+    "apps/backend/src/aiq_api/jobs/submit.py::submit_agent_job": 208,
     "apps/backend/src/aiq_api/plugin.py::api_routers": 68,
     "apps/backend/src/aiq_api/routes/cleanup_proposal.py::add_cleanup_proposal_routes": 63,
     "apps/backend/src/aiq_api/routes/consistency_check.py::add_consistency_check_routes": 99,
