@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Project re-index route.
  *
  * The route is a thin adapter: it names the project from the path, and answers

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { hasHeader, legacyHeaderName, readHeader } from './legacy-header-names'
 

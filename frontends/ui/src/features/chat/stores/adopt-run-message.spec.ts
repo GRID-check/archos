@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * A commissioned run's message goes into the thread that commissioned it.
  *
  * The socket hook fetches the run's message after the turn ends, and the fetch

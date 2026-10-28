@@ -362,7 +362,7 @@ settings (introduced with the v4 preview):
 | Both | all of the above | | `dual`; duplicates by design, for migration only |
 
 Our deployment writes both tables (`langfuseV4WriteMode` defaults to `dual`,
-`deploy/pulumi/src/config.ts`), so either source works today. Upstream moves a
+`deploy/pulumi/src/config/langfuse.ts`), so either source works today. Upstream moves a
 self-hosted deployment on to the enriched source automatically once the server
 runs in `events_only`; the switch is one-way.
 

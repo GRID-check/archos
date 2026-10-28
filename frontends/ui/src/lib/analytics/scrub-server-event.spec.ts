@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, test, vi } from 'vitest'
 
 import { SENSITIVE_PARAMS, scrubServerEvent, scrubUrlString } from './scrub-server-event'

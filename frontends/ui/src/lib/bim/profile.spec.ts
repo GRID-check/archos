@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Derived project facts.
  *
  * `storeys_above_ground` picks a Gebäudeklasse and a Gebäudeklasse decides what

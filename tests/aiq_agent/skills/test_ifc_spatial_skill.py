@@ -145,7 +145,7 @@ def _card_field_names() -> set[str]:
     Read from the card MODELS rather than written out, so a renamed card field
     fails here the same way a renamed operator does.
     """
-    from aiq_agent.cards import models as card_models
+    from aiq_agent.cards import ifc_cards as card_models
 
     names: set[str] = set()
     for card in (

@@ -144,7 +144,7 @@ with no job gets a new one, a row whose job is dead is failed with its reason.
 
 ## Step 3: Python Ingest Route
 
-**File**: `frontends/aiq_api/src/aiq_api/routes/ingest.py` (moved from the deleted `src/aiq_agent/fastapi_extensions/` package on 2026-07-03)
+**File**: `apps/backend/src/aiq_api/routes/ingest.py` (moved from the deleted `src/aiq_agent/fastapi_extensions/` package on 2026-07-03)
 
 ```python
 POST /v1/ingest

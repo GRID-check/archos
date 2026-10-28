@@ -315,7 +315,7 @@ describe('no library stylesheet keeps the page scroll', () => {
    * class comes off the element, the rule comes out of the stylesheet, or
    * upstream fixes the default and the override becomes a lie nobody rereads.
    */
-  const FLOW = join(SRC, 'features', 'chat', 'components', 'reasoning', 'ReasoningFlow.tsx')
+  const FLOW = join(SRC, 'features', 'chat', 'components', 'reasoning', 'flow', 'flow-inner.tsx')
 
   it('the reasoning graph opts into the override', () => {
     const source = readCode(FLOW)

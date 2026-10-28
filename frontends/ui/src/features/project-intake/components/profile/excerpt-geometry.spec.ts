@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The excerpt of a cited page: the passage with its surroundings, inside the
  * page, never a sliver; the whole page when the passage was not found.
  */

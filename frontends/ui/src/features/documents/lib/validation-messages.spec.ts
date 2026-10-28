@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The validator's findings, said in the reader's language.
  *
  * Asserted in GERMAN throughout. The English dictionary reads almost exactly

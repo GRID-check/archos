@@ -45,12 +45,12 @@ from aiq_agent.cards.catalog import render_card_doctrine
 from aiq_agent.cards.catalog import render_card_index
 from aiq_agent.cards.catalog import retired_refusal
 from aiq_agent.cards.catalog import shape_hint_for
-from aiq_agent.cards.models import SERVER_FILLED_CARD_FIELDS
-from aiq_agent.cards.models import SURFACE_MAX_CHILDREN
-from aiq_agent.cards.models import SURFACE_MAX_LEAVES
-from aiq_agent.cards.models import SURFACE_MAX_TABS
-from aiq_agent.cards.models import SURFACE_TEXT_MAX
+from aiq_agent.cards.proposal_cards import SERVER_FILLED_CARD_FIELDS
 from aiq_agent.cards.registry import CardRegistry
+from aiq_agent.cards.surface_card import SURFACE_MAX_CHILDREN
+from aiq_agent.cards.surface_card import SURFACE_MAX_LEAVES
+from aiq_agent.cards.surface_card import SURFACE_MAX_TABS
+from aiq_agent.cards.surface_card import SURFACE_TEXT_MAX
 from aiq_agent.common.tool_errors import render_error_detail
 
 logger = logging.getLogger(__name__)

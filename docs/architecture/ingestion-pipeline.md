@@ -13,7 +13,7 @@ ADR-0076 (the queue), ADR-0117 (the page pipeline, proposed, not built).
 
 Short forms: **A** is `packages/knowledge-layer/src/llamaindex/adapter.py`, **S** is
 `frontends/ui/src/lib/documents/service.ts` as it stood before it was split (its `S:N` line references are from then; `dispatchDocument` is now in `document-dispatch.ts`, `dispatchIngest` in `ingest-dispatch.ts`), **D** is
-`frontends/aiq_api/src/aiq_api/jobs/ingest_dispatch.py`.
+`apps/backend/src/aiq_api/jobs/ingest_dispatch.py`.
 
 ## 1. The whole thing on one page
 
@@ -218,7 +218,7 @@ The vision phase is about 80 % of a drawing set's time, and it is serial in roun
 of four. The fleet sees it differently: **every one of those 20 calls holds one of
 the 32 slots every office shares**. At 25 s a call, the whole platform reads about
 4,600 drawing pages an hour, and at most 15 documents are in flight at once
-(5 pods × 3 jobs, `deploy/pulumi/src/config.ts:2995`). That is the number to watch
+(5 pods × 3 jobs, `ingestWorker` in `deploy/pulumi/src/config/workers.ts`). That is the number to watch
 when many offices upload at the same time, and why a cheaper first look at every
 page is the first move in the roadmap.
 

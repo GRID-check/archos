@@ -31,19 +31,19 @@ _SWITCHES = ("GRID_EXTRACT_TABLES", "GRID_EXTRACT_IMAGES", "GRID_EXTRACT_CHARTS"
 @pytest.mark.parametrize("name", _SWITCHES)
 def test_unset_switch_is_on(monkeypatch, name):
     monkeypatch.delenv(name, raising=False)
-    assert adapter._env_switch(name) is True
+    assert adapter.env_switch(name) is True
 
 
 @pytest.mark.parametrize("value", ["", "true", "1", "yes", "TRUE", "garbage"])
 def test_anything_but_an_off_value_leaves_it_on(monkeypatch, value):
     monkeypatch.setenv("GRID_EXTRACT_TABLES", value)
-    assert adapter._env_switch("GRID_EXTRACT_TABLES") is True
+    assert adapter.env_switch("GRID_EXTRACT_TABLES") is True
 
 
 @pytest.mark.parametrize("value", ["false", "FALSE", "0", "no", "off", " False "])
 def test_off_values_switch_it_off(monkeypatch, value):
     monkeypatch.setenv("GRID_EXTRACT_CHARTS", value)
-    assert adapter._env_switch("GRID_EXTRACT_CHARTS") is False
+    assert adapter.env_switch("GRID_EXTRACT_CHARTS") is False
 
 
 def test_an_ingestor_built_without_config_extracts_everything(tmp_path, monkeypatch):
@@ -55,7 +55,7 @@ def test_an_ingestor_built_without_config_extracts_everything(tmp_path, monkeypa
         ("DEFAULT_EXTRACT_CHARTS", "GRID_EXTRACT_CHARTS"),
     ):
         # The class reads the env once at import; re-read it the same way.
-        monkeypatch.setattr(LlamaIndexIngestor, attr, adapter._env_switch(name))
+        monkeypatch.setattr(LlamaIndexIngestor, attr, adapter.env_switch(name))
 
     ing = LlamaIndexIngestor({})
 
@@ -214,7 +214,7 @@ def ingestor(tmp_path, monkeypatch, qdrant_store):
     # The deployed default: no switch in the env, none named in the config.
     for name in _SWITCHES:
         monkeypatch.delenv(name, raising=False)
-        monkeypatch.setattr(LlamaIndexIngestor, f"DEFAULT_{name.removeprefix('GRID_')}", adapter._env_switch(name))
+        monkeypatch.setattr(LlamaIndexIngestor, f"DEFAULT_{name.removeprefix('GRID_')}", adapter.env_switch(name))
     ing = LlamaIndexIngestor({})
     ing._embed_model = FakeEmbedder()
     ing._initialized = True

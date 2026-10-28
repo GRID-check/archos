@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Measurement arithmetic.
  *
  * The assertions worth having are the ones a wrong answer would survive: a

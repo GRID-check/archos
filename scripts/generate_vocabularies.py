@@ -23,7 +23,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import get_args
 
-from aiq_agent.cards.models import TaskKind
+from aiq_agent.cards.workspace_cards import TaskKind
 from aiq_agent.common.source_kinds import SOURCE_KINDS
 from aiq_agent.common.source_kinds import Shelf
 
@@ -34,7 +34,7 @@ VOCABULARIES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     (
         "DELEGATABLE_TASK_KINDS",
         get_args(TaskKind),
-        "The kinds a person may delegate: `TaskKind` in `src/aiq_agent/cards/models.py`.",
+        "The kinds a person may delegate: `TaskKind` in `src/aiq_agent/cards/workspace_cards.py`.",
     ),
     (
         "SOURCE_KINDS",

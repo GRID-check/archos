@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The service worker is served so a browser always sees the current version and
  * may scope it to the whole origin (ADR-0112). A cached worker would keep a fix
  * away from devices for as long as the header says.

@@ -29,7 +29,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 from knowledge_layer.qdrant import reads
 from knowledge_layer.qdrant import schema
 from knowledge_layer.qdrant import store as store_module
