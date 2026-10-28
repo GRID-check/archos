@@ -171,10 +171,9 @@ describe("the chat tier's scale-out", () => {
   });
 
   it("lets KEDA's operator reach the backend port, and nothing else", async () => {
-    expect(RESOURCES.filter((r) => r.type === NETPOL).map((r) => r.name)).toContain("allow-keda-to-aiq-agent");
-    const pol = await resolve(find(NETPOL, "allow-keda-to-aiq-agent").inputs.spec);
-    // The tier KEDA scales until the switch (`tier-names.ts`).
-    expect(pol.podSelector.matchLabels).toEqual({ "app.kubernetes.io/name": "aiq-agent" });
+    expect(RESOURCES.filter((r) => r.type === NETPOL).map((r) => r.name)).toContain("allow-keda-to-chat");
+    const pol = await resolve(find(NETPOL, "allow-keda-to-chat").inputs.spec);
+    expect(pol.podSelector.matchLabels).toEqual({ "app.kubernetes.io/name": "chat" });
     expect(pol.ingress).toEqual([
       {
         // The operator runs the scalers; the metrics server and the webhooks in the

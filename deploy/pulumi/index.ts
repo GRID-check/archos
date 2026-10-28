@@ -304,9 +304,25 @@ const apiDependsOn = [
 const api = installApi(wiring, cfg, secrets, apiDependsOn);
 const legacyApi = installApi(wiring, cfg, secrets, apiDependsOn, LEGACY_API_TIER);
 
-// Not after `aiq-agent`: the chat tier waits on the frontend (above), so the
-// reverse edge would be a cycle. The old chat pods serve the socket meanwhile.
-const frontend = installFrontend(wiring, cfg, secrets, [migrations, api.service, legacyApi.service]);
+// The chat tier the frontend dials (the switch step, `tier-names.ts`): up and
+// ready before the frontend that points its socket at it rolls out.
+const backendDependsOn = [
+  postgres.initJob,
+  postgres.pooler,
+  seaweed.bucketInitJob,
+  dragonfly.service,
+  qdrant.service,
+  ...afterChromaMigration,
+];
+const backend = installBackend(wiring, cfg, secrets, backendDependsOn);
+
+const frontend = installFrontend(wiring, cfg, secrets, [
+  migrations,
+  api.service,
+  legacyApi.service,
+  backend.statefulSet,
+  backend.service,
+]);
 
 // Folder lists move from role grants to WorkOS folder roles (ADR-0097). The
 // carry-over runs once the frontend that reads folder roles has rolled out,
@@ -316,17 +332,7 @@ if (authzCatalog) {
   carryOverFolderGrants(wiring, cfg, secrets, [migrations, frontend.deployment, authzCatalog]);
 }
 
-const backendDependsOn = [
-  postgres.initJob,
-  postgres.pooler,
-  seaweed.bucketInitJob,
-  dragonfly.service,
-  qdrant.service,
-  ...afterChromaMigration,
-];
-// The new chat tier serves only the chat socket from its first pod, so it need
-// not wait for the frontend; the switch makes the frontend wait for it instead.
-installBackend(wiring, cfg, secrets, backendDependsOn);
+// The legacy chat tier finishes the turns it holds; nothing dials it any more.
 const legacyBackend = installBackend(
   wiring,
   cfg,
@@ -401,10 +407,10 @@ const bffJobs = cfg.bffJobs.enabled
 
 // Chat tier scale-out (ADR-0080) — KEDA moves the chat StatefulSet between its
 // floor and ceiling on the fleet's running turns. Only with affinity off. The
-// count is the fleet's, so only the tier that takes the turns scales on it: the
-// legacy one until the switch, and the new one holds its floor meanwhile.
+// count is the fleet's, so only the tier that takes new turns scales on it; the
+// legacy one keeps the count it had while its last turns drain.
 if (backendAutoscaled(cfg)) {
-  installBackendScaling(wiring, cfg, legacyBackend.statefulSet, keda ? [keda] : [], LEGACY_CHAT_TIER);
+  installBackendScaling(wiring, cfg, backend.statefulSet, keda ? [keda] : []);
 }
 
 // ── Edge (Gateway API) ───────────────────────────────────────────────────────
@@ -504,9 +510,11 @@ export const s3Url = pulumi.interpolate`https://${cfg.ingress.s3Domain}`;
 export const webUrl = pulumi.interpolate`https://${cfg.ingress.webDomain}`;
 export const appNamespace = namespace;
 export const postgresRwHost = postgres.rwHost;
-// The Services callers dial: the legacy ones until the switch.
-export const backendService = legacyBackend.service.metadata.name;
-export const apiService = legacyApi.service.metadata.name;
+export const backendService = backend.service.metadata.name;
+export const apiService = api.service.metadata.name;
+// Draining until the contract step deletes them (`src/app/tier-names.ts`).
+export const legacyBackendService = legacyBackend.service.metadata.name;
+export const legacyApiService = legacyApi.service.metadata.name;
 export const frontendService = frontend.service.metadata.name;
 export const webService = web.service.metadata.name;
 export const purgerDeployment = workers.purger.metadata.name;

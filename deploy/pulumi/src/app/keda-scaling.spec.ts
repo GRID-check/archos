@@ -456,11 +456,11 @@ describe("the program's ScaledObjects", () => {
       }
 
       // Postgres for the queues, the backend for the occupancy route: nothing more.
-      expect(kedaPolicies.map((p) => p.name).sort()).toEqual(["allow-keda-to-aiq-agent", "allow-keda-to-postgres"]);
+      expect(kedaPolicies.map((p) => p.name).sort()).toEqual(["allow-keda-to-chat", "allow-keda-to-postgres"]);
       const byName = Object.fromEntries(kedaPolicies.map((p) => [p.name, p.spec]));
       expect(byName["allow-keda-to-postgres"].ingress).toEqual([{ from: [operator], ports: [{ protocol: "TCP", port: 5432 }] }]);
       expect(byName["allow-keda-to-postgres"].podSelector.matchLabels).toEqual({ "cnpg.io/cluster": "grid-pg" });
-      expect(byName["allow-keda-to-aiq-agent"].ingress).toEqual([{ from: [operator], ports: [{ protocol: "TCP", port: 8000 }] }]);
+      expect(byName["allow-keda-to-chat"].ingress).toEqual([{ from: [operator], ports: [{ protocol: "TCP", port: 8000 }] }]);
     });
 
     it("selects the operator by the label the pinned chart gives its pods", () => {

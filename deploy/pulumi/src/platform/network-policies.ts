@@ -5,7 +5,7 @@ import { backendAutoscaled } from '../config/chat-tier'
 import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GEOCODER, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
-import { API_TIERS, CHAT_TIERS, LEGACY_CHAT_TIER } from "../app/tier-names";
+import { API_TIERS, CHAT_TIER, CHAT_TIERS } from "../app/tier-names";
 
 /**
  * `app.kubernetes.io/name` of the two Langfuse workloads and their ClickHouse
@@ -396,8 +396,8 @@ export function installNetworkPolicies(
   //     pods only, and only when that tier autoscales. (Its cpu trigger reads
   //     `metrics.k8s.io`, which is no connection into `grid`.)
   const kedaToBackend = backendAutoscaled(cfg)
-    ? mk(`allow-keda-to-${LEGACY_CHAT_TIER}`, {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": LEGACY_CHAT_TIER } },
+    ? mk(`allow-keda-to-${CHAT_TIER}`, {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": CHAT_TIER } },
         policyTypes: ["Ingress"],
         ingress: [{ from: kedaOperator, ports: [{ protocol: "TCP", port: PORT.backend }] }],
       })
