@@ -172,14 +172,14 @@ const row = (extra: Partial<PilotiChangeRow> = {}): PilotiChangeRow => ({
 
 /** The CHECKs of migration 0142, held against every row the fake stores. */
 function assertChecks(stored: PilotiChangeRow): void {
-  expect(stored.objectKind !== 'annotation_reply' || stored.op === 'create', 'piloti_changes_reply_is_created').toBe(true)
-  expect(stored.objectKind !== 'annotation' || stored.objectId === stored.annotationId, 'piloti_changes_annotation_is_object').toBe(true)
+  expect(stored.objectKind !== 'annotation_reply' || stored.op === 'create', 'agent_changes_reply_is_created').toBe(true)
+  expect(stored.objectKind !== 'annotation' || stored.objectId === stored.annotationId, 'agent_changes_annotation_is_object').toBe(true)
   const states =
     (stored.op === 'create' && stored.before === null && stored.after !== null) ||
     (stored.op === 'update' && stored.before !== null && stored.after !== null) ||
     (stored.op === 'delete' && stored.before !== null && stored.after === null)
-  expect(states, 'piloti_changes_states_by_op').toBe(true)
-  expect(stored.undoneAt === null, 'piloti_changes_undo_complete').toBe(stored.undoneBy === null)
+  expect(states, 'agent_changes_states_by_op').toBe(true)
+  expect(stored.undoneAt === null, 'agent_changes_undo_complete').toBe(stored.undoneBy === null)
 }
 
 /** The record, in memory, with the repository's compare-and-swap. */

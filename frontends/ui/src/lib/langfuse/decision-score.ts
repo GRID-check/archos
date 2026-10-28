@@ -36,7 +36,7 @@ import 'server-only'
  * (`chat_socket.turn_row_metadata`). The caller passes the turn as `origin`
  * when it knows it; otherwise the producing row names it: a proposal's
  * `origin_message_id`, a change's own, and for a mark the `create` row of
- * `piloti_changes`. No trace id on the answer (an unpersisted turn, or one from
+ * `agent_changes`. No trace id on the answer (an unpersisted turn, or one from
  * before traces were recorded) means no score: a score on a guessed trace id
  * attaches to nothing.
  */
@@ -105,7 +105,7 @@ export function toDecisionScore(input: {
 
 // ── Finding the turn ────────────────────────────────────────────────────────
 
-/** The answer message of the turn a `piloti_changes` row was made in. */
+/** The answer message of the turn a `agent_changes` row was made in. */
 async function changeOriginMessage(
   organizationId: string,
   where: ReturnType<typeof and>

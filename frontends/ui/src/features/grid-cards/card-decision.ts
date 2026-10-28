@@ -97,7 +97,7 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // Reports the marks Piloti set on a document and the threads it answered in,
   // and asks, per proposed mark, „übernehmen oder verwerfen?" (or all at once).
   // A window onto objects, not a copy of them: the card reads the marks live
-  // and the turn's changes from the server (`piloti_changes`), and every answer
+  // and the turn's changes from the server (`agent_changes`), and every answer
   // is a write to the mark itself (status move, or the server's undo), so the
   // mark is the record. Taking a mark over twice is harmless, a discarded mark
   // shows as discarded to every reader, and the `piloti-decision` score is

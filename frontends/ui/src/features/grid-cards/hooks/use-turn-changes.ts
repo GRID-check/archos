@@ -3,7 +3,7 @@
 /**
  * What the turn behind an answer changed, as the server holds it (ADR-0109).
  *
- * The `canvas_activity` card is a window onto `piloti_changes`, not a copy of
+ * The `canvas_activity` card is a window onto `agent_changes`, not a copy of
  * them: it reads the turn's changes once it has been seen and again whenever
  * `token` moves (the document's live store says one of the card's marks
  * changed). The request fails soft. A card that cannot read the record, or

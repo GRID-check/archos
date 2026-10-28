@@ -2,7 +2,7 @@
  * The change record's vocabulary and wire contract (migration 0142, ADR-0109).
  *
  * Every change Piloti APPLIES to an Anmerkung or a thread is one
- * `piloti_changes` row, with the turn that made it. A turn's card reads its
+ * `agent_changes` row, with the turn that made it. A turn's card reads its
  * changes back from here (`GET /api/conversations/[id]/messages/[messageId]/changes`),
  * so it shows what is true now, not what the turn remembered; undo
  * (`POST /api/piloti-changes/[id]/undo`) is a compare-and-swap against `after`,
