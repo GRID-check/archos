@@ -45,7 +45,7 @@ GRID_ALLOWED = (
     "tests/test_check_brand_names.py",
     "tests/.test_durations",
     "frontends/ui/drizzle/",
-    "frontends/web/src/data/",
+    "apps/site/src/data/",
 )
 
 
