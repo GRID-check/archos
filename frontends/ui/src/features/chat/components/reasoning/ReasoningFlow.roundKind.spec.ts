@@ -5,7 +5,7 @@
 import { describe, expect, test } from 'vitest'
 import { translatorFor } from '@/i18n/namespace'
 import { chatCopy } from '@/i18n/namespaces/chat'
-import { roundKind } from './ReasoningFlow'
+import { roundKind } from './flow/round-kind'
 
 const t = translatorFor(chatCopy, 'de')
 

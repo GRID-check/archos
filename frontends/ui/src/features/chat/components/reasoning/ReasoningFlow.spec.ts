@@ -2,16 +2,10 @@
  * @vitest-environment node
  */
 import { describe, test, expect } from 'vitest'
-import {
-  animateFrontier,
-  buildGraph,
-  defaultFoldedRounds,
-  keepEdgeIdentity,
-  planFan,
-  type ReasoningFlowProps,
-  type SpineFolding,
-  sameNodeData,
-} from './ReasoningFlow'
+import { animateFrontier, buildGraph, keepEdgeIdentity, sameNodeData } from './flow/build-graph'
+import { defaultFoldedRounds, type SpineFolding } from './flow/round-kind'
+import { planFan } from './flow/flow-layout'
+import type { ReasoningFlowProps } from './flow/reasoning-flow-props'
 import type { CitedDocument } from '../../lib/citations'
 import type { FanCard } from '../../lib/retrieval-rounds'
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
