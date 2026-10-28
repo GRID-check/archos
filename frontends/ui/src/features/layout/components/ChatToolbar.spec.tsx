@@ -77,7 +77,7 @@ let mockIsDeepResearchStreaming = false
 let mockCurrentSessionId: string | null = 'session-1'
 const mockUpdateConversationTitle = vi.fn()
 
-vi.mock('@/features/chat', () => ({
+vi.mock('@/features/chat/store', () => ({
   useChatStore: (
     selector: (state: {
       currentConversation: { id: string; messages: ChatMessage[] } | null

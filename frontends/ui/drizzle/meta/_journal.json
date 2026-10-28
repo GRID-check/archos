@@ -1317,6 +1317,13 @@
       "when": 1792720000000,
       "tag": "0187_office_shelf_in_stored_json",
       "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1792730000000,
+      "tag": "0188_search_german_folding",
+      "breakpoints": true
     }
   ]
 }

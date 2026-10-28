@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@/test-utils'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { buildCitationModel, type CitationRef } from '../lib/citations'
 import type { CitationSource } from '../types'
-import { SourceDocumentDialog } from './SourcePreview'
+import { SourceDocumentDialog } from './source-preview/source-document-dialog'
 import { capturePosthog } from '@/lib/analytics/posthog'
 
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))

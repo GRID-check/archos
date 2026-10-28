@@ -138,7 +138,7 @@ def stores(tmp_path):
 
 @pytest.fixture()
 def live_ingestor(tmp_path, monkeypatch, qdrant_store):
-    from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
+    from knowledge_layer_testing.qdrant import FakeEmbedder
 
     ing = LlamaIndexIngestor({"generate_summary": False})
     ing._embed_model = FakeEmbedder()
@@ -192,7 +192,7 @@ def test_chunks_created_counts_the_nodes_stored(tmp_path, live_ingestor, stores)
     )
     status = _wait_terminal(live_ingestor, job_id)
 
-    from sources.knowledge_layer.tests.qdrant_testing import chunk_texts
+    from knowledge_layer_testing.qdrant import chunk_texts
 
     stored = len(chunk_texts("proj_count", {"file_name": "statik.txt"}))
     assert status.file_details[0].status == FileStatus.SUCCESS

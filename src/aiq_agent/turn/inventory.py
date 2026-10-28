@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from dataclasses import field
 
 from aiq_agent.common.profiler import profiled_span
+from aiq_agent.common.retrieval_status import documents_waiting_step
 from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import documents_waiting_step
 from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.knowledge import get_available_documents_async
 from aiq_agent.knowledge import ingest_status_store

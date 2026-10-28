@@ -3,10 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { buildCitationModel, CitationAccumulator, type CitationRef } from '../lib/citations'
 import type { CitationSource } from '../types'
-import {
-  SourcePreviewChip,
-  resetSourcePreviewIndexCache,
-} from './SourcePreview'
+import { SourcePreviewChip } from './SourcePreview'
+import { resetSourcePreviewIndexCache } from './source-preview/source-preview-index'
 
 const startDocumentDownload = vi.fn(async (_id: string, _filename: string) => true)
 vi.mock('@/lib/documents/download', () => ({

@@ -24,7 +24,7 @@ import { failedWhileReading } from '../lib/ingest-failure'
 import { ingestionMarkOfPhase, IngestionStatusWord } from './ingestion-atoms'
 import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import { photoIntake, prepareSitePhotos } from '../lib/site-photo'
-import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '..'
+import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '../constants'
 import type { Transition } from 'motion/react'
 import {
   AnimatePresence,

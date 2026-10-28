@@ -441,7 +441,7 @@ def flag_cross_turn(payloads: Sequence[tuple[str, dict]]) -> str:
 # measuring channel, and nothing read out of anybody's prose.
 
 #: Tool basenames belonging to RIS. The prefix, not a list of names, because
-#: `turn_status._SEARCH_CORPORA` maps the same prefix to the `ris` corpus and
+#: `tool_calls._SEARCH_CORPORA` maps the same prefix to the `ris` corpus and
 #: two lists of RIS tool names would drift.
 _RIS_TOOL_PREFIX = "ris"
 

@@ -31,10 +31,10 @@ from knowledge_layer.llamaindex.page_triage import PageKind
 from knowledge_layer.llamaindex.page_triage import PageSignals
 from knowledge_layer.llamaindex.page_triage import classify_page
 from knowledge_layer.llamaindex.page_triage import text_quality
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
 GERMAN = (
     "Gemäß § 70 der Bauordnung für Wien wird die Bewilligung unter folgenden Auflagen erteilt: "

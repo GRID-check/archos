@@ -12,7 +12,8 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { buildCitationModel, type CitationRef } from '../lib/citations'
 import type { CitationSource } from '../types'
-import { SourcePreviewChip, resetSourcePreviewIndexCache } from './SourcePreview'
+import { SourcePreviewChip } from './SourcePreview'
+import { resetSourcePreviewIndexCache } from './source-preview/source-preview-index'
 
 vi.mock('../store', () => ({
   useChatStore: (

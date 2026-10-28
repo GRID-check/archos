@@ -22,10 +22,9 @@ from knowledge_layer.llamaindex import adapter as adapter_module
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer.llamaindex.adapter import _PreviousVersion
 from knowledge_layer.qdrant import store as store_module
-
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import write
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import write
 
 SCOPE = "proj_deletes"
 
