@@ -10,7 +10,7 @@ Reproduction harness used throughout (paths absolute):
 ```python
 # save as /tmp/d3.py, run with `uv run python` from the repo root
 from ifc_spatial.tools import create_tools, call as tcall
-from aiq_agent.tools.bim.measure_register import _render, _decimals, _num
+from agent.tools.bim.measure_register import _render, _decimals, _num
 
 F = "/home/user/grid-oib-agent/packages/ifc-spatial/test/fixtures/"
 TOOLS = create_tools()
@@ -493,7 +493,7 @@ call("room_inventory", model=h)  # sample house
 ```
 
 An invalid kind (`kind='wohnraum'`) raises the same way. `kind` is `required` in
-the JSON Schema and `_build_call` validates it, so the NAT tool is safe — but
+the JSON Schema and `_build_call` validates it, so the agent tool is safe — but
 `ifc_spatial.tools` is documented as transport-free and `mcp_server.py` hands
 arguments straight to `call()`, so any MCP client that omits the field gets a
 traceback rather than the German refusal every other path produces. The early

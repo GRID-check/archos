@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.estate_paths import SHELF_MOUNTS
-from aiq_agent.common.estate_paths import TEXT_EXTENSIONS
-from aiq_agent.common.estate_paths import Mount
-from aiq_agent.common.estate_paths import estate_path
+from agent.common.estate_paths import SHELF_MOUNTS
+from agent.common.estate_paths import TEXT_EXTENSIONS
+from agent.common.estate_paths import Mount
+from agent.common.estate_paths import estate_path
 
 from . import stored_pages
 from .browse import FileRow

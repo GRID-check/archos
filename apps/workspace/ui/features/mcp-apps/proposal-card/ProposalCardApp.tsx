@@ -30,7 +30,7 @@ import type { CallToolResult } from '@modelcontextprotocol/client'
 import { I18nProvider, resolveLocale, useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { A2uiCard } from '@/features/a2ui/A2uiCard'
-import { ProposalTransportProvider, type ProposalTransport } from '@/features/grid-cards/hooks/proposal-transport'
+import { ProposalTransportProvider, type ProposalTransport } from '@/features/cards/hooks/proposal-transport'
 import type { ProposalResponse } from '@/lib/proposals/types'
 import { appProposalTransport, proposalOfResult } from './app-transport'
 import { applyHostTheme } from './host-theme'
@@ -86,7 +86,7 @@ function CardBody({ result, app }: { result: CallToolResult | null; app: HostApp
     memory: t('cards.mcpApp.memoryTitle'),
   })
   if (drawn.kind === 'not-drawn') {
-    return <p className="text-muted-foreground text-sm" data-testid="mcp-app-decide-in-piloti">{t('cards.mcpApp.decideInPiloti')}</p>
+    return <p className="text-muted-foreground text-sm" data-testid="mcp-app-decide-in-workspace">{t('cards.mcpApp.decideInAgent')}</p>
   }
   if (drawn.kind === 'invalid') return <Unreadable />
   return (

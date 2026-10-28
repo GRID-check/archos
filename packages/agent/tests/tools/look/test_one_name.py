@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.backend_tools import BACKEND_READ_TOOLS
-from aiq_agent.tools.canvas.register import DESCRIPTIONS
-from aiq_agent.tools.look.register import DESCRIPTION
+from agent.common.backend_tools import BACKEND_READ_TOOLS
+from agent.tools.canvas.register import DESCRIPTIONS
+from agent.tools.look.register import DESCRIPTION
 
 ROOT = Path(__file__).resolve().parents[5]
 RETIRED = re.compile(r"view_knowledge_image|canvas__look|knowledge-image-view")
@@ -28,7 +28,7 @@ AGENT_FACING = [
     ROOT / "apps" / "workspace" / "bff" / "agent-api" / "backend-operations.ts",
     ROOT / "apps" / "workspace" / "bff" / "agent-api" / "exposure.config.ts",
     ROOT / "apps" / "workspace" / "tests" / "fixtures" / "exposure.json",
-    *sorted((ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents").glob("*/prompts/**/*.*")),
+    *sorted((ROOT / "packages" / "agent" / "src" / "agent" / "agents").glob("*/prompts/**/*.*")),
 ]
 
 EXECUTED_STEPS = ROOT / "apps" / "workspace" / "ui" / "features" / "chat" / "lib" / "executed-steps.ts"

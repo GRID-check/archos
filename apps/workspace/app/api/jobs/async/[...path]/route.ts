@@ -70,7 +70,7 @@ import {
 } from '@/lib/backend-proxy'
 import { parseQueryContext, resolveRequestContext } from '@/lib/proxy/collection-authz'
 import { buildProxyUrl, resolveSessionAndBearer } from '@/lib/proxy/proxy-request'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { fileCommissionedReport } from '@/lib/documents/commissioned-report'
 import { findProjectTenancy } from '@/lib/projects/repository'
 import { isProjectClosed, projectClosedError } from '@/lib/projects/project-status'
@@ -86,7 +86,7 @@ import { isProjectClosed, projectClosedError } from '@/lib/projects/project-stat
  * when the org has configured overrides.
  *
  * The envelope goes on every method, not only the submit: the backend
- * authorizes a job by the scope it signs (`aiq_api/jobs/access.py`). It lets the
+ * authorizes a job by the scope it signs (`agent_host/jobs/access.py`). It lets the
  * owner through on the bearer alone and anyone else only inside the project or
  * conversation this tier checked, so a teammate's stream, status, report and
  * cancel all need it. Without it the caller reaches only the jobs it owns.
@@ -96,8 +96,8 @@ import { isProjectClosed, projectClosedError } from '@/lib/projects/project-stat
  * (never just `{}`) so the caller can unconditionally spread the result into the
  * fetch headers.
  */
-async function resolveGridContextHeaders(
-  session: GridSession | null,
+async function resolveRequestContextHeaders(
+  session: UserSession | null,
   scope: AuthorizedJobScope,
   { submit }: { submit: boolean }
 ): Promise<Record<string, string>> {
@@ -112,7 +112,7 @@ async function resolveGridContextHeaders(
  * still sent, matching the fail-open contract of every other override consumer.
  */
 async function resolveSubmitContext(
-  session: GridSession | null,
+  session: UserSession | null,
   projectId: string | undefined
 ): Promise<JobSubmitContext> {
   const input: JobSubmitContext = {}
@@ -257,7 +257,7 @@ export const GET = tenantSlotRoute(async function GET(
     // authorizes the job by it. It is never handed to `fileCommissionedReport`:
     // a report's destination comes from the run, not from whoever reads it.
     const scope = await buildCollectionScopeFromRequest(session, parseQueryContext(searchParams))
-    const gridContextHeaders = await resolveGridContextHeaders(session, scope, { submit: false })
+    const requestContextHeaders = await resolveRequestContextHeaders(session, scope, { submit: false })
 
     // The token query param is consumed for auth and forwarded via headers.
     const upstreamParams =
@@ -270,7 +270,7 @@ export const GET = tenantSlotRoute(async function GET(
       method: 'GET',
       headers: {
         ...authHeaders,
-        ...gridContextHeaders,
+        ...requestContextHeaders,
         Accept: isStreamRequest ? 'text/event-stream' : 'application/json',
         'X-Grid-Collection-Scope': scope.headerValue,
       },
@@ -415,7 +415,7 @@ export const POST = tenantSlotRoute(async function POST(
     )
     // The shelf-bearing entries, not the bare names: the signed envelope is the
     // copy `scoping.py` trusts for an authenticated turn (ADR-0047).
-    const gridContextHeaders = await resolveGridContextHeaders(session, scope, {
+    const requestContextHeaders = await resolveRequestContextHeaders(session, scope, {
       submit: path[0] === 'submit',
     })
 
@@ -432,7 +432,7 @@ export const POST = tenantSlotRoute(async function POST(
 
     // Forward the request to the backend.
     //
-    // `resolveGridContextHeaders` also emits `X-Grid-Collection-Scope` (it
+    // `resolveRequestContextHeaders` also emits `X-Grid-Collection-Scope` (it
     // encodes the same `scope` for the signed envelope), so it must NOT be
     // spread over the authoritative header the route computed. Set the scope
     // header from `buildCollectionScopeFromRequest`'s `headerValue` LAST so it
@@ -443,7 +443,7 @@ export const POST = tenantSlotRoute(async function POST(
       headers: {
         'Content-Type': 'application/json',
         ...authHeaders,
-        ...gridContextHeaders,
+        ...requestContextHeaders,
         'X-Grid-Collection-Scope': scope.headerValue,
       },
       ...(body ? { body } : {}),
@@ -490,7 +490,7 @@ export const DELETE = tenantSlotRoute(async function DELETE(
     traceRequest('DELETE WorkOS access token present:', !!authHeaders.Authorization)
 
     const scope = await buildCollectionScopeFromRequest(session, parseQueryContext(searchParams))
-    const gridContextHeaders = await resolveGridContextHeaders(session, scope, { submit: false })
+    const requestContextHeaders = await resolveRequestContextHeaders(session, scope, { submit: false })
 
     const upstreamUrl = buildProxyUrl(JOBS_BASE_PATH, path, searchParams, ['token'])
 
@@ -498,7 +498,7 @@ export const DELETE = tenantSlotRoute(async function DELETE(
       method: 'DELETE',
       headers: {
         ...authHeaders,
-        ...gridContextHeaders,
+        ...requestContextHeaders,
         Accept: 'application/json',
         'X-Grid-Collection-Scope': scope.headerValue,
       },

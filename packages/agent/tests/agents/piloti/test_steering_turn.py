@@ -31,21 +31,21 @@ from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.answer_pipeline import this_turn
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
-from aiq_agent.common.steering import HELD_FOR_STEER
-from aiq_agent.common.steering import SteerInbox
-from aiq_agent.common.steering import SteerNote
-from aiq_agent.common.steering import bind_steer_inbox
-from aiq_agent.common.steering import unbind_steer_inbox
-from aiq_agent.common.wire_v2 import FocusRegion
-from aiq_agent.common.wire_v2 import SteerAppliedBody
+from agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.answer_pipeline import this_turn
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common import turn_status
+from agent.common.steering import HELD_FOR_STEER
+from agent.common.steering import SteerInbox
+from agent.common.steering import SteerNote
+from agent.common.steering import bind_steer_inbox
+from agent.common.steering import unbind_steer_inbox
+from agent.common.wire_v2 import FocusRegion
+from agent.common.wire_v2 import SteerAppliedBody
 
 _PROMPT = "Du bist Piloti."
 _QUESTION = "Markier die Tür im Erdgeschoss."
@@ -82,8 +82,8 @@ def _bypass_citation_pipeline():
     """The answer pipeline is not what these tests are about."""
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
@@ -121,17 +121,17 @@ class Scripted:
         return self.replies[len(self.requests) - 1]
 
 
-def _agent(model: Scripted, *, ceiling: int = 7) -> PilotiAgent:
+def _agent(model: Scripted, *, ceiling: int = 7) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=model.respond)
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=[look, mark], system_prompt=_PROMPT, max_tool_iterations=ceiling)
+    return ChatAgent(llm_provider=provider, tools=[look, mark], system_prompt=_PROMPT, max_tool_iterations=ceiling)
 
 
-async def _run(agent: PilotiAgent) -> ResearchAgentState:
+async def _run(agent: ChatAgent) -> ResearchAgentState:
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content=_QUESTION)]))
 
 
@@ -211,7 +211,7 @@ class TestTheNextRoundReadsTheNote:
         llm.ainvoke = AsyncMock(side_effect=model.respond)
         provider = MagicMock(spec=LLMProvider)
         provider.get = MagicMock(return_value=llm)
-        agent = PilotiAgent(llm_provider=provider, tools=[slow_look, mark], system_prompt=_PROMPT)
+        agent = ChatAgent(llm_provider=provider, tools=[slow_look, mark], system_prompt=_PROMPT)
 
         await _run(agent)
 
@@ -234,7 +234,7 @@ class TestTheNextRoundReadsTheNote:
         tail = [m.content for m in model.requests[1][-2:]]
         assert _NOTE in tail[0] and "und das Podest" in tail[1]
 
-    async def test_a_box_drawn_while_piloti_works_travels_with_the_note(self, inbox):
+    async def test_a_box_drawn_while_the_chat_agent_works_travels_with_the_note(self, inbox):
         region = FocusRegion(page=3, x=0.41, y=0.22, w=0.17, h=0.18)
         model = Scripted(
             AIMessage(content="", tool_calls=[_call("look", "l1", page=3)]),

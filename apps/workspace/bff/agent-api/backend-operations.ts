@@ -7,7 +7,7 @@ import 'server-only'
  * browser, page images, the two BIM tools and RIS. An outside agent must get
  * them too, so each is an operation here, and the MCP server lists them beside
  * the catalog's. A call goes to the backend's `POST /v1/internal/tools/{name}`
- * (`apps/backend/src/aiq_api/routes/internal_tools.py`).
+ * (`apps/agent-host/src/agent_host/routes/internal_tools.py`).
  *
  * The input schema is the one the chat model reads, generated from the Python
  * functions into `tests/fixtures/backend-tools.schema.json`
@@ -387,7 +387,7 @@ export const BACKEND_OPERATIONS: readonly BackendOperation[] = ENTRIES.map(build
  * Piloti reads the estate with the filesystem verbs (ADR-0133 slice 6), while the door keeps calling
  * the older tools, which deep research and intake still bind.
  */
-export const PILOTI_TOOL_FOR: Readonly<Record<string, string>> = { read_passage: 'read_file' }
+export const AGENT_TOOL_FOR: Readonly<Record<string, string>> = { read_passage: 'read_file' }
 
 /** The operation each Python tool is over MCP, for the names its answers mention. */
 const OPERATION_NAMES: ToolNames = Object.fromEntries(ENTRIES.map((entry) => [entry.tool, entry.name]))

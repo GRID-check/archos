@@ -19,9 +19,9 @@ Three things about it are load-bearing and each has a test here:
 
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_turn_context
-from aiq_agent.agents.piloti.prompt import system_prompt_template
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.prompt import render_turn_context
+from agent.agents.piloti.prompt import system_prompt_template
 
 BOUNDARY_ANCHOR = "<turn_context>"
 HEADING = "## Office instructions"
@@ -82,7 +82,7 @@ class TestWhereItSits:
         model has read before it reaches them — and it is there whether or not
         this organization sent anything.
         """
-        from aiq_agent.agents.piloti.prompt import bundled_static_block
+        from agent.agents.piloti.prompt import bundled_static_block
 
         rules = bundled_static_block().text.split("<rules>")[1].split("</rules>")[0]
         office = rules.split("The office's own instructions")[1].split("\n")[0]
@@ -93,17 +93,17 @@ class TestWhereItSits:
 
 class TestTheLift:
     def test_the_turn_context_carries_it_from_the_request(self):
-        from aiq_agent.project_context import GridRequestContext
-        from aiq_agent.turn.context import TurnContext
+        from agent.project_context import RequestContext
+        from agent.turn.context import TurnContext
 
         assert "org_instructions" in TurnContext.__dataclass_fields__
-        assert "org_instructions" in GridRequestContext.__dataclass_fields__
+        assert "org_instructions" in RequestContext.__dataclass_fields__
 
     def test_the_conversation_state_hands_it_to_the_research_state(self):
         """The graph edge the field has to survive: a value that stops at the
         conversation state is a value the answering agent never reads."""
-        from aiq_agent.agents.piloti.conversation import ConversationGraph
-        from aiq_agent.agents.piloti.models.conversation import ConversationState
+        from agent.agents.piloti.conversation import ConversationGraph
+        from agent.agents.piloti.models.conversation import ConversationState
 
         state = ConversationState(
             messages=[HumanMessage(content="Wie hoch?")],

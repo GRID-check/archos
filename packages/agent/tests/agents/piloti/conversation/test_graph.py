@@ -12,14 +12,14 @@ from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.agents.piloti.conversation import CONVERSATION_SCOPED_FIELDS
-from aiq_agent.agents.piloti.conversation import TURN_SCOPED_FIELDS
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.markers import ESCALATION_MARKER
-from aiq_agent.agents.piloti.models import ClarifyResult
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.piloti.conversation import CONVERSATION_SCOPED_FIELDS
+from agent.agents.piloti.conversation import TURN_SCOPED_FIELDS
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.markers import ESCALATION_MARKER
+from agent.agents.piloti.models import ClarifyResult
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
 
 
 def _research_result(messages, answer: str, *, escalating: bool = False, direct: bool = False):
@@ -334,12 +334,12 @@ class TestConversationGraph:
         assert captured_state["data_sources"] == []
 
     @pytest.mark.asyncio
-    async def test_piloti_sets_the_listing_shelf_from_the_query(self, mock_deep_research, mock_clarifier):
+    async def test_chat_sets_the_listing_shelf_from_the_query(self, mock_deep_research, mock_clarifier):
         """A shelf named in the question is the one the inventory prints in
         full this turn. Piloti sets it as a ContextVar before the
         Piloti runs, so the prompt renderer sees it."""
-        from aiq_agent.knowledge.inventory import Shelf
-        from aiq_agent.knowledge.inventory import get_listing_shelf
+        from agent.knowledge.inventory import Shelf
+        from agent.knowledge.inventory import get_listing_shelf
 
         seen: dict[str, object] = {}
 
@@ -402,7 +402,7 @@ class TestRoutingBoundary:
         return calls, research_answering, deep, clarifier
 
     @pytest.mark.asyncio
-    async def test_out_of_scope_is_answered_by_piloti(self, trackers):
+    async def test_out_of_scope_is_answered_by_chat(self, trackers):
         """An off-topic question is Piloti's to decline — there is
         no fixed redirect ahead of it any more. It declines without a source
         lookup, so the turn is observed as a direct reply; no clarifier, no
@@ -578,7 +578,7 @@ class TestTurnBoundary:
         assert TURN_SCOPED_FIELDS == set(ConversationState.model_fields) - CONVERSATION_SCOPED_FIELDS
 
     @pytest.mark.asyncio
-    async def test_in_flight_documents_reach_piloti(self):
+    async def test_in_flight_documents_reach_chat_agent(self):
         seen: dict[str, object] = {}
 
         async def research(state_input):
@@ -637,7 +637,7 @@ class TestTheWholeTurnIsWrittenBack:
     async def test_tool_results_reach_the_conversation_and_the_answer_stays_last(self):
         from langchain_core.messages import ToolMessage
 
-        from aiq_agent.agents.piloti.conversation import _finalize_answer
+        from agent.agents.piloti.conversation import _finalize_answer
 
         call = {"name": "read_passage", "args": {"document": "OIB-RL 2"}, "id": "c1"}
         turn = [
@@ -656,8 +656,8 @@ class TestTheWholeTurnIsWrittenBack:
     async def test_the_written_back_results_are_cut_to_the_cited_passages(self):
         from langchain_core.messages import ToolMessage
 
-        from aiq_agent.agents.piloti.conversation import _finalize_answer
-        from aiq_agent.agents.piloti.history import UNCITED_PASSAGE_NOTE
+        from agent.agents.piloti.conversation import _finalize_answer
+        from agent.agents.piloti.history import UNCITED_PASSAGE_NOTE
 
         call = {"name": "knowledge_search", "args": {"query": "REI"}, "id": "c1"}
         content = (
@@ -724,8 +724,8 @@ class TestAFollowUpAnsweredFromTheTranscript:
         would trigger if it counted as this turn's."""
         from langchain_core.messages import ToolMessage
 
-        from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-        from aiq_agent.citations.registry import SourceRegistry
+        from agent.agents.piloti.answer_pipeline import finalize_answer
+        from agent.citations.registry import SourceRegistry
 
         call = {"name": "knowledge_search", "args": {"query": "Fluchtweg"}, "id": "c1"}
         messages = [

@@ -11,11 +11,11 @@ from datetime import datetime
 
 import pytest
 
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
+from agent.knowledge import ingest_status_store
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
 
 
 def _status(job_id: str, state: JobState = JobState.PROCESSING) -> IngestionJobStatus:

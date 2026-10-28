@@ -365,7 +365,7 @@
       "type": "object"
     },
     "CanvasActivityCard": {
-      "description": "What Piloti did on one document in this turn: marks proposed or set, changed, deleted, threads answered.\n\nA proposed mark is taken over or dismissed from here as well as on the\ndocument, and a change is undone from here, through the same annotations API.\n\nSystem-emitted by the canvas tools (``packages/agent/src/aiq_agent/tools/canvas/``) after\nthe BFF confirmed each write; the model cannot emit it (``SYSTEM_CARD_TYPES``).",
+      "description": "What Piloti did on one document in this turn: marks proposed or set, changed, deleted, threads answered.\n\nA proposed mark is taken over or dismissed from here as well as on the\ndocument, and a change is undone from here, through the same annotations API.\n\nSystem-emitted by the canvas tools (``packages/agent/src/agent/tools/canvas/``) after\nthe BFF confirmed each write; the model cannot emit it (``SYSTEM_CARD_TYPES``).",
       "properties": {
         "document": {
           "$ref": "#/$defs/CanvasDocument"
@@ -1181,6 +1181,91 @@
       "title": "DimensionDiagramCard",
       "type": "object"
     },
+    "DocumentAnswerCard": {
+      "description": "Project/B\u00fcroablage files the user asked to see.\n\nSystem-emitted by ``surface_documents``. One file or a short browse\nchoice \u2014 same card, the list length is the difference. Never a\ncatalogue. Citations of exactly one project/B\u00fcro file peek without\nthis card (``useCitationPeek``).",
+      "properties": {
+        "documents": {
+          "description": "The surfaced files, best match first",
+          "items": {
+            "$ref": "#/$defs/SurfacedDocument"
+          },
+          "minItems": 1,
+          "title": "Documents",
+          "type": "array"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The search phrase these documents matched",
+          "title": "Query"
+        },
+        "search": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DocumentAnswerSearch"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The workspace search these documents came from; the card offers to open the search page asking it"
+        },
+        "title": {
+          "description": "Short heading, e.g. 'Relevante Dokumente \u2013 Fluchtwege'",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "document_grid",
+          "default": "document_grid",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "documents"
+      ],
+      "title": "DocumentAnswerCard",
+      "type": "object"
+    },
+    "DocumentAnswerSearch": {
+      "description": "The ``workspace-search`` question a browse ran, so the reader can open the full result.\n\nSet by ``surface_documents`` only when the files came from that operation; the\ncard then links to the search page with the same text and scope.",
+      "properties": {
+        "scope": {
+          "description": "Where it looked: this project, the office shelf, or both (the office)",
+          "enum": [
+            "office",
+            "project",
+            "office_shelf"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "text": {
+          "description": "The search text, as the operation was asked",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "scope"
+      ],
+      "title": "DocumentAnswerSearch",
+      "type": "object"
+    },
     "DocumentDraftCard": {
       "description": "A document the agent wrote into this conversation's working directory.\n\nSystem-emitted by the working directory's ``write_file`` / ``edit_file``, and\nagain by ``file_draft`` once the draft has become a project document.\n\n**The card has two states, and the difference is three fields.** Unfiled, it\nreports a file that exists in this conversation and nowhere else: not filed,\nnot indexed, not citable, not in the Files pane. Filed, it names a\n``documents`` row \u2014 and then it can offer the two things a reader wants,\nopening it and sending it for review, both through the routes the Files pane\nitself uses.\n\nThe three fields travel together or not at all: a card carrying a\n``document_id`` and no ``version_state`` could not say whether the draft is\nstill submittable, and one carrying a state with no ``version_id`` could not\nsubmit it. ``_require_filed_together`` is what refuses the half-filled shape,\nbecause the alternative is a card that renders a live-looking control over\nnothing.",
       "properties": {
@@ -1270,91 +1355,6 @@
         "version"
       ],
       "title": "DocumentDraftCard",
-      "type": "object"
-    },
-    "DocumentGridCard": {
-      "description": "Project/B\u00fcroablage files the user asked to see.\n\nSystem-emitted by ``surface_documents``. One file or a short browse\nchoice \u2014 same card, the list length is the difference. Never a\ncatalogue. Citations of exactly one project/B\u00fcro file peek without\nthis card (``useCitationPeek``).",
-      "properties": {
-        "documents": {
-          "description": "The surfaced files, best match first",
-          "items": {
-            "$ref": "#/$defs/SurfacedDocument"
-          },
-          "minItems": 1,
-          "title": "Documents",
-          "type": "array"
-        },
-        "query": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "The search phrase these documents matched",
-          "title": "Query"
-        },
-        "search": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/DocumentGridSearch"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "The workspace search these documents came from; the card offers to open the search page asking it"
-        },
-        "title": {
-          "description": "Short heading, e.g. 'Relevante Dokumente \u2013 Fluchtwege'",
-          "minLength": 1,
-          "title": "Title",
-          "type": "string"
-        },
-        "type": {
-          "const": "document_grid",
-          "default": "document_grid",
-          "title": "Type",
-          "type": "string"
-        }
-      },
-      "required": [
-        "title",
-        "documents"
-      ],
-      "title": "DocumentGridCard",
-      "type": "object"
-    },
-    "DocumentGridSearch": {
-      "description": "The ``workspace-search`` question a browse ran, so the reader can open the full result.\n\nSet by ``surface_documents`` only when the files came from that operation; the\ncard then links to the search page with the same text and scope.",
-      "properties": {
-        "scope": {
-          "description": "Where it looked: this project, the office shelf, or both (the office)",
-          "enum": [
-            "office",
-            "project",
-            "office_shelf"
-          ],
-          "title": "Scope",
-          "type": "string"
-        },
-        "text": {
-          "description": "The search text, as the operation was asked",
-          "maxLength": 500,
-          "minLength": 1,
-          "title": "Text",
-          "type": "string"
-        }
-      },
-      "required": [
-        "text",
-        "scope"
-      ],
-      "title": "DocumentGridSearch",
       "type": "object"
     },
     "EgressDiagramCard": {
@@ -1645,7 +1645,7 @@
       "type": "object"
     },
     "FileOperationProposalCard": {
-      "description": "A workspace change the agent PROPOSES and a person applies.\n\nSystem-emitted by ``propose_file_change`` (``packages/agent/src/aiq_agent/tools/files/``).\nEvery operation is a write, none of them writes: the tool's own result text\nsays plainly that nothing has changed yet. With ``proposal_id`` the card\nshows a proposal stored on the server (ADR-0105), which the server applies\nin the accepting person's session; it then carries the one operation of\nthe call that created it. Without one (an older BFF, a run with no\nenvelope, a refusal) the proposal was not stored: the UI draws the card\nread-only, saying so, and the browser executes nothing.",
+      "description": "A workspace change the agent PROPOSES and a person applies.\n\nSystem-emitted by ``propose_file_change`` (``packages/agent/src/agent/tools/files/``).\nEvery operation is a write, none of them writes: the tool's own result text\nsays plainly that nothing has changed yet. With ``proposal_id`` the card\nshows a proposal stored on the server (ADR-0105), which the server applies\nin the accepting person's session; it then carries the one operation of\nthe call that created it. Without one (an older BFF, a run with no\nenvelope, a refusal) the proposal was not stored: the UI draws the card\nread-only, saying so, and the browser executes nothing.",
       "properties": {
         "note": {
           "anyOf": [
@@ -4033,7 +4033,7 @@
       "daylight_incidence": "#/$defs/DaylightIncidenceCard",
       "dimension_diagram": "#/$defs/DimensionDiagramCard",
       "document_draft": "#/$defs/DocumentDraftCard",
-      "document_grid": "#/$defs/DocumentGridCard",
+      "document_grid": "#/$defs/DocumentAnswerCard",
       "egress_diagram": "#/$defs/EgressDiagramCard",
       "file_operation_proposal": "#/$defs/FileOperationProposalCard",
       "fire_access_plan": "#/$defs/FireAccessPlanCard",
@@ -4098,7 +4098,7 @@
       "$ref": "#/$defs/OperationProposalCard"
     },
     {
-      "$ref": "#/$defs/DocumentGridCard"
+      "$ref": "#/$defs/DocumentAnswerCard"
     },
     {
       "$ref": "#/$defs/DocumentDraftCard"

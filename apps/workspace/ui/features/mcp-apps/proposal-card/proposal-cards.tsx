@@ -17,10 +17,10 @@
  */
 
 import type { ReactNode } from 'react'
-import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
+import { answerCardSchema, type AnswerCard } from '@/shared/cards/schemas'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import type { CardRenderer } from '@/features/a2ui/catalog'
-import { FileOperationReceipt, MemoryReceipt, OperationReceipt } from '@/features/grid-cards/components/ProposalReceipts'
+import { FileOperationReceipt, MemoryReceipt, OperationReceipt } from '@/features/cards/components/ProposalReceipts'
 
 export interface ProposalTitles {
   /** A file proposal carries no title of its own: `{count} changes to files`. */
@@ -36,12 +36,12 @@ export interface ProposalTitles {
  * Validated by the card's generated schema, the one a card in the chat is
  * validated by, which also fills its defaults.
  */
-export type DrawnProposal = { kind: 'card'; card: GridCard } | { kind: 'not-drawn' } | { kind: 'invalid' }
+export type DrawnProposal = { kind: 'card'; card: AnswerCard } | { kind: 'not-drawn' } | { kind: 'invalid' }
 
 export function cardOfProposal(proposal: ProposedChangeView, titles: ProposalTitles): DrawnProposal {
   const raw = rawCardOf(proposal, titles)
   if (!raw) return { kind: 'not-drawn' }
-  const parsed = gridCardSchema.safeParse(raw)
+  const parsed = answerCardSchema.safeParse(raw)
   return parsed.success ? { kind: 'card', card: parsed.data } : { kind: 'invalid' }
 }
 

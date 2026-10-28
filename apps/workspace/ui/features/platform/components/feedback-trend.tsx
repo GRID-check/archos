@@ -276,7 +276,7 @@ export function FeedbackTrend({
                   strokeWidth={2}
                   strokeLinecap="round"
                   strokeDasharray={seg.solid ? undefined : '3 4'}
-                  style={{ stroke: 'var(--grid-series-1)' }}
+                  style={{ stroke: 'var(--chart-series-1)' }}
                   opacity={seg.solid ? 1 : 0.45}
                 />
               ))}
@@ -297,7 +297,7 @@ export function FeedbackTrend({
                     cx={x(index)}
                     cy={y(day.rate)}
                     r={hover === index ? 4.5 : 3}
-                    style={{ fill: 'var(--grid-series-1)' }}
+                    style={{ fill: 'var(--chart-series-1)' }}
                     className="stroke-card"
                     strokeWidth={2}
                   />
@@ -384,13 +384,13 @@ export function FeedbackTrend({
               x2="20"
               y2="4"
               strokeWidth={2}
-              style={{ stroke: 'var(--grid-series-1)' }}
+              style={{ stroke: 'var(--chart-series-1)' }}
             />
             <circle
               cx="10"
               cy="4"
               r="3"
-              style={{ fill: 'var(--grid-series-1)' }}
+              style={{ fill: 'var(--chart-series-1)' }}
               className="stroke-card"
               strokeWidth={2}
             />
@@ -407,7 +407,7 @@ export function FeedbackTrend({
               strokeWidth={2}
               strokeDasharray="3 4"
               opacity={0.45}
-              style={{ stroke: 'var(--grid-series-1)' }}
+              style={{ stroke: 'var(--chart-series-1)' }}
             />
           </svg>
           {t('answerFeedback.legendSparse', { min: minVotes })}

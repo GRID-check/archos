@@ -32,7 +32,7 @@ import { INBOX_TARGET_REGISTRY, findInboxTarget, type InboxTargetLinkContext } f
 function makeSession(organizationId = 'org_1'): AuthorizedSession {
   return {
     userId: 'user_1',
-    email: 'user_1@grid.test',
+    email: 'user_1@example.test',
     name: 'Test User',
     accessToken: 'workos_token',
     organizationId,

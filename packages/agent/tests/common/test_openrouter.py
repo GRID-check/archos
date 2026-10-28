@@ -10,18 +10,18 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from aiq_agent.common import openrouter
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.openrouter import NO_RETENTION_LIMITS
-from aiq_agent.common.openrouter import ZERO_DATA_RETENTION
-from aiq_agent.common.openrouter import DataPolicy
-from aiq_agent.common.openrouter import ZdrRoutingError
-from aiq_agent.common.openrouter import data_policy_for
-from aiq_agent.common.openrouter import data_policy_scope
-from aiq_agent.common.openrouter import pin_chat_model
-from aiq_agent.common.openrouter import pinned_http_client
-from aiq_agent.common.openrouter import scoped_data_policy
-from aiq_agent.common.openrouter import targets_openrouter
+from agent.common import openrouter
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.openrouter import NO_RETENTION_LIMITS
+from agent.common.openrouter import ZERO_DATA_RETENTION
+from agent.common.openrouter import DataPolicy
+from agent.common.openrouter import ZdrRoutingError
+from agent.common.openrouter import data_policy_for
+from agent.common.openrouter import data_policy_scope
+from agent.common.openrouter import pin_chat_model
+from agent.common.openrouter import pinned_http_client
+from agent.common.openrouter import scoped_data_policy
+from agent.common.openrouter import targets_openrouter
 
 
 class TestTargetsOpenRouter:
@@ -72,11 +72,11 @@ class TestTheOrganizationsPolicy:
 
     @pytest.mark.parametrize("zdr", [True, False])
     def test_the_setting_decides(self, zdr):
-        with patch("aiq_agent.common.model_overrides.resolve_org_zdr_only", return_value=zdr):
+        with patch("agent.common.model_overrides.resolve_org_zdr_only", return_value=zdr):
             assert data_policy_for("org_1") == DataPolicy(zdr=zdr)
 
     def test_an_unreadable_setting_is_zdr(self):
-        with patch("aiq_agent.common.model_overrides.resolve_org_zdr_only", side_effect=RuntimeError("boom")):
+        with patch("agent.common.model_overrides.resolve_org_zdr_only", side_effect=RuntimeError("boom")):
             assert data_policy_for("org_1") == ZERO_DATA_RETENTION
 
 
@@ -153,7 +153,7 @@ class TestTheIngestScope:
 
 class TestTheRefusal:
     def test_openrouters_data_policy_404_is_recognised_through_a_wrapper(self):
-        from aiq_agent.common.openrouter import is_data_policy_refusal
+        from agent.common.openrouter import is_data_policy_refusal
 
         refusal = "Error code: 404 - No endpoints found matching your data policy (Zero data retention)"
         try:
@@ -165,7 +165,7 @@ class TestTheRefusal:
             assert is_data_policy_refusal(outer)
 
     def test_other_404s_are_not(self):
-        from aiq_agent.common.openrouter import is_data_policy_refusal
+        from agent.common.openrouter import is_data_policy_refusal
 
         other = RuntimeError("404 No endpoints found that can handle the requested parameters")
         assert not is_data_policy_refusal(other)
@@ -184,12 +184,12 @@ class TestResolvedCredentialBody:
         assert "provider" not in body
 
     def test_the_resolver_attaches_the_organizations_policy(self, monkeypatch):
-        from aiq_agent.common.credential_resolution import resolve_llm_credential
+        from agent.common.credential_resolution import resolve_llm_credential
 
         monkeypatch.setenv("TEST_KEY", "k")
         with (
-            patch("aiq_agent.common.model_overrides.resolve_org_zdr_only", return_value=True),
-            patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None),
+            patch("agent.common.model_overrides.resolve_org_zdr_only", return_value=True),
+            patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=None),
         ):
             cred = resolve_llm_credential(
                 primary_env="TEST_KEY",

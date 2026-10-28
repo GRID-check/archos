@@ -14,10 +14,10 @@ from agent_testing.intake import NEEDS_BODY
 from agent_testing.intake import recorded_all
 from agent_testing.intake import validator
 
-from aiq_agent.agents.intake.tools import IntakeSession
-from aiq_agent.agents.intake.tools import RecordedValue
-from aiq_agent.agents.intake.tools import record_values
-from aiq_agent.agents.intake.tools import withdraw_values
+from agent.agents.intake.tools import IntakeSession
+from agent.agents.intake.tools import RecordedValue
+from agent.agents.intake.tools import record_values
+from agent.agents.intake.tools import withdraw_values
 
 
 @pytest.fixture
@@ -176,7 +176,7 @@ class TestTheQuoteMustStateTheValue:
         def broken(*args, **kwargs):
             raise RuntimeError("decider down")
 
-        monkeypatch.setattr("aiq_agent.common.decisions.decide_many_blocking", broken)
+        monkeypatch.setattr("agent.common.decisions.decide_many_blocking", broken)
         fake = route(record=recorded_all())
         await record_values(session, [_value("construction_method", ["timber"], "in Holzbauweise errichtet", page=2)])
         (sent,) = fake.bodies("record")[0]["values"]
@@ -313,7 +313,7 @@ class TestWithdrawingOwnSuggestions:
 
 class TestTheNeedsAnswer:
     def test_a_confirmed_input_is_shown_as_confirmed_after_the_open_ones(self):
-        from aiq_agent.agents.intake.tools import render_needs
+        from agent.agents.intake.tools import render_needs
 
         confirmed = {**NEEDS_BODY["needs"][0], "key": "building_type@bldg1", "decisive": False, "state": "confirmed"}
         text = render_needs({**NEEDS_BODY, "needs": [confirmed, *NEEDS_BODY["needs"]]})
@@ -324,8 +324,8 @@ class TestTheNeedsAnswer:
         )
 
     def test_a_bounded_answer_names_the_call_that_shows_the_rest(self):
-        from aiq_agent.agents.intake.tools import MAX_RENDERED_NEEDS
-        from aiq_agent.agents.intake.tools import render_needs
+        from agent.agents.intake.tools import MAX_RENDERED_NEEDS
+        from agent.agents.intake.tools import render_needs
 
         many = [
             {**NEEDS_BODY["needs"][1], "key": f"k{index}", "decisive": False} for index in range(MAX_RENDERED_NEEDS + 5)
@@ -341,7 +341,7 @@ class TestTheDescriptionsCarryTheRules:
     """The prompt prescribes no procedure, so each tool's description says how it is used (ADR-0060)."""
 
     def test_record_values_says_how_a_value_is_written_and_what_each_outcome_means(self):
-        from aiq_agent.agents.intake.tools import RECORD_VALUES_DESCRIPTION
+        from agent.agents.intake.tools import RECORD_VALUES_DESCRIPTION
 
         for phrase in (
             "option token exactly",
@@ -359,7 +359,7 @@ class TestTheDescriptionsCarryTheRules:
             assert phrase in RECORD_VALUES_DESCRIPTION, phrase
 
     def test_record_values_says_what_does_not_count_as_stated_and_why(self):
-        from aiq_agent.agents.intake.tools import RECORD_VALUES_DESCRIPTION
+        from agent.agents.intake.tools import RECORD_VALUES_DESCRIPTION
 
         for phrase in ("undecided, under review or one of several options", "Planart", "names the drawing"):
             assert phrase in RECORD_VALUES_DESCRIPTION, phrase
@@ -368,18 +368,18 @@ class TestTheDescriptionsCarryTheRules:
         assert "unless a document states the class" not in RECORD_VALUES_DESCRIPTION
 
     def test_withdraw_values_says_whose_values_go_and_that_none_is_refused_later(self):
-        from aiq_agent.agents.intake.tools import WITHDRAW_VALUES_DESCRIPTION
+        from agent.agents.intake.tools import WITHDRAW_VALUES_DESCRIPTION
 
         for phrase in ("recorded in this run", "derived Gebäudeklasse", "not refused", "a later reading may record"):
             assert phrase in WITHDRAW_VALUES_DESCRIPTION, phrase
 
     def test_intake_needs_says_what_each_state_means(self):
-        from aiq_agent.agents.intake.tools import INTAKE_NEEDS_DESCRIPTION
+        from agent.agents.intake.tools import INTAKE_NEEDS_DESCRIPTION
 
         for phrase in ("`open`", "`suggested`", "`confirmed`", "contradiction a person decides", "`start`"):
             assert phrase in INTAKE_NEEDS_DESCRIPTION, phrase
 
     def test_finish_intake_says_the_summary_is_grounded(self):
-        from aiq_agent.agents.intake.tools import FINISH_INTAKE_DESCRIPTION
+        from agent.agents.intake.tools import FINISH_INTAKE_DESCRIPTION
 
         assert "rests on something a tool returned in this run" in FINISH_INTAKE_DESCRIPTION

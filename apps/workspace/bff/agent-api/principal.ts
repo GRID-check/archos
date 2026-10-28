@@ -15,7 +15,7 @@ import 'server-only'
  *    as they are now (`resolvePinnedRequesterSession`). The token is never
  *    forwarded anywhere: the session carries an empty `accessToken` (the MCP
  *    specification forbids token passthrough).
- *  - PILOTI in-product echoes the turn's signed request-context envelope next to
+ *  - AGENT in-product echoes the turn's signed request-context envelope next to
  *    the service token, exactly as it does for `/api/internal/*`. It never signs
  *    one; the envelope names the person, and its project and conversation.
  *
@@ -303,7 +303,7 @@ function answerMessageIdOf(request: Request): string | null {
   return value && isUuid(value) ? value : null
 }
 
-async function pilotiPrincipal(request: Request): Promise<AgentPrincipal | AuthChallenge> {
+async function agentPrincipal(request: Request): Promise<AgentPrincipal | AuthChallenge> {
   const denied = requireInternalToken(request, 'mcp')
   if (denied) return challenge(denied)
   try {
@@ -338,7 +338,7 @@ export async function resolvePrincipal(
 ): Promise<AgentPrincipal | AuthChallenge> {
   if (hasHeader(request.headers, CURRENT_INTERNAL_TOKEN_HEADER)) {
     if (doorOf(request) === 'platform') return refuse(403, 'Piloti does not use the platform door.')
-    return pilotiPrincipal(request)
+    return agentPrincipal(request)
   }
   return externalPrincipal(request, deps)
 }

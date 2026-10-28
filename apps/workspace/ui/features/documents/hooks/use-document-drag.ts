@@ -47,7 +47,7 @@ import { useDragEnd } from './use-drag-end'
  * Our own drag types. Custom MIME types rather than `text/plain` so a paragraph
  * dragged from another tab cannot look like a document.
  */
-export const DOCUMENT_DRAG_TYPE = 'application/x-grid-document-id'
+export const DOCUMENT_DRAG_TYPE = 'application/x-document-id'
 export const FOLDER_DRAG_TYPE = 'application/x-grid-folder-id'
 
 const dragTypes = (dataTransfer: DataTransfer | null): string[] =>

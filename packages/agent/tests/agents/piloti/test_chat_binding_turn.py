@@ -1,4 +1,4 @@
-"""Piloti's chat binding of the shared knowledge tools, through ``PilotiAgent.run`` (ADR-0133 slice 6).
+"""Piloti's chat binding of the shared knowledge tools, through ``ChatAgent.run`` (ADR-0133 slice 6).
 
 Through the compiled graph, because the claim is about what the model is offered and what RUNS: the
 rebound schema is what ``bind_tools`` sends, a retired argument is an error that names its replacement
@@ -20,17 +20,17 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
 
 RAN: list[dict] = []
 
 
 class _SearchInput(BaseModel):
-    """The NAT function's own arguments, as the shared binding has them."""
+    """The agent-runtime function's own arguments, as the shared binding has them."""
 
     query: str
     match: str = "meaning"
@@ -49,8 +49,8 @@ def _quiet_pipeline():
     RAN.clear()
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
@@ -59,7 +59,7 @@ def _quiet_pipeline():
         yield
 
 
-def _agent(*rounds: AIMessage) -> tuple[PilotiAgent, MagicMock]:
+def _agent(*rounds: AIMessage) -> tuple[ChatAgent, MagicMock]:
     shared = StructuredTool.from_function(
         coroutine=_search, name="knowledge_search", description="shared", args_schema=_SearchInput
     )
@@ -70,7 +70,7 @@ def _agent(*rounds: AIMessage) -> tuple[PilotiAgent, MagicMock]:
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
     tools = chat_tools([shared], top_k=16, max_per_document=5)
-    return PilotiAgent(llm_provider=provider, tools=tools, system_prompt="Du bist Piloti.", max_tool_iterations=7), llm
+    return ChatAgent(llm_provider=provider, tools=tools, system_prompt="Du bist Piloti.", max_tool_iterations=7), llm
 
 
 def _answer(result, call_id: str) -> ToolMessage:

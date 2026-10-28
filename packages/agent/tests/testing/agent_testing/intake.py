@@ -14,12 +14,12 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
-import aiq_agent.project_context as pc
-from aiq_agent.agents.intake import reading
-from aiq_agent.agents.intake.read_log import bind_read_log
-from aiq_agent.agents.intake.read_log import reset_read_log
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge.schema import AvailableDocument
+import agent.project_context as pc
+from agent.agents.intake import reading
+from agent.agents.intake.read_log import bind_read_log
+from agent.agents.intake.read_log import reset_read_log
+from agent.common import bff_http
+from agent.knowledge.schema import AvailableDocument
 from scripts.intake_eval.bff import FakeIntakeRoute as _IntakeRoute
 
 ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
@@ -151,13 +151,13 @@ def read_log():
 @pytest.fixture(autouse=True)
 def no_decision_model(monkeypatch):
     """No test reaches a real decision model: undecided, unless a test installs :func:`decider`."""
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many_blocking", lambda states, *a, **k: [None] * len(states))
+    monkeypatch.setattr("agent.common.decisions.decide_many_blocking", lambda states, *a, **k: [None] * len(states))
 
 
 @pytest.fixture
 def decider(monkeypatch):
     """The decision model answering p(stated) by the value's label; records the states it was asked."""
-    from aiq_agent.common.decisions import Decision
+    from agent.common.decisions import Decision
 
     def install(by_label: dict[str, float]) -> list[dict]:
         seen: list[dict] = []
@@ -169,7 +169,7 @@ def decider(monkeypatch):
                 for state in states
             ]
 
-        monkeypatch.setattr("aiq_agent.common.decisions.decide_many_blocking", decide)
+        monkeypatch.setattr("agent.common.decisions.decide_many_blocking", decide)
         return seen
 
     return install

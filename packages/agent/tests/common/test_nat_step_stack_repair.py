@@ -1,4 +1,4 @@
-"""A LangGraph turn under NAT keeps every step's parent open (no span the exporter drops)."""
+"""A LangGraph turn under the agent runtime keeps every step's parent open (no span the exporter drops)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from langgraph.graph import END
 from langgraph.graph import START
 from langgraph.graph import StateGraph
 
-from aiq_agent.common.nat_step_repair import install_step_stack_repair
+from agent.common.nat_step_repair import install_step_stack_repair
 from nat.data_models.intermediate_step import IntermediateStepPayload
 from nat.data_models.intermediate_step import IntermediateStepState
 from nat.data_models.intermediate_step import IntermediateStepType
@@ -41,7 +41,7 @@ def _graph():
 
 
 def _orphans(events) -> list[str]:
-    """START steps whose parent had already ended: the ones NAT's SpanExporter drops."""
+    """START steps whose parent had already ended: the ones the agent runtime's SpanExporter drops."""
     ended: set[str] = set()
     orphans: list[str] = []
     for event in events:

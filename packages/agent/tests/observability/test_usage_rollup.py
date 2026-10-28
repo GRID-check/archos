@@ -14,14 +14,14 @@ Pins the sibling contract to the citation-health ledger:
 
 import pytest
 
-from aiq_agent.observability.usage_rollup import NO_CALLS_ERROR
-from aiq_agent.observability.usage_rollup import build_usage_rollup
-from aiq_agent.observability.usage_rollup import from_tracker
-from aiq_agent.observability.usage_rollup import record_usage_turn
+from agent.observability.usage_rollup import NO_CALLS_ERROR
+from agent.observability.usage_rollup import build_usage_rollup
+from agent.observability.usage_rollup import from_tracker
+from agent.observability.usage_rollup import record_usage_turn
 
 
 class _Tracker:
-    """Duck-typed stand-in for GridCostTracker (prompt/completion/cost totals)."""
+    """Duck-typed stand-in for CostTracker (prompt/completion/cost totals)."""
 
     def __init__(self, *, calls=0, prompt=0, completion=0, cost=0.0, job_id=None, cost_source=None):
         self.events_recorded = calls
@@ -102,14 +102,14 @@ class TestFromTracker:
 class TestRecordUsageTurn:
     @pytest.fixture(autouse=True)
     def _clean(self):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
 
         reset_contributions()
         yield
         reset_contributions()
 
     def test_rollup_lands_on_the_trace_and_returns_its_payload(self):
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         payload = record_usage_turn(tracker=_Tracker(calls=2, prompt=500, completion=100, cost=0.001))
 
@@ -141,7 +141,7 @@ class TestRecordUsageTurn:
         assert payload["rollup"]["error"] == NO_CALLS_ERROR
 
     def test_zero_row_stamps_zero_totals_on_the_trace(self):
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         payload = record_usage_turn(tracker=_Tracker())
 

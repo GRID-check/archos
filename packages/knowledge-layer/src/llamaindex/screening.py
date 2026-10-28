@@ -15,7 +15,7 @@ only and hook in after the model call, which is one step too late.
 Pure: rules in, verdict out. ``ScreeningRules.from_config`` never raises into the job.
 
 The matcher itself (folding, terms, the three detectors, spans, masked samples)
-is ``aiq_agent.common.content_screen``, shared with the chat socket's mask and
+is ``agent.common.content_screen``, shared with the chat socket's mask and
 mirrored in the browser; this module turns its spans into a verdict per file.
 The names it used to define are re-exported below, so callers did not move.
 
@@ -41,27 +41,27 @@ from dataclasses import field
 from dataclasses import replace
 from typing import Literal
 
-from aiq_agent.common.content_screen import DETECTORS
-from aiq_agent.common.content_screen import IBAN_LENGTHS
-from aiq_agent.common.content_screen import MAX_TERM_CHARS
-from aiq_agent.common.content_screen import MAX_TERMS
-from aiq_agent.common.content_screen import MIN_TERM_CHARS
-from aiq_agent.common.content_screen import Detector
-from aiq_agent.common.content_screen import ScreeningRules
-from aiq_agent.common.content_screen import Span
-from aiq_agent.common.content_screen import find_spans
-from aiq_agent.common.content_screen import fold
-from aiq_agent.common.content_screen import luhn_valid
-from aiq_agent.common.content_screen import mask_at_svnr
-from aiq_agent.common.content_screen import mask_card
-from aiq_agent.common.content_screen import mask_iban
-from aiq_agent.common.content_screen import valid_at_svnr
-from aiq_agent.common.content_screen import valid_card
-from aiq_agent.common.content_screen import valid_iban
-from aiq_agent.common.page_text import running_furniture
-from aiq_agent.common.page_text import without_furniture
-from aiq_agent.knowledge.schema import QuarantineReason
-from aiq_agent.knowledge.schema import QuarantineVerdict
+from agent.common.content_screen import DETECTORS
+from agent.common.content_screen import IBAN_LENGTHS
+from agent.common.content_screen import MAX_TERM_CHARS
+from agent.common.content_screen import MAX_TERMS
+from agent.common.content_screen import MIN_TERM_CHARS
+from agent.common.content_screen import Detector
+from agent.common.content_screen import ScreeningRules
+from agent.common.content_screen import Span
+from agent.common.content_screen import find_spans
+from agent.common.content_screen import fold
+from agent.common.content_screen import luhn_valid
+from agent.common.content_screen import mask_at_svnr
+from agent.common.content_screen import mask_card
+from agent.common.content_screen import mask_iban
+from agent.common.content_screen import valid_at_svnr
+from agent.common.content_screen import valid_card
+from agent.common.content_screen import valid_iban
+from agent.common.page_text import running_furniture
+from agent.common.page_text import without_furniture
+from agent.knowledge.schema import QuarantineReason
+from agent.knowledge.schema import QuarantineVerdict
 
 __all__ = [
     "DETECTORS",
@@ -202,7 +202,7 @@ def screen_pages(
     ``stream`` is the document's body text page by page, in reading order (a
     PDF's text layer). Each page is screened on its own above; the stream is
     then read as one text, running headers and footers left out
-    (``aiq_agent.common.page_text``), and a match that runs from one page into
+    (``agent.common.page_text``), and a match that runs from one page into
     the next counts too, listed on every page it touches. A number split by a
     page break and a „Seite 2 von 3“ is otherwise two halves nobody reads.
     """

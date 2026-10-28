@@ -8,13 +8,13 @@ import pytest
 from knowledge_layer.search_results import format_results
 from knowledge_layer.trace_lanes import _trace_lanes_for_chunks
 
-from aiq_agent.common.wire_v2 import TraceLane
-from aiq_agent.common.wire_v2 import TraceLaneSource
+from agent.common.wire_v2 import TraceLane
+from agent.common.wire_v2 import TraceLaneSource
 
 
 @pytest.fixture(autouse=True)
 def _reset_retrieval_round():
-    from aiq_agent.common.turn_status import _retrieval_round
+    from agent.common.turn_status import _retrieval_round
 
     _retrieval_round.set(None)
     yield
@@ -106,7 +106,7 @@ def test_trace_lanes_omit_title_when_it_would_repeat_the_filename():
 
 def test_trace_lanes_sources_carry_the_retrieval_round():
     """The Herleitung assigns files by this stamp."""
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.turn_status import retrieval_round_scope
 
     with retrieval_round_scope(1):
         (lane,) = _trace_lanes_for_chunks(
@@ -117,10 +117,10 @@ def test_trace_lanes_sources_carry_the_retrieval_round():
 
 def test_emitted_hits_are_captured_for_the_per_round_ledger():
     """The ledger reads the capture, never the prose: same emission, both ships."""
-    from aiq_agent.common.turn_status import begin_lane_capture
-    from aiq_agent.common.turn_status import end_lane_capture
-    from aiq_agent.common.turn_status import get_lane_captures
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.turn_status import begin_lane_capture
+    from agent.common.turn_status import end_lane_capture
+    from agent.common.turn_status import get_lane_captures
+    from agent.common.turn_status import retrieval_round_scope
 
     token = begin_lane_capture()
     try:
@@ -139,9 +139,9 @@ def test_emitted_hits_are_captured_for_the_per_round_ledger():
 
 def test_a_search_result_is_one_sources_step_built_from_its_records(emitted):
     """Through the real producer: the step carries the lanes the records made, and the tool that ran."""
-    from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
-    from aiq_agent.common.turn_status import lane_tool_scope
-    from aiq_agent.common.turn_status import retrieval_round_scope
+    from agent.common.tool_calls import READ_PASSAGE_TOOL
+    from agent.common.turn_status import lane_tool_scope
+    from agent.common.turn_status import retrieval_round_scope
 
     chunks = [_chunk(file_name="OIB-RL_4.pdf", page=3, collection="oib_knowledge")]
     with retrieval_round_scope(2), lane_tool_scope(READ_PASSAGE_TOOL):
@@ -170,11 +170,11 @@ def test_format_results_empty_chunks_skips_trace_block():
 
 
 # ---------------------------------------------------------------------------
-# A document PILOTI wrote, that a person released (docs/architecture/
+# A document AGENT wrote, that a person released (docs/architecture/
 # agent-document-provenance.md)
 # ---------------------------------------------------------------------------
 
-_PILOTI = {
+_AGENT_FILED = {
     "authored_by": "agent",
     "approved_by": "Maria Huber",
     "approved_at": "2026-09-01",
@@ -182,7 +182,7 @@ _PILOTI = {
 }
 
 
-def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
+def test_a_published_agent_document_gets_its_own_lane_inside_the_office_kind():
     (lane,) = _trace_lanes_for_chunks(
         [
             _chunk(
@@ -190,7 +190,7 @@ def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
                 page=1,
                 collection="proj_abc",
                 shelf="project",
-                provenance=_PILOTI,
+                provenance=_AGENT_FILED,
             )
         ]
     )
@@ -201,8 +201,10 @@ def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
 
 def test_the_fan_out_carries_the_provenance_as_data_not_as_a_sentence():
     """So a frontend can render the approver in the reader's own locale."""
-    (lane,) = _trace_lanes_for_chunks([_chunk(file_name="Konzept.md", page=1, shelf="project", provenance=_PILOTI)])
-    assert (lane.sources[0].provenance, lane.sources[0].shelf) == (_PILOTI, "project")
+    (lane,) = _trace_lanes_for_chunks(
+        [_chunk(file_name="Konzept.md", page=1, shelf="project", provenance=_AGENT_FILED)]
+    )
+    assert (lane.sources[0].provenance, lane.sources[0].shelf) == (_AGENT_FILED, "project")
 
 
 def test_an_unmarked_hit_carries_no_provenance_at_all():
@@ -213,7 +215,7 @@ def test_an_unmarked_hit_carries_no_provenance_at_all():
 def test_the_grounding_block_states_who_released_the_document_in_one_line():
     result = SimpleNamespace(
         success=True,
-        chunks=[_chunk(file_name="Brandschutzkonzept.md", page=1, shelf="project", provenance=_PILOTI)],
+        chunks=[_chunk(file_name="Brandschutzkonzept.md", page=1, shelf="project", provenance=_AGENT_FILED)],
         error_message=None,
     )
     text = format_results(result, "brandschutz")

@@ -10,16 +10,16 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 
-from aiq_agent.common.prompt_caching import CACHE_CONTROL_FIELD
-from aiq_agent.common.prompt_caching import PROMPT_CACHE_KEY_FIELD
-from aiq_agent.common.prompt_caching import SESSION_ID_FIELD
-from aiq_agent.common.prompt_caching import begin_stable_prefix
-from aiq_agent.common.prompt_caching import end_stable_prefix
-from aiq_agent.common.prompt_caching import needs_cache_marker
-from aiq_agent.common.prompt_caching import prompt_cache_extra_body
-from aiq_agent.common.prompt_caching import prompt_cache_key
-from aiq_agent.common.prompt_caching import with_cache_marker
-from aiq_agent.common.prompt_caching import with_prompt_cache_routing
+from agent.common.prompt_caching import CACHE_CONTROL_FIELD
+from agent.common.prompt_caching import PROMPT_CACHE_KEY_FIELD
+from agent.common.prompt_caching import SESSION_ID_FIELD
+from agent.common.prompt_caching import begin_stable_prefix
+from agent.common.prompt_caching import end_stable_prefix
+from agent.common.prompt_caching import needs_cache_marker
+from agent.common.prompt_caching import prompt_cache_extra_body
+from agent.common.prompt_caching import prompt_cache_key
+from agent.common.prompt_caching import with_cache_marker
+from agent.common.prompt_caching import with_prompt_cache_routing
 
 TOOLS = [{"type": "function", "name": "knowledge_search", "parameters": {"type": "object"}}]
 
@@ -70,20 +70,20 @@ def test_parts_cannot_collide_across_the_separator():
 
 
 def test_routing_fields_preserve_an_existing_extra_body():
-    merged = with_prompt_cache_routing({"plugins": [{"id": "response-healing"}]}, "grid-abc")
+    merged = with_prompt_cache_routing({"plugins": [{"id": "response-healing"}]}, "session-abc")
     assert merged["plugins"] == [{"id": "response-healing"}]
-    assert merged[SESSION_ID_FIELD] == "grid-abc"
-    assert merged[PROMPT_CACHE_KEY_FIELD] == "grid-abc"
+    assert merged[SESSION_ID_FIELD] == "session-abc"
+    assert merged[PROMPT_CACHE_KEY_FIELD] == "session-abc"
 
 
 def test_routing_never_overwrites_an_explicit_key():
-    merged = with_prompt_cache_routing({SESSION_ID_FIELD: "chosen-by-the-caller"}, "grid-abc")
+    merged = with_prompt_cache_routing({SESSION_ID_FIELD: "chosen-by-the-caller"}, "session-abc")
     assert merged[SESSION_ID_FIELD] == "chosen-by-the-caller"
 
 
 def test_routing_does_not_mutate_the_input():
     original = {"plugins": []}
-    with_prompt_cache_routing(original, "grid-abc")
+    with_prompt_cache_routing(original, "session-abc")
     assert original == {"plugins": []}
 
 

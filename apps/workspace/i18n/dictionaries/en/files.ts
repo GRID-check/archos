@@ -1282,7 +1282,7 @@ export const files = {
     },
   },
   authorship: {
-    byPiloti: 'Created by {productName}',
+    byAgent: 'Created by {productName}',
     /** Filter chip beside All · Mine · Unassigned. */
     filter: 'By {productName}',
     /** The question this filter left unanswered: WHICH files those would be. */
@@ -1647,8 +1647,8 @@ export const files = {
     follow: 'Follow {name}',
     unfollow: 'Stop following {name}',
     following: 'Following {name} · Esc to stop',
-    pilotiWorking: '{productName} is working on the document',
-    reviewWithPiloti: 'Have {productName} review',
+    agentWorking: '{productName} is working on the document',
+    reviewWithAgent: 'Have {productName} review',
     reviewSeed:
       'Go through this document and set what you find as annotations at the places they concern, looking at each page first: defects, questions for the consultants and notes. Cite the clause when a finding rests on a standard.',
     tools: {
@@ -1775,7 +1775,7 @@ export const files = {
     peerRegion: 'is marking a region',
     // Piloti says on the document whom it writes for (ADR-0105; EU AI Act Art. 50).
     attribution: {
-      pilotiFor: '{productName} · for {name}',
+      agentFor: '{productName} · for {name}',
       proposalFor: 'Proposal by {productName} · for {name}',
       woken: {
         thread_mention: 'Woken by a mention',
@@ -1811,12 +1811,12 @@ export const files = {
       box: 'Box {w} % wide, {h} % high',
     },
     announce: {
-      pilotiProposed: '{productName} set {count, plural, one {a proposal} other {# proposals}}',
+      agentProposed: '{productName} set {count, plural, one {a proposal} other {# proposals}}',
       created: '{name}: {count, plural, one {new annotation {numbers}} other {# new annotations}}',
       replied: '{name}: {count, plural, one {new reply on annotation {numbers}} other {new replies on annotations {numbers}}}',
       updated: '{name} changed {count, plural, one {annotation {numbers}} other {annotations {numbers}}}',
       deleted: '{name} deleted {count, plural, one {annotation {numbers}} other {annotations {numbers}}}',
-      pilotiAnswered: '{productName} answered',
+      agentAnswered: '{productName} answered',
     },
     page: 'Page {page}',
     draftPlaceholder: 'Write an annotation … (Enter to save)',
@@ -1846,9 +1846,9 @@ export const files = {
     more: 'More',
     closeThread: 'Close',
     makeKind: 'Make it a {kind}',
-    askPiloti: 'Ask {productName} about it',
+    askAgent: 'Ask {productName} about it',
     delegateToPiloti: 'Delegate to {productName}',
-    takeBackFromPiloti: 'Take back from {productName}',
+    takeBackFromAgent: 'Take back from {productName}',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
     linkCopyFailed: 'The link could not be copied.',
@@ -2001,8 +2001,8 @@ export const files = {
           proposed: 'proposal',
         },
         setBy: 'Set by {name} · {date}',
-        pilotiSetFor: 'Set by {productName} · for {name} · {date}',
-        pilotiSet: 'Set by {productName} · {date}',
+        agentSetFor: 'Set by {productName} · for {name} · {date}',
+        agentSet: 'Set by {productName} · {date}',
         proposalFor: 'Proposed by {productName} · for {name} · {date}',
         proposal: 'Proposed by {productName} · {date}',
         closedResolved: 'Resolved by {name} · {date}',

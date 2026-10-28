@@ -22,7 +22,7 @@ import { discriminatedOptions } from '@/lib/api/zod-union'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import * as generated from './generated'
-import { gridCardSchema, validateGridCards } from './schemas'
+import { answerCardSchema, validateAnswerCards } from './schemas'
 // The canonical card JSON Schema, generated from `models.py` and the input the
 // Zod mirror is generated FROM. Loaded at runtime (it lives above the app
 // root, outside the Docker build context) — see the helper for why a static
@@ -119,7 +119,7 @@ describe('nested card fields are validated, not waved through', () => {
   )
 
   it('rejects a card whose nested reference is a bare string', () => {
-    const result = gridCardSchema.safeParse({
+    const result = answerCardSchema.safeParse({
       type: 'verdict_header',
       subject: 'Erforderliche Geländerhöhe',
       verdict: '1,10 m',
@@ -151,9 +151,9 @@ describe('nested card fields are validated, not waved through', () => {
   it('still accepts every card the gallery ships', async () => {
     // The other half of the guard: tightening must not start dropping cards
     // that render fine today. `preview-fixtures.ts` runs its raw fixtures
-    // through `validateGridCards`, so a rejected one is simply absent.
-    const { CARD_PREVIEW_FIXTURES, PREVIEW_EXCLUDED } = await import('@/features/grid-cards/preview-fixtures')
-    const previewable = [...discriminatedOptions(gridCardSchema).keys()]
+    // through `validateAnswerCards`, so a rejected one is simply absent.
+    const { CARD_PREVIEW_FIXTURES, PREVIEW_EXCLUDED } = await import('@/features/cards/preview-fixtures')
+    const previewable = [...discriminatedOptions(answerCardSchema).keys()]
       .filter((type): type is string => typeof type === 'string')
       .filter((type) => !(type in PREVIEW_EXCLUDED))
     expect(Object.keys(CARD_PREVIEW_FIXTURES).sort()).toEqual(previewable.sort())
@@ -163,7 +163,7 @@ describe('nested card fields are validated, not waved through', () => {
     // The failure mode this whole line of work is about: one bad card must
     // cost one card, not the thread — and not the positions after it, which
     // `[[card:N]]` markers and persisted decisions address by index.
-    const kept = validateGridCards([
+    const kept = validateAnswerCards([
       {
         type: 'calculation',
         title: 'Schrittmaß',

@@ -77,7 +77,7 @@ def _collection_names(collections: Sequence[str]) -> str:
     Its id in a result would make the admission treat the whole result as that
     folder's content (ADR-0088), and an outage is not content.
     """
-    from aiq_agent.knowledge.restricted_collections import is_restricted_collection
+    from agent.knowledge.restricted_collections import is_restricted_collection
 
     return ", ".join(
         "folder with restricted access" if is_restricted_collection(name) else name for name in collections

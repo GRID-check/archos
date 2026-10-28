@@ -1,0 +1,821 @@
+"""Tests for the semantic document-search endpoint.
+
+``POST /v1/collections/{collection}/search`` runs deterministic vector search
+(no LLM) over one collection's embedded chunks via the cached retriever, then
+aggregates the per-chunk hits into a document-centric result: one hit per file
+(its max-score chunk), sorted by score descending, capped at ``top_k_files``.
+"""
+
+import base64
+import hashlib
+import hmac
+import json
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
+
+import pytest
+from fastapi import APIRouter
+from fastapi import FastAPI
+from httpx import ASGITransport
+from httpx import AsyncClient
+
+from agent.knowledge.base import FUSED_SCORE_KEY
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import clear_active_retriever
+from agent.knowledge.factory import set_active_ingestor
+from agent.knowledge.factory import set_active_retriever
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import RetrievalResult
+from agent_host.routes.document_search import add_document_search_routes
+
+
+def _chunk(
+    file_name: str,
+    score: float,
+    content: str = "some content",
+    page: int | None = 1,
+    collection: str = "proj_a",
+) -> Chunk:
+    """Build a minimal valid Chunk for a retrieval result."""
+    return Chunk(
+        chunk_id=f"{file_name}:{page}:{score}",
+        content=content,
+        score=score,
+        file_name=file_name,
+        page_number=page,
+        display_citation=f"{file_name} p.{page}",
+        content_type="text",
+        metadata={"collection": collection},
+    )
+
+
+def _make_retriever(chunks: list[Chunk]) -> MagicMock:
+    """Retriever mock whose async retrieve() returns the given chunks."""
+    retriever = MagicMock()
+    retriever.backend_name = "test"
+    retriever.retrieve = AsyncMock(return_value=RetrievalResult(chunks=chunks, query="q", backend="test", success=True))
+    return retriever
+
+
+@pytest.fixture
+def app():
+    ingestor = MagicMock()
+    ingestor.backend_name = "test"
+    # Collection exists by default; individual tests override for the 404 case.
+    ingestor.get_collection.return_value = MagicMock()
+    set_active_ingestor(ingestor)
+
+    app = FastAPI()
+    router = APIRouter()
+    add_document_search_routes(router)
+    app.include_router(router)
+    app.state.ingestor = ingestor
+    yield app
+    clear_active_ingestor()
+    clear_active_retriever()
+
+
+def _client(app):
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+def _scope_headers(scope: list[str], secret: str | None = None) -> dict[str, str]:
+    """Build the signed ``X-Grid-Request-Context`` envelope the BFF forwards.
+
+    Mirrors ``buildRequestContextWireHeaders({ collectionScope }, secret)`` on
+    the TS side: base64url(JSON) payload + hex HMAC-SHA256 signature over the raw
+    JSON. When ``secret`` is None the sig header is omitted (dev/anonymous).
+    """
+    payload = json.dumps({"collectionScope": scope})
+    header = base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
+    headers = {"x-grid-request-context": header}
+    if secret:
+        headers["x-grid-request-context-sig"] = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return headers
+
+
+@pytest.mark.asyncio
+async def test_search_returns_document_centric_hits(app):
+    set_active_retriever(
+        _make_retriever(
+            [
+                _chunk("plan.pdf", 0.9, "Floor plan details"),
+                _chunk("report.pdf", 0.7, "Structural report"),
+            ]
+        )
+    )
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/proj_a/search", json={"query": "fire safety"})
+
+    assert res.status_code == 200
+    hits = res.json()["hits"]
+    assert [h["file_name"] for h in hits] == ["plan.pdf", "report.pdf"]
+    assert hits[0]["score"] == 0.9
+    assert hits[0]["collection"] == "proj_a"
+    assert hits[0]["page_number"] == 1
+    assert hits[0]["snippet"] == "Floor plan details"
+
+
+@pytest.mark.asyncio
+async def test_search_unknown_collection_404(app):
+    app.state.ingestor.get_collection.return_value = None
+    set_active_retriever(_make_retriever([]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/ghost/search", json={"query": "anything"})
+
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_search_empty_query_422(app):
+    set_active_retriever(_make_retriever([]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/proj_a/search", json={"query": ""})
+
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_search_keeps_max_score_per_file_and_sorts_desc(app):
+    # Same document appears in multiple chunks; a lower-scoring file ranks below.
+    set_active_retriever(
+        _make_retriever(
+            [
+                _chunk("plan.pdf", 0.4, "low-scoring chunk of plan", page=2),
+                _chunk("report.pdf", 0.6, "report chunk"),
+                _chunk("plan.pdf", 0.95, "best chunk of plan", page=5),
+            ]
+        )
+    )
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/proj_a/search", json={"query": "q"})
+
+    assert res.status_code == 200
+    hits = res.json()["hits"]
+    # One hit per file, plan.pdf first (its max score 0.95 beats report's 0.6).
+    assert [h["file_name"] for h in hits] == ["plan.pdf", "report.pdf"]
+    assert hits[0]["score"] == 0.95
+    # The kept plan.pdf hit is its best chunk (page + snippet from the 0.95 one).
+    assert hits[0]["page_number"] == 5
+    assert hits[0]["snippet"] == "best chunk of plan"
+
+
+@pytest.mark.asyncio
+async def test_search_snippet_truncated_to_300_chars(app):
+    long_content = "A" * 500
+    set_active_retriever(_make_retriever([_chunk("big.pdf", 0.8, long_content)]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/proj_a/search", json={"query": "q"})
+
+    assert res.status_code == 200
+    snippet = res.json()["hits"][0]["snippet"]
+    # 300 chars kept + a single ellipsis marker.
+    assert snippet == "A" * 300 + "…"
+
+
+@pytest.mark.asyncio
+async def test_search_snippet_length_is_the_requests_within_bounds(app):
+    """The cross-project lookups ask for a longer passage; the bound still holds (ADR-0094)."""
+    set_active_retriever(_make_retriever([_chunk("big.pdf", 0.8, "B" * 2000)]))
+
+    async with _client(app) as client:
+        longer = await client.post("/v1/collections/proj_a/search", json={"query": "q", "snippet_max_chars": 900})
+        too_long = await client.post("/v1/collections/proj_a/search", json={"query": "q", "snippet_max_chars": 5000})
+
+    assert longer.status_code == 200
+    assert longer.json()["hits"][0]["snippet"] == "B" * 900 + "…"
+    assert too_long.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_search_respects_top_k_files(app):
+    set_active_retriever(_make_retriever([_chunk(f"doc{i}.pdf", 0.9 - i * 0.01) for i in range(10)]))
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/proj_a/search",
+            json={"query": "q", "top_k_files": 3},
+        )
+
+    assert res.status_code == 200
+    hits = res.json()["hits"]
+    assert len(hits) == 3
+    assert [h["file_name"] for h in hits] == ["doc0.pdf", "doc1.pdf", "doc2.pdf"]
+
+
+@pytest.mark.asyncio
+async def test_search_passes_top_k_to_retriever(app):
+    retriever = _make_retriever([_chunk("plan.pdf", 0.9)])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/proj_a/search",
+            json={"query": "fire", "top_k": 55},
+        )
+
+    assert res.status_code == 200
+    retriever.retrieve.assert_awaited_once()
+    kwargs = retriever.retrieve.await_args.kwargs
+    assert kwargs["query"] == "fire"
+    assert kwargs["collection_name"] == "proj_a"
+    assert kwargs["top_k"] == 55
+    assert kwargs["filters"] is None
+
+
+@pytest.mark.asyncio
+async def test_search_503_when_no_ingestor(app):
+    # Simulate an unconfigured Knowledge API: no active ingestor.
+    clear_active_ingestor()
+    set_active_retriever(_make_retriever([]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/proj_a/search", json={"query": "q"})
+
+    assert res.status_code == 503
+
+
+# --- Collection-scope enforcement (PB-SYNTH-4, defense-in-depth) --------------
+
+
+@pytest.mark.asyncio
+async def test_search_in_scope_collection_allowed(app, monkeypatch):
+    """A signed scope that CONTAINS the target collection is searched normally."""
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
+    set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/proj_a/search",
+            json={"query": "q"},
+            headers=_scope_headers(["oib_knowledge", "proj_a"], secret="s3cr3t"),
+        )
+
+    assert res.status_code == 200
+    assert [h["file_name"] for h in res.json()["hits"]] == ["plan.pdf"]
+
+
+@pytest.mark.asyncio
+async def test_search_out_of_scope_collection_rejected_404(app, monkeypatch):
+    """A signed scope that does NOT contain the target collection → 404.
+
+    404 (not 403) so an out-of-scope / other-tenant collection is
+    indistinguishable from a genuinely missing one — no cross-tenant oracle. The
+    existence probe / retriever must never run.
+    """
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
+    retriever = _make_retriever([_chunk("victim.pdf", 0.9)])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/proj_victim/search",
+            json={"query": "q"},
+            headers=_scope_headers(["proj_a"], secret="s3cr3t"),
+        )
+
+    assert res.status_code == 404
+    retriever.retrieve.assert_not_awaited()
+    app.state.ingestor.get_collection.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_search_forged_raw_scope_header_not_honored(app, monkeypatch):
+    """An UNSIGNED raw X-Grid-Collection-Scope header cannot widen scope.
+
+    Under REQUIRE_AUTH the raw, forgeable header alone is not a valid signed
+    envelope, so it is ignored and the request is rejected 403.
+    """
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
+    set_active_retriever(_make_retriever([_chunk("victim.pdf", 0.9)]))
+
+    scope = base64.urlsafe_b64encode(json.dumps(["proj_victim"]).encode()).decode().rstrip("=")
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/proj_victim/search",
+            json={"query": "q"},
+            headers={"x-grid-collection-scope": scope},
+        )
+
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_search_wrong_signature_rejected(app, monkeypatch):
+    """An envelope signed with the WRONG secret is treated as absent → 403."""
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
+    set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/proj_a/search",
+            json={"query": "q"},
+            headers=_scope_headers(["proj_a"], secret="attacker-key"),
+        )
+
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_search_require_auth_without_envelope_rejected_403(app, monkeypatch):
+    """REQUIRE_AUTH=true + no signed scope at all → 403 (BFF always forwards one)."""
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
+    set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/proj_a/search", json={"query": "q"})
+
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_search_anonymous_mode_no_scope_allowed(app, monkeypatch):
+    """Anonymous mode (REQUIRE_AUTH=false) enforces no tenant boundary."""
+    monkeypatch.setenv("REQUIRE_AUTH", "false")
+    set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/proj_a/search", json={"query": "q"})
+
+    assert res.status_code == 200
+    assert [h["file_name"] for h in res.json()["hits"]] == ["plan.pdf"]
+
+
+# --- One search across many collections (ADR-0094, ADR-0116) -----------------
+
+
+def _grouped_retriever(groups: list[tuple[str, list[Chunk]]]) -> MagicMock:
+    retriever = MagicMock()
+    retriever.backend_name = "test"
+    retriever.search_grouped = AsyncMock(return_value=groups)
+    return retriever
+
+
+def _ranked(file_name: str, cosine: float, fused: float, collection: str = "proj_a") -> Chunk:
+    """A chunk as ``search_grouped`` returns it: its own cosine, and its score in the one fused ranking."""
+    chunk = _chunk(file_name, cosine, collection=collection)
+    chunk.metadata[FUSED_SCORE_KEY] = fused
+    return chunk
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_orders_documents_by_the_fused_ranking_not_the_scores(app):
+    """Each document by its best fused chunk, whatever its cosine."""
+    retriever = _grouped_retriever(
+        [
+            ("proj_b", [_ranked("b1.pdf", 0.40, 0.030, "proj_b"), _ranked("b1.pdf", 0.30, 0.020, "proj_b")]),
+            ("proj_a", [_ranked("a1.pdf", 0.90, 0.025), _ranked("a2.pdf", 0.80, 0.015)]),
+        ]
+    )
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={"query": "Fluchttreppe", "collections": ["proj_a", "proj_b", "proj_a"], "files_per_group": 2},
+        )
+
+    assert res.status_code == 200
+    assert [(h["collection"], h["file_name"]) for h in res.json()["hits"]] == [
+        ("proj_b", "b1.pdf"),
+        ("proj_a", "a1.pdf"),
+        ("proj_a", "a2.pdf"),
+    ]
+    args = retriever.search_grouped.await_args
+    assert args.args[1] == ["proj_a", "proj_b"]  # de-duplicated, order kept
+    assert args.kwargs["group_size"] == 2 * 3
+    # Only the superseded exclusion narrows a plain search (ADR-0099).
+    assert args.kwargs["filters"] == {"superseded": {"$ne": True}} and args.kwargs["boost"] is None
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_interleaves_documents_across_projects(app):
+    """The best project's weak documents do not fill the page ahead of another project's strong one.
+
+    The shape the real search produces: one project with one strong and many
+    weak documents, many projects with one fairly strong document each.
+    """
+    best = [_ranked("strong.pdf", 0.95, 1 / 61, "proj_00")] + [
+        _ranked(f"weak{n}.pdf", 0.60, 1 / (61 + 39 + n), "proj_00") for n in range(15)
+    ]
+    others = [(f"proj_{i:02d}", [_ranked(f"doc{i}.pdf", 0.85, 1 / (61 + i), f"proj_{i:02d}")]) for i in range(1, 40)]
+    set_active_retriever(_grouped_retriever([("proj_00", best), *others]))
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={
+                "query": "q",
+                "collections": [f"proj_{i:02d}" for i in range(40)],
+                "groups": 40,
+                "files_per_group": 10,
+            },
+        )
+
+    hits = res.json()["hits"]
+    first_page = [(h["collection"], h["file_name"]) for h in hits[:10]]
+    assert first_page[0] == ("proj_00", "strong.pdf")
+    assert [collection for collection, _ in first_page[1:]] == [f"proj_{i:02d}" for i in range(1, 10)]
+    # proj_00 still keeps its documents, at most files_per_group, after the others.
+    assert sum(1 for h in hits if h["collection"] == "proj_00") == 10
+    assert hits[-1]["collection"] == "proj_00"
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_names_the_searched_collection_not_the_chunks_claim(app):
+    chunk = _ranked("a.pdf", 0.9, 0.03, collection="proj_victim")  # metadata claims another collection
+    set_active_retriever(_grouped_retriever([("proj_a", [chunk])]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+
+    assert [h["collection"] for h in res.json()["hits"]] == ["proj_a"]
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_names_each_documents_id_when_its_chunks_carry_it(app):
+    known = _ranked("a.pdf", 0.9, 0.03)
+    known.metadata["grid_document_id"] = "0b0e9c1e-1111-4111-8111-111111111111"
+    unknown = _ranked("b.pdf", 0.8, 0.02)
+    set_active_retriever(_grouped_retriever([("proj_a", [known, unknown])]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+
+    assert [h["grid_document_id"] for h in res.json()["hits"]] == ["0b0e9c1e-1111-4111-8111-111111111111", None]
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_hands_filters_and_boost_to_the_retriever_as_its_grammar(app):
+    retriever = _grouped_retriever([])
+    set_active_retriever(retriever)
+    weights = {"federal_state": 4, "building_class": 3, "building_class_adjacent": 1, "construction_method": 2}
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={
+                "query": "q",
+                "collections": ["proj_a"],
+                "filters": {
+                    "document_types": ["Detail"],
+                    "disciplines": ["Brandschutz", "Schallschutz"],
+                    "project_facts": {"construction_method": ["timber"], "federal_state": "lower_austria"},
+                    "project_status": ["closed"],
+                },
+                "boost": {"facts": {"federal_state": "vienna", "building_class": [4]}, "weights": weights},
+            },
+        )
+
+    assert res.status_code == 200
+    kwargs = retriever.search_grouped.await_args.kwargs
+    assert kwargs["filters"] == {
+        "$and": [
+            {"tags": {"$in": ["Detail"]}},
+            {"tags": {"$in": ["Brandschutz", "Schallschutz"]}},
+            {"project_facts.federal_state": {"$in": ["lower_austria"]}},
+            {"project_facts.construction_method": {"$in": ["timber"]}},
+            {"project_status": {"$in": ["closed"]}},
+            {"superseded": {"$ne": True}},
+        ]
+    }
+    # The vector store holds the English names and tokens; points not yet rewritten are matched in the retriever.
+    assert kwargs["boost"]["facts"]["building_class"] == [4] and kwargs["boost"]["facts"]["federal_state"] == "vienna"
+    assert kwargs["boost"]["weights"]["federal_state"] == 4 and kwargs["boost"]["weights"]["use"] == 0
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_refuses_an_unknown_filter_or_status(app):
+    set_active_retriever(_grouped_retriever([]))
+    async with _client(app) as client:
+        unknown = await client.post(
+            "/v1/collections/search", json={"query": "q", "collections": ["proj_a"], "filters": {"farbe": ["rot"]}}
+        )
+        status = await client.post(
+            "/v1/collections/search",
+            json={"query": "q", "collections": ["proj_a"], "filters": {"project_status": ["archived"]}},
+        )
+    assert unknown.status_code == 422 and status.status_code == 422
+
+
+DOC_A = "0e8b1c2a-1111-4222-8333-444455556666"
+DOC_B = "7f3a9d10-aaaa-4bbb-8ccc-dddddddddddd"
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_narrows_to_documents_reading_types_and_references_inside_the_query(app):
+    """ADR-0136 item 5: the BFF's candidates, the dossier's type and its references are pre-filters, any of each."""
+    retriever = _grouped_retriever([])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={
+                "query": "q",
+                "collections": ["proj_a"],
+                "filters": {
+                    "document_types": ["Plan"],
+                    "document_ids": [DOC_A.upper(), DOC_B, DOC_A],
+                    "reading_types": ["site_plan", "fire_safety_concept"],
+                    "refers_to": ["ÖNORM B 1600", "EP-05", "Brandschutzkonzept", "law:§ 33 baybo"],
+                },
+            },
+        )
+
+    assert res.status_code == 200
+    assert retriever.search_grouped.await_args.kwargs["filters"] == {
+        "$and": [
+            {"tags": {"$in": ["Plan"]}},
+            {"grid_document_id": {"$in": [DOC_A, DOC_B]}},
+            {"document_type": {"$in": ["site_plan", "fire_safety_concept"]}},
+            {
+                "references": {
+                    "$in": ["norm:önorm b 1600", "plan:ep-05", "document:fire_safety_concept", "law:§ 33 baybo"]
+                }
+            },
+            {"superseded": {"$ne": True}},
+        ]
+    }
+
+
+def test_the_reading_filters_compile_in_the_one_scope_filter():
+    """Every field is one the scope filter accepts (indexed, keyword), so Qdrant applies it, not a post-filter."""
+    from knowledge_layer.qdrant.scope import scope_filter
+
+    from agent_host.models.requests import GroupedSearchFilters
+    from agent_host.routes.document_search import grouped_filters
+
+    filters = grouped_filters(
+        GroupedSearchFilters(document_ids=[DOC_A], reading_types=["permit"], refers_to=["ÖNORM B 1600"])
+    )
+    compiled = scope_filter(["proj_a"], filters)
+    assert "grid_document_id" in repr(compiled) and "document_type" in repr(compiled)
+    assert "norm:önorm b 1600" in repr(compiled)
+
+
+@pytest.mark.asyncio
+async def test_a_reference_nobody_can_read_matches_nothing_without_widening(app):
+    """``refers_to`` that names no reference is no condition to drop: the answer is empty, Qdrant is not asked."""
+    retriever = _grouped_retriever([("proj_a", [_ranked("a.pdf", 0.9, 0.9)])])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={"query": "q", "collections": ["proj_a"], "filters": {"refers_to": ["hallo"]}},
+        )
+
+    assert res.status_code == 200 and res.json()["hits"] == []
+    retriever.search_grouped.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "filters",
+    [
+        {"document_ids": ["not-a-uuid"]},
+        {"document_ids": [DOC_A] * 1001},
+        {"reading_types": ["Plan"]},
+        {"reading_types": ["site_plan"] * 25},
+        {"refers_to": ["x"] * 9},
+        {"refers_to": [""]},
+        {"refers_to": ["x" * 201]},
+    ],
+)
+async def test_grouped_search_refuses_reading_filters_out_of_bounds(app, filters):
+    set_active_retriever(_grouped_retriever([]))
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search", json={"query": "q", "collections": ["proj_a"], "filters": filters}
+        )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_rejects_any_collection_outside_the_signed_scope(app, monkeypatch):
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
+    retriever = _grouped_retriever([])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={"query": "q", "collections": ["proj_a", "proj_victim"]},
+            headers=_scope_headers(["proj_a"], secret="s3cr3t"),
+        )
+
+    assert res.status_code == 404
+    retriever.search_grouped.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_needs_a_signed_scope_under_auth(app, monkeypatch):
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
+    set_active_retriever(_grouped_retriever([]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_a_failed_grouped_search_is_a_500_not_a_fallback_signal(app):
+    """Qdrant is the only store: no 409 tells the BFF to search collection by collection any more."""
+    retriever = MagicMock()
+    retriever.backend_name = "test"
+    retriever.search_grouped = AsyncMock(side_effect=NotImplementedError("cannot rank across collections"))
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+        capability = await client.get("/v1/collections/search/capability")
+
+    assert res.status_code == 500
+    # The capability probe is gone; the path now names a collection called "search".
+    assert capability.status_code in (404, 405)
+
+
+@pytest.mark.asyncio
+async def test_single_collection_search_is_not_shadowed_by_the_grouped_route(app):
+    set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search/search", json={"query": "q"})
+    assert res.status_code == 200
+
+
+async def _traced_spans(app, body: dict) -> list:
+    """The spans one grouped search leaves, with tracing on."""
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    from agent.observability import direct_trace
+
+    exporter = InMemorySpanExporter()
+    direct_trace.reset_tracer_provider()
+    direct_trace.install_tracer_provider(None, exporter=exporter)
+    try:
+        async with _client(app) as client:
+            res = await client.post("/v1/collections/search", json=body)
+        assert res.status_code == 200
+        direct_trace._provider.force_flush()
+        return list(exporter.get_finished_spans())
+    finally:
+        direct_trace.reset_tracer_provider()
+
+
+@pytest.mark.asyncio
+async def test_the_workspace_search_is_one_retriever_observation_carrying_counts_not_text(app):
+    """ADR-0089: the workspace search's content query is traced as `retrieve.workspace_search`, without its words."""
+    set_active_retriever(
+        _grouped_retriever(
+            [
+                ("proj_a", [_ranked("Fluchtwegplan.pdf", 0.9, 0.03), _ranked("b.pdf", 0.8, 0.02)]),
+                ("proj_b", [_ranked("c.pdf", 0.7, 0.01, "proj_b")]),
+            ]
+        )
+    )
+
+    spans = await _traced_spans(
+        app,
+        {
+            "query": "Fluchtweg Treppenhaus",
+            "collections": ["proj_a", "proj_b"],
+            "purpose": "workspace_search",
+            "filters": {"document_ids": [DOC_A, DOC_B]},
+        },
+    )
+
+    assert [span.name for span in spans] == ["retrieve.workspace_search"]
+    attributes = dict(spans[0].attributes)
+    assert attributes["langfuse.observation.type"] == "retriever"
+    assert attributes["langfuse.trace.name"] == "workspace-search"
+    assert attributes["langfuse.trace.metadata.prefilter"] == "document_ids"
+    query = json.loads(attributes["langfuse.observation.input"])
+    assert query["prefilter"] == "document_ids" and query["document_ids"] == 2 and query["text_tokens"] == 2
+    output = json.loads(attributes["langfuse.observation.output"])
+    assert output["candidates"] == 3 and output["documents"] == 3 and output["below_meaning_floor"] == 0
+    assert output["hits_per_collection"] == {"proj_a": 2, "proj_b": 1}
+    serialized = json.dumps(attributes, ensure_ascii=False)
+    assert "Fluchtweg" not in serialized and "some content" not in serialized
+
+
+@pytest.mark.asyncio
+async def test_a_grouped_search_without_a_purpose_is_not_traced_here(app):
+    """The cross-project lookup is traced by Piloti's `project_lookup`; a second trace would count it twice."""
+    set_active_retriever(_grouped_retriever([("proj_a", [_ranked("a.pdf", 0.9, 0.03)])]))
+    assert await _traced_spans(app, {"query": "q", "collections": ["proj_a"]}) == []
+
+
+def _lexical(chunk: Chunk, holds_the_words: bool) -> Chunk:
+    from agent.knowledge.base import LEXICAL_MATCH_KEY
+
+    chunk.metadata[LEXICAL_MATCH_KEY] = holds_the_words
+    return chunk
+
+
+@pytest.mark.asyncio
+async def test_the_workspace_search_drops_meaning_only_documents_below_the_floor(app):
+    """„qwxzv“ returned sixteen documents: the dense channel fills the fusion whatever the words.
+
+    A document whose passage holds a query word stays at any cosine; one that
+    only means the same stays above the floor and says so (`lexical: false`).
+    """
+    from agent_host.routes.document_search import MEANING_ONLY_MIN_COSINE
+
+    groups = [
+        (
+            "proj_a",
+            [
+                _lexical(_ranked("rechnung.jpg", 0.20, 0.05), True),
+                _lexical(_ranked("reisekosten.xlsx", MEANING_ONLY_MIN_COSINE + 0.02, 0.04), False),
+                _lexical(_ranked("sample.pdf", 0.11, 0.03), False),
+                # A document is lexical when any of its ranked chunks is.
+                _lexical(_ranked("plan.pdf", 0.12, 0.02), False),
+                _lexical(_ranked("plan.pdf", 0.10, 0.01), True),
+            ],
+        )
+    ]
+    set_active_retriever(_grouped_retriever(groups))
+    body = {"query": "Rechnung", "collections": ["proj_a"], "files_per_group": 10}
+    async with _client(app) as client:
+        workspace = (await client.post("/v1/collections/search", json={**body, "purpose": "workspace_search"})).json()
+        lookup = (await client.post("/v1/collections/search", json=body)).json()
+
+    assert [(hit["file_name"], hit["lexical"]) for hit in workspace["hits"]] == [
+        ("rechnung.jpg", True),
+        ("reisekosten.xlsx", False),
+        ("plan.pdf", True),
+    ]
+    # The cross-project lookup hands a ranked pool to a model: nothing is dropped there.
+    assert [hit["file_name"] for hit in lookup["hits"]] == [
+        "rechnung.jpg",
+        "reisekosten.xlsx",
+        "sample.pdf",
+        "plan.pdf",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_a_retriever_that_cannot_tell_the_words_drops_nothing(app):
+    set_active_retriever(_grouped_retriever([("proj_a", [_ranked("a.pdf", 0.05, 0.03)])]))
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search", json={"query": "q", "collections": ["proj_a"], "purpose": "workspace_search"}
+        )
+    assert [(hit["file_name"], hit["lexical"]) for hit in res.json()["hits"]] == [("a.pdf", None)]
+
+
+@pytest.mark.asyncio
+async def test_a_document_filter_names_the_files_whose_passages_carry_no_id(app):
+    """Points copied from Chroma carry no ``grid_document_id``: by id alone a currentOnly search lost them."""
+    retriever = _grouped_retriever([])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={
+                "query": "Schnitt",
+                "collections": ["proj_a"],
+                "filters": {
+                    "document_ids": [DOC_A],
+                    "file_names": ["Screenshot 2026-08-28 175733.png", "a.pdf", "a.pdf"],
+                },
+            },
+        )
+
+    assert res.status_code == 200
+    assert retriever.search_grouped.await_args.kwargs["filters"] == {
+        "$and": [
+            {
+                "$or": [
+                    {"grid_document_id": {"$in": [DOC_A]}},
+                    {"file_name": {"$in": ["Screenshot 2026-08-28 175733.png", "a.pdf"]}},
+                ]
+            },
+            {"superseded": {"$ne": True}},
+        ]
+    }
+
+
+def test_the_prefilter_mode_names_how_the_bff_narrowed_the_query():
+    from agent_host.models.requests import GroupedSearchFilters
+    from agent_host.routes.document_search import prefilter_mode
+
+    assert prefilter_mode(None) == "none"
+    assert prefilter_mode(GroupedSearchFilters()) == "none"
+    assert prefilter_mode(GroupedSearchFilters(document_ids=[DOC_A])) == "document_ids"
+    assert prefilter_mode(GroupedSearchFilters(reading_types=["permit"])) == "payload"

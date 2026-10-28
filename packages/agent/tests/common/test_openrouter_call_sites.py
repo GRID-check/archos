@@ -15,7 +15,7 @@ The adapters, one per call-site shape:
 - an OpenAI SDK client: ``openrouter.openai_client``;
 - the embedding client: ``knowledge_layer.llamaindex.embedding.make_embed_model``;
 - a LangChain chat model: ``pin_chat_model`` / ``apply_model_override`` /
-  ``RequestLLMContext.apply`` (not scanned here: those models are built by NAT,
+  ``RequestLLMContext.apply`` (not scanned here: those models are built by the agent runtime,
   and ``test_model_overrides`` / ``test_llm_provider`` cover them).
 """
 
@@ -32,14 +32,14 @@ SCANNED = [
     ROOT / "packages" / "knowledge-layer",
     ROOT / "packages" / "ris-adapter",
     ROOT / "packages" / "tavily-web-search",
-    ROOT / "apps" / "backend" / "src",
+    ROOT / "apps" / "agent-host" / "src",
     ROOT / "scripts",
 ]
 
 #: Constructing a model client by hand. Allowed only where the seam builds one.
 RAW_CLIENT = re.compile(r"\b(?:Async)?OpenAI\(|\bNVIDIAEmbedding\(")
 RAW_CLIENT_HOMES = {
-    "packages/agent/src/aiq_agent/common/openrouter.py",  # openai_client
+    "packages/agent/src/agent/common/openrouter.py",  # openai_client
     "packages/knowledge-layer/src/llamaindex/embedding.py",  # make_embed_model
 }
 
@@ -53,7 +53,7 @@ ADAPTERS = re.compile(
 
 #: Mentions of a model endpoint that send no tenant content, with the reason.
 NO_TENANT_CONTENT = {
-    "apps/backend/src/aiq_api/context_envelope.py": "our own route path, in a docstring",
+    "apps/agent-host/src/agent_host/context_envelope.py": "our own route path, in a docstring",
     "scripts/turn_census/census.py": "parses recorded request paths",
     "scripts/release_notes.py": "sends the changelog, which is public",
     "scripts/smoke_card_generation.py": "a dev smoke test on fixed sample text",
@@ -75,9 +75,9 @@ def _rel(path: Path) -> str:
 def test_the_scan_sees_the_known_call_sites():
     """Guards the test itself: a glob that silently matched nothing would pass everything."""
     scanned = {_rel(p) for p in _python_files()}
-    assert "apps/backend/src/aiq_api/routes/generate_summary.py" in scanned
+    assert "apps/agent-host/src/agent_host/routes/generate_summary.py" in scanned
     assert "packages/knowledge-layer/src/cross_encoder.py" in scanned
-    assert "packages/agent/src/aiq_agent/common/decisions.py" in scanned
+    assert "packages/agent/src/agent/common/decisions.py" in scanned
 
 
 @pytest.mark.parametrize("path", _python_files(), ids=_rel)

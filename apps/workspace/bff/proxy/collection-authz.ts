@@ -40,7 +40,7 @@ import { officeShelfCollectionNames } from '@/lib/office-shelf/collection'
 import { isOfficeShelfCollectionName } from '@/lib/office-shelf/collection-prefix'
 import { sessionCollectionName } from '@/lib/retrieval-scope/collection-scope'
 import { getProjectFolderAccess, restrictedCollectionBase } from '@/lib/authz/folder-access'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { errorEnvelope, handleAuthzError } from '@/lib/backend-proxy'
 
@@ -168,7 +168,7 @@ function refuseRawUpload(prefix: 'proj_' | 'office_shelf' | 's_'): Response {
  */
 export async function validateCollectionName(
   path: string[],
-  session: GridSession | null,
+  session: UserSession | null,
   context: ProxyRequestContext,
   options: ValidateCollectionOptions = {}
 ): Promise<Response | null> {
@@ -195,7 +195,7 @@ async function authorizeCollection(
   collectionName: string,
   subPath: string[],
   method: string,
-  session: GridSession | null,
+  session: UserSession | null,
   context: ProxyRequestContext,
   deps: CollectionAuthzDeps
 ): Promise<Response | null> {

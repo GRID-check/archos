@@ -6,7 +6,7 @@
  * Cross-language contract for the shelf, on the hop where it is emitted.
  *
  * `X-Grid-Collection-Scope` is written here and read by
- * `packages/agent/src/aiq_agent/knowledge/scoping.py`. Nothing in either runtime imports the
+ * `packages/agent/src/agent/knowledge/scoping.py`. Nothing in either runtime imports the
  * other's enum — ADR-0047 keeps each side's three constants local on purpose —
  * so the ONLY thing holding the two in agreement is this shared fixture.
  *

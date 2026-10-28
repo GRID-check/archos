@@ -92,7 +92,7 @@ function sessionWith(
     userId,
     organizationId: ORG_ID,
     organizationMembershipId: membershipId,
-    email: 'me@grid.test',
+    email: 'me@example.test',
     role: roles[0],
     roles,
     permissions,

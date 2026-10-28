@@ -25,18 +25,18 @@ import json
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.agents.piloti.answer_pipeline import _Extracted
-from aiq_agent.agents.piloti.answer_pipeline import _gated_meta
-from aiq_agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
-from aiq_agent.agents.piloti.answer_pipeline import _suppress_cards
-from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common.answer_envelope import AnswerMeta
-from aiq_agent.common.answer_envelope import gate_answer_meta
+from agent.agents.piloti.answer_pipeline import _Extracted
+from agent.agents.piloti.answer_pipeline import _gated_meta
+from agent.agents.piloti.answer_pipeline import _should_suppress_meta_cards
+from agent.agents.piloti.answer_pipeline import _suppress_cards
+from agent.agents.piloti.answer_pipeline import finalize_answer
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common.answer_envelope import AnswerMeta
+from agent.common.answer_envelope import gate_answer_meta
 
 #: Above the card floor (400) but below the takeaway floor (600): cards stay,
 #: takeaways were never gated in.
@@ -210,7 +210,7 @@ class TestSiblingProbes:
     """Every system emitter's card vetoes the suppression — by catalog, by path."""
 
     def test_memory_proposal_is_a_catalog_member_and_vetoes(self, card_registry):
-        from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
+        from agent.cards.catalog import SYSTEM_CARD_TYPES
 
         assert "memory_proposal" in SYSTEM_CARD_TYPES
         card_registry.add(
@@ -225,8 +225,8 @@ class TestSiblingProbes:
         assert len(card_registry) == 1
 
     def test_task_created_is_a_catalog_member_and_vetoes(self, card_registry):
-        from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-        from aiq_agent.tools.tasks.cards import emit_task_card
+        from agent.cards.catalog import SYSTEM_CARD_TYPES
+        from agent.tools.tasks.cards import emit_task_card
 
         assert "task_created" in SYSTEM_CARD_TYPES
         assert (
@@ -246,8 +246,8 @@ class TestSiblingProbes:
         assert len(card_registry) == 1
 
     def test_document_draft_from_a_write_vetoes(self, card_registry):
-        from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-        from aiq_agent.tools.documents.cards import emit_draft_card
+        from agent.cards.catalog import SYSTEM_CARD_TYPES
+        from agent.tools.documents.cards import emit_draft_card
 
         assert "document_draft" in SYSTEM_CARD_TYPES
         assert emit_draft_card(path="vermerk.md", content="# Titel\n\nText", version=1) is True
@@ -261,8 +261,8 @@ class TestSiblingProbes:
 
     def test_document_draft_from_the_file_draft_repush_vetoes(self, card_registry):
         """The re-push carries the filing — same type, the filed shape."""
-        from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-        from aiq_agent.tools.documents.cards import emit_draft_card
+        from agent.cards.catalog import SYSTEM_CARD_TYPES
+        from agent.tools.documents.cards import emit_draft_card
 
         assert "document_draft" in SYSTEM_CARD_TYPES
         assert (
@@ -289,7 +289,7 @@ class TestSiblingProbes:
 
     def test_the_rest_of_the_system_set_vetoes_too(self, card_registry):
         """``document_grid`` and ``file_operation_proposal`` complete the set."""
-        from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
+        from agent.cards.catalog import SYSTEM_CARD_TYPES
 
         for card_type in ("document_grid", "file_operation_proposal"):
             assert card_type in SYSTEM_CARD_TYPES
@@ -368,7 +368,7 @@ class TestTrailerCaptures:
     def test_explicit_turn_sources_are_the_log(self):
         # The repair no longer retrieves (ADR-0067), so this turn's reads are
         # the whole of what a trailer value may be grounded in.
-        from aiq_agent.agents.piloti.answer_pipeline import _trailer_captures
+        from agent.agents.piloti.answer_pipeline import _trailer_captures
 
         turn = _oib_source()
 

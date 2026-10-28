@@ -2,16 +2,16 @@
 
 import pytest
 
-from aiq_agent.common.data_source_registry import DataSourceEntry
-from aiq_agent.common.data_source_registry import DataSourceMeta
-from aiq_agent.common.data_source_registry import get_all_sources
-from aiq_agent.common.data_source_registry import get_all_tool_refs
-from aiq_agent.common.data_source_registry import get_source
-from aiq_agent.common.data_source_registry import get_source_id_for_tool
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.common.data_source_registry import set_group_source_map
-from aiq_agent.common.data_source_registry import set_tool_source_map
+from agent.common.data_source_registry import DataSourceEntry
+from agent.common.data_source_registry import DataSourceMeta
+from agent.common.data_source_registry import get_all_sources
+from agent.common.data_source_registry import get_all_tool_refs
+from agent.common.data_source_registry import get_source
+from agent.common.data_source_registry import get_source_id_for_tool
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from agent.common.data_source_registry import set_group_source_map
+from agent.common.data_source_registry import set_tool_source_map
 
 
 @pytest.fixture(autouse=True)
@@ -168,25 +168,25 @@ class TestToolSourceMap:
         assert get_source_id_for_tool("tool") is None
 
     def test_group_matches_nat_separator(self):
-        """Function group tools use NAT's __ separator."""
+        """Function group tools use the agent runtime's __ separator."""
         set_group_source_map({"my_group": "my_group"})
 
         assert get_source_id_for_tool("my_group__tool_a") == "my_group"
         assert get_source_id_for_tool("my_group__tool_b") == "my_group"
 
     def test_group_matches_legacy_separator(self):
-        """Function group tools also match NAT's legacy . separator."""
+        """Function group tools also match the agent runtime's legacy . separator."""
         set_group_source_map({"my_group": "my_group"})
 
         assert get_source_id_for_tool("my_group.tool_a") == "my_group"
 
     def test_group_rejects_no_separator(self):
-        """Bare prefix without NAT separator does not match."""
+        """Bare prefix without the agent runtime's separator does not match."""
         set_group_source_map({"my_group": "my_group"})
 
         assert get_source_id_for_tool("my_group") is None
         assert get_source_id_for_tool("my_groupfoo") is None
-        assert get_source_id_for_tool("my_group_tool") is None  # single underscore is not a NAT separator
+        assert get_source_id_for_tool("my_group_tool") is None  # single underscore is not an agent-runtime separator
 
     def test_exact_match_takes_priority_over_group(self):
         """Exact tool match should win over group prefix match."""

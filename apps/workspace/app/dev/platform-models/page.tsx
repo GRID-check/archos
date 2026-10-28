@@ -36,19 +36,19 @@ const AGENT_GROUPS = REGISTRY.map(({ id, label, description }) => ({ id, label, 
 const DEFAULTS = {
   follow_ups: {
     model: 'deepseek/deepseek-v4-flash',
-    updatedByEmail: 'owner@grid.example',
+    updatedByEmail: 'owner@app.example',
     updatedAt: '2026-07-28T09:00:00Z',
     zdrSafe: true,
   },
   shallow_research: {
     model: 'anthropic/claude-sonnet-5',
-    updatedByEmail: 'owner@grid.example',
+    updatedByEmail: 'owner@app.example',
     updatedAt: '2026-07-28T09:00:00Z',
     zdrSafe: true,
   },
   deep_research_router: {
     model: 'vendor/router-mini',
-    updatedByEmail: 'owner@grid.example',
+    updatedByEmail: 'owner@app.example',
     updatedAt: '2026-07-28T09:00:00Z',
     zdrSafe: false,
   },
@@ -64,12 +64,12 @@ const WORKFLOW_DEFAULTS = Object.fromEntries(
 const EFFORTS = {
   follow_ups: {
     effort: 'none',
-    updatedByEmail: 'owner@grid.example',
+    updatedByEmail: 'owner@app.example',
     updatedAt: '2026-08-01T09:00:00Z',
   },
   deep_research: {
     effort: 'xhigh',
-    updatedByEmail: 'owner@grid.example',
+    updatedByEmail: 'owner@app.example',
     updatedAt: '2026-08-01T09:00:00Z',
   },
 }

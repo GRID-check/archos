@@ -1,6 +1,6 @@
-"""Shared-cache facade for the RIS tools (the NAT/register layer).
+"""Shared-cache facade for the RIS tools (the agent-runtime/register layer).
 
-Wraps the agent's fail-open Dragonfly/Redis cache (``aiq_agent.common.cache``,
+Wraps the agent's fail-open Dragonfly/Redis cache (``agent.common.cache``,
 ADR-0020) so RIS document fetches and live searches are cached across chat
 turns, process restarts, and replicas. Previously every ``ris_fetch_document``
 downloaded the full document and every ``ris_search`` hit the live API (plus the
@@ -35,8 +35,8 @@ if TYPE_CHECKING:  # a type import only — cache.py stays free of client.py at 
 logger = logging.getLogger(__name__)
 
 try:
-    from aiq_agent.common.cache import get_json as _get_json
-    from aiq_agent.common.cache import set_json as _set_json
+    from agent.common.cache import get_json as _get_json
+    from agent.common.cache import set_json as _set_json
 
     _CACHE_AVAILABLE = True
 except Exception:  # standalone adapter, or cache module unavailable

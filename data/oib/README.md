@@ -17,7 +17,7 @@ Put the PDFs here yourself; those tests skip when there are none.
 `*.pdf` here is gitignored. Do not commit the corpus back.
 
 The filename convention matters: `oib_doc_class` in
-`packages/agent/src/aiq_agent/common/norm_registry.py` derives a document's class from its
+`packages/agent/src/agent/common/norm_registry.py` derives a document's class from its
 prefix, and `oib_family_member` and `guess_display_title` read the Richtlinie
 number from it. Keep the names exactly as oib.or.at publishes them, which is not
 one spelling:

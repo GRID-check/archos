@@ -310,7 +310,7 @@ function CarriedFrom({
                   </span>
                 )}
               </span>
-              <PilotiVerdict annotation={annotation} viewerId={review.me} />
+              <AgentVerdict annotation={annotation} viewerId={review.me} />
               {annotation.carryTarget && (
                 <span className="mt-1.5 flex flex-wrap gap-1.5">
                   <Button
@@ -357,7 +357,7 @@ function CarriedFrom({
  * on a row of a replaced document, whose thread this review does not open,
  * it is how the person reads a check of what is fixed („In … behoben: …").
  */
-function PilotiVerdict({ annotation, viewerId }: { annotation: AnnotationView; viewerId: string | null }): JSX.Element | null {
+function AgentVerdict({ annotation, viewerId }: { annotation: AnnotationView; viewerId: string | null }): JSX.Element | null {
   const t = useTranslations(filesCopy)
   const newest = annotation.replies.at(-1)
   if (newest?.authorKind !== 'piloti') return null

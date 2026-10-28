@@ -36,8 +36,8 @@ import { replaceVersionContent, transitionDocumentVersion } from '@/lib/document
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import { withTenant } from '@/lib/db/tenant-context'
 import {
-  GRID_HEADER_NAMES,
-  buildGridRequestContextEnvelope,
+  REQUEST_CONTEXT_HEADER_NAMES,
+  buildRequestContextEnvelope,
   REQUEST_CONTEXT_MAX_AGE_MS,
 } from '@/lib/request-context'
 import {
@@ -55,7 +55,7 @@ const PROJECT = '33333333-3333-4333-8333-333333333333'
 
 const session = {
   userId: 'user_requester',
-  email: 'r@grid.test',
+  email: 'r@example.test',
   name: null,
   accessToken: '',
   organizationId: 'org_1',
@@ -68,7 +68,7 @@ const session = {
 function envelopeHeaders(
   overrides: { issuedAt?: number; userId?: string; projectId?: string | null; collectionScope?: string[] } = {},
 ) {
-  const { header, signature } = buildGridRequestContextEnvelope(
+  const { header, signature } = buildRequestContextEnvelope(
     {
       organizationId: 'org_1',
       userId: overrides.userId ?? 'user_requester',
@@ -80,8 +80,8 @@ function envelopeHeaders(
     SECRET,
   )
   return {
-    [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header,
-    [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
+    [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header,
+    [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
   }
 }
 
@@ -199,8 +199,8 @@ describe('identity comes from the signed envelope, never from the body', () => {
 
   it('refuses a tampered signature', async () => {
     const headers = envelopeHeaders()
-    const signature = headers[GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]
-    headers[GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG] =
+    const signature = headers[REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]
+    headers[REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG] =
       (signature[0] === '0' ? '1' : '0') + signature.slice(1)
 
     const response = await call({ op: 'submit', documentId: DOC, versionId: VERSION }, headers)

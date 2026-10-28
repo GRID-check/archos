@@ -8,9 +8,9 @@ the merge as a failure, which bought a 16-second repair rewrite and a
 
 from __future__ import annotations
 
-from aiq_agent.agents.piloti.ledger import citations_removed_summary
-from aiq_agent.citations.entries import DUPLICATE_REASON_PREFIX
-from aiq_agent.citations.entries import lost_citations
+from agent.agents.piloti.ledger import citations_removed_summary
+from agent.citations.entries import DUPLICATE_REASON_PREFIX
+from agent.citations.entries import lost_citations
 
 MERGED = {"number": 5, "line": "- [5] a.pdf, p.4", "reason": f"{DUPLICATE_REASON_PREFIX}1"}
 LOST = {"number": 6, "line": "- [6] b.pdf, p.9", "reason": "citation_key_not_in_registry"}
@@ -32,9 +32,9 @@ async def test_a_removed_citation_never_calls_the_repair():
     from unittest.mock import AsyncMock
     from unittest.mock import patch
 
-    from aiq_agent.agents.piloti import answer_pipeline
-    from aiq_agent.citations.entries import CitationVerificationResult
-    from aiq_agent.citations.registry import SourceRegistry
+    from agent.agents.piloti import answer_pipeline
+    from agent.citations.entries import CitationVerificationResult
+    from agent.citations.registry import SourceRegistry
 
     removed = CitationVerificationResult(verified_report="x [1]", removed_citations=[MERGED, LOST], valid_citations=[])
     repair = AsyncMock()

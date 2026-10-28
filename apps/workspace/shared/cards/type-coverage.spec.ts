@@ -13,7 +13,7 @@
  * model reads while the generated Zod on this side still had no such member.
  *
  * What that costs is out of all proportion to "one card does not draw", and
- * `validate-grid-cards.spec.ts` pins the mechanism: `validateGridCards` leaves
+ * `validate-answer-cards.spec.ts` pins the mechanism: `validateAnswerCards` leaves
  * an `undefined` HOLE where a card it cannot parse was, holding the wire
  * positions of everything after it. Without the hole, one unknown type would
  * not leave a gap — it would shift every card after it up by one, so the
@@ -37,7 +37,7 @@
 
 import { discriminatedOptions } from '@/lib/api/zod-union'
 import { describe, expect, it } from 'vitest'
-import { gridCardSchema } from './schemas'
+import { answerCardSchema } from './schemas'
 // The canonical card JSON Schema, generated from `models.py` and the input the
 // Zod mirror is generated FROM. Loaded at runtime (it lives above the app
 // root, outside the Docker build context) — see the helper for why a static
@@ -64,7 +64,7 @@ const document = cardJsonSchema as unknown as JsonSchemaDocument
 const CATALOG_TYPES = Object.keys(document.discriminator.mapping).sort()
 
 /** Every card type the frontend union will actually parse. */
-const UNION_TYPES = [...discriminatedOptions(gridCardSchema).keys()]
+const UNION_TYPES = [...discriminatedOptions(answerCardSchema).keys()]
   .filter((type): type is string => typeof type === 'string')
   .sort()
 
@@ -89,7 +89,7 @@ describe('the card union covers the canonical catalog', () => {
     expect(
       missing,
       `apps/workspace/shared/cards/generated.ts has no union member for card type(s) ${JSON.stringify(missing)}, ` +
-        'which contracts/cards/schemas.json declares. `validateGridCards` leaves a hole where a card it cannot ' +
+        'which contracts/cards/schemas.json declares. `validateAnswerCards` leaves a hole where a card it cannot ' +
         'parse was, so every [[card:N]] marker after one of these would draw nothing instead of its card. ' +
         `The union is generated, so do not hand-edit it: ${REGENERATE}`
     ).toEqual([])
@@ -99,7 +99,7 @@ describe('the card union covers the canonical catalog', () => {
     // The other direction, and a real state rather than a tidy symmetry: a card
     // type retired in `models.py` leaves a union member that accepts something
     // the backend will never send and that no renderer branch has to exist for
-    // (`test_renderer_branches_are_real_card_types` only reads GridCards.tsx).
+    // (`test_renderer_branches_are_real_card_types` only reads AnswerCards.tsx).
     const orphaned = UNION_TYPES.filter((type) => !CATALOG_TYPES.includes(type))
     expect(
       orphaned,

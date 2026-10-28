@@ -16,12 +16,12 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.tools.tasks import client as task_client
-from aiq_agent.tools.tasks import register as task_tools
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.common.bff_http import SignedEnvelope
+from agent.tools.tasks import client as task_client
+from agent.tools.tasks import register as task_tools
 
 SECRET = "tasks-test-secret"  # noqa: S105 - test fixture value  # pragma: allowlist secret
 CONVERSATION = "conv-1"
@@ -53,7 +53,7 @@ class _Metadata:
 
 
 class _Context:
-    """The half of NAT's Context this tool reads."""
+    """The half of the agent runtime's Context this tool reads."""
 
     def __init__(self, headers: dict[str, str], conversation_id: str | None) -> None:
         self.metadata = _Metadata(headers)

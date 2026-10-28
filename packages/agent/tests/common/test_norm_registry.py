@@ -1,4 +1,4 @@
-"""Tests for the flat norm registry (aiq_agent.common.norm_registry)."""
+"""Tests for the flat norm registry (agent.common.norm_registry)."""
 
 import os
 from pathlib import Path
@@ -7,7 +7,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from aiq_agent.common import norm_registry as nr
+from agent.common import norm_registry as nr
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -491,7 +491,7 @@ class TestLaneForAgentAuthoredHit:
         )
 
     def test_the_lane_is_office_knowledge_not_law(self):
-        from aiq_agent.common.source_kinds import kind_for_lane
+        from agent.common.source_kinds import kind_for_lane
 
         lane_key, _label = nr.lane_for_hit(authored_by="agent")
         assert kind_for_lane(lane_key) == "office"
@@ -663,7 +663,7 @@ class TestParcelNote:
 
     def test_the_note_is_the_file_list_and_not_the_doctrine(self):
         """What to DO with a parcel document is standing doctrine and lives
-        above the KV-cache boundary (`prompts/piloti_static.md`). Repeating it
+        above the KV-cache boundary (`prompts/chat_static.md`). Repeating it
         under the file list charged the same three sentences on every call of
         every turn that had one (ADR-0060 amendment)."""
         note = nr.parcel_note([{"file_name": "bplan_7602.pdf", "tags": ["Bebauungsplan"]}])
@@ -754,7 +754,7 @@ class TestGuessDisplayTitle:
 class TestNormsDirResolution:
     """The YAML seed must be found from any working directory of the checkout.
 
-    Every package suite that boots the registry (``apps/backend`` included)
+    Every package suite that boots the registry (``apps/agent-host`` included)
     used to see an empty registry when run from its own directory: the default
     ``configs/norms`` is cwd-relative, and nothing said so. It failed four route
     tests for weeks and read as a test bug.
@@ -793,7 +793,7 @@ class TestOibFamilies:
     """
 
     def test_a_guideline_with_parts_reports_all_of_them(self):
-        from aiq_agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import oib_families
 
         families = oib_families(
             [
@@ -810,7 +810,7 @@ class TestOibFamilies:
     def test_a_guideline_without_parts_is_still_a_family(self):
         """One member is a fact about the corpus. It is a different statement
         from "we do not know what parts it has"."""
-        from aiq_agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import oib_families
 
         assert [f.members for f in oib_families(["oib-rl_3_ausgabe_mai_2023.pdf"])] == [("3",)]
 
@@ -818,8 +818,8 @@ class TestOibFamilies:
         """A Leitfaden, an Erläuterung and an Änderungsdokument are read WITH a
         Richtlinie. Counting them as parts would let an overview answer look
         complete for having opened an interpretation aid."""
-        from aiq_agent.common.norm_registry import oib_families
-        from aiq_agent.common.norm_registry import oib_family_member
+        from agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import oib_family_member
 
         assert oib_family_member("oib-rl_2_leitfaden_ausgabe_mai_2023.pdf") is None
         assert oib_family_member("oib-rl_6-leitfaden_ausgabe_mai_2023.pdf") is None
@@ -829,14 +829,14 @@ class TestOibFamilies:
         assert oib_families(["oib-rl_2_leitfaden_ausgabe_mai_2023.pdf"]) == []
 
     def test_a_project_file_is_not_a_member(self):
-        from aiq_agent.common.norm_registry import oib_family_member
+        from agent.common.norm_registry import oib_family_member
 
         assert oib_family_member("Brandschutzkonzept.pdf") is None
 
     def test_two_editions_of_one_part_are_one_member(self):
         """The family is about which requirements exist, not how many files
         carry them."""
-        from aiq_agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import oib_families
 
         families = oib_families(["oib-rl_2_ausgabe_mai_2023.pdf", "oib-rl_2_ausgabe_april_2019.pdf"])
         assert [f.members for f in families] == [("2",)]
@@ -844,7 +844,7 @@ class TestOibFamilies:
     def test_members_sort_numerically_and_families_by_number(self):
         """`2.10` after `2.9`, and family 10 after family 2 — both of which a
         string sort gets backwards."""
-        from aiq_agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import oib_families
 
         names = [f"oib-rl_2.{i}_x.pdf" for i in (10, 9, 2)] + ["oib-rl_10_x.pdf", "oib-rl_2_x.pdf"]
         families = oib_families(names)
@@ -880,19 +880,19 @@ class TestFamilyQueryNumber:
         ],
     )
     def test_a_question_about_the_guideline_itself_names_its_family(self, query):
-        from aiq_agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import family_query_number
 
         assert family_query_number(query) == "2"
 
     def test_a_part_number_resolves_to_its_family(self):
         """A reader asking about 2.1 is inside a Richtlinie whose other parts
         they are unlikely to know exist."""
-        from aiq_agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import family_query_number
 
         assert family_query_number("OIB-Richtlinie 2.3") == "2"
 
     def test_every_spelling_of_the_anchor_is_read(self):
-        from aiq_agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import family_query_number
 
         assert family_query_number("oib rl 4 überblick") == "4"
         assert family_query_number("OIB-RL 4") == "4"
@@ -917,7 +917,7 @@ class TestFamilyQueryNumber:
         ],
     )
     def test_everything_else_stays_an_ordinary_search(self, query):
-        from aiq_agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import family_query_number
 
         assert family_query_number(query) is None
 
@@ -925,7 +925,7 @@ class TestFamilyQueryNumber:
         """ "Unterschied OIB 2 und OIB 3" is a comparison; a single family
         overview cannot be both, and answering with one of them would be the
         wrong document stated confidently."""
-        from aiq_agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import family_query_number
 
         assert family_query_number("OIB 2 und OIB 3") is None
 
@@ -936,21 +936,21 @@ class TestFamilyQueryNumber:
         """The bare ``4`` in "OIB 2 und 4" used to fall into the leftover, where
         a number passes as a printing year, and the turn prefetched family 2
         alone while suppressing family 4's overview."""
-        from aiq_agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import family_query_number
 
         assert family_query_number(query) is None
 
     @pytest.mark.parametrize("query", ["OIB 2 2023", "OIB-Richtlinie 2 Ausgabe 2023", "OIB 2, 2023", "OIB 2 und 2.1"])
     def test_a_year_or_a_part_of_the_same_family_is_not_a_second_family(self, query):
-        from aiq_agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import family_query_number
 
         assert family_query_number(query) == "2"
 
     def test_the_detected_number_is_the_key_oib_families_groups_by(self):
         """The contract between detection and resolution: what this returns is
         what `oib_families` keys a family by, or the branch resolves nothing."""
-        from aiq_agent.common.norm_registry import family_query_number
-        from aiq_agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import family_query_number
+        from agent.common.norm_registry import oib_families
 
         families = oib_families(["oib-rl_2_ausgabe_mai_2023.pdf", "oib-rl_2.3_ausgabe_mai_2023.pdf"])
 

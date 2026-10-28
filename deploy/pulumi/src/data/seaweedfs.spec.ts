@@ -112,7 +112,7 @@ function container(spec: ResolvedStatefulSet, name: string): Container {
   return found;
 }
 
-/** A test GridConfig. Only the SeaweedFS surface matters here. */
+/** A test DeployConfig. Only the SeaweedFS surface matters here. */
 function makeConfig(overrides: Record<string, unknown> = {}) {
   const base = {
     protectDataResources: false,
@@ -179,8 +179,8 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     langfuse: { ...base.langfuse, ...(overrides.langfuse as object) },
     qdrant: { ...base.qdrant, ...(overrides.qdrant as object) },
     // The modules under test only read the fields above; the cast is the one
-    // documented boundary between this fixture and the full GridConfig.
-  } as unknown as import("../config").GridConfig;
+    // documented boundary between this fixture and the full DeployConfig.
+  } as unknown as import("../config").DeployConfig;
 }
 
 /**

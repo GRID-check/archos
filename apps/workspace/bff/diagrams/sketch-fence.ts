@@ -9,7 +9,7 @@
  *
  * ## Two checks, one rule set
  *
- * `packages/agent/src/aiq_agent/common/sketch_fence.py` is the server's check and this is the
+ * `packages/agent/src/agent/common/sketch_fence.py` is the server's check and this is the
  * browser's. They refuse the same fences with the same word, held together by
  * `__fixtures__/sketch-fences.json`, which both test suites run. The server's
  * verdict is stored in the answer: a refused fence arrives retagged

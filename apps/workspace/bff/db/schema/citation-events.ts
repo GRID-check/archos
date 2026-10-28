@@ -11,7 +11,7 @@ import {
 
 /**
  * Citation-health ledger: one row per (research turn, defect kind) captured by
- * the backend's citation-quality emitter (packages/agent/src/aiq_agent/common/citation_events.py
+ * the backend's citation-quality emitter (packages/agent/src/agent/common/citation_events.py
  * — the quality sibling of the timing ledger in agent-profiler.ts and the cost
  * ledger in budgets.ts). Append-only, written only via the token-guarded
  * internal endpoint POST /api/internal/citation-events; `app` stays

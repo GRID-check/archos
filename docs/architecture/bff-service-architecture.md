@@ -85,7 +85,7 @@ together. The pages under `app/projects` each ran their own queries, and so:
 - and none of them ran in a tenant context, so when row-level security began
   being enforced they failed closed with `MissingTenantContextError`.
 
-A page cannot rely on the tenant context being *ambient*. `getGridSession()`
+A page cannot rely on the tenant context being *ambient*. `getUserSession()`
 publishes it, but for a server component that publish uses `enterWith`, which
 does not survive the way this Next version renders a page — the scope is gone by
 the time a query runs. Going through a repository is what makes it reliable,

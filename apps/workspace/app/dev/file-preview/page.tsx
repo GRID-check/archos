@@ -95,7 +95,7 @@ const FIXTURE: FileItem = {
 }
 
 /**
- * The same pane holding a document PILOTI wrote, which is the state nothing had
+ * The same pane holding a document AGENT wrote, which is the state nothing had
  * ever photographed.
  *
  * Every difference from `FIXTURE` above is a consequence of one decision — a

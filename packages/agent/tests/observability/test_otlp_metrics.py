@@ -2,7 +2,7 @@
 
 from opentelemetry import metrics as otel_metrics
 
-from aiq_agent.observability import otlp_metrics
+from agent.observability import otlp_metrics
 
 
 def test_no_provider_without_a_collector(monkeypatch):

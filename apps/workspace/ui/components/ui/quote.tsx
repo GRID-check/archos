@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
  * (`border-l-2 border-border pl-3`): eleven hand-rolled copies across the cards,
  * the inbox, the review rail and the run log. The product owner prefers boxes
  * without side stripes (2026-10-27), so a quote now reads as a quote by
- * typography and place (grid-design-language.md, "Emphasis without a stripe"):
+ * typography and place (design-language.md, "Emphasis without a stripe"):
  *
  *  - `inline` (default): indented and italic in the muted ink. A reviewer's
  *    comment, a question that was asked, a lesson's wording.

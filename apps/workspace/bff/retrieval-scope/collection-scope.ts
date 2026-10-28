@@ -1,4 +1,4 @@
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 
 /**
  * The shelf a retrieval collection sits on, carried explicitly on the wire
@@ -73,7 +73,7 @@ export interface ScopeContext {
 }
 
 export function computeCollectionScope(
-  _session: GridSession | null,
+  _session: UserSession | null,
   context: ScopeContext,
 ): string[] {
   const scope: string[] = []

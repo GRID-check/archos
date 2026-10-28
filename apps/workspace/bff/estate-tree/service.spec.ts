@@ -24,7 +24,7 @@ vi.mock('./repository', async (importOriginal) => ({
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Project } from '@/lib/db/schema/projects'
-import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import type { VerifiedRequestContext } from '@/lib/request-context'
 import { reachForAudience, type SearchReach } from '@/lib/search/reach'
 import { decodeTreeCursor, findFolderIdByPath, listTreeDocuments, listTreeFolders, type TreeDocumentRow } from './repository'
 import { readEstateTree } from './service'
@@ -33,7 +33,7 @@ const PROJECT = '33333333-3333-4333-8333-333333333333'
 const session = { organizationId: 'org_1', userId: 'user_1' } as AuthorizedSession
 const project = { id: PROJECT, collectionName: 'proj_1' } as Project
 
-const context = (patch: Partial<VerifiedGridRequestContext> = {}): VerifiedGridRequestContext => ({
+const context = (patch: Partial<VerifiedRequestContext> = {}): VerifiedRequestContext => ({
   organizationId: 'org_1',
   userId: 'user_1',
   projectId: PROJECT,

@@ -9,7 +9,7 @@
 > repository it says so.
 >
 > **Baseline.** The design of record is
-> [`piloti-writes-artifacts-and-approval.md`](piloti-writes-artifacts-and-approval.md);
+> [`agent-writes-artifacts-and-approval.md`](agent-writes-artifacts-and-approval.md);
 > the consequences it is measured against are §2 of
 > [`agentic-workspace-architecture.md`](agentic-workspace-architecture.md); the
 > user evidence is [`../audit/pilot-feedback-triage-2026-09.md`](../audit/pilot-feedback-triage-2026-09.md).
@@ -44,7 +44,7 @@ freigegeben von {Name}, {Datum}** in the office colour rather than in law blue
 (`piloti-dokument-als-quelle`, `docs/architecture/agent-document-provenance.md`),
 and a *verdict* — the masthead value a reader copies into a Nachweis — is
 dropped when its Fundstelle resolves to such a document
-(`_gate_verdict`, `packages/agent/src/aiq_agent/common/answer_envelope.py:294-336`). Nothing an
+(`_gate_verdict`, `packages/agent/src/agent/common/answer_envelope.py:294-336`). Nothing an
 architect does differently; a class of quiet self-citation that can no longer
 happen.
 
@@ -52,10 +52,10 @@ happen.
 
 **New, and the largest single change.** „Schreib mir den Aktenvermerk" now
 produces a file rather than a long message: `write_file` into a per-conversation
-working folder (`packages/agent/src/aiq_agent/tools/documents/tools.py`, bound per turn at
-`packages/agent/src/aiq_agent/agents/piloti/register.py:325`), with a `document_draft` card
+working folder (`packages/agent/src/agent/tools/documents/tools.py`, bound per turn at
+`packages/agent/src/agent/agents/piloti/register.py:325`), with a `document_draft` card
 beside the answer naming what was written
-(`apps/workspace/ui/features/grid-cards/components/DocumentDraftCard.tsx`).
+(`apps/workspace/ui/features/cards/components/DocumentDraftCard.tsx`).
 „Kürze Punkt 3" edits that file in place instead of printing a second copy
 (`piloti-working-directory`).
 
@@ -70,7 +70,7 @@ version, in the asking person's pinned session and under their permissions
 **Where it breaks.** „Zur Freigabe einreichen" — on the card and in the Files
 panel — sends no reviewer (`DocumentDraftCard.tsx:168`,
 `document-lifecycle-panel.tsx:278`), and neither does the agent's `submit_draft`
-(`packages/agent/src/aiq_agent/tools/documents/register.py:332`, whose comment says the route
+(`packages/agent/src/agent/tools/documents/register.py:332`, whose comment says the route
 "falls back to the project's reviewers"). It does not: `resolveReviewers`
 (`apps/workspace/bff/documents/lifecycle.ts:160-169`) falls back to the
 document's **assignments**, and a freshly filed Piloti draft is „Unvergeben" by
@@ -93,7 +93,7 @@ and resolves itself once decided. **Piloti überarbeiten lassen** stands beside
 version instead of handing the work back to a colleague
 (`piloti-ueberarbeiten-lassen`). In the same conversation the reviewer's words
 arrive verbatim as a `REVIEW_DECISIONS v1` block
-(`packages/agent/src/aiq_agent/agents/piloti/prompts/piloti.j2:365`); with no live conversation
+(`packages/agent/src/agent/agents/piloti/prompts/piloti.j2:365`); with no live conversation
 a `revision` task is opened instead (`auftraege-und-ueberarbeitung`).
 
 **Where it breaks.** The submitter cannot approve their own version

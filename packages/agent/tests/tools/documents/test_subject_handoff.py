@@ -17,10 +17,10 @@ from typing import Any
 import pytest
 from langgraph.store.memory import InMemoryStore
 
-from aiq_agent.tools.documents import register as filing_tools
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.turn import subject_document
-from aiq_agent.turn.payload import SubjectVersion
+from agent.tools.documents import register as filing_tools
+from agent.tools.documents.draft_store import DraftBackend
+from agent.turn import subject_document
+from agent.turn.payload import SubjectVersion
 
 from .conftest import CONVERSATION
 from .conftest import _responder

@@ -3,7 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 // Compile-time spec typing from the upstream CRD schemas (see gateway.ts).
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
 import type { IBackendTrafficPolicySpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/BackendTrafficPolicySpec";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { commonLabels } from "../platform/namespaces";
 import type { ICompression } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/Compression";
 import type { IRetry } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/Retry";
@@ -85,7 +85,7 @@ export const WEB_COMPRESSOR: ICompression[] = [{ type: "Brotli" }, { type: "Gzip
  * not exempt it from the route's overall budget.
  */
 function perClientIpRule(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   requestsPerMinute: number,
   cidr: string,
   pathPrefix?: string,
@@ -118,7 +118,7 @@ function perClientIpRule(
  * 2 replicas behind one LoadBalancer, so a "30/min" local limit is really
  * 60/min — and changes meaning the moment the fleet scales.
  */
-function edgeRateLimit(cfg: GridConfig, rules: IRateLimitRule[]): { rateLimit?: IRateLimitSpec } {
+function edgeRateLimit(cfg: DeployConfig, rules: IRateLimitRule[]): { rateLimit?: IRateLimitSpec } {
   if (!cfg.rateLimit.enabled) return {};
   return { rateLimit: { type: "Global", global: { rules } } };
 }
@@ -137,7 +137,7 @@ function edgeRateLimit(cfg: GridConfig, rules: IRateLimitRule[]): { rateLimit?: 
  * uncovered the day the cluster gains an IPv6 address.
  */
 function perClientRules(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   requestsPerMinute: number,
   pathPrefix?: string,
 ): IRateLimitRule[] {
@@ -158,7 +158,7 @@ function perClientRules(
  * with no request-size cap.
  */
 export function installHttpRoutes(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],

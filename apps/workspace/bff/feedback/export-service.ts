@@ -20,7 +20,7 @@ import 'server-only'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { configuredAppOrigin } from '@/lib/app-origin'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { describeResource } from '@/lib/sharing/registry'
@@ -117,7 +117,7 @@ async function nameScope(query: FeedbackQuery, organizationNames: Map<string, st
 }
 
 export async function getAnswerFeedbackExport(
-  session: GridSession | null,
+  session: UserSession | null,
   request: FeedbackExportRequest,
   now: Date = new Date()
 ): Promise<FeedbackExport> {
@@ -189,7 +189,7 @@ export interface FeedbackWeeklyExport {
  * the inputs of a rate. Same gate and same cross-tenant bypass as the rows.
  */
 export async function getAnswerFeedbackWeeklyExport(
-  session: GridSession | null,
+  session: UserSession | null,
   query: FeedbackQuery
 ): Promise<FeedbackWeeklyExport> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.organizationsView)
@@ -233,7 +233,7 @@ export interface FeedbackFilterOptions extends FeedbackFacets {
  * the scope. Same gate and bypass as the export itself.
  */
 export async function getAnswerFeedbackFilterOptions(
-  session: GridSession | null,
+  session: UserSession | null,
   query: FeedbackQuery
 ): Promise<FeedbackFilterOptions> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.organizationsView)

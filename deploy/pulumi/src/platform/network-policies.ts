@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { backendAutoscaled } from '../config/chat-tier'
 import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GEOCODER, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
@@ -69,7 +69,7 @@ export const QDRANT_CALLERS = [
  * these policies, so readiness/liveness keep working.
  */
 export function installNetworkPolicies(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): k8s.networking.v1.NetworkPolicy[] {
@@ -292,7 +292,7 @@ export function installNetworkPolicies(
 
   // 11d. The backend tiers → Langfuse web public API. The agent writes the
   //      answer pipeline's checks as scores on each turn's trace (ADR-0089,
-  //      `aiq_agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
+  //      `agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
   //      the in-cluster Service, for the reason rule 11c gives. The three roles
   //      that run answers or serve them: chat and api (each under both names
   //      while they run side by side, `tier-names.ts`) and the research worker (`agent-worker`). The ingest worker is not

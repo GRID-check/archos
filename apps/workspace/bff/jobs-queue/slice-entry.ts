@@ -54,7 +54,7 @@ export async function initSliceHost(): Promise<void> {
   }
 }
 
-/** Flush what the slices queued for PostHog, as `server.js` does with `__gridShutdownHooks`. */
+/** Flush what the slices queued for PostHog, as `server.js` does with `__appShutdownHooks`. */
 export async function shutdownSliceHost(): Promise<void> {
   await shutdownPosthogServer()
 }

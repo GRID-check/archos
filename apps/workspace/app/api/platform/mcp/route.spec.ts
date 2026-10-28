@@ -50,7 +50,7 @@ import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getPlatformOrganizationId, isPlatformStaff } from '@/lib/authz/platform'
 import { MCP_REQUEST_LIMIT, enforceLimit, memberSubject } from '@/lib/limits'
-import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
+import { buildRequestContextEnvelope, REQUEST_CONTEXT_HEADER_NAMES } from '@/lib/request-context'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { POST as officePOST } from '../../mcp/route'
 import { platformOverviewCalls } from '@/lib/agent-api/test-operations'
@@ -66,7 +66,7 @@ const KID = 'test-key'
 
 const operator: AuthorizedSession = {
   userId: 'user_ops',
-  email: 'ops@grid.test',
+  email: 'ops@example.test',
   name: 'Operator',
   accessToken: '',
   organizationId: PLATFORM_ORG,
@@ -199,15 +199,15 @@ describe('who may knock', () => {
   })
 
   it('never takes Piloti’s own credential', async () => {
-    const { header, signature } = buildGridRequestContextEnvelope(
+    const { header, signature } = buildRequestContextEnvelope(
       { organizationId: PLATFORM_ORG, userId: 'user_ops', conversationId: 'conv_1', issuedAt: Date.now() },
       SECRET,
     )
     const response = await POST(
       rpc(PLATFORM, 'tools/list', {}, {
         'x-grid-internal-token': SECRET,
-        [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header,
-        [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
+        [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header,
+        [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
       }),
     )
     expect(response.status).toBe(403)

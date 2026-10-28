@@ -2,7 +2,7 @@
 
 > Which tools Piloti's chat agent is given, what each costs on every call, why
 > the set looks the way it does, and what to change next. Code comments in
-> `packages/knowledge-layer/src/browse.py`, `packages/agent/src/aiq_agent/tools/files/register.py`
+> `packages/knowledge-layer/src/browse.py`, `packages/agent/src/agent/tools/files/register.py`
 > and `configs/config_oib_openrouter.yml` point here for the reasons behind a
 > merge or a split. Written 2026-09-30. Token counts are the tool serialized as
 > OpenAI tool JSON, divided by four, on a project turn.
@@ -20,7 +20,7 @@ We apply the published guidance:
   expressed, combine functions always called in sequence, and do not make the
   model fill arguments the caller already knows ([OpenAI, function
   calling][oai-fc]).
-- **Parameter guidance goes in the description or the schema.** NAT's
+- **Parameter guidance goes in the description or the schema.** The runtime's
   `FunctionInfo.from_fn` builds the schema from the signature with bare
   `Field(default=…)` and the LangChain wrapper passes only `fn.description`, so a
   docstring `Args:` section never reaches the model
@@ -48,23 +48,23 @@ research call's input ([turns audit](../audit/turns-per-answer-audit-2026-09.md)
 
 | Tool | What it does | ~Tokens | Owner |
 |---|---|---|---|
-| `ifc_measure` | Runs IfcOpenShell/OCCT over the model's bytes: areas, heights, clearances | 6,350 | `packages/agent/src/aiq_agent/tools/bim/measure_register.py` |
-| `ifc_query` | Reads the extracted IFC index | 2,300 | `packages/agent/src/aiq_agent/tools/bim/register.py` |
+| `ifc_measure` | Runs IfcOpenShell/OCCT over the model's bytes: areas, heights, clearances | 6,350 | `packages/agent/src/agent/tools/bim/measure_register.py` |
+| `ifc_query` | Reads the extracted IFC index | 2,300 | `packages/agent/src/agent/tools/bim/register.py` |
 | `knowledge_search` | On Piloti's chat (ADR-0133 slice 6): ranked search only, with `path=` for scope and the result budget in its description; `folder`, `shelf`, `file_name` stay accepted, hidden, for one release, and a `match=` call is rejected naming the `grep` call that replaces it (`common/retired_calls.py`); only where `filesystem` is configured. For deep research, intake and the door, the full contract: ranked search; `match="exact"` is Ctrl+F across the files, `match="regex"` is grep (Python syntax, case-insensitive, needs a literal word or `folder`/`file_name`/`doc_class`, refused when it backtracks), `context=0..3` adds lines around each hit, and a scan that hits its 500-passage limit says its counts are lower bounds with a per-file upper bound from one Qdrant facet; `stemmed=true` (exact only) adds the inflected forms through a German-stemmed full-text index on a second text field (`text_stem`), the literal matches kept. `group_by="document"` (ranked only) returns one entry per document keyed by `grid_document_id`: its best passage, and a trailer table of passages in the ranked pool and pages, grouped client-side because a fused query cannot be grouped by Qdrant. For an organization with the `folder-cards` flag, one dense query over the folder card points (`kind=folder`) prints up to three `Folder:` lines after the passages, never a citation | 650 on Piloti's chat (o200k, 2026-10-27); 1,450 with the literal modes | `packages/knowledge-layer/src/register.py`, Piloti's contract `packages/knowledge-layer/src/chat_binding.py` |
 | `ris_lookup` | Austrian law by citation | 760 | `packages/ris-adapter/src/lookup/tool.py` |
 | `read_passage` | Opens one Punkt, page, page range (`pages="4-6"`, ≤30 pages, ~6k tokens, `cursor` to continue) or outline. Deep research, intake and the door; Piloti's chat reads with `read_file`; a `read_passage` call there is answered by the tool node with the tools it has | 730 | `packages/knowledge-layer/src/read_passage.py` |
 | `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentart (assigned by Piloti): …`); output labels are English, domain words (Dokumentart, Fassung, Plankopf) and file names stay. `view="tree"` (`depth` 1-4) returns a tier-0 card per folder instead (direct and subtree counts, Dokumentart mix, pages, dates, current Fassung per series), bounded at 30 cards, and rows show page counts when stored and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `revisions_of=<file name>` returns one document's chain of Fassungen instead, and with `compare_to=` what changed between two of them. On Piloti's chat the tree view is left out (`ls(depth=…)` draws the tree); the date filter, paging and Fassungen stay | 770 | `packages/knowledge-layer/src/browse.py` |
-| `surface_documents` | Shows a file or a 1–3 thumbnail choice | 510 | `packages/agent/src/aiq_agent/cards/surface_documents.py` |
-| `ask_user` | Blocking multiple-choice question | 490 | `packages/agent/src/aiq_agent/agents/piloti/ask_user.py` |
-| `remember` | Project memory capture | 420 | `packages/agent/src/aiq_agent/memory/register.py` |
-| `create_task` | Delegates work as a task | 400 | `packages/agent/src/aiq_agent/tools/tasks/register.py` |
-| `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `packages/agent/src/aiq_agent/tools/files/register.py` |
-| `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group (looking is `look`, below): who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `packages/agent/src/aiq_agent/tools/canvas/register.py` |
-| `workspace__search`, `workspace__describe`, `workspace__call`, `workspace__report_missing` | Piloti as a client of its own MCP server (ADR-0122), the same four meta-tools an external agent gets in `search` mode: find an operation, read its schema, call it as the asker (a write comes back as a proposal), or report a missing operation. Four tools instead of the hundreds of operations behind them. Each call echoes the turn's envelope. English since October 2026, like everything an agent reads | ~200 / ~120 / ~160 / ~105 (~585, estimated from length after the English rewrite, not re-measured) | `packages/agent/src/aiq_agent/tools/workspace/register.py` |
-| `look` | Shows a page, a region of it or an embedded image to the model, in every context (ADR-0128) | 300 | `packages/agent/src/aiq_agent/tools/look/register.py` (renderer `packages/knowledge-layer/src/view_image.py`) |
-| `ls`, `read_file`, `glob`, `grep` | The filesystem verbs over one namespace (ADR-0133, [`agent-filesystem.md`](agent-filesystem.md)): the office's documents under `/project/`, `/office/`, `/chat/`, `/law/oib/` (read-only, `read_file` and `grep(output_mode="content")` return grounding blocks, one per page, citing `file, p.N`), the drafts under `/drafts/` (stock DeepAgents) and the turn's skills under `/skills/` (ADR-0135, `read_file` only, read-only). `grep` is literal by default, `mode="regex"` opts in, and an incomplete search is never a no. Bound on every turn with `filesystem: knowledge_search`, in place of `read_passage` and the literal `knowledge_search` (slice 6). Each description is a contract and the schema fields are bare, apart from `conclusion` on `grep` and `read_file`. Without an estate backend the drafts' four verbs and the skills' `read_file` are bound as before | 229 / 390 / 187 / 586 (o200k, description and schema, 2026-10-27; 348 / 648 / 370 / 823 as OpenAI tool JSON / 4 before slice 6) | `packages/agent/src/aiq_agent/tools/documents/filesystem.py`, `packages/knowledge-layer/src/estate*.py` |
-| `write_file`, `edit_file` | Draft working directory (DeepAgents stock), `/drafts/` only, write-once | 160 / 176 (o200k, 2026-10-27) | `packages/agent/src/aiq_agent/tools/documents/tools.py` |
-| `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `packages/agent/src/aiq_agent/tools/documents/register.py` |
+| `surface_documents` | Shows a file or a 1–3 thumbnail choice | 510 | `packages/agent/src/agent/cards/surface_documents.py` |
+| `ask_user` | Blocking multiple-choice question | 490 | `packages/agent/src/agent/agents/piloti/ask_user.py` |
+| `remember` | Project memory capture | 420 | `packages/agent/src/agent/memory/register.py` |
+| `create_task` | Delegates work as a task | 400 | `packages/agent/src/agent/tools/tasks/register.py` |
+| `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `packages/agent/src/agent/tools/files/register.py` |
+| `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one runtime function group (looking is `look`, below): who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `packages/agent/src/agent/tools/canvas/register.py` |
+| `workspace__search`, `workspace__describe`, `workspace__call`, `workspace__report_missing` | Piloti as a client of its own MCP server (ADR-0122), the same four meta-tools an external agent gets in `search` mode: find an operation, read its schema, call it as the asker (a write comes back as a proposal), or report a missing operation. Four tools instead of the hundreds of operations behind them. Each call echoes the turn's envelope. English since October 2026, like everything an agent reads | ~200 / ~120 / ~160 / ~105 (~585, estimated from length after the English rewrite, not re-measured) | `packages/agent/src/agent/tools/workspace/register.py` |
+| `look` | Shows a page, a region of it or an embedded image to the model, in every context (ADR-0128) | 300 | `packages/agent/src/agent/tools/look/register.py` (renderer `packages/knowledge-layer/src/view_image.py`) |
+| `ls`, `read_file`, `glob`, `grep` | The filesystem verbs over one namespace (ADR-0133, [`agent-filesystem.md`](agent-filesystem.md)): the office's documents under `/project/`, `/office/`, `/chat/`, `/law/oib/` (read-only, `read_file` and `grep(output_mode="content")` return grounding blocks, one per page, citing `file, p.N`), the drafts under `/drafts/` (stock DeepAgents) and the turn's skills under `/skills/` (ADR-0135, `read_file` only, read-only). `grep` is literal by default, `mode="regex"` opts in, and an incomplete search is never a no. Bound on every turn with `filesystem: knowledge_search`, in place of `read_passage` and the literal `knowledge_search` (slice 6). Each description is a contract and the schema fields are bare, apart from `conclusion` on `grep` and `read_file`. Without an estate backend the drafts' four verbs and the skills' `read_file` are bound as before | 229 / 390 / 187 / 586 (o200k, description and schema, 2026-10-27; 348 / 648 / 370 / 823 as OpenAI tool JSON / 4 before slice 6) | `packages/agent/src/agent/tools/documents/filesystem.py`, `packages/knowledge-layer/src/estate*.py` |
+| `write_file`, `edit_file` | Draft working directory (DeepAgents stock), `/drafts/` only, write-once | 160 / 176 (o200k, 2026-10-27) | `packages/agent/src/agent/tools/documents/tools.py` |
+| `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `packages/agent/src/agent/tools/documents/register.py` |
 | web search, advanced web search | Tavily | ~400 together | `packages/tavily-web-search/src/register.py` |
 
 The `ifc_*` pair is 8.65k of the 17.3k (the turns audit measured ~8.2k).
@@ -91,9 +91,9 @@ server's `dryRun` is ([servers][mcp-fs]).
 
 - Four proposal tools became `propose_file_change(operation=move|rename|create_folder|assign)`.
   They shared the card, resolver and refusals, and cost ~760 tokens for one act
-  (`packages/agent/src/aiq_agent/tools/files/register.py`). The card's `operation`
+  (`packages/agent/src/agent/tools/files/register.py`). The card's `operation`
   vocabulary is unchanged, so stored cards still read.
-- `submit_draft` became `file_draft(submit=…)` (`packages/agent/src/aiq_agent/tools/documents/register.py`).
+- `submit_draft` became `file_draft(submit=…)` (`packages/agent/src/agent/tools/documents/register.py`).
 - Exact search is `knowledge_search(match="exact")`, not a `find_in_files` tool:
   same verb, same scope, same narrowing arguments, and the same base-corpus store
   filter (`_base_collection_filters`: no excluded edition, no cover page), so both
@@ -129,21 +129,21 @@ server's `dryRun` is ([servers][mcp-fs]).
   project. It is uncapped and paged, facets by folder, name, `doc_class` and
   date, and lists in-flight files. It drops the shelves the turn did not ask for,
   as the search does, and its rows are an index: they register no citable source
-  (`packages/agent/src/aiq_agent/citations/session.py`). Tools resolve names against the uncapped
+  (`packages/agent/src/agent/citations/session.py`). Tools resolve names against the uncapped
   inventory, which fixes the 51st-file bug, and rows carry `added_at`.
 - Earlier: `emit_card` left chat, `ris_lookup` collapsed, parallel calls are
-  capped at 12, and errors teach (`packages/agent/src/aiq_agent/common/tool_errors.py`).
+  capped at 12, and errors teach (`packages/agent/src/agent/common/tool_errors.py`).
 
 **Kept separate.**
 
 - `ifc_query` and `ifc_measure`: separate entry points so `ifc_query` works
   where IfcOpenShell and shapely are not installed (`pyproject.toml`,
-  `aiq_bim_measure`). The cost fix is scope (§5 row 2), not a merge.
+  `bim_measure`). The cost fix is scope (§5 row 2), not a merge.
 - `knowledge_search` and `read_passage`: the search and read split above.
 - The draft verbs keep their names. They are DeepAgents stock names, stored
   turns hold them, and names persist in `functionName` and
   `get_source_id_for_tool`. The real fix is the single namespace in
-  [`piloti-filesystem-design.md`](piloti-filesystem-design.md) §3 and §6.
+  [`filesystem-design.md`](filesystem-design.md) §3 and §6.
 
 **Measured and rejected.** Do not re-propose without new evidence.
 
@@ -182,7 +182,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 | Archive | `POST /api/documents/[id]/archive` | Propose. The chunks are purged and bytes and versions stay (`apps/workspace/bff/documents/version-content.ts`); `POST /api/documents/[id]/unarchive` brings it back and reads it again (`lib/documents/unarchive.ts`) | S |
 | Rename, move or delete a folder | `PATCH`/`DELETE /api/projects/[id]/folders/[folderId]` | Propose. Delete re-files the folder's documents first | S |
 | Retag | `PATCH /api/documents/[id]/tags` | Propose | S |
-| Revise any Markdown project document | `POST /api/documents/[id]/versions` | Build. Today only the conversation's subject (`packages/agent/src/aiq_agent/tools/documents/filing.py`) | M |
+| Revise any Markdown project document | `POST /api/documents/[id]/versions` | Build. Today only the conversation's subject (`packages/agent/src/agent/tools/documents/filing.py`) | M |
 | See version history, uploader, lifecycle state | `GET /api/documents/[id]/versions` | Fassungen under other file names: done (`list_files(revisions_of=…)`). Same-name versions and uploader: add to `list_files` rows | S |
 | Compare versions | `GET /api/documents/[id]/versions/diff` | Fassungen under other file names: done (`list_files(revisions_of=…, compare_to=…)`, ADR-0104). Same-name versions once every Fassung stays indexed | M |
 | Share | `/api/sharing/[resourceType]/[resourceId]` | Person only | none |
@@ -202,12 +202,12 @@ LLM events for 30 days, so there is no per-tool usage or error rate.
 | # | Item | Why | Files | Effort | Measure |
 |---|---|---|---|---|---|
 | 1 | Project-file eval fixture with `expect.tools` (`must`, `must_not`, `max_research_calls`) | 2 of 29 loop-eval rows are own-file, both skipped; `Run.tool_calls` is already recorded | `tests/fixtures/derivation/loop_eval_questions.yaml`, `scripts/turn_census/suite.py`, `evals/oib-retrieval` | S–M | ~20 `pf-*` rows: pass rate, research calls, `status:repeat`/`width`/`budget` = 0 |
-| 2 | Bind `ifc_*` only when the project has a readable model | −8.2k tokens and a distractor; outside that scope both return "no model" | `packages/agent/src/aiq_agent/agents/piloti/register.py` (`_tools_in_scope`), BFF project context | S–M | Input tokens per call by scope; model questions in the answer suite; a model uploaded mid-conversation binds next turn |
-| 3 | Prefetch the IFC `briefing` in round 0 | `modell` prefetches nothing while the tool says "CALL 'briefing' FIRST"; a taught sequence is an incomplete contract ([ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md)); OpenAI: combine sequential calls | `packages/agent/src/aiq_agent/agents/piloti/decisions.py`, `packages/agent/src/aiq_agent/tools/bim/measure_register.py` | S–M | Rounds on model questions |
+| 2 | Bind `ifc_*` only when the project has a readable model | −8.2k tokens and a distractor; outside that scope both return "no model" | `packages/agent/src/agent/agents/piloti/register.py` (`_tools_in_scope`), BFF project context | S–M | Input tokens per call by scope; model questions in the answer suite; a model uploaded mid-conversation binds next turn |
+| 3 | Prefetch the IFC `briefing` in round 0 | `modell` prefetches nothing while the tool says "CALL 'briefing' FIRST"; a taught sequence is an incomplete contract ([ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md)); OpenAI: combine sequential calls | `packages/agent/src/agent/agents/piloti/decisions.py`, `packages/agent/src/agent/tools/bim/measure_register.py` | S–M | Rounds on model questions |
 | 4 | Read page ranges (built: `pages`, `cursor`), and whole documents under ~15–25k tokens | A printed page ≠ stored page cost two extra rounds; Claude Code `Read(pages)`; long context beats RAG when affordable ([Li et al.][li-2024], [contextual retrieval][a-cr]) | `packages/knowledge-layer/src/read_passage.py`, a per-page store at ingest, decided in [ADR-0134](../adr/0134-extracted-page-text-is-stored-per-version.md) and read through `read_file` ([`agent-filesystem.md`](agent-filesystem.md)) | M | Rounds and truncation on outline and page rows |
-| 5 | Truncation notes that name the next call | Grounding hits end in a bare `[truncated]` (`packages/agent/src/aiq_agent/common/grounding_block.py`), BIM lists say "N weitere" (`packages/agent/src/aiq_agent/tools/bim/rendering.py`); `list_files` already names `offset=` | those two, `packages/ris-adapter/src/lookup/grammar.py` | S | Re-fetches of the same document per turn |
-| 6 | Count argument rejections per tool, then `Literal` enums for fixed-value parameters | `is_argument_rejection` only sets a log level (`packages/agent/src/aiq_agent/common/callbacks.py`); NAT drops `Args:`; OpenAI: enums | `packages/agent/src/aiq_agent/common/callbacks.py`, tool input models | S, then M | `status:tool_rejected:<tool>`; schema work above ~2 % |
-| 7 | New `propose_file_change` operations: folder rename/move/delete, retag, archive with warning. **PD** for archive | Routes exist (§4); the BFF stays the single writer | `packages/agent/src/aiq_agent/tools/files/`, UI card executor | S each | Card accept rate; tidy-up fixture rows |
+| 5 | Truncation notes that name the next call | Grounding hits end in a bare `[truncated]` (`packages/agent/src/agent/common/grounding_block.py`), BIM lists say "N weitere" (`packages/agent/src/agent/tools/bim/rendering.py`); `list_files` already names `offset=` | those two, `packages/ris-adapter/src/lookup/grammar.py` | S | Re-fetches of the same document per turn |
+| 6 | Count argument rejections per tool, then `Literal` enums for fixed-value parameters | `is_argument_rejection` only sets a log level (`packages/agent/src/agent/common/callbacks.py`); the runtime drops `Args:`; OpenAI: enums | `packages/agent/src/agent/common/callbacks.py`, tool input models | S, then M | `status:tool_rejected:<tool>`; schema work above ~2 % |
+| 7 | New `propose_file_change` operations: folder rename/move/delete, retag, archive with warning. **PD** for archive | Routes exist (§4); the BFF stays the single writer | `packages/agent/src/agent/tools/files/`, UI card executor | S each | Card accept rate; tidy-up fixture rows |
 | 8 | ~~Re-probe `openrouter:tool_search`~~ **Closed 2026-10-27**: the self-rolled deferral (`common/deferred_tool_loading.py`) is removed and ADR-0048 superseded; a standards-based tool search is built new in its own change | Now server-managed and "works on any model and any provider" ([tool search][or-ts]); ADR-0048 measured the provider-native path | none | - | The new change measures: ballast probe tokens; BIM recall; NAT trace parses it (#635) |
 | 9 | Title-block metadata (Plannummer, Index, Maßstab, Datum, Geschoss) as `list_files` facets | v4 analysis has none of these; title-block reading is a VLM strength ([visual ingestion](visual-ingestion.md)); a drawing-layout benchmark reports F1 0.911 for Qwen3-VL ([arXiv 2607.18997][aec-layout]); Autodesk extracts them ([Autodesk][adsk]) | `packages/knowledge-layer/src/llamaindex/visual_analysis.py`, `packages/knowledge-layer/src/browse.py` | M | Field exact-match on the fixture |
 | 10 | `list_changes(since)` | "What came in since Monday"; Gemini Drive updates ([Drive][gdrive-updates]); `added_at` is on rows | `packages/knowledge-layer/src/browse.py` | S–M | Fixture row |
@@ -215,9 +215,9 @@ LLM events for 30 days, so there is no per-tool usage or error rate.
 | 12 | `compare_versions` | Every version's bytes are kept ([ADR-0054](../adr/0054-document-versions-and-the-publish-door.md)); [Bluebeam][bluebeam] overlay is the reference | new tool over `/versions/diff` | L | Planted changes in a two-revision fixture |
 | 13 | `open_document` with native PDF input | Tool outputs may carry `input_file` ([Responses tool calling][or-resp-tools]); gate on the model's `file` modality and pin `engine: native`, because the `mistral-ocr` fallback bills OpenRouter's key (bypasses BYOK) and ZDR does not cover plugins ([PDF][or-pdf], [ZDR][or-zdr]) | `packages/knowledge-layer/src/view_image.py` | M | Tokens per page against 3,896 rendered; the `EI2 30-C` scan |
 | 14 | Contextual chunk headers | −35 % top-20 failures, −49 % with BM25 ([contextual retrieval][a-cr]); only `file_name` and `page_label` reach the embedded text | `packages/knowledge-layer/src/llamaindex/section_chunking.py` | S | Dense and lexical arms on fixture qrels |
-| 15 | German compound splitting. Inflection is done: `knowledge_search(match="exact", stemmed=true)` matches `Fluchtwegbreite` and `Fluchtwegbreiten` both ways through a Snowball German index ([ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md)); a compound part still is not | `Fluchtwegbreiten` is unreachable from `Fluchtweg` (`packages/agent/src/aiq_agent/common/german_text.py`); [Braschler & Ripplinger][braschler]; [Postgres Hunspell][pg-dict] | `packages/agent/src/aiq_agent/common/german_text.py`, the `tsv` config | M | Lexical recall@k |
+| 15 | German compound splitting. Inflection is done: `knowledge_search(match="exact", stemmed=true)` matches `Fluchtwegbreite` and `Fluchtwegbreiten` both ways through a Snowball German index ([ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md)); a compound part still is not | `Fluchtwegbreiten` is unreachable from `Fluchtweg` (`packages/agent/src/agent/common/german_text.py`); [Braschler & Ripplinger][braschler]; [Postgres Hunspell][pg-dict] | `packages/agent/src/agent/common/german_text.py`, the `tsv` config | M | Lexical recall@k |
 | 16 | EU in-region routing. **PD** (plan tier) | No provider-region constraint today (`docs/compliance/external-dependencies.md`); needs Business/Enterprise; web search unavailable there ([IRR][or-irr]) | model picker, org settings | S–M | Latency; override models that drop out |
-| 17 | `cache_control` for Claude and Gemini overrides | A Claude override re-sends its prefix uncached 3–6 times per turn ([prompt caching][or-cache]) | `packages/agent/src/aiq_agent/common/prompt_caching.py` | S | `cached_tokens` per model family |
+| 17 | `cache_control` for Claude and Gemini overrides | A Claude override re-sends its prefix uncached 3–6 times per turn ([prompt caching][or-cache]) | `packages/agent/src/agent/common/prompt_caching.py` | S | `cached_tokens` per model family |
 | 18 | Provider metadata in traces | `X-OpenRouter-Metadata` returns routing decisions ([router metadata][or-meta]); rows 8 and 17 need it | LLM client headers | S | Provider and fallback per call |
 
 ## 6. Open decisions for the product owner
@@ -242,7 +242,7 @@ Repo: `pyproject.toml`; `configs/config_oib_openrouter.yml`;
 [turns audit](../audit/turns-per-answer-audit-2026-09.md),
 [turn latency](../audit/turn-latency-measured-2026-09.md),
 [hobble register](hobble-register-2026-09.md),
-[filesystem design](piloti-filesystem-design.md),
+[filesystem design](filesystem-design.md),
 [visual ingestion](visual-ingestion.md); the code paths in the tables above.
 
 External:
@@ -321,7 +321,7 @@ documents with the tool Piloti searches with.
   built workflow. It never signs (ADR-0108). The BFF is the signer, the backend
   the echo.
 - **Reads only.** The allowlist is `BACKEND_READ_TOOLS`
-  (`packages/agent/src/aiq_agent/common/backend_tools.py`); any other name is a 404 before the
+  (`packages/agent/src/agent/common/backend_tools.py`); any other name is a 404 before the
   workflow is asked. A write stays a BFF route, and Piloti's own writes stay
   proposals. A tool added to the allowlist promises that it only reads and that
   everything it reads is scoped by the envelope.
@@ -329,7 +329,7 @@ documents with the tool Piloti searches with.
   restricted-folder collections (ADR-0087, interactive chat only) are not in
   scope; what an outside agent searches is the project, the office shelf and the
   base corpus the person is cleared for.
-- **Not traced as a turn.** The call runs outside a NAT session, so it has no
+- **Not traced as a turn.** The call runs outside a runtime session, so it has no
   turn span. The model calls inside a tool (embeddings, the summary model) are
   still generations as everywhere else.
 
@@ -349,7 +349,7 @@ been uploaded and read).
 - **`documents_missing:` names unassigned roles, not absent files.** It is
   recommended document roles minus bound ones, and a document read under
   another name and never assigned is in it. `<project_record>` in
-  `piloti_static.md` now tells the agent to look (`list_files`,
+  `chat_static.md` now tells the agent to look (`list_files`,
   `knowledge_search`) before calling a document missing, and that absence
   from every list is never proof a file does not exist. The folder brief in
   Dateien shows people the same list.

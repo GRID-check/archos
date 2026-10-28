@@ -5,9 +5,9 @@ import 'server-only'
  * Piloti's MCP server reaches the workspace through the same route handlers a
  * browser does, so every rule that lives at a route (the `authz` declaration,
  * the rate limit, the tenant slot, the body schema) applies to an agent too.
- * Those handlers learn who is asking from ONE function, `getGridSession()`,
+ * Those handlers learn who is asking from ONE function, `getUserSession()`,
  * which reads the AuthKit cookie. An agent has no cookie. This module is the
- * other answer `getGridSession()` may give: the person the MCP endpoint already
+ * other answer `getUserSession()` may give: the person the MCP endpoint already
  * authenticated and resolved, bound to the async execution of one call.
  *
  * Only `lib/agent-api/dispatch.ts` enters it, and only with a session built by
@@ -39,7 +39,7 @@ interface ActingCall {
 
 const acting = new AsyncLocalStorage<ActingCall>()
 
-/** Run `fn` with `session` as the answer `getGridSession()` gives. */
+/** Run `fn` with `session` as the answer `getUserSession()` gives. */
 export function runAsActingSession<T>(
   session: AuthorizedSession,
   fn: () => Promise<T>,

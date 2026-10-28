@@ -113,7 +113,7 @@ model keeps writing card objects; only composition is A2UI-shaped.
   over the Piloti catalog draws a stored card with its fields intact, a
   `Tabs` surface one tab at a time, every child of a `Row`, and a surface it
   refuses as its cards.
-- `GridCards.render-coverage.spec.tsx`: every type in the card union renders
+- `AnswerCards.render-coverage.spec.tsx`: every type in the card union renders
   through `GridCardItem`, which is the A2UI path.
 - `tests/aiq_agent/cards/test_surface_card.py`: `a2ui-core` refuses a dangling
   reference, an orphan, a cycle and a duplicate id; each leaf is checked by its

@@ -24,7 +24,7 @@ const SESSION = vi.hoisted(() => ({
   userId: 'user_1',
   organizationId: 'org_1',
   organizationMembershipId: 'om_1',
-  email: 'anna@grid.test',
+  email: 'anna@example.test',
   name: 'Anna Berger',
   role: 'member',
   permissions: [] as string[],
@@ -254,8 +254,8 @@ beforeEach(() => {
   vi.mocked(requireResourceAccess).mockResolvedValue({} as never)
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(
     new Map([
-      ['user_1', person('user_1', 'Anna Berger', 'anna@grid.test')],
-      ['user_2', person('user_2', 'Bernd Huber', 'bernd@grid.test')],
+      ['user_1', person('user_1', 'Anna Berger', 'anna@example.test')],
+      ['user_2', person('user_2', 'Bernd Huber', 'bernd@example.test')],
     ])
   )
   vi.mocked(resolveProjectDocumentsByName).mockImplementation(async (_session, _project, names) =>
@@ -470,9 +470,9 @@ describe('POST /api/proposals/[id]/apply', () => {
 
   it('assigns the one member the name means, the decider included, and refuses an ambiguous name', async () => {
     vi.mocked(listAssignmentCandidates).mockResolvedValue([
-      person('user_2', 'Bernd Huber', 'bernd@grid.test'),
-      person('user_3', 'Chris Maier', 'chris@grid.test'),
-      person('user_4', 'Chris Maier', 'chris.m@grid.test'),
+      person('user_2', 'Bernd Huber', 'bernd@example.test'),
+      person('user_3', 'Chris Maier', 'chris@example.test'),
+      person('user_4', 'Chris Maier', 'chris.m@example.test'),
     ])
     vi.mocked(addResourceAssignment).mockResolvedValue([])
     store.set(
@@ -481,7 +481,7 @@ describe('POST /api/proposals/[id]/apply', () => {
         payload: {
           operation: 'assign',
           operations: [
-            { document: 'Schnitt A-A.pdf', member: 'bernd@grid.test' },
+            { document: 'Schnitt A-A.pdf', member: 'bernd@example.test' },
             { document: 'Schnitt A-A.pdf', member: 'Anna Berger' },
             { document: 'Schnitt A-A.pdf', member: 'Chris Maier' },
             { document: 'Schnitt A-A.pdf', member: 'Dora' },
@@ -1058,7 +1058,7 @@ describe('the audit trail of a proposal', () => {
       {
         action: 'piloti.proposal.decided',
         organizationId: 'org_1',
-        actor: { userId: 'user_1', email: 'anna@grid.test' },
+        actor: { userId: 'user_1', email: 'anna@example.test' },
         targetType: 'proposed_change',
         targetId: ID,
         alsoTargets: TARGETS,
@@ -1129,7 +1129,7 @@ describe('the audit trail of a proposal', () => {
       {
         action: 'piloti.proposal.created',
         organizationId: 'org_1',
-        actor: { userId: 'user_1', email: 'anna@grid.test' },
+        actor: { userId: 'user_1', email: 'anna@example.test' },
         targetType: 'proposed_change',
         targetId: ID,
         alsoTargets: TARGETS,

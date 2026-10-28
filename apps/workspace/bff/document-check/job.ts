@@ -32,7 +32,7 @@ import { isAuthzRefusal } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
-import { isPilotiNoticesEnabled } from '@/lib/authz/feature-flags'
+import { isAgentNoticesEnabled } from '@/lib/authz/feature-flags'
 import { unaskedSpendAllowed } from '@/lib/budgets/unasked-spend'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { listDocumentAnnotations } from '@/lib/annotations/repository'
@@ -264,7 +264,7 @@ export async function runDocumentCheckSlice(
   const done: Result = { done: true, payload }
   const session = await resolvePinnedRequesterSession({ ...payload.actor, organizationId })
   if (!session) return done
-  if (!isPilotiNoticesEnabled(session)) return done
+  if (!isAgentNoticesEnabled(session)) return done
   const document = await checkableDocument(session, payload.documentId)
   if (!document) return done
 

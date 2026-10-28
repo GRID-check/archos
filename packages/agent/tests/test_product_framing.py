@@ -33,7 +33,7 @@ def _lines(relative: str) -> list[tuple[int, str]]:
 
 
 @pytest.mark.parametrize("relative", FIRST_IMPRESSION + PROMPTS)
-def test_no_surface_frames_piloti_as_a_compliance_question_answerer(relative: str) -> None:
+def test_no_surface_frames_the_chat_agent_as_a_compliance_question_answerer(relative: str) -> None:
     hits = [f"{relative}:{number}: {line.strip()}" for number, line in _lines(relative) if OLD_FRAME.search(line)]
     assert hits == [], "Piloti is the workspace for architects (VISION.md):\n" + "\n".join(hits)
 
@@ -47,15 +47,13 @@ def test_no_prompt_calls_a_file_a_plan(relative: str) -> None:
 @pytest.mark.parametrize("name", ["orchestrator.j2", "planner.j2", "researcher.j2", "writer.j2"])
 def test_every_deep_research_prompt_introduces_the_agent_by_the_product_name(name: str) -> None:
     """The first line names the agent through ``{{ product_name }}`` (``common/brand.py``), never spelled."""
-    first_line = (ROOT / "packages/agent/src/aiq_agent/agents/deep_researcher/prompts" / name).read_text(
-        encoding="utf-8"
-    )
+    first_line = (ROOT / "packages/agent/src/agent/agents/deep_researcher/prompts" / name).read_text(encoding="utf-8")
     assert "{{ product_name }}" in first_line.splitlines()[0]
 
 
 def test_pilotis_role_is_the_office_colleague_who_works_in_the_workspace_before_it_knows_the_law() -> None:
     """The chat prompt's role leads with the work (ADR-0123): the workspace and its proposals first, the law later."""
-    static = (ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
+    static = (ROOT / "packages/agent/src/agent/agents/piloti/prompts/chat_static.md").read_text(encoding="utf-8")
     role = static.split("<role>", 1)[1].split("</role>", 1)[0]
     assert "colleague in this planning office" in role
     assert role.index("workspace") < role.index("building law")
@@ -64,7 +62,7 @@ def test_pilotis_role_is_the_office_colleague_who_works_in_the_workspace_before_
 
 def test_the_scan_sees_the_prompts() -> None:
     """A glob that silently matched nothing would pass every test above."""
-    assert "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md" in PROMPTS
+    assert "packages/agent/src/agent/agents/piloti/prompts/chat_static.md" in PROMPTS
     assert len(PROMPTS) >= 8
 
 
@@ -81,7 +79,7 @@ def _tool_descriptions() -> list[tuple[str, int, str]]:
     import ast
 
     found: list[tuple[str, int, str]] = []
-    for path in sorted((ROOT / "packages" / "agent" / "src" / "aiq_agent").rglob("*.py")):
+    for path in sorted((ROOT / "packages" / "agent" / "src" / "agent").rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             values: list[ast.AST] = []
@@ -113,8 +111,8 @@ def test_no_tool_description_calls_a_file_a_plan() -> None:
 def test_the_description_scan_sees_the_tools() -> None:
     """A walk that silently found nothing would pass the test above."""
     files = {relative for relative, _, _ in _tool_descriptions()}
-    assert "packages/agent/src/aiq_agent/tools/viewer/register.py" in files
-    assert "packages/agent/src/aiq_agent/tools/canvas/register.py" in files
+    assert "packages/agent/src/agent/tools/viewer/register.py" in files
+    assert "packages/agent/src/agent/tools/canvas/register.py" in files
     assert FILE_AS_PLAN_EN.search("the older Fassung of the same plan")
     assert not FILE_AS_PLAN_EN.search("reads the plan and research notes")
 
@@ -142,5 +140,5 @@ def test_the_scan_sees_the_packages() -> None:
     assert {
         "packages/agent/pyproject.toml",
         "packages/knowledge-layer/pyproject.toml",
-        "apps/backend/pyproject.toml",
+        "apps/agent-host/pyproject.toml",
     } <= set(PYPROJECTS)

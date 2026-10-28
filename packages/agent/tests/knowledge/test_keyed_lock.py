@@ -17,9 +17,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.knowledge import leader_lock
-from aiq_agent.knowledge.leader_lock import keyed_lock
-from aiq_agent.knowledge.leader_lock import keyed_lock_async
+from agent.knowledge import leader_lock
+from agent.knowledge.leader_lock import keyed_lock
+from agent.knowledge.leader_lock import keyed_lock_async
 
 
 @pytest.fixture(autouse=True)

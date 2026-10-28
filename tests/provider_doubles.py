@@ -1,7 +1,7 @@
-"""Model doubles the backend tests share: the provider-contract chat model and NAT's LangChain client shape.
+"""Model doubles the backend tests share: the provider-contract chat model and the runtime's LangChain client shape.
 
 A module of its own, not part of ``tests/conftest.py``: every test loads the
-conftest, and these need LangChain and NAT, which most tests never touch
+conftest, and these need LangChain and the agent runtime, which most tests never touch
 (docs/audit/blast-radius-2026-10.md). Import them where they are used.
 """
 
@@ -22,7 +22,7 @@ from nat.llm.openai_llm import OpenAIModelConfig
 
 
 def nat_langchain_client(model: Any) -> Any:
-    """What NAT 1.9's ``builder.get_llm(ref, wrapper_type=LANGCHAIN)`` returns:
+    """What the agent runtime 1.9's ``builder.get_llm(ref, wrapper_type=LANGCHAIN)`` returns:
     the chat model inside its ``RunnableConfigurableFields``, which
     ``get_langchain_llm`` takes it out of. A fake builder returns this, and
     answers ``get_llm_config`` with :data:`NAT_LLM_CONFIG`."""

@@ -190,7 +190,7 @@ def _eval_envelope():
     if not header:
         return
     signature = os.environ.get("EVAL_ENVELOPE_SIG", "")
-    from aiq_agent import project_context
+    from agent import project_context
 
     original = project_context._read_header
     given = {

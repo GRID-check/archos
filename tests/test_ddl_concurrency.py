@@ -129,7 +129,7 @@ def test_processes_that_create_the_schema_together_all_succeed(outcomes, site):
 
 
 def test_an_error_that_is_not_the_race_still_raises_and_leaves_nothing_behind():
-    from aiq_agent.common.db_utils import ensure_schema
+    from agent.common.db_utils import ensure_schema
 
     admin = create_engine(make_url(_SERVER).set(drivername="postgresql+psycopg"), isolation_level="AUTOCOMMIT")
     name = f"ddl_{uuid.uuid4().hex[:8]}_error"

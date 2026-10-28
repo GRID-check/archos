@@ -36,8 +36,8 @@ class _NoOutcome:
 
 
 try:  # the Grid agent draws one row per call (ADR-0132); the standalone dist has no agent package
-    from aiq_agent.common.action_outcome import ActionOutcome
-    from aiq_agent.common.action_rows import ActionRow
+    from agent.common.action_outcome import ActionOutcome
+    from agent.common.action_rows import ActionRow
 except ImportError:
     ActionOutcome = _NoOutcome  # type: ignore[assignment,misc]
     ActionRow = _NoRow  # type: ignore[assignment,misc]
@@ -140,7 +140,7 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
 
     def _max_results() -> int:
         try:
-            from aiq_agent.common.retrieval_settings import get_retrieval_setting
+            from agent.common.retrieval_settings import get_retrieval_setting
         except ImportError:  # standalone dist: the configured count is the only one there is
             return tool_config.max_results
         return get_retrieval_setting(settings_key, tool_config.max_results)
@@ -205,7 +205,7 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
 
                 outcome.hits = len(results)
                 try:
-                    from aiq_agent.common.turn_status import record_lane_hit as capture_lane_hit
+                    from agent.common.turn_status import record_lane_hit as capture_lane_hit
                 except ImportError:  # standalone dist without the Grid agent package
                     capture_lane_hit = None
                 if capture_lane_hit is not None:

@@ -16,15 +16,15 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.agents.piloti import answer_check
-from aiq_agent.agents.piloti import answer_pipeline
-from aiq_agent.agents.piloti.answer_check import TurnCheck
-from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-from aiq_agent.agents.piloti.ledger import assemble_result
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common.claim_judge import Evidence
-from aiq_agent.common.claim_judge import Finding
+from agent.agents.piloti import answer_check
+from agent.agents.piloti import answer_pipeline
+from agent.agents.piloti.answer_check import TurnCheck
+from agent.agents.piloti.answer_pipeline import finalize_answer
+from agent.agents.piloti.ledger import assemble_result
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common.claim_judge import Evidence
+from agent.common.claim_judge import Finding
 
 APPROVALS = (
     '{"items": [{"assignee": "Anna Berger", "status": "pending", "document": "Einreichplan EG"},'
@@ -226,8 +226,8 @@ async def test_a_record_never_enters_the_source_registry():
 
 
 async def test_a_locus_the_cited_passage_does_not_hold_is_labelled_in_the_answer():
-    from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
-    from aiq_agent.citations.entries import SourceEntry
+    from agent.citations.entries import DROPPED_CITATION_MARKER
+    from agent.citations.entries import SourceEntry
 
     registry = SourceRegistry()
     registry.add(
@@ -333,7 +333,7 @@ async def test_a_proposal_filed_last_turn_is_not_this_turns_report():
 
 
 def _hold_a_look(reading: str, name: str = "Grundriss_EG.pdf") -> None:
-    from aiq_agent.tools.look.cards import note_look
+    from agent.tools.look.cards import note_look
 
     resolved = SimpleNamespace(file_name=name, collection="proj_1", target=None)
     note_look(resolved, 2, [0.1, 0.1, 0.3, 0.2], question="Türbreite?", reading=reading)
@@ -343,9 +343,9 @@ def _hold_a_look(reading: str, name: str = "Grundriss_EG.pdf") -> None:
 
 
 def _look_place_entry(region=(0.1, 0.2, 0.3, 0.4)):
-    from aiq_agent.citations.extraction import extract_sources_from_tool_result
-    from aiq_agent.tools.look.place import place_facts
-    from aiq_agent.tools.look.place import render_place
+    from agent.citations.extraction import extract_sources_from_tool_result
+    from agent.tools.look.place import place_facts
+    from agent.tools.look.place import render_place
 
     resolved = SimpleNamespace(file_name="Schnitt A-A.pdf", collection="proj_1", target=None)
     text = render_place(
@@ -373,10 +373,10 @@ async def test_a_place_is_a_citation_and_no_grounding_for_the_law():
 
 
 async def test_the_look_scores_count_looks_and_say_whether_a_region_look_came_first(monkeypatch):
-    from aiq_agent.cards.registry import CardRegistry
-    from aiq_agent.cards.registry import reset_card_registry
-    from aiq_agent.cards.registry import set_card_registry
-    from aiq_agent.tools.look.cards import note_look
+    from agent.cards.registry import CardRegistry
+    from agent.cards.registry import reset_card_registry
+    from agent.cards.registry import set_card_registry
+    from agent.tools.look.cards import note_look
 
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
@@ -399,10 +399,10 @@ async def test_the_look_scores_count_looks_and_say_whether_a_region_look_came_fi
 
 
 async def test_an_overview_only_turn_that_states_a_drawing_value_scores_zero(monkeypatch):
-    from aiq_agent.cards.registry import CardRegistry
-    from aiq_agent.cards.registry import reset_card_registry
-    from aiq_agent.cards.registry import set_card_registry
-    from aiq_agent.tools.look.cards import note_look
+    from agent.cards.registry import CardRegistry
+    from agent.cards.registry import reset_card_registry
+    from agent.cards.registry import set_card_registry
+    from agent.tools.look.cards import note_look
 
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))

@@ -14,18 +14,18 @@ from typing import Any
 import pytest
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge import restricted_use as ru
-from aiq_agent.knowledge import scoping
-from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import admit_tool_results
-from aiq_agent.knowledge.restricted_use import begin_restricted_use
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
-from aiq_agent.knowledge.restricted_use import without_restricted
-from aiq_agent.knowledge.scoping import ScopedCollection
-from aiq_agent.project_context import GridRequestContext
+from agent.common import bff_http
+from agent.knowledge import restricted_use as ru
+from agent.knowledge import scoping
+from agent.knowledge.restricted_use import WITHHELD_NOTICE
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import admit_tool_results
+from agent.knowledge.restricted_use import begin_restricted_use
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import reset_restricted_use
+from agent.knowledge.restricted_use import without_restricted
+from agent.knowledge.scoping import ScopedCollection
+from agent.project_context import RequestContext
 
 VERTRAEGE = "proj_p1_r0123456789ab"
 PERSONAL = "proj_p1_rbbbbbbbbbbbb"
@@ -71,9 +71,9 @@ def _use(drawable=(), confined=False) -> RestrictedUse:
     )
 
 
-def _request(**fields) -> GridRequestContext:
+def _request(**fields) -> RequestContext:
     base = {"organization_id": "org", "user_id": "u1", "project_id": "p1", "collection_scope": SCOPE}
-    return GridRequestContext(**{**base, **fields})
+    return RequestContext(**{**base, **fields})
 
 
 class TestTurnStart:

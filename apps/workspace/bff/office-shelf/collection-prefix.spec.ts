@@ -1,4 +1,4 @@
-// @disk-inputs: ../../packages/agent/src/aiq_agent/common/source_kinds.py
+// @disk-inputs: ../../packages/agent/src/agent/common/source_kinds.py
 /**
  * @vitest-environment node
  */
@@ -13,7 +13,7 @@ import {
   officeShelfOrganizationId,
 } from './collection-prefix'
 
-const python = readFileSync(join(process.cwd(), '../../packages/agent/src/aiq_agent/common/source_kinds.py'), 'utf8')
+const python = readFileSync(join(process.cwd(), '../../packages/agent/src/agent/common/source_kinds.py'), 'utf8')
 const pythonConstant = (name: string): string => {
   const match = python.match(new RegExp(`^${name} = "([^"]+)"`, 'm'))
   if (!match) throw new Error(`${name} not found in source_kinds.py`)

@@ -18,14 +18,14 @@ import threading
 
 import pytest
 
-from aiq_agent import corpus_store
-from aiq_agent import oib_sync
-from aiq_agent.common import claim_queue
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.ingest_scheduler import PLATFORM_LANE
-from aiq_api.jobs import ingest_dispatch
+from agent import corpus_store
+from agent import oib_sync
+from agent.common import claim_queue
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.ingest_scheduler import PLATFORM_LANE
+from agent_host.jobs import ingest_dispatch
 from tests.corpus_job_fakes import FakeIngestor
 from tests.corpus_job_fakes import lose_the_workers_for as _lose_the_workers_for
 from tests.corpus_job_fakes import run_worker
@@ -299,7 +299,7 @@ class TestSync:
     def test_the_cycle_logs_what_it_did(self, ingestor, caplog):
         corpus_store.put("a.pdf", b"a")
 
-        with caplog.at_level(logging.INFO, logger="aiq_agent.oib_sync"):
+        with caplog.at_level(logging.INFO, logger="agent.oib_sync"):
             _sync()
 
         assert "enqueued=1" in caplog.text

@@ -2,7 +2,7 @@
  * The German spellings the research plan carried before the English names.
  *
  * One table per vocabulary, read-only, mirrored by
- * `packages/agent/src/aiq_agent/common/plan_vocabulary.py`. The plan travels as text (the
+ * `packages/agent/src/agent/common/plan_vocabulary.py`. The plan travels as text (the
  * `plan_json` fence in a stored message), as the edits the plan card sends
  * back (`approve {...}`) and inside a frozen task row; a message stored, a tab
  * left open or a pod not yet rolled from before the rename still holds the old

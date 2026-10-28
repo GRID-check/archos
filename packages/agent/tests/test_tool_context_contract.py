@@ -1,7 +1,7 @@
 """Every bound tool can run in every context it is bound into.
 
 A tool declares what it needs from the request context
-(`aiq_agent.project_context.TOOL_CONTEXT_REQUIREMENTS`); each entry path that
+(`agent.project_context.TOOL_CONTEXT_REQUIREMENTS`); each entry path that
 binds it must supply that. The chat path sets the headers on the WebSocket
 upgrade; the job worker injects them from the run's identity, and the signed
 envelope from the one the run carries (ADR-0108). These tests
@@ -16,21 +16,21 @@ from pathlib import Path
 import pytest
 import yaml
 
-from aiq_agent.project_context import ORGANIZATION_ID_HEADER
-from aiq_agent.project_context import PROJECT_ID_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from aiq_agent.project_context import TOOL_CONTEXT_REQUIREMENTS
-from aiq_api.jobs.run_envelope import envelope_headers_for_run
-from aiq_api.jobs.runner import WORKER_ENVELOPE_HEADERS
-from aiq_api.jobs.runner import WORKER_IDENTITY_HEADERS
+from agent.project_context import ORGANIZATION_ID_HEADER
+from agent.project_context import PROJECT_ID_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+from agent.project_context import TOOL_CONTEXT_REQUIREMENTS
+from agent_host.jobs.run_envelope import envelope_headers_for_run
+from agent_host.jobs.runner import WORKER_ENVELOPE_HEADERS
+from agent_host.jobs.runner import WORKER_IDENTITY_HEADERS
 
 ENVELOPE = (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER)
 
 #: Everything the worker can put on a run's tool context. The envelope counts
 #: only because the worker injects it whenever the run CARRIES one the BFF
 #: signed for its requester; it never makes one up (see the tests below, and
-#: `apps/backend/tests/test_run_envelope.py`).
+#: `apps/agent-host/tests/test_run_envelope.py`).
 WORKER_SUPPLIED_HEADERS = WORKER_IDENTITY_HEADERS + WORKER_ENVELOPE_HEADERS
 
 CONFIG = Path(__file__).resolve().parents[3] / "configs" / "config_oib_openrouter.yml"
@@ -42,7 +42,7 @@ def config() -> dict:
 
 
 def _bound_tool_types(config: dict, agent: str) -> dict[str, str]:
-    """Bound tool name -> its NAT function type, the identity the contract is keyed by."""
+    """Bound tool name -> its agent-runtime function type, the identity the contract is keyed by."""
     declared = {**config["functions"], **(config.get("function_groups") or {})}
     return {name: declared[name]["_type"] for name in config["functions"][agent]["tools"] if name in declared}
 

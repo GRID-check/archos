@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { appPullPolicy, backendImage } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext, hardenedJobSecurityContext } from "../platform/security";
@@ -107,8 +107,8 @@ export function appGrantsSql(): string {
 export function ensureTablesPython(): string {
   return [
     "import os",
-    "from aiq_agent.knowledge import ingest_queue",
-    "from aiq_api.jobs import queue",
+    "from agent.knowledge import ingest_queue",
+    "from agent_host.jobs import queue",
     "ingest_queue.ensure_table(ingest_queue.db_url())",
     'queue.ensure_research_queue_table(os.environ["NAT_JOB_STORE_DB_URL"])',
   ].join("\n");
@@ -116,7 +116,7 @@ export function ensureTablesPython(): string {
 
 export function installQueueScalerGrants(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   const jobsTables = jobsDatabaseTables();

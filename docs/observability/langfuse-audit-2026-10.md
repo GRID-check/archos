@@ -7,7 +7,7 @@ items at the end are the work list.
 ## How this was done
 
 Fifteen parallel read-only passes over the repository: the observability
-package, every call site of the trace helpers, prompt management, the NAT
+package, every call site of the trace helpers, prompt management, the agent runtime
 telemetry config, the BFF, the deletion workers, the feedback surfaces, the
 deployment, evaluation, the docs and audits, the cost ledger, turn-to-trace
 mapping, git history and other analytics tooling. Two more passes read
@@ -23,14 +23,14 @@ then checked against the code before anything was changed.
 | Feature | Free? | Before | After this change |
 |---|---|---|---|
 | Tracing, OTel ingestion | yes | yes, via the collector | unchanged |
-| Sessions | yes | yes (NAT sets `session.id`) | unchanged |
+| Sessions | yes | yes (the runtime sets `session.id`) | unchanged |
 | Users | yes | yes, behind `TRACE_IDENTITY_ATTRIBUTES` | unchanged |
 | Environments | yes | **no**: `deployment.environment` was a resource attribute Langfuse does not read as the environment | `langfuse.environment` on every span |
 | Releases | yes | **no**: the commit was on the log resource only | `langfuse.release` on every span, `service.version` on the trace resource |
 | Trace names | yes | `chat_deepresearcher_agent` | `chat-turn`, `research-job`, one per auxiliary feature |
 | Observation types (agent graphs) | yes | **no**: everything a plain span except generations | agent, generation, tool, retriever, chain, embedding, guardrail, evaluator |
-| Levels and status | yes | **no**: NAT never sets an error status | a failed turn's root is ERROR, a stopped one WARNING |
-| Root input/output (v4 replaces trace I/O) | yes | output was NAT's 50-item stream preview | output is the answer text |
+| Levels and status | yes | **no**: the runtime never sets an error status | a failed turn's root is ERROR, a stopped one WARNING |
+| Root input/output (v4 replaces trace I/O) | yes | output was the runtime's 50-item stream preview | output is the answer text |
 | Tags and metadata | yes | tenant tag, IFC facts, usage, dialect; all dropped with identity off | outcome, route, confidence, sources; independent of identity |
 | Token and cost tracking | yes | yes, incl. cached and reasoning buckets | plus the six auxiliary routes |
 | Prompt management | yes | one prompt (`piloti-system-static`), behind `LANGFUSE_PROMPTS_ENABLED`, which no environment sets | unchanged; see open items |
@@ -59,7 +59,7 @@ The version moved from 4.54.0 to **4.56.0**, released 2026-10-09.
    only the user and the tenant.
 2. **Six model calls were invisible.** Titles, project summaries, the
    consistency check, skill review, lesson distill and the feedback digest call
-   a model straight from a route, outside any NAT run. They left no span and no
+   a model straight from a route, outside any agent run. They left no span and no
    cost. Each is now a generation (`direct_trace.observed_generation`), and a
    contract test fails on a seventh.
 3. **The usage rollup's error flag never reached the trace.** Its docstring
@@ -118,8 +118,8 @@ needed.
    models carries a conversation id, so a title call does not group with its
    chat. Adding an optional `conversation_id` to the title request and sending
    it from the BFF closes it for the one route where it matters.
-7. **One more model call outside NAT.** The feedback digest's cause labelling
-   (`aiq_agent.common.feedback_causes.label_causes`) is not under `routes/`, so
+7. **One more model call outside the runtime.** The feedback digest's cause labelling
+   (`agent.common.feedback_causes.label_causes`) is not under `routes/`, so
    the contract test does not see it. Wrap it.
 8. **Embeddings and rerank have no observation.** Both are metered in the cost
    ledger and counted in the turn's totals, but no span is wrapped around the

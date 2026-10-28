@@ -48,7 +48,7 @@ import {
   onMarkReplied,
   onMarkSettledByPerson,
   onMarksSet,
-  onPilotiWrote,
+  onAgentWrote,
   onReplyDeleted,
   onReplyEdited,
   onWakeEnded,
@@ -220,13 +220,13 @@ describe('onWakeEnded', () => {
   })
 })
 
-describe('onPilotiWrote', () => {
+describe('onAgentWrote', () => {
   const write = { ...ref, onBehalfOf: 'user_me', assigneeUserId: null, replyId: null }
 
   it('asks the person the turn acted for when Piloti sets a Rückfrage nobody is responsible for', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue(mark({ status: 'proposed' }))
 
-    await onPilotiWrote({ ...write, what: 'question' })
+    await onAgentWrote({ ...write, what: 'question' })
 
     expect(emitted()).toMatchObject({
       recipientUserId: 'user_me',
@@ -243,7 +243,7 @@ describe('onPilotiWrote', () => {
   it('asks the responsible person instead when the mark has one', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue(mark())
 
-    await onPilotiWrote({ ...write, what: 'question', assigneeUserId: 'user_zustaendig' })
+    await onAgentWrote({ ...write, what: 'question', assigneeUserId: 'user_zustaendig' })
 
     expect(emitted().recipientUserId).toBe('user_zustaendig')
   })
@@ -253,7 +253,7 @@ describe('onPilotiWrote', () => {
       mark({ replies: [{ id: 'reply_1', body: 'Und die Absturzsicherung?' } as AnnotationRecord['replies'][number]] }),
     )
 
-    await onPilotiWrote({ ...write, what: 'reply', replyId: 'reply_1' })
+    await onAgentWrote({ ...write, what: 'reply', replyId: 'reply_1' })
 
     expect(emitted()).toMatchObject({ type: 'piloti.asks_you', payload: { excerpt: 'Und die Absturzsicherung?' } })
   })
@@ -261,7 +261,7 @@ describe('onPilotiWrote', () => {
   it('cuts a long question to a line', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue(mark({ body: `Frage\n${'sehr lang '.repeat(60)}` }))
 
-    await onPilotiWrote({ ...write, what: 'question' })
+    await onAgentWrote({ ...write, what: 'question' })
 
     const excerpt = emitted().payload?.excerpt as string
     expect(excerpt.length).toBeLessThanOrEqual(160)
@@ -270,7 +270,7 @@ describe('onPilotiWrote', () => {
   })
 
   it('says nothing about an ordinary mark', async () => {
-    await onPilotiWrote({ ...write, what: 'mark' })
+    await onAgentWrote({ ...write, what: 'mark' })
 
     expect(emitInboxItems).not.toHaveBeenCalled()
     expect(findDocumentAnnotation).not.toHaveBeenCalled()
@@ -285,7 +285,7 @@ describe('onPilotiWrote', () => {
   ])('says nothing for %s: it waits on nobody', async (_name, overrides) => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue(mark(overrides))
 
-    await onPilotiWrote({ ...write, what: 'reply', replyId: 'reply_1' })
+    await onAgentWrote({ ...write, what: 'reply', replyId: 'reply_1' })
 
     expect(emitInboxItems).not.toHaveBeenCalled()
   })
@@ -293,18 +293,18 @@ describe('onPilotiWrote', () => {
   it('says nothing when the mark is gone by now', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue(null)
 
-    await onPilotiWrote({ ...write, what: 'question' })
+    await onAgentWrote({ ...write, what: 'question' })
 
     expect(emitInboxItems).not.toHaveBeenCalled()
   })
 
   it('never throws into the turn when the mark cannot be read or the inbox write fails', async () => {
     vi.mocked(findDocumentAnnotation).mockRejectedValueOnce(new Error('database down'))
-    await expect(onPilotiWrote({ ...write, what: 'question' })).resolves.toBeUndefined()
+    await expect(onAgentWrote({ ...write, what: 'question' })).resolves.toBeUndefined()
 
     vi.mocked(findDocumentAnnotation).mockResolvedValue(mark())
     vi.mocked(emitInboxItems).mockRejectedValue(new Error('database down'))
-    await expect(onPilotiWrote({ ...write, what: 'question' })).resolves.toBeUndefined()
+    await expect(onAgentWrote({ ...write, what: 'question' })).resolves.toBeUndefined()
   })
 })
 
@@ -436,7 +436,7 @@ describe('markParticipants', () => {
 })
 
 describe('onAssigneeChanged', () => {
-  const act = { ...ref, actorUserId: 'user_anna', byPiloti: false, markText: 'Tür  T30\nfehlt', open: true, dueOn: null }
+  const act = { ...ref, actorUserId: 'user_anna', byAgent: false, markText: 'Tür  T30\nfehlt', open: true, dueOn: null }
 
   it('asks the new Zuständige, named by who did it, quoting the mark', async () => {
     await onAssigneeChanged({ ...act, previousAssigneeUserId: null, assigneeUserId: 'user_bob' })
@@ -469,7 +469,7 @@ describe('onAssigneeChanged', () => {
   })
 
   it('says Piloti did it for the asker when Piloti changed the mark', async () => {
-    await onAssigneeChanged({ ...act, byPiloti: true, previousAssigneeUserId: null, assigneeUserId: 'user_bob' })
+    await onAssigneeChanged({ ...act, byAgent: true, previousAssigneeUserId: null, assigneeUserId: 'user_bob' })
 
     expect(emitted()).toMatchObject({ actorUserId: 'user_anna', payload: { variant: 'piloti' } })
   })
@@ -515,7 +515,7 @@ describe('onAssigneeChanged', () => {
 })
 
 describe('onDueChanged', () => {
-  const act = { ...ref, actorUserId: 'user_anna', byPiloti: false, markText: 'Tür T30 fehlt', open: true }
+  const act = { ...ref, actorUserId: 'user_anna', byAgent: false, markText: 'Tür T30 fehlt', open: true }
 
   it('tells the Zuständige the new date, in the row they have for the mark, named by who moved it', async () => {
     await onDueChanged({ ...act, assigneeUserId: 'user_bob', dueOn: '2026-10-24' })
@@ -537,7 +537,7 @@ describe('onDueChanged', () => {
   })
 
   it('says the date was cleared, and that Piloti did it for the person it worked for', async () => {
-    await onDueChanged({ ...act, byPiloti: true, assigneeUserId: 'user_bob', dueOn: null })
+    await onDueChanged({ ...act, byAgent: true, assigneeUserId: 'user_bob', dueOn: null })
 
     expect(emitted()).toMatchObject({ actorUserId: 'user_anna', payload: { variant: 'due_cleared_piloti', dueOn: null } })
   })
@@ -575,7 +575,7 @@ describe('onMarkDue', () => {
 })
 
 describe('onMarkReplied', () => {
-  const reply = { ...ref, actorUserId: 'user_replier', byPiloti: false, markText: 'Tür T30 fehlt', replyText: 'Ist bestellt.' }
+  const reply = { ...ref, actorUserId: 'user_replier', byAgent: false, markText: 'Tür T30 fehlt', replyText: 'Ist bestellt.' }
   const thread = people({
     assigneeUserId: 'user_zustaendig',
     delegatedBy: 'user_delegator',
@@ -602,7 +602,7 @@ describe('onMarkReplied', () => {
 
     // The next row folds into this one and its payload merges: a quote
     // without mentions writes `[]` rather than inheriting Anna's.
-    await onMarkMoved({ ...ref, actorUserId: 'user_bob', byPiloti: false, markText: 'Tür T30 fehlt', move: 'resolved', mark: thread, mayOpen: everyone })
+    await onMarkMoved({ ...ref, actorUserId: 'user_bob', byAgent: false, markText: 'Tür T30 fehlt', move: 'resolved', mark: thread, mayOpen: everyone })
     expect(vi.mocked(emitInboxItems).mock.calls[1][0][0].payload).toMatchObject({ excerpt: 'Tür T30 fehlt', mentions: [] })
   })
 
@@ -621,7 +621,7 @@ describe('onMarkReplied', () => {
   })
 
   it('leaves out the person Piloti’s turn acted for, who woke it and hears that Piloti is done', async () => {
-    await onMarkReplied({ ...reply, actorUserId: 'user_delegator', byPiloti: true, mark: thread, mayOpen: everyone })
+    await onMarkReplied({ ...reply, actorUserId: 'user_delegator', byAgent: true, mark: thread, mayOpen: everyone })
 
     expect(recipients()).toEqual(['user_author', 'user_zustaendig', 'user_replier'])
     expect(vi.mocked(emitInboxItems).mock.calls[0][0][0].actorUserId).toBeNull()
@@ -630,7 +630,7 @@ describe('onMarkReplied', () => {
   it('leaves out the Zuständige Piloti’s open Rückfrage asks: they have that row', async () => {
     const question = { ...thread, authorKind: 'piloti' as const, acceptedBy: 'user_author', kind: 'question' as const }
 
-    await onMarkReplied({ ...reply, actorUserId: 'user_delegator', byPiloti: true, mark: question, mayOpen: everyone })
+    await onMarkReplied({ ...reply, actorUserId: 'user_delegator', byAgent: true, mark: question, mayOpen: everyone })
 
     expect(recipients()).toEqual(['user_author', 'user_replier'])
   })
@@ -652,7 +652,7 @@ describe('onMarkMentioned', () => {
   const said = {
     ...ref,
     actorUserId: 'user_writer',
-    byPiloti: false,
+    byAgent: false,
     markText: 'Tür T30 fehlt',
     text: '@Anna Berger   bitte\nprüfen',
     mentions: [{ targetId: 'user_anna', display: 'Anna Berger' }],
@@ -697,7 +697,7 @@ describe('onMarkMentioned', () => {
 })
 
 describe('onMarkMoved', () => {
-  const move = { ...ref, actorUserId: 'user_bob', byPiloti: false, markText: 'Tür T30 fehlt', mayOpen: everyone }
+  const move = { ...ref, actorUserId: 'user_bob', byAgent: false, markText: 'Tür T30 fehlt', mayOpen: everyone }
 
   it.each(['resolved', 'dismissed', 'reopened'] as const)('tells the author someone else %s their mark', async (moved) => {
     await onMarkMoved({ ...move, move: moved, mark: people() })

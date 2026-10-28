@@ -26,17 +26,17 @@ run, and read its counts before `--apply`.
 
 The fact **tokens** moved with the keys: `wien` is now `vienna`, `holzbau`
 `timber`, `wohnen` `residential`, `neubau` `new_build` (the table is
-`LEGACY_PROFILE_TOKENS` in `packages/agent/src/aiq_agent/profile_names.py`).
+`LEGACY_PROFILE_TOKENS` in `packages/agent/src/agent/profile_names.py`).
 
-The wire between the BFF and `aiq_api` changed with it: the boost weights are
+The wire between the BFF and `agent_host` changed with it: the boost weights are
 `building_class_adjacent`, `use`, `use_max` (were `gebaeudeklasse_adjacent`,
-`nutzung`, `nutzung_max`), and `aiq_api` stopped translating to German on the
-way to the store. `aiq_api` still accepts the German names on the request, so
+`nutzung`, `nutzung_max`), and `agent_host` stopped translating to German on the
+way to the store. `agent_host` still accepts the German names on the request, so
 a BFF pod that has not rolled yet keeps working.
 
 ## What reads both until the rewrite has run
 
-- **Filters** (`knowledge_layer/qdrant/scope.py`): a condition on a new name
+- **Filters** (`packages/knowledge-layer/src/qdrant/scope.py`): a condition on a new name
   matches the new name **or** the old one (`should`), with the German token for
   the old key; a negative condition (`$ne`, `$nin`) excludes both. That covers
   `read_passage`'s clause and outline filters, the `chunking != page` exclusion,
@@ -153,5 +153,5 @@ not the code alone.
 
 `doc_class` and `chunk_doc_class` still hold the German Dokumentart spelling
 (`qdrant_doc_class`, `QDRANT_DOC_CLASSES` in
-`packages/agent/src/aiq_agent/knowledge/document_classification.py`); that is a separate
+`packages/agent/src/agent/knowledge/document_classification.py`); that is a separate
 rename with its own fallback, and this script does not touch it.

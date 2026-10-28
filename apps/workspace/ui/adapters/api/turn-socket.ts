@@ -9,7 +9,7 @@
  *   speaks v2. Until it arrives the socket is not `open` and sends nothing. A
  *   socket that stays silent for {@link HELLO_TIMEOUT_MS}, or opens with
  *   anything else, reached a server that does not speak this wire (an agent
- *   rolled back to NAT's stock socket accepts the upgrade and ignores `?v=2`):
+ *   rolled back to the agent runtime's stock socket accepts the upgrade and ignores `?v=2`):
  *   the attempt failed, and when the ladder is spent the status is
  *   `incompatible`, not `failed`, because the network is fine.
  * - **Optional fields, by the hello.** The server reads what the client sends

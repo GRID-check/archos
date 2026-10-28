@@ -57,5 +57,5 @@ const server = http.createServer((req, res) => {
   handler(req, res)
 })
 server.listen(PORT, HOST, () => {
-  console.log(`piloti-web listening on http://${HOST}:${PORT}`)
+  console.log(`site-web listening on http://${HOST}:${PORT}`)
 })

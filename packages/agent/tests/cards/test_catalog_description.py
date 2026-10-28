@@ -7,13 +7,13 @@ tests pin that difference, and pin that the description stays derived from the
 models rather than drifting into a hand-maintained list.
 """
 
-from aiq_agent.cards.catalog import INTERACTIVE_CARD_TYPES
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.catalog import describe_card_catalog
-from aiq_agent.cards.catalog import render_card_catalog
-from aiq_agent.cards.models import GridCard
+from agent.cards.catalog import INTERACTIVE_CARD_TYPES
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.catalog import describe_card_catalog
+from agent.cards.catalog import render_card_catalog
+from agent.cards.models import AnswerCard
 
-_CARD_TYPES = [getattr(c.model_fields["type"].annotation, "__args__", ("?",))[0] for c in GridCard.__args__]
+_CARD_TYPES = [getattr(c.model_fields["type"].annotation, "__args__", ("?",))[0] for c in AnswerCard.__args__]
 
 
 def test_describes_every_union_member():

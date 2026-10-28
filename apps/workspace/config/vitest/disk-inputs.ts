@@ -32,7 +32,7 @@ export const DECLARATION = /^\s*\/\/\s*@disk-inputs:\s*(.+)$/m
 export const SPAWNS = /['"](?:node:)?child_process['"]/
 
 type State = { reads: Set<string>; installed: boolean }
-const KEY = Symbol.for('grid.disk-inputs')
+const KEY = Symbol.for('vitest.disk-inputs')
 const state: State = ((globalThis as Record<symbol, State>)[KEY] ??= { reads: new Set(), installed: false })
 
 /** A read that counts as an input: inside the repository, outside installed packages and build output. */

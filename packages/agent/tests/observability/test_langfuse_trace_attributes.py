@@ -7,7 +7,7 @@ Two things are worth pinning here, and they are not the same thing:
    attribute. Get a name wrong and Langfuse silently ignores the attribute:
    traces still arrive, they are just anonymous. Nothing errors, so only a test
    catches it.
-2. **The pipeline position** — the processor must run BEFORE NAT's redaction
+2. **The pipeline position** — the processor must run BEFORE the agent runtime's redaction
    processor, or attributes naming a person can never be redacted while
    `redaction_attributes` still claims to cover them.
 """
@@ -18,14 +18,14 @@ import pytest
 from agent_testing.langfuse import ENDPOINT
 from agent_testing.langfuse import _make_config
 
-from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
-from aiq_agent.observability.langfuse_trace_attributes import SESSION_ID_ATTRIBUTE
-from aiq_agent.observability.langfuse_trace_attributes import TAGS_ATTRIBUTE
-from aiq_agent.observability.langfuse_trace_attributes import LangfuseTraceAttributeProcessor
-from aiq_agent.observability.langfuse_trace_attributes import identity_attributes_enabled
-from aiq_agent.observability.langfuse_trace_attributes import langfuse_attributes_for
-from aiq_agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
-from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
+from agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
+from agent.observability.langfuse_trace_attributes import SESSION_ID_ATTRIBUTE
+from agent.observability.langfuse_trace_attributes import TAGS_ATTRIBUTE
+from agent.observability.langfuse_trace_attributes import LangfuseTraceAttributeProcessor
+from agent.observability.langfuse_trace_attributes import identity_attributes_enabled
+from agent.observability.langfuse_trace_attributes import langfuse_attributes_for
+from agent.observability.otel_header_redaction_exporter import OtelCollectorRedactionTelemetryExporter
+from agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 
 
 class TestAttributeMapping:
@@ -45,7 +45,7 @@ class TestAttributeMapping:
 
     def test_omits_absent_fields_rather_than_inventing_placeholders(self):
         """
-        NAT writes the string "unknown" for its own absent context fields. Doing
+        The agent runtime writes the string "unknown" for its own absent context fields. Doing
         that here would be actively wrong: Langfuse would group every anonymous
         request into one shared session — inventing a conversation that never
         happened.
@@ -54,7 +54,7 @@ class TestAttributeMapping:
 
     def test_never_blanks_out_the_session_id_nat_already_set(self):
         """
-        NAT's span exporter sets `session.id` from the conversation id at span
+        The agent runtime's span exporter sets `session.id` from the conversation id at span
         creation. When our own read comes back empty we must add nothing, not
         write an empty `langfuse.session.id` — Langfuse prefers the prefixed
         attribute, so an empty one would OVERRIDE a good value.
@@ -72,7 +72,7 @@ class TestAttributeMapping:
 
 
 class TestUserAttributionIsNats:
-    """The user half is NAT's since 1.9 (#2152): the span exporter stamps `user.id`,
+    """The user half is the agent runtime's since 1.9 (#2152): the span exporter stamps `user.id`,
     which Langfuse maps to the trace's user, from the session's `user_id`, and the
     chat socket opens every session with the verified subject
     (`test_chat_socket.py` pins that half)."""
@@ -111,7 +111,7 @@ class TestUserAttributionIsNats:
         # With identity attributes off (the default), neither reaches the trace store.
         import asyncio
 
-        from aiq_agent.observability.langfuse_trace_attributes import UserIdentityStripProcessor
+        from agent.observability.langfuse_trace_attributes import UserIdentityStripProcessor
 
         stripped = asyncio.run(UserIdentityStripProcessor().process(span))
         assert not [key for key in stripped.attributes if key == "user.id" or key.endswith(".user.id")]
@@ -145,7 +145,7 @@ class TestProcessor:
         from nat.data_models.span import Span
 
         monkeypatch.setattr(
-            "aiq_agent.observability.langfuse_trace_attributes.current_langfuse_attributes",
+            "agent.observability.langfuse_trace_attributes.current_langfuse_attributes",
             lambda: {"langfuse.trace.metadata.organization_id": "org_456", SESSION_ID_ATTRIBUTE: "conv_abc"},
         )
 
@@ -167,7 +167,7 @@ class TestProcessor:
             raise RuntimeError("context is gone")
 
         monkeypatch.setattr(
-            "aiq_agent.project_context.GridRequestContext.from_context",
+            "agent.project_context.RequestContext.from_context",
             staticmethod(explode),
         )
 
@@ -210,7 +210,7 @@ class TestPipelineWiring:
 
         monkeypatch.setenv(IDENTITY_ATTRIBUTES_ENV, "true")
         monkeypatch.setattr(
-            "aiq_agent.observability.langfuse_trace_attributes.current_langfuse_attributes",
+            "agent.observability.langfuse_trace_attributes.current_langfuse_attributes",
             lambda: {"langfuse.trace.metadata.organization_id": "org_456"},
         )
 
@@ -247,15 +247,15 @@ class TestToolContributions:
 
     @pytest.fixture(autouse=True)
     def _clean(self):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
 
         reset_contributions()
         yield
         reset_contributions()
 
     def test_recorded_facts_are_namespaced_like_the_identity_metadata(self):
-        from aiq_agent.observability.langfuse_trace_attributes import _CONTRIBUTED
-        from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
+        from agent.observability.langfuse_trace_attributes import _CONTRIBUTED
+        from agent.observability.langfuse_trace_attributes import record_trace_metadata
 
         record_trace_metadata(ifc_op="compliance", ifc_model="haus.ifc", ifc_truncated=True)
 
@@ -274,8 +274,8 @@ class TestToolContributions:
         # "Show me this organization's traces" and "show me the turns that read
         # a building model" are both trace-list filters, and losing the first to
         # gain the second would be a bad trade in a multi-tenant store.
-        from aiq_agent.observability.langfuse_trace_attributes import _CONTRIBUTED
-        from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
+        from agent.observability.langfuse_trace_attributes import _CONTRIBUTED
+        from agent.observability.langfuse_trace_attributes import add_trace_tag
 
         add_trace_tag("feature:ifc")
         add_trace_tag("feature:ifc")
@@ -292,8 +292,8 @@ class TestToolContributions:
     def test_absent_values_are_dropped_here_too(self):
         # Same rule as the identity fields: Langfuse renders what it is given,
         # and `ifc_model=None` reads as a model actually called "None".
-        from aiq_agent.observability.langfuse_trace_attributes import _CONTRIBUTED
-        from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
+        from agent.observability.langfuse_trace_attributes import _CONTRIBUTED
+        from agent.observability.langfuse_trace_attributes import record_trace_metadata
 
         record_trace_metadata(ifc_op="overview", ifc_model=None, ifc_truncated=None)
 
@@ -306,8 +306,8 @@ class TestToolContributions:
 
     def test_recording_never_raises_into_the_turn(self):
         # Telemetry enrichment must not be able to fail the answer it describes.
-        from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
-        from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
+        from agent.observability.langfuse_trace_attributes import add_trace_tag
+        from agent.observability.langfuse_trace_attributes import record_trace_metadata
 
         class Unhashable:
             __hash__ = None  # type: ignore[assignment]
@@ -336,7 +336,7 @@ class TestContributionIsolation:
 
     @pytest.fixture(autouse=True)
     def _clean(self):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
 
         reset_contributions()
         yield
@@ -344,11 +344,11 @@ class TestContributionIsolation:
 
     def test_next_job_starts_clean_after_previous_job_contributed(self):
         # Job N on a reused worker contributes, then its `finally` restores.
-        from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
-        from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import add_trace_tag
+        from agent.observability.langfuse_trace_attributes import begin_trace_contributions
+        from agent.observability.langfuse_trace_attributes import end_trace_contributions
+        from agent.observability.langfuse_trace_attributes import record_trace_metadata
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         job_n = begin_trace_contributions()
         try:
@@ -378,9 +378,9 @@ class TestContributionIsolation:
     async def test_concurrent_researchers_do_not_cross_contaminate(self):
         import asyncio
 
-        from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
-        from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import add_trace_tag
+        from agent.observability.langfuse_trace_attributes import record_trace_metadata
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         # Parent contributes first so both children inherit the SAME dict object.
         # With in-place mutation both appends land in that shared object.
@@ -407,9 +407,9 @@ class TestContributionIsolation:
     async def test_export_task_snapshot_is_frozen_against_later_writes(self):
         import asyncio
 
-        from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
-        from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import add_trace_tag
+        from agent.observability.langfuse_trace_attributes import record_trace_metadata
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         record_trace_metadata(ifc_op="early")
 
@@ -428,8 +428,8 @@ class TestContributionIsolation:
         assert "feature:ifc" not in exported["tags"]
 
     def test_snapshot_holds_no_live_reference(self):
-        from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import record_trace_metadata
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         record_trace_metadata(ifc_op="early")
         snap = snapshot_contributions()
@@ -446,7 +446,7 @@ class TestUsageObservationMapping:
     """Input/output/total (+cost) onto generation observations.
 
     Production showed empty `usageDetails`/`costDetails` on every generation:
-    NAT's exporter sets only `llm.token_count.*` (token-only, and zero
+    The agent runtime's exporter sets only `llm.token_count.*` (token-only, and zero
     whenever `usage_metadata` was absent), while Langfuse's OTel ingestion
     maps `gen_ai.usage.*` / `langfuse.observation.*`. These pin the mirror.
     """
@@ -454,13 +454,13 @@ class TestUsageObservationMapping:
     def test_provider_verbatim_counts_and_exclusive_detail_buckets(self):
         import json
 
-        from aiq_agent.observability.langfuse_trace_attributes import GEN_AI_REQUEST_MODEL
-        from aiq_agent.observability.langfuse_trace_attributes import GEN_AI_USAGE_INPUT_TOKENS
-        from aiq_agent.observability.langfuse_trace_attributes import GEN_AI_USAGE_OUTPUT_TOKENS
-        from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_COST_DETAILS
-        from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_MODEL_NAME
-        from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_USAGE_DETAILS
-        from aiq_agent.observability.langfuse_trace_attributes import usage_observation_attributes
+        from agent.observability.langfuse_trace_attributes import GEN_AI_REQUEST_MODEL
+        from agent.observability.langfuse_trace_attributes import GEN_AI_USAGE_INPUT_TOKENS
+        from agent.observability.langfuse_trace_attributes import GEN_AI_USAGE_OUTPUT_TOKENS
+        from agent.observability.langfuse_trace_attributes import OBSERVATION_COST_DETAILS
+        from agent.observability.langfuse_trace_attributes import OBSERVATION_MODEL_NAME
+        from agent.observability.langfuse_trace_attributes import OBSERVATION_USAGE_DETAILS
+        from agent.observability.langfuse_trace_attributes import usage_observation_attributes
 
         attributes = usage_observation_attributes(
             prompt_tokens=1204,
@@ -491,9 +491,9 @@ class TestUsageObservationMapping:
     def test_token_only_fallback_omits_cost_and_model(self):
         import json
 
-        from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_COST_DETAILS
-        from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_USAGE_DETAILS
-        from aiq_agent.observability.langfuse_trace_attributes import usage_observation_attributes
+        from agent.observability.langfuse_trace_attributes import OBSERVATION_COST_DETAILS
+        from agent.observability.langfuse_trace_attributes import OBSERVATION_USAGE_DETAILS
+        from agent.observability.langfuse_trace_attributes import usage_observation_attributes
 
         attributes = usage_observation_attributes(prompt_tokens=100, completion_tokens=20, total_tokens=120)
 
@@ -510,7 +510,7 @@ class TestExtractProviderUsage:
     def test_reads_the_openrouter_object_inside_span_metadata(self):
         import json
 
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
 
         metadata = json.dumps(
             {
@@ -546,7 +546,7 @@ class TestExtractProviderUsage:
         """A missing cost is unknown, not free — zero would read as free."""
         import json
 
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
 
         token_usage = {"prompt_tokens": 10, "completion_tokens": 5}
         metadata = json.dumps({"chat_responses": [{"message": {"response_metadata": {"token_usage": token_usage}}}]})
@@ -556,7 +556,7 @@ class TestExtractProviderUsage:
         assert usage["cost_usd"] is None
 
     def test_no_usage_object_is_absent_not_zeroed(self):
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
 
         assert extract_provider_usage('{"chat_responses": []}') is None
         assert extract_provider_usage("not-json") is None
@@ -619,7 +619,7 @@ class TestUsageComesFromTheResponseSideOnly:
         return json.dumps(payload)
 
     def test_the_prompt_history_never_answers_for_this_call(self):
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
 
         usage = extract_provider_usage(self._metadata(inputs=True, responses=True))
 
@@ -634,12 +634,12 @@ class TestUsageComesFromTheResponseSideOnly:
 
     def test_usage_only_on_the_input_side_is_absent(self):
         """Falling through to ``llm.token_count.*`` beats reporting another call's numbers."""
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
 
         assert extract_provider_usage(self._metadata(inputs=True, responses=False)) is None
 
     def test_tool_inputs_are_not_read_either(self):
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
 
         metadata = json.dumps(
             {
@@ -682,7 +682,7 @@ class TestResponsesApiSpanUsage:
     )
 
     def test_cached_and_reasoning_tokens_are_recovered(self):
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
 
         usage = extract_provider_usage(self.METADATA)
         assert usage == {
@@ -695,9 +695,9 @@ class TestResponsesApiSpanUsage:
         }
 
     def test_the_cached_bucket_reaches_the_observation_attributes(self):
-        from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_USAGE_DETAILS
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
-        from aiq_agent.observability.langfuse_trace_attributes import usage_observation_attributes
+        from agent.observability.langfuse_trace_attributes import OBSERVATION_USAGE_DETAILS
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import usage_observation_attributes
 
         usage = extract_provider_usage(self.METADATA)
         attributes = usage_observation_attributes(
@@ -716,7 +716,7 @@ class TestResponsesApiSpanUsage:
         assert details["output"] == 514 - 192
 
     def test_the_provider_object_still_wins_when_both_are_present(self):
-        from aiq_agent.observability.langfuse_trace_attributes import extract_provider_usage
+        from agent.observability.langfuse_trace_attributes import extract_provider_usage
 
         metadata = json.dumps(
             {
@@ -746,7 +746,7 @@ class TestResponsesApiSpanUsage:
 
 class TestSpanTokenCounts:
     def test_zero_counts_are_absent_not_zeroed(self):
-        from aiq_agent.observability.langfuse_trace_attributes import extract_span_token_counts
+        from agent.observability.langfuse_trace_attributes import extract_span_token_counts
 
         assert extract_span_token_counts({}) is None
         assert (
@@ -761,7 +761,7 @@ class TestSpanTokenCounts:
         )
 
     def test_partial_counts_still_land(self):
-        from aiq_agent.observability.langfuse_trace_attributes import extract_span_token_counts
+        from agent.observability.langfuse_trace_attributes import extract_span_token_counts
 
         assert extract_span_token_counts({"llm.token_count.prompt": 50}) == {
             "prompt_tokens": 50,
@@ -784,7 +784,7 @@ class TestUsageAttributeProcessor:
         return Span(name="openrouter/deepseek-v4", attributes=base)
 
     async def test_llm_span_gains_the_gen_ai_namespace(self):
-        from aiq_agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
+        from agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
 
         span = await UsageAttributeProcessor().process(self._llm_span())
 
@@ -794,8 +794,8 @@ class TestUsageAttributeProcessor:
 
     async def test_a_decision_span_gains_its_tokens_cost_and_model_from_its_own_output(self):
         """Jev bypasses LangChain (ADR-0064): its usage rides the decide.* observation's output."""
-        from aiq_agent.observability.decision_trace import decision_observation
-        from aiq_agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
+        from agent.observability.decision_trace import decision_observation
+        from agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
         from nat.data_models.span import Span
 
         _, body_out = decision_observation(
@@ -819,7 +819,7 @@ class TestUsageAttributeProcessor:
     async def test_provider_object_in_metadata_beats_bare_counts(self):
         import json
 
-        from aiq_agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
+        from agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
 
         metadata = json.dumps(
             {
@@ -855,7 +855,7 @@ class TestUsageAttributeProcessor:
         provider object still in the metadata. The span must still land usage."""
         import json
 
-        from aiq_agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
+        from agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
 
         metadata = json.dumps(
             {
@@ -875,7 +875,7 @@ class TestUsageAttributeProcessor:
         assert span.attributes["gen_ai.usage.output_tokens"] == 8
 
     async def test_non_llm_spans_pass_through_untouched(self):
-        from aiq_agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
+        from agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
         from nat.data_models.span import Span
 
         span = Span(name="knowledge_search", attributes={"nat.event_type": "TOOL_START"})
@@ -885,7 +885,7 @@ class TestUsageAttributeProcessor:
         assert "gen_ai.usage.input_tokens" not in result.attributes
 
     async def test_llm_span_without_any_usage_stays_absent_not_zeroed(self):
-        from aiq_agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
+        from agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
         from nat.data_models.span import Span
 
         span = Span(name="m", attributes={"nat.event_type": "LLM_START"})
@@ -897,8 +897,8 @@ class TestUsageAttributeProcessor:
 
 class TestUsagePipelineWiring:
     async def test_installed_without_the_identity_flag_and_ahead_of_redaction(self, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
-        from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
+        from agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
+        from agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 
         monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
 
@@ -906,9 +906,9 @@ class TestUsagePipelineWiring:
             positions = exporter._processor_names
 
             # Usage counts are not personal data: no env gate, unlike identity.
-            assert "grid_usage_attributes" in positions
+            assert "usage_attributes" in positions
             assert "langfuse_trace_attributes" not in positions
-            assert positions["grid_usage_attributes"] < positions["header_redaction"]
+            assert positions["usage_attributes"] < positions["header_redaction"]
 
 
 class TestPosthogSessionLink:
@@ -917,8 +917,8 @@ class TestPosthogSessionLink:
     SESSION = "0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70"
 
     def test_the_metadata_key_is_the_one_langfuse_reads(self):
-        from aiq_agent.observability.langfuse_trace_attributes import METADATA_PREFIX
-        from aiq_agent.observability.langfuse_trace_attributes import POSTHOG_SESSION_METADATA_KEY
+        from agent.observability.langfuse_trace_attributes import METADATA_PREFIX
+        from agent.observability.langfuse_trace_attributes import POSTHOG_SESSION_METADATA_KEY
 
         assert POSTHOG_SESSION_METADATA_KEY == "$posthog_session_id"
         assert f"{METADATA_PREFIX}{POSTHOG_SESSION_METADATA_KEY}" == "langfuse.trace.metadata.$posthog_session_id"
@@ -928,7 +928,7 @@ class TestPosthogSessionLink:
         [SESSION, SESSION.upper(), f"  {SESSION} "],
     )
     def test_a_uuid_v7_is_accepted_and_normalized(self, value):
-        from aiq_agent.observability.langfuse_trace_attributes import posthog_session_id_or_none
+        from agent.observability.langfuse_trace_attributes import posthog_session_id_or_none
 
         assert posthog_session_id_or_none(value) == self.SESSION
 
@@ -946,14 +946,14 @@ class TestPosthogSessionLink:
         ],
     )
     def test_anything_else_is_not_a_session_id(self, value):
-        from aiq_agent.observability.langfuse_trace_attributes import posthog_session_id_or_none
+        from agent.observability.langfuse_trace_attributes import posthog_session_id_or_none
 
         assert posthog_session_id_or_none(value) is None
 
     def test_it_rides_the_identity_switch_and_lands_in_the_turns_metadata(self, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import record_posthog_session
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import record_posthog_session
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         reset_contributions()
         monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
@@ -967,7 +967,7 @@ class TestPosthogSessionLink:
         reset_contributions()
 
     def test_the_span_attribute_is_the_trace_metadata_namespace(self):
-        from aiq_agent.observability.langfuse_trace_attributes import langfuse_attributes_for
+        from agent.observability.langfuse_trace_attributes import langfuse_attributes_for
 
         attributes = langfuse_attributes_for(
             organization_id=None,
@@ -985,9 +985,9 @@ class TestLessonsMetadata:
     LESSON_B = "9b2f6c1a-7d3e-4c1b-8a55-1f0e2d3c4b5a"
 
     def test_the_arm_and_the_lessons_land_in_the_turns_metadata_without_the_identity_switch(self, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import record_lessons
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import record_lessons
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         reset_contributions()
         monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
@@ -999,9 +999,9 @@ class TestLessonsMetadata:
         reset_contributions()
 
     def test_a_turn_with_no_lessons_records_the_arm_alone(self):
-        from aiq_agent.observability.langfuse_trace_attributes import record_lessons
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import record_lessons
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         reset_contributions()
         record_lessons("holdout", ())

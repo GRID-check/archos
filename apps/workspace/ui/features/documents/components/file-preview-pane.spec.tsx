@@ -1113,7 +1113,7 @@ describe('FilePreviewPane', () => {
       expect(screen.getByText(LONG_SUMMARY).className).toContain('line-clamp-5')
       expect(screen.getByRole('button', { name: /full summary/i })).toBeDefined()
       // The rail's other sections are rendered, not pushed out of the tree.
-      expect(screen.getByTestId('piloti-reading')).toBeInTheDocument()
+      expect(screen.getByTestId('agent-reading')).toBeInTheDocument()
     })
 
     it('expands and collapses on request', async () => {

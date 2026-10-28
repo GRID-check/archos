@@ -22,17 +22,17 @@ from unittest.mock import patch
 
 from langchain_core.tools import tool
 
-from aiq_agent.agents.deep_researcher import factory as factory_module
-from aiq_agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
-from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
-from aiq_agent.agents.deep_researcher.factory import build_deep_research_graph
-from aiq_agent.agents.deep_researcher.factory import build_deep_research_middleware_set
-from aiq_agent.agents.deep_researcher.factory import build_deep_research_tool_set
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.agents.deep_researcher.models import ResearchNotes
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common import load_prompt
+from agent.agents.deep_researcher import factory as factory_module
+from agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
+from agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
+from agent.agents.deep_researcher.factory import build_deep_research_graph
+from agent.agents.deep_researcher.factory import build_deep_research_middleware_set
+from agent.agents.deep_researcher.factory import build_deep_research_tool_set
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.deep_researcher.models import ResearchNotes
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common import load_prompt
 
 PROMPTS_DIR = Path(factory_module.__file__).parent / "prompts"
 PROMPT_NAMES = ("planner", "researcher", "orchestrator", "writer", "source_router")
@@ -102,15 +102,15 @@ def _rendered_agents() -> dict[str, dict[str, object]]:
 
     with (
         patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=fake_graph,
         ) as create_orchestrator,
         patch(
-            "aiq_agent.agents.deep_researcher.factory.create_agent",
+            "agent.agents.deep_researcher.factory.create_agent",
             return_value=MagicMock(),
         ) as create_researcher,
         patch(
-            "aiq_agent.agents.deep_researcher.factory.create_summarization_middleware",
+            "agent.agents.deep_researcher.factory.create_summarization_middleware",
             return_value=MagicMock(),
         ),
     ):

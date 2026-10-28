@@ -22,12 +22,12 @@
  * provide relief — visible labels or an always-open table — so a value is never
  * reachable through colour alone.
  *
- * The values below are MIRRORED from `app/globals.css` (`.grid-spend-viz`),
+ * The values below are MIRRORED from `app/globals.css` (`.spend-viz`),
  * which is authoritative — see the TWIN WARNING above the arrays.
  *
- * Consumers style marks with `var(--grid-series-N)` / `--grid-series-other`
+ * Consumers style marks with `var(--chart-series-N)` / `--chart-series-other`
  * inside an element that renders <SeriesPaletteStyle/> and carries the
- * `grid-usage-viz` class — dark steps switch under `.dark` automatically.
+ * `usage-viz` class — dark steps switch under `.dark` automatically.
  */
 
 import type { FC } from 'react'
@@ -35,8 +35,8 @@ import type { FC } from 'react'
 /* ── TWIN WARNING ─────────────────────────────────────────────────────────────
  *
  * These eight+one values also exist in `app/globals.css` as
- * `--spend-series-1…8` / `--spend-other` under `.grid-spend-viz` (light) and
- * `.dark .grid-spend-viz` — one palette written down twice, which is one copy
+ * `--spend-series-1…8` / `--spend-other` under `.spend-viz` (light) and
+ * `.dark .spend-viz` — one palette written down twice, which is one copy
  * too many.
  *
  * **`app/globals.css` is AUTHORITATIVE.** It carries the validator transcript
@@ -47,9 +47,9 @@ import type { FC } from 'react'
  * mirror it here. Never the other way round.
  *
  * Why this file cannot simply read the twin, which was the preferred fix:
- * `--spend-series-*` are declared on the `.grid-spend-viz` SCOPE, not on
- * `:root`, so `.grid-usage-viz { --grid-series-1: var(--spend-series-1) }`
- * resolves to nothing unless a `.grid-spend-viz` ancestor happens to be in the
+ * `--spend-series-*` are declared on the `.spend-viz` SCOPE, not on
+ * `:root`, so `.usage-viz { --chart-series-1: var(--spend-series-1) }`
+ * resolves to nothing unless a `.spend-viz` ancestor happens to be in the
  * tree — and the usage charts (citation defects, answer feedback) deliberately
  * do not opt into the spend scope, because those slots mean "money by model"
  * there. Reading the file at build time is out too: `SeriesPaletteStyle` ships
@@ -58,7 +58,7 @@ import type { FC } from 'react'
  * FOLLOW-UP for the `app/globals.css` owner — either of these deletes the twin
  * for good, and both are one-sided changes this side cannot make:
  *   1. promote the eight series steps to `:root` (they are already global in
- *      practice), leaving `.grid-spend-viz` to alias them; this file then emits
+ *      practice), leaving `.spend-viz` to alias them; this file then emits
  *      `var(--spend-series-N)` and holds no hex at all; or
  *   2. drop the CSS copy and let this module be the single source, in which
  *      case the validator transcript moves here with it.
@@ -75,13 +75,13 @@ export const SERIES_SLOT_COUNT = SERIES_LIGHT.length
 
 export const SeriesPaletteStyle: FC = () => (
   <style>{`
-    .grid-usage-viz {
-      ${SERIES_LIGHT.map((hex, i) => `--grid-series-${i + 1}: ${hex};`).join('\n      ')}
-      --grid-series-other: ${OTHER_LIGHT};
+    .usage-viz {
+      ${SERIES_LIGHT.map((hex, i) => `--chart-series-${i + 1}: ${hex};`).join('\n      ')}
+      --chart-series-other: ${OTHER_LIGHT};
     }
-    .dark .grid-usage-viz {
-      ${SERIES_DARK.map((hex, i) => `--grid-series-${i + 1}: ${hex};`).join('\n      ')}
-      --grid-series-other: ${OTHER_DARK};
+    .dark .usage-viz {
+      ${SERIES_DARK.map((hex, i) => `--chart-series-${i + 1}: ${hex};`).join('\n      ')}
+      --chart-series-other: ${OTHER_DARK};
     }
   `}</style>
 )

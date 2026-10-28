@@ -19,9 +19,9 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.common import bff_http
-from aiq_agent.tools.workspace import client
-from aiq_agent.tools.workspace import register as workspace
+from agent.common import bff_http
+from agent.tools.workspace import client
+from agent.tools.workspace import register as workspace
 
 SECRET = "workspace-test-secret"  # noqa: S105 - test fixture value  # pragma: allowlist secret
 
@@ -150,7 +150,7 @@ async def test_the_request_is_one_stateless_tools_call_in_search_mode(monkeypatc
 
 async def test_each_call_names_the_answer_its_turn_writes(monkeypatch, sent) -> None:
     """The BFF marks that answer when a read runs in a conversation that drew on a restricted folder (ADR-0093)."""
-    from aiq_agent.turn.response import turn_answer_message_id
+    from agent.turn.response import turn_answer_message_id
 
     bind(monkeypatch, turn_of("anna"))
     await workspace.run_call("project-get", {"params": {"id": "p1"}})

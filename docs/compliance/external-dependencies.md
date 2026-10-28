@@ -7,7 +7,7 @@
 
 ## Statement on runtime AI-model switching (OpenRouter)
 
-> **Grid's effective AI-model provider is dynamic, not fixed.** Organization admins
+> **Piloti's effective AI-model provider is dynamic, not fixed.** Organization admins
 > can re-point each of the six agent groups (`intent`, `clarifier`,
 > `shallow_research`, `deep_research`, `deep_research_router`, `memory_reflection`)
 > at **any model in the OpenRouter public catalog at runtime** (ADR-0014). The
@@ -19,7 +19,7 @@
 >
 > **Bounded by design:** an override can never change `base_url` or the API key —
 > all AI traffic always transits OpenRouter and only OpenRouter
-> (`packages/agent/src/aiq_agent/common/model_overrides.py:25-31`); candidates are validated
+> (`packages/agent/src/agent/common/model_overrides.py:25-31`); candidates are validated
 > against the OpenRouter catalog server-side (422 on failure, 503 on catalog
 > outage); every change is an immutable, author-attributed, one-click-reversible
 > version with a catalog snapshot; changes emit the audit event
@@ -42,12 +42,12 @@
 | **Upstream model providers** (via OpenRouter — dynamic) | varies | Actual inference of the org-selected model | Yes — OpenRouter forwards the full request | Implicit | none (runtime admin choice) | see statement above; `server.js:342` (`X-Grid-Model-Overrides`) |
 | **WorkOS** | `api.workos.com` + hosted AuthKit | AuthN/AuthZ (SSO, MFA, RBAC, FGA), org lifecycle, feature flags, **entire audit trail** | Personal data: accounts, memberships, sessions; audit events carry actor email, client IP, user agent, doc filenames | Prod: yes (`REQUIRE_AUTH=true`) | `WORKOS_CLIENT_ID/API_KEY/COOKIE_PASSWORD` | `lib/audit/service.ts:57-62`; `lib/documents/service.ts:196-205` |
 | **Tavily** | `api.tavily.com` | Primary web/news search | Search queries (LLM-derived from prompts); results flow back into prompts | Yes (all configs) | `TAVILY_API_KEY` | `packages/tavily-web-search/src/register.py:103-108` |
-| **OpenAI direct** | `api.openai.com` | summary fallback only | Yes | Optional | `OPENAI_API_KEY` | `apps/backend/.../generate_summary.py:52-58` |
+| **OpenAI direct** | `api.openai.com` | summary fallback only | Yes | Optional | `OPENAI_API_KEY` | `apps/agent-host/.../generate_summary.py:52-58` |
 | **Serper.dev / Exa / DuckDuckGo / Polymarket** | various | Optional search plugins | Prompt-derived queries | Optional | `SERPER_API_KEY`, `EXA_API_KEY`, none, none | `packages/*/src/register.py` |
 | **Modal** | modal.com | Deep-research code sandbox (non-default config only; packages ship in prod image) | Agent-authored code + research-derived files | Optional | `MODAL_TOKEN_ID/SECRET` | `deepagents_runtime.py:244-366` |
 | **LangSmith** | `api.smith.langchain.com` | Tracing — **one env var away**: lib is installed transitively; `LANGCHAIN_TRACING_V2=true` exports **full prompts/completions** | Yes if enabled | Optional, off | `LANGCHAIN_TRACING_V2`, `LANGCHAIN_API_KEY` | `.env.example`; `uv.lock` |
 | **W&B / Jina** | — | Vestigial: env slots documented, **no code reads them** (`wandb` not even in lockfile) | No | Dead — remove | `WANDB_API_KEY`, `JINA_API_KEY` | negative code search |
-| **OTLP/Phoenix exporter** | configurable | NAT span export incl. LLM I/O; **no shipped config enables it** (console only). Identity enrichment: `TRACE_USER_IDENTITY_MODE=full` adds cleartext email/name to spans (default `none`) | If enabled | Optional, off | workflow YAML; `GRID_TRACE_*` | `aiq_api/auth/middleware.py:59-89` |
+| **OTLP/Phoenix exporter** | configurable | Agent-runtime span export incl. LLM I/O; **no shipped config enables it** (console only). Identity enrichment: `TRACE_USER_IDENTITY_MODE=full` adds cleartext email/name to spans (default `none`) | If enabled | Optional, off | workflow YAML; `GRID_TRACE_*` | `agent_host/auth/middleware.py:59-89` |
 | **Datadog RUM** | — | Frontend shim, no-ops unless deployment injects `DD_RUM` | If enabled | Optional, off | overlay | `shared/utils/rum.ts` |
 | **Google Fonts** | fonts.googleapis.com | **Build-time only** (`next/font` self-hosts at runtime); Next telemetry disabled in image | No | Build only | — | `app/layout.tsx:13`; `apps/workspace/deploy/Dockerfile:104,119` |
 | **Build/CI**: PyPI, npm, Debian/nodesource, `nvcr.io`, GitHub Actions, Semgrep + gitleaks images (run in-CI, no source upload), OSV-Scanner (queries package names/versions against osv.dev) | — | provisioning/CI | Source code stays in CI; only dependency identifiers leave (OSV) | Build/CI | — | `.github/workflows/*` |

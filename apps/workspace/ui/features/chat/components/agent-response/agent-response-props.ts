@@ -1,8 +1,8 @@
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import type { CitationSource } from '../../types'
 import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
 import type { MessageStages } from '@/lib/conversations/message-stages'
-import type { CardInteractions } from '@/features/grid-cards/card-decision'
+import type { CardInteractions } from '@/features/cards/card-decision'
 import type { AnswerMeta } from '@/lib/conversations/message-answer-meta'
 import type { Finding, Findings } from '@/lib/conversations/message-findings'
 
@@ -24,9 +24,9 @@ export interface AgentResponseProps {
    * it with a `[[card:N]]` marker (N is 1-based over this array); the ones no
    * marker claimed follow the prose as a block. Positions are identity: a
    * rejected card leaves an `undefined` hole rather than renumbering the rest
-   * (see `validateGridCards`), and a hole renders nothing.
+   * (see `validateAnswerCards`), and a hole renders nothing.
    */
-  cards?: (GridCard | undefined)[]
+  cards?: (AnswerCard | undefined)[]
   /**
    * Citations already collected for this answer (deep-research path). Drives
    * the "Belegt durch" chip row — renders nothing when absent (no fake chips).

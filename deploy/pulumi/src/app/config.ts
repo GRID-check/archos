@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { APP_DEFAULTS, KEDA_SCALER_ROLE, LANGFUSE, PORT, QDRANT } from "../constants";
 import { APP_DB, CHECKPOINTS_DB, JOBS_DB, RUNTIME_ROLE, type Postgres } from "../data/postgres";
 import { FRONTEND_DRAIN_SECONDS, secretChecksum } from "../platform/rollout";
@@ -11,7 +11,7 @@ import { API_TIER, CHAT_TIER } from "./tier-names";
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
 export interface AppWiring {
-  cfg: GridConfig;
+  cfg: DeployConfig;
   namespace: pulumi.Input<string>;
   provider: k8s.Provider;
   redisUrl: pulumi.Output<string>;
@@ -42,14 +42,14 @@ export const PULL_SECRET_NAME = objectName("registryPullSecret"); // pragma: all
  * upstream images and needs nothing.
  */
 export function buildRegistryPullSecret(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
 ): k8s.core.v1.Secret | undefined {
   const creds = cfg.images.pullCredentials;
   if (!creds) return undefined;
   // Registry server = first path segment of the image registry
-  // ("ghcr.io/grid-check" → "ghcr.io").
+  // ("ghcr.io/archos-at" → "ghcr.io").
   const server = cfg.images.registry.split("/")[0];
   const dockerConfigJson = creds.password.apply((pw) =>
     JSON.stringify({
@@ -258,7 +258,7 @@ export const BACKEND_CHAT_URL = `http://${CHAT_TIER}:${PORT.backend}`;
  * resolved a release for the backend image (posthog-python reads it itself and
  * sends it as `$release_id`). Exported for `posthog.spec.ts`.
  */
-export function posthogEnv(cfg: GridConfig): EnvVar[] {
+export function posthogEnv(cfg: DeployConfig): EnvVar[] {
   const { host, projectToken, releaseId } = cfg.posthog;
   if (host === "" || projectToken === "") return [];
   return [
@@ -276,7 +276,7 @@ export function posthogEnv(cfg: GridConfig): EnvVar[] {
  * pages are prerendered and the image builds with no env files) and answers an
  * empty script without them. Exported for `web.spec.ts`.
  */
-export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
+export function webPosthogEnv(cfg: DeployConfig): EnvVar[] {
   const { host, projectToken } = cfg.posthog;
   if (host === "" || projectToken === "") return [];
   return [
@@ -333,14 +333,14 @@ export function backendEnv(w: AppWiring, otelServiceName = "backend-chat"): EnvV
     // WorkOS, the same two values the frontend gets (frontendEnv). With
     // REQUIRE_AUTH=true the backend enforces job ownership and the signed-envelope
     // rule for JWT callers, and it refuses to boot without a validator, which
-    // needs the client id (aiq_api/plugin.py). Left unset, every tier ran with
+    // needs the client id (agent_host/plugin.py). Left unset, every tier ran with
     // ownership off while the frontend required login.
     { name: "REQUIRE_AUTH", value: String(cfg.auth.requireAuth) },
     { name: "WORKOS_CLIENT_ID", value: cfg.auth.workosClientId },
     // OTLP tracing via the cluster collector (ADR-0029 amendment). Producers
     // send plain OTLP in-cluster — the collector alone holds the Langfuse
     // key. HTTP/protobuf to :4318 — the full /v1/traces path is required: the
-    // NAT exporter posts to the endpoint as-is (path appending only happens
+    // The agent-runtime exporter posts to the endpoint as-is (path appending only happens
     // for SDK env-var defaults, not for an endpoint the config passes
     // explicitly). OTEL_SERVICE_NAME becomes service.name on the spans so
     // chat tier and worker tier are distinct resources in Langfuse.
@@ -469,7 +469,7 @@ export function apiEnv(w: AppWiring): EnvVar[] {
  * Research worker (ADR-0021) environment: the full backend env (DB DSNs, shared
  * Qdrant, LLM keys, object storage — the worker runs the same `run_agent_job`)
  * plus the worker role + per-process concurrency. `PROCESS_ROLE=worker` makes the
- * entrypoint run `python -m aiq_api.jobs.worker` with no web server.
+ * entrypoint run `python -m agent_host.jobs.worker` with no web server.
  */
 export function workerEnv(w: AppWiring): EnvVar[] {
   return [
@@ -647,7 +647,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // src/instrumentation.ts register @vercel/otel (it no-ops without the
     // endpoint). NOTE the BASE URL here vs. the backend's full /v1/traces
     // path: the JS OTLP HTTP exporter appends the signal path per the OTEL
-    // spec; the Python NAT exporter does not.
+    // spec; the Python agent-runtime exporter does not.
     ...(cfg.observability.enabled
       ? [
           { name: "OTEL_SERVICE_NAME", value: "grid-ui" },
@@ -673,10 +673,10 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
  * (`withLangfuseKeysChecksum`) and a rotation rolls it.
  *
  * Also on the backend tiers (`backendEnv`), which write the answer pipeline's
- * checks as scores (ADR-0089, `aiq_agent/observability/langfuse_scores.py`)
+ * checks as scores (ADR-0089, `agent/observability/langfuse_scores.py`)
  * and, once `LANGFUSE_PROMPTS_ENABLED` is set, read the platform prompt.
  */
-export function langfuseApiEnv(cfg: GridConfig): EnvVar[] {
+export function langfuseApiEnv(cfg: DeployConfig): EnvVar[] {
   if (!cfg.langfuse.enabled) return [];
   const fromLangfuseSecret = (name: string, key: string): EnvVar => ({
     name,
@@ -783,7 +783,7 @@ export function auditSchemaEnv(): EnvVar[] {
  * id of the platform organization whose org-scoped roles the catalog also
  * provisions (the frontend reads the same value).
  */
-export function authzCatalogEnv(cfg: GridConfig): EnvVar[] {
+export function authzCatalogEnv(cfg: DeployConfig): EnvVar[] {
   return [
     sref("WORKOS_API_KEY"),
     { name: "PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },

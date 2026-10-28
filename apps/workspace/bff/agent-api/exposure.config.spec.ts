@@ -26,7 +26,7 @@ vi.mock('server-only', () => ({}))
 
 import { AGENT_ASK_OPERATIONS } from '@/lib/agent-asks/ask-wire'
 import { PROPOSAL_DECISION_OPERATIONS } from '@/lib/proposals/operation-applier'
-import { BACKEND_OPERATIONS, PILOTI_TOOL_FOR } from './backend-operations'
+import { BACKEND_OPERATIONS, AGENT_TOOL_FOR } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
 import { EXPOSURE, type Exposure, WITHHELD_CATEGORIES } from './exposure.config'
 import { APP_TOOLS } from './catalog/app-views'
@@ -106,7 +106,7 @@ describe('the exposure config', () => {
       if (typeof exposure.piloti === 'string') expect(exposure.piloti, name).toMatch(NATIVE)
     }
     for (const op of BACKEND_OPERATIONS) {
-      expect(entry(op.name).piloti, op.name).toBe(`native:${PILOTI_TOOL_FOR[op.tool] ?? op.tool}`)
+      expect(entry(op.name).piloti, op.name).toBe(`native:${AGENT_TOOL_FOR[op.tool] ?? op.tool}`)
     }
   })
 

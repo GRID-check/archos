@@ -3,7 +3,7 @@
 Every write names the answer this turn writes (``answerMessageId``), so the BFF
 records each change Piloti applied against it (ADR-0109). And every write that
 speaks in a mark's thread notes it on the turn's thread record
-(``aiq_agent.turn.annotation_reply``), so the turn does not post its answer
+(``agent.turn.annotation_reply``), so the turn does not post its answer
 there a second time; ``leave_canvas``, the canvas's end-of-turn call, settles
 whether that answer may go where everyone reads.
 """
@@ -23,21 +23,21 @@ from agent_testing.canvas import REPLY_BODY
 from agent_testing.canvas import UPDATE_BODY
 from agent_testing.canvas import answering
 
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.tools.canvas import presence
-from aiq_agent.tools.canvas.client import CanvasRequestError
-from aiq_agent.tools.canvas.register import run_delete
-from aiq_agent.tools.canvas.register import run_highlight
-from aiq_agent.tools.canvas.register import run_mark
-from aiq_agent.tools.canvas.register import run_point
-from aiq_agent.tools.canvas.register import run_reply
-from aiq_agent.tools.canvas.register import run_update
-from aiq_agent.turn.annotation_reply import ThreadReply
-from aiq_agent.turn.annotation_reply import bind_thread_reply
-from aiq_agent.turn.annotation_reply import reset_thread_reply
-from aiq_agent.turn.response import answer_message_id
+from agent.common.focus_file import set_turn_intent
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.tools.canvas import presence
+from agent.tools.canvas.client import CanvasRequestError
+from agent.tools.canvas.register import run_delete
+from agent.tools.canvas.register import run_highlight
+from agent.tools.canvas.register import run_mark
+from agent.tools.canvas.register import run_point
+from agent.tools.canvas.register import run_reply
+from agent.tools.canvas.register import run_update
+from agent.turn.annotation_reply import ThreadReply
+from agent.turn.annotation_reply import bind_thread_reply
+from agent.turn.annotation_reply import reset_thread_reply
+from agent.turn.response import answer_message_id
 
 #: The answer the conftest's turn writes: conversation ``s_conv_1``, user message ``m_user_7``.
 ANSWER = answer_message_id("s_conv_1", "m_user_7")

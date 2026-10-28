@@ -20,25 +20,25 @@ from jsonschema import Draft202012Validator
 from langchain_core.messages import ToolMessage
 from pydantic import ValidationError
 
-from aiq_agent import project_context
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.citations.grounding_text import parse_knowledge_layer
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.verification import verify_citations
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.knowledge import restricted_use
-from aiq_agent.knowledge.restricted_use import COLLECTIONS_READ_KEY
-from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
-from aiq_agent.knowledge.restricted_use import CrossProjectTurn
-from aiq_agent.knowledge.restricted_use import admit_tool_results
-from aiq_agent.knowledge.restricted_use import bind_cross_project_turn
-from aiq_agent.knowledge.restricted_use import may_name
-from aiq_agent.knowledge.restricted_use import reset_cross_project_turn
-from aiq_agent.tools.cross_project import register as lookup
-from aiq_agent.tools.cross_project.client import CrossProjectLookupError
-from aiq_agent.turn.response import answer_message_id
+from agent import project_context
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.grounding_text import parse_knowledge_layer
+from agent.citations.registry import SourceRegistry
+from agent.citations.verification import verify_citations
+from agent.common.bff_http import SignedEnvelope
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.knowledge import restricted_use
+from agent.knowledge.restricted_use import COLLECTIONS_READ_KEY
+from agent.knowledge.restricted_use import WITHHELD_NOTICE
+from agent.knowledge.restricted_use import CrossProjectTurn
+from agent.knowledge.restricted_use import admit_tool_results
+from agent.knowledge.restricted_use import bind_cross_project_turn
+from agent.knowledge.restricted_use import may_name
+from agent.knowledge.restricted_use import reset_cross_project_turn
+from agent.tools.cross_project import register as lookup
+from agent.tools.cross_project.client import CrossProjectLookupError
+from agent.turn.response import answer_message_id
 from nat.plugin_api import FunctionInfo
 
 SCHEMA_PATH = (
@@ -839,7 +839,7 @@ class TestTheWire:
     """What the browser is told about a source from another project (ADR-0094)."""
 
     def _entry(self):
-        from aiq_agent.citations.entries import SourceEntry
+        from agent.citations.entries import SourceEntry
 
         return SourceEntry(
             citation_key="Detail Traufe.pdf (Wohnbau Graz), p.3",
@@ -855,7 +855,7 @@ class TestTheWire:
         )
 
     def test_the_cited_wire_names_the_project_and_the_real_file(self) -> None:
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         wire = source_entry_to_wire(self._entry(), number=1)
 
@@ -867,8 +867,8 @@ class TestTheWire:
     def test_the_read_wire_keeps_the_project_and_a_source_of_the_chat_names_none(self) -> None:
         from dataclasses import replace
 
-        from aiq_agent.citations.wire import read_source_to_wire
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import read_source_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         assert read_source_to_wire(self._entry())["project"]["id"] == OTHER
         own = replace(
@@ -935,7 +935,7 @@ class TestTheHitJudge:
     """ADR-0064 use 11: reorder, name an injection, say when to page on; never drop a passage."""
 
     def _judging(self, monkeypatch, solved, injection=None):
-        from aiq_agent.tools.cross_project.hit_judge import HitVerdicts
+        from agent.tools.cross_project.hit_judge import HitVerdicts
 
         async def judge(query, hits):
             return HitVerdicts(solved=tuple(solved), injection=tuple(injection or [None] * len(solved)))
@@ -983,7 +983,7 @@ class TestTheHitJudge:
         assert "Keine dieser Passagen" not in result
 
     async def test_the_judge_reads_the_query_and_the_passages_never_the_conversation(self):
-        from aiq_agent.tools.cross_project.hit_judge import hit_state
+        from agent.tools.cross_project.hit_judge import hit_state
 
         state = hit_state("Traufe", _hit("Detail Traufe.pdf"))
 

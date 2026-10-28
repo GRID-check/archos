@@ -15,13 +15,13 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from aiq_agent.common import claim_queue
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.ingest_scheduler import PLATFORM_LANE
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
+from agent.common import claim_queue
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.ingest_scheduler import PLATFORM_LANE
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
 
 CLAIM = {"stale_seconds": 180, "max_attempts": 3}
 

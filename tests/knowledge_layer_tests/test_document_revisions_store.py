@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.knowledge.document_metadata_store import SUGGESTION_BASES
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.document_metadata_store import LinkOutcome
-from aiq_agent.knowledge.document_metadata_store import dismissed_revisions
+from agent.knowledge.document_metadata_store import SUGGESTION_BASES
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.document_metadata_store import LinkOutcome
+from agent.knowledge.document_metadata_store import dismissed_revisions
 
 SUGGESTION = {
     "of": "Grundriss_EG_Index_B.pdf",
@@ -524,8 +524,8 @@ class TestThroughTheFactory:
 
     @pytest.fixture
     def db_url(self):
-        from aiq_agent.knowledge import configure_summary_db
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import configure_summary_db
+        from agent.knowledge import factory
 
         with tempfile.TemporaryDirectory() as tmpdir:
             url = f"sqlite:///{Path(tmpdir) / 'factory_fassungen.db'}"
@@ -535,14 +535,14 @@ class TestThroughTheFactory:
             DocumentMetadataStore.dispose_engine(url)
 
     def test_the_seams_round_trip_and_the_available_documents_carry_the_facts(self, db_url):
-        from aiq_agent.knowledge import get_available_documents
-        from aiq_agent.knowledge import get_document_revision_suggestions
-        from aiq_agent.knowledge import get_document_superseded_by
-        from aiq_agent.knowledge import get_superseded_files
-        from aiq_agent.knowledge import register_summary
-        from aiq_agent.knowledge import set_document_change_summary
-        from aiq_agent.knowledge import set_document_revision_suggestion
-        from aiq_agent.knowledge import set_document_superseded_by
+        from agent.knowledge import get_available_documents
+        from agent.knowledge import get_document_revision_suggestions
+        from agent.knowledge import get_document_superseded_by
+        from agent.knowledge import get_superseded_files
+        from agent.knowledge import register_summary
+        from agent.knowledge import set_document_change_summary
+        from agent.knowledge import set_document_revision_suggestion
+        from agent.knowledge import set_document_superseded_by
 
         register_summary("coll", "B.pdf", "Alt.")
         register_summary("coll", "C.pdf", "Neu.")

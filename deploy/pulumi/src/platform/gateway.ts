@@ -9,7 +9,7 @@ import type { IGatewaySpec } from "@kubernetes-models/gateway-api/gateway.networ
 import type { IGatewayClassSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/GatewayClassSpec";
 import type { IEnvoyProxySpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/EnvoyProxySpec";
 import type { IClientTrafficPolicySpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/ClientTrafficPolicySpec";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { commonLabels } from "./namespaces";
 import { EDGE_SHUTDOWN, SURGE_ONLY_STRATEGY } from "./rollout";
 import { EDGE_RATE_LIMIT, EDGE_TIMEOUT, LANGFUSE, PLATFORM_RESOURCES, QDRANT } from "../constants";
@@ -32,7 +32,7 @@ export const GATEWAY_CLASS = objectName("gatewayClass");
  * then cert-manager, then the Gateway/GatewayClass resources.
  */
 export function installGatewayController(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
 ): k8s.helm.v3.Release {
   const ns = new k8s.core.v1.Namespace(
@@ -122,7 +122,7 @@ const RATE_LIMIT_REDIS_AUTH_KEY = "REDIS_AUTH"; // pragma: allowlist secret (env
  * unlimited while the ADR-0029 pane shows the errors. Worth knowing when
  * reading a "limits stopped enforcing" report.
  */
-function rateLimitConfig(cfg: GridConfig, withRedisAuth: boolean): Record<string, unknown> {
+function rateLimitConfig(cfg: DeployConfig, withRedisAuth: boolean): Record<string, unknown> {
   return {
     rateLimit: {
       backend: {
@@ -171,7 +171,7 @@ function rateLimitConfig(cfg: GridConfig, withRedisAuth: boolean): Record<string
  * `certificateRefs` secret.
  */
 export function installGatewayResources(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   issuerName: pulumi.Input<string>,

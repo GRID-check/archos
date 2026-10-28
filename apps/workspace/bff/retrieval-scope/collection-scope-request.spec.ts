@@ -46,7 +46,7 @@ const PROJECT_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301'
 const session = {
   userId: 'user_me',
   organizationId: 'org_1',
-  email: 'me@grid.test',
+  email: 'me@example.test',
   role: 'member',
   roles: ['member'],
   permissions: [],

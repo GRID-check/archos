@@ -3,7 +3,7 @@
  * §5): one shelf's folders and documents as the conversation's whole audience
  * may LIST them, for the agent's `ls` and `glob`. Exported as JSON Schema to
  * `tests/fixtures/estate-tree.schema.json` (`estate-tree-schema.ts`); the Python
- * client (`aiq_agent/knowledge/estate_tree_client.py`) is tested against that
+ * client (`agent/knowledge/estate_tree_client.py`) is tested against that
  * file. There is no Pydantic twin.
  *
  * Snake case, like the folder cards' contract: the Python tier is the reader.

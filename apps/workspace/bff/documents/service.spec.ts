@@ -1518,7 +1518,7 @@ describe('reingestDocument', () => {
  * retrying a failed document silently un-files it.
  *
  * The backend twin asserting the same `folder_path` key is
- * `apps/backend/tests/test_ingest_folder_path.py`.
+ * `apps/agent-host/tests/test_ingest_folder_path.py`.
  */
 describe('the folder a document is filed in reaches the ingest dispatch', () => {
   const ingestBody = (): Record<string, unknown> => {
@@ -2362,16 +2362,16 @@ describe('the authorship gate on the (collection, filename) join', () => {
     it('renames a machine-authored row without retitling the colliding document', async () => {
       vi.mocked(findDocumentInOrg).mockResolvedValue(agentDoc)
 
-      await renameDocument(session, 'doc-agent', 'Piloti-Bericht.pdf', new Request('http://x'))
+      await renameDocument(session, 'doc-agent', 'Projektbericht.pdf', new Request('http://x'))
 
       // The durable rename is the row, and it happens.
       expect(setDocumentDisplayName).toHaveBeenCalledWith(
         'doc-agent',
         'org-1',
-        'Piloti-Bericht.pdf'
+        'Projektbericht.pdf'
       )
       // The best-effort mirror does not: it would have renamed the human
-      // Gutachten's citation chips to „Piloti-Bericht.pdf“.
+      // Gutachten's citation chips to „Projektbericht.pdf“.
       expect(documentCalls()).toHaveLength(0)
     })
 

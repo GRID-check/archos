@@ -7,7 +7,7 @@ import pytest
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.retrieval_settings import reset_retrieval_settings_cache
+from agent.common.retrieval_settings import reset_retrieval_settings_cache
 
 
 class _FakeResult:
@@ -35,8 +35,8 @@ def harness(monkeypatch):
         "knowledge_layer.search_results.format_results",
         lambda merged, query, notice="", *_rest: notice + "no results",
     )
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
     monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     # The resolver's TTL cache is process-global; start every case cold so an
     # entry from another module cannot decide this test's counts.
@@ -59,7 +59,7 @@ def _config(**overrides) -> KnowledgeRetrievalConfig:
 class TestKnowledgeSearchPlatformCounts:
     async def test_platform_top_k_reaches_retriever(self, harness, monkeypatch):
         monkeypatch.setattr(
-            "aiq_agent.common.retrieval_settings.get_retrieval_setting",
+            "agent.common.retrieval_settings.get_retrieval_setting",
             lambda key, fallback: {"knowledge.top_k": 11, "knowledge.max_chunks_per_document": 4}.get(key, fallback),
         )
 
@@ -76,7 +76,7 @@ class TestKnowledgeSearchPlatformCounts:
 
     async def test_platform_counts_apply_to_every_in_scope_collection(self, harness, monkeypatch):
         monkeypatch.setattr(
-            "aiq_agent.common.retrieval_settings.get_retrieval_setting",
+            "agent.common.retrieval_settings.get_retrieval_setting",
             lambda key, fallback: 6 if key == "knowledge.top_k" else fallback,
         )
 

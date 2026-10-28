@@ -2,7 +2,7 @@
 
 ``POST /v1/ingest`` answers the BFF within its ten-second budget by downloading
 nothing: it gates each object-store URL and hands the job a zero-argument
-callable in place of a path (``aiq_api.routes.ingest.DeferredObjectDownload``).
+callable in place of a path (``agent_host.routes.ingest.DeferredObjectDownload``).
 The original rides in ``submit_job``'s ``file_paths``, its PDF rendition in
 ``config["extraction_paths"]`` (``knowledge_layer.renditions``). Calling one
 downloads to a new temp file and returns its path, which the job then owns and

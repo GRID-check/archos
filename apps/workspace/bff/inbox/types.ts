@@ -194,7 +194,7 @@ export interface InboxTypePresentation {
     | 'megaphone'
     | 'shield-alert'
     | 'layers'
-    /** Piloti's own glyph (`components/ui/piloti-glyph.tsx`), for what Piloti did or asks. */
+    /** Piloti's own glyph (`components/ui/agent-glyph.tsx`), for what Piloti did or asks. */
     | 'piloti'
   /**
    * i18n key under `inbox.types.<key>.title` / `.body`, and the leaves the row
@@ -253,12 +253,12 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'mail_import.failed': { icon: 'alert-triangle', i18nKey: 'mailImportFailed', tone: 'warning' },
   'document.new_revision': { icon: 'layers', i18nKey: 'documentNewRevision', tone: 'info' },
   // Piloti's rows wear its face, as its marks and replies do on the page.
-  'piloti.work_done': { icon: 'piloti', i18nKey: 'pilotiWorkDone', tone: 'info', anchor: 'mark' },
-  'piloti.work_failed': { icon: 'piloti', i18nKey: 'pilotiWorkFailed', tone: 'warning', anchor: 'mark' },
-  'piloti.asks_you': { icon: 'piloti', i18nKey: 'pilotiAsksYou', tone: 'request', anchor: 'mark' },
-  'piloti.proposal_waiting': { icon: 'piloti', i18nKey: 'pilotiProposalWaiting', tone: 'request' },
-  'piloti.intake_ready': { icon: 'piloti', i18nKey: 'pilotiIntakeReady', tone: 'request' },
-  'piloti.revision_checked': { icon: 'piloti', i18nKey: 'pilotiRevisionChecked', tone: 'info', anchor: 'mark' },
+  'piloti.work_done': { icon: 'piloti', i18nKey: 'agentWorkDone', tone: 'info', anchor: 'mark' },
+  'piloti.work_failed': { icon: 'piloti', i18nKey: 'agentWorkFailed', tone: 'warning', anchor: 'mark' },
+  'piloti.asks_you': { icon: 'piloti', i18nKey: 'agentAsksYou', tone: 'request', anchor: 'mark' },
+  'piloti.proposal_waiting': { icon: 'piloti', i18nKey: 'agentProposalWaiting', tone: 'request' },
+  'piloti.intake_ready': { icon: 'piloti', i18nKey: 'agentIntakeReady', tone: 'request' },
+  'piloti.revision_checked': { icon: 'piloti', i18nKey: 'agentRevisionChecked', tone: 'info', anchor: 'mark' },
   'annotation.assigned_to_you': { icon: 'user-plus', i18nKey: 'annotationAssigned', tone: 'request', anchor: 'mark' },
   'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info', anchor: 'mark' },
   // The chat mention's glyph: one sign for „someone asked you", wherever it was.

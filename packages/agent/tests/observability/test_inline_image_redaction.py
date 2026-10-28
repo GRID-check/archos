@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from aiq_agent.common.image_redaction import redact_inline_images
-from aiq_agent.observability.langfuse_trace_attributes import InlineImageRedactionProcessor
+from agent.common.image_redaction import redact_inline_images
+from agent.observability.langfuse_trace_attributes import InlineImageRedactionProcessor
 
 PIXELS = "QUJD" * 5000
 DATA_URL = f"data:image/jpeg;base64,{PIXELS}"
@@ -96,12 +96,12 @@ class TestPipelineWiring:
     async def test_it_runs_ahead_of_every_other_processor(self):
         from agent_testing.langfuse import _make_config
 
-        from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
+        from agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 
         async with otelcollector_redaction_telemetry_exporter(_make_config(), None) as exporter:
             positions = exporter._processor_names
 
-            assert positions["grid_inline_image_redaction"] == min(positions.values())
+            assert positions["inline_image_redaction"] == min(positions.values())
 
 
 class TestWhatThePatternMustAlsoCover:
@@ -149,8 +149,8 @@ class TestSequenceAttributes:
 
 class TestDirectTracer:
     def test_a_direct_generation_prompt_carries_no_pixels(self):
-        from aiq_agent.observability.direct_trace import INPUT_ATTRIBUTE
-        from aiq_agent.observability.direct_trace import generation_start_attributes
+        from agent.observability.direct_trace import INPUT_ATTRIBUTE
+        from agent.observability.direct_trace import generation_start_attributes
 
         messages = [{"role": "user", "content": _view_image_result()}]
         attributes = generation_start_attributes("conversation-title", model="m", messages=messages)

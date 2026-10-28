@@ -14,7 +14,7 @@ from agent_testing.intake import SIGNATURE
 from agent_testing.intake import TOKEN
 from agent_testing.intake import validator
 
-from aiq_agent.agents.intake import client
+from agent.agents.intake import client
 
 REQUEST = "InternalIntakeRequest"
 

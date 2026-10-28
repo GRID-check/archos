@@ -186,13 +186,13 @@ class AdapterComplianceTest:
     # =========================================================================
 
     def _test_get_ingestor(self):
-        from aiq_agent.knowledge.factory import get_ingestor
+        from agent.knowledge.factory import get_ingestor
 
         self.ingestor = get_ingestor(self.backend, self.config)
         return True, f"Got {type(self.ingestor).__name__}"
 
     def _test_get_retriever(self):
-        from aiq_agent.knowledge.factory import get_retriever
+        from agent.knowledge.factory import get_retriever
 
         self.retriever = get_retriever(self.backend, self.config)
         return True, f"Got {type(self.retriever).__name__}"
@@ -209,7 +209,7 @@ class AdapterComplianceTest:
         return True, f"Ingestor: '{ingestor_name}', Retriever: '{retriever_name}'"
 
     def _test_create_collection(self):
-        from aiq_agent.knowledge.schema import CollectionInfo
+        from agent.knowledge.schema import CollectionInfo
 
         result = self.ingestor.create_collection(name=self.collection_name, description="Compliance test collection")
 
@@ -221,7 +221,7 @@ class AdapterComplianceTest:
         return True, f"Created '{result.name}'"
 
     def _test_get_collection(self):
-        from aiq_agent.knowledge.schema import CollectionInfo
+        from agent.knowledge.schema import CollectionInfo
 
         result = self.ingestor.get_collection(self.collection_name)
 
@@ -245,7 +245,7 @@ class AdapterComplianceTest:
         return True, f"Found {len(collections)} collections"
 
     def _test_upload_file(self):
-        from aiq_agent.knowledge.schema import FileInfo
+        from agent.knowledge.schema import FileInfo
 
         if not Path(self.test_file).exists():
             return False, f"Test file not found: {self.test_file}"
@@ -263,8 +263,8 @@ class AdapterComplianceTest:
             return False, f"Expected FileInfo or str, got {type(result)}"
 
     def _test_get_file_status(self):
-        from aiq_agent.knowledge.schema import FileInfo
-        from aiq_agent.knowledge.schema import FileStatus
+        from agent.knowledge.schema import FileInfo
+        from agent.knowledge.schema import FileStatus
 
         if not self.job_id:
             return False, "No job_id from upload_file"
@@ -300,7 +300,7 @@ class AdapterComplianceTest:
         )
 
     def _test_list_files(self):
-        from aiq_agent.knowledge.schema import FileInfo
+        from agent.knowledge.schema import FileInfo
 
         files = self.ingestor.list_files(self.collection_name)
 
@@ -319,7 +319,7 @@ class AdapterComplianceTest:
         return True, f"Found {len(files)} files: {filenames}"
 
     def _test_retrieve(self):
-        from aiq_agent.knowledge.schema import RetrievalResult
+        from agent.knowledge.schema import RetrievalResult
 
         async def do_retrieve():
             result = await self.retriever.retrieve(
@@ -339,8 +339,8 @@ class AdapterComplianceTest:
         return True, f"Retrieved {len(result.chunks)} chunks"
 
     def _test_chunk_schema(self):
-        from aiq_agent.knowledge.schema import Chunk
-        from aiq_agent.knowledge.schema import ContentType
+        from agent.knowledge.schema import Chunk
+        from agent.knowledge.schema import ContentType
 
         if not hasattr(self, "_last_retrieval") or not self._last_retrieval.chunks:
             return False, "No retrieval results to validate"

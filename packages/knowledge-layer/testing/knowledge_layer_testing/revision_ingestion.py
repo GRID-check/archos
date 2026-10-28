@@ -42,8 +42,8 @@ class _Model:
 
 @pytest.fixture()
 def stores(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -58,7 +58,7 @@ def model():
 
 @pytest.fixture()
 def live_ingestor(tmp_path, monkeypatch, model, qdrant_store):
-    from aiq_agent.knowledge import document_classification
+    from agent.knowledge import document_classification
     from knowledge_layer_testing.qdrant import FakeEmbedder
 
     ing = LlamaIndexIngestor({"generate_summary": True, "summary_llm": model})
@@ -97,13 +97,13 @@ def _ingest(ing, tmp_path, collection, file_name, text="Neue Fassung der Statik 
 
 
 def _documents(collection):
-    from aiq_agent.knowledge import get_available_documents
+    from agent.knowledge import get_available_documents
 
     return {doc.file_name: doc for doc in get_available_documents(collection)}
 
 
 def _seed_previous_version(ing, stores, collection_name, file_name):
-    from aiq_agent.knowledge import register_summary
+    from agent.knowledge import register_summary
     from knowledge_layer_testing.qdrant import record
     from knowledge_layer_testing.qdrant import write
 

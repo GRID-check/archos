@@ -91,7 +91,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
 
   const session = (userId: string, permissions: string[]): AuthorizedSession => ({
     userId,
-    email: `${userId}@grid.test`,
+    email: `${userId}@example.test`,
     name: null,
     accessToken: '',
     organizationId: ORG,

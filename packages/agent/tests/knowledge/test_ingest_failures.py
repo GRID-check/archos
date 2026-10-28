@@ -10,9 +10,9 @@ import json
 
 import pytest
 
-from aiq_agent.knowledge.ingest_failures import FAILURE_CATEGORIES
-from aiq_agent.knowledge.ingest_failures import classify_failure
-from aiq_agent.knowledge.ingest_failures import verdict_for
+from agent.knowledge.ingest_failures import FAILURE_CATEGORIES
+from agent.knowledge.ingest_failures import classify_failure
+from agent.knowledge.ingest_failures import verdict_for
 
 
 # Stand-ins named as the SDKs name theirs: the classifier reads names, so a

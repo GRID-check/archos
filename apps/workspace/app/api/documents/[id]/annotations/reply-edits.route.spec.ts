@@ -82,7 +82,7 @@ import {
 import { REPLY_MARK_CLOSED_REASON, REPLY_TAKEN_UP_REASON, type MarkMention } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { findWake } from '@/lib/annotations/wake-repository'
-import type { DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { DocumentAnnotationReplyRow, AgentWakeRow } from '@/lib/db/schema/document-annotations'
 import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { mayOpenDocument } from '@/lib/documents/may-open'
@@ -142,7 +142,7 @@ const DOC = {
 
 const ANNA: MarkMention = { targetId: 'user_anna', display: 'Anna Berger' }
 const BEN: MarkMention = { targetId: 'user_ben', display: 'Ben Gruber' }
-const PILOTI: MarkMention = { targetId: 'agent:piloti', display: 'Piloti' }
+const AGENT: MarkMention = { targetId: 'agent:piloti', display: 'Piloti' }
 
 const POSTED = new Date('2026-10-01T09:00:00Z')
 
@@ -197,8 +197,8 @@ const MARK: AnnotationRecord = {
 const withReplies = (replies: DocumentAnnotationReplyRow[], patch: Partial<AnnotationRecord> = {}) =>
   vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, ...patch, replies })
 
-const wake = (status: PilotiWakeRow['status']) =>
-  ({ id: wakeTurnId('rep_1'), status }) as Partial<PilotiWakeRow> as PilotiWakeRow
+const wake = (status: AgentWakeRow['status']) =>
+  ({ id: wakeTurnId('rep_1'), status }) as Partial<AgentWakeRow> as AgentWakeRow
 
 async function rows(): Promise<InboxEmission[]> {
   await new Promise((resolve) => setTimeout(resolve, 0))
@@ -295,7 +295,7 @@ describe('rewording one’s own reply', () => {
   })
 
   it('never wakes Piloti: an @Piloti added in an edit is not kept', async () => {
-    await editReply('doc_1', 'ann_1', 'rep_1', { body: '@Piloti @Anna Berger bitte prüfen', mentions: [PILOTI, ANNA] }, { run })
+    await editReply('doc_1', 'ann_1', 'rep_1', { body: '@Piloti @Anna Berger bitte prüfen', mentions: [AGENT, ANNA] }, { run })
 
     expect(updateAnnotationReply).toHaveBeenCalledWith('org_1', 'ann_1', 'rep_1', expect.any(String), {
       body: '@Piloti @Anna Berger bitte prüfen',
@@ -305,15 +305,15 @@ describe('rewording one’s own reply', () => {
   })
 
   it('keeps an @Piloti the reply already had, while Piloti has not taken it up', async () => {
-    withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [PILOTI], addressesAgent: true })])
+    withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [AGENT], addressesAgent: true })])
     // A cap held its wake: Piloti never read it.
     vi.mocked(findWake).mockResolvedValue(wake('suppressed'))
 
-    await editReply('doc_1', 'ann_1', 'rep_1', { body: '@Piloti stimmt die Breite?', mentions: [PILOTI] }, { run })
+    await editReply('doc_1', 'ann_1', 'rep_1', { body: '@Piloti stimmt die Breite?', mentions: [AGENT] }, { run })
 
     expect(updateAnnotationReply).toHaveBeenCalledWith('org_1', 'ann_1', 'rep_1', '@Piloti stimmt das?', {
       body: '@Piloti stimmt die Breite?',
-      mentions: [PILOTI],
+      mentions: [AGENT],
     })
   })
 
@@ -396,7 +396,7 @@ describe('who may change a reply, and when', () => {
 
   it('refuses a reply to Piloti that Piloti answered after', async () => {
     withReplies([
-      replyRow({ body: '@Piloti stimmt das?', mentions: [PILOTI], addressesAgent: true }),
+      replyRow({ body: '@Piloti stimmt das?', mentions: [AGENT], addressesAgent: true }),
       replyRow({ id: 'rep_2', authorKind: 'piloti', body: 'Ja.', mentions: [], createdAt: new Date('2026-10-01T09:01:00Z') }),
     ])
 
@@ -410,7 +410,7 @@ describe('who may change a reply, and when', () => {
   it.each(['queued', 'started', 'answered', 'stopped'] as const)(
     'refuses a reply to Piloti whose wake is %s',
     async (status) => {
-      withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [PILOTI], addressesAgent: true })])
+      withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [AGENT], addressesAgent: true })])
       vi.mocked(findWake).mockResolvedValue(wake(status))
 
       expect(await Promise.all(both())).toEqual([
@@ -435,7 +435,7 @@ describe('who may change a reply, and when', () => {
   it.each(['suppressed', 'refused', 'failed'] as const)(
     'lets its author change a reply to Piloti whose wake was %s: Piloti never answered it',
     async (status) => {
-      withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [PILOTI], addressesAgent: true })])
+      withReplies([replyRow({ body: '@Piloti stimmt das?', mentions: [AGENT], addressesAgent: true })])
       vi.mocked(findWake).mockResolvedValue(wake(status))
 
       await deleteReply('doc_1', 'ann_1', 'rep_1', { run })

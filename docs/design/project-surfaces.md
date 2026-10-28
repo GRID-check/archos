@@ -31,7 +31,7 @@ projects-home rework grew a second, larger `ProjectResumeCard` beside
 
 The split matters: the card's geometry is not a project concern. `RaisedCard`
 exists because that two-surface shape had been hand-rolled four times over
-(`file-card`, `file-grid`, `DocumentGridCard`, `project-card`) and drifted. The
+(`file-card`, `file-grid`, `DocumentAnswerCard`, `project-card`) and drifted. The
 projects-home rework migrated `project-card` onto it; a project-owned copy of
 `rounded-b-[10px] bg-card shadow-xs` would have been the fifth.
 

@@ -38,7 +38,7 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import { authorizeConversationScope } from '@/lib/retrieval-scope/collection-scope-request'
 import type { TaskRun } from '@/lib/db/schema/task-model'
 import { resolveRunContext, type RunContext } from '@/lib/jobs/run-context'
-import { REQUEST_CONTEXT_MAX_AGE_MS, verifyGridRequestContextEnvelope } from '@/lib/request-context'
+import { REQUEST_CONTEXT_MAX_AGE_MS, verifyRequestContextEnvelope } from '@/lib/request-context'
 import { capabilityOf } from '@/lib/runs/run-envelope'
 import { runEnvelopeErrorSchema, runEnvelopeResponseSchema } from '@/lib/runs/run-envelope-types'
 import { findRunById } from '@/lib/tasks/repository'
@@ -58,7 +58,7 @@ const run = {
   kind: 'deep-research',
   title: 'Fluchtwege prüfen',
   requesterUserId: 'user_requester',
-  requesterEmail: 'r@grid.test',
+  requesterEmail: 'r@example.test',
   trigger: 'schedule',
   status: 'running',
   conversationId: CONVERSATION,
@@ -74,12 +74,12 @@ const runContext: RunContext = {
   projectMemory: null,
   memoryReflectionEnabled: true,
   orgInstructions: 'Antworte knapp.',
-  requester: { name: 'Anna Weber', email: 'r@grid.test', organizationName: 'Atelier Nord' },
+  requester: { name: 'Anna Weber', email: 'r@example.test', organizationName: 'Atelier Nord' },
 }
 
 const session: AuthorizedSession = {
   userId: 'user_requester',
-  email: 'r@grid.test',
+  email: 'r@example.test',
   name: null,
   accessToken: '',
   organizationId: 'org_1',
@@ -131,7 +131,7 @@ describe('POST /api/internal/runs/[runId]/envelope', () => {
     expect(envelope.issuedAt).toBeGreaterThanOrEqual(before)
     expect(envelope.issuedAt).toBeLessThanOrEqual(Date.now())
     // What a write route would read: the BFF's own verifier, the same secret.
-    const verified = verifyGridRequestContextEnvelope(envelope.header, envelope.signature, SECRET)
+    const verified = verifyRequestContextEnvelope(envelope.header, envelope.signature, SECRET)
     expect(verified).toEqual({
       organizationId: 'org_1',
       userId: 'user_requester',
@@ -151,12 +151,12 @@ describe('POST /api/internal/runs/[runId]/envelope', () => {
       orgInstructions: 'Antworte knapp.',
       // Who the run acts as, by name, read afresh at every renewal: nobody is
       // signed in, so no token can say it.
-      requester: { name: 'Anna Weber', email: 'r@grid.test', organizationName: 'Atelier Nord' },
+      requester: { name: 'Anna Weber', email: 'r@example.test', organizationName: 'Atelier Nord' },
     })
     // Inside the window for its whole six hours, and not one millisecond more.
     const end = envelope.issuedAt + REQUEST_CONTEXT_MAX_AGE_MS
-    expect(verifyGridRequestContextEnvelope(envelope.header, envelope.signature, SECRET, end)).not.toBeNull()
-    expect(verifyGridRequestContextEnvelope(envelope.header, envelope.signature, SECRET, end + 1)).toBeNull()
+    expect(verifyRequestContextEnvelope(envelope.header, envelope.signature, SECRET, end)).not.toBeNull()
+    expect(verifyRequestContextEnvelope(envelope.header, envelope.signature, SECRET, end + 1)).toBeNull()
   })
 
   it('resolves the requester from the ROW and checks the rights a chat turn needs', async () => {
@@ -164,7 +164,7 @@ describe('POST /api/internal/runs/[runId]/envelope', () => {
 
     expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({
       userId: 'user_requester',
-      email: 'r@grid.test',
+      email: 'r@example.test',
       organizationId: 'org_1',
     })
     expect(requireProjectAccess).toHaveBeenCalledWith(session, PROJECT, ['project:chat', 'project:edit'])
@@ -182,7 +182,7 @@ describe('POST /api/internal/runs/[runId]/envelope', () => {
     const event = vi.mocked(recordAuditEvent).mock.calls[0][0]
     expect(event).toMatchObject({
       organizationId: 'org_1',
-      actor: { userId: 'user_requester', email: 'r@grid.test' },
+      actor: { userId: 'user_requester', email: 'r@example.test' },
       action: 'task.envelope_renewed',
       targetType: 'task',
       targetId: RUN,
@@ -195,7 +195,7 @@ describe('POST /api/internal/runs/[runId]/envelope', () => {
     vi.mocked(authorizeConversationScope).mockResolvedValueOnce(false)
     const response = await call()
     const { header, signature } = runEnvelopeResponseSchema.parse(await response.json())
-    expect(verifyGridRequestContextEnvelope(header, signature, SECRET)?.conversationId).toBeNull()
+    expect(verifyRequestContextEnvelope(header, signature, SECRET)?.conversationId).toBeNull()
 
     vi.mocked(authorizeConversationScope).mockRejectedValueOnce(new ResourceRightsLostError('conversation'))
     expect(await refusalOf(await call())).toMatchObject({ status: 403, error: 'requester-may-not-act' })

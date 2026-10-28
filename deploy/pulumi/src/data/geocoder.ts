@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import { onNodeGroup } from "../platform/scheduling";
@@ -98,7 +98,7 @@ export function fetchScript(dataPath: string = GEOCODER.dataPath): string {
  * the index.
  */
 export function installGeocoder(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],

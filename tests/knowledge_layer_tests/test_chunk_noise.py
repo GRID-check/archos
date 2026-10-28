@@ -23,12 +23,12 @@ from knowledge_layer.fusion import pool_without_noise
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "ocr_noise"
 
@@ -227,14 +227,14 @@ def _pool() -> list[Chunk]:
 
 @pytest.fixture
 def harness(monkeypatch):
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-    monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", lambda collection: {})
+    monkeypatch.setattr("agent.knowledge.get_superseded_files", lambda collection: {})
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection(PROJECT, Shelf.PROJECT)],
     )
     monkeypatch.delenv(chunk_noise.DROP_OCR_NOISE_ENV, raising=False)
@@ -243,7 +243,7 @@ def harness(monkeypatch):
     def _capture(*, tool_name, search_input, picks):
         spans.append(dict(search_input))
 
-    monkeypatch.setattr("aiq_agent.observability.retrieval_trace.emit_retrieval_span", _capture)
+    monkeypatch.setattr("agent.observability.retrieval_trace.emit_retrieval_span", _capture)
     retriever = _Retriever(_pool())
     monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
     set_turn_documents([])

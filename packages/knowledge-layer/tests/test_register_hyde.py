@@ -12,9 +12,9 @@ from knowledge_layer import fusion
 from knowledge_layer import hyde
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
 
 
 class _FakeLLM:

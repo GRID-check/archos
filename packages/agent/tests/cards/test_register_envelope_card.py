@@ -29,20 +29,20 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
-import aiq_agent.project_context as pc
-from aiq_agent.agents.piloti.answer_pipeline import _register_envelope_cards
-from aiq_agent.cards.catalog import render_card_details
-from aiq_agent.cards.envelope import REFUSED_CONFINED
-from aiq_agent.cards.envelope import register_envelope_card
-from aiq_agent.cards.envelope import validate_model_card
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common import bff_http
-from aiq_agent.common.answer_envelope import AnswerMeta
-from aiq_agent.knowledge import scoping
-from aiq_agent.turn.response import answer_message_id
+import agent.project_context as pc
+from agent.agents.piloti.answer_pipeline import _register_envelope_cards
+from agent.cards.catalog import render_card_details
+from agent.cards.envelope import REFUSED_CONFINED
+from agent.cards.envelope import register_envelope_card
+from agent.cards.envelope import validate_model_card
+from agent.cards.models import answer_card_adapter
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.common import bff_http
+from agent.common.answer_envelope import AnswerMeta
+from agent.knowledge import scoping
+from agent.turn.response import answer_message_id
 
 ROOT = Path(__file__).resolve().parents[4]
 PROPOSALS_SCHEMA = ROOT / "apps" / "workspace" / "tests" / "fixtures" / "proposals.schema.json"
@@ -158,7 +158,7 @@ class TestAnOpenTurn:
         }
         (card,) = registry.snapshot()
         assert card["type"] == "project_profile_patch" and card["proposal_id"] == FIRST
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
 
     async def test_the_index_counts_the_cards_the_tools_pushed_first(self, registry, transport):
         registry.add({"type": "document_draft"})

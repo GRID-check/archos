@@ -1,7 +1,7 @@
 /**
  * Grid cards, rendered into the document.
  *
- * A card is STRUCTURED DATA — the shapes live in `packages/agent/src/aiq_agent/cards/models.py`
+ * A card is STRUCTURED DATA — the shapes live in `packages/agent/src/agent/cards/models.py`
  * and reach the browser as `metadata.cards`. In the app most of them are drawn
  * as SVG schematics; none of that can go into a .docx, and a screenshot of one
  * would not be a work product anyway (you cannot correct a number in a picture).
@@ -67,7 +67,7 @@ import type { Translator } from '@/i18n/translate'
 // probing `t` for keys that are usually absent, which warns once per miss and
 // would have filled every dev console with the walker's own guesses.
 import { answerExport as canonicalDictionary } from '@/i18n/dictionaries/en/answer-export'
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 import { compact, type DocBlock, type DocRun, type HeadingLevel } from './blocks'
 import { markdownToBlocks, type MarkdownToBlocksOptions } from './markdown'
 
@@ -146,7 +146,7 @@ type ExportKind = 'content' | 'live' | 'chrome' | 'composite'
 /**
  * ⚠️ ADDING A CARD TYPE? YOU MUST CLASSIFY IT HERE. ⚠️
  *
- * Exhaustive over `GridCard['type']`, so `npm run generate:cards` regenerating
+ * Exhaustive over `AnswerCard['type']`, so `npm run generate:cards` regenerating
  * the union with a new type is a `tsc` failure until a line is added — the same
  * checkpoint `CARD_INTERACTIVITY` provides for card decisions, and for the same
  * reason: the alternative is a card type that quietly does the wrong thing in a
@@ -160,7 +160,7 @@ type ExportKind = 'content' | 'live' | 'chrome' | 'composite'
  * exported file reads as a finding the answer never made, which is the failure
  * this whole feature exists to prevent, so the doubtful case exports.
  */
-export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
+export const CARD_EXPORT: Record<AnswerCard['type'], ExportKind> = {
   // A picker: tiles that open one of the project's IFC models in the viewer. It
   // carries no file names at all (the renderer resolves them from the live
   // model list), so on paper it is a heading asking which model you meant.
@@ -240,7 +240,7 @@ export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
  * would lose a finding; walking its fields prints what it carries.
  */
 export const exportKindOf = (type: string): ExportKind =>
-  CARD_EXPORT[type as GridCard['type']] ?? 'content'
+  CARD_EXPORT[type as AnswerCard['type']] ?? 'content'
 
 /**
  * Fields no card should print, at the card's TOP level.

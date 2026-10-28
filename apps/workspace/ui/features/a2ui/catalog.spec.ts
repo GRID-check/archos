@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { z } from 'zod'
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
 import { cardComponentApi, cardTypeOf, catalogCardSchemas } from './catalog'
 
 /**

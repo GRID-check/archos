@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { getGridSession } from '@/lib/auth/session'
+import { getUserSession } from '@/lib/auth/session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getNavFlags, type NavFlags } from '@/lib/authz/nav'
 import { isIfcModelsEnabled, isSkillsEnabled } from '@/lib/authz/feature-flags'
@@ -84,9 +84,9 @@ function emptyChrome(): ShellChrome {
  * the reason a page cannot render.
  */
 export async function resolveShellChrome(): Promise<ShellChrome> {
-  let session: Awaited<ReturnType<typeof getGridSession>> = null
+  let session: Awaited<ReturnType<typeof getUserSession>> = null
   try {
-    session = await getGridSession()
+    session = await getUserSession()
   } catch {
     return emptyChrome()
   }

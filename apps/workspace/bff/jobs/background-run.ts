@@ -16,7 +16,7 @@
 
 import 'server-only'
 import type { JobOutput } from '@/lib/db/schema/jobs'
-import { buildGridRequestContextWireHeaders, encodeGridBudgetHeader } from '@/lib/request-context'
+import { buildRequestContextWireHeaders, encodeBudgetHeader } from '@/lib/request-context'
 import type { PlanDocuments } from '@/lib/runs/plan-documents'
 import { submitJob, type JobPriority, type JobSubmitPayload, type BackgroundAgentType } from './backend-client'
 import { runRequestContextInput, warnIfRunEnvelopeLarge, type RunContext, type RunSubject } from './run-context'
@@ -54,7 +54,7 @@ export interface BackgroundRunSubmission {
  */
 export async function submitBackgroundRun(run: BackgroundRunSubmission): Promise<{ jobId: string; queued: boolean }> {
   const { subject, context, conversationId } = run
-  const budgetHeader = context.budget ? encodeGridBudgetHeader(context.budget) : null
+  const budgetHeader = context.budget ? encodeBudgetHeader(context.budget) : null
 
   const payload: JobSubmitPayload = {
     input: run.prompt,
@@ -88,7 +88,7 @@ export async function submitBackgroundRun(run: BackgroundRunSubmission): Promise
   // those tools: the thread the run writes into, and `issuedAt`. Past the
   // renewal age the worker asks `POST /api/internal/runs/[runId]/envelope`
   // for a fresh one, signed from the same `runRequestContextInput`.
-  const contextHeaders = buildGridRequestContextWireHeaders(
+  const contextHeaders = buildRequestContextWireHeaders(
     runRequestContextInput(subject, context, conversationId, Date.now()),
     process.env.INTERNAL_API_TOKEN,
   )

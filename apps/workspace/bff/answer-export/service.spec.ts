@@ -79,7 +79,7 @@ const QUESTION_ID = '99999999-2222-4333-8444-555555555555'
 const session = {
   userId: 'user_me',
   organizationId: 'org_1',
-  email: 'me@grid.test',
+  email: 'me@example.test',
   role: 'member',
   roles: ['member'],
   permissions: [],

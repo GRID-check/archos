@@ -94,7 +94,7 @@ def test_every_record_tool_is_a_chat_data_source():
 
     A renamed tool would silently lose its exemption from the empty-registry refusal.
     """
-    from aiq_agent.agents.piloti.answer_pipeline import RECORD_TOOLS
+    from agent.agents.piloti.answer_pipeline import RECORD_TOOLS
 
     config = _config()
     stale = RECORD_TOOLS - (_source_tools(config) & set(_chat_tools(config)))

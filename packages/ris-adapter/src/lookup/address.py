@@ -316,7 +316,7 @@ def _federal_state_from_brief() -> tuple[str, str]:
     adapter standalone) there simply is no project, which is not an error.
     """
     try:
-        from aiq_agent.common.norm_registry import resolve_federal_state
+        from agent.common.norm_registry import resolve_federal_state
 
         federal_state = resolve_federal_state(None)
     except Exception:  # noqa: BLE001 — no request context is the normal case off-request

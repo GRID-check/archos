@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.model_overrides import AgentGroup
+from agent.common.model_overrides import AgentGroup
 
 _MIRROR = Path("apps/workspace/bff/model-config/agent-groups.ts")
 

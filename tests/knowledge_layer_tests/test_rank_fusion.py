@@ -22,9 +22,9 @@ from knowledge_layer.fusion import apply_diversity_cap
 from knowledge_layer.fusion import merge_results
 from knowledge_layer.llamaindex.hybrid import fuse_with_ranks
 
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
 
 
 def _chunk(chunk_id: str, score: float, rank: int, file_name: str = "doc.pdf", collection: str | None = None) -> Chunk:

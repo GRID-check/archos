@@ -87,13 +87,13 @@ dropdown also cannot nest in our menu.
 
 ## Session resolution
 
-`getGridSession()` in `apps/workspace/bff/auth/session.ts:38` reads the current session using `withAuth()` from AuthKit:
+`getUserSession()` in `apps/workspace/bff/auth/session.ts:38` reads the current session using `withAuth()` from AuthKit:
 
 ```typescript
-export async function getGridSession(): Promise<GridSession | null>
+export async function getUserSession(): Promise<UserSession | null>
 ```
 
-It returns a `GridSession` with these fields:
+It returns a `UserSession` with these fields:
 
 | Field | Source |
 |---|---|
@@ -106,11 +106,11 @@ It returns a `GridSession` with these fields:
 | `role` | `auth.role` or from JWT claims |
 | `permissions` | `auth.permissions` (from WorkOS FGA) |
 
-When no session exists, `getGridSession()` returns `null`.
+When no session exists, `getUserSession()` returns `null`.
 
 ## Auth guards
 
-### requireGridSession()
+### requireUserSession()
 
 `apps/workspace/bff/auth/session.ts`
 
@@ -121,7 +121,7 @@ Requires any valid session. Throws `SessionRequiredError` (`lib/api/errors`, an
 
 `apps/workspace/bff/auth/require-auth.ts`
 
-Extends `requireGridSession()` and additionally requires an `organizationId`.
+Extends `requireUserSession()` and additionally requires an `organizationId`.
 Without one it throws `NoOrganizationError` (a `ForbiddenError`); the page
 variant, `requireAuthorizedPageSession()`, redirects to
 `/app/onboarding/organization` instead. Returns `AuthorizedSession` (guarantees
@@ -142,7 +142,7 @@ server-thrown class does not survive the RSC boundary.
 
 When `REQUIRE_AUTH=false`:
 
-- **Server-side**: `getGridSession()` still works (returns null if no cookie), but is not called by BFF routes. `resolveSession()` in the v1 proxy returns `null`. No Authorization headers are forwarded.
+- **Server-side**: `getUserSession()` still works (returns null if no cookie), but is not called by BFF routes. `resolveSession()` in the v1 proxy returns `null`. No Authorization headers are forwarded.
 - **Client-side**: `useAuth()` in `apps/workspace/ui/adapters/auth/use-auth.ts:73` short-circuits and returns `DEFAULT_USER`:
 
 ```typescript
@@ -173,8 +173,8 @@ The `buildCollectionScopeFromRequest()` helper constructs the collection scope f
 
 ## Python JWT validation
 
-`apps/backend/src/aiq_api/auth/workos_validator.py` creates a `JWTValidator` configured for WorkOS,
-and the `aiq_api.validators` entry point in `apps/backend/pyproject.toml` hands it to the
+`apps/agent-host/src/agent_host/auth/workos_validator.py` creates a `JWTValidator` configured for WorkOS,
+and the `agent_host.validators` entry point in `apps/agent-host/pyproject.toml` hands it to the
 middleware (ADR-0002: another package can register its own):
 
 ```python
@@ -187,7 +187,7 @@ JWTValidator(
 )
 ```
 
-`JWTValidator` (`apps/backend/src/aiq_api/auth/jwt_validator.py:39`) uses `PyJWT[cryptography]` to verify RS256 signatures:
+`JWTValidator` (`apps/agent-host/src/agent_host/auth/jwt_validator.py:39`) uses `PyJWT[cryptography]` to verify RS256 signatures:
 
 1. Fetches JWKS from WorkOS (cached for 6 hours, cache-busted on kid miss)
 2. Extracts the signing key matching the JWT `kid`
@@ -195,15 +195,15 @@ JWTValidator(
 4. Returns a dict with claims (`type: "jwt"`, `sub`, `email`, `name`, `token`) on success
 5. Returns error code `token_expired` or `token_invalid` on failure
 
-The validated principal is accessible in Python via `get_current_principal()` from `packages/agent/src/aiq_agent/auth/utils.py`, which reads the caller identity the middleware binds in `aiq_agent.auth.request_identity`.
+The validated principal is accessible in Python via `get_current_principal()` from `packages/agent/src/agent/auth/utils.py`, which reads the caller identity the middleware binds in `agent.auth.request_identity`.
 
 ## Token retrieval chain
 
-`get_auth_token()` in `packages/agent/src/aiq_agent/auth/utils.py` returns a token from the first available source, checked in priority order:
+`get_auth_token()` in `packages/agent/src/agent/auth/utils.py` returns a token from the first available source, checked in priority order:
 
 1. **Registered token fetchers** — custom fetchers registered via `register_token_fetcher(fn, priority)`, sorted high-to-low
-2. **NAT Context cookies** — `idToken` cookie from the NAT context (browser / web-UI mode)
-3. **NAT Context Authorization header** — `Authorization: Bearer <jwt>` from the NAT context (API callers)
+2. **Runtime context cookies** — `idToken` cookie from the runtime context (browser / web-UI mode)
+3. **Runtime context Authorization header** — `Authorization: Bearer <jwt>` from the runtime context (API callers)
 4. Returns `None` if no source yields a token
 
 ## WebSocket auth
@@ -211,7 +211,7 @@ The validated principal is accessible in Python via `get_current_principal()` fr
 During WebSocket upgrade, `server.js:199` intercepts `/websocket` connections:
 
 1. Calls `/api/auth/websocket-scope` (internal BFF endpoint)
-2. This resolves the session via `getGridSession()`, checks project access, builds the collection scope
+2. This resolves the session via `getUserSession()`, checks project access, builds the collection scope
 3. If auth is required and no session, returns 401/403 and the socket is rejected
 4. On success, the response includes `organizationId`, `userId`, and `accessToken`
 5. `server.js` forwards these as `X-Grid-Organization-Id`, `X-Grid-User-Id`, and `Authorization: Bearer <token>` to the Python backend's WebSocket route

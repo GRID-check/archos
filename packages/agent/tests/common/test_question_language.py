@@ -11,12 +11,12 @@ import pytest
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.common.question_language import DEFAULT_LANGUAGE
-from aiq_agent.common.question_language import UNDECIDED
-from aiq_agent.common.question_language import answer_language_line
-from aiq_agent.common.question_language import detect
-from aiq_agent.common.question_language import question_language
-from aiq_agent.common.question_language import trace_metadata
+from agent.common.question_language import DEFAULT_LANGUAGE
+from agent.common.question_language import UNDECIDED
+from agent.common.question_language import answer_language_line
+from agent.common.question_language import detect
+from agent.common.question_language import question_language
+from agent.common.question_language import trace_metadata
 
 CONFIDENTLY_OTHER = [
     ("What is this project about?", "en"),

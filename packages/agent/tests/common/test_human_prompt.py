@@ -1,15 +1,15 @@
-"""The NAT human prompt, its wire shape, and the answer back (`common/human_prompt.py`)."""
+"""The agent-runtime human prompt, its wire shape, and the answer back (`common/human_prompt.py`)."""
 
 import pytest
 
-from aiq_agent.common import build_human_prompt
-from aiq_agent.common import extract_user_response
-from aiq_agent.common.human_prompt import DEFAULT_TEXT_PLACEHOLDER
-from aiq_agent.common.human_prompt import human_response
-from aiq_agent.common.human_prompt import interaction_request
-from aiq_agent.common.wire_v2 import InteractionRequestValue
-from aiq_agent.common.wire_v2 import OptionAnswer
-from aiq_agent.common.wire_v2 import TextAnswer
+from agent.common import build_human_prompt
+from agent.common import extract_user_response
+from agent.common.human_prompt import DEFAULT_TEXT_PLACEHOLDER
+from agent.common.human_prompt import human_response
+from agent.common.human_prompt import interaction_request
+from agent.common.wire_v2 import InteractionRequestValue
+from agent.common.wire_v2 import OptionAnswer
+from agent.common.wire_v2 import TextAnswer
 from nat.plugin_api import Context
 from nat.plugin_api import ContextState
 from nat.plugin_api import HumanPromptCheckbox
@@ -86,7 +86,7 @@ def _nat_prompt(content, prompt_id: str = "ask_01") -> InteractionPrompt:
 
 
 class TestOnTheWire:
-    """The prompt as `interaction_request`, the client's answer back as NAT's response."""
+    """The prompt as `interaction_request`, the client's answer back as the agent runtime's response."""
 
     def test_a_question_without_options_is_a_text_request(self):
         value = interaction_request(_nat_prompt(build_human_prompt("Which period?")), expires_at=1)
@@ -114,7 +114,10 @@ class TestOnTheWire:
             interaction_request(_nat_prompt(HumanPromptCheckbox(text="?", options=[])), expires_at=1)
 
     async def test_the_interaction_id_is_nat_s_own_prompt_id(self):
-        """NAT 1.9 mints the prompt id; the socket mints none. Pinned through NAT's provider hook."""
+        """The agent runtime 1.9 mints the prompt id; the socket mints none.
+
+        Pinned through the agent runtime's provider hook.
+        """
         seen: list[InteractionPrompt] = []
 
         async def callback(prompt: InteractionPrompt):

@@ -32,8 +32,8 @@ const FIXTURES = {
   'app/canary/page.tsx': [
     "'use client'",
     "import { useEffect, useState } from 'react'",
-    "import { getGridSession } from '@/lib/auth/session'",
-    'export async function unscoped() { return getGridSession() }',
+    "import { getUserSession } from '@/lib/auth/session'",
+    'export async function unscoped() { return getUserSession() }',
     'export const anything: any = 1',
     'export default function Page({ flag, id }: { flag: boolean; id: string }) {',
     '  if (flag) { const [x] = useState(0); void x }',
@@ -65,7 +65,7 @@ const FIXTURES = {
   ].join('\n'),
   // A file that imported the db before the rule existed stays allowed.
   'app/api/internal/usage/route.ts': "import { db } from '@/lib/db'\nexport const handle = db",
-  'ui/features/grid-cards/schematics/kit.tsx': "export const size = 'text-sm'",
+  'ui/features/cards/schematics/kit.tsx': "export const size = 'text-sm'",
   'tests/canary.test.ts': 'export const fixture: any = {}',
   'bff/canary-repository.ts': "import { projects } from '@/lib/db/schema'\nexport const table = projects",
   'bff/canary-table.ts': "import { projects } from '@/lib/db/schema/projects'\nexport const table = projects",
@@ -83,7 +83,7 @@ const EXPECTED = [
   ['bff/canary.ts', 'grid(no-restricted-syntax)'],
   ['app/api/canary/route.ts', 'eslint(no-restricted-imports)'],
   ['bff/canary-repository.ts', 'eslint(no-restricted-imports)'],
-  ['ui/features/grid-cards/schematics/kit.tsx', 'grid(card-type-scale)'],
+  ['ui/features/cards/schematics/kit.tsx', 'grid(card-type-scale)'],
   ['tests/canary.test.ts', 'typescript(no-explicit-any)'],
 ]
 
@@ -91,7 +91,7 @@ let workdir
 let findings
 
 beforeAll(() => {
-  workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'grid-lint-canary-'))
+  workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-canary-'))
   const config = fs
     .readFileSync(path.join(UI, '.oxlintrc.json'), 'utf8')
     .replace('"./eslint-rules/index.mjs"', JSON.stringify(path.join(UI, 'eslint-rules', 'index.mjs')))

@@ -79,7 +79,7 @@ const run = {
   title: 'Wochenbericht Brandschutz',
   plan: { prompt: 'Prüfe …', skill: emptySkill, dataSources: ['knowledge_layer'] },
   requesterUserId: 'user_owner',
-  requesterEmail: 'owner@grid.test',
+  requesterEmail: 'owner@example.test',
   trigger: 'schedule',
   status: 'running',
   backendJobId: 'backend-job-1',
@@ -89,7 +89,7 @@ const run = {
 
 const pinned = {
   userId: 'user_owner',
-  email: 'owner@grid.test',
+  email: 'owner@example.test',
   organizationId: 'org_1',
   organizationMembershipId: 'om_1',
   role: 'member',
@@ -256,7 +256,7 @@ describe('runReportFilingJob (file_research_report)', () => {
 
     expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({
       userId: 'user_owner',
-      email: 'owner@grid.test',
+      email: 'owner@example.test',
       organizationId: 'org_1',
     })
     expect(fileResearchReport).toHaveBeenCalledWith({
@@ -276,7 +276,7 @@ describe('runReportFilingJob (file_research_report)', () => {
   it('files as the reader whose identity the job carries, and resolves nobody', async () => {
     const requester = {
       userId: 'user_reader',
-      email: 'reader@grid.test',
+      email: 'reader@example.test',
       organizationMembershipId: 'om_7',
       role: 'member',
       permissions: ['project:documents:write'],
@@ -360,7 +360,7 @@ describe('runReportFilingJob (file_research_report)', () => {
 })
 
 describe('reviewTask', () => {
-  const reviewer = { ...pinned, userId: 'user_reviewer', email: 'reviewer@grid.test' } as AuthorizedSession
+  const reviewer = { ...pinned, userId: 'user_reviewer', email: 'reviewer@example.test' } as AuthorizedSession
 
   it('records the decision, the reason and who decided', async () => {
     vi.mocked(repository.findRunInProject).mockResolvedValueOnce({ ...run, status: 'succeeded' } as TaskRun)

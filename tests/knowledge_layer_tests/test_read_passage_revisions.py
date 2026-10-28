@@ -18,11 +18,11 @@ from knowledge_layer.read_passage import _current_revision
 from knowledge_layer.read_passage import read_passage
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.scoping import ScopedCollection
 
 PROJECT = "proj_1"
 NOTICE = "Older Fassung:"
@@ -66,18 +66,18 @@ class _Store:
 @pytest.fixture
 def store(monkeypatch):
     handle = _Store(_chunk())
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: handle)
+    monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: handle)
 
     async def _documents(collection: str):
         return list(DOCS) if collection == PROJECT else []
 
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+    monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection(PROJECT, Shelf.PROJECT)],
     )
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     return handle
 
 
@@ -132,9 +132,9 @@ class TestAnOlderRevisionIsReadOnRequestAndSaysSo:
 class TestTheNoticeKeepsTheBlockReadable:
     async def test_the_citation_registry_still_reads_the_records_not_the_text(self, store):
         """The notice rides the block's slot, so the hash of the bytes the model reads still matches."""
-        from aiq_agent.common.grounding_block import begin_grounding_capture
-        from aiq_agent.common.grounding_block import end_grounding_capture
-        from aiq_agent.common.grounding_block import get_grounding_block
+        from agent.common.grounding_block import begin_grounding_capture
+        from agent.common.grounding_block import end_grounding_capture
+        from agent.common.grounding_block import get_grounding_block
 
         token = begin_grounding_capture()
         try:

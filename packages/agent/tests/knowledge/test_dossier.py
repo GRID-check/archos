@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.knowledge import dossier as d
+from agent.knowledge import dossier as d
 
 
 def _reply(**overrides: Any) -> dict[str, Any]:

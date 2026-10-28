@@ -15,13 +15,13 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common import bff_http
-from aiq_agent.tools.workspace import cards
-from aiq_agent.tools.workspace import register as workspace
+from agent.cards.models import answer_card_adapter
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.common import bff_http
+from agent.tools.workspace import cards
+from agent.tools.workspace import register as workspace
 
 from .test_workspace_client import SECRET
 from .test_workspace_client import _Response
@@ -100,7 +100,7 @@ async def test_a_proposed_write_puts_the_card_in_the_chat_with_the_servers_propo
         "proposal_id": PROPOSAL_ID,
     }
     # It is a card of the real vocabulary, not a look-alike.
-    assert grid_card_adapter.validate_python(card).model_dump(exclude_none=True) == card
+    assert answer_card_adapter.validate_python(card).model_dump(exclude_none=True) == card
 
 
 async def test_the_card_is_shown_without_asking_the_proposals_route_for_anything(server, registry) -> None:
@@ -205,9 +205,9 @@ def test_proposal_from_reads_only_the_documented_shape() -> None:
 
 
 async def test_a_read_lands_in_the_retrieval_ledger_and_a_proposal_or_refusal_does_not(server, registry) -> None:
-    from aiq_agent.common.turn_status import begin_lane_capture
-    from aiq_agent.common.turn_status import end_lane_capture
-    from aiq_agent.common.turn_status import get_lane_captures
+    from agent.common.turn_status import begin_lane_capture
+    from agent.common.turn_status import end_lane_capture
+    from agent.common.turn_status import get_lane_captures
 
     server.extend(
         [
@@ -261,7 +261,7 @@ async def test_a_comparison_puts_both_pages_and_the_boxes_in_the_chat(server, re
         {"region": [0.9, 0.9, 0.1, 0.1], "label": "Plankopf"},
     ]
     assert text.endswith("[[card:1]].")
-    assert grid_card_adapter.validate_python(card).model_dump(exclude_none=True) == card
+    assert answer_card_adapter.validate_python(card).model_dump(exclude_none=True) == card
 
 
 async def test_a_comparison_that_names_its_documents_puts_the_file_names_on_the_card(server, registry) -> None:
@@ -355,7 +355,7 @@ def test_a_comparison_card_holds_an_address_never_image_bytes() -> None:
         "summary": ["data:image/png;base64,AAAA"],
     }
     with pytest.raises(ValueError, match="image bytes"):
-        grid_card_adapter.validate_python(card)
+        answer_card_adapter.validate_python(card)
 
 
 def _action_row(emitted) -> tuple[Any, Any]:

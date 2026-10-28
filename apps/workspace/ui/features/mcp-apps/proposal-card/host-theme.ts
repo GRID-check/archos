@@ -66,12 +66,12 @@ export const HOST_TOKEN_MAP = {
   '--background-color-surface-sunken': '--color-background-secondary',
 } as const satisfies Record<`--${string}`, McpUiStyleVariableKey>
 
-export type PilotiToken = keyof typeof HOST_TOKEN_MAP
+export type HostToken = keyof typeof HOST_TOKEN_MAP
 
 /** The `var()` each Piloti token takes from what the host gave: only the ones it gave. */
-export function hostTokenOverrides(variables: Readonly<Partial<Record<string, string | undefined>>>): Partial<Record<PilotiToken, string>> {
-  const overrides: Partial<Record<PilotiToken, string>> = {}
-  for (const [token, hostVariable] of Object.entries(HOST_TOKEN_MAP) as [PilotiToken, McpUiStyleVariableKey][]) {
+export function hostTokenOverrides(variables: Readonly<Partial<Record<string, string | undefined>>>): Partial<Record<HostToken, string>> {
+  const overrides: Partial<Record<HostToken, string>> = {}
+  for (const [token, hostVariable] of Object.entries(HOST_TOKEN_MAP) as [HostToken, McpUiStyleVariableKey][]) {
     const given = variables[hostVariable]
     if (typeof given === 'string' && given.trim() !== '') overrides[token] = `var(${hostVariable})`
   }
@@ -90,7 +90,7 @@ export function applyHostTheme(context: McpUiHostContext | undefined, root: HTML
     applyHostStyleVariables(styles.variables, root)
     // A token the host stopped giving goes back to Piloti's own value.
     const overrides = hostTokenOverrides(styles.variables)
-    for (const token of Object.keys(HOST_TOKEN_MAP) as PilotiToken[]) {
+    for (const token of Object.keys(HOST_TOKEN_MAP) as HostToken[]) {
       const value = overrides[token]
       if (value) root.style.setProperty(token, value)
       else root.style.removeProperty(token)

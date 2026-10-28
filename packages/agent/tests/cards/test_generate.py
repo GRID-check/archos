@@ -9,10 +9,10 @@ import pytest
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage
 
-from aiq_agent.cards.generate import CardGenerationResult
-from aiq_agent.cards.generate import _parse_cards_text
-from aiq_agent.cards.generate import generate_cards
-from aiq_agent.cards.generate import generate_cards_result
+from agent.cards.generate import CardGenerationResult
+from agent.cards.generate import _parse_cards_text
+from agent.cards.generate import generate_cards
+from agent.cards.generate import generate_cards_result
 
 _ONE_CARD_OBJECT = '{"cards": [{"type": "ifc_model_picker", "title": "Überblick"}]}'
 
@@ -149,7 +149,7 @@ class TestGenerateCards:
     async def test_hung_llm_is_bounded_by_timeout(self, monkeypatch):
         """A stalled provider must not strand the (already-finished) job — the
         call is bounded and returns no cards on timeout."""
-        monkeypatch.setattr("aiq_agent.cards.generate._CARD_LLM_TIMEOUT_S", 0.05)
+        monkeypatch.setattr("agent.cards.generate._CARD_LLM_TIMEOUT_S", 0.05)
 
         async def _never_returns(*_args, **_kwargs):
             await asyncio.sleep(10)

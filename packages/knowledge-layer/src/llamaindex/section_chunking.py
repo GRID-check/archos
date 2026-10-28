@@ -42,8 +42,8 @@ from dataclasses import field
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.common.page_text import furniture_key
-from aiq_agent.common.page_text import running_furniture
+from agent.common.page_text import furniture_key
+from agent.common.page_text import running_furniture
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from llama_index.core import Document
@@ -247,7 +247,7 @@ def _page_lines(page: dict[str, Any]) -> list[Line]:
 
 
 def _furniture(pages: list[list[Line]]) -> set[str]:
-    """Normalised running headers/footers: an edge line repeating on most pages (``aiq_agent.common.page_text``)."""
+    """Normalised running headers/footers: an edge line repeating on most pages (``agent.common.page_text``)."""
     return running_furniture([[line.text for line in lines] for lines in pages])
 
 

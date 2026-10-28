@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common import bff_http
-from aiq_agent.stages import flags
+from agent.common import bff_http
+from agent.stages import flags
 
 
 class _Response(io.BytesIO):

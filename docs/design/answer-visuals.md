@@ -105,7 +105,7 @@ other silently stops matching.
   the ASCII spellings `erfuellt` and `nicht erfuellt`, and English
   equivalents. The extra words are tolerance, not vocabulary.
 
-The status words are listed in `piloti_static.md` `<formatting>`; change both
+The status words are listed in `chat_static.md` `<formatting>`; change both
 together.
 
 ## Audit, September 2026: the whole answer, not the diagrams

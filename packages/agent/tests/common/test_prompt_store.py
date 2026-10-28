@@ -13,19 +13,19 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.prompt_store import CACHE_TTL_ENV
-from aiq_agent.common.prompt_store import ENABLED_ENV
-from aiq_agent.common.prompt_store import PUBLIC_KEY_ENV
-from aiq_agent.common.prompt_store import SECRET_KEY_ENV
-from aiq_agent.common.prompt_store import PromptStore
-from aiq_agent.common.prompt_store import ResolvedPrompt
-from aiq_agent.common.prompt_store import build_langfuse_client
-from aiq_agent.common.prompt_store import configured_cache_ttl_seconds
-from aiq_agent.common.prompt_store import configured_label
-from aiq_agent.common.prompt_store import git_blob_version
-from aiq_agent.common.prompt_store import prompt_management_enabled
-from aiq_agent.common.prompt_store import prompt_store
-from aiq_agent.common.prompt_store import reset_prompt_store
+from agent.common.prompt_store import CACHE_TTL_ENV
+from agent.common.prompt_store import ENABLED_ENV
+from agent.common.prompt_store import PUBLIC_KEY_ENV
+from agent.common.prompt_store import SECRET_KEY_ENV
+from agent.common.prompt_store import PromptStore
+from agent.common.prompt_store import ResolvedPrompt
+from agent.common.prompt_store import build_langfuse_client
+from agent.common.prompt_store import configured_cache_ttl_seconds
+from agent.common.prompt_store import configured_label
+from agent.common.prompt_store import git_blob_version
+from agent.common.prompt_store import prompt_management_enabled
+from agent.common.prompt_store import prompt_store
+from agent.common.prompt_store import reset_prompt_store
 
 FALLBACK = ResolvedPrompt(text="COMMITTED TEXT", name="git:prompts/x.md", version="abc1234", is_fallback=True)
 
@@ -318,7 +318,7 @@ class TestSdkDoesNotHijackTracing:
         The decision this whole module rests on. The Langfuse SDK installs a
         TracerProvider AND hangs its own BatchSpanProcessor on whatever provider
         it finds, unless `tracing_enabled=False`; this process already exports
-        spans to Langfuse through NAT and the OTel collector, so either would
+        spans to Langfuse through the agent runtime and the OTel collector, so either would
         mean a second export path for every span in the fleet.
 
         Asserted rather than trusted because it is an internal of the SDK

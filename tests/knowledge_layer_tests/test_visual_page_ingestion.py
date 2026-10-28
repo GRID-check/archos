@@ -33,7 +33,7 @@ from knowledge_layer_testing.qdrant import FakeEmbedder
 from knowledge_layer_testing.qdrant import record
 from knowledge_layer_testing.qdrant import write
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
+from agent.common.credential_resolution import ResolvedCredential
 
 
 def _patch_vlm_credential(monkeypatch, api_key: str):
@@ -236,7 +236,7 @@ class TestVlmModelOverride:
         assert adapter._resolve_vlm_model_override(None) is None
 
     def test_reads_ingest_vlm_group_for_org(self, monkeypatch):
-        from aiq_agent.common import model_overrides
+        from agent.common import model_overrides
 
         monkeypatch.setattr(
             model_overrides, "resolve_org_model_overrides", lambda org: {"ingest_vlm": "tenant/vision-model"}
@@ -244,7 +244,7 @@ class TestVlmModelOverride:
         assert adapter._resolve_vlm_model_override("org-1") == "tenant/vision-model"
 
     def test_fails_open_to_none_on_error(self, monkeypatch):
-        from aiq_agent.common import model_overrides
+        from agent.common import model_overrides
 
         def boom(org):
             raise RuntimeError("BFF unreachable")
@@ -387,8 +387,8 @@ class TestRenderVisualPagesNoVlm:
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -437,7 +437,7 @@ class TestRunIngestionDrawingBranch:
     def test_summary_comes_from_drawing_not_watermark(self, tmp_path, monkeypatch, ingestor, summary_db):
         """The user-reported bug: a watermark-only vector PDF must be summarised
         from its rendered-page drawing description, never from the watermark."""
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "vlm-key")
         # The rendered-page VLM returns the architectural drawing description.
@@ -485,7 +485,7 @@ class TestRunIngestionDrawingBranch:
 
     def test_missing_vlm_key_skips_render_without_failing(self, tmp_path, monkeypatch, ingestor, summary_db):
         """No VLM key → no page render, but a normal text PDF still ingests."""
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         _patch_vlm_credential(monkeypatch, "")
         import knowledge_layer.llamaindex.processing as processing_module

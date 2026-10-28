@@ -26,7 +26,7 @@ vi.mock('@/lib/cross-project/service', async (importOriginal) => ({
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import { listLookupProjects, readProjectBrief, searchAcrossProjects } from '@/lib/cross-project/service'
 import { withTenant } from '@/lib/db/tenant-context'
-import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
+import { buildRequestContextEnvelope, REQUEST_CONTEXT_HEADER_NAMES } from '@/lib/request-context'
 import { POST as brief } from './brief/route'
 import { POST as projects } from './projects/route'
 import { POST as search } from './search/route'
@@ -37,7 +37,7 @@ const CONV = 's_conv_1'
 
 const session = {
   userId: 'user_requester',
-  email: 'r@grid.test',
+  email: 'r@example.test',
   name: null,
   accessToken: '',
   organizationId: 'org_1',
@@ -48,7 +48,7 @@ const session = {
 }
 
 function envelopeHeaders(overrides: { conversationId?: string | null; projectId?: string | null } = {}) {
-  const { header, signature } = buildGridRequestContextEnvelope(
+  const { header, signature } = buildRequestContextEnvelope(
     {
       organizationId: 'org_1',
       userId: 'user_requester',
@@ -58,7 +58,7 @@ function envelopeHeaders(overrides: { conversationId?: string | null; projectId?
     },
     SECRET
   )
-  return { [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header, [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '' }
+  return { [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header, [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '' }
 }
 
 function request(path: string, body: unknown, headers: Record<string, string> = envelopeHeaders()) {

@@ -31,7 +31,7 @@ and "the office stands behind what this file says" are different sentences, and
 the second one had nowhere to live.
 
 The second gap became urgent because of what is about to be able to write.
-`docs/roadmap/piloti-writes-artifacts-and-approval.md` puts a chat turn's
+`docs/roadmap/agent-writes-artifacts-and-approval.md` puts a chat turn's
 Markdown into the project as a document. Two failure modes follow immediately if
 there is no editorial state: a machine-written document is indistinguishable
 from a checked one in the Files pane, and — the one that cannot be walked back —
@@ -575,7 +575,7 @@ wire.
   `frontends/ui/src/lib/documents/version-content.ts`; who may review, in
   `frontends/ui/src/lib/documents/reviewers.ts`.
 - The design of record:
-  [`../roadmap/piloti-writes-artifacts-and-approval.md`](../roadmap/piloti-writes-artifacts-and-approval.md).
+  [`../roadmap/agent-writes-artifacts-and-approval.md`](../roadmap/agent-writes-artifacts-and-approval.md).
 - What it amends: [ADR-0047](0059-assignment-is-not-access.md).
 - The API-first doctrine this ships under: [ADR-0055](0055-api-first-workspace-primitives.md).
 - **Revisit when** a tenant asks for retention on superseded versions, or when

@@ -34,7 +34,7 @@ export type NormRank = (typeof NORM_RANKS)[number]
  * The German ranks a stored registry (the admin-edited row, a catalog an older
  * admin tab is saving) still carries. Read-only: nothing writes these, and the
  * next save stores the English ones. Mirrored by `LEGACY_NORM_RANK` in
- * `packages/agent/src/aiq_agent/common/norm_registry.py`.
+ * `packages/agent/src/agent/common/norm_registry.py`.
  */
 export const LEGACY_NORM_RANK: Readonly<Record<string, NormRank>> = {
   bundesgesetz: 'federal_law',
@@ -68,7 +68,7 @@ export function isLawRank(rank: NormRank): rank is LawRank {
  * A stored registry, or a verify request an older admin tab sends, names the
  * statute number `gesetzesnummer`. Read for one release (remove after); the next
  * save stores `statute_number`. Mirrored by `VerifySeed` in
- * `packages/agent/src/aiq_agent/common/norm_registry.py`.
+ * `packages/agent/src/agent/common/norm_registry.py`.
  */
 const renameLegacyStatuteNumber = (value: unknown): unknown => {
   if (typeof value !== 'object' || value === null || !('gesetzesnummer' in value)) return value
@@ -91,7 +91,7 @@ export type NormVerifySeed = z.infer<typeof normVerifySeedSchema>
  * A stored registry (the admin-edited row, a catalog an older admin tab is
  * saving) names the Land `bundesland`. Read-only: nothing writes that name, and
  * the next save stores `federal_state`. Mirrored by `NormEntry` in
- * `packages/agent/src/aiq_agent/common/norm_registry.py`.
+ * `packages/agent/src/agent/common/norm_registry.py`.
  */
 const renameLegacyNormEntry = (value: unknown): unknown => {
   if (typeof value !== 'object' || value === null || !('bundesland' in value)) return value
@@ -148,7 +148,7 @@ export const normsFileSchema = z.object({
   /** RAG base collection this country's catalog belongs to. UI preserves it verbatim. */
   corpus_collection: z.string().default('oib_knowledge'),
   /**
-   * Optional CountryProfile data overrides (see aiq_agent.common.country_profile).
+   * Optional CountryProfile data overrides (see agent.common.country_profile).
    * No UI surface — the admin editor preserves them verbatim across the PUT
    * round-trip so a registry that carries country-#2 overrides is not flattened.
    */

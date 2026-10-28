@@ -1,4 +1,4 @@
-"""NAT tools for the Austrian RIS (Rechtsinformationssystem des Bundes).
+"""Agent-runtime tools for the Austrian RIS (Rechtsinformationssystem des Bundes).
 
 Two tools built on the OGD-RIS API:
 
@@ -52,11 +52,11 @@ from nat.plugin_api import LLMRef
 from nat.plugin_api import register_function
 
 try:
-    from aiq_agent.common.norm_registry import NormEntry
-    from aiq_agent.common.norm_registry import extract_federal_state
-    from aiq_agent.common.norm_registry import focus_entries
-    from aiq_agent.common.norm_registry import load_registry
-    from aiq_agent.common.norm_registry import match_entries
+    from agent.common.norm_registry import NormEntry
+    from agent.common.norm_registry import extract_federal_state
+    from agent.common.norm_registry import focus_entries
+    from agent.common.norm_registry import load_registry
+    from agent.common.norm_registry import match_entries
 
     _CATALOG_AVAILABLE = True
 except ImportError:  # adapter used standalone, without the Grid agent package
@@ -68,7 +68,7 @@ except ImportError:  # adapter used standalone, without the Grid agent package
     _CATALOG_AVAILABLE = False
 
 try:
-    from aiq_agent.common.turn_status import record_lane_hit as _record_lane_hit
+    from agent.common.turn_status import record_lane_hit as _record_lane_hit
 
     _LANE_CAPTURE_AVAILABLE = True
 except ImportError:  # adapter used standalone, without the Grid agent package
@@ -268,10 +268,10 @@ def _apply_org_llm_policy(llm):
     import degrades gracefully when the adapter is used outside the Grid agent.
     """
     try:
-        from aiq_agent.common import apply_model_override
-        from aiq_agent.common import apply_org_credential
-        from aiq_agent.common import apply_zdr_routing
-        from aiq_agent.common.model_overrides import AgentGroup
+        from agent.common import apply_model_override
+        from agent.common import apply_org_credential
+        from agent.common import apply_zdr_routing
+        from agent.common.model_overrides import AgentGroup
     except ImportError:
         return llm
     try:
@@ -427,7 +427,7 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
     planner = None
     if tool_config.planner_llm:
         try:
-            from aiq_agent.common import get_langchain_llm
+            from agent.common import get_langchain_llm
 
             planner_llm_obj = await get_langchain_llm(builder, tool_config.planner_llm)
             planner = _make_planner(planner_llm_obj)
@@ -488,7 +488,7 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
         """
         # Platform-tunable counts (Platform → Retrieval), resolved per call;
         # fail-open to the YAML build-time values.
-        from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        from agent.common.retrieval_settings import get_retrieval_setting
 
         max_results = get_retrieval_setting("ris.max_results", tool_config.max_results)
         page_size = get_retrieval_setting("ris.page_size", tool_config.page_size)
@@ -744,7 +744,7 @@ async def ris_catalog_lookup(tool_config: RisCatalogLookupToolConfig, builder: B
         # max_matches entirely.
         matches = focus_entries(match_entries(catalog, topic), extract_federal_state(topic))
         # Platform-tunable cap (Platform → Retrieval), resolved per call.
-        from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        from agent.common.retrieval_settings import get_retrieval_setting
 
         matches = matches[: get_retrieval_setting("ris_catalog.max_matches", tool_config.max_matches)]
         _capture_lane_hits(
@@ -878,7 +878,7 @@ def _safe_document_name(reference: str, title: str) -> str:
 
 def _resolve_session_collection() -> str | None:
     """Return the per-session knowledge collection name, or None outside a session."""
-    from aiq_agent.knowledge.base import SESSION_COLLECTION_PREFIX
+    from agent.knowledge.base import SESSION_COLLECTION_PREFIX
     from nat.plugin_api import Context
 
     try:
@@ -899,7 +899,7 @@ def _ingest_document_sync(text: str, file_name: str, source_url: str) -> str | N
     Returns the ingested file name, or None when ingestion is unavailable.
     Best-effort by design: fetching must succeed even when ingestion cannot.
     """
-    from aiq_agent.knowledge.factory import get_active_ingestor
+    from agent.knowledge.factory import get_active_ingestor
 
     ingestor = get_active_ingestor()
     if ingestor is None:

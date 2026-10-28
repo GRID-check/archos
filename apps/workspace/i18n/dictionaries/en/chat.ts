@@ -70,7 +70,7 @@ export const chat = {
   },
   // Document grid: real project/Büroablage files the assistant surfaced as
   // clickable preview cards (the `document_grid` card / `surface_documents` tool).
-  documentGrid: {
+  documentAnswer: {
     // Count pill — singular/plural chosen in the component (no ICU in this i18n).
     countOne: '1 document',
     countOther: '{count} documents',
@@ -915,7 +915,7 @@ export const chat = {
       memoryTitle: 'A note for {productName} to remember',
       // A profile change shows before and after against the live profile, which
       // the frame cannot read: it is decided in Piloti.
-      decideInPiloti: 'This proposal changes the project context. Open the project in {productName} to compare it with the current values and decide.',
+      decideInAgent: 'This proposal changes the project context. Open the project in {productName} to compare it with the current values and decide.',
       unreadable: 'This proposal could not be shown.',
       waiting: 'Loading the proposal…',
     },
@@ -1630,7 +1630,7 @@ export const chat = {
     },
     showThinking: 'Show thinking ({count})',
     showThinkingSteps: 'Show thinking steps ({count})',
-    // The trace's header line. No step count: it counted raw NAT event names,
+    // The trace's header line. No step count: it counted raw agent-runtime event names,
     // not turns or calls (see ChatThinking). The sources clause is ABSENT when
     // there are none: "0 sources" is a true number that reads as a failure, and
     // an answer grounded in a measurement of the model rightly has no citations.

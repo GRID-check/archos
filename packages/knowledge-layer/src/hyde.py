@@ -14,8 +14,8 @@ async def draft_hyde_text(hyde_llm_obj, query: str, *, enabled: bool, timeout_se
     the draft call all fail open to ``None``.
     """
     try:
-        from aiq_agent.common.hyde import draft_passage
-        from aiq_agent.common.hyde import should_draft
+        from agent.common.hyde import draft_passage
+        from agent.common.hyde import should_draft
     except ImportError:
         return None
     if not should_draft(query, enabled=enabled and hyde_llm_obj is not None):

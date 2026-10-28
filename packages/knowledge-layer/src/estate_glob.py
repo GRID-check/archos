@@ -7,12 +7,12 @@ from __future__ import annotations
 import difflib
 from collections.abc import Sequence
 
-from aiq_agent.common.estate_paths import ESTATE_MOUNTS
-from aiq_agent.common.estate_paths import MOUNT_ROOTS
-from aiq_agent.common.estate_paths import EstatePath
-from aiq_agent.common.estate_paths import PathRefused
-from aiq_agent.common.estate_paths import file_name_candidates
-from aiq_agent.common.estate_paths import parse_estate_path
+from agent.common.estate_paths import ESTATE_MOUNTS
+from agent.common.estate_paths import MOUNT_ROOTS
+from agent.common.estate_paths import EstatePath
+from agent.common.estate_paths import PathRefused
+from agent.common.estate_paths import file_name_candidates
+from agent.common.estate_paths import parse_estate_path
 
 from .browse import fold
 from .estate_constants import MAX_SUGGESTIONS

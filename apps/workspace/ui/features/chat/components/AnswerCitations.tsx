@@ -31,7 +31,7 @@ import {
   type ExcerptSourceRenderer,
   type RowActionRenderer,
 } from '@/shared/components/MarkdownRenderer/answer-block-context'
-import { AskAboutChip } from '@/features/grid-cards/components/AskAboutChip'
+import { AskAboutChip } from '@/features/cards/components/AskAboutChip'
 import { CitationExcerptSource } from './CitationExcerptSource'
 import { InternalLinkProvider } from '@/shared/components/MarkdownRenderer/internal-link-context'
 import { IfcElementChip } from '@/features/bim/components/ifc-element-chip'

@@ -1,4 +1,4 @@
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { QDRANT } from "../constants";
 
 /**
@@ -77,7 +77,7 @@ interface Rule {
   runbook: string;
 }
 
-function rules(cfg: GridConfig): Rule[] {
+function rules(cfg: DeployConfig): Rule[] {
   const t = QDRANT_ALERT_THRESHOLDS;
   const limit = quantityBytes(cfg.qdrant.memory);
   const clustered = cfg.qdrant.replicas > 1;
@@ -219,7 +219,7 @@ function rules(cfg: GridConfig): Rule[] {
 const q = (s: string): string => JSON.stringify(s);
 
 /** The rule file, in Prometheus' `groups:` format. Exported for the spec and the ConfigMap. */
-export function qdrantAlertRules(cfg: GridConfig): string {
+export function qdrantAlertRules(cfg: DeployConfig): string {
   const body = rules(cfg)
     .map(
       (r) => `      - alert: ${r.alert}
@@ -242,6 +242,6 @@ ${body}
 }
 
 /** The alert names, for the spec and the docs. */
-export function qdrantAlertNames(cfg: GridConfig): string[] {
+export function qdrantAlertNames(cfg: DeployConfig): string[] {
   return rules(cfg).map((r) => r.alert);
 }

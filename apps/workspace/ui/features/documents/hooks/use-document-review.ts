@@ -143,7 +143,7 @@ export function useDocumentReview(
   {
     enabled,
     transport,
-    piloti: pilotiOptions,
+    piloti: agentOptions,
     viewerUserId,
     revision,
     inbox = inboxClient,
@@ -161,7 +161,7 @@ export function useDocumentReview(
   }
 ) {
   const room = useDocumentRoom(documentId, { enabled, transport })
-  const canvas = useCanvasAsk({ ...pilotiOptions, documentId, enabled })
+  const canvas = useCanvasAsk({ ...agentOptions, documentId, enabled })
   /**
    * Who is reading: the room's own word once it has welcomed this tab, else
    * the page's (`viewerUserId`), else the session's user id the app keeps
@@ -186,7 +186,7 @@ export function useDocumentReview(
   const [stored, setAnnotations] = useState<AnnotationView[]>([])
   const [canAnnotate, setCanAnnotate] = useState(false)
   /** The organization lets events wake Piloti: an @Piloti reply is the server's to answer, and a mark can be delegated. */
-  const [pilotiWakes, setPilotiWakes] = useState(false)
+  const [pilotiWakes, setAgentWakes] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [tool, setToolState] = useState<ReviewTool>('select')
   const [draft, setDraft] = useState<ReviewDraft | null>(null)
@@ -375,7 +375,7 @@ export function useDocumentReview(
     if (reads.current.documentId !== documentId || reads.current.list !== ticket) return result.annotations
     setAnnotations(result.annotations)
     setCanAnnotate(result.canAnnotate)
-    setPilotiWakes(result.pilotiWakes)
+    setAgentWakes(result.pilotiWakes)
     setListedFor(documentId)
     setLoad('ready')
     return result.annotations
@@ -690,9 +690,9 @@ export function useDocumentReview(
       documentId,
       draft,
       selected: annotations.find((annotation) => annotation.id === selectedId) ?? null,
-      document: pilotiOptions ?? null,
+      document: agentOptions ?? null,
     })
-  const chatHosted = Boolean(enabled && pilotiOptions?.chatHosted)
+  const chatHosted = Boolean(enabled && agentOptions?.chatHosted)
   useEffect(() => (chatHosted ? registerCanvasFocusProvider(() => focusNow.current()) : undefined), [chatHosted])
 
   /**

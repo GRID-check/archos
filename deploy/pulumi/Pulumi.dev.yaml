@@ -50,7 +50,7 @@ environment:
 config:
   grid-oib:namespace: grid
   # ── Images (GHCR) ──
-  grid-oib:imageRegistry: ghcr.io/grid-check
+  grid-oib:imageRegistry: ghcr.io/archos-at
   grid-oib:imageTag: latest
   # ── Storage (provider CSI, NVMe/TCP) ──
   # Classes: premium (default, 3 replicas) / standard (2) / single-replica (1).

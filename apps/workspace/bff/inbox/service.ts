@@ -14,8 +14,8 @@
 import 'server-only'
 import { BadRequestError, NotFoundError } from '@/lib/api/errors'
 import { markMentionsSchema, type MarkMention } from '@/lib/annotations/types'
-import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
-import { isCollaborationEnabled, isPilotiWakesEnabled } from '@/lib/authz/feature-flags'
+import type { AuthorizedSession, UserSession } from '@/lib/auth/types'
+import { isCollaborationEnabled, isAgentWakesEnabled } from '@/lib/authz/feature-flags'
 import { canWriteDocument } from '@/lib/documents/can-write'
 import { getPlatformOrganizationId, hasPlatformPermission } from '@/lib/authz/platform'
 import { withTenant } from '@/lib/db/tenant-context'
@@ -374,7 +374,7 @@ function targetKey(resourceType: InboxTargetType, resourceId: string): string {
  * operational alerts and nothing else — not a 403, which is what used to make an
  * operational alert unreachable for precisely the deployments that need it.
  */
-function typesVisibleTo(session: Pick<GridSession, 'featureFlags'>): InboxItemType[] {
+function typesVisibleTo(session: Pick<UserSession, 'featureFlags'>): InboxItemType[] {
   return visibleInboxTypes(isCollaborationEnabled(session))
 }
 
@@ -640,7 +640,7 @@ async function markAnswersFor(
   )
   return {
     writable: new Set(verdicts.filter(([, writable]) => writable).map(([documentId]) => documentId)),
-    wakesOn: isPilotiWakesEnabled(session),
+    wakesOn: isAgentWakesEnabled(session),
   }
 }
 

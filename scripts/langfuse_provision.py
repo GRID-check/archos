@@ -2,7 +2,7 @@
 
 """Bring a Langfuse project in line with what Grid declares, or say what that would change.
 
-What it provisions (``aiq_agent.observability.langfuse_catalog``, ADR-0089):
+What it provisions (``agent.observability.langfuse_catalog``, ADR-0089):
 
 * a **score config** for every score Grid, a reviewer or a judge writes
   (``langfuse_scores.SCORE_DEFINITIONS``), so Langfuse validates the values and
@@ -44,14 +44,14 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any
 
-from aiq_agent.observability.langfuse_catalog import GOLDEN_DATASET_NAME
-from aiq_agent.observability.langfuse_catalog import JUDGES
-from aiq_agent.observability.langfuse_catalog import QUEUES
-from aiq_agent.observability.langfuse_catalog import RULES
-from aiq_agent.observability.langfuse_catalog import JudgeDefinition
-from aiq_agent.observability.langfuse_catalog import golden_dataset_items
-from aiq_agent.observability.langfuse_scores import SCORE_DEFINITIONS
-from aiq_agent.observability.langfuse_scores import ScoreDefinition
+from agent.observability.langfuse_catalog import GOLDEN_DATASET_NAME
+from agent.observability.langfuse_catalog import JUDGES
+from agent.observability.langfuse_catalog import QUEUES
+from agent.observability.langfuse_catalog import RULES
+from agent.observability.langfuse_catalog import JudgeDefinition
+from agent.observability.langfuse_catalog import golden_dataset_items
+from agent.observability.langfuse_scores import SCORE_DEFINITIONS
+from agent.observability.langfuse_scores import ScoreDefinition
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 _DEFINITIONS = {definition.name: definition for definition in SCORE_DEFINITIONS}

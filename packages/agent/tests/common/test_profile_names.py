@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from aiq_agent import profile_names
+from agent import profile_names
 
 REPO = Path(__file__).resolve().parents[4]
 NAMES_JSON = REPO / "apps/workspace/bff/project-profile/legacy-names.json"

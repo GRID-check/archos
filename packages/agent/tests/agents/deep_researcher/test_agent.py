@@ -15,20 +15,20 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.deep_researcher.custom_middleware import DeferredStructuredOutputMiddleware
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.agents.deep_researcher.models import ResearchNotes
-from aiq_agent.agents.deep_researcher.models import ResearchPlan
-from aiq_agent.agents.deep_researcher.models import ResearchQuery
-from aiq_agent.agents.deep_researcher.tools.research import build_research_batch_tool
-from aiq_agent.agents.deep_researcher.tools.research import researcher_invoke_state
-from aiq_agent.agents.deep_researcher.tools.source_registry import render_source_list
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.session import reset_session_registry
-from aiq_agent.citations.session import set_session_registry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
+from agent.agents.deep_researcher.custom_middleware import DeferredStructuredOutputMiddleware
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.deep_researcher.models import ResearchNotes
+from agent.agents.deep_researcher.models import ResearchPlan
+from agent.agents.deep_researcher.models import ResearchQuery
+from agent.agents.deep_researcher.tools.research import build_research_batch_tool
+from agent.agents.deep_researcher.tools.research import researcher_invoke_state
+from agent.agents.deep_researcher.tools.source_registry import render_source_list
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.citations.session import reset_session_registry
+from agent.citations.session import set_session_registry
+from agent.common import LLMProvider
+from agent.common import LLMRole
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -117,11 +117,11 @@ def mock_research_summarization_middleware():
     researcher_runnable.ainvoke = AsyncMock()
     with (
         patch(
-            "aiq_agent.agents.deep_researcher.factory.create_summarization_middleware",
+            "agent.agents.deep_researcher.factory.create_summarization_middleware",
             return_value=FakeSummarizationMiddleware(),
         ) as summarization,
         patch(
-            "aiq_agent.agents.deep_researcher.factory.create_agent",
+            "agent.agents.deep_researcher.factory.create_agent",
             return_value=researcher_runnable,
         ) as create_researcher,
     ):
@@ -166,7 +166,7 @@ class TestDeepResearcherAgent:
         tools plus the always-present helper tools) so preferred_tools
         validation matches production.
         """
-        from aiq_agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
+        from agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
 
         if researcher_tool_names is None:
             researcher_tool_names = set(agent.source_tool_names) | {"think", "get_verified_sources"}
@@ -224,10 +224,10 @@ class TestDeepResearcherAgent:
     def test_init_with_defaults(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """Test DeepResearcherAgent initialization with defaults."""
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_create_deep_agent,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -243,10 +243,10 @@ class TestDeepResearcherAgent:
 
     def test_init_with_custom_settings(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """Test DeepResearcherAgent initialization with custom settings."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-            from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-            from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+            from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
 
             callbacks = [MagicMock()]
             agent = DeepResearcherAgent(
@@ -276,8 +276,8 @@ class TestDeepResearcherAgent:
 
     def test_init_defaults_checkpointer_to_none(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """No checkpoint_db configured -> no durable checkpointer (current in-memory-only behavior)."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
@@ -285,8 +285,8 @@ class TestDeepResearcherAgent:
 
     def test_init_stores_configured_checkpointer(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """An explicitly configured checkpointer is retained on the agent instance."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             fake_checkpointer = MagicMock(name="fake_checkpointer")
             agent = DeepResearcherAgent(
@@ -303,10 +303,10 @@ class TestDeepResearcherAgent:
         """_prepare_run passes the configured checkpointer into build_deep_research_graph (T3-8)."""
         fake_checkpointer = MagicMock(name="fake_checkpointer")
         with patch(
-            "aiq_agent.agents.deep_researcher.agent.build_deep_research_graph",
+            "agent.agents.deep_researcher.agent.build_deep_research_graph",
             return_value=mock_create_deep_agent,
         ) as build_graph:
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -323,16 +323,16 @@ class TestDeepResearcherAgent:
         """Unsupported sandbox providers fail early with a clear error."""
         from pydantic import ValidationError
 
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
 
         with pytest.raises(ValidationError, match="Input should be 'modal'"):
             DeepResearchSandboxConfig(provider="not-modal")
 
     def test_register_uses_runtime_config_models(self):
-        """NAT config uses the same skills and sandbox models as runtime."""
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        """Agent-runtime config uses the same skills and sandbox models as runtime."""
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
 
         config = DeepResearchAgentConfig(
             orchestrator_llm="llm",
@@ -365,10 +365,10 @@ class TestDeepResearcherAgent:
 
     def test_register_resolves_named_runtime_config_refs(self):
         """Deep research agent config can reference config-only skills and sandbox functions."""
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_agent.agents.deep_researcher.register import resolve_deep_research_runtime_config
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.agents.deep_researcher.register import resolve_deep_research_runtime_config
 
         skills = DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)})
         sandbox = DeepResearchSandboxConfig(app_name="custom-aiq")
@@ -390,7 +390,7 @@ class TestDeepResearcherAgent:
 
     def test_register_checkpoint_db_defaults_to_none(self):
         """checkpoint_db is opt-in; omitting it preserves current in-memory-only behavior (T3-8)."""
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
 
         config = DeepResearchAgentConfig(orchestrator_llm="llm")
 
@@ -401,12 +401,12 @@ class TestDeepResearcherAgent:
         """A configured checkpoint_db resolves a durable checkpointer and threads it into the agent.
 
         Mirrors researcher/conversation_register.py's ``get_checkpointer`` precedent: the checkpointer is built
-        once via ``aiq_agent.common.get_checkpointer`` (cached by db path/DSN) and passed to every
+        once via ``agent.common.get_checkpointer`` (cached by db path/DSN) and passed to every
         DeepResearcherAgent this registration builds.
         """
-        from aiq_agent.agents.deep_researcher import register as register_module
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_agent.agents.deep_researcher.register import deep_research_agent
+        from agent.agents.deep_researcher import register as register_module
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.agents.deep_researcher.register import deep_research_agent
 
         fake_checkpointer = MagicMock(name="fake_checkpointer")
         get_checkpointer_mock = AsyncMock(return_value=fake_checkpointer)
@@ -439,7 +439,7 @@ class TestDeepResearcherAgent:
 
         with (
             patch.object(register_module, "DeepResearcherAgent", _stub_agent),
-            patch("aiq_agent.agents.deep_researcher.register.get_checkpointer", get_checkpointer_mock),
+            patch("agent.agents.deep_researcher.register.get_checkpointer", get_checkpointer_mock),
         ):
             gen = deep_research_agent.__wrapped__(config, _FakeBuilder())
             await gen.__anext__()
@@ -451,9 +451,9 @@ class TestDeepResearcherAgent:
     @pytest.mark.asyncio
     async def test_register_omits_checkpointer_when_checkpoint_db_unset(self):
         """Default (no checkpoint_db) behavior is unchanged: no get_checkpointer call, checkpointer=None."""
-        from aiq_agent.agents.deep_researcher import register as register_module
-        from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-        from aiq_agent.agents.deep_researcher.register import deep_research_agent
+        from agent.agents.deep_researcher import register as register_module
+        from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+        from agent.agents.deep_researcher.register import deep_research_agent
 
         get_checkpointer_mock = AsyncMock()
         captured_kwargs = {}
@@ -481,7 +481,7 @@ class TestDeepResearcherAgent:
 
         with (
             patch.object(register_module, "DeepResearcherAgent", _stub_agent),
-            patch("aiq_agent.agents.deep_researcher.register.get_checkpointer", get_checkpointer_mock),
+            patch("agent.agents.deep_researcher.register.get_checkpointer", get_checkpointer_mock),
         ):
             gen = deep_research_agent.__wrapped__(config, _FakeBuilder())
             await gen.__anext__()
@@ -492,21 +492,21 @@ class TestDeepResearcherAgent:
 
     def test_modal_sandbox_name_is_job_id(self):
         """Modal sandbox names use the resolved job ID directly."""
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import _validate_modal_sandbox_name
+        from agent.agents.deep_researcher.deepagents_runtime import _validate_modal_sandbox_name
 
         assert _validate_modal_sandbox_name("job-123") == "job-123"
 
     def test_modal_sandbox_name_rejects_invalid_job_id(self):
         """Invalid custom job IDs fail before creating a Modal sandbox."""
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import _validate_modal_sandbox_name
+        from agent.agents.deep_researcher.deepagents_runtime import _validate_modal_sandbox_name
 
         with pytest.raises(ValueError, match="valid Modal sandbox name"):
             _validate_modal_sandbox_name("bad/job/id")
 
     def test_init_without_tools(self, mock_llm_provider, mock_create_deep_agent):
         """Test DeepResearcherAgent initialization without tools."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -517,8 +517,8 @@ class TestDeepResearcherAgent:
 
     def test_load_prompts(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """Test _load_prompts loads all required prompts."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -541,16 +541,16 @@ class TestDeepResearcherAgent:
         """Only writer-agent receives synthesis skills when configured that way."""
         with (
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+                "agent.agents.deep_researcher.factory.create_deep_agent",
                 return_value=mock_create_deep_agent,
             ) as create,
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_agent",
+                "agent.agents.deep_researcher.factory.create_agent",
                 return_value=mock_create_deep_agent,
             ) as create_researcher,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-            from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
 
             synthesis_skill_source = "/skills/synthesis/"
             agent = DeepResearcherAgent(
@@ -712,7 +712,7 @@ class TestDeepResearcherAgent:
             for removed_field in ("assembly_instruction", "selection_mode", "expected_count", "options"):
                 assert removed_field not in planner_prompt
 
-    def test_prompts_carry_grid_oib_domain_grounding(
+    def test_prompts_carry_oib_domain_grounding(
         self,
         mock_llm_provider,
         real_tool,
@@ -721,15 +721,15 @@ class TestDeepResearcherAgent:
         """Every deep research prompt names Piloti, a colleague in a planning office, and anchors citations."""
         with (
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+                "agent.agents.deep_researcher.factory.create_deep_agent",
                 return_value=mock_create_deep_agent,
             ) as create,
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_agent",
+                "agent.agents.deep_researcher.factory.create_agent",
                 return_value=mock_create_deep_agent,
             ) as create_researcher,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="OIB 4 stair requirements")])
@@ -758,15 +758,15 @@ class TestDeepResearcherAgent:
         """Default deep research runs do not add SkillsMiddleware."""
         with (
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+                "agent.agents.deep_researcher.factory.create_deep_agent",
                 return_value=mock_create_deep_agent,
             ) as create,
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_agent",
+                "agent.agents.deep_researcher.factory.create_agent",
                 return_value=mock_create_deep_agent,
             ) as create_researcher,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Compare CUDA vs OpenCL")])
@@ -833,15 +833,15 @@ class TestDeepResearcherAgent:
         """Source routing can be disabled without disabling planning, research, or writing."""
         with (
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+                "agent.agents.deep_researcher.factory.create_deep_agent",
                 return_value=mock_create_deep_agent,
             ) as create,
             patch(
-                "aiq_agent.agents.deep_researcher.factory.create_agent",
+                "agent.agents.deep_researcher.factory.create_agent",
                 return_value=mock_create_deep_agent,
             ),
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -888,7 +888,7 @@ class TestDeepResearcherAgent:
         real_tool,
     ):
         """Batch research invokes the compiled researcher and returns ResearchNotes JSON."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         class FakeResearcherRunnable:
             def __init__(self) -> None:
@@ -993,7 +993,7 @@ class TestDeepResearcherAgent:
         real_tool,
     ):
         """Oversized batches must be curated by the caller instead of silently truncated."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         fake_runnable = MagicMock()
         fake_runnable.ainvoke = AsyncMock()
@@ -1025,7 +1025,7 @@ class TestDeepResearcherAgent:
         real_tool,
     ):
         """A query preferring a tool absent from the worker registry fails at submission."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         fake_runnable = MagicMock()
         fake_runnable.ainvoke = AsyncMock(return_value=self._structured_notes_response("AI agents overview"))
@@ -1064,7 +1064,7 @@ class TestDeepResearcherAgent:
         using the structured-output channel. The worker should recover the
         well-formed JSON instead of failing and forcing an orchestrator resubmit.
         """
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         note_json = json.dumps(self._structured_notes_response()["structured_response"])
         fenced = f"以下为研究笔记：\n\n```json\n{note_json}\n```"
@@ -1099,7 +1099,7 @@ class TestDeepResearcherAgent:
         real_tool,
     ):
         """A note with no findings and a blank summary is a failed worker, not a success."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         empty_note = {
             "structured_response": {
@@ -1142,7 +1142,7 @@ class TestDeepResearcherAgent:
         real_tool,
     ):
         """The lightweight batch tool does not reintroduce planner-shape guards."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         fake_runnable = MagicMock()
         fake_runnable.ainvoke = AsyncMock(return_value=self._structured_notes_response("AI agents survey"))
@@ -1176,7 +1176,7 @@ class TestDeepResearcherAgent:
         real_tool,
     ):
         """Failed researchers are surfaced as tool errors without timing out slow workers."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         class FakeResearcherRunnable:
             async def ainvoke(self, state, config=None):
@@ -1276,7 +1276,7 @@ class TestDeepResearcherAgent:
         fake_backend.aupload_files.assert_awaited_once()
         persisted_files = fake_backend.aupload_files.call_args.args[0]
         assert len(persisted_files) == 2
-        from aiq_agent.agents.deep_researcher.tools.research import _research_note_path
+        from agent.agents.deep_researcher.tools.research import _research_note_path
 
         persisted_notes = [
             ResearchNotes.model_validate(json.loads(content.decode("utf-8"))) for _path, content in persisted_files
@@ -1303,7 +1303,7 @@ class TestDeepResearcherAgent:
         callbacks built via for_new_run(); callbacks without for_new_run are
         forwarded unchanged.
         """
-        from aiq_agent.agents.deep_researcher.tools.research import _run_research_queries
+        from agent.agents.deep_researcher.tools.research import _run_research_queries
 
         class FakeIsolatingCallback:
             """Stand-in for VerboseTraceCallback's for_new_run() contract."""
@@ -1398,12 +1398,12 @@ class TestDeepResearcherAgent:
         """Modal backend creation is lazy, cached, and skill reads do not hit Modal."""
         from deepagents.backends import StateBackend
 
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import SHARED_ROUTE
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
-        from aiq_agent.skills import SKILLS_ROOT
-        from aiq_agent.skills import SkillsBackend
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.deepagents_runtime import SHARED_ROUTE
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+        from agent.skills import SKILLS_ROOT
+        from agent.skills import SkillsBackend
 
         sandbox = DeepResearchSandboxConfig()
         agent = DeepResearcherAgent(
@@ -1417,7 +1417,7 @@ class TestDeepResearcherAgent:
 
         with (
             patch(
-                "aiq_agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend",
+                "agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend",
                 return_value=fake_modal_backend,
             ) as create_backend,
         ):
@@ -1441,14 +1441,14 @@ class TestDeepResearcherAgent:
         """Modal sandbox lifetime starts on first sandbox operation, not agent construction."""
         from deepagents.backends.protocol import ExecuteResponse
 
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import _create_sandbox_backend
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import _create_sandbox_backend
 
         fake_modal_backend = MagicMock()
         fake_modal_backend.execute.return_value = ExecuteResponse(output="ok", exit_code=0)
 
         with patch(
-            "aiq_agent.agents.deep_researcher.deepagents_runtime._create_modal_backend_now",
+            "agent.agents.deep_researcher.deepagents_runtime._create_modal_backend_now",
             return_value=fake_modal_backend,
         ) as create_modal:
             backend = _create_sandbox_backend(DeepResearchSandboxConfig(), "job-123")
@@ -1465,8 +1465,8 @@ class TestDeepResearcherAgent:
         import modal
         from deepagents.backends.protocol import ExecuteResponse
 
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import _create_sandbox_backend
+        from agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
+        from agent.agents.deep_researcher.deepagents_runtime import _create_sandbox_backend
 
         first_modal_backend = MagicMock()
         first_modal_backend.execute.side_effect = modal.exception.NotFoundError("gone")
@@ -1475,7 +1475,7 @@ class TestDeepResearcherAgent:
         config = DeepResearchSandboxConfig()
 
         with patch(
-            "aiq_agent.agents.deep_researcher.deepagents_runtime._create_modal_backend_now",
+            "agent.agents.deep_researcher.deepagents_runtime._create_modal_backend_now",
             side_effect=[first_modal_backend, second_modal_backend],
         ) as create_modal:
             backend = _create_sandbox_backend(config, "job-123")
@@ -1495,16 +1495,14 @@ class TestDeepResearcherAgent:
         The templates are cached per process, so the cache is cleared first:
         the failure has to happen on the first construction that reads them.
         """
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.agents.deep_researcher.agent import _prompt_templates
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import _prompt_templates
 
         _prompt_templates.cache_clear()
         try:
             with (
-                patch(
-                    "aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent
-                ),
-                patch("aiq_agent.agents.deep_researcher.agent.load_prompt", side_effect=FileNotFoundError()),
+                patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent),
+                patch("agent.agents.deep_researcher.agent.load_prompt", side_effect=FileNotFoundError()),
                 pytest.raises(FileNotFoundError),
             ):
                 DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
@@ -1514,8 +1512,8 @@ class TestDeepResearcherAgent:
     @pytest.mark.asyncio
     async def test_provider_roles_used_on_init(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """Test LLM roles (planner, researcher, orchestrator) are requested when run() is invoked."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1536,8 +1534,8 @@ class TestDeepResearcherAgent:
     @pytest.mark.asyncio
     async def test_run_basic_query(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """Test run() with a basic query."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1555,8 +1553,8 @@ class TestDeepResearcherAgent:
     @pytest.mark.asyncio
     async def test_run_empty_messages(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """Test run() with empty messages."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1577,8 +1575,8 @@ class TestDeepResearcherAgent:
         salvage and the budget error is still raised, not softened.
         """
         mock_agent = streaming_graph_mock(hang=True)
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1594,8 +1592,8 @@ class TestDeepResearcherAgent:
         self, mock_llm_provider, real_tool, mock_create_deep_agent
     ):
         """max_run_seconds=0 runs unguarded (no wait_for wrapper)."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1610,8 +1608,8 @@ class TestDeepResearcherAgent:
     @pytest.mark.asyncio
     async def test_run_with_callbacks(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """Test run() uses callbacks."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             mock_callback = MagicMock()
             agent = DeepResearcherAgent(
@@ -1633,8 +1631,8 @@ class TestDeepResearcherAgent:
         self, mock_llm_provider, real_tool, mock_create_deep_agent
     ):
         """A configured checkpointer threads job_id as thread_id and requests async durability (T3-8)."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             fake_checkpointer = MagicMock(name="fake_checkpointer")
             agent = DeepResearcherAgent(
@@ -1656,8 +1654,8 @@ class TestDeepResearcherAgent:
         self, mock_llm_provider, real_tool, mock_create_deep_agent
     ):
         """Default (no checkpointer) behavior is unchanged: no configurable/durability kwargs reach the graph."""
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_create_deep_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Test query")])
@@ -1673,8 +1671,8 @@ class TestDeepResearcherAgent:
         """Test run() handles errors gracefully."""
         mock_agent = streaming_graph_mock(error=Exception("Agent error"))
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1692,8 +1690,8 @@ class TestDeepResearcherAgent:
         """Test run() handles empty result messages."""
         mock_agent = streaming_graph_mock({"messages": [], "files": output_markdown_file()})
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1724,8 +1722,8 @@ class TestDeepResearcherAgent:
             }
         )
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1748,7 +1746,7 @@ class TestDeepResearcherAgent:
 
     def test_extract_last_message_text(self):
         """The fallback extractor returns the last message text, or None."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent as A
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent as A
 
         assert A._extract_last_message_text({"messages": [AIMessage(content="hello")]}) == "hello"
         assert A._extract_last_message_text({"messages": [AIMessage(content="  padded  ")]}) == "padded"
@@ -1758,7 +1756,7 @@ class TestDeepResearcherAgent:
 
     def test_extract_last_message_text_joins_structured_blocks(self):
         """Structured block content yields joined text, not a Python repr."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent as A
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent as A
 
         blocks = [
             {"type": "text", "text": "First paragraph."},
@@ -1778,7 +1776,7 @@ class TestDeepResearcherAgent:
 
     def test_research_note_path_is_deterministic_per_query(self):
         """Note filenames derive from the query alone so re-runs overwrite, not accumulate."""
-        from aiq_agent.agents.deep_researcher.tools.research import _research_note_path
+        from agent.agents.deep_researcher.tools.research import _research_note_path
 
         query = ResearchQuery(
             query="OIB Richtlinie 2 Brandschutz Anforderungen",
@@ -1809,8 +1807,8 @@ class TestDeepResearcherAgent:
             }
         )
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1838,8 +1836,8 @@ class TestDeepResearcherAgent:
             }
         )
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1861,8 +1859,8 @@ class TestDeepResearcherAgent:
         """No report file AND no usable message → still a hard failure (nothing to return)."""
         mock_agent = streaming_graph_mock({"messages": [], "files": {}})
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1923,13 +1921,13 @@ class TestDeepResearchCutoffSalvage:
     @pytest.mark.asyncio
     async def test_wall_clock_cutoff_salvages_the_partial_report(self, mock_llm_provider, real_tool):
         """Partial state with a written report → a MARKED answer, not a failed job."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         mock_agent = streaming_graph_mock(self._partial_state(self.PARTIAL_REPORT), hang=True)
 
         with (
-            patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent),
-            patch("aiq_agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff") as emit,
+            patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent),
+            patch("agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff") as emit,
         ):
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1956,13 +1954,13 @@ class TestDeepResearchCutoffSalvage:
     @pytest.mark.asyncio
     async def test_cutoff_with_too_short_a_report_raises(self, mock_llm_provider, real_tool):
         """Below MIN_SALVAGE_REPORT_CHARS there is nothing worth shipping — fail loudly."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         mock_agent = streaming_graph_mock(self._partial_state(self.STUB_REPORT), hang=True)
 
         with (
-            patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent),
-            patch("aiq_agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff") as emit,
+            patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent),
+            patch("agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff") as emit,
         ):
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
@@ -1981,14 +1979,14 @@ class TestDeepResearchCutoffSalvage:
         """A GraphRecursionError is the same story as the clock, told with a different token."""
         from langgraph.errors import GraphRecursionError
 
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         mock_agent = streaming_graph_mock(
             self._partial_state(self.PARTIAL_REPORT),
             error=GraphRecursionError("Recursion limit of 150 reached"),
         )
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Test query")])
             with seeded_session_registry(SourceEntry(url="https://example.com")):
@@ -2006,11 +2004,11 @@ class TestDeepResearchCutoffSalvage:
         """No streamed state at all → the recursion error itself, unswallowed."""
         from langgraph.errors import GraphRecursionError
 
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         mock_agent = streaming_graph_mock(error=GraphRecursionError("Recursion limit of 150 reached"))
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Test query")])
             with pytest.raises(GraphRecursionError):
@@ -2025,8 +2023,8 @@ class TestDeepResearchCutoffSalvage:
         loop to the wall clock). The partial report still ships, but under its
         own ``run_budget`` token — never silently, never as verified.
         """
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.budget_guard import RunBudgetExceededError
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.common.budget_guard import RunBudgetExceededError
 
         mock_agent = streaming_graph_mock(
             self._partial_state(self.PARTIAL_REPORT),
@@ -2034,8 +2032,8 @@ class TestDeepResearchCutoffSalvage:
         )
 
         with (
-            patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent),
-            patch("aiq_agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff") as emit,
+            patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent),
+            patch("agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff") as emit,
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Test query")])
@@ -2056,12 +2054,12 @@ class TestDeepResearchCutoffSalvage:
     @pytest.mark.asyncio
     async def test_run_budget_cutoff_without_partial_state_raises(self, mock_llm_provider, real_tool):
         """A budget abort with nothing streamed has nothing to salvage — fail loudly."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.budget_guard import RunBudgetExceededError
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.common.budget_guard import RunBudgetExceededError
 
         mock_agent = streaming_graph_mock(error=RunBudgetExceededError(ceiling=1000, used=1500))
 
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Test query")])
             with pytest.raises(RunBudgetExceededError):
@@ -2093,10 +2091,10 @@ class TestPerRunIsolation:
         mock_agent = MagicMock()
         mock_agent.with_config = MagicMock(return_value=mock_agent)
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[web_search_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Request")])
@@ -2115,10 +2113,10 @@ class TestPerRunIsolation:
         mock_agent = MagicMock()
         mock_agent.with_config = MagicMock(return_value=mock_agent)
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[web_search_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Request")])
@@ -2140,15 +2138,15 @@ class TestPerRunIsolation:
 
     def test_prepare_run_builds_fresh_trace_callbacks(self, mock_llm_provider):
         """Stateful trace callbacks are rebuilt per run instead of shared across runs."""
-        from aiq_agent.common import VerboseTraceCallback
+        from agent.common import VerboseTraceCallback
 
         mock_agent = MagicMock()
         mock_agent.with_config = MagicMock(return_value=mock_agent)
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             shared_callback = VerboseTraceCallback(log_reasoning=False, max_chars=123)
             plain_callback = MagicMock(spec=[])  # no for_new_run → passed through as-is
@@ -2181,10 +2179,10 @@ class TestPerRunIsolation:
             }
         )
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[web_search_tool])
 
@@ -2200,7 +2198,7 @@ class TestPerRunIsolation:
             # registry at the end of a run now fails loudly — which also proves
             # the second run did not inherit run-one's captured source (it would
             # otherwise have a non-empty registry and succeed).
-            from aiq_agent.citations.entries import EmptySourceRegistryError
+            from agent.citations.entries import EmptySourceRegistryError
 
             state = DeepResearchAgentState(messages=[HumanMessage(content="Next request")])
             with pytest.raises(EmptySourceRegistryError):
@@ -2234,10 +2232,10 @@ class TestFinalMarkdownExtraction:
     def test_extract_final_markdown_does_not_download_from_backend(self, mock_llm_provider, real_tool):
         """Final Markdown extraction only reads files returned by graph state."""
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=MagicMock(),
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             fake_backend = MagicMock()
@@ -2251,10 +2249,10 @@ class TestFinalMarkdownExtraction:
     def test_extract_final_markdown_from_shared_output_file(self, mock_llm_provider, real_tool):
         """Final Markdown can be loaded from /shared/output.md if the writer used the shared path."""
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=MagicMock(),
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             report = "Shared report [1].\n\n## Sources\n[1] Example: https://example.com"
@@ -2270,10 +2268,10 @@ class TestFinalMarkdownExtraction:
     def test_extract_final_markdown_ignores_orchestrator_chatter(self, mock_llm_provider, real_tool):
         """Plain messages are not accepted as final Markdown."""
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=MagicMock(),
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             output = agent._extract_final_markdown(
@@ -2309,10 +2307,10 @@ class TestFinalMarkdownExtraction:
         )
 
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
-            from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+            from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 
@@ -2349,7 +2347,7 @@ class TestDeepResearcherCitationVerification:
     @pytest.mark.asyncio
     async def test_run_returns_report_when_verify_finds_no_valid_citations(self, mock_llm_provider, real_tool, caplog):
         """Verifier false negatives degrade to a warning instead of discarding the report."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         report = "CUDA findings here [1].\n\n## Sources\n[1] CUDA Docs: https://docs.nvidia.com/cuda/"
         sanitized_report = f"{report}\n"
@@ -2361,7 +2359,7 @@ class TestDeepResearcherCitationVerification:
         mock_agent = streaming_graph_mock(deep_result)
 
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
@@ -2379,7 +2377,7 @@ class TestDeepResearcherCitationVerification:
                     SourceEntry(url="https://docs.nvidia.com/cuda/", title="CUDA Docs", tool_name="web_search"),
                 ),
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.verify_citations",
+                    "agent.agents.deep_researcher.finalize.verify_citations",
                     return_value=MagicMock(
                         verified_report=report,
                         removed_citations=[],
@@ -2387,10 +2385,10 @@ class TestDeepResearcherCitationVerification:
                     ),
                 ),
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.sanitize_report",
+                    "agent.agents.deep_researcher.finalize.sanitize_report",
                     return_value=MagicMock(sanitized_report=sanitized_report),
                 ),
-                caplog.at_level("WARNING", logger="aiq_agent.agents.deep_researcher.agent"),
+                caplog.at_level("WARNING", logger="agent.agents.deep_researcher.agent"),
             ):
                 state = DeepResearchAgentState(messages=[HumanMessage(content="What is CUDA?")])
                 result = await agent.run(state)
@@ -2403,7 +2401,7 @@ class TestDeepResearcherCitationVerification:
     @pytest.mark.asyncio
     async def test_no_valid_citations_marks_the_answer_degraded(self, mock_llm_provider, real_tool):
         """Zero valid citations is surfaced on the state, not only in the log."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         report = "CUDA findings here [1].\n\n## Sources\n[1] CUDA Docs: https://docs.nvidia.com/cuda/"
         deep_result = {
@@ -2413,7 +2411,7 @@ class TestDeepResearcherCitationVerification:
         mock_agent = streaming_graph_mock(deep_result)
 
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
@@ -2423,7 +2421,7 @@ class TestDeepResearcherCitationVerification:
                     SourceEntry(url="https://docs.nvidia.com/cuda/", title="CUDA Docs", tool_name="web_search")
                 ),
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.verify_citations",
+                    "agent.agents.deep_researcher.finalize.verify_citations",
                     return_value=MagicMock(
                         verified_report=report,
                         removed_citations=[],
@@ -2443,8 +2441,8 @@ class TestDeepResearcherCitationVerification:
     @pytest.mark.asyncio
     async def test_run_fails_when_registry_is_empty_despite_report(self, mock_llm_provider, real_tool):
         """A report produced with zero captured sources is unverifiable, so the run fails."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.citations.entries import EmptySourceRegistryError
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.citations.entries import EmptySourceRegistryError
 
         report = "Completed report without captured sources."
         deep_result = {
@@ -2454,7 +2452,7 @@ class TestDeepResearcherCitationVerification:
         mock_agent = streaming_graph_mock(deep_result)
 
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
@@ -2466,13 +2464,13 @@ class TestDeepResearcherCitationVerification:
     @pytest.mark.asyncio
     async def test_run_raises_empty_registry_error_when_nothing_to_salvage(self, mock_llm_provider, real_tool):
         """No report, no fallback message, no sources → EmptySourceRegistryError."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.citations.entries import EmptySourceRegistryError
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.citations.entries import EmptySourceRegistryError
 
         mock_agent = streaming_graph_mock({"messages": [], "files": {}})
 
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
@@ -2484,7 +2482,7 @@ class TestDeepResearcherCitationVerification:
     @pytest.mark.asyncio
     async def test_run_verifies_and_sanitizes_writer_markdown(self, mock_llm_provider, real_tool):
         """Final writer Markdown still goes through citation verification and sanitization."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         raw_answer = "CUDA docs are authoritative [1].\n\n## Sources\n[1] CUDA Docs: https://docs.nvidia.com/cuda/"
         verified_answer = raw_answer.replace("authoritative", "official")
@@ -2496,7 +2494,7 @@ class TestDeepResearcherCitationVerification:
         mock_agent = streaming_graph_mock(deep_result)
 
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
@@ -2506,7 +2504,7 @@ class TestDeepResearcherCitationVerification:
                     SourceEntry(url="https://docs.nvidia.com/cuda/", title="CUDA Docs", tool_name="web_search")
                 ),
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.verify_citations",
+                    "agent.agents.deep_researcher.finalize.verify_citations",
                     return_value=MagicMock(
                         verified_report=verified_answer,
                         removed_citations=[],
@@ -2514,7 +2512,7 @@ class TestDeepResearcherCitationVerification:
                     ),
                 ) as verify,
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.sanitize_report",
+                    "agent.agents.deep_researcher.finalize.sanitize_report",
                     return_value=MagicMock(sanitized_report=sanitized_answer),
                 ) as sanitize,
             ):
@@ -2528,7 +2526,7 @@ class TestDeepResearcherCitationVerification:
     @pytest.mark.asyncio
     async def test_removed_citations_populate_citations_removed(self, mock_llm_provider, real_tool):
         """≥1 removed citation → the result carries a {count, reasons} transparency summary."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         report = "CUDA findings [1].\n\n## Sources\n[1] CUDA Docs: https://docs.nvidia.com/cuda/"
         sanitized_report = f"{report}\n"
@@ -2539,7 +2537,7 @@ class TestDeepResearcherCitationVerification:
         mock_agent = streaming_graph_mock(deep_result)
 
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
@@ -2549,7 +2547,7 @@ class TestDeepResearcherCitationVerification:
                     SourceEntry(url="https://docs.nvidia.com/cuda/", title="CUDA Docs", tool_name="web_search")
                 ),
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.verify_citations",
+                    "agent.agents.deep_researcher.finalize.verify_citations",
                     return_value=MagicMock(
                         verified_report=report,
                         removed_citations=[
@@ -2561,7 +2559,7 @@ class TestDeepResearcherCitationVerification:
                     ),
                 ),
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.sanitize_report",
+                    "agent.agents.deep_researcher.finalize.sanitize_report",
                     return_value=MagicMock(sanitized_report=sanitized_report),
                 ),
             ):
@@ -2577,7 +2575,7 @@ class TestDeepResearcherCitationVerification:
     @pytest.mark.asyncio
     async def test_no_removed_citations_leaves_field_none(self, mock_llm_provider, real_tool):
         """Nothing removed → citations_removed stays absent (None), never null-spammed."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         report = "CUDA findings [1].\n\n## Sources\n[1] CUDA Docs: https://docs.nvidia.com/cuda/"
         sanitized_report = f"{report}\n"
@@ -2588,7 +2586,7 @@ class TestDeepResearcherCitationVerification:
         mock_agent = streaming_graph_mock(deep_result)
 
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=mock_agent,
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
@@ -2598,7 +2596,7 @@ class TestDeepResearcherCitationVerification:
                     SourceEntry(url="https://docs.nvidia.com/cuda/", title="CUDA Docs", tool_name="web_search")
                 ),
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.verify_citations",
+                    "agent.agents.deep_researcher.finalize.verify_citations",
                     return_value=MagicMock(
                         verified_report=report,
                         removed_citations=[],
@@ -2606,7 +2604,7 @@ class TestDeepResearcherCitationVerification:
                     ),
                 ),
                 patch(
-                    "aiq_agent.agents.deep_researcher.finalize.sanitize_report",
+                    "agent.agents.deep_researcher.finalize.sanitize_report",
                     return_value=MagicMock(sanitized_report=sanitized_report),
                 ),
             ):
@@ -2628,8 +2626,8 @@ class TestApplyRenumberingDropsSanitizeDeaths:
     """
 
     def test_shortened_death_drops_chip_and_remaps_survivor(self):
-        from aiq_agent.agents.deep_researcher.agent import _apply_renumbering
-        from aiq_agent.citations.sanitize import sanitize_report
+        from agent.agents.deep_researcher.agent import _apply_renumbering
+        from agent.citations.sanitize import sanitize_report
 
         report = (
             "Good [1]. Short [2]. Also good [3].\n\n"
@@ -2658,8 +2656,8 @@ class TestApplyRenumberingDropsSanitizeDeaths:
         assert [s["number"] for s in wire_sources] == [1, 2]
 
     def test_unsafe_death_drops_chip_prose_has_no_orphan(self):
-        from aiq_agent.agents.deep_researcher.agent import _apply_renumbering
-        from aiq_agent.citations.sanitize import sanitize_report
+        from agent.agents.deep_researcher.agent import _apply_renumbering
+        from agent.citations.sanitize import sanitize_report
 
         report = (
             "Good [1]. Evil [2].\n\n"
@@ -2683,7 +2681,7 @@ class TestApplyRenumberingDropsSanitizeDeaths:
 
     def test_number_absent_from_map_is_dropped_even_without_explicit_death(self):
         """Fail-closed when a future sanitizer rule forgets to report a death."""
-        from aiq_agent.agents.deep_researcher.agent import _apply_renumbering
+        from agent.agents.deep_researcher.agent import _apply_renumbering
 
         wire_sources = [
             {"number": 1, "url": "https://example.com/good"},
@@ -2694,11 +2692,11 @@ class TestApplyRenumberingDropsSanitizeDeaths:
 
     def test_verify_then_sanitize_end_to_end_drops_shortened_chip(self):
         """Full path the agent runs: verify keeps, sanitize deletes, wire drops."""
-        from aiq_agent.agents.deep_researcher.agent import _apply_renumbering
-        from aiq_agent.agents.deep_researcher.agent import _cited_sources_to_wire
-        from aiq_agent.citations.registry import SourceRegistry
-        from aiq_agent.citations.sanitize import sanitize_report
-        from aiq_agent.citations.verification import verify_citations
+        from agent.agents.deep_researcher.agent import _apply_renumbering
+        from agent.agents.deep_researcher.agent import _cited_sources_to_wire
+        from agent.citations.registry import SourceRegistry
+        from agent.citations.sanitize import sanitize_report
+        from agent.citations.verification import verify_citations
 
         registry = SourceRegistry()
         registry.add(SourceEntry(url="https://example.com/good", source_type="web_search"))
@@ -2756,12 +2754,12 @@ class TestDeepResearcherQuoteVerification:
     )
 
     async def _run(self, mock_llm_provider, real_tool, markdown):
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         mock_agent = streaming_graph_mock(
             {"messages": [AIMessage(content="handoff")], "files": output_markdown_file(markdown)}
         )
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
             state = DeepResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
             with seeded_session_registry(self._KB_ENTRY):
@@ -2821,7 +2819,7 @@ class TestSessionRegistryBinding:
 
     async def _run_capturing_registry(self, agent):
         """Run the agent, returning what get_session_registry() saw mid-run."""
-        from aiq_agent.citations.session import get_session_registry
+        from agent.citations.session import get_session_registry
 
         seen = []
         graph = streaming_graph_mock({"messages": [], "files": output_markdown_file()})
@@ -2832,14 +2830,14 @@ class TestSessionRegistryBinding:
             return original(*args, **kwargs)
 
         graph.astream = MagicMock(side_effect=_spy)
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph):
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph):
             await agent.run(DeepResearchAgentState(messages=[HumanMessage(content="Q")]))
         return seen[0]
 
     @pytest.mark.asyncio
     async def test_binds_the_runs_registry_when_nothing_is_bound(self, mock_llm_provider, real_tool):
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.citations.session import get_session_registry
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.citations.session import get_session_registry
 
         # Citation verification off: this run captures no sources (the graph is a
         # mock), and an unverifiable report is correctly a hard failure -- which
@@ -2856,8 +2854,8 @@ class TestSessionRegistryBinding:
 
     @pytest.mark.asyncio
     async def test_leaves_an_existing_session_registry_alone(self, mock_llm_provider, real_tool):
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.citations.session import get_session_registry
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.citations.session import get_session_registry
 
         agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
         with seeded_session_registry(SourceEntry(url="https://conversation.example")):
@@ -2926,13 +2924,13 @@ class TestDeepReportConfidence:
         return f"{text}\n{marker}" if marker else text
 
     async def _run(self, mock_llm_provider, real_tool, markdown, *, callbacks=None, cutoff=False):
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         mock_agent = streaming_graph_mock(
             {"messages": [AIMessage(content="handoff")], "files": output_markdown_file(markdown)},
             hang=cutoff,
         )
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=mock_agent):
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
                 tools=[real_tool],
@@ -3086,7 +3084,7 @@ class TestDeepReportConfidence:
     async def test_citation_health_ledger_records_the_cap_and_no_fallback(self, mock_llm_provider, real_tool):
         """The ledger finally gets a cap reason — and deep's explicit "never falls back"."""
         body = "## Ergebnis\n\nDie Hoehe ist ausreichend bemessen.\n\n## Sources\n[1] Kein Nachweis"
-        with patch("aiq_agent.agents.deep_researcher.agent.citation_events.record_turn") as record_turn:
+        with patch("agent.agents.deep_researcher.agent.citation_events.record_turn") as record_turn:
             await self._run(mock_llm_provider, real_tool, self._report("[CONFIDENCE:high]", body=body))
 
         kwargs = record_turn.call_args.kwargs
@@ -3125,7 +3123,7 @@ class TestCallbackRegistryHandover:
         return web_search_tool
 
     def test_a_callback_that_can_hold_a_registry_is_given_one(self, mock_llm_provider, real_tool):
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         received = []
 
@@ -3135,7 +3133,7 @@ class TestCallbackRegistryHandover:
 
         agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool], callbacks=[RegistryHolder()])
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=streaming_graph_mock({"messages": [], "files": output_markdown_file()}),
         ):
             artifacts = agent._prepare_run(DeepResearchAgentState(messages=[HumanMessage(content="Q")]))
@@ -3149,7 +3147,7 @@ class TestCallbackRegistryHandover:
 
     def test_each_run_hands_over_its_own_registry(self, mock_llm_provider, real_tool):
         """Two runs of one agent must not share a registry (ADR-0018)."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         received = []
 
@@ -3160,7 +3158,7 @@ class TestCallbackRegistryHandover:
         agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool], callbacks=[RegistryHolder()])
         state = DeepResearchAgentState(messages=[HumanMessage(content="Q")])
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=streaming_graph_mock({"messages": [], "files": output_markdown_file()}),
         ):
             first = agent._prepare_run(state)
@@ -3173,12 +3171,12 @@ class TestCallbackRegistryHandover:
 
     def test_a_callback_without_the_seam_is_left_alone(self, mock_llm_provider, real_tool):
         """Most callbacks are trace sinks; handing them a registry must not crash."""
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         plain = MagicMock(spec=[])  # no attributes at all
         agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool], callbacks=[plain])
         with patch(
-            "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
+            "agent.agents.deep_researcher.factory.create_deep_agent",
             return_value=streaming_graph_mock({"messages": [], "files": output_markdown_file()}),
         ):
             agent._prepare_run(DeepResearchAgentState(messages=[HumanMessage(content="Q")]))
@@ -3214,7 +3212,7 @@ class TestReportSinkCannotUnmakeTheAnswer:
 
     @pytest.mark.asyncio
     async def test_a_raising_sink_still_returns_the_report(self, mock_llm_provider, real_tool):
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
 
         class ExplodingSink:
             def emit_final_report(self, report, cards=None):
@@ -3224,7 +3222,7 @@ class TestReportSinkCannotUnmakeTheAnswer:
         graph = streaming_graph_mock(
             {"messages": [AIMessage(content="handoff")], "files": output_markdown_file(report)}
         )
-        with patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph):
+        with patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph):
             agent = DeepResearcherAgent(
                 llm_provider=mock_llm_provider,
                 tools=[real_tool],
@@ -3257,9 +3255,9 @@ class TestSalvageBarExcludesOurOwnBanner:
     """
 
     def test_a_banner_does_not_buy_a_stub_a_pass(self):
-        from aiq_agent.agents.deep_researcher.agent import _HONESTY_BANNER_PREFIX
-        from aiq_agent.agents.deep_researcher.agent import MIN_SALVAGE_REPORT_CHARS
-        from aiq_agent.agents.deep_researcher.agent import _salvaged_report_length
+        from agent.agents.deep_researcher.agent import _HONESTY_BANNER_PREFIX
+        from agent.agents.deep_researcher.agent import MIN_SALVAGE_REPORT_CHARS
+        from agent.agents.deep_researcher.agent import _salvaged_report_length
 
         # A body inside the dangerous window: too short to be an answer, long
         # enough that the banner would carry it over the bar.
@@ -3274,9 +3272,9 @@ class TestSalvageBarExcludesOurOwnBanner:
 
     def test_the_window_is_real(self):
         """A banner+body that the naive measure WOULD have cleared."""
-        from aiq_agent.agents.deep_researcher.agent import _HONESTY_BANNER_PREFIX
-        from aiq_agent.agents.deep_researcher.agent import MIN_SALVAGE_REPORT_CHARS
-        from aiq_agent.agents.deep_researcher.agent import _salvaged_report_length
+        from agent.agents.deep_researcher.agent import _HONESTY_BANNER_PREFIX
+        from agent.agents.deep_researcher.agent import MIN_SALVAGE_REPORT_CHARS
+        from agent.agents.deep_researcher.agent import _salvaged_report_length
 
         body = "x" * (MIN_SALVAGE_REPORT_CHARS - 30)
         banner = f"{_HONESTY_BANNER_PREFIX} " + ("y" * 120)
@@ -3286,7 +3284,7 @@ class TestSalvageBarExcludesOurOwnBanner:
         assert _salvaged_report_length(combined) < MIN_SALVAGE_REPORT_CHARS
 
     def test_an_unbannered_report_is_measured_whole(self):
-        from aiq_agent.agents.deep_researcher.agent import _salvaged_report_length
+        from agent.agents.deep_researcher.agent import _salvaged_report_length
 
         report = "Brandabschnitte sind zu begrenzen. " * 10
         assert _salvaged_report_length(report) == len(report.strip())
@@ -3325,8 +3323,8 @@ class TestUpstreamTimeoutIsNotTheBudget:
 
     @pytest.mark.asyncio
     async def test_an_inner_timeout_is_named_upstream_not_wall_clock(self, mock_llm_provider, real_tool):
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
 
         # Raised from INSIDE the graph, immediately -- nowhere near the budget.
         graph = streaming_graph_mock(error=TimeoutError("provider read timed out"))
@@ -3336,8 +3334,8 @@ class TestUpstreamTimeoutIsNotTheBudget:
             seen["reason"] = reason
 
         with (
-            patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph),
-            patch("aiq_agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff", _capture),
+            patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph),
+            patch("agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff", _capture),
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool], max_run_seconds=2400)
             with pytest.raises(TimeoutError, match="upstream timeout"):
@@ -3349,8 +3347,8 @@ class TestUpstreamTimeoutIsNotTheBudget:
 
     @pytest.mark.asyncio
     async def test_the_real_budget_is_still_named_wall_clock(self, mock_llm_provider, real_tool):
-        from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.turn_notices import CUTOFF_WALL_CLOCK
+        from agent.agents.deep_researcher.agent import DeepResearcherAgent
+        from agent.common.turn_notices import CUTOFF_WALL_CLOCK
 
         graph = streaming_graph_mock(hang=True)
         seen: dict[str, object] = {}
@@ -3359,8 +3357,8 @@ class TestUpstreamTimeoutIsNotTheBudget:
             seen["reason"] = reason
 
         with (
-            patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph),
-            patch("aiq_agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff", _capture),
+            patch("agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph),
+            patch("agent.agents.deep_researcher.cutoff.emit_deep_research_cutoff", _capture),
         ):
             agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool], max_run_seconds=1)
             with pytest.raises(TimeoutError, match="wall-clock budget"):

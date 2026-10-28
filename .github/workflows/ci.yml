@@ -53,7 +53,7 @@ concurrency:
 
 env:
   # Image references must be lowercase, and nothing lowercases this one for us.
-  REGISTRY: ghcr.io/grid-check
+  REGISTRY: ghcr.io/archos-at
 
 jobs:
   changes:
@@ -388,7 +388,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # ONE interpreter, the one the backend image ships (apps/backend/Dockerfile).
+      # ONE interpreter, the one the backend image ships (apps/agent-host/Dockerfile).
       - uses: ./.github/actions/setup-python-env
         with:
           python-version: "3.14"
@@ -402,7 +402,7 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
-  # The core suite's coverage gate (65% of packages/agent/src/aiq_agent) over all four shards,
+  # The core suite's coverage gate (65% of packages/agent/src/agent) over all four shards,
   # and the PR comment. In `CI OK`, unlike the workspace's comment-only merge,
   # because the gate is a check.
   backend-coverage:
@@ -420,7 +420,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: backend-coverage-*
@@ -442,11 +442,11 @@ jobs:
           # The whole-tree table passed GitHub's 65,536-character comment
           # limit, and the action then posted only the badge.
           report-only-changed-files: true
-          title: Backend coverage (packages/agent/src/aiq_agent)
+          title: Backend coverage (packages/agent/src/agent)
           unique-id-for-comment: backend-coverage
 
   # Every Python suite but the core one, one job each. Run back to back in one
-  # job they took 4:50 (sources 2:32, aiq_api 1:00, the rest 0:36), the
+  # job they took 4:50 (sources 2:32, agent_host 1:00, the rest 0:36), the
   # longest job of a full pull request; side by side the longest is sources.
   backend-suites:
     name: Backend suites (${{ matrix.suite }})
@@ -457,7 +457,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [aiq_api, sources, migration and claim queues]
+        suite: [agent_host, sources, migration and claim queues]
     services:
       qdrant:
         image: qdrant/qdrant:v1.19.2
@@ -473,8 +473,8 @@ jobs:
         with:
           python-version: "3.14"
       - uses: ./.github/actions/setup-task
-      - name: aiq_api plugin suite
-        if: matrix.suite == 'aiq_api'
+      - name: agent_host plugin suite
+        if: matrix.suite == 'agent_host'
         run: task be:test:api
       - name: Python package suites (packages/knowledge-layer, ris-adapter, tavily-web-search)
         if: matrix.suite == 'sources'
@@ -574,7 +574,7 @@ jobs:
           EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
         run: |
           # The named test files that belong to this suite, in its first shard.
-          case "$SUITE" in core) root='^(tests|evals)/' ;; api) root='^apps/backend/tests/' ;; sources) root='^packages/(knowledge-layer|ris-adapter|tavily-web-search)/' ;; esac
+          case "$SUITE" in core) root='^(tests|evals)/' ;; api) root='^apps/agent-host/tests/' ;; sources) root='^packages/(knowledge-layer|ris-adapter|tavily-web-search)/' ;; esac
           extra=""
           if [ -z "$SHARD" ] || [ "${SHARD%%/*}" = 1 ]; then
             extra="$(jq -r --arg root "$root" '[.[] | select(test($root))] | join(" ")' <<<"$EXTRA_JSON")"
@@ -762,7 +762,7 @@ jobs:
       - run: task workspace:test:merge
       - name: Coverage comment (workspace)
         continue-on-error: true
-        uses: davelosert/vitest-coverage-report-action@c4bbc33a89b7ace0e63d35f1f7d4bcee31155a73 # v2.13.0
+        uses: davelosert/vitest-coverage-report-action@8f86cfb56ed6d5613ea8cdc5259f207fbfd51ece # v2.13.1
         with:
           working-directory: apps/workspace
 
@@ -853,7 +853,7 @@ jobs:
       - uses: ./.github/actions/setup-bun
       # Keyed on the package's OWN uv.lock: the root one would restore an
       # environment this suite never uses (IfcOpenShell + shapely wheels).
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
           enable-cache: true
           cache-dependency-glob: packages/ifc-spatial-py/uv.lock

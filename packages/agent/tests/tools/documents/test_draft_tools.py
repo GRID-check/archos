@@ -10,19 +10,19 @@ from __future__ import annotations
 import pytest
 from langgraph.store.memory import InMemoryStore
 
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.tools.documents import tools as draft_tools_module
-from aiq_agent.tools.documents.cards import draft_title
-from aiq_agent.tools.documents.cards import emit_draft_card
-from aiq_agent.tools.documents.draft_store import DRAFT_ROOT
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.tools.documents.tools import _PERMISSIONS
-from aiq_agent.tools.documents.tools import DRAFT_TOOL_NAMES
-from aiq_agent.tools.documents.tools import draft_tools
-from aiq_agent.tools.documents.tools import draft_tools_for_turn
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.tools.documents import tools as draft_tools_module
+from agent.tools.documents.cards import draft_title
+from agent.tools.documents.cards import emit_draft_card
+from agent.tools.documents.draft_store import DRAFT_ROOT
+from agent.tools.documents.draft_store import DraftBackend
+from agent.tools.documents.tools import _PERMISSIONS
+from agent.tools.documents.tools import DRAFT_TOOL_NAMES
+from agent.tools.documents.tools import draft_tools
+from agent.tools.documents.tools import draft_tools_for_turn
 
 DRAFT = f"{DRAFT_ROOT}aktenvermerk.md"
 
@@ -198,8 +198,8 @@ class TestTheSkillsRideTheSameReadFile:
 
     @pytest.fixture
     def skills(self):
-        from aiq_agent.skills.models import Skill
-        from aiq_agent.skills.runtime import SkillRuntime
+        from agent.skills.models import Skill
+        from agent.skills.runtime import SkillRuntime
 
         return SkillRuntime.office((Skill(name="building-class", description="Die GK.", body="# GK\n\nZuerst."),))
 
@@ -245,7 +245,7 @@ class TestTheSkillsRideTheSameReadFile:
     def test_the_skill_gate_allows_read_and_denies_write(self) -> None:
         from deepagents.middleware.filesystem import _check_fs_permission
 
-        from aiq_agent.tools.documents.tools import _SKILL_PERMISSION
+        from agent.tools.documents.tools import _SKILL_PERMISSION
 
         rules = [_SKILL_PERMISSION, *_PERMISSIONS]
         assert _check_fs_permission(rules, "read", "/skills/office/x/SKILL.md") == "allow"

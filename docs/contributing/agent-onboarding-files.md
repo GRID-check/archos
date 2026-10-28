@@ -65,7 +65,7 @@ task. The scoped files are cheap and precise. Sort by reach, not by importance.
 A rule that reaches one directory costs every session something when it sits at
 the root. Move it down. This is why the UI's authorization and card obligations
 live in `apps/workspace/AGENTS.md` and the pytest path trap lives in
-`packages/agent/src/aiq_agent/AGENTS.md` and `tests/AGENTS.md`, rather than all of them at the
+`packages/agent/src/agent/AGENTS.md` and `tests/AGENTS.md`, rather than all of them at the
 root where they started.
 
 ## Writing them

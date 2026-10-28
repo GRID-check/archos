@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from aiq_agent.common.backend_tools import BACKEND_READ_TOOLS
+from agent.common.backend_tools import BACKEND_READ_TOOLS
 from scripts.generate_backend_tools_schema import SCHEMA_PATH
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[4]
 def _render_in_a_clean_interpreter() -> str:
     """The fixture as the generator writes it, from a process of its own.
 
-    NAT's function registry is process-global. Tests elsewhere in a shard used to
+    The agent runtime's function registry is process-global. Tests elsewhere in a shard used to
     import the knowledge layer by its source path (`sources.knowledge_layer.src…`,
     until ADR-0145 row 5), which registered each tool a second time under another
     module name, and the config then refused the short type as ambiguous. Which tests share a process depends

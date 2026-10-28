@@ -1,6 +1,6 @@
 """Retrieval evaluation harness for the OIB corpus.
 
-Scoring logic lives in NAT-free modules (:mod:`metrics`, :mod:`qrels`, :mod:`structure`,
-:mod:`lexical`, :mod:`dense`) so it is unit-testable offline; :mod:`register` is the NAT
+Scoring logic lives in modules free of the agent runtime (:mod:`metrics`, :mod:`qrels`, :mod:`structure`,
+:mod:`lexical`, :mod:`dense`) so it is unit-testable offline; :mod:`register` is the agent-runtime
 plugin entry point. See ``README.md`` for what this harness measures and what it does not.
 """

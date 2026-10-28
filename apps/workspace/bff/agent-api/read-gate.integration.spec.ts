@@ -97,7 +97,7 @@ describe.skipIf(!url)('Piloti’s workspace reads against Postgres', () => {
 
   const session: AuthorizedSession = {
     userId: OWNER,
-    email: `${OWNER}@grid.test`,
+    email: `${OWNER}@example.test`,
     name: null,
     accessToken: '',
     organizationId: ORG,

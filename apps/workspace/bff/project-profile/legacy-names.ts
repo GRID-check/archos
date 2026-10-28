@@ -10,7 +10,7 @@
  * message, a value the intake agent (an older image) records, a persisted job
  * envelope. Every such path calls this module on the way IN; nothing writes an
  * old name again. When the last of those has drained, delete the module, its
- * JSON, its spec and the Python twin (`aiq_agent/profile_names.py`).
+ * JSON, its spec and the Python twin (`agent/profile_names.py`).
  *
  * The data is `legacy-names.json`, shared with the migrations and the Python
  * twin through `legacy-names.spec.ts` and `packages/agent/tests/common/test_profile_names.py`,

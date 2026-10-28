@@ -4,20 +4,20 @@ from __future__ import annotations
 
 import asyncio
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.knowledge.scoping import ScopedCollection
-from aiq_agent.turn.inventory import Inventory
-from aiq_agent.turn.inventory import aggregate_documents_across_collections
-from aiq_agent.turn.inventory import await_ingest_settling
-from aiq_agent.turn.inventory import fallback_scope
-from aiq_agent.turn.inventory import in_flight_names
-from aiq_agent.turn.inventory import load_inventory
-from aiq_agent.turn.inventory import pending_uploads
-from aiq_agent.turn.inventory import resolve_scope
-from aiq_agent.turn.inventory import session_collection_name
-from aiq_agent.turn.inventory import shelves_in_scope
-from aiq_agent.turn.inventory import wait_for_uploads
+from agent.common.source_kinds import Shelf
+from agent.common.wire_v2 import StatusStep
+from agent.knowledge.scoping import ScopedCollection
+from agent.turn.inventory import Inventory
+from agent.turn.inventory import aggregate_documents_across_collections
+from agent.turn.inventory import await_ingest_settling
+from agent.turn.inventory import fallback_scope
+from agent.turn.inventory import in_flight_names
+from agent.turn.inventory import load_inventory
+from agent.turn.inventory import pending_uploads
+from agent.turn.inventory import resolve_scope
+from agent.turn.inventory import session_collection_name
+from agent.turn.inventory import shelves_in_scope
+from agent.turn.inventory import wait_for_uploads
 
 
 def _scoped(names):
@@ -373,8 +373,8 @@ class TestTheFamiliesLeaveTheGather:
     """The families are set inside two gathers; a ContextVar set there dies with the task."""
 
     async def test_the_inventory_carries_the_base_families_out(self):
-        from aiq_agent.knowledge.inventory import get_norm_families
-        from aiq_agent.knowledge.inventory import set_norm_families
+        from agent.knowledge.inventory import get_norm_families
+        from agent.knowledge.inventory import set_norm_families
 
         scope = [ScopedCollection("oib_knowledge", Shelf.BASE)]
 
@@ -389,8 +389,8 @@ class TestTheFamiliesLeaveTheGather:
         assert [(f.key, f.members) for f in inventory.norm_families] == [("2", ("2", "2.1"))]  # ...the field did
 
     async def test_the_inventory_carries_the_cap_drops_out(self, monkeypatch):
-        from aiq_agent.knowledge.inventory import get_inventory_drops
-        from aiq_agent.knowledge.inventory import set_inventory_drops
+        from agent.knowledge.inventory import get_inventory_drops
+        from agent.knowledge.inventory import set_inventory_drops
 
         monkeypatch.setenv("AVAILABLE_DOCUMENTS_MAX", "3")
         scope = [ScopedCollection("s_1", Shelf.SESSION)]

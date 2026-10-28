@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * Every page server-renders through MainLayout → GridCards → A2uiCard. Since
+ * Every page server-renders through MainLayout → AnswerCards → A2uiCard. Since
  * `@a2ui/react` 0.13 each catalog component is a custom element whose class is
  * defined when the module loads, so importing it on the server throws
  * `HTMLElement is not defined` and takes every page down with it. Only
@@ -12,14 +12,14 @@
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import type { GridCard } from '@/shared/cards/schemas'
+import type { AnswerCard } from '@/shared/cards/schemas'
 
 const CARD = {
   type: 'calculation',
   title: 'Brandabschnitt 3.1.1',
   steps: [{ label: 'Fläche', operation: 'product', unit: 'm²', operands: [{ label: 'Länge', value: 40 }, { label: 'Breite', value: 30 }] }],
   reference: { document: 'OIB-Richtlinie 2', section: 'Tabelle 1b' },
-} as unknown as GridCard
+} as unknown as AnswerCard
 
 describe('A2UI on the server', () => {
   it('imports the catalog contract and the card without a DOM', async () => {

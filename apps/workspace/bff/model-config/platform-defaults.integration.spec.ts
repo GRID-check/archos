@@ -31,7 +31,7 @@ describe.skipIf(!url)('platform model defaults against live Postgres', () => {
     const { getPlatformModelDefaults, listPlatformModelDefaults, savePlatformModelDefaults } =
       await import('./platform-defaults')
 
-    const actor = { actorUserId: 'user_test', actorEmail: 'owner@grid.test' }
+    const actor = { actorUserId: 'user_test', actorEmail: 'owner@example.test' }
 
     // Nothing pinned: every group runs on the workflow config.
     await savePlatformModelDefaults({ defaults: {}, modelSnapshot: {}, note: null, ...actor })

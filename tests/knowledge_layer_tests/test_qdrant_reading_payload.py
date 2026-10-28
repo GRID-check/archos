@@ -8,7 +8,7 @@ from knowledge_layer.qdrant.payload import document_facts
 from knowledge_layer.qdrant.payload import fact_value
 from knowledge_layer.qdrant.payload import reading_facts
 
-from aiq_agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import AvailableDocument
 
 
 def _document(**reading) -> AvailableDocument:

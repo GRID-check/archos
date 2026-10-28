@@ -128,7 +128,7 @@ describe('InboxPushOffer', () => {
     )
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(toastMock).not.toHaveBeenCalled()
-    expect(toastMock.dismiss).toHaveBeenCalledWith('piloti-push-offer')
+    expect(toastMock.dismiss).toHaveBeenCalledWith('agent-push-offer')
     view.unmount()
   })
 

@@ -47,7 +47,7 @@ import {
 } from './agent-document'
 import { GENERATED_DOCUMENT_PRODUCER_REF_KINDS } from './generated'
 
-const session = { userId: 'user_1', organizationId: 'org_1', email: 'a@grid.test' } as AuthorizedSession
+const session = { userId: 'user_1', organizationId: 'org_1', email: 'a@example.test' } as AuthorizedSession
 
 describe('renderAgentDocumentMarkdown', () => {
   const marking = aiProvenanceMarking({})

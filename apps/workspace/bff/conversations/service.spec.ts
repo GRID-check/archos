@@ -180,7 +180,7 @@ const session = {
   role: 'member',
   roles: ['member'],
   permissions: [],
-  email: 'me@grid.test',
+  email: 'me@example.test',
   featureFlags: ['collaboration'],
 } as unknown as AuthorizedSession
 

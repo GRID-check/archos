@@ -13,16 +13,16 @@ import unicodedata
 import pytest
 from langgraph.store.memory import InMemoryStore
 
-from aiq_agent.tools.documents import draft_store
-from aiq_agent.tools.documents.draft_store import DRAFT_ROOT
-from aiq_agent.tools.documents.draft_store import MAX_DRAFT_BYTES
-from aiq_agent.tools.documents.draft_store import VERSION_KEY
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.tools.documents.draft_store import draft_namespace
-from aiq_agent.tools.documents.draft_store import get_draft_backend
-from aiq_agent.tools.documents.draft_store import get_draft_store
-from aiq_agent.tools.documents.draft_store import normalize_draft_text
-from aiq_agent.tools.documents.draft_store import reset_draft_stores
+from agent.tools.documents import draft_store
+from agent.tools.documents.draft_store import DRAFT_ROOT
+from agent.tools.documents.draft_store import MAX_DRAFT_BYTES
+from agent.tools.documents.draft_store import VERSION_KEY
+from agent.tools.documents.draft_store import DraftBackend
+from agent.tools.documents.draft_store import draft_namespace
+from agent.tools.documents.draft_store import get_draft_backend
+from agent.tools.documents.draft_store import get_draft_store
+from agent.tools.documents.draft_store import normalize_draft_text
+from agent.tools.documents.draft_store import reset_draft_stores
 
 #: The same word typed the two ways a keyboard and a model produce it.
 COMPOSED = unicodedata.normalize("NFC", "Gebäudeklasse 4")
@@ -308,7 +308,7 @@ class TestTheStoreFactory:
             "langgraph.store.postgres",
             type("_M", (), {"AsyncPostgresStore": _FakeStore}),
         )
-        monkeypatch.setattr("aiq_agent.common.get_checkpoint_pool", lambda dsn: f"pool:{dsn}")
+        monkeypatch.setattr("agent.common.get_checkpoint_pool", lambda dsn: f"pool:{dsn}")
 
         store = await get_draft_store("postgresql://x/y")
         assert isinstance(store, _FakeStore)
@@ -367,8 +367,8 @@ class TestTheFilingRecordIsReadOnce:
     def test_both_callers_read_the_record_through_this_one_function(self) -> None:
         # The point of the lift: neither the filing tool nor the subject loader
         # keeps a spelling of its own.
-        from aiq_agent.tools.documents import register as filing_tools
-        from aiq_agent.turn import subject_document
+        from agent.tools.documents import register as filing_tools
+        from agent.turn import subject_document
 
         assert filing_tools.filing_record is draft_store.filing_record
         assert subject_document.filing_record is draft_store.filing_record

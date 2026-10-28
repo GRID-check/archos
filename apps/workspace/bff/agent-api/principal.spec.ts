@@ -20,7 +20,7 @@ vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { MEMBERSHIP_TTL_MS } from '@/lib/authz/project-membership'
-import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
+import { buildRequestContextEnvelope, REQUEST_CONTEXT_HEADER_NAMES } from '@/lib/request-context'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import {
   ANSWER_MESSAGE_HEADER,
@@ -234,7 +234,7 @@ describe('external agent (bearer token)', () => {
 
 describe('Piloti in-product (internal token and envelope)', () => {
   function envelope(overrides: { issuedAt?: number } = {}) {
-    const { header, signature } = buildGridRequestContextEnvelope(
+    const { header, signature } = buildRequestContextEnvelope(
       {
         organizationId: 'org_1',
         userId: 'user_1',
@@ -245,8 +245,8 @@ describe('Piloti in-product (internal token and envelope)', () => {
       SECRET,
     )
     return {
-      [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header,
-      [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
+      [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT]: header,
+      [REQUEST_CONTEXT_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
     }
   }
 

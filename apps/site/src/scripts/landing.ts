@@ -480,7 +480,7 @@ function solveStoryLayout(
 
   const PAD = 20
   const GAP = 18
-  const gridHub = { x: panel.w / 2, y: panel.h * 0.4, w: card.w, h: card.h }
+  const centerHub = { x: panel.w / 2, y: panel.h * 0.4, w: card.w, h: card.h }
 
   // Portrait net. Columns give the constellation its underlying order (nothing
   // overlaps, nothing is cropped) and a deterministic jitter within each cell
@@ -490,7 +490,7 @@ function solveStoryLayout(
   const MIN_COL = 150
   const JITTER_X = 10
   const JITTER_Y = 9
-  const bandTop = gridHub.y + gridHub.h / 2 + GAP
+  const bandTop = centerHub.y + centerHub.h / 2 + GAP
   const bandBottom = panel.h - PAD
   const bandW = panel.w - PAD * 2
   const cols = Math.max(1, Math.min(4, Math.floor((bandW + COL) / (MIN_COL + COL))))
@@ -570,10 +570,10 @@ function solveStoryLayout(
   })
 
   // Straight wires from the hub's foot to the top edge of each node.
-  const foot = gridHub.y + gridHub.h / 2
+  const foot = centerHub.y + centerHub.h / 2
   const ends = frags.map((f) => (f.fits ? { x: f.hx + f.tx, y: f.hy + f.ty - f.h / 2 } : null))
-  const wires = ends.map((e) => (e ? `M${gridHub.x},${foot}L${e.x},${e.y}` : ''))
-  return { mode: 'net', hub: gridHub, headTop: panel.h * 0.11, wires, ends }
+  const wires = ends.map((e) => (e ? `M${centerHub.x},${foot}L${e.x},${e.y}` : ''))
+  return { mode: 'net', hub: centerHub, headTop: panel.h * 0.11, wires, ends }
 }
 
 function initPins() {

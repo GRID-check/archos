@@ -91,7 +91,7 @@ config:
   grid-oib:namespace: grid
   # ── Images (tagged by CI's publish job → GHCR) ──
 
-  grid-oib:imageRegistry: ghcr.io/grid-check
+  grid-oib:imageRegistry: ghcr.io/archos-at
   # This line IS the promotion mechanism: every develop→prod promotion PR must
 
   # bump it to a develop sha CI passed (CI tags all three images sha-<full sha>

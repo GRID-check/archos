@@ -30,7 +30,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
     organizationId: 'org_1',
     organizationMembershipId: 'om_1',
     role: 'member',
-    email: 'u@grid.test',
+    email: 'u@example.test',
     permissions: [],
   }),
 }))

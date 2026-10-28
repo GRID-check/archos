@@ -27,7 +27,7 @@ is always into an existing folder of the shelf.
 
 USAGE
 -----
-    cd apps/backend && ../../.venv/bin/python -I ../../scripts/root_sort_eval.py
+    cd apps/agent-host && ../../.venv/bin/python -I ../../scripts/root_sort_eval.py
     ... --out /some/where.json        (default: tests/fixtures/root_sort/eval_<date>.json)
 
 IT NEEDS A KEY, NOT A BACKEND
@@ -52,7 +52,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "root_sort" / "austrian_office_root.json"
 sys.path.insert(0, str(REPO_ROOT / "src"))
-sys.path.insert(0, str(REPO_ROOT / "apps" / "backend" / "src"))
+sys.path.insert(0, str(REPO_ROOT / "apps" / "agent-host" / "src"))
 
 CHUNK = 30
 REQUESTED_CUTS = (0.4, 0.5, 0.6, 0.7, 0.8)
@@ -114,8 +114,8 @@ def build_client() -> Any:
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from aiq_api.routes.filing_fit import add_filing_fit_routes
-    from aiq_api.routes.folder_proposals import add_folder_proposals_routes
+    from agent_host.routes.filing_fit import add_filing_fit_routes
+    from agent_host.routes.folder_proposals import add_folder_proposals_routes
 
     router = APIRouter()
     add_filing_fit_routes(router)

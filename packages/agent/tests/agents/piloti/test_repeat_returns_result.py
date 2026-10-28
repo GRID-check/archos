@@ -26,16 +26,16 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import _FAILED_FETCH_REPEAT_MESSAGE
-from aiq_agent.agents.piloti.agent import _REPEAT_FETCH_MESSAGE
-from aiq_agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
-from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
+from agent.agents.piloti.agent import _FAILED_FETCH_REPEAT_MESSAGE
+from agent.agents.piloti.agent import _REPEAT_FETCH_MESSAGE
+from agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common import turn_status
+from agent.common.tool_calls import FETCH_FAILED_MARKER
 
 _PROMPT = "Du bist Piloti."
 
@@ -85,8 +85,8 @@ def _clean_slate():
 def _bypass_citation_pipeline():
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
@@ -103,14 +103,14 @@ def _batch(*calls: dict) -> AIMessage:
     return AIMessage(content="", tool_calls=list(calls))
 
 
-def _agent(*rounds: AIMessage, ceiling: int = 7) -> PilotiAgent:
+def _agent(*rounds: AIMessage, ceiling: int = 7) -> ChatAgent:
     llm = MagicMock()
     llm.bind_tools = MagicMock(return_value=llm)
     llm.bind = MagicMock(return_value=llm)
     llm.ainvoke = AsyncMock(side_effect=list(rounds))
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(
+    return ChatAgent(
         llm_provider=provider,
         tools=_TOOLS,
         system_prompt=_PROMPT,
@@ -118,7 +118,7 @@ def _agent(*rounds: AIMessage, ceiling: int = 7) -> PilotiAgent:
     )
 
 
-async def _run(agent: PilotiAgent):
+async def _run(agent: ChatAgent):
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content="Wie lang darf der Fluchtweg sein?")]))
 
 
@@ -282,7 +282,7 @@ class TestWhatIsStillTheSentence:
         """Driven directly (no cached map), the guard still answers rather than
         leaving a call un-answered — with the instruction, which is the honest
         thing to say when there is no earlier result to give."""
-        from aiq_agent.agents.piloti.agent import _repeat_answer
+        from agent.agents.piloti.agent import _repeat_answer
 
         call = {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2"}, "id": "x"}
         assert _repeat_answer(call, {}) == _REPEAT_FETCH_MESSAGE

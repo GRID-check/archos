@@ -102,9 +102,9 @@ from knowledge_layer.llamaindex.visual_domains import Domain
 from knowledge_layer.llamaindex.visual_domains import DomainRegistry
 from knowledge_layer.llamaindex.visual_domains import resolve_registry
 
-from aiq_agent.knowledge.title_block import TITLE_BLOCK_FIELDS
-from aiq_agent.knowledge.title_block import normalise_revision_facts
-from aiq_agent.knowledge.title_block import title_block_label
+from agent.knowledge.title_block import TITLE_BLOCK_FIELDS
+from agent.knowledge.title_block import normalise_revision_facts
+from agent.knowledge.title_block import title_block_label
 
 logger = logging.getLogger(__name__)
 

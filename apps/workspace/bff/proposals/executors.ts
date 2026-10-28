@@ -1,7 +1,7 @@
 /**
  * Applying a file operation, on the server, as the deciding person.
  *
- * The port of `features/grid-cards/lib/file-operations.ts`, which ran the same
+ * The port of `features/cards/lib/file-operations.ts`, which ran the same
  * four verbs from the browser against the Files pane's routes. Here each verb
  * calls the SERVICE behind that route, with the deciding person's session,
  * exactly as their own PATCH or POST would:

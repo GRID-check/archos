@@ -15,13 +15,13 @@ from unittest.mock import patch
 
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.deep_researcher import register as deep_register
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
-from aiq_agent.common.image_view_budget import begin_image_view_budget
-from aiq_agent.common.image_view_budget import end_image_view_budget
-from aiq_agent.common.image_view_budget import get_image_view_budget
-from aiq_agent.common.image_view_budget import try_consume_image_view
+from agent.agents.deep_researcher import register as deep_register
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
+from agent.common.image_view_budget import begin_image_view_budget
+from agent.common.image_view_budget import end_image_view_budget
+from agent.common.image_view_budget import get_image_view_budget
+from agent.common.image_view_budget import try_consume_image_view
 
 
 async def _run(seen: list) -> DeepResearchAgentState:

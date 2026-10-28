@@ -544,7 +544,7 @@ function FilePreviewSplit({
     <ResizablePanelGroup
       orientation="horizontal"
       className="h-full min-h-0 flex-1"
-      id="grid-file-ask"
+      id="file-ask"
       // ONCE PER GESTURE, not once per frame: this fires after the pointer is
       // released (and on each keyboard resize), which is the library's own
       // advice for anything that writes the layout to storage. The panel's
@@ -570,8 +570,8 @@ function FilePreviewSplit({
       }}
     >
       <ResizablePanel
-        key="grid-file-ask-chat"
-        id="grid-file-ask-chat"
+        key="file-ask-chat"
+        id="file-ask-chat"
         // NO `defaultSize`. It used to be "100" — 100% of the row — beside a
         // file panel defaulting to 320px, two defaults summing past the row.
         // Whenever the group could measure itself at mount (reduced motion was
@@ -620,7 +620,7 @@ function FilePreviewSplit({
       </ResizablePanel>
       {split ? (
         <ResizableHandle
-          key="grid-file-ask-handle"
+          key="file-ask-handle"
           withHandle
           // The library makes every separator a tab stop, so this one is a
           // control a keyboard reader lands on and its arrow keys resize the
@@ -641,8 +641,8 @@ function FilePreviewSplit({
         />
       ) : null}
       <ResizablePanel
-        key="grid-file-ask-file"
-        id="grid-file-ask-file"
+        key="file-ask-file"
+        id="file-ask-file"
         panelRef={filePanelRef}
         // CONSTANT, not `split ? … : 0`. These used to collapse to zero with the
         // flag, which meant the panel's own bounds said "you may not be wider

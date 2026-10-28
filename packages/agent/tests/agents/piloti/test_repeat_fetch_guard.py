@@ -41,17 +41,17 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import _REPEAT_FETCH_MESSAGE
-from aiq_agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
-from aiq_agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
-from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
-from aiq_agent.common.turn_status import current_retrieval_round
+from agent.agents.piloti.agent import _REPEAT_FETCH_MESSAGE
+from agent.agents.piloti.agent import _REPEAT_FETCH_PREFIX
+from agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
+from agent.agents.piloti.agent import ChatAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common import turn_status
+from agent.common.tool_calls import FETCH_FAILED_MARKER
+from agent.common.turn_status import current_retrieval_round
 
 #: The research budget these tests run on. Small, so a runaway loop hits the
 #: ceiling inside the test rather than inside the recursion limit.
@@ -145,8 +145,8 @@ def _bypass_citation_pipeline():
     """The answer pipeline is not what these tests are about."""
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
@@ -155,17 +155,17 @@ def _bypass_citation_pipeline():
         yield
 
 
-def _agent(llm: MagicMock) -> PilotiAgent:
+def _agent(llm: MagicMock) -> ChatAgent:
     provider = MagicMock(spec=LLMProvider)
     provider.get = MagicMock(return_value=llm)
-    return PilotiAgent(llm_provider=provider, tools=_TOOLS, max_tool_iterations=_CEILING)
+    return ChatAgent(llm_provider=provider, tools=_TOOLS, max_tool_iterations=_CEILING)
 
 
 @pytest.fixture
 def scripted_agent():
-    """A PilotiAgent whose LLM plays a fixed script of tool rounds."""
+    """A ChatAgent whose LLM plays a fixed script of tool rounds."""
 
-    def build(*rounds: AIMessage) -> PilotiAgent:
+    def build(*rounds: AIMessage) -> ChatAgent:
         llm = MagicMock()
         llm.bind_tools = MagicMock(return_value=llm)
         llm.bind = MagicMock(return_value=llm)
@@ -189,7 +189,7 @@ def _batch(*calls: dict, thought: str = "") -> AIMessage:
     return AIMessage(content=thought, tool_calls=list(calls))
 
 
-async def _run(agent: PilotiAgent, question: str = "Wie lang darf der Fluchtweg sein?"):
+async def _run(agent: ChatAgent, question: str = "Wie lang darf der Fluchtweg sein?"):
     return await agent.run(ResearchAgentState(messages=[HumanMessage(content=question)]))
 
 

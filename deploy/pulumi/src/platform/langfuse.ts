@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "./scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "./namespaces";
 import {
@@ -75,7 +75,7 @@ export function langfuseV4MigrationEnv(historicBackfill: boolean): k8s.types.inp
  * org alone.
  */
 export function langfuseDefaultMembershipEnv(
-  lf: Pick<GridConfig["langfuse"], "orgId" | "projectId" | "defaultRole">,
+  lf: Pick<DeployConfig["langfuse"], "orgId" | "projectId" | "defaultRole">,
 ): k8s.types.input.core.v1.EnvVar[] {
   const org: k8s.types.input.core.v1.EnvVar[] = [
     { name: "LANGFUSE_DEFAULT_ORG_ID", value: lf.orgId },
@@ -163,7 +163,7 @@ export function langfuseInClusterUrl(): string {
  *   non-optional reference: a pod started before the Secret exists waits for it
  *   rather than starting with scoring silently off until its next restart.
  */
-export function frontendLangfuseEnv(cfg: GridConfig): k8s.types.input.core.v1.EnvVar[] {
+export function frontendLangfuseEnv(cfg: DeployConfig): k8s.types.input.core.v1.EnvVar[] {
   if (!cfg.langfuse.enabled) return [];
   const fromSecret = (name: string, key: string): k8s.types.input.core.v1.EnvVar => ({
     name,
@@ -190,7 +190,7 @@ export function frontendLangfuseEnv(cfg: GridConfig): k8s.types.input.core.v1.En
  * Unchanged without the tier, so a stack without Langfuse restarts nothing.
  */
 export function withLangfuseKeysChecksum(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   appChecksum: pulumi.Input<string>,
 ): pulumi.Input<string> {
   if (!cfg.langfuse.enabled) return appChecksum;
@@ -207,7 +207,7 @@ export function withLangfuseKeysChecksum(
  * hash that is supposed to force the collector to re-read it — a drift whose
  * only symptom is telemetry quietly stopping.
  */
-export function langfuseOtlpBasicAuth(cfg: GridConfig): pulumi.Output<string> {
+export function langfuseOtlpBasicAuth(cfg: DeployConfig): pulumi.Output<string> {
   return pulumi
     .all([cfg.langfuse.publicKey, cfg.langfuse.secretKey])
     .apply(([pk, sk]) => `Basic ${Buffer.from(`${pk}:${sk}`).toString("base64")}`);
@@ -286,7 +286,7 @@ export interface LangfuseInputs {
  * continues to work. `docs/deployment/kubernetes.md` §9b lists both.
  */
 export function installLangfuse(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   inputs: LangfuseInputs,

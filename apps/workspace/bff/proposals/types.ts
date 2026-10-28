@@ -50,14 +50,14 @@ export type FileOperation = (typeof FILE_OPERATIONS)[number]
 
 /**
  * What a proposal changes, as the inbox row words it
- * (`collaboration.inbox.types.pilotiProposalWaiting.variants.<variant>`): a
+ * (`collaboration.inbox.types.agentProposalWaiting.variants.<variant>`): a
  * file operation by its verb, every other kind by its kind. Stored on the
  * `piloti.proposal_waiting` item as its `variant` (`./attention.ts`).
  */
 export const PROPOSAL_NOTICE_VARIANTS = [...FILE_OPERATIONS, 'memory', 'project_profile', 'operation'] as const
 export type ProposalNoticeVariant = (typeof PROPOSAL_NOTICE_VARIANTS)[number]
 
-/** Most items one proposal carries; mirrors `MAX_FILE_OPERATIONS` in `packages/agent/src/aiq_agent/cards/file_operation_card.py`. */
+/** Most items one proposal carries; mirrors `MAX_FILE_OPERATIONS` in `packages/agent/src/agent/cards/file_operation_card.py`. */
 export const MAX_FILE_OPERATION_ITEMS = 8
 
 const text = (max: number) => z.string().trim().min(1).max(max)

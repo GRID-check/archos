@@ -7,7 +7,7 @@ const isOwner = { value: false }
 const platformOrgId = { value: 'org_platform' as string | null }
 
 vi.mock('@/lib/auth/session', () => ({
-  getGridSession: vi.fn().mockResolvedValue({ userId: 'user_1', organizationId: 'org_1' }),
+  getUserSession: vi.fn().mockResolvedValue({ userId: 'user_1', organizationId: 'org_1' }),
 }))
 
 vi.mock('@/lib/authz/platform', () => {

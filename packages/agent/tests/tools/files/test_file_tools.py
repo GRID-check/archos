@@ -1,6 +1,6 @@
 """The write-side workspace tool: what it resolves, and what it refuses.
 
-Every test here drives the inner function NAT yields, with the turn's inventory
+Every test here drives the inner function the agent runtime yields, with the turn's inventory
 and a card registry bound the way a real turn binds them. Two properties are
 what this file exists to hold:
 
@@ -20,16 +20,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import aiq_agent.project_context as pc
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.tools import proposals_client
-from aiq_agent.tools.files import resolve
-from aiq_agent.tools.files.register import ProposeFileChangeConfig
-from aiq_agent.tools.files.register import propose_file_change
+import agent.project_context as pc
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.tools import proposals_client
+from agent.tools.files import resolve
+from agent.tools.files.register import ProposeFileChangeConfig
+from agent.tools.files.register import propose_file_change
 
 INVENTORY = [
     AvailableDocument(

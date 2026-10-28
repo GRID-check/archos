@@ -166,7 +166,7 @@ def seed(project: FilesProject | None = None, *, embed: Any = None) -> dict[str,
     from knowledge_layer.qdrant.store import get_store
     from knowledge_layer.qdrant.writes import write_chunks
 
-    from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+    from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
     project = project or load_project()
     embed = embed or production_embedder()

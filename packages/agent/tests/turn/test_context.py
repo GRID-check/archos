@@ -10,25 +10,25 @@ from collections.abc import Iterator
 
 import pytest
 
-from aiq_agent.common.platform_lessons import LessonsResolution
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.stages import TurnFacts
-from aiq_agent.stages.flags import TurnFlags
-from aiq_agent.turn import context as context_mod
-from aiq_agent.turn.context import load_turn_context
-from aiq_agent.turn.context import settle_restriction
-from aiq_agent.turn.context import thread_id_for_turn
-from aiq_agent.turn.context import turn_identity
-from aiq_agent.turn.context import user_info_for
-from aiq_agent.turn.context_client import ContextBlocks
-from aiq_agent.turn.context_client import TurnContextError
+from agent.common.platform_lessons import LessonsResolution
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import reset_restricted_use
+from agent.project_context import RequestContext
+from agent.stages import TurnFacts
+from agent.stages.flags import TurnFlags
+from agent.turn import context as context_mod
+from agent.turn.context import load_turn_context
+from agent.turn.context import settle_restriction
+from agent.turn.context import thread_id_for_turn
+from agent.turn.context import turn_identity
+from agent.turn.context import user_info_for
+from agent.turn.context_client import ContextBlocks
+from agent.turn.context_client import TurnContextError
 
 
-def _request(**fields) -> GridRequestContext:
-    return GridRequestContext(**fields)
+def _request(**fields) -> RequestContext:
+    return RequestContext(**fields)
 
 
 @contextlib.contextmanager
@@ -246,8 +246,8 @@ class TestLoadTurnContext:
             )
 
         # Untimed first: the first call imports what its body imports lazily
-        # (NAT, ~0.7 s), which is no measure of overlap. The shared conftest
-        # used to hide that by importing NAT before every test.
+        # (the agent runtime, ~0.7 s), which is no measure of overlap. The shared conftest
+        # used to hide that by importing the agent runtime before every test.
         await load()
         started = time.perf_counter()
         await load()
@@ -265,7 +265,7 @@ class TestTurnIdentity:
     def test_user_info_is_none_when_nobody_is_named(self, monkeypatch):
         monkeypatch.setattr(context_mod, "get_current_principal", lambda: None)
         assert user_info_for(None) is None
-        assert user_info_for(GridRequestContext()) is None
+        assert user_info_for(RequestContext()) is None
 
     def test_user_info_carries_name_email_and_office(self, monkeypatch):
         class Principal:
@@ -438,8 +438,8 @@ class TestLessonsReachTheTrace:
     LESSON_A = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
 
     async def test_the_arm_and_the_lesson_ids_are_on_the_turns_trace_metadata(self, stubs, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         reset_contributions()
         monkeypatch.setattr(
@@ -458,8 +458,8 @@ class TestLessonsReachTheTrace:
         reset_contributions()
 
     async def test_a_holdout_turn_records_the_arm_and_injects_nothing(self, stubs, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         reset_contributions()
         monkeypatch.setattr(
@@ -476,8 +476,8 @@ class TestLessonsReachTheTrace:
         reset_contributions()
 
     async def test_a_failed_lookup_claims_no_arm(self, stubs, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         def fail(_cid):
             raise RuntimeError("lessons unavailable")
@@ -611,12 +611,12 @@ class TestAConfinedTurnOffersNothingTheWholeProjectReads:
 
     _SCOPE = ["oib_knowledge", "proj_p1", "proj_p1_r0123456789ab", "s_c1"]
 
-    def _signed(self, scope=None) -> GridRequestContext:
+    def _signed(self, scope=None) -> RequestContext:
         return _request(
             project_id="p1", organization_id="org", collection_scope=scope or self._SCOPE, envelope_header="signed"
         )
 
-    async def _settled(self, request: GridRequestContext):
+    async def _settled(self, request: RequestContext):
         context = await load_turn_context(request, conversation_id="c1", query_text="q", resolve_stages=True)
         return settle_restriction(context, request)
 

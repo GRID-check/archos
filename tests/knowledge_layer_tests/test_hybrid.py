@@ -159,7 +159,7 @@ def test_selective_terms_keeps_input_order_and_drops_only_the_noise() -> None:
 def test_the_ceiling_shares_german_texts_constants() -> None:
     """One ceiling, one place to tune it: the exact channel and the sparse
     channel must not drift into disagreeing about what counts as noise."""
-    from aiq_agent.common import german_text
+    from agent.common import german_text
 
     assert DEFAULT_DF_CEILING_RATIO == german_text.DEFAULT_DF_CEILING_RATIO
     assert DEFAULT_DF_CEILING_MIN_TOTAL == german_text.DEFAULT_DF_CEILING_MIN_TOTAL

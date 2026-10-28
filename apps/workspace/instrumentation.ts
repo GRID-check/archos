@@ -5,7 +5,7 @@ import type { Instrumentation } from "next";
  * this module, and this one is bundled by Next, so a global is the one thing
  * both can see). Same key as `SHUTDOWN_HOOKS_KEY` in `server.js`.
  */
-const SHUTDOWN_HOOKS_KEY = "__gridShutdownHooks";
+const SHUTDOWN_HOOKS_KEY = "__appShutdownHooks";
 
 const registerShutdownHook = (hook: () => Promise<void>): void => {
   const holder = globalThis as Record<string, unknown>;
@@ -74,7 +74,7 @@ export async function register() {
   // its shutdown flush is registered here, before the early return below: a
   // deployment with PostHog and no collector must still deliver the exceptions
   // queued when a pod is replaced. `server.js` runs every hook on this list
-  // before it exits (`__gridShutdownHooks`); the client queues nothing, and the
+  // before it exits (`__appShutdownHooks`); the client queues nothing, and the
   // hook does nothing, while PostHog is off.
   registerShutdownHook(async () => {
     const { shutdownPosthogServer } = await import("./bff/analytics/posthog-server");

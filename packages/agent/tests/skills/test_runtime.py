@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.wire_v2 import SkillStep
-from aiq_agent.skills.events import emit_skills_offered
-from aiq_agent.skills.models import Skill
-from aiq_agent.skills.runtime import SKILLS_PROMPT
-from aiq_agent.skills.runtime import SkillRuntime
+from agent.common.wire_v2 import SkillStep
+from agent.skills.events import emit_skills_offered
+from agent.skills.models import Skill
+from agent.skills.runtime import SKILLS_PROMPT
+from agent.skills.runtime import SkillRuntime
 
 S1 = Skill(name="alpha", description="Erster Skill.", body="alpha body", origin="platform")
 S2 = Skill(name="beta", description="Zweiter Skill.", body="beta body", origin="platform")
@@ -288,7 +288,7 @@ class TestActivationEvents:
 
 def test_a_standard_marker_on_the_payload_is_ignored() -> None:
     """The wire may still carry it; nothing in the backend may act on it."""
-    from aiq_agent.skills.resolver import _build_org_skills
+    from agent.skills.resolver import _build_org_skills
 
     (skill,) = _build_org_skills(
         [{"name": "haus-stil", "description": "Fleet standard equipment.", "body": "b", "standard": True}]

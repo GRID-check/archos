@@ -489,8 +489,8 @@ the answer being written, with the asker's masthead, verified sources and cards
 (ADR-0066), rather than a spinner followed by a finished block of text. The view
 is read-only: no feedback row, and a card cannot apply anything. Requires `viewer`.
 
-- Frames are `data: {"kind":"frame","seq":N,"payload":<NAT frame>}`. The payload is
-  the raw NAT WebSocket frame (`system_response_message`,
+- Frames are `data: {"kind":"frame","seq":N,"payload":<agent runtime frame>}`. The payload is
+  the raw agent runtime WebSocket frame (`system_response_message`,
   `system_intermediate_message`, `system_interaction_message`, `error_message`) —
   the same bytes the asker's own socket carries, documented in
   [`websocket-protocol.md`](websocket-protocol.md).
@@ -521,20 +521,20 @@ Three things to know before consuming it:
    socket does resume (`/frames`, below), because it knows where it stopped: the
    entry id of the last frame it applied, or the id its question went out under.
 
-### `GET /api/conversations/{id}/frames?after=<entry id>`
+### `GET /api/conversations/{id}/frames?peek=1`
 
-What a dropped socket missed. Every frame the agent sends over the asker's
+Is a turn still producing frames? Every event the agent sends over the asker's
 WebSocket is also appended to the conversation's replay stream (`conv:<id>:stream`,
-ADR-0028) and reaches the socket tagged `grid_frame_id`, the stream entry id. A
-client that lost its socket asks for every frame after the last id it applied and
-feeds them to its live frame handler. Requires `viewer`.
+ADR-0028). This route reads only the newest entry of it, so a client whose socket is
+gone can tell a turn still working (a heartbeat every 20 s) from one that has ended.
+Requires `viewer`.
 
-- `{"frames": [<NAT frame>, ...]}`, oldest first, each with `grid_frame_id` set.
-  Without `after`, every frame the stream still holds (a reload, which lost its
-  cursor; the client applies them from its question's first frame on).
-- `{"frames": null}`: nothing to read (no `REDIS_URL`, or the read failed). The
-  client falls back to fetching the finished answer.
-- `400` when `after` is not an entry id (`<ms>-<n>`). `Cache-Control: no-store`.
+- `{"available": true, "newest": "<ms>-<n>", "now": <epoch ms>}`; `available: false`
+  and `newest: null` when there is no stream to ask (no `REDIS_URL`, or the read
+  failed). `Cache-Control: no-store`.
+- `400` for any other query. Resume is not served here: a client that lost its socket
+  sends `attach{turn_id, after_seq}` on the new one and the agent tier replays that
+  turn (chat wire v2 §d).
 
 ### `POST /api/internal/collaboration/prune`
 

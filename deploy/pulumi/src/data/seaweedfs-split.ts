@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import {
@@ -106,7 +106,7 @@ const CONFIG_DIR = "/etc/seaweedfs";
  * constraint`, so the fallback never fires and a concurrent insert surfaces as
  * a hard error instead. The statement below is the supported combination.
  */
-export function filerToml(cfg: GridConfig, host: string): pulumi.Output<string> {
+export function filerToml(cfg: DeployConfig, host: string): pulumi.Output<string> {
   // TOML basic strings need `"` and `\` escaped, and cannot hold a raw
   // newline. `JSON.stringify` emits exactly TOML's escape set
   // (`\" \\ \b \f \n \r \t \uXXXX`), quotes included — so it is the
@@ -212,7 +212,7 @@ function peerService(
 }
 
 export function installSplitSeaweedFS(
-  cfg: GridConfig,
+  cfg: DeployConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
   s3Secret: k8s.core.v1.Secret,

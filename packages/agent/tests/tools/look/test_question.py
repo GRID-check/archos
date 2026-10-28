@@ -20,13 +20,13 @@ from agent_testing.canvas import DOCUMENT
 from agent_testing.canvas import answering
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from aiq_agent.common import image_view_budget
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.observability import direct_trace
-from aiq_agent.tools.look import reading
-from aiq_agent.tools.look.register import DESCRIPTION
-from aiq_agent.tools.look.register import run_look
+from agent.common import image_view_budget
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.focus_file import set_turn_intent
+from agent.observability import direct_trace
+from agent.tools.look import reading
+from agent.tools.look.register import DESCRIPTION
+from agent.tools.look.register import run_look
 
 REPLY = {
     "readings": [
@@ -149,17 +149,17 @@ class TestAQuestion:
 
     async def test_the_reading_is_booked_to_the_turns_usage_ledger(self, sees, model) -> None:
         """The callback path never sees this call, so the reading books itself: budgets and invoices count it."""
-        from aiq_agent.common.cost_tracking import GridCostTracker
-        from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+        from agent.common.cost_tracking import CostTracker
+        from agent.common.cost_tracking import cost_tracker_var
 
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         recorded: list = []
         tracker.record = recorded.append  # type: ignore[method-assign]
-        token = grid_cost_tracker_var.set(tracker)
+        token = cost_tracker_var.set(tracker)
         try:
             await run_look(page=1, region=REGION, question="What is this?")
         finally:
-            grid_cost_tracker_var.reset(token)
+            cost_tracker_var.reset(token)
 
         [event] = recorded
         assert (event.role, event.model, event.prompt_tokens, event.completion_tokens) == (

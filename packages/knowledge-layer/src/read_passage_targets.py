@@ -27,8 +27,8 @@ def _document_names(document: Any) -> list[str]:
     if stored:
         names.append(str(stored))
     try:
-        from aiq_agent.common.norm_registry import guess_display_title
-        from aiq_agent.common.norm_registry import oib_family_member
+        from agent.common.norm_registry import guess_display_title
+        from agent.common.norm_registry import oib_family_member
 
         derived = guess_display_title(names[0])
         member = oib_family_member(names[0])
@@ -68,7 +68,7 @@ def _matches(document: Any, wanted: str) -> bool:
 
 async def _documents_in(collection: str) -> list[Any]:
     """The documents registered for one collection; empty on any store error."""
-    from aiq_agent.knowledge.factory import get_available_documents_async
+    from agent.knowledge.factory import get_available_documents_async
 
     try:
         return await get_available_documents_async(collection)

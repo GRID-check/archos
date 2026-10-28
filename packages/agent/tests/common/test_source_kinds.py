@@ -9,21 +9,21 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.wire import source_entry_to_wire
-from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE
-from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
-from aiq_agent.common.source_kinds import DEFAULT_SOURCE_KIND
-from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
-from aiq_agent.common.source_kinds import SOURCE_KINDS
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import kind_for_lane
-from aiq_agent.common.source_kinds import legacy_shelf_for_collection_name
-from aiq_agent.common.source_kinds import parse_shelf
-from aiq_agent.common.source_kinds import scope_for_qualifier
-from aiq_agent.common.source_kinds import shelf_for_qualifier
-from aiq_agent.common.source_kinds import shelf_qualifier
-from aiq_agent.common.source_kinds import source_kind
+from agent.citations.entries import SourceEntry
+from agent.citations.wire import source_entry_to_wire
+from agent.common.source_kinds import AGENT_AUTHORED_LANE
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
+from agent.common.source_kinds import DEFAULT_SOURCE_KIND
+from agent.common.source_kinds import SHELF_QUALIFIERS
+from agent.common.source_kinds import SOURCE_KINDS
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import kind_for_lane
+from agent.common.source_kinds import legacy_shelf_for_collection_name
+from agent.common.source_kinds import parse_shelf
+from agent.common.source_kinds import scope_for_qualifier
+from agent.common.source_kinds import shelf_for_qualifier
+from agent.common.source_kinds import shelf_qualifier
+from agent.common.source_kinds import source_kind
 
 
 class TestKindForLane:
@@ -70,7 +70,7 @@ class TestAgentAuthoredLane:
         assert kind_for_lane(AGENT_AUTHORED_LANE) == "office"
 
     def test_the_lane_has_exactly_one_label_and_the_registry_carries_it(self):
-        from aiq_agent.common.norm_registry import _LANE_LABELS
+        from agent.common.norm_registry import _LANE_LABELS
 
         assert _LANE_LABELS[AGENT_AUTHORED_LANE] == AGENT_AUTHORED_LANE_LABEL
 
@@ -224,7 +224,7 @@ class TestShelf:
 
     @pytest.mark.parametrize("qualifier", ["Büroablage", "Büroarchiv"])
     def test_a_key_under_either_name_strips_to_the_file(self, qualifier):
-        from aiq_agent.citations.citation_keys import parse_citation_ref
+        from agent.citations.citation_keys import parse_citation_ref
 
         assert parse_citation_ref(f"Plan.pdf ({qualifier}), p.3") == ("Plan.pdf", Shelf.OFFICE_SHELF, 3)
 
@@ -259,8 +259,8 @@ class TestLegacyShelfValue:
         assert parse_shelf("office_shelf") is Shelf.OFFICE_SHELF
 
     def test_both_collection_prefixes_are_an_office_shelf(self):
-        from aiq_agent.common.source_kinds import is_office_shelf_collection
-        from aiq_agent.common.source_kinds import office_shelf_organization_id
+        from agent.common.source_kinds import is_office_shelf_collection
+        from agent.common.source_kinds import office_shelf_organization_id
 
         assert is_office_shelf_collection("archiv_org1") and is_office_shelf_collection("office_shelf_org1")
         assert not is_office_shelf_collection("proj_x")

@@ -1,6 +1,6 @@
 """Generate the canonical Grid card JSON Schema from the Pydantic models.
 
-The Pydantic models in :mod:`aiq_agent.cards.models` are the single source of
+The Pydantic models in :mod:`agent.cards.models` are the single source of
 truth for the Grid response-card schema. This script renders their JSON Schema
 to ``contracts/cards/schemas.json`` so the frontend (Zod) and any other consumer
 can be generated from the same definition.
@@ -15,14 +15,14 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
-from aiq_agent.cards.models import grid_card_adapter
+from agent.cards.models import answer_card_adapter
 
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "contracts" / "cards" / "schemas.json"
 
 
 def generate() -> dict:
     """Return the JSON Schema for the Grid card discriminated union."""
-    return grid_card_adapter.json_schema()
+    return answer_card_adapter.json_schema()
 
 
 def write(path: Path = SCHEMA_PATH) -> Path:

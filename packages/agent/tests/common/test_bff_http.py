@@ -17,24 +17,24 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.agents.intake.client import IntakeRequestError
-from aiq_agent.common import bff_http
-from aiq_agent.common import citation_events
-from aiq_agent.common import cost_tracking
-from aiq_agent.common import profiler
-from aiq_agent.knowledge.bim_query import BimQueryRejectedError
-from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
-from aiq_agent.knowledge.estate_tree_client import EstateTreeError
-from aiq_agent.knowledge.folder_cards.client import FolderCardsError
-from aiq_agent.knowledge.project_memory import CrossProjectMemoryRefusedError
-from aiq_agent.knowledge.project_memory import OrgMemoryDisabledError
-from aiq_agent.tools.canvas.client import CanvasRequestError
-from aiq_agent.tools.cross_project.client import CrossProjectLookupError
-from aiq_agent.tools.documents.filing import FilingError
-from aiq_agent.tools.proposals_client import ProposalRequestError
-from aiq_agent.tools.tasks.client import DelegationError
-from aiq_agent.tools.workspace.client import WorkspaceError
-from aiq_agent.turn.context_client import TurnContextError
+from agent.agents.intake.client import IntakeRequestError
+from agent.common import bff_http
+from agent.common import citation_events
+from agent.common import cost_tracking
+from agent.common import profiler
+from agent.knowledge.bim_query import BimQueryRejectedError
+from agent.knowledge.bim_query import BimQueryUnavailableError
+from agent.knowledge.estate_tree_client import EstateTreeError
+from agent.knowledge.folder_cards.client import FolderCardsError
+from agent.knowledge.project_memory import CrossProjectMemoryRefusedError
+from agent.knowledge.project_memory import OrgMemoryDisabledError
+from agent.tools.canvas.client import CanvasRequestError
+from agent.tools.cross_project.client import CrossProjectLookupError
+from agent.tools.documents.filing import FilingError
+from agent.tools.proposals_client import ProposalRequestError
+from agent.tools.tasks.client import DelegationError
+from agent.tools.workspace.client import WorkspaceError
+from agent.turn.context_client import TurnContextError
 
 TOKEN = "service-token"
 

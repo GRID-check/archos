@@ -64,7 +64,7 @@ export function StatCardIcon({
 }
 
 /**
- * StatCard — the documented numeric stat tile (`grid-design-language.md`
+ * StatCard — the documented numeric stat tile (`design-language.md`
  * §"Component patterns": Stat). One primitive so the ~11 hand-rolled stat sites
  * render the number consistently in `text-2xl … tabular-nums` instead of
  * drifting on `tabular-nums` and padding.

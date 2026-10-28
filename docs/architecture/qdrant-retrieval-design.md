@@ -66,7 +66,7 @@ relative to `packages/knowledge-layer/src/` unless they are absolute.
 | Mechanism | Where | Why it exists |
 |---|---|---|
 | `$contains` exact-term channel, priced by a `collection.get` per term | `llamaindex/hybrid.py`, `adapter.py:6291` | Chroma has no lexical index |
-| Postgres `chunk_text` mirror for German FTS, with hits fetched back from Chroma by id | `packages/agent/src/aiq_agent/knowledge/chunk_text_store.py` | Same |
+| Postgres `chunk_text` mirror for German FTS, with hits fetched back from Chroma by id | `packages/agent/src/agent/knowledge/chunk_text_store.py` | Same |
 | Cosine recovered from `exp(-d)` | `adapter.py:998, 6393` | LlamaIndex's Chroma score scale |
 | RRF *across collections*, rank padding | `register.py:616-850` | N collections give N incomparable score bands |
 | 3× over-fetch, then post-filter on `doc_class`, title, folder | `register.py:48, 1132-1173, 2049` | Human-set metadata lives only in Postgres and cannot reach the store |
@@ -82,7 +82,7 @@ relative to `packages/knowledge-layer/src/` unless they are absolute.
   (`adapter.py:778`)
 - the 24 h prefix-based TTL reaper on `s_` collections
 - no office, document or folder id on any chunk: identity is
-  `(collection, file_name)` (`packages/agent/src/aiq_agent/knowledge/schema.py:166`,
+  `(collection, file_name)` (`packages/agent/src/agent/knowledge/schema.py:166`,
   ADR-0087 l. 40)
 
 **One consequence that is a design choice rather than an accident:** moving a
@@ -717,7 +717,7 @@ itself.
 | Hybrid search in one Query API call (dense, BM25 with per-scope IDF, exact-term phrase channels, RRF k=60) and the true cosine per hit | `qdrant/search.py` — `hybrid_search` |
 | Retrieval, exact search (`find_text`) and the health check reading Qdrant under `VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/retriever.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |
 | Every Chroma write mirrored (insert, retire, discard, delete file, delete collection), vectors copied, never re-embedded. Removed in slice 3 | `qdrant/mirror.py` (deleted) |
-| Person-set facts (tags, topics, Dokumentart, Fassung, folder) mirrored onto points when they change | `aiq_agent/knowledge/factory.py` — `_mirror_facts` |
+| Person-set facts (tags, topics, Dokumentart, Fassung, folder) mirrored onto points when they change | `agent/knowledge/factory.py` — `_mirror_facts` |
 | The move off Chroma: an exporter in its own environment writing the neutral format `piloti-vectors/1`, and an importer with `--prune`, `--verify`, `--verify-only`, `--dry-run` (it replaced the backfill that read Chroma directly) | `deploy/migration/chroma_export.py`; `qdrant/import_vectors.py`, `scripts/import_vectors.py` |
 | Cross-project search: a page of up to 40 projects in ONE grouped query, ordered by the fused ranking; the only path, a failure an upstream error | `POST /v1/collections/search`; BFF `cross-project/service.ts` — `searchPage` |
 | Infrastructure: 3-peer StatefulSet, Raft bootstrap, API and read-only keys, snapshots to SeaweedFS with retention, NetworkPolicies, the policy-pack allowance for `Parallel`; Compose service behind `--profile qdrant` | `deploy/pulumi/src/data/qdrant.ts`, `deploy/compose/docker-compose.yaml` |
@@ -778,7 +778,7 @@ test that fails without the fix.
 | Part | Where |
 |---|---|
 | `knowledge_search(group_by="document")`: one entry per document (best passage, passages in the ranked pool, pages), keyed by `grid_document_id`, else collection and file name. Grouped client-side over the reranked pool, never by Qdrant's group query, which re-fuses per round on a fusion | `document_groups.py`; `register.py` — `search` |
-| Folder card points: `kind = folder` in the folder's own scope, dense vector of path, abstract and key facts, no BM25 vector. `scope_filter` takes `kind` (`chunk` by default, `folder`, `any`), so every chunk read leaves them out; the store's whole-scope reads go through it too, a whole-scope delete takes them. Written beside the BFF `PUT`, restamped and deleted beside it; a rebuild copies them | `qdrant/scope.py`, `qdrant/folders.py`, `qdrant/store.py`; `aiq_agent/knowledge/folder_cards/worker.py` |
+| Folder card points: `kind = folder` in the folder's own scope, dense vector of path, abstract and key facts, no BM25 vector. `scope_filter` takes `kind` (`chunk` by default, `folder`, `any`), so every chunk read leaves them out; the store's whole-scope reads go through it too, a whole-scope delete takes them. Written beside the BFF `PUT`, restamped and deleted beside it; a rebuild copies them | `qdrant/scope.py`, `qdrant/folders.py`, `qdrant/store.py`; `agent/knowledge/folder_cards/worker.py` |
 | The folder channel: one dense query over the turn's office scopes beside the chunk search, up to three `Folder:` lines after the passages, never a grounding record. Behind the `folder-cards` flag | `folder_channel.py`; `register.py` |
 | BM25 length per collection: `bm25_length` in the collection metadata (none: Qdrant's defaults), read by every write and query (five minutes' trust). A `_vN` copy measures the source's chunk lengths from its stored weights and, more than 10 % off, writes the target with the measured `avg_len` and recomputed lexical vectors | `qdrant/schema.py` — `bm25_length_of`; `store.bm25_length`; `qdrant/rebuild.py` — `measure_lengths`, `tuned_length`; `scripts/qdrant_chunk_length_stats.py` |
 | Inflected exact search: a second text field `text_stem` with a Snowball German full-text index; `match="exact", stemmed=true` adds what it matches to the literal result. Written with every new point; a rebuild fills it on the rest | `schema.TEXT_STEM_INDEX`, `payload.build_payload`, `retrieval.stem_condition`, `browse.stemmed_pattern` |

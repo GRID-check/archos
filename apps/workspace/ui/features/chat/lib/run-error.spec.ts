@@ -7,7 +7,7 @@ import { isZdrPolicyRefusal, runErrorCard } from './run-error'
 
 /** OpenRouter's documented refusal when no endpoint satisfies `provider.zdr`. */
 const OPENROUTER_REFUSAL = 'No endpoints found matching your data policy (Zero data retention). Visit https://openrouter.ai/settings/privacy'
-/** `ZDR_MODEL_REFUSED_MESSAGE` in packages/agent/src/aiq_agent/common/canned_replies.py, verbatim. */
+/** `ZDR_MODEL_REFUSED_MESSAGE` in packages/agent/src/agent/common/canned_replies.py, verbatim. */
 const CANNED_REFUSAL =
   'Diese Frage konnte nicht beantwortet werden, weil das eingestellte Modell keinen Anbieter ohne Datenspeicherung hat und Ihre Organisation Zero Data Retention verlangt. Eine Administratorin oder ein Administrator muss unter Organisation → Modelle ein Modell mit Zero-Data-Retention-Anbieter wählen.'
 

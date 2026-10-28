@@ -14,7 +14,7 @@
 
 import type { JSX } from 'react'
 import { type ReactNode } from 'react'
-import { getGridSession } from '@/lib/auth/session'
+import { getUserSession } from '@/lib/auth/session'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { isProjectKnowledgePageEnabled, isSkillsEnabled } from '@/lib/authz/feature-flags'
 import { getNavFlags } from '@/lib/authz/nav'
@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: AppLayoutProps): Promise<J
     let shortcuts: ReactNode = null
     let notifications: ReactNode = null
     try {
-      const session = await getGridSession()
+      const session = await getUserSession()
       // Users without an org (onboarding) have nowhere for the palette to
       // navigate, so they get no shortcuts surface at all.
       if (session?.organizationId) {

@@ -1,18 +1,18 @@
 /**
  * The platform-owner route factory (ADR-0016, ADR-0038).
  *
- * Deliberately a SEPARATE module from `./handler`: it needs `getGridSession`,
+ * Deliberately a SEPARATE module from `./handler`: it needs `getUserSession`,
  * which pulls in `@workos-inc/authkit-nextjs`, and `handler.ts` is imported by
  * every route in the app. Keeping the two apart means the ~100 non-platform
  * routes (and their specs) never load AuthKit just to get `apiRoute`.
  */
 
 import { NextResponse } from 'next/server'
-import { getGridSession } from '@/lib/auth/session'
+import { getUserSession } from '@/lib/auth/session'
 import { PlatformAccessDeniedError, requirePlatformPermission } from '@/lib/authz/platform'
 import type { PlatformPermission } from '@/lib/authz/permissions'
 import { runWithTenantSlot, withPlatformAccess } from '@/lib/db/tenant-context'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { errorResponse, resolveParams, successResponse, type NextRouteContext } from './handler'
 
 /**
@@ -36,7 +36,7 @@ export interface PlatformRouteOptions {
 export interface PlatformApiContext<TParams = Record<string, never>> {
   request: Request
   /** The platform owner's session. `organizationId` may be any org they browse. */
-  session: GridSession
+  session: UserSession
   params: TParams
 }
 
@@ -62,7 +62,7 @@ export function platformApiRoute<TParams = Record<string, string | string[]>>(
     // socket and run its handler under that instead of the bypass below.
     return runWithTenantSlot(async () => {
       try {
-        const session = await getGridSession()
+        const session = await getUserSession()
         await requirePlatformPermission(session, options.permission)
         const params = (await resolveParams(context)) as TParams
         // The platform tier is cross-organization by definition, so its queries
@@ -72,7 +72,7 @@ export function platformApiRoute<TParams = Record<string, string | string[]>>(
         // rests on.
         const result = await withPlatformAccess(`platformApiRoute ${request.method}`, () =>
           // requirePlatformPermission throws unless the session is non-null.
-          handler({ request, session: session as GridSession, params })
+          handler({ request, session: session as UserSession, params })
         )
         return successResponse(result, options.status ?? 200)
       } catch (error) {

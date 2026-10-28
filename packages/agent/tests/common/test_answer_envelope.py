@@ -12,20 +12,20 @@ from __future__ import annotations
 
 import json
 
-from aiq_agent.agents.piloti.markers import detect_and_strip_confidence_marker
-from aiq_agent.common.answer_envelope import ANATOMY_FIELDS
-from aiq_agent.common.answer_envelope import CONTEXT_MAX_CHARS
-from aiq_agent.common.answer_envelope import ENVELOPE_VERSION
-from aiq_agent.common.answer_envelope import MASTHEAD_FIELDS
-from aiq_agent.common.answer_envelope import SUMMARY_MAX_CHARS
-from aiq_agent.common.answer_envelope import TOPIC_MAX_CHARS
-from aiq_agent.common.answer_envelope import AnswerMeta
-from aiq_agent.common.answer_envelope import extract_answer_envelope
-from aiq_agent.common.answer_envelope import gate_answer_meta
-from aiq_agent.common.answer_envelope import render_envelope_response_format
-from aiq_agent.common.answer_envelope import render_envelope_schema
-from aiq_agent.common.answer_envelope import resolve_callout_marker
-from aiq_agent.common.wire_v2 import StatusStep
+from agent.agents.piloti.markers import detect_and_strip_confidence_marker
+from agent.common.answer_envelope import ANATOMY_FIELDS
+from agent.common.answer_envelope import CONTEXT_MAX_CHARS
+from agent.common.answer_envelope import ENVELOPE_VERSION
+from agent.common.answer_envelope import MASTHEAD_FIELDS
+from agent.common.answer_envelope import SUMMARY_MAX_CHARS
+from agent.common.answer_envelope import TOPIC_MAX_CHARS
+from agent.common.answer_envelope import AnswerMeta
+from agent.common.answer_envelope import extract_answer_envelope
+from agent.common.answer_envelope import gate_answer_meta
+from agent.common.answer_envelope import render_envelope_response_format
+from agent.common.answer_envelope import render_envelope_schema
+from agent.common.answer_envelope import resolve_callout_marker
+from agent.common.wire_v2 import StatusStep
 
 
 def _fenced(payload: dict) -> str:
@@ -282,7 +282,7 @@ class TestGating:
         assert payload == {"v": ENVELOPE_VERSION, "kind": "walkthrough"}
 
 
-class TestAVerdictNeverRestsOnADocumentPilotiWrote:
+class TestAVerdictNeverRestsOnADocumentAgentWrote:
     """The gate that keeps an approved office document from becoming a norm.
 
     A published Piloti document is real evidence and it is citable — but a
@@ -329,7 +329,7 @@ class TestAVerdictNeverRestsOnADocumentPilotiWrote:
         assert payload is not None
         assert payload["verdict"] == _VERDICT
 
-    def test_a_verdict_with_no_reference_is_dropped_when_piloti_wrote_a_source(self):
+    def test_a_verdict_with_no_reference_is_dropped_when_the_agent_wrote_a_source(self):
         """THE HOLE. The gate above can only judge a reference it was given, so
         omitting it was the cheapest way to the same headline resting on the
         same document — with the evidence that would have failed it left out."""
@@ -429,7 +429,7 @@ class TestRenderedSchema:
         assert "kind=ruling" in schema
 
     def test_the_renderer_injects_the_schema_by_default(self):
-        from aiq_agent.common.prompt_utils import render_prompt_template
+        from agent.common.prompt_utils import render_prompt_template
 
         rendered = render_prompt_template("{{ answer_envelope_schema }}")
         assert "answer*" in rendered
@@ -698,7 +698,7 @@ class TestSkillsApplied:
     """A CONTROL field (ADR-0063): taught, enforced, never on the reader's wire."""
 
     def test_it_parses_and_never_reaches_the_wire(self):
-        from aiq_agent.common.answer_envelope import gate_answer_meta
+        from agent.common.answer_envelope import gate_answer_meta
 
         _content, meta = extract_answer_envelope(
             _fenced({"answer": _PROSE, "kind": "walkthrough", "skills_applied": ["fire-safety"]})
@@ -783,7 +783,7 @@ class TestHeadlessSalvage:
 
 class TestTheGermanCalloutKindsStillRead:
     def test_a_model_that_imitates_an_earlier_turn_may_still_say_hinweis(self):
-        from aiq_agent.common.answer_envelope import AnswerMetaCallout
+        from agent.common.answer_envelope import AnswerMetaCallout
 
         assert AnswerMetaCallout.model_validate({"kind": "frist", "text": "x"}).kind == "deadline"
         assert AnswerMetaCallout.model_validate({"kind": "tip", "text": "x"}).kind == "tip"

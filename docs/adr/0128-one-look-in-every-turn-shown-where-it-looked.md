@@ -27,7 +27,7 @@ on 2026-10-21:
 - **The rule to look lives where the person already pointed.** The only firm
   instruction ("Sieh ihn an, bevor du antwortest") is in the Fokusbereich
   block (`agents/piloti/prompt.py:focus_region_block`), which exists only on a
-  turn with a drawn box. `piloti_static.md` carries two general sentences
+  turn with a drawn box. `chat_static.md` carries two general sentences
   ("A drawing or photo is looked at, not read"; "Look before you answer about a
   file"). Nothing says when a look is due in a plain chat turn.
 - **A look leaves no trace a reader can see.** On the canvas the box glows
@@ -79,7 +79,7 @@ the person always sees?
 
 * **A. Keep both tools; strengthen the prompt.** Leave `canvas__look` and
   `view_knowledge_image` as they are, move the Fokusbereich rule into
-  `piloti_static.md`, add a card.
+  `chat_static.md`, add a card.
 * **B. Keep `view_knowledge_image` as the one tool.** Delete `canvas__look`;
   the canvas glow moves into `view_knowledge_image`.
 * **C. One tool `look`, bound in every context, every look visible.** Move
@@ -183,7 +183,7 @@ and gives the reader the same evidence on both surfaces.
 
 ### When Piloti looks
 
-The policy goes into the always-on prompt (`piloti_static.md`, `<sources>`),
+The policy goes into the always-on prompt (`chat_static.md`, `<sources>`),
 because its trigger is the answer the model is about to write, which no tool
 description can see (the tools `AGENTS.md` rule: the prompt keeps only what a
 description cannot carry). How to look (overview then drill, the budget, the

@@ -14,16 +14,16 @@ import contextvars
 
 import pytest
 
-from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_PROMPT_NAME
-from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_PROMPT_VERSION
-from aiq_agent.observability.langfuse_trace_attributes import PromptLinkProcessor
-from aiq_agent.observability.langfuse_trace_attributes import begin_turn_prompt_link
-from aiq_agent.observability.langfuse_trace_attributes import current_prompt_attributes
-from aiq_agent.observability.langfuse_trace_attributes import end_turn_prompt_link
-from aiq_agent.observability.langfuse_trace_attributes import is_generation_span
-from aiq_agent.observability.langfuse_trace_attributes import prompt_observation_attributes
-from aiq_agent.observability.langfuse_trace_attributes import record_prompt_link
-from aiq_agent.observability.langfuse_trace_attributes import reset_prompt_link
+from agent.observability.langfuse_trace_attributes import OBSERVATION_PROMPT_NAME
+from agent.observability.langfuse_trace_attributes import OBSERVATION_PROMPT_VERSION
+from agent.observability.langfuse_trace_attributes import PromptLinkProcessor
+from agent.observability.langfuse_trace_attributes import begin_turn_prompt_link
+from agent.observability.langfuse_trace_attributes import current_prompt_attributes
+from agent.observability.langfuse_trace_attributes import end_turn_prompt_link
+from agent.observability.langfuse_trace_attributes import is_generation_span
+from agent.observability.langfuse_trace_attributes import prompt_observation_attributes
+from agent.observability.langfuse_trace_attributes import record_prompt_link
+from agent.observability.langfuse_trace_attributes import reset_prompt_link
 
 
 @pytest.fixture(autouse=True)
@@ -90,7 +90,7 @@ class TestAttributeMapping:
         neither attribute rather than one the schema rejects. Langfuse's own
         SDK links no fallback either (`_client/attributes.py`).
         """
-        assert prompt_observation_attributes(name="git:prompts/piloti_static.md", version="3f2a9c1") == {}
+        assert prompt_observation_attributes(name="git:prompts/chat_static.md", version="3f2a9c1") == {}
 
 
 class TestRecording:
@@ -227,7 +227,7 @@ class TestProcessor:
         Same rule as every other processor here: an exception escaping the
         pipeline stops span export for the whole process.
         """
-        import aiq_agent.observability.langfuse_trace_attributes as module
+        import agent.observability.langfuse_trace_attributes as module
         from nat.data_models.span import Span
 
         def boom():
@@ -246,14 +246,14 @@ class TestPipelineWiring:
         """
         Installed unconditionally (a prompt name is not personal data), and at
         `position=0` so the attributes it adds stay redactable like every other
-        attribute we add — the ordering NAT's redaction pass depends on.
+        attribute we add — the ordering the agent runtime's redaction pass depends on.
         """
         from agent_testing.langfuse import _make_config
 
-        from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
+        from agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 
         async with otelcollector_redaction_telemetry_exporter(_make_config(), None) as exporter:
             positions = exporter._processor_names
 
-            assert "grid_prompt_link" in positions
-            assert positions["grid_prompt_link"] < positions["header_redaction"]
+            assert "prompt_link" in positions
+            assert positions["prompt_link"] < positions["header_redaction"]

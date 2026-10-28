@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { purgerEnv, schedulerEnv, type AppWiring } from "./config";
-import type { GridConfig } from '../config'
+import type { DeployConfig } from '../config'
 
 const here = __dirname;
 // src/app -> src -> deploy/pulumi -> deploy -> repo root
@@ -58,7 +58,7 @@ describe("schedulerEnv", () => {
     skills: { minIntervalMinutes: 15 },
     observability: { enabled: false },
     langfuse: { enabled: true },
-  } as unknown as GridConfig;
+  } as unknown as DeployConfig;
   const env = schedulerEnv({ cfg } as unknown as AppWiring);
   // `EnvVar.name` is `Input<string>`; every entry in this block is a literal.
   const emitted = new Set(
@@ -132,7 +132,7 @@ describe("frontendEnv", () => {
     // here would read as a lever and move nothing, which is how
     // `WORKFLOWS_ENABLED` once shipped a feature with no way to turn it on.
     // Read from source rather than by calling frontendEnv: it touches most of
-    // GridConfig, and a stub deep enough to call it would assert more about the
+    // DeployConfig, and a stub deep enough to call it would assert more about the
     // stub than about the program.
     for (const name of [
       "ENFORCE_FEATURE_FLAGS",

@@ -1,10 +1,10 @@
 import { jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
 /**
- * Grid-side organization record.
+ * app-side organization record.
  *
  * WorkOS remains the source of truth for org identity and membership; this
- * table stores the Grid-specific settings and cached display fields that WorkOS
+ * table stores the app-specific settings and cached display fields that WorkOS
  * doesn't model, keyed by the WorkOS organization id. It lets us:
  *   - render org context without a WorkOS round-trip on every request,
  *   - hold org-level product settings (default language for new members, a

@@ -9,7 +9,7 @@
  * — inside an application whose design language says, twice, that there is no
  * brand accent colour, that provenance signals are the ONLY chroma, and that
  * there is no purple/generic-AI aesthetic anywhere
- * (`docs/design/grid-design-language.md`). A drawing Piloti made of an Austrian
+ * (`docs/design/design-language.md`). A drawing Piloti made of an Austrian
  * Verfahrensablauf is not a provenance signal and must not look like one, and
  * it certainly must not look like a different product.
  *

@@ -17,7 +17,7 @@ from knowledge_layer.ranked_search import AGENT_FILTER_OVERFETCH
 from knowledge_layer.register import _KNOWLEDGE_SEARCH_DESCRIPTION
 from knowledge_layer.search_results import empty_search_message
 
-from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
+from agent.knowledge.document_classification import DOCUMENT_CLASSES
 
 
 def _chunk(
@@ -46,7 +46,7 @@ def test_doc_class_filter_uses_store_value_when_available(monkeypatch) -> None:
     # Store says oib_guideline for this file even though chunk metadata disagrees.
     chunk = _chunk(file_name="oib-3.pdf", doc_class="other")
     monkeypatch.setattr(
-        "aiq_agent.knowledge.factory.get_document_doc_classes",
+        "agent.knowledge.factory.get_document_doc_classes",
         lambda *args, **kwargs: {"oib-3.pdf": "oib_guideline"},
     )
     # The resolved store value must win, so the oib_guideline filter keeps it.
@@ -70,7 +70,7 @@ def test_title_contains_matches_display_title(monkeypatch) -> None:
     # Display title (store) is preferred over the raw file name.
     chunks = [_chunk(file_name="norms_2023.pdf"), _chunk(file_name="other.pdf")]
     monkeypatch.setattr(
-        "aiq_agent.knowledge.factory.get_document_display_titles",
+        "agent.knowledge.factory.get_document_display_titles",
         lambda *args, **kwargs: {"norms_2023.pdf": "OIB Richtlinie 3"},
     )
     kept = apply_agent_filters(chunks, doc_class=None, title_contains="richtlinie")
@@ -141,11 +141,11 @@ def test_knowledge_search_takes_the_checkpoint_as_an_optional_argument() -> None
     assert "No effect on the result" in desc
 
 
-def test_the_description_says_what_a_piloti_document_may_be_cited_for() -> None:
+def test_the_description_says_what_an_agent_document_may_be_cited_for() -> None:
     """The sentence that separates "the office decided this" from "the OIB requires this" for a
     document the office approved but Piloti wrote. Since ADR-0133 slice 6 it rides the hit's own
     `Herkunft:` line, so every tool that returns such a passage says it where it is read."""
-    from aiq_agent.common.grounding_block import AGENT_DOCUMENT_NOTE
+    from agent.common.grounding_block import AGENT_DOCUMENT_NOTE
 
     assert "Piloti-Dokument" not in _KNOWLEDGE_SEARCH_DESCRIPTION
     assert "never a source for a normative value" in AGENT_DOCUMENT_NOTE

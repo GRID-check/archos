@@ -361,7 +361,7 @@ Two things changed, and the order matters:
   card. A skeleton is close to the height of the sentence it stands in for but
   never exactly it, and a two-line summary next to a one-line one has the same
   problem — so the row still needs the block to grow. The same block in
-  `DocumentGridCard`'s unresolved tile got the same treatment, for the same
+  `DocumentAnswerCard`'s unresolved tile got the same treatment, for the same
   reason. This is a property of the shared card, so the Büroablage (which draws the same `FileCard`, with its gold kind chip passed in) is fixed by the same change.
 
 **The second half of the same moment:** the thumbnail cache treated "no

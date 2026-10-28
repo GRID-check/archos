@@ -16,22 +16,22 @@ from unittest.mock import MagicMock
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.knowledge.document_revisions import MAX_CHANGE_LINE_CHARS
-from aiq_agent.knowledge.document_revisions import MAX_CHANGE_LINES
-from aiq_agent.knowledge.document_revisions import MAX_PROMPT_SUMMARY_CHARS
-from aiq_agent.knowledge.document_revisions import MAX_REASON_CHARS
-from aiq_agent.knowledge.document_revisions import MAX_REVISION_CANDIDATES
-from aiq_agent.knowledge.document_revisions import NO_CHANGE_TEXT
-from aiq_agent.knowledge.document_revisions import REVISION_THRESHOLD
-from aiq_agent.knowledge.document_revisions import RevisionDocument
-from aiq_agent.knowledge.document_revisions import build_change_prompt
-from aiq_agent.knowledge.document_revisions import build_judge_prompt
-from aiq_agent.knowledge.document_revisions import judge_revision
-from aiq_agent.knowledge.document_revisions import parse_change_summary
-from aiq_agent.knowledge.document_revisions import rank_candidates
-from aiq_agent.knowledge.document_revisions import settled_change
-from aiq_agent.knowledge.document_revisions import summarize_change
-from aiq_agent.knowledge.document_revisions import would_loop
+from agent.knowledge.document_revisions import MAX_CHANGE_LINE_CHARS
+from agent.knowledge.document_revisions import MAX_CHANGE_LINES
+from agent.knowledge.document_revisions import MAX_PROMPT_SUMMARY_CHARS
+from agent.knowledge.document_revisions import MAX_REASON_CHARS
+from agent.knowledge.document_revisions import MAX_REVISION_CANDIDATES
+from agent.knowledge.document_revisions import NO_CHANGE_TEXT
+from agent.knowledge.document_revisions import REVISION_THRESHOLD
+from agent.knowledge.document_revisions import RevisionDocument
+from agent.knowledge.document_revisions import build_change_prompt
+from agent.knowledge.document_revisions import build_judge_prompt
+from agent.knowledge.document_revisions import judge_revision
+from agent.knowledge.document_revisions import parse_change_summary
+from agent.knowledge.document_revisions import rank_candidates
+from agent.knowledge.document_revisions import settled_change
+from agent.knowledge.document_revisions import summarize_change
+from agent.knowledge.document_revisions import would_loop
 
 NEW = RevisionDocument(
     file_name="Grundriss_EG_Index_C.pdf",

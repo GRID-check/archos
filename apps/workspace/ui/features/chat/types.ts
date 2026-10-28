@@ -5,8 +5,8 @@
  */
 
 import type { PageRegion } from '@/features/knowledge/lib/page-region'
-import type { GridCard } from '@/shared/cards/schemas'
-import type { CardInteractions } from '@/features/grid-cards/card-decision'
+import type { AnswerCard } from '@/shared/cards/schemas'
+import type { CardInteractions } from '@/features/cards/card-decision'
 import type { ProjectStatus } from '@/lib/projects/project-status'
 import type { DraftMention } from '@/lib/mentions/mention-text'
 import type {
@@ -220,7 +220,7 @@ export interface ChatMessage {
   citations?: CitationSource[]
   /**
    * The backend job behind a run's answer: the pointer a colleague's client
-   * uses to find the report and its cards (`features/grid-cards/card-owner`),
+   * uses to find the report and its cards (`features/cards/card-owner`),
    * and the one deep-research field a message still carries. The run itself
    * is read from `runLedger`.
    */
@@ -233,16 +233,16 @@ export interface ChatMessage {
    *
    * Positions are identity (`[[card:N]]` addresses N-1 here): a card the
    * validator rejected leaves an `undefined` hole rather than renumbering the
-   * rest — see `validateGridCards`.
+   * rest — see `validateAnswerCards`.
    */
-  cards?: (GridCard | undefined)[]
+  cards?: (AnswerCard | undefined)[]
   /**
    * The user's answer to each interactive card of this answer (`accepted`,
    * `dismissed`, …), keyed by `cardKey(card, index)`. Persisted alongside
    * `cards` in both storage layers so an applied patch / saved memory stays
    * settled across reloads instead of re-offering buttons that would apply it
    * twice — the card-level twin of `isPromptResponded` (see
-   * `features/grid-cards/card-decision.ts`).
+   * `features/cards/card-decision.ts`).
    */
   cardInteractions?: CardInteractions
   /**

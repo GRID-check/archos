@@ -37,7 +37,7 @@ export const settings: typeof en.settings = {
       setUpBrief: 'Briefing einrichten',
       editBrief: 'Briefing bearbeiten',
       openSetup: 'Einrichtung fortsetzen',
-      askPiloti: '{productName} fragen',
+      askAgent: '{productName} fragen',
       openFiles: 'Dateien öffnen',
       actions: 'Projektaktionen',
       rename: 'Umbenennen',

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common import model_vision
+from agent.common import model_vision
 
 
 @pytest.fixture(autouse=True)

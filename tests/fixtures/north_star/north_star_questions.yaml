@@ -226,7 +226,7 @@ questions:
 
   # The turn a `piloti-ask` starts, asked as the chat turn it is (same prompt, tools and turn). The
   # door around it is held by apps/workspace/bff/agent-asks/service.spec.ts.
-  - id: ns-piloti-ask
+  - id: ns-chat-ask
     scene: [4]
     capability: an outside agent consults Piloti
     fixture: files

@@ -104,7 +104,7 @@
    "properties": {
     "card": {
      "additionalProperties": true,
-     "description": "A GridCard (cards/models.py); validated by gridCardSchema on render.",
+     "description": "A AnswerCard (cards/models.py); validated by answerCardSchema on render.",
      "title": "Card",
      "type": "object"
     },
@@ -307,7 +307,7 @@
   },
   "TurnResult": {
    "additionalProperties": false,
-   "description": "Everything the finished turn delivers; authoritative, and what the server persists.\n\nIt replaces the text once more and takes back what it omits (a card\nsuppressed, a masthead gated out). The persisted row is built from this\nmodel and nothing else (``aiq_api`` ``persist_turn_result``).",
+   "description": "Everything the finished turn delivers; authoritative, and what the server persists.\n\nIt replaces the text once more and takes back what it omits (a card\nsuppressed, a masthead gated out). The persisted row is built from this\nmodel and nothing else (``agent_host`` ``persist_turn_result``).",
    "properties": {
     "answer_confidence": {
      "anyOf": [

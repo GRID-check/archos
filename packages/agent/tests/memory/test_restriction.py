@@ -11,14 +11,14 @@ import json
 
 import pytest
 
-from aiq_agent.memory import restriction as R
-from aiq_agent.memory.restriction import JudgeVerdict
-from aiq_agent.memory.restriction import RestrictionDecision
-from aiq_agent.memory.restriction import RestrictionEvidence
-from aiq_agent.memory.restriction import decide_restriction
-from aiq_agent.memory.restriction import decide_restrictions
-from aiq_agent.memory.restriction import parse_judge_reply
-from aiq_agent.memory.restriction import restriction_evidence
+from agent.memory import restriction as R
+from agent.memory.restriction import JudgeVerdict
+from agent.memory.restriction import RestrictionDecision
+from agent.memory.restriction import RestrictionEvidence
+from agent.memory.restriction import decide_restriction
+from agent.memory.restriction import decide_restrictions
+from agent.memory.restriction import parse_judge_reply
+from agent.memory.restriction import restriction_evidence
 
 PROJECT = "proj_abc"
 CONTRACTS = f"{PROJECT}_r0123456789ab"

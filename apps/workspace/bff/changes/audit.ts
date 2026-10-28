@@ -11,12 +11,12 @@
 import 'server-only'
 import { recordAuditEventAfterCommit } from '@/lib/audit/after-commit'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { PilotiChangeRow } from './repository'
-import type { ChangeState, PilotiChangeObject, PilotiChangeOp } from './types'
+import type { AgentChangeRow } from './repository'
+import type { ChangeState, AgentChangeObject, AgentChangeOp } from './types'
 import type { UndoPlan } from './undo'
 
 /** The op as the trail names it: a reply is created, so it reads `reply` there. */
-const auditOp = (objectKind: PilotiChangeObject, op: PilotiChangeOp) =>
+const auditOp = (objectKind: AgentChangeObject, op: AgentChangeOp) =>
   objectKind === 'annotation_reply' ? 'reply' : op
 
 const stringField = (state: ChangeState | null, field: string): string | null => {
@@ -26,8 +26,8 @@ const stringField = (state: ChangeState | null, field: string): string | null =>
 
 /** One applied change, as the trail records it. */
 export interface AuditedChange {
-  objectKind: PilotiChangeObject
-  op: PilotiChangeOp
+  objectKind: AgentChangeObject
+  op: AgentChangeOp
   annotationId: string
   annotationNumber: number | null
   before: ChangeState | null
@@ -79,7 +79,7 @@ export function auditAppliedChanges(turn: AuditedTurn, changes: readonly Audited
 /** `piloti.change.undone`, after the inverse ran. Never throws. */
 export function auditUndoneChange(
   session: AuthorizedSession,
-  row: PilotiChangeRow,
+  row: AgentChangeRow,
   plan: UndoPlan,
   markNumber: number | null
 ): void {

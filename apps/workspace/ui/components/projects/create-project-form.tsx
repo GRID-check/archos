@@ -326,7 +326,7 @@ export function CreateProjectForm({
                   className="text-muted-foreground text-xs"
                   data-testid="create-project-closed-note"
                 >
-                  {t('form.closed.readOnlyPiloti')}
+                  {t('form.closed.readOnlyAgent')}
                 </p>
               </FieldGroup>
             </CollapsibleContent>

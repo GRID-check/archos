@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.skills.builtin import BUILTIN_SKILLS_DIR
-from aiq_agent.skills.builtin import discover_builtin_skills
-from aiq_agent.skills.models import SkillValidationError
+from agent.skills.builtin import BUILTIN_SKILLS_DIR
+from agent.skills.builtin import discover_builtin_skills
+from agent.skills.models import SkillValidationError
 
 EXPECTED = {
     ("bim", "ifc-spatial-reasoning"),
@@ -126,8 +126,8 @@ def test_discovery_missing_dir() -> None:
 def test_a_renamed_builtin_still_answers_to_the_name_it_had():
     """Migration 0169 renamed eight builtins; a stored schedule, a typed slash and an old
     message still say the old name, so `canonical_skill_name` maps it and nothing ships under it."""
-    from aiq_agent.skills.builtin import LEGACY_SKILL_NAMES
-    from aiq_agent.skills.builtin import canonical_skill_name
+    from agent.skills.builtin import LEGACY_SKILL_NAMES
+    from agent.skills.builtin import canonical_skill_name
 
     shipped = {skill.name for skill in discover_builtin_skills()}
     for legacy, current in LEGACY_SKILL_NAMES.items():

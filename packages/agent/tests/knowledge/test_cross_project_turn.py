@@ -19,27 +19,27 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import aiq_agent.knowledge.project_memory as pm
-import aiq_agent.project_context as pc
-from aiq_agent.cards.envelope import REFUSED_CONFINED
-from aiq_agent.cards.envelope import validate_model_card
-from aiq_agent.common import bff_http
-from aiq_agent.common.platform_lessons import LessonsResolution
-from aiq_agent.knowledge import scoping
-from aiq_agent.knowledge.restricted_use import CrossProjectTurn
-from aiq_agent.knowledge.restricted_use import bind_cross_project_turn
-from aiq_agent.knowledge.restricted_use import reset_cross_project_turn
-from aiq_agent.memory import register as memory_register
-from aiq_agent.memory.register import ProjectMemoryRememberConfig
-from aiq_agent.memory.register import project_memory_remember
-from aiq_agent.stages import TurnFacts
-from aiq_agent.stages.memory_reflection import _handler as reflection_handler
-from aiq_agent.stages.spec import StageContext
-from aiq_agent.turn import context as turn_context
-from aiq_agent.turn.context import TurnContext
-from aiq_agent.turn.context import settle_restriction
-from aiq_agent.turn.context_client import ContextBlocks
-from aiq_agent.turn.context_client import _parse_blocks
+import agent.knowledge.project_memory as pm
+import agent.project_context as pc
+from agent.cards.envelope import REFUSED_CONFINED
+from agent.cards.envelope import validate_model_card
+from agent.common import bff_http
+from agent.common.platform_lessons import LessonsResolution
+from agent.knowledge import scoping
+from agent.knowledge.restricted_use import CrossProjectTurn
+from agent.knowledge.restricted_use import bind_cross_project_turn
+from agent.knowledge.restricted_use import reset_cross_project_turn
+from agent.memory import register as memory_register
+from agent.memory.register import ProjectMemoryRememberConfig
+from agent.memory.register import project_memory_remember
+from agent.stages import TurnFacts
+from agent.stages.memory_reflection import _handler as reflection_handler
+from agent.stages.spec import StageContext
+from agent.turn import context as turn_context
+from agent.turn.context import TurnContext
+from agent.turn.context import settle_restriction
+from agent.turn.context_client import ContextBlocks
+from agent.turn.context_client import _parse_blocks
 
 PATCH = {
     "type": "project_profile_patch",
@@ -166,7 +166,7 @@ class TestTheDoorsStayShut:
             )
 
     async def test_reflection_does_not_run(self, monkeypatch) -> None:
-        from aiq_agent.memory import reflection
+        from agent.memory import reflection
 
         run = MagicMock(side_effect=AssertionError("reflection must not run"))
         monkeypatch.setattr(reflection, "run_memory_reflection", run)

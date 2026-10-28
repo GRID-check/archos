@@ -5,7 +5,7 @@
 import { redirect } from 'next/navigation'
 import { NoOrganizationError } from '@/lib/api/errors'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
-import { requireGridSession } from './session'
+import { requireUserSession } from './session'
 import type { AuthorizedSession } from './types'
 
 /**
@@ -19,7 +19,7 @@ import type { AuthorizedSession } from './types'
  * @throws {NoOrganizationError} when the session has no organization.
  */
 export async function requireAuthorizedSession(): Promise<AuthorizedSession> {
-  const session = await requireGridSession()
+  const session = await requireUserSession()
 
   if (!session.organizationId) {
     throw new NoOrganizationError()
@@ -51,7 +51,7 @@ export async function requireAuthorizedPageSession(): Promise<AuthorizedSession>
  *
  * This is the page-tier equivalent of what the route factories in
  * `lib/api/handler.ts` do for all 125 route handlers, and it exists because
- * nothing was doing it for pages. `getGridSession()` publishes the tenant into
+ * nothing was doing it for pages. `getUserSession()` publishes the tenant into
  * a slot opened by the caller; with no slot it falls back to
  * `storage.enterWith`, which has no scope end and does not survive the way this
  * Next version renders a component. Every query on the page's call path then

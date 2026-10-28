@@ -2,8 +2,8 @@
 
 `test_shipped_config_wires_the_otlp_logging_method` only yaml.safe_load's the
 file, and pytest has already imported the plugins. That suite stayed green
-while `start_web.py` died on `_type` `otelcollector_logs` not in the NAT
-registry. This file is the process that actually boots.
+while `start_web.py` died on `_type` `otelcollector_logs` not in the agent
+runtime's registry. This file is the process that actually boots.
 
 Full `load_config` of the shipped YAML needs every `nat.plugins` entry point
 to import, which an editable install from another worktree will not do. The
@@ -21,8 +21,8 @@ import tomllib
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-START_WEB = REPO / "apps" / "backend" / "start_web.py"
-AGENT_JOB = REPO / "apps" / "backend" / "src" / "aiq_api" / "jobs" / "agent_job.py"
+START_WEB = REPO / "apps" / "agent-host" / "start_web.py"
+AGENT_JOB = REPO / "apps" / "agent-host" / "src" / "agent_host" / "jobs" / "agent_job.py"
 
 
 def _clean_env() -> dict[str, str]:
@@ -38,26 +38,26 @@ def _clean_env() -> dict[str, str]:
 def test_nat_plugins_entry_points_name_the_telemetry_modules():
     data = tomllib.loads((REPO / "packages" / "agent" / "pyproject.toml").read_text(encoding="utf-8"))
     plugins = data["project"]["entry-points"]["nat.plugins"]
-    assert plugins["aiq_otel_logs"] == "aiq_agent.observability.otlp_logging_method"
-    assert plugins["aiq_otel_redaction"] == "aiq_agent.observability.otel_header_redaction_exporter"
+    assert plugins["otel_logs"] == "agent.observability.otlp_logging_method"
+    assert plugins["otel_redaction"] == "agent.observability.otel_header_redaction_exporter"
 
 
-def test_start_web_registers_grid_telemetry_before_load_config():
+def test_start_web_registers_telemetry_before_load_config():
     src = START_WEB.read_text(encoding="utf-8")
-    register_at = src.index("register_grid_telemetry")
+    register_at = src.index("register_telemetry")
     load_at = src.index("load_config(")
     assert register_at < load_at
 
 
 def test_the_web_boot_readings_are_named_after_the_role_not_after_web():
     """`chat` and `api` scale on different things, so one `web` series would average two cold starts."""
-    for path in (START_WEB, REPO / "apps" / "backend" / "src" / "aiq_api" / "plugin.py"):
+    for path in (START_WEB, REPO / "apps" / "agent-host" / "src" / "agent_host" / "plugin.py"):
         assert 'BootClock("web")' not in path.read_text(encoding="utf-8"), path
 
 
-def test_worker_job_registers_grid_telemetry_before_load_config():
+def test_worker_job_registers_telemetry_before_load_config():
     src = AGENT_JOB.read_text(encoding="utf-8")
-    register_at = src.index("register_grid_telemetry()")
+    register_at = src.index("register_telemetry()")
     load_at = src.index("load_config(request.config_file_path)")
     assert register_at < load_at
 

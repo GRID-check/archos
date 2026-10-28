@@ -15,9 +15,9 @@ import pytest
 from openai import OpenAI
 from openai import RateLimitError
 
-from aiq_agent.common import provider_limiter as pl
-from aiq_agent.common.openrouter import pinned_async_http_client
-from aiq_agent.common.openrouter import pinned_http_client
+from agent.common import provider_limiter as pl
+from agent.common.openrouter import pinned_async_http_client
+from agent.common.openrouter import pinned_http_client
 
 UPSTREAM_429 = {
     "error": {

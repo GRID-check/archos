@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { appPullPolicy, backendImage, pullPolicyFor } from '../config/images'
 import { CHROMA_MIGRATION, UID } from "../constants";
 import { commonLabels } from "../platform/namespaces";
@@ -100,7 +100,7 @@ function exporterScript(): string {
  */
 export function migrateChromaToQdrant(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {

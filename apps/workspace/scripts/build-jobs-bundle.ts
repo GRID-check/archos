@@ -61,8 +61,8 @@ const INLINED_PACKAGES = /^@workos-inc\/authkit-nextjs$/
 const nextHostShims: BunPlugin = {
   name: 'next-host-shims',
   setup(build) {
-    build.onResolve({ filter: /^server-only$/ }, () => ({ path: 'server-only', namespace: 'grid-empty' }))
-    build.onLoad({ filter: /.*/, namespace: 'grid-empty' }, () => ({ contents: 'export {}', loader: 'js' }))
+    build.onResolve({ filter: /^server-only$/ }, () => ({ path: 'server-only', namespace: 'empty-module' }))
+    build.onLoad({ filter: /.*/, namespace: 'empty-module' }, () => ({ contents: 'export {}', loader: 'js' }))
     build.onResolve({ filter: /^next\/[a-z-]+$/ }, (args) => ({ path: `${args.path}.js`, external: true }))
     build.onResolve({ filter: INLINED_PACKAGES }, (args) => ({ path: Bun.resolveSync(args.path, args.resolveDir) }))
   },

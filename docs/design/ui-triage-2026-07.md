@@ -7,7 +7,7 @@ aesthetic–usability, peak-end) — read through *value* and *actual user flow*
 an architect doing Austrian building-compliance work under enterprise scrutiny.
 
 Every recommendation stays inside the existing design language
-(`grid-design-language.md`): warm-paper monochrome + provenance signal colors,
+(`design-language.md`): warm-paper monochrome + provenance signal colors,
 tokens only. This is refinement within the system, not a redesign — the app is
 already unusually mature (streaming status, EU AI-Act disclosure, iOS-zoom
 prevention, safe-area insets, per-session drafts, HITL, drag-drop upload).

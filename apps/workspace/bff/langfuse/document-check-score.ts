@@ -7,7 +7,7 @@ import 'server-only'
  * agrees"), so it is written too. With `piloti-decision` on each of those marks
  * (`./decision-score.ts`) it is the precision of the check.
  *
- * Declared in `aiq_agent.observability.langfuse_scores.SCORE_DEFINITIONS`. The
+ * Declared in `agent.observability.langfuse_scores.SCORE_DEFINITIONS`. The
  * id is derived from the check, so a retried job upserts. Best-effort: never
  * throws into the job, and without a trace there is no score, because a score
  * on a guessed trace attaches to nothing.

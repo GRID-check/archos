@@ -11,11 +11,11 @@ import re
 
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import focus_region_block
-from aiq_agent.agents.piloti.prompt import render_turn_context
-from aiq_agent.agents.piloti.prompt import system_prompt_template
-from aiq_agent.common.wire_v2 import FocusRegion
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.prompt import focus_region_block
+from agent.agents.piloti.prompt import render_turn_context
+from agent.agents.piloti.prompt import system_prompt_template
+from agent.common.wire_v2 import FocusRegion
 
 HEADING = "## Focus region"
 BOUNDARY_ANCHOR = "<turn_context>"

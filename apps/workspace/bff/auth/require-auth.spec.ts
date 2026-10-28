@@ -13,7 +13,7 @@ class RedirectError extends Error {
 }
 
 vi.mock('./session', () => ({
-  requireGridSession: vi.fn(),
+  requireUserSession: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -22,13 +22,13 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
-import { requireGridSession } from './session'
+import { requireUserSession } from './session'
 import { redirect } from 'next/navigation'
 import {
   requireAuthorizedSession,
   requireAuthorizedPageSession,
 } from './require-auth'
-import type { AuthorizedSession, GridSession } from './types'
+import type { AuthorizedSession, UserSession } from './types'
 
 const authorizedSession: AuthorizedSession = {
   userId: 'user-1',
@@ -43,7 +43,7 @@ const authorizedSession: AuthorizedSession = {
 }
 
 /** The same identity before an organization has been selected. */
-const sessionWithoutOrg: GridSession = {
+const sessionWithoutOrg: UserSession = {
   ...authorizedSession,
   organizationId: null,
   organizationMembershipId: null,
@@ -55,7 +55,7 @@ describe('require-auth guards', () => {
   })
 
   it('requireAuthorizedSession throws a NoOrganizationError treated as authz error when no organization', async () => {
-    vi.mocked(requireGridSession).mockResolvedValue(sessionWithoutOrg)
+    vi.mocked(requireUserSession).mockResolvedValue(sessionWithoutOrg)
 
     let caught: unknown
     try {
@@ -70,14 +70,14 @@ describe('require-auth guards', () => {
   })
 
   it('requireAuthorizedPageSession redirects to organization onboarding when no organization', async () => {
-    vi.mocked(requireGridSession).mockResolvedValue(sessionWithoutOrg)
+    vi.mocked(requireUserSession).mockResolvedValue(sessionWithoutOrg)
 
     await expect(requireAuthorizedPageSession()).rejects.toThrow(RedirectError)
     expect(redirect).toHaveBeenCalledWith('/app/onboarding/organization')
   })
 
   it('both guards resolve to the session when an organization is selected', async () => {
-    vi.mocked(requireGridSession).mockResolvedValue(authorizedSession)
+    vi.mocked(requireUserSession).mockResolvedValue(authorizedSession)
 
     await expect(requireAuthorizedSession()).resolves.toBe(authorizedSession)
     await expect(requireAuthorizedPageSession()).resolves.toBe(authorizedSession)
@@ -85,7 +85,7 @@ describe('require-auth guards', () => {
   })
 
   it('requireAuthorizedPageSession rethrows non-org errors without redirecting', async () => {
-    vi.mocked(requireGridSession).mockRejectedValue(new SessionRequiredError())
+    vi.mocked(requireUserSession).mockRejectedValue(new SessionRequiredError())
 
     await expect(requireAuthorizedPageSession()).rejects.toThrow(
       'Unauthorized: Grid session required',

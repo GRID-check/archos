@@ -83,8 +83,8 @@ const OrgUsageBody: FC<{ data: PlatformOrgUsage }> = ({ data }) => {
   const usage: UsageResponse = data.usage
   return (
     <TooltipProvider delayDuration={100}>
-      {/* `grid-spend-viz` scopes the validated chart tokens (end of globals.css). */}
-      <div className="grid-spend-viz flex flex-col gap-5">
+      {/* `spend-viz` scopes the validated chart tokens (end of globals.css). */}
+      <div className="spend-viz flex flex-col gap-5">
         <UsageOverviewView usage={usage} />
         <Separator />
         <MemberSpendList usage={usage} members={data.members} />

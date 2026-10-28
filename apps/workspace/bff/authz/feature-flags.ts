@@ -51,7 +51,7 @@
  * docs/deployment/workos-provisioning.md).
  */
 
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { isAuthRequired } from '@/lib/auth/auth-required'
 import { NextResponse } from 'next/server'
 
@@ -196,7 +196,7 @@ export const FEATURE_FLAGS = {
    * instead; reads, the room, pointing, highlighting, replies and proposals are
    * untouched.
    */
-  pilotiActs: 'piloti-acts',
+  agentActs: 'piloti-acts',
   /**
    * Piloti notices a new Fassung (ADR-0130): when a document is linked as the
    * newer Fassung of another, a job compares the changed pages of the two and
@@ -209,7 +209,7 @@ export const FEATURE_FLAGS = {
    * a vision call nobody asked for. With it off, a new Fassung is announced as
    * before and nobody compares it until a person opens „Vergleichen".
    */
-  pilotiNotices: 'piloti-notices',
+  agentNotices: 'piloti-notices',
   /**
    * The agent door (ADR-0122): external agents (Claude, Cursor, ChatGPT)
    * reach the workspace as a person through the MCP server at `/api/mcp`.
@@ -259,7 +259,7 @@ export const FEATURE_FLAGS = {
    * off, the ask is refused (403) and nothing else changes; the agent door
    * still reaches the workspace (`agent-mcp`).
    */
-  pilotiAsk: 'piloti-ask',
+  agentAsk: 'piloti-ask',
   /**
    * Written folder cards (ADR-0127, tier 1): a model-written abstract per
    * folder, built in the background when a document's facts change and shown
@@ -343,7 +343,7 @@ export function unauthenticatedDefault(flag: KnownFeatureFlag): boolean {
 
 /** Whether the session's user+org context has the feature enabled. */
 export function isFeatureEnabled(
-  session: Pick<GridSession, 'featureFlags'>,
+  session: Pick<UserSession, 'featureFlags'>,
   flag: KnownFeatureFlag
 ): boolean {
   if (!flagsFromWorkOS()) return unauthenticatedDefault(flag)
@@ -355,7 +355,7 @@ export function isFeatureEnabled(
  * The project knowledge page. The platform owner's base-knowledge manager is
  * NOT gated by this.
  */
-export function isProjectKnowledgePageEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+export function isProjectKnowledgePageEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.projectKnowledgePage)
 }
 
@@ -364,32 +364,32 @@ export function isProjectKnowledgePageEnabled(session: Pick<GridSession, 'featur
  * when its upload completes; the job that files it does not re-check, so
  * switching the flag off stops new imports and lets a running one finish.
  */
-export function isMailImportEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+export function isMailImportEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.mailImport)
 }
 
 /** Whether events on Piloti's work wake a turn for this organization (ADR-0106). */
-export function isPilotiWakesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+export function isAgentWakesEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.pilotiWakes)
 }
 
 /** Whether agents acting for people may ask Piloti questions in this organization (ADR-0124). */
-export function isPilotiAskEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiAsk)
+export function isAgentAskEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.agentAsk)
 }
 
 /** Whether Piloti compares a new Fassung on its own and proposes marks where it changed (ADR-0130). */
-export function isPilotiNoticesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiNotices)
+export function isAgentNoticesEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.agentNotices)
 }
 
 /** Whether Piloti may apply a change to Anmerkungen when the asker asks, or only propose (ADR-0105). */
-export function isPilotiActsEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiActs)
+export function isAgentActsEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.agentActs)
 }
 
 /** Collaboration (ADR-0032…0035). */
-export function isCollaborationEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+export function isCollaborationEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.collaboration)
 }
 
@@ -398,7 +398,7 @@ export function isCollaborationEnabled(session: Pick<GridSession, 'featureFlags'
  * the feature renders OIB compliance verdicts, so an organization that has not
  * looked at its output is being told something about a building.
  */
-export function isIfcModelsEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+export function isIfcModelsEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.ifcModels)
 }
 
@@ -408,7 +408,7 @@ export function isIfcModelsEnabled(session: Pick<GridSession, 'featureFlags'>): 
  * registry entry for why there are two.
  */
 export function isAgentAuthoredDocumentsEnabled(
-  session: Pick<GridSession, 'featureFlags'>
+  session: Pick<UserSession, 'featureFlags'>
 ): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.agentAuthoredDocuments)
 }
@@ -418,13 +418,13 @@ export function isAgentAuthoredDocumentsEnabled(
  * Usage: `const gated = requireCollaborationEnabled(session); if (gated) return gated`
  */
 export function requireCollaborationEnabled(
-  session: Pick<GridSession, 'featureFlags'>
+  session: Pick<UserSession, 'featureFlags'>
 ): Response | null {
   return requireFeature(session, FEATURE_FLAGS.collaboration)
 }
 
 /** Agent Skills and the project jobs that attach them (ADR-0046). */
-export function isSkillsEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+export function isSkillsEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.skills)
 }
 
@@ -433,12 +433,12 @@ export function isSkillsEnabled(session: Pick<GridSession, 'featureFlags'>): boo
  * requireFeature's envelope), null when allowed. Usage:
  * `const gated = requireSkillsEnabled(session); if (gated) return gated`
  */
-export function requireSkillsEnabled(session: Pick<GridSession, 'featureFlags'>): Response | null {
+export function requireSkillsEnabled(session: Pick<UserSession, 'featureFlags'>): Response | null {
   return requireFeature(session, FEATURE_FLAGS.skills)
 }
 
 /** Whether this session may create delegated tasks and schedules. */
-export function isTaskAutomationEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+export function isTaskAutomationEnabled(session: Pick<UserSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.taskAutomation)
 }
 
@@ -447,7 +447,7 @@ export function isTaskAutomationEnabled(session: Pick<GridSession, 'featureFlags
  * Usage: `const gated = requireTaskAutomationEnabled(session); if (gated) return gated`
  */
 export function requireTaskAutomationEnabled(
-  session: Pick<GridSession, 'featureFlags'>
+  session: Pick<UserSession, 'featureFlags'>
 ): Response | null {
   return requireFeature(session, FEATURE_FLAGS.taskAutomation)
 }
@@ -457,7 +457,7 @@ export function requireTaskAutomationEnabled(
  * Usage: `const gated = requireFeature(session, FEATURE_FLAGS.x); if (gated) return gated`
  */
 export function requireFeature(
-  session: Pick<GridSession, 'featureFlags'>,
+  session: Pick<UserSession, 'featureFlags'>,
   flag: KnownFeatureFlag
 ): Response | null {
   if (isFeatureEnabled(session, flag)) return null

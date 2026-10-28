@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from '../config'
+import { DeployConfig } from '../config'
 import { appPullPolicy, backendImage } from '../config/images'
 import { toResourceRequirements } from '../config/resources'
 import { assertVlmPeakFitsCeiling } from '../config/vlm-ceiling'
@@ -13,7 +13,7 @@ import { JOBS_QUEUE_AUTH } from "./jobs-queue-auth";
 import { installQueueScaledObject, queueDepthQuery } from "./keda-scaling";
 import { UID } from "../constants";
 
-/** The durable queue the tier drains (`aiq_agent.knowledge.ingest_queue.TABLE`). */
+/** The durable queue the tier drains (`agent.knowledge.ingest_queue.TABLE`). */
 export const QUEUE_TABLE = "ingest_job_queue";
 
 /**
@@ -51,7 +51,7 @@ export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  */
 export function installIngestWorker(
   w: AppWiring,
-  cfg: GridConfig,
+  cfg: DeployConfig,
   secrets: AppSecrets,
   dependsOn: pulumi.Resource[],
 ): {
@@ -107,7 +107,7 @@ export function installIngestWorker(
                   periodSeconds: 30,
                   failureThreshold: 3,
                 },
-                // The first mark appears only after the whole NAT workflow is
+                // The first mark appears only after the whole agent-runtime workflow is
                 // built; hold liveness off until then (up to 10 minutes).
                 startupProbe: {
                   exec: { command: ["python", "-c", `import os,sys; sys.exit(0 if os.path.exists('${liveness}') else 1)`] },

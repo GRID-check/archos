@@ -3,7 +3,7 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef, type HTMLAttributes, type JSX, type ReactNode, type SyntheticEvent } from 'react'
 import { cn } from '@/lib/utils'
 import { Button, type ButtonProps } from './button'
-import { PilotiGlyph } from './piloti-glyph'
+import { AgentGlyph } from './agent-glyph'
 import { PopoverContent } from './popover'
 
 /**
@@ -38,7 +38,7 @@ export function SuggestionPanel({ className, ...props }: HTMLAttributes<HTMLDivE
 export function SuggestionPanelHeader({ id, children }: { id?: string; children: ReactNode }): JSX.Element {
   return (
     <div data-slot="suggestion-panel-header" className="flex items-center gap-2 px-2 pb-1 pt-1.5">
-      <PilotiGlyph size="xs" className="size-4" />
+      <AgentGlyph size="xs" className="size-4" />
       <p id={id} className="text-foreground min-w-0 text-xs font-medium">
         {children}
       </p>

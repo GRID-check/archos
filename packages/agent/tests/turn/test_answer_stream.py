@@ -19,19 +19,19 @@ from langgraph.graph import END
 from langgraph.graph import START
 from langgraph.graph import StateGraph
 
-from aiq_agent.agents.piloti.answer_pipeline import SettledStream
-from aiq_agent.common.wire_v2 import AnswerRetractedBody
-from aiq_agent.common.wire_v2 import CardBody
-from aiq_agent.common.wire_v2 import CardRefusedBody
-from aiq_agent.common.wire_v2 import MastheadBody
-from aiq_agent.common.wire_v2 import StateSnapshotBody
-from aiq_agent.common.wire_v2 import TextMessageContentBody
-from aiq_agent.common.wire_v2 import TextMessageEndBody
-from aiq_agent.common.wire_v2 import TextMessageStartBody
-from aiq_agent.turn import answer_stream
-from aiq_agent.turn.answer_stream import LiveProse
-from aiq_agent.turn.answer_stream import bound_live_prose
-from aiq_agent.turn.answer_stream import streaming_call
+from agent.agents.piloti.answer_pipeline import SettledStream
+from agent.common.wire_v2 import AnswerRetractedBody
+from agent.common.wire_v2 import CardBody
+from agent.common.wire_v2 import CardRefusedBody
+from agent.common.wire_v2 import MastheadBody
+from agent.common.wire_v2 import StateSnapshotBody
+from agent.common.wire_v2 import TextMessageContentBody
+from agent.common.wire_v2 import TextMessageEndBody
+from agent.common.wire_v2 import TextMessageStartBody
+from agent.turn import answer_stream
+from agent.turn.answer_stream import LiveProse
+from agent.turn.answer_stream import bound_live_prose
+from agent.turn.answer_stream import streaming_call
 
 ENVELOPE = (
     "```answer_json\n"
@@ -151,7 +151,7 @@ async def test_once_prose_went_out_no_later_call_streams():
 
 
 def test_the_answer_streams_unless_the_platform_switch_is_off(monkeypatch):
-    from aiq_agent.common import retrieval_settings
+    from agent.common import retrieval_settings
 
     settings: dict[str, int] = {}
     monkeypatch.setattr(retrieval_settings, "_resolve", lambda: settings)
@@ -283,7 +283,7 @@ async def test_deltas_are_coalesced_at_the_producer_and_flushed_before_any_other
 def test_a_responses_api_token_is_its_text_blocks_and_never_its_reasoning():
     # Seen live: the Responses API hands on_llm_new_token the chunk's content
     # blocks, and a handler that read only strings streamed nothing.
-    from aiq_agent.turn.answer_stream import token_text
+    from agent.turn.answer_stream import token_text
 
     blocks = [{"type": "reasoning", "summary": [{"text": "denke"}]}, {"type": "text", "text": "Hallo", "index": 0}]
     assert token_text(blocks) == "Hallo"
@@ -331,8 +331,8 @@ async def test_a_tool_round_that_showed_nothing_retracts_nothing(monkeypatch):
     from langchain_core.outputs import ChatGenerationChunk
     from langchain_core.outputs import LLMResult
 
-    from aiq_agent.common import turn_status
-    from aiq_agent.turn.answer_stream import _ProseTokenHandler
+    from agent.common import turn_status
+    from agent.turn.answer_stream import _ProseTokenHandler
 
     written: list = []
     monkeypatch.setattr(turn_status, "emit", written.append)

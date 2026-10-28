@@ -101,7 +101,7 @@ The first sentence the model reads on every chat turn:
 
 > You are the Grid OIB Research Agent. You cover internal office knowledge (Bürowissen), Austrian building regulations (OIB Richtlinien, Bauordnung, Baurecht, RIS), technische Richtlinien, and related technical and energy standards. Your job is fast, citation-backed answers from the tools you have.
 
-`packages/agent/src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2:2`
+`packages/agent/src/agent/agents/shallow_researcher/prompts/researcher.j2:2`
 
 Deep research copies the same frame. Planner, researcher, writer, and orchestrator all open as “Grid OIB — an assistant for … Austrian building regulations”. The fallback if the Jinja file is missing is still “You are a research assistant.” (`shallow_researcher/agent.py:600`)
 
@@ -210,7 +210,7 @@ Two product bets merged past each other:
 
 Harvey-the-answer-document is CoCounsel’s shape (research-first, conclusion then audit trail). Harvey-the-2026-platform is the workspace. The repo copied the former on the morning of 1 September and declared the latter that evening, without touching the prompt.
 
-`docs/product/vision.md` has **one commit**: the initial import `3ffeca6b4` (2026-07-01). Identity was not leftover NAT copy. The June 2026 backend plan already said “You are the Grid OIB Research Agent.” `f9bb78b9c` (2026-07-05) moved that persona onto the shallow agent when the classifier became a pure router. `e129561d8` (2026-07-21, PB-14) broadened it to Bürowissen **while keeping the pinned Grid OIB / Austrian building regulations substrings**. The last identity edit (`21ff238c4` / [PR #614](https://github.com/GRID-check/grid-oib-agent/pull/614), 2026-09-04) is punctuation plus “route regulation questions to the corpus, not the law database.” Still “Grid OIB Research Agent. … fast, citation-backed answers.”
+`docs/product/vision.md` has **one commit**: the initial import `3ffeca6b4` (2026-07-01). Identity was not leftover runtime-template copy. The June 2026 backend plan already said “You are the Grid OIB Research Agent.” `f9bb78b9c` (2026-07-05) moved that persona onto the shallow agent when the classifier became a pure router. `e129561d8` (2026-07-21, PB-14) broadened it to Bürowissen **while keeping the pinned Grid OIB / Austrian building regulations substrings**. The last identity edit (`21ff238c4` / [PR #614](https://github.com/GRID-check/grid-oib-agent/pull/614), 2026-09-04) is punctuation plus “route regulation questions to the corpus, not the law database.” Still “Grid OIB Research Agent. … fast, citation-backed answers.”
 
 `Agents.md` still opens “Grid is an OIB building-regulation assistant.” Contributor onboarding will keep writing a Prüfer until that line moves with the prompt.
 
@@ -226,7 +226,7 @@ A researched reply **is** one fenced `answer_json` object. The module header sta
 
 > a verdict is not an exhibit attached BESIDE the answer the way a stair diagram is, it is the answer's own headline. … the frontend renders them in a FIXED layout (**verdict above the prose**, callout and takeaways after it). The model decides content, never placement.
 
-`packages/agent/src/aiq_agent/common/answer_envelope.py:13–21`
+`packages/agent/src/agent/common/answer_envelope.py:13–21`
 
 Fields:
 
@@ -351,7 +351,7 @@ Live activity is a **replacing** one-liner (`turn_status.py:71–73`: “the liv
 
 Since ADR-0066 the answer's prose streams live while the final call writes it, each `[N]` pending until one snapshot settles the citations; the terminal frame then replaces the text. Only a turn with no live prose (a buffered LLM, a reply that is not an envelope) still sends the finished text cut into deltas. No reasoning tokens reach the UI while tools run. After the turn, `prune-message-for-storage.ts` drops step `content` / `rawPayload` and keeps `traceLanes` (source cards) plus `turnEvent` (the retrieval query can survive storage after Loop A). A colleague opening a shared thread sees the fan-out of documents, not the decisions.
 
-So even a turn that internally did `use_skill` → `knowledge_search` → `ifc_query` → `ifc_measure` → `emit_card` (the documented 6-call Fluchtweg / Lichteinfall chains) will usually render as: framing, a handful of source cards in parallel, an assessment with a confidence chip. The checkpoints are in Langfuse and the NAT step log, behind an opt-in “Technische Herleitung”.
+So even a turn that internally did `use_skill` → `knowledge_search` → `ifc_query` → `ifc_measure` → `emit_card` (the documented 6-call Fluchtweg / Lichteinfall chains) will usually render as: framing, a handful of source cards in parallel, an assessment with a confidence chip. The checkpoints are in Langfuse and the agent step log, behind an opt-in “Technische Herleitung”.
 
 The smallest UI change that would show a loop without a new runtime: treat **tool rounds** as sequential layers (round 0 fan-out → checkpoint → round 1), using the `round_index` `emit_retrieval` already sends. That needs a product decision distinct from PF-12 (queries on the graph were built and reverted; checkpoints are conclusions, not queries).
 
@@ -484,11 +484,11 @@ A turn like “Soll-Ist über alle OIB-Richtlinien” should create a task of ki
 
 ### This repo (primary)
 
-- `packages/agent/src/aiq_agent/agents/shallow_researcher/prompts/researcher.j2` — identity, output contract, stimme, envelope teaching, 2-call cap
-- `packages/agent/src/aiq_agent/common/answer_envelope.py` — schema, gates, “verdict is the headline”
-- `packages/agent/src/aiq_agent/agents/shallow_researcher/agent.py` — ReAct loop, budgets, forced synthesis, repair
+- `packages/agent/src/agent/agents/shallow_researcher/prompts/researcher.j2` — identity, output contract, stimme, envelope teaching, 2-call cap
+- `packages/agent/src/agent/common/answer_envelope.py` — schema, gates, “verdict is the headline”
+- `packages/agent/src/agent/agents/shallow_researcher/agent.py` — ReAct loop, budgets, forced synthesis, repair
 - `configs/config_oib_openrouter.yml` — tool list, `max_tool_iterations: 7`, `repair_pass` (the `compliance_check` binding is retired; see §1)
-- `packages/agent/src/aiq_agent/common/turn_status.py` — live status keys, requery/repair events, replace-not-accumulate
+- `packages/agent/src/agent/common/turn_status.py` — live status keys, requery/repair events, replace-not-accumulate
 - `packages/knowledge-layer/src/requery.py` — hidden sufficiency judge
 - `apps/workspace/ui/features/chat/components/reasoning/ReasoningFlow.tsx` + `.spec.ts` — fan-out, never a chain
 - `apps/workspace/ui/features/chat/components/ChatThinking.tsx`, `AnswerAnatomy.tsx`
@@ -503,7 +503,7 @@ A turn like “Soll-Ist über alle OIB-Richtlinien” should create a task of ki
 - `apps/site/src/i18n/ui.ts` (marketing: Empfehlung)
 - `apps/workspace/app/layout.tsx` (window title: OIB Compliance Assistant)
 - Builtin OIB `SKILL.md` L1 lines (Prüfkette)
-- `packages/agent/src/aiq_agent/agents/compliance_checker/README.md`
+- `packages/agent/src/agent/agents/compliance_checker/README.md`
 
 ### Industry (inspected pages)
 

@@ -1,7 +1,7 @@
 # Piloti — Kubernetes deployment (Pulumi)
 
 TypeScript Pulumi program that deploys the entire Piloti stack to a Kubernetes
-cluster: the `aiq-agent` backend, the Next.js frontend/BFF, the purger and
+cluster: the `aiq-agent` backend (the chat tier), the Next.js frontend/BFF, the purger and
 skill-scheduler workers, plus CloudNativePG Postgres, a Dragonfly cache, and
 SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic Let's Encrypt TLS.
 
@@ -114,7 +114,7 @@ it is in one of these, in this order:
 
 1. **`Pulumi.<stack>.yaml`** — *your* per-environment values (edit these).
 2. **`src/config.ts`** and **`src/config/`** — every knob's declaration + default
-   (the table below): `config.ts` assembles `GridConfig`, and each concern
+   (the table below): `config.ts` assembles `DeployConfig`, and each concern
    (Postgres, SeaweedFS, Qdrant, Langfuse, the chat tier, …) declares and
    validates its own keys in `src/config/<concern>.ts`.
 3. **`src/constants.ts`** — fixed platform decisions (ports, UIDs, resource
@@ -132,7 +132,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **Cluster & images** | | |
 | 🔒 **`kubeconfig`** | — | Target-cluster kubeconfig. For CI use the non-expiring SA token (guide §2b) |
 | `namespace` | `grid` | Namespace for all app + data workloads |
-| `imageRegistry` | `ghcr.io/grid-check` | Registry for the app images |
+| `imageRegistry` | `ghcr.io/archos-at` | Registry for the app images |
 | `imageTag` | `latest` | Tag for all images. CI pins `sha-<commit>` |
 | `backendImage` / `frontendImage` / `webImage` | — | Full image-ref overrides (registry+tag ignored) |
 | `imagePullPolicy` | auto | Explicit override only; the default derives per image ref — `Always` for a moving tag (`latest`/untagged), `IfNotPresent` for a pinned one — so mixed refs (SHA `imageTag` + `:latest` override) each get the right policy |
@@ -388,7 +388,7 @@ the bootstrap Jobs ran to completion under enforced NetworkPolicies.
 
 ```
 index.ts                 wiring + stack outputs
-src/config.ts            typed config: GridConfig and loadConfig
+src/config.ts            typed config: DeployConfig and loadConfig
 src/config/              one module per concern: its keys, defaults and checks
 src/platform/            provider, namespace, cert-manager, gateway (Envoy),
                          dns (Cloudflare records for the Gateway's hosts),

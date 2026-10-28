@@ -2,7 +2,7 @@
 
 import pytest
 
-from aiq_agent.knowledge.folder_cards import gate
+from agent.knowledge.folder_cards import gate
 
 
 @pytest.fixture(autouse=True)
@@ -66,4 +66,4 @@ def test_the_environment_switch_is_gone(monkeypatch):
     monkeypatch.setattr(gate, "_fetch", lambda organization_id: False)
 
     assert gate.enabled_for("org_1") is False
-    assert not hasattr(__import__("aiq_agent.knowledge.folder_cards", fromlist=["x"]), "enabled")
+    assert not hasattr(__import__("agent.knowledge.folder_cards", fromlist=["x"]), "enabled")

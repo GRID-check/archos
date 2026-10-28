@@ -23,12 +23,12 @@ from agent_testing.canvas import SIGNATURE
 from agent_testing.canvas import answering
 from agent_testing.canvas import listed
 
-from aiq_agent import project_context
-from aiq_agent.tools.canvas import calls as canvas_calls
-from aiq_agent.tools.canvas.client import CanvasRequestError
-from aiq_agent.tools.canvas.register import run_mark
-from aiq_agent.tools.canvas.register import run_marks
-from aiq_agent.tools.canvas.register import run_reply
+from agent import project_context
+from agent.tools.canvas import calls as canvas_calls
+from agent.tools.canvas.client import CanvasRequestError
+from agent.tools.canvas.register import run_mark
+from agent.tools.canvas.register import run_marks
+from agent.tools.canvas.register import run_reply
 
 
 class TestWhoItActsAs:

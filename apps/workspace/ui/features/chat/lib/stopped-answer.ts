@@ -2,7 +2,7 @@
  * What a stopped answer keeps (`docs/design/chat-wire-v2.md` §c, Stop).
  *
  * Three writers store a stopped answer under the same message id: the agent
- * tier (`TurnTextFold.stopped`, `packages/agent/src/aiq_agent/turn/streaming.py`), the
+ * tier (`TurnTextFold.stopped`, `packages/agent/src/agent/turn/streaming.py`), the
  * asker's client (`stopTurnView` in `turn-fold.ts`) and the BFF, which cuts a
  * row the server stored whole because the Stop reached it after the answer
  * had finished (`cutStoppedAnswer` in `lib/conversations/service.ts`).

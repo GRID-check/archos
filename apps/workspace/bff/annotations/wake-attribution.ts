@@ -12,7 +12,7 @@
  */
 
 import type { AnnotationRecord } from './repository'
-import type { PilotiWakeTrigger } from './types'
+import type { AgentWakeTrigger } from './types'
 import { listAnsweringWakes, type WakeSpanRow } from './wake-repository'
 
 export type WakeSpan = WakeSpanRow
@@ -21,7 +21,7 @@ export type WakeSpan = WakeSpanRow
 export function wakeOfReply(
   reply: { annotationId: string; authorKind: 'person' | 'piloti'; createdBy: string; createdAt: Date | string },
   spans: readonly WakeSpan[]
-): PilotiWakeTrigger | null {
+): AgentWakeTrigger | null {
   if (reply.authorKind !== 'piloti') return null
   const at = new Date(reply.createdAt).getTime()
   const span = spans.find(
@@ -40,6 +40,6 @@ export async function wakeSpansFor(
   documentId: string,
   records: ReadonlyArray<Pick<AnnotationRecord, 'replies'>>
 ): Promise<WakeSpan[]> {
-  const anyPilotiReply = records.some((record) => record.replies.some((reply) => reply.authorKind === 'piloti'))
-  return anyPilotiReply ? listAnsweringWakes(organizationId, documentId).catch(() => []) : []
+  const anyAgentReply = records.some((record) => record.replies.some((reply) => reply.authorKind === 'piloti'))
+  return anyAgentReply ? listAnsweringWakes(organizationId, documentId).catch(() => []) : []
 }

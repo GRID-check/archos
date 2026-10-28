@@ -84,7 +84,7 @@ import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { AttentionDot } from '@/components/ui/attention-dot'
 import { Quote } from '@/components/ui/quote'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
-import { PilotiGlyph } from '@/components/ui/piloti-glyph'
+import { AgentGlyph } from '@/components/ui/agent-glyph'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -304,7 +304,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const replyButtonRef = useFocusBackOnClose<HTMLButtonElement>(answerHere && replying && item.anchorId !== null)
   const [markBusy, setMarkBusy] = useState(false)
   const [markOutcome, setMarkOutcome] = useState<
-    'sent' | 'sentPilotiNotAsked' | 'resolved' | 'conflict' | 'failed' | null
+    'sent' | 'sentAgentNotAsked' | 'resolved' | 'conflict' | 'failed' | null
   >(null)
   /** Whom the last answer named and the server did not keep: they cannot open the document, so nobody told them. */
   const [untold, setUntold] = useState<string[]>([])
@@ -334,7 +334,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       )
       setReplying(false)
       // `off`: the answer met a wake rule but nothing wakes Piloti here; the row says how to ask it.
-      setMarkOutcome(wake === 'off' ? 'sentPilotiNotAsked' : 'sent')
+      setMarkOutcome(wake === 'off' ? 'sentAgentNotAsked' : 'sent')
       // Answered from here is read here: the thread has the reply.
       onOpen?.(item)
       return kept
@@ -571,7 +571,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       >
         {/* Unread: the attention dot in the row's leading gutter, beside the
             semibold title, rather than a bar down the edge (side stripes are
-            discouraged, grid-design-language.md). 10px, where the 6px dot
+            discouraged, design-language.md). 10px, where the 6px dot
             before the bar was lost under glare. */}
         <AttentionDot show={unread} className="absolute left-1.5 top-[1.375rem]" />
         {/* Type icon. A live request carries the "needs attention" tint; colour
@@ -611,7 +611,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
           // glyph; a live request keeps the tint, and the title still says what
           // is asked: colour never travels alone.
           <ItemMedia aria-hidden className={cn('mt-0.5', inert && 'opacity-90')}>
-            <PilotiGlyph
+            <AgentGlyph
               size="lg"
               tone="outline"
               className={cn(needsAttention && 'border-transparent bg-warning-subtle text-warning')}
@@ -1050,7 +1050,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 }
                 submitLabel={t('inbox.mark.send')}
                 documentId={item.resourceId}
-                mentionPiloti={item.pilotiWakes === true}
+                mentionAgent={item.pilotiWakes === true}
                 describeFailure={() => t('inbox.mark.failed')}
                 onSubmit={sendReply}
                 onEscape={() => setReplying(false)}

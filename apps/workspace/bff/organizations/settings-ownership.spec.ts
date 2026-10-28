@@ -33,11 +33,11 @@ vi.mock('@/lib/authz/platform', async (importOriginal) => {
 import { ForbiddenError } from '@/lib/api/errors'
 import { PlatformAccessDeniedError } from '@/lib/authz/platform'
 import { PLATFORM_OWNED_SETTINGS } from '@/lib/db/schema/organizations'
-import type { GridSession } from '@/lib/auth/types'
+import type { UserSession } from '@/lib/auth/types'
 import { updateOrgSettings, updatePlatformOwnedOrgSettings, writeDedicatedOrgSetting } from './service'
 
-const OWNER = { userId: 'user-1', email: 'ops@grid.example' } as GridSession
-const TENANT_ADMIN = { userId: 'user-2', email: 'admin@tenant.example' } as GridSession
+const OWNER = { userId: 'user-1', email: 'ops@app.example' } as UserSession
+const TENANT_ADMIN = { userId: 'user-2', email: 'admin@tenant.example' } as UserSession
 
 /**
  * Who owns which key in the `organizations.settings` bag.

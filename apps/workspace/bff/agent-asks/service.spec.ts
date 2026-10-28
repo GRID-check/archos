@@ -59,9 +59,9 @@ import {
 } from '@/lib/conversations/repository'
 import type { Conversation } from '@/lib/db/schema/conversations'
 import type { Message } from '@/lib/db/schema/messages'
-import type { PilotiAskRow } from '@/lib/db/schema/piloti-asks'
+import type { AgentAskRow } from '@/lib/db/schema/piloti-asks'
 import { findProjectProfile } from '@/lib/projects/repository'
-import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
+import { verifyRequestContextEnvelope } from '@/lib/request-context'
 import { cancelHeadlessTurn, chatSocketUrl, runHeadlessTurn, type HeadlessTurnRequest } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import {
@@ -78,7 +78,7 @@ import {
   askAnswerMessageId,
   askEndOf,
   askMaxSeconds,
-  askPiloti,
+  askAgent,
   cancelAsk,
   getAsk,
   recordAskOutcome,
@@ -103,9 +103,9 @@ const SESSION: AuthorizedSession = {
   featureFlags: ['piloti-ask'],
 }
 
-let row: PilotiAskRow
+let row: AgentAskRow
 
-const askRow = (over: Partial<PilotiAskRow> = {}): PilotiAskRow => ({
+const askRow = (over: Partial<AgentAskRow> = {}): AgentAskRow => ({
   id: '22222222-2222-4222-8222-222222222222',
   organizationId: ORG,
   conversationId: THREAD,
@@ -166,22 +166,22 @@ afterEach(() => {
 })
 
 describe('askAnswerMessageId', () => {
-  it('is the id the agent gives its answer (aiq_agent.turn.response.answer_message_id)', () => {
+  it('is the id the agent gives its answer (agent.turn.response.answer_message_id)', () => {
     // Computed by the Python function for the same pair.
     expect(askAnswerMessageId(THREAD, '22222222-2222-4222-8222-222222222222')).toBe('e007c373-c4c5-504d-9558-2d975bb207d1')
   })
 })
 
-describe('askPiloti', () => {
+describe('askAgent', () => {
   it('is refused without the organization’s switch, before anything is written', async () => {
     const off = { ...SESSION, featureFlags: [] }
-    await expect(askPiloti(off, { question: 'Hallo?' })).rejects.toBeInstanceOf(ForbiddenError)
+    await expect(askAgent(off, { question: 'Hallo?' })).rejects.toBeInstanceOf(ForbiddenError)
     expect(insertAsk).not.toHaveBeenCalled()
     expect(runHeadlessTurn).not.toHaveBeenCalled()
   })
 
   it('opens a new private thread of the person, in the project they named, after the project check', async () => {
-    await askPiloti(SESSION, { question: 'Welche Fluchtweglänge gilt?', projectId: PROJECT }, { waitMs: 0 })
+    await askAgent(SESSION, { question: 'Welche Fluchtweglänge gilt?', projectId: PROJECT }, { waitMs: 0 })
     expect(requireProjectAccess).toHaveBeenCalledWith(SESSION, PROJECT, ['project:chat', 'project:edit'])
     const created = vi.mocked(insertConversation).mock.calls[0]?.[0]
     expect(created).toMatchObject({ organizationId: ORG, createdBy: USER, projectId: PROJECT, title: 'Welche Fluchtweglänge gilt?' })
@@ -190,14 +190,14 @@ describe('askPiloti', () => {
   })
 
   it('writes the question as the person’s message under the ask’s id, which is the turn’s id', async () => {
-    await askPiloti(SESSION, { question: 'Welche Fluchtweglänge gilt?' }, { waitMs: 0 })
+    await askAgent(SESSION, { question: 'Welche Fluchtweglänge gilt?' }, { waitMs: 0 })
     const [message] = vi.mocked(insertMessages).mock.calls[0]?.[0] ?? []
     expect(message).toMatchObject({ id: row.id, role: 'user', authorUserId: USER, content: 'Welche Fluchtweglänge gilt?' })
     expect(turnRequest().message.message_id).toBe(row.id)
   })
 
   it('starts a headless turn as the person, with the agent_consult trigger, if_idle and the signed envelope', async () => {
-    await askPiloti(SESSION, { question: 'Welche Fluchtweglänge gilt?' }, { waitMs: 0 })
+    await askAgent(SESSION, { question: 'Welche Fluchtweglänge gilt?' }, { waitMs: 0 })
     const request = turnRequest()
     expect(request.message).toMatchObject({
       type: 'user_message',
@@ -209,7 +209,7 @@ describe('askPiloti', () => {
     expect(request.requires).toEqual(ASK_REQUIRES)
     expect(request.headers['x-chat-mode']).toBe('headless')
     expect(request.headers['x-aiq-mode']).toBe('headless')
-    const context = verifyGridRequestContextEnvelope(
+    const context = verifyRequestContextEnvelope(
       request.headers['x-grid-request-context'],
       request.headers['x-grid-request-context-sig'],
       SECRET,
@@ -226,7 +226,7 @@ describe('askPiloti', () => {
     vi.mocked(findMessageInConversation).mockImplementation(async (conversationId, id) =>
       id === askAnswerMessageId(conversationId, row.id) ? ({ id, content: 'Höchstens 40 m.' } as Message) : null,
     )
-    const view = await askPiloti(SESSION, { question: 'Welche Fluchtweglänge gilt?' }, { waitMs: 5_000 })
+    const view = await askAgent(SESSION, { question: 'Welche Fluchtweglänge gilt?' }, { waitMs: 5_000 })
     expect(view.state).toBe('completed')
     expect(view.answer).toEqual({ messageId: askAnswerMessageId(row.conversationId, row.id), text: 'Höchstens 40 m.' })
     expect(view.pollAfterSeconds).toBeNull()
@@ -280,17 +280,17 @@ describe('askPiloti', () => {
 
   it('names the busy thread and the way out in the reason the agent reads', async () => {
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
-    const view = await askPiloti(SESSION, { question: 'Und danach?', waitSeconds: 0 })
+    const view = await askAgent(SESSION, { question: 'Und danach?', waitSeconds: 0 })
     expect(view.reason).toMatch(/never interrupts a running turn.*agent-ask-get.*conversationId/)
   })
 
   it('leaves the turn’s start to the chat path’s own time bound', async () => {
-    await askPiloti(SESSION, { question: 'Welche Fluchtweglänge gilt?', waitSeconds: 0 })
+    await askAgent(SESSION, { question: 'Welche Fluchtweglänge gilt?', waitSeconds: 0 })
     expect(turnRequest().timeoutMs).toBeUndefined()
   })
 
   it('answers working past the wait, with when to poll', async () => {
-    const view = await askPiloti(SESSION, { question: 'Lang?' }, { waitMs: 0 })
+    const view = await askAgent(SESSION, { question: 'Lang?' }, { waitMs: 0 })
     expect(view.state).toBe('working')
     expect(view.answer).toBeNull()
     expect(view.pollAfterSeconds).toBeGreaterThan(0)
@@ -298,7 +298,7 @@ describe('askPiloti', () => {
 
   it('ends rejected, with the reason and without a socket, when the budget is spent', async () => {
     vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('organization'))
-    const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    const view = await askAgent(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
     expect(view.state).toBe('rejected')
     expect(view.reason).toMatch(/^budget: The organization LLM budget is exhausted/)
     expect(runHeadlessTurn).not.toHaveBeenCalled()
@@ -310,7 +310,7 @@ describe('askPiloti', () => {
     vi.mocked(chatSocketUrl).mockImplementation(() => {
       throw new Error('BACKEND_CHAT_URL is not set: the wake has no chat socket to open')
     })
-    const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    const view = await askAgent(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
     expect(view.id).toBe(row.id)
     expect(view.state).toBe('failed')
     expect(view.reason).toMatch(/could not be reached: .*BACKEND_CHAT_URL/)
@@ -319,7 +319,7 @@ describe('askPiloti', () => {
 
   it('ends failed, never left submitted, when starting the turn throws', async () => {
     vi.mocked(resolveTurnContext).mockRejectedValue(new Error('connection reset'))
-    const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    const view = await askAgent(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
     expect(view.state).toBe('failed')
     expect(view.reason).toBe('Piloti could not start the turn.')
     expect(endAsk).toHaveBeenCalledWith(ORG, view.id, { state: 'failed', reason: 'Piloti could not start the turn.' })
@@ -329,7 +329,7 @@ describe('askPiloti', () => {
     vi.mocked(findConversationInOrg).mockResolvedValue(conversation())
     vi.mocked(hasAskedInConversation).mockResolvedValue(true)
     vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
-    const view = await askPiloti(SESSION, { question: 'Und?', conversationId: THREAD }, { waitMs: 0 })
+    const view = await askAgent(SESSION, { question: 'Und?', conversationId: THREAD }, { waitMs: 0 })
     expect(view.state).toBe('rejected')
     expect(view.question).toBe('Und?')
     expect(deleteAskQuestion).toHaveBeenCalledWith(ORG, THREAD, view.id)
@@ -350,7 +350,7 @@ describe('askPiloti', () => {
         memoryReflectionEnabled: false,
       }
     })
-    const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    const view = await askAgent(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
     expect(runHeadlessTurn).not.toHaveBeenCalled()
     expect(view.state).toBe('canceled')
   })
@@ -361,7 +361,7 @@ describe('askPiloti', () => {
       return false
     })
     vi.mocked(cancelHeadlessTurn).mockResolvedValue({ kind: 'sent' })
-    await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    await askAgent(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
     expect(cancelHeadlessTurn).toHaveBeenCalledWith(expect.objectContaining({ turnId: row.id }))
   })
 
@@ -376,9 +376,9 @@ describe('askPiloti', () => {
       })
     }
     answerOnFirstPoll()
-    expect((await askPiloti(SESSION, { question: 'Hallo?', waitSeconds: 0 })).state).toBe('working')
+    expect((await askAgent(SESSION, { question: 'Hallo?', waitSeconds: 0 })).state).toBe('working')
     answerOnFirstPoll()
-    expect((await askPiloti(SESSION, { question: 'Hallo?' })).state).toBe('completed')
+    expect((await askAgent(SESSION, { question: 'Hallo?' })).state).toBe('completed')
   })
 
   it.each([
@@ -388,7 +388,7 @@ describe('askPiloti', () => {
     [{ kind: 'unavailable', reason: 'socket failed' } as const, 'failed', /could not be reached/],
   ])('ends an ask whose turn did not start (%o) as %s', async (outcome, state, reason) => {
     vi.mocked(runHeadlessTurn).mockResolvedValue(outcome)
-    const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    const view = await askAgent(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
     expect(view.state).toBe(state)
     expect(view.reason).toMatch(reason)
     expect(view.pollAfterSeconds).toBeNull()
@@ -399,7 +399,7 @@ describe('askPiloti', () => {
   it('continues a conversation an earlier ask of the same person started, in its project', async () => {
     vi.mocked(findConversationInOrg).mockResolvedValue(conversation({ projectId: PROJECT }))
     vi.mocked(hasAskedInConversation).mockResolvedValue(true)
-    await askPiloti(SESSION, { question: 'Und im Keller?', conversationId: THREAD }, { waitMs: 0 })
+    await askAgent(SESSION, { question: 'Und im Keller?', conversationId: THREAD }, { waitMs: 0 })
     expect(insertConversation).not.toHaveBeenCalled()
     expect(hasAskedInConversation).toHaveBeenCalledWith(ORG, THREAD, USER)
     expect(turnRequest().conversationId).toBe(THREAD)
@@ -413,7 +413,7 @@ describe('askPiloti', () => {
   ])('never writes into a conversation when %s', async (_why, found, asked) => {
     vi.mocked(findConversationInOrg).mockResolvedValue(found)
     vi.mocked(hasAskedInConversation).mockResolvedValue(asked)
-    await expect(askPiloti(SESSION, { question: 'Und?', conversationId: THREAD })).rejects.toBeInstanceOf(NotFoundError)
+    await expect(askAgent(SESSION, { question: 'Und?', conversationId: THREAD })).rejects.toBeInstanceOf(NotFoundError)
     expect(insertAsk).not.toHaveBeenCalled()
   })
 
@@ -421,7 +421,7 @@ describe('askPiloti', () => {
     vi.mocked(findConversationInOrg).mockResolvedValue(conversation({ projectId: null }))
     vi.mocked(hasAskedInConversation).mockResolvedValue(true)
     await expect(
-      askPiloti(SESSION, { question: 'Und?', conversationId: THREAD, projectId: PROJECT }),
+      askAgent(SESSION, { question: 'Und?', conversationId: THREAD, projectId: PROJECT }),
     ).rejects.toBeInstanceOf(ConflictError)
   })
 })
@@ -452,7 +452,7 @@ describe('getAsk and cancelAsk', () => {
     expect(request?.turnId).toBe(row.id)
     const headers = request?.headers ?? {}
     expect(
-      verifyGridRequestContextEnvelope(headers['x-grid-request-context'], headers['x-grid-request-context-sig'], SECRET),
+      verifyRequestContextEnvelope(headers['x-grid-request-context'], headers['x-grid-request-context-sig'], SECRET),
     ).toMatchObject({ userId: USER, conversationId: THREAD })
     expect(endAsk).toHaveBeenCalledWith(ORG, row.id, { state: 'canceled' })
     expect(view.state).toBe('canceled')

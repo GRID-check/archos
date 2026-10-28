@@ -12,7 +12,7 @@ const row = {
 } as const
 
 /** A Piloti document under its namespace, with a version published. */
-const publishedPiloti = {
+const publishedAgent = {
   collectionName: 'proj_abc',
   filename: 'piloti/doc_1/aktenvermerk-2026-09-01.md',
   authoredBy: 'agent',
@@ -44,7 +44,7 @@ describe('collectionFileRef', () => {
   it('names the pair for a PUBLISHED Piloti document under its namespace', () => {
     // The one case ADR-0054 added: this row really does own chunks, so a purge
     // or a folder mirror addressed at it addresses its own passages.
-    expect(collectionFileRef(publishedPiloti)).toMatchObject({
+    expect(collectionFileRef(publishedAgent)).toMatchObject({
       collectionName: 'proj_abc',
       filename: 'piloti/doc_1/aktenvermerk-2026-09-01.md',
     })
@@ -54,7 +54,7 @@ describe('collectionFileRef', () => {
     // Only a published version is dispatched, so a draft has no chunks — and
     // asking the backend to forget a name that was never ingested is at best a
     // wasted call and at worst somebody else's document.
-    expect(collectionFileRef({ ...publishedPiloti, publishedVersionId: null })).toBeNull()
+    expect(collectionFileRef({ ...publishedAgent, publishedVersionId: null })).toBeNull()
   })
 
   it('refuses a published agent row OUTSIDE the namespace', () => {
@@ -64,7 +64,7 @@ describe('collectionFileRef', () => {
     // module was written for. `ingestPublished` refuses to index such a row for
     // the same reason, so "indexed" and "addressable" stay the same set.
     expect(
-      collectionFileRef({ ...publishedPiloti, filename: 'brandschutz-gutachten-2026-08-20.pdf' }),
+      collectionFileRef({ ...publishedAgent, filename: 'brandschutz-gutachten-2026-08-20.pdf' }),
     ).toBeNull()
   })
 
@@ -72,8 +72,8 @@ describe('collectionFileRef', () => {
     // The prefix is a path segment, not a substring: `piloti-bericht.md` is a
     // name a person can type, and a `includes('piloti')` test would hand it a
     // ref it must not have.
-    expect(collectionFileRef({ ...publishedPiloti, filename: 'piloti-bericht.md' })).toBeNull()
-    expect(collectionFileRef({ ...publishedPiloti, filename: 'x/piloti/doc_1/a.md' })).toBeNull()
+    expect(collectionFileRef({ ...publishedAgent, filename: 'piloti-bericht.md' })).toBeNull()
+    expect(collectionFileRef({ ...publishedAgent, filename: 'x/piloti/doc_1/a.md' })).toBeNull()
   })
 })
 

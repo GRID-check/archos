@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const isOwner = { value: false }
 
 vi.mock('@/lib/auth/session', () => ({
-  getGridSession: vi.fn().mockResolvedValue({ userId: 'user_1', organizationId: 'org_1' }),
+  getUserSession: vi.fn().mockResolvedValue({ userId: 'user_1', organizationId: 'org_1' }),
 }))
 
 vi.mock('@/lib/auth/require-auth', () => ({

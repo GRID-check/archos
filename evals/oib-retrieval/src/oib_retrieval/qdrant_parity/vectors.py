@@ -11,7 +11,7 @@ PRODUCTION'S EMBEDDER, THROUGH PRODUCTION'S SEAM
 ------------------------------------------------
 ``make_embed_model`` from the knowledge layer is the only embedding client the
 process builds, and its HTTP clients pin every OpenRouter request to zero-data-
-retention endpoints (``aiq_agent.common.openrouter.PLATFORM_FIXED``). The key comes
+retention endpoints (``agent.common.openrouter.PLATFORM_FIXED``). The key comes
 from the same chain the retriever resolves (``resolve_embed_api_key``). Nothing
 here opens its own HTTP client to the provider.
 
@@ -82,7 +82,7 @@ def truncate_renormalise(matrix: np.ndarray, dimension: int) -> np.ndarray:
 
 def hashed_vector(text: str, dimension: int = HASHED_DIMENSION) -> np.ndarray:
     """A deterministic unit vector from the text's German lexemes. No semantics at all."""
-    from aiq_agent.common.german_text import analyze
+    from agent.common.german_text import analyze
 
     vector = np.zeros(dimension, dtype=np.float32)
     for lexeme in analyze(text) or [text]:

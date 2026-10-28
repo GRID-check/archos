@@ -35,7 +35,7 @@ the document's own words.
 
 ## `dossier`
 
-Written by `aiq_agent.knowledge.dossier` from one model call over the document's
+Written by `agent.knowledge.dossier` from one model call over the document's
 digest (`build_digest`: every page in order under `[Seite N · kind]`, an equal share
 of 16 000 characters each, the Plankopf, the file name), on the summary model with
 its own output budget and a strict JSON schema, traced as the Langfuse generation

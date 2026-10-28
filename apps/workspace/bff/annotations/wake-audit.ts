@@ -24,7 +24,7 @@ import 'server-only'
 import { recordAuditEventAfterCommit } from '@/lib/audit/after-commit'
 import type { AuditEventInput } from '@/lib/audit/service'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import type { PilotiWakeTrigger } from './types'
+import type { AgentWakeTrigger } from './types'
 import { wakeEndReasonKind } from './wake-end-reason'
 import { documentThreadConversationId } from './wake-ids'
 
@@ -60,7 +60,7 @@ export interface AuditedWake {
   wakeId: string
   documentId: string
   annotationId: string
-  trigger: PilotiWakeTrigger
+  trigger: AgentWakeTrigger
   /** The person whose act woke Piloti: the turn runs as them, in their thread about the document. */
   wokenBy: { userId: string; email: string | null }
   projectId: string | null

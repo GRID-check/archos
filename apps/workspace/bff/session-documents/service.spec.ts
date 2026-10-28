@@ -140,7 +140,7 @@ import { makeLiveDocumentMatch } from '@/test-utils/db-fixtures'
 const session = {
   userId: USER_ID,
   organizationId: ORG_ID,
-  email: 'me@grid.test',
+  email: 'me@example.test',
   permissions: [],
 } as unknown as AuthorizedSession
 

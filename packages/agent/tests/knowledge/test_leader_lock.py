@@ -14,11 +14,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.knowledge import leader_lock as lock_module
-from aiq_agent.knowledge.leader_lock import keyed_lock
-from aiq_agent.knowledge.leader_lock import leader_lock
-from aiq_agent.knowledge.leader_lock import leader_lock_async
-from aiq_agent.knowledge.leader_lock import require_direct_dsns
+from agent.knowledge import leader_lock as lock_module
+from agent.knowledge.leader_lock import keyed_lock
+from agent.knowledge.leader_lock import leader_lock
+from agent.knowledge.leader_lock import leader_lock_async
+from agent.knowledge.leader_lock import require_direct_dsns
 
 DIRECT = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret
 POOLED = "postgresql+psycopg://agent:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret

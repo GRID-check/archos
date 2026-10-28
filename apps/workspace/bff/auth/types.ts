@@ -5,7 +5,7 @@
  * `@workos-inc/authkit-nextjs` types.
  */
 
-export interface GridSession {
+export interface UserSession {
   /** WorkOS user id (JWT `sub` claim) */
   userId: string
 
@@ -64,7 +64,7 @@ export interface GridSession {
  * Use this type for routes and API handlers that require tenant-scoped
  * authorization.
  */
-export interface AuthorizedSession extends GridSession {
+export interface AuthorizedSession extends UserSession {
   organizationId: string
   organizationMembershipId: string
   role: string
@@ -72,7 +72,7 @@ export interface AuthorizedSession extends GridSession {
 }
 
 /** The roles a session holds, with the single `role` standing in for an absent list. */
-export function rolesOf(session: Pick<GridSession, 'role' | 'roles'>): string[] {
+export function rolesOf(session: Pick<UserSession, 'role' | 'roles'>): string[] {
   if (session.roles && session.roles.length > 0) return session.roles
   return session.role ? [session.role] : []
 }

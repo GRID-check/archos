@@ -424,7 +424,7 @@ export function apiRoute<TParams = Record<string, string | string[]>>(
 ) {
   const permission = 'permission' in options.authz ? options.authz.permission : null
   return async (request: Request, context?: NextRouteContext): Promise<Response> => {
-    // Open an empty, request-scoped tenant slot for `getGridSession()` to fill.
+    // Open an empty, request-scoped tenant slot for `getUserSession()` to fill.
     // `run()` bounds it, so this request cannot inherit a tenant from the
     // previous request on the same keep-alive socket, nor leave one behind.
     return runWithTenantSlot(async () => {

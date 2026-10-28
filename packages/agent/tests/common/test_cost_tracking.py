@@ -21,13 +21,13 @@ from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration
 from langchain_core.outputs import LLMResult
 
-from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.cost_tracking import BudgetSnapshot
-from aiq_agent.common.cost_tracking import GridCostTracker
-from aiq_agent.common.cost_tracking import UsageEvent
-from aiq_agent.common.cost_tracking import extract_usage_event
-from aiq_agent.common.cost_tracking import grid_cost_tracker_var
-from aiq_agent.common.cost_tracking import track_llm_costs
+from agent.common.cost_tracking import BudgetExceededError
+from agent.common.cost_tracking import BudgetSnapshot
+from agent.common.cost_tracking import CostTracker
+from agent.common.cost_tracking import UsageEvent
+from agent.common.cost_tracking import cost_tracker_var
+from agent.common.cost_tracking import extract_usage_event
+from agent.common.cost_tracking import track_llm_costs
 
 _ROUTE = Path(__file__).resolve().parents[4] / "apps/workspace/app/api/internal/usage/route.ts"
 
@@ -115,7 +115,7 @@ class TestExtractUsageEvent:
         # `True` is an int in Python and would book $1.00; NaN would switch the
         # budget gate off; the BFF rejects a non-finite or negative cost with
         # the whole batch. Recorded as missing, and said so in the log.
-        with caplog.at_level("WARNING", logger="aiq_agent.common.cost_tracking"):
+        with caplog.at_level("WARNING", logger="agent.common.cost_tracking"):
             event = extract_usage_event(_openrouter_result({**OPENROUTER_USAGE, "cost": cost}))
         assert event is not None
         assert event.cost_usd == 0.0
@@ -139,8 +139,8 @@ class TestExtractUsageEvent:
 
     def test_batch_shape_matches_internal_endpoint(self, monkeypatch):
         posted = []
-        monkeypatch.setattr("aiq_agent.common.cost_tracking._post_usage_events", posted.append)
-        tracker = GridCostTracker(organization_id="org_1", activity="ingest")
+        monkeypatch.setattr("agent.common.cost_tracking._post_usage_events", posted.append)
+        tracker = CostTracker(organization_id="org_1", activity="ingest")
         tracker.record(extract_usage_event(_openrouter_result()))
         tracker.flush(wait=True)
         assert set(posted[0]) == _route_keys("usageBatchSchema")
@@ -185,9 +185,9 @@ class TestBudgetSnapshot:
         assert legacy.exhausted_scope(0.5, 10**9) is None
 
 
-class TestGridCostTracker:
-    def _tracker(self, budget: BudgetSnapshot | None = None) -> GridCostTracker:
-        return GridCostTracker(
+class TestCostTracker:
+    def _tracker(self, budget: BudgetSnapshot | None = None) -> CostTracker:
+        return CostTracker(
             organization_id="org_1",
             user_id="user_1",
             project_id="proj_1",
@@ -252,7 +252,7 @@ class TestGridCostTracker:
         tracker = self._tracker()
         tracker.on_chat_model_start({}, [], invocation_params={"model": "vendor/override-model"})
         tracker.on_llm_end(_openrouter_result())
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             tracker.flush(wait=True)
         assert post.call_count == 1
         payload = post.call_args.args[0]
@@ -266,10 +266,10 @@ class TestGridCostTracker:
         assert payload["events"][0]["generationId"] == "gen-01HXYZOPENROUTER"
 
     def test_the_batch_names_the_answer_it_paid_for(self):
-        from aiq_agent.common.cost_tracking import track_llm_costs
+        from agent.common.cost_tracking import track_llm_costs
 
         identity = {"organization_id": "org_1", "conversation_id": "conv_1", "message_id": "answer_1"}
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             with track_llm_costs(identity=identity, budget=BudgetSnapshot()) as tracker:
                 tracker.on_llm_end(_openrouter_result())
         payload = post.call_args.args[0]
@@ -281,13 +281,13 @@ class TestGridCostTracker:
     def test_a_tracker_off_the_chat_path_names_no_answer(self):
         tracker = self._tracker()
         tracker.on_llm_end(_openrouter_result())
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             tracker.flush(wait=True)
         assert post.call_args.args[0]["messageId"] is None
 
     def test_flush_is_idempotent_when_empty(self):
         tracker = self._tracker()
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             tracker.flush(wait=True)
         assert post.call_count == 0
 
@@ -304,7 +304,7 @@ class TestGridCostTracker:
         tracker.on_chat_model_start({}, [], run_id="B", invocation_params={"model": "vendor/model-b"})
         tracker.on_llm_end(_openrouter_result(), run_id="A")
         tracker.on_llm_end(_openrouter_result(), run_id="B")
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             tracker.flush(wait=True)
         events = post.call_args.args[0]["events"]
         assert [e["requestedModel"] for e in events] == ["vendor/model-a", "vendor/model-b"]
@@ -312,19 +312,19 @@ class TestGridCostTracker:
 
 class TestTrackLlmCosts:
     def test_sets_and_resets_contextvar(self):
-        assert grid_cost_tracker_var.get() is None
+        assert cost_tracker_var.get() is None
         with track_llm_costs(identity={"organization_id": "org_1"}, budget=BudgetSnapshot()) as tracker:
             assert tracker is not None
-            assert grid_cost_tracker_var.get() is tracker
+            assert cost_tracker_var.get() is tracker
             assert tracker.organization_id == "org_1"
-        assert grid_cost_tracker_var.get() is None
+        assert cost_tracker_var.get() is None
 
     def test_flushes_on_exit(self):
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             with track_llm_costs(identity={"organization_id": "org_1"}, budget=BudgetSnapshot()) as tracker:
                 tracker.on_llm_end(_openrouter_result())
             # exit flushes via the background executor; force it to drain
-            from aiq_agent.common.cost_tracking import _flush_executor
+            from agent.common.cost_tracking import _flush_executor
 
             _flush_executor.submit(lambda: None).result()
         assert post.call_count == 1
@@ -342,7 +342,7 @@ class TestTrackLlmCosts:
 class TestDeferredFlush:
     def test_inline_flush_false_leaves_the_batch_pending(self):
         """The chat turn posts the usage batch after the deltas, not before."""
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             with track_llm_costs(
                 identity={"organization_id": "org_1"}, budget=BudgetSnapshot(), inline_flush=False
             ) as tracker:
@@ -353,7 +353,7 @@ class TestDeferredFlush:
         assert len(post.call_args.args[0]["events"]) == 1
 
     def test_flush_without_wait_returns_the_workers_future(self):
-        tracker = self_tracker = GridCostTracker(
+        tracker = self_tracker = CostTracker(
             organization_id="org_1",
             user_id=None,
             project_id=None,
@@ -361,7 +361,7 @@ class TestDeferredFlush:
             budget=BudgetSnapshot(),
         )
         self_tracker.on_llm_end(_openrouter_result())
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             future = tracker.flush(wait=False)
             assert future is not None
             future.result(timeout=5)
@@ -424,23 +424,23 @@ class TestResponsesApiUsage:
 
 class TestPromptCacheSummary:
     def test_summary_counts_cached_against_total_input(self, caplog):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         tracker.on_llm_end(_responses_result(), run_id="run-1")
         assert tracker.cached_tokens == 35072
-        with caplog.at_level("INFO", logger="aiq_agent.common.cost_tracking"):
+        with caplog.at_level("INFO", logger="agent.common.cost_tracking"):
             tracker.log_prompt_cache_summary()
         line = next(r.getMessage() for r in caplog.records if "[PromptCache]" in r.getMessage())
         assert "35072/41883" in line
         assert "6811 uncached" in line
 
     def test_nothing_recorded_logs_nothing(self, caplog):
-        tracker = GridCostTracker(organization_id="org_1")
-        with caplog.at_level("INFO", logger="aiq_agent.common.cost_tracking"):
+        tracker = CostTracker(organization_id="org_1")
+        with caplog.at_level("INFO", logger="agent.common.cost_tracking"):
             tracker.log_prompt_cache_summary()
         assert not [r for r in caplog.records if "[PromptCache]" in r.getMessage()]
 
     def test_the_turn_scope_summarises_on_exit(self, caplog):
-        with caplog.at_level("INFO", logger="aiq_agent.common.cost_tracking"):
+        with caplog.at_level("INFO", logger="agent.common.cost_tracking"):
             with track_llm_costs(inline_flush=False) as tracker:
                 tracker.on_llm_end(_responses_result(), run_id="run-1")
         assert [r for r in caplog.records if "[PromptCache]" in r.getMessage()]
@@ -536,15 +536,15 @@ class TestResponsesApiCost:
     def test_the_carrier_is_installed(self):
         from langchain_openai.chat_models import base as lc_openai
 
-        from aiq_agent.common import cost_tracking
+        from agent.common import cost_tracking
 
         assert cost_tracking._RESPONSES_COST_CARRIER_INSTALLED
-        assert getattr(lc_openai._construct_lc_result_from_responses_api, "__grid_cost_carrier__", False)
+        assert getattr(lc_openai._construct_lc_result_from_responses_api, "__cost_carrier__", False)
         assert cost_tracking.install_responses_cost_carrier() is True  # idempotent
 
     @pytest.mark.parametrize("streaming", [False, True], ids=["invoke", "stream"])
     def test_a_responses_call_records_the_providers_cost(self, streaming):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         _responses_llm(streaming=streaming).invoke("Frage", config={"callbacks": [tracker]})
         assert tracker.events_recorded == 1
         event = tracker._pending[0]
@@ -558,13 +558,13 @@ class TestResponsesApiCost:
         assert tracker.turn_cost_usd == pytest.approx(0.0421)
 
     def test_a_byok_responses_call_is_marked_byok(self):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         usage = {**OPENROUTER_RESPONSES_USAGE, "cost": 0, "is_byok": True}
         _responses_llm(streaming=False, usage=usage).invoke("Frage", config={"callbacks": [tracker]})
         assert tracker._pending[0].is_byok is True
 
     def test_a_reply_without_cost_still_says_missing(self):
-        tracker = GridCostTracker(organization_id="org_1")
+        tracker = CostTracker(organization_id="org_1")
         usage = {k: v for k, v in OPENROUTER_RESPONSES_USAGE.items() if k not in ("cost", "is_byok")}
         _responses_llm(streaming=False, usage=usage).invoke("Frage", config={"callbacks": [tracker]})
         event = tracker._pending[0]
@@ -572,7 +572,7 @@ class TestResponsesApiCost:
         assert event.cost_source == "missing"
 
     def test_the_budget_gate_sees_the_answers_cost(self):
-        tracker = GridCostTracker(organization_id="org_1", budget=BudgetSnapshot(remaining_org_usd=0.04))
+        tracker = CostTracker(organization_id="org_1", budget=BudgetSnapshot(remaining_org_usd=0.04))
         llm = _responses_llm(streaming=False)
         llm.invoke("Frage", config={"callbacks": [tracker]})
         with pytest.raises(BudgetExceededError):
@@ -597,11 +597,11 @@ class TestCallsOutsideLangChain:
         return SimpleNamespace(id="gen-1", model="vendor/vision-1", usage=usage)
 
     def test_a_metered_client_books_each_call_with_its_role_and_reported_cost(self):
-        from aiq_agent.common.cost_tracking import meter_openai_client
+        from agent.common.cost_tracking import meter_openai_client
 
         response = self._response(prompt_tokens=1200, completion_tokens=80, total_tokens=1280, cost=0.0031)
         client = meter_openai_client(self._client(response), role="ingest_vision")
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             with track_llm_costs(identity={"organization_id": "org_1"}, budget=BudgetSnapshot(), activity="ingest"):
                 assert client.chat.completions.create(model="vendor/vision-1", messages=[]) is response
                 client.embeddings.create(model="vendor/vision-1", input=["x"])
@@ -617,29 +617,29 @@ class TestCallsOutsideLangChain:
         assert len(payload["events"]) == 2
 
     def test_a_call_without_a_reported_cost_is_booked_as_missing_not_free(self):
-        from aiq_agent.common.cost_tracking import meter_openai_client
+        from agent.common.cost_tracking import meter_openai_client
 
         client = meter_openai_client(self._client(self._response(prompt_tokens=10, total_tokens=10)), role="embedding")
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             with track_llm_costs(identity={"organization_id": "org_1"}, budget=BudgetSnapshot()):
                 client.embeddings.create(model="m", input=["x"])
         assert post.call_args.args[0]["events"][0]["costSource"] == "missing"
 
     def test_without_a_tracker_a_metered_call_books_nothing_and_still_answers(self):
-        from aiq_agent.common.cost_tracking import meter_openai_client
+        from agent.common.cost_tracking import meter_openai_client
 
         response = self._response(prompt_tokens=10, total_tokens=10, cost=0.1)
         client = meter_openai_client(self._client(response), role="embedding")
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             assert client.embeddings.create(model="m", input=["x"]) is response
         post.assert_not_called()
 
     def test_metering_twice_books_a_call_once(self):
-        from aiq_agent.common.cost_tracking import meter_openai_client
+        from agent.common.cost_tracking import meter_openai_client
 
         client = self._client(self._response(prompt_tokens=10, total_tokens=10, cost=0.1))
         meter_openai_client(meter_openai_client(client, role="embedding"), role="embedding")
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             with track_llm_costs(identity={"organization_id": "org_1"}, budget=BudgetSnapshot()):
                 client.embeddings.create(model="m", input=["x"])
         assert len(post.call_args.args[0]["events"]) == 1
@@ -649,13 +649,13 @@ class TestCallsOutsideLangChain:
         # vision call an ingestion job fanned out ran with no tracker at all.
         from concurrent.futures import ThreadPoolExecutor
 
-        from aiq_agent.common.cost_tracking import record_usage_event
-        from aiq_agent.common.cost_tracking import submit_in_context
+        from agent.common.cost_tracking import record_usage_event
+        from agent.common.cost_tracking import submit_in_context
 
         def call() -> bool:
             return record_usage_event(model="m", role="ingest_vision", prompt_tokens=5, cost_usd=0.01)
 
-        with patch("aiq_agent.common.cost_tracking._post_usage_events") as post:
+        with patch("agent.common.cost_tracking._post_usage_events") as post:
             with track_llm_costs(identity={"organization_id": "org_1"}, budget=BudgetSnapshot()):
                 with ThreadPoolExecutor(max_workers=2) as pool:
                     assert pool.submit(call).result() is False

@@ -67,7 +67,7 @@ _IMPORTED_NAMES = {
     "deepagents.middleware.patch_tool_calls": ["PatchToolCallsMiddleware"],
     "deepagents.middleware.skills": ["SkillsMiddleware", "_list_skills"],
     "deepagents.middleware.summarization": ["create_summarization_middleware"],
-    # named in `aiq_api/jobs/phase_events.py` and `tokenomics/`, which read the
+    # named in `agent_host/jobs/phase_events.py` and `tokenomics/`, which read the
     # `task` tool's `subagent_type` argument off tool callbacks
     "deepagents.middleware.subagents": ["TaskToolSchema", "_build_task_tool"],
 }
@@ -79,8 +79,8 @@ def test_every_name_we_import_still_exists(module_name: str, names: list[str]) -
     missing = [name for name in names if not hasattr(module, name)]
     assert not missing, (
         f"deepagents no longer exports {missing} from {module_name}. Grep the repo for each name "
-        "(packages/agent/src/aiq_agent/agents/deep_researcher, "
-        "packages/agent/src/aiq_agent/tools/documents, tests) and port it to "
+        "(packages/agent/src/agent/agents/deep_researcher, "
+        "packages/agent/src/agent/tools/documents, tests) and port it to "
         "the release's replacement before bumping."
     )
 
@@ -106,8 +106,8 @@ def test_the_filesystem_tool_names_are_the_ones_our_allowlists_use() -> None:
     """`draft_tools` and the deep researcher build the FS tools from an allowlist of these names."""
     from deepagents.middleware.filesystem import FsToolName
 
-    from aiq_agent.agents.deep_researcher.factory import FILESYSTEM_TOOL_NAMES
-    from aiq_agent.tools.documents.tools import DRAFT_TOOL_NAMES
+    from agent.agents.deep_researcher.factory import FILESYSTEM_TOOL_NAMES
+    from agent.tools.documents.tools import DRAFT_TOOL_NAMES
 
     known = set(get_args(FsToolName))
     assert known == {"ls", "read_file", "write_file", "edit_file", "delete", "glob", "grep", "execute"}, (
@@ -143,7 +143,7 @@ def test_the_allowlist_builds_only_the_listed_tools() -> None:
     assert allowed == {"ls", "read_file"}
 
 
-#: The private builders ``tools/documents/filesystem.PilotiFilesystem`` overrides (ADR-0133). They carry no
+#: The private builders ``tools/documents/filesystem.DocumentFilesystem`` overrides (ADR-0133). They carry no
 #: stability promise, so a rename is caught here rather than by a model that silently gets the stock tool.
 _OVERRIDDEN_BUILDERS = ("_create_read_file_tool", "_create_ls_tool", "_create_glob_tool", "_create_grep_tool")
 
@@ -154,7 +154,7 @@ def test_the_builders_the_estate_overrides_exist_and_take_nothing(builder: str) 
 
     method = getattr(FilesystemMiddleware, builder, None)
     assert method is not None, (
-        f"FilesystemMiddleware.{builder} is gone: PilotiFilesystem's override is never called, and the stock tool "
+        f"FilesystemMiddleware.{builder} is gone: DocumentFilesystem's override is never called, and the stock tool "
         "(no grounding blocks, no citations) is bound under our name. Port tools/documents/filesystem.py."
     )
     assert list(inspect.signature(method).parameters) == ["self"]
@@ -193,9 +193,9 @@ def test_the_composite_strips_the_route_prefix_the_draft_route_puts_back() -> No
 @pytest.mark.parametrize(
     "path",
     [
-        "aiq_agent.tools.documents.draft_store:DraftBackend",
-        "aiq_agent.skills.backend:SkillsBackend",
-        "aiq_agent.tools.documents.filesystem:_DraftRoute",
+        "agent.tools.documents.draft_store:DraftBackend",
+        "agent.skills.backend:SkillsBackend",
+        "agent.tools.documents.filesystem:_DraftRoute",
         "knowledge_layer.estate:EstateBackend",
     ],
 )
@@ -218,8 +218,8 @@ def test_state_backend_still_reads_through_the_one_hook_the_skills_backend_overr
     """``SkillsBackend`` hands ``StateBackend`` its files by overriding ``_read_files`` (ADR-0135)."""
     from deepagents.backends import StateBackend
 
-    from aiq_agent.skills.backend import SkillsBackend
-    from aiq_agent.skills.models import Skill
+    from agent.skills.backend import SkillsBackend
+    from agent.skills.models import Skill
 
     assert callable(getattr(StateBackend, "_read_files", None)), "StateBackend._read_files is gone"
     backend = SkillsBackend({"office": (Skill(name="x", description="d", body="b"),)})
@@ -233,9 +233,9 @@ def test_skills_middleware_takes_our_template_and_renders_outside_an_agent() -> 
     """Piloti renders the catalog with ``before_agent`` + ``modify_request``, without hosting the middleware."""
     from deepagents.middleware.skills import SkillsMiddleware
 
-    from aiq_agent.skills.models import Skill
-    from aiq_agent.skills.runtime import SKILLS_PROMPT
-    from aiq_agent.skills.runtime import SkillRuntime
+    from agent.skills.models import Skill
+    from agent.skills.runtime import SKILLS_PROMPT
+    from agent.skills.runtime import SkillRuntime
 
     parameters = set(inspect.signature(SkillsMiddleware.__init__).parameters)
     assert {"backend", "sources", "system_prompt"} <= parameters
@@ -280,8 +280,8 @@ async def test_read_file_output_has_the_header_our_draft_description_names() -> 
     """`tools/documents/tools.py` tells the model the `@@ lines … @@` header is not part of the draft."""
     from langgraph.store.memory import InMemoryStore
 
-    from aiq_agent.tools.documents.draft_store import DraftBackend
-    from aiq_agent.tools.documents.tools import draft_tools
+    from agent.tools.documents.draft_store import DraftBackend
+    from agent.tools.documents.tools import draft_tools
 
     backend = DraftBackend(store=InMemoryStore(), conversation_id="contract")
     await backend.awrite("/drafts/a.md", "# A\nzwei\n")
@@ -318,11 +318,11 @@ def _deep_research_tool_names() -> dict[str, set[str]]:
     middleware stack the release assembles (orchestrator, each subagent and the
     auto-added general-purpose one) is inspected as built, not as we think it is.
     """
-    from aiq_agent.agents.deep_researcher import factory
-    from aiq_agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
-    from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
-    from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-    from aiq_agent.common import LLMProvider
+    from agent.agents.deep_researcher import factory
+    from agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
+    from agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
+    from agent.agents.deep_researcher.models import DeepResearchAgentState
+    from agent.common import LLMProvider
 
     @tool
     def web_search_tool(query: str) -> str:
@@ -382,7 +382,7 @@ def test_write_todos_is_where_the_prompts_offer_it_and_delete_is_nowhere() -> No
     """0.7 dropped `TodoListMiddleware` from the defaults and added `delete` (CompositeBackend offers it).
 
     `orchestrator.j2` and `planner.j2` offer `write_todos`, and the job's todo
-    artifact (`aiq_api/jobs/callbacks.py`) is built from it, so
+    artifact (`agent_host/jobs/callbacks.py`) is built from it, so
     `factory.planning_middleware` adds it back; `FILESYSTEM_TOOL_NAMES` keeps
     `delete` off every agent.
     """

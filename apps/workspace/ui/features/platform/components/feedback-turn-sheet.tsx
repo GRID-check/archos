@@ -7,7 +7,7 @@
  * Piloti answered, what the voter wrote about it and what they say should have
  * been there, and a way into the trace. A Sheet rather than a Dialog because it
  * is the detail of a row the reader just picked, and the list stays put behind
- * it (`grid-design-language.md` §Overlays).
+ * it (`design-language.md` §Overlays).
  */
 
 import type { JSX, ReactNode } from 'react'

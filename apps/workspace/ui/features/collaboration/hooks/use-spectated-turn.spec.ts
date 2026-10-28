@@ -10,7 +10,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { frameOf } from '@/test-utils/wire-v2-fixtures'
 import { useSpectatedTurn } from './use-spectated-turn'
-import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
+import { CARD_PREVIEW_FIXTURES } from '@/features/cards/preview-fixtures'
 
 /** A controllable stand-in for the browser's EventSource. */
 class FakeEventSource {

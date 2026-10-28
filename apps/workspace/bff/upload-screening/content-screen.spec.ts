@@ -4,7 +4,7 @@
  */
 /**
  * The content screen's contract with its Python twin
- * (`aiq_agent.common.content_screen`): every case in the shared fixture gives
+ * (`agent.common.content_screen`): every case in the shared fixture gives
  * the same matches, the same masked text and the same findings here as there,
  * and the placeholders are the ones Python defines. Python's half is
  * `packages/agent/tests/common/test_content_screen.py`.

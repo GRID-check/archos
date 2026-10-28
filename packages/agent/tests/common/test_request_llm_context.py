@@ -23,10 +23,10 @@ from unittest.mock import patch
 import pytest
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import request_llm_context
-from aiq_agent.common.request_llm_context import RequestLLMContext
-from aiq_agent.common.request_llm_context import read_request_llm_context
+from agent.common import LLMProvider
+from agent.common import request_llm_context
+from agent.common.request_llm_context import RequestLLMContext
+from agent.common.request_llm_context import read_request_llm_context
 
 _READERS = (
     "get_model_overrides_from_context",
@@ -101,22 +101,22 @@ class TestTheReader:
 
 class TestTheAgentsReadThroughIt:
     async def test_the_clarifier_reads_the_dials_off_the_loop(self, threads):
-        from aiq_agent.agents.piloti.clarify import Clarifier
-        from aiq_agent.agents.piloti.clarify import ClarifierSettings
-        from aiq_agent.agents.piloti.models.clarify import ClarifyRequest
+        from agent.agents.piloti.clarify import Clarifier
+        from agent.agents.piloti.clarify import ClarifierSettings
+        from agent.agents.piloti.models.clarify import ClarifyRequest
 
         clarifier = Clarifier.build(_identity_provider(), [], None, ClarifierSettings(llm="l"), AsyncMock())
         request = ClarifyRequest(messages=[HumanMessage(content="q")])
 
-        with patch("aiq_agent.agents.piloti.clarify.clarify", new=AsyncMock(return_value="done")) as run:
+        with patch("agent.agents.piloti.clarify.clarify", new=AsyncMock(return_value="done")) as run:
             assert await clarifier(request) == "done"
 
         _assert_off_the_loop(threads)
         assert run.call_args.args[1] is clarifier.boot
 
     async def test_deep_research_reads_the_dials_off_the_loop(self, threads):
-        from aiq_agent.agents.deep_researcher import register as deep_register
-        from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
+        from agent.agents.deep_researcher import register as deep_register
+        from agent.agents.deep_researcher.models import DeepResearchAgentState
 
         prebuilt = MagicMock()
         state = DeepResearchAgentState(messages=[HumanMessage(content="q")])
@@ -155,7 +155,7 @@ class TestTurnEffort:
         assert efforts["shallow_research"] == "medium"
 
     async def test_read_applies_the_turn_level_over_a_failed_lookup(self):
-        from aiq_agent.common.reasoning_settings import set_turn_reasoning_effort
+        from agent.common.reasoning_settings import set_turn_reasoning_effort
 
         set_turn_reasoning_effort("low")
         try:

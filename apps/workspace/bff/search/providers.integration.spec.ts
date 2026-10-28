@@ -60,7 +60,7 @@ describe.skipIf(!url)('the search providers against live Postgres', () => {
 
   const session = {
     userId: READER,
-    email: 'reader@grid.test',
+    email: 'reader@example.test',
     name: 'Reader',
     accessToken: 'token',
     organizationId: ORG,

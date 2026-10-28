@@ -35,7 +35,7 @@ export function AuthorshipLine({
   if (authoredBy !== 'agent') return null
   return (
     <p className={cn('truncate text-[11px] leading-[1.45] text-muted-foreground/85', className)}>
-      {t('authorship.byPiloti')}
+      {t('authorship.byAgent')}
     </p>
   )
 }

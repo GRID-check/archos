@@ -15,10 +15,10 @@ import threading
 
 import pytest
 
-from aiq_agent.common import turn_admission
-from aiq_agent.common.turn_admission import TurnAdmissionError
-from aiq_agent.common.turn_admission import admit_turn
-from aiq_agent.common.turn_admission import admit_turn_async
+from agent.common import turn_admission
+from agent.common.turn_admission import TurnAdmissionError
+from agent.common.turn_admission import admit_turn
+from agent.common.turn_admission import admit_turn_async
 
 
 @pytest.fixture(autouse=True)

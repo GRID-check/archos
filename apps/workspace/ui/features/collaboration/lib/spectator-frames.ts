@@ -19,9 +19,9 @@
 import type { WireEvent } from '@/adapters/api/wire-v2'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { foldTurnEvent, type TurnView } from '@/features/chat/lib/turn-fold'
-import { ACTING_CARD_TYPES } from '@/features/grid-cards/card-decision'
+import { ACTING_CARD_TYPES } from '@/features/cards/card-decision'
 import { SYSTEM_CARD_TYPES } from '@/features/skills/lib/card-catalog'
-import { validateGridCards, type GridCard } from '@/shared/cards/schemas'
+import { validateAnswerCards, type AnswerCard } from '@/shared/cards/schemas'
 
 /** One relayed event folded into the turn on screen. `rejected` (seq 0) is never the observer's. */
 export function foldSpectatedEvent(view: TurnView | null, event: WireEvent): TurnView | null {
@@ -42,10 +42,10 @@ export const orderedSteps = (view: TurnView): StoredThinkingStep[] => view.stepO
 const NOT_FOR_OBSERVERS: ReadonlySet<string> = new Set<string>([...ACTING_CARD_TYPES, ...SYSTEM_CARD_TYPES])
 
 /** The cards an observer may see, by index, with a hole for every other one. */
-export function observerCards(view: TurnView): (GridCard | undefined)[] | undefined {
+export function observerCards(view: TurnView): (AnswerCard | undefined)[] | undefined {
   if (view.cards.length === 0) return undefined
   return Array.from(view.cards, (keyed) => {
-    const card = keyed ? validateGridCards([keyed.card])[0] : undefined
+    const card = keyed ? validateAnswerCards([keyed.card])[0] : undefined
     return card && !NOT_FOR_OBSERVERS.has(card.type) ? card : undefined
   })
 }

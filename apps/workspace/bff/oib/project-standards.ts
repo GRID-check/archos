@@ -3,7 +3,7 @@
  * derivation behind the overview panel (`getProjectOverviewData`) and the
  * `GET /api/projects/[id]/standards` route an agent reads. Both call
  * {@link getApplicableStandards}; the Python prompt's twin
- * (`packages/agent/src/aiq_agent/common/applicability.py`) is held to the same verdicts by the
+ * (`packages/agent/src/agent/common/applicability.py`) is held to the same verdicts by the
  * shared fixtures in `applicable-standards.test.ts`.
  */
 

@@ -36,7 +36,7 @@ def lexical_inputs(
     Fails open to the unpriced inputs: pricing sharpens the channels, it
     never gates a search.
     """
-    from aiq_agent.common import german_text
+    from agent.common import german_text
 
     from ..qdrant import retrieval as qdrant_retrieval
     from .hybrid import extract_exact_terms
@@ -59,7 +59,7 @@ def lexical_inputs(
 def expansion_terms(query: str) -> list[str]:
     """The EN->DE glossary terms the German mirror is given for ``query``; none when unavailable."""
     try:
-        from aiq_agent.common import query_expansion
+        from agent.common import query_expansion
 
         return list(query_expansion.expansion_terms(query))
     except Exception:  # noqa: BLE001 - the glossary widens recall, it never gates a search

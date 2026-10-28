@@ -35,13 +35,13 @@ import { sendToChannel } from './send'
 const SESSION = {
   userId: 'user_1',
   organizationId: 'org_1',
-  email: 'a@grid.test',
+  email: 'a@example.test',
   name: 'Anna Berger',
 } as Partial<AuthorizedSession> as AuthorizedSession
 
 const AGENT = { conversationId: 'conv_42', onBehalfOf: 'user_1' }
-const PILOTI = { peerId: 'piloti-conv_42', userId: 'user_1', name: 'Piloti', kind: 'piloti', forName: 'Anna Berger' }
-const DIRECTORY = new Map([['user_1', { userId: 'user_1', email: 'a@grid.test', name: 'Anna Berger', profilePictureUrl: null }]])
+const AGENT_PEER = { peerId: 'piloti-conv_42', userId: 'user_1', name: 'Piloti', kind: 'piloti', forName: 'Anna Berger' }
+const DIRECTORY = new Map([['user_1', { userId: 'user_1', email: 'a@example.test', name: 'Anna Berger', profilePictureUrl: null }]])
 
 beforeEach(async () => {
   vi.clearAllMocks()
@@ -73,11 +73,11 @@ describe('publishAsAgent', () => {
     room.release()
 
     expect(room.heard).toEqual([
-      { kind: 'presence', peer: PILOTI, state: 'here', ttlMs: 25_000 },
-      { kind: 'cursor', peer: PILOTI, cursor: { page: 2, x: 0.4, y: 0.5 }, tool: 'select', label: 'Treppe' },
-      { kind: 'activity', peer: PILOTI, state: 'reading', label: 'sieht sich Seite 2 an' },
-      { kind: 'highlight', peer: PILOTI, box, label: 'Laufbreite', ttlMs: 6_000 },
-      { kind: 'presence', peer: PILOTI, state: 'gone', ttlMs: 25_000 },
+      { kind: 'presence', peer: AGENT_PEER, state: 'here', ttlMs: 25_000 },
+      { kind: 'cursor', peer: AGENT_PEER, cursor: { page: 2, x: 0.4, y: 0.5 }, tool: 'select', label: 'Treppe' },
+      { kind: 'activity', peer: AGENT_PEER, state: 'reading', label: 'sieht sich Seite 2 an' },
+      { kind: 'highlight', peer: AGENT_PEER, box, label: 'Laufbreite', ttlMs: 6_000 },
+      { kind: 'presence', peer: AGENT_PEER, state: 'gone', ttlMs: 25_000 },
     ])
   })
 
@@ -96,7 +96,7 @@ describe('publishAsAgent', () => {
     vi.mocked(loadOrganizationDirectory).mockResolvedValueOnce(new Map())
     await publishAsAgent('doc_1', 'org_1', AGENT, { op: 'presence', state: 'gone' })
     room.release()
-    const { forName: _, ...nameless } = PILOTI
+    const { forName: _, ...nameless } = AGENT_PEER
     expect(room.heard).toEqual([
       { kind: 'presence', peer: nameless, state: 'here', ttlMs: 25_000 },
       { kind: 'presence', peer: nameless, state: 'gone', ttlMs: 25_000 },

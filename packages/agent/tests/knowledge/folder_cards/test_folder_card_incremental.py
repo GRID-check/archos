@@ -7,13 +7,13 @@ from agent_testing.folder_cards import FakeModel
 from knowledge_layer.browse import file_rows
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from aiq_agent.knowledge import factory
-from aiq_agent.knowledge.folder_cards import build
-from aiq_agent.knowledge.folder_cards import incremental
-from aiq_agent.knowledge.folder_cards import queue
-from aiq_agent.knowledge.folder_cards import worker
-from aiq_agent.knowledge.folder_cards.inputs import folder_inputs
-from aiq_agent.observability import direct_trace
+from agent.knowledge import factory
+from agent.knowledge.folder_cards import build
+from agent.knowledge.folder_cards import incremental
+from agent.knowledge.folder_cards import queue
+from agent.knowledge.folder_cards import worker
+from agent.knowledge.folder_cards.inputs import folder_inputs
+from agent.observability import direct_trace
 
 ORG = "org_1"
 NAMES = [f"Akt {n}.pdf" for n in range(1, 7)]

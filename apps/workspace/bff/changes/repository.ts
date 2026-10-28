@@ -12,21 +12,21 @@
 import 'server-only'
 import { and, asc, eq, isNull } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { pilotiChanges, type NewPilotiChangeRow, type PilotiChangeRow } from '@/lib/db/schema/piloti-changes'
+import { pilotiChanges, type NewAgentChangeRow, type AgentChangeRow } from '@/lib/db/schema/piloti-changes'
 import { withTenant } from '@/lib/db/tenant-context'
 
-export type { PilotiChangeRow }
+export type { AgentChangeRow }
 
 /** What one turn may have changed, as one read returns it: a turn of twenty-mark calls, many times over. */
 export const MAX_CHANGES_PER_TURN = 200
 
-export type NewPilotiChange = Omit<NewPilotiChangeRow, 'id' | 'createdAt' | 'undoneAt' | 'undoneBy'>
+export type NewAgentChange = Omit<NewAgentChangeRow, 'id' | 'createdAt' | 'undoneAt' | 'undoneBy'>
 
 /** Record changes one call applied, all in one organization. */
-export async function insertPilotiChanges(organizationId: string, rows: readonly NewPilotiChange[]): Promise<PilotiChangeRow[]> {
+export async function insertAgentChanges(organizationId: string, rows: readonly NewAgentChange[]): Promise<AgentChangeRow[]> {
   if (rows.length === 0) return []
   if (rows.some((row) => row.organizationId !== organizationId)) {
-    throw new Error('insertPilotiChanges: every change belongs to the one organization named')
+    throw new Error('insertAgentChanges: every change belongs to the one organization named')
   }
   const db = getDb()
   return withTenant({ organizationId }, () => db.insert(pilotiChanges).values([...rows]).returning())
@@ -37,7 +37,7 @@ export async function listTurnChangeRows(
   organizationId: string,
   conversationId: string,
   messageId: string
-): Promise<PilotiChangeRow[]> {
+): Promise<AgentChangeRow[]> {
   const db = getDb()
   return withTenant({ organizationId }, () =>
     db
@@ -56,7 +56,7 @@ export async function listTurnChangeRows(
 }
 
 /** One change of this organization, or null. */
-export async function findPilotiChange(organizationId: string, id: string): Promise<PilotiChangeRow | null> {
+export async function findAgentChange(organizationId: string, id: string): Promise<AgentChangeRow | null> {
   const db = getDb()
   const [row] = await withTenant({ organizationId }, () =>
     db
@@ -69,7 +69,7 @@ export async function findPilotiChange(organizationId: string, id: string): Prom
 }
 
 /** Claim the undo for `userId`: stamp it when nobody has. Null when somebody undid it first. */
-export async function claimUndo(organizationId: string, id: string, userId: string): Promise<PilotiChangeRow | null> {
+export async function claimUndo(organizationId: string, id: string, userId: string): Promise<AgentChangeRow | null> {
   const db = getDb()
   const [row] = await withTenant({ organizationId }, () =>
     db
@@ -84,7 +84,7 @@ export async function claimUndo(organizationId: string, id: string, userId: stri
 /** Give back an undo claim whose inverse did not go through: only the claim with exactly this stamp. */
 export async function releaseUndo(
   organizationId: string,
-  claim: Pick<PilotiChangeRow, 'id' | 'undoneAt' | 'undoneBy'>
+  claim: Pick<AgentChangeRow, 'id' | 'undoneAt' | 'undoneBy'>
 ): Promise<void> {
   const { undoneAt: at, undoneBy: by } = claim
   if (!at || !by) return

@@ -6,7 +6,7 @@ domain data, so German appears here only inside a quoted span (a user phrasing
 given as an example, a citation, a card label) or as a glossary word.
 
 The tools are built from the shipped config exactly as the workflow builds them,
-in a clean interpreter (NAT's registry is process-global; see
+in a clean interpreter (the agent runtime's registry is process-global; see
 ``test_backend_tools_schema``). A tool that fails to build is a failure here, so
 a new tool cannot slip past the scan by being unbuildable.
 """
@@ -140,7 +140,7 @@ def test_tool_and_parameter_descriptions_are_english(texts: list[tuple[str, str]
 def _builtin_skill_bodies() -> list[tuple[str, str]]:
     """Each builtin ``SKILL.md`` split into lines, so a failure names file and line."""
     rows: list[tuple[str, str]] = []
-    for path in sorted((ROOT / "packages" / "agent" / "src" / "aiq_agent" / "skills" / "builtin").rglob("SKILL.md")):
+    for path in sorted((ROOT / "packages" / "agent" / "src" / "agent" / "skills" / "builtin").rglob("SKILL.md")):
         rel = path.relative_to(ROOT).as_posix()
         in_fence = False
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -179,7 +179,7 @@ def test_card_schema_descriptions_are_english() -> None:
     assert pinned == [], f"German prose that was translated once is back: {pinned}"
 
 
-PROMPTS = ROOT / "packages" / "agent" / "src" / "aiq_agent" / "agents" / "piloti" / "prompts"
+PROMPTS = ROOT / "packages" / "agent" / "src" / "agent" / "agents" / "piloti" / "prompts"
 
 
 def _prompt_lines(text: str, name: str) -> list[tuple[str, str]]:
@@ -213,7 +213,7 @@ def _german_prompt_lines(text: str, name: str) -> list[tuple[str, str]]:
 
 def test_prompt_files_are_scanned() -> None:
     names = {path.name for path in _prompt_files()}
-    assert {"piloti_static.md", "piloti.j2"} <= names
+    assert {"chat_static.md", "piloti.j2"} <= names
 
 
 def test_prompt_instructions_are_english() -> None:

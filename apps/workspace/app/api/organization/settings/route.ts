@@ -1,5 +1,5 @@
 /**
- * Organization settings API (Grid-side org record).
+ * Organization settings API (app-side org record).
  *
  * GET — any member may read their org's settings.
  * PUT — `org:settings:manage` holders only; merges the provided fields.

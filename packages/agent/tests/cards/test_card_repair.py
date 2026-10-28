@@ -12,8 +12,8 @@ from unittest.mock import patch
 
 from langchain_core.messages import AIMessage
 
-from aiq_agent.cards import repair as repair_module
-from aiq_agent.cards.repair import repair_card
+from agent.cards import repair as repair_module
+from agent.cards.repair import repair_card
 
 CARD = {"type": "typed_table", "title": "Teile", "columns": ["Teil"], "rows": [["OIB 2"]]}
 FIXED = {"type": "typed_table", "title": "Teile", "columns": [{"label": "Teil", "type": "text"}], "rows": [["OIB 2"]]}

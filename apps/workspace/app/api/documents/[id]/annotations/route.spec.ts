@@ -22,7 +22,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockResolvedValue({
     userId: 'user_1',
     organizationId: 'org_1',
-    email: 'a@grid.test',
+    email: 'a@example.test',
     name: 'Anna Berger',
     role: 'member',
     permissions: [],
@@ -448,7 +448,7 @@ describe('PATCH /api/documents/[id]/annotations/[annotationId]', () => {
         {
           action: 'piloti.mark.decided',
           organizationId: 'org_1',
-          actor: { userId: 'user_1', email: 'a@grid.test' },
+          actor: { userId: 'user_1', email: 'a@example.test' },
           targetType: 'document_annotation',
           targetId: 'ann_p',
           alsoTargets: [
@@ -596,7 +596,7 @@ describe('deleteReply (the service; undo is its caller)', () => {
   const session = {
     userId: 'user_1',
     organizationId: 'org_1',
-    email: 'a@grid.test',
+    email: 'a@example.test',
     name: 'Anna Berger',
     role: 'member',
     permissions: [],
@@ -712,7 +712,7 @@ describe('what the marks tell PostHog (the one door every client passes)', () =>
   const session = {
     userId: 'user_1',
     organizationId: 'org_1',
-    email: 'a@grid.test',
+    email: 'a@example.test',
     name: 'Anna Berger',
     role: 'member',
     permissions: [],
@@ -749,7 +749,7 @@ describe('whom Piloti’s proposals tell', () => {
   const session = {
     userId: 'user_1',
     organizationId: 'org_1',
-    email: 'a@grid.test',
+    email: 'a@example.test',
     name: 'Anna Berger',
     role: 'member',
     permissions: [],

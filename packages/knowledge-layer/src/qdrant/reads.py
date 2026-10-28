@@ -31,9 +31,9 @@ from typing import Any
 
 from qdrant_client import models
 
-from aiq_agent.knowledge.base import DocumentPosition
-from aiq_agent.knowledge.base import document_position
-from aiq_agent.knowledge.base import reading_order
+from agent.knowledge.base import DocumentPosition
+from agent.knowledge.base import document_position
+from agent.knowledge.base import reading_order
 
 from .schema import CHUNK_ID_FIELD
 from .schema import READING_ORDER_FIELD
@@ -74,7 +74,7 @@ def fetch(scope: str, filters: dict[str, Any] | None, limit: int, order_by: str 
 def fetch_from(scope: str, filters: dict[str, Any] | None, start: DocumentPosition, limit: int) -> list[Hit]:
     """The chunks ``filters`` admits that come AFTER ``start`` in document order, at most ``limit`` of them.
 
-    ``start`` is the :func:`~aiq_agent.knowledge.base.document_position` of the last chunk a reader
+    ``start`` is the :func:`~agent.knowledge.base.document_position` of the last chunk a reader
     already holds: it and everything before it are dropped, so a read that stopped at a size cap
     continues where it stopped. The comparison is on the same total key :func:`in_document_order`
     sorts by, so no chunk sorted after ``start`` is skipped, whatever its ordinal. The scope filter

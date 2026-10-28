@@ -1,9 +1,9 @@
 """The banner on a cut-off report names the cause, not a taxonomy."""
 
-from aiq_agent.agents.deep_researcher.agent import _prepend_honesty_banner
-from aiq_agent.common.turn_notices import CUTOFF_STEP_LIMIT
-from aiq_agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
-from aiq_agent.common.turn_notices import CUTOFF_WALL_CLOCK
+from agent.agents.deep_researcher.agent import _prepend_honesty_banner
+from agent.common.turn_notices import CUTOFF_STEP_LIMIT
+from agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
+from agent.common.turn_notices import CUTOFF_WALL_CLOCK
 
 
 def _banner(reason: str) -> str:
@@ -43,7 +43,7 @@ def test_an_english_report_gets_an_english_banner():
 
 def test_an_unread_basis_alone_is_not_called_unverified():
     """The unread documents have their own section; the banner does not call the report unverified."""
-    from aiq_agent.common.turn_notices import DEGRADED_BASIS_UNREAD
+    from agent.common.turn_notices import DEGRADED_BASIS_UNREAD
 
     report = _prepend_honesty_banner("# Bericht", cutoff_reason=None, degraded_reasons=[DEGRADED_BASIS_UNREAD])
     assert report == "# Bericht"

@@ -38,7 +38,7 @@ from typing import Any
 
 from qdrant_client import models
 
-from aiq_agent.knowledge.base import reading_order
+from agent.knowledge.base import reading_order
 
 from .schema import CHUNK_ID_FIELD
 from .schema import DENSE

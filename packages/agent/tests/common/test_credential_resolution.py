@@ -5,15 +5,15 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common import credential_resolution
-from aiq_agent.common.config_validation import assert_no_nim_llms
-from aiq_agent.common.config_validation import find_nim_llms
-from aiq_agent.common.config_validation import validate_llm_configs
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.credential_resolution import read_api_key_env
-from aiq_agent.common.credential_resolution import resolve_llm_credential
-from aiq_agent.common.credential_resolution import warn_on_legacy_nvidia_key
-from aiq_agent.common.llm_credentials import OrgLLMCredential
+from agent.common import credential_resolution
+from agent.common.config_validation import assert_no_nim_llms
+from agent.common.config_validation import find_nim_llms
+from agent.common.config_validation import validate_llm_configs
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.credential_resolution import read_api_key_env
+from agent.common.credential_resolution import resolve_llm_credential
+from agent.common.credential_resolution import warn_on_legacy_nvidia_key
+from agent.common.llm_credentials import OrgLLMCredential
 
 _OTHER_HOST = "https://llm.example.test/v1"
 _OPENROUTER = "https://openrouter.ai/api/v1"
@@ -247,7 +247,7 @@ def test_byok_hit_swaps_key_and_base_url_not_model(monkeypatch):
     monkeypatch.setenv("PRIMARY_KEY", "env-key")
     # The resolver imports resolve_org_llm_credential lazily from its source
     # module, so patch it there.
-    with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=_BYOK):
+    with patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=_BYOK):
         result = resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OTHER_HOST,
@@ -263,7 +263,7 @@ def test_byok_hit_swaps_key_and_base_url_not_model(monkeypatch):
 
 def test_byok_miss_falls_through_to_env(monkeypatch):
     monkeypatch.setenv("PRIMARY_KEY", "env-key")
-    with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
+    with patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
         result = resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OTHER_HOST,
@@ -278,7 +278,7 @@ def test_byok_fail_open_falls_through_to_env(monkeypatch):
     # resolve_org_llm_credential fails open (returns None) on any error; the
     # resolver must then continue down the env chain, never raise.
     monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
-    with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
+    with patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
         result = resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OPENROUTER,
@@ -292,7 +292,7 @@ def test_byok_fail_open_falls_through_to_env(monkeypatch):
 def test_no_org_id_skips_byok(monkeypatch):
     # With no org id the BYOK lookup must not even be attempted.
     monkeypatch.setenv("PRIMARY_KEY", "env-key")
-    with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential") as mock_resolve:
+    with patch("agent.common.llm_credentials.resolve_org_llm_credential") as mock_resolve:
         result = resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OTHER_HOST,
@@ -383,7 +383,7 @@ def test_resolve_rejects_nim_base_url_from_env(monkeypatch):
 
 def test_legacy_nvidia_key_only_warns_once(monkeypatch, caplog):
     monkeypatch.setenv("NVIDIA_API_KEY", "nvapi-old")
-    with caplog.at_level(logging.WARNING, logger="aiq_agent.common.credential_resolution"):
+    with caplog.at_level(logging.WARNING, logger="agent.common.credential_resolution"):
         assert warn_on_legacy_nvidia_key() is True
         assert warn_on_legacy_nvidia_key() is False
     assert "OPENROUTER_API_KEY" in caplog.text
@@ -392,14 +392,14 @@ def test_legacy_nvidia_key_only_warns_once(monkeypatch, caplog):
 def test_no_warning_once_migrated(monkeypatch, caplog):
     monkeypatch.setenv("NVIDIA_API_KEY", "nvapi-old")
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-new")
-    with caplog.at_level(logging.WARNING, logger="aiq_agent.common.credential_resolution"):
+    with caplog.at_level(logging.WARNING, logger="agent.common.credential_resolution"):
         assert warn_on_legacy_nvidia_key() is False
     assert "OPENROUTER_API_KEY" not in caplog.text
 
 
 def test_resolve_emits_legacy_key_warning(monkeypatch, caplog):
     monkeypatch.setenv("NVIDIA_API_KEY", "nvapi-old")
-    with caplog.at_level(logging.WARNING, logger="aiq_agent.common.credential_resolution"):
+    with caplog.at_level(logging.WARNING, logger="agent.common.credential_resolution"):
         resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OTHER_HOST,

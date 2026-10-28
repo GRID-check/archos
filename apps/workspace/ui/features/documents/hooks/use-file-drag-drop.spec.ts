@@ -46,7 +46,7 @@ function createMockDragEvent(files: File[] = [], items: DataTransferItem[] = [])
 }
 
 /** A drag started inside the page — a document being moved into a folder. */
-function createInternalDragEvent(type = 'application/x-grid-document-id'): React.DragEvent {
+function createInternalDragEvent(type = 'application/x-document-id'): React.DragEvent {
   return {
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),

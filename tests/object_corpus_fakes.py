@@ -21,10 +21,10 @@ from pathlib import Path
 from sqlalchemy import delete
 from sqlalchemy import text
 
-from aiq_agent import corpus_store
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent import corpus_store
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
 
 class FakeBucket:

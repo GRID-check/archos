@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.tools.bim import measure_register as measure
-from aiq_agent.tools.bim import register as query
+from agent.tools.bim import measure_register as measure
+from agent.tools.bim import register as query
 
 
 def _rows(emitted):

@@ -5,7 +5,7 @@
  * words. `grid-execution` used to narrow this too, which meant declaring what a
  * SCHEDULED run should produce silently decided where the skill existed; it no
  * longer does (see `lib/skills/service.ts::skillTargetsAgent` and the Python
- * mirror in `packages/agent/src/aiq_agent/skills/resolver.py`).
+ * mirror in `packages/agent/src/agent/skills/resolver.py`).
  *
  * Client-side and dependency-free on purpose: the editor and the toolbox both
  * need it, and `@/lib/skills/types` is the server-side write boundary that
@@ -35,7 +35,7 @@ export type SkillAgent = (typeof SKILL_AGENTS)[number]
  * skill would quietly vanish from chat instead.
  *
  * Mirrored in `lib/skills/service.ts::skillTargetsAgent` and in
- * `packages/agent/src/aiq_agent/skills/resolver.py::AGENT_ALIASES`; the three are a contract
+ * `packages/agent/src/agent/skills/resolver.py::AGENT_ALIASES`; the three are a contract
  * set, pinned against the same case in each suite.
  */
 const AGENT_ALIASES: Record<string, SkillAgent> = {

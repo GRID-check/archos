@@ -119,7 +119,7 @@ const sessionOf = (userId: string, membershipId: string | null, permissions: str
     userId,
     organizationId: ORG,
     organizationMembershipId: membershipId,
-    email: `${userId}@grid.test`,
+    email: `${userId}@example.test`,
     role: 'member',
     roles: ['member'],
     permissions,
@@ -157,7 +157,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
   const inOrg = <T>(run: () => PromiseLike<T>): Promise<T> => withTenant({ organizationId: ORG, userId: USER }, run) as Promise<T>
   /**
    * A module whose functions run in the organization's tenant scope, as a
-   * request's would (`getGridSession` opens it there).
+   * request's would (`getUserSession` opens it there).
    */
   function inTenant<M extends object>(module: M): M {
     return new Proxy(module, {

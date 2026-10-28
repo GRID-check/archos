@@ -5,9 +5,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.agents.piloti.history import _count_message_tokens
-from aiq_agent.agents.piloti.history import prune_tool_results
-from aiq_agent.agents.piloti.history import trim_message_history
+from agent.agents.piloti.history import _count_message_tokens
+from agent.agents.piloti.history import prune_tool_results
+from agent.agents.piloti.history import trim_message_history
 
 
 class TestTrimMessageHistory:
@@ -200,8 +200,8 @@ class TestCompactToolResults:
     """The kept turn holds the cited passages whole and the rest by header only."""
 
     def test_an_uncited_passage_keeps_its_header_and_loses_its_body(self):
-        from aiq_agent.agents.piloti.history import UNCITED_PASSAGE_NOTE
-        from aiq_agent.agents.piloti.history import compact_tool_results
+        from agent.agents.piloti.history import UNCITED_PASSAGE_NOTE
+        from agent.agents.piloti.history import compact_tool_results
 
         content = _grounding(
             ("oib-rl_2.pdf, p.1", "REI 60 gilt in GK 4."), ("oib-rl_2.pdf, p.2", "Ein langer, nie zitierter Absatz.")
@@ -215,14 +215,14 @@ class TestCompactToolResults:
         assert "## Gliederung" in compacted.content
 
     def test_no_cited_key_leaves_the_turn_as_it_was(self):
-        from aiq_agent.agents.piloti.history import compact_tool_results
+        from agent.agents.piloti.history import compact_tool_results
 
         content = _grounding(("k1", "A"), ("k2", "B"))
         messages = [ToolMessage(content=content, tool_call_id="c1")]
         assert compact_tool_results(messages, set())[0].content == content
 
     def test_a_result_without_blocks_is_untouched(self):
-        from aiq_agent.agents.piloti.history import compact_tool_results
+        from agent.agents.piloti.history import compact_tool_results
 
         messages = [ToolMessage(content="No relevant documents found for query: 'x'", tool_call_id="c1")]
         assert compact_tool_results(messages, {"k1"})[0].content == messages[0].content
@@ -248,7 +248,7 @@ class TestHistoryWindow:
         return [m.content for m in window]
 
     def test_a_follow_up_keeps_the_previous_question_and_answer_when_the_results_overrun_the_budget(self):
-        from aiq_agent.agents.piloti.history import history_window
+        from agent.agents.piloti.history import history_window
 
         messages = _follow_up_after_a_heavy_turn(result_chars=400_000)
         # The old window: the newest messages were the results, and the start on a
@@ -265,7 +265,7 @@ class TestHistoryWindow:
         assert not any(isinstance(m, ToolMessage) or getattr(m, "tool_calls", None) for m in window)
 
     def test_results_that_fit_still_ride_along(self):
-        from aiq_agent.agents.piloti.history import history_window
+        from agent.agents.piloti.history import history_window
 
         messages = _follow_up_after_a_heavy_turn(result_chars=2_000)
 
@@ -279,7 +279,7 @@ class TestWarmTokenEncoder:
     """The encoder is loaded once, at boot (`conversation_register`), and the turn reuses it."""
 
     def test_warming_loads_the_encoder_the_trim_then_reuses(self):
-        from aiq_agent.agents.piloti import history
+        from agent.agents.piloti import history
 
         history._get_token_encoder.cache_clear()
         try:

@@ -6,7 +6,7 @@
 the „Fokusbereich“ section (``agents/piloti/prompt.py::focus_region_block``) that tells the model to
 look at exactly that crop. The suite hands the row's box to the run through ``EVAL_USER_MESSAGE``
 (:func:`env_for`); ``sitecustomize.py`` calls :func:`install` in the run's process, which makes the
-turn's own parse (``aiq_agent.turn.payload.extract_turn_inputs``) read the string as the
+turn's own parse (``agent.turn.payload.extract_turn_inputs``) read the string as the
 ``UserMessage`` the socket would have built. Nothing else about the turn is faked.
 
 What a row's two harness needs mean here:
@@ -109,7 +109,7 @@ def env_for(row: dict[str, Any]) -> dict[str, str]:
 
 def user_message(question: str, fields: dict[str, Any]) -> Any:
     """The v2 ``user_message`` the socket would have sent for this question and these fields."""
-    from aiq_agent.common.wire_v2 import UserMessage
+    from agent.common.wire_v2 import UserMessage
 
     return UserMessage(message_id=MESSAGE_ID, conversation_id=CONVERSATION_ID, text=question, **fields)
 
@@ -129,12 +129,12 @@ def install(environ: dict[str, str] | None = None) -> bool:
     """Make this process's turns carry the row's fields, when the suite asked; whether it did.
 
     Called before the workflow module is imported (``sitecustomize``), because it binds the parse by name
-    (``from aiq_agent.turn.payload import extract_turn_inputs``) and so takes whatever is there then.
+    (``from agent.turn.payload import extract_turn_inputs``) and so takes whatever is there then.
     """
     raw = (os.environ if environ is None else environ).get(ENV)
     if not raw:
         return False
-    from aiq_agent.turn import payload
+    from agent.turn import payload
 
     payload.extract_turn_inputs = wrapped(payload.extract_turn_inputs, json.loads(raw))
     return True

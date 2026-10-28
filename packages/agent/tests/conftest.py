@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.common.llm_provider import LLMProvider
+from agent.common.llm_provider import LLMProvider
 
 # This suite sits outside `tests/`, so `tests/conftest.py` does not apply to it:
 # its shared fixtures (the cache reset and the live-decision stub, both autouse)

@@ -17,7 +17,7 @@ import pytest
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
-from aiq_agent.common import provider_limiter as pl
+from agent.common import provider_limiter as pl
 
 
 class Clock:

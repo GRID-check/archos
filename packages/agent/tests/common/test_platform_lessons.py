@@ -3,13 +3,13 @@
 import httpx
 import pytest
 
-from aiq_agent.common.platform_lessons import get_platform_lessons_digest
-from aiq_agent.common.platform_lessons import is_in_holdout_slice
-from aiq_agent.common.platform_lessons import render_lessons_block
-from aiq_agent.common.platform_lessons import reset_platform_lessons_cache
-from aiq_agent.common.platform_lessons import resolve_platform_lessons
-from aiq_agent.common.platform_lessons import sanitize_lesson_ids
-from aiq_agent.common.platform_lessons import sanitize_lessons_digest
+from agent.common.platform_lessons import get_platform_lessons_digest
+from agent.common.platform_lessons import is_in_holdout_slice
+from agent.common.platform_lessons import render_lessons_block
+from agent.common.platform_lessons import reset_platform_lessons_cache
+from agent.common.platform_lessons import resolve_platform_lessons
+from agent.common.platform_lessons import sanitize_lesson_ids
+from agent.common.platform_lessons import sanitize_lessons_digest
 
 DIGEST = 'PLATFORM_LESSONS v1\n- [wrong_source | 3x] "Vor dem Zitieren die Richtlinie prüfen."'
 
@@ -168,7 +168,7 @@ class TestHoldoutSuppression:
         monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"digest": DIGEST})
         monkeypatch.setattr(
-            "aiq_agent.common.retrieval_settings.get_retrieval_setting",
+            "agent.common.retrieval_settings.get_retrieval_setting",
             lambda key, fallback: 100 if key == "lessons.holdout_pct" else fallback,
         )
         assert get_platform_lessons_digest("conv-1") is None
@@ -179,7 +179,7 @@ class TestHoldoutSuppression:
         monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST})
         monkeypatch.setattr(
-            "aiq_agent.common.retrieval_settings.get_retrieval_setting",
+            "agent.common.retrieval_settings.get_retrieval_setting",
             lambda key, fallback: 0 if key == "lessons.holdout_pct" else fallback,
         )
         assert get_platform_lessons_digest("conv-1") == DIGEST
@@ -191,7 +191,7 @@ class TestHoldoutSuppression:
         def _boom(key, fallback):
             raise RuntimeError("settings down")
 
-        monkeypatch.setattr("aiq_agent.common.retrieval_settings.get_retrieval_setting", _boom)
+        monkeypatch.setattr("agent.common.retrieval_settings.get_retrieval_setting", _boom)
         # Measurement must never decide whether a user gets an answer.
         assert get_platform_lessons_digest("conv-1") == DIGEST
 
@@ -219,7 +219,7 @@ def _holdout_pct(monkeypatch, value):
             raise value
         return value if key == "lessons.holdout_pct" else fallback
 
-    monkeypatch.setattr("aiq_agent.common.retrieval_settings.get_retrieval_setting", setting)
+    monkeypatch.setattr("agent.common.retrieval_settings.get_retrieval_setting", setting)
 
 
 class TestLessonIds:

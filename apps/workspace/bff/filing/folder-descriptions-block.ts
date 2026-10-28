@@ -1,7 +1,7 @@
 /**
  * `FOLDER_DESCRIPTIONS v1`: what a person wrote each folder holds, for the
  * agents (migration 0145). The agent's folder tree is the paths its inventory
- * reveals (`aiq_agent/tools/files/resolve.py`); this block puts the
+ * reveals (`agent/tools/files/resolve.py`); this block puts the
  * descriptions beside them, so a chat that files a document, or says where
  * something belongs, files it the way the office described.
  *

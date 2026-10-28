@@ -21,10 +21,10 @@ from knowledge_layer.browse import list_files
 from knowledge_layer.browse import render_revisions
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.scoping import ScopedCollection
 
 
 def _doc(name: str, *, shelf: str = "project", **extra) -> AvailableDocument:
@@ -314,10 +314,10 @@ def _builder() -> MagicMock:
 @pytest.fixture
 def scope(monkeypatch):
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection("proj_1", Shelf.PROJECT), ScopedCollection("archiv_1", Shelf.OFFICE_SHELF)],
     )
-    monkeypatch.setattr("aiq_agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
+    monkeypatch.setattr("agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
     set_turn_documents(
         [
             _doc("Plan_Index_A.pdf"),
@@ -363,7 +363,7 @@ class TestTheTool:
         assert "2 different documents" in text
 
     async def test_a_shelf_the_turn_did_not_ask_for_is_refused_as_the_listing_does(self, scope, monkeypatch):
-        monkeypatch.setattr("aiq_agent.common.focus_file.get_turn_shelves", lambda: frozenset({"project"}))
+        monkeypatch.setattr("agent.common.focus_file.get_turn_shelves", lambda: frozenset({"project"}))
 
         text = await self._call(revisions_of="Plan_Index_A.pdf", shelf="office_shelf")
 
@@ -415,7 +415,7 @@ def stored(monkeypatch, qdrant_store):  # noqa: ARG001 - the store the compare r
     )
     noted: list[set[str]] = []
     monkeypatch.setattr(
-        "aiq_agent.knowledge.restricted_use.note_collections_read", lambda collections: noted.append(set(collections))
+        "agent.knowledge.restricted_use.note_collections_read", lambda collections: noted.append(set(collections))
     )
     return noted
 
@@ -480,7 +480,7 @@ class TestComparing:
     async def test_an_unreachable_index_is_said_as_one_never_as_not_in_the_index(self, scope, stored, monkeypatch):
         from knowledge_layer.qdrant import store as store_module
 
-        from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
+        from agent.common.tool_calls import FETCH_FAILED_MARKER
 
         def down(*_args, **_kwargs):
             raise ConnectionError("qdrant down")

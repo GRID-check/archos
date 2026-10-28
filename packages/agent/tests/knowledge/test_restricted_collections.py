@@ -13,11 +13,11 @@ import uuid
 
 import pytest
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import legacy_shelf_for_collection_name
-from aiq_agent.knowledge.restricted_collections import base_collection_of
-from aiq_agent.knowledge.restricted_collections import is_restricted_collection
-from aiq_agent.knowledge.restricted_collections import restricted_collections_in
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import legacy_shelf_for_collection_name
+from agent.knowledge.restricted_collections import base_collection_of
+from agent.knowledge.restricted_collections import is_restricted_collection
+from agent.knowledge.restricted_collections import restricted_collections_in
 
 PROJECT = "proj_6f1c2a7e-0b9d-4e55-9a51-3c2d7f0e8b14"
 

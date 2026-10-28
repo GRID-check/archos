@@ -1,4 +1,4 @@
-"""The NAT function: config, description, and the stages in order.
+"""The agent-runtime function: config, description, and the stages in order.
 
 Nothing is decided here. Every bound, every fallback and every sentence the
 model reads lives in the stage that owns it; this module says what the tool is
@@ -26,8 +26,8 @@ from ris_adapter.lookup.telemetry import emit_lookup_span
 from ris_adapter.lookup.trace import LookupTrace
 from ris_adapter.register import _make_planner
 
-from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.action_rows import ActionRow
+from agent.common.action_outcome import ActionOutcome
+from agent.common.action_rows import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -161,7 +161,7 @@ async def _resolve_llms(tool_config: RisLookupToolConfig, builder: Builder):
     if not tool_config.planner_llm:
         return None, None
     try:
-        from aiq_agent.common import get_langchain_llm
+        from agent.common import get_langchain_llm
 
         llm = await get_langchain_llm(builder, tool_config.planner_llm)
     except Exception:

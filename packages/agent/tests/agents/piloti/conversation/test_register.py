@@ -1,10 +1,10 @@
 """The workflow entry point: its config, and the per-turn ``_run`` it composes.
 
-``_run`` is driven the way NAT drives it — through the registered builder with
+``_run`` is driven the way the agent runtime drives it — through the registered builder with
 a fake ``Builder`` — with the three database reads and the stage scheduler
 replaced. Everything else on the path (the request-context parse, the focus
 ContextVars, admission, the registries, the profiler, the result lift, the
-wire bodies and NAT's fold of them) is real.
+wire bodies and the agent runtime's fold of them) is real.
 """
 
 from __future__ import annotations
@@ -12,19 +12,19 @@ from __future__ import annotations
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.agents.piloti import conversation_register as register_mod
-from aiq_agent.agents.piloti.conversation_register import ChatDeepResearcherConfig
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common.turn_admission import TurnAdmissionError
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import StepFinishedBody
-from aiq_agent.common.wire_v2 import UserMessage
-from aiq_agent.turn import admission as admission_mod
-from aiq_agent.turn import inventory as inventory_mod
-from aiq_agent.turn import registries as registries_mod
-from aiq_agent.turn.admission import TurnOutcome
-from aiq_agent.turn.admission import TurnRefusal
+from agent.agents.piloti import conversation_register as register_mod
+from agent.agents.piloti.conversation_register import ChatDeepResearcherConfig
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common.turn_admission import TurnAdmissionError
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import StepFinishedBody
+from agent.common.wire_v2 import UserMessage
+from agent.turn import admission as admission_mod
+from agent.turn import inventory as inventory_mod
+from agent.turn import registries as registries_mod
+from agent.turn.admission import TurnOutcome
+from agent.turn.admission import TurnRefusal
 
 ANSWER = "Die Brüstung muss mindestens 100 cm hoch sein [1]."
 
@@ -207,9 +207,9 @@ class TestTheInventoryFactsReachTheAnswer:
     where the turn runs. Read back from inside the answering agent."""
 
     async def test_the_families_and_the_cap_drops_are_bound_for_the_agent(self, harness, monkeypatch):
-        from aiq_agent.knowledge.inventory import get_inventory_drops
-        from aiq_agent.knowledge.inventory import get_norm_families
-        from aiq_agent.knowledge.schema import AvailableDocument
+        from agent.knowledge.inventory import get_inventory_drops
+        from agent.knowledge.inventory import get_norm_families
+        from agent.knowledge.schema import AvailableDocument
 
         monkeypatch.setenv("AVAILABLE_DOCUMENTS_MAX", "3")
         names = ["oib-rl_2_ausgabe_mai_2023.pdf", "oib-rl_2.1_ausgabe_mai_2023.pdf"]

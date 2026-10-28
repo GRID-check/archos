@@ -49,7 +49,7 @@ One content edge for every page, from `global.css`: a landing section is
 `panel-pad`) and sets no `py-*` or gutter of its own, so the rhythm between
 sections stays one token (`--section-y`). A subpage puts `PageHead` (the h1,
 an optional lede, an optional plate on its hairline) inside `frame`, and its
-text keeps `max-w-measure` or `prose-piloti` from that edge, never centred.
+text keeps `max-w-measure` or `prose-measure` from that edge, never centred.
 The page is flat: no card inside a panel, no shadowed box around content.
 
 ## Head and SEO

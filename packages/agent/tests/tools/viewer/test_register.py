@@ -14,15 +14,15 @@ from agent_testing.canvas import LIST_BODY
 from agent_testing.canvas import OTHER_DOCUMENT
 from agent_testing.canvas import answering
 
-from aiq_agent import project_context
-from aiq_agent.common import turn_status
-from aiq_agent.common.client_tools import set_turn_client_tools
-from aiq_agent.common.wire_v2 import ViewerActionBody
-from aiq_agent.common.wire_v2 import ViewerActionName
-from aiq_agent.tools.canvas.client import CanvasRequestError
-from aiq_agent.tools.viewer.register import ACTIONS
-from aiq_agent.tools.viewer.register import DESCRIPTION
-from aiq_agent.tools.viewer.register import run_show_in_viewer
+from agent import project_context
+from agent.common import turn_status
+from agent.common.client_tools import set_turn_client_tools
+from agent.common.wire_v2 import ViewerActionBody
+from agent.common.wire_v2 import ViewerActionName
+from agent.tools.canvas.client import CanvasRequestError
+from agent.tools.viewer.register import ACTIONS
+from agent.tools.viewer.register import DESCRIPTION
+from agent.tools.viewer.register import run_show_in_viewer
 
 GLOBAL_ID = "1kTvQ9x8n5RfBW2$hK0aZq"
 
@@ -44,7 +44,7 @@ def sent(monkeypatch) -> list[ViewerActionBody]:
     """The viewer actions the turn put on its stream."""
     seen: list[ViewerActionBody] = []
     monkeypatch.setattr(turn_status, "emit", lambda body: seen.append(body))
-    from aiq_agent.tools.viewer import register
+    from agent.tools.viewer import register
 
     monkeypatch.setattr(register, "emit", lambda body: seen.append(body))
     return seen
@@ -90,7 +90,7 @@ class TestADocumentThePersonMaySee:
     async def test_a_comparison_names_both_revisions(self, monkeypatch, calls, lookups, sent) -> None:
         answering(monkeypatch, calls, LIST_BODY)
         ids = iter(["aaaaaaaa-0000-4000-8000-00000000000a", "bbbbbbbb-0000-4000-8000-00000000000b"])
-        from aiq_agent.tools.canvas import target as canvas_target
+        from agent.tools.canvas import target as canvas_target
 
         monkeypatch.setattr(canvas_target, "lookup_document_id", lambda *_: next(ids))
 
@@ -132,7 +132,7 @@ class TestADocumentThePersonMayNotSee:
         async def nowhere(_name: str) -> str:
             return ""
 
-        from aiq_agent.tools.look import resolve
+        from agent.tools.look import resolve
 
         monkeypatch.setattr(resolve, "_probe", nowhere)
 
@@ -166,8 +166,8 @@ class TestAModelElement:
         assert "no building model" in result and sent == []
 
     async def test_an_element_of_a_model_is_proposed(self, monkeypatch, calls, lookups, sent) -> None:
-        from aiq_agent.knowledge import AvailableDocument
-        from aiq_agent.knowledge.inventory import set_turn_documents
+        from agent.knowledge import AvailableDocument
+        from agent.knowledge.inventory import set_turn_documents
 
         set_turn_documents([AvailableDocument(file_name="Haus A.ifc", shelf="project", collection="proj_1")])
         answering(monkeypatch, calls, LIST_BODY)
@@ -234,8 +234,8 @@ class TestAChatAttachment:
     async def test_a_file_attached_to_the_chat_is_refused_before_the_bff_is_asked(
         self, monkeypatch, calls, lookups, sent
     ) -> None:
-        from aiq_agent.knowledge import AvailableDocument
-        from aiq_agent.knowledge.inventory import set_turn_documents
+        from agent.knowledge import AvailableDocument
+        from agent.knowledge.inventory import set_turn_documents
 
         # The person's own upload: on no shelf, so the page's GET /api/documents/{id} could never open it.
         set_turn_documents([AvailableDocument(file_name="Skizze.pdf", shelf="session", collection="s_conv_1")])

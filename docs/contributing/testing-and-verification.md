@@ -79,14 +79,14 @@ CHECK, a unique index, a guard trigger) unless a suite on the full chain
 already covers it.
 
 **Backend tests run against this checkout's `packages/agent/src/`.** Without a guard, pytest
-resolves `aiq_agent` from whatever the venv has installed, possibly another
+resolves `agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
 `pythonpath` puts `packages/agent/src/` first, so a bare `pytest` is safe as well as the Taskfile.
 
 **The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
 Backend job.** `packages/agent/tests/common/test_claim_queue.py`,
 `tests/knowledge_layer_tests/test_ingest_queue.py` and
-`apps/backend/tests/test_research_queue_fair.py` run every scenario on
+`apps/agent-host/tests/test_research_queue_fair.py` run every scenario on
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
 SQL. The folder card builder's suites (`packages/agent/tests/knowledge/folder_cards/`:
 dirty queue, budget, manifests, worker) run on both too, through the
@@ -98,14 +98,14 @@ joins the task's list.
 
 **The base-corpus tests run on SQLite by default, and the Postgres paths need
 `TEST_CORPUS_DB`.** `tests/test_corpus_store.py`, `test_oib_sync.py`,
-`test_oib_status.py` and `apps/backend/tests/test_oib_documents_routes.py`
+`test_oib_status.py` and `apps/agent-host/tests/test_oib_documents_routes.py`
 keep the corpus table, the ingest queue and the ingest status store in a throwaway SQLite file and the object store in memory.
 The Postgres upsert, the conditional update that records an ingested hash and the
 advisory locks behind `keyed_lock` (SQLite has none) are only exercised when you
 point `TEST_CORPUS_DB` at a scratch database, for example
 `postgresql://postgres@127.0.0.1:5432/corpus_test`. Prefer the IP to `localhost`: in
 the sandbox this was written in, `localhost` resolved to another host under the
-`apps/backend` suite and the first test hung on the connect. The table is emptied before each test, so never
+`apps/agent-host` suite and the first test hung on the connect. The table is emptied before each test, so never
 aim it at a database that holds a real corpus.
 
 **Lazy schema creation is tested against a real Postgres, from several processes.**
@@ -326,7 +326,7 @@ Two of these exist:
 
 | Fixture | Producer side | Consumer side |
 |---|---|---|
-| `grid_request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
+| `request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
 | `job_fire_headers.json` | `tests/lib/jobs/fire-headers.test.ts` fires a real submit and captures what went out | `test_fire_path_contract.py` asserts each backend-required set is a subset |
 
 Such a fixture lives in `apps/workspace/tests/fixtures/`, once.
@@ -492,7 +492,7 @@ its passage; this asks what the reader waited for and what they got.
 - **Flags:** `--only <id> …` runs the named questions (an unknown id, or
   one that needs a project, exits 2 and says which). `--runs N` sets runs per
   question (default 2), `--workers N` how many run at once (default 3). `--override KEY VALUE` sets a config value for every
-  run, in `nat run` dot notation, and repeats. `--all`, `--baseline`,
+  run, in the dot notation `nat run` takes, and repeats. `--all`, `--baseline`,
   `--report` and `--ingest` are described above and below.
 - **No stack needed:** `--ingest --corpus data/oib` takes the base corpus
   from that directory's PDFs instead of the object store, so the suite runs
@@ -875,7 +875,7 @@ script says so and exits). CPU throttling and `--animations` need Chromium.
 The page is development only, so these are `next dev` numbers: React's dev
 build, whose prop-diff logging alone was a tenth of the profile. Compare runs
 on the same server, never with production. On the old wire (measured
-2026-09-27, NAT's stock step adaptor: 316 step frames of 16 to 33 KB) a phone
+2026-09-27, the agent runtime's stock step adaptor: 316 step frames of 16 to 33 KB) a phone
 spent 48 s in long tasks on one turn; that wire, and the harness's `heavy`
 and `light` modes that replayed it, are gone with the v2 cut.
 

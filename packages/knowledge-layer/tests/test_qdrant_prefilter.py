@@ -29,11 +29,11 @@ from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 from knowledge_layer_testing.qdrant import vector as _vector
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 PROJECT = "proj_prefilter"
 BASE = "oib_knowledge"
@@ -270,8 +270,8 @@ def _harness(monkeypatch, inner: Any):
     """``knowledge_search`` over base + project on ``inner``, Postgres stood in by DOCS."""
     by_name = {doc.file_name: doc for doc in DOCS}
     replaced = {PROJECT: {d.file_name: d.superseded_by for d in DOCS if d.superseded_by}}
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
 
     def column(name: str):
@@ -279,15 +279,15 @@ def _harness(monkeypatch, inner: Any):
             f: getattr(by_name[f], name) for f in files if f in by_name and getattr(by_name[f], name)
         }
 
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_document_doc_classes", column("doc_class"))
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_document_folder_paths", column("folder_path"))
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_document_display_titles", lambda _c, _f: {})
-    monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", lambda collection: replaced.get(collection, {}))
+    monkeypatch.setattr("agent.knowledge.factory.get_document_doc_classes", column("doc_class"))
+    monkeypatch.setattr("agent.knowledge.factory.get_document_folder_paths", column("folder_path"))
+    monkeypatch.setattr("agent.knowledge.factory.get_document_display_titles", lambda _c, _f: {})
+    monkeypatch.setattr("agent.knowledge.get_superseded_files", lambda collection: replaced.get(collection, {}))
     scope = [ScopedCollection(BASE, Shelf.BASE), ScopedCollection(PROJECT, Shelf.PROJECT)]
-    monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
+    monkeypatch.setattr("agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
     spans: list[dict[str, Any]] = []
     monkeypatch.setattr(
-        "aiq_agent.observability.retrieval_trace.emit_retrieval_span",
+        "agent.observability.retrieval_trace.emit_retrieval_span",
         lambda *, tool_name, search_input, picks: spans.append(search_input),
     )
     recording = _Recording(inner)
