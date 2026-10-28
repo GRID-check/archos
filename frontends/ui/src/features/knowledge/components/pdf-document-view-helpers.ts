@@ -256,4 +256,3 @@ export function pageShare(
     fy: Math.min(1, Math.max(0, (y - node.offsetTop) / node.offsetHeight)),
   }
 }
-
