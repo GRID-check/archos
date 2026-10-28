@@ -14,7 +14,8 @@
 #      ESC;
 #   3. copy the legacy stack file's `secure:` values, which only the legacy
 #      stack can decrypt, into the clone: read through that stack, written with
-#      `pulumi env set --secret`.
+#      `pulumi env set --secret --string`. `--string` keeps a value that
+#      starts like YAML (`|`, `>`, `-`) from being parsed as YAML.
 #
 # Only the workspace environment is ever written. The legacy one is read.
 set -uo pipefail
@@ -58,7 +59,7 @@ for key in $(node "${here}/workspace-stack-file.mjs" --secure-keys "$legacy_file
   value="$(pulumi config get "grid-oib:${key}" --stack "$src" --cwd "$(dirname "$legacy_file")" 2>/dev/null)" ||
     refuse "the legacy stack could not decrypt grid-oib:${key}"
   echo "::add-mask::${value}"
-  out="$(pulumi env set "$dst" "pulumiConfig.workspace:${key}" "$value" --secret 2>&1)" ||
+  out="$(pulumi env set "$dst" "pulumiConfig.workspace:${key}" "$value" --secret --string 2>&1)" ||
     refuse "writing pulumiConfig.workspace:${key} failed: ${out}"
   echo "copied the legacy stack's secure ${key} into ${dst}"
 done
