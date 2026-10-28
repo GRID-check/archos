@@ -376,7 +376,7 @@ the quote states the value, as ADR-0096 does.
 | Slice | Files |
 |---|---|
 | 0 Contract | `lib/project-intake/types.ts`, `intake-schema.ts` (+spec, fixture), `lib/project-profile/types.ts` (fields), migration 0144 + down + journal, `lib/db/schema/project-intakes.ts`, signatures of `needs.ts` and `derivations.ts` |
-| 1 Profile substrate | `salvage.ts`, `intake-definition.ts` (`mergeIntakeProfile`, `foundIn`, `feeds`), `prompt-view.ts`, `project-experience/service.ts` + shared `lib/project-intake/evidence.ts` |
+| 1 Profile substrate | `salvage.ts`, `intake-profile.ts` (`mergeIntakeProfile`), `intake-types.ts` (`foundIn`, `feeds`), `prompt-view.ts`, `project-experience/service.ts` + shared `lib/project-intake/evidence.ts` |
 | 2 Needs and derivation | `lib/project-intake/needs.ts`, `derivations.ts` (+specs) |
 | 3 BFF service and routes | `lib/project-intake/{repository,service,run,client}.ts`, the four routes, outcome fallback, settle hook and BFF job, inbox type, `submitBackgroundRun` in `lib/jobs/service.ts` |
 | 4 Worker hosting | `aiq_api/registry.py`, `aiq_api/jobs/runner.py` |

@@ -23,12 +23,10 @@
  * per use zone (dwelling units, parking spaces) is not compared at all.
  */
 
-import {
-  flattenIntakeQuestions,
-  formatIntakeAnswer,
-  projectIntakeDefinitionV1,
-  type ProjectIntakeQuestion,
-} from '@/lib/project-profile/intake-definition'
+import { flattenIntakeQuestions } from '@/lib/project-profile/intake-conditions'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import type { ProjectIntakeQuestion } from '@/lib/project-profile/intake-types'
+import { formatIntakeAnswer } from '@/lib/project-profile/intake-vocabulary'
 import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import type { Dossier, DossierFactKey } from './dossier'
 

@@ -3,26 +3,11 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import {
-  answerKeyFor,
-  answersFromProfile,
-  FEDERAL_STATE_TOKENS,
-  buildIntakeProfile,
-  COUNTRY_TOKENS,
-  evaluateIntakeCondition,
-  findIntakeQuestion,
-  flattenIntakeQuestions,
-  formatIntakeAnswer,
-  humanizeProfileKey,
-  isValidFederalStateToken,
-  isValidCountryToken,
-  labelForProfileKey,
-  mergeIntakeProfile,
-  modeKeyFor,
-  projectIntakeDefinitionV1,
-  pruneStaleConditionalAnswers,
-  validateProfilePatchVocabulary,
-} from './intake-definition'
+import { answerKeyFor, modeKeyFor } from './intake-building-keys'
+import { FEDERAL_STATE_TOKENS, COUNTRY_TOKENS, evaluateIntakeCondition, findIntakeQuestion, flattenIntakeQuestions, isValidFederalStateToken, isValidCountryToken, pruneStaleConditionalAnswers } from './intake-conditions'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import { answersFromProfile, buildIntakeProfile, mergeIntakeProfile } from './intake-profile'
+import { formatIntakeAnswer, humanizeProfileKey, labelForProfileKey, validateProfilePatchVocabulary } from './intake-vocabulary'
 import { ProjectProfileSchema } from './types'
 import type {
   ProfileAlternative,
