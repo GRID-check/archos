@@ -120,7 +120,7 @@ new or touched:
 - **Pure where it can be.** Take inputs, return outputs. A function that reads
   or writes module-level state cannot be tested without resetting the world,
   and cannot run twice in one process safely. Module-level mutable state is
-  reserved for the registries NAT populates at boot, and each one has a
+  reserved for the registries the agent runtime populates at boot, and each one has a
   `reset_*` for tests.
 - **Never swallow.** `except Exception: pass`, or a bare `except` that logs
   and continues, hides the fault the next reader needs. Catch the exception

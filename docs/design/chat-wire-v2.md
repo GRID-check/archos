@@ -3,7 +3,7 @@
 **Status:** Designed 2026-09-27; contract committed (`packages/agent/src/agent/common/wire_v2.py`
 and what is generated from it), the cut not yet started.
 **Decision:** [ADR-0068](../adr/0068-use-nemo-agent-toolkit-as-designed.md), option A,
-as one cut with no `v: 1` period. The NAT 1.7 → 1.9 upgrade is part of the cut, as
+as one cut with no `v: 1` period. The `nvidia-nat*` 1.7 → 1.9 upgrade is part of the cut, as
 its first slice (S0); the product owner decided this on 2026-09-27.
 **Replaces, when the cut lands:** the frame sections of
 [`websocket-protocol.md`](../api/websocket-protocol.md), and the wire sections
@@ -16,11 +16,11 @@ rules (ADR-0066), the paced reveal and the storage rules stay as they are.
 
 A production trace of one turn on the old wire showed:
 
-- **Hundreds of 17–31 KB frames per turn.** The chat wire was NAT's
+- **Hundreds of 17–31 KB frames per turn.** The chat wire was the runtime's
   unconfigured `StepAdaptor`. On every `LLM_NEW_TOKEN` it stringified the whole
   prompt into the frame.
 - **47 s of pinned main thread.** The UI appended those frames into one step
-  and re-ran its NAT-name regexes over megabytes on every frame.
+  and re-ran its runtime-name regexes over megabytes on every frame.
 - **Late cards.** A card had to wait for frames queued behind that step stream.
 - **A Stop button that did not stop.** It closed the socket. The server kept
   running the turn and persisted the answer.
@@ -31,12 +31,12 @@ When the cut is done, a turn is a few dozen frames. Each one carries a single
 typed fact, and no frame's size depends on how long the prompt is. The recorded
 answered turn in `contracts/wire/v2/turn-answered.jsonl` is 22 frames and 8.5 KB in
 total. Its largest frame is the terminal, at about 2 KB. The UI folds each frame in
-constant time. Stop cancels the turn on the server. Nothing in the UI reads a NAT
+constant time. Stop cancels the turn on the server. Nothing in the UI reads an agent runtime
 function name.
 
 This is a sledgehammer, not a patch. The old wire's machinery is deleted rather
 than wrapped: no `v: 1` reader, no fallback that regexes raw text when a typed
-field is missing, no NAT-name heuristics kept for old frames, and no shim for an
+field is missing, no runtime-name heuristics kept for old frames, and no shim for an
 old browser bundle. The only compatibility is for data already stored (§e.4),
 and it is a one-time migration, never a branch at read time. The cut must delete
 more code than it adds. That is an exit criterion (§h).
@@ -46,7 +46,7 @@ sequenceDiagram
     participant B as Browser (turn-socket + foldTurnEvent)
     participant P as server.js (proxy, unchanged)
     participant H as agent_host chat socket (ours)
-    participant W as workflow _run (NAT session)
+    participant W as workflow _run (agent runtime session)
     participant G as conversation graph (astream custom)
     B->>P: user_message {v:2}
     P->>H: (spliced socket, turn limiter counts user_message)
@@ -62,7 +62,7 @@ sequenceDiagram
     H-->>B: RUN_FINISHED, then stage events after it
 ```
 
-## NAT 1.9 in the cut
+## `nvidia-nat*` 1.9 in the cut
 
 The whole design is written against `nvidia-nat*==1.9.0` (read from the 1.9.0
 wheels, 2026-09-27). This is what 1.9 gives natively, whether the cut uses it,
@@ -70,40 +70,40 @@ and what of ours that deletes.
 
 | 1.9 gives | Used? | What it does to our code |
 |---|---|---|
-| **`nat.plugin_api`**: the stable plugin surface. `Context`, `ContextState`, `Builder`, `Function`, `FunctionInfo`, `FunctionBaseConfig`, `LLMFrameworkEnum`, the `*Ref` types, `register_*`, every HITL model (`InteractionPrompt`, `HumanPrompt{Text,Radio,…}`, `HumanResponse{Text,Radio,…}`, `InteractionResponse`), `HITLMiddleware`, `FunctionMiddleware` | **Yes, everywhere** | S0 moves every import it covers (`nat.builder.context` ×19, `nat.cli.register_workflow` ×22, `nat.builder.builder` ×21, `nat.data_models.function` ×20, `nat.builder.function_info` ×19, `nat.data_models.component_ref` ×14, `nat.builder.framework_enum` ×8, `nat.data_models.interactive` ×8) onto `nat.plugin_api`. A ruff `banned-api` then bans the internal modules for those names. This is ADR-0068's "stop importing internals": no lines saved, but one import surface to re-check per NAT minor instead of eight |
-| `SessionManager.session(user_id=…)`, `Context.user_id` | **Yes** | The chat socket passes the verified subject as `user_id`, so NAT's per-user builders and `Context.user_id` see the real person rather than whatever NAT's unverified decode would have made of the header |
+| **`nat.plugin_api`**: the stable plugin surface. `Context`, `ContextState`, `Builder`, `Function`, `FunctionInfo`, `FunctionBaseConfig`, `LLMFrameworkEnum`, the `*Ref` types, `register_*`, every HITL model (`InteractionPrompt`, `HumanPrompt{Text,Radio,…}`, `HumanResponse{Text,Radio,…}`, `InteractionResponse`), `HITLMiddleware`, `FunctionMiddleware` | **Yes, everywhere** | S0 moves every import it covers (`nat.builder.context` ×19, `nat.cli.register_workflow` ×22, `nat.builder.builder` ×21, `nat.data_models.function` ×20, `nat.builder.function_info` ×19, `nat.data_models.component_ref` ×14, `nat.builder.framework_enum` ×8, `nat.data_models.interactive` ×8) onto `nat.plugin_api`. A ruff `banned-api` then bans the internal modules for those names. This is ADR-0068's "stop importing internals": no lines saved, but one import surface to re-check per agent runtime minor instead of eight |
+| `SessionManager.session(user_id=…)`, `Context.user_id` | **Yes** | The chat socket passes the verified subject as `user_id`, so the runtime's per-user builders and `Context.user_id` see the real person rather than whatever the runtime's unverified decode would have made of the header |
 | **Verified WebSocket identity**: `front_end.identity_authentication` → `_type: jwt` providers (`issuer_url`, `jwks_uri`, **`audience: str`**, required), `accepted_identity_credentials`, `identity_header`, `UserManager.extract_user_from_connection_with_verification` | **No, not in this cut** | WorkOS AuthKit access tokens carry **no `aud`**. Our validator skips audience deliberately (`auth/workos_validator.py:33`), and 1.9's `JwtAuthProviderConfig` requires one. Pointing it at WorkOS would reject every token, or pin an audience the token does not have. `agent_host/auth/jwt_validator.py` (246) and `agent_host/auth/workos_validator.py` (55) therefore stay, and so does the HTTP middleware that shares them (ADR-0002). S0 confirms this against a real token. If authlib turns out to accept a token without `aud`, a follow-up replaces the WS half, and we file `audience: str \| None` upstream. `identity_header` is not taken either: it trusts a bare header, and our signed context envelope (HMAC over the whole context) is strictly stronger |
-| **Reconnection bound to identity**: `worker.get_conversation_handler(user_id, conversation_id)` | **No** | It lives inside NAT's `WebSocketMessageHandler`, which v2 no longer runs. v2 binds a socket to the conversation the BFF **signed**, which is stronger than the user alone, and resumes by `attach` (§d). What it deletes is our override of it: `_restore_execution_state` and its query-param rewrite go with S3 |
-| **`HITLMiddleware`**: a prompt before or after any NAT function, through `prompt_user_input` | **Available at no cost** | It rides the same `user_input_callback` → `interaction_request` path as `ask_user` and the clarifier, so it needs nothing on the wire. It is not configured in this cut: today's write-side tools propose through cards and never write (ADR-0003). It is the candidate for approving a write tool when one exists |
+| **Reconnection bound to identity**: `worker.get_conversation_handler(user_id, conversation_id)` | **No** | It lives inside the runtime's `WebSocketMessageHandler`, which v2 no longer runs. v2 binds a socket to the conversation the BFF **signed**, which is stronger than the user alone, and resumes by `attach` (§d). What it deletes is our override of it: `_restore_execution_state` and its query-param rewrite go with S3 |
+| **`HITLMiddleware`**: a prompt before or after any agent runtime function, through `prompt_user_input` | **Available at no cost** | It rides the same `user_input_callback` → `interaction_request` path as `ask_user` and the clarifier, so it needs nothing on the wire. It is not configured in this cut: today's write-side tools propose through cards and never write (ADR-0003). It is the candidate for approving a write tool when one exists |
 | `langgraph_wrapper` (`nat.plugins.langchain.langgraph_workflow`): `conversation_id` → `thread_id` | **No** | Our `thread_id_for_turn` already maps `conversation_id` → `thread_id`, identically. The wrapper only drives graphs whose state is `messages`, and streams only the default `updates` mode, so it cannot carry our state or the `custom` stream |
-| WebSocket handler, step adaptor, `generate_streaming_response` | **No** | Unchanged in the respects that matter (ADR-0068): the handler still builds NAT frames, the adaptor still stringifies the prompt per token, and the producer task is still not cancelled. v2 does not run the first two, and `workflow_stream.py` stays for the third |
+| WebSocket handler, step adaptor, `generate_streaming_response` | **No** | Unchanged in the respects that matter (ADR-0068): the handler still builds agent runtime frames, the adaptor still stringifies the prompt per token, and the producer task is still not cancelled. v2 does not run the first two, and `workflow_stream.py` stays for the third |
 | The profiler's `on_llm_error`/`on_tool_error` | Still missing | `nat_step_repair.py` stays |
 
 **Breakages S0 must fix** (read from the 1.9 source):
 
 - `worker.get_conversation_handler` now takes `(user_id, conversation_id)`.
   `ReconnectableWebSocketMessageHandler._restore_execution_state` calls it with
-  one argument, and NAT's own restore is a no-op without `_user_id`. S0 adapts
+  one argument, and the runtime's own restore is a no-op without `_user_id`. S0 adapts
   those few lines so the **old** wire keeps working on 1.9. S3 then deletes
   them.
 - `routes.websocket.websocket_endpoint` gains a required `jwt_validators`
-  keyword, which NAT's route adder passes. Our replacement endpoint takes it,
-  and a test mounts it through NAT's own `add_websocket_routes`.
+  keyword, which the runtime's route adder passes. Our replacement endpoint takes it,
+  and a test mounts it through the runtime's own `add_websocket_routes`.
 - `builder.get_llm(…, LANGCHAIN)` returns the chat model inside a
   `RunnableConfigurableFields`, retry-patched on the wrapper. Every hardening
   in `get_langchain_llm` and every per-request copy in `model_overrides` no-op'd
   on it, silently (found by `nat run`, not by the suite). `get_langchain_llm`
-  takes `.default` out and retry-patches it as NAT did.
+  takes `.default` out and retry-patches it as the runtime did.
 - `WebSocketMessageHandler.__init__` gains three keyword arguments. They are
   optional, so our patched endpoint still constructs it.
-- 1.9 adds `routes/v1_chat_completions.py`. `GridContextEnvelopeMiddleware` is
+- 1.9 adds `routes/v1_chat_completions.py`. `RequestContextEnvelopeMiddleware` is
   deny-by-default, so the new route needs the envelope. S0 adds a test that
   walks the app's routes and asserts every workflow route is behind it.
 - `nvidia-nat-core` 1.9 declares `Requires-Python <3.14`, as 1.7 did. uv
   ignores dependency upper bounds, which is how 1.7 installs on 3.14 today.
   S0's lockfile proves 1.9 resolves the same way.
 
-### NAT 1.9: what we gain
+### `nvidia-nat*` 1.9: what we gain
 
 Read from the 1.8.0 and 1.9.0 release notes, not from memory:
 [CHANGELOG at v1.9.0](https://github.com/NVIDIA/NeMo-Agent-Toolkit/blob/v1.9.0/CHANGELOG.md)
@@ -136,13 +136,13 @@ its changelog entry.
    ([#2152](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2152), 1.9 Bug
    Fixes; `SpanExporter` sets `user.id` from the context). The socket passes the
    verified subject to `session(user_id=…)`, so Langfuse user attribution comes
-   from NAT. The `langfuse.user.id` half of
+   from the runtime. The `langfuse.user.id` half of
    `observability/langfuse_trace_attributes.py` becomes deletable, once S3 has
    checked that Langfuse attributes by `user.id`.
-4. **Interaction prompt ids and timestamps from NAT**
+4. **Interaction prompt ids and timestamps from the runtime**
    ([#2114](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2114),
    [#2144](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2144), 1.9 New
-   Features). `interaction_request.interaction_id` is the NAT prompt's own id,
+   Features). `interaction_request.interaction_id` is the runtime prompt's own id,
    so the handler mints none, and tests pin it through the provider hook.
 5. **`HITLMiddleware`**
    ([#2060](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2060), 1.9 New
@@ -158,8 +158,8 @@ its changelog entry.
 7. **Reconnection bound to identity, and configurable WebSocket identity**
    ([#2189](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2189),
    [#2196](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2196),
-   [#2078](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2078), 1.9). NAT's
-   own handler now closes the hole we patched in `2e3ea1ea`. v2 runs no NAT
+   [#2078](https://github.com/NVIDIA/NeMo-Agent-Toolkit/pull/2078), 1.9). The runtime's
+   own handler now closes the hole we patched in `2e3ea1ea`. v2 runs no runtime
    handler, so this deletes nothing of ours, and our JWT validator stays (the
    `aud` problem above, F5).
 8. **Async jobs tunable by config**
@@ -198,7 +198,7 @@ missing (checked in the 1.9.0 wheel). So `workflow_stream.py` and
   1.9.0 source; it arrives with #2189). This breaks our reattach override. S0
   fixes it, and S3 deletes it.
 - **Identity resolution** (#2197, #2190, both Breaking in 1.9; the user-ID
-  format since 1.6, migration guide "User Identity Resolution"). NAT derives a
+  format since 1.6, migration guide "User Identity Resolution"). The runtime derives a
   UUID5 `user_id` when none is passed. We pass the verified subject explicitly,
   so `Context.user_id` is ours. We use no per-user functions, so #2190 does not
   apply.
@@ -206,7 +206,7 @@ missing (checked in the 1.9.0 wheel). So `workflow_stream.py` and
   `nemo-agent-toolkit-redis`** (1.9 migration guide "Redis Package
   Migration"). We use neither. Our bus talks to `redis` directly, and our pin is
   already `>=5`.
-- **`cryptography<49`** (#2149). We already override past NAT's range (1.7
+- **`cryptography<49`** (#2149). We already override past the runtime's range (1.7
   declared `<47`) for CVE floors. Nothing changes.
 
 ## a. The event set
@@ -239,7 +239,7 @@ are the models. What follows is the decision, per event.
 | `CUSTOM` `answer_retracted` | `{}` | The streamed call turned out to be a tool round. Its text, citations, masthead and cards are cleared. This used to be inferred from an empty snapshot with no `sources` key; now it is said |
 | `CUSTOM` `heartbeat` | `{every_ms}` | Liveness while a turn is silent, as today, and never after the terminal |
 | `CUSTOM` `stage` | `{stage, status: ready \| empty \| failed, payload?}` | The post-answer stages. They are the only events after `RUN_FINISHED`, on the same `seq` |
-| `CUSTOM` `interaction_request` | `{interaction_id, input: text \| choice, text, options[{id,label}], placeholder?, expires_at}` | HITL, over NAT's `prompt_user_input` (below). Only the two shapes a producer builds exist. The legacy `approval` and `multiple_choice`, and the never-produced checkbox, dropdown, notification and oauth inputs, are gone |
+| `CUSTOM` `interaction_request` | `{interaction_id, input: text \| choice, text, options[{id,label}], placeholder?, expires_at}` | HITL, over the runtime's `prompt_user_input` (below). Only the two shapes a producer builds exist. The legacy `approval` and `multiple_choice`, and the never-produced checkbox, dropdown, notification and oauth inputs, are gone |
 | `CUSTOM` `interaction_resolved` | `{interaction_id, outcome: answered \| expired \| cancelled}` | Closes the prompt in every tab and for spectators, who used to learn it only from the next frame |
 | `CUSTOM` `steer_received` / `steer_applied` | `{steer_id, text}` / `{steer_id, round}` | A note the asker typed into the running turn reached its inbox, then was read before decision `round`. A note with no `steer_applied` by the terminal is the client's to ask next ([`websocket-protocol.md`](../api/websocket-protocol.md#steering-a-running-turn-steer)) |
 | `CUSTOM` `viewer_action` | `{tool_call_id, tool_call_name, args}` | An AG-UI frontend tool call, whole in one frame (ADR-0144): Piloti proposes to move the asker's own viewer. Sent only in a turn whose `user_message.client_tools` declared `show_in_viewer`, at most once per turn. `tool_call_name` is the allow-list (`open_document`, `highlight_passage`, `highlight_region`, `compare_revisions`, `focus_ifc_element`); the schema reads it as a string, so a page passes over a name it does not know. `args` are the document and the place, checked by the tool against the BFF before it is sent. Not `TOOL_CALL_*`, for the reason in that row. Folded by every reader; held by the page that asked the turn until `RUN_FINISHED` `answered`, dropped on any other end, and read again with `GET /api/documents/{id}` before anything moves. Ignored after a Stop on this page, and never stored with the answer |
@@ -252,7 +252,7 @@ version and the caller have passed (`ChatSocket.serve`). It is not in the
 nothing about it belongs to a turn: the fold never sees it, the stream never
 holds it. It closes the other half of the version gate. `4426` lets a new
 server refuse an old page; nothing let a new page refuse an old server, and a
-dev deploy that rolled the agent back to NAT's stock socket proved it: that
+dev deploy that rolled the agent back to the runtime's stock socket proved it: that
 server accepted the upgrade, ignored `?v=2`, answered `user_message` with a
 frame the page could not read, and the page showed „Denkt nach…" forever. The
 client now sends nothing before the hello, and treats a socket that stays
@@ -292,7 +292,7 @@ The client sends five messages, all with `v: 2` and `conversation_id`.
 
 | `type` | Fields | Notes |
 |---|---|---|
-| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?`, `client_tools?` (the frontend tools this page can run this turn, AG-UI's `RunAgentInput.tools` by name; ADR-0144) | The fields are flat, where they used to be a JSON string inside a NAT text part. The type name stays `user_message` because the gateway's turn limiter (`lib/limits/ws-frames.js`) counts turns by it, so it needs no change. `include_shelves` does not exist: the contract refuses it |
+| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?`, `client_tools?` (the frontend tools this page can run this turn, AG-UI's `RunAgentInput.tools` by name; ADR-0144) | The fields are flat, where they used to be a JSON string inside an agent runtime text part. The type name stays `user_message` because the gateway's turn limiter (`lib/limits/ws-frames.js`) counts turns by it, so it needs no change. `include_shelves` does not exist: the contract refuses it |
 | `interaction_response` | `turn_id`, `interaction_id`, `answer: {text} \| {option_id}` | Exactly one answer, and the contract enforces that structurally |
 | `cancel_turn` | `turn_id`, `shown?: {seq, chars}` | Stop. Authorised: only the asker's verified subject, or an internal caller, may cancel. Anyone else gets `rejected{not_asker}`. `shown` is how much of the answer was on screen: the first `chars` code points of the text the client had folded through `seq`. A position, not the text, so the server keeps only what the model wrote and the frame stays small enough for the gateway's limiter to read whole (`ws-frames.js` peeks 512 bytes and charges a longer message as a turn). Sent only when the hello accepts `cancel_turn.shown` |
 | `attach` | `turn_id`, `after_seq` | After a reconnect or a reload: replay the turn from `after_seq + 1`, then continue live |
@@ -370,7 +370,7 @@ which bundle it talks to.
 producer inside a graph run calls `get_stream_writer()` and writes a wire
 **body**. This was measured on the installed LangGraph, not assumed
 (`packages/agent/tests/turn/test_stream_writer_reach.py`, committed with this design): the writer reaches a node in a graph that another node
-`ainvoke`s through a plain async function, which is the shape of Piloti's NAT
+`ainvoke`s through a plain async function, which is the shape of Piloti's agent runtime
 function boundary, and LangChain callbacks such as the token callback, tools
 inside `ToolNode`, child tasks and `asyncio.to_thread` workers. Under `ainvoke`
 the writer is a silent no-op, which is what a deep-research job worker gets.
@@ -437,8 +437,8 @@ where it emits in v2:
 
 | Producer today | Where | v2 emission |
 |---|---|---|
-| `turn_status.push_custom_step`: a balanced NAT FUNCTION START/END pair disguised as a function, with JSON inside an HTML-escaped code block | `common/turn_status.py` | **Deleted.** `emit_step(Step)`. The disguise, the span-stack balancing and its docstring go with it |
-| `emit_status` and its callers: `emit_documents_loading`, `_waiting`, `emit_retrieval_requery`, `emit_citation_check`, `emit_answer_repair`, `emit_escalation`, `emit_synthesis`, `emit_family_coverage`, `emit_repeat_fetch`, `emit_refused_source`, `emit_width_cap`, `emit_research_truncated`, `emit_input_budget_exhausted`, `emit_deep_research_cutoff`, `emit_answer_degraded`, `emit_card_invalid`, `emit_anatomy_dropped`, `emit_verdict_dropped`, `emit_checkpoint` | `common/turn_status.py`, called from `agents/piloti/*`, `agents/deep_researcher/{agent,cutoff,finalize,tools/research}.py`, `common/{retrieval_rounds,answer_envelope,grounding_block}.py`, `cards/surface_documents.py`, `tools/bim/measurement_sources.py`, `sources/{ris_adapter,tavily_web_search,knowledge_layer}` | Each builds a `StatusStep` and calls `emit_step`. The `slot` stays the step id's suffix (`status:<slot>`), and the keys are unchanged (`ALL_STATUS_KEYS`) |
+| `turn_status.push_custom_step`: a balanced agent runtime FUNCTION START/END pair disguised as a function, with JSON inside an HTML-escaped code block | `common/turn_status.py` | **Deleted.** `emit_step(Step)`. The disguise, the span-stack balancing and its docstring go with it |
+| `emit_status` and its callers: `emit_documents_loading`, `_waiting`, `emit_retrieval_requery`, `emit_citation_check`, `emit_answer_repair`, `emit_escalation`, `emit_synthesis`, `emit_family_coverage`, `emit_repeat_fetch`, `emit_refused_source`, `emit_width_cap`, `emit_research_truncated`, `emit_input_budget_exhausted`, `emit_deep_research_cutoff`, `emit_answer_degraded`, `emit_card_invalid`, `emit_anatomy_dropped`, `emit_verdict_dropped`, `emit_checkpoint` | `common/turn_status.py`, called from `agents/piloti/*`, `agents/deep_researcher/{agent,cutoff,finalize,tools/research}.py`, `common/{retrieval_rounds,answer_envelope,grounding_block}.py`, `cards/surface_documents.py`, `tools/bim/measurement_sources.py`, `packages/{ris-adapter,tavily-web-search,knowledge-layer}` | Each builds a `StatusStep` and calls `emit_step`. The `slot` stays the step id's suffix (`status:<slot>`), and the keys are unchanged (`ALL_STATUS_KEYS`) |
 | `emit_retrieval` | `common/retrieval_status.py`, from Piloti's agent node and deep research | `RetrievalStep` with `round`, `tools` and `reason`, and `prefetch` on the round the decision ran before the model (`_prefetch_node`). It still sets `_retrieval_round` |
 | `emit_subject_document` | `turn/subject_document.py`, **setup phase** | `load_subject_document` **returns** the outcome as a `StatusStep`, and `_run` yields it. Nothing is emitted from outside a graph |
 | `emit_documents_loading` | `conversation_register._run`, **setup phase** | `_run` yields the `StatusStep` |
@@ -446,21 +446,21 @@ where it emits in v2:
 | Skill events (`SELECTION_STEP_NAME`, `skill:<name>`) | `skills/events.py` | `SkillStep` through `emit_step` |
 | Clarification trace row | `agents/piloti/clarify.py:676` | `ClarificationStep` |
 | Decision records (`status:decision:*`) | `common/decisions.py:478`, `packages/knowledge-layer/src/decisions.py:167` | technical `StatusStep` |
-| The Trace-Lanes fan-out, which the UI regex-read out of the NAT TOOL_END payload (`## Trace-Lanes` + JSON) | `packages/knowledge-layer/src/trace_lanes.py` `trace_lanes_for_hits`, `read_passage.py`, `ris_adapter/lookup/render.py`, rendered by `common/grounding_block.render_grounding_block` | `render_grounding_block` emits one `SourcesStep` from `block.lanes`, which becomes typed `TraceLane` models rather than a JSON string. That is one producer site for every evidence tool. The `## Trace-Lanes` line in the tool text is left for now; see F2 |
-| Tool calls (NAT TOOL steps that the executed-steps chips read) | NAT's LangChain profiler, through the step adaptor | One `AsyncCallbackHandler` (`action_rows.ToolStepCallback`: `on_tool_start/end/error` → `ToolStep`, basename only), added once to the conversation graph's run config. NAT's profiler still bills and traces through its own handler |
+| The Trace-Lanes fan-out, which the UI regex-read out of the agent runtime TOOL_END payload (`## Trace-Lanes` + JSON) | `packages/knowledge-layer/src/trace_lanes.py` `trace_lanes_for_hits`, `read_passage.py`, `ris_adapter/lookup/render.py`, rendered by `common/grounding_block.render_grounding_block` | `render_grounding_block` emits one `SourcesStep` from `block.lanes`, which becomes typed `TraceLane` models rather than a JSON string. That is one producer site for every evidence tool. The `## Trace-Lanes` line in the tool text is left for now; see F2 |
+| Tool calls (agent runtime TOOL steps that the executed-steps chips read) | the runtime's LangChain profiler, through the step adaptor | One `AsyncCallbackHandler` (`action_rows.ToolStepCallback`: `on_tool_start/end/error` → `ToolStep`, basename only), added once to the conversation graph's run config. the runtime's profiler still bills and traces through its own handler |
 | Live prose: `_ProseTokenHandler` → `AnswerStreamSink.push/put/retract` (deltas, `Masthead`, `Snapshot`, `Cards`) | `turn/answer_stream.py`, with `common/answer_prose_stream.py` and `agents/piloti/answer_pipeline.LiveAnswer` | The handler writes bodies: `TEXT_MESSAGE_START`, coalesced `_CONTENT` (flushed when 50 ms have passed since the last flush, before any other body, and at `on_llm_end`), `_END` when the `answer` string closes, `STATE_SNAPSHOT` from `LiveAnswer.settle` (still in `to_thread`, where the writer works), `masthead`, one `card`/`card_refused` per card (the tools' cards first, then the envelope's, as today), and `answer_retracted`. `LiveAnswer` and the verifier are unchanged |
 | The terminal `ChatResponseChunk` with its extras on `model_extra`, lifted by name in `websocket_reconnect.py` (`_TRANSPARENCY_EXTRA_FIELDS`, `_SKILLS_EXTRA_FIELDS`, `_PERSISTED_EXTRA_FIELDS`) | `turn/response.py` `build_response`, `conversation_register._answer_chunks` | `build_result(state, cards, message_id) -> TurnResult`, a typed model, and `_run` yields `RunFinishedBody`. The lift tables, the `setattr` loops and `common/nat_converters.py` are deleted. A refusal is `RunFinishedBody(outcome="refused")` |
 | Run hand-off (ADR-0062) | `turn/commission.py`, lifted as `run_id`/`run_message_id` | `TurnResult.run`, with `outcome="handed_off"` |
-| Heartbeat | `websocket_reconnect._beat_while_running` (`GridTurnHeartbeat`) | the same task in the handler, writing a `HeartbeatBody` stamped by the turn's sequencer. The `grid_`-prefixed NAT workaround model is deleted |
+| Heartbeat | `websocket_reconnect._beat_while_running` (`GridTurnHeartbeat`) | the same task in the handler, writing a `HeartbeatBody` stamped by the turn's sequencer. The `grid_`-prefixed agent runtime workaround model is deleted |
 | Stage frames | `stages/delivery.deliver_stage_frame` → `websocket_reconnect.send_stage_frame` (`GridStageMessage`) | `StageFrameSink` becomes `(conversation_id, turn_id, StageValue) -> bool`. The handler stamps it with the turn's sequencer, which the registry keeps after the terminal until the last stage lands or `STAGE_WIRE_TTL_S` (10 min) passes. `GridStageMessage` is deleted. The `rejected` half of `shared/stages/frames.json` becomes schema refusal; the `delivered` half moves into the wire fixtures |
-| HITL: `clarify.py:703` and `ask_user.py:244` → `user_interaction_manager.prompt_user_input(build_human_prompt(...))` | `common/human_prompt.py` (NAT `HumanPromptText`/`Radio`) | **Unchanged for producers** (ADR-0068 §3). The handler's `user_input_callback` maps the NAT prompt to `interaction_request` and the answer back to `HumanResponseText`/`HumanResponseRadio`. The HITL models come from `nat.plugin_api` (1.9), and this mapping is their only use in `agent_host` |
+| HITL: `clarify.py:703` and `ask_user.py:244` → `user_interaction_manager.prompt_user_input(build_human_prompt(...))` | `common/human_prompt.py` (agent runtime `HumanPromptText`/`Radio`) | **Unchanged for producers** (ADR-0068 §3). The handler's `user_input_callback` maps the agent runtime prompt to `interaction_request` and the answer back to `HumanResponseText`/`HumanResponseRadio`. The HITL models come from `nat.plugin_api` (1.9), and this mapping is their only use in `agent_host` |
 | Deep-research progress, when it runs in process on the socket | its `turn_status` calls and its tool calls, inside the deep graph under the conversation graph's node | The same writer: steps carry `scope: "deep"`, set from a `ContextVar` that the deep node binds. Its subagents are `SUBAGENT_*` events from one producer, `turn_status.subagent_run`, bound around the run (`DeepResearcherAgent.run`), around each orchestrator `task` call (`SubagentEventsMiddleware`, the orchestrator's innermost middleware) and around each researcher worker (`tools/research._run_research_query`); a second `ContextVar` attributes every step inside. A deep-research **job** runs under `ainvoke` in a worker, so its writer calls are no-ops. Its events stay on `job_events` and SSE, unchanged |
-| `retrieval_trace.emit_retrieval_span` (`retrieve.<tool>` NAT steps) | `observability/retrieval_trace.py` | **Unchanged.** It is telemetry, it never reached the reader, and with the adaptor `off` it cannot |
+| `retrieval_trace.emit_retrieval_span` (`retrieve.<tool>` agent runtime steps) | `observability/retrieval_trace.py` | **Unchanged.** It is telemetry, it never reached the reader, and with the adaptor `off` it cannot |
 
 ## c. The route and the handler
 
 **The route.** `configs/config_oib_openrouter.yml` → `front_end.workflow.websocket_path: null`
-(NAT registers no WS route) and `front_end.step_adaptor: {mode: off}`
+(agent runtime registers no WS route) and `front_end.step_adaptor: {mode: off}`
 (intermediate steps go to the exporters, which subscribe to the step manager,
 never to the adaptor). `AgentHostWorker.add_routes` (`agent_host/plugin.py`) calls
 `super().add_routes(...)`, then:
@@ -513,8 +513,8 @@ async def run_turn(turn: RunningTurn, request: UserMessage, session_manager: Ses
 ```
 
 `session_manager.session(...)`, `session.run(payload)` and
-`runner.result_stream()` are NAT's public runtime API (`nat/runtime/session.py`,
-`runner.py`). `workflow_stream.stream_workflow` stays, because NAT 1.9 still
+`runner.result_stream()` are the runtime's public API (`nat/runtime/session.py`,
+`runner.py`). `workflow_stream.stream_workflow` stays, because `nvidia-nat*` 1.9 still
 does not cancel its producer task (#334/#337/#338/#759). It loses
 `_subscribe_steps`, `_adapt` and the observability-trace item, since no step
 reaches the wire any more.
@@ -522,10 +522,10 @@ reaches the wire any more.
 | Kept, moved into `chat_socket.py` | Deleted |
 |---|---|
 | `authenticate_websocket_connection`, `configure_websocket_auth`, handshake auth and per-message `exp` re-check | `install_reconnectable_handler`, `patched_websocket_endpoint`, the `nat-session` cookie juggling |
-| `handshake_conversation_binding`, `_admit_conversation` (one socket, one conversation); a refusal is now `rejected{conversation_mismatch}` | `ReconnectableWebSocketMessageHandler` and its NAT overrides: `_restore_execution_state` and the query-param rewrite, `create_websocket_message` and every NAT frame builder, `process_workflow_request` |
-| Admission, the context-envelope middleware, `user_context`, request trace tags | NAT frame conversion: `_chunk_finish_reason`, the lift tables, `_pull_response_extra`, the "single-response mode" synthetic COMPLETE, the pending observability trace |
+| `handshake_conversation_binding`, `_admit_conversation` (one socket, one conversation); a refusal is now `rejected{conversation_mismatch}` | `ReconnectableWebSocketMessageHandler` and its agent runtime overrides: `_restore_execution_state` and the query-param rewrite, `create_websocket_message` and every agent runtime frame builder, `process_workflow_request` |
+| Admission, the context-envelope middleware, `user_context`, request trace tags | agent runtime frame conversion: `_chunk_finish_reason`, the lift tables, `_pull_response_extra`, the "single-response mode" synthetic COMPLETE, the pending observability trace |
 | `context_only_directive` and `_ingest_context_only_message`, now reading the flat `context_only` field | `latest_user_text` (the JSON-in-a-text-part parse) |
-| `WebSocketSessionRegistry`: sockets, bus relay, HITL futures with subject binding, workflow tasks. It gains `RunningTurn` per conversation | HITL pairing through NAT models: `_process_websocket_user_interaction_response_message`, `convert_text_content_to_human_response`, the `TextContent` futures |
+| `WebSocketSessionRegistry`: sockets, bus relay, HITL futures with subject binding, workflow tasks. It gains `RunningTurn` per conversation | HITL pairing through agent runtime models: `_process_websocket_user_interaction_response_message`, `convert_text_content_to_human_response`, the `TextContent` futures |
 | `_beat_while_running`, `TURN_HEARTBEAT_SECONDS` | `GridTurnHeartbeat`, `GridStageMessage` |
 | `persist_assistant_message`, `post_internal_conversation_message`, `post_internal_run_report`, `deterministic_assistant_message_id`, background persistence | `_terminal_persist_kwargs` (replaced by `persist_turn_result(TurnResult, outcome)`, a pure mapping from the typed result) |
 
@@ -571,7 +571,7 @@ still cancels a stale turn, as `set_workflow_task` does today.
 interaction, with the subject it is addressed to, and sends
 `interaction_request` with `expires_at = now + HITL_RESPONSE_TIMEOUT_SECONDS`.
 It awaits the answer, sends `interaction_resolved`, and converts the answer into
-NAT's response. A relay replica publishes the answer on the bus as today.
+The runtime's response. A relay replica publishes the answer on the bus as today.
 Expiry sends `interaction_resolved{expired}`, then `RUN_ERROR{interaction_expired}`.
 
 ## d. Replay, resume, spectators, persistence
@@ -762,7 +762,7 @@ interface StoredThinkingStep {
 ### e.5 Deleted on the UI, with every fallback named
 
 - `features/chat/lib/intermediate-step-parser.ts` (and its spec): `parseFunctionName` ("Function Start:"), `CATEGORY_MAP`, `isLLMModel`, `hasToolPrefix`, `getWorkflowDisplayName`, `NODE_LABEL_KEYS`, `formatPayload`.
-- `adapters/api/schemas.ts`: every `NAT*` schema, `HumanPromptType` with the legacy `approval`/`multiple_choice`, the observability-trace variant, the unknown-type tolerance, and the whole "Legacy WebSocket Protocol" block (`WebSocketConnectMessageSchema` … `WebSocketIncomingMessageSchema`). What remains is only what non-socket clients import.
+- `adapters/api/schemas.ts` (since removed): every schema named for the runtime (`NAT*`), `HumanPromptType` with the legacy `approval`/`multiple_choice`, the observability-trace variant, the unknown-type tolerance, and the whole "Legacy WebSocket Protocol" block (`WebSocketConnectMessageSchema` … `WebSocketIncomingMessageSchema`). What remains is only what non-socket clients import.
 - `adapters/api/step-event-schemas.ts`: `unescapeStepPayload`, `balancedObjects`, `parseStepEventPayloads` (the HTML-escaped code-block parse). The key renderers (`renderTurnEventKey`, `stepEventLiveText`, `TURN_EVENT_KEYS`) move to `turn-events.ts`, and the file goes.
 - `features/chat/lib/trace-lanes.ts`: `TRACE_LANES_RE`, `KB_OUTPUT_MARKER_RE`, `parseTraceLanesBlock`, `parseUrlHits` and `URL_RE` (the URL scan of live step text), `laneForSourceUrl` for steps, `extractTraceLanesFromPayload`, `RESEARCH_AGENT_STEP_RE`, `payloadLanesOf`/`toolPayloadLanesOf` and their WeakMap caches, and `deriveTraceLanes`'s payload fallback.
 - `features/chat/lib/live-activity.ts`: `legacyPhrase`, `ACTIVITY_RULES`, `classify`, `SCAFFOLD_RE`.
@@ -797,11 +797,11 @@ and a reader-order change, nothing more.
 
 | Layer | What | Where |
 |---|---|---|
-| Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old NAT frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `packages/agent/tests/common/test_wire_v2.py` (committed) |
+| Contract | Every recorded event is valid **and** is byte for byte the frame the server writes. Turns are ordered: seq 1..n, one terminal, only stages after it. Every client message parses. Old agent runtime frames, `v: 1`, empty deltas, raw payloads on steps, unknown kinds and names, a half run hand-off, and a both-answers interaction response are refused, and so is the newer server's drift in `newer-events.jsonl`, which this server never writes. The committed schema is fresh | `packages/agent/tests/common/test_wire_v2.py` (committed) |
 | Contract, UI side | The same files through the generated zod: every event parses to its type, defaults restored, and every invalid frame refused. `newer-events.jsonl` parses, its unknown keys stripped and its unknown types, step kinds and `CUSTOM` names folded as no-ops (§a, Compatibility). The generated module is the generator's output | `src/adapters/api/wire-v2.spec.ts`, `scripts/generate-wire-schemas.spec.mjs` (committed) |
 | Generation | Pydantic → `contracts/wire/v2.schema.json` → `wire-v2.generated.ts`. A `wire-schemas` pre-commit hook fails the commit when either artifact would change, the same arrangement as `card-schemas` | `.pre-commit-config.yaml` (committed) |
-| Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real NAT function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `packages/agent/tests/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
-| Handler | Auth, binding, rejection codes, cancel authorisation (asker yes, colleague `not_asker`, bus path), HITL round trip and expiry, attach replay and splice with no duplicate or missing seq, stage stamping after the terminal, persistence built from `TurnResult`. A test that builds the app and asserts NAT's `websocket_endpoint` and `WebSocketMessageHandler` are NAT's own objects. A ruff `banned-api` for `nat.data_models.api_server` everywhere, and for the internal modules `nat.plugin_api` covers | `apps/agent-host/tests/test_chat_socket.py` |
+| Producers | One test per producer that goes **through the compiled graph** under `astream` and asserts the body it wrote. The most important: the writer reaches the Piloti inner graph through the real agent runtime function boundary, which `test_stream_writer_reach.py` stands in for with a plain async function. Also: setup steps are yielded, `ToolStepCallback` emits basename only, a `sources` step equals the records' lanes, and prose deltas are coalesced | `packages/agent/tests/turn/`, `…/agents/piloti/`, `…/common/test_turn_status.py`, `…/skills/` |
+| Handler | Auth, binding, rejection codes, cancel authorisation (asker yes, colleague `not_asker`, bus path), HITL round trip and expiry, attach replay and splice with no duplicate or missing seq, stage stamping after the terminal, persistence built from `TurnResult`. A test that builds the app and asserts the runtime's `websocket_endpoint` and `WebSocketMessageHandler` are the runtime's own objects. A ruff `banned-api` for `nat.data_models.api_server` everywhere, and for the internal modules `nat.plugin_api` covers | `apps/agent-host/tests/test_chat_socket.py` |
 | Golden replay | One real turn recorded through the whole backend (a fake LLM with a recorded token stream and the real graph) and compared frame for frame, `ts` excepted, with a committed golden JSONL. Every frame is under 4 KB except `STATE_SNAPSHOT` and `RUN_FINISHED` (under 64 KB), the two that carry the sources | `packages/agent/tests/turn/test_golden_turn.py` |
 | Fold | Every fixture turn folds to the expected `TurnView`. Duplicate seq keeps identity, and a gap is flagged. Snapshot, retraction and terminal replacement. Card before marker. Spectator mid-turn start. The persisted projection round-trips through `sanitizeProvenance` | `features/chat/lib/turn-fold.spec.ts` |
 | Migration | Old stored steps (real rows captured from staging, anonymised) convert to the v2 shape, and the dropped kinds are gone | `message-provenance.spec.ts`; the migration spec for 0097 was retired once 0097 had run in production |
@@ -813,11 +813,11 @@ and a reader-order change, nothing more.
 Eight slices. No file is edited by two slices, each hot shared file has a single
 owner, and the slices land together as one cut from one integration branch, with
 no dual period. The contract is already committed, and every slice codes against
-`wire_v2.py` and `wire-v2.ts`. S0 is the NAT upgrade the other backend slices
+`wire_v2.py` and `wire-v2.ts`. S0 is the agent runtime upgrade the other backend slices
 build on. The line figures are estimates, source only, with tests counted
 separately. The exit criterion in the definition of done is the measured diff.
 
-**S0 · Upgrade NAT to 1.9.0. Lands first; S1–S3 branch from it.**
+**S0 · Upgrade `nvidia-nat*` to 1.9.0. Lands first; S1–S3 branch from it.**
 - **Owns:** `pyproject.toml` (the four `nvidia-nat*` pins → `==1.9.0`, and ruff
   `banned-api` for the internal modules `nat.plugin_api` covers), `uv.lock`, and
   the import lines in every file that imports those names. That is a mechanical
@@ -825,14 +825,14 @@ separately. The exit criterion in the definition of done is the measured diff.
   they start: ownership is sequential, never concurrent.
 - **Also owns:** the three breakages above in `websocket_reconnect.py`
   (`get_conversation_handler(user_id, …)`) and a route-coverage test for
-  `GridContextEnvelopeMiddleware`.
+  `RequestContextEnvelopeMiddleware`.
 - **Also:** `nvidia-nat[langchain]` → `nvidia-nat-langchain[openai]` (gain 2),
   and a before/after measurement of one turn's Langfuse trace size (#2100).
 - **Adds:** ~+25 (the route test and the adapted override).
 - **Deletes:** the `crc32c` and possibly `litellm` overrides (~−8), and nine
   LangChain provider packages from the lock and the image. The import sweep is
   line-for-line. What else 1.9 deletes of ours is deleted by S3, which runs no
-  NAT handler at all. Net **~+15** source lines. Justified: it is the upgrade the
+  agent runtime handler at all. Net **~+15** source lines. Justified: it is the upgrade the
   product owner put in the cut, it shrinks the dependency tree, and it is kept
   apart so a regression points at the upgrade and not at the wire.
 - **Exit:** `task be:test` and `task be:test:sources` green on 1.9.0.
@@ -850,7 +850,7 @@ separately. The exit criterion in the definition of done is the measured diff.
   (`emit_*` names unchanged).
 - **Adds:** `emit`, `emit_step`, `ToolStepCallback`, `StatusStep` builders
   (~+110).
-- **Deletes:** `push_custom_step`'s NAT pairing and its FUNCTION-disguise
+- **Deletes:** `push_custom_step`'s agent runtime pairing and its FUNCTION-disguise
   docstring (~−110), the payload-dict assembly in 25 emitters (~−90), and the
   skills payload (~−30). Net **~−120**.
 - **Tests:** a producer test per emitter family through a compiled graph; the
@@ -868,7 +868,7 @@ separately. The exit criterion in the definition of done is the measured diff.
   `live_chunk`, `response_to_chunks`, `fold_chunks_to_response` and `_fold_live`
   (~−180), `nat_converters.py` (−80), and the extras on `ChatResponse` (~−50).
   Net **~−380**.
-- **Tests:** the writer reaches the Piloti inner graph through the NAT function
+- **Tests:** the writer reaches the Piloti inner graph through the agent runtime function
   boundary; the golden replay; the `nat run` fold; the `settled_replaced` log
   line is still emitted.
 
@@ -879,7 +879,7 @@ separately. The exit criterion in the definition of done is the measured diff.
   `observability/langfuse_trace_attributes.py` (the user half, gain 3), and the
   `nat.data_models.api_server` ruff ban in `pyproject.toml` (after S0's edit to
   the same file).
-- **Uses from 1.9:** `session(user_id=<verified subject>)`, and the NAT prompt
+- **Uses from 1.9:** `session(user_id=<verified subject>)`, and the agent runtime prompt
   id as `interaction_id` (gain 4).
 - **Adds:** `chat_socket.py` (~+650, of which ~470 is moved from the old file:
   auth, binding, registry, heartbeat, persistence), route registration (+10),
@@ -887,7 +887,7 @@ separately. The exit criterion in the definition of done is the measured diff.
 - **Deletes:** everything in the §c "Deleted" column, about −1 300 lines, and
   the step subscription in `workflow_stream.py` (−70). Net **~−1 150**.
 - **Tests:** `test_chat_socket.py` as in §g. Of the ten existing test files
-  that import `websocket_reconnect` (4 088 lines), the NAT-frame tests are
+  that import `websocket_reconnect` (4 088 lines), the runtime-frame tests are
   deleted and the rest are ported.
 
 **S4 · UI transport and fold.**
@@ -925,7 +925,7 @@ separately. The exit criterion in the definition of done is the measured diff.
 - **Adds:** ~+150 (the `kind` switch, and the key renderers moved in).
 - **Deletes:** ~−820. Net **~−670**.
 - **Tests:** the existing reader specs, fed `StoredThinkingStep` v2 from folded
-  fixtures instead of NAT names.
+  fixtures instead of agent runtime names.
 
 **S7 · Persistence, BFF, docs.**
 - **Owns:** `lib/conversations/message-provenance.ts`,
@@ -967,7 +967,7 @@ outside the slices.
 ### Definition of done for the cut
 
 1. **The diff deletes more than it adds.** `git diff --stat develop...feat/chat-wire-v2`
-   across `src/`, `sources/`, `frontends/` and `configs/`, excluding
+   across `apps/`, `packages/` and `configs/`, excluding
    `contracts/wire/`, `wire-v2.generated.ts` and the contract tests, is net
    negative. The PR carries a **deletion ledger** per slice: file → lines
    removed → what replaced it.
@@ -983,7 +983,7 @@ outside the slices.
    count independent of prompt length, and
    main-thread time per second within the paced-reveal budget measured in
    `streaming-chat-answer.md` (the 47 s pinned main thread is gone).
-5. A spec asserts NAT's `websocket_endpoint` and `WebSocketMessageHandler` are
+5. A spec asserts the runtime's `websocket_endpoint` and `WebSocketMessageHandler` are
    unpatched. Ruff bans `nat.data_models.api_server` everywhere, and bans the
    internal modules for every name `nat.plugin_api` exports. A UI spec asserts no file under `adapters/api` or
    `features/chat` matches `/Function (Start|Complete)|## Trace-Lanes|parseFunctionName/`.
@@ -1002,7 +1002,7 @@ outside the slices.
 
 ## Risks, and what they are waiting on
 
-- **The writer across the NAT function boundary: retired.** NAT's
+- **The writer across the agent runtime function boundary: retired.** The runtime's
   `Function.ainvoke` pushes its active function and awaits the call in the same
   task, and Piloti's inner graph runs with its own `configurable` and
   `callbacks` (`agent._graph_config`). The reach test now goes through exactly

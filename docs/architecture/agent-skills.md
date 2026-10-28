@@ -70,7 +70,7 @@ warning (`resolver._build_org_skills`), never silently half-loaded.
 `grid-schedulable` used to be reserved keys here; both were removed when
 schedules became jobs. Scheduling is a property of the job, and so is the
 output kind (`jobs.output`). The removed keys are **not rejected** — they are
-simply unreserved (`GRID_METADATA_KEYS` in `packages/agent/src/agent/skills/models.py`,
+simply unreserved (`SKILL_METADATA_KEYS` in `packages/agent/src/agent/skills/models.py`,
 `METADATA_AGENTS`/`METADATA_CARDS` in `apps/workspace/bff/skills/types.ts`),
 so a stored org row or a pasted SKILL.md still carrying one keeps it as
 ordinary free-form metadata and nothing reads it. Rejecting them would turn a
@@ -299,7 +299,7 @@ effective skill set for one run:
      payload) degrades to the builtin set — skills are an additive
      capability and must never take chat down.
 3. Per-agent filtering (below).
-4. The NAT config's `skills_enabled` / `skill_allowlist` (see Config).
+4. The runtime config's `skills_enabled` / `skill_allowlist` (see Config).
 
 ### Agent targeting
 
@@ -565,8 +565,8 @@ name is still a true record of what ran.
 
 ## Config
 
-`configs/config_oib_openrouter.yml`, `shallow_research_agent` (the NAT
-workflow YAML — NAT's own vocabulary for an agent config):
+`configs/config_oib_openrouter.yml`, `shallow_research_agent` (the
+workflow YAML, the runtime's own word for an agent config):
 
 ```yaml
 skills_enabled: true        # default true; false offers no catalog and no skill read

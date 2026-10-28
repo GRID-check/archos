@@ -35,7 +35,7 @@ Main development command hub for common tasks.
 
 ### `start_server_in_debug_mode.sh` - Server Mode
 
-Starts the NAT FastAPI server for deep research with async job support.
+Starts the FastAPI server for deep research with async job support.
 
 ```bash
 ./scripts/start_server_in_debug_mode.sh

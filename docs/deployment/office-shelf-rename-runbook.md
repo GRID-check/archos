@@ -63,8 +63,8 @@ the points and the document rows together.
 
 Until it is done, writers keep the prefix the data has
 (`OFFICE_SHELF_COLLECTION_PREFIX = 'archiv_'`, TS and Python, held equal by
-`collection-prefix.spec.ts`). Readers and authorizers (`collection-authz.ts`,
-`TENANT_PREFIXES`, `jobs/access.py`, `physical_for_scope`) accept both prefixes,
+`collection-prefix.spec.ts`). Readers and authorizers (`apps/workspace/bff/proxy/collection-authz.ts`,
+`TENANT_PREFIXES`, `apps/agent-host/src/agent_host/jobs/access.py`, `physical_for_scope`) accept both prefixes,
 so a re-tagged organization already works.
 
 Per organization, with the app in maintenance for that organization (no upload,
@@ -91,7 +91,7 @@ no delete):
    Then look for other holders of the name: `SELECT table_name, column_name FROM information_schema.columns WHERE column_name LIKE '%collection%'` and update each that carries the old value for this organization (jobs' scope lists are history and are left).
 6. **Flip the writer**, once every organization is done: set
    `OFFICE_SHELF_COLLECTION_PREFIX` to `'office_shelf_'` in
-   `lib/office-shelf/collection-prefix.ts` and `agent/common/source_kinds.py`
+   `apps/workspace/bff/office-shelf/collection-prefix.ts` and `packages/agent/src/agent/common/source_kinds.py`
    (the parity spec fails if only one changes), and in a following release delete
    the `archiv_` entries from `OFFICE_SHELF_COLLECTION_PREFIXES`.
 

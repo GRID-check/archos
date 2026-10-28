@@ -42,9 +42,9 @@ The earlier vision doc (`cross-project-rag-vision.md`, superseded by `office-exp
 **Value: medium. Effort: S. Risk: medium.**
 The chat redesign kept the deep-research input hard-lock + auto-open panel as intentional concurrency guards. Worth revisiting: let users queue a follow-up or browse prior messages during a run instead of a full lock — softer guard, better feel. Needs runtime iteration to get right.
 
-## 9. Harden the NAT monkeypatch
+## 9. Harden the runtime monkeypatch
 **Value: medium (stability). Effort: S. Risk: low.**
-`websocket_reconnect.install_reconnectable_handler()` patches NAT internals at import; a NAT upgrade can break it silently, and there's an acknowledged upstream bug where `_running_workflow_task` is always None (cancellation-on-disconnect may not fire). Pin the NAT version and add a regression test asserting the patch target still exists.
+`websocket_reconnect.install_reconnectable_handler()` patches the runtime's internals at import; a runtime upgrade can break it silently, and there's an acknowledged upstream bug where `_running_workflow_task` is always None (cancellation-on-disconnect may not fire). Pin the runtime version and add a regression test asserting the patch target still exists.
 
 ---
 

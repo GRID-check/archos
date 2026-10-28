@@ -1,6 +1,6 @@
 # Adding a tool or a data source
 
-A tool is a NeMo Agent Toolkit (NAT) function the agent can call. A data source
+A tool is a function the agent can call, registered with the agent runtime (NeMo Agent Toolkit, a third-party library). A data source
 is a tool, or a group of tools, that also appears as a toggle in the UI because
 it is listed in the `data_source_registry`. Everything below applies to both;
 the last sections are only for a data source.
@@ -30,8 +30,8 @@ packages/my-tool/
   README.md
   src/
     __init__.py
-    register.py     # the config class and the NAT registration
-    client.py       # the implementation, free of NAT imports
+    register.py     # the config class and the plugin registration
+    client.py       # the implementation, free of runtime imports
   tests/
     conftest.py
     test_client.py
@@ -40,7 +40,7 @@ packages/my-tool/
 No `tests/__init__.py`: with one, pytest names the conftest `tests.conftest`,
 the same module as the repo's own suite, and a run over both aborts.
 
-`pyproject.toml` maps the package onto `src/` and declares the entry point NAT
+`pyproject.toml` maps the package onto `src/` and declares the entry point the runtime
 discovers it by. Without the entry point nothing reports a problem; the tool
 just never exists.
 

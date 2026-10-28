@@ -489,8 +489,8 @@ the answer being written, with the asker's masthead, verified sources and cards
 (ADR-0066), rather than a spinner followed by a finished block of text. The view
 is read-only: no feedback row, and a card cannot apply anything. Requires `viewer`.
 
-- Frames are `data: {"kind":"frame","seq":N,"payload":<NAT frame>}`. The payload is
-  the raw NAT WebSocket frame (`system_response_message`,
+- Frames are `data: {"kind":"frame","seq":N,"payload":<agent runtime frame>}`. The payload is
+  the raw agent runtime WebSocket frame (`system_response_message`,
   `system_intermediate_message`, `system_interaction_message`, `error_message`) —
   the same bytes the asker's own socket carries, documented in
   [`websocket-protocol.md`](websocket-protocol.md).
@@ -529,7 +529,7 @@ ADR-0028) and reaches the socket tagged `grid_frame_id`, the stream entry id. A
 client that lost its socket asks for every frame after the last id it applied and
 feeds them to its live frame handler. Requires `viewer`.
 
-- `{"frames": [<NAT frame>, ...]}`, oldest first, each with `grid_frame_id` set.
+- `{"frames": [<agent runtime frame>, ...]}`, oldest first, each with `grid_frame_id` set.
   Without `after`, every frame the stream still holds (a reload, which lost its
   cursor; the client applies them from its question's first frame on).
 - `{"frames": null}`: nothing to read (no `REDIS_URL`, or the read failed). The

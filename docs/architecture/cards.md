@@ -1,6 +1,6 @@
 # Cards — the agent's rich-UI presentation layer
 
-> How GRID's agent returns structured, rendered UI instead of plain prose when
+> How Piloti's agent returns structured, rendered UI instead of plain prose when
 > that serves the user better. See also [ADR-0012](../adr/0012-cards-as-rich-ui-layer.md).
 
 ## What a card is
@@ -35,7 +35,7 @@ sources, and the persisted decisions of interactive cards.
 
 Each card's model lives in a module named after it under `packages/agent/src/agent/cards/`
 (`look_card.py`, `ifc_cards.py`, …; the base and its plain-text rule in
-`card_model.py`), and `cards/models.py` joins them in a discriminated union (`GridCard`)
+`card_model.py`), and `cards/models.py` joins them in a discriminated union (`AnswerCard`)
 — **26 types in four families**: 18 the answering model may emit, 17 of them
 through `emit_card` too; the 18th is `surface` (ADR-0065), a composition whose
 leaves are content cards or `Text`, offered on the chat envelope only
@@ -406,12 +406,12 @@ for their shapes only on the turns that activate them.
 Taking a retired type OUT of the list is not tidiness. `preferred_cards` filters
 `grid-cards` against `model_facing_card_types()`, so a name left behind is dropped
 silently on every read — a seed naming a card the runtime never sees, which is the
-drift `test_seeded_grid_cards_survive_the_read_path` exists to catch.
+drift `test_seeded_answer_cards_survive_the_read_path` exists to catch.
 
 ### Retiring a card type
 
 A card type is retired by **deleting** it: the pydantic model leaves the
-`GridCard` union, the generated schemas are regenerated, and the frontend drops
+`AnswerCard` union, the generated schemas are regenerated, and the frontend drops
 its renderer. The name moves into `RETIRED_CARD_REPLACEMENTS` in
 `cards/catalog.py` with one line saying what carries its content now. That map
 is the whole of what survives, and it exists for the model, not for stored
@@ -426,7 +426,7 @@ its schema no longer knows with a generic fallback rather than a hole.
 
 The checklist:
 
-1. delete the model from its module under `cards/` (and from `GridCard` in `cards/models.py`,
+1. delete the model from its module under `cards/` (and from `AnswerCard` in `cards/models.py`,
    `CARD_EXAMPLES`, the trigger table and any craft or note naming it);
 2. add its name and replacement to `RETIRED_CARD_REPLACEMENTS`;
 3. regenerate: `uv run python scripts/generate_card_schema.py`, then
@@ -666,20 +666,20 @@ lines of prose.
 
 ## How cards render
 
-The frontend validates the wire cards (`validateGridCards`) and renders them
+The frontend validates the wire cards (`validateAnswerCards`) and renders them
 through the `features/grid-cards/` component set — one renderer per card type.
 
 ### Every card is drawn through A2UI
 
 Since ADR-0065 a card reaches the screen through
-[A2UI](https://a2ui.org) v0.9: `GridCardItem` hands it to `A2uiCard`
+[A2UI](https://a2ui.org) v0.9: `AnswerCardItem` hands it to `A2uiCard`
 (`features/a2ui/`), which turns it into an A2UI surface (a stored card is a
 one-component surface whose root is the card) and draws it with
 `@a2ui/react` on the Piloti catalog. The catalog registers one A2UI component
 per card type, named by the type and validated by that card's generated Zod
 schema, plus `Row`, `Column`, `Tabs` and `Text` in the basic catalog's shapes. Each
-card component calls back into `GridCardView`, the per-type dispatch that used
-to be `GridCardItem`, so the pixels are the same components as before.
+card component calls back into `AnswerCardView`, the per-type dispatch that used
+to be `AnswerCardItem`, so the pixels are the same components as before.
 `@a2ui/react` is imported only by `react-catalog.tsx`, which `A2uiCard` loads
 in the browser: the library defines custom elements on import and cannot load
 on the server. `catalog.tsx` is the server-safe half (component APIs,
@@ -897,11 +897,11 @@ duplicate, it does not stop a determined double-POST.
 Three guards, on both sides of the stack:
 
 1. **`tsc` fails on an unclassified card type.** `CARD_INTERACTIVITY`
-   (`card-decision.ts`) is `Record<GridCard['type'], …>`, so the moment
+   (`card-decision.ts`) is `Record<AnswerCard['type'], …>`, so the moment
    `npm run generate:cards` adds a type, the build breaks until you classify it.
 2. **A vitest guard fails on a classified-but-unwired card.**
    `card-interactivity.spec.tsx` renders every `'interactive'` type through
-   `GridCards`, clicks it, and asserts the decision reached the store.
+   `AnswerCards`, clicks it, and asserts the decision reached the store.
 3. **A pytest parity guard fails on cross-stack drift.**
    `INTERACTIVE_CARD_TYPES` (`agent/cards/catalog.py`) must agree with the
    TS map — `packages/agent/tests/cards/test_interactive_card_parity.py`.
@@ -916,7 +916,7 @@ without re-plumbing generation or transport.
 ### Checklist: adding a card type
 
 1. Define the Pydantic model in a module named after it under `packages/agent/src/agent/cards/`
-   (subclassing `CardModel` from `card_model.py`), add it to the `GridCard` union in
+   (subclassing `CardModel` from `card_model.py`), add it to the `AnswerCard` union in
    `cards/models.py`, and add the module to the `card-schemas` hook's `files:` in
    `.pre-commit-config.yaml` and to the card paths in `.github/filters.yml`. **The docstring's first line is the L1 index entry** the
    model reads on every turn — write it as a trigger ("Emit for … questions"),
@@ -929,7 +929,7 @@ without re-plumbing generation or transport.
 3. **Classify it in `CARD_INTERACTIVITY`** (`features/grid-cards/card-decision.ts`).
    `tsc` fails until you do — see [Interactive cards](#interactive-cards-the-answer-must-be-persisted)
    for how to decide, and for what an `'interactive'` classification obliges.
-4. Add the renderer under `features/grid-cards/` and wire the `GridCards`
+4. Add the renderer under `features/grid-cards/` and wire the `AnswerCards`
    dispatcher (interactive cards get `messageId={messageId} cardKey={key}`).
    Type it with the [`card-*` ramp](#type-sizes-six-classes-and-lint-per-card)
    and add the file to the `grid/card-type-scale` override in `.oxlintrc.json`.
@@ -987,7 +987,7 @@ they arrive.
 The tables in this document are prose and go stale between edits; the
 endpoint does not.
 `GET /api/platform/cards` (platform owners; backend `GET /v1/platform/cards`,
-`routes/cards.py`) serves the catalog **derived from the `GridCard` union**:
+`routes/cards.py`) serves the catalog **derived from the `AnswerCard` union**:
 every type with its purpose, its fields (type, requiredness, description,
 constraints), the shapes those fields reference, and the worked example where
 one exists. Adding a card type to the union is the only step needed to make it
@@ -996,27 +996,27 @@ appear there.
 Two differences from the model-facing catalog (`render_card_catalog`), which is
 rendered from the same models for the `emit_card` tool: system cards are
 **included** and flagged `emittedBy: "system"` rather than hidden (a model that
-learns they exist can fabricate them; a person asking "can Grid show me X?" is
+learns they exist can fabricate them; a person asking "can Piloti show me X?" is
 misled by a list with holes in it), and every entry is data rather than prose.
 
 The response also carries `featureRequest` — the repository plus a link to the
-enhancement issue form — because the question that follows "here is what Grid
+enhancement issue form — because the question that follows "here is what Piloti
 can render" is "and how do I get the one thing that is missing?".
 
 ### The gallery: Platform → cards
 
 `/app/platform/cards` is that catalog as a page (platform owners; nav entry
 between "Answer quality" and "Base knowledge"). Every entry is a **real render**
-— the sample card goes through the same `GridCards` dispatcher chat uses — so
+— the sample card goes through the same `AnswerCards` dispatcher chat uses — so
 the page cannot advertise a card the renderers do not produce, and a platform
-owner's visual question ("can Grid show me a Stellplatznachweis?") gets a visual
+owner's visual question ("can Piloti show me a Stellplatznachweis?") gets a visual
 answer. The values each card carries expand underneath, straight from the
 endpoint, and the request-a-card link sits in the header and again at the foot.
 
 | piece | where |
 |---|---|
 | The page | `src/app/app/platform/cards/page.tsx` + `platform-cards.tsx` |
-| The sample cards | `features/grid-cards/preview-fixtures.ts` — authored in schema-INPUT shape, then run through `validateGridCards`, so a fixture that stops matching the union is holed (absent from the map) rather than rendered |
+| The sample cards | `features/grid-cards/preview-fixtures.ts` — authored in schema-INPUT shape, then run through `validateAnswerCards`, so a fixture that stops matching the union is holed (absent from the map) rather than rendered |
 | Coverage guard | `preview-fixtures.spec.ts` — every type in `CARD_INTERACTIVITY` needs a fixture or an entry in `PREVIEW_EXCLUDED` |
 | Not previewed | all five IFC cards + `document_grid`: they carry identifiers resolved against a loaded model or real document rows, and a fabricated preview would show a building that does not exist |
 | Preview evidence | `/dev/platform-cards` + the `platform-cards` screenshot target |
@@ -1030,7 +1030,7 @@ would leave them keyboard-reachable, and a tabbed-to "Yes" still writes.
 The card-generation LLM is `card_llm` (config `reasoning_effort: medium`). Adding a
 card type = define the Pydantic model (a module under `cards/`, joined in `cards/models.py`), regenerate the schema
 (`scripts/generate_card_schema.py` → `npm run generate:cards`), add a renderer, and
-wire the `GridCards` dispatcher. A dev-only gallery at `/dev/cards`
+wire the `AnswerCards` dispatcher. A dev-only gallery at `/dev/cards`
 (`src/app/dev/cards/page.tsx`, 404 outside development) renders every card type
 with realistic fixtures for visual review; `/dev/document-grid` previews the
 backend-free `document_grid` surfacing card. Capture either with the
@@ -1054,14 +1054,14 @@ instead. Next phases: a 3D massing card
 
 - The post-hoc generation path (`cards/generate.py` / `cards/prompt.py`) is
   deliberately kept next to the `emit_card` tool: async deep-research jobs use
-  it (`jobs/runner.py::_generate_grid_cards`) for the cards derived from the
+  it (`jobs/runner.py::_generate_answer_cards`) for the cards derived from the
   finished report. The job runner ALSO binds a fresh `CardRegistry` around the
   run (`_bound_card_registry`), so `emit_card` and `surface_documents` called
   by a researcher worker during the run deliver — a deep answer can show a
   `document_grid` card. `_merge_job_cards` puts the emitted cards FIRST, in
   emission order, then the post-hoc ones: `[[card:N]]` resolves positionally,
   and only the emitted cards were ever addressed by a marker. Positions hold
-  end to end because `validateGridCards` never compacts the array: a card the
+  end to end because `validateAnswerCards` never compacts the array: a card the
   frontend schema rejects leaves an `undefined` hole at its wire index, so a
   marker after the hole still names the card it was written for (a marker
   pointing AT the hole renders nothing), and a persisted `cardKey` decision

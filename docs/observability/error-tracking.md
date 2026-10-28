@@ -97,7 +97,7 @@ Grid catches and logs its exceptions (`logger.exception` in the job worker, the
 job runner, the stage runner), so they never reach `sys.excepthook`, which is
 all the SDK's own autocapture sees. `PosthogExceptionHandler` is attached to the
 root logger once per process, by `posthog_exceptions.install()`, from the
-`otelcollector_logs` logging method (every NAT process, before its no-collector
+`otelcollector_logs` logging method (every agent runtime process, before its no-collector
 early return) and from the API plugin's `add_routes` (both roles). It is
 idempotent.
 

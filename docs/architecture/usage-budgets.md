@@ -132,11 +132,11 @@ fixtures**, not against the live API:
 `packages/agent/src/agent/common/cost_tracking.py`:
 
 ```
-track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
+track_llm_costs()  ──sets──▶  cost_tracker_var (ContextVar)
                                    │ register_configure_hook(…, inheritable=True)
                                    ▼
               EVERY LangChain callback manager configured in-context
-              gets GridCostTracker — all agents, all groups, automatically
+              gets CostTracker — all agents, all groups, automatically
 ```
 
 - **Activation points (the only wiring, 4 total)**:
@@ -251,7 +251,7 @@ Enforcement points:
    (ADR-0019, `getSpendTotals`), maintained transactionally with every
    ledger insert — the upgrade never scans the month's ledger. Per-model /
    per-member breakdowns (admin views) still read the ledger.
-2. **In-flight** (`GridCostTracker`): cumulative turn spend ≥ remaining →
+2. **In-flight** (`CostTracker`): cumulative turn spend ≥ remaining →
    `BudgetExceededError` **before the next LLM call starts**; the sync path
    catches it and returns a friendly "budget exhausted" chat response; an
    async job fails with the same message. A call already in flight always

@@ -332,7 +332,7 @@ directory and cannot file; the tool says so.
 ## 6. Tools: the contract, and where code lives
 
 The first revision proposed a per-tool spec table. The review showed the
-existing contract is keyed by NAT function type on purpose, the door that
+existing contract is keyed by the runtime's function type on purpose, the door that
 actually holds is `requireProjectAccess` at the filing function, and a dict
 compared against YAML is the weak end of the ratchet. What survives:
 

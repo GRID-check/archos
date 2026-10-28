@@ -34,15 +34,15 @@ Piloti uses a two-tier architecture consisting of a **Next.js Backend-for-Fronte
 │  Tier 2: Python FastAPI Backend (port 8000)                            │
 │                                                                         │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌──────────────────┐   │
-│  │  Research queue  │    │  Worker(s) (NAT)│    │  Uvicorn         │   │
-│  │  (port 8786)     │◄──►│  (NAT runtime)   │    │  FastAPI App    │   │
-│  │  Dashboard:8787  │    │                  │    │  (NAT + custom) │   │
+│  │  Research queue  │    │  Agent worker(s)│    │  Uvicorn         │   │
+│  │  (port 8786)     │◄──►│  (agent runtime) │    │  FastAPI App    │   │
+│  │  Dashboard:8787  │    │                  │    │  (app + custom) │   │
 │  └─────────────────┘    └─────────────────┘    └────────┬─────────┘   │
 │                                                         │              │
-│  NAT Framework (NeMo Agent Toolkit):                                │
+│  Agent runtime (external library):                                  │
 │  • LangGraph pipeline (researcher → clarify → deep research)        │
 │  • Knowledge Layer (LlamaIndex + Qdrant) for RAG                    │
-│  • AIQ API worker for async job processing with SSE streaming       │
+│  • Agent-host worker for async job processing with SSE streaming    │
 │                                                                       │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -63,18 +63,18 @@ Key responsibilities of the BFF:
 
 ### Tier 2: Python FastAPI Backend (port 8000)
 
-The backend uses the **NVIDIA NeMo Agent Toolkit (NAT)** framework with a custom startup script:
+The backend uses the agent runtime (**NVIDIA NeMo Agent Toolkit**, a third-party library) with a custom startup script:
 
 - **Entrypoint** (`entrypoint.py`): Launches the web server; research runs in the separate `PROCESS_ROLE=worker` container.
-- **Web server** (`start_web.py`): Loads the NAT YAML configuration, sets up environment variables, and runs uvicorn directly (bypassing `nat serve` to avoid asyncio event-loop conflicts).
-- **NAT runtime**: Provides the LangGraph-based pipeline: one answering agent (research) that decides per turn whether to escalate, a clarification step that confirms a research plan, and the deep research agent with citation verification.
+- **Web server** (`start_web.py`): Loads the runtime's YAML configuration, sets up environment variables, and runs uvicorn directly (bypassing `nat serve` to avoid asyncio event-loop conflicts).
+- **Agent runtime**: Provides the LangGraph-based pipeline: one answering agent (research) that decides per turn whether to escalate, a clarification step that confirms a research plan, and the deep research agent with citation verification.
 
-The NAT framework is extended with:
+The agent runtime is extended with:
 
 | Component | File | Purpose |
 |-----------|------|---------|
 | Knowledge API routes | `apps/agent-host/src/agent_host/routes/` (collections, documents, ingest; mounted by `plugin.py`) | Collection CRUD, document management, file ingestion. (The old `packages/agent/src/agent/fastapi_extensions/` duplicate was deleted 2026-07-03.) |
-| AIQ API worker | `apps/agent-host/` | Async job processing with SSE streaming |
+| Agent-host worker | `apps/agent-host/` | Async job processing with SSE streaming |
 | Knowledge layer | `packages/knowledge-layer/` | LlamaIndex-backed RAG with Qdrant (ADR-0115) |
 | Custom auth utils | `packages/agent/src/agent/auth/` | JWT extraction, WorkOS token validation |
 | OIB sync | `packages/agent/src/agent/oib_sync.py`, `packages/agent/src/agent/corpus_store.py` | Base corpus in object storage + the `oib_corpus_files` table; queues one ingest-queue job for each file the index was not built from (SHA-256, chunk-format version); the ingest workers run it |
@@ -93,7 +93,7 @@ Node.js Gateway
   │  3. Gets user identity (organizationId, userId, accessToken)
   ▼
 Python FastAPI
-  │  4. NAT context reads X-Grid-Collection-Scope header
+  │  4. The runtime's request context reads X-Grid-Collection-Scope header
   │  5. Collection scoping resolves target collections
   │  6. LangGraph agent pipeline: intent → research → response
   │  7. SSE stream back through WebSocket

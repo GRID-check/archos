@@ -234,11 +234,11 @@ primitive:
 > `RUN_STARTED` names. A stage event carries the `turn_id` and folds into the
 > turn's view like every other event (`features/chat/lib/turn-fold.ts`).
 
-The agent tier's only handle on the turn is the third one — NAT stores it as
+The agent tier's only handle on the turn is the third one — the agent runtime (NeMo Agent Toolkit, a third-party library) stores it as
 `self._message_parent_id` (`nat/front_ends/fastapi/message_handler.py:125`).
 
 > **[as built]** This section was written as though that handle lived only inside
-> `agent_host`. It does not: NAT's session publishes it as a ContextVar
+> `agent_host`. It does not: the runtime's session publishes it as a ContextVar
 > (`nat/runtime/session.py:487`) exposed as `Context.user_message_id`
 > (`nat/builder/context.py:206-210`), so `agent` reads it directly —
 > `get_user_message_id_from_context()` in `project_context.py`.
@@ -247,7 +247,7 @@ The agent tier's only handle on the turn is the third one — NAT stores it as
 > Everything below still holds: the backend still cannot address the browser's
 > assistant **message row**, only the turn.
 >
-> One trap the reading surfaced: NAT initialises `_message_parent_id` to the
+> One trap the reading surfaced: the runtime initialises `_message_parent_id` to the
 > literal `"default_id"` (`message_handler.py:99`) — a constant shared by every
 > turn of every conversation. Treating it as an identity would collapse them onto
 > one idempotency key and silence every turn after the first, so the accessor maps
@@ -441,7 +441,7 @@ handler to invent output.
 > is registered is a frozen *value*, and there is nothing for a decorator to
 > wrap. It raises on a duplicate id, because two stages under one id would share
 > an idempotency key and overwrite each other's payload on the turn.
- Import-time registration, same shape as NAT's
+ Import-time registration, same shape as the runtime's
 `@register_function` that the whole agent tier already uses.
 
 **One call site.** `piloti/conversation_register.py:1222-1253` — the bespoke
@@ -524,12 +524,12 @@ already publishes to the conversation bus so the replica holding the socket
 writes it (`websocket_reconnect.py:224-231`, `conversation_bus.py:284-292`). A
 stage on the owner replica reaches a client on a relay replica with no new code.
 
-**Deliberately NOT reused:** NAT's `create_websocket_message`. It resolves the
+**Deliberately NOT reused:** the runtime's `create_websocket_message`. It resolves the
 frame schema through `WebSocketMessageType`, a vendored `StrEnum`
 (`nat/data_models/api_server.py:612-624`) that cannot gain a member without
 patching the dependency. `_registry.send` takes any `BaseModel` and calls
-`model_dump()`, so Grid can own its own frame model. This is the whole reason the
-frame type is `grid_`-prefixed.
+`model_dump()`, so the app can own its own frame model. This is the whole reason the
+frame type was `grid_`-prefixed.
 
 > **[as built, slice 3]** The implementation is `GridStageMessage` and
 > `send_stage_frame` in `agent_host/websocket_reconnect.py`, registered by
@@ -620,7 +620,7 @@ the socket of the turn it follows:
 }
 ```
 
-> **[as built, chat wire v2]** This replaced the Grid-owned
+> **[as built, chat wire v2]** This replaced the app-owned
 > `grid_stage_message` frame (`v: 1`, `parent_id`, ISO `timestamp`) and its
 > fixtures in `shared/stages/frames.json`, which are retired. The envelope is
 > the wire's own, so a stage needs no frame type, builder or version of its
@@ -850,7 +850,7 @@ Moving them out of the always-on card catalogue is where the 136 tokens/turn go.
 
 ### 6.1 "Below the message, not inside it" — structurally
 
-Today `follow_ups` is a `GridCard` inside `AgentResponse`'s answer body: cards no
+Today `follow_ups` is a `AnswerCard` inside `AgentResponse`'s answer body: cards no
 marker claimed are rendered in the fallback block **inside** the white answer
 surface (`AgentResponse.tsx:684-695`), above the provenance footer.
 
@@ -1198,7 +1198,7 @@ Keep the old header for one release so a mixed deployment does not go dark.
 > `defaultOn` in `POST_ANSWER_STAGE_FLAGS` moved to `true` with it, and for a
 > reason the flag state alone does not carry: `defaultOn` is what a deployment
 > *without* the flag product reads, and with the card retired a `false` there
-> would mean a Grid with no follow-up questions at all and nothing to switch on.
+> would mean a Piloti with no follow-up questions at all and nothing to switch on.
 > The stage is a shipped core capability now, on the same footing as
 > `memory_reflection` — capability bit included, so a workflow config with no
 > `follow_ups_llm` is still a no-op rather than a failure.
@@ -1274,7 +1274,7 @@ queued.**
 ### 7.10 Migration — retiring the `follow_ups` card
 
 Stored `follow_ups` cards exist in `messages.metadata.cards`, are re-read on every
-render (`server-message-mapper.ts:129-132` → `validateGridCards`) and on every
+render (`server-message-mapper.ts:129-132` → `validateAnswerCards`) and on every
 export (`lib/answer-export/cards.ts`, walked generically). They must keep working.
 
 **Retire, never delete.** Four steps, in this order.
@@ -1329,12 +1329,12 @@ export (`lib/answer-export/cards.ts`, walked generically). They must keep workin
    > `grid-cards` against `model_facing_card_types()`, so a retired name left in
    > the list is silently dropped on every read — a seed naming a card the
    > runtime never sees, which is exactly the drift
-   > `test_seeded_grid_cards_survive_the_read_path` exists to catch.
+   > `test_seeded_answer_cards_survive_the_read_path` exists to catch.
    >
    > The post-hoc prompt falls **12,654 → 12,127** per finished report. All
    > figures are tiktoken `cl100k_base`, measured over the rendered strings.
 3. **Leave the pydantic model, the Zod schema and `FollowUpsCard.tsx` in place.**
-   `validateGridCards` leaves an `undefined` hole for anything that fails the
+   `validateAnswerCards` leaves an `undefined` hole for anything that fails the
    union (`src/shared/cards/schemas.ts`), so removing the member would make every
    old thread lose its chips at those positions *and* log a warning per card.
    `AnswerCards.tsx:278-284` keeps rendering stored ones.
@@ -1483,7 +1483,7 @@ Written here because "contract-first" is unenforceable without it.
   sleeps past `timeout_s`), raise, and empty. No LLM, no socket.
 - **Wire:** one JSON fixture per `(stage, status)` in a shared fixture file, read
   by *both* the Python frame-builder test and the TypeScript
-  `NATStageMessageSchema` test. The fixture is the contract; if the two halves
+  stage-frame schema test. The fixture is the contract; if the two halves
   drift, one of them fails.
 
   > **[as built]** The file is `shared/stages/frames.json`, alongside
@@ -1544,7 +1544,7 @@ alone. Nothing else may start before 0.**
 |---|---|---|---|---|
 | **0** ✅ | **BUILT.** The primitive: `stages/` package, `StageSpec`, `TurnFacts`, runner (semaphore + timeout + span), registry, sink interface. Reflection ported onto it, behaviour-identical, flag unchanged. No new stage, no frame. Carries the §1.4 and §1.5 fixes and the §7.8 kill-switch fix. | — | yes — a pure refactor with the §1.4/§1.5 fixes | revert |
 | **1** ✅ | **BUILT.** Backend `follow_ups`: gate, handler, prompt, payload model. `delivery="silent"` — **it runs and is measured, and delivers nothing.** Carries `StageEmpty` (§2.4), per-stage cost on the span (§7.4) and the backend↔BFF stage-flag parity guard. | 0 | yes | flag off |
-| **2** ✅ | **BUILT.** Frontend: `NATStageMessageSchema`, `onStage`, `wsParentId` on the message, `stages` on the PATCH + its sanitiser, `FollowUpsRail`, `/dev` variant, registry.mjs rewrite (§6.3). Built against the §4 fixtures, which now exist as `shared/stages/frames.json`. Carries the §8 correction (three arrival conditions, not two) and the §6.2 one. | — (contract only) | yes — renders from fixtures with no backend | revert |
+| **2** ✅ | **BUILT.** Frontend: the stage-frame schema, `onStage`, `wsParentId` on the message, `stages` on the PATCH + its sanitiser, `FollowUpsRail`, `/dev` variant, registry.mjs rewrite (§6.3). Built against the §4 fixtures, which now exist as `shared/stages/frames.json`. Carries the §8 correction (three arrival conditions, not two) and the §6.2 one. | — (contract only) | yes — renders from fixtures with no backend | revert |
 | **3** ✅ | **BUILT.** Wire them: `agent_host` publishes the frame sink (`GridStageMessage` + `send_stage_frame`, registered at plugin import), `follow_ups` declares `delivery="frame"`, and the `post-answer-follow-ups` flag is on for one organization and off everywhere else. Carries the §9 contract test's Python half, which replaces the slice-2 stand-in. | 0,1,2 | yes | flag off |
 | **4** ✅ | **BUILT.** Retire the card: `SYSTEM_CARD_TYPES`, prompt-weight removal (catalog, post-hoc craft, and the seeded skill's `grid-cards` list + craft section via `0062`), export skip already done by PR #474 (§7.10). The `post-answer-follow-ups` flag is on for ALL orgs in both environments and `defaultOn` follows it. | 3 | yes | §7.10's revert path — step 1 **plus** reverting the step-2 commit **plus** `0062_…down.sql`; **performed and verified end to end**, not assumed |
 | **4b** ✅ | **BUILT.** Reflection's own frame + the per-turn chip; the poll deleted (§5.1, §1.7). `memory_reflection` declares `delivery="frame"` and its payload carries the rows it wrote; the client stores them under `stages.memoryReflection`, and `useConversationMemory` is gone. Carries the §1.1 correction (which half of path 1 the chip's in-turn label actually was) and the §5.1 one (§8's conditions are the rail's, not every stage's). | 3 | yes | flag off |

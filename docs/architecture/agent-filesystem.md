@@ -68,7 +68,7 @@ Departures, each with its reason:
    `knowledge_search` or `read_passage` hit names the path `read_file` opens. One header
    line per hit; the byte fixture `read_passage_outline.txt` moved with it.
 6. **The source toggle is mapped in code** (`data_sources.source_id_for_call`): the
-   filesystem tools are not NAT functions, so the `data_sources` registry cannot list
+   filesystem tools are not runtime functions, so the `data_sources` registry cannot list
    them. They belong to the source `knowledge_search` belongs to, per mount; a call under
    `/drafts/` belongs to none.
 7. **A restricted path resolves only once its collection may be named** (`may_name`): a
@@ -155,7 +155,7 @@ Departures, each with its reason:
 1. **The skills moved before this slice** (ADR-0135), so the `/skills/` exception to "tool
    results are data" ships, and there is no `use_skill` to retire.
 2. **The retired names are unbound, not unregistered**: deep research, intake and the door bind
-   the same NAT functions with their full contracts, so the variant is chosen at bind time, and a
+   the same runtime functions with their full contracts, so the variant is chosen at bind time, and a
    config without `filesystem` (an eval arm, a benchmark) keeps the full contracts. A
    `read_passage` call on the chat is answered by the tool node with the tools there are; a
    retired argument (`match`, `stemmed`, `context`, `view`) by the schema, with its replacement.

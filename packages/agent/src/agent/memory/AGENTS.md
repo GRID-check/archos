@@ -3,7 +3,7 @@
 The two agent-side writers of a project's durable findings: the in-turn
 `remember` tool (`register.py`) and the body of the post-answer reflection pass
 (`reflection.py`), plus the one decision both make about restricted folders
-(`restriction.py`). Not an agent — one NAT tool and one stage handler.
+(`restriction.py`). Not an agent — one agent tool and one stage handler.
 
 Do not confuse it with `agent/knowledge/project_memory.py`, which is the
 HTTP client both use, or with `agent/stages/memory_reflection.py`, which

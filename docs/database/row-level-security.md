@@ -12,7 +12,7 @@ when something returns nothing, and how to run it locally.
 ## The shape of it
 
 ```
-getGridSession()          ← the one funnel every authenticated path passes through
+getUserSession()          ← the one funnel every authenticated path passes through
     │                       publishes { organizationId, userId } into AsyncLocalStorage
     ▼
 lib/db (the chokepoint)   ← wraps client.unsafe() and client.begin(), the only two
@@ -92,7 +92,7 @@ not readable-by-everyone; it is not readable at all, and you get
 
 ## Writing code that touches the database
 
-**Authenticated requests need nothing.** `getGridSession()` already published
+**Authenticated requests need nothing.** `getUserSession()` already published
 the context — routes, server components and server actions alike.
 
 **Everything else states its scope:**

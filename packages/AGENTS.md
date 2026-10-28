@@ -62,7 +62,7 @@ and its path to the `packages` filter in `.github/filters.yml`.
 
 ## The Python packages: `agent`, `knowledge-layer`, `ris-adapter`, `tavily-web-search`
 
-`agent` (the agent itself, `packages/agent/src/agent`, distribution `aiq-agent`) moved
+`agent` (the agent itself, `packages/agent/src/agent`, distribution `agent`) moved
 here from `src/` in ADR-0145 row 8. Its suite is `packages/agent/tests`, and it runs in the
 core suite (`be:test`, with the coverage gate) beside `tests/`, not in `be:test:sources`;
 `tests/test_python_packages.py` knows that. Its own `AGENTS.md` is
@@ -70,7 +70,7 @@ core suite (`be:test`, with the coverage gate) beside `tests/`, not in `be:test:
 
 `knowledge-layer` (ingestion and retrieval, the library the agent is built on),
 `ris-adapter` (the RIS legal adapter) and `tavily-web-search` (web search), all
-NAT plugins. Each is its own uv workspace member with its own `pyproject.toml`
+agent-runtime plugins. Each is its own uv workspace member with its own `pyproject.toml`
 and tests, installed into the shared venv. They moved here from `sources/` in
 ADR-0145 row 6.
 
@@ -120,7 +120,7 @@ changed, and they stayed green through every gate because nothing ran them.
 | When you | You must | What fails you |
 |---|---|---|
 | Add a Python package | Put it at `packages/<distribution>/`, list it in the three places above, then run `uv sync --group dev` | `tests/test_python_packages.py`; unlisted, it is a directory nothing installs or tests |
-| Register a function | `@register_function` with a `FunctionBaseConfig` subclass, plus a `nat.plugins` entry point in the **package's own** `pyproject.toml` | NAT never discovers it |
+| Register a function | `@register_function` with a `FunctionBaseConfig` subclass, plus a `nat.plugins` entry point in the **package's own** `pyproject.toml` | The runtime never discovers it |
 | Make it toggleable in the UI | Add it to the `data_sources` registry in `configs/config_oib_openrouter.yml` (the entry shape is `DataSourceEntry` in `agent/common/data_source_registry.py`) | The tool works and no user can turn it on |
 | Add a third-party API | Read the key from config, never from a module-level `os.environ` at import | The plugin fails to import on a deployment that does not use it, taking unrelated tools with it |
 | Return retrieved text | Return passages a citation can resolve to and be verified against | An unverifiable "source" launders an ungrounded claim. See `agent/common/source_kinds.py` |
