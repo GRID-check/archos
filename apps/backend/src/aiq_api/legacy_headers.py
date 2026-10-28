@@ -9,7 +9,7 @@ names they were stored with, so the move is expand, switch, contract:
   name onto its old one, so every reader here, still reading the old name, sees it;
 - switch (the release after): the senders send the new names;
 - contract (the release after that): the readers read the new names and this
-  goes. The list of readers is in ``frontends/ui/src/lib/http/legacy-header-names.ts``.
+  goes. The list of readers is in ``apps/workspace/bff/http/legacy-header-names.ts``.
 
 A header already present under its old name is left as it is. Only the names
 in ``SERVICE_HEADERS`` are copied: ``x-`` alone is every proxy's prefix. The
