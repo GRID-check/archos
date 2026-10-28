@@ -9,7 +9,7 @@
 
 Docker Compose (`deploy/compose/docker-compose.yaml`):
 
-- **postgres** — 3 logical DBs: `aiq_jobs`, `aiq_checkpoints`, `grid_app`.
+- **postgres** — 3 logical DBs: `jobs`, `checkpoints`, `grid_app`.
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
@@ -783,7 +783,7 @@ their own listing block: those agents route and plan, they never emit
 citations.
 
 **Silent summary-row loss on double LLM failure — fixed 2026-07-16**:
-ingestion (`sources/knowledge_layer/src/llamaindex/adapter.py`, ~lines
+ingestion (`packages/knowledge-layer/src/llamaindex/adapter.py`, ~lines
 1795–1965) runs summary generation and tag classification as two concurrent
 calls to the same `summary_llm`; both independently swallow
 exceptions/timeouts and return `None` on failure. Previously the
@@ -1114,7 +1114,7 @@ worker that has read a Gliederung and knows the Punkt it needs was still asking
 the corpus to find that passage by similarity, and every batch spent that way is
 a round the run does not get back.
 
-`read_passage` (`sources/knowledge_layer/src/read_passage.py`) is that lookup:
+`read_passage` (`packages/knowledge-layer/src/read_passage.py`) is that lookup:
 `document` (exact indexed name, stored display title, or the derived OIB title)
 plus `clause` (the `clause_id` the Punkt chunker verified against the corpus's own
 contents pages) or `page` (`punkt` is accepted as the former name of `clause` for one release). `document` with neither is the **outline**: the
@@ -1174,7 +1174,7 @@ corpus: `status.retrieval.punkt` / `status.retrieval.page`
 ("Liest OIB-Richtlinie 2, Pkt. 3.5.2").
 
 A fetch it already made this turn is not made twice. `piloti/agent.py` derives a
-signature per call (`fetch_signature` in `common/turn_status.py`: the tool plus
+signature per call (`fetch_signature` in `common/tool_calls.py`: the tool plus
 its locus or its query and narrowing) and carries the turn's `executed_fetches`
 on the state; a `knowledge_search` or `read_passage` call whose signature already
 ran is **withheld** — derived once, read in both the agent node and the tools
@@ -1409,7 +1409,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   BKAG, ZTG, WGG, DMSG, UVP-G, WRG, ForstG, GewO). Pointer index only: full
   texts are still fetched live — by `ris_lookup` on the chat surface (it takes
   the pointer, downloads the law and returns the answering §§ as citable
-  passages: `sources/ris_adapter/src/lookup/`), and by `ris_fetch_document` in
+  passages: `packages/ris-adapter/src/lookup/`), and by `ris_fetch_document` in
   deep research, which still drives the three older RIS tools itself.
 - **The OIB corpus is not in the catalog.** The `oib_corpus_files` table and its
   objects → `oib_knowledge` are its own source of truth; what a corpus file *is* (Richtlinie / Leitfaden /
@@ -2057,7 +2057,7 @@ Per-run `SkillRuntime` (ADR-0018 — never cached on the shared agent) owns the
 run's read-only `SkillsBackend` and records what was DELIVERED for
 `skills_activated` on the terminal frame. Standing instructions are prompt text instead: the platform
 prompt, and the office's own bounded block (`X-Grid-Org-Instructions`, rendered
-in the turn context as `## Anweisungen des Büros`).
+in the turn context as `## Office instructions`).
 
 The set per run = builtin (`src/aiq_agent/skills/builtin/`, discovered
 deterministically, validated strictly) + org rows from the BFF internal
@@ -2253,7 +2253,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
 `task verify` is the local gate: host-native, defined once in the root
 `Taskfile.yml`. CI calls the same definitions but schedules them differently, so
 a local pass is strong evidence rather than a guarantee. `task verify:fast`
-skips two production builds, `fe:build` and `web:build`. Full command list, the
+skips two production builds, `fe:build` and `site:build`. Full command list, the
 checks that sit outside `verify`, and the traps `task --list` does not carry:
 `docs/contributing/testing-and-verification.md`.
 

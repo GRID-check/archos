@@ -30,6 +30,8 @@ import { Item, ItemActions, ItemContent, ItemList } from '@/components/ui/item'
 import { LoadError } from '@/components/ui/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
+import { jobsCopy } from '@/i18n/namespaces/jobs'
+import { tasksCopy } from '@/i18n/namespaces/tasks'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import { isActiveTaskRunStatus, type TaskRunStatus } from '@/lib/tasks/task-vocabulary'
 import { listJobRuns, type JobRun } from '@/adapters/api/jobs-client'
@@ -67,8 +69,8 @@ export function runTimeLabel(iso: string, locale: string, now: number = Date.now
 }
 
 export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Element {
-  const t = useTranslations('jobs')
-  const tTasks = useTranslations('tasks')
+  const t = useTranslations(jobsCopy)
+  const tTasks = useTranslations(tasksCopy)
   const { locale } = useLocale()
   const [runs, setRuns] = useState<JobRun[] | null>(null)
   const [error, setError] = useState(false)

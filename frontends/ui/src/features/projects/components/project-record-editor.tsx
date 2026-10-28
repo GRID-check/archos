@@ -21,7 +21,15 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemTitle } from '@/components/ui/item'
 import { MonthInput } from '@/components/ui/month-input'
+import {
+  addProjectPerson,
+  removeProjectPerson,
+  saveProjectStartMonth,
+  updateProjectPerson,
+} from '@/adapters/api/project-record-client'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { isMonth, isOrderedPeriod, type Month } from '@/lib/projects/month'
 import type { ProjectPersonView, ProjectRecordView } from '@/lib/projects/project-record-types'
 
@@ -31,7 +39,7 @@ export function useProjectRecordFormat(): {
   /** A person's months: „März 2026 – Juni 2027", „seit März 2026", „bis Juni 2027", or empty. */
   span: (from: Month | null, to: Month | null) => string
 } {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const month = (value: Month): string =>
     new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}-01T00:00:00Z`))
@@ -46,24 +54,14 @@ export function useProjectRecordFormat(): {
 
 /** The project's period as one line: „seit März 2026", „März 2026 – Sept. 2027", or „Beginn offen". */
 export function useProjectPeriodText(projectRecord: Pick<ProjectRecordView, 'startedOn' | 'endedOn'>): string {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { span } = useProjectRecordFormat()
   if (!projectRecord.startedOn) return t('projectRecord.periodOpen')
   return span(projectRecord.startedOn, projectRecord.endedOn)
 }
 
-async function send(url: string, method: string, body?: unknown): Promise<boolean> {
-  try {
-    const res = await fetch(url, {
-      method,
-      headers: body ? { 'content-type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    return res.ok
-  } catch {
-    return false
-  }
-}
+/** Whether a save went through: a refused or unreachable one is `false`, and the editor says so. */
+const settled = (request: Promise<void>): Promise<boolean> => request.then(() => true, () => false)
 
 const monthOrNull = (value: string): Month | null => (isMonth(value) ? value : null)
 
@@ -77,14 +75,14 @@ export function ProjectRecordPeriod({
   projectRecord: ProjectRecordView
   onChanged: () => void
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const { month } = useProjectRecordFormat()
   const [pending, setPending] = useState(false)
 
   const save = async (value: string): Promise<void> => {
     setPending(true)
-    const ok = await send(`/api/projects/${projectId}/project-record`, 'PUT', { startedOn: monthOrNull(value) })
+    const ok = await settled(saveProjectStartMonth(projectId, monthOrNull(value)))
     setPending(false)
     if (!ok) return void toast.error(t('projectRecord.error'))
     toast.success(t('projectRecord.periodSaved'))
@@ -160,8 +158,8 @@ export function ProjectRecordPeople({
   /** Says who is listed on their own; off where the surface already says it. */
   hint?: boolean
 }): JSX.Element {
-  const t = useTranslations('projects')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(projectsCopy)
+  const tCommon = useTranslations(commonCopy)
   const { span } = useProjectRecordFormat()
   const [editing, setEditing] = useState<Editing | null>(null)
   const [removing, setRemoving] = useState<ProjectPersonView | null>(null)
@@ -180,8 +178,8 @@ export function ProjectRecordPeople({
     }
     setPending(true)
     const ok = person?.id
-      ? await send(`/api/projects/${projectId}/people/${person.id}`, 'PATCH', body)
-      : await send(`/api/projects/${projectId}/people`, 'POST', body)
+      ? await settled(updateProjectPerson(projectId, person.id, body))
+      : await settled(addProjectPerson(projectId, body))
     setPending(false)
     if (!ok) return void toast.error(t('projectRecord.error'))
     toast.success(t('projectRecord.saved'))
@@ -192,7 +190,7 @@ export function ProjectRecordPeople({
   const remove = async (): Promise<void> => {
     if (!removing?.id) return
     setPending(true)
-    const ok = await send(`/api/projects/${projectId}/people/${removing.id}`, 'DELETE')
+    const ok = await settled(removeProjectPerson(projectId, removing.id))
     setPending(false)
     if (!ok) return void toast.error(t('projectRecord.error'))
     toast.success(t('projectRecord.removed'))
@@ -317,7 +315,7 @@ function PersonForm({
   onSubmit: (draft: PersonDraft) => Promise<void>
   onCancel: () => void
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const [draft, setDraft] = useState(initial)
   const backwards = !isOrderedPeriod(monthOrNull(draft.startedOn), monthOrNull(draft.endedOn))

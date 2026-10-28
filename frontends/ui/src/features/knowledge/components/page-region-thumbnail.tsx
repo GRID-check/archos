@@ -18,6 +18,7 @@ import { FileX2, Lock } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSeenOnce } from '@/hooks/use-seen-once'
 import { useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { cn } from '@/lib/utils'
 import { drawPlace, type DrawnPlace, type ImageClip } from '../lib/place-drawing'
 import type { PagePlace } from '../lib/page-place'
@@ -87,7 +88,7 @@ export const PageRegionThumbnail: FC<PageRegionThumbnailProps> = ({
   className,
   ...data
 }) => {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const [seenRef, seen] = useSeenOnce<HTMLDivElement>()
   const frameRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

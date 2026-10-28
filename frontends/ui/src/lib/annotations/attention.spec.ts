@@ -33,8 +33,8 @@ import { describeResource } from '@/lib/sharing/registry'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import type { InboxItemView } from '@/lib/inbox/types'
-import { getDictionary } from '@/i18n/dictionaries'
-import { createTranslator } from '@/i18n/translate'
+import { namespaceRoot, translatorFor } from '@/i18n/namespace'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import {
   markAuthor,
   markParticipants,
@@ -836,8 +836,8 @@ describe('onMarksSet', () => {
   })
 
   it('reads as the colleague’s sentence, counted: „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“', () => {
-    const dictionary = getDictionary('de')
-    const t = createTranslator(dictionary, 'collaboration')
+    const dictionary = namespaceRoot(collaborationCopy, 'de')
+    const t = translatorFor(collaborationCopy, 'de')
     const row = (variant: string, count: number) =>
       ({
         type: 'annotation.activity',
@@ -864,8 +864,8 @@ describe('onMarksSet', () => {
   })
 
   it('names nobody, never „Jemand“ or an empty name, when the person who set them is unknown', () => {
-    const dictionary = getDictionary('de')
-    const t = createTranslator(dictionary, 'collaboration')
+    const dictionary = namespaceRoot(collaborationCopy, 'de')
+    const t = translatorFor(collaborationCopy, 'de')
     const row = (variant: string, count: number, subject: string | null) =>
       ({
         type: 'annotation.activity',
@@ -894,8 +894,8 @@ describe('onMarksSet', () => {
   })
 
   it('reads a row whose newest mark was deleted by its count alone, and says one of them is gone', () => {
-    const dictionary = getDictionary('de')
-    const t = createTranslator(dictionary, 'collaboration')
+    const dictionary = namespaceRoot(collaborationCopy, 'de')
+    const t = translatorFor(collaborationCopy, 'de')
     const row = {
       type: 'annotation.activity',
       variant: 'created',

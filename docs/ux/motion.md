@@ -1,6 +1,6 @@
 # Motion on the public site
 
-The motion language of `frontends/web`: what moves, why, how, and the longer
+The motion language of `apps/site`: what moves, why, how, and the longer
 list of what does not. Read it before you animate anything on the site, and
 before you add a duration, an easing or a distance that is not a token.
 
@@ -28,10 +28,10 @@ scrolling, the page is still.
 
 Defined twice, once per runtime, and kept in step by a check:
 
-- CSS custom properties in `frontends/web/src/styles/global.css`
+- CSS custom properties in `apps/site/src/styles/global.css`
   (`@theme static`, so `ease-settle` and `ease-draft` are also Tailwind
   utilities);
-- `frontends/web/src/lib/motion.ts` for scripts (GSAP and the Web Animations
+- `apps/site/src/lib/motion.ts` for scripts (GSAP and the Web Animations
   API); `src/scripts/motion-gsap.ts` registers the easings with GSAP under the
   same names, so a timeline says `ease: 'settle'`.
 

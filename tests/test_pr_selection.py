@@ -22,11 +22,11 @@ TESTS = {
     "tests/test_project_yaml.py": "load('project.yaml')",
     # A helper, not a test file: its docstring cites a document, and it reads a fixture.
     "tests/aiq_agent/judge_stub.py": (
-        '"""Imported by path, as ``sources/AGENTS.md`` asks."""\n'
+        '"""Imported by path, as ``packages/AGENTS.md`` asks."""\n'
         "STORED = ROOT / 'fixtures' / 'answers' / 'stored.json'"
     ),
     "tests/test_config.py": "load('configs/config_oib_openrouter.yml')",
-    "sources/knowledge_layer/tests/test_schema.py": "read('schemas.json')",
+    "packages/knowledge-layer/tests/test_schema.py": "read('schemas.json')",
 }
 READERS = {"src/lib/authz/authz-coverage.spec.ts": None}
 #: One reader that declares its inputs, one that does not.
@@ -65,7 +65,7 @@ def test_without_a_recorded_database_everything_runs(mod):
     [
         "conftest.py",
         "tests/conftest.py",
-        "sources/knowledge_layer/tests/conftest.py",
+        "packages/knowledge-layer/tests/conftest.py",
         "tests/fixtures/drafting_turns.py",
         "uv.lock",
         "pyproject.toml",
@@ -105,9 +105,9 @@ def test_a_non_python_input_adds_every_test_that_names_it(mod):
 
 
 def test_a_file_named_only_by_its_basename_still_counts(mod):
-    changed = ["sources/knowledge_layer/src/qdrant/schemas.json"]
+    changed = ["packages/knowledge-layer/src/qdrant/schemas.json"]
 
-    assert mod.decide_python(changed, TESTS, recorded=True)[1] == ["sources/knowledge_layer/tests/test_schema.py"]
+    assert mod.decide_python(changed, TESTS, recorded=True)[1] == ["packages/knowledge-layer/tests/test_schema.py"]
 
 
 def test_package_data_no_test_names_forces_the_full_suite(mod):
@@ -141,8 +141,38 @@ def test_a_file_only_a_helper_reads_forces_the_full_suite(mod):
     assert mod.decide_python(changed, TESTS, recorded=True)[0] == "full"
 
 
+def test_a_file_a_support_package_reads_selects_the_tests_that_import_it(mod):
+    # ADR-0145 row 5: a `<package>_testing` module has one importable name, so
+    # its importers are known, and a full run is not needed.
+    tests = {
+        "tests/aiq_agent/testing/agent_testing/exposure.py": "EXPOSURE = ROOT / 'tests/fixtures/exposure.json'",
+        "tests/aiq_agent/tools/test_exposure_config.py": "from agent_testing.exposure import EXPOSURE",
+        "tests/aiq_agent/test_framing.py": "from agent_testing import exposure, langfuse",
+        "tests/aiq_agent/test_other.py": "from agent_testing.langfuse import trace",
+    }
+
+    mode, selected, _ = mod.decide_python(["tests/fixtures/exposure.json"], tests, recorded=True)
+
+    assert (mode, selected) == (
+        "select",
+        ["tests/aiq_agent/test_framing.py", "tests/aiq_agent/tools/test_exposure_config.py"],
+    )
+
+
+def test_a_support_package_no_test_imports_still_forces_the_full_suite(mod):
+    tests = {"packages/knowledge-layer/testing/knowledge_layer_testing/pdfs.py": "PDF = 'fixtures/scan.pdf'"}
+
+    assert mod.decide_python(["tests/fixtures/scan.pdf"], tests, recorded=True)[0] == "full"
+
+
+def test_python_in_a_support_package_is_python_testmon_sees(mod):
+    changed = ["packages/knowledge-layer/testing/knowledge_layer_testing/qdrant.py"]
+
+    assert mod.decide_python(changed, TESTS, recorded=True)[0] == "select"
+
+
 def test_a_document_a_helper_only_cites_selects_nothing_extra(mod):
-    assert mod.decide_python(["sources/AGENTS.md"], TESTS, recorded=True)[:2] == ("select", [])
+    assert mod.decide_python(["packages/AGENTS.md"], TESTS, recorded=True)[:2] == ("select", [])
 
 
 def test_a_fixture_no_test_names_forces_the_full_suite(mod):

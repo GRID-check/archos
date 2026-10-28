@@ -27,6 +27,7 @@
 import { createContext, useCallback, useContext, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { useTranslations } from '@/i18n'
+import { DOCUMENT_SCOPE_COPY } from './document-scope'
 import {
   DEFAULT_DOCUMENT_ACTIONS,
   type DocumentActionKind,
@@ -62,7 +63,7 @@ export function DocumentObjectMenu({
   asChild = false,
   ...props
 }: DocumentObjectMenuProps): ReactNode {
-  const t = useTranslations(props.scope)
+  const t = useTranslations(DOCUMENT_SCOPE_COPY[props.scope])
   /** Whether anybody has asked for this row's menu yet. Once true, it stays. */
   const [live, setLive] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)

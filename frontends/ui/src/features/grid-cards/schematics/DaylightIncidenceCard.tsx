@@ -31,6 +31,7 @@ import {
 } from './kit'
 import { sketchLine, sketchRect } from './rough'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { DimensionCheckData, DimStatus, NormReferenceData, ObstructionData } from '@/shared/cards/schemas'
 
 interface DaylightIncidenceCardProps {
@@ -58,7 +59,7 @@ export const DaylightIncidenceCard: FC<DaylightIncidenceCardProps> = ({
   reference,
   note,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const sill = window_sill_height_m ?? FALLBACK_SILL_M
   const head = Math.max(window_head_height_m ?? FALLBACK_HEAD_M, sill + 0.4)
 

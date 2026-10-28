@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button'
 import { RisoPrint } from '@/components/brand/riso-print'
 import { StatusScreen } from '@/components/brand/status-screen'
 import { getTranslations } from '@/i18n/server'
+import { errorsCopy } from '@/i18n/namespaces/errors'
 
 export default async function NotFound() {
-  const t = await getTranslations('errors')
+  const t = await getTranslations(errorsCopy)
   return (
     <StatusScreen
       // An empty plot with one column never given a house: "not in the plan".

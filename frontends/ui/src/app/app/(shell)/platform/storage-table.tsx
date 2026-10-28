@@ -62,6 +62,7 @@ import {
 } from '@/lib/storage/contract'
 import { formatDecimalInput, parseDecimalInput } from '@/lib/text/parse-decimal'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { cn } from '@/lib/utils'
 
 interface OrganizationStorageRow {
@@ -192,7 +193,7 @@ const QuotaBar: FC<{ usedBytes: number; quotaBytes: number | null }> = ({
 }
 
 export const PlatformStorageTable: FC = () => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.organizationsManage)
   const [data, setData] = useState<PlatformStorageResponse | null>(null)
@@ -449,7 +450,7 @@ function StorageRow({
   onCancel,
   onSubmit,
 }: StorageRowProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const name = row.displayName ?? row.organizationId
   const over = row.quotaBytes !== null && row.usedBytes >= row.quotaBytes
@@ -633,7 +634,7 @@ const LimitsEditor: FC<{
   onCancel,
   onSubmit,
 }) => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const quotaId = `${idPrefix}-quota`
   const uploadLimitId = `${idPrefix}-upload-limit`
   return (

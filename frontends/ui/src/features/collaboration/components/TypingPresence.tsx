@@ -22,6 +22,7 @@ import type { FC } from 'react'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { WorkingDots } from '@/components/ui/working-dots'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import type { DirectoryPerson } from '@/lib/sharing/types'
 import { cn } from '@/lib/utils'
 
@@ -35,7 +36,7 @@ export interface TypingPresenceProps {
 const MAX_NAMED = 2
 
 export const TypingPresence: FC<TypingPresenceProps> = ({ typists, className }) => {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   if (typists.length === 0) return null
 
   const named = typists.slice(0, MAX_NAMED)

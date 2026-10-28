@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig } from "../config";
 import { APP_DEFAULTS, KEDA_SCALER_ROLE, LANGFUSE, PORT, QDRANT } from "../constants";
-import type { Postgres } from "../data/postgres";
+import { CHECKPOINTS_DB, JOBS_DB, type Postgres } from "../data/postgres";
 import { FRONTEND_DRAIN_SECONDS, secretChecksum } from "../platform/rollout";
 import { frontendLangfuseEnv, LANGFUSE_SECRETS_NAME, LANGFUSE_SECRET_KEYS } from "../platform/langfuse";
 import { logicalName, objectName } from "../names";
@@ -90,7 +90,7 @@ export interface AppSecrets {
 export const SCALER_SECRET_NAME = objectName("kedaScalerSecret"); // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
 
 /**
- * The Secret key of the DSN KEDA reads the Python claim queues (`aiq_jobs`)
+ * The Secret key of the DSN KEDA reads the Python claim queues (`jobs`)
  * through, and the one for the BFF queue (`grid_app`).
  */
 export const JOBS_QUEUE_DSN_KEY = "KEDA_JOBS_QUEUE_DB_URL";
@@ -129,7 +129,7 @@ export function buildScalerSecret(w: AppWiring): k8s.core.v1.Secret {
     {
       metadata: { name: SCALER_SECRET_NAME, namespace: w.namespace },
       stringData: {
-        [JOBS_QUEUE_DSN_KEY]: dsn("aiq_jobs"),
+        [JOBS_QUEUE_DSN_KEY]: dsn(JOBS_DB),
         ...(w.cfg.bffJobs.enabled ? { [BFF_QUEUE_DSN_KEY]: dsn("grid_app") } : {}),
       },
     },
@@ -183,17 +183,17 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     // (ADR-0083): `pooler` for what is self-contained per transaction, `direct`
     // (`grid-pg-rw`) for what needs one server connection across statements.
     // `postgres.spec.ts` holds this table to the same split.
-    NAT_JOB_STORE_DB_URL: w.dsn({ db: "aiq_jobs", via: "pooler", driver: "postgresql+asyncpg" }),
-    GRID_CHECKPOINT_DB: w.dsn({ db: "aiq_checkpoints", via: "pooler" }),
-    GRID_SUMMARY_DB: w.dsn({ db: "aiq_jobs", via: "pooler", driver: "postgresql+psycopg" }),
-    GRID_DEEP_CHECKPOINT_DB: w.dsn({ db: "aiq_checkpoints", via: "pooler" }),
+    NAT_JOB_STORE_DB_URL: w.dsn({ db: JOBS_DB, via: "pooler", driver: "postgresql+asyncpg" }),
+    GRID_CHECKPOINT_DB: w.dsn({ db: CHECKPOINTS_DB, via: "pooler" }),
+    GRID_SUMMARY_DB: w.dsn({ db: JOBS_DB, via: "pooler", driver: "postgresql+psycopg" }),
+    GRID_DEEP_CHECKPOINT_DB: w.dsn({ db: CHECKPOINTS_DB, via: "pooler" }),
     // LISTEN/NOTIFY: a notification reaches the one server session that ran
     // LISTEN, which a transaction pooler does not keep for the client.
-    GRID_LISTEN_DB_URL: w.dsn({ db: "aiq_jobs", via: "direct" }),
+    GRID_LISTEN_DB_URL: w.dsn({ db: JOBS_DB, via: "direct" }),
     // Session advisory locks (leader election, the re-ingest lock, the reaper):
     // a session owns the lock, so behind a pooler it is taken on one server
     // connection and "released" on another, and the first stays locked.
-    GRID_LOCK_DB_URL: w.dsn({ db: "aiq_jobs", via: "direct" }),
+    GRID_LOCK_DB_URL: w.dsn({ db: JOBS_DB, via: "direct" }),
     // The app tier connects as the least-privilege role, so row-level security
     // applies to it (ADR-0041). Migrations get the owner credential below —
     // RLS does not apply to a table's owner, so DDL and backfills still work.
@@ -271,7 +271,7 @@ export function posthogEnv(cfg: GridConfig): EnvVar[] {
  * The landing site's PostHog pair (`PUBLIC_POSTHOG_HOST`,
  * `PUBLIC_POSTHOG_PROJECT_TOKEN`), or nothing unless both are configured: the
  * same stack keys the other runtimes read, under the names the Astro tier uses.
- * `frontends/web/src/pages/web-analytics.js.ts` reads them per request (the
+ * `apps/site/src/pages/web-analytics.js.ts` reads them per request (the
  * pages are prerendered and the image builds with no env files) and answers an
  * empty script without them. Exported for `web.spec.ts`.
  */
@@ -292,7 +292,7 @@ export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
  * §4, §6). `chatEnv`, `apiEnv` and the worker envs add `GRID_ROLE`.
  */
 
-export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): EnvVar[] {
+export function backendEnv(w: AppWiring, otelServiceName = "backend-chat"): EnvVar[] {
   const { cfg } = w;
   const env: EnvVar[] = [
     { name: "APP_ENV", value: "production" },
@@ -459,7 +459,7 @@ export function chatEnv(w: AppWiring): EnvVar[] {
  */
 export function apiEnv(w: AppWiring): EnvVar[] {
   return [
-    ...backendEnv(w, "grid-aiq-api").filter((e) => !(typeof e.name === "string" && CHAT_ONLY_ENV.has(e.name))),
+    ...backendEnv(w, "backend-api").filter((e) => !(typeof e.name === "string" && CHAT_ONLY_ENV.has(e.name))),
     { name: "GRID_ROLE", value: "api" },
   ];
 }

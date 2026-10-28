@@ -9,6 +9,7 @@ import { SkillsPanel } from '@/features/skills/components/skills-panel'
 import { TasksPanel } from '@/features/tasks/components/tasks-panel'
 import type { TasksView } from '@/features/tasks/lib/tasks-view'
 import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { parseAutomationTab, tabForDeepLink, type AutomationTab } from '../lib/automation-tab'
 
 /**
@@ -73,7 +74,7 @@ export function AutomationPanel({
   initialTab,
   initialView = 'list',
 }: AutomationPanelProps): JSX.Element {
-  const t = useTranslations('nav')
+  const t = useTranslations(navCopy)
   const [tab, setTab] = useState<AutomationTab>(() => deepLinkTab() ?? initialTab)
   // Corrects `?tab=` once so the address bar matches the tab above: without it,
   // closing a drawer opened from `?tab=skills&task=…` would leave `?tab=skills`

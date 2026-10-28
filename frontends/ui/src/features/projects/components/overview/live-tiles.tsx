@@ -8,51 +8,17 @@
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 import { Brain, Pin, Users } from 'lucide-react'
+import { listProjectMemory, type ProjectMemoryEntry } from '@/adapters/api/project-memory-client'
+import { listProjectMembers, type ProjectMember } from '@/adapters/api/project-members-client'
+import { collectPages } from '@/lib/api/offset-page'
 import { AvatarStack } from '@/components/ui/avatar-stack'
 import { BentoFigure, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { Chip } from '@/components/ui/chip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 
 type Load<T> = { state: 'loading' } | { state: 'error' } | { state: 'ready'; value: T }
-
-/** One GET, read once on mount; aborted if the tile unmounts first. */
-/**
- * One read of `url`; with `collect` (the body's list key) every page of a paged
- * list is read and `pick` gets the whole list under that key, so a count is not
- * the first page's.
- */
-function useJson<T>(url: string, pick: (body: unknown) => T, collect?: string): Load<T> {
-  const [load, setLoad] = useState<Load<T>>({ state: 'loading' })
-  useEffect(() => {
-    const controller = new AbortController()
-    const read = async (): Promise<unknown> => {
-      const rows: unknown[] = []
-      let cursor: string | null = null
-      do {
-        const page: string = cursor ? `${url}${url.includes('?') ? '&' : '?'}cursor=${encodeURIComponent(cursor)}` : url
-        const res = await fetch(page, { signal: controller.signal })
-        if (!res.ok) throw new Error(String(res.status))
-        const body = (await res.json()) as Record<string, unknown>
-        if (!collect) return body
-        rows.push(...((body[collect] as unknown[] | undefined) ?? []))
-        cursor = typeof body.nextCursor === 'string' ? body.nextCursor : null
-      } while (cursor !== null)
-      return { [collect as string]: rows }
-    }
-    read()
-      .then((body) => {
-        setLoad({ state: 'ready', value: pick(body) })
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setLoad({ state: 'error' })
-      })
-    return () => controller.abort()
-    // `pick` is a pure projection; re-reading on its identity would refetch every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url])
-  return load
-}
 
 /**
  * The loading tile, drawn in the loaded tile's shape so the overview does not
@@ -80,11 +46,23 @@ function TileSkeleton({ under }: { under: 'lines' | 'avatars' }): JSX.Element {
   )
 }
 
-interface MemoryNote {
-  id: string
-  content: string
-  pinned: boolean
-  verification: string
+/** The project's memory, every page, read once on mount; ignored if the tile unmounts first. */
+function useMemoryNotes(projectId: string): Load<ProjectMemoryEntry[]> {
+  const [load, setLoad] = useState<Load<ProjectMemoryEntry[]>>({ state: 'loading' })
+  useEffect(() => {
+    let live = true
+    collectPages((cursor) => listProjectMemory(projectId, { limit: 200, cursor }))
+      .then((notes) => {
+        if (live) setLoad({ state: 'ready', value: notes })
+      })
+      .catch(() => {
+        if (live) setLoad({ state: 'error' })
+      })
+    return () => {
+      live = false
+    }
+  }, [projectId])
+  return load
 }
 
 /** How much Piloti has noted, how much a person still has to look at, and the pinned notes. */
@@ -97,12 +75,8 @@ export function MemoryTile({
   href: string
   span?: BentoSpan
 }): JSX.Element {
-  const t = useTranslations('settings')
-  const load = useJson(
-    `/api/projects/${encodeURIComponent(projectId)}/memory?limit=200`,
-    (body) => ((body as { items?: MemoryNote[] }).items ?? []) as MemoryNote[],
-    'items'
-  )
+  const t = useTranslations(settingsCopy)
+  const load = useMemoryNotes(projectId)
 
   return (
     <BentoTile
@@ -122,8 +96,8 @@ export function MemoryTile({
   )
 }
 
-function MemoryBody({ notes }: { notes: readonly MemoryNote[] }): JSX.Element {
-  const t = useTranslations('settings')
+function MemoryBody({ notes }: { notes: readonly ProjectMemoryEntry[] }): JSX.Element {
+  const t = useTranslations(settingsCopy)
   if (notes.length === 0) {
     return <p className="text-muted-foreground text-sm">{t('project.overview.memory.empty')}</p>
   }
@@ -157,11 +131,23 @@ function MemoryBody({ notes }: { notes: readonly MemoryNote[] }): JSX.Element {
   )
 }
 
-interface RosterEntry {
-  userId: string
-  name: string
-  profilePictureUrl: string | null
-  role: string | null
+/** The project's role holders, read once on mount; ignored if the tile unmounts first. */
+function useRoster(projectId: string): Load<ProjectMember[]> {
+  const [load, setLoad] = useState<Load<ProjectMember[]>>({ state: 'loading' })
+  useEffect(() => {
+    let live = true
+    listProjectMembers(projectId)
+      .then((members) => {
+        if (live) setLoad({ state: 'ready', value: members.filter((member) => member.role) })
+      })
+      .catch(() => {
+        if (live) setLoad({ state: 'error' })
+      })
+    return () => {
+      live = false
+    }
+  }, [projectId])
+  return load
 }
 
 /** Who is assigned to the project: the faces and the count. */
@@ -174,13 +160,8 @@ export function MembersTile({
   href: string
   span?: BentoSpan
 }): JSX.Element {
-  const t = useTranslations('settings')
-  const load = useJson(`/api/projects/${encodeURIComponent(projectId)}/members?limit=200`, (body) =>
-    (((body as { members?: RosterEntry[] }).members ?? []) as RosterEntry[]).filter(
-      (member) => member.role
-    ),
-    'members'
-  )
+  const t = useTranslations(settingsCopy)
+  const load = useRoster(projectId)
 
   return (
     <BentoTile

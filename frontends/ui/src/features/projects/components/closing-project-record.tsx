@@ -15,22 +15,22 @@ import { useCallback, useEffect, useState, type JSX } from 'react'
 import { useRouter } from 'next/navigation'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getProjectRecord } from '@/adapters/api/project-lifecycle-client'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ProjectRecordView } from '@/lib/projects/project-record-types'
 import { ProjectRecordPeople, useProjectPeriodText } from './project-record-editor'
 
 type Load = { state: 'loading' } | { state: 'failed' } | { state: 'ready'; projectRecord: ProjectRecordView }
 
 export function ClosingProjectRecord({ projectId }: { projectId: string }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const router = useRouter()
   const [load, setLoad] = useState<Load>({ state: 'loading' })
 
   const reload = useCallback(async (): Promise<void> => {
     try {
-      const res = await fetch(`/api/projects/${projectId}/project-record`)
-      if (!res.ok) throw new Error(String(res.status))
-      const body = (await res.json()) as Partial<ProjectRecordView>
+      const body = await getProjectRecord(projectId)
       if (!Array.isArray(body.people)) throw new Error('not a Steckbrief')
       setLoad({ state: 'ready', projectRecord: body as ProjectRecordView })
     } catch {
@@ -73,7 +73,7 @@ function ClosingPeople({
   projectRecord: ProjectRecordView
   onChanged: () => void
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const period = useProjectPeriodText(projectRecord)
   return (
     <div className="space-y-3">

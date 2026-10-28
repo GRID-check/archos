@@ -3,7 +3,7 @@
 The escalation step of docs/design/cross-project-escalation.md: the model
 climbs from this project to the office's reference projects on its own, when
 the question is comparative or the project's own sources are thin. The turn
-context lists the closest closed projects (``<referenzprojekte>``), so the
+context lists the closest closed projects (``<reference_projects>``), so the
 model knows what is there before it looks.
 
 ## One tool, three actions
@@ -75,6 +75,7 @@ from pydantic import BeforeValidator
 
 from aiq_agent import project_context
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
 from aiq_agent.common.grounding_block import GroundingBlock
@@ -83,7 +84,6 @@ from aiq_agent.common.grounding_block import SourceProject
 from aiq_agent.common.grounding_block import render_grounding_block
 from aiq_agent.common.norm_registry import FEDERAL_STATE_TOKENS
 from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.knowledge.permit_extraction import canonical_record_kind
 from aiq_agent.knowledge.permit_extraction import canonical_requirement_kind
 from aiq_agent.knowledge.restricted_collections import is_restricted_collection
@@ -234,7 +234,7 @@ _DESCRIPTION = (
     "their own access list (default: off). The search also returns Bescheide of earlier procedures "
     "(conditions, information requests with authority, municipality and date). `find` lists projects with "
     "status, period and address (`query` searches name and address). `brief` reads a project's confirmed key "
-    "facts and its summary (`project_id` from `<referenzprojekte>`, `find` or a hit).\n"
+    "facts and its summary (`project_id` from `<reference_projects>`, `find` or a hit).\n"
     "Returns passages with citation keys, project and year. A hit is a precedent, not a norm. Only the passage "
     "is available: documents of other projects cannot be opened further. The whole office may read closed "
     "projects; content from RUNNING projects makes the chat shareable only with people who may open those "
@@ -248,7 +248,7 @@ _UNREACHABLE = (
 )
 _NOT_FOUND = (
     "This project does not exist, or not everyone who reads this chat may open it. Use a "
-    "project_id from `<referenzprojekte>` or `find`."
+    "project_id from `<reference_projects>` or `find`."
 )
 
 #: Said once per answer that handed out content narrowing the chat's readers: the doors it shut.

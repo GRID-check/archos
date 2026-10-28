@@ -4,7 +4,7 @@ import { loadUnreadableDocumentsSection } from './unreadable-section'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { buildProjectBriefView } from './brief-view'
 import { normalizeLegacyPromptView } from './legacy-names'
-import { isValidFederalStateToken } from './intake-definition'
+import { isValidFederalStateToken } from './intake-conditions'
 import { ProjectProfileSchema } from './types'
 import type {
   ProjectAssumption,

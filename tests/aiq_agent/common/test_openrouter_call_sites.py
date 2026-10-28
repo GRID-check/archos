@@ -27,13 +27,20 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-SCANNED = [ROOT / "src", ROOT / "sources", ROOT / "frontends" / "aiq_api" / "src", ROOT / "scripts"]
+SCANNED = [
+    ROOT / "src",
+    ROOT / "packages" / "knowledge-layer",
+    ROOT / "packages" / "ris-adapter",
+    ROOT / "packages" / "tavily-web-search",
+    ROOT / "frontends" / "aiq_api" / "src",
+    ROOT / "scripts",
+]
 
 #: Constructing a model client by hand. Allowed only where the seam builds one.
 RAW_CLIENT = re.compile(r"\b(?:Async)?OpenAI\(|\bNVIDIAEmbedding\(")
 RAW_CLIENT_HOMES = {
     "src/aiq_agent/common/openrouter.py",  # openai_client
-    "sources/knowledge_layer/src/llamaindex/adapter.py",  # make_embed_model
+    "packages/knowledge-layer/src/llamaindex/adapter.py",  # make_embed_model
 }
 
 #: Talking to a model endpoint directly. The module must also use an adapter.
@@ -56,7 +63,8 @@ NO_TENANT_CONTENT = {
 def _python_files() -> list[Path]:
     files: list[Path] = []
     for base in SCANNED:
-        files.extend(p for p in base.rglob("*.py") if "tests" not in p.relative_to(ROOT).parts)
+        # Tests and their support packages (`testing/`) are not call sites.
+        files.extend(p for p in base.rglob("*.py") if not {"tests", "testing"} & set(p.relative_to(ROOT).parts))
     return files
 
 
@@ -68,7 +76,7 @@ def test_the_scan_sees_the_known_call_sites():
     """Guards the test itself: a glob that silently matched nothing would pass everything."""
     scanned = {_rel(p) for p in _python_files()}
     assert "frontends/aiq_api/src/aiq_api/routes/generate_summary.py" in scanned
-    assert "sources/knowledge_layer/src/cross_encoder.py" in scanned
+    assert "packages/knowledge-layer/src/cross_encoder.py" in scanned
     assert "src/aiq_agent/common/decisions.py" in scanned
 
 

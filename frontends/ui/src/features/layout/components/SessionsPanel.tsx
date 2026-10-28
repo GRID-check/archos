@@ -78,9 +78,12 @@ import { cn } from '@/lib/utils'
 import { formatAbsoluteTime, formatRelativeTime, formatTimeOfDay } from '@/lib/format'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useLocale, useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { listResearchRuns, type ResearchRun } from '@/adapters/api/research-runs-client'
 import { useLayoutStore } from '../store'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { DeleteSessionConfirmationModal } from './DeleteSessionConfirmationModal'
 import { DeleteAllSessionsConfirmationModal } from './DeleteAllSessionsConfirmationModal'
 import { StopResearchConfirmationModal } from './StopResearchConfirmationModal'
@@ -154,8 +157,8 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
   onRenameSession,
   projectId,
 }) {
-  const t = useTranslations('research')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(researchCopy)
+  const tCommon = useTranslations(commonCopy)
   const { locale } = useLocale()
   const isMobile = useIsMobile()
   const isSessionsPanelOpen = useLayoutStore((s) => s.isSessionsPanelOpen)
@@ -877,7 +880,7 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
   },
   ref
 ) {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const { locale } = useLocale()
   const [isHovered, setIsHovered] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
@@ -887,7 +890,7 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
 
   // Brand-new chats persist with an empty title — show a placeholder so the row
   // stays legible and the session remains findable in the history.
-  const tCollab = useTranslations('collaboration')
+  const tCollab = useTranslations(collaborationCopy)
   // A chat the reader may no longer read has no title for them: the real one is
   // model-written from content they cannot see (ADR-0088).
   const displayTitle = session.contentLocked

@@ -15,6 +15,7 @@ import { withPageSession } from '@/lib/auth/require-auth'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { hasPlatformPermission } from '@/lib/authz/platform'
 import { getTranslations } from '@/i18n/server'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { FeedbackTriage } from '@/features/product-feedback/components/feedback-triage'
 
 export default async function PlatformFeedbackPage({
@@ -22,7 +23,7 @@ export default async function PlatformFeedbackPage({
 }: {
   searchParams: Promise<{ report?: string | string[]; claim?: string | string[] }>
 }): Promise<JSX.Element> {
-  const t = await getTranslations('platform')
+  const t = await getTranslations(platformCopy)
   const { report, claim } = await searchParams
   const canTriage = await withPageSession((session) =>
     hasPlatformPermission(session, PLATFORM_PERMISSIONS.settingsManage)

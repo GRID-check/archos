@@ -404,6 +404,10 @@
     "de": "Eine Folgeanweisung wie „kürze Punkt 3“ ändert das Dokument direkt, statt eine zweite Version zu erstellen, sodass Sie im Gespräch an einem Entwurf weiterarbeiten, statt immer mehr nahezu identische Kopien anzuhäufen."
   },
   {
+    "en": "A follow-up question now builds on the earlier question and answer, also after an answer that read long passages, in the chat and when another agent asks Piloti.",
+    "de": "Eine Folgefrage baut jetzt auf der vorherigen Frage und Antwort auf – auch nach einer Antwort, bei der lange Passagen gelesen wurden, sowohl im Chat als auch, wenn ein anderer Agent Piloti fragt."
+  },
+  {
     "en": "A large upload no longer shows as failed while it is still being read: it stays at Wird gelesen, a notice says reading continues in the background, and the file becomes citable once it is ready.",
     "de": "Ein großer Upload wird nicht mehr als fehlgeschlagen angezeigt, solange die Datei noch gelesen wird: Der Status bleibt auf „Wird gelesen“, ein Hinweis informiert Sie, dass das Lesen im Hintergrund fortgesetzt wird, und sobald die Datei bereit ist, ist sie zitierfähig."
   },
@@ -536,6 +540,14 @@
     "de": "Bei einer Frage zu mehreren Paragraphen, etwa „§§ 3 bis 8“, werden jetzt bis zu sechs in einem Schritt gelesen statt nur der erste."
   },
   {
+    "en": "A question another agent puts to Piloti now always ends with an answer or a reason, also when Piloti restarts while answering it.",
+    "de": "Eine Frage, die ein anderer Agent Piloti jetzt stellt, wird immer mit einer Antwort oder einer Begründung abgeschlossen – auch wenn Piloti während der Beantwortung neu startet."
+  },
+  {
+    "en": "A question asked in English, or another language, in a project whose documents are German is now answered in the language you asked in. Short replies such as \"ok\" or a name still get a German answer.",
+    "de": "Fragen, die Sie in einem Projekt mit deutschen Dokumenten auf Englisch oder in einer anderen Sprache stellen, werden jetzt in der jeweiligen Sprache beantwortet. Auf kurze Antworten wie „ok“ oder einen Namen erhalten Sie weiterhin eine Antwort auf Deutsch."
+  },
+  {
     "en": "A question in the chat no longer keeps showing „Denkt nach“ when no answer comes. It ends with an error that you can retry.",
     "de": "Eine Frage im Chat zeigt nicht mehr dauerhaft „Denkt nach“, wenn keine Antwort kommt. Sie endet mit einer Fehlermeldung, die Sie wiederholen können."
   },
@@ -634,6 +646,10 @@
   {
     "en": "A scheduled research task now files its report under Berichte in the project, with the permissions of whoever set it up. The report of a nightly run used to expire after a day if nobody opened it.",
     "de": "Ein geplanter Rechercheauftrag legt seinen Bericht jetzt unter „Berichte“ im Projekt ab, mit den Rechten der Person, die ihn eingerichtet hat. Bisher verfiel der Bericht eines nächtlichen Laufs nach einem Tag, wenn ihn niemand öffnete."
+  },
+  {
+    "en": "A search for a word no document contains no longer fills the list with unrelated files, while a question asked in other words still finds the passages that answer it.",
+    "de": "Eine Suche nach einem Wort, das in keinem Dokument vorkommt, füllt die Liste nicht mehr mit irrelevanten Dateien, während eine anders formulierte Frage weiterhin die passenden Passagen findet."
   },
   {
     "en": "A search over your files or the Archiv that failed to run, for instance because it timed out, used to report \"no matches for …\", a statement about your own documents that Piloti had no way of making. Now it says the search failed and offers to run the same query again.",
@@ -922,6 +938,10 @@
   {
     "en": "An assistant connected to your workspace that asks Piloti a question can now show that Piloti is still working on the answer, or come back for it later without waiting.",
     "de": "Ein mit Ihrem Workspace verbundener Assistent, der Piloti eine Frage stellt, kann jetzt anzeigen, dass Piloti noch an der Antwort arbeitet, oder die Antwort später abrufen, ohne warten zu müssen."
+  },
+  {
+    "en": "An assistant such as Claude or Cursor that asks Piloti now receives the answer as plain Markdown, its check and action tables intact, instead of Piloti's own display markup.",
+    "de": "Ein Assistent wie Claude oder Cursor, der jetzt Piloti befragt, erhält die Antwort als einfaches Markdown mit intakten Prüf- und Aktionstabellen statt im Piloti-eigenen Darstellungs-Markup."
   },
   {
     "en": "An empty Von Piloti filter explains what it would show: research reports and diagrams Piloti filed, not the documents you uploaded.",
@@ -2432,6 +2452,10 @@
     "de": "Piloti antwortet jetzt als Kollege im Planungsbüro statt als Konformitätsprüfer, sodass das Zusammenfassen eines Dokuments oder das Sortieren von Zeichnungen nicht mehr mit einem Urteil endet. Piloti hilft Ihnen, eine Regel anzuwenden, und ersetzt weder den Entwurfsverfasser noch die Behörde."
   },
   {
+    "en": "Piloti now answers in the language you ask in, also when the project's documents are in German, and no longer writes an internal project field name into an answer.",
+    "de": "Piloti antwortet jetzt in der Sprache, in der Sie fragen, auch wenn die Projektdokumente auf Deutsch sind, und nennt interne Projektfeldnamen nicht mehr in Antworten."
+  },
+  {
     "en": "Piloti now chooses the working methods itself when they fit your question, and the answer still names the methods it used.",
     "de": "Piloti wählt die Methoden jetzt selbst, wenn sie zur Frage passen; die Antwort nennt weiterhin, welche Methoden es verwendet hat."
   },
@@ -3406,6 +3430,10 @@
   {
     "en": "The search in Dateien now sits in the header, next to the view switcher, the Alle / Meine / Nicht zugewiesen filter and Hochladen. The documents start a row higher, and there is one search on the page instead of two.",
     "de": "Die Suche in „Dateien“ sitzt jetzt in der Kopfzeile, neben dem Ansichtsumschalter, dem Filter Alle / Meine / Nicht zugewiesen und Hochladen. Die Dokumente beginnen eine Zeile höher, und es gibt nur noch eine Suche auf der Seite statt zwei."
+  },
+  {
+    "en": "The search now finds the same documents whether you type Flächenwidmung or Flaechenwidmung, and \"current only\" keeps every matching document instead of dropping older uploads.",
+    "de": "Die Suche findet jetzt dieselben Dokumente, egal ob Sie Flächenwidmung oder Flaechenwidmung eingeben, und die Einstellung „nur aktuelle“ berücksichtigt alle passenden Dokumente, statt ältere Uploads auszuschließen."
   },
   {
     "en": "The settings overview of a project whose intake was never completed no longer shows an error. Its similar closed projects load again.",

@@ -43,8 +43,9 @@ import type { DocBlock } from '@/lib/answer-export/blocks'
 import { splitProse } from '@/lib/answer-export/citations'
 import { markdownToBlocks } from '@/lib/answer-export/markdown'
 import { resolveLocale, type Locale } from '@/i18n/config'
-import { getDictionary } from '@/i18n/dictionaries'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import type { Translator } from '@/i18n/translate'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 
 /**
  * The accepted body.
@@ -176,7 +177,7 @@ const liftLeadingTitle = (markdown: string): { title: string | null; body: strin
 const reportSections = (
   markdown: string,
   request: PdfRequest,
-  t: ReturnType<typeof createTranslator>
+  t: Translator
 ): AnswerSections => {
   const { body, references } = splitProse(markdown)
   const lifted = liftLeadingTitle(body)
@@ -225,7 +226,7 @@ const reportSections = (
  */
 export function documentSections(request: PdfRequest): { sections: AnswerSections; locale: Locale } {
   const locale = resolveLocale(request.locale)
-  const t = createTranslator(getDictionary(locale), 'answerExport')
+  const t = translatorFor(answerExportCopy, locale)
   const markdown = request.markdown ?? ''
 
   if (!isRichRequest(request)) {

@@ -18,6 +18,7 @@ import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
 import { FactBlockTitle, FactList, FactRow } from '@/components/ui/fact-list'
 import { useLocale, useTranslations } from '@/i18n'
+import { dossierCopy } from '@/i18n/namespaces/dossier'
 import {
   COVERAGE_REASONS,
   DOCUMENT_REFERENCE_KINDS,
@@ -79,7 +80,7 @@ export function DocumentLink({
 
 /** „38 von 40 Seiten vollständig gelesen · 2 Zeichnungsseiten nicht ausgewertet (Seitenlimit)“. */
 export function CoverageLine({ coverage }: { coverage: ReadingCoverage }): JSX.Element {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   if (coverage.notRead === 0) {
     return (
       <p className="text-muted-foreground text-xs" data-testid="dossier-coverage">
@@ -114,7 +115,7 @@ function formatDate(iso: string, locale: string): string {
 
 /** Type, parties, dates, place and the facts the document states. */
 export function DossierFacts({ dossier }: { dossier: Dossier }): JSX.Element | null {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   const { locale } = useLocale()
   const place = dossier.place ? [dossier.place.address, dossier.place.municipality].filter(Boolean).join(', ') : ''
   const hasHeader = dossier.documentType || dossier.parties.length > 0 || dossier.dates.length > 0 || place
@@ -165,7 +166,7 @@ export function DossierFacts({ dossier }: { dossier: Dossier }): JSX.Element | n
 
 /** One reference: a link per document it resolves to, muted when the project lacks it. */
 function ReferenceItem({ resolved, projectId }: { resolved: ResolvedReference; projectId?: string }): JSX.Element | null {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   const { reference, resolution, targets } = resolved
   if (resolution === 'self') return null
   if (resolution === 'resolved' && targets.length > 0 && projectId) {
@@ -198,7 +199,7 @@ function ReferenceItem({ resolved, projectId }: { resolved: ResolvedReference; p
 }
 
 function ReferencePages({ reference }: { reference: DocumentReference }): JSX.Element | null {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   const label = pagesLabel(t, reference.pages)
   return label ? <span className="text-muted-foreground tabular-nums">{label}</span> : null
 }
@@ -211,7 +212,7 @@ export function DossierReferences({
   references: readonly ResolvedReference[]
   projectId?: string
 }): JSX.Element | null {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   const groups = DOCUMENT_REFERENCE_KINDS.map((kind) => ({
     kind,
     items: references.filter((resolved) => resolved.reference.kind === kind && resolved.resolution !== 'self'),
@@ -255,7 +256,7 @@ export function DossierReferencedBy({
   incoming: readonly IncomingReference[]
   projectId: string
 }): JSX.Element | null {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   if (incoming.length === 0) return null
   return (
     <div className="flex flex-col gap-1" data-testid="dossier-referenced-by">

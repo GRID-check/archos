@@ -20,6 +20,7 @@ import { CountPill } from '@/components/ui/count-pill'
 import { InspectorGroup } from '@/components/ui/inspector-group'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { dossierCopy } from '@/i18n/namespaces/dossier'
 import { COVERAGE_REASONS } from '@/lib/documents/dossier'
 import type { DocumentFinding, FindingSource } from '@/lib/documents/findings'
 import type { DocumentFindingsResponse } from '@/lib/documents/findings-wire'
@@ -67,7 +68,7 @@ function findingText(t: Translate, finding: DocumentFinding): string {
 
 /** One document a finding rests on: its link, the value it states, the pages. */
 function SourceItem({ source, projectId }: { source: FindingSource; projectId: string }): JSX.Element {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   const pages = pagesLabel(t, source.pages)
   return (
     <span className="inline-flex items-baseline gap-1">
@@ -81,7 +82,7 @@ function SourceItem({ source, projectId }: { source: FindingSource; projectId: s
 }
 
 function FindingLine({ finding, projectId }: { finding: DocumentFinding; projectId: string }): JSX.Element {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   return (
     <li className="flex flex-col gap-0.5 px-3 py-2 text-xs/5" data-testid={`finding-${finding.kind}`}>
       <span className="text-foreground">{findingText(t, finding)}</span>
@@ -114,7 +115,7 @@ export function DocumentFindingsList({
   response: DocumentFindingsResponse | null
   defaultOpen?: boolean
 }): JSX.Element | null {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   const [open, setOpen] = useState(defaultOpen)
   const section = useRef<HTMLElement>(null)
   const shown = Boolean(response && response.findings.length > 0)

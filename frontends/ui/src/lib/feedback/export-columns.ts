@@ -20,7 +20,7 @@
  * the reader (`FeedbackExportRecord`).
  */
 
-import type { Dictionary } from '@/i18n/dictionaries'
+import type { Dictionary as FullDictionary } from '@/i18n/dictionaries'
 import { interpolate } from '@/i18n/translate'
 import { CONVERSATION_TAG_KEYS } from '@/lib/conversations/tags'
 import type { FeedbackExportRow } from './export-repository'
@@ -28,6 +28,9 @@ import type { FeedbackWeeklyCount } from './repository'
 import { MIN_TREND_VOTES } from './trend'
 
 /** How a column's values are typed. Each has a format label in the dictionary. */
+/** The two namespaces a feedback export reads. */
+export type Dictionary = Pick<FullDictionary, 'feedbackExport' | 'platform'>
+
 export type ExportFormat = keyof Dictionary['feedbackExport']['formats']
 
 /** One cell before a format renders it. A list is joined by the renderer. */

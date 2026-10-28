@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { en } from '@/i18n/dictionaries/en'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { capturePosthog } from '@/lib/analytics/posthog'
 
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
@@ -94,7 +94,7 @@ vi.mock('../store', () => {
   return { useDocumentsStore }
 })
 
-vi.mock('@/features/chat', () => {
+vi.mock('@/features/chat/store', () => {
   const mockChatState = { addFileUploadStatusCard: vi.fn() }
   const useChatStore = (selector: (state: typeof mockChatState) => unknown) =>
     selector(mockChatState)
@@ -309,7 +309,7 @@ describe('useFileUpload', () => {
         ])
       })
 
-      expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(en.files.errors.uploadFailed)
+      expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(filesCopy.messages.en.errors.uploadFailed)
       expect(onError).toHaveBeenCalled()
     })
 
@@ -340,7 +340,7 @@ describe('useFileUpload', () => {
         await result.current.uploadFiles([pngFile])
       })
 
-      expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(en.files.errors.imageVlmUnavailable)
+      expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(filesCopy.messages.en.errors.imageVlmUnavailable)
     })
   })
 
@@ -445,7 +445,7 @@ describe('useFileUpload', () => {
       // Localized copy resolved via the files dictionary (English fallback
       // when no i18n provider is mounted in the test).
       expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(
-        en.files.errors.cannotRetryServerFile
+        filesCopy.messages.en.errors.cannotRetryServerFile
       )
     })
 
@@ -692,7 +692,7 @@ describe('useFileUpload — durable document uploads', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(mockClient.getCollection).not.toHaveBeenCalled()
     expect(mockDocumentsStoreState.trackedFiles).toEqual([])
-    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(en.files.errors.screeningPolicyUnavailable)
+    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(filesCopy.messages.en.errors.screeningPolicyUnavailable)
     fetchSpy.mockRestore()
   })
 
@@ -975,7 +975,7 @@ describe('useFileUpload — durable document uploads', () => {
 
     expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
       'mock-uuid',
-      expect.objectContaining({ status: 'failed', errorMessage: en.files.errors.projectClosed })
+      expect.objectContaining({ status: 'failed', errorMessage: filesCopy.messages.en.errors.projectClosed })
     )
   })
 
@@ -994,9 +994,9 @@ describe('useFileUpload — durable document uploads', () => {
 
     expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
       'mock-uuid',
-      expect.objectContaining({ status: 'failed', errorMessage: en.files.errors.uploadTimeout })
+      expect.objectContaining({ status: 'failed', errorMessage: filesCopy.messages.en.errors.uploadTimeout })
     )
-    expect(en.files.errors.uploadTimeout).not.toMatch(/^Upload failed/)
+    expect(filesCopy.messages.en.errors.uploadTimeout).not.toMatch(/^Upload failed/)
   })
 
   test('a file refused because the document it would replace is held is held with it, not failed (ADR-0086)', async () => {
@@ -1022,7 +1022,7 @@ describe('useFileUpload — durable document uploads', () => {
 
     // Held, in the reader's language, with the held document to ask about, and
     // never as that document (`serverFileId`): removing the row must not delete it.
-    const message = en.files.errors.quarantinedReplace.replace('{name}', 'plan-0.pdf')
+    const message = filesCopy.messages.en.errors.quarantinedReplace.replace('{name}', 'plan-0.pdf')
     expect(trackedById('mock-uuid')).toMatchObject({
       status: 'held',
       errorMessage: message,
@@ -1065,7 +1065,7 @@ describe('useFileUpload — durable document uploads', () => {
       await pending
     })
 
-    const message = en.files.errors.nameTaken.replace('{name}', 'plan-0.pdf')
+    const message = filesCopy.messages.en.errors.nameTaken.replace('{name}', 'plan-0.pdf')
     expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed', errorMessage: message, retryable: false })
     expect(String(trackedById('mock-uuid')?.errorMessage)).not.toMatch(/already exists here/)
     expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(message)
@@ -1098,7 +1098,7 @@ describe('useFileUpload — durable document uploads', () => {
     expect(said[0]).toEqual(said[1])
     expect(said[0]).toEqual({
       status: 'failed',
-      errorMessage: en.files.errors.nameTaken.replace('{name}', 'plan-0.pdf'),
+      errorMessage: filesCopy.messages.en.errors.nameTaken.replace('{name}', 'plan-0.pdf'),
       retryable: false,
       replacesHeld: undefined,
     })
@@ -1117,7 +1117,7 @@ describe('useFileUpload — durable document uploads', () => {
       await pending
     })
 
-    expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed', errorMessage: en.files.errors.uploadFailed })
+    expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed', errorMessage: filesCopy.messages.en.errors.uploadFailed })
   })
 
   test('any other conflict stays retryable', async () => {
@@ -1436,9 +1436,9 @@ describe('useFileUpload — chat attachments', () => {
 
     expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
       'mock-uuid',
-      expect.objectContaining({ status: 'failed', errorMessage: en.files.errors.uploadStorageFull })
+      expect.objectContaining({ status: 'failed', errorMessage: filesCopy.messages.en.errors.uploadStorageFull })
     )
-    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(en.files.errors.uploadStorageFull)
+    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(filesCopy.messages.en.errors.uploadStorageFull)
     expect(onError).toHaveBeenCalled()
     expect(mockOrchestratorFns.pollSessionDocuments).not.toHaveBeenCalled()
   })

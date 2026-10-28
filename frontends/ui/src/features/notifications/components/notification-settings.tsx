@@ -27,6 +27,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemMedia, I
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { useLocale, useTranslations } from '@/i18n'
+import { notificationsCopy } from '@/i18n/namespaces/notifications'
 import { PUSH_CATEGORIES, type PushCategory } from '@/lib/inbox/push-categories'
 import { formatRelativeTime } from '@/lib/format'
 import type { PushDeviceView } from '@/lib/push/types'
@@ -42,7 +43,7 @@ function DeviceIcon({ label }: { label: string }): JSX.Element {
 }
 
 export function NotificationSettingsView({ push }: { push: UsePushNotificationsResult }): JSX.Element | null {
-  const t = useTranslations('notifications')
+  const t = useTranslations(notificationsCopy)
   const { locale } = useLocale()
   const { phase } = push
 
@@ -165,7 +166,7 @@ function CategoryField({
   category: PushCategory
   push: UsePushNotificationsResult
 }): JSX.Element {
-  const t = useTranslations('notifications')
+  const t = useTranslations(notificationsCopy)
   const id = `push-category-${category}`
   return (
     <Field orientation="horizontal">
@@ -197,7 +198,7 @@ function DeviceRow({
   busy: boolean
   onRemove: () => void
 }): JSX.Element {
-  const t = useTranslations('notifications')
+  const t = useTranslations(notificationsCopy)
   return (
     <Item as="li" className="hover:bg-transparent">
       <ItemMedia>

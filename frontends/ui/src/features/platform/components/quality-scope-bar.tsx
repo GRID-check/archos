@@ -32,6 +32,7 @@ import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-selec
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatDayRange } from '@/lib/format'
 import {
   isIsoDay,
@@ -44,7 +45,7 @@ import {
   utcDay,
   type QualityScope,
 } from '@/lib/quality/scope'
-import type { QualityScopeOptions } from '@/lib/quality/scope-options'
+import { getQualityScopeOptions, type QualityScopeOptions } from '@/adapters/api/quality-scope-client'
 
 export interface QualityScopeBarProps {
   scope: QualityScope
@@ -58,8 +59,6 @@ export interface QualityScopeOptionsState {
   loading: boolean
   failed: boolean
 }
-
-const OPTIONS_ROUTE = '/api/platform/quality/scope-options'
 
 /** Why a custom range cannot be applied, or null. The API checks the same. */
 export function customRangeError(from: string, to: string): 'invalid' | 'inverted' | 'tooLong' | null {
@@ -99,10 +98,8 @@ export function useQualityScopeOptions(scope: QualityScope): QualityScopeOptions
   useEffect(() => {
     const controller = new AbortController()
     setState((previous) => ({ ...previous, loading: true, failed: false }))
-    fetch(`${OPTIONS_ROUTE}?${search}`, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(String(res.status))
-        const body = (await res.json()) as QualityScopeOptions
+    getQualityScopeOptions(search, { signal: controller.signal })
+      .then((body) => {
         if (!controller.signal.aborted) setState({ options: body, loading: false, failed: false })
       })
       .catch(() => {
@@ -114,7 +111,7 @@ export function useQualityScopeOptions(scope: QualityScope): QualityScopeOptions
 }
 
 export function QualityScopeBar({ scope, onScopeChange, options: state }: QualityScopeBarProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const { options, loading, failed } = state
 
@@ -250,7 +247,7 @@ function CustomRange({
   label: string
   onApply: (range: { from: string; to: string }) => void
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const [open, setOpen] = useState(false)
   const [from, setFrom] = useState(scope.from)
   const [to, setTo] = useState(scope.to)

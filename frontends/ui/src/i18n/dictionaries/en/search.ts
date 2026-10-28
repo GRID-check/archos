@@ -97,6 +97,8 @@ export const search = {
     /** What Piloti read about the document: title, parties, place, title block, references. The file view calls it the summary. */
     reading: 'summary',
     content: 'content',
+    /** The content matches the question by meaning, without holding its words. */
+    meaning: 'content (by meaning)',
   },
   annotation: {
     on: 'on {document}',

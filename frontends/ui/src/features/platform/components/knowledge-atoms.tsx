@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SourceSignalChip } from '@/features/layout/components/SourceSignalChip'
 import { useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import {
   docClassAuthority,
   docClassSignal,
@@ -31,7 +33,7 @@ import type { KnowledgeFileState } from '@/lib/knowledge/service'
  * in `base-knowledge.spec.tsx`).
  */
 export function useDocClassLabel(): (docClass: DocClass | string | null | undefined) => string {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   return useCallback((docClass) => t(`knowledge.docClasses.${resolveDocClass(docClass)}`), [t])
 }
 
@@ -67,7 +69,7 @@ export function KnowledgeStateBadge({
   state: KnowledgeFileState
   hint?: 'none' | 'tooltip'
 }): JSX.Element {
-  const tk = useTranslations('knowledge')
+  const tk = useTranslations(knowledgeCopy)
   const badge = <Badge variant={STATE_VARIANT[state]}>{tk(`states.${state}`)}</Badge>
   if (hint === 'none') return badge
   return (

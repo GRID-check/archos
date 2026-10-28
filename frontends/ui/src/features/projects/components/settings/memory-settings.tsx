@@ -9,6 +9,7 @@
 
 import type { JSX } from 'react'
 import { useTranslations } from '@/i18n'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { ProjectMemoryPanel } from '../project-memory-panel'
 
 export interface MemorySettingsProps {
@@ -18,7 +19,7 @@ export interface MemorySettingsProps {
 }
 
 export function MemorySettings({ projectId, canWrite }: MemorySettingsProps): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
 
   return (
     <div className="flex flex-col gap-4">

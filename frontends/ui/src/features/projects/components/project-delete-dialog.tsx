@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { deleteProject, ProjectRequestError } from '@/adapters/api/project-lifecycle-client'
 import { TypeToConfirmDialog } from '@/components/ui/type-to-confirm-dialog'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 export interface ProjectDeleteDialogProps {
   projectId: string
@@ -25,8 +28,8 @@ export function ProjectDeleteDialog({
   open,
   onOpenChange: setOpen,
 }: ProjectDeleteDialogProps) {
-  const t = useTranslations('projects')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(projectsCopy)
+  const tCommon = useTranslations(commonCopy)
   const { locale } = useLocale()
   const router = useRouter()
   const [pending, setPending] = useState(false)
@@ -34,19 +37,11 @@ export function ProjectDeleteDialog({
   const handleConfirm = async () => {
     setPending(true)
     try {
-      const res = await fetch(`/api/projects/${projectId}`, {
-        method: 'DELETE',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ confirmName: projectName }),
-      })
-      const data = await res.json().catch(() => null)
-      if (!res.ok) {
-        throw new Error(data?.error ?? t('dangerZone.deleteError'))
-      }
+      const data = await deleteProject(projectId, projectName)
       // The DELETE response carries the grace deadline (purgeAfter); surface it
       // as a concrete, locale-formatted date so the toast is honest about how
       // long the project can still be restored.
-      const purgeAfter = data?.purgeAfter ? new Date(data.purgeAfter) : null
+      const purgeAfter = data.purgeAfter ? new Date(data.purgeAfter) : null
       toast.success(
         purgeAfter && !Number.isNaN(purgeAfter.getTime())
           ? t('dangerZone.deleteSuccess', {
@@ -62,7 +57,12 @@ export function ProjectDeleteDialog({
       setOpen(false)
       router.push('/app/projects')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('dangerZone.deleteError'))
+      if (error instanceof ProjectRequestError) {
+        // The server's own sentence when it sent one, ours when it did not.
+        toast.error(error.serverMessage ?? t('dangerZone.deleteError'))
+      } else {
+        toast.error(error instanceof Error ? error.message : t('dangerZone.deleteError'))
+      }
       setPending(false)
       setOpen(false)
     }

@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ShellContent } from '@/components/shell'
 import { getTranslations } from '@/i18n/server'
+import { profileCopy } from '@/i18n/namespaces/profile'
 
 /**
  * Route-level loading state for the profile page. The page is a server
@@ -16,7 +17,7 @@ import { getTranslations } from '@/i18n/server'
  * the page itself uses.
  */
 export default async function ProfileLoading(): Promise<JSX.Element> {
-  const t = await getTranslations('profile')
+  const t = await getTranslations(profileCopy)
   return (
     <ShellContent aria-busy="true">
       <span className="sr-only" role="status">

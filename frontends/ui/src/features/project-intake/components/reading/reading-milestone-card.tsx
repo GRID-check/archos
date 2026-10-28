@@ -5,6 +5,7 @@ import { Check } from 'lucide-react'
 import { Item, ItemList } from '@/components/ui/item'
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n/translate'
+import { intakeReadingStepCopy } from '@/i18n/namespaces/intake-reading-step'
 import { cn } from '@/lib/utils'
 import type { MilestoneState, ReadingMilestone } from './reading-milestones'
 
@@ -81,7 +82,7 @@ function wordsOf(milestone: ReadingMilestone, t: Translator): RowWords {
  * reader hears a milestone change without being interrupted.
  */
 export function ReadingMilestoneCard({ milestones }: { milestones: readonly ReadingMilestone[] }): JSX.Element {
-  const t = useTranslations('intakeReadingStep')
+  const t = useTranslations(intakeReadingStepCopy)
   return (
     <ItemList
       as="ol"

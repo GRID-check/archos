@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { invalidateProjectFacts } from '@/features/chat/hooks/use-project-facts'
 import { buildPatchPreviewRows } from '@/lib/project-profile/patch-preview'
 import type { ProjectProfilePatchOperation } from '@/lib/project-profile/types'
@@ -60,7 +61,7 @@ export function FileOperationReceipt({
   operations: readonly FileOperationItem[]
   note?: string | null
 }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // A colleague's apply changed files too: the Files list is told either way.
   const server = useServerProposal(proposalId, 'file_operation', (next) => notifyIfAnyApplied(next.results))
   const { proposal } = server
@@ -114,7 +115,7 @@ export function FileOperationReceipt({
 
 /** What the call names, by name where this reader may read it (`targets` on the server's view), else by id. */
 function OperationTargets({ targets }: { targets: readonly OperationTargetView[] }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (targets.length === 0) return null
   return (
     <p className="card-caption text-muted-foreground" data-testid="operation-targets">
@@ -140,7 +141,7 @@ function OperationInput({
   unfolded: ReadonlySet<string>
   onToggle: (key: string) => void
 }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (rows.length === 0) return null
   // A path id is the object the action acts on: named after what it resolved to ("Project"), not "ID".
   const labelOf = (row: OperationInputRow): string => {
@@ -200,7 +201,7 @@ export function OperationReceipt({
   operation: string
   input: Record<string, unknown>
 }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const server = useServerProposal(proposalId, 'operation')
   const { proposal } = server
   const shownOperation = proposal?.payload.operation ?? operation
@@ -274,7 +275,7 @@ export function MemoryReceipt({
   confidence: MemoryPayload['confidence']
   supersedes?: string | null
 }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const server = useServerProposal(proposalId, 'memory')
   const { proposal } = server
   const note = proposal?.payload ?? { scope: null, kind, content, confidence, supersedes }
@@ -355,7 +356,7 @@ export function ProfilePatchReceipt({
   /** The chat's project, until the object says which project it is for. */
   projectId?: string | null
 }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // Every answer in the thread binds the profile (`:project[key]`): the value
   // it asked for appears in each of them now, not on a reload. A colleague's
   // apply counts too.

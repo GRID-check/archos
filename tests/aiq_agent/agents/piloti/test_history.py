@@ -228,6 +228,53 @@ class TestCompactToolResults:
         assert compact_tool_results(messages, {"k1"})[0].content == messages[0].content
 
 
+def _follow_up_after_a_heavy_turn(result_chars: int) -> list:
+    """A turn that read a long passage and answered, then the follow-up („und für Wohnungen?")."""
+    body = "Treppe Laufbreite 120 cm " * (result_chars // 25)
+    passage = "--- Result 1 ---\nSource: OIB-RL 4\nCitation: k1\n\n" + body
+    return [
+        HumanMessage(content="Mindestbreite einer Treppe nach OIB-RL 4"),
+        AIMessage(content="", tool_calls=[{"id": "c1", "name": "search", "args": {"q": "Treppe"}}]),
+        ToolMessage(content=passage, tool_call_id="c1", name="search"),
+        AIMessage(content="Die Mindestbreite beträgt 120 cm [1]."),
+        HumanMessage(content="und für Wohnungen?"),
+    ]
+
+
+class TestHistoryWindow:
+    """What was said outlives what was read: a follow-up always sees the question and answer it follows."""
+
+    def _contents(self, window) -> list[str]:
+        return [m.content for m in window]
+
+    def test_a_follow_up_keeps_the_previous_question_and_answer_when_the_results_overrun_the_budget(self):
+        from aiq_agent.agents.piloti.history import history_window
+
+        messages = _follow_up_after_a_heavy_turn(result_chars=400_000)
+        # The old window: the newest messages were the results, and the start on a
+        # human turn then dropped everything but the follow-up.
+        assert len(trim_message_history(prune_tool_results(messages), 2_000)) == 1
+
+        window = history_window(messages, 2_000)
+
+        assert self._contents(window) == [
+            "Mindestbreite einer Treppe nach OIB-RL 4",
+            "Die Mindestbreite beträgt 120 cm [1].",
+            "und für Wohnungen?",
+        ]
+        assert not any(isinstance(m, ToolMessage) or getattr(m, "tool_calls", None) for m in window)
+
+    def test_results_that_fit_still_ride_along(self):
+        from aiq_agent.agents.piloti.history import history_window
+
+        messages = _follow_up_after_a_heavy_turn(result_chars=2_000)
+
+        window = history_window(messages, 40_000)
+
+        assert len(window) == len(messages)
+        assert any(isinstance(m, ToolMessage) for m in window)
+
+
 class TestWarmTokenEncoder:
     """The encoder is loaded once, at boot (`conversation_register`), and the turn reuses it."""
 

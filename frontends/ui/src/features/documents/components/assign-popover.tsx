@@ -9,8 +9,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SearchField } from '@/components/ui/search-field'
 import { Spinner } from '@/components/ui/spinner'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { membersCopy } from '@/i18n/namespaces/members'
 import { assignPerson, listAssignmentCandidates, releasePerson } from '@/lib/assignments/client'
 import type { FileAssignee } from './project-file-workspace'
 
@@ -48,10 +50,10 @@ export function AssignPopover({
   /** Viewport-dressed trigger. Default is the Files ghost button. */
   trigger?: ReactElement
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   // The people search says what it searches, in the words every people search
   // of the app uses (the project's members), not the ask dialog's „An“.
-  const tPeople = useTranslations('members')
+  const tPeople = useTranslations(membersCopy)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)

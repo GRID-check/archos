@@ -13,9 +13,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldLabel } from '@/components/ui/field'
+import { ApiRequestError } from '@/adapters/api/api-error'
+import { renameProject } from '@/adapters/api/project-lifecycle-client'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 interface ProjectRenameDialogProps {
   projectId: string
@@ -35,7 +38,7 @@ export function ProjectRenameDialog({
   open,
   onOpenChange,
 }: ProjectRenameDialogProps) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const router = useRouter()
   const [name, setName] = useState(projectName)
   const [pending, setPending] = useState(false)
@@ -59,22 +62,17 @@ export function ProjectRenameDialog({
     if (!trimmed || trimmed === projectName) return
     setPending(true)
     try {
-      const res = await fetch(`/api/projects/${projectId}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: trimmed }),
-      })
-      if (!res.ok) {
-        throw new Error(
-          res.status === 403 ? t('overview.rename.forbidden') : t('overview.rename.error')
-        )
-      }
+      await renameProject(projectId, trimmed)
       toast.success(t('overview.rename.success'))
       setPending(false)
       onOpenChange(false)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('overview.rename.error'))
+      if (error instanceof ApiRequestError) {
+        toast.error(error.status === 403 ? t('overview.rename.forbidden') : t('overview.rename.error'))
+      } else {
+        toast.error(error instanceof Error ? error.message : t('overview.rename.error'))
+      }
       setPending(false)
     }
   }

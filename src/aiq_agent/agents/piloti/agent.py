@@ -78,6 +78,9 @@ from aiq_agent.common.retrieval_rounds import failed_call_ids
 from aiq_agent.common.retrieval_rounds import ran_signatures
 from aiq_agent.common.retrieval_rounds import repeat_fetches
 from aiq_agent.common.retrieval_rounds import signatures_of
+from aiq_agent.common.retrieval_status import emit_retrieval
+from aiq_agent.common.retrieval_status import emit_synthesis
+from aiq_agent.common.retrieval_status import record_round_announcement
 from aiq_agent.common.steering import HELD_FOR_STEER
 from aiq_agent.common.steering import AppliedSteer
 from aiq_agent.common.steering import SteerInbox
@@ -85,26 +88,23 @@ from aiq_agent.common.steering import SteerNote
 from aiq_agent.common.steering import current_steer_inbox
 from aiq_agent.common.steering import is_write_call
 from aiq_agent.common.steering import render_note
+from aiq_agent.common.tool_calls import fetch_signature
+from aiq_agent.common.tool_calls import is_retrieval_round
+from aiq_agent.common.tool_calls import is_skill_read
+from aiq_agent.common.tool_calls import tool_basename
 from aiq_agent.common.tool_errors import render_tool_error
+from aiq_agent.common.turn_notices import emit_family_coverage
+from aiq_agent.common.turn_notices import emit_input_budget_exhausted
+from aiq_agent.common.turn_notices import emit_refused_source
+from aiq_agent.common.turn_notices import emit_repeat_fetch
+from aiq_agent.common.turn_notices import emit_research_truncated
+from aiq_agent.common.turn_notices import emit_steered_writes
+from aiq_agent.common.turn_notices import emit_width_cap
 from aiq_agent.common.turn_status import begin_lane_capture
 from aiq_agent.common.turn_status import emit
-from aiq_agent.common.turn_status import emit_family_coverage
-from aiq_agent.common.turn_status import emit_input_budget_exhausted
-from aiq_agent.common.turn_status import emit_refused_source
-from aiq_agent.common.turn_status import emit_repeat_fetch
-from aiq_agent.common.turn_status import emit_research_truncated
-from aiq_agent.common.turn_status import emit_retrieval
-from aiq_agent.common.turn_status import emit_steered_writes
-from aiq_agent.common.turn_status import emit_synthesis
-from aiq_agent.common.turn_status import emit_width_cap
 from aiq_agent.common.turn_status import end_lane_capture
-from aiq_agent.common.turn_status import fetch_signature
 from aiq_agent.common.turn_status import get_lane_captures
-from aiq_agent.common.turn_status import is_retrieval_round
-from aiq_agent.common.turn_status import is_skill_read
-from aiq_agent.common.turn_status import record_round_announcement
 from aiq_agent.common.turn_status import retrieval_round_scope
-from aiq_agent.common.turn_status import tool_basename
 from aiq_agent.common.wire_v2 import SteerAppliedBody
 from aiq_agent.common.wire_v2 import SteerAppliedValue
 from aiq_agent.knowledge.already_read import merge_digest
@@ -1543,7 +1543,7 @@ class PilotiAgent:
         # this tenant shares; naming it keeps the provider's cache key, and so
         # its shard, stable across turns while the turn context (already-read
         # digest, date, inventory) moves in its own message.
-        stable_prefix = begin_stable_prefix(await stamp_static_prompt_for_turn())
+        stable_prefix = begin_stable_prefix(await stamp_static_prompt_for_turn(state.messages))
         registry, registry_token = _bind_registry()
         turn_capture = begin_turn_capture()
         measurement_capture = begin_measurement_capture()

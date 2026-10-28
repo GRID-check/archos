@@ -29,6 +29,7 @@ import type { JSX } from 'react'
 import { AvatarStack } from '@/components/ui/avatar-stack'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import type { ResourceAccessEntry, ResourceRole } from '@/lib/sharing/types'
 import { cn } from '@/lib/utils'
 
@@ -64,7 +65,7 @@ export function ParticipantStrip({
   onOpen,
   className,
 }: ParticipantStripProps): JSX.Element | null {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
 
   // Solo — nothing to show. See note 1 above.
   if (entries.length <= 1) return null

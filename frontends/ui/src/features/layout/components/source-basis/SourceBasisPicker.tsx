@@ -37,8 +37,11 @@ import { ItemList } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAuth } from '@/adapters/auth'
-import { useChatStore, useIsCurrentSessionBusy } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
+import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useLayoutStore } from '../../store'
 import { computePresetSourceIds } from '../../lib/source-presets'
@@ -53,8 +56,8 @@ const PRESETS: readonly SourcePresetId[] = ['law', 'office', 'project']
 const ALL = 'all'
 
 export const SourceBasisPicker: FC = () => {
-  const t = useTranslations('research')
-  const tc = useTranslations('common')
+  const t = useTranslations(researchCopy)
+  const tc = useTranslations(commonCopy)
   const { idToken } = useAuth()
 
   const enabledDataSourceIds = useLayoutStore((s) => s.enabledDataSourceIds)

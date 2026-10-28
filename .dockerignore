@@ -55,6 +55,8 @@ htmlcov/
 .ruff_cache/
 tests/
 evals/
+# The suites' support packages (ADR-0145 row 5); no package lists them.
+packages/*/testing/
 
 # ---- Documentation (not needed at runtime) ----
 *.md

@@ -61,7 +61,7 @@ vi.mock('./FileSourcesTab', () => ({ FileSourcesTab: () => null }))
 vi.mock('@/features/documents/components/file-preview-dialog', () => ({ FilePreviewDialog: () => null }))
 
 import { InputArea } from './InputArea'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 
 const CANDIDATES: MentionCandidatesResponse = {
   candidates: [

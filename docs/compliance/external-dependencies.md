@@ -41,9 +41,9 @@
 | **OpenRouter** | `openrouter.ai/api/v1` | All LLM inference (6 agent groups), embeddings + VLM in prod config, model catalog for admin picker, summary generation | **Yes** — full prompts, chat history, project context/memory (via `x-grid-*` headers → prompt), RAG chunks of uploaded docs, web results; embeddings = raw chunk text; VLM = page images | Yes (reference config) | `OPENROUTER_API_KEY` (backend + frontend) | `configs/config_oib_openrouter.yml:51-150`; `lib/model-config/openrouter.ts` |
 | **Upstream model providers** (via OpenRouter — dynamic) | varies | Actual inference of the org-selected model | Yes — OpenRouter forwards the full request | Implicit | none (runtime admin choice) | see statement above; `server.js:342` (`X-Grid-Model-Overrides`) |
 | **WorkOS** | `api.workos.com` + hosted AuthKit | AuthN/AuthZ (SSO, MFA, RBAC, FGA), org lifecycle, feature flags, **entire audit trail** | Personal data: accounts, memberships, sessions; audit events carry actor email, client IP, user agent, doc filenames | Prod: yes (`REQUIRE_AUTH=true`) | `WORKOS_CLIENT_ID/API_KEY/COOKIE_PASSWORD` | `lib/audit/service.ts:57-62`; `lib/documents/service.ts:196-205` |
-| **Tavily** | `api.tavily.com` | Primary web/news search | Search queries (LLM-derived from prompts); results flow back into prompts | Yes (all configs) | `TAVILY_API_KEY` | `sources/tavily_web_search/src/register.py:103-108` |
+| **Tavily** | `api.tavily.com` | Primary web/news search | Search queries (LLM-derived from prompts); results flow back into prompts | Yes (all configs) | `TAVILY_API_KEY` | `packages/tavily-web-search/src/register.py:103-108` |
 | **OpenAI direct** | `api.openai.com` | summary fallback only | Yes | Optional | `OPENAI_API_KEY` | `frontends/aiq_api/.../generate_summary.py:52-58` |
-| **Serper.dev / Exa / DuckDuckGo / Polymarket** | various | Optional search plugins | Prompt-derived queries | Optional | `SERPER_API_KEY`, `EXA_API_KEY`, none, none | `sources/*/src/register.py` |
+| **Serper.dev / Exa / DuckDuckGo / Polymarket** | various | Optional search plugins | Prompt-derived queries | Optional | `SERPER_API_KEY`, `EXA_API_KEY`, none, none | `packages/*/src/register.py` |
 | **Modal** | modal.com | Deep-research code sandbox (non-default config only; packages ship in prod image) | Agent-authored code + research-derived files | Optional | `MODAL_TOKEN_ID/SECRET` | `deepagents_runtime.py:244-366` |
 | **LangSmith** | `api.smith.langchain.com` | Tracing — **one env var away**: lib is installed transitively; `LANGCHAIN_TRACING_V2=true` exports **full prompts/completions** | Yes if enabled | Optional, off | `LANGCHAIN_TRACING_V2`, `LANGCHAIN_API_KEY` | `.env.example`; `uv.lock` |
 | **W&B / Jina** | — | Vestigial: env slots documented, **no code reads them** (`wandb` not even in lockfile) | No | Dead — remove | `WANDB_API_KEY`, `JINA_API_KEY` | negative code search |
@@ -59,7 +59,7 @@ Backend agents fetch no arbitrary URLs themselves (only internal BFF call in
 
 | Component | Image (pinning) | Data held |
 |---|---|---|
-| PostgreSQL | `postgres:16-alpine` (floating minor) | `grid_app` (projects, docs metadata, memory, usage ledger, model config), `aiq_jobs`, `aiq_checkpoints` (**full conversation/agent state**) |
+| PostgreSQL | `postgres:16-alpine` (floating minor) | `grid_app` (projects, docs metadata, memory, usage ledger, model config), `jobs`, `checkpoints` (**full conversation/agent state**) |
 | SeaweedFS | `chrislusf/seaweedfs:3.80` | Raw uploaded documents (`grid-documents`) |
 | Qdrant | `qdrant/qdrant:v1.19.2` (pinned; ADR-0115) | Embeddings + chunk text (OIB corpus + user docs); daily shard snapshots in the in-cluster SeaweedFS bucket `qdrant-snapshots`. Replaced Chroma, whose volume (`data-chroma-0` on Kubernetes, `chroma_data` in Compose) holds the same data until it is deleted after the migration |
 | Dragonfly | `dragonflydb/dragonfly:v1.27.1` (pinned) | Transient cache, rate-limit counters (no persistence) |

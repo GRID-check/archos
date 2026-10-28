@@ -1,12 +1,12 @@
 import { render, screen, within } from '@/test-utils'
 import { describe, expect, test } from 'vitest'
 
-import { getDictionary } from '@/i18n'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { ROLES, type RoleSpec } from '@/lib/authz/catalog'
 import { RoleCatalog } from './role-catalog'
 
-const t = createTranslator(getDictionary('en'), 'organization')
+const t = translatorFor(organizationCopy, 'en')
 
 const role = (over: Partial<RoleSpec> = {}): RoleSpec => ({
   slug: 'org-billing-admin',

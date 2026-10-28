@@ -39,6 +39,7 @@ import { useState, type FC } from 'react'
 import { ChevronDown, Sigma } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import {
   SchematicCard,
   fmtComparator,
@@ -90,7 +91,7 @@ const LimitLine: FC<{ limit: CalculationLimitData; unit: string; t: Translator }
 }
 
 export const CalculationCard: FC<CalculationCardProps> = ({ title, steps, limit, reference, note }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [open, setOpen] = useState(false)
 
   const results = evaluate(steps)

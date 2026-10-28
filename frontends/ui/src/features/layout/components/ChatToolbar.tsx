@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '@/adapters/auth'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useConversationOnServer } from '@/features/chat/lib/conversation-on-server'
 import { hasLiveRun } from '@/features/chat/lib/session-activity'
 import { AccessChip } from '@/features/collaboration/components/AccessChip'
@@ -35,6 +35,9 @@ import { ShareDialog } from '@/features/collaboration/components/ShareDialog'
 import { useSharing } from '@/features/collaboration/hooks/use-sharing'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { researchCopy } from '@/i18n/namespaces/research'
 import type { ResourceSharingState } from '@/lib/sharing/types'
 import { useHeaderHeight } from '../hooks/use-header-height'
 import { useLayoutStore } from '../store'
@@ -101,9 +104,9 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
 }) {
   const { isAuthenticated } = useAuth()
   const headerRef = useHeaderHeight(onHeightChange)
-  const t = useTranslations('research')
-  const tChat = useTranslations('chat')
-  const tCollab = useTranslations('collaboration')
+  const t = useTranslations(researchCopy)
+  const tChat = useTranslations(chatCopy)
+  const tCollab = useTranslations(collaborationCopy)
   const toggleSessionsPanel = useLayoutStore((s) => s.toggleSessionsPanel)
   // A run going in THIS thread, read off its stored ledger (ADR-0062).
   const isDeepResearchStreaming = useChatStore((s) =>

@@ -21,11 +21,18 @@
 import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { ApiRequestError } from '@/adapters/api/api-error'
+import {
+  setProjectStatus,
+  type ClosingChoice,
+  type ProjectStatusChange,
+} from '@/adapters/api/project-lifecycle-client'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ProjectProfile } from '@/lib/project-profile/types'
-import type { ProjectLifecycleView, ProjectOutcome } from '@/lib/projects/project-status'
-import type { Month } from '@/lib/projects/month'
+import type { ProjectLifecycleView } from '@/lib/projects/project-status'
 import { CloseProjectDialog } from '../components/close-project-dialog'
 import { ClosingDebrief } from '../components/closing-debrief'
 import { ClosingProjectRecord } from '../components/closing-project-record'
@@ -49,13 +56,7 @@ export interface ProjectLifecycleControls {
   dialogs: ReactNode
 }
 
-/** What a close names: how the project ended, and its Abschluss month. */
-export interface ClosingChoice {
-  outcome: ProjectOutcome
-  endedOn: Month
-}
-
-type Body = { status: 'active' } | { status: 'paused' } | ({ status: 'closed' } & ClosingChoice)
+export type { ClosingChoice }
 
 export function useProjectLifecycle({
   projectId,
@@ -63,32 +64,27 @@ export function useProjectLifecycle({
   profile = null,
   canWriteMemory = false,
 }: UseProjectLifecycleOptions): ProjectLifecycleControls {
-  const t = useTranslations('projects')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(projectsCopy)
+  const tCommon = useTranslations(commonCopy)
   const router = useRouter()
   const [closing, setClosing] = useState(false)
   const [reopening, setReopening] = useState(false)
   const [pending, setPending] = useState(false)
 
-  const move = async (body: Body, done: string): Promise<boolean> => {
+  const move = async (body: ProjectStatusChange, done: string): Promise<boolean> => {
     setPending(true)
     try {
-      const res = await fetch(`/api/projects/${projectId}/status`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (res.status === 409) {
+      await setProjectStatus(projectId, body)
+      toast.success(done, body.status === 'paused' ? { action: { label: t('lifecycle.toast.undo'), onClick: () => void resume() } } : undefined)
+      router.refresh()
+      return true
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 409) {
         // Someone moved it first: say so, and show where it stands now.
         toast.error(t('lifecycle.toast.conflict'))
         router.refresh()
         return false
       }
-      if (!res.ok) throw new Error(String(res.status))
-      toast.success(done, body.status === 'paused' ? { action: { label: t('lifecycle.toast.undo'), onClick: () => void resume() } } : undefined)
-      router.refresh()
-      return true
-    } catch {
       toast.error(t('lifecycle.toast.error'))
       return false
     } finally {

@@ -11,46 +11,20 @@ index says a file has Fassungen, not that it is a drawing.
 This is the ratchet for both, on the surfaces that shape everything else: the
 first-impression docs and every agent prompt. The UI copy has its own
 (frontends/ui/src/i18n/forbidden-file-words.spec.ts), and so does the public
-site (frontends/web/scripts/lint-claims.mjs).
+site (apps/site/scripts/lint-claims.mjs).
 """
 
 from __future__ import annotations
 
 import re
 import tomllib
-from pathlib import Path
 
 import pytest
-
-ROOT = Path(__file__).resolve().parents[2]
-
-#: Where a reader, human or agent, learns what the product is.
-FIRST_IMPRESSION = [
-    "README.md",
-    "AGENTS.md",
-    "CONTEXT.md",
-    "docs/README.md",
-    "docs/architecture/system-overview.md",
-    "docs/architecture/overview.md",
-    "frontends/ui/README.md",
-]
-
-PROMPTS = sorted(
-    path.relative_to(ROOT).as_posix()
-    for path in (ROOT / "src" / "aiq_agent").rglob("prompts/*")
-    if path.suffix in {".j2", ".md"}
-)
-
-#: The old frame. VISION.md names these on purpose (as what Piloti is not), and
-#: docs/product/vision.md quotes the frame it replaced, so neither is scanned.
-OLD_FRAME = re.compile(
-    r"compliance assistant|grid oib|answers oib questions|research assistant for austrian building|oib chatbot",
-    re.IGNORECASE,
-)
-
-#: A file called a plan. Compounds (Lageplan, Bebauungsplan, Bestandspläne) do not
-#: match; a research plan is not a file and is written in the singular here.
-FILE_AS_PLAN = re.compile(r"(?<![\w-])(Pläne|Plänen|Planstand|Planstände|Planständen)(?![\w-])")
+from agent_testing.product_framing import FILE_AS_PLAN
+from agent_testing.product_framing import FIRST_IMPRESSION
+from agent_testing.product_framing import OLD_FRAME
+from agent_testing.product_framing import PROMPTS
+from agent_testing.product_framing import ROOT
 
 
 def _lines(relative: str) -> list[tuple[int, str]]:
@@ -146,7 +120,6 @@ def test_the_description_scan_sees_the_tools() -> None:
 #: the lockfile and a newcomer's first `cat pyproject.toml` read.
 PACKAGE_GLOBS = (
     "pyproject.toml",
-    "sources/*/pyproject.toml",
     "frontends/*/pyproject.toml",
     "packages/*/pyproject.toml",
 )
@@ -164,6 +137,6 @@ def test_no_package_describes_itself_by_its_framework(relative: str) -> None:
 
 
 def test_the_scan_sees_the_packages() -> None:
-    assert {"pyproject.toml", "sources/knowledge_layer/pyproject.toml", "frontends/aiq_api/pyproject.toml"} <= set(
+    assert {"pyproject.toml", "packages/knowledge-layer/pyproject.toml", "frontends/aiq_api/pyproject.toml"} <= set(
         PYPROJECTS
     )

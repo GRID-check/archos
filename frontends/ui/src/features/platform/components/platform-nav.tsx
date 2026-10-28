@@ -37,6 +37,7 @@ import { SectionStrip, type SectionNavItem } from '@/components/shell/section-na
 import { cn } from '@/lib/utils'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 
 /**
  * Sections in four groups, in reading order: the fleet you run, how well it
@@ -111,7 +112,7 @@ const LINK_BASE =
 
 export function PlatformNav(): JSX.Element {
   const pathname = usePathname()
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const stripItems: SectionNavItem[] = PLATFORM_SECTIONS.map(({ key, href, icon }) => ({
     key,
     href,

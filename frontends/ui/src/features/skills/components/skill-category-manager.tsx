@@ -29,6 +29,7 @@ import {
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import type { SkillCategoryListItem } from '@/adapters/api/skills-client'
 
 interface SkillCategoryManagerProps {
@@ -55,7 +56,7 @@ export function SkillCategoryManager({
   onDelete,
   onChanged,
 }: SkillCategoryManagerProps): JSX.Element {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)

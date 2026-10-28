@@ -248,7 +248,7 @@ export const ROLLOUT = {
   },
 
   /**
-   * Astro landing + blog (frontends/web): stateless static site behind a
+   * Astro landing + blog (apps/site): stateless static site behind a
    * Service + HPA, surge-only like the frontend. Node boot is fast and there
    * are no long-lived connections, so the shortest grace that still covers the
    * endpoint-drain preStop suffices.

@@ -32,6 +32,8 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { loadUploadScreeningPolicy } from '@/adapters/api/upload-screening-policy'
 import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-screen'
 import { describeScreenedOut } from '@/lib/upload-screening/quarantine'
@@ -39,10 +41,16 @@ import { nameStopMatchesOf } from '@/lib/upload-screening/name-stop'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { exclusionsByTerm, openUploadBatch, sealUploadBatch } from '@/features/documents/lib/upload-batch'
 import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
+import {
+  bindDocumentRole,
+  DocumentRoleRequestError,
+  unbindDocumentRole,
+  type RoleBinding,
+} from '@/adapters/api/document-roles-client'
+import { ApiRequestError } from '@/adapters/api/api-error'
 import { documentRoleDefinition } from '@/lib/project-profile/document-roles'
 import type { DocumentRole } from '@/lib/project-profile/document-roles'
 import { useDocumentRoles } from '../lib/use-document-roles'
-import type { RoleBinding } from '../lib/use-document-roles'
 import type { PendingRoleBind } from '../lib/pending-role-binds'
 
 interface DocumentRoleFieldProps {
@@ -77,8 +85,8 @@ export function DocumentRoleField({
   deferred,
 }: DocumentRoleFieldProps) {
   const definition = documentRoleDefinition(role)
-  const tFiles = useTranslations('files')
-  const tRole = useTranslations('projects.intake.documentRole')
+  const tFiles = useTranslations(filesCopy)
+  const tRole = useTranslations(projectsCopy, 'intake.documentRole')
   const { bindings, documents, refresh } = useDocumentRoles(projectId)
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -121,16 +129,14 @@ export function DocumentRoleField({
       }
       setBusy(true)
       try {
-        const response = await fetch(`/api/projects/${projectId}/document-roles`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ documentId, role, scopeInstanceId }),
-        })
-        if (!response.ok) {
+        let replaced: RoleBinding[]
+        try {
+          ;({ replaced } = await bindDocumentRole(projectId, { documentId, role, scopeInstanceId }))
+        } catch (error) {
+          if (!(error instanceof DocumentRoleRequestError)) throw error
           // The envelope's `error` is English and for the log; the toast says
           // it in the reader's language (`i18n/raw-error-copy.spec.ts`).
-          const body: unknown = await response.json().catch(() => null)
-          console.warn('[document-role] binding refused:', response.status, body)
+          console.warn('[document-role] binding refused:', error.status, error.body)
           toast.error(tRole('bindFailed'))
           // The upload may have succeeded even though the binding did not.
           // Returning without refreshing left the new file out of `documents`,
@@ -141,8 +147,7 @@ export function DocumentRoleField({
         // A single-holder role displaces whatever held it. Naming the document
         // that stopped being the Bebauungsplan is the whole reason the service
         // returns it rather than swallowing the replacement.
-        const body = (await response.json()) as { replaced?: RoleBinding[] }
-        for (const previous of body.replaced ?? []) {
+        for (const previous of replaced) {
           toast.info(tRole('replaced', { name: documentLabel(previous), role: definition.label }))
         }
         await refresh({ afterWrite: true })
@@ -157,11 +162,10 @@ export function DocumentRoleField({
     async (bindingId: string) => {
       setBusy(true)
       try {
-        const response = await fetch(
-          `/api/projects/${projectId}/document-roles/${encodeURIComponent(bindingId)}`,
-          { method: 'DELETE' }
-        )
-        if (!response.ok) {
+        try {
+          await unbindDocumentRole(projectId, bindingId)
+        } catch (error) {
+          if (!(error instanceof ApiRequestError)) throw error
           toast.error(tRole('unbindFailed'))
           return
         }

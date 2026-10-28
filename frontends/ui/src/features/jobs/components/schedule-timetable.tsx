@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
+import { jobsCopy } from '@/i18n/namespaces/jobs'
 import { cn } from '@/lib/utils'
 import type { Job } from '@/adapters/api/jobs-client'
 import { expandWindow, type Occurrence } from '../lib/occurrences'
@@ -85,7 +86,7 @@ export function ScheduleTimetable({
   loading,
   onSelect,
 }: ScheduleTimetableProps): JSX.Element {
-  const t = useTranslations('jobs')
+  const t = useTranslations(jobsCopy)
   const { locale } = useLocale()
   const [weekOffset, setWeekOffset] = useState(0)
   const [fullDay, setFullDay] = useState(false)
@@ -336,7 +337,7 @@ interface ShapeProps {
 
 /** Seven columns and an hour gutter. Desktop only — see the module docstring. */
 function WeekGrid({ timetable, locale, colorOf, nameOf, onSelect }: ShapeProps): JSX.Element {
-  const t = useTranslations('jobs')
+  const t = useTranslations(jobsCopy)
   const { segments, days } = timetable
   const height = bodyHeight(segments)
   const marks = segments.flatMap((segment) => hourMarks(segment))

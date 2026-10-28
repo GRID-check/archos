@@ -20,6 +20,8 @@ import { LiveCursor } from '@/components/ui/live-cursor'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { WorkingDots } from '@/components/ui/working-dots'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { presenceCopy } from '@/i18n/namespaces/presence'
 import { isGhostMark, isLive, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import { askRegionOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
@@ -71,7 +73,7 @@ export function pilotiForShort(peer: Pick<RoomPeerState['peer'], 'forName'>): st
  * The words truncate; the „für Anna" after them never does.
  */
 function PilotiCursor({ state, idle }: { state: RoomPeerState; idle?: boolean }): JSX.Element {
-  const tPresence = useTranslations('presence')
+  const tPresence = useTranslations(presenceCopy)
   const forShort = pilotiForShort(state.peer)
   const dots = state.activity ? <WorkingDots className="ml-0.5" /> : undefined
   return (
@@ -250,7 +252,7 @@ function PeerSelection({
   tagged: readonly RoomPeerState[]
   pageHeight: number
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const first = selectors[0]
   if (!first) return null
   const ink = identityInk(first.peer.userId)
@@ -357,7 +359,7 @@ const PeerPointer = memo(function PeerPointer({
   focused: boolean
   pilotiThinking: boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const piloti = isPilotiPeer(state)
   const rested = useRestedFor(state.movedAt, piloti ? PILOTI_REST_MS : CURSOR_IDLE_MS)
   return (
@@ -542,7 +544,7 @@ const PageMarks = memo(function PageMarks({
   onPin: (annotationId: string, byKeyboard: boolean) => void
   onHover: (annotationId: string | null) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const byline = usePilotiByline()
   return (
     <>
@@ -683,7 +685,7 @@ function KeyboardAim({
   startY: number
   onSet: (draft: ReviewDraft) => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const surface = useRef<HTMLDivElement | null>(null)
   const marker = useRef<HTMLSpanElement | null>(null)
   const [point, setPoint] = useState({ x: 0.5, y: onPage(startY) })
@@ -812,7 +814,7 @@ export function ReviewPageLayer({
   /** Piloti's card for the question open on a box of this page. */
   renderAsk?: (ask: CanvasAsk, anchor: CardAnchor) => JSX.Element | null
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const layerRef = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [drag, setDrag] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)

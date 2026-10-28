@@ -49,7 +49,7 @@ One page per query cluster. A new article takes a cluster nobody owns yet.
 | Wissensmanagement Architekturbüro, Projektwissen, Büroarchiv | `/anwendungen/bueroarchiv/`, `/blog/wissen-aus-alten-projekten/` |
 | How Piloti works, RAG for building law | `/blog/wie-piloti-funktioniert/` |
 
-The search pages are data (`frontends/web/src/data/landing/`), one entry per
+The search pages are data (`apps/site/src/data/landing/`), one entry per
 page; the audit behind them, the landscape and the backlog:
 [`seo-geo-audit-2026-09.md`](seo-geo-audit-2026-09.md).
 

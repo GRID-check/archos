@@ -1,11 +1,16 @@
-# Backend tier (src/, sources/, frontends/aiq_api, evals/), Langfuse/prompts.
+# Backend tier (src/, the Python packages, frontends/aiq_api, evals/), Langfuse/prompts.
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`be:test`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`be:test`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 
 vars:
+  # The Python packages under packages/ (ADR-0145 row 6): the uv workspace
+  # members there, in the order of pyproject.toml's testpaths. ifc-spatial-py is
+  # not one; it keeps its own lock and its own task (pkg:test).
+  # tests/test_python_packages.py holds the three lists to one another.
+  PY_PACKAGES: packages/knowledge-layer packages/ris-adapter packages/tavily-web-search
   # The pull request selection (be:test:testmon, be:test:affected): one testmon
   # database per suite, and the arguments each suite runs with.
   TESTMON_ENV: TESTMON_DATAFILE=.testmondata-
@@ -13,10 +18,10 @@ vars:
     map:
       core: tests/ evals/
       api: frontends/aiq_api/tests/
-      sources: sources --dist loadfile
+      sources: packages/knowledge-layer packages/ris-adapter packages/tavily-web-search --dist loadfile
 
 tasks:
-  # ── backend (src/, sources/, frontends/aiq_api) ─────────────────────────────
+  # ── backend (src/, the Python packages, frontends/aiq_api) ───────────────────
 
   be:lint:
     desc: 'Ruff lint + format check, and the package seams (import-linter). CI: task be:lint -- --output-format=github'
@@ -48,23 +53,25 @@ tasks:
       # filter need not fire for `ci/`, `releasenotes/` or a workflow alone
       # (.github/filters.yml). They stay in the core suite too. The product-framing
       # test is here because it reads the first-impression docs, and a docs-only
-      # change runs no filtered tier.
+      # change runs no filtered tier. The layout test is here because a new
+      # top-level directory can come from any tier's change.
       - >-
         {{.PY}} -X faulthandler -m pytest -q -p no:cacheprovider
         tests/test_ci_workflows.py tests/test_reuse_green_run.py tests/test_last_green.py
         tests/test_image_inputs.py tests/test_pinned_images.py tests/test_plan_summary.py
         tests/test_release_notes.py tests/test_pr_closing_keywords.py tests/test_bun_version_pin.py
         tests/test_pr_selection.py tests/test_ci_filter_coverage.py tests/aiq_agent/test_product_framing.py
+        tests/test_repo_layout.py
 
   be:test:sources:
-    desc: The sources/ package suites
+    desc: The Python packages' suites (packages/knowledge-layer, ris-adapter, tavily-web-search)
     cmds:
       # One run over every package. No package carries a `tests/__init__.py`, so
-      # no two conftests claim the module name `tests.conftest`, and a new
-      # package is collected the day it lands.
+      # no two conftests claim the module name `tests.conftest`. A new package
+      # joins PY_PACKAGES above; tests/test_python_packages.py fails until it does.
       # Whole files per worker (loadfile): a file's Qdrant collections and
       # module fixtures then stay on one worker.
-      - '"{{.PY}}" -X faulthandler -m pytest sources -q {{.XDIST}} --dist loadfile'
+      - '"{{.PY}}" -X faulthandler -m pytest {{.PY_PACKAGES}} -q {{.XDIST}} --dist loadfile'
 
   be:test:testmon:
     desc: Record which test runs which code, for the pull request selection (CI runs this on develop)
@@ -343,13 +350,14 @@ tasks:
       - task: be:lint
       - task: be:test:ci
       - task: be:test:api
-      # sources/ is part of the tier, and CI's backend-test job runs it too.
+      # The Python packages are part of the tier, and CI's backend-test job runs them too.
       - task: be:test:sources
 
   be:test:postgres:
     desc: >-
-      The claim-queue suites' Postgres branch (production's SQL) against a
-      throwaway cluster. Needs PostgreSQL server binaries.
+      The claim-queue suites' Postgres branch (production's SQL), and the
+      rename of the AI-Q databases, against a throwaway cluster. Needs
+      PostgreSQL server binaries.
     cmds:
       # Serial, not -n logical: every test drops and recreates the same tables
       # in the one scratch database.
@@ -359,3 +367,4 @@ tasks:
         tests/knowledge_layer_tests/test_ingest_queue.py
         frontends/aiq_api/tests/test_research_queue_fair.py
         tests/aiq_agent/knowledge/folder_cards
+        tests/test_postgres_rename_legacy_names.py

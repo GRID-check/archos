@@ -64,6 +64,7 @@ from aiq_agent.turn import annotation_reply
 from aiq_agent.turn.annotation_reply import note_thread_post
 from aiq_agent.turn.annotation_reply import settle_thread_reply
 from aiq_agent.turn.response import answer_message_id
+from aiq_api import after_terminal_writes
 from aiq_api import chat_socket
 from aiq_api import internal_api as chat_socket_internal
 from aiq_api.auth.errors import AuthError
@@ -257,7 +258,7 @@ class Harness:
         for task in [*self.tasks, *turns]:
             task.cancel()
         await asyncio.gather(*self.tasks, *turns, return_exceptions=True)
-        await asyncio.gather(*chat_socket._PERSIST_TASKS, return_exceptions=True)
+        await asyncio.gather(*after_terminal_writes.PERSIST_TASKS, return_exceptions=True)
 
 
 @pytest_asyncio.fixture(loop_scope="function")
@@ -1667,7 +1668,7 @@ async def test_a_stopped_turn_keeps_the_level_the_asker_stated(persisted):
     await turn.publish(TextMessageContentBody(message_id="m", delta="Teil"))
 
     await turn.finish_cancelled()
-    await asyncio.gather(*chat_socket._PERSIST_TASKS)
+    await asyncio.gather(*after_terminal_writes.PERSIST_TASKS)
 
     assert persisted[0]["metadata"]["reasoning_effort"] == "xhigh"
 
@@ -1739,7 +1740,7 @@ async def test_a_stopped_turn_keeps_the_settled_text_with_its_sources(
         await turn.publish(TextMessageContentBody(message_id="m", delta=after_settle))
 
     await turn.finish_cancelled()
-    await asyncio.gather(*chat_socket._PERSIST_TASKS)
+    await asyncio.gather(*after_terminal_writes.PERSIST_TASKS)
 
     assert persisted[0]["text"] == text
     assert [source["number"] for source in persisted[0]["metadata"].get("sources", [])] == numbers
@@ -2196,7 +2197,7 @@ async def test_a_renewal_that_finds_the_marker_gone_fences_the_turn_and_cancels_
 
     monkeypatch.setattr(a.registry.bus(), "renew_running", lost)
     await until(lambda: _last(sock) == "RUN_FINISHED")
-    await asyncio.gather(*chat_socket._PERSIST_TASKS)
+    await asyncio.gather(*after_terminal_writes.PERSIST_TASKS)
 
     assert sock.events()[-1]["outcome"] == "cancelled"
     assert gate.torn_down  # the graph run was cancelled, not abandoned
@@ -2721,7 +2722,7 @@ async def test_a_headless_socket_s_caller_skips_the_clarifier_and_says_it_is_hea
 OUTCOME_SCHEMA = (
     Path(__file__).resolve().parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "turn-outcome.schema.json"
 )
-HEADLESS = [(b"x-aiq-mode", b"headless")]
+HEADLESS = [(b"x-chat-mode", b"headless")]
 WAKE = "aaaaaaaa-0000-4000-8000-000000000001"
 WAKE_2 = "aaaaaaaa-0000-4000-8000-000000000002"
 WAKE_3 = "aaaaaaaa-0000-4000-8000-000000000003"
@@ -2767,7 +2768,7 @@ def outcome_contract() -> dict[str, Draft202012Validator]:
 
 async def _settle_background() -> None:
     """Let every write after a terminal land: the row, the thread's answer, the outcome."""
-    await asyncio.gather(*chat_socket._PERSIST_TASKS, return_exceptions=True)
+    await asyncio.gather(*after_terminal_writes.PERSIST_TASKS, return_exceptions=True)
 
 
 async def test_a_headless_turn_reports_its_outcome_once_after_its_row_is_written(harness, bff, outcome_contract):
@@ -2896,6 +2897,32 @@ async def test_a_failing_bff_neither_breaks_nor_holds_the_turn(harness, bff, per
 
     sock.client(type="user_message", message_id=WAKE_2, text="??")  # the socket serves on
     await until(lambda: _last(sock, WAKE_2) == "RUN_FINISHED")
+
+
+@pytest.mark.parametrize("drain_timeout", [5.0, 0.05], ids=["finishes", "cut_short"])
+async def test_a_drain_ends_only_once_the_outcome_of_its_headless_turn_is_reported(harness, monkeypatch, drain_timeout):
+    # A pod restart: the process exits when the drain returns, so an outcome
+    # still being posted then is lost and the ask reads `working` for good.
+    reported: list[str] = []
+
+    async def slow_notice(**report):
+        await asyncio.sleep(0.2)
+        reported.append(report["outcome"])
+        return True
+
+    monkeypatch.setattr(chat_socket, "post_internal_turn_outcome", slow_notice)
+    gate = Gate()
+    h = harness(gate.turn)
+    sock = h.connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: gate.calls)
+
+    draining = asyncio.create_task(h.registry.drain(timeout=drain_timeout))
+    if drain_timeout > 1:
+        gate.release.set()  # it finishes inside the drain; otherwise the drain cancels it
+    await draining
+
+    assert reported == (["answered"] if drain_timeout > 1 else ["stopped"])
 
 
 async def test_a_headless_turn_whose_id_no_wake_mints_reports_nothing(harness, bff, persisted):

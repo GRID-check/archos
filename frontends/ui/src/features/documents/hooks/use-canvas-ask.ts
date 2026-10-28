@@ -7,6 +7,7 @@ import type { TurnView } from '@/features/chat/lib/turn-fold'
 import { useChatStore } from '@/features/chat/store'
 import { runningTurnIn } from '@/features/chat/stores/messages-store'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import { documentThread } from '@/lib/annotations/client'
@@ -215,7 +216,7 @@ const blankAsk = (id: string): CanvasAsk => ({
  * else's: nothing here plays it.
  */
 export function useCanvasAsk(options: UseCanvasAskOptions) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { documentId, enabled, projectId } = options
   const [asks, setAsksState] = useState<CanvasAsk[]>([])
   const [openId, setOpenIdState] = useState<string | null>(null)

@@ -11,7 +11,7 @@ Only a PUBLISHED version is ever dispatched to that index (ADR-0054). So for a
 version that is still being worked on — ``draft``, ``in_review``,
 ``changes_requested`` — there are no chunks at all, the focus filter matches
 nothing, and it falls open to the whole corpus
-(``sources/knowledge_layer/src/register.py``). The reader asks „warum steht in
+(``packages/knowledge-layer/src/register.py``). The reader asks „warum steht in
 Abschnitt 3 GK 4?" about the Befund Piloti filed a minute ago and gets an answer
 sourced from everything except that Befund — confidently, and with citations.
 
@@ -72,12 +72,12 @@ import unicodedata
 
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common.turn_status import SUBJECT_ABSENT
-from aiq_agent.common.turn_status import SUBJECT_EMPTY
-from aiq_agent.common.turn_status import SUBJECT_NOT_STORED
-from aiq_agent.common.turn_status import SUBJECT_REFUSED
-from aiq_agent.common.turn_status import SUBJECT_UNREACHABLE
-from aiq_agent.common.turn_status import subject_document_step
+from aiq_agent.common.retrieval_status import SUBJECT_ABSENT
+from aiq_agent.common.retrieval_status import SUBJECT_EMPTY
+from aiq_agent.common.retrieval_status import SUBJECT_NOT_STORED
+from aiq_agent.common.retrieval_status import SUBJECT_REFUSED
+from aiq_agent.common.retrieval_status import SUBJECT_UNREACHABLE
+from aiq_agent.common.retrieval_status import subject_document_step
 from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.knowledge.restricted_use import current_restricted_use
 from aiq_agent.tools.documents.draft_store import DRAFT_ROOT

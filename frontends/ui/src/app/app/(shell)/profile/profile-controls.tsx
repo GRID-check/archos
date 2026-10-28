@@ -26,6 +26,8 @@ import { useAuth } from '@/adapters/auth/use-auth'
 import { useLayoutStore } from '@/features/layout/store'
 import type { ThemeMode } from '@/features/layout/types'
 import { useTranslations, useLocale, locales, type Locale } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { profileCopy } from '@/i18n/namespaces/profile'
 import { NotificationSettings } from '@/features/notifications/components/notification-settings'
 import { AccountWidgets } from './account-widgets'
 import { ShortcutSettings } from './shortcut-settings'
@@ -61,8 +63,8 @@ export const ProfileControls: FC<ProfileControlsProps> = ({
   shortcutsAvailable = false,
   analyticsAvailable = false,
 }) => {
-  const t = useTranslations('profile')
-  const tc = useTranslations('common')
+  const t = useTranslations(profileCopy)
+  const tc = useTranslations(commonCopy)
   const theme = useLayoutStore((s) => s.theme)
   const setTheme = useLayoutStore((s) => s.setTheme)
   const showTechnicalReasoning = useLayoutStore((s) => s.showTechnicalReasoning)

@@ -75,7 +75,7 @@ a library for first. The prior exploration reached the same verdict
 (`piloti-filesystem-design.md` §12b).
 
 **Storage.** `langgraph.store.postgres.PostgresStore` on `GRID_CHECKPOINT_DB`
-(the Python service's own Postgres database, `aiq_checkpoints`, already
+(the Python service's own Postgres database, `checkpoints`, already
 pooled in `common/__init__.py`). No table in `grid_app`; the single-writer
 rule holds. Namespace `("conversation", <id>, "drafts")`. A byte ceiling per
 conversation. Cleanup rides the conversation's deletion cascade through one
@@ -338,7 +338,7 @@ compared against YAML is the weak end of the ratchet. What survives:
 
 - `_INTERACTION_TOOL_BASENAMES` is the one runtime-read classification and
   gains the file verbs. No second table.
-- `sources/*` stays where it is: evidence sources are packages. Workspace
+- The evidence sources stay packages under `packages/`. Workspace
   tools live under `src/aiq_agent/tools/`: `documents/` (the working
   directory backend and the `file_draft` tool), `tasks/` (`create_task`),
   `files/` (the proposal-card tools), beside the BIM tools already there.

@@ -8,6 +8,7 @@ import { CountPill } from '@/components/ui/count-pill'
 import { InspectorGroup, InspectorSection } from '@/components/ui/inspector-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { isLive } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import type { DocumentReview } from '../../hooks/use-document-review'
@@ -40,7 +41,7 @@ export function AnnotationsSummary({
   onOpenReview: (annotationId?: string) => void
   className?: string
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const live = review.annotations.filter(isLive)
   const others = useRoomSelector(
     review.room,

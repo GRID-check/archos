@@ -34,7 +34,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { MonthInput } from '@/components/ui/month-input'
 import { Stepper } from '@/components/ui/stepper'
+import { CleanupRequestError, requestCleanupProposal, runCleanup } from '@/adapters/api/project-cleanup-client'
 import { useLocale, useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { CleanupProposal } from '@/lib/projects/cleanup-types'
 import { CLEANUP_PARTIALLY_UNDONE_REASON } from '@/lib/projects/cleanup-types'
 import { currentMonth, isMonth } from '@/lib/projects/month'
@@ -71,7 +73,7 @@ export function CloseProjectDialog({
   onClose,
   children,
 }: CloseProjectDialogProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const thisMonth = currentMonth()
   const [step, setStep] = useState(0)
@@ -99,15 +101,7 @@ export function CloseProjectDialog({
   useEffect(() => {
     if (!askForProposal) return
     let cancelled = false
-    fetch(`/api/projects/${projectId}/cleanup/proposal`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ locale: locale === 'en' ? 'en' : 'de' }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(String(res.status))
-        return (await res.json()) as CleanupProposal
-      })
+    requestCleanupProposal(projectId, locale === 'en' ? 'en' : 'de')
       .then((proposal) => {
         if (cancelled) return
         setLoad({ state: 'ready', proposal })
@@ -150,26 +144,19 @@ export function CloseProjectDialog({
     setError(false)
     try {
       if (remove && proposal && selected.size > 0) {
-        const res = await fetch(`/api/projects/${projectId}/cleanup`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            documentIds: [...selected],
-            proposedIds: items.map((item) => item.documentId),
-            aiUsed: proposal.aiUsed,
-          }),
+        await runCleanup(projectId, {
+          documentIds: [...selected],
+          proposedIds: items.map((item) => item.documentId),
+          aiUsed: proposal.aiUsed,
         })
-        if (!res.ok) {
-          setError({ partialIn: partiallyUndoneIn(await res.json().catch(() => null)) })
-          return
-        }
         // Binned: what is left to retry, should the close itself fail, is the close.
         setSelected(new Set())
         setLoad({ state: 'ready', proposal: { ...proposal, items: [] } })
       }
       if (await onClose({ outcome, endedOn })) onOpenChange(false)
-    } catch {
-      setError({ partialIn: null })
+    } catch (error) {
+      // A refused clean-out may name the folders it could not fully undo.
+      setError({ partialIn: error instanceof CleanupRequestError ? partiallyUndoneIn(error.body) : null })
     } finally {
       setPending(false)
     }

@@ -146,7 +146,7 @@ export interface GridConfig {
     appDomain: string;
     /** Public host for the S3 endpoint used to sign browser preview/download URLs. Derived: `s3.<baseDomain>` unless the `s3Domain` key overrides it. */
     s3Domain: string;
-    /** Public host for the landing site (frontends/web). Derived: the `baseDomain` apex itself unless the `webDomain` key overrides it. */
+    /** Public host for the landing site (apps/site). Derived: the `baseDomain` apex itself unless the `webDomain` key overrides it. */
     webDomain: string;
     /** Email for the Let's Encrypt ACME account. */
     letsEncryptEmail: string;
@@ -982,7 +982,7 @@ export interface GridConfig {
     hpaCpuTargetPercent: number;
   };
 
-  /** Landing site (frontends/web) — a static-first Astro service; tiny resources. */
+  /** Landing site (apps/site) — a static-first Astro service; tiny resources. */
   web: {
     resources: ResourceSpec;
     minReplicas: number;
@@ -2723,7 +2723,7 @@ export function loadConfig(): GridConfig {
           "ghcr.io/cloudnative-pg/pgbouncer:1.26.0@sha256:ce54f1133c509f1db8a8092c3f1c761d8c9292065ed6b6698786bb966da4dab9",
       },
       storageSize: cfg.get("pgStorageSize") ?? "20Gi",
-      appUser: cfg.get("pgAppUser") ?? "aiq",
+      appUser: cfg.get("pgAppUser") ?? "agent",
       appPassword: cfg.requireSecret("pgAppPassword"),
       runtimePassword: cfg.requireSecret("pgRuntimePassword"),
       scalerPassword: cfg.getSecret("pgScalerPassword") ?? derivedScalerPassword(cfg.requireSecret("pgAppPassword")),

@@ -116,13 +116,14 @@ PY_TRACKED = (
     "tests/**",
     "frontends/aiq_api/src/**",
     "frontends/aiq_api/tests/**",
-    "sources/*/src/**",
-    "sources/*/tests/**",
+    "packages/*/src/**",
+    "packages/*/tests/**",
+    "packages/*/testing/**",
     "evals/**",
 )
 
 # Where a test reads a non-Python file it does not import.
-PY_TEST_ROOTS = ("tests", "frontends/aiq_api/tests", "sources", "evals")
+PY_TEST_ROOTS = ("tests", "frontends/aiq_api/tests", "packages", "evals")
 
 # Test data. A test reads a fixture by name or a whole directory of them, so one
 # no test names, directly or by a directory, forces a full run.
@@ -130,7 +131,7 @@ PY_FIXTURES = "tests/fixtures/"
 
 # A non-Python file under these that no test names is code testmon cannot see
 # (package data read at runtime), so it forces a full run rather than none.
-PY_PACKAGE_SRC = ("src/**", "frontends/aiq_api/src/**", "sources/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
+PY_PACKAGE_SRC = ("src/**", "frontends/aiq_api/src/**", "packages/*/src/**", "evals/*/src/**", "evals/*/fixtures/**")
 
 # What every UI spec loads before its own imports, so no graph sees it.
 UI_FULL = (
@@ -218,7 +219,7 @@ def _reads(path: str, file: str, text: str) -> bool:
     A test file names it by its path or file name anywhere. A helper or conftest
     names it only as code reads a file, in a string literal that ends in its
     name (`"…/folder-cards.schema.json"`, `"stored_answers.json"`). Prose in a
-    docstring (``sources/AGENTS.md``) is not a read, and counting it would run
+    docstring (``packages/AGENTS.md``) is not a read, and counting it would run
     every test for each edit of a document. A fixture is named by its
     directories too, since tests read whole fixture directories (`rglob`).
     """
@@ -247,13 +248,39 @@ def _readers(path: str, test_files: dict[str, str]) -> set[str]:
     }
 
 
+#: A module of a suite's support package (`<package>_testing`, ADR-0145 row 5),
+#: by the dotted name its importers use.
+SUPPORT_MODULE = re.compile(r"/testing/(?P<module>\w+_testing(?:/\w+)*)\.py$")
+
+
+def _importers(helper: str, test_files: dict[str, str]) -> set[str] | None:
+    """The test files that import a support-package helper, or None for any other helper.
+
+    A support module is imported by one stable name (`from agent_testing.exposure
+    import ...`, `from agent_testing import exposure`), so its importers can be
+    found; a conftest or another helper has no such name.
+    """
+    match = SUPPORT_MODULE.search(f"/{helper}")
+    if not match:
+        return None
+    dotted = match["module"].replace("/", ".").removesuffix(".__init__")
+    package, _, leaf = dotted.rpartition(".")
+    spellings = [rf"\b{re.escape(dotted)}\b"]
+    if package:
+        spellings.append(rf"from\s+{re.escape(package)}\s+import\s+[^\n]*\b{re.escape(leaf)}\b")
+    imports = re.compile("|".join(spellings))
+    return {file for file, text in test_files.items() if Path(file).name.startswith("test_") and imports.search(text)}
+
+
 def decide_python(changed: list[str], test_files: dict[str, str], recorded: bool) -> tuple[str, list[str], str]:
     """`(mode, extra test files, reason)` for the Python suites.
 
     `test_files` maps every Python file under the test roots (test files and
     the helpers and conftests they load) to its text; `recorded` says whether a
     testmon database from develop exists. A non-Python input that only a
-    helper names forces the full run: nothing says which tests load the helper.
+    helper names forces the full run, since nothing says which tests load the
+    helper, unless the helper is a support-package module, whose importers are
+    known by its name (:func:`_importers`).
     """
     if not recorded:
         return "full", [], "no recorded testmon database to select from"
@@ -268,9 +295,11 @@ def decide_python(changed: list[str], test_files: dict[str, str], recorded: bool
         if path.endswith(".py"):
             continue
         named = _readers(path, test_files)
-        helpers = sorted(name for name in named if not Path(name).name.startswith("test_"))
-        if helpers:
-            return "full", [], f"{path} is read by {helpers[0]}, which no test file connects to it"
+        for helper in sorted(name for name in named if not Path(name).name.startswith("test_")):
+            importers = _importers(helper, test_files)
+            if not importers:
+                return "full", [], f"{path} is read by {helper}, which no test file connects to it"
+            named = (named - {helper}) | importers
         if not named and path.startswith(PY_FIXTURES):
             return "full", [], f"{path} is a fixture no test names"
         if not named and _matches(path, PY_PACKAGE_SRC):
@@ -316,7 +345,7 @@ def _python_test_files() -> dict[str, str]:
     for root in PY_TEST_ROOTS:
         for path in (ROOT / root).rglob("*.py"):
             relative = path.relative_to(ROOT).as_posix()
-            if root == "sources" and "/tests/" not in f"/{relative}":
+            if root == "packages" and "/tests/" not in f"/{relative}" and "/testing/" not in f"/{relative}":
                 continue
             files[relative] = path.read_text(encoding="utf-8", errors="ignore")
     return files

@@ -333,7 +333,7 @@ def test_the_runs_import_this_checkout(tmp_path):
     shim = Path(path[1])
     assert path[0] == str(census.HERE) and path[2] == str(census.ROOT / "src")
     assert shim.parent == tmp_path and shim.name.startswith(".tree-")
-    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "sources/knowledge_layer/src").resolve()
+    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
     assert suite.foreign_imports(tmp_path) == []
 
 
@@ -555,7 +555,7 @@ def test_the_startup_probe_reexecutes_into_this_checkout(monkeypatch, tmp_path):
     assert seen["env"][startup_probe._IN_TREE] == "1" and "REC_OUT" not in seen["env"]
     shim = Path(seen["env"]["PYTHONPATH"].split(os.pathsep)[1])
     assert shim.is_relative_to(tmp_path)
-    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "sources/knowledge_layer/src").resolve()
+    assert (shim / "knowledge_layer").resolve() == (census.ROOT / "packages/knowledge-layer/src").resolve()
 
     # The re-executed process does not re-execute.
     monkeypatch.setenv(startup_probe._IN_TREE, "1")
@@ -660,9 +660,10 @@ def test_the_suite_reads_the_dialect_the_validator_holds():
 
 def test_a_corpus_in_the_store_reads_as_ready(qdrant_store):
     """Readiness is the corpus's chunk count in the store the ingest writes through."""
+    from knowledge_layer_testing.qdrant import record
+    from knowledge_layer_testing.qdrant import write
+
     from aiq_agent import oib_sync
-    from sources.knowledge_layer.tests.qdrant_testing import record
-    from sources.knowledge_layer.tests.qdrant_testing import write
 
     assert not suite._corpus_ready()
     write(oib_sync.COLLECTION_NAME, [record("Punkt 12", "oib-rl_2.pdf")])

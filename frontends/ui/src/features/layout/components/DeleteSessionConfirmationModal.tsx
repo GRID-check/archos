@@ -10,6 +10,8 @@
 import { type FC } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { researchCopy } from '@/i18n/namespaces/research'
 
 export interface DeleteSessionConfirmationModalProps {
   /** Whether the modal is open */
@@ -32,8 +34,8 @@ export const DeleteSessionConfirmationModal: FC<DeleteSessionConfirmationModalPr
   onConfirm,
   sessionTitle,
 }) => {
-  const t = useTranslations('research')
-  const tc = useTranslations('common')
+  const t = useTranslations(researchCopy)
+  const tc = useTranslations(commonCopy)
   const trimmedTitle = sessionTitle?.trim()
 
   return (

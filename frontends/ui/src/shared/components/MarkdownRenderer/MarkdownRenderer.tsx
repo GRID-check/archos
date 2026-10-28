@@ -4,6 +4,7 @@ import { Circle, CircleCheck, TableOfContents } from 'lucide-react'
 import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { type FC, type ReactNode, createContext, memo, useContext, useMemo, useState } from 'react'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 import ReactMarkdown, { type Components, type ExtraProps, type Options } from 'react-markdown'
 import type { PluggableList } from 'unified'
 import rehypeKatex from 'rehype-katex'
@@ -439,7 +440,7 @@ function MarkdownH2({ children, node, id: givenId, className: givenClass }: Head
   // page and the back-references resolve.
   const derived = useHeadingId(node, children)
   const openOutline = useOpenOutline()
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <h2
       id={givenId ?? derived}
@@ -526,7 +527,7 @@ function MarkdownParagraph({ children }: React.ComponentPropsWithoutRef<'p'>) {
 function MarkdownListItem({ children, id, node }: React.ComponentPropsWithoutRef<'li'> & ExtraProps) {
   const { compact } = useMarkdownRenderState()
   const { active, muted } = useCaseMarks(node?.properties)
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const decided = useCasesDecision() !== null && node?.properties?.dataCaseIndex !== undefined
   // A step of a `:::procedure` (`directive-shape.ts`).
   if (node?.properties?.dataPhase) return <StepItem node={node}>{children}</StepItem>
@@ -566,7 +567,7 @@ function useCaseMarks(properties: Record<string, unknown> | undefined): { active
 // states the Status column marks carry, with the word for readers
 // who do not see the icon.
 function MarkdownTaskMark({ type, checked }: React.ComponentPropsWithoutRef<'input'> & ExtraProps) {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   if (type !== 'checkbox') return null
   const Mark = checked ? CircleCheck : Circle
   return (
@@ -650,7 +651,7 @@ function MarkdownLink({ href, children, node: _node, ...rest }: React.ComponentP
 // shared by every row, each cell's column for the stacked phone
 // layout) is settled by `rehypeTableShape` and read off the node.
 function MarkdownTable({ children, node }: React.ComponentPropsWithoutRef<'table'> & ExtraProps) {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const tally = parseTally(node?.properties?.dataTally)
   const stackValue = node?.properties?.dataStack
   const stack = stackValue === 'true' || stackValue === 'always' ? stackValue : undefined
@@ -712,7 +713,7 @@ const outcomeTone = (word: string) =>
   word === '@pass' ? 'success' : word === '@fail' ? 'destructive' : word === '@conflict' ? 'warning' : statusTone(word)
 
 function MarkdownCaption({ children, node }: React.ComponentPropsWithoutRef<'caption'> & ExtraProps) {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (
     <caption className="border-base text-muted-foreground border-t px-3 py-2 text-left text-xs">
       {t('markdown.sharedSource', { label: String(node?.properties?.dataLabel ?? '') })}: {children}
@@ -738,7 +739,7 @@ function MarkdownRow({ children, node }: React.ComponentPropsWithoutRef<'tr'> & 
 }
 
 function MarkdownHeaderCell({ children, align, style, node }: React.ComponentPropsWithoutRef<'th'> & ExtraProps) {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const recommended = Boolean(node?.properties?.dataRecommended)
   if (node?.properties?.dataTaskHead) {
     return (
@@ -766,7 +767,7 @@ function MarkdownCell({ children, align, style, node }: React.ComponentPropsWith
   // column's word is a mark. Read off the cell's text alone, „open" in a
   // Bemerkung column became a chip.
   const properties = node?.properties ?? {}
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const cases = useCasesDecision()
   const status = properties.dataStatus
   const tone = isStatusTone(status) ? status : null
@@ -1113,7 +1114,7 @@ function headingIdsByBlock(content: string, blocks: readonly MarkdownBlock[]): s
  */
 export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
   ({ content, className = '', compact = false, isStreaming = false, remarkPlugins, caret }) => {
-    const t = useTranslations('common')
+    const t = useTranslations(commonCopy)
     // Set during render, the documented way to derive state from a prop's history.
     const [streamedHere, setStreamedHere] = useState(isStreaming)
     if (isStreaming && !streamedHere) setStreamedHere(true)

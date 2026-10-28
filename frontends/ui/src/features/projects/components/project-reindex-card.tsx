@@ -18,9 +18,12 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { reindexProject } from '@/adapters/api/project-lifecycle-client'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { SettingsPanel } from './settings/settings-panel'
 
 interface ProjectReindexCardProps {
@@ -28,18 +31,15 @@ interface ProjectReindexCardProps {
 }
 
 export function ProjectReindexCard({ projectId }: ProjectReindexCardProps): JSX.Element {
-  const t = useTranslations('settings')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(settingsCopy)
+  const tCommon = useTranslations(commonCopy)
   const [confirming, setConfirming] = useState(false)
   const [isReindexing, setIsReindexing] = useState(false)
 
   const handleReindex = async (): Promise<void> => {
     setIsReindexing(true)
     try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/reindex`, {
-        method: 'POST',
-      })
-      if (!response.ok) throw new Error(String(response.status))
+      await reindexProject(projectId)
       // 202: the job is queued and runs on its own, so there is no count to
       // show. The documents' own status is where each one reports.
       toast.success(t('project.documents.reindexStarted'))

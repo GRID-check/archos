@@ -13,6 +13,7 @@
 import { createContext, useContext, useMemo, type FC, type ReactNode } from 'react'
 import type { Element } from 'hast'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
 import type { ProjectKey } from '@/lib/text/answer-directives'
 import { isProjectKey } from '@/lib/text/answer-directives'
 import { formatFigure, unitFor, type BoundFact } from '@/lib/project-profile/answer-bindings'
@@ -22,13 +23,13 @@ import { matchCase, rulerOf, type CaseDescriptor } from './cases'
 
 /** The fact's name in the reader's language („Gebäudeklasse"). */
 export function useProjectLabel(): (key: ProjectKey) => string {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   return (key) => t(`markdown.project.keys.${key}`)
 }
 
 /** One bound fact as its chip, or its name where no surface supplies the project. */
 export const ProjectFactChip: FC<{ factKey: ProjectKey; strip?: boolean }> = ({ factKey, strip = false }) => {
-  const t = useTranslations('common')
+  const t = useTranslations(commonCopy)
   const { project, prefill } = useAnswerData()
   const label = useProjectLabel()(factKey)
   if (!project) return <span data-testid="project-value" data-state="unbound">{label}</span>

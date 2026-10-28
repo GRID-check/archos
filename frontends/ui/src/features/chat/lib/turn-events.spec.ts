@@ -1,4 +1,4 @@
-// @disk-inputs: ../../shared/wire/v2/**, ../../src/aiq_agent/common/turn_status.py, ../../src/aiq_agent/skills/events.py, ../shared/wire/v2, shared/wire/v2
+// @disk-inputs: ../../shared/wire/v2/**, ../../src/aiq_agent/common/status_keys.py, ../../src/aiq_agent/skills/events.py, ../shared/wire/v2, shared/wire/v2
 /**
  * @vitest-environment node
  */
@@ -12,15 +12,16 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, test, expect } from 'vitest'
-import { de, en } from '@/i18n/dictionaries'
-import { createTranslator, getByPath } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { getByPath } from '@/i18n/translate'
 import { fixtureSteps, storedStep } from '@/test-utils/wire-v2-steps'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { FOLD_EVENT_KEYS, TURN_EVENT_KEYS } from './turn-event-keys'
 import { answerDegradations, deepResearchCutoff, liveLine, researchTruncation } from './turn-events'
 
-const tDe = createTranslator(de, 'chat')
-const tEn = createTranslator(en, 'chat')
+const tDe = translatorFor(chatCopy, 'de')
+const tEn = translatorFor(chatCopy, 'en')
 
 const status = (slot: string, fields: Record<string, unknown> = {}) =>
   storedStep({ id: `status:${slot}`, kind: 'status', slot, ...fields })
@@ -89,7 +90,7 @@ describe('every key the backend can emit has words in every locale', () => {
   }
 
   const backendKeys = [
-    ...registry('src/aiq_agent/common/turn_status.py', 'ALL_STATUS_KEYS'),
+    ...registry('src/aiq_agent/common/status_keys.py', 'ALL_STATUS_KEYS'),
     ...registry('src/aiq_agent/skills/events.py', 'ALL_SKILL_KEYS'),
   ]
 
@@ -102,10 +103,10 @@ describe('every key the backend can emit has words in every locale', () => {
     expect(backendKeys.slice().sort()).toEqual(Object.keys(TURN_EVENT_KEYS).sort())
   })
 
-  test.each(['de', 'en'])('%s has a string for every declared key', (locale) => {
-    const dictionary = locale === 'de' ? de : en
+  test.each(['de', 'en'] as const)('%s has a string for every declared key', (locale) => {
+    const chat = chatCopy.messages[locale]
     const missing = Object.entries({ ...TURN_EVENT_KEYS, ...FOLD_EVENT_KEYS }).filter(
-      ([key, prefix]) => typeof getByPath(dictionary, `chat.${prefix}${key}`) !== 'string'
+      ([key, prefix]) => typeof getByPath(chat, `${prefix}${key}`) !== 'string'
     )
     expect(missing.map(([key]) => key)).toEqual([])
   })

@@ -3,6 +3,7 @@
 import type { JSX, ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { intakeQuestionsStepCopy } from '@/i18n/namespaces/intake-questions-step'
 import { cn } from '@/lib/utils'
 import { ROUND_GROUPS } from '../../lib/question-round'
 import type { RoundRow } from './use-round-memory'
@@ -49,7 +50,7 @@ export function RoundList({
   /** Under the list: the folded interview's link. */
   footer?: ReactNode
 }): JSX.Element {
-  const t = useTranslations('intakeQuestionsStep')
+  const t = useTranslations(intakeQuestionsStepCopy)
   const tStatus = (row: RoundRow, current: boolean): string =>
     row.done ? t('list.done') : current ? t('list.current') : t('list.open')
   return (

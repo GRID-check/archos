@@ -14,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { PHONE_QUERY, useIsMobile } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useLocale, useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { SEARCH_KINDS, type DocumentHit, type SearchFacetDimension, type SearchHit, type SearchKind, type SearchResponse } from '@/lib/search/search-wire'
 import { clearFilters } from '../lib/active-filters'
 import type { SearchExportFormat } from '../lib/search-client'
@@ -122,7 +123,7 @@ export function SearchWorkspaceView({
   autoFocus = false,
   filtersOpen = false,
 }: SearchWorkspaceViewProps): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   const { locale } = useLocale()
   const router = useRouter()
   const from = useSearchReturn()

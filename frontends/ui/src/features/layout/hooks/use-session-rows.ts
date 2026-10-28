@@ -12,7 +12,7 @@
 
 import { useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import type { Conversation } from '@/features/chat/types'
 import { hasFinishedRun, hasLiveRun } from '@/features/chat/lib/session-activity'
 import { conversationMatchesProject } from '@/features/chat/lib/project-scope'

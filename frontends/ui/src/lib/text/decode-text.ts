@@ -2,7 +2,7 @@
  * Decode the bytes of a text file whose encoding nobody declared.
  *
  * The same order the knowledge layer reads them in
- * (`sources/knowledge_layer/src/llamaindex/text_formats.py`, `decode_text`), so
+ * (`packages/knowledge-layer/src/llamaindex/text_formats.py`, `decode_text`), so
  * the preview shows the text the index was built from: a byte-order mark
  * decides; else strict UTF-8; else Windows-1252. A Windows-authored `.csv` or
  * `.txt` is cp1252 more often than not, and reading it as UTF-8 with

@@ -64,8 +64,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { getByPath } from '@/i18n/translate'
 import {
   DOCUMENT_STATUSES,
@@ -142,10 +141,14 @@ const OPAQUE_STATUS_WRITES: Readonly<Record<string, string>> = {
   // what lands in the column — `completed` and `failed` are known only because
   // `reconcile-status.ts` spells them out, and it is scanned. A decision moved
   // one hop further away would be invisible here.
-  'src/lib/documents/repository.ts: resolution.status':
+  'src/lib/documents/repository/reconcile.ts: resolution.status':
     "whatever reconcile-status.ts resolved: 'completed' or 'failed'",
-  // Reads, not writes: a drizzle SELECT projection naming the column.
-  'src/lib/documents/repository.ts: documents.status': 'a SELECT projection, not a write',
+  // Reads, not writes: drizzle SELECT and RETURNING projections naming the column.
+  'src/lib/documents/repository/list.ts: documents.status': 'a SELECT projection, not a write',
+  'src/lib/documents/repository/lookup-by-ref.ts: documents.status': 'a SELECT projection, not a write',
+  'src/lib/documents/repository/name-lookup.ts: documents.status': 'a SELECT projection, not a write',
+  'src/lib/documents/repository/reconcile.ts: documents.status':
+    'a RETURNING projection and a guard comparison, not a write',
   'src/lib/session-documents/repository.ts: documents.status': 'a SELECT projection, not a write',
   'src/lib/documents/name-probe-types.ts: z.string()':
     "the name probe's wire schema, carrying the status the probe read to the upload planner; never a write",
@@ -432,7 +435,7 @@ describe('the scan looks where the writing happens', () => {
   it('finds the table writers at all', () => {
     // Same reason as above: an empty list would satisfy the next assertion
     // while proving nothing.
-    expect(tableWriters).toContain('src/lib/documents/repository.ts')
+    expect(tableWriters.some((file) => file.startsWith('src/lib/documents/repository/'))).toBe(true)
   })
 
   it('has no writer of the documents table outside the scanned directories', () => {
@@ -533,8 +536,8 @@ describe('every surface state has a label in both locales', () => {
   // see it. This is that check, for every state a declared status reaches.
   it.each(SURFACE_STATES)('%s', (state) => {
     const key = SURFACE_STATE_LABEL_KEYS[state]
-    expect(typeof getByPath(en.files, key), `en.files.${key}`).toBe('string')
-    expect(typeof getByPath(de.files, key), `de.files.${key}`).toBe('string')
+    expect(typeof getByPath(filesCopy.messages.en, key), `filesCopy.messages.en.${key}`).toBe('string')
+    expect(typeof getByPath(filesCopy.messages.de, key), `filesCopy.messages.de.${key}`).toBe('string')
   })
 })
 

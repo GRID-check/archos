@@ -43,6 +43,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatDayRange } from '@/lib/format'
 import {
   feedbackQueryString,
@@ -50,12 +51,11 @@ import {
   ratingsFiltered,
   type FeedbackQuery,
 } from '@/lib/feedback/filters'
-import type { FeedbackFilterOptions } from '@/lib/feedback/export-service'
+import { getAnswerFeedbackFilterOptions, type FeedbackFilterOptions } from '@/adapters/api/answer-feedback-client'
 import { formatCount } from './answer-feedback-types'
 import { useRatingsFilterLabels } from './feedback-filter-labels'
 
 const EXPORT_ROUTE = '/api/platform/answer-feedback/export'
-const OPTIONS_ROUTE = '/api/platform/answer-feedback/options'
 const COUNT_DEBOUNCE_MS = 300
 
 export type FeedbackExportFormat = 'xlsx' | 'csv'
@@ -90,7 +90,7 @@ export function FeedbackExportDialog({
   projectName,
   defaultOpen = false,
 }: FeedbackExportDialogProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const allVotesId = useId()
   const [open, setOpen] = useState(defaultOpen)
@@ -109,10 +109,8 @@ export function FeedbackExportDialog({
     setCount({ kind: 'loading' })
     const controller = new AbortController()
     const timer = setTimeout(() => {
-      fetch(`${OPTIONS_ROUTE}?${search}`, { signal: controller.signal })
-        .then(async (res) => {
-          if (!res.ok) throw new Error(String(res.status))
-          const options = (await res.json()) as FeedbackFilterOptions
+      getAnswerFeedbackFilterOptions(search, { signal: controller.signal })
+        .then((options) => {
           // Only the newest request may write: a slower answer for the
           // previous choice must not replace the count for the current one.
           if (requestId === latestRequest.current) setCount({ kind: 'ready', options })

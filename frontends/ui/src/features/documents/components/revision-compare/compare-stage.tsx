@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { PaneCaption, PaperSheet, SheetTag } from './compare-atoms'
 import { PageCanvas } from './page-canvas'
@@ -76,7 +77,7 @@ const sourceHasPage = (side: Side, page: number): boolean =>
   side.source !== null && hasPage(side.source.pageCount, page)
 
 function SideBySide({ sides, page, stage, scale, regions, activeRegion, pannable }: StageProps & { stage: PageSize }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const olderFrame = useRef<HTMLDivElement | null>(null)
   const newerFrame = useRef<HTMLDivElement | null>(null)
   const width = stage.width * scale
@@ -140,7 +141,7 @@ function SingleSheet({
   activeRegion,
   pannable,
 }: StageProps & { stage: PageSize }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const trackRef = useRef<HTMLDivElement | null>(null)
   const overlay = mode === 'overlay'
   const width = stage.width * scale
@@ -223,7 +224,7 @@ export function StageNotice({
   /** Whether the host can open the text comparison itself; otherwise the action closes the dialog back to the history. */
   hasTextCompare: boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const states = [older, newer]
   if (states.includes('not-comparable')) {
     return (

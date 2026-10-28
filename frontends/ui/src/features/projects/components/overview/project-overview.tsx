@@ -40,6 +40,9 @@ import { ProjectStatusMark } from '@/components/projects/project-status'
 import type { ProjectRecordView } from '@/lib/projects/project-record-types'
 import type { IntakeCounts, IntakeStatus } from '@/lib/project-intake/types'
 import { useLocale, useTranslations, type Translator } from '@/i18n'
+import { intakeShellCopy } from '@/i18n/namespaces/intake-shell'
+import { projectsCopy } from '@/i18n/namespaces/projects'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { formatBytes, formatDate } from '@/lib/format'
 import type { ProjectOverviewData } from '../../types'
 import { settingsSectionHref } from '../../lib/settings-sections'
@@ -188,7 +191,7 @@ function HeroTile({
   setupOpen: boolean
   setupProgress?: OverviewSetupProgress
 }): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
   const { locale } = useLocale()
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -198,8 +201,8 @@ function HeroTile({
     profile: data.profile,
     canWriteMemory: access.writeMemory,
   })
-  const tProjects = useTranslations('projects')
-  const tSetup = useTranslations('intakeShell')
+  const tProjects = useTranslations(projectsCopy)
+  const tSetup = useTranslations(intakeShellCopy)
   const setupNote = setupProgress ? setupOpenNote(setupProgress, tSetup) : undefined
   const status = data.lifecycle.status
   const projectPath = `/app/projects/${encodeURIComponent(data.id)}`

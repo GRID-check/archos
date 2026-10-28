@@ -22,10 +22,11 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { modeKeyFor } from '@/lib/project-profile/intake-definition'
-import type { IntakeAnswerMode, ProjectIntakeQuestion } from '@/lib/project-profile/intake-definition'
+import { modeKeyFor } from '@/lib/project-profile/intake-building-keys'
+import type { IntakeAnswerMode, ProjectIntakeQuestion } from '@/lib/project-profile/intake-types'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 type Answers = Record<string, ProjectPrimitiveValue>
 
@@ -49,7 +50,7 @@ export function QuestionControl({
   onSetAnswer: (key: string, value: ProjectPrimitiveValue) => void
   onSetMode: (key: string, mode: IntakeAnswerMode) => void
 }) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const value = answers[answerKey]
   const domId = `q-${answerKey}`
   const header = <QuestionHeader question={question} domId={domId} />
@@ -211,7 +212,7 @@ export function QuestionControl({
 }
 
 export function QuestionHeader({ question, domId }: { question: ProjectIntakeQuestion; domId: string }) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const [whyOpen, setWhyOpen] = useState(false)
   const whyId = `${domId}-why`
   return (
@@ -301,7 +302,7 @@ export function NumberTriControl({
   onValue: (v: ProjectPrimitiveValue) => void
   onMode: (m: IntakeAnswerMode) => void
 }) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const disabled = mode === 'open'
   return (
     <div className="flex flex-col gap-2">

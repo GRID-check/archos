@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import names from './legacy-names.json'
-import { BUILDING_ID_PREFIX } from './intake-definition'
+import { BUILDING_ID_PREFIX } from './intake-building-keys'
 import {
   LEGACY_PROFILE_KEYS,
   LEGACY_PROFILE_TOKENS,

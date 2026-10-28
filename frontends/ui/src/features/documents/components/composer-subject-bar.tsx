@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { FileText, X } from 'lucide-react'
 import { AnimatePresence, motion, motionEntrance } from '@/components/motion'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { sourceBase, sourceTint } from '@/lib/ui/source-tint'
 import type { ComposerSubject } from '@/features/chat/types'
 import { DOCUMENT_VERSION_STATES, type DocumentVersionState } from '@/lib/documents/lifecycle-types'
@@ -61,7 +62,7 @@ export function ComposerSubjectBar({
   onResolved: (identity: ResolvedSubjectIdentity) => void
   onShowFile?: () => void
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
 
   /*
     Recover what a restored subject cannot carry.
