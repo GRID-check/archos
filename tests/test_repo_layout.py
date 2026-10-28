@@ -50,7 +50,6 @@ TARGET = frozenset(
 LEGACY = {
     "frontends": "rows 7 and 9 (aiq_api, ui)",
     "shared": "row 4 (cards, wire)",
-    "sources": "row 6",
     "src": "row 8",
 }
 
@@ -60,6 +59,10 @@ MOVED = {
     "docs/superpowers/": "docs/specs, then deleted (#1250, #1252)",
     "frontends/benchmarks/": "evals/ (row 2)",
     "tests/benchmarks/": "evals/ (row 2)",
+    "sources/": "packages/<distribution> (row 6)",
+    "sources/knowledge_layer/": "packages/knowledge-layer (row 6)",
+    "sources/ris_adapter/": "packages/ris-adapter (row 6)",
+    "sources/tavily_web_search/": "packages/tavily-web-search (row 6)",
 }
 
 #: Where an old path may still be named: the record of what was true then.
