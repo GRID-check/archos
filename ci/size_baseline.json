@@ -176,7 +176,6 @@
     "packages/knowledge-layer/src/llamaindex/section_chunking.py": 768,
     "packages/knowledge-layer/src/llamaindex/visual_analysis.py": 996,
     "packages/knowledge-layer/src/qdrant/store.py": 616,
-    "packages/knowledge-layer/src/read_passage.py": 1777,
     "packages/knowledge-layer/src/register.py": 635,
     "packages/knowledge-layer/src/requery.py": 719,
     "packages/knowledge-layer/src/view_image.py": 861,
