@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.turn_status import ActionRow
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.knowledge.bim_query import run_bim_query
 from aiq_agent.profile_names import normalize_profile_token
 from aiq_agent.project_context import get_organization_id_from_context

@@ -185,6 +185,14 @@
               "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
             },
             {
+              "en": "Piloti now answers in the language you ask in, also when the project's documents are in German, and no longer writes an internal project field name into an answer.",
+              "de": "Piloti antwortet jetzt in der Sprache, in der Sie fragen, auch wenn die Projektdokumente auf Deutsch sind, und nennt interne Projektfeldnamen nicht mehr in Antworten."
+            },
+            {
+              "en": "An assistant such as Claude or Cursor that asks Piloti now receives the answer as plain Markdown, its check and action tables intact, instead of Piloti's own display markup.",
+              "de": "Ein Assistent wie Claude oder Cursor, der jetzt Piloti befragt, erhält die Antwort als einfaches Markdown mit intakten Prüf- und Aktionstabellen statt im Piloti-eigenen Darstellungs-Markup."
+            },
+            {
               "en": "Taking back a model view Piloti opened works again after you selected another element there, and once you have left the model view the chat no longer offers to take it back.",
               "de": "Das Zurückholen einer von Piloti geöffneten Modellansicht funktioniert wieder, nachdem Sie darin ein anderes Element ausgewählt haben. Sobald Sie die Modellansicht verlassen haben, bietet der Chat nicht mehr an, sie zurückzuholen."
             },
@@ -233,6 +241,14 @@
               "de": "Wenn Sie in mehreren Büros arbeiten, nimmt die obere Leiste über den Projekten nicht mehr das ganze Fenster ein und verdeckt die Seite nicht mehr. Sie hat wieder ihre normale Höhe, und den Wechsel zwischen Büros finden Sie jetzt im Menü hinter Ihrem Profilbild."
             },
             {
+              "en": "A follow-up question now builds on the earlier question and answer, also after an answer that read long passages, in the chat and when another agent asks Piloti.",
+              "de": "Eine Folgefrage baut jetzt auf der vorherigen Frage und Antwort auf – auch nach einer Antwort, bei der lange Passagen gelesen wurden, sowohl im Chat als auch, wenn ein anderer Agent Piloti fragt."
+            },
+            {
+              "en": "A question another agent puts to Piloti now always ends with an answer or a reason, also when Piloti restarts while answering it.",
+              "de": "Eine Frage, die ein anderer Agent Piloti jetzt stellt, wird immer mit einer Antwort oder einer Begründung abgeschlossen – auch wenn Piloti während der Beantwortung neu startet."
+            },
+            {
               "en": "Asked for an Excalidraw diagram or a sketch, Piloti now draws it, and you can open the drawing as a sketch to rework it, instead of being told it cannot. Asked about itself, such as whether it works inside your own assistant, Piloti now answers instead of searching your files.",
               "de": "Wenn Sie Piloti um ein Excalidraw-Diagramm oder eine Skizze bitten, erstellt es diese jetzt. Sie können die Zeichnung als Skizze öffnen und weiterbearbeiten, statt die Meldung zu erhalten, dass dies nicht möglich ist. Fragen Sie Piloti nach sich selbst, etwa ob es in Ihrem eigenen Assistenten funktioniert, antwortet es jetzt, statt Ihre Dateien zu durchsuchen."
             },
@@ -251,6 +267,14 @@
             {
               "en": "Asking for the documents that refer to a plan finds them when the plan is named the way a person writes it, such as \"Plan Nr. EP-05\" or \"siehe EP-05\".",
               "de": "Wenn Sie nach Dokumenten fragen, die sich auf einen Plan beziehen, werden diese auch gefunden, wenn der Plan so bezeichnet ist, wie man ihn schreiben würde, etwa „Plan Nr. EP-05“ oder „siehe EP-05“."
+            },
+            {
+              "en": "The search now finds the same documents whether you type Flächenwidmung or Flaechenwidmung, and \"current only\" keeps every matching document instead of dropping older uploads.",
+              "de": "Die Suche findet jetzt dieselben Dokumente, egal ob Sie Flächenwidmung oder Flaechenwidmung eingeben, und die Einstellung „nur aktuelle“ berücksichtigt alle passenden Dokumente, statt ältere Uploads auszuschließen."
+            },
+            {
+              "en": "A search for a word no document contains no longer fills the list with unrelated files, while a question asked in other words still finds the passages that answer it.",
+              "de": "Eine Suche nach einem Wort, das in keinem Dokument vorkommt, füllt die Liste nicht mehr mit irrelevanten Dateien, während eine anders formulierte Frage weiterhin die passenden Passagen findet."
             },
             {
               "en": "Signing in from a new browser or a private window no longer bounces back and forth until the browser gives up with too many redirects.",

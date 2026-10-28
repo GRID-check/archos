@@ -1,0 +1,8 @@
+---
+fixes:
+  - >
+    Piloti now answers in the language you ask in, also when the project's documents are in German, and no longer
+    writes an internal project field name into an answer.
+  - >
+    An assistant such as Claude or Cursor that asks Piloti now receives the answer as plain Markdown, its check and
+    action tables intact, instead of Piloti's own display markup.

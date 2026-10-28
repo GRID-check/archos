@@ -2723,7 +2723,7 @@ export function loadConfig(): GridConfig {
           "ghcr.io/cloudnative-pg/pgbouncer:1.26.0@sha256:ce54f1133c509f1db8a8092c3f1c761d8c9292065ed6b6698786bb966da4dab9",
       },
       storageSize: cfg.get("pgStorageSize") ?? "20Gi",
-      appUser: cfg.get("pgAppUser") ?? "aiq",
+      appUser: cfg.get("pgAppUser") ?? "agent",
       appPassword: cfg.requireSecret("pgAppPassword"),
       runtimePassword: cfg.requireSecret("pgRuntimePassword"),
       scalerPassword: cfg.getSecret("pgScalerPassword") ?? derivedScalerPassword(cfg.requireSecret("pgAppPassword")),

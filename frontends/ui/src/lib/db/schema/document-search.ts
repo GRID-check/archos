@@ -5,7 +5,7 @@
  * Derived, never authored. `lib/search/facets-projector.ts` replaces a row
  * whole from the reading ingestion stored; nothing a person writes lives here.
  *
- * `search_vector` is a generated column (`to_tsvector('german', search_text)`)
+ * `search_vector` is a generated column (`search_text` as written and folded by `grid_fold_german`, migration 0188)
  * and is deliberately not declared: nothing writes it, and the one query that
  * reads it names it in SQL (`lib/search/document-repository.ts`).
  */

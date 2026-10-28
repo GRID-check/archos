@@ -32,7 +32,7 @@
 
 import { useEffect, useState, type FC } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { CitationDocumentDialog } from '@/features/chat/components/SourcePreview'
+import { CitationDocumentDialog } from '@/features/chat/components/source-preview/citation-document-dialog'
 import { buildCitationModel, resolveCitationTarget } from '@/features/chat/lib/citations'
 import type { CitationSource } from '@/features/chat/types'
 import { SimilarPassagesDialog } from '@/features/similar-passages/components/similar-passages-dialog'

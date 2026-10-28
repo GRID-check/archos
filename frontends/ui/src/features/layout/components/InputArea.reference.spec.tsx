@@ -12,7 +12,7 @@ import { http, HttpResponse } from 'msw'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 
 import { server } from '@/mocks/server'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { SEARCH_FIXTURE_RESPONSE } from '@/app/dev/_fixtures/search'
 import type { SearchBody } from '@/lib/search/search-wire'
 import { InputArea } from './InputArea'
