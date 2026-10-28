@@ -76,15 +76,11 @@ const PHONE_W = 340
 
 /** Handle ids a framing node exposes (its bottom/source handles). */
 const framingHandles = (g: ReturnType<typeof buildGraph>): string[] =>
-  (g.nodes.find((n) => n.id === 'framing')!.data as { sources: Array<{ id: string }> }).sources.map(
-    (h) => h.id
-  )
+  ((g.nodes.find((n) => n.id === 'framing')!.data as { sources: Array<{ id: string }> }).sources).map((h) => h.id)
 
 /** Target handle ids a converge node exposes (its top handles). */
 const targetHandles = (g: ReturnType<typeof buildGraph>, id: string): string[] =>
-  (g.nodes.find((n) => n.id === id)!.data as { targets: Array<{ id: string }> }).targets.map(
-    (h) => h.id
-  )
+  ((g.nodes.find((n) => n.id === id)!.data as { targets: Array<{ id: string }> }).targets).map((h) => h.id)
 
 const isColumnId = (id: string) => /(^|-)col-\d+$/.test(id)
 const columnToColumnEdges = (g: ReturnType<typeof buildGraph>) =>
@@ -97,18 +93,14 @@ const columnToColumnEdges = (g: ReturnType<typeof buildGraph>) =>
  */
 type Slot = { type: 'card'; fan: FanCard } | { type: 'fold'; folded: FanCard[] }
 const slotsOf = (node: { data: unknown }): FanCard[] =>
-  (node.data as { cards: Slot[] }).cards.flatMap((slot) =>
-    slot.type === 'card' ? [slot.fan] : slot.folded
-  )
+  (node.data as { cards: Slot[] }).cards.flatMap((slot) => (slot.type === 'card' ? [slot.fan] : slot.folded))
 
 /**
  * What each column node carries, left→right: the card's id, or — for a ledger
  * doc the card model has no card for — the ledger's own name.
  */
 const columnCards = (g: ReturnType<typeof buildGraph>): string[][] =>
-  g.nodes
-    .filter((n) => n.type === 'sourceColumn')
-    .map((n) => slotsOf(n).map((s) => s.card?.id ?? s.name))
+  g.nodes.filter((n) => n.type === 'sourceColumn').map((n) => slotsOf(n).map((s) => s.card?.id ?? s.name))
 
 /** Every fan slot under round `i`, in column order. */
 const fanSlots = (g: ReturnType<typeof buildGraph>, i: number): FanCard[] =>
@@ -230,19 +222,11 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
     // No tool hits claimed either fetch. Cards stay in "Belegt durch"; the
     // spine does not pretend the last search returned them.
     expect(g.nodes.map((n) => n.id)).toEqual(['framing', 'round-0', 'round-1', 'findings'])
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'framing', target: 'round-0' })
-    )
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'round-0', target: 'round-1' })
-    )
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'round-1', target: 'findings' })
-    )
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'framing', target: 'round-0' }))
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'round-0', target: 'round-1' }))
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'round-1', target: 'findings' }))
     expect(g.nodes.filter((n) => n.type === 'sourceColumn')).toHaveLength(0)
-    expect(g.edges.filter((e) => e.source === 'framing' && e.target.includes('col-'))).toHaveLength(
-      0
-    )
+    expect(g.edges.filter((e) => e.source === 'framing' && e.target.includes('col-'))).toHaveLength(0)
     expect(columnToColumnEdges(g)).toHaveLength(0)
     expect(g.rows).toEqual([['framing'], ['round-0'], ['round-1'], ['findings']])
   })
@@ -254,10 +238,12 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
       retrievalStep(1, 'Grundriss', 'Die Richtlinie staffelt nach GK — der Plan fehlt.'),
       toolHit('plan', 'b', 1),
     ]
-    const g = buildGraph({ ...base, steps, answerConfidence: 'high' }, t, planFan(DESKTOP_W, 2), [
-      card('a'),
-      card('b'),
-    ])
+    const g = buildGraph(
+      { ...base, steps, answerConfidence: 'high' },
+      t,
+      planFan(DESKTOP_W, 2),
+      [card('a'), card('b')]
+    )
     expect(columnCards(g)).toEqual([['a'], ['b']])
     expect(g.nodes.map((n) => n.id)).toEqual([
       'framing',
@@ -267,23 +253,12 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
       'r1-col-0',
       'findings',
     ])
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'round-0', target: 'r0-col-0' })
-    )
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'r0-col-0', target: 'round-1' })
-    )
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'round-1', target: 'r1-col-0' })
-    )
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'r1-col-0', target: 'findings' })
-    )
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'round-0', target: 'r0-col-0' }))
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'r0-col-0', target: 'round-1' }))
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'round-1', target: 'r1-col-0' }))
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'r1-col-0', target: 'findings' }))
     const round0 = g.nodes.find((n) => n.id === 'round-0')!.data as { actions: string[] }
-    const round1 = g.nodes.find((n) => n.id === 'round-1')!.data as {
-      text: string
-      actions: string[]
-    }
+    const round1 = g.nodes.find((n) => n.id === 'round-1')!.data as { text: string; actions: string[] }
     expect(round0.actions).toEqual(['thinking.stepName.corpus'])
     expect(round1.text).toContain('der Plan fehlt')
     expect(g.rows).toEqual([
@@ -296,26 +271,14 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
     ])
   })
 
-  test("a merged knowledge_search step still hangs each fetch's files on its checkpoint", () => {
+  test('a merged knowledge_search step still hangs each fetch\'s files on its checkpoint', () => {
     const merged = storedStep({
       id: 'sources:merged',
       kind: 'sources',
       tool: 'knowledge_search',
       lanes: [
-        {
-          key: 'building_law_oib',
-          label: 'OIB-Richtlinie',
-          kind: 'building_law',
-          hit_count: 1,
-          sources: [{ name: 'a.pdf', round: 0 }],
-        },
-        {
-          key: 'project',
-          label: 'Projektwissen',
-          kind: 'project',
-          hit_count: 1,
-          sources: [{ name: 'b.pdf', round: 1 }],
-        },
+        { key: 'building_law_oib', label: 'OIB-Richtlinie', kind: 'building_law', hit_count: 1, sources: [{ name: 'a.pdf', round: 0 }] },
+        { key: 'project', label: 'Projektwissen', kind: 'project', hit_count: 1, sources: [{ name: 'b.pdf', round: 1 }] },
       ],
     })
     const g = buildGraph(
@@ -340,10 +303,12 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
         'OIB 3 Pkt. 3.4.2 verweist auf den lichten Einfallswinkel — messe den Überhang.'
       ),
     ]
-    const g = buildGraph({ ...base, steps, answerConfidence: 'high' }, t, planFan(DESKTOP_W, 2), [
-      card('a'),
-      card('b'),
-    ])
+    const g = buildGraph(
+      { ...base, steps, answerConfidence: 'high' },
+      t,
+      planFan(DESKTOP_W, 2),
+      [card('a'), card('b')]
+    )
     const round0 = g.nodes.find((n) => n.id === 'round-0')!.data as {
       label: string
       sub: string
@@ -382,46 +347,45 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
       retrievalStep(1, 'q1'),
       toolHit('b', 'b', 1),
     ]
-    const g = buildGraph({ ...base, steps, answerConfidence: 'high' }, t, planFan(DESKTOP_W, 2), [
-      card('a'),
-      card('b'),
-    ])
+    const g = buildGraph(
+      { ...base, steps, answerConfidence: 'high' },
+      t,
+      planFan(DESKTOP_W, 2),
+      [card('a'), card('b')]
+    )
     const sub = (i: number) =>
       (g.nodes.find((n) => n.id === `round-${i}`)!.data as { sub: string }).sub
     expect(sub(0)).toBe('thinking.node.stepKindFinding')
     expect(sub(1)).toBe('thinking.node.stepKindRead')
   })
 
-  test.each(['de', 'en'])(
-    '%s numbers every layer Schritt N / Step N, with the kind beside it',
-    (locale) => {
-      const dictionary = locale === 'de' ? de : en
-      const translator = createTranslator(dictionary, 'chat') as Translator
-      const steps = [
-        retrievalStep(0, 'q0', 'Zuerst die Grundregel.'),
-        toolHit('a', 'a', 0),
-        retrievalStep(1, 'q1'),
-      ]
-      const g = buildGraph(
-        { ...base, steps, answerConfidence: 'high' },
-        translator,
-        planFan(DESKTOP_W, 1),
-        [card('a')]
-      )
-      const layer = (i: number) =>
-        g.nodes.find((n) => n.id === `round-${i}`)!.data as { label: string; sub: string }
-      expect(layer(0).label).toContain('1')
-      expect(layer(1).label).toContain('2')
-      for (const i of [0, 1]) {
-        expect(layer(i).label).not.toContain('thinking.')
-        expect(layer(i).sub).not.toContain('thinking.')
-        expect(layer(i).sub.trim().length).toBeGreaterThan(0)
-      }
-      // No layer wears a tool-call id as its number: the counter is the
-      // position on the spine, so two layers never share one.
-      expect(layer(0).label).not.toEqual(layer(1).label)
+  test.each(['de', 'en'])('%s numbers every layer Schritt N / Step N, with the kind beside it', (locale) => {
+    const dictionary = locale === 'de' ? de : en
+    const translator = createTranslator(dictionary, 'chat') as Translator
+    const steps = [
+      retrievalStep(0, 'q0', 'Zuerst die Grundregel.'),
+      toolHit('a', 'a', 0),
+      retrievalStep(1, 'q1'),
+    ]
+    const g = buildGraph(
+      { ...base, steps, answerConfidence: 'high' },
+      translator,
+      planFan(DESKTOP_W, 1),
+      [card('a')]
+    )
+    const layer = (i: number) =>
+      g.nodes.find((n) => n.id === `round-${i}`)!.data as { label: string; sub: string }
+    expect(layer(0).label).toContain('1')
+    expect(layer(1).label).toContain('2')
+    for (const i of [0, 1]) {
+      expect(layer(i).label).not.toContain('thinking.')
+      expect(layer(i).sub).not.toContain('thinking.')
+      expect(layer(i).sub.trim().length).toBeGreaterThan(0)
     }
-  )
+    // No layer wears a tool-call id as its number: the counter is the
+    // position on the spine, so two layers never share one.
+    expect(layer(0).label).not.toEqual(layer(1).label)
+  })
 
   test('stacked columns keep exactly two straight edges each — nothing pierces a card', () => {
     const cards = Array.from({ length: 8 }, (_, i) => card(`s${i}`))
@@ -439,32 +403,17 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
   })
 
   test('phone: the single grouped column takes one centred edge in and one out', () => {
-    const g = buildGraph({ ...base, answerConfidence: 'high' }, t, planFan(PHONE_W, 2), [
-      card('a'),
-      card('b'),
-    ])
+    const g = buildGraph({ ...base, answerConfidence: 'high' }, t, planFan(PHONE_W, 2), [card('a'), card('b')])
 
     expect(g.nodes.map((n) => n.id)).toEqual(['framing', 'col-0', 'findings'])
-    expect(
-      (g.nodes.find((n) => n.id === 'col-0')!.data as unknown as { grouped: boolean }).grouped
-    ).toBe(true)
+    expect((g.nodes.find((n) => n.id === 'col-0')!.data as unknown as { grouped: boolean }).grouped).toBe(true)
     expect(framingHandles(g)).toEqual(['c-bottom'])
     expect(g.edges).toHaveLength(2)
     expect(g.edges).toContainEqual(
-      expect.objectContaining({
-        source: 'framing',
-        sourceHandle: 'c-bottom',
-        target: 'col-0',
-        targetHandle: 'in',
-      })
+      expect.objectContaining({ source: 'framing', sourceHandle: 'c-bottom', target: 'col-0', targetHandle: 'in' })
     )
     expect(g.edges).toContainEqual(
-      expect.objectContaining({
-        source: 'col-0',
-        sourceHandle: 'out',
-        target: 'findings',
-        targetHandle: 'c-top',
-      })
+      expect.objectContaining({ source: 'col-0', sourceHandle: 'out', target: 'findings', targetHandle: 'c-top' })
     )
     expect(g.rows).toEqual([['framing'], ['col-0'], ['findings']])
   })
@@ -474,11 +423,7 @@ describe('buildGraph — the fan splits from one line and merges back into one',
   test('every column edge shares the framing exit and the assessment entry point', () => {
     // Three columns: the most the 680px chat column holds (MIN_COL_W).
     const fan = planFan(DESKTOP_W, 3)
-    const g = buildGraph({ ...base, answerConfidence: 'high' }, t, fan, [
-      card('a'),
-      card('b'),
-      card('c'),
-    ])
+    const g = buildGraph({ ...base, answerConfidence: 'high' }, t, fan, [card('a'), card('b'), card('c')])
 
     // A single centred anchor per banner in each direction: the connectors share
     // their first and last segment, so the graph reads as one line splitting
@@ -504,10 +449,7 @@ describe('buildGraph — the fan splits from one line and merges back into one',
 
 describe('buildGraph — the fan-in shares one centred anchor (P1-5)', () => {
   test('every column merges into the assessment on its single centre handle', () => {
-    const g = buildGraph({ ...base, answerConfidence: 'medium' }, t, planFan(DESKTOP_W, 2), [
-      card('a'),
-      card('b'),
-    ])
+    const g = buildGraph({ ...base, answerConfidence: 'medium' }, t, planFan(DESKTOP_W, 2), [card('a'), card('b')])
 
     expect(targetHandles(g, 'findings')).toEqual(['c-top'])
     for (const col of ['col-0', 'col-1']) {
@@ -518,10 +460,7 @@ describe('buildGraph — the fan-in shares one centred anchor (P1-5)', () => {
   })
 
   test('a HITL choice is not drawn in the graph: its one home is the prompt card', () => {
-    const g = buildGraph({ ...base, answerConfidence: 'medium' }, t, planFan(DESKTOP_W, 2), [
-      card('a'),
-      card('b'),
-    ])
+    const g = buildGraph({ ...base, answerConfidence: 'medium' }, t, planFan(DESKTOP_W, 2), [card('a'), card('b')])
     expect(g.nodes.map((n) => n.type)).not.toContain('branches')
   })
 })
@@ -570,12 +509,9 @@ describe('buildGraph — only the handles a layout needs (P2-8)', () => {
 
     // The assessment always carries its bottom anchor, so a node added under a
     // settled assessment would still draw its connector.
-    const settled = buildGraph({ ...base, answerConfidence: 'high' }, t, planFan(DESKTOP_W, 1), [
-      card('a'),
-    ])
+    const settled = buildGraph({ ...base, answerConfidence: 'high' }, t, planFan(DESKTOP_W, 1), [card('a')])
     const bottomHandle = (g: ReturnType<typeof buildGraph>) =>
-      (g.nodes.find((n) => n.id === 'findings')!.data as { source: { id: string; left: string } })
-        .source
+      (g.nodes.find((n) => n.id === 'findings')!.data as { source: { id: string; left: string } }).source
     expect(bottomHandle(settled)).toEqual({ id: 'out', left: '50%' })
   })
 
@@ -635,18 +571,12 @@ describe('the live frontier: only the connectors into the newest row march', () 
     const into = edges.filter((e) => newest.includes(e.target))
     expect(into.length).toBeGreaterThan(0)
     for (const e of into) expect(e.animated).toBe(true)
-    for (const e of edges.filter((e) => !newest.includes(e.target)))
-      expect(e.animated).toBeUndefined()
+    for (const e of edges.filter((e) => !newest.includes(e.target))) expect(e.animated).toBeUndefined()
   })
 
   test('a settled graph has no animated edge', () => {
     const cards = [card('a'), card('b')]
-    const g = buildGraph(
-      { ...liveSpine(), live: false, answerConfidence: 'high' },
-      t,
-      planFan(DESKTOP_W, 2),
-      cards
-    )
+    const g = buildGraph({ ...liveSpine(), live: false, answerConfidence: 'high' }, t, planFan(DESKTOP_W, 2), cards)
     expect(g.edges.length).toBeGreaterThan(0)
     // Settled is an empty newest row, which is what ReasoningFlow passes.
     expect(animateFrontier(g.edges, []).some((e) => e.animated)).toBe(false)
@@ -657,10 +587,7 @@ describe('the live frontier: only the connectors into the newest row march', () 
   test('an unchanged edge keeps its object across a rebuild', () => {
     const cards = [card('a'), card('b')]
     const first = buildGraph(liveSpine(), t, planFan(DESKTOP_W, 2), cards).edges
-    const again = keepEdgeIdentity(
-      first,
-      buildGraph(liveSpine(), t, planFan(DESKTOP_W, 2), cards).edges
-    )
+    const again = keepEdgeIdentity(first, buildGraph(liveSpine(), t, planFan(DESKTOP_W, 2), cards).edges)
     expect(again).toBe(first)
   })
 })
@@ -670,7 +597,8 @@ describe('a turn that was CUT OFF says so where the fan converges', () => {
 
   const findings = (g: ReturnType<typeof buildGraph>) =>
     g.nodes.find((n) => n.id === 'findings')?.data as
-      { truncation?: { before: string; step?: string; after: string; mono: boolean } } | undefined
+      | { truncation?: { before: string; step?: string; after: string; mono: boolean } }
+      | undefined
 
   test('a truncated turn with nothing found still gets an assessment node', () => {
     // The worst case: cut off before it found anything. Without this the graph
@@ -710,11 +638,7 @@ describe('a turn that was CUT OFF says so where the fan converges', () => {
   })
 
   test('while the turn is still live the graph claims nothing about the ending', () => {
-    const props: ReasoningFlowProps = {
-      ...base,
-      steps: [budgetStep(['knowledge_search'])],
-      live: true,
-    }
+    const props: ReasoningFlowProps = { ...base, steps: [budgetStep(['knowledge_search'])], live: true }
     const g = buildGraph(props, t, planFan(DESKTOP_W, 0), [])
     expect(findings(g)?.truncation).toBeUndefined()
   })
@@ -736,10 +660,9 @@ describe('a deep run that was cut off or degraded says so under the assessment',
     technicalStep('degraded', { degraded: true, agent: 'deep', reasons })
 
   const limits = (g: ReturnType<typeof buildGraph>) =>
-    (
-      g.nodes.find((n) => n.id === 'findings')?.data as
-        { limits?: { label: string; lines: Array<{ text: string; warn: boolean }> } } | undefined
-    )?.limits
+    (g.nodes.find((n) => n.id === 'findings')?.data as
+      | { limits?: { label: string; lines: Array<{ text: string; warn: boolean }> } }
+      | undefined)?.limits
 
   const build = (steps: StoredThinkingStep[], translator: Translator = t) =>
     buildGraph({ ...base, steps }, translator, planFan(DESKTOP_W, 0), [])
@@ -748,9 +671,7 @@ describe('a deep run that was cut off or degraded says so under the assessment',
     // Same case the truncation line exists for, reached down the other road: a
     // deep run that died on the clock before producing anything would otherwise
     // be a graph that just stops after the framing card.
-    const g = build([
-      cutoffStep({ reason: 'wall_clock', salvaged: false, source_count: 0, report_chars: 0 }),
-    ])
+    const g = build([cutoffStep({ reason: 'wall_clock', salvaged: false, source_count: 0, report_chars: 0 })])
     expect(g.nodes.find((n) => n.id === 'findings')).toBeDefined()
     expect(limits(g)?.lines[0]).toEqual({
       text: 'thinking.node.limits.deepCutoff.time thinking.node.limits.deepCutoff.nothing',
@@ -760,13 +681,7 @@ describe('a deep run that was cut off or degraded says so under the assessment',
 
   test('the cause and its consequence are one statement; what was gathered is the next', () => {
     const g = build([
-      cutoffStep({
-        reason: 'step_limit',
-        salvaged: true,
-        source_count: 12,
-        report_chars: 4210,
-        elapsed_seconds: 486,
-      }),
+      cutoffStep({ reason: 'step_limit', salvaged: true, source_count: 12, report_chars: 4210, elapsed_seconds: 486 }),
     ])
     expect(limits(g)?.lines.map((l) => l.text)).toEqual([
       'thinking.node.limits.deepCutoff.steps thinking.node.limits.deepCutoff.salvaged',
@@ -777,9 +692,7 @@ describe('a deep run that was cut off or degraded says so under the assessment',
   test('nothing worth counting is left unsaid rather than counted to zero', () => {
     // "0 Quellen" is a true number that reads as a verdict, and a run cut off
     // after forty seconds did not stop "after 0 minutes".
-    const g = build([
-      cutoffStep({ reason: 'wall_clock', salvaged: false, source_count: 0, elapsed_seconds: 41 }),
-    ])
+    const g = build([cutoffStep({ reason: 'wall_clock', salvaged: false, source_count: 0, elapsed_seconds: 41 })])
     expect(limits(g)?.lines).toHaveLength(1)
   })
 
@@ -790,12 +703,7 @@ describe('a deep run that was cut off or degraded says so under the assessment',
 
   test('a degraded answer is marked as one the reader should check', () => {
     const g = build([
-      degradedStep([
-        'no_report_file',
-        'no_valid_citations',
-        'cards_generation_failed',
-        'basis_unread',
-      ]),
+      degradedStep(['no_report_file', 'no_valid_citations', 'cards_generation_failed', 'basis_unread']),
     ])
     expect(limits(g)?.lines).toEqual([
       { text: 'thinking.node.limits.degraded.noReport', warn: true },
@@ -838,14 +746,7 @@ describe('a deep run that was cut off or degraded says so under the assessment',
     const translator = createTranslator(locale === 'de' ? de : en, 'chat') as Translator
     const shapes = [
       [cutoffStep({ reason: 'wall_clock', salvaged: true, source_count: 1, elapsed_seconds: 62 })],
-      [
-        cutoffStep({
-          reason: 'step_limit',
-          salvaged: false,
-          source_count: 9,
-          elapsed_seconds: 900,
-        }),
-      ],
+      [cutoffStep({ reason: 'step_limit', salvaged: false, source_count: 9, elapsed_seconds: 900 })],
       [cutoffStep({ reason: 'quota_exhausted', salvaged: false })],
       [degradedStep(['no_report_file', 'no_valid_citations', 'cards_generation_failed'])],
     ]
@@ -867,12 +768,8 @@ describe('a deep run that was cut off or degraded says so under the assessment',
     for (const dictionary of [de, en]) {
       const translator = createTranslator(dictionary, 'chat') as Translator
       const line = (count: number) =>
-        limits(
-          build(
-            [cutoffStep({ reason: 'wall_clock', salvaged: true, source_count: count })],
-            translator
-          )
-        )!.lines[1]!.text
+        limits(build([cutoffStep({ reason: 'wall_clock', salvaged: true, source_count: count })], translator))!
+          .lines[1]!.text
       expect(line(1)).not.toEqual(line(4))
       expect(line(1)).toContain('1')
       expect(line(4)).toContain('4')
@@ -966,18 +863,10 @@ describe('a checkpoint layer folds its own fan (ledger 19)', () => {
 
   test('a folded checkpoint wires straight into the next one', () => {
     const g = spine(3, { folded: new Set([0, 1]), onToggle: () => {} })
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'round-0', target: 'round-1' })
-    )
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'round-1', target: 'round-2' })
-    )
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'round-2', target: 'r2-col-0' })
-    )
-    expect(g.edges).toContainEqual(
-      expect.objectContaining({ source: 'r2-col-0', target: 'findings' })
-    )
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'round-0', target: 'round-1' }))
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'round-1', target: 'round-2' }))
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'round-2', target: 'r2-col-0' }))
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: 'r2-col-0', target: 'findings' }))
     // Nothing may point at a column that is no longer in the graph.
     const ids = new Set(g.nodes.map((n) => n.id))
     for (const e of g.edges) {
@@ -995,12 +884,7 @@ describe('a checkpoint layer folds its own fan (ledger 19)', () => {
       retrievalStep(1, 'Treppenraum Entrauchung', 'Offen ist der Treppenraum.'),
       toolHit('d', 'Bauordnung', 1),
     ]
-    const cards = [
-      card('OIB-RL_2'),
-      card('Brandschutzkonzept'),
-      card('Grundriss_EG'),
-      card('Bauordnung'),
-    ]
+    const cards = [card('OIB-RL_2'), card('Brandschutzkonzept'), card('Grundriss_EG'), card('Bauordnung')]
     for (const dictionary of [de, en]) {
       const translator = createTranslator(dictionary, 'chat') as Translator
       const g = buildGraph(
@@ -1118,11 +1002,7 @@ describe('a checkpoint layer folds its own fan (ledger 19)', () => {
 
   test('a checkpoint that fetched nothing offers no fold — a control that removes nothing', () => {
     const g = buildGraph(
-      {
-        ...base,
-        steps: [retrievalStep(0, 'q0'), retrievalStep(1, 'q1')],
-        answerConfidence: 'high',
-      },
+      { ...base, steps: [retrievalStep(0, 'q0'), retrievalStep(1, 'q1')], answerConfidence: 'high' },
       t,
       planFan(DESKTOP_W, 2),
       [card('a'), card('b')],
@@ -1237,10 +1117,7 @@ describe('a ledger round draws its own fan', () => {
     expect(fanSlots(g, 1).map((s) => s.card?.id)).toEqual(['a', 'b'])
     // …but the loci are the round's own, not the turn aggregate.
     expect(fanSlots(g, 1).map((s) => s.loci?.map((l) => l.detail))).toEqual([['S. 12'], ['S. 3']])
-    expect(fanSlots(g, 0).map((s) => s.loci?.map((l) => l.detail))).toEqual([
-      [undefined],
-      [undefined],
-    ])
+    expect(fanSlots(g, 0).map((s) => s.loci?.map((l) => l.detail))).toEqual([[undefined], [undefined]])
   })
 
   test('one document opened at two clauses is ONE slot carrying both', () => {
@@ -1262,15 +1139,9 @@ describe('a ledger round draws its own fan', () => {
     // the slot would make the round claim it returned one file when it read two.
     const g = build([
       ledger[0]!,
-      entry(
-        1,
-        [
-          { name: 'a.pdf', detail: 'S. 12' },
-          { name: 'Reparatur.pdf', detail: 'S. 1' },
-        ],
-        [],
-        ['read_passage']
-      ),
+      entry(1, [{ name: 'a.pdf', detail: 'S. 12' }, { name: 'Reparatur.pdf', detail: 'S. 1' }], [], [
+        'read_passage',
+      ]),
     ])
     const slots = fanSlots(g, 1)
     expect(slots.map((s) => s.card?.id)).toEqual(['a', undefined])
@@ -1284,8 +1155,7 @@ describe('a ledger round draws its own fan', () => {
     const g = build()
     expect(columnCards(g)).toEqual([['a'], ['b'], ['a'], ['b'], ['a']])
     // No round speaks for a slot, so every card keeps its turn aggregate.
-    for (const i of [0, 1])
-      expect(fanSlots(g, i).map((s) => s.loci)).toEqual([undefined, undefined])
+    for (const i of [0, 1]) expect(fanSlots(g, i).map((s) => s.loci)).toEqual([undefined, undefined])
   })
 
   test('a round the ledger does not have falls back on its own', () => {
@@ -1299,8 +1169,7 @@ describe('a ledger round draws its own fan', () => {
 
   test('a round that only opened passages is an Öffnen layer, not a search', () => {
     const g = build(ledger)
-    const sub = (i: number) =>
-      (g.nodes.find((n) => n.id === `round-${i}`)!.data as { sub: string }).sub
+    const sub = (i: number) => (g.nodes.find((n) => n.id === `round-${i}`)!.data as { sub: string }).sub
     expect(sub(0)).toBe('thinking.node.stepKindRead')
     // Round 1 concluded something AND returned files, which would have read as
     // a Befund — but it searched for nothing, and that is the distinction.
@@ -1314,23 +1183,15 @@ describe('a ledger round draws its own fan', () => {
     // like, so the reader could not tell a miss from a stamping gap.
     const empty: RetrievalLedger = [entry(0, [], [], ['knowledge_search']), ledger[1]!, ledger[2]!]
     const g = build(empty)
-    const sub = (i: number) =>
-      (g.nodes.find((n) => n.id === `round-${i}`)!.data as { sub: string }).sub
+    const sub = (i: number) => (g.nodes.find((n) => n.id === `round-${i}`)!.data as { sub: string }).sub
     expect(sub(0)).toBe('thinking.node.stepKindNoHits')
     // The ledger's verdict wins over the Thought beside the call: a
     // conclusion drawn from a fetch that returned nothing is still a miss.
-    const concluded: RetrievalLedger = [
-      entry(0, [], [], ['knowledge_search']),
-      ledger[1]!,
-      ledger[2]!,
-    ]
+    const concluded: RetrievalLedger = [entry(0, [], [], ['knowledge_search']), ledger[1]!, ledger[2]!]
     const withThought = buildGraph(
       {
         ...base,
-        steps: [
-          retrievalStep(0, 'Fluchtweg', 'Die Regel steht nicht im Bestand.'),
-          ...steps.slice(1),
-        ],
+        steps: [retrievalStep(0, 'Fluchtweg', 'Die Regel steht nicht im Bestand.'), ...steps.slice(1)],
         answerConfidence: 'high',
         retrievalLedger: concluded,
       },
@@ -1344,9 +1205,9 @@ describe('a ledger round draws its own fan', () => {
     // A turn stored before the ledger existed keeps `Suche`: without the
     // backend's account an empty layer is not known to be a miss.
     const legacy = build(undefined)
-    expect((legacy.nodes.find((n) => n.id === 'round-0')!.data as { sub: string }).sub).not.toBe(
-      'thinking.node.stepKindNoHits'
-    )
+    expect(
+      (legacy.nodes.find((n) => n.id === 'round-0')!.data as { sub: string }).sub
+    ).not.toBe('thinking.node.stepKindNoHits')
   })
 
   test.each(['de', 'en'])('%s spells the Öffnen layer', (locale) => {

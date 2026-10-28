@@ -16,11 +16,7 @@ import { lookStepGroups } from '../../lib/look-steps'
 import { LookStepRows } from './LookStepRow'
 import { ReasoningFlow } from './ReasoningFlow'
 
-const state = vi.hoisted((): FakePdfState => ({
-  fail: false,
-  pages: [{ items: [] }, { items: [] }],
-  destroyed: 0,
-}))
+const state = vi.hoisted((): FakePdfState => ({ fail: false, pages: [{ items: [] }, { items: [] }], destroyed: 0 }))
 vi.mock('@/features/knowledge/lib/pdfjs-runtime', () => fakePdfjsRuntime(state))
 
 const look = (n: number, extra: Record<string, unknown> = {}) => ({
@@ -51,11 +47,7 @@ describe('lookStepGroups', () => {
     expect(groups).toHaveLength(2)
     expect(groups[0]!.looks.map((item) => item.place.page)).toEqual([2, 1])
     expect(groups[0]!.looks[0]!.place).toMatchObject({
-      document: {
-        id: '00000000-0000-4000-8000-0000000000c1',
-        name: 'Grundriss EG.pdf',
-        shelf: 'stored',
-      },
+      document: { id: '00000000-0000-4000-8000-0000000000c1', name: 'Grundriss EG.pdf', shelf: 'stored' },
       frame: 'page',
       region: [0.62, 0.04, 0.34, 0.22],
     })
@@ -67,13 +59,7 @@ describe('lookStepGroups', () => {
     const groups = lookStepGroups(
       storedSteps([
         look(1),
-        {
-          id: 'status:retrieval:1',
-          kind: 'retrieval',
-          round: 1,
-          key: 'status.retrieval.withQuery',
-          values: {},
-        },
+        { id: 'status:retrieval:1', kind: 'retrieval', round: 1, key: 'status.retrieval.withQuery', values: {} },
         look(2),
       ])
     )
@@ -94,17 +80,11 @@ describe('LookStepRows', () => {
 
     await user.click(within(row).getByRole('button', { name: 'Open Grundriss EG.pdf at p. 2' }))
     const dialog = await screen.findByTestId('pdf-viewer-dialog')
-    await waitFor(() =>
-      expect(within(dialog).getAllByTestId('region-mark').length).toBeGreaterThan(0)
-    )
+    await waitFor(() => expect(within(dialog).getAllByTestId('region-mark').length).toBeGreaterThan(0))
   })
 
   test('several looks at one document: one row, a strip with each place named', () => {
-    render(
-      <LookStepRows
-        steps={storedSteps([look(1), look(2, { region: null, where: null, page: 1 })])}
-      />
-    )
+    render(<LookStepRows steps={storedSteps([look(1), look(2, { region: null, where: null, page: 1 })])} />)
     const row = within(screen.getByTestId('look-step-rows')).getByTestId('work-row')
     expect(row).toHaveTextContent('Looks at Grundriss EG.pdf2 passages')
     expect(within(row).getAllByTestId('page-place-button')).toHaveLength(2)
@@ -113,30 +93,12 @@ describe('LookStepRows', () => {
   })
 
   test('nothing for a turn that did not look', () => {
-    render(
-      <LookStepRows
-        steps={storedSteps([
-          {
-            id: 'status:retrieval:0',
-            kind: 'retrieval',
-            round: 0,
-            key: 'status.retrieval.withQuery',
-            values: {},
-          },
-        ])}
-      />
-    )
+    render(<LookStepRows steps={storedSteps([{ id: 'status:retrieval:0', kind: 'retrieval', round: 0, key: 'status.retrieval.withQuery', values: {} }])} />)
     expect(screen.queryByTestId('look-step-rows')).toBeNull()
   })
 
   test('the Herleitung shows them under its graph', () => {
-    render(
-      <ReasoningFlow
-        steps={storedSteps([look(1)])}
-        userQuestion="Welcher Maßstab?"
-        answerConfidence="high"
-      />
-    )
+    render(<ReasoningFlow steps={storedSteps([look(1)])} userQuestion="Welcher Maßstab?" answerConfidence="high" />)
     expect(screen.getByTestId('look-step-rows')).toBeInTheDocument()
   })
 
