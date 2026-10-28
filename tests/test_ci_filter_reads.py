@@ -53,7 +53,9 @@ def test_a_chain_resolves_under_a_directory_the_file_names():
         "frontends/ui/src/lib/documents",
     }
     source = (
-        'LIB = ROOT / "frontends" / "ui" / "src" / "lib"\ncap = LIB / "documents" / "search.ts"\nname = "README.md"\n'
+        'LIB = ROOT / "frontends" / "ui" / "src" / "lib"\n'
+        'cap = number(LIB / "documents" / "search.ts", "SEARCH_CAP")\n'
+        'name = "README.md"\n'
     )
     assert reads.files_read("t.py", source, files, directories) == {"frontends/ui/src/lib/documents/search.ts"}
 

@@ -149,10 +149,16 @@ def chains(tokens: list[str]) -> list[str]:
 def files_read(test: str, source: str, files: set[str], directories: set[str]) -> set[str]:
     """The tracked files `source` names, directly or under a directory it names."""
     tokens = python_tokens(source) if test.endswith(".py") else script_tokens(source)
-    # A path has a directory in it: a bare name (`'README.md'` as test data) is not one.
-    candidates = [str(PurePosixPath(chain)) for chain in chains(tokens) if "/" in chain]
+    # Every leading run of a chain, so an argument after the path (`_ts_number(LIB / "a.ts", "NAME")`)
+    # does not hide it. A path has a directory in it: a bare name (`'README.md'` as test data) is not one.
+    candidates = {
+        "/".join(parts[:end])
+        for chain in chains(tokens)
+        for parts in [PurePosixPath(chain).parts]
+        for end in range(1, len(parts) + 1)
+    }
     bases = [chain for chain in candidates if chain in directories]
-    read = {chain for chain in candidates if chain in files}
+    read = {chain for chain in candidates if "/" in chain and chain in files}
     for chain in candidates:
         read.update(f"{base}/{chain}" for base in bases if f"{base}/{chain}" in files)
     return read
