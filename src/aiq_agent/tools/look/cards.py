@@ -47,7 +47,7 @@ from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
-from aiq_agent.cards.models import MAX_LOOK_ITEMS
+from aiq_agent.cards.look_card import MAX_LOOK_ITEMS
 from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.cards.registry import extend_or_add
 from aiq_agent.cards.registry import get_card_registry
