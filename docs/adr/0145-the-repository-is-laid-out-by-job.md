@@ -480,7 +480,7 @@ them:
   fall.
 - Each move is verified by `task lint:repo` and `task verify`, plus:
   - `task be:test:sources` for row 6;
-  - `task web:build` for row 3, which renders the brand assets;
+  - `task site:verify` for row 3, whose `site:check` checks the brand copies against the master (`build-brand-assets.mjs --check`);
   - `task db:test:rls` for row 9 (the tenant boundary moves);
   - one local build of any image whose Dockerfile or context moved.
 

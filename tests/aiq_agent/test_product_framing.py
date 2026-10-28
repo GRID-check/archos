@@ -11,7 +11,7 @@ index says a file has Fassungen, not that it is a drawing.
 This is the ratchet for both, on the surfaces that shape everything else: the
 first-impression docs and every agent prompt. The UI copy has its own
 (frontends/ui/src/i18n/forbidden-file-words.spec.ts), and so does the public
-site (frontends/web/scripts/lint-claims.mjs).
+site (apps/site/scripts/lint-claims.mjs).
 """
 
 from __future__ import annotations

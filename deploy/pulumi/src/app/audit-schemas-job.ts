@@ -54,7 +54,7 @@ import { logicalName } from "../names";
  * be revisited if a second throwing emitter appears. Compose and Coolify make
  * the opposite call for a stack-specific reason — there is no rolling update to
  * protect and WorkOS is already a hard dependency of those stacks (see
- * `deploy/compose/docker-compose*.yaml`, service `grid-audit-schemas`).
+ * `deploy/compose/docker-compose*.yaml`, service `audit-schemas`).
  *
  * Two knobs follow from the premise change rather than from taste:
  *   - `backoffLimit` (10) is what actually closes the window — the Job retries

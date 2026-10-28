@@ -101,7 +101,7 @@ Every deployment path now runs the reconcile for you. Check that it did:
 | Path | What runs it | Where to look |
 |---|---|---|
 | Kubernetes (Pulumi) | Job `grid-app-audit-schemas`, per deploy, when `requireAuth` is on. **The frontend does not wait for it**, so a rollout can serve filing requests for as long as the Job takes. | `kubectl get job grid-app-audit-schemas` — within 5 minutes of finishing, `ttlSecondsAfterFinished` reaps it |
-| Docker Compose / Coolify | one-shot service `grid-audit-schemas`; `frontend` waits on it, so a failure stops the stack instead of serving a Piloti that files nothing | the deploy log for that container |
+| Docker Compose / Coolify | one-shot service `audit-schemas`; `frontend` waits on it, so a failure stops the stack instead of serving a Piloti that files nothing | the deploy log for that container |
 
 By hand, from `frontends/ui` — for a fresh environment, a key the deployment does
 not hold, or to check for drift without writing:

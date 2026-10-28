@@ -891,8 +891,8 @@ describe("compose stacks match the identity catalogue", () => {
     const { join } = await import("node:path");
     const source = readFileSync(join(process.cwd(), file), "utf8");
     const agentBlock = source.slice(
-      source.indexOf("  aiq-agent:"),
-      source.indexOf("SEAWEED_BUCKET", source.indexOf("  aiq-agent:")),
+      source.indexOf("  chat:"),
+      source.indexOf("SEAWEED_BUCKET", source.indexOf("  chat:")),
     );
     expect(agentBlock).toContain("SEAWEED_READONLY_ACCESS_KEY");
     expect(agentBlock).not.toMatch(/SEAWEED_ACCESS_KEY=\$\{SEAWEED_ACCESS_KEY/);

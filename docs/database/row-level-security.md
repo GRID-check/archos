@@ -200,7 +200,7 @@ Migrations and runtime use **different credentials**:
 | Variable | Role | Set on |
 |---|---|---|
 | `GRID_APP_DATABASE_URL` | `app_rw` | frontend, purger, skill-scheduler |
-| `GRID_APP_MIGRATION_DATABASE_URL` | the table owner (`aiq`) | the `grid-migrate` service (compose) / the migration Job (Kubernetes) |
+| `GRID_APP_MIGRATION_DATABASE_URL` | the table owner (`aiq`) | the `migrate` service (compose) / the migration Job (Kubernetes) |
 
 `drizzle.config.ts` prefers the migration URL and falls back to the runtime one,
 so a local checkout pointed at a throwaway database still works with one
@@ -210,7 +210,7 @@ variable.
   Postgres initialises a fresh data directory. On an upgraded stack it never
   runs, so `scripts/ensure-rls-roles.mjs` creates them and syncs
   `app_rw`'s password from `GRID_APP_DATABASE_URL` — one source of truth,
-  no manual step. It runs in the one-shot `grid-migrate` service **before**
+  no manual step. It runs in the one-shot `migrate` service **before**
   `drizzle-kit migrate`, because migration 0030 asserts the roles and aborts
   without them. `frontend`, `purger` and `skill-scheduler` all wait on that
   service via `depends_on: service_completed_successfully`.

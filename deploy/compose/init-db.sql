@@ -73,7 +73,7 @@ SELECT 'CREATE DATABASE langfuse OWNER langfuse_app' WHERE NOT EXISTS (SELECT FR
 -- Kubernetes does the same job through CloudNativePG's managed roles.
 --
 -- Note this file runs ONLY when Postgres initialises a fresh data directory.
--- On an existing volume the `grid-migrate` service's `ensure-rls-roles.mjs`
+-- On an existing volume the `migrate` service's `ensure-rls-roles.mjs`
 -- creates whichever roles are absent and keeps `grid_app_rw`'s password in step
 -- with GRID_APP_DATABASE_URL instead.
 --

@@ -21,7 +21,7 @@
  * nothing; the others still apply.
  */
 
-import { validateProfilePatchVocabulary } from '@/lib/project-profile/intake-definition'
+import { validateProfilePatchVocabulary } from '@/lib/project-profile/intake-vocabulary'
 import type { ProfileAlternative, ProfileEvidence } from '@/lib/project-profile/evidence-schema'
 import type { ProjectAssumption, ProjectFact, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import { reasonFromEvidence } from './evidence'
