@@ -2,7 +2,6 @@
   "files": {
     "apps/site/src/scripts/landing.ts": 919,
     "deploy/pulumi/src/app/config.ts": 791,
-    "deploy/pulumi/src/config.ts": 3505,
     "deploy/pulumi/src/constants.ts": 862,
     "deploy/pulumi/src/data/postgres.ts": 920,
     "deploy/pulumi/src/data/seaweedfs-split.ts": 640,

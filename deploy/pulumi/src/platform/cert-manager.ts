@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { GATEWAY_NAME } from "./gateway";
 import { PLATFORM_RESOURCES } from "../constants";
 
