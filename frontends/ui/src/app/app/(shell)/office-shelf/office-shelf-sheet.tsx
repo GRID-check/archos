@@ -21,14 +21,16 @@ import { withPageSession } from '@/lib/auth/require-auth'
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { isIfcModelsEnabled } from '@/lib/authz/feature-flags'
 import { getTranslations } from '@/i18n/server'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { officeShelfCopy } from '@/i18n/namespaces/office-shelf'
 import { PageSheetClose } from '@/components/ui/page-sheet'
 import { RoutePageSheet } from '@/components/shell/route-page-sheet'
 import { OfficeShelfWorkspace } from '@/features/documents/components/office-shelf-workspace'
 
 export async function OfficeShelfSheet({ standalone }: { standalone: boolean }): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('officeShelf')
-    const tCommon = await getTranslations('common')
+    const t = await getTranslations(officeShelfCopy)
+    const tCommon = await getTranslations(commonCopy)
     const canManage = canManageOfficeShelf(session)
     // The same gate a project's Dateien reads, from the same helper. An `.ifc`
     // opened here has to behave the way an `.ifc` opened there behaves, and the

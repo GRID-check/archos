@@ -1,5 +1,8 @@
 // @disk-inputs: src/styles/tokens.css
 /**
+ * @vitest-environment node
+ */
+/**
  * The installed app's chrome agrees with itself: the manifest, the
  * `theme-color` meta and the paper token are one colour, and iOS gets the
  * standalone metadata it reads from `<head>` rather than from the manifest.

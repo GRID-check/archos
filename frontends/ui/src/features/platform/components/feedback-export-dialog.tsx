@@ -43,6 +43,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatDayRange } from '@/lib/format'
 import {
   feedbackQueryString,
@@ -89,7 +90,7 @@ export function FeedbackExportDialog({
   projectName,
   defaultOpen = false,
 }: FeedbackExportDialogProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const allVotesId = useId()
   const [open, setOpen] = useState(defaultOpen)

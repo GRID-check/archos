@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The tab's live connection: one EventSource for every channel, reopened once
  * when the channel set settles, frames handed to the channel they name, and a
  * channel the server closed not asked for again.

@@ -28,6 +28,8 @@ import { useHeightGlide } from '@/components/motion/height-glide'
 import { Globe, Lock } from 'lucide-react'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { cn } from '@/lib/utils'
 import {
   answerDocuments,
@@ -86,7 +88,7 @@ const MAX_ANSWER_SOURCES = 8
  * (ADR-0094), by that project's own status, whatever the chat's.
  */
 const useClosedProjectNote = (): ((doc: CitedDocument) => string | null) => {
-  const tProjects = useTranslations('projects')
+  const tProjects = useTranslations(projectsCopy)
   const current = useCurrentProject()
   return (doc) => {
     if (doc.kind !== 'project') return null
@@ -101,7 +103,7 @@ const useClosedProjectNote = (): ((doc: CitedDocument) => string | null) => {
  * own status, and the Land the agent stated for it, warning included.
  */
 const usePrecedentNote = (): ((doc: CitedDocument) => string | null) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // The same chat project the chip's popover compares against (SourcePreviewChip).
   const chatProjectId = useChatStore((s) => s.projectId)
   return (doc) => {
@@ -116,7 +118,7 @@ const usePrecedentNote = (): ((doc: CitedDocument) => string | null) => {
 }
 
 const useSourceMeta = (): ((doc: CitedDocument) => string | undefined) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const closedNoteFor = useClosedProjectNote()
   const precedentNoteFor = usePrecedentNote()
   return (doc) => {
@@ -140,7 +142,7 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
   isStreaming = false,
   withDivider = true,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const metaFor = useSourceMeta()
   const closedNoteFor = useClosedProjectNote()
   const scope = useCitationScope()

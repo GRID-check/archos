@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { PatchPreviewRow } from '@/lib/project-profile/patch-preview'
 
 /**
@@ -11,7 +12,7 @@ import type { PatchPreviewRow } from '@/lib/project-profile/patch-preview'
  * known, and once the change is applied (the profile then holds the „after“).
  */
 export function ProfilePatchTable({ rows, showBefore }: { rows: readonly PatchPreviewRow[]; showBefore: boolean }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (rows.length === 0) return null
   return (
     <table className="w-full border-collapse text-sm" data-testid="profile-patch-rows">

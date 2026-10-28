@@ -22,6 +22,8 @@ import { reindexProject } from '@/adapters/api/project-lifecycle-client'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { SettingsPanel } from './settings/settings-panel'
 
 interface ProjectReindexCardProps {
@@ -29,8 +31,8 @@ interface ProjectReindexCardProps {
 }
 
 export function ProjectReindexCard({ projectId }: ProjectReindexCardProps): JSX.Element {
-  const t = useTranslations('settings')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(settingsCopy)
+  const tCommon = useTranslations(commonCopy)
   const [confirming, setConfirming] = useState(false)
   const [isReindexing, setIsReindexing] = useState(false)
 

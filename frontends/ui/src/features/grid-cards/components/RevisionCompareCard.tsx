@@ -23,6 +23,7 @@ import { PagePlaceButton } from '@/features/knowledge/components/page-place-butt
 import type { PagePlace } from '@/features/knowledge/lib/page-place'
 import type { PageRegion } from '@/features/knowledge/lib/page-region'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import type { GridCard } from '@/shared/cards/schemas'
 import { CARD_SHELL } from './card-chrome'
@@ -76,7 +77,7 @@ export const RevisionCompareCard: FC<RevisionCompareCardProps> = ({
   summary,
   eager,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const marks = changeRegions(changes)
   const sides = [
     { key: 'older', id: olderId, name: olderName || t('cards.revisionCompare.older') },

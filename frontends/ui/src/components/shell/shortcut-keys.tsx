@@ -11,6 +11,7 @@ import * as React from 'react'
 
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { useTranslations } from '@/i18n'
+import { shortcutsCopy } from '@/i18n/namespaces/shortcuts'
 import { MOD, modifierLabel, type KeySegment } from './shortcuts'
 
 /**
@@ -20,7 +21,7 @@ import { MOD, modifierLabel, type KeySegment } from './shortcuts'
  * field and the palette beside it cannot name one key two ways.
  */
 export function useModifierLabel(): string {
-  const t = useTranslations('shortcuts.cheatsheet')
+  const t = useTranslations(shortcutsCopy, 'cheatsheet')
   const [apple, setApple] = React.useState(false)
   React.useEffect(() => {
     const uaPlatform = (
@@ -46,7 +47,7 @@ export function ShortcutKeys({
   segments: readonly KeySegment[]
   mod?: string
 }): React.JSX.Element {
-  const t = useTranslations('shortcuts.cheatsheet')
+  const t = useTranslations(shortcutsCopy, 'cheatsheet')
   const platformMod = useModifierLabel()
   const resolvedMod = modProp ?? platformMod
 

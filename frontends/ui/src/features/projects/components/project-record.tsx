@@ -20,6 +20,7 @@ import { Chip } from '@/components/ui/chip'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ProjectRecordView } from '@/lib/projects/project-record-types'
 import { ProjectRecordPeople, ProjectRecordPeriod, useProjectPeriodText } from './project-record-editor'
 
@@ -33,7 +34,7 @@ export interface ProjectRecordProps {
 const SHOWN = 6
 
 export function ProjectRecord({ projectId, projectRecord, span = 'wide' }: ProjectRecordProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const period = useProjectPeriodText(projectRecord)

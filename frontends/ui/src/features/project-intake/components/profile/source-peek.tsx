@@ -7,6 +7,7 @@ import { Chip, ChipLabel } from '@/components/ui/chip'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import { useTranslations } from '@/i18n'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
 import type { ProfileEvidence } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 import { EvidenceChips } from '../evidence-chips'
@@ -33,7 +34,7 @@ const CHIP_CLASS = 'h-7 max-w-full rounded-md px-2 text-xs pointer-coarse:h-8'
  * answer are named, with nothing to peek at.
  */
 export function SourcePeek({ evidence, label }: { evidence: readonly ProfileEvidence[]; label: string }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const lead = leadEvidence(evidence)
   if (!lead) return <span className="text-muted-foreground text-xs">{t('source.none')}</span>
   const more = Math.max(0, distinctSources(evidence) - 1)
@@ -42,7 +43,7 @@ export function SourcePeek({ evidence, label }: { evidence: readonly ProfileEvid
 }
 
 function OtherSource({ evidence, more }: { evidence: Exclude<ProfileEvidence, DocumentEvidence>; more: number }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const [Icon, text, title] =
     evidence.kind === 'geocoder'
       ? [MapPin, t('source.geocoder'), evidence.label]
@@ -69,7 +70,7 @@ function DocumentSource({
   label: string
   more: number
 }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const peek = useHoverPopover()
   // The hook pins on a click and unpins on the next; this mirrors it so the
   // panel offers the viewer only once pinned. A hovered panel holding a chip

@@ -65,7 +65,9 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
-import { useI18n, useLocale, useTranslations } from '@/i18n'
+import { namespaceRoot, useLocale, useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import {
@@ -196,9 +198,8 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   },
   ref,
 ): JSX.Element {
-  const t = useTranslations('collaboration')
-  const tFiles = useTranslations('files')
-  const { dictionary } = useI18n()
+  const t = useTranslations(collaborationCopy)
+  const tFiles = useTranslations(filesCopy)
   const { locale } = useLocale()
 
   /*
@@ -265,7 +266,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   // A REDACTED row carries no href and no payload (IB-13); `inboxItemCopy` words it.
   const redacted = !item.href
 
-  const { title, body } = inboxItemCopy(item, t, dictionary, locale)
+  const { title, body } = inboxItemCopy(item, t, namespaceRoot(collaborationCopy, locale), locale)
   // The server's own fact: an archived row whose target went away reads
   // `state: 'inert'`, and must still be restored rather than archived again.
   const archived = item.archived

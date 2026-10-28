@@ -25,11 +25,11 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { describe, expect, it } from 'vitest'
 import type { DocBlock } from '@/lib/answer-export/blocks'
 import { cardsBlocks } from '@/lib/answer-export/cards'
-import { getDictionary } from '@/i18n/dictionaries'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import { BlocksDocument, blockNodes, pdfText } from './blocks-to-pdf'
 
-const t = createTranslator(getDictionary('en'), 'answerExport')
+const t = translatorFor(answerExportCopy, 'en')
 
 /** Every block kind and every run flag `blocks.ts` defines, in one body. */
 const EVERY_BLOCK: DocBlock[] = [

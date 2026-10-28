@@ -1,6 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, backendAutoscaled } from "../config";
+import { GridConfig } from '../config'
+import { backendAutoscaled } from '../config/chat-tier'
 import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GEOCODER, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";

@@ -476,7 +476,7 @@ jobs:
       - name: aiq_api plugin suite
         if: matrix.suite == 'aiq_api'
         run: task be:test:api
-      - name: sources/ package suites
+      - name: Python package suites (packages/knowledge-layer, ris-adapter, tavily-web-search)
         if: matrix.suite == 'sources'
         run: task be:test:sources
       - name: Chroma exporter and the one-time migration, end to end
@@ -574,7 +574,7 @@ jobs:
           EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
         run: |
           # The named test files that belong to this suite, in its first shard.
-          case "$SUITE" in core) root='^(tests|evals)/' ;; api) root='^frontends/aiq_api/tests/' ;; sources) root='^sources/' ;; esac
+          case "$SUITE" in core) root='^(tests|evals)/' ;; api) root='^frontends/aiq_api/tests/' ;; sources) root='^packages/(knowledge-layer|ris-adapter|tavily-web-search)/' ;; esac
           extra=""
           if [ -z "$SHARD" ] || [ "${SHARD%%/*}" = 1 ]; then
             extra="$(jq -r --arg root "$root" '[.[] | select(test($root))] | join(" ")' <<<"$EXTRA_JSON")"
@@ -818,7 +818,7 @@ jobs:
       # credentials and run in deploy.yml.
       - run: task infra:types
       # The collector build the image digest pins (`collectorImage` in
-      # deploy/pulumi/src/config.ts): `collector-validate.spec.ts` runs every
+      # deploy/pulumi/src/config/observability.ts): `collector-validate.spec.ts` runs every
       # rendered config through its `validate`, which is what refuses an
       # unknown component or key before the collector would at start. Bump the
       # version and checksum together with that digest.

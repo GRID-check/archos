@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The server's repeat of the name gate (ADR-0086), when the office's policy
  * cannot be read.
  *

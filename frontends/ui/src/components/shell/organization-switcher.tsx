@@ -30,6 +30,7 @@ import {
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { isFrameworkControlFlow } from '@/lib/analytics/control-flow-error'
 import type { SwitchableOrganization } from '@/lib/organizations/switchable'
 
@@ -51,7 +52,7 @@ export function OrganizationSwitcherMenu({
   organizations: readonly SwitchableOrganization[]
 }): JSX.Element {
   const { switchToOrganization } = useAuth()
-  const t = useTranslations('nav')
+  const t = useTranslations(navCopy)
   const [pending, setPending] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
 

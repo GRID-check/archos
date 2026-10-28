@@ -44,7 +44,7 @@ that closes a loop is named where it ran.
 
 | Loop | Landed | Where |
 |---|---|---|
-| A | Diversity cap applied on the answer budget after reranking (was a no-op on the candidate pool) | `sources/knowledge_layer/src/register.py` |
+| A | Diversity cap applied on the answer budget after reranking (was a no-op on the candidate pool) | `packages/knowledge-layer/src/register.py` |
 | A | Quote verification refuses a skipped or inserted whole word, whatever the word, at any length; sub-word OCR noise stays tolerated | `common/citation_verification.py` |
 | A | The Punkt and the retrieval score are parsed off the grounding block, fold under page dedup, reach the wire and the stored message, and the locus reads "Pkt. 3.5.2 · S. 7" | `citation_verification.py`, `features/chat/lib/citations/*`, `SourcePreview.tsx`, `CitationPeek.tsx` |
 | A | The turn's retrieval query survives the storage prune and the server whitelist, so a reloaded or shared thread keeps what was searched | `prune-message-for-storage.ts`, `message-provenance.ts`, `turn-events.ts` |
@@ -57,7 +57,7 @@ that closes a loop is named where it ran.
 | fix | A chat attachment re-uploaded under its name replaces the first, as the project and Archiv shelves already did; the probe skips machine-authored rows; migration 0074 makes one live human-uploaded document per `(organization, collection, filename)` a unique index; every replace path discards the superseded thumbnail and `_bim/` derivatives | `lib/session-documents/service.ts`, `lib/documents/object-cleanup.ts`, `drizzle/0074_*` |
 | fix | A deep run whose post-hoc cards could not be produced records `cards_generation_failed` as a degraded reason, worded under the answer and in the Herleitung graph, instead of looking like a run that had nothing to propose | `cards/generate.py`, `jobs/runner.py`, `turn-events.ts`, `message-provenance.ts` |
 | fix | The Report tab's source list carries the `[N]` the report cites by: the report route returns the persisted numbered sources, and both load paths merge them into the citation list | `routes/jobs.py`, `deep-research-client.ts`, `use-deep-research.ts`, `use-load-job-data.ts` |
-| fix | The OIB display title reads any edition off the filename, not only "Mai 2023"; the three document-metadata resolvers log a failed store read instead of silently falling back | `common/norm_registry.py`, `sources/knowledge_layer/src/register.py` |
+| fix | The OIB display title reads any edition off the filename, not only "Mai 2023"; the three document-metadata resolvers log a failed store read instead of silently falling back | `common/norm_registry.py`, `packages/knowledge-layer/src/register.py` |
 | D · L0 | The turn's one repair: a failed citation or quote triggers one retrieval aimed at the failing text and one rewrite, re-verified, the better answer ships (`repair_pass`, `status.repair`). (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) | `piloti/agent.py` |
 | D · L1 | The retrieval loop: a sufficiency judge beside the reranker, alternative formulations retrieved from every collection and fused into the same RRF, a second rerank; `status.retrieval.requery` on the live line and `requery_queries` in the trace | `knowledge_layer/requery.py`, `register.py`, `config_oib_openrouter.yml` |
 | D · L5 | The turn holds for an attachment still being indexed (`GRID_INGEST_WAIT_SECONDS`, `status.documents.waiting`), re-reads the inventory when it finishes; the in-flight filter that never fired is fixed | `piloti/conversation_register.py`, `knowledge/ingest_status_store.py` |
@@ -475,7 +475,7 @@ touches the three choke points named in §4 and two verification modules.
 | Persist the retrieval query: keep the `status:` key and its interpolation values on the stored step instead of blanking `content` | `features/chat/lib/prune-message-for-storage.ts:47-59` | refinement, one file, server inherits it via ADR-0037 |
 | Parse `Punkt:` into `SourceEntry`, carry it on the wire, cite as "OIB-RL 2, Pkt. 3.5.2" | `common/citation_verification.py:944-963`, `source_entry_to_wire:1770`, `features/chat/lib/citations/` | refinement |
 | Carry `score`, `rank` and `channel` on the wire and the row; show strength on the Herleitung's source card, not the chip | `source_entry_to_wire`, `message-provenance.ts`, `reasoning/SourceCard.tsx:140-152` | refinement |
-| Restore the diversity cap to `effective_top_k`, applied after reranking | `sources/knowledge_layer/src/register.py:1485,1521` | bug |
+| Restore the diversity cap to `effective_top_k`, applied after reranking | `packages/knowledge-layer/src/register.py:1485,1521` | bug |
 | Polarity-aware quote verification: a negation token inside an elision fails the quote | `common/citation_verification.py:2027-2295` | bug, the most serious one |
 | Bind each verified quote to its own `[N]` rather than any registry entry | `verify_quoted_spans` | refinement |
 | A `cards_generation_failed` signal, rendered by the existing degradation note | `jobs/runner.py:1404`, `AgentResponse.tsx:448` | refinement |
@@ -543,7 +543,7 @@ The loops that make the agent trustworthy unattended.
 | Change | Module |
 |---|---|
 | One bounded repair pass in the turn: on `citations_removed > 0`, an unverified quote or a capped confidence, one more retrieval and one rewrite, then ship with the marker if it still fails. (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) | `piloti/agent.py:1150-1400`, `deep_researcher/agent.py:1049-1160` |
-| Retrieve → judge → re-query inside `knowledge_search`: a sufficiency judgement over the fused pool, one paraphrase fan-out merged by the existing RRF | `sources/knowledge_layer/src/register.py:1312`, `hybrid.py:29` |
+| Retrieve → judge → re-query inside `knowledge_search`: a sufficiency judgement over the fused pool, one paraphrase fan-out merged by the existing RRF | `packages/knowledge-layer/src/register.py:1312`, `hybrid.py:29` |
 | A checker step on every task kind: the compliance matrix is re-read against its own citations before filing | `agents/compliance_checker/agent.py:503`, task runner |
 | The event seam with three consumers: ingest terminal state (hold the turn, tell the agent), `oib_status` STALE (re-check affected projects), a watched folder | `knowledge/ingest_status_store.py`, `oib_status.py:31-55`, `lib/tasks/triggers/` |
 | Standing rules in the form ADR-0036 §9 fixed: named, listable, disableable, evaluated on an event or a schedule, posting only on change | `lib/tasks/rules/` |

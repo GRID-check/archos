@@ -6,7 +6,9 @@ backend:
       - any-glob-to-any-file:
           - "src/**"
           - "frontends/aiq_api/**"
-          - "sources/**"
+          - "packages/knowledge-layer/**"
+          - "packages/ris-adapter/**"
+          - "packages/tavily-web-search/**"
           - "evals/**"
           - "pyproject.toml"
           - "uv.lock"

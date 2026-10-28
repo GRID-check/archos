@@ -5,6 +5,7 @@ import { FileText } from 'lucide-react'
 import { BentoFigure, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { formatBytes } from '@/lib/format'
 import type { OverviewDocument } from '../../types'
 
@@ -22,7 +23,7 @@ export function DocumentsTile({
   href: string
   span?: BentoSpan
 }): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
   const { locale } = useLocale()
 
   return (

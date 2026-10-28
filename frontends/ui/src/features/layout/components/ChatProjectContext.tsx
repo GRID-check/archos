@@ -8,6 +8,7 @@ import { ShellSearchButton } from '@/components/shell/shell-search-button'
 import { useShellOverlays } from '@/components/shell/shell-overlays'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { cn } from '@/lib/utils'
 
 interface ChatProjectContextProps {
@@ -32,7 +33,7 @@ interface ChatProjectContextProps {
  * interval and the rail's indicator already runs one on a desktop.
  */
 export const ChatProjectContext: FC<ChatProjectContextProps> = ({ projectName, className }) => {
-  const t = useTranslations('nav')
+  const t = useTranslations(navCopy)
   const isMobile = useIsMobile()
   const sheetOpen = useShellOverlays((s) => s.projectSheetOpen)
   const setSheetOpen = useShellOverlays((s) => s.setProjectSheetOpen)

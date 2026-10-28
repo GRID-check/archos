@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The answer an outside agent reads (ADR-0124): plain Markdown. Pinned with the
  * shapes live QA found raw in `piloti-ask-get` (2026-10-27): the `:::check` and
  * `:::actions` fences, the verifier's German labels, a card marker, and a

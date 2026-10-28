@@ -37,6 +37,7 @@ import {
   Undo2,
 } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import type { BimCameraView } from '../lib/viewer-camera'
 import { StageViewMenu } from './stage-view-menu'
 import { ViewerRailItem, ViewerToolButton } from './viewer'
@@ -83,7 +84,7 @@ export function PhoneTools({
   onToggleSheet,
   edited,
 }: PhoneToolsProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   // A column has the height to spare for none of the bar's 56 px.
   const dense = placement === 'side' ? 'h-12 pointer-coarse:h-12' : undefined
 
@@ -178,7 +179,7 @@ export function PhoneMoreRows({
   advancedDisabled,
   onOpenAdvanced,
 }: PhoneMoreRowsProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   return (
     <div className="flex flex-col gap-0.5 p-1.5" role="group" aria-label={t('stage.more')}>
       <ViewerRailItem

@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The fingerprint the closing debrief asks for is the one the reference ranking
  * reads, in the shape the intake wizard really stores: a building's answers
  * under its instance (`construction_method@bldg1`), several buildings read as all of them.

@@ -22,10 +22,11 @@ import { UploadScreeningCard } from '@/features/organization/components/upload-s
 import { DeletedFolderContentCard } from '@/features/organization/components/deleted-folder-content-card'
 import { getDeletedFolderContentPolicy } from '@/lib/organizations/deleted-folder-content'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 export default async function OrganizationScreeningPage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('organization')
+    const t = await getTranslations(organizationCopy)
 
     return (
       <div className="flex flex-col gap-6">

@@ -15,12 +15,13 @@ import Link from 'next/link'
 import { FileSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { dossierCopy } from '@/i18n/namespaces/dossier'
 import type { UploadReport } from '@/lib/upload-batches/upload-report'
 import { DOCUMENT_FINDINGS_ANCHOR } from '@/features/documents/components/document-findings-panel'
 import { uploadReportCopy, uploadReportFindingsHref } from '../lib/upload-report-copy'
 
 export function UploadReportLines({ report }: { report: UploadReport }): JSX.Element {
-  const t = useTranslations('dossier')
+  const t = useTranslations(dossierCopy)
   const copy = uploadReportCopy(t, report)
   return (
     <section

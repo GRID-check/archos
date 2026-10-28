@@ -40,7 +40,7 @@
 
 import 'server-only'
 import { CrossProjectAudienceChangedError, CrossProjectMemoryError } from '@/lib/api/errors'
-import { getDictionary } from '@/i18n/dictionaries'
+import { errorsCopy } from '@/i18n/namespaces/errors'
 import { getDb } from '@/lib/db'
 import { AGENT_REFUSAL_LOCALE } from './restricted-egress'
 import { isUuid } from '@/lib/ids'
@@ -79,7 +79,7 @@ export function audienceKey(audience: ConversationAudienceRow): string {
 
 /** The refusal of a lookup whose conversation changed readers mid-lookup, in the language the agent relays. */
 export function audienceChangedRefusal(): CrossProjectAudienceChangedError {
-  return new CrossProjectAudienceChangedError(getDictionary(AGENT_REFUSAL_LOCALE).errors.crossProject.audienceChanged)
+  return new CrossProjectAudienceChangedError(errorsCopy.messages[AGENT_REFUSAL_LOCALE].crossProject.audienceChanged)
 }
 
 /** Who hands content out, into which conversation, for which answer. */
@@ -191,5 +191,5 @@ export async function requireMayRememberFrom(
 ): Promise<void> {
   if (!conversationId || !organizationId) return
   if (!(await drewOnOtherProjects(conversationId, organizationId))) return
-  throw new CrossProjectMemoryError(getDictionary(AGENT_REFUSAL_LOCALE).errors.crossProject.memory)
+  throw new CrossProjectMemoryError(errorsCopy.messages[AGENT_REFUSAL_LOCALE].crossProject.memory)
 }

@@ -323,7 +323,7 @@ lives, not as a plan.
 | Dedicated counter store — a **second** Dragonfly, `cache_mode` OFF | `src/data/dragonfly.ts` (`installRateLimitStore`) |
 | `envoy-gateway-system → dragonfly-ratelimit` allow | `src/platform/network-policies.ts` (rule 5c) |
 | Per-route, per-client-IP rules | `src/app/httproutes.ts` (`perClientIpRule`, `edgeRateLimit`) |
-| Knobs (`rateLimit*`, `xffNumTrustedHops`) | `src/config.ts`, tabled in `deploy/pulumi/README.md` |
+| Knobs (`rateLimit*`, `xffNumTrustedHops`) | `src/config/dragonfly.ts` and `src/config/ingress.ts`, tabled in `deploy/pulumi/README.md` |
 
 Three things this had to get right, each of which fails silently if missed:
 

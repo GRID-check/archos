@@ -42,6 +42,8 @@ import { Switch } from '@/components/ui/switch'
 import { SectionCard } from '@/features/platform/components/section-card'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -59,8 +61,8 @@ import { PlatformSkillEditorDialog } from './platform-skill-editor-dialog'
 import { SkillCategoryManager } from '@/features/skills/components/skill-category-manager'
 
 export function PlatformSkillCatalog(): JSX.Element {
-  const t = useTranslations('platform')
-  const tSkills = useTranslations('skills')
+  const t = useTranslations(platformCopy)
+  const tSkills = useTranslations(skillsCopy)
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.settingsManage)
   const [skills, setSkills] = useState<PlatformSkillItem[] | null>(null)
   const [categories, setCategories] = useState<SkillCategoryListItem[]>([])

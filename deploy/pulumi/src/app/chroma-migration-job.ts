@@ -2,7 +2,8 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { GridConfig, appPullPolicy, backendImage, pullPolicyFor } from "../config";
+import { GridConfig } from '../config'
+import { appPullPolicy, backendImage, pullPolicyFor } from '../config/images'
 import { CHROMA_MIGRATION, UID } from "../constants";
 import { commonLabels } from "../platform/namespaces";
 import { onNodeGroup } from "../platform/scheduling";

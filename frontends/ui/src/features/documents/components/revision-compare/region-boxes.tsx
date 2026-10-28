@@ -3,6 +3,7 @@
 import type { JSX } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { ChangeBadge } from './compare-atoms'
 import type { PageSize } from './types'
@@ -31,7 +32,7 @@ export interface RegionBoxesProps {
  * the others step back.
  */
 export function RegionBoxes({ regions, size, activeRegion, dashed = false }: RegionBoxesProps): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   if (regions.length === 0) return null
   const { active, pinned, preview, pin } = activeRegion
   return (

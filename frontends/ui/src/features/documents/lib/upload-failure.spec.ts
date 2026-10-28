@@ -1,10 +1,13 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
-import { getDictionary } from '@/i18n/dictionaries'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { XhrNetworkError, XhrUploadError } from '@/lib/http/xhr-upload'
 import { UploadFailureSentence, uploadFailureSentence, type UploadFailureCopy } from './upload-failure'
 
-const t = createTranslator(getDictionary('de'), 'files')
+const t = translatorFor(filesCopy, 'de')
 
 /** The copy the hook builds, in German, as the pilot office read it. */
 const copy: UploadFailureCopy = {

@@ -27,6 +27,7 @@ import { Gauge, ShieldCheck, ThumbsUp } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { readRatingsFilters, writeRatingsFilters, type RatingsFilters } from '@/lib/feedback/filters'
 import { readQualityScope, writeQualityScope, type QualityScope } from '@/lib/quality/scope'
 import { AgentProfiler } from './agent-profiler'
@@ -51,7 +52,7 @@ const VIEW_ICON: Record<QualityView, typeof ThumbsUp> = {
 }
 
 export function QualityWorkspace(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()

@@ -23,6 +23,7 @@ import { Chip } from '@/components/ui/chip'
 import { RaisedCard, RaisedCardBody } from '@/components/ui/raised-card'
 import { ProjectStatusChip } from '@/components/projects/project-status'
 import { useLocale, useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ProjectProfile } from '@/lib/project-profile/types'
 import { monthToDate } from '@/lib/projects/month'
 import { PROJECT_STATUSES, type ProjectLifecycleView } from '@/lib/projects/project-status'
@@ -43,7 +44,7 @@ export function ProjectLifecycleCard({
   profile = null,
   canWriteMemory = false,
 }: ProjectLifecycleCardProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const controls = useProjectLifecycle({ projectId, lifecycle, profile, canWriteMemory })
   const { status } = lifecycle
@@ -126,7 +127,7 @@ export function ProjectLifecycleCard({
 
 /** The three states in a row, the current one marked: the model, drawn. */
 function LifecycleTrack({ current }: { current: ProjectLifecycleView['status'] }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   return (
     <ol className="flex flex-wrap items-center gap-1.5 text-xs" aria-label={t('lifecycle.card.track')}>
       {PROJECT_STATUSES.map((status, index) => (

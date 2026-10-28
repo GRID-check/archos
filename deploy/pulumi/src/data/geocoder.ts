@@ -1,6 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, pullPolicyFor } from "../config";
+import { GridConfig } from '../config'
+import { pullPolicyFor } from '../config/images'
 import { commonLabels } from "../platform/namespaces";
 import { onNodeGroup } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";

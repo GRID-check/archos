@@ -7,6 +7,7 @@ import { Chip, ChipLabel } from '@/components/ui/chip'
 import { SourcePreviewChip } from '@/features/chat/components/SourcePreview'
 import type { CitationRef } from '@/features/chat/lib/citations'
 import { useTranslations } from '@/i18n'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import type { ProfileEvidence } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 
@@ -73,7 +74,7 @@ export function EvidenceChips({
 }
 
 function EvidenceChip({ evidence }: { evidence: ProfileEvidence }): JSX.Element {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   if (evidence.kind === 'document') return <DocumentChip evidence={evidence} />
   if (evidence.kind === 'geocoder') {
     return (
@@ -100,7 +101,7 @@ function EvidenceChip({ evidence }: { evidence: ProfileEvidence }): JSX.Element 
 }
 
 function DocumentChip({ evidence }: { evidence: DocumentEvidence }): JSX.Element {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   const projectId = useContext(EvidenceProjectContext)
   const citation = useMemo(() => citationOfEvidence(evidence), [evidence])
   const label =

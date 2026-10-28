@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { AUSTRIAN_DEFAULT_CONVENTIONS, docTypesByFolder, officeConventions } from './conventions'
 import type { OfficeFolderRow } from './repository'

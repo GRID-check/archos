@@ -51,6 +51,7 @@ import { motion, springSnap } from '@/components/motion'
 import { AvatarStack, PersonAvatar } from '@/components/ui/avatar-stack'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import type {
   ResourceAccessEntry,
   ResourceRole,
@@ -100,7 +101,7 @@ export function AccessOverview({
   showVisibility = true,
   className,
 }: AccessOverviewProps): JSX.Element {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   // Namespaces this instance's shared layout ids — see the `layoutId` note below.
   const instanceId = useId()
 

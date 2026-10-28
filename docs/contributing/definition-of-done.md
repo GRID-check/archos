@@ -34,7 +34,7 @@ change done.
 
 | You changed | Show the output of |
 |---|---|
-| Python under `src/`, `sources/` or `frontends/aiq_api/` | the targeted tests (`.venv/bin/pytest <path> -q`), then the suite they belong to (`task be:test`, `task be:test:sources`, `task be:test:api`), and `task be:lint` |
+| Python under `src/`, the Python packages under `packages/`, or `frontends/aiq_api/` | the targeted tests (`.venv/bin/pytest <path> -q`), then the suite they belong to (`task be:test`, `task be:test:sources`, `task be:test:api`), and `task be:lint` |
 | The UI (`frontends/ui/`) | the targeted specs, then `task fe:test`; `task fe:types` with no new errors against the baseline; `task fe:lint` exiting clean, with zero problems rather than "no new ones" |
 | A WebSocket or SSE message, or any schema two services share | both sides: the producer's tests and the consumer's parser tests, over the same field names. Where a fixture under `tests/fixtures/` is the contract, both suites read it ([cross-service contract fixtures](testing-and-verification.md#cross-service-contract-fixtures)) |
 | What shapes an answer: prompt, model, structured output, retrieval | the answer suite before and after (the obligation in [`AGENTS.md`](../../AGENTS.md#obligations)), or at least a live call proving the contract parses, with a note saying why the suite could not run |

@@ -35,6 +35,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { motion, motionQuick, useMotionToken } from '@/components/motion'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import type { ConversationEngagement } from '@/lib/db/schema/conversations'
 import { cn } from '@/lib/utils'
 
@@ -64,7 +65,7 @@ export function EngagementNotice({
   canChange = true,
   className,
 }: EngagementNoticeProps): JSX.Element | null {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   const enter = useMotionToken(motionQuick)
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)

@@ -51,7 +51,8 @@ import {
   validateDocumentName,
   type DocumentNameError,
 } from '@/lib/documents/display-name'
-import type { ActionableDocument, DocumentScope } from './use-document-actions'
+import type { ActionableDocument } from './use-document-actions'
+import { DOCUMENT_SCOPE_COPY, type DocumentScope } from './document-scope'
 
 export interface RenameDocumentDialogProps {
   open: boolean
@@ -73,7 +74,7 @@ export function RenameDocumentDialog({
   onRename,
   pending = false,
 }: RenameDocumentDialogProps) {
-  const t = useTranslations(scope)
+  const t = useTranslations(DOCUMENT_SCOPE_COPY[scope])
   const currentName = documentDisplayName(document)
   const { stem, extension } = splitDocumentName(currentName)
   const [value, setValue] = useState(stem)

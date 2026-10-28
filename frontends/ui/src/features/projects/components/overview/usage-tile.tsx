@@ -5,6 +5,8 @@ import { AlertTriangle, Gauge } from 'lucide-react'
 import { BentoFigure, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { BudgetMeter } from '@/features/budgets/components/budget-meter'
 import { useLocale, useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { formatCredits, formatTokens } from '@/lib/format'
 import type { ProjectUsageView } from '../settings/usage-settings'
 
@@ -35,8 +37,8 @@ export function UsageTile({
   href: string
   span?: BentoSpan
 }): JSX.Element {
-  const t = useTranslations('settings')
-  const tOrg = useTranslations('organization')
+  const t = useTranslations(settingsCopy)
+  const tOrg = useTranslations(organizationCopy)
   const { locale } = useLocale()
 
   const onOwnKey = usage.unit === 'token'

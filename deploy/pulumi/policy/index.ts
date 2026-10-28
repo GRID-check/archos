@@ -273,7 +273,7 @@ export default new PolicyPack("grid-oib-guardrails", {
               `Container "${container.name}" in "${name}" uses the moving reference ` +
                 `"${container.image}" with imagePullPolicy=` +
                 `${container.imagePullPolicy ?? "unset"}. Use pullPolicyFor() from ` +
-                `src/config.ts, or pin the tag.`,
+                `src/config/images.ts, or pin the tag.`,
             );
           }
         }

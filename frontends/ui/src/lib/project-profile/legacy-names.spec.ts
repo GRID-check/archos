@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import names from './legacy-names.json'
 import { BUILDING_ID_PREFIX } from './intake-building-keys'

@@ -21,6 +21,7 @@ import { Boxes, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { bimCopy } from '@/i18n/namespaces/bim'
 import { IfcModelViewer } from '@/features/bim/components/ifc-model-viewer'
 import { resolveHighlights, storeyKey, supportsWebGpu } from '@/features/bim/lib/model-index'
 import { buildModelHref } from '@/features/bim/lib/model-link'
@@ -51,7 +52,7 @@ export function IfcViewerCard({
   highlights,
   projectId,
 }: IfcViewerCardProps): JSX.Element {
-  const t = useTranslations('bim')
+  const t = useTranslations(bimCopy)
   // `isLoading` and `error` were both discarded, so for the first few hundred
   // milliseconds — and permanently if the request failed or the feature flag
   // was withdrawn — this card stated "Das referenzierte Modell ist in diesem

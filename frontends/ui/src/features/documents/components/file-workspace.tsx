@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { createDocumentByNameClient } from '@/lib/documents/by-name-client'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { shelfSummaryUrl, type LevelPageRequest } from '@/lib/documents/level-client'
@@ -192,7 +193,7 @@ export function FileWorkspace({
   initialFolderId = null,
   aboveList,
 }: FileWorkspaceProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const { canManage, canCollaborate } = shelf
   const searchParams = useSearchParams()
@@ -1228,7 +1229,7 @@ function useFolderBriefSurface({
   detailsLoading: boolean
   mayReadAgain: boolean
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [collapsed, setCollapsed] = useBriefCollapsed(usePhoneLayout())
   const [selection, setSelection] = useState<{ folderId: string | null; selection: BriefSelection } | null>(null)
   const bulk = useBulkReingest(onReingested)
@@ -1349,7 +1350,7 @@ function useFolderAccess(shelf: FileShelf, folders: readonly FolderItem[], treeR
  * is the wrong promise for a building, whose point is that it can be COUNTED.
  */
 function useCompletionToast(files: FileItem[], shelf: FileShelf): void {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { source, messages } = shelf
   useIngestionCompleteToast(
     files,
@@ -1410,7 +1411,7 @@ function useFilterEmptyNotice({
    */
   levelOccupied: boolean
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { query } = search
   const semanticActive = search.semantic.active
   return useMemo(() => {
@@ -1446,7 +1447,7 @@ function PaneLoadError({
   /** One-row banner variant, for a failure that degrades a pane without emptying it. */
   inline?: boolean
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const retry = (
     <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={onRetry}>
       <RotateCcw className="size-3.5" aria-hidden />

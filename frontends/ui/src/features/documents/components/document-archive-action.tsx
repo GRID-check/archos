@@ -60,6 +60,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 
 export interface DocumentArchiveActionProps {
@@ -87,7 +88,7 @@ export function DocumentArchiveAction({
   compact = false,
   className,
 }: DocumentArchiveActionProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [asking, setAsking] = useState(false)
 
   return (

@@ -24,6 +24,7 @@ import { Sparkles } from 'lucide-react'
 
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { cn } from '@/lib/utils'
 
 export interface PersonPeekPerson {
@@ -54,7 +55,7 @@ export function PersonPeek({
   isParticipant,
   className,
 }: PersonPeekProps): JSX.Element {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
 
   return (
     <div data-testid="person-peek" className={cn('flex items-start gap-3', className)}>

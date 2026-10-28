@@ -52,7 +52,7 @@ export type IngestFailureCategory = (typeof INGEST_FAILURE_CATEGORIES)[number]
 
 /**
  * The reader the deployed backend reads with (`INGEST_READER_VERSION` in
- * `sources/knowledge_layer/src/reader_version.py`, which states when to raise
+ * `packages/knowledge-layer/src/reader_version.py`, which states when to raise
  * it). Mirrored rather than asked for, so deciding a retry costs no backend
  * call; the parity test fails when the two disagree.
  */

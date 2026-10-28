@@ -15,7 +15,7 @@
  */
 
 import { fireEvent, render, screen } from '@/test-utils'
-import { de, en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { AgentResponse } from './AgentResponse'
 import { asStoreState, type DeepPartial, type StoreSelector } from '@/test-utils/store-fixtures'
@@ -59,8 +59,8 @@ beforeEach(() => {
  * separately, below.
  */
 const copy = {
-  truncated: en.chat.answerSources.researchTruncated,
-  truncatedEmpty: en.chat.answerSources.researchTruncatedWithoutSources,
+  truncated: chatCopy.messages.en.answerSources.researchTruncated,
+  truncatedEmpty: chatCopy.messages.en.answerSources.researchTruncatedWithoutSources,
 }
 
 /** An answer that carries a real source, so the chips row renders. */
@@ -108,8 +108,8 @@ describe('both locales carry a real sentence', () => {
       // German is the product's language here and English is its own sentence,
       // not a gloss of it — so the two must differ, and neither may be a
       // half-finished template that ships a brace to the reader.
-      expect(de.chat.answerSources[key]).not.toBe(en.chat.answerSources[key])
-      for (const text of [de.chat.answerSources[key], en.chat.answerSources[key]]) {
+      expect(chatCopy.messages.de.answerSources[key]).not.toBe(chatCopy.messages.en.answerSources[key])
+      for (const text of [chatCopy.messages.de.answerSources[key], chatCopy.messages.en.answerSources[key]]) {
         expect(text.trim().length).toBeGreaterThan(20)
         expect(text).not.toContain('{')
       }
@@ -119,8 +119,8 @@ describe('both locales carry a real sentence', () => {
   test('the two German sentences are not the same sentence', () => {
     // The empty case is the one worth getting right; a copy-paste that left
     // both keys identical would promise evidence that is not there.
-    expect(de.chat.answerSources.researchTruncated).not.toBe(
-      de.chat.answerSources.researchTruncatedWithoutSources
+    expect(chatCopy.messages.de.answerSources.researchTruncated).not.toBe(
+      chatCopy.messages.de.answerSources.researchTruncatedWithoutSources
     )
   })
 })

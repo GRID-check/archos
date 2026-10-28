@@ -32,6 +32,9 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { intakeProjectStepCopy } from '@/i18n/namespaces/intake-project-step'
+import { membersCopy } from '@/i18n/namespaces/members'
 import {
   PROJECT_MEMBER_ROLES,
   ParticipantsRequestError,
@@ -71,9 +74,9 @@ const personInput = (person: Pick<ProjectPersonView, 'startedOn' | 'endedOn' | '
 const ADD_CLASS = 'h-[34px] gap-1.5 px-3 text-[13px] font-normal pointer-coarse:h-11'
 
 export function ParticipantsSection({ projectId, client, peopleRecord, roster, loading, reload }: ParticipantsSectionProps): JSX.Element {
-  const t = useTranslations('intakeProjectStep')
-  const tMembers = useTranslations('members')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(intakeProjectStepCopy)
+  const tMembers = useTranslations(membersCopy)
+  const tCommon = useTranslations(commonCopy)
   const [task, setTask] = useState<SheetTask>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [removing, setRemoving] = useState<ProjectPersonView | null>(null)
@@ -358,7 +361,7 @@ function ParticipantItem({
   onRevoke: () => void
   onRemove: () => void
 }): JSX.Element {
-  const t = useTranslations('intakeProjectStep')
+  const t = useTranslations(intakeProjectStepCopy)
   const { person } = row
   const external = person.kind === 'added'
   const tone = row.you ? 'you' : external ? 'external' : person.kind === 'former' ? 'former' : 'member'

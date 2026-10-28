@@ -2,11 +2,11 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { getDictionary } from '@/i18n/dictionaries'
+import { translatorFor } from '@/i18n/namespace'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import { legalBasisBlocks, quotedPassages } from './excerpts'
 
-const t = createTranslator(getDictionary('de'), 'answerExport')
+const t = translatorFor(answerExportCopy, 'de')
 
 const ANSWER = [
   'Die Garage braucht eine Lüftung.',
