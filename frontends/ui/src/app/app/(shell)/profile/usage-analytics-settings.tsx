@@ -22,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations } from '@/i18n'
+import { profileCopy } from '@/i18n/namespaces/profile'
 import { isPosthogOptedOut, optInPosthog, optOutPosthog } from '@/lib/analytics/posthog'
 
 interface UsageAnalyticsSettingsProps {
@@ -30,7 +31,7 @@ interface UsageAnalyticsSettingsProps {
 }
 
 export const UsageAnalyticsSettings: FC<UsageAnalyticsSettingsProps> = ({ available }) => {
-  const t = useTranslations('profile.usageAnalytics')
+  const t = useTranslations(profileCopy, 'usageAnalytics')
   // On until the SDK says otherwise: the server render cannot know this
   // browser's stored choice, and the first effect corrects it.
   const [enabled, setEnabled] = useState(true)

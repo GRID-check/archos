@@ -18,6 +18,7 @@ import {
 } from '@/adapters/api/folder-bin-client'
 import { ChoiceCard, ChoiceCardGroup } from '@/components/ui/choice-card'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 const ICONS = { unchanged: Eye, project: Users, admins: ShieldCheck, remove: Trash2 } as const
 
@@ -28,7 +29,7 @@ export interface DeletedFolderContentCardProps {
 }
 
 export function DeletedFolderContentCard({ canEdit, initial }: DeletedFolderContentCardProps): JSX.Element {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const [policy, setPolicy] = useState<DeletedFolderContentPolicy | null>(initial ?? null)
   const [saving, setSaving] = useState(false)
 

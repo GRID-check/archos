@@ -29,6 +29,7 @@ import {
 import { useFileDragDrop } from '@/features/documents'
 import { FileDropOverlay } from '@/features/documents/components/file-drop-overlay'
 import { useTranslations } from '@/i18n'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { useAppConfig } from '@/shared/context'
 import { cn } from '@/lib/utils'
 import { UploadDestinationNote } from './UploadDestination'
@@ -77,7 +78,7 @@ export function ChatDropZone({
   style?: CSSProperties
   children: ReactNode
 }) {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const { fileUpload } = useAppConfig()
   const [target, setTarget] = useState<ChatDropTarget | null>(null)
   const attach = useCallback((files: File[]) => target?.attach(files), [target])

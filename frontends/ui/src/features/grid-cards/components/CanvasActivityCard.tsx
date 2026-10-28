@@ -83,6 +83,7 @@ import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { useInView } from '@/hooks/use-in-view'
 import { useSeenOnce } from '@/hooks/use-seen-once'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { formatDayRange } from '@/lib/format'
 import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { AnnotationRequestError, updateAnnotation } from '@/lib/annotations/client'
@@ -198,7 +199,7 @@ export function CanvasActivityCard({
   cardKey,
   decisionsMustPersist,
 }: CanvasActivityCardProps): JSX.Element {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // Seen once: read the marks and the picture. On screen now: keep the marks
   // live, and let the document's channel go again when the card scrolls away.
   const [seenRef, seen] = useSeenOnce<HTMLDivElement>()
@@ -508,7 +509,7 @@ function useShowInDocument(documentId: string): (annotationId: string) => Promis
  * never in error red; `already-undone` re-reads and the row shows who did it.
  */
 function useServerUndo(change: PilotiChangeView | undefined, live: LiveMarks, changes: TurnChanges) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -547,7 +548,7 @@ function useServerUndo(change: PilotiChangeView | undefined, live: LiveMarks, ch
 
 /** „für Miriam": whom the turn acted for, in the meta line. */
 function ForPerson({ change }: { change: PilotiChangeView | undefined }): JSX.Element | null {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (!change?.onBehalfOfName) return null
   return (
     <>
@@ -559,7 +560,7 @@ function ForPerson({ change }: { change: PilotiChangeView | undefined }): JSX.El
 
 /** „Rückgängig gemacht · Anna": somebody took the change back. */
 function UndoneLabel({ who }: { who: string | null }): JSX.Element {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     <span className="text-muted-foreground ml-auto inline-flex items-center gap-1" data-testid="canvas-activity-state">
       <Undo2 aria-hidden className="size-3" />
@@ -570,7 +571,7 @@ function UndoneLabel({ who }: { who: string | null }): JSX.Element {
 }
 
 function UndoButton({ number, busy, onClick }: { number: number; busy: boolean; onClick: () => void }): JSX.Element {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     <Button
       type="button"
@@ -705,7 +706,7 @@ function SetRow({
   onAspect: (aspect: number) => void
   onShow: ShowInDocument
 }): JSX.Element {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // An answer stored on the message before the card went live: read, never written.
   const decision = useChatStore((state) =>
     selectCardDecision(state, messageId, itemDecisionKey(cardKey, item.annotation_id))
@@ -825,7 +826,7 @@ function SetRow({
  * Read from the live list, so it moves when someone answers on the canvas.
  */
 function ThreadGlance({ mark }: { mark: LiveMark | 'gone' | undefined }): JSX.Element | null {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (!mark || mark === 'gone' || mark.replyCount === 0) return null
   const last = mark.lastReply
   const name = last
@@ -843,7 +844,7 @@ function ThreadGlance({ mark }: { mark: LiveMark | 'gone' | undefined }): JSX.El
 
 /** „bereits erledigt von Anna": a batch found this mark decided before it got there. */
 function SkippedNote({ by }: { by: string | null | undefined }): JSX.Element | null {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (by === undefined) return null
   return (
     <>
@@ -857,7 +858,7 @@ function SkippedNote({ by }: { by: string | null | undefined }): JSX.Element | n
 
 /** Where a mark stands once it is no longer a proposal, and who put it there when somebody else did. */
 function MarkStateLabel({ state, who }: { state: MarkState; who: string | null }): JSX.Element {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const kept = state === 'open' || state === 'resolved'
   const Icon = kept ? Check : X
   return (
@@ -937,7 +938,7 @@ function ChangedRow({
   mayAct: boolean
   onShow: ShowInDocument
 }): JSX.Element {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   // An undo stored on the message before the card went live: read, never written.
   const stored = useChatStore((state) =>
@@ -1061,7 +1062,7 @@ function DeletedRow({
   change: PilotiChangeView | undefined
   changes: TurnChanges
 }): JSX.Element {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const serverUndo = useServerUndo(change, live, changes)
   const undone = change?.undoneAt != null
   return (
@@ -1103,7 +1104,7 @@ function RepliedRow({
   changes: TurnChanges
   onShow: ShowInDocument
 }): JSX.Element {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const serverUndo = useServerUndo(change, live, changes)
   const undone = change?.undoneAt != null
   return (

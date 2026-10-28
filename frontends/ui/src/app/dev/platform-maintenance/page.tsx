@@ -24,6 +24,7 @@ import {
 } from '@/app/app/(shell)/platform/vector-maintenance'
 import { PlatformAccessProvider } from '@/features/platform/platform-access'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 
 const RESULT: ReconcileResult = {
@@ -66,7 +67,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
 }
 
 function Preview(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   return (
     <main
       data-testid="platform-maintenance-preview"

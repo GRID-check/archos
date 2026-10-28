@@ -66,6 +66,7 @@ import {
 import { TimeAgo } from '@/components/ui/time-ago'
 import { SeriesPaletteStyle } from '@/components/charts/palette'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { CONVERSATION_TAG_KEYS, type ConversationTagKey } from '@/lib/conversations/tags'
 import {
   feedbackQueryString,
@@ -125,7 +126,7 @@ export function AnswerFeedbackHealth({
   onScopeChange,
   scopeOptions = null,
 }: AnswerFeedbackHealthProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const scopeLabel = useQualityScopeLabel()
   const [data, setData] = useState<FeedbackHealthResponse | null>(null)
@@ -377,7 +378,7 @@ interface HealthContentProps {
 
 function HealthContent(props: HealthContentProps): JSX.Element {
   const { data, busy, digestSearch, locale } = props
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const dim = cn(BUSY_CLASS, busy && 'opacity-60')
 
   return (
@@ -438,7 +439,7 @@ function KpiRow({
   locale: string
   className?: string
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const total = data.totals.up + data.totals.down
   const rateReadable = total >= MIN_RATE_VOTES
   const helpfulRate = total > 0 ? (data.totals.up / total) * 100 : 0
@@ -536,7 +537,7 @@ function ReasonsCard({
   onReason,
   className,
 }: HealthContentProps & { className?: string }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   // Fixed order, zero-filled: a reason nobody picked is information. Counts are
   // ADDED, because a NULL reason and an explicit 'other' both land on 'other'
   // and a `set` let the second overwrite the first, so the bars no longer
@@ -596,7 +597,7 @@ function TopicsCard({
   locale,
   className,
 }: HealthContentProps & { className?: string }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const rows = useMemo(() => {
     const byKey = new Map(data.topics.map((entry) => [entry.topic, entry]))
     return CONVERSATION_TAG_KEYS.flatMap((key) => {
@@ -680,7 +681,7 @@ function OrganizationsCard({
   locale,
   className,
 }: HealthContentProps & { className?: string }): JSX.Element | null {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   if (data.organizations.length === 0) return null
   const anyUnreadable = data.organizations.some((o) => o.up + o.down < MIN_RATE_VOTES)
 
@@ -784,7 +785,7 @@ function OrganizationsCard({
  * sheet. Its filters are the tab's (above), so it has none of its own.
  */
 function TurnsCard({ data, busy, filters, locale, onClearFilters, onOpenTurn }: HealthContentProps): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   // The verdict alone picks a direction; an empty direction is "nothing that
   // way in this range", which is a different sentence from "nothing matches".
   const filtered = ratingsFiltered({ ...filters, verdict: null })
@@ -863,7 +864,7 @@ function TurnRow({
   locale: string
   onOpen: () => void
 }): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const question = excerpt(turn.question, 220)
   const hasNote = Boolean(turn.comment?.trim() || turn.expectedAnswer?.trim())
   return (

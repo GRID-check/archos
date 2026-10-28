@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import { findingsBlocks } from './findings'
 
 const t = (key: string): string =>
@@ -7,7 +7,7 @@ const t = (key: string): string =>
     .split('.')
     .reduce<unknown>(
       (node, part) => (node as Record<string, unknown>)[part],
-      de.answerExport
+      answerExportCopy.messages.de
     ) as string
 
 describe('findingsBlocks', () => {

@@ -7,13 +7,14 @@ import { getProjectUsage } from '@/lib/budgets/service'
 import { resolveProjectSettingsAccess } from '@/lib/projects/settings-access'
 import { UsageSettings } from '@/features/projects/components/settings/usage-settings'
 import { getTranslations } from '@/i18n/server'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('settings')
+  const t = await getTranslations(settingsCopy)
   return { title: t('project.nav.usage') }
 }
 

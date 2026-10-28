@@ -27,6 +27,7 @@ import { CornerDownRight, MessageCircleQuestion, type LucideIcon } from 'lucide-
 import { SectionLabel } from '@/components/ui/section-label'
 import { useChatStore } from '@/features/chat/store'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import type { StoredFollowUp } from '@/lib/conversations/message-stages'
 
@@ -98,7 +99,7 @@ export const FollowUpChips: FC<FollowUpChipsProps> = ({
   actions = [],
   className,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const setComposerPrefill = useChatStore((s) => s.setComposerPrefill)
   // An empty set renders NOTHING — not an eyebrow over an empty row. An offer
   // with nothing in it is an unkept promise, and with no frame there is not

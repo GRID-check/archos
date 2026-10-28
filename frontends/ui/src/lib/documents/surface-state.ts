@@ -162,7 +162,7 @@ export const SURFACE_STATE_LABEL_KEYS: Record<SurfaceState, string> = {
   unknown: 'status.unknown',
 }
 
-/** The one word for a state, from a translator bound to the `files` namespace (`useTranslations('files')`). */
+/** The one word for a state, from a translator bound to the `files` namespace (`useTranslations(filesCopy)`). */
 export function surfaceStateLabel(state: SurfaceState, t: Translator): string {
   return t(SURFACE_STATE_LABEL_KEYS[state])
 }

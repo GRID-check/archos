@@ -28,6 +28,7 @@ import {
 } from './kit'
 import { sketchLine, sketchRect } from './rough'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { DimensionCheckData, NormReferenceData } from '@/shared/cards/schemas'
 
 interface GuardrailCheckCardProps {
@@ -73,7 +74,7 @@ export const GuardrailCheckCard: FC<GuardrailCheckCardProps> = ({
   reference,
   note,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const railH = rail_height.value ?? FALLBACK_RAIL_CM
   const opening = Math.max(max_opening.value ?? FALLBACK_OPENING_CM, 2)
   const gap = bottom_gap ? (bottom_gap.value ?? FALLBACK_GAP_CM) : 0

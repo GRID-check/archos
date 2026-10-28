@@ -47,6 +47,7 @@ import type { JSX } from 'react'
 import { useMemo } from 'react'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations, type Translator } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import { DIFF_MAX_ROWS, diffVersionText, type DiffRow } from '@/lib/documents/version-diff'
 
@@ -70,7 +71,7 @@ const ROW_STYLES = {
 const MARKERS = { added: '+', removed: '−', context: ' ' } as const
 
 export function DocumentVersionDiff({ from, to, className }: DocumentVersionDiffProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   // Diffing is O(n·d) over two whole documents, and the panel re-renders on
   // every unrelated state change in the version list above it.
   const diff = useMemo(() => diffVersionText(from.content, to.content), [from.content, to.content])

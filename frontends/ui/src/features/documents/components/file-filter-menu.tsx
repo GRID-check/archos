@@ -13,6 +13,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { DocumentKind } from '../document-kind'
 import {
   FILE_KIND_FILTERS,
@@ -109,7 +110,7 @@ export function FileFilterMenu({
   compact = false,
   defaultOpen,
 }: FileFilterMenuProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const count = activeFilterCount(filters, canCollaborate)
 
   const setKinds = (kind: DocumentKind) =>

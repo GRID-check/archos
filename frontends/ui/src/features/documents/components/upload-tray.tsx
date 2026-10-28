@@ -23,6 +23,8 @@ import { failedWhileReading } from '../lib/ingest-failure'
 import { Button } from '@/components/ui/button'
 import { AnimatePresence, iconSwapTransition, motion, motionBase, useMotionToken } from '@/components/motion'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatBytes, formatDurationShort, formatTransferRate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
@@ -112,7 +114,7 @@ function useOnline(): boolean {
 export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }: UploadTrayProps) {
   // Height and opacity are not covered by MotionConfig's reduced motion.
   const foldTransition = useMotionToken(motionBase)
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const [isExpanded, setIsExpanded] = useState(true)
 
@@ -518,8 +520,8 @@ function UploadRow({
   onCancel?: (id: string) => void
   onDismiss?: (ids: string[]) => void
 }) {
-  const t = useTranslations('files')
-  const tc = useTranslations('common')
+  const t = useTranslations(filesCopy)
+  const tc = useTranslations(commonCopy)
   const { locale } = useLocale()
   // The landing's spring is for the 4px drop; the fade is a tween (the
   // icon-swap pair: opacity never springs), and all of it is instant under

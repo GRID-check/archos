@@ -7,6 +7,7 @@
 import { act, render, renderHook, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { AnnotationView } from '@/lib/annotations/types'
 import type { CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview } from '../../hooks/use-document-review'
@@ -37,7 +38,7 @@ function reviewWith(annotations: Array<Pick<AnnotationView, 'id' | 'number'>>, a
 
 describe('announcementOf', () => {
   it("gathers each one's changes into one sentence: Piloti's proposals by count, a person's marks by number", () => {
-    const { result } = renderHook(() => useTranslations('files'))
+    const { result } = renderHook(() => useTranslations(filesCopy))
     const numbers: Record<string, number> = { a7: 7 }
     const line = announcementOf(
       [

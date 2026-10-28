@@ -19,11 +19,12 @@ import { Badge } from '@/components/ui/badge'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 
 /** What a folder's own list means, as the lock and the open button say it. */
 export function useFolderOwnAccessLabel(): (ownAccess: { everyoneReads: boolean }) => string {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (ownAccess) => t(ownAccess.everyoneReads ? 'folders.access.ownListEveryoneReads' : 'folders.access.ownList')
 }
 
@@ -67,7 +68,7 @@ export function FolderAccessMark({
  * it.
  */
 export function FolderReadOnlyBadge({ testId }: { testId?: string }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <Tooltip>
       <TooltipTrigger asChild>

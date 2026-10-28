@@ -17,12 +17,13 @@ import type { JSX } from 'react'
 import Link from 'next/link'
 import { Archive, ChevronRight } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { StatCardIcon } from '@/components/ui/stat-card'
 import { cn } from '@/lib/utils'
 
 export function OfficeShelfEntryCard(): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
 
   return (
     <Link

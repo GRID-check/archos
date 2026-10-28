@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, test, expect } from 'vitest'
-import { de, en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import {
   AGENT_AUTHORED_LANE,
   AGENT_AUTHORED_LANE_LABEL,
@@ -144,7 +144,7 @@ describe('the shelf labels in the dictionary', () => {
   // and are resolved where the card renders; this pins the two invariants the
   // old German table pinned.
   test('every shelf has a distinct label, in both languages', () => {
-    for (const dictionary of [de.chat.sourceTabs.shelves, en.chat.sourceTabs.shelves]) {
+    for (const dictionary of [chatCopy.messages.de.sourceTabs.shelves, chatCopy.messages.en.sourceTabs.shelves]) {
       const labels = SHELVES.map((shelf: Shelf) => dictionary[shelf])
       expect(labels.every((label) => typeof label === 'string' && label.length > 0)).toBe(true)
       expect(new Set(labels).size).toBe(SHELVES.length)
@@ -154,8 +154,8 @@ describe('the shelf labels in the dictionary', () => {
   test('a private session attachment is NOT labelled as project knowledge', () => {
     // The headline defect: a file the user attached to one chat was told to the
     // user as a "Private Sitzung" and then cited as project knowledge.
-    expect(de.chat.sourceTabs.shelves.session).toBe('Private Sitzung')
-    expect(de.chat.sourceTabs.shelves.session).not.toBe(de.chat.sourceTabs.shelves.project)
+    expect(chatCopy.messages.de.sourceTabs.shelves.session).toBe('Private Sitzung')
+    expect(chatCopy.messages.de.sourceTabs.shelves.session).not.toBe(chatCopy.messages.de.sourceTabs.shelves.project)
   })
 })
 
@@ -188,8 +188,8 @@ describe('scopeForQualifier (citation keys — the versioned fallback)', () => {
   test('the shelf label the reader sees is the qualifier the backend writes', () => {
     // `chat.sourceTabs.shelves` renders the shelf; the qualifier is pinned to
     // the backend's `SHELF_QUALIFIERS`. One name for one shelf on both sides.
-    expect(de.chat.sourceTabs.shelves.office_shelf).toBe(CITATION_KEY_QUALIFIERS[0][0])
-    expect(en.chat.sourceTabs.shelves.office_shelf).toBe('Office filing')
+    expect(chatCopy.messages.de.sourceTabs.shelves.office_shelf).toBe(CITATION_KEY_QUALIFIERS[0][0])
+    expect(chatCopy.messages.en.sourceTabs.shelves.office_shelf).toBe('Office filing')
   })
 
   test('every shelf is reachable from a key, so no key can go unread', () => {

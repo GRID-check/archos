@@ -20,10 +20,11 @@ import { AuditLogButton } from '@/components/audit/audit-log-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/ui/page-header'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 export default async function OrganizationCompliancePage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('organization')
+    const t = await getTranslations(organizationCopy)
 
     // Matches the API gate on `/api/organization/audit-portal` exactly. A UI that
     // offers a button the server refuses is worse than one that hides it.

@@ -12,6 +12,7 @@
 import type { JSX } from 'react'
 import { ProjectMembersForm } from '@/components/projects/project-members-form'
 import { useTranslations } from '@/i18n'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { SettingsSectionIntro } from './settings-panel'
 
 export interface MembersSettingsProps {
@@ -24,7 +25,7 @@ export function MembersSettings({
   projectId,
   currentMembershipId,
 }: MembersSettingsProps): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
 
   return (
     <div className="flex flex-col gap-4">

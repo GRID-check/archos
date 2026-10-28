@@ -64,8 +64,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { getByPath } from '@/i18n/translate'
 import {
   DOCUMENT_STATUSES,
@@ -537,8 +536,8 @@ describe('every surface state has a label in both locales', () => {
   // see it. This is that check, for every state a declared status reaches.
   it.each(SURFACE_STATES)('%s', (state) => {
     const key = SURFACE_STATE_LABEL_KEYS[state]
-    expect(typeof getByPath(en.files, key), `en.files.${key}`).toBe('string')
-    expect(typeof getByPath(de.files, key), `de.files.${key}`).toBe('string')
+    expect(typeof getByPath(filesCopy.messages.en, key), `filesCopy.messages.en.${key}`).toBe('string')
+    expect(typeof getByPath(filesCopy.messages.de, key), `filesCopy.messages.de.${key}`).toBe('string')
   })
 })
 

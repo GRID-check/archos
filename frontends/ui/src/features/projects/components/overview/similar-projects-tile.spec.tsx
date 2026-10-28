@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { render, screen, within } from '@/test-utils'
-import { en } from '@/i18n/dictionaries/en'
+import { referencesCopy } from '@/i18n/namespaces/references'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import { EMPTY_SIMILAR_PAGE, SIMILAR_PAGE, SIMILAR_PROJECTS } from '@/app/dev/_fixtures/similar-projects'
 import type { SimilarProjectsPage } from '@/lib/references/types'
 import { SimilarProjectsTile } from './similar-projects-tile'
@@ -28,7 +29,7 @@ describe('SimilarProjectsTile', () => {
 
     const tile = screen.getByTestId('overview-similar')
     expect(within(tile).queryByRole('link', { name: /All 5/ })).not.toBeInTheDocument()
-    expect(within(tile).getByRole('link', { name: en.settings.project.overview.similar.openMore })).toHaveAttribute(
+    expect(within(tile).getByRole('link', { name: settingsCopy.messages.en.project.overview.similar.openMore })).toHaveAttribute(
       'href',
       HREF
     )
@@ -54,8 +55,8 @@ describe('SimilarProjectsTile', () => {
     render(<SimilarProjectsTile page={unrelated} href={HREF} />)
 
     const tile = screen.getByTestId('overview-similar')
-    expect(within(tile).getByText(en.references.noneAlike)).toBeInTheDocument()
-    expect(within(tile).getByRole('link', { name: en.settings.project.overview.similar.openOthers })).toHaveAttribute(
+    expect(within(tile).getByText(referencesCopy.messages.en.noneAlike)).toBeInTheDocument()
+    expect(within(tile).getByRole('link', { name: settingsCopy.messages.en.project.overview.similar.openOthers })).toHaveAttribute(
       'href',
       HREF
     )
@@ -65,7 +66,7 @@ describe('SimilarProjectsTile', () => {
     render(<SimilarProjectsTile page={EMPTY_SIMILAR_PAGE} href={HREF} />)
 
     const tile = screen.getByTestId('overview-similar')
-    expect(within(tile).getByText(en.settings.project.overview.similar.empty)).toBeInTheDocument()
+    expect(within(tile).getByText(settingsCopy.messages.en.project.overview.similar.empty)).toBeInTheDocument()
     expect(within(tile).queryByRole('link')).not.toBeInTheDocument()
   })
 })

@@ -10,6 +10,7 @@ import { FolderUploadDialog } from '@/features/documents/components/folder-uploa
 import { UploadTray } from '@/features/documents/components/upload-tray'
 import { useFilingSuggestions } from '@/features/documents/hooks/use-filing-suggestions'
 import { useTranslations } from '@/i18n'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import type { ProjectIntakeClient } from '@/lib/project-intake/client'
 import type { IntakeView } from '@/lib/project-intake/types'
 import { useIntake } from '../hooks/use-intake'
@@ -44,7 +45,7 @@ export function IntakeSetup({ initial, ...rest }: IntakeSetupProps): JSX.Element
 }
 
 function NoIntake({ projectId }: { projectId: string }): JSX.Element {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8" data-testid="intake-none">
       <EmptyState

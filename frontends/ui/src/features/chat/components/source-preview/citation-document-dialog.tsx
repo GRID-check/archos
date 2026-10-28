@@ -5,6 +5,8 @@ import { Download, Link2, PanelRight, TextSearch } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { Spinner } from '@/components/ui/spinner'
 import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
 import { SimilarPassagesPanel } from '@/features/similar-passages/components/similar-passages-panel'
@@ -65,8 +67,8 @@ export const CitationDocumentDialog: FC<{
    */
   similarFixtures?: { load: SimilarPassagesLoader; srcOf: DocumentSrcOf }
 }> = ({ target, citation, activeLocus, onSelectLocus, src, open, onOpenChange, similarFixtures }) => {
-  const t = useTranslations('chat')
-  const tKnowledge = useTranslations('knowledge')
+  const t = useTranslations(chatCopy)
+  const tKnowledge = useTranslations(knowledgeCopy)
   const projectId = useChatStore((s) => s.projectId)
   // The provenance tint comes from the SOURCE, not from where the file happens
   // to be stored: a chip and the dialog it opens must never disagree about what

@@ -51,7 +51,7 @@
     "frontends/ui/src/features/chat/stores/messages-store.ts": 1137,
     "frontends/ui/src/features/chat/stores/sessions-store.ts": 1413,
     "frontends/ui/src/features/chat/types.ts": 633,
-    "frontends/ui/src/features/collaboration/components/InboxItemRow.tsx": 1074,
+    "frontends/ui/src/features/collaboration/components/InboxItemRow.tsx": 1073,
     "frontends/ui/src/features/collaboration/components/ShareDialog.tsx": 808,
     "frontends/ui/src/features/collaboration/hooks/use-shared-thread.ts": 1087,
     "frontends/ui/src/features/documents/components/document-review-controls.tsx": 621,

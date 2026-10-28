@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 /**
  * Content-column fallback for the organization segment. The layout already
@@ -15,7 +16,7 @@ import { getTranslations } from '@/i18n/server'
  * to content, which is what keeps the fallback from collapsing and jumping.
  */
 export default async function OrganizationLoading(): Promise<JSX.Element> {
-  const t = await getTranslations('organization')
+  const t = await getTranslations(organizationCopy)
   return (
     <div className="flex flex-col gap-6" aria-busy="true">
       <span className="sr-only" role="status">

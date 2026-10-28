@@ -12,6 +12,7 @@ import { useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   buildPlacementTree,
   retarget,
@@ -43,7 +44,7 @@ export function RootSortReview({
   onOnlyUnsureChange,
   judgedNothing,
 }: RootSortReviewProps): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const full = useMemo(() => buildPlacementTree(input, state), [input, state])
   const tree = useMemo(() => (onlyUnsure ? unsureOnly(full) : full), [full, onlyUnsure])
   const { summary } = full

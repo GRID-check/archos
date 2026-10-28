@@ -66,6 +66,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import type { AnswerFeedbackReason } from '@/lib/db/schema/answer-feedback'
 import { useChatStore } from '../store'
@@ -129,7 +130,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
   className,
   pending = false,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const swap = useIconSwapTransition()
   const projectId = useChatStore((s) => s.projectId)
   const { state, setFeedback } = useAnswerFeedback(messageId, conversationId, projectId)

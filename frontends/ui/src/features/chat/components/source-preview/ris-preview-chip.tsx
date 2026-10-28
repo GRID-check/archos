@@ -4,6 +4,7 @@ import { useState, type FC, type ReactNode } from 'react'
 import { Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
 import type { SourceTint } from '@/lib/source-kinds'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
@@ -53,7 +54,7 @@ export const RisPreviewChip: FC<{
   trailing,
   detail,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [isOpen, setIsOpen] = useState(false)
   const peek = useHoverPopover()
 

@@ -43,6 +43,7 @@ import { PermissionReference } from '@/features/organization/components/permissi
 import { RoleCatalog } from '@/features/organization/components/role-catalog'
 import type { OrganizationMemberWithRole } from '@/lib/organizations/service'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 const MEMBERS: OrganizationMemberWithRole[] = [
   {
@@ -98,7 +99,7 @@ const isView = (value: string | null): value is View =>
   value === 'people' || value === 'roles' || value === 'permissions'
 
 function Preview(): JSX.Element {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   // Read the variant after mount rather than during render, so the markup the
   // server produced and the markup React hydrates are the same.
   const [view, setView] = useState<View>('people')

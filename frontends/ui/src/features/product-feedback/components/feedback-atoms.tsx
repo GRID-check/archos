@@ -10,6 +10,7 @@ import type { JSX } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { useTranslations } from '@/i18n'
+import { feedbackCopy } from '@/i18n/namespaces/feedback'
 import type { SupportTicketStatus } from '@/lib/product-feedback/types'
 
 /**
@@ -44,7 +45,7 @@ export function FeedbackCaseStatus({
   /** The reader filed it; `false` in the office view on a colleague's case. */
   mine: boolean
 }): JSX.Element {
-  const t = useTranslations('feedback')
+  const t = useTranslations(feedbackCopy)
   const label =
     state === 'awaiting'
       ? mine

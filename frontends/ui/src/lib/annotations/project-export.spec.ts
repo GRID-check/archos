@@ -15,14 +15,14 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 
-import { getDictionary } from '@/i18n/dictionaries'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { blocksToMarkdown } from './export'
 import { buildProjectProtocol, groupByDocument, selectionLine } from './project-export'
 import { decodeProjectMarkCursor, dueRangeOf, encodeProjectMarkCursor } from './project-marks'
 import type { ProjectMarkView } from './project-types'
 
-const t = createTranslator(getDictionary('de'), 'files')
+const t = translatorFor(filesCopy, 'de')
 
 const mark = (overrides: Partial<ProjectMarkView> = {}): ProjectMarkView => ({
   id: `${overrides.documentId ?? 'doc_a'}_${overrides.number ?? 1}`,

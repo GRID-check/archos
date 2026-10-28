@@ -30,6 +30,7 @@ import { Gavel } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { NormRefFooter } from '../schematics/kit'
 import type { NormReferenceData } from '@/shared/cards/schemas'
@@ -85,7 +86,7 @@ export const VerdictHeaderCard: FC<VerdictHeaderCardProps> = ({
   confidence_reason,
   flat = false,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const conf = confidence ? CONFIDENCE[confidence] : null
   const text = verdict ?? ''
 

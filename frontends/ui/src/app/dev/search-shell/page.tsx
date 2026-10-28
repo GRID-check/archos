@@ -25,9 +25,10 @@ import { PageHeader } from '@/components/ui/page-header'
 import { SearchWorkspace } from '@/features/search'
 import { NO_TOURS } from '@/lib/onboarding/product-tour'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 
 function SearchPageBody(): JSX.Element {
-  const t = useTranslations('search')
+  const t = useTranslations(searchCopy)
   return (
     <ShellContent width="tool">
       <PageHeader className="mb-6" title={t('title')} />

@@ -20,6 +20,8 @@ import { glideScrollTo, type GlideHandle } from '../../lib/glide-scroll'
 import { useAuth } from '@/adapters/auth'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { useShowReasoningSkills } from '@/lib/user-preferences/use-show-reasoning-skills'
 import {
   isDisplayableMessage,
@@ -115,8 +117,8 @@ export function useChatAreaController({
   const stableStepsRef = useRef(new Map<string, StoredThinkingStep[]>())
   const dismissErrorCard = useChatStore((s) => s.dismissErrorCard)
   const retryLastUserMessage = useChatStore((s) => s.retryLastUserMessage)
-  const t = useTranslations('research')
-  const tCollaboration = useTranslations('collaboration')
+  const t = useTranslations(researchCopy)
+  const tCollaboration = useTranslations(collaborationCopy)
   const { user } = useAuth()
   const currentUserId = user?.id ?? null
   // Fetched ONCE for the whole transcript and passed down to each answer.

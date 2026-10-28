@@ -26,6 +26,7 @@
 import type { JSX } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { cn } from '@/lib/utils'
 import type { FileItem } from '../file-types'
 import { revisionCount } from '../lib/revision-chain'
@@ -43,7 +44,7 @@ export function RevisionCount({
   file: FileItem
   className?: string
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   // An older Fassung's own count would read as the document's, which is the
   // thing the older one is not.
   if (isOlderRevisionEntry(file)) return null
@@ -71,7 +72,7 @@ export function OlderRevisionBadge({
   file: FileItem
   className?: string
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const newer = file.revision?.supersededBy
   if (!newer) return null
   const replacedBy = t('revisionBadge.olderTitle', { name: newer.filename })
