@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Every permission a custom role can carry has a human label, in both
  * languages. A new organization permission in the catalog fails here until
  * somebody writes the line an office will read in the role editor.

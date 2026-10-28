@@ -1,7 +1,7 @@
 """The rankings measured, each produced by the production code that serves it.
 
 * :func:`qdrant_bm25` — the BM25 prefetch of ``qdrant/search.py`` on its own: the
-  same ``Document`` (``store.bm25``, so ``BM25_OPTIONS``), the same ``_bm25_text``
+  same ``Document`` (``store.bm25``, so ``BM25_OPTIONS``), the same ``lexical_query.bm25_text``
   input, the same per-scope IDF, the same scope filter. It is the only query here
   that drives ``qdrant_client`` directly, because production never runs BM25 alone;
   the objects it is built from are the package's.
@@ -25,7 +25,7 @@ from typing import Any
 
 from oib_retrieval.qdrant_parity.stores import SCOPE
 
-#: The base collection's filter, as ``register._base_collection_filters`` builds it.
+#: The base collection's filter, as ``search_scope.base_collection_filters`` builds it.
 NON_EVIDENCE_CHUNKING = "page"
 
 
@@ -39,7 +39,7 @@ def base_filters(excluded: Sequence[str]) -> dict[str, Any]:
 def qdrant_bm25(retriever: Any, query: str, depth: int, filters: dict[str, Any] | None) -> list[str]:
     """Chunk ids from Qdrant's server-side German BM25 alone, best first.
 
-    The query text is the one the adapter sends (``_qdrant_lexical_inputs``: the
+    The query text is the one the adapter sends (``lexical_query.lexical_inputs``: the
     question's terms priced against the collection), so an empty text, and an
     empty result, is the channel staying silent as it would in production.
     """
@@ -51,7 +51,7 @@ def qdrant_bm25(retriever: Any, query: str, depth: int, filters: dict[str, Any] 
     from qdrant_client import models
 
     store = get_store()
-    text, _terms = retriever._qdrant_lexical_inputs(query, SCOPE)
+    text, _terms = retriever._lexical_inputs(query, SCOPE)
     if not text.strip():
         return []
     idf = models.SearchParams(idf=models.IdfCorpusParams(corpus=models.Filter(must=[scope_condition([SCOPE])])))

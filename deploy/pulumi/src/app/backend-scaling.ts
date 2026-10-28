@@ -1,6 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { commonLabels } from "../platform/namespaces";
 import { AppWiring, SECRET_NAME } from "./config";
 import { SCALER_POLLING_SECONDS, installTriggerAuth } from "./keda-scaling";

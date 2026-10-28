@@ -27,7 +27,7 @@ is always into an existing folder of the shelf.
 
 USAGE
 -----
-    cd frontends/aiq_api && ../../.venv/bin/python -I ../../scripts/root_sort_eval.py
+    cd apps/backend && ../../.venv/bin/python -I ../../scripts/root_sort_eval.py
     ... --out /some/where.json        (default: tests/fixtures/root_sort/eval_<date>.json)
 
 IT NEEDS A KEY, NOT A BACKEND
@@ -52,7 +52,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "root_sort" / "austrian_office_root.json"
 sys.path.insert(0, str(REPO_ROOT / "src"))
-sys.path.insert(0, str(REPO_ROOT / "frontends" / "aiq_api" / "src"))
+sys.path.insert(0, str(REPO_ROOT / "apps" / "backend" / "src"))
 
 CHUNK = 30
 REQUESTED_CUTS = (0.4, 0.5, 0.6, 0.7, 0.8)

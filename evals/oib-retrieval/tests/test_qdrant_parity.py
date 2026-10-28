@@ -156,11 +156,11 @@ def test_truncation_renormalises_and_keeps_the_prefix_direction():
 
 def test_the_base_filter_is_the_one_register_builds():
     from knowledge_layer.register import KnowledgeRetrievalConfig
-    from knowledge_layer.register import _base_collection_filters
+    from knowledge_layer.search_scope import base_collection_filters
 
     excluded = ["b.pdf", "a.pdf"]
     config = KnowledgeRetrievalConfig.model_construct(exclude_file_names=excluded)
-    assert channels.base_filters(excluded) == _base_collection_filters(config, None)
+    assert channels.base_filters(excluded) == base_collection_filters(config, None)
 
 
 # ---------------------------------------------------------------- the reference and the exact-mode oracle

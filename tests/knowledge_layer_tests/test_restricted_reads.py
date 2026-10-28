@@ -276,7 +276,7 @@ async def test_exact_search_reports_every_collection_its_match_table_names(monke
 
     # The passages are rendered (and reported) by the grounding block; stubbed
     # here so what is left to report is the match table alone.
-    monkeypatch.setattr(importlib.import_module(f"{browse.__package__}.register"), "_format_results", _no_passages)
+    monkeypatch.setattr(importlib.import_module(f"{browse.__package__}.search_results"), "format_results", _no_passages)
     monkeypatch.setattr(
         importlib.import_module(f"{browse.__package__}.read_passage"), "_passage_result", lambda chunks, query: None
     )

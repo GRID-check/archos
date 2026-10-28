@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, test, expect, vi } from 'vitest'
 import { RATE_LIMIT_RETRIES, runWithConcurrency, sendWaitingOutRateLimit, UPLOAD_CONCURRENCY } from './upload-queue'
 

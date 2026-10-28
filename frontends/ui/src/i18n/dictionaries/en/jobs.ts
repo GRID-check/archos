@@ -24,7 +24,7 @@ export const jobs = {
     empty: {
       title: 'No tasks yet',
       description:
-        'A task is a request with or without a rhythm. Write it once, say when it runs, and let Piloti research and file the report while you are somewhere else.',
+        'A task is a request with or without a rhythm. Write it once, say when it runs, and let {productName} research and file the report while you are somewhere else.',
       action: 'New task',
     },
     manualOnly: 'Manual only',
@@ -122,9 +122,9 @@ export const jobs = {
       task: 'Task',
       schedule: 'When',
       review: 'Review',
-      taskTitle: 'What should Piloti do?',
+      taskTitle: 'What should {productName} do?',
       taskHint:
-        'Write it exactly as you would type it into a new chat. Piloti starts with no other context.',
+        'Write it exactly as you would type it into a new chat. {productName} starts with no other context.',
       scheduleTitle: 'When should it run?',
       scheduleHint:
         'Once, recurring or on request — the next times are shown underneath, to check before you commit.',
@@ -213,10 +213,10 @@ export const jobs = {
      * a researched report, filed in the project — so the noun is part of the
      * sentence rather than a slot the wizard once filled from a choice.
      */
-    reviewSentence: 'Piloti researches a report {cadence} and files it in the project.',
-    reviewSentenceOnce: 'Piloti researches a report and files it in the project — once, on {dueAt}.',
+    reviewSentence: '{productName} researches a report {cadence} and files it in the project.',
+    reviewSentenceOnce: '{productName} researches a report and files it in the project — once, on {dueAt}.',
     reviewSentenceManual:
-      'Piloti researches a report and files it in the project, each time you start it by hand.',
+      '{productName} researches a report and files it in the project, each time you start it by hand.',
 
     createAndRun: 'Create and run now',
     saveAndRun: 'Save and run now',

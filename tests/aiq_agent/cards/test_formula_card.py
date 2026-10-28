@@ -16,9 +16,9 @@ from pydantic import ValidationError
 from aiq_agent.agents.piloti import answer_pipeline
 from aiq_agent.cards.catalog import CARD_EXAMPLES
 from aiq_agent.cards.envelope import ENVELOPE_SHAPE_TYPES
-from aiq_agent.cards.models import formula_inputs
+from aiq_agent.cards.formula_card import formula_inputs
+from aiq_agent.cards.formula_card import stated_result_fields
 from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.models import stated_result_fields
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import formula_provenance_score
 
@@ -410,7 +410,7 @@ class TestAMajorRenovation:
         assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] == "major_renovation"
 
     def test_the_schema_tells_the_model_it_is_not_judged_by_the_table(self):
-        from aiq_agent.cards.models import UValueFormula
+        from aiq_agent.cards.formula_card import UValueFormula
 
         description = UValueFormula.model_fields["measure"].description or ""
         assert "major_renovation" in description and "Pkt. 4.3" in description

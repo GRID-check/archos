@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * `isPatchAlreadyApplied` tells a lost race that already holds the change from
  * one that does not. Two people confirming the same suggestion on the intake's
  * review write the same fact at two instants: the instants differ (`updatedAt`,

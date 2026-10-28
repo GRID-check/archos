@@ -22,7 +22,7 @@ export const research: typeof en.research = {
     // Server: eine laufende Antwort geht dabei nicht verloren, sie wird
     // fortgesetzt, sobald die Verbindung wieder steht.
     connection: {
-      lost: 'Verbindung unterbrochen · Piloti macht weiter, sobald sie wieder steht',
+      lost: 'Verbindung unterbrochen · {productName} macht weiter, sobald sie wieder steht',
       restored: 'Wieder verbunden',
     },
     status: {
@@ -40,11 +40,11 @@ export const research: typeof en.research = {
       // Piloti hat die Frage nicht bearbeitet; das Banner sagt warum.
       refused: 'Nicht bearbeitet',
     },
-    loggedOutTitle: 'Piloti wird verfügbar, sobald Ihre Organisation verifiziert ist.',
+    loggedOutTitle: '{productName} wird verfügbar, sobald Ihre Organisation verifiziert ist.',
     loggedOutBody:
       'Melden Sie sich an, um den Projekt-Arbeitsbereich zu öffnen: Unterlagen, Büroablage, Aufgaben und Recherche.',
     signInSso: 'Mit SSO anmelden',
-    welcomeTitle: 'Wie kann Piloti bei Ihrem Projekt helfen?',
+    welcomeTitle: 'Wie kann {productName} bei Ihrem Projekt helfen?',
   },
 
   chatToolbar: {
@@ -90,7 +90,7 @@ export const research: typeof en.research = {
     label: 'Datenbasis',
     triggerAria: 'Datenbasis: {summary}. Öffnet die Auswahl.',
     description:
-      'Worin Piloti suchen darf. Was tatsächlich verwendet wurde, steht in der Herleitung.',
+      'Worin {productName} suchen darf. Was tatsächlich verwendet wurde, steht in der Herleitung.',
     allSources: 'Alle Quellen',
     internalOnly: 'Nur Projektwissen',
     overflowAria: '{count, plural, one {# weitere Quellenart} other {# weitere Quellenarten}}',
@@ -100,11 +100,11 @@ export const research: typeof en.research = {
     signInRequired: 'Anmeldung nötig',
     signInReason: 'Melden Sie sich an, um diese Quelle zu nutzen.',
     lockedBusy: 'Während einer laufenden Recherche lässt sich die Datenbasis nicht ändern.',
-    noExternalWarning: 'Piloti sucht dann nur noch in Ihren Projektunterlagen.',
+    noExternalWarning: '{productName} sucht dann nur noch in Ihren Projektunterlagen.',
     presetsLabel: 'Voreinstellungen',
     emptyTitle: 'Keine externen Quellen',
     emptyBody:
-      'Für dieses Projekt sind derzeit keine externen Quellen freigeschaltet. Piloti sucht in Ihren Projektunterlagen.',
+      'Für dieses Projekt sind derzeit keine externen Quellen freigeschaltet. {productName} sucht in Ihren Projektunterlagen.',
     toggleAria: '{name} zulassen',
     /** Wortmarken der Provenienz-Straten — immer mit Icon und Farbe zusammen. */
     strata: {
@@ -202,7 +202,7 @@ export const research: typeof en.research = {
     onlyThisSession: 'Nur in dieser Chat-Sitzung verfügbar.',
     loadingFiles: 'Dateien werden geladen',
     checkingFiles: 'Dateien werden geprüft...',
-    setupBackend: 'Dateien stehen erst zur Verfügung, wenn die Verbindung zu Piloti steht.',
+    setupBackend: 'Dateien stehen erst zur Verfügung, wenn die Verbindung zu {productName} steht.',
     noAttachedFiles: 'Keine angehängten Dateien',
     filesGoTo: 'Hier hochgeladene Dateien gelangen in {target}, sofern nicht entfernt.',
     filesCount: '{target} – Dateien ({count})',
@@ -216,17 +216,17 @@ export const research: typeof en.research = {
     subjectCleared: 'Frage bezieht sich nicht mehr auf diese Datei.',
     subjectClearedUndo: 'Rückgängig',
     aiDisclosure:
-      'Piloti ist ein KI-System — Antworten können falsch sein; prüfen Sie sie anhand der zitierten Unterlagen.',
+      '{productName} ist ein KI-System — Antworten können falsch sein; prüfen Sie sie anhand der zitierten Unterlagen.',
     placeholderDefault: 'Datenquellen prüfen und eine Recherchefrage stellen...',
     signInToStart: 'Melden Sie sich an, um zu beginnen',
-    typeResponse: 'Geben Sie Ihre Antwort an Piloti ein...',
+    typeResponse: 'Geben Sie Ihre Antwort an {productName} ein...',
     pleaseWait: 'Bitte warten...',
     typeAhead: 'Nächste Frage schon eingeben …',
     typeAheadHint: 'Senden ist möglich, sobald die Antwort fertig ist.',
     // Während Piloti an der eigenen Frage arbeitet: Enter schickt den Text als
     // Lenkung in die laufende Antwort, nicht als neue Frage.
-    steer: 'Piloti lenken …',
-    steerHint: 'Enter ergänzt die laufende Antwort; Piloti liest es vor dem nächsten Schritt.',
+    steer: '{productName} lenken …',
+    steerHint: 'Enter ergänzt die laufende Antwort; {productName} liest es vor dem nächsten Schritt.',
     steerChip: 'lenkt',
     steerSent: 'Ergänzung gesendet',
     messageNotSent: 'Nachricht nicht gesendet',
@@ -242,8 +242,8 @@ export const research: typeof en.research = {
     uploadDisabledBusy: 'Datei-Upload während aktiver Vorgänge deaktiviert',
     // Über dem Chat, solange eine gezogene Datei gerade nicht angehängt werden kann.
     dropRefusedReadOnly: 'Sie können diesen Chat lesen, aber keine Dateien hinzufügen.',
-    dropRefusedAnswering: 'Piloti antwortet gerade. Dateien können Sie anhängen, sobald die Antwort fertig ist.',
-    dropRefusedQuestion: 'Beantworten Sie zuerst die Rückfrage von Piloti, dann können Sie Dateien anhängen.',
+    dropRefusedAnswering: '{productName} antwortet gerade. Dateien können Sie anhängen, sobald die Antwort fertig ist.',
+    dropRefusedQuestion: 'Beantworten Sie zuerst die Rückfrage von {productName}, dann können Sie Dateien anhängen.',
     dropRefusedUploading: 'Warten Sie, bis der laufende Upload abgeschlossen ist.',
     selectFiles: 'Dateien zum Hochladen auswählen',
     sendResponse: 'Antwort senden',
@@ -309,10 +309,10 @@ export const research: typeof en.research = {
     noMatching: 'Keine passenden Chats',
     noMatchingDescription: 'Nichts in diesem Projekt passt zu „{query}“.',
     noSessions: 'Noch keine Chats',
-    noSessionsDescription: 'Ihre Chats mit Piloti in diesem Projekt erscheinen hier.',
+    noSessionsDescription: 'Ihre Chats mit {productName} in diesem Projekt erscheinen hier.',
     /** Erklärt, warum alle Zeilen während einer Antwort ausgegraut sind. */
     navigationBlocked:
-      'Piloti antwortet noch. Neue Chats und der Wechsel zwischen Chats pausieren bis zum Abschluss.',
+      '{productName} antwortet noch. Neue Chats und der Wechsel zwischen Chats pausieren bis zum Abschluss.',
     today: 'Heute',
     yesterday: 'Gestern',
     editTitle: 'Chat-Titel bearbeiten',
@@ -324,7 +324,7 @@ export const research: typeof en.research = {
     cannotRenameBusy: 'Umbenennen nicht möglich, während Vorgänge laufen',
     deleteDisabled: 'Chat löschen (deaktiviert)',
     deleteSession: 'Chat löschen',
-    sessionActive: 'Piloti arbeitet an diesem Chat',
+    sessionActive: '{productName} arbeitet an diesem Chat',
     reportCompleted: 'Bericht fertig',
     chatSession: 'Chat',
     sessionLabelBusy: 'Chat: {title} (Verarbeitung läuft)',

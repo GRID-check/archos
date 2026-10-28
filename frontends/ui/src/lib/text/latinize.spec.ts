@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The shared transliteration, tested where it lives rather than three times
  * over in the surfaces that slug with it.
  *

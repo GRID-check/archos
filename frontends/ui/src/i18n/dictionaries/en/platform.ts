@@ -797,7 +797,7 @@ export const platform = {
     skills: {
       title: 'Skills',
       subtitle:
-        'Skills Piloti writes once and offers to every organization. Each one decides whether to switch a skill on; drafts stay invisible. Anything that should apply to every answer belongs in the platform prompt.',
+        'Skills {productName} writes once and offers to every organization. Each one decides whether to switch a skill on; drafts stay invisible. Anything that should apply to every answer belongs in the platform prompt.',
     },
     models: {
       title: 'Models',
@@ -824,7 +824,7 @@ export const platform = {
     feedback: {
       title: 'Feedback',
       subtitle:
-        'What members report from inside Piloti — bugs, ideas, praise and questions. New reports also land in your inbox.',
+        'What members report from inside {productName} — bugs, ideas, praise and questions. New reports also land in your inbox.',
     },
     knowledge: {
       title: 'Base knowledge',
@@ -1070,7 +1070,7 @@ export const platform = {
   pricing: {
     title: 'Price list',
     description:
-      'What organizations pay for what OpenRouter charges Piloti. A save reprices every organization from its next request. Usage already recorded keeps its price.',
+      'What organizations pay for what OpenRouter charges {productName}. A save reprices every organization from its next request. Usage already recorded keeps its price.',
     setBadge: 'Set',
     bootFloorBadge: 'Boot floor, not set yet',
     margin: 'Margin multiplier',
@@ -1107,7 +1107,7 @@ export const platform = {
   },
   team: {
     title: 'Platform team',
-    description: 'Members of the Piloti platform organization. Roles here grant platform-wide access, so invite with care.',
+    description: 'Members of the {productName} platform organization. Roles here grant platform-wide access, so invite with care.',
     auditLogs: 'Audit logs',
     auditError: 'Could not open the audit log viewer.',
   },
@@ -1155,7 +1155,7 @@ export const platform = {
     zipRejectedTitle: 'Skipped from the ZIP',
     // Grouped sections.
     bindingTitle: 'Binding OIB foundations',
-    bindingHint: 'The official OIB directives and related base laws — the authoritative building law Piloti must follow.',
+    bindingHint: 'The official OIB directives and related base laws — the authoritative building law {productName} must follow.',
     otherTitle: 'Further base documents',
     otherHint: 'Other norms, laws and supporting documents in the base corpus.',
     // Dokumentart classifier.
@@ -1375,7 +1375,7 @@ export const platform = {
       'Sources that answers keep citing but verification could not confirm, checked against what the platform holds. Most-cited first.',
     missingCited: '{turns} turn(s) · {organizations} org(s)',
     missingCaveat:
-      'Each button opens the manager that owns the add flow and copies the identifier to your clipboard. A PDF has to come from you, and a norm-catalog entry needs its legal rank and Bundesland confirmed before Piloti may quote it as binding.',
+      'Each button opens the manager that owns the add flow and copies the identifier to your clipboard. A PDF has to come from you, and a norm-catalog entry needs its legal rank and Bundesland confirmed before {productName} may quote it as binding.',
     missingReadOnly: 'Adding sources needs permission to manage platform settings.',
     shownOfTotal: 'Showing {shown} of {total}.',
     missingInventoryUnknown:
@@ -1506,7 +1506,7 @@ export const platform = {
       'Enter a file size in MB from 1 to {max}, or leave the field empty for the default.',
     uploadLimitSaveError: 'Could not update the max. file size.',
     uploadLimitHint:
-      'Max. file size applies to each file except IFC models, which have their own limit. Empty means the default of {default}. At most {max}: larger requests are cut off before they reach Piloti, whatever the organization is allowed.',
+      'Max. file size applies to each file except IFC models, which have their own limit. Empty means the default of {default}. At most {max}: larger requests are cut off before they reach {productName}, whatever the organization is allowed.',
   },
 
 }

@@ -9,7 +9,7 @@ export const feedback = {
   dialog: {
     title: 'Tell us what you think',
     description:
-      'Your message goes straight to the people who build Piloti. Every report is read.',
+      'Your message goes straight to the people who build {productName}. Every report is read.',
     kindLabel: 'What is it about?',
     messageLabel: 'Your message',
     counter: '{count} / {max}',
@@ -66,7 +66,7 @@ export const feedback = {
   threads: {
     open: 'My feedback',
     title: 'My feedback',
-    description: 'What you reported and what the Piloti team answered. You can reply right here.',
+    description: 'What you reported and what the {productName} team answered. You can reply right here.',
     newCount: '{count} new',
     empty: {
       title: 'No feedback yet',
@@ -81,7 +81,7 @@ export const feedback = {
       description: 'Choose a report on the left to read the chat with the team, or send new feedback.',
     },
     /** In the thread of a report sent a moment ago. */
-    sent: 'Thank you! Your feedback has reached the Piloti team. You will see their answer here.',
+    sent: 'Thank you! Your feedback has reached the {productName} team. You will see their answer here.',
     loadError: 'Your feedback could not be loaded.',
     threadLoadError: 'This chat could not be loaded.',
     retry: 'Try again',
@@ -91,8 +91,8 @@ export const feedback = {
     back: 'All feedback',
     hasUpdate: 'New',
     me: 'You',
-    team: 'Piloti team',
-    teamMember: '{name}, Piloti team',
+    team: '{productName} team',
+    teamMember: '{name}, {productName} team',
     notLive: 'The team’s replies cannot be loaded right now. Your report is safe and has been received.',
     cannotReply: 'Replies to this report are not possible here. Send new feedback to continue the chat.',
     waiting: 'The team has not replied yet. You will see their answer here.',
@@ -171,7 +171,7 @@ export const feedback = {
     viewerNotInPosthog: {
       title: 'Nothing is assigned to you in PostHog.',
       description:
-        'Nobody in PostHog has your Piloti email. Sign in to PostHog with the same address and your tickets show up here.',
+        'Nobody in PostHog has your {productName} email. Sign in to PostHog with the same address and your tickets show up here.',
     },
     openInPosthog: 'Open in PostHog',
     empty: {
@@ -189,7 +189,7 @@ export const feedback = {
     noContact: 'Does not want to be contacted',
     claimed: 'Ticket #{number} is now assigned to you in PostHog.',
     claimedUnnumbered: 'The ticket is now assigned to you in PostHog.',
-    claimError: 'The ticket could not be assigned to you. Is your Piloti email also your PostHog login?',
+    claimError: 'The ticket could not be assigned to you. Is your {productName} email also your PostHog login?',
     statusLabel: 'Status',
     triaged: 'Moved to “{status}”.',
     triageError: 'The status could not be changed.',

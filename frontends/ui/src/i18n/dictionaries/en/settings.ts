@@ -31,11 +31,11 @@ export const settings = {
     overview: {
       createdOn: 'Created {date}',
       documentsCount: '{count, plural, one {# document} other {# documents}}',
-      summaryEmpty: 'No briefing yet. Set one up so Piloti knows what this project is before it answers.',
+      summaryEmpty: 'No briefing yet. Set one up so {productName} knows what this project is before it answers.',
       setUpBrief: 'Set up briefing',
       editBrief: 'Edit briefing',
       openSetup: 'Continue setup',
-      askPiloti: 'Ask Piloti',
+      askPiloti: 'Ask {productName}',
       openFiles: 'Open files',
       actions: 'Project actions',
       rename: 'Rename',
@@ -46,7 +46,7 @@ export const settings = {
         questionsWord: '{count, plural, one {question} other {questions}}',
         questions: '{count, plural, one {# question} other {# questions}}',
         peopleLabel: 'People asking',
-        empty: 'No questions in the last 30 days. Ask Piloti something about this project to get it going.',
+        empty: 'No questions in the last 30 days. Ask {productName} something about this project to get it going.',
       },
       similar: {
         label: 'Similar projects',
@@ -72,7 +72,7 @@ export const settings = {
         notes: '{count, plural, one {note} other {notes}}',
         toReview: '{count, plural, one {# to review} other {# to review}}',
         allReviewed: 'All confirmed',
-        empty: 'Piloti has not noted anything about this project yet.',
+        empty: '{productName} has not noted anything about this project yet.',
         error: 'Memory could not be loaded.',
         open: 'Memory',
       },
@@ -90,12 +90,12 @@ export const settings = {
         'Assign project roles to organization members. Organization admins always have access.',
     },
     memory: {
-      readOnlyHint: 'You can read what Piloti remembers. Changing it needs write access to the project.',
+      readOnlyHint: 'You can read what {productName} remembers. Changing it needs write access to the project.',
     },
     usage: {
       title: 'Usage',
       description:
-        'What Piloti has used in this project, against the limits that would stop it. Windows are UTC: today since midnight, this month since the 1st.',
+        'What {productName} has used in this project, against the limits that would stop it. Windows are UTC: today since midnight, this month since the 1st.',
       today: 'Today',
       thisMonth: 'This month',
       requests: '{count, plural, one {# request} other {# requests}}',
@@ -103,7 +103,7 @@ export const settings = {
       empty: 'No usage recorded in this project this month.',
       limitTitle: 'Project limit',
       limitDescription:
-        'A limit here stops Piloti in this project only, before the organization’s limit is reached. It can never exceed the organization’s limit.',
+        'A limit here stops {productName} in this project only, before the organization’s limit is reached. It can never exceed the organization’s limit.',
       noProjectLimit: 'No project limit. Only the organization’s limit applies.',
       orgCeiling: 'Organization limit: {limits}',
       orgCeilingNone: 'The organization has no limit set.',

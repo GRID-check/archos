@@ -104,7 +104,7 @@ export const runs = {
     addAction: 'Add document',
     addTitle: 'Add a document',
     addDescription:
-      'Piloti reads it in full in the next research round and lists it with the other documents named for this task.',
+      '{productName} reads it in full in the next research round and lists it with the other documents named for this task.',
     pickTitle: 'Choose documents',
     pickDescription:
       '„Read" means read in full, whatever else the research finds. „Exclude" means never used, not even when a search returns it.',
@@ -130,7 +130,7 @@ export const runs = {
   cancel: {
     confirmTitle: 'Stop this task?',
     confirmBody:
-      'Piloti stops where it is. What has been researched so far stays in the block; the report is not written.',
+      '{productName} stops where it is. What has been researched so far stays in the block; the report is not written.',
     confirm: 'Stop task',
     keep: 'Keep running',
   },

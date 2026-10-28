@@ -34,10 +34,10 @@ turn may read: the rows the turn's inventory resolved against the signed scope
 (``knowledge.inventory.get_turn_documents``, uncapped), or — on a path that
 bound none — the same scope ``knowledge_search`` resolves. Both then subtract
 the shelves this turn did not ask for (``focus_file.get_turn_shelves``), the
-way ``register._restrict_scope_to_turn`` does for the ranked search, so a turn
+way ``search_scope.restrict_scope_to_turn`` does for the ranked search, so a turn
 about one upload lists and greps that upload, not the Büroablage. The exact
 search reads the base corpus through the same store filter the ranked search
-uses (``register._base_collection_filters``): an excluded edition or a cover
+uses (``search_scope.base_collection_filters``): an excluded edition or a cover
 page is not evidence in either mode.
 """
 
@@ -2036,11 +2036,11 @@ def _session_collection() -> str | None:
 
 
 def _scope_entries(search_config: Any) -> list[Any]:
-    from .register import _resolve_base_collection
-    from .register import _resolve_scoped_collections
+    from .search_scope import resolve_base_collection
+    from .search_scope import resolve_scoped_collections
 
     return list(
-        _resolve_scoped_collections(search_config, _session_collection(), _resolve_base_collection(search_config))
+        resolve_scoped_collections(search_config, _session_collection(), resolve_base_collection(search_config))
     )
 
 
@@ -2101,7 +2101,7 @@ class TurnRows:
 def restrict_rows_to_turn(rows: Sequence[FileRow]) -> TurnRows:
     """Drop the shelves this turn did not ask for; the user shelves that remain.
 
-    The row-level twin of ``register._restrict_scope_to_turn``, with its rules:
+    The row-level twin of ``search_scope.restrict_scope_to_turn``, with its rules:
     turn intent only ever subtracts, a row without a shelf is kept, and a
     restriction that would leave nothing keeps everything.
     """
@@ -2403,7 +2403,7 @@ async def _files_by_collection(
     """
     if not (file_name or folder or doc_class or title_contains):
         return None
-    from .register import _file_name_matches
+    from .hit_metadata import _file_name_matches
 
     rows = await _turn_rows(search_config)
     if folder:
@@ -2594,9 +2594,9 @@ async def exact_search(
         )
     if regex_mode and not (narrowed is not None or folder_key) and not _has_literal_word(pattern):
         return _NEEDS_A_ANCHOR
-    from .register import _resolve_base_collection
+    from .search_scope import resolve_base_collection
 
-    base = _resolve_base_collection(search_config)
+    base = resolve_base_collection(search_config)
     scopes = shelf_scopes(entries, await _searched_documents(search_config, narrowed, folder))
     outcome = outcome if outcome is not None else ActionOutcome()
     counted = [scope.documents for scope in scopes if scope.documents is not None]
@@ -2682,7 +2682,7 @@ def _collection_filter(
 
     The base corpus holds text that is not evidence (cover and Impressum page
     chunks) and editions the deployment excludes; the ranked search keeps both
-    out with ``register._base_collection_filters``, and a literal search that
+    out with ``search_scope.base_collection_filters``, and a literal search that
     skipped it returned exactly those as citable passages. User collections are
     never filtered beyond the narrowing, as in the ranked search. The narrowing
     is a file list and/or the folder condition; ``scope_filter`` ANDs it onto the tenancy condition.
@@ -2700,11 +2700,11 @@ def _collection_filter(
     narrowing = None if not clauses else clauses[0] if len(clauses) == 1 else {"$and": clauses}
     if collection != base:
         return narrowing
-    from .register import _base_collection_filters
+    from .search_scope import base_collection_filters
 
     extra = [clause for clause in (caller_filters, narrowing) if clause]
     combined = extra[0] if len(extra) == 1 else ({"$and": extra} if extra else None)
-    return _base_collection_filters(search_config, combined)
+    return base_collection_filters(search_config, combined)
 
 
 async def _search(
@@ -2725,7 +2725,7 @@ async def _search(
     from .qdrant.retrieval import USER_REGEX_TIMEOUT
     from .qdrant.retrieval import PatternTooCostly
     from .read_passage import _passage_result
-    from .register import _format_results
+    from .search_results import format_results
 
     # A person's regex is the only caller that asks for the timed, narrowed-by-its-words read; a store
     # that knows only the literal lookup is never handed the keyword.
@@ -2828,7 +2828,7 @@ async def _search(
         except TimeoutError:
             return _TOO_COSTLY
         trailer = f"{trailer}\n\n{snippets}" if snippets else trailer
-    formatted = await asyncio.to_thread(_format_results, _passage_result(passages, query), query, trailer=trailer)
+    formatted = await asyncio.to_thread(format_results, _passage_result(passages, query), query, trailer=trailer)
     logger.info("exact search: %r matched %d file(s)", query, len(groups))
     return formatted
 

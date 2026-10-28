@@ -37,7 +37,7 @@ SAY it created one, in one sentence, and never to claim the work is done.
 
 ## Why the kinds are closed
 
-Four members, `TaskKind` in `cards/models.py` (the BFF's `DELEGATABLE_TASK_KINDS`
+Four members, `TaskKind` in `cards/workspace_cards.py` (the BFF's `DELEGATABLE_TASK_KINDS`
 is generated from it), because
 each one names an ENGINE that already exists — a norm check by the general
 agent, the Einreichcheck skill, the drafting tools, the revision path. An open `kind` string
@@ -53,7 +53,7 @@ from typing import Any
 from typing import get_args
 
 from aiq_agent import project_context
-from aiq_agent.cards.models import TaskKind
+from aiq_agent.cards.workspace_cards import TaskKind
 from aiq_agent.common.bff_http import SignedEnvelope
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig

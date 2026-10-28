@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { translatorFor } from '@/i18n/namespace'
 import { filesCopy } from '@/i18n/namespaces/files'

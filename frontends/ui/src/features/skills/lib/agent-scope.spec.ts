@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * `grid-agents` is the ONLY thing that decides which agents see a skill, so the
  * two directions of this module have to agree with each other and with both
  * resolvers. The cases below are the ones where a plausible implementation is

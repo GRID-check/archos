@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { MAX_DICTATION_AUDIO_BYTES, dictationFormatOf } from './contract'

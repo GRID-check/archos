@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { describeAppPath } from './describe-path'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import { getByPath } from '@/i18n/translate'
 
 describe('describeAppPath', () => {

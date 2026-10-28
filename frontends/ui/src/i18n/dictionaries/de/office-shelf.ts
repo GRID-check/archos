@@ -42,7 +42,7 @@ export const officeShelf = {
       'Diese Datei liefert beim erneuten Lesen dasselbe Ergebnis. Laden Sie eine neue Fassung hoch.',
     reingestConfirmTitle: '„{name}“ erneut lesen?',
     reingestConfirmDescription:
-      'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis Piloti damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
+      '{productName} liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis {productName} damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
     reingestConfirmAction: 'Erneut lesen',
     // Ein noch laufendes Lesen beenden: Die Bytes bleiben, nichts wurde
     // indexiert, und ein erneutes Lesen liest sie wieder. Neutral.
@@ -50,7 +50,7 @@ export const officeShelf = {
     cancelling: 'Wird abgebrochen …',
     cancelled: 'Lesen von „{name}“ abgebrochen',
     cancelFinished: 'Nichts abzubrechen – das Lesen war bereits beendet',
-    cancelUnavailable: 'Für diese Datei lässt sich das Lesen nicht abbrechen – Piloti wandelt sie auf diesem Server um',
+    cancelUnavailable: 'Für diese Datei lässt sich das Lesen nicht abbrechen – {productName} wandelt sie auf diesem Server um',
     cancelError: 'Das Lesen konnte nicht abgebrochen werden. Bitte versuchen Sie es erneut.',
     menuLabel: 'Dateiaktionen',
     download: 'Herunterladen',
@@ -67,7 +67,7 @@ export const officeShelf = {
   rename: {
     title: 'Dokument umbenennen',
     description:
-      'Ändert den Namen, der in Piloti überall angezeigt wird — auch in Zitaten. Die Datei selbst und alles daraus Gelesene bleiben unverändert.',
+      'Ändert den Namen, der in {productName} überall angezeigt wird — auch in Zitaten. Die Datei selbst und alles daraus Gelesene bleiben unverändert.',
     label: 'Name',
     hint: 'Die Dateiendung bleibt erhalten.',
     save: 'Umbenennen',

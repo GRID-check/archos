@@ -31,18 +31,18 @@ export const diagrams: typeof en.diagrams = {
     completePdf: 'PDF ergänzen',
   },
   marking:
-    'Von Piloti erstellt — KI-generiert, nicht geprüft. Schematisch: ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
+    'Von {productName} erstellt — KI-generiert, nicht geprüft. Schematisch: ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
   // Hier ist „Skizze" das richtige Wort: eine Person hat die Zeichnung von Hand
   // weitergeführt, und von Hand kann sie alles gezeichnet haben, auch einen
   // Umriss des Grundstücks. Deshalb zusätzlich „nicht maßstäblich".
   markingEdited:
-    'Von Piloti entworfen, von einer Person bearbeitet — KI-unterstützt, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
+    'Von {productName} entworfen, von einer Person bearbeitet — KI-unterstützt, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
   markingSketch:
-    'Von Piloti erstellt — KI-generiert, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
+    'Von {productName} erstellt — KI-generiert, nicht geprüft. Skizze: nicht maßstäblich, ohne Maßangabe. Kein Nachweis; prüfen Sie jede Angabe, bevor Sie das Dokument weitergeben.',
   sketch: {
     action: 'Als Skizze bearbeiten',
     title: 'Skizze bearbeiten',
-    description: 'Ausgangspunkt ist Pilotis Zeichnung. Eine Skizze ist nicht maßstäblich und behauptet keine Maße.',
+    description: 'Ausgangspunkt ist {productName}s Zeichnung. Eine Skizze ist nicht maßstäblich und behauptet keine Maße.',
     loading: 'Zeichenfläche wird geladen …',
     loadFailed: 'Die Zeichenfläche konnte nicht geladen werden.',
     save: 'Im Projekt ablegen',
@@ -53,7 +53,7 @@ export const diagrams: typeof en.diagrams = {
     keepEditing: 'Weiter bearbeiten',
     defaultTitle: 'Skizze',
     notToScale: 'Skizze — nicht maßstäblich, ohne Maßangabe.',
-    fallback: 'Diese Skizze konnte nicht gezeichnet werden. Bitten Sie Piloti, sie noch einmal zu zeichnen.',
+    fallback: 'Diese Skizze konnte nicht gezeichnet werden. Bitten Sie {productName}, sie noch einmal zu zeichnen.',
   },
   rejected: {
     empty: 'Das Diagramm war leer.',

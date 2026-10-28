@@ -802,7 +802,7 @@ export const platform: typeof en.platform = {
     skills: {
       title: 'Skills',
       subtitle:
-        'Skills, die Piloti einmal schreibt und jeder Organisation anbietet. Jede entscheidet selbst, ob sie einen einschaltet; Entwürfe sieht niemand. Was für jede Antwort gelten soll, gehört in den Plattform-Prompt.',
+        'Skills, die {productName} einmal schreibt und jeder Organisation anbietet. Jede entscheidet selbst, ob sie einen einschaltet; Entwürfe sieht niemand. Was für jede Antwort gelten soll, gehört in den Plattform-Prompt.',
     },
     models: {
       title: 'Modelle',
@@ -829,7 +829,7 @@ export const platform: typeof en.platform = {
     feedback: {
       title: 'Feedback',
       subtitle:
-        'Was Mitglieder aus Piloti heraus melden — Fehler, Ideen, Lob und Fragen. Neue Meldungen landen auch in Ihrem Postfach.',
+        'Was Mitglieder aus {productName} heraus melden — Fehler, Ideen, Lob und Fragen. Neue Meldungen landen auch in Ihrem Postfach.',
     },
     knowledge: {
       title: 'Basiswissen',
@@ -1073,7 +1073,7 @@ export const platform: typeof en.platform = {
   pricing: {
     title: 'Preisliste',
     description:
-      'Was Organisationen für das bezahlen, was OpenRouter Piloti verrechnet. Ein Speichern bepreist jede Organisation ab ihrer nächsten Anfrage neu. Bereits erfasste Nutzung behält ihren Preis.',
+      'Was Organisationen für das bezahlen, was OpenRouter {productName} verrechnet. Ein Speichern bepreist jede Organisation ab ihrer nächsten Anfrage neu. Bereits erfasste Nutzung behält ihren Preis.',
     setBadge: 'Festgelegt',
     bootFloorBadge: 'Grundeinstellung, noch nicht festgelegt',
     margin: 'Margenfaktor',
@@ -1110,7 +1110,7 @@ export const platform: typeof en.platform = {
   },
   team: {
     title: 'Plattform-Team',
-    description: 'Mitglieder der Piloti-Plattformorganisation. Rollen hier gewähren plattformweiten Zugriff, also mit Bedacht einladen.',
+    description: 'Mitglieder der {productName}-Plattformorganisation. Rollen hier gewähren plattformweiten Zugriff, also mit Bedacht einladen.',
     auditLogs: 'Audit-Logs',
     auditError: 'Der Audit-Log-Viewer konnte nicht geöffnet werden.',
   },
@@ -1155,7 +1155,7 @@ export const platform: typeof en.platform = {
     zipQueued: 'ZIP empfangen: {accepted} PDF(s) eingereiht, {rejected} übersprungen',
     zipRejectedTitle: 'Aus dem ZIP übersprungen',
     bindingTitle: 'Verbindliche OIB-Grundlagen',
-    bindingHint: 'Die offiziellen OIB-Richtlinien und zugehörigen Grundlagengesetze — das maßgebliche Baurecht, dem Piloti folgen muss.',
+    bindingHint: 'Die offiziellen OIB-Richtlinien und zugehörigen Grundlagengesetze — das maßgebliche Baurecht, dem {productName} folgen muss.',
     otherTitle: 'Weitere Basisdokumente',
     otherHint: 'Weitere Normen, Gesetze und unterstützende Dokumente im Basis-Korpus.',
     docClassLabel: 'Dokumentart',
@@ -1244,7 +1244,7 @@ export const platform: typeof en.platform = {
   citations: {
     title: 'Zitations-Qualität',
     description:
-      'Wie oft die Quellenprüfung bei Antworten eingreifen musste, für die Piloti etwas nachgeschlagen hat, und was sie gefunden hat. Antworten ohne Nachschlagen zählen nicht mit.',
+      'Wie oft die Quellenprüfung bei Antworten eingreifen musste, für die {productName} etwas nachgeschlagen hat, und was sie gefunden hat. Antworten ohne Nachschlagen zählen nicht mit.',
     loadError: 'Zitations-Qualität konnte nicht geladen werden.',
     refresh: 'Aktualisieren',
     windowStale: 'Der Zeitraum {requested} konnte nicht geladen werden. Angezeigt ist weiter {shown}.',
@@ -1373,7 +1373,7 @@ export const platform: typeof en.platform = {
       'Quellen, die Antworten immer wieder zitieren und die die Prüfung nicht bestätigen konnte, abgeglichen mit dem Bestand der Plattform. Meistzitierte zuerst.',
     missingCited: '{turns} Turn(s) · {organizations} Org.',
     missingCaveat:
-      'Jede Schaltfläche öffnet die zuständige Verwaltung und legt die Kennung in die Zwischenablage. Ein PDF muss von Ihnen kommen, und ein Eintrag im Normenkatalog braucht bestätigten Rechtsrang und Bundesland, bevor Piloti ihn als verbindlich zitieren darf.',
+      'Jede Schaltfläche öffnet die zuständige Verwaltung und legt die Kennung in die Zwischenablage. Ein PDF muss von Ihnen kommen, und ein Eintrag im Normenkatalog braucht bestätigten Rechtsrang und Bundesland, bevor {productName} ihn als verbindlich zitieren darf.',
     missingReadOnly: 'Zum Ergänzen von Quellen braucht es die Berechtigung, Plattform-Einstellungen zu verwalten.',
     shownOfTotal: '{shown} von {total} angezeigt.',
     missingInventoryUnknown:
@@ -1508,7 +1508,7 @@ export const platform: typeof en.platform = {
       'Geben Sie eine Dateigröße in MB von 1 bis {max} ein oder lassen Sie das Feld leer für den Standard.',
     uploadLimitSaveError: 'Die maximale Dateigröße konnte nicht aktualisiert werden.',
     uploadLimitHint:
-      'Die max. Dateigröße gilt je Datei, außer für IFC-Modelle mit eigener Grenze. Leer bedeutet den Standard von {default}. Höchstens {max}: Größere Anfragen werden abgeschnitten, bevor sie Piloti erreichen, unabhängig vom Wert der Organisation.',
+      'Die max. Dateigröße gilt je Datei, außer für IFC-Modelle mit eigener Grenze. Leer bedeutet den Standard von {default}. Höchstens {max}: Größere Anfragen werden abgeschnitten, bevor sie {productName} erreichen, unabhängig vom Wert der Organisation.',
   },
 
 }

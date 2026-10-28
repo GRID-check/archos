@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * Every reason `getApplicableStandards` can give has German words on the
  * Steckbrief: a new verdict with an English sentence nobody keyed fails here,
  * before it reaches a German reader as English.

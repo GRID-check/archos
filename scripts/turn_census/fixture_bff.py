@@ -92,14 +92,14 @@ Embed = Callable[[list[str]], "list[list[float]] | None"]
 def production_embedder() -> Embed | None:
     """The deployment's embedding model, built as the note-embeddings route builds it; None without a key."""
     try:
-        from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
-        from knowledge_layer.llamaindex.adapter import _resolve_embed_api_key
-        from knowledge_layer.llamaindex.adapter import make_embed_model
+        from knowledge_layer.llamaindex.embedding import make_embed_model
+        from knowledge_layer.llamaindex.embedding import resolve_embed_api_key
+        from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     except ImportError:
         return None
     model = LlamaIndexRetriever.DEFAULT_EMBED_MODEL
     base_url = LlamaIndexRetriever.DEFAULT_EMBED_BASE_URL
-    api_key = _resolve_embed_api_key(base_url, model)
+    api_key = resolve_embed_api_key(base_url, model)
     if not api_key:
         return None
     embedder = make_embed_model(base_url=base_url, model=model, api_key=api_key)

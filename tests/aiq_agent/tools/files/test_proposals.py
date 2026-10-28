@@ -46,7 +46,7 @@ from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
 import aiq_agent.project_context as pc
-from aiq_agent.cards.models import MAX_FILE_OPERATIONS
+from aiq_agent.cards.file_operation_card import MAX_FILE_OPERATIONS
 from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry

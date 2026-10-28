@@ -2,7 +2,7 @@
  * How the bff-jobs pool is sized against Gotenberg, and which host its slices
  * run in. Split from `config.ts`, which re-exports it.
  */
-import type { GridConfig } from "./config";
+import type { GridConfig } from './config'
 
 /**
  * Conversions one Gotenberg replica is sized to take at once: one running and

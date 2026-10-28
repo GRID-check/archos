@@ -19,8 +19,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { de } from './dictionaries/de'
-import { en } from './dictionaries/en'
+import { de, en } from './dictionaries'
 
 /**
  * The namespaces whose copy names files. `chat` is not here: its research-plan

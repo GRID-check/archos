@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { MARK_INK, NEWER_INK, OLDER_INK, PAPER, PAPER_INK, UNCHANGED_INK, contrastRatio, multiplyInks } from './tint'
 
