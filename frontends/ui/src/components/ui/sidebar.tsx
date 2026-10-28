@@ -2,7 +2,7 @@
 
 /**
  * shadcn Sidebar (New York), adapted to GRID:
- * collapse persists in localStorage (`grid.sidebar.collapsed`; true → open=false),
+ * collapse persists in localStorage (`sidebar.collapsed`; true → open=false),
  * no cookie, no cmd+b (this app uses `g …` leader shortcuts).
  */
 
@@ -30,8 +30,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-const SIDEBAR_STORAGE_KEY = 'grid.sidebar.collapsed'
-const SIDEBAR_WIDTH_STORAGE_KEY = 'grid.sidebar.width'
+const SIDEBAR_STORAGE_KEY = 'sidebar.collapsed'
+const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar.width'
 
 /**
  * Rail geometry, in px — NUMBERS, not the `'236px'` strings this used to hold,

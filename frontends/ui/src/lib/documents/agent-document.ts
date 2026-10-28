@@ -111,7 +111,7 @@ export async function fileAgentDocumentDraft(
   // filing.
   //
   // NO locale is passed, deliberately. This function's one caller is the
-  // agent's internal route, and the agent sends no `grid-locale` cookie and no
+  // agent's internal route, and the agent sends no `locale` cookie and no
   // `Accept-Language` — so `getLocale()` here would resolve to the APP default
   // for every tenant, and a German Aktenvermerk would carry an English header
   // line for no better reason than that. Leaving it out inherits

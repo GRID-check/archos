@@ -11,7 +11,7 @@
  *
  * Writes run only under the platform bypass (`platformApiRoute`); the tenant
  * role has SELECT and nothing else, enforced in SQL by
- * `grid_secure_platform_table` (0031).
+ * `secure_platform_table` (0031).
  */
 
 import 'server-only'

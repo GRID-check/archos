@@ -62,7 +62,7 @@ afterEach(() => {
   pathname = '/app/projects/p1/chat'
   // The primitive persists collapse in localStorage, so a test that collapses
   // the rail used to hand the icon rail to every test that ran after it.
-  window.localStorage.removeItem('grid.sidebar.collapsed')
+  window.localStorage.removeItem('sidebar.collapsed')
   vi.mocked(useIsMobile).mockReturnValue(false)
   useLayoutStore.setState({ isMobileNavOpen: false })
   useShellOverlays.setState({ projectSheetOpen: false, paletteOpen: false })

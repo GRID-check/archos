@@ -20,7 +20,13 @@ export const defaultLocale: Locale = 'en'
  * saved preference first; the cookie stands in when it cannot
  * (`request-locale.ts`).
  */
-export const LOCALE_COOKIE = 'grid-locale'
+export const LOCALE_COOKIE = 'locale'
+
+/**
+ * The cookie's name before ADR-0145 rule 5. Read when `locale` is missing and
+ * expired whenever `locale` is written, for one release; then deleted here.
+ */
+export const LEGACY_LOCALE_COOKIE = 'grid-locale'
 
 /** How long the mirror cookie lives: a year, from the server and from the page alike. */
 export const LOCALE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365

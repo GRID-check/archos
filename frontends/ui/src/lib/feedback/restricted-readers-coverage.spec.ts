@@ -24,7 +24,7 @@
  * - A reader is **cross-tenant** when it is reached from the callback of a
  *   `withPlatformAccess(...)`, following calls by name.
  * - Every reader is classified in {@link READERS}: either it applies the rule
- *   (`OUTSIDE_RESTRICTED_USE`, `grid_feedback_restricted_use`, `voteScope`
+ *   (`OUTSIDE_RESTRICTED_USE`, `feedback_restricted_use`, `voteScope`
  *   with `contentBearing`, or for the Langfuse score `isRestrictedUseVote`),
  *   or it is tenant-scoped, or it reads only whether a note exists, with the
  *   reason. A tenant-scoped reader reached from a platform callback fails, and
@@ -60,7 +60,7 @@ const READERS: Record<string, Classification> = {
   'lib/platform-lessons/repository.ts::listUnprocessedDownvotes': { rule: true },
 }
 
-const RULE = /\bOUTSIDE_RESTRICTED_USE\b|\bgrid_feedback_restricted_use\b|\bisRestrictedUseVote\b/
+const RULE = /\bOUTSIDE_RESTRICTED_USE\b|\b(?:grid_)?feedback_restricted_use\b|\bisRestrictedUseVote\b/
 
 /** The shared scope applies the rule when asked: `voteScope(…, { contentBearing: true })`. */
 const SCOPED_RULE = /\bcontentBearing:\s*true\b/
@@ -268,7 +268,7 @@ describe("every reader of a vote's words outside its tenant asks the rule (ADR-0
     const unit = (key: string) => found.units.find((candidate) => candidate.key === key)
     const rule = unit('lib/feedback/vote-scope.ts::OUTSIDE_RESTRICTED_USE')
     expect(rule && codeOf(rule.node).sql).toMatch(
-      /not grid_feedback_restricted_use\(f\.organization_id, f\.message_id, f\.conversation_id\)/
+      /not feedback_restricted_use\(f\.organization_id, f\.message_id, f\.conversation_id\)/
     )
     // `scoreVoteInLangfuse` applies the rule through this; it must be the same one.
     const langfuse = unit('lib/feedback/repository.ts::isRestrictedUseVote')

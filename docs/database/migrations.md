@@ -55,7 +55,7 @@ This reads the current schema, diffs against the last snapshot in `drizzle/meta/
 > database. See [row-level-security.md](row-level-security.md) and ADR-0041.
 >
 > **A new table must join the tenant boundary in the same migration that creates
-> it** — one `SELECT grid_secure_table('<table>', '<predicate>');` line.
+> it** — one `SELECT secure_table('<table>', '<predicate>');` line.
 > `src/lib/db/rls-coverage.spec.ts` fails by name until it does.
 
 ```bash

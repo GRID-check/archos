@@ -166,7 +166,7 @@ const TRACE_ERASURE_SETTLE_MINUTES = 15
  * them apart.
  *
  * A conversation under a legal hold is not returned: the hold keeps its traces,
- * exactly as it keeps everything else (`grid_legal_hold_blocks`, the one
+ * exactly as it keeps everything else (`legal_hold_blocks`, the one
  * predicate the purger and the BFF's deletes share). It becomes a candidate
  * again, inside the window, once the hold is released.
  *
@@ -185,7 +185,7 @@ async function findConversationsAwaitingTraceErasure(sql, limit) {
         AND q.purged_at >= now() - make_interval(days => ${TRACE_ERASURE_WINDOW_DAYS})
         AND q.purged_at <= now() - make_interval(mins => ${TRACE_ERASURE_SETTLE_MINUTES})
         AND (q.payload IS NULL OR q.payload->>'langfuseTracesErasedAt' IS NULL)
-        AND NOT grid_legal_hold_blocks(q.entity_type, q.entity_id, q.organization_id)
+        AND NOT legal_hold_blocks(q.entity_type, q.entity_id, q.organization_id)
       ORDER BY q.purged_at
       LIMIT ${limit}
     `
@@ -204,7 +204,7 @@ async function conversationIsHeld(sql, row) {
   const rows = await sql.begin(async (tx) => {
     await enterPlatformScope(tx)
     return tx`
-      SELECT grid_legal_hold_blocks('conversation', ${row.entity_id}, ${row.organization_id}) AS held
+      SELECT legal_hold_blocks('conversation', ${row.entity_id}, ${row.organization_id}) AS held
     `
   })
   return rows[0]?.held === true

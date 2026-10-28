@@ -115,7 +115,7 @@ export function useUsageNotice(options: {
   return notice
 }
 
-const DISMISSED_KEY = 'piloti.usage-notice.dismissed'
+const DISMISSED_KEY = 'usage-notice.dismissed'
 /** Keys name a window, so old ones are dead weight; a handful is every live one. */
 const DISMISSED_KEPT = 20
 

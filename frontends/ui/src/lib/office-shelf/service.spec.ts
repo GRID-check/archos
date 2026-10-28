@@ -109,7 +109,7 @@ vi.mock('@/lib/storage/admission', () => ({
   admitReplacementOrDiscard: vi.fn().mockResolvedValue(undefined),
 }))
 
-// The hold predicate is SQL (`grid_legal_hold_blocks`, migration 0093) and is
+// The hold predicate is SQL (`legal_hold_blocks`, migration 0093) and is
 // exercised against Postgres in `legal-hold.integration.spec.ts`; here the gate
 // itself runs for real over a doubled answer.
 // The erasure of a document's objects is `object-cleanup.spec.ts`'s subject;

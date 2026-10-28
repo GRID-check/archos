@@ -82,7 +82,7 @@ export const platformSkills = pgTable(
      * 0088 retired the `standard` tier — see {@link PLATFORM_SKILL_DELIVERIES}.
      *
      * A tenant can never write this column: `platform_skills` is secured with
-     * `grid_secure_platform_table`, so SELECT is all the tenant role has.
+     * `secure_platform_table`, so SELECT is all the tenant role has.
      */
     delivery: text('delivery').$type<PlatformSkillDelivery>().notNull().default('offer'),
     /**

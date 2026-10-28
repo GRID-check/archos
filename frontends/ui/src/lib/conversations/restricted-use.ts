@@ -332,7 +332,7 @@ export async function recordedForeignRestrictedFolders(
 /**
  * Mark the answer a turn is writing when its conversation already drew on a
  * folder with restricted access, by the database's rule
- * (`grid_conversation_restricted_use`, ADR-0093). Asked at turn start, before
+ * (`conversation_restricted_use`, ADR-0093). Asked at turn start, before
  * the model reads the conversation's history: the answer can quote what an
  * earlier turn admitted, and a vote on it names it by this id whether or not
  * the answer is ever persisted. Without an answer id, nothing to mark.

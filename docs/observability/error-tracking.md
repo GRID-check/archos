@@ -27,7 +27,7 @@ while disabled):
 - `app/global-error.tsx` is the boundary above the root layout. Next replaces the
   whole document while it shows, so it renders its own `<html><body>`, imports
   `globals.css` and the theme boot script again, reads the locale from the
-  `grid-locale` cookie (no provider exists) and reuses `errors.appError` for its
+  `locale` cookie (no provider exists) and reuses `errors.appError` for its
   copy, German and English. The prop is `retry` (stable since Next 16.3).
 
 Next's control flow (`redirect()`, `notFound()`, `forbidden()`: a throw the

@@ -17,7 +17,7 @@
 
 import { useEffect } from 'react'
 
-const RELOAD_TS_KEY = 'grid:chunk-reload-ts'
+const RELOAD_TS_KEY = 'chunk-reload-ts'
 const MIN_RELOAD_GAP_MS = 10_000
 
 /** True for the transient chunk/dynamic-import load failures a rollout causes. */

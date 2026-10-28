@@ -14,8 +14,8 @@ import { Sidebar, SidebarProvider, SidebarRail, useSidebar } from './sidebar'
 const mobile = vi.hoisted(() => ({ value: false }))
 vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => mobile.value }))
 
-const WIDTH_KEY = 'grid.sidebar.width'
-const COLLAPSED_KEY = 'grid.sidebar.collapsed'
+const WIDTH_KEY = 'sidebar.width'
+const COLLAPSED_KEY = 'sidebar.collapsed'
 
 function Fixture(): React.JSX.Element {
   return (

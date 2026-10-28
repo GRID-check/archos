@@ -9,7 +9,7 @@ parts.
 ## The data, and the rules the database holds
 
 Migration `frontends/ui/drizzle/0138_document_annotations.sql` creates two
-tables, both under `grid_secure_table` RLS.
+tables, both under `secure_table` RLS.
 
 | Table | Holds | RLS predicate |
 |---|---|---|

@@ -51,7 +51,7 @@ const hasText = (column: SQL): SQL => sql`nullif(btrim(${column}), '') is not nu
 
 /**
  * Leaves out a vote on an answer whose conversation drew on a folder with
- * restricted access (`grid_feedback_restricted_use`, migration 0124,
+ * restricted access (`feedback_restricted_use`, migration 0124,
  * ADR-0093). Its question, answer, comment and expected answer may quote that
  * folder, and every reader of these rows is outside the folder's audience: the
  * platform staff's drill-in and export, the digest's model, the eval-case
@@ -71,7 +71,7 @@ const hasText = (column: SQL): SQL => sql`nullif(btrim(${column}), '') is not nu
  * cross-tenant, and the safe direction is to show less. Expects the feedback
  * row aliased `f`.
  */
-export const OUTSIDE_RESTRICTED_USE = sql`not grid_feedback_restricted_use(f.organization_id, f.message_id, f.conversation_id)`
+export const OUTSIDE_RESTRICTED_USE = sql`not feedback_restricted_use(f.organization_id, f.message_id, f.conversation_id)`
 
 export interface VoteScopeOptions {
   /** Join the question too (rows that show it, or a search that reads it). */

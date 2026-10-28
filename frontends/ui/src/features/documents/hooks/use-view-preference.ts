@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
  */
 export type FileView = 'cards' | 'list'
 
-const VIEW_STORAGE_KEY = 'grid.files.view'
+const VIEW_STORAGE_KEY = 'files.view'
 
 /**
  * Cards or list, remembered per browser — and shared by every shelf, so the
