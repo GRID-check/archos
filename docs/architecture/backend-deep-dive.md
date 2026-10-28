@@ -1174,7 +1174,7 @@ corpus: `status.retrieval.punkt` / `status.retrieval.page`
 ("Liest OIB-Richtlinie 2, Pkt. 3.5.2").
 
 A fetch it already made this turn is not made twice. `piloti/agent.py` derives a
-signature per call (`fetch_signature` in `common/turn_status.py`: the tool plus
+signature per call (`fetch_signature` in `common/tool_calls.py`: the tool plus
 its locus or its query and narrowing) and carries the turn's `executed_fetches`
 on the state; a `knowledge_search` or `read_passage` call whose signature already
 ran is **withheld** — derived once, read in both the agent node and the tools

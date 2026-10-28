@@ -119,10 +119,10 @@ class ResearchAgentState(BaseModel):
     #: stored account and the live line cannot disagree. Read at finalize to
     #: join each round with the hits it returned (the retrieval ledger);
     #: per-turn like the counter (the chat node builds a fresh state each turn).
-    #: Plain dicts (see ``turn_status.record_round_announcement`` for the shape),
+    #: Plain dicts (see ``retrieval_status.record_round_announcement`` for the shape),
     #: never checkpointed — ``ResearchAgentState`` is one turn, not history.
     retrieval_rounds: list[dict[str, Any]] = []
-    #: Signatures (``turn_status.fetch_signature``) of the fetches this turn
+    #: Signatures (``tool_calls.fetch_signature``) of the fetches this turn
     #: has actually RUN, in execution order. Written by the TOOLS node, after
     #: the ``ToolNode`` returned, from the calls it really executed — never
     #: from the calls the model asked for, or a withheld repeat would mark

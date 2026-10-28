@@ -17,7 +17,7 @@ from pydantic import create_model
 from pydantic import model_validator
 from pydantic.json_schema import SkipJsonSchema
 
-from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
+from aiq_agent.common.tool_calls import CONCLUSION_DESCRIPTION
 
 from .browse import _LIST_FILES_DESCRIPTION
 from .browse import TREE_PARAGRAPH
