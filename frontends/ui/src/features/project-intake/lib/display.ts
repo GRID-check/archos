@@ -4,13 +4,10 @@
  * other. Pure.
  */
 
-import {
-  flattenIntakeQuestions,
-  formatIntakeAnswer,
-  labelForProfileKey,
-  projectIntakeDefinitionV1,
-  type ProjectIntakeQuestion,
-} from '@/lib/project-profile/intake-definition'
+import { flattenIntakeQuestions } from '@/lib/project-profile/intake-conditions'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import type { ProjectIntakeQuestion } from '@/lib/project-profile/intake-types'
+import { formatIntakeAnswer, labelForProfileKey } from '@/lib/project-profile/intake-vocabulary'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
 import { OIB_EDITIONS } from '@/lib/project-experience/vocabulary'
 import type { Need } from '@/lib/project-intake/types'

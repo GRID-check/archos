@@ -240,7 +240,7 @@ and `uses` (a reines Wohngebäude opens GK 2 up to 800 m²). Fundstelle:
 OIB-Richtlinien, Begriffsbestimmungen (Ausgabe Mai 2023), „Gebäudeklassen".
 
 The repository holds GK 4 verbatim and GK 1–3 and 5 only as the office's own
-published paraphrase (`frontends/web/src/data/landing/glossary.ts`); the
+published paraphrase (`apps/site/src/data/landing/glossary.ts`); the
 Richtlinie is the authority, and the rules in code say which they quote and
 which they paraphrase. Where the wizard's questions are coarser than the
 definition, the code errs towards the higher class and says so: GK 1's
@@ -376,7 +376,7 @@ the quote states the value, as ADR-0096 does.
 | Slice | Files |
 |---|---|
 | 0 Contract | `lib/project-intake/types.ts`, `intake-schema.ts` (+spec, fixture), `lib/project-profile/types.ts` (fields), migration 0144 + down + journal, `lib/db/schema/project-intakes.ts`, signatures of `needs.ts` and `derivations.ts` |
-| 1 Profile substrate | `salvage.ts`, `intake-definition.ts` (`mergeIntakeProfile`, `foundIn`, `feeds`), `prompt-view.ts`, `project-experience/service.ts` + shared `lib/project-intake/evidence.ts` |
+| 1 Profile substrate | `salvage.ts`, `intake-profile.ts` (`mergeIntakeProfile`), `intake-types.ts` (`foundIn`, `feeds`), `prompt-view.ts`, `project-experience/service.ts` + shared `lib/project-intake/evidence.ts` |
 | 2 Needs and derivation | `lib/project-intake/needs.ts`, `derivations.ts` (+specs) |
 | 3 BFF service and routes | `lib/project-intake/{repository,service,run,client}.ts`, the four routes, outcome fallback, settle hook and BFF job, inbox type, `submitBackgroundRun` in `lib/jobs/service.ts` |
 | 4 Worker hosting | `aiq_api/registry.py`, `aiq_api/jobs/runner.py` |

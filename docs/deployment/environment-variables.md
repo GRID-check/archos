@@ -677,7 +677,7 @@ vars. See `docs/architecture/usage-budgets.md`.
 |----------|----------|---------|-------------|
 | `GRID_PLATFORM_OWNER_EMAILS` | No | — | Break-glass bootstrap: comma-separated emails treated as platform owner even without the WorkOS platform-org membership. For first-run in a fresh environment; keep empty in steady state. |
 | `GRID_PLATFORM_ORG_EXTERNAL_ID` | No | `grid-platform` | External id of the GRID Platform organization in WorkOS. |
-| `GRID_LANDING_URL` | No | — | Base URL of the public landing site (Astro microservice, `frontends/web`) that replaces the retired in-app marketing page. The signed-out root redirect (`/`) points here — but only when `REQUIRE_AUTH=true` (the redirect lives inside the `isAuthRequired()` branch of `frontends/ui/src/app/page.tsx`; with auth off, `/` always goes to `/app/projects`). Unset falls back to the WorkOS sign-in URL. Set by the Kubernetes deployment from `ingress.webDomain`. **`/?sign-in` bypasses this bounce and goes to WorkOS** — the landing site's sign-in link hands off through it (the `/sign-in` endpoint on the landing site redirects here), or the button would return the visitor to the landing site and the app has no reachable entry point. |
+| `GRID_LANDING_URL` | No | — | Base URL of the public landing site (Astro microservice, `apps/site`) that replaces the retired in-app marketing page. The signed-out root redirect (`/`) points here — but only when `REQUIRE_AUTH=true` (the redirect lives inside the `isAuthRequired()` branch of `frontends/ui/src/app/page.tsx`; with auth off, `/` always goes to `/app/projects`). Unset falls back to the WorkOS sign-in URL. Set by the Kubernetes deployment from `ingress.webDomain`. **`/?sign-in` bypasses this bounce and goes to WorkOS** — the landing site's sign-in link hands off through it (the `/sign-in` endpoint on the landing site redirects here), or the button would return the visitor to the landing site and the app has no reachable entry point. |
 | `GRID_DISABLE_SELF_SERVE_ORGS` | No | `false` | `true` makes the platform invite-only: fresh users can no longer self-create organizations (403 `self-serve-disabled`). |
 
 ## Project Authorization (frontend)
@@ -694,7 +694,7 @@ Tune the per-project FGA authorization path (`lib/authz/projects.ts`), the WorkO
 
 ## Landing Site (web tier, Kubernetes/Pulumi-injected)
 
-The Astro landing service (`frontends/web`) carries no secrets; its
+The Astro landing service (`apps/site`) carries no secrets; its
 deployment knobs are where sign-in hands off and whether PostHog web analytics
 loads (ADR-0100). One image serves every stack —
 the app host is resolved at request time, never baked into the prerendered
