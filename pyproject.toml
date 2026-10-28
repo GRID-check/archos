@@ -234,7 +234,7 @@ dev = [
     "ruff~=0.17.1",
     "yapf>=0.40.0",
     "mypy>=2.3.0",
-    "fakeredis[lua]>=2.20.0",
+    "fakeredis[lua]>=2.40.0",
     # Workspace packages for testing
     "aiq-agent",
     "tavily-web-search",
