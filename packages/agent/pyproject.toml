@@ -43,7 +43,7 @@ dependencies = [
     # `tracing_enabled=False`, so it never registers a tracer provider or hangs
     # a span processor on ours. Traces keep going out through NAT + the OTel
     # collector.
-    "langfuse>=4.15.3,<5",
+    "langfuse>=5.0.4,<6",
     # CVE version floors for transitive dependencies
     "cryptography>=50.0.0,<51",
     "pillow>=12.2.0,<14",
