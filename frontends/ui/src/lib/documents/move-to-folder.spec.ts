@@ -78,7 +78,9 @@ vi.mock('@/lib/db', () => ({
 // The document is loaded through the hold (`findDocumentForSession`, ADR-0086):
 // here it answers the first queued row, as the query would for a visible one.
 // `visibility.integration.spec.ts` holds the rule itself against Postgres.
-vi.mock('./service', () => ({ reingestDocument: vi.fn() }))
+vi.mock('./reingest', () => ({
+  reingestDocument: vi.fn(),
+}))
 
 vi.mock('./access', () => ({
   findDocumentForSession: vi.fn(async () => db.selects.shift()?.[0] ?? null),
@@ -107,7 +109,7 @@ import { purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { ForbiddenError } from '@/lib/api/errors'
-import { reingestDocument } from './service'
+import { reingestDocument } from './reingest'
 import { MOVED_SINCE_MESSAGE, moveDocumentToFolder, moveDocumentsToFolders } from './move-to-folder'
 
 const SESSION = { organizationId: 'org-1', userId: 'user-1' } as never

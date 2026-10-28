@@ -25,7 +25,7 @@
 import 'server-only'
 import { withTenant } from '@/lib/db/tenant-context'
 import { listTransientFailures } from './repository'
-import { retryTransientFailure } from './service'
+import { retryTransientFailure } from './ingest-recovery'
 
 /** Attempts in all, the first upload's included: two automatic retries. */
 export const TRANSIENT_MAX_ATTEMPTS = 3

@@ -165,30 +165,30 @@ const OPAQUE_STATUS_WRITES: Readonly<Record<string, string>> = {
   'src/lib/documents/reconcile-status.ts: row.status':
     'the status the read saw, the guard of the repository write (`ReconciledFrom`), never written',
   // Service return values: what the CALLER is told, not what the row holds.
-  'src/lib/documents/service.ts: doc.status': 'the row being read back, returned to the caller',
-  'src/lib/documents/service.ts: reconciled.status': 'a reconciled status, returned to the caller',
+  'src/lib/documents/reingest.ts: doc.status': 'the row being read back, returned to the caller',
+  'src/lib/documents/document-details.ts: reconciled.status': 'a reconciled status, returned to the caller',
   // The heal-and-refuse 409: the healed resolution echoed in the error payload,
   // returned to the caller. The column write is the `setDocumentReconciledStatus`
   // call two lines above it, which takes the whole resolution object.
-  'src/lib/documents/service.ts: knowledge.resolution.status':
+  'src/lib/documents/reingest.ts: knowledge.resolution.status':
     'the healed resolution echoed in the 409, returned to the caller',
   // The wire projection: the row's own status copied into the JSON the browser
   // reads. It writes a response body, never the column.
   'src/lib/documents/list-projection.ts: row.status': 'a row being serialized, not a write',
   // The retry rule's refusal (migration 0134): the failed row's status echoed
   // in the 409 payload, returned to the caller. Nothing is written.
-  'src/lib/documents/service.ts: failure.status': 'the refused row echoed in the 409, returned to the caller',
+  'src/lib/documents/reingest.ts: failure.status': 'the refused row echoed in the 409, returned to the caller',
   // The shelf listing handing a row to the retry rule (`canRetryRow`), a read.
   'src/lib/documents/shelf-listing.ts: row.status': 'a row handed to the retry rule, not a write',
   // Shorthand `{ status }` in a service's RETURN value — the dispatcher's job
   // status on its way back to the caller. Shorthand is worth listing separately
   // from the rest: the name is all there is, so even the expression a reader
   // could follow by eye is gone.
-  'src/lib/documents/service.ts: status': "the dispatcher's job status, returned to the caller",
+  'src/lib/documents/reingest.ts: status': "the dispatcher's job status, returned to the caller",
   'src/lib/session-documents/service.ts: status':
     "the dispatcher's job status, returned to the caller",
   // The one upload pipeline both shelves share (ADR-0078) — it replaced the
-  // `ingestStatus` return in service.ts and the `status` return in archiv/service.ts.
+  // `ingestStatus` return in the documents service and the `status` return in archiv/service.ts.
   'src/lib/documents/shelf-upload.ts: status': "the dispatcher's job status, returned to the caller",
 }
 

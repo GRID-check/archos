@@ -258,7 +258,7 @@ export function buildSessionStorageKey(
  * segment of its key with `_thumb.jpg`.
  *
  * Lives here with the other two builders rather than privately in
- * `documents/service.ts`, because both delete paths and both read paths need
+ * the documents services, because both delete paths and both read paths need
  * it and the derivation had already been re-implemented — differently — in a
  * spec (`image-tenant-scope.spec.ts` used `${key}.thumb.jpg`, which production
  * has never produced). One definition, one place, one behaviour to test.

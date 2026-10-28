@@ -13,11 +13,11 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/reingest', () => ({
   reingestDocument: vi.fn(),
 }))
 
-import { reingestDocument } from '@/lib/documents/service'
+import { reingestDocument } from '@/lib/documents/reingest'
 import { ConflictError } from '@/lib/api/errors'
 import { POST } from './route'
 

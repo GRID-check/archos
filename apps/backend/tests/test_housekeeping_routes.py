@@ -38,7 +38,7 @@ def test_ghost_jobs_runs_one_reap_cycle_and_names_what_it_reaped(client: TestCli
         calls.append(db_url)
         return ["job-1", "job-2"]
 
-    monkeypatch.setattr(jobs_routes, "_reap_stale_jobs_once", reap_once)
+    monkeypatch.setattr(jobs_routes, "reap_stale_jobs_once", reap_once)
     response = client.post("/v1/maintenance/housekeeping/ghost-jobs", headers=AUTH)
     assert response.status_code == 200
     assert response.json() == {"reaped": ["job-1", "job-2"]}
@@ -54,7 +54,7 @@ def test_job_events_runs_one_cleanup_cycle_with_the_expiry_settings(
         seen.update(db_url=db_url, retention=retention_seconds, is_postgres=is_postgres, grace=delete_grace_seconds)
         return {"old_events": 3}
 
-    monkeypatch.setattr(jobs_routes, "_run_event_cleanup", cleanup)
+    monkeypatch.setattr(jobs_routes, "run_event_cleanup", cleanup)
     monkeypatch.setenv("GRID_JOB_INFO_DELETE_GRACE_SECONDS", "3600")
     response = client.post("/v1/maintenance/housekeeping/job-events", headers=AUTH)
     assert response.status_code == 200

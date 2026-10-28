@@ -3,7 +3,7 @@
  *
  * Shared by the document menu's „Lesen abbrechen" and the upload tray's stop,
  * so the two read the server's answer the same way. The server answers
- * `{ result }` (`@/lib/documents/service`): a stop it made, a job that had
+ * `{ result }` (`@/lib/documents/reingest`): a stop it made, a job that had
  * already finished, or work it cannot reach from where it stands.
  */
 

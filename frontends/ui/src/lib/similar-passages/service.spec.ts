@@ -37,8 +37,8 @@ vi.mock('@/lib/documents/access', () => ({
 vi.mock('@/lib/projects/service', () => ({ listChatProjects: vi.fn(async () => state.reach) }))
 vi.mock('@/lib/office-shelf/repository', () => ({ findOfficeShelfDocumentsByFilenames: vi.fn(async () => []) }))
 vi.mock('@/lib/documents/shelf-listing', () => ({ toListedDocuments: vi.fn(async () => []) }))
-vi.mock('@/lib/documents/service', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/documents/service')>()
+vi.mock('@/lib/documents/semantic-search', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/documents/semantic-search')>()
   return {
     BACKEND_SEARCH_MAX_COLLECTIONS: actual.BACKEND_SEARCH_MAX_COLLECTIONS,
     projectsWithinCollectionCap: actual.projectsWithinCollectionCap,
@@ -58,7 +58,7 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
 
 import { ServiceUnavailableError } from '@/lib/api/errors'
 import { findOfficeShelfDocumentsByFilenames } from '@/lib/office-shelf/repository'
-import { BACKEND_SEARCH_MAX_COLLECTIONS, hydrateProjectHits } from '@/lib/documents/service'
+import { BACKEND_SEARCH_MAX_COLLECTIONS, hydrateProjectHits } from '@/lib/documents/semantic-search'
 import { findSimilarPassages, foldDocuments } from './service'
 
 const session = { userId: 'u1', organizationId: 'org_1', role: 'member', permissions: [] } as unknown as AuthorizedSession
