@@ -428,7 +428,7 @@ async def _checked_envelope_card(
     """One envelope card validated, repaired once on a shape miss, or ``None`` (recorded)."""
     from aiq_agent.cards.envelope import REFUSED_SHAPE
     from aiq_agent.cards.envelope import validate_model_card
-    from aiq_agent.cards.models import stated_result_fields
+    from aiq_agent.cards.formula_card import stated_result_fields
     from aiq_agent.common.turn_notices import CARD_INVALID_DROPPED
     from aiq_agent.common.turn_notices import CARD_INVALID_REPAIRED
     from aiq_agent.common.turn_notices import emit_card_invalid

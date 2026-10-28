@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { RootSortRequestError } from '@/lib/filing/root-sort-client'
 import type { RootSortRunStatus, RootSortRunView, RootSortSummary } from '@/lib/filing/root-sort-types'

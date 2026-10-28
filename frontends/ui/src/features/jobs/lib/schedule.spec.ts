@@ -1,4 +1,7 @@
 /**
+ * @vitest-environment node
+ */
+/**
  * The cron composer, and the round trip that makes editing safe.
  *
  * The rule under test is that `parseCronParts` accepts EXACTLY what `buildCron`

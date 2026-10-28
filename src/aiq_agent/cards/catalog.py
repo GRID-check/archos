@@ -701,7 +701,7 @@ def _is_discriminator(field_name: str, field_info: Any) -> bool:
 
 def _shape(model_cls: type, nested: list[type], *, with_desc: bool) -> str:
     """Render a model's fields as `{ name*: type (desc; constraints), ... }`."""
-    from aiq_agent.cards.models import SERVER_FILLED_CARD_FIELDS  # models import this module
+    from aiq_agent.cards.proposal_cards import SERVER_FILLED_CARD_FIELDS  # models import this module
 
     parts: list[str] = []
     for field_name, field_info in model_cls.model_fields.items():
@@ -941,7 +941,7 @@ def _plain_text_note() -> str:
     # (see `register._build_tool_description`). A model that has just been handed
     # the shapes is the one about to write these strings.
     #
-    # The validator in `cards.models.CardModel` strips these delimiters anyway,
+    # The validator in `cards.card_model.CardModel` strips these delimiters anyway,
     # so nothing here is load-bearing for correctness — it is here so the field
     # holds what the model meant instead of the wreckage of a link the model
     # should never have written. A card once shipped

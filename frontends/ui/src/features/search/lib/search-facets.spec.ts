@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 
 import { SEARCH_FACET_DIMENSIONS, type SearchFacetDimension } from '@/lib/search/search-wire'

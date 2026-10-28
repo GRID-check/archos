@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { FOLD_FROM, FOLD_TO, foldForSuggest } from './suggest-fold'
 

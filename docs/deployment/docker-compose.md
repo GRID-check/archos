@@ -57,7 +57,7 @@ Every other HTTP route is [`api`](#api-the-api-role)'s.
 |----------|-------|
 | Image | `backend:local` (override with `BACKEND_IMAGE`) |
 | Build context | `../../` (repo root) |
-| Dockerfile | `deploy/Dockerfile` |
+| Dockerfile | `apps/backend/Dockerfile` |
 | Build target | `${BUILD_TARGET:-dev}` (dev = CLI included, release = web only) |
 | Container name | (auto-generated) |
 | Ports | `${CHAT_PORT:-8001}:8000` (the WebSocket, for a client that dials it directly, such as `task be:eval:loop`) |
@@ -311,7 +311,7 @@ The Next.js UI application.
 |----------|-------|
 | Image | `frontend:local` (override with `FRONTEND_IMAGE`) |
 | Build context | `../../frontends/ui` |
-| Dockerfile | `deploy/Dockerfile` |
+| Dockerfile | `apps/backend/Dockerfile` |
 | Container name | (auto-generated) |
 | Ports | `${FRONTEND_PORT:-3000}:3000` |
 | Networks | `app`, `gotenberg-internal` |
@@ -496,7 +496,7 @@ Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 ## Build Targets
 
-The backend `deploy/Dockerfile` defines two build targets:
+The backend `apps/backend/Dockerfile` defines two build targets:
 
 ### dev (default)
 

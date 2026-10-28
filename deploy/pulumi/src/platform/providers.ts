@@ -1,5 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { logicalName } from "../names";
 
 /**

@@ -120,7 +120,7 @@ def test_the_description_scan_sees_the_tools() -> None:
 #: the lockfile and a newcomer's first `cat pyproject.toml` read.
 PACKAGE_GLOBS = (
     "pyproject.toml",
-    "frontends/*/pyproject.toml",
+    "apps/*/pyproject.toml",
     "packages/*/pyproject.toml",
 )
 PYPROJECTS = sorted(path.relative_to(ROOT).as_posix() for pattern in PACKAGE_GLOBS for path in ROOT.glob(pattern))
@@ -137,6 +137,6 @@ def test_no_package_describes_itself_by_its_framework(relative: str) -> None:
 
 
 def test_the_scan_sees_the_packages() -> None:
-    assert {"pyproject.toml", "packages/knowledge-layer/pyproject.toml", "frontends/aiq_api/pyproject.toml"} <= set(
+    assert {"pyproject.toml", "packages/knowledge-layer/pyproject.toml", "apps/backend/pyproject.toml"} <= set(
         PYPROJECTS
     )

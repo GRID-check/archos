@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { formatBoundedDigest, formatBoundedDigestWithKept } from './digest-format'
 

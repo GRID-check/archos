@@ -6,9 +6,9 @@ Qdrant (ADR-0115). Supports multimodal extraction (text, tables, charts, images)
 """
 
 from .adapter import LlamaIndexIngestor
-from .adapter import LlamaIndexRetriever
 from .adapter import resolve_vlm_api_key
 from .adapter import vlm_configured
+from .retriever import LlamaIndexRetriever
 
 __all__ = [
     "LlamaIndexIngestor",

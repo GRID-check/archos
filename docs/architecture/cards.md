@@ -33,7 +33,9 @@ sources, and the persisted decisions of interactive cards.
 
 ## Current card types
 
-Defined in `src/aiq_agent/cards/models.py` as a discriminated union (`GridCard`)
+Each card's model lives in a module named after it under `src/aiq_agent/cards/`
+(`look_card.py`, `ifc_cards.py`, …; the base and its plain-text rule in
+`card_model.py`), and `cards/models.py` joins them in a discriminated union (`GridCard`)
 — **26 types in four families**: 18 the answering model may emit, 17 of them
 through `emit_card` too; the 18th is `surface` (ADR-0065), a composition whose
 leaves are content cards or `Text`, offered on the chat envelope only
@@ -424,7 +426,7 @@ its schema no longer knows with a generic fallback rather than a hole.
 
 The checklist:
 
-1. delete the model from `cards/models.py` (and from `GridCard`, `__all__`,
+1. delete the model from its module under `cards/` (and from `GridCard` in `cards/models.py`,
    `CARD_EXAMPLES`, the trigger table and any craft or note naming it);
 2. add its name and replacement to `RETIRED_CARD_REPLACEMENTS`;
 3. regenerate: `uv run python scripts/generate_card_schema.py`, then
@@ -685,7 +687,7 @@ on the server. `catalog.tsx` is the server-safe half (component APIs,
 
 - **Composition.** A `surface` card carries an A2UI component list: a
   container with id `root` and the content cards it holds. `SurfaceCard` in
-  `cards/models.py` checks the structure with `a2ui-core` (unique ids, a root,
+  `cards/surface_card.py` checks the structure with `a2ui-core` (unique ids, a root,
   no dangling reference, no cycle, no orphan) and each card with its own
   model; tool, interactive and envelope cards may not be leaves. The model is
   taught the shape in the envelope contract's COMPOSE paragraph. A `Row` sits
@@ -726,7 +728,7 @@ on the server. `catalog.tsx` is the server-safe half (component APIs,
   red text), and refuses a surface that is not one tree under `root`: ids
   unique, `root` present, every child and tab id resolves, each id referenced
   once, no cycle, every component reachable (`structuralRefusal`, the same
-  checks `SurfaceCard` runs in `cards/models.py`). A render that throws inside
+  checks `SurfaceCard` runs in `cards/surface_card.py`). A render that throws inside
   A2UI falls back to the direct component. A refused surface falls back to its
   cards stacked in order, leaving out any leaf in `SURFACE_EXCLUDED_LEAVES`.
   That list refuses a leaf only inside a surface: a lone card of such a type
@@ -906,15 +908,17 @@ Three guards, on both sides of the stack:
 
 ## Design intent (why it's a layer, not a feature)
 
-Adding a new card type should be: **define the model** (`cards/models.py`) → **add
+Adding a new card type should be: **define the model** (a module under `cards/`, joined in `cards/models.py`) → **add
 a renderer** (`features/grid-cards/`). No pipeline surgery. That keeps the set open
 to future types (requirement checklists, comparison tables, applicability panels)
 without re-plumbing generation or transport.
 
 ### Checklist: adding a card type
 
-1. Define the Pydantic model in `src/aiq_agent/cards/models.py` and add it to the
-   `GridCard` union. **The docstring's first line is the L1 index entry** the
+1. Define the Pydantic model in a module named after it under `src/aiq_agent/cards/`
+   (subclassing `CardModel` from `card_model.py`), add it to the `GridCard` union in
+   `cards/models.py`, and add the module to the `card-schemas` hook's `files:` in
+   `.pre-commit-config.yaml` and to the card paths in `.github/filters.yml`. **The docstring's first line is the L1 index entry** the
    model reads on every turn — write it as a trigger ("Emit for … questions"),
    not as a label, because the index is all the model has to go on before it
    spends a `describe_card` call. Nothing else is needed to advertise the type:
@@ -1024,7 +1028,7 @@ focus order and the accessibility tree (`inert`) — `pointer-events-none` alone
 would leave them keyboard-reachable, and a tabbed-to "Yes" still writes.
 
 The card-generation LLM is `card_llm` (config `reasoning_effort: medium`). Adding a
-card type = define the Pydantic model (`cards/models.py`), regenerate the schema
+card type = define the Pydantic model (a module under `cards/`, joined in `cards/models.py`), regenerate the schema
 (`scripts/generate_card_schema.py` → `npm run generate:cards`), add a renderer, and
 wire the `GridCards` dispatcher. A dev-only gallery at `/dev/cards`
 (`src/app/dev/cards/page.tsx`, 404 outside development) renders every card type

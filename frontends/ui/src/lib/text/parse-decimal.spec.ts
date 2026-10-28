@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, test } from 'vitest'
 import { formatDecimalInput, parseDecimalInput } from './parse-decimal'
 

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { describe, expect, it } from 'vitest'
 import { DOUBLE_TAP_MS, TAP_MAX_MS, classifyTap, type TapRecord } from './tap-gestures'
 
