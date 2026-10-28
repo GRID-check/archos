@@ -1163,7 +1163,7 @@ how to wait, per call, in standard MCP:
   `tasks/update` acknowledges, since an ask never asks back. Each runs as the
   person, so the route's own rule (the asker only) decides; an id that names
   none of theirs is `-32602`, a request that does not declare the extension
-  `-32021`. The task store is the `piloti_asks` table, so any replica answers
+  `-32021`. The task store is the `agent_asks` table, so any replica answers
   and `Mcp-Name` routing is not needed. Task status notifications
   (`subscriptions/listen` with `taskIds`) are not offered; clients poll.
 

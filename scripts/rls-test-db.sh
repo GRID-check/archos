@@ -2310,3 +2310,47 @@ apply_in shelfjson_0187 0187_office_shelf_in_stored_json.sql
 check_in shelfjson_0187 "$SHELF_0187" "$AFTER_0187" "0187 re-applies after its down"
 [ "$BEFORE_0187" != "$AFTER_0187" ] || { echo "MIGRATION ASSERTION FAILED: 0187 changed nothing" >&2; exit 1; }
 echo "==> 0187 office shelf in stored JSON and down migration verified"
+
+# ---------------------------------------------------------------------------
+# 0189: piloti_wakes, piloti_changes and piloti_asks become agent_* (ADR-0145
+# rule 5). An ask written before the rename is kept; each table's constraints
+# and indexes carry the new name; the old name is a view the runtime role
+# reads and writes through, inside its own organization only; a second run
+# changes nothing; the down puts the tables back under their old names.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0189 agent tables and their down migration on agents_0189"
+migrate_before agents_0189 0189_agent_tables
+sql_in agents_0189 <<'SQL'
+INSERT INTO conversations (id, organization_id, created_by) VALUES
+  ('conv_0189_a', 'org_0189_a', 'user_1'),
+  ('conv_0189_b', 'org_0189_b', 'user_2');
+INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES
+  ('a1a1a1a1-0000-4000-8000-000000000189', 'org_0189_a', 'conv_0189_a', 'user_1'),
+  ('b1b1b1b1-0000-4000-8000-000000000189', 'org_0189_b', 'conv_0189_b', 'user_2');
+SQL
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "agent_asks:r,agent_changes:r,agent_wakes:r,piloti_asks:v,piloti_changes:v,piloti_wakes:v" "0189 renames the tables and leaves a view under each old name"
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "2" "0189 keeps the asks"
+check_in agents_0189 "SELECT count(*) FROM pg_constraint WHERE conname ~ '^piloti_(wakes|changes|asks)_'" "0" "0189 leaves no constraint under an old name"
+check_in agents_0189 "SELECT count(*) FROM pg_indexes WHERE indexname ~ '^idx_piloti_(wakes|changes|asks)_'" "0" "0189 leaves no index under an old name"
+check_in agents_0189 "SELECT count(*) FROM pg_indexes WHERE indexname IN ('idx_agent_wakes_document_annotation_created', 'idx_agent_changes_origin', 'idx_agent_asks_conversation')" "3" "0189 renames the indexes by prefix"
+refused_in agents_0189 "INSERT INTO agent_asks (id, organization_id, conversation_id, requested_by, state, ended_at) VALUES (gen_random_uuid(), 'org_0189_a', 'conv_0189_a', 'user_1', 'working', now())" "agent_asks_ended_when_terminal" "a running ask with an end, after the rename"
+check_in agents_0189 "SELECT relrowsecurity FROM pg_class WHERE relname = 'agent_asks'" "t" "0189 keeps row-level security on"
+RW189=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d agents_0189 -qtA -v ON_ERROR_STOP=1 \
+  -c "SET grid.organization_id = 'org_0189_a'" \
+  -c "INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES ('c1c1c1c1-0000-4000-8000-000000000189', 'org_0189_a', 'conv_0189_a', 'user_1')" \
+  -c "SELECT string_agg(id::text, ',' ORDER BY id) FROM piloti_asks")
+if [ "$RW189" != "a1a1a1a1-0000-4000-8000-000000000189,c1c1c1c1-0000-4000-8000-000000000189" ]; then
+  echo "MIGRATION ASSERTION FAILED on agents_0189: through the old name the runtime role saw or wrote outside its organization (got: $RW189)" >&2
+  exit 1
+fi
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "3" "0189: a write through the old name lands in the new table"
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "agent_asks:r,agent_changes:r,agent_wakes:r,piloti_asks:v,piloti_changes:v,piloti_wakes:v" "0189 re-applied changes nothing"
+apply_in agents_0189 0189_agent_tables.down.sql
+check_in agents_0189 "SELECT string_agg(relname || ':' || relkind::text, ',' ORDER BY relname) FROM pg_class WHERE relname ~ '^(piloti|agent)_(wakes|changes|asks)$'" "piloti_asks:r,piloti_changes:r,piloti_wakes:r" "0189 down puts the tables back under their old names"
+check_in agents_0189 "SELECT count(*) FROM pg_constraint WHERE conname = 'piloti_asks_state_known'" "1" "0189 down puts the constraints back"
+check_in agents_0189 "SELECT count(*) FROM piloti_asks" "3" "0189 down keeps the asks"
+apply_in agents_0189 0189_agent_tables.sql
+check_in agents_0189 "SELECT count(*) FROM agent_asks" "3" "0189 re-applies after its down"
+echo "==> 0189 agent tables and down migration verified"

@@ -227,14 +227,14 @@ export const documentAnnotationReplies = pgTable(
 export type DocumentAnnotationReplyRow = typeof documentAnnotationReplies.$inferSelect
 
 /**
- * `piloti_wakes` — one row per event on an Anmerkung that met a wake rule
+ * `agent_wakes` — one row per event on an Anmerkung that met a wake rule
  * (migration 0139, ADR-0106). Its id is the `bff_job_queue` job id and the
  * turn id, uuid5 of the event (`lib/annotations/wake-ids.ts`), so one event
  * wakes Piloti at most once. The queue forgets a finished job; this row keeps
  * what the wake came to, and the caps count it.
  */
 export const pilotiWakes = pgTable(
-  'piloti_wakes',
+  'agent_wakes',
   {
     id: uuid('id').primaryKey(),
     organizationId: text('organization_id').notNull(),
@@ -255,34 +255,34 @@ export const pilotiWakes = pgTable(
   },
   (table) => ({
     annotationFk: foreignKey({
-      name: 'piloti_wakes_annotation_fkey',
+      name: 'agent_wakes_annotation_fkey',
       columns: [table.annotationId],
       foreignColumns: [documentAnnotations.id],
     }).onDelete('cascade'),
-    annotationIdx: index('idx_piloti_wakes_annotation_created').on(table.annotationId, table.createdAt),
+    annotationIdx: index('idx_agent_wakes_annotation_created').on(table.annotationId, table.createdAt),
     /** A document's wakes, the newest of each mark first (0149): `listLatestWakes`, `listAnsweringWakes`. */
-    documentIdx: index('idx_piloti_wakes_document_annotation_created').on(
+    documentIdx: index('idx_agent_wakes_document_annotation_created').on(
       table.documentId,
       table.annotationId,
       table.createdAt.desc()
     ),
-    actorIdx: index('idx_piloti_wakes_actor_created').on(table.organizationId, table.actorUserId, table.createdAt),
-    triggerKnown: check('piloti_wakes_trigger_known', sql`${table.triggerKind} IN (${list(PILOTI_WAKE_TRIGGERS)})`),
-    statusKnown: check('piloti_wakes_status_known', sql`${table.status} IN (${list(PILOTI_WAKE_STATUSES)})`),
+    actorIdx: index('idx_agent_wakes_actor_created').on(table.organizationId, table.actorUserId, table.createdAt),
+    triggerKnown: check('agent_wakes_trigger_known', sql`${table.triggerKind} IN (${list(PILOTI_WAKE_TRIGGERS)})`),
+    statusKnown: check('agent_wakes_status_known', sql`${table.status} IN (${list(PILOTI_WAKE_STATUSES)})`),
     reasonWhenNotStarted: check(
-      'piloti_wakes_reason_when_not_started',
+      'agent_wakes_reason_when_not_started',
       sql`(${table.status} IN ('suppressed', 'refused', 'failed')) = (${table.reason} IS NOT NULL)`
     ),
     reasonLength: check(
-      'piloti_wakes_reason_length',
+      'agent_wakes_reason_length',
       sql`${table.reason} IS NULL OR char_length(${table.reason}) BETWEEN 1 AND 500`
     ),
     settledWhenNotQueued: check(
-      'piloti_wakes_settled_when_not_queued',
+      'agent_wakes_settled_when_not_queued',
       sql`(${table.status} = 'queued') = (${table.settledAt} IS NULL)`
     ),
     endedWhenFinal: check(
-      'piloti_wakes_ended_when_final',
+      'agent_wakes_ended_when_final',
       sql`(${table.status} IN ('queued', 'started')) = (${table.endedAt} IS NULL)`
     ),
   })

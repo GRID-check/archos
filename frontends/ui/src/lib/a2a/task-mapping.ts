@@ -3,7 +3,7 @@
  *
  * | A2A | Piloti |
  * |---|---|
- * | Task `id` | the ask's id (`piloti_asks.id`, also the turn id) |
+ * | Task `id` | the ask's id (`agent_asks.id`, also the turn id) |
  * | `contextId` | the conversation the ask ran in |
  * | `TaskState` | the ask's `state`, the same words (`ASK_STATES`) |
  * | Message (role user) | the question, the person's message in the thread |
