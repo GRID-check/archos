@@ -99,11 +99,11 @@ async def test_each_call_echoes_the_envelope_of_its_own_turn(monkeypatch, sent) 
     await workspace.run_describe("project-member-add")
 
     anna, ben = turn_of("anna"), turn_of("ben")
-    assert [header(r, "X-grid-request-context") for r in sent] == [
+    assert [header(r, "X-request-context") for r in sent] == [
         anna["x-grid-request-context"],
         ben["x-grid-request-context"],
     ]
-    assert [header(r, "X-grid-request-context-sig") for r in sent] == [
+    assert [header(r, "X-request-context-sig") for r in sent] == [
         anna["x-grid-request-context-sig"],
         ben["x-grid-request-context-sig"],
     ]
@@ -128,7 +128,7 @@ async def test_concurrent_turns_never_swap_identities(monkeypatch, sent) -> None
 
     await asyncio.gather(*(asyncio.create_task(turn(u), name=u) for u in ("anna", "ben", "cleo")))
 
-    by_query = {json.loads(r.data)["params"]["arguments"]["query"]: header(r, "X-grid-request-context") for r in sent}
+    by_query = {json.loads(r.data)["params"]["arguments"]["query"]: header(r, "X-request-context") for r in sent}
     assert by_query == {f"query of {u}": turn_of(u)["x-grid-request-context"] for u in ("anna", "ben", "cleo")}
 
 
@@ -138,7 +138,7 @@ async def test_the_request_is_one_stateless_tools_call_in_search_mode(monkeypatc
 
     (request,) = sent
     assert request.full_url == "http://bff.test/api/mcp"
-    assert header(request, "X-grid-internal-token") == SECRET
+    assert header(request, "X-internal-token") == SECRET
     assert header(request, "X-piloti-mcp-mode") == "search"
     assert json.loads(request.data) == {
         "jsonrpc": "2.0",

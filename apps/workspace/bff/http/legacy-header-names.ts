@@ -4,9 +4,23 @@
  * on for every `x-grid-*` header (docs/contributing/code-conventions.md#no-brand-names).
  *
  * They move by expand, switch and contract, because the BFF and the backend
- * roll out side by side: this release every receiver reads the new name and
- * the old one, the next one the senders switch to the new name, and the one
- * after that this file goes. `agent_host.legacy_headers` is the backend's half.
+ * roll out side by side: every receiver reads the new name and the old one
+ * (expand, #1333), then the senders send the new name (switch), and the
+ * release after that this file goes. `agent_host.legacy_headers` is the
+ * backend's half.
+ *
+ * The contract step, once the switch has deployed everywhere and no job
+ * queued before it is left:
+ * - readers read the new names only: `readHeader`/`hasHeader` become
+ *   `headers.get`/`headers.has`, and this file goes;
+ * - the backend's readers (`agent.project_context`, `cost_tracking`,
+ *   `data_sources`, `model_overrides`, `knowledge.scoping`, `agent_host`'s
+ *   `context_envelope`, `internal_auth`, `config_info`, `chat_socket`) read the
+ *   new names, the in-process job headers (`agent_host.jobs.agent_job_setup`)
+ *   take them too, and `agent_host.legacy_headers` goes with its middleware;
+ * - `SERVICE_HEADERS` in `bff/proxy/ws-upgrade-headers.js` keeps stripping the
+ *   `x-grid-` prefix for one more release, then drops it;
+ * - the ratchet exclusions for these files leave `scripts/check_brand_names.py`.
  */
 
 /** The old name of a header: `x-internal-token` → `x-grid-internal-token`. */

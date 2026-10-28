@@ -48,7 +48,7 @@ def _post(bff: FixtureBFF, path: str, body: dict, token: str = TOKEN) -> tuple[i
     request = urllib.request.Request(
         f"{bff.url}{path}",
         data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json", "X-Grid-Internal-Token": token},
+        headers={"Content-Type": "application/json", "X-Internal-Token": token},
         method="POST",
     )
     try:
@@ -417,9 +417,9 @@ def test_a_lookup_counts_for_the_run_it_served_however_it_was_asked_for(tmp_path
                 data=json.dumps({"query": "Traufe"}).encode("utf-8"),
                 headers={
                     "Content-Type": "application/json",
-                    "X-Grid-Internal-Token": TOKEN,
-                    "X-Grid-Request-Context": header,
-                    "X-Grid-Request-Context-Sig": signature,
+                    "X-Internal-Token": TOKEN,
+                    "X-Request-Context": header,
+                    "X-Request-Context-Sig": signature,
                 },
                 method="POST",
             )

@@ -165,6 +165,73 @@ describe('reconcileDocumentStatuses', () => {
     expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: 'sha256:judged' })
   })
 
+  /**
+   * The backend refuses a status call of more than 200 job ids with a 422, which
+   * once read as an unreachable backend: two bulk uploads (309 and 219 documents)
+   * stayed `pending` for days although every job had finished.
+   */
+  it('settles a bulk upload larger than the backend takes in one status call', async () => {
+    makeDbMock()
+    const calls: number[] = []
+    mockFetch.mockImplementation(async (url: string, init?: { body?: string }) => {
+      if (!url.includes('/v1/documents/status/batch')) return collectionResponse([])
+      const ids = (JSON.parse(init?.body ?? '{}') as { job_ids: string[] }).job_ids
+      calls.push(ids.length)
+      if (ids.length > 200) return { ok: false, status: 422, json: () => Promise.resolve({}) }
+      return batchResponse(
+        Object.fromEntries(ids.map((id) => [id, { status: 'completed', file_details: [{ file_name: 'plan.pdf', status: 'success' }] }]))
+      )
+    })
+    const rows = Array.from({ length: 309 }, (_, i) =>
+      makeRow({ id: `doc-${i}`, metadata: { ingestJobId: `job-${i}` } })
+    )
+
+    const result = await reconcileDocumentStatuses(rows, 'org-1')
+
+    expect(Math.max(...calls)).toBeLessThanOrEqual(200)
+    expect(result.filter((r) => r.status === 'completed')).toHaveLength(309)
+  })
+
+  /**
+   * The backend keeps a finished job's status 24 hours. A job it has forgotten,
+   * with no indexed file under the row's name, left the row `pending` for ever;
+   * past two days it is a retryable failure, and before that it is left alone.
+   */
+  it('settles a row whose job the backend forgot, and which was never indexed, once it is two days old', async () => {
+    const db = makeDbMock()
+    mockFetch.mockImplementation(async (url: string) =>
+      url.includes('/v1/documents/status/batch') ? batchResponse({ 'job-1': null, 'job-2': null }) : collectionResponse([])
+    )
+    const old = new Date(Date.now() - 3 * 24 * 60 * 60_000)
+    const recent = new Date(Date.now() - 60 * 60_000)
+
+    const [lost, waiting] = await reconcileDocumentStatuses(
+      [
+        makeRow({ updatedAt: old }),
+        makeRow({ id: 'doc-2', metadata: { ingestJobId: 'job-2' }, updatedAt: recent }),
+      ],
+      'org-1'
+    )
+
+    expect(lost.status).toBe('failed')
+    expect(lost.errorMessage).toMatch(/^interrupted:/)
+    expect(waiting.status).toBe('pending')
+    expect(db.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', ingestFailureCategory: 'transient', ingestRetryable: true })
+    )
+  })
+
+  it('does not give up an old row while the backend cannot list its collection', async () => {
+    makeDbMock()
+    mockFetch.mockImplementation(async (url: string) =>
+      url.includes('/v1/documents/status/batch')
+        ? batchResponse({ 'job-1': null })
+        : { ok: false, status: 503, json: () => Promise.resolve({}) }
+    )
+    const [row] = await reconcileDocumentStatuses([makeRow({ updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60_000) })], 'org-1')
+    expect(row.status).toBe('pending')
+  })
+
   it('marks a row failed with the job error message', async () => {
     const db = makeDbMock()
     mockFetch.mockResolvedValue(

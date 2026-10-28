@@ -20,11 +20,11 @@
         "accept": "application/json, text/event-stream",
         "content-type": "application/json",
         "mcp-protocol-version": "2025-11-25",
-        "x-grid-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
-        "x-grid-internal-token": "<INTERNAL_API_TOKEN>",
-        "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
-        "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "search"
+        "x-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
+        "x-internal-token": "<INTERNAL_API_TOKEN>",
+        "x-piloti-mcp-mode": "search",
+        "x-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
+        "x-request-context-sig": "<ENVELOPE_SIGNATURE>"
       },
       "body": {
         "jsonrpc": "2.0",
@@ -47,11 +47,11 @@
         "accept": "application/json, text/event-stream",
         "content-type": "application/json",
         "mcp-protocol-version": "2025-11-25",
-        "x-grid-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
-        "x-grid-internal-token": "<INTERNAL_API_TOKEN>",
-        "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
-        "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "search"
+        "x-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
+        "x-internal-token": "<INTERNAL_API_TOKEN>",
+        "x-piloti-mcp-mode": "search",
+        "x-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
+        "x-request-context-sig": "<ENVELOPE_SIGNATURE>"
       },
       "body": {
         "jsonrpc": "2.0",
@@ -73,11 +73,11 @@
         "accept": "application/json, text/event-stream",
         "content-type": "application/json",
         "mcp-protocol-version": "2025-11-25",
-        "x-grid-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
-        "x-grid-internal-token": "<INTERNAL_API_TOKEN>",
-        "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
-        "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "search"
+        "x-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
+        "x-internal-token": "<INTERNAL_API_TOKEN>",
+        "x-piloti-mcp-mode": "search",
+        "x-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
+        "x-request-context-sig": "<ENVELOPE_SIGNATURE>"
       },
       "body": {
         "jsonrpc": "2.0",
@@ -108,11 +108,11 @@
         "accept": "application/json, text/event-stream",
         "content-type": "application/json",
         "mcp-protocol-version": "2025-11-25",
-        "x-grid-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
-        "x-grid-internal-token": "<INTERNAL_API_TOKEN>",
-        "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
-        "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "search"
+        "x-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
+        "x-internal-token": "<INTERNAL_API_TOKEN>",
+        "x-piloti-mcp-mode": "search",
+        "x-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
+        "x-request-context-sig": "<ENVELOPE_SIGNATURE>"
       },
       "body": {
         "jsonrpc": "2.0",
@@ -135,11 +135,11 @@
         "accept": "application/json, text/event-stream",
         "content-type": "application/json",
         "mcp-protocol-version": "2025-11-25",
-        "x-grid-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
-        "x-grid-internal-token": "<INTERNAL_API_TOKEN>",
-        "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
-        "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "search"
+        "x-answer-message-id": "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e",
+        "x-internal-token": "<INTERNAL_API_TOKEN>",
+        "x-piloti-mcp-mode": "search",
+        "x-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
+        "x-request-context-sig": "<ENVELOPE_SIGNATURE>"
       },
       "body": {
         "jsonrpc": "2.0",

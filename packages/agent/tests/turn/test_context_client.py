@@ -68,9 +68,9 @@ def test_posts_only_query_and_echoes_signed_requester_bytes(request_context, ope
     headers = {key.lower(): value for key, value in request.header_items()}
     assert headers == {
         "content-type": "application/json",
-        "x-grid-internal-token": "test-context-token",
-        "x-grid-request-context": request_context.envelope_header,
-        "x-grid-request-context-sig": request_context.envelope_signature,
+        "x-internal-token": "test-context-token",
+        "x-request-context": request_context.envelope_header,
+        "x-request-context-sig": request_context.envelope_signature,
     }
     assert opener.open.call_args.kwargs["timeout"] == client.REQUEST_TIMEOUT_SECONDS
 
@@ -124,7 +124,7 @@ def test_a_6200_utf8_byte_profile_is_not_truncated_to_a_header_budget(request_co
     assert blocks.project_context == profile
     request = opener.open.call_args.args[0]
     assert json.loads(request.data) == {}
-    assert request_context.envelope_header == request.get_header("X-grid-request-context")
+    assert request_context.envelope_header == request.get_header("X-request-context")
 
 
 @pytest.mark.parametrize("status", [301, 302, 401, 403, 404, 429, 500, 503])

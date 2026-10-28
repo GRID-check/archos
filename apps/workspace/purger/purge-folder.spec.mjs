@@ -61,7 +61,7 @@ describe('purgeFolder (a folder from the bin)', () => {
     const [url, init] = fetchImpl.mock.calls[0]
     expect(url).toBe(`http://frontend:3000/api/internal/folders/${entry.entity_id}/purge`)
     expect(init.method).toBe('POST')
-    expect(init.headers['x-grid-internal-token']).toBe('tok')
+    expect(init.headers['x-internal-token']).toBe('tok')
     expect(JSON.parse(init.body)).toEqual({ organizationId: 'org_1' })
   })
 

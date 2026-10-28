@@ -126,9 +126,9 @@ class TestTransport:
             seen.update(
                 url=request.full_url,
                 method=request.method,
-                token=request.headers["X-grid-internal-token"],
-                header=request.headers["X-grid-request-context"],
-                signature=request.headers["X-grid-request-context-sig"],
+                token=request.headers["X-internal-token"],
+                header=request.headers["X-request-context"],
+                signature=request.headers["X-request-context-sig"],
                 body=json.loads(request.data),
             )
             return _Reply(json.dumps(ANSWER).encode())

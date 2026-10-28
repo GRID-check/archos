@@ -20,4 +20,4 @@
 export const ORG_INSTRUCTIONS_MAX_CHARS = 1500
 
 /** The header the BFF sends on every turn: base64url(utf-8 text). */
-export const ORG_INSTRUCTIONS_HEADER = 'X-Grid-Org-Instructions'
+export const ORG_INSTRUCTIONS_HEADER = 'X-Org-Instructions'

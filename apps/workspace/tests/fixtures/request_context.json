@@ -25,16 +25,16 @@
         "memoryReflectionEnabled": true
       },
       "headers": {
-        "X-Grid-Organization-Id": "org_123",
-        "X-Grid-User-Id": "user_456",
-        "X-Grid-Project-Id": "proj_789",
-        "X-Grid-Collection-Scope": "WyJvaWJfa25vd2xlZGdlIiwicHJval9wcm9qXzc4OSIsInNfY29udl8xIl0",
-        "X-Grid-Project-Context": "UHJvamVjdDogQWNtZSB3aWRnZXQgYXVkaXQKRm9jdXM6IHN1cHBseSBjaGFpbiByZXNpbGllbmNl",
-        "X-Grid-Project-Memory": "LSBQcmVmZXJzIGNvbmNpc2UgY2l0YXRpb25zCi0gQmFzZWQgaW4gR2VybWFueQ",
-        "X-Grid-Model-Overrides": "eyJkZWVwX3Jlc2VhcmNoIjoib3BlbnJvdXRlci9hbnRocm9waWMvY2xhdWRlLTMuNy1zb25uZXQiLCJzaGFsbG93X3Jlc2VhcmNoIjoib3BlbnJvdXRlci9vcGVuYWkvZ3B0LTRvLW1pbmkifQ",
-        "X-Grid-Budget": "eyJyZW1haW5pbmdPcmdVc2QiOjQyLjUsInJlbWFpbmluZ1VzZXJVc2QiOjEwLCJyZW1haW5pbmdQcm9qZWN0VXNkIjo1LjI1fQ",
-        "X-Grid-Disabled-Sources": "WyJ3ZWJfc2VhcmNoIl0",
-        "X-Grid-Feature-Memory-Reflection": "true"
+        "X-Organization-Id": "org_123",
+        "X-User-Id": "user_456",
+        "X-Project-Id": "proj_789",
+        "X-Collection-Scope": "WyJvaWJfa25vd2xlZGdlIiwicHJval9wcm9qXzc4OSIsInNfY29udl8xIl0",
+        "X-Project-Context": "UHJvamVjdDogQWNtZSB3aWRnZXQgYXVkaXQKRm9jdXM6IHN1cHBseSBjaGFpbiByZXNpbGllbmNl",
+        "X-Project-Memory": "LSBQcmVmZXJzIGNvbmNpc2UgY2l0YXRpb25zCi0gQmFzZWQgaW4gR2VybWFueQ",
+        "X-Model-Overrides": "eyJkZWVwX3Jlc2VhcmNoIjoib3BlbnJvdXRlci9hbnRocm9waWMvY2xhdWRlLTMuNy1zb25uZXQiLCJzaGFsbG93X3Jlc2VhcmNoIjoib3BlbnJvdXRlci9vcGVuYWkvZ3B0LTRvLW1pbmkifQ",
+        "X-Budget": "eyJyZW1haW5pbmdPcmdVc2QiOjQyLjUsInJlbWFpbmluZ1VzZXJVc2QiOjEwLCJyZW1haW5pbmdQcm9qZWN0VXNkIjo1LjI1fQ",
+        "X-Disabled-Sources": "WyJ3ZWJfc2VhcmNoIl0",
+        "X-Feature-Memory-Reflection": "true"
       }
     },
     {
@@ -45,8 +45,8 @@
         "memoryReflectionEnabled": false
       },
       "headers": {
-        "X-Grid-Collection-Scope": "WyJvaWJfa25vd2xlZGdlIl0",
-        "X-Grid-Feature-Memory-Reflection": "false"
+        "X-Collection-Scope": "WyJvaWJfa25vd2xlZGdlIl0",
+        "X-Feature-Memory-Reflection": "false"
       }
     },
     {
@@ -64,19 +64,19 @@
         "memoryReflectionEnabled": true
       },
       "headers": {
-        "X-Grid-Organization-Id": "org_222",
-        "X-Grid-User-Id": "user_333",
-        "X-Grid-Project-Id": "proj_444",
-        "X-Grid-Collection-Scope": "WyJvaWJfa25vd2xlZGdlIiwicHJval9wcm9qXzQ0NCJd",
-        "X-Grid-Project-Context": "TXVsdGktbGluZQpjb250ZXh0CnZhbHVlIHdpdGggdW5pY29kZTogY2Fmw6k",
-        "X-Grid-Feature-Memory-Reflection": "true"
+        "X-Organization-Id": "org_222",
+        "X-User-Id": "user_333",
+        "X-Project-Id": "proj_444",
+        "X-Collection-Scope": "WyJvaWJfa25vd2xlZGdlIiwicHJval9wcm9qXzQ0NCJd",
+        "X-Project-Context": "TXVsdGktbGluZQpjb250ZXh0CnZhbHVlIHdpdGggdW5pY29kZTogY2Fmw6k",
+        "X-Feature-Memory-Reflection": "true"
       }
     }
   ],
   "envelopeCases": [
     {
       "name": "signed_envelope_full_context",
-      "comment": "Same input as the full_authenticated_project_context case above, minted as the consolidated signed X-Grid-Request-Context envelope instead of individual headers. TS: buildRequestContextEnvelope(case.input, case.secret) must equal {header: case.header, signature: case.signature}. Python: RequestContext.from_envelope(case.header, case.signature, case.secret) must reproduce the input-equivalent fields, and a wrong secret/signature must make it return None (treated as absent). envelopeJson is the exact raw JSON string signed and base64url-encoded, included for readability/debugging — both sides derive header/signature from it, not the other way around.",
+      "comment": "Same input as the full_authenticated_project_context case above, minted as the consolidated signed X-Request-Context envelope instead of individual headers. TS: buildRequestContextEnvelope(case.input, case.secret) must equal {header: case.header, signature: case.signature}. Python: RequestContext.from_envelope(case.header, case.signature, case.secret) must reproduce the input-equivalent fields, and a wrong secret/signature must make it return None (treated as absent). envelopeJson is the exact raw JSON string signed and base64url-encoded, included for readability/debugging — both sides derive header/signature from it, not the other way around.",
       "secret": "grid-envelope-fixture-secret",
       "input": {
         "organizationId": "org_123",

@@ -5,10 +5,11 @@ The headers the BFF sends lose the product's name (`x-grid-budget` becomes
 this tier roll out side by side, and jobs queued before a deploy keep the
 names they were stored with, so the move is expand, switch, contract:
 
-- expand (now): this middleware copies a header that arrives under its new name
-  onto its old one, so every reader here, still reading the old name, sees it;
-- switch (next release): the senders send the new names;
-- contract (the release after): the readers read the new names and this goes.
+- expand (#1333): this middleware copies a header that arrives under its new
+  name onto its old one, so every reader here, still reading the old name, sees it;
+- switch (the release after): the senders send the new names;
+- contract (the release after that): the readers read the new names and this
+  goes. The list of readers is in ``apps/workspace/bff/http/legacy-header-names.ts``.
 
 A header already present under its old name is left as it is. Only the names
 in ``SERVICE_HEADERS`` are copied: ``x-`` alone is every proxy's prefix. The

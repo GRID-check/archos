@@ -31,7 +31,7 @@ describe("the backend housekeeping CronJobs", () => {
     // The routes are `add_*` on the api role's router (ADR-0082 step B); the
     // chat tier does not mount them, so a CronJob aimed at it gets a 404.
     expect(workers).toContain("`${BACKEND_URL}/v1/maintenance/housekeeping/${route}`");
-    expect(appConfig).toContain("export const BACKEND_URL = `http://aiq-api:${PORT.backend}`;");
+    expect(appConfig).toContain("export const BACKEND_URL = `http://${API_TIER}:${PORT.backend}`;");
   });
 
   it("are matched by the Compose clock, which calls the same routes where there are no CronJobs", () => {

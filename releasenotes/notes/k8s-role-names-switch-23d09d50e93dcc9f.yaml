@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    On Kubernetes every caller now reaches the backend through the new chat and
+    api Services. aiq-agent and aiq-api stay up and take no new work, so the
+    chat turns they hold finish there; a later release removes them once they
+    have drained.

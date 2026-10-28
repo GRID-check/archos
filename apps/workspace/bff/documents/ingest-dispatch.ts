@@ -46,7 +46,7 @@ async function requestIngestJob(
       method: 'POST',
       // Forward the org id so the backend resolves the org's BYOK vision
       // credential + runtime model override for VLM captioning during ingestion.
-      headers: { 'Content-Type': 'application/json', 'x-grid-organization-id': organizationId },
+      headers: { 'Content-Type': 'application/json', 'x-organization-id': organizationId },
       body,
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })

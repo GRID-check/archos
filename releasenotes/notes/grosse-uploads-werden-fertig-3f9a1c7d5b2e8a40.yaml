@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Documents from a large upload (more than 200 files at once) no longer stay
+    on "pending" after Piloti has finished reading them. They now show their
+    real state, ready or failed, like those of a smaller upload.

@@ -127,7 +127,7 @@ def _fetch_settings() -> dict[str, int]:
     base_url = (os.environ.get("FRONTEND_INTERNAL_URL") or "http://frontend:3000").rstrip("/")
     response = httpx.get(
         f"{base_url}/api/internal/retrieval-settings",
-        headers={"x-grid-internal-token": token},
+        headers={"x-internal-token": token},
         timeout=_REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()

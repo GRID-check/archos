@@ -648,8 +648,8 @@ class FixtureBFF:
                     self.end_headers()
                     self.wfile.write(blob)
                     return
-                conversation = _conversation_of(self.headers.get("X-Grid-Request-Context"))
-                trusted = self.headers.get("X-Grid-Internal-Token") == bff.token
+                conversation = _conversation_of(self.headers.get("X-Request-Context"))
+                trusted = self.headers.get("X-Internal-Token") == bff.token
                 answer = bff._answer(path, body, bff.office_for(conversation), conversation) if trusted else None
                 entry = {"path": path, "body": body, "served": answer is not None, "conversation": conversation}
                 if answer is not None and path == "/api/mcp":

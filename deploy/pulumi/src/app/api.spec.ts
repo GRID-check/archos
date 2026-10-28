@@ -199,15 +199,15 @@ describe("the api tier", () => {
   });
 
   it("gives the frontend the api URL for HTTP and the chat URL for the socket", () => {
-    expect(frontendEnvValues.BACKEND_URL).toBe("http://aiq-api:8000");
-    expect(frontendEnvValues.BACKEND_CHAT_URL).toBe("http://aiq-agent:8000");
+    expect(frontendEnvValues.BACKEND_URL).toBe("http://api:8000");
+    expect(frontendEnvValues.BACKEND_CHAT_URL).toBe("http://chat:8000");
   });
 
   it("points every HTTP consumer of the backend at the api Service", async () => {
     const { BACKEND_URL, BACKEND_CHAT_URL, purgerEnv } = await import("./config");
 
-    expect(BACKEND_URL).toBe("http://aiq-api:8000");
-    expect(BACKEND_CHAT_URL).toBe("http://aiq-agent:8000");
+    expect(BACKEND_URL).toBe("http://api:8000");
+    expect(BACKEND_CHAT_URL).toBe("http://chat:8000");
     expect(literal(purgerEnv(wiring as never)).BACKEND_URL).toBe(BACKEND_URL);
   });
 

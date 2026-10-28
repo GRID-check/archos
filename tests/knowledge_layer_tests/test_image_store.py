@@ -141,7 +141,7 @@ def test_request_upload_slot_fail_open(monkeypatch):
 
     def _post(url, *, json, headers, timeout):
         assert url == "http://frontend:3000/api/internal/document-image-upload-url"
-        assert headers["x-grid-internal-token"] == "tok"
+        assert headers["x-internal-token"] == "tok"
         calls.append(json)
         return state["response"]
 
