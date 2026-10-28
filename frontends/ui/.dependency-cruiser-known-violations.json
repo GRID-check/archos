@@ -3925,91 +3925,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/chat/components/ChatScreeningNotice.tsx",
-    "unresolvedTo": "@/features/chat/components/ChatScreeningNotice",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/chat/components/effort-dial/index.ts",
-    "unresolvedTo": "@/features/chat/components/effort-dial",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/chat/components/OtherProjectsNotice.tsx",
-    "unresolvedTo": "@/features/chat/components/OtherProjectsNotice",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/chat/hooks/use-chat-screening.ts",
-    "unresolvedTo": "@/features/chat/hooks/use-chat-screening",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/chat/hooks/use-restricting-other-projects.ts",
-    "unresolvedTo": "@/features/chat/hooks/use-restricting-other-projects",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/layout/components/input-area/composer-helpers.ts",
     "to": "src/features/chat/hooks/use-websocket-chat.ts",
     "unresolvedTo": "@/features/chat/hooks/use-websocket-chat",
@@ -4019,23 +3934,6 @@
       "aliased-tsconfig-paths",
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/collaboration/components/AddresseeIndicator.tsx",
-    "unresolvedTo": "@/features/collaboration/components/AddresseeIndicator",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
       "import"
     ],
     "rule": {
@@ -4063,110 +3961,8 @@
   {
     "type": "dependency",
     "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/collaboration/hooks/use-sharing.ts",
-    "unresolvedTo": "@/features/collaboration/hooks/use-sharing",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/collaboration/hooks/use-typing-broadcast.ts",
-    "unresolvedTo": "@/features/collaboration/hooks/use-typing-broadcast",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/collaboration/lib/composer-capabilities.ts",
-    "unresolvedTo": "@/features/collaboration/lib/composer-capabilities",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/collaboration/lib/composer-routing.ts",
-    "unresolvedTo": "@/features/collaboration/lib/composer-routing",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/documents/components/composer-subject-bar.tsx",
-    "unresolvedTo": "@/features/documents/components/composer-subject-bar",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
     "to": "src/features/documents/components/file-preview-dialog.tsx",
     "unresolvedTo": "@/features/documents/components/file-preview-dialog",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/documents/components/file-preview-host.tsx",
-    "unresolvedTo": "@/features/documents/components/file-preview-host",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -4216,93 +4012,8 @@
   {
     "type": "dependency",
     "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/documents/lib/open-file-peek.ts",
-    "unresolvedTo": "@/features/documents/lib/open-file-peek",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/documents/lib/site-photo.ts",
-    "unresolvedTo": "@/features/documents/lib/site-photo",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/documents/stores/file-preview-store.ts",
-    "unresolvedTo": "@/features/documents/stores/file-preview-store",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/skills/components/InvokedSkillChip.tsx",
-    "unresolvedTo": "@/features/skills/components/InvokedSkillChip",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
     "to": "src/features/skills/components/SlashCommandPicker.tsx",
     "unresolvedTo": "@/features/skills/components/SlashCommandPicker",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "feature-deep-import"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
-    "to": "src/features/skills/hooks/use-slash-command.ts",
-    "unresolvedTo": "@/features/skills/hooks/use-slash-command",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -6563,6 +6274,348 @@
     "rule": {
       "severity": "error",
       "name": "lib-imports-ui"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/composer-above-field.tsx",
+    "to": "src/features/documents/components/composer-subject-bar.tsx",
+    "unresolvedTo": "@/features/documents/components/composer-subject-bar",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/composer-above-field.tsx",
+    "to": "src/features/documents/lib/open-file-peek.ts",
+    "unresolvedTo": "@/features/documents/lib/open-file-peek",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/composer-above-field.tsx",
+    "to": "src/features/documents/stores/file-preview-store.ts",
+    "unresolvedTo": "@/features/documents/stores/file-preview-store",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/composer-controls.tsx",
+    "to": "src/features/chat/components/effort-dial/index.ts",
+    "unresolvedTo": "@/features/chat/components/effort-dial",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/composer-controls.tsx",
+    "to": "src/features/collaboration/components/AddresseeIndicator.tsx",
+    "unresolvedTo": "@/features/collaboration/components/AddresseeIndicator",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/composer-field.tsx",
+    "to": "src/features/chat/components/ChatScreeningNotice.tsx",
+    "unresolvedTo": "@/features/chat/components/ChatScreeningNotice",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/composer-field.tsx",
+    "to": "src/features/chat/components/OtherProjectsNotice.tsx",
+    "unresolvedTo": "@/features/chat/components/OtherProjectsNotice",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/composer-field.tsx",
+    "to": "src/features/skills/components/InvokedSkillChip.tsx",
+    "unresolvedTo": "@/features/skills/components/InvokedSkillChip",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/chat/hooks/use-chat-screening.ts",
+    "unresolvedTo": "@/features/chat/hooks/use-chat-screening",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/chat/hooks/use-restricting-other-projects.ts",
+    "unresolvedTo": "@/features/chat/hooks/use-restricting-other-projects",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/collaboration/components/MentionPicker.tsx",
+    "unresolvedTo": "@/features/collaboration/components/MentionPicker",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/collaboration/hooks/use-sharing.ts",
+    "unresolvedTo": "@/features/collaboration/hooks/use-sharing",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/collaboration/hooks/use-typing-broadcast.ts",
+    "unresolvedTo": "@/features/collaboration/hooks/use-typing-broadcast",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/collaboration/lib/composer-capabilities.ts",
+    "unresolvedTo": "@/features/collaboration/lib/composer-capabilities",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/collaboration/lib/composer-routing.ts",
+    "unresolvedTo": "@/features/collaboration/lib/composer-routing",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/documents/components/composer-subject-bar.tsx",
+    "unresolvedTo": "@/features/documents/components/composer-subject-bar",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/documents/components/file-preview-host.tsx",
+    "unresolvedTo": "@/features/documents/components/file-preview-host",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/documents/lib/site-photo.ts",
+    "unresolvedTo": "@/features/documents/lib/site-photo",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/documents/stores/file-preview-store.ts",
+    "unresolvedTo": "@/features/documents/stores/file-preview-store",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/features/layout/components/input-area/use-input-area-controller.tsx",
+    "to": "src/features/skills/hooks/use-slash-command.ts",
+    "unresolvedTo": "@/features/skills/hooks/use-slash-command",
+    "dependencyTypes": [
+      "aliased",
+      "aliased-tsconfig",
+      "aliased-tsconfig-paths",
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "feature-deep-import"
     }
   }
 ]
