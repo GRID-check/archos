@@ -26,6 +26,7 @@ import { failedWhileReading } from '@/features/documents/lib/ingest-failure'
 import type { TrackedFile } from '@/features/documents/types'
 import { sessionHasKnownCollection } from '@/features/documents/persistence'
 import { useChatStore } from '@/features/chat/store'
+import { getProjectCollection } from '@/adapters/api/projects-client'
 import { useLayoutStore } from '../store'
 import { useAppConfig } from '@/shared/context'
 import { useTranslations } from '@/i18n'
@@ -93,11 +94,10 @@ export const FileSourcesTab: FC<FileSourcesTabProps> = ({ onDeleteFile }) => {
     let cancelled = false
     setUploadTarget('project')
 
-    fetch(`/api/projects/${projectId}`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((project: { collectionName?: string } | null) => {
+    getProjectCollection(projectId)
+      .then((project) => {
         if (!cancelled) {
-          setProjectCollectionName(project?.collectionName)
+          setProjectCollectionName(project.collectionName)
         }
       })
       .catch(() => {

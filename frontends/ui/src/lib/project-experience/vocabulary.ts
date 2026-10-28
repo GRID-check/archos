@@ -13,7 +13,8 @@
 
 import type { FingerprintKey } from '@/lib/cross-project/fingerprint'
 import { UNDECIDED } from '@/lib/cross-project/similarity'
-import { flattenIntakeQuestions, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { flattenIntakeQuestions } from '@/lib/project-profile/intake-conditions'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
 import type { ExperienceVocabulary, ExperienceVocabularyEntry } from './types'
 
 /** The OIB-Richtlinien editions a project may have been planned under. */

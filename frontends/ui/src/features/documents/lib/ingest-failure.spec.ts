@@ -15,8 +15,8 @@ import {
 
 /**
  * The stored messages, verbatim from the tiers that write them:
- * `sources/knowledge_layer/src/renditions.py` OFFICE_RENDITION_REQUIRED,
- * `sources/knowledge_layer/src/deferred_files.py` ORIGINAL_DOWNLOAD_FAILED,
+ * `packages/knowledge-layer/src/renditions.py` OFFICE_RENDITION_REQUIRED,
+ * `packages/knowledge-layer/src/deferred_files.py` ORIGINAL_DOWNLOAD_FAILED,
  * `src/aiq_agent/knowledge/ingest_status_store.py` INTERRUPTED_MESSAGE,
  * `adapter.py`'s pdf_pages_unreadable format and DOCUMENT_DELETED_DURING_INGEST, `transcription.py`
  * SCAN_NEEDS_VLM and the adapter's image variant. The Python parity test

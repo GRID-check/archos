@@ -7,7 +7,7 @@
  * Pure and isomorphic; no I/O. The service decides, these only shape.
  */
 
-import { BUILDING_ID_IN_KEY } from '@/lib/project-profile/intake-definition'
+import { BUILDING_ID_IN_KEY } from '@/lib/project-profile/intake-building-keys'
 import {
   MAX_PROFILE_ALTERNATIVES,
   MAX_PROFILE_EVIDENCE,

@@ -48,30 +48,12 @@ import {
   withoutPendingBind,
   type PendingRoleBind,
 } from '../lib/pending-role-binds'
-import {
-  BUILDING_ID_PREFIX,
-  answerKeyFor,
-  buildingIdFromAnswerKey,
-  buildingNumber,
-  buildingTag,
-  answersFromProfile,
-  buildIntakeProfile,
-  buildingsFromAnswers,
-  defaultBuildings,
-  evaluateIntakeCondition,
-  formatIntakeAnswer,
-  isIntakeAnswerProvided,
-  mergeIntakeProfile,
-  modeKeyFor,
-  pruneStaleConditionalAnswers,
-} from '@/lib/project-profile/intake-definition'
-import type {
-  BuildingInstance,
-  IntakeAnswerMode,
-  ProjectIntakeDefinition,
-  ProjectIntakeQuestion,
-  ProjectIntakeStage,
-} from '@/lib/project-profile/intake-definition'
+import { BUILDING_ID_PREFIX, answerKeyFor, buildingIdFromAnswerKey, buildingNumber, buildingTag, defaultBuildings, modeKeyFor } from '@/lib/project-profile/intake-building-keys'
+import { buildingsFromAnswers, evaluateIntakeCondition, isIntakeAnswerProvided, pruneStaleConditionalAnswers } from '@/lib/project-profile/intake-conditions'
+import { answersFromProfile, buildIntakeProfile, mergeIntakeProfile } from '@/lib/project-profile/intake-profile'
+import { formatIntakeAnswer } from '@/lib/project-profile/intake-vocabulary'
+import type { BuildingInstance } from '@/lib/project-profile/intake-building-keys'
+import type { IntakeAnswerMode, ProjectIntakeDefinition, ProjectIntakeQuestion, ProjectIntakeStage } from '@/lib/project-profile/intake-types'
 import {
   checkIntakeConsistencyFromAnswers,
   collectFreeTextFields,

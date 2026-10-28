@@ -1,0 +1,39 @@
+{
+  "name": "piloti-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node runtime/server.mjs",
+    "check": "astro check && node scripts/lint-content.mjs && node scripts/lint-claims.mjs && node scripts/lint-typography.mjs && node scripts/lint-contrast.mjs && node --no-warnings scripts/lint-motion.mjs && node ../../packages/brand/build-brand-assets.mjs --check && node art/riso/check.mjs && node --test runtime/*.test.mjs",
+    "test": "node --test runtime/*.test.mjs"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/mdx": "^8.0.3",
+    "@astrojs/node": "^11.1.7",
+    "@astrojs/react": "^7.0.1",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.4",
+    "@keystatic/astro": "^6.0.0",
+    "@keystatic/core": "^0.6.7",
+    "archiver": "^8.0.0",
+    "astro": "^7.3.8",
+    "gsap": "^3.15.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.3.0",
+    "sharp": "^0.35.3",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/archiver": "^8.0.0",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.1.12"
+  }
+}

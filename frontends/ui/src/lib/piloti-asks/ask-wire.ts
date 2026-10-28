@@ -157,7 +157,7 @@ export interface AskView {
   question: string | null
   /** Why it failed or was rejected. */
   reason: string | null
-  /** Piloti's answer, once `completed`. */
+  /** Piloti's answer, once `completed`; `text` is plain Markdown (`answer-text.ts`), not the chat's dialect. */
   answer: ({ messageId: string; text: string } & AskAnswerEvidence) | null
   documents: AskDocument[]
   createdAt: string

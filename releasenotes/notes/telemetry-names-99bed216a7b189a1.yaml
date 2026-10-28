@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Backend traces now come from the services backend-chat and backend-api
+    (were grid-aiq-agent and grid-aiq-api), and their span attributes move
+    from aiq.* to app.*. The aiq.* attributes are still written for one
+    release: re-point saved Langfuse, PostHog and alert filters before it
+    ends.

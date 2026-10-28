@@ -11,7 +11,7 @@ Architecture:
     ├── base.py                  # Abstract interfaces (BaseRetriever, BaseIngestor)
     └── factory.py               # Registry + factory pattern
 
-    sources/knowledge_layer/src/ # Backend implementations
+    packages/knowledge-layer/src/ # Backend implementations
     ├── llamaindex/              # LlamaIndex readers and chunking, OpenRouter embeddings
     └── qdrant/                  # The vector store (ADR-0115): every chunk, every read
 

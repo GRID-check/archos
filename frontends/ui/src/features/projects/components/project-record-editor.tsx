@@ -21,6 +21,12 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemTitle } from '@/components/ui/item'
 import { MonthInput } from '@/components/ui/month-input'
+import {
+  addProjectPerson,
+  removeProjectPerson,
+  saveProjectStartMonth,
+  updateProjectPerson,
+} from '@/adapters/api/project-record-client'
 import { useLocale, useTranslations } from '@/i18n'
 import { commonCopy } from '@/i18n/namespaces/common'
 import { projectsCopy } from '@/i18n/namespaces/projects'
@@ -54,18 +60,8 @@ export function useProjectPeriodText(projectRecord: Pick<ProjectRecordView, 'sta
   return span(projectRecord.startedOn, projectRecord.endedOn)
 }
 
-async function send(url: string, method: string, body?: unknown): Promise<boolean> {
-  try {
-    const res = await fetch(url, {
-      method,
-      headers: body ? { 'content-type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    return res.ok
-  } catch {
-    return false
-  }
-}
+/** Whether a save went through: a refused or unreachable one is `false`, and the editor says so. */
+const settled = (request: Promise<void>): Promise<boolean> => request.then(() => true, () => false)
 
 const monthOrNull = (value: string): Month | null => (isMonth(value) ? value : null)
 
@@ -86,7 +82,7 @@ export function ProjectRecordPeriod({
 
   const save = async (value: string): Promise<void> => {
     setPending(true)
-    const ok = await send(`/api/projects/${projectId}/project-record`, 'PUT', { startedOn: monthOrNull(value) })
+    const ok = await settled(saveProjectStartMonth(projectId, monthOrNull(value)))
     setPending(false)
     if (!ok) return void toast.error(t('projectRecord.error'))
     toast.success(t('projectRecord.periodSaved'))
@@ -182,8 +178,8 @@ export function ProjectRecordPeople({
     }
     setPending(true)
     const ok = person?.id
-      ? await send(`/api/projects/${projectId}/people/${person.id}`, 'PATCH', body)
-      : await send(`/api/projects/${projectId}/people`, 'POST', body)
+      ? await settled(updateProjectPerson(projectId, person.id, body))
+      : await settled(addProjectPerson(projectId, body))
     setPending(false)
     if (!ok) return void toast.error(t('projectRecord.error'))
     toast.success(t('projectRecord.saved'))
@@ -194,7 +190,7 @@ export function ProjectRecordPeople({
   const remove = async (): Promise<void> => {
     if (!removing?.id) return
     setPending(true)
-    const ok = await send(`/api/projects/${projectId}/people/${removing.id}`, 'DELETE')
+    const ok = await settled(removeProjectPerson(projectId, removing.id))
     setPending(false)
     if (!ok) return void toast.error(t('projectRecord.error'))
     toast.success(t('projectRecord.removed'))

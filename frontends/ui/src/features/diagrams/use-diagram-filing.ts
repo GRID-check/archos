@@ -47,6 +47,7 @@
  */
 
 import { useCallback, useState } from 'react'
+import { DiagramFilingError, fileDiagram } from '@/adapters/api/diagrams-client'
 import { useTranslations } from '@/i18n'
 import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { diagramRunId, useDiagramFilingTarget, type DiagramFilingTarget } from './diagram-filing-context'
@@ -97,30 +98,6 @@ export function titleFromSource(source: string): string | null {
   }
   // Front matter never closed: not front matter.
   return null
-}
-
-/** The `documentId` of one half of the route's answer, or null if it has none. */
-function documentIdOf(value: unknown): string | null {
-  if (typeof value !== 'object' || value === null || !('documentId' in value)) return null
-  const { documentId } = value
-  return typeof documentId === 'string' && documentId.length > 0 ? documentId : null
-}
-
-/**
- * Read which halves landed out of a 2xx body.
- *
- * `null` means the answer was not one this hook understands — which the route
- * does not produce, and which is exactly why it must not be mistaken for a
- * partial filing. That confusion was the previous shape of this code: a 2xx
- * body without `svg.documentId` was rendered as „das Bild wurde abgelegt", a
- * sentence about a file nothing had said existed, while the real partial case
- * arrived as a 500 and read „Internal server error".
- */
-function filedHalves(body: unknown): { svgDocumentId: string; pdfFiled: boolean } | null {
-  if (typeof body !== 'object' || body === null || !('svg' in body)) return null
-  const svgDocumentId = documentIdOf(body.svg)
-  if (!svgDocumentId) return null
-  return { svgDocumentId, pdfFiled: 'pdf' in body && documentIdOf(body.pdf) !== null }
 }
 
 export interface DiagramFilingOptions {
@@ -184,53 +161,36 @@ export function useDiagramFiling({
       const svg = sketch?.svg ?? fileSvg ?? (await renderFileSvg?.())
       if (!svg) throw new Error('no paper copy to file')
       const filedSource = sketch?.source ?? source
-      const response = await fetch(`/api/projects/${encodeURIComponent(target.projectId)}/diagrams`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // An edited sketch is keyed by its own scene: two different edits of
-          // one drawing are two files, the same edit filed twice is one. A
-          // sketch filed as drawn is keyed by its fence, like a mermaid one.
-          runId: diagramRunId(target.answerId, sketch && edited ? filedSource : source),
-          title:
-            title?.trim() ||
-            titleFromSource(source) ||
-            target.title ||
-            (sketch ? t('sketch.defaultTitle') : t('defaultTitle')),
-          sourceKind: sketch ? 'excalidraw' : 'mermaid',
-          source: filedSource,
-          // The drawing on screen, in the colours a document is printed in.
-          // Same source, same fonts, same layout — only the palette differs, and
-          // the reason it has to is in `./diagram-palette.ts`.
-          svg,
-          answerId: target.answerId,
-          ...(sketch && edited ? { edited: true } : {}),
-          ...(target.conversationId ? { conversationId: target.conversationId } : {}),
-        }),
+      const filed = await fileDiagram(target.projectId, {
+        // An edited sketch is keyed by its own scene: two different edits of
+        // one drawing are two files, the same edit filed twice is one. A
+        // sketch filed as drawn is keyed by its fence, like a mermaid one.
+        runId: diagramRunId(target.answerId, sketch && edited ? filedSource : source),
+        title:
+          title?.trim() ||
+          titleFromSource(source) ||
+          target.title ||
+          (sketch ? t('sketch.defaultTitle') : t('defaultTitle')),
+        sourceKind: sketch ? 'excalidraw' : 'mermaid',
+        source: filedSource,
+        // The drawing on screen, in the colours a document is printed in.
+        // Same source, same fonts, same layout — only the palette differs, and
+        // the reason it has to is in `./diagram-palette.ts`.
+        svg,
+        answerId: target.answerId,
+        ...(sketch && edited ? { edited: true } : {}),
+        ...(target.conversationId ? { conversationId: target.conversationId } : {}),
       })
-      if (!response.ok) {
-        const body: unknown = await response.json().catch(() => null)
-        const message =
-          body && typeof body === 'object' && 'error' in body && typeof body.error === 'string'
-            ? body.error
-            : t('file.failed')
-        setState({ kind: 'failed', message })
-        return
-      }
-      const body: unknown = await response.json()
       // The SVG row is the one a reader opens; the PDF is the one they attach.
-      // Both ids come back, and a missing PDF is a smaller success rather than
-      // a failure — the route answers 201 with `pdf: null` when only the SVG
-      // landed, because the SVG is filed and quota-charged either way.
-      const halves = filedHalves(body)
-      if (!halves) {
-        setState({ kind: 'failed', message: t('file.failed') })
-        return
-      }
-      setState({ kind: halves.pdfFiled ? 'filed' : 'partial', documentId: halves.svgDocumentId })
+      // A missing PDF is a smaller success rather than a failure: the route
+      // answers 201 with `pdf: null` when only the SVG landed, because the SVG
+      // is filed and quota-charged either way.
+      setState({ kind: filed.pdfFiled ? 'filed' : 'partial', documentId: filed.svgDocumentId })
     } catch (error) {
       console.debug('[diagrams] filing failed', error)
-      setState({ kind: 'failed', message: t('file.failed') })
+      // A refusal names its own sentence when the server gave one.
+      const message = error instanceof DiagramFilingError && error.serverMessage !== null ? error.serverMessage : t('file.failed')
+      setState({ kind: 'failed', message })
     }
   }, [target, fileSvg, renderFileSvg, prepareSketch, edited, source, title, t])
 

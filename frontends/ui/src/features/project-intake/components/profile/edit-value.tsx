@@ -9,7 +9,7 @@ import { QuestionControl } from '@/features/projects/components/intake-question-
 import { useTranslations } from '@/i18n'
 import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
 import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
-import { isIntakeAnswerProvided } from '@/lib/project-profile/intake-definition'
+import { isIntakeAnswerProvided } from '@/lib/project-profile/intake-conditions'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
 import type { IntakeDecision, Suggestion } from '@/lib/project-intake/types'
 import { usePressed } from '../../hooks/use-pressed'

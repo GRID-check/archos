@@ -31,7 +31,7 @@ class SubjectVersion:
     The name is a retrieval identity — which chunks to prefer — and it is only
     ever as good as the index: a version nobody has published has no chunks at
     all, so the focus filter matches nothing and falls open to the whole corpus
-    (``sources/knowledge_layer/src/register.py``). This says WHICH version, by
+    (``packages/knowledge-layer/src/register.py``). This says WHICH version, by
     id, and what editorial state it is in, so the turn can read the bytes
     instead of hoping the index has them.
 

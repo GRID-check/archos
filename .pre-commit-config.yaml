@@ -159,7 +159,7 @@ repos:
         entry: .venv/bin/lint-imports --no-cache
         language: system
         pass_filenames: false
-        files: ^(src/aiq_agent|frontends/aiq_api/src|sources/knowledge_layer/src)/.*\.py$|^pyproject\.toml$
+        files: ^(src/aiq_agent|frontends/aiq_api/src|packages/knowledge-layer/src)/.*\.py$|^pyproject\.toml$
 
       - id: file-size
         name: no source file passes 600 lines, no Python function 60, and no giant grows
@@ -175,6 +175,18 @@ repos:
         # Always, not on matching files: a commit that only deletes a baselined
         # file passes no filename, and its stale entry would fail the next
         # person's commit instead. The check takes about three seconds.
+        always_run: true
+
+      - id: brand-names
+        name: no new product name in a code or infrastructure name
+        # The product was AI-Q, then Grid, now Piloti, and each rename was a
+        # code change across thousands of lines. The name belongs in copy, read
+        # from one place; a ratchet on ci/brand_names_baseline.json keeps every
+        # new identifier, file, route and variable neutral. Always, for the
+        # reason file-size gives. About five seconds.
+        entry: .venv/bin/python scripts/check_brand_names.py
+        language: system
+        pass_filenames: false
         always_run: true
 
       - id: env-docs

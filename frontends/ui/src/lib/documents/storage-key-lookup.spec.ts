@@ -1,4 +1,4 @@
-// @disk-inputs: src/lib/documents/repository.ts
+// @disk-inputs: src/lib/documents/repository/storage.ts
 /**
  * @vitest-environment node
  */
@@ -110,7 +110,7 @@ describe('findStorageKeyByCollectionAndFilename', () => {
     // author kind added to the tuple after it — `system`, `import` — which is
     // the failure mode the schema's own CHECK constraint was written to avoid.
     const source = readFileSync(
-      new URL('./repository.ts', import.meta.url),
+      new URL('./repository/storage.ts', import.meta.url),
       'utf8',
     )
     const fn = source.slice(source.indexOf('export async function findStorageKeyByCollectionAndFilename'))
