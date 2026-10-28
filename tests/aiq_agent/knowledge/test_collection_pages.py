@@ -14,12 +14,12 @@ sorts after the numbered ones of its page, by chunk id: stable, never random.
 from __future__ import annotations
 
 import pytest
+from knowledge_layer_testing import qdrant as qt
 
 from aiq_agent.knowledge.collection_pages import read_chunks
 from aiq_agent.knowledge.collection_pages import read_pages
 from aiq_agent.knowledge.revision_diff import chunk_from_store
 from aiq_agent.knowledge.revision_diff import diff_revisions
-from sources.knowledge_layer.tests import qdrant_testing as qt
 
 LINES = [f"Zeile {i}: Brandabschnitt {i} hat Feuerwiderstand REI {30 + i}" for i in range(12)]
 

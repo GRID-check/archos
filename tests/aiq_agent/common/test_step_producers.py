@@ -20,7 +20,9 @@ from langgraph.graph import MessagesState
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
+from aiq_agent.common import action_rows
 from aiq_agent.common import decisions
+from aiq_agent.common import retrieval_status
 from aiq_agent.common import turn_status
 from aiq_agent.common.grounding_block import GroundingBlock
 from aiq_agent.common.grounding_block import GroundingHit
@@ -45,7 +47,7 @@ def _finished(step) -> StepFinishedBody:
 
 async def test_a_status_line_is_one_finished_step() -> None:
     async def work() -> None:
-        turn_status.emit_citation_check(source_count=3)
+        retrieval_status.emit_citation_check(source_count=3)
 
     assert await stream_custom(work) == [
         _finished(
@@ -56,7 +58,7 @@ async def test_a_status_line_is_one_finished_step() -> None:
 
 async def test_a_retrieval_round_is_its_step_and_its_checkpoint_record() -> None:
     async def work() -> None:
-        turn_status.emit_retrieval(
+        retrieval_status.emit_retrieval(
             [{"name": "knowledge_search", "args": {"query": "Fluchtweglänge GK4", "conclusion": "Grundregel fehlt."}}],
             round_index=0,
         )
@@ -175,7 +177,7 @@ async def test_every_tool_call_is_a_started_and_a_finished_step_with_its_basenam
         chunk
         async for _mode, chunk in builder.compile().astream(
             {"messages": [AIMessage(content="", tool_calls=calls)]},
-            config={"callbacks": [turn_status.ToolStepCallback()]},
+            config={"callbacks": [action_rows.ToolStepCallback()]},
             stream_mode=["custom"],
         )
     ]
@@ -196,8 +198,8 @@ async def test_every_tool_call_is_a_started_and_a_finished_step_with_its_basenam
 async def test_a_step_emitted_inside_deep_research_carries_its_scope() -> None:
     async def work() -> None:
         with turn_status.step_scope("deep"):
-            turn_status.emit_synthesis()
-        turn_status.emit_citation_check()
+            retrieval_status.emit_synthesis()
+        retrieval_status.emit_citation_check()
 
     assert [body.step.scope for body in await stream_custom(work)] == ["deep", "chat"]
 
@@ -207,9 +209,9 @@ async def test_the_setup_phase_returns_its_steps_and_emits_nothing() -> None:
     returned = []
 
     async def work() -> None:
-        returned.append(turn_status.documents_loading_step(["project"]))
-        returned.append(turn_status.documents_waiting_step(file_count=2))
-        returned.append(turn_status.subject_document_step(loaded=True, path="/drafts/a.md"))
+        returned.append(retrieval_status.documents_loading_step(["project"]))
+        returned.append(retrieval_status.documents_waiting_step(file_count=2))
+        returned.append(retrieval_status.subject_document_step(loaded=True, path="/drafts/a.md"))
 
     assert await stream_custom(work) == []
     assert [step.id for step in returned] == [
@@ -221,5 +223,5 @@ async def test_the_setup_phase_returns_its_steps_and_emits_nothing() -> None:
 
 def test_outside_a_graph_run_emission_is_a_no_op() -> None:
     """Outside any runnable (the setup phase), and inside one that is not a graph (a tool called directly)."""
-    turn_status.emit_citation_check()
-    assert asyncio.run(fetch_plan.ainvoke({"q": "a"}, config={"callbacks": [turn_status.ToolStepCallback()]}))
+    retrieval_status.emit_citation_check()
+    assert asyncio.run(fetch_plan.ainvoke({"q": "a"}, config={"callbacks": [action_rows.ToolStepCallback()]}))

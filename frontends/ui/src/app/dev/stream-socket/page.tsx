@@ -54,7 +54,7 @@ import { useComposerMetrics } from '@/features/layout/hooks/use-composer-metrics
 import { ComposerScrim } from '@/features/layout/components/ComposerScrim'
 import { selectThreadPhase } from '@/features/layout/lib/thread-phase'
 import { motion } from '@/components/motion'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useAnswerRevealStore } from '@/features/chat/stores/answer-reveal-store'
 import type { ChatMessage, Conversation } from '@/features/chat/types'
 import { isErrorPhase, isStreamScenario, type ErrorPhase, type StreamScenario } from '../_fixtures/v2-scenarios'

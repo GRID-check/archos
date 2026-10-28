@@ -23,8 +23,8 @@ from typing import Any
 from langchain_core.messages import ToolMessage
 
 from aiq_agent.common.message_utils import content_to_text
-from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
-from aiq_agent.common.turn_status import fetch_signature
+from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
+from aiq_agent.common.tool_calls import fetch_signature
 
 
 def repeat_fetches(calls: Sequence[Any], executed: Sequence[str]) -> list[Any]:
@@ -106,7 +106,7 @@ def assistant_checkpoint(response: Any) -> str | None:
     tools' ``conclusion`` argument, because a tool-calling model fills a
     declared slot far more reliably than it narrates — but a model that
     narrates anyway must not lose its checkpoint, and neither must a deployment
-    pinned to an older prompt. ``turn_status.emit_retrieval`` ranks the two.
+    pinned to an older prompt. ``retrieval_status.emit_retrieval`` ranks the two.
 
     Empty when the model wrote no prose. The Herleitung then keeps the round as
     a layer without a body — it must not invent a conclusion, and it must not
