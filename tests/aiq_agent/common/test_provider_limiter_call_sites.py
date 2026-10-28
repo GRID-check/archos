@@ -44,7 +44,14 @@ from aiq_agent.common.openrouter import pinned_async_http_client
 from aiq_agent.common.openrouter import pinned_http_client
 
 ROOT = Path(__file__).resolve().parents[3]
-SCANNED = [ROOT / "src", ROOT / "sources", ROOT / "frontends" / "aiq_api" / "src", ROOT / "scripts"]
+SCANNED = [
+    ROOT / "src",
+    ROOT / "packages" / "knowledge-layer",
+    ROOT / "packages" / "ris-adapter",
+    ROOT / "packages" / "tavily-web-search",
+    ROOT / "frontends" / "aiq_api" / "src",
+    ROOT / "scripts",
+]
 
 #: Building a chat model by hand, or acquiring one from NAT without the seam.
 #: Every one of them yields a model the contract subclass never wraps.
@@ -62,7 +69,7 @@ CHAT_MODEL_HOMES = {
 #: Building an embedding client by hand. Its HTTP client must come from the seam.
 EMBEDDING_CLIENT = re.compile(r"\b[A-Za-z]*Embeddings?\(|\.embeddings\.create\(")
 EMBEDDING_CLIENT_HOMES = {
-    "sources/knowledge_layer/src/llamaindex/embedding.py": "make_embed_model hands llama-index the limited transports",
+    "packages/knowledge-layer/src/llamaindex/embedding.py": "make_embed_model hands llama-index the limited transports",
     "src/aiq_agent/common/openrouter.py": "mentions `.embeddings` in a docstring only",
 }
 #: A match that is not a client: a class that merely has "Embedding" in its name.
@@ -78,7 +85,7 @@ MODEL_TRAFFIC = re.compile(
 )
 RAW_HTTPX_HOMES = {
     "src/aiq_agent/common/openrouter.py": "the seam builds the clients that take the slot",
-    "sources/knowledge_layer/src/llamaindex/adapter.py": "its httpx.Client PUTs a thumbnail to a presigned URL",
+    "packages/knowledge-layer/src/llamaindex/adapter.py": "its httpx.Client PUTs a thumbnail to a presigned URL",
     "scripts/release_notes.py": "sends the public changelog from a dev script",
     "scripts/smoke_card_generation.py": "a dev smoke test on fixed sample text",
 }
@@ -107,7 +114,7 @@ def test_the_scan_sees_the_known_call_sites():
     """Guards the test itself: a glob that silently matched nothing would pass everything."""
     scanned = {_rel(p) for p in _python_files()}
     assert "src/aiq_agent/common/llm_factory.py" in scanned
-    assert "sources/knowledge_layer/src/llamaindex/adapter.py" in scanned
+    assert "packages/knowledge-layer/src/llamaindex/adapter.py" in scanned
     assert "src/aiq_agent/agents/piloti/register.py" in scanned
 
 

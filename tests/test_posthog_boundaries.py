@@ -28,7 +28,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-PYTHON_ROOTS = ("src", "sources", "frontends/aiq_api/src", "scripts")
+PYTHON_ROOTS = (
+    "src",
+    "packages/knowledge-layer",
+    "packages/ris-adapter",
+    "packages/tavily-web-search",
+    "frontends/aiq_api/src",
+    "scripts",
+)
 TS_ROOTS = ("frontends/ui/src", "frontends/ui/workers", "frontends/ui/purger", "frontends/ui/scheduler")
 TS_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".cjs"}
 

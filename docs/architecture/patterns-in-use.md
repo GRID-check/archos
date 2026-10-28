@@ -103,7 +103,7 @@ content, whose value is the same whichever tenant or turn asks, or a
 process-lifetime handle holding no tenant or turn data:
 
 - the query-embedding LRU with its in-flight dedupe, keyed by (model, text), on
-  the retriever in `sources/knowledge_layer/src/llamaindex/query_embeddings.py`;
+  the retriever in `packages/knowledge-layer/src/llamaindex/query_embeddings.py`;
 - `knowledge/factory._SEARCH_RETRIEVER`, the retriever handle recorded when the
   knowledge tool is built;
 - `agents/piloti/register._WARMING`, strong references to running warm-ups, so

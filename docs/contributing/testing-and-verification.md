@@ -643,7 +643,7 @@ Traps that cost a run:
 - **A second or two between single runs is noise.** Compare medians over
   several runs, never one run against one run.
 - **Which checkout a run measures.** The suite and the census now put this
-  checkout's `src/` and `sources/` packages first on each run's `PYTHONPATH`,
+  checkout's `src/` and workspace packages first on each run's `PYTHONPATH`,
   and run it with this checkout's venv interpreter; the suite refuses to start
   when a run would still import another checkout. Before that, a run from a
   `git worktree` measured the main checkout's code while its report named the

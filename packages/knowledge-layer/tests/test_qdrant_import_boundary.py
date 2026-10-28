@@ -20,8 +20,8 @@ import pathlib
 import re
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
-ALLOWED = REPO / "sources" / "knowledge_layer" / "src" / "qdrant"
-SEARCHED = ("src", "sources", "frontends/aiq_api/src", "scripts")
+ALLOWED = REPO / "packages" / "knowledge-layer" / "src" / "qdrant"
+SEARCHED = ("src", "packages", "frontends/aiq_api/src", "scripts")
 IMPORT = re.compile(r"^\s*(from\s+qdrant_client\b|import\s+qdrant_client\b)", re.MULTILINE)
 
 #: The migration tool that exports an old Chroma store (``docs/deployment/qdrant-runbook.md``).
@@ -65,7 +65,7 @@ def _offenders(repo: pathlib.Path = REPO) -> list[str]:
     offenders: list[str] = []
     files = _real_python_files() if repo == REPO else _python_files(repo)
     roots = tuple(repo / root for root in SEARCHED)
-    allowed = repo / "sources" / "knowledge_layer" / "src" / "qdrant"
+    allowed = repo / "packages" / "knowledge-layer" / "src" / "qdrant"
     for path in files:
         relative = path.relative_to(repo)
         # Tests and their support packages (`testing/`) may reach the client.
