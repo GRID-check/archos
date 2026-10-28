@@ -40,7 +40,7 @@
   "apps/site/src/styles/global.css": 21,
   "ci/image_inputs.py": 1,
   "configs/config_oib_openrouter.yml": 31,
-  "deploy/.env.example": 94,
+  "deploy/.env.example": 93,
   "deploy/Dockerfile": 10,
   "deploy/compose/docker-compose.coolify.yaml": 170,
   "deploy/compose/docker-compose.yaml": 209,
