@@ -59,7 +59,7 @@ def _received(names) -> set[str]:
 
 def test_the_route_guard_accepts_only_spellings_the_contract_names(contract: dict) -> None:
     """`_TOKEN_HEADERS` is the exact list whose contents caused the 403."""
-    assert _lower(_TOKEN_HEADERS) <= _lower(contract["internalTokenAcceptedSpellings"])
+    assert _lower(_TOKEN_HEADERS) <= _received(contract["internalTokenAcceptedSpellings"])
 
 
 def test_the_envelope_middleware_agrees_with_the_route_guard(contract: dict) -> None:
@@ -70,7 +70,7 @@ def test_the_envelope_middleware_agrees_with_the_route_guard(contract: dict) -> 
     being refused.
     """
     middleware = _lower(name.decode("ascii") for name in _INTERNAL_TOKEN_HEADER_NAMES)
-    assert middleware <= _lower(contract["internalTokenAcceptedSpellings"])
+    assert middleware <= _received(contract["internalTokenAcceptedSpellings"])
     assert middleware == _lower(_TOKEN_HEADERS)
 
 
@@ -122,7 +122,7 @@ def test_the_worker_identity_headers_are_the_ones_on_the_wire(contract: dict) ->
     produces the same silence.
     """
     worker = _lower(WORKER_IDENTITY_HEADERS)
-    assert worker == _lower(contract["workerIdentityHeaders"])
+    assert worker == {legacy_name(n.encode()).decode() for n in _lower(contract["workerIdentityHeaders"])}
     assert worker <= _received(contract["sentByBff"])
 
 
@@ -149,7 +149,7 @@ def test_every_backend_requirement_is_inside_the_contract(contract: dict) -> Non
     A backend requirement outside this file is a header the BFF has never been
     asked to send, which is the class of defect the whole fixture exists for.
     """
-    named = _received(contract["sentByBff"]) | _lower(contract["internalTokenAcceptedSpellings"])
+    named = _received(contract["sentByBff"]) | _received(contract["internalTokenAcceptedSpellings"])
     backend_requires = (
         _lower(_TOKEN_HEADERS)
         | _lower(name.decode("ascii") for name in _INTERNAL_TOKEN_HEADER_NAMES)
