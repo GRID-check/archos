@@ -134,7 +134,7 @@ def _lane_source(hit, detail: str | None, *, opened: bool) -> TraceLaneSource:
     producing tool is read off its scope, never passed (``record_lane_hit``).
     """
     from aiq_agent.common.provenance import provenance_metadata
-    from aiq_agent.common.turn_status import READ_PASSAGE_TOOL
+    from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
     from aiq_agent.common.turn_status import current_retrieval_round
     from aiq_agent.common.turn_status import lane_tool_scope
     from aiq_agent.common.turn_status import record_lane_hit

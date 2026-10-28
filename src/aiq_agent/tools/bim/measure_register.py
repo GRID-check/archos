@@ -26,7 +26,7 @@ from pydantic import Field
 from pydantic import ValidationError
 
 from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.turn_status import ActionRow
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.knowledge.ifc_spatial_client import call_spatial_tool
 from aiq_agent.knowledge.ifc_spatial_client import open_model
 from aiq_agent.knowledge.ifc_spatial_client import resolve_model_source

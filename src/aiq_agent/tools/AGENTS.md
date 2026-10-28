@@ -233,7 +233,7 @@ as `project_lookup` does.
 
 | When you | You must | What fails you |
 |---|---|---|
-| Add a verb to the working directory | Add its action key to `common/turn_status.py` (with both dictionary strings). Nothing to add to a budget any more: the research budget counts ROUNDS, so a round of file verbs costs one like a round of searches and there is no interaction allowance to keep in step | The reader's live line goes silent mid-turn |
+| Add a verb to the working directory | Add its action key to `common/status_keys.py` (with both dictionary strings) and map the tool to it in `common/tool_calls.py`. Nothing to add to a budget any more: the research budget counts ROUNDS, so a round of file verbs costs one like a round of searches and there is no interaction allowance to keep in step | The reader's live line goes silent mid-turn |
 | Change what is stored per draft | Remember DeepAgents rebuilds the stored value from `content`/`encoding` on every edit: a key not re-stamped after the operation is gone | Nothing local. The version counter silently resets to 1 |
 | Take text from the model and compare it to stored text | NFC-normalise both, at the backend seam | An `edit_file` that fails with a string identical to the one in the file. [`gotchas.md`](../../../docs/contributing/gotchas.md) |
 | Add a tool under here | `@register_function` plus its own `nat.plugins` entry point, like every other tool ([`src/aiq_agent/AGENTS.md`](../AGENTS.md)) | NAT never discovers it |

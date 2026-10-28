@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiRequestError } from './api-error'
-import { listProjects } from './projects-client'
+import { getProjectCollection, listProjects } from './projects-client'
 
 const fetchMock = vi.fn()
 
@@ -46,5 +46,23 @@ describe('listProjects', () => {
 
     expect(failure).toBeInstanceOf(ApiRequestError)
     expect(failure).toMatchObject({ status: 403 })
+  })
+})
+
+describe('getProjectCollection', () => {
+  it('reads one project by its encoded id and answers its collection', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ id: 'p/1', collectionName: 'proj_1' }))
+
+    await expect(getProjectCollection('p/1')).resolves.toEqual({ id: 'p/1', collectionName: 'proj_1' })
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/p%2F1')
+  })
+
+  it('throws the typed error with the status when the read fails', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('nope', { status: 404 }))
+
+    const failure = await getProjectCollection('p-1').catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(ApiRequestError)
+    expect(failure).toMatchObject({ status: 404 })
   })
 })

@@ -13,7 +13,7 @@ from knowledge_layer import search_scope
 from knowledge_layer.ranked_search import RankedSearch
 
 from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.turn_status import ActionRow
+from aiq_agent.common.action_rows import ActionRow
 from nat.plugin_api import Context
 
 from .chunk_noise import noise_filter_enabled
@@ -247,7 +247,7 @@ class KnowledgeSearch:
         )
 
     async def _literal(self, outcome: ActionOutcome, args: SearchArgs, targets: list) -> str:
-        from aiq_agent.common.turn_status import emit_literal_search
+        from aiq_agent.common.action_rows import emit_literal_search
 
         from .browse import exact_search
 

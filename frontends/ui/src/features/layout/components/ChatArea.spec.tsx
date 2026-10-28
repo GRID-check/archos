@@ -105,19 +105,6 @@ vi.mock('@/features/bim/hooks/use-bim-model', () => ({
 }))
 
 vi.mock('@/features/chat', () => ({
-  useChatStore: vi.fn((selector?: StoreSelector<ChatStoreWithHydration>) => {
-    const state: ChatStoreFixture = {
-      currentConversation: { messages: [] },
-      projectId: mockProjectId,
-      isLoading: false,
-      isStreaming: false,
-      hasHydrated: true,
-      respondToPrompt: mockRespondToPrompt,
-      dismissErrorCard: mockDismissErrorCard,
-      setComposerPrefill: mockSetComposerPrefill,
-    }
-    return selector ? selector(asStoreState<ChatStoreWithHydration>(state)) : state
-  }),
   AgentPrompt: ({ content }: { content: string }) => (
     <div data-testid="agent-prompt">{content}</div>
   ),
@@ -151,6 +138,21 @@ vi.mock('@/features/chat', () => ({
   // "not elapsed yet" is enough to render.
   useElapsedSeconds: () => 0,
   formatElapsed: (seconds: number) => `${seconds}s`,
+}))
+vi.mock('@/features/chat/store', () => ({
+  useChatStore: vi.fn((selector?: StoreSelector<ChatStoreWithHydration>) => {
+    const state: ChatStoreFixture = {
+      currentConversation: { messages: [] },
+      projectId: mockProjectId,
+      isLoading: false,
+      isStreaming: false,
+      hasHydrated: true,
+      respondToPrompt: mockRespondToPrompt,
+      dismissErrorCard: mockDismissErrorCard,
+      setComposerPrefill: mockSetComposerPrefill,
+    }
+    return selector ? selector(asStoreState<ChatStoreWithHydration>(state)) : state
+  }),
 }))
 
 // The ADR-0033 seam is mocked so this spec can drive the states it produces
@@ -255,7 +257,7 @@ vi.mock('@/features/collaboration/hooks/use-sharing', () => ({
   })),
 }))
 
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 
 // Time-of-day greeting shown on the authenticated empty state.
 const GREETING_RE = /good (morning|afternoon|evening)/i

@@ -70,7 +70,7 @@ import { I18nProvider } from '@/i18n'
 import { AppConfigProvider, type AppConfig } from '@/shared/context'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import { ChatToolbar } from '@/features/layout/components/ChatToolbar'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { emptyRunLedger, setRunStatus } from '@/lib/runs/run-ledger'
 import type { ResourceAccessEntry, ResourceSharingState } from '@/lib/sharing/types'
 

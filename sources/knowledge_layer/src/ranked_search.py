@@ -99,7 +99,7 @@ class RankedSearch:
         try:
             return await self._ranked()
         except Exception as e:
-            from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+            from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 
             logger.error(f"Knowledge search failed: {e}")
             self.outcome.failed = True
@@ -421,7 +421,7 @@ class RankedSearch:
                     "one firing per turn already spent, keeping the first pool"
                 )
                 return merged, reranked
-            from aiq_agent.common.turn_status import emit_retrieval_requery
+            from aiq_agent.common.retrieval_status import emit_retrieval_requery
 
             emit_retrieval_requery(query_count=len(verdict.queries))
             extra = await asyncio.gather(
@@ -544,7 +544,7 @@ class RankedSearch:
         return notice
 
     async def _rendered(self, merged, branch, overview, coverage, groups_trailer: str) -> str:
-        from aiq_agent.common.turn_status import KNOWLEDGE_SEARCH_TOOL
+        from aiq_agent.common.tool_calls import KNOWLEDGE_SEARCH_TOOL
         from aiq_agent.common.turn_status import lane_tool_scope
 
         notice = self._notice(merged, branch)

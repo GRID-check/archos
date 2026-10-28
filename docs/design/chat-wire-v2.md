@@ -273,18 +273,18 @@ Each step is compact, typed data. None of them carries a tool's input or output.
 | `kind` | Fields | Producer |
 |---|---|---|
 | `status` | `slot`, `key?`, `values{}`, `channel: live \| technical`, `detail{}` (scalars and string lists) | every `turn_status.emit_*`, the decision records, the budget, cutoff and degraded records |
-| `retrieval` | `round`, `key`, `values{}`, `tools[]`, `reason?` (the model's conclusion, at most 160 chars) | `turn_status.emit_retrieval` |
+| `retrieval` | `round`, `key`, `values{}`, `tools[]`, `reason?` (the model's conclusion, at most 160 chars) | `retrieval_status.emit_retrieval` |
 | `sources` | `round?`, `tool`, `lanes[]` (`TraceLane{key,label,kind,hit_count,sources[{name,title?,detail?,shelf?,round?,provenance?}]}`) | `grounding_block.render_grounding_block`, built from the records it is given, never scraped from the text |
 | `tool` | `tool` (basename), `status: running \| ok \| error` | one LangChain callback on the graph run (`on_tool_start`/`_end`/`_error`) |
 | `skill` | `phase: offered \| activated \| loaded`, `skill?`, `title?`, `hidden`, `count?`, `channel` | `skills/events.py` |
 | `clarification` | `max_turns` | `agents/piloti/clarify.py` |
-| `look` | `round?`, `document_name`, `document_id?`, `revision_id?` (the Fassung; absent: the current one), `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`), `image_index?`, `where?` (the region in words), `question?`, `reading?`. One per look that rendered, id `look:<n>`; a refused look leaves none | `turn_status.emit_look_step`, called by `tools/look/cards.note_look` (ADR-0128) |
+| `look` | `round?`, `document_name`, `document_id?`, `revision_id?` (the Fassung; absent: the current one), `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`), `image_index?`, `where?` (the region in words), `question?`, `reading?`. One per look that rendered, id `look:<n>`; a refused look leaves none | `retrieval_status.emit_look_step`, called by `tools/look/cards.note_look` (ADR-0128) |
 
 `scope: chat | deep` sits on every step. In-process deep research sets `deep`.
 Which *invocation* took a step is not the step's but the event's
 (`subagent_run_id`, as AG-UI attributes every event), and the deepagents `task`
 call that spawns a subagent is its parent's row, not the child's
-(`turn_status._tool_subagent`).
+(`action_rows._tool_subagent`).
 
 ### Client → server
 
@@ -439,7 +439,7 @@ where it emits in v2:
 |---|---|---|
 | `turn_status.push_custom_step`: a balanced NAT FUNCTION START/END pair disguised as a function, with JSON inside an HTML-escaped code block | `common/turn_status.py` | **Deleted.** `emit_step(Step)`. The disguise, the span-stack balancing and its docstring go with it |
 | `emit_status` and its callers: `emit_documents_loading`, `_waiting`, `emit_retrieval_requery`, `emit_citation_check`, `emit_answer_repair`, `emit_escalation`, `emit_synthesis`, `emit_family_coverage`, `emit_repeat_fetch`, `emit_refused_source`, `emit_width_cap`, `emit_research_truncated`, `emit_input_budget_exhausted`, `emit_deep_research_cutoff`, `emit_answer_degraded`, `emit_card_invalid`, `emit_anatomy_dropped`, `emit_verdict_dropped`, `emit_checkpoint` | `common/turn_status.py`, called from `agents/piloti/*`, `agents/deep_researcher/{agent,cutoff,finalize,tools/research}.py`, `common/{retrieval_rounds,answer_envelope,grounding_block}.py`, `cards/surface_documents.py`, `tools/bim/measurement_sources.py`, `sources/{ris_adapter,tavily_web_search,knowledge_layer}` | Each builds a `StatusStep` and calls `emit_step`. The `slot` stays the step id's suffix (`status:<slot>`), and the keys are unchanged (`ALL_STATUS_KEYS`) |
-| `emit_retrieval` | `common/turn_status.py`, from Piloti's agent node and deep research | `RetrievalStep` with `round`, `tools` and `reason`, and `prefetch` on the round the decision ran before the model (`_prefetch_node`). It still sets `_retrieval_round` |
+| `emit_retrieval` | `common/retrieval_status.py`, from Piloti's agent node and deep research | `RetrievalStep` with `round`, `tools` and `reason`, and `prefetch` on the round the decision ran before the model (`_prefetch_node`). It still sets `_retrieval_round` |
 | `emit_subject_document` | `turn/subject_document.py`, **setup phase** | `load_subject_document` **returns** the outcome as a `StatusStep`, and `_run` yields it. Nothing is emitted from outside a graph |
 | `emit_documents_loading` | `conversation_register._run`, **setup phase** | `_run` yields the `StatusStep` |
 | `emit_documents_waiting` | `turn/inventory.py`, **setup phase**, before waiting on indexing | `load_inventory` is split: `pending_uploads()` returns what is pending, `_run` yields the waiting step, then awaits `wait_for_uploads()` |
@@ -447,7 +447,7 @@ where it emits in v2:
 | Clarification trace row | `agents/piloti/clarify.py:676` | `ClarificationStep` |
 | Decision records (`status:decision:*`) | `common/decisions.py:478`, `sources/knowledge_layer/src/decisions.py:167` | technical `StatusStep` |
 | The Trace-Lanes fan-out, which the UI regex-read out of the NAT TOOL_END payload (`## Trace-Lanes` + JSON) | `sources/knowledge_layer/src/trace_lanes.py` `trace_lanes_for_hits`, `read_passage.py`, `ris_adapter/lookup/render.py`, rendered by `common/grounding_block.render_grounding_block` | `render_grounding_block` emits one `SourcesStep` from `block.lanes`, which becomes typed `TraceLane` models rather than a JSON string. That is one producer site for every evidence tool. The `## Trace-Lanes` line in the tool text is left for now; see F2 |
-| Tool calls (NAT TOOL steps that the executed-steps chips read) | NAT's LangChain profiler, through the step adaptor | One `AsyncCallbackHandler` (`turn_status.ToolStepCallback`: `on_tool_start/end/error` → `ToolStep`, basename only), added once to the conversation graph's run config. NAT's profiler still bills and traces through its own handler |
+| Tool calls (NAT TOOL steps that the executed-steps chips read) | NAT's LangChain profiler, through the step adaptor | One `AsyncCallbackHandler` (`action_rows.ToolStepCallback`: `on_tool_start/end/error` → `ToolStep`, basename only), added once to the conversation graph's run config. NAT's profiler still bills and traces through its own handler |
 | Live prose: `_ProseTokenHandler` → `AnswerStreamSink.push/put/retract` (deltas, `Masthead`, `Snapshot`, `Cards`) | `turn/answer_stream.py`, with `common/answer_prose_stream.py` and `agents/piloti/answer_pipeline.LiveAnswer` | The handler writes bodies: `TEXT_MESSAGE_START`, coalesced `_CONTENT` (flushed when 50 ms have passed since the last flush, before any other body, and at `on_llm_end`), `_END` when the `answer` string closes, `STATE_SNAPSHOT` from `LiveAnswer.settle` (still in `to_thread`, where the writer works), `masthead`, one `card`/`card_refused` per card (the tools' cards first, then the envelope's, as today), and `answer_retracted`. `LiveAnswer` and the verifier are unchanged |
 | The terminal `ChatResponseChunk` with its extras on `model_extra`, lifted by name in `websocket_reconnect.py` (`_TRANSPARENCY_EXTRA_FIELDS`, `_SKILLS_EXTRA_FIELDS`, `_PERSISTED_EXTRA_FIELDS`) | `turn/response.py` `build_response`, `conversation_register._answer_chunks` | `build_result(state, cards, message_id) -> TurnResult`, a typed model, and `_run` yields `RunFinishedBody`. The lift tables, the `setattr` loops and `common/nat_converters.py` are deleted. A refusal is `RunFinishedBody(outcome="refused")` |
 | Run hand-off (ADR-0062) | `turn/commission.py`, lifted as `run_id`/`run_message_id` | `TurnResult.run`, with `outcome="handed_off"` |

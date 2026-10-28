@@ -136,7 +136,7 @@ def format_results(
 
     from aiq_agent.common.grounding_block import GroundingBlock
     from aiq_agent.common.grounding_block import render_grounding_block
-    from aiq_agent.common.turn_status import KNOWLEDGE_SEARCH_TOOL
+    from aiq_agent.common.tool_calls import KNOWLEDGE_SEARCH_TOOL
     from aiq_agent.common.turn_status import current_lane_tool
 
     hits = grounding_hits(retrieval_result.chunks)

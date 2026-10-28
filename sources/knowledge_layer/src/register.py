@@ -11,8 +11,8 @@ from knowledge_layer.knowledge_search import KnowledgeSearch
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.common.turn_status import CONCLUSION_ARG
-from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
+from aiq_agent.common.tool_calls import CONCLUSION_ARG
+from aiq_agent.common.tool_calls import CONCLUSION_DESCRIPTION
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo

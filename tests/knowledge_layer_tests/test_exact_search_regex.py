@@ -421,7 +421,7 @@ class TestLiteralSearchIsRecorded:
     @pytest.mark.parametrize("mode", ["exact", "regex"])
     async def test_each_literal_search_leaves_one_record(self, search_with, monkeypatch, mode):
         recorded: list[str] = []
-        monkeypatch.setattr("aiq_agent.common.turn_status.emit_literal_search", recorded.append)
+        monkeypatch.setattr("aiq_agent.common.action_rows.emit_literal_search", recorded.append)
         search_with(_Store([_chunk("Grundriss_EG.pdf", "BA-03 Nord", page=2)]))
 
         await _search(query="BA-03", match=mode)

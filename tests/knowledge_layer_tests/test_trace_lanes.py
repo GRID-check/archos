@@ -139,7 +139,7 @@ def test_emitted_hits_are_captured_for_the_per_round_ledger():
 
 def test_a_search_result_is_one_sources_step_built_from_its_records(emitted):
     """Through the real producer: the step carries the lanes the records made, and the tool that ran."""
-    from aiq_agent.common.turn_status import READ_PASSAGE_TOOL
+    from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
     from aiq_agent.common.turn_status import lane_tool_scope
     from aiq_agent.common.turn_status import retrieval_round_scope
 

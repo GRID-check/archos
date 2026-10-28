@@ -6,7 +6,7 @@ from aiq_agent.agents.deep_researcher.control import bind_write_now
 from aiq_agent.agents.deep_researcher.control import reset_write_now
 from aiq_agent.agents.deep_researcher.control import write_now_requested
 from aiq_agent.agents.deep_researcher.finalize import _prepend_honesty_banner
-from aiq_agent.common.turn_status import CUTOFF_USER_REQUESTED
+from aiq_agent.common.turn_notices import CUTOFF_USER_REQUESTED
 
 
 def test_nothing_bound_means_nothing_requested():
