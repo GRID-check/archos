@@ -16,14 +16,14 @@ import { AppWiring } from "./config";
 import { QUEUE_TABLE as RESEARCH_TABLE } from "./agent-worker";
 import { QUEUE_TABLE as BFF_TABLE } from "./bff-jobs";
 import { QUEUE_TABLE as INGEST_TABLE } from "./ingest-worker";
-import { JOBS_DB } from "../data/postgres-rename";
+import { APP_DB, JOBS_DB } from "../data/postgres-rename";
 
 /**
  * What the read-only scaler login may read, and the step that makes the tables it
  * reads exist (ADR-0079).
  *
  * KEDA's `postgresql` scaler runs one `COUNT(*)` per queue. It used to do so as
- * the schema owner of `jobs` and of `grid_app`, which meant a credential
+ * the schema owner of `jobs` and of `app`, which meant a credential
  * held by an operator in another namespace could write every table in both. The
  * login it reads through now (`KEDA_SCALER_ROLE`, declared with the other roles
  * in `data/postgres.ts`) has SELECT on the queue tables and nothing else. That
@@ -49,7 +49,7 @@ import { JOBS_DB } from "../data/postgres-rename";
  *      for SELECT only and for this role only. That is the narrowest way across
  *      the boundary: `BYPASSRLS` would be an attribute of the role, to hold for
  *      whatever it is ever granted next, and the tenant policy
- *      (`grid_tenant_isolation`) is left as the migrations wrote it.
+ *      (`tenant_isolation`) is left as the migrations wrote it.
  *
  * Idempotent, so it re-runs whenever its spec changes (every per-SHA image pin)
  * and the Python init container doubles as the upgrade of a queue table.
@@ -85,12 +85,12 @@ export function jobsGrantsSql(tables: string[]): string {
 }
 
 /**
- * The grants for the BFF queue, as run against `grid_app`: SELECT on `status`, and the one
+ * The grants for the BFF queue, as run against `app`: SELECT on `status`, and the one
  * policy that lets the scaler's read cross the organisation boundary. Dropped
  * first so a re-run replaces it rather than failing on it.
  */
 export function appGrantsSql(): string {
-  const policy = "grid_keda_scaler_count";
+  const policy = "keda_scaler_count";
   return (
     scalerTableGrants(BFF_TABLE) +
     `DROP POLICY IF EXISTS ${policy} ON ${BFF_TABLE};\n` +
@@ -147,7 +147,7 @@ export function installQueueScalerGrants(
         // All direct (ADR-0083): a one-shot DDL and GRANT Job holds the owner's
         // session for its own statements and has no use for a pool.
         JOBS_DSN: w.dsn({ db: JOBS_DB, via: "direct" }),
-        APP_DSN: w.dsn({ db: "grid_app", via: "direct" }),
+        APP_DSN: w.dsn({ db: APP_DB, via: "direct" }),
         NAT_JOB_STORE_DB_URL: w.dsn({ db: JOBS_DB, via: "direct", driver: "postgresql+asyncpg" }),
         GRID_SUMMARY_DB: w.dsn({ db: JOBS_DB, via: "direct", driver: "postgresql+psycopg" }),
       },

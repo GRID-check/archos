@@ -331,6 +331,34 @@ release that put it there has run there:
   `Old name, kept for one release by migration 0190`.
 - [ ] **Browser keys.** `storage-rename-boot.ts` and the `grid-locale` cookie
   read (#1358) are deleted the release after.
+- [ ] **Role-name fallback.** The deploy renames the row-level-security roles
+  after the migrations (`rename-legacy-names.sh after-migrate`), because the
+  migrations written before the rename grant to `grid_app_rw` and
+  `grid_app_platform` by name. So a fresh database still bootstraps those names
+  (`init-db.sql`, `ensure_rls_roles`, `ensure-rls-roles.mjs`), and `rls_role()`
+  (0191) answers whichever exists. This stays until a squashed baseline
+  migration replaces the chain; then the bootstrap creates `app_*` directly and
+  `rls_role()` goes.
+
+Persisted names the inventory above did not list, still carrying a brand, each
+its own change with its own migration or read-both:
+
+- [ ] **Session settings** `grid.organization_id` and `grid.user_id`: written by
+  every BFF transaction and read by every policy (`current_org()`), so a
+  read-both in `current_org()` first, then the writers.
+- [ ] **Skill frontmatter keys** `grid-agents`, `grid-hidden`,
+  `grid-auto-invoke`, `grid-execution`, `grid-catalog`, `grid-schedulable`
+  (`lib/skills/types.ts`), stored in skill files and the database.
+- [ ] **Cache keys** `grid:run:*` and `grid:mcp-request-state:v1`: rename and
+  accept one cold cache, or read both for a TTL.
+- [ ] **Secret names** `grid-llm-credential-<org>-<id>` (`llm-credentials/secret-store.ts`):
+  stored per organization, so a copy-then-delete migration.
+- [ ] **Buckets** `grid-documents`, `grid-pg-backups` and the per-organization
+  `grid-org-*` prefix: an object-store copy (ADR-0147 leaves them out of the
+  namespace move).
+- [ ] **Notification tokens** `piloti.work_done`, `piloti.work_failed`,
+  `piloti.asks_you` (`lib/annotations/attention.ts`), where they are stored on
+  inbox rows.
 
 ### Per-move checklist
 

@@ -20,7 +20,7 @@
  * part of this harness, and the claim under test is what the service does with
  * a near-identical vector, not how one is produced.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/projects/memory-service.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs

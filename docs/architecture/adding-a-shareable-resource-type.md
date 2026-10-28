@@ -137,7 +137,7 @@ project-scoped variants from a `listIdsInProject` descriptor member.
 SQL and its own hardcoded `resource_type = 'conversation'` literal. It is not
 working around the helper: it *cannot* call it. The purger is a separate
 CommonJS process (`node purger/index.js`) with no bundler and no TS step, so a
-`'server-only'` module behind `@/…` aliases is unreachable; its grid_app deletes
+`'server-only'` module behind `@/…` aliases is unreachable; its `app` deletes
 must stay inside one postgres.js transaction, while this tier's repositories open
 their own connection; the per-conversation helper is best-effort and never
 throws, where the purger needs a failure to abort and leave the queue row

@@ -14,7 +14,7 @@ the two services can deploy in either order without losing anybody's report.
 
 Two rules shape everything here.
 
-**Python never touches the database.** ``grid_app`` is single-writer and the
+**Python never touches the database.** ``app`` is single-writer and the
 BFF owns Postgres, so this writes over the internal HTTP API with the service
 token, exactly as the memory-reflection step already does from inside a worker.
 

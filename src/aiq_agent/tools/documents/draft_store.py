@@ -32,7 +32,7 @@ Storage
 -------
 ``langgraph.store.postgres.AsyncPostgresStore`` on the Python service's own
 checkpoint database (``GRID_CHECKPOINT_DB``), sharing the pool the checkpointer
-already opens. No table in ``grid_app``: the single-writer rule holds. A
+already opens. No table in ``app``: the single-writer rule holds. A
 non-Postgres DSN (the SQLite dev fallback) gets an ``InMemoryStore`` instead,
 and says once that drafts do not survive a restart.
 """
@@ -621,7 +621,7 @@ async def delete_conversation_drafts(conversation_id: str, dsn: str | None = Non
     """Drop one conversation's whole working directory. Returns how many files went.
 
     **Why the working directory needs deleting at all.** Everything else a
-    conversation owns lives in ``grid_app`` and goes when the conversation row
+    conversation owns lives in ``app`` and goes when the conversation row
     does. These drafts do not: they sit in the LangGraph store under
     :func:`draft_namespace`, keyed by a conversation id that no longer names
     anything, where nothing will ever read them and nothing will ever total

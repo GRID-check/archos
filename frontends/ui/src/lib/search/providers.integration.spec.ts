@@ -4,7 +4,7 @@
  * The search's annotation, folder and conversation providers against a REAL
  * Postgres through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/search/providers.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

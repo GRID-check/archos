@@ -8,7 +8,7 @@
  * export published none, a window's sill height, the clear height under a
  * suspended ceiling — and those need the geometry, which means they need the
  * file. The agent backend has no object storage of its own (ADR-0045: the BFF
- * owns `grid_app` and the bucket), so it obtains the source the way the viewer
+ * owns `app` and the bucket), so it obtains the source the way the viewer
  * does: it asks for a short-lived presigned URL and reads it.
  *
  * ## Why this is a source URL and not "run the operator here"

@@ -4,22 +4,39 @@
 #
 #   aiq_jobs        -> jobs
 #   aiq_checkpoints -> checkpoints
+#   grid_app        -> app
 #   role aiq        -> agent
 #
-# Run on every deploy before the backend starts: the Kubernetes Job
-# `pg-rename-legacy-names` (deploy/pulumi/src/data/postgres-rename.ts) and the
-# Compose service `postgres-rename`. Idempotent: a name already renamed is left
-# alone, and a fresh install that never had the old names is left alone too, so
-# the second run is a no-op.
+# and, once the migrations have run (`after-migrate`), the row-level-security
+# roles:
+#
+#   grid_app_owner    -> app_owner
+#   grid_app_platform -> app_platform
+#   grid_app_rw       -> app_rw
+#   grid_keda_scaler  -> keda_scaler
+#
+# The roles go last because the migrations written before the rename grant to
+# them by their old names: a fresh install creates them under those names
+# (`ensure_rls_roles` here, `init-db.sql` in Compose), migrates, and renames.
+#
+# Run on every deploy before the backend starts: the Kubernetes Jobs
+# `pg-rename-legacy-names` and `pg-rename-rls-roles`
+# (deploy/pulumi/src/data/postgres-rename.ts) and the Compose services
+# `postgres-rename` and `postgres-rename-roles`. Idempotent: a name already
+# renamed is left alone, and a fresh install that never had the old names is
+# left alone too, so the second run is a no-op.
 #
 # It connects as a superuser to the maintenance database `postgres`, from the
 # libpq environment (PGHOST, PGPORT, PGUSER, PGPASSWORD). A database is renamed
 # with new connections refused and the open ones terminated: the deploy that
 # carries this is a short outage, which the release note says. ROLE_PASSWORD,
 # when set, becomes the role's password afterwards, because a rename clears an
-# MD5 hash (a SCRAM one survives).
+# MD5 hash (a SCRAM one survives). RUNTIME_PASSWORD and SCALER_PASSWORD, when
+# set, are the runtime and the KEDA scaler role's passwords: Kubernetes keeps
+# these roles here rather than in the Cluster's `managed.roles`, which would
+# create the new names as new, empty roles before the rename ran.
 #
-# Usage: rename-legacy-names.sh
+# Usage: rename-legacy-names.sh [after-migrate]
 set -eu
 PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 export PGOPTIONS
@@ -117,17 +134,70 @@ rename_role() {
 
 set_password() {
   role=$1
-  [ -n "${ROLE_PASSWORD:-}" ] || return 0
+  password=${2:-${ROLE_PASSWORD:-}}
+  [ -n "$password" ] || return 0
   role_exists "$role" || return 0
-  echo "ALTER ROLE $role PASSWORD :'password'" | q -v password="$ROLE_PASSWORD"
+  echo "ALTER ROLE $role PASSWORD :'password'" | q -v password="$password"
+}
+
+# The row-level-security roles, old name then new (ADR-0041, ADR-0145 row 10d).
+RLS_ROLES="grid_app_owner:app_owner grid_app_platform:app_platform grid_app_rw:app_rw grid_keda_scaler:keda_scaler"
+
+# Whichever of a role's two names exists, or nothing.
+current_name() {
+  if role_exists "$2"; then echo "$2"; elif role_exists "$1"; then echo "$1"; fi
+}
+
+# Before the migrations: every row-level-security role exists under one of its
+# names. One that has neither is a fresh install, created under the OLD name
+# the earlier migrations grant to; `after-migrate` renames it. The scaler role
+# only where its password is set (Kubernetes). Passwords follow the Secrets.
+ensure_rls_roles() {
+  for pair in $RLS_ROLES; do
+    old=${pair%%:*}
+    new=${pair#*:}
+    [ -z "$(current_name "$old" "$new")" ] || continue
+    case $new in
+      app_owner) q -c "CREATE ROLE $old LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE" ;;
+      app_platform) q -c "CREATE ROLE $old NOLOGIN BYPASSRLS" ;;
+      app_rw) q -c "CREATE ROLE $old LOGIN NOINHERIT NOBYPASSRLS" ;;
+      keda_scaler)
+        [ -n "${SCALER_PASSWORD:-}" ] || continue
+        q -c "CREATE ROLE $old LOGIN NOINHERIT NOBYPASSRLS CONNECTION LIMIT ${SCALER_CONNECTION_LIMIT:-4}"
+        ;;
+    esac
+    echo "role $old: created"
+  done
+  # The runtime role steps up to the platform role per transaction, by asking.
+  q -c "GRANT $(current_name grid_app_platform app_platform) TO $(current_name grid_app_rw app_rw)"
+  set_rls_passwords
+}
+
+set_rls_passwords() {
+  set_password "$(current_name grid_app_rw app_rw)" "${RUNTIME_PASSWORD:-}"
+  set_password "$(current_name grid_keda_scaler keda_scaler)" "${SCALER_PASSWORD:-}"
+}
+
+rename_rls_roles() {
+  for pair in $RLS_ROLES; do
+    rename_role "${pair%%:*}" "${pair#*:}"
+  done
+  set_rls_passwords
 }
 
 wait_for_server
 log_in
+if [ "${1:-}" = after-migrate ]; then
+  rename_rls_roles
+  echo "rename of the row-level-security roles: done"
+  exit 0
+fi
 rename_database aiq_jobs jobs
 rename_database aiq_checkpoints checkpoints
+rename_database grid_app app
 rename_role aiq agent
 set_password agent
+[ -z "${ENSURE_RLS_ROLES:-}" ] || ensure_rls_roles
 # Left behind only by a run that died between creating and dropping it.
 q -c "DROP ROLE IF EXISTS rename_helper"
 echo "rename of the legacy names: done"

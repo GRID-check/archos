@@ -215,7 +215,7 @@ describe('platform scope', () => {
     ]) {
       const { fn, executed } = makeSql()
       await run(fn)
-      expect(executed[0].text).toBe('SET LOCAL ROLE grid_app_platform')
+      expect(executed[0].text).toBe('SET LOCAL ROLE app_platform')
       expect(executed).toHaveLength(2)
     }
   })

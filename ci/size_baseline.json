@@ -12,7 +12,7 @@
     "apps/site/src/scripts/landing.ts": 919,
     "deploy/pulumi/src/app/config.ts": 791,
     "deploy/pulumi/src/constants.ts": 862,
-    "deploy/pulumi/src/data/postgres.ts": 920,
+    "deploy/pulumi/src/data/postgres.ts": 901,
     "deploy/pulumi/src/data/seaweedfs-split.ts": 640,
     "deploy/pulumi/src/platform/langfuse.ts": 722,
     "evals/oib-retrieval/src/oib_retrieval/overview.py": 804,
