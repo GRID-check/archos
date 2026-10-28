@@ -2,7 +2,7 @@
 
 Every evidence tool answers in one grammar: a preamble, a run of
 ``--- Result N ---`` blocks, and a ``## Trace-Lanes`` object. Two packages used
-to write that grammar by hand (``knowledge_layer.register._format_results`` and
+to write that grammar by hand (``knowledge_layer.search_results.format_results`` and
 ``ris_adapter.lookup.render``) and a third read it back with eleven regexes on
 every live turn. Three copies of one layout, in three repositories' worth of
 review.
@@ -64,7 +64,7 @@ class SourceRegion:
     SHOWS IT: a whole rendered PDF page, or a whole uploaded image, top-left
     origin. That is the frame the visual analysis read the picture in, so the
     box needs no conversion, and it is why a region is only ever produced for
-    those two frames (``knowledge_layer.register._hit_regions``). An embedded
+    those two frames (``knowledge_layer.grounding_hits._hit_regions``). An embedded
     raster's box is relative to the raster, whose placement on the page is not
     stored, so it gets none rather than a box in the wrong place.
 

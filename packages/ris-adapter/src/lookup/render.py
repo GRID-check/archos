@@ -10,7 +10,7 @@ that reads a corpus hit reads this.
 
 from __future__ import annotations
 
-from knowledge_layer.register import _trace_lanes_for_chunks
+from knowledge_layer.trace_lanes import _trace_lanes_for_chunks
 from ris_adapter.lookup.address import Address
 from ris_adapter.lookup.address import federal_state_sentence
 from ris_adapter.lookup.passages import DOC_CLASS

@@ -342,7 +342,7 @@ class QdrantStore:
 
         The stored class beats the chunk's, so the copy wrote it over the
         chunk's; with the stored class gone, the chunk's is what a reader falls
-        back to (``register._hit_doc_class``) and what a ``doc_class``
+        back to (``hit_metadata.hit_doc_class``) and what a ``doc_class``
         pre-filter must match. It is per file (ingestion stamps it per file),
         so one point of each file says it: one small read per file, then every
         change in bounded batches. A point written before

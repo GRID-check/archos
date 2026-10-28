@@ -505,18 +505,18 @@ def _ranked_many() -> list[Chunk]:
 class TestTheOverviewIsNotBuriedInRankedHits:
     async def test_only_a_few_ranked_passages_ride_beside_the_overview(self, corpus):
         """The overview answers; sixteen ranked passages beside it were half the block."""
-        reg = importlib.import_module("knowledge_layer.register")
+        family = importlib.import_module("knowledge_layer.family_branch")
         corpus(MEMBERS, ranked=_ranked_many())
 
         out = await _search()
 
         citations = _citations(out)
         assert citations[:4] == [f"{MEMBERS[number]}, p.2" for number in ("2", "2.1", "2.2", "2.3")]
-        assert len(citations) == 4 + reg._FAMILY_RANKED_HITS
+        assert len(citations) == 4 + family.FAMILY_RANKED_HITS
 
     async def test_the_ranked_passages_left_out_are_counted_on_the_span(self, corpus, monkeypatch):
         """The cap and the floor record what they drop; so does the family budget."""
-        reg = importlib.import_module("knowledge_layer.register")
+        family = importlib.import_module("knowledge_layer.family_branch")
         corpus(MEMBERS, ranked=_ranked_many())
         span: dict = {}
 
@@ -527,7 +527,7 @@ class TestTheOverviewIsNotBuriedInRankedHits:
         await _search()
 
         # Ten ranked, eight past the top-k cap, four of those beside the overview.
-        assert span["dropped_by_family"] == _config().top_k - reg._FAMILY_RANKED_HITS
+        assert span["dropped_by_family"] == _config().top_k - family.FAMILY_RANKED_HITS
 
     async def test_the_span_says_how_the_members_were_read(self, corpus, monkeypatch):
         """``family_read``: "retrieve" when the probe was embedded, "fetch" when read by filter alone."""

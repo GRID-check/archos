@@ -11,10 +11,10 @@ All tests are offline: no ChromaDB, no embeddings, no network.
 """
 
 import pytest
+from knowledge_layer.fusion import merge_results
 from knowledge_layer.register import KnowledgeRetrievalConfig
-from knowledge_layer.register import _merge_results
-from knowledge_layer.register import _resolve_target_collections
-from knowledge_layer.register import _restrict_scope_to_turn
+from knowledge_layer.search_scope import _resolve_target_collections
+from knowledge_layer.search_scope import restrict_scope_to_turn
 
 from aiq_agent.knowledge.base import SESSION_COLLECTION_PREFIX
 from aiq_agent.knowledge.base import TTLCleanupMixin
@@ -156,7 +156,7 @@ class TestRestrictScopeToTurn:
                 ScopedCollection("archiv_org", Shelf.OFFICE_SHELF),
                 ScopedCollection("s_1", Shelf.SESSION),
             ]
-            kept = [entry.collection for entry in _restrict_scope_to_turn(entries)]
+            kept = [entry.collection for entry in restrict_scope_to_turn(entries)]
             # The Büroablage is still subtracted — that narrowing is what #429 asked for.
             assert "archiv_org" not in kept
             assert set(kept) == {"s_1", "oib_knowledge"}
@@ -176,7 +176,7 @@ class TestRestrictScopeToTurn:
                 ScopedCollection("proj_1", Shelf.PROJECT),
                 ScopedCollection("s_1", Shelf.SESSION),
             ]
-            assert [entry.collection for entry in _restrict_scope_to_turn(entries)] == [
+            assert [entry.collection for entry in restrict_scope_to_turn(entries)] == [
                 "oib_knowledge",
                 "proj_1",
                 "s_1",
@@ -198,7 +198,7 @@ class TestMergeResults:
         # score here is what used to throw the fusion away.
         r1 = _result([_chunk(0.5, "a.pdf", rank=0), _chunk(0.9, "b.pdf", rank=1)])
         r2 = _result([_chunk(0.7, "c.pdf", rank=0)])
-        merged = _merge_results([r1, r2], query="q", top_k=5, backend_name="llamaindex")
+        merged = merge_results([r1, r2], query="q", top_k=5, backend_name="llamaindex")
         assert merged.success is True
         assert [(c.file_name, c.score) for c in merged.chunks] == [("a.pdf", 0.5), ("c.pdf", 0.7), ("b.pdf", 0.9)]
 
@@ -212,13 +212,13 @@ class TestMergeResults:
             lambda: None,
         )
         r1 = _result([_chunk(0.95, "upload.pdf"), _chunk(0.9, "archiv-plan.pdf")])
-        merged = _merge_results([r1], query="q", top_k=5, backend_name="llamaindex")
+        merged = merge_results([r1], query="q", top_k=5, backend_name="llamaindex")
         assert [c.file_name for c in merged.chunks] == ["upload.pdf"]
 
     def test_truncates_to_top_k_of_the_fused_order(self):
         r1 = _result([_chunk(0.5, "a.pdf", rank=0), _chunk(0.9, "b.pdf", rank=1), _chunk(0.1, "c.pdf", rank=2)])
         r2 = _result([_chunk(0.7, "d.pdf", rank=0), _chunk(0.8, "e.pdf", rank=1)])
-        merged = _merge_results([r1, r2], query="q", top_k=2, backend_name="llamaindex")
+        merged = merge_results([r1, r2], query="q", top_k=2, backend_name="llamaindex")
         # The two rank-0 hits, base collection first — not the two best cosines.
         assert [(c.file_name, c.score) for c in merged.chunks] == [("a.pdf", 0.5), ("d.pdf", 0.7)]
 
@@ -226,15 +226,15 @@ class TestMergeResults:
         # Results that stamp no retrieval_rank (test doubles, anything predating
         # the field) must keep behaving as if the returned order were the rank.
         r1 = _result([_chunk(0.5, "a.pdf"), _chunk(0.9, "b.pdf")])
-        merged = _merge_results([r1], query="q", top_k=5, backend_name="llamaindex", max_per_document=0)
+        merged = merge_results([r1], query="q", top_k=5, backend_name="llamaindex", max_per_document=0)
         assert [(c.file_name, c.score) for c in merged.chunks] == [("a.pdf", 0.5), ("b.pdf", 0.9)]
 
     def test_merge_records_a_fusion_score_without_touching_the_displayed_similarity(self):
-        # _format_results prints `Relevance Score:` from `score`; citation parsing
+        # format_results prints `Relevance Score:` from `score`; citation parsing
         # anchors on that literal, so the merge must never overwrite it with a
         # fusion score that is not a similarity at all.
         r1 = _result([_chunk(0.5, "a.pdf", rank=0)])
-        merged = _merge_results([r1], query="q", top_k=5, backend_name="llamaindex")
+        merged = merge_results([r1], query="q", top_k=5, backend_name="llamaindex")
         assert merged.chunks[0].score == 0.5
         assert merged.chunks[0].fusion_score is not None
         assert merged.chunks[0].fusion_score != merged.chunks[0].score
@@ -242,26 +242,26 @@ class TestMergeResults:
     def test_tolerates_failed_layer(self):
         ok = _result([_chunk(0.6)])
         failed = _result([], success=False, error="Collection not found")
-        merged = _merge_results([ok, failed], query="q", top_k=5, backend_name="llamaindex")
+        merged = merge_results([ok, failed], query="q", top_k=5, backend_name="llamaindex")
         assert merged.success is True
         assert [c.score for c in merged.chunks] == [0.6]
 
     def test_tolerates_exception_layer(self):
         ok = _result([_chunk(0.6)])
-        merged = _merge_results([ok, RuntimeError("boom")], query="q", top_k=5, backend_name="llamaindex")
+        merged = merge_results([ok, RuntimeError("boom")], query="q", top_k=5, backend_name="llamaindex")
         assert merged.success is True
         assert [c.score for c in merged.chunks] == [0.6]
 
     def test_all_failed_returns_empty_success(self):
         failed = _result([], success=False, error="Collection not found")
-        merged = _merge_results([failed, RuntimeError("boom")], query="q", top_k=5, backend_name="llamaindex")
-        # success=True with empty chunks so _format_results renders "No relevant documents found"
+        merged = merge_results([failed, RuntimeError("boom")], query="q", top_k=5, backend_name="llamaindex")
+        # success=True with empty chunks so format_results renders "No relevant documents found"
         assert merged.success is True
         assert merged.chunks == []
 
     def test_backend_preserved_from_successful_result(self):
         r1 = _result([_chunk(0.6)], backend="fake")
-        merged = _merge_results([r1], query="q", top_k=5, backend_name="fallback")
+        merged = merge_results([r1], query="q", top_k=5, backend_name="fallback")
         assert merged.backend == "fake"
 
 
@@ -270,7 +270,7 @@ class TestMergeEmbeddingMismatch:
 
     Regression: a wrong GRID_EMBED_MODEL/GRID_EMBED_BASE_URL raised RuntimeError
     in ``_get_index``, ``_retrieve_sync`` converted it to ``success=False``,
-    and ``_merge_results`` skipped the layer and returned ``success=True`` —
+    and ``merge_results`` skipped the layer and returned ``success=True`` —
     total base-corpus loss read as fewer sources.
     """
 
@@ -287,13 +287,13 @@ class TestMergeEmbeddingMismatch:
         )
 
     def test_total_mismatch_is_an_error_not_a_miss(self):
-        merged = _merge_results([self._mismatch()], query="q", top_k=5, backend_name="llamaindex")
+        merged = merge_results([self._mismatch()], query="q", top_k=5, backend_name="llamaindex")
         assert merged.success is False
         assert merged.chunks == []
         assert "embedding mismatch" in (merged.error_message or "").lower()
 
     def test_mismatch_exception_layer_is_an_error(self):
-        merged = _merge_results(
+        merged = merge_results(
             [RuntimeError("Collection 'oib_knowledge' embedding mismatch: stale vectors")],
             query="q",
             top_k=5,
@@ -304,7 +304,7 @@ class TestMergeEmbeddingMismatch:
 
     def test_partial_mismatch_is_degraded_not_silent(self):
         ok = _result([_chunk(0.6)])
-        merged = _merge_results([self._mismatch(), ok], query="q", top_k=5, backend_name="llamaindex")
+        merged = merge_results([self._mismatch(), ok], query="q", top_k=5, backend_name="llamaindex")
         assert merged.success is True
         assert [c.score for c in merged.chunks] == [0.6]
         assert merged.error_message
@@ -312,25 +312,25 @@ class TestMergeEmbeddingMismatch:
 
     def test_routine_not_found_stays_quiet_success(self):
         failed = _result([], success=False, error="Collection 's_abc' not found")
-        merged = _merge_results([failed], query="q", top_k=5, backend_name="llamaindex")
+        merged = merge_results([failed], query="q", top_k=5, backend_name="llamaindex")
         assert merged.success is True
         assert merged.error_message is None
         assert merged.chunks == []
 
     def test_total_mismatch_formats_as_failure(self):
-        from knowledge_layer.register import _format_results
+        from knowledge_layer.search_results import format_results
 
-        merged = _merge_results([self._mismatch()], query="q", top_k=5, backend_name="llamaindex")
-        text = _format_results(merged, "q")
+        merged = merge_results([self._mismatch()], query="q", top_k=5, backend_name="llamaindex")
+        text = format_results(merged, "q")
         assert "failed" in text.lower()
         assert "embedding mismatch" in text.lower()
 
     def test_partial_mismatch_formats_with_warning_banner(self):
-        from knowledge_layer.register import _format_results
+        from knowledge_layer.search_results import format_results
 
         ok = _result([_chunk(0.6)])
-        merged = _merge_results([self._mismatch(), ok], query="q", top_k=5, backend_name="llamaindex")
-        text = _format_results(merged, "q")
+        merged = merge_results([self._mismatch(), ok], query="q", top_k=5, backend_name="llamaindex")
+        text = format_results(merged, "q")
         assert "warning" in text.lower()
         assert "content 0.6" in text
 
@@ -354,7 +354,7 @@ class TestMergeDiversity:
                 _chunk(0.50, "b.pdf", rank=4),
             ]
         )
-        merged = _merge_results([r1], query="q", top_k=3, backend_name="llamaindex", max_per_document=2)
+        merged = merge_results([r1], query="q", top_k=3, backend_name="llamaindex", max_per_document=2)
         assert [(c.file_name, c.score) for c in merged.chunks] == [("a.pdf", 0.95), ("a.pdf", 0.90), ("b.pdf", 0.50)]
 
     def test_fill_pass_exceeds_the_cap_when_distinct_documents_run_out(self):
@@ -362,7 +362,7 @@ class TestMergeDiversity:
         # deferred rank-2 hit must come back rather than the merge returning 3 chunks.
         r1 = _result([_chunk(0.9, "a.pdf", rank=0), _chunk(0.8, "a.pdf", rank=1), _chunk(0.7, "a.pdf", rank=2)])
         r2 = _result([_chunk(0.6, "b.pdf", rank=0)])
-        merged = _merge_results([r1, r2], query="q", top_k=4, backend_name="llamaindex", max_per_document=2)
+        merged = merge_results([r1, r2], query="q", top_k=4, backend_name="llamaindex", max_per_document=2)
         # Fused order is a@0, b@0 (the tie goes to the base collection), a@1, a@2 — and
         # the returned slate is that order, not "selected first, deferred appended".
         assert [(c.file_name, c.score) for c in merged.chunks] == [
@@ -374,7 +374,7 @@ class TestMergeDiversity:
 
     def test_single_collection_with_cap_matches_plain_truncation(self):
         chunks = [_chunk(score, "a.pdf", rank=rank) for rank, score in enumerate((0.9, 0.8, 0.7, 0.6, 0.5))]
-        merged = _merge_results([_result(chunks)], query="q", top_k=4, backend_name="llamaindex", max_per_document=2)
+        merged = merge_results([_result(chunks)], query="q", top_k=4, backend_name="llamaindex", max_per_document=2)
         assert [c.score for c in merged.chunks] == [0.9, 0.8, 0.7, 0.6]
 
     def test_same_file_name_in_different_collections_counts_separately(self):
@@ -382,18 +382,18 @@ class TestMergeDiversity:
         # a.pdf hits shared a document key, the second slot would go to b.pdf instead.
         base = _result([_chunk(0.9, "a.pdf", rank=0, collection="oib_knowledge"), _chunk(0.5, "b.pdf", rank=1)])
         project = _result([_chunk(0.8, "a.pdf", rank=0, collection="proj_123")])
-        merged = _merge_results([base, project], query="q", top_k=2, backend_name="llamaindex", max_per_document=1)
+        merged = merge_results([base, project], query="q", top_k=2, backend_name="llamaindex", max_per_document=1)
         assert [(c.file_name, c.score) for c in merged.chunks] == [("a.pdf", 0.9), ("a.pdf", 0.8)]
 
     def test_cap_one_keeps_one_chunk_per_document(self):
         # Plain top-2 would return both a.pdf hits; the cap must hand slot 2 to b.pdf.
         r1 = _result([_chunk(0.9, "a.pdf", rank=0), _chunk(0.85, "a.pdf", rank=1), _chunk(0.5, "b.pdf", rank=2)])
-        merged = _merge_results([r1], query="q", top_k=2, backend_name="llamaindex", max_per_document=1)
+        merged = merge_results([r1], query="q", top_k=2, backend_name="llamaindex", max_per_document=1)
         assert [(c.file_name, c.score) for c in merged.chunks] == [("a.pdf", 0.9), ("b.pdf", 0.5)]
 
     def test_cap_zero_disables_diversity(self):
         r1 = _result([_chunk(0.9, "a.pdf", rank=0), _chunk(0.8, "a.pdf", rank=1), _chunk(0.5, "b.pdf", rank=2)])
-        merged = _merge_results([r1], query="q", top_k=2, backend_name="llamaindex", max_per_document=0)
+        merged = merge_results([r1], query="q", top_k=2, backend_name="llamaindex", max_per_document=0)
         assert [(c.file_name, c.score) for c in merged.chunks] == [("a.pdf", 0.9), ("a.pdf", 0.8)]
 
 

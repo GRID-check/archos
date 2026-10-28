@@ -1060,7 +1060,7 @@ passage body under that last line, and one `## Trace-Lanes` object at the end.
 The hit is now a record and the text is its rendering.
 `common/grounding_block.py` holds `GroundingHit`, `GroundingBlock` and the one
 renderer, `render_grounding_block`. Both producers build records and call it:
-`knowledge_layer.register._format_results` turns chunks into hits
+`knowledge_layer.search_results.format_results` turns chunks into hits
 (`_grounding_hit`, which is also where the Trace-Lanes fan-out reads a hit's
 shelf, Dokumentart and title from, so the header and the fan-out cannot
 disagree), and `ris_adapter.lookup.render.format_passages` turns `Passage`
@@ -1137,7 +1137,7 @@ words, overview nouns and edition words around it), asks
 `read_passage.family_overview` for every member the corpus holds, and renders
 those members' scope passages ahead of its own hits in ONE grounding block,
 with one `## Gliederung` per member as the trailer. Beside the overview the
-block keeps at most four ranked hits (`_FAMILY_RANKED_HITS`), and the requery
+block keeps at most four ranked hits (`family_branch.FAMILY_RANKED_HITS`), and the requery
 judge never runs on it. One search round, then one round of Punkt opens. Membership is derived from what is indexed
 (`oib_families`), so a deployment without 2.3 is never told it has one, and a
 query that also names a topic, a Punkt, a page, a table or a file is an
@@ -1191,8 +1191,8 @@ countable in a trace.
 
 ### Agentic retrieval quality package (ADR-0039)
 
-Five retrieval-quality improvements sit in the knowledge layer's `register.py`
-(`knowledge_search` / `knowledge_retrieval`) and `llamaindex` package, all
+Five retrieval-quality improvements sit in the knowledge layer's ranked search
+(`knowledge_search.py`, `ranked_search.py`, `fusion.py`) and `llamaindex` package, all
 **fail-open** (any error degrades to the previous plain behavior, never raises):
 
 1. **Agentic filters** — `knowledge_search` is the evidence tool (read/cite).
@@ -1420,7 +1420,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   config (a `file_name NOT IN [...]` filter on the base collection only —
   session/project collections are never filtered). The same base-collection
   filter always carries `chunking != "page"`
-  (`_NON_EVIDENCE_CHUNKING` in the knowledge layer's `register.py`): the Punkt
+  (`_NON_EVIDENCE_CHUNKING` in the knowledge layer's `search_scope.py`): the Punkt
   chunker emits each Richtlinie's cover page and Impressum as per-page chunks,
   they are the only chunks still carrying the running title, and a title-shaped
   query therefore returned four cover pages at page 1 and nothing citable. `$ne`
