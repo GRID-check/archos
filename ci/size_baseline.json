@@ -82,7 +82,7 @@
     "frontends/ui/src/features/jobs/components/schedule-wizard.tsx": 1291,
     "frontends/ui/src/features/knowledge/components/pdf-document-view.tsx": 2082,
     "frontends/ui/src/features/knowledge/lib/passage-highlight.ts": 758,
-    "frontends/ui/src/features/layout/components/ChatArea.tsx": 2522,
+    "frontends/ui/src/features/layout/components/ChatArea.tsx": 1893,
     "frontends/ui/src/features/layout/components/ChatToolbar.tsx": 668,
     "frontends/ui/src/features/layout/components/InputArea.tsx": 2341,
     "frontends/ui/src/features/layout/components/SessionsPanel.tsx": 1304,
