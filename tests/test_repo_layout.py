@@ -77,6 +77,8 @@ HISTORY = (
     ":!releasenotes/",
     ":!docs/audit/",
     ":!apps/workspace/migrations/",
+    # The secret scan walks full history, so its allowlist names the paths the fixtures lived at then.
+    ":!.gitleaks.toml",
     # Baselines and duration tables key their entries by path from the app root (`shared/cards/...`).
     ":(exclude,glob)apps/workspace/**/*.json",
 )
