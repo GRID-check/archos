@@ -220,6 +220,17 @@ repos:
         pass_filenames: false
         files: ^releasenotes/.*\.yaml$|^scripts/release_notes\.py$
 
+      - id: merge-release-notes
+        name: a merge commit writes no release note
+        # reno cannot read a merge commit that adds or edits a note, and no
+        # later commit clears it: the fix is a force-push or a new PR. That
+        # happened on #926, #1305 and #1342 with the gotchas row already
+        # written. Does nothing outside a merge.
+        entry: .venv/bin/python scripts/check_merge_release_notes.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
   - repo: https://github.com/tcort/markdown-link-check
     rev: v3.11.2
     hooks:
