@@ -1,0 +1,10 @@
+---
+fixes:
+  - >
+    The search now finds the same documents whether you type Flächenwidmung or
+    Flaechenwidmung, and "current only" keeps every matching document instead of
+    dropping older uploads.
+  - >
+    A search for a word no document contains no longer fills the list with
+    unrelated files, while a question asked in other words still finds the
+    passages that answer it.

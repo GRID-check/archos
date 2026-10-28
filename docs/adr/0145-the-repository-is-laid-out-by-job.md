@@ -272,7 +272,7 @@ open PRs touching that tree have drained or been rebased by their authors.
 
 | # | Move | Lines | Waits on |
 |---|---|---|---|
-| 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter; in flight, and written here if that PR has not merged), and `tests/test_repo_layout.py` (below) | — | — |
+| 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter, `tests/test_ci_filter_coverage.py`), and `tests/test_repo_layout.py` (below), which every later row edits: it drops its legacy name and adds its old path to `MOVED` | — | — |
 | 1 | `plans/` and `docs/superpowers/` deleted (#1250, #1252) | — | — |
 | 2 | `frontends/benchmarks/oib_retrieval` + `tests/benchmarks` → `evals/`; distribution name per rule 3; `oib_compliance` deleted | 140 | — |
 | 3 | `frontends/web` → `apps/site`; `shared/brand` and the brand script → `packages/brand`; task namespace `web:` → `site:` | ~140 | open site PRs |
@@ -323,12 +323,12 @@ release that put it there has run there:
   PR sets it back to `false` and deletes the Job and
   `deploy/postgres/rename-legacy-names.sh` (and the Compose `postgres-rename`
   service). Never in the same promotion as #1335.
-- [ ] **Table views.** 0188 leaves `piloti_wakes`, `piloti_changes` and
+- [ ] **Table views.** 0189 leaves `piloti_wakes`, `piloti_changes` and
   `piloti_asks` as views over the `agent_*` tables (#1338). The next release
   drops them in a migration.
-- [ ] **Function wrappers.** 0189 keeps each `grid_` function's old name as a
+- [ ] **Function wrappers.** 0190 keeps each `grid_` function's old name as a
   wrapper (#1342). The next release drops every function whose comment starts
-  `Old name, kept for one release by migration 0189`.
+  `Old name, kept for one release by migration 0190`.
 - [ ] **Browser keys.** `storage-rename-boot.ts` and the `grid-locale` cookie
   read (#1358) are deleted the release after.
 - [ ] **Role-name fallback.** The deploy renames the row-level-security roles
@@ -336,7 +336,7 @@ release that put it there has run there:
   migrations written before the rename grant to `grid_app_rw` and
   `grid_app_platform` by name. So a fresh database still bootstraps those names
   (`init-db.sql`, `ensure_rls_roles`, `ensure-rls-roles.mjs`), and `rls_role()`
-  (0190) answers whichever exists. This stays until a squashed baseline
+  (0191) answers whichever exists. This stays until a squashed baseline
   migration replaces the chain; then the bootstrap creates `app_*` directly and
   `rls_role()` goes.
 

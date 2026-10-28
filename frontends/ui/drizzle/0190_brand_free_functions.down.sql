@@ -1,4 +1,4 @@
--- Reverse 0189. ORDER: roll the frontend, purger and scheduler back first; the
+-- Reverse 0190. ORDER: roll the frontend, purger and scheduler back first; the
 -- older builds call the `grid_` names, which the wrappers keep answering until
 -- this runs. It drops the wrappers, renames each function back, and writes the
 -- bodies that call one another with the old names again.
@@ -9,7 +9,7 @@ DECLARE
     'grid_conversation_restricted_use', 'grid_cosine_similarity', 'grid_current_org',
     'grid_current_user_id', 'grid_document_access_log_guard', 'grid_document_quarantine_decisions_guard',
     'grid_documents_hold_quarantine', 'grid_feedback_restricted_use',
-    'grid_folder_ancestry', 'grid_folder_bin_lock_key', 'grid_folder_subtree', 'grid_legal_hold_blocks',
+    'grid_fold_german', 'grid_folder_ancestry', 'grid_folder_bin_lock_key', 'grid_folder_subtree', 'grid_legal_hold_blocks',
     'grid_mark_conversation_messages', 'grid_mark_conversation_restricted_use', 'grid_mark_feedback_restricted_use',
     'grid_mark_message_restricted_use', 'grid_mark_revision_thread', 'grid_mark_revision_thread_of_task',
     'grid_mark_revision_threads_of_document', 'grid_mark_revision_threads_of_folder',
@@ -26,7 +26,7 @@ BEGIN
     SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS identity_args
       FROM pg_proc p
      WHERE p.pronamespace = 'public'::regnamespace AND p.proname = ANY (functions)
-       AND obj_description(p.oid, 'pg_proc') LIKE 'Old name, kept for one release by migration 0189%'
+       AND obj_description(p.oid, 'pg_proc') LIKE 'Old name, kept for one release by migration 0190%'
   LOOP
     EXECUTE format('DROP FUNCTION public.%I(%s)', f.proname, f.identity_args);
   END LOOP;

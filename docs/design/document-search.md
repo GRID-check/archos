@@ -159,9 +159,25 @@ counting there would count what the reader may not open. ADR-0136 records this.
 
 Postgres decides which documents are in a result; Qdrant only ranks their
 passages. With text, the content search is pre-filtered for recall: by
-`grid_document_id` in the SQL candidates when they are few, else by the payload
-fields ingestion mirrors onto every chunk (`document_type`, `references`,
-`dossier_facts`). No Qdrant count is ever shown.
+`grid_document_id` in the SQL candidates when they are few (and by their file
+names, for the passages written before that field or copied from Chroma, which
+carry none), else by the payload fields ingestion mirrors onto every chunk
+(`document_type`, `references`, `dossier_facts`). No Qdrant count is ever shown.
+
+A content hit is one of two kinds. Its passage holds a word of the query (the
+BM25 or an exact-term channel ranked it): `matchedOn` says `content`. Or it is
+only near in meaning (an English question over a German document, a synonym):
+`matchedOn` says `meaning`, and the backend keeps it only above a cosine floor
+(`MEANING_ONLY_MIN_COSINE` in `aiq_api/routes/document_search.py`, measured on
+the deployed embedder), because the fusion always fills its candidates from the
+dense channel and a word nobody wrote would otherwise return the nearest
+passages as hits.
+
+The words are matched in one German spelling: ä ö ü ß and ae oe ue ss are the
+same letters in a name, in the reading's full-text vector (both through
+`fold_german`, migration 0188) and in the BM25 channel, which asks both
+spellings and keeps the one the documents hold
+(`german_text.umlaut_spellings`).
 
 The projection is derived, never authored. A row is written:
 

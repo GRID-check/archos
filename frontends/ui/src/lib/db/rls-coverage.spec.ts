@@ -1,4 +1,4 @@
-// @disk-inputs: ../../deploy/compose/init-db.sql, ../../deploy/postgres/rename-legacy-names.sh, ../../scripts/rls-test-db.sh, drizzle/0031_row_level_security.sql, drizzle/0032_messages_organization_id.sql, drizzle/0034_bim_models.sql, drizzle/0035_bim_check_confirmations.sql, drizzle/0041_agent_skills.sql, drizzle/0042_drop_workflows.sql, drizzle/0043_jobs.sql, drizzle/0046_curated_skill_activations.sql, drizzle/0047_platform_skills.sql, drizzle/0051_file_native_ownership.sql, drizzle/0067_document_roles.sql, drizzle/0068_platform_lessons.sql, drizzle/0075_tasks.sql, drizzle/0079_pricing_and_credits.sql, drizzle/0082_document_versions.sql, drizzle/0086_task_definitions.sql, drizzle/0087_organization_instructions.sql, drizzle/0089_skill_categories.sql, drizzle/0100_product_feedback.sql, drizzle/0102_archiv_folders.sql, drizzle/0104_bff_job_queue.sql, drizzle/0108_mail_imports.sql, drizzle/0110_upload_batches.sql, drizzle/0111_project_folder_grants.sql, drizzle/0112_conversation_restricted_folders.sql, drizzle/0114_document_access_log.sql, drizzle/0117_project_steckbrief.sql, drizzle/0119_document_quarantine_decisions.sql, drizzle/0124_message_restricted_use.sql, drizzle/0125_conversation_source_projects.sql, drizzle/0126_permit_records.sql, drizzle/0130_document_fassung_announcements.sql, drizzle/0136_document_version_reviews.sql, drizzle/0138_document_annotations.sql, drizzle/0139_piloti_wakes.sql, drizzle/0140_proposed_changes.sql, drizzle/0142_piloti_changes.sql, drizzle/0144_project_intakes.sql, drizzle/0146_proposal_shelves.sql, drizzle/0147_push_subscriptions.sql, drizzle/0154_analytics_export_cursors.sql, drizzle/0158_project_upload_screening.sql, drizzle/0165_revision_names.sql, drizzle/0173_root_sort_runs.sql, drizzle/0179_piloti_asks.sql, drizzle/0180_folder_cards.sql, drizzle/0181_office_conventions.sql, drizzle/0182_office_convention_decisions.sql, drizzle/0185_document_search.sql, drizzle/0186_saved_searches.sql, drizzle/0188_agent_tables.sql, drizzle/0190_brand_free_policies.sql
+// @disk-inputs: ../../deploy/compose/init-db.sql, ../../deploy/postgres/rename-legacy-names.sh, ../../scripts/rls-test-db.sh, drizzle/0031_row_level_security.sql, drizzle/0032_messages_organization_id.sql, drizzle/0034_bim_models.sql, drizzle/0035_bim_check_confirmations.sql, drizzle/0041_agent_skills.sql, drizzle/0042_drop_workflows.sql, drizzle/0043_jobs.sql, drizzle/0046_curated_skill_activations.sql, drizzle/0047_platform_skills.sql, drizzle/0051_file_native_ownership.sql, drizzle/0067_document_roles.sql, drizzle/0068_platform_lessons.sql, drizzle/0075_tasks.sql, drizzle/0079_pricing_and_credits.sql, drizzle/0082_document_versions.sql, drizzle/0086_task_definitions.sql, drizzle/0087_organization_instructions.sql, drizzle/0089_skill_categories.sql, drizzle/0100_product_feedback.sql, drizzle/0102_archiv_folders.sql, drizzle/0104_bff_job_queue.sql, drizzle/0108_mail_imports.sql, drizzle/0110_upload_batches.sql, drizzle/0111_project_folder_grants.sql, drizzle/0112_conversation_restricted_folders.sql, drizzle/0114_document_access_log.sql, drizzle/0117_project_steckbrief.sql, drizzle/0119_document_quarantine_decisions.sql, drizzle/0124_message_restricted_use.sql, drizzle/0125_conversation_source_projects.sql, drizzle/0126_permit_records.sql, drizzle/0130_document_fassung_announcements.sql, drizzle/0136_document_version_reviews.sql, drizzle/0138_document_annotations.sql, drizzle/0139_piloti_wakes.sql, drizzle/0140_proposed_changes.sql, drizzle/0142_piloti_changes.sql, drizzle/0144_project_intakes.sql, drizzle/0146_proposal_shelves.sql, drizzle/0147_push_subscriptions.sql, drizzle/0154_analytics_export_cursors.sql, drizzle/0158_project_upload_screening.sql, drizzle/0165_revision_names.sql, drizzle/0173_root_sort_runs.sql, drizzle/0179_piloti_asks.sql, drizzle/0180_folder_cards.sql, drizzle/0181_office_conventions.sql, drizzle/0182_office_convention_decisions.sql, drizzle/0185_document_search.sql, drizzle/0186_saved_searches.sql, drizzle/0189_agent_tables.sql, drizzle/0191_brand_free_policies.sql
 /**
  * The guard that keeps the tenant boundary complete (ADR-0041).
  *
@@ -202,13 +202,13 @@ const BOUNDARY_MIGRATIONS = [
   // Adds saved_searches — a person's saved search questions, shareable within
   // the office (ADR-0136, slice 5). Keyed by its organization.
   '0186_saved_searches.sql',
-  // Renames piloti_wakes, piloti_changes and piloti_asks to agent_* (ADR-0145
-  // rule 5) and secures each again under its new name, predicates unchanged.
-  '0188_agent_tables.sql',
-  // Renames every `grid_` policy (`grid_tenant_isolation` -> `tenant_isolation`)
+  // Renames the wake, change and ask tables to agent_* (ADR-0145 rule 5) and
+  // secures each again under its new name, predicates unchanged.
+  '0189_agent_tables.sql',
+  // Takes the brand off every policy's name (the isolation one becomes `tenant_isolation`)
   // and redefines `secure_table` and `secure_platform_table` to grant through
   // `rls_role()`, ahead of the deploy renaming the roles (ADR-0145 rule 5).
-  '0190_brand_free_policies.sql',
+  '0191_brand_free_policies.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>
@@ -240,7 +240,7 @@ function securedTables(): { tenant: string[]; platform: string[] } {
     }
     return [...seen].sort()
   }
-  // `grid_` was the prefix until 0189 (ADR-0145 rule 5); a migration after it
+  // `grid_` was the prefix until 0190 (ADR-0145 rule 5); a migration after it
   // calls the brand-free name, and both count.
   return { tenant: collect('\\b(?:grid_)?secure_table'), platform: collect('\\b(?:grid_)?secure_platform_table') }
 }
@@ -370,7 +370,7 @@ describe('row-level security coverage', () => {
  * job is the one that can skip.
  */
 describe('policy predicates say what they should', () => {
-  /** Every `secure_table('t', 'predicate')` pair (`grid_secure_table` before 0189), latest definition wins. */
+  /** Every `secure_table('t', 'predicate')` pair (`grid_secure_table` before 0190), latest definition wins. */
   function predicates(): Map<string, string> {
     const found = new Map<string, string>()
     for (const source of MIGRATION_SOURCES) {
@@ -452,7 +452,7 @@ describe('settings parity between the app and the policies', () => {
     //
     // A fresh database creates them under the names the earlier migrations
     // grant to; the deploy renames them once the migrations have run
-    // (`rename-legacy-names.sh after-migrate`, migration 0190).
+    // (`rename-legacy-names.sh after-migrate`, migration 0191).
     const provisioners = [
       'deploy/compose/init-db.sql',
       'scripts/rls-test-db.sh',
@@ -476,8 +476,8 @@ describe('settings parity between the app and the policies', () => {
     // file-wide "no write grant" regex is only ever one edit away from either
     // matching the tenant helper or being written so narrowly that it stops
     // matching anything. Read the one function this claim is about, as the
-    // last migration that defines it left it (0031, renamed by 0189, redefined
-    // by 0190 to name its roles through `rls_role()`).
+    // last migration that defines it left it (0031, renamed by 0190, redefined
+    // by 0191 to name its roles through `rls_role()`).
     const definitions = MIGRATION_SOURCES.flatMap((source) => [
       ...source.matchAll(/CREATE OR REPLACE FUNCTION (?:grid_)?secure_platform_table\([\s\S]*?\n\$\$;/g),
     ]).map((match) => match[0])

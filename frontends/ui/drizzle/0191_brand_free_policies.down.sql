@@ -1,8 +1,8 @@
--- Reverse 0190. ORDER: after the deploy's role rename has been reversed
+-- Reverse 0191. ORDER: after the deploy's role rename has been reversed
 -- (`rename-legacy-names.sh` has no reverse; rename the four roles back by hand
--- as a superuser first), because 0189's `secure_table` grants to the old names.
+-- as a superuser first), because 0190's `secure_table` grants to the old names.
 -- Puts the `grid_` policy names back, the guards' literal role name, and
--- 0189's `secure_table` and `secure_platform_table`.
+-- 0190's `secure_table` and `secure_platform_table`.
 
 DO $$
 DECLARE

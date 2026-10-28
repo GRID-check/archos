@@ -1,4 +1,4 @@
--- 0190: the row-level-security policies lose the `grid_` prefix, and nothing
+-- 0191: the row-level-security policies lose the `grid_` prefix, and nothing
 -- the database runs names a role by its old name (ADR-0145 rule 5).
 --
 -- ## The roles are renamed after this runs, by the deploy
@@ -44,7 +44,7 @@ CREATE OR REPLACE FUNCTION rls_role(kind text) RETURNS text
 $$;
 --> statement-breakpoint
 COMMENT ON FUNCTION rls_role(text) IS
-  'The name a row-level-security role (owner, platform, rw) has in this database: app_<kind>, or grid_app_<kind> until the deploy has renamed it (migration 0190).';
+  'The name a row-level-security role (owner, platform, rw) has in this database: app_<kind>, or grid_app_<kind> until the deploy has renamed it (migration 0191).';
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION secure_table(target text, tenancy_predicate text)
   RETURNS void LANGUAGE plpgsql AS $$

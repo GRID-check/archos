@@ -139,7 +139,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
    */
   /**
    * Two permissive policies on one table OR together, so a second isolation
-   * policy silently widens the first. 0190 renamed `grid_tenant_isolation` to
+   * policy silently widens the first. 0191 renamed `grid_tenant_isolation` to
    * `tenant_isolation`, and `secure_table` drops both names before it creates
    * one; this holds every table under row-level security to exactly one, by
    * the new name, and no policy to the old prefix.

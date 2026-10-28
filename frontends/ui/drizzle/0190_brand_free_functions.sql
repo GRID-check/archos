@@ -1,7 +1,7 @@
--- 0189: the database's own functions lose the `grid_` prefix (ADR-0145 rule 5).
+-- 0190: the database's own functions lose the `grid_` prefix (ADR-0145 rule 5).
 --
 -- `grid_secure_table` becomes `secure_table`, `grid_current_org` becomes
--- `current_org`, and so for every function in `functions` below: the 29 that
+-- `current_org`, and so for every function in `functions` below: the 30 that
 -- earlier migrations created and none dropped, every one in the public schema
 -- whose name starts with `grid_`. A migration from here on calls the new names
 -- (`rls-coverage.spec.ts` reads both).
@@ -38,7 +38,7 @@ DECLARE
     'grid_conversation_restricted_use', 'grid_cosine_similarity', 'grid_current_org',
     'grid_current_user_id', 'grid_document_access_log_guard', 'grid_document_quarantine_decisions_guard',
     'grid_documents_hold_quarantine', 'grid_feedback_restricted_use',
-    'grid_folder_ancestry', 'grid_folder_bin_lock_key', 'grid_folder_subtree', 'grid_legal_hold_blocks',
+    'grid_fold_german', 'grid_folder_ancestry', 'grid_folder_bin_lock_key', 'grid_folder_subtree', 'grid_legal_hold_blocks',
     'grid_mark_conversation_messages', 'grid_mark_conversation_restricted_use', 'grid_mark_feedback_restricted_use',
     'grid_mark_message_restricted_use', 'grid_mark_revision_thread', 'grid_mark_revision_thread_of_task',
     'grid_mark_revision_threads_of_document', 'grid_mark_revision_threads_of_folder',
@@ -46,7 +46,7 @@ DECLARE
     'grid_refuse_held_delete', 'grid_refuse_insert_into_closed_project', 'grid_refuse_write_into_deleted_folder',
     'grid_secure_platform_table', 'grid_secure_table', 'grid_uuid_or_null'
   ];
-  wrapper_note CONSTANT text := 'Old name, kept for one release by migration 0189; the next release drops it.';
+  wrapper_note CONSTANT text := 'Old name, kept for one release by migration 0190; the next release drops it.';
   f record;
   old_name text;
   new_name text;

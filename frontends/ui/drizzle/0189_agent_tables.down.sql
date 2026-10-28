@@ -1,4 +1,4 @@
--- Reverse 0188. ORDER: roll the frontend back first; the older build names the
+-- Reverse 0189. ORDER: roll the frontend back first; the older build names the
 -- piloti_* tables, which the views keep serving until this runs.
 
 DO $$

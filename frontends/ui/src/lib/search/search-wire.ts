@@ -215,8 +215,13 @@ export interface DocumentHit {
   municipality: string | null
   /** The Verfasser the reading names (architect, else author), as the document writes it. */
   author: string | null
-  /** Why it matched the text: its name, what it is (the reading), its content. */
-  matchedOn: Array<'name' | 'reading' | 'content'>
+  /**
+   * Why it matched the text: its name, what it is (the reading), its content
+   * holding the words (`content`) or its content meaning the same without
+   * them (`meaning`: the passage is near the words, an English question over a
+   * German document, a synonym). At most one of `content` and `meaning`.
+   */
+  matchedOn: Array<'name' | 'reading' | 'content' | 'meaning'>
   passage: SearchPassage | null
 }
 
