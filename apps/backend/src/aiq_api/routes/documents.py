@@ -56,7 +56,7 @@ from ..models.requests import DeleteFilesRequest
 from ..models.requests import UploadResponse
 from .collections import _require_ingestor
 from .collections import require_collection
-from .documents_jobs import add_document_job_routes
+from .documents_jobs import _add_document_job_routes
 from .generate_summary import _llm_settings
 
 logger = logging.getLogger(__name__)
@@ -837,4 +837,4 @@ def add_document_routes(router: APIRouter):
         tags=["documents"],
         summary="Delete files from a collection",
     )(delete_files)
-    add_document_job_routes(router)
+    _add_document_job_routes(router)
