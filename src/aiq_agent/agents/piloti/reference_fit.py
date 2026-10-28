@@ -1,6 +1,6 @@
 """Rank, then verify: which of the office's reference projects fit THIS question (ADR-0064 use 10).
 
-The catalog (``<referenzprojekte>``, ADR-0094) is ranked by fingerprint in the
+The catalog (``<reference_projects>``, ADR-0094) is ranked by fingerprint in the
 BFF (``similarity.ts``): Bundesland, Gebäudeklasse, Bauweise, uses, kind of
 work. That ranking is blind to the question. A timber house asking about a
 Sicherheitstreppenhaus is best served by the office building in Wien 22 that
