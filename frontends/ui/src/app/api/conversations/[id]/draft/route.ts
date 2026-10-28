@@ -5,7 +5,7 @@
  * card already names the draft (path, version, bytes); this is the door that
  * fetches its CONTENT so the reader can look at it before asking Piloti to
  * file it. Read-only end to end: the service calls the agent tier's `asearch`
- * / `aget` doors and never touches `grid_app`.
+ * / `aget` doors and never touches `app`.
  */
 
 import { apiRoute, parseQuery } from '@/lib/api/handler'

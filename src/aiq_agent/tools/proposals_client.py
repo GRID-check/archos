@@ -14,7 +14,7 @@ different place:
   ``register_envelope_card``).
 
 Nothing here writes a document, a folder, a memory note or the project
-profile; the BFF is the single writer of ``grid_app`` (ADR-0003) and applying
+profile; the BFF is the single writer of ``app`` (ADR-0003) and applying
 is a person route, never this one.
 
 The body is described once, in zod (``frontends/ui/src/lib/proposals/types.ts``,

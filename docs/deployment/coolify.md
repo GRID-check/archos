@@ -19,14 +19,14 @@ NVIDIA base-image removal — see §2, apart from the stock `qdrant/qdrant`,
 
 | Service | Role | Exposed publicly? |
 |---|---|---|
-| `frontend` | Next.js UI + BFF gateway (auth, `grid_app` DB, WS proxy) — port 3000 | **Yes** (your domain) |
+| `frontend` | Next.js UI + BFF gateway (auth, `app` DB, WS proxy) — port 3000 | **Yes** (your domain) |
 | `chat` | Python FastAPI backend, **`chat` role** (`GRID_ROLE=chat`): the chat WebSocket, the only route a turn runs through — port 8000. The frontend dials it with `BACKEND_CHAT_URL` | No (internal) |
 | `api` | Python FastAPI backend, **`api` role** (`GRID_ROLE=api`): every other HTTP route (knowledge, jobs and SSE, LLM utilities, admin) — port 8000. The frontend, `purger` and `housekeeping` call it with `BACKEND_URL`. Mirrors the K8s `api` Deployment | No (internal) |
 | `agent-worker` | Deep-research worker (`GRID_ROLE=worker`): claims jobs from Postgres and runs them off the web tier. Mirrors the K8s worker Deployment | No (internal) |
 | `ingest-worker` | Ingestion tier (`GRID_ROLE=ingest-worker`): the one process that claims the durable ingest queue `POST /v1/ingest` fills (ADR-0076). Without it uploads sit pending. Mirrors the K8s ingest-worker Deployment | No (internal) |
 | `qdrant` | Shared Qdrant vector store (ADR-0115) — port 6333, with the API key Coolify generates (`SERVICE_PASSWORD_QDRANT`). One store every backend role (`chat`, `api`, `agent-worker`, `ingest-worker`) queries over HTTP. Mirrors the K8s Qdrant StatefulSet, single node | No (internal) |
 | `seaweedfs` | S3-compatible object storage — port 8333 | **Yes** (presigned PDF URLs) |
-| `postgres` | Three logical DBs: `jobs`, `checkpoints`, `grid_app` | No (internal) |
+| `postgres` | Three logical DBs: `jobs`, `checkpoints`, `app` | No (internal) |
 | `dragonfly` | Redis-protocol shared cache + conversation bus (ADR-0020/0028) | No (internal) |
 | `gotenberg` | Office → PDF converter (ADR-0070), called by the frontend BFF only — port 3000. Required: Word, presentation, `.xls` and `.ods` files are indexed from its PDF (ADR-0071) | No (internal) |
 | `purger` | Grace-period hard-delete worker | No |
@@ -142,7 +142,7 @@ own domains, DB password, and internal token with no manual input.
    `SERVICE_FQDN_FRONTEND_3000`. Optionally override it with your own domain in
    the service's settings. Do the same for SeaweedFS if you want a stable S3 URL.
 5. **Deploy.** On first boot: Postgres runs `init-db.sql` (creates the 3 DBs),
-   `migrate` runs the Drizzle migrations for `grid_app`, `seaweedfs-init`
+   `migrate` runs the Drizzle migrations for `app`, `seaweedfs-init`
    creates the bucket, `audit-schemas` reconciles the WorkOS Audit Log
    schemas, and the backend starts. Once the frontend is healthy,
    `workos-authz` creates the authorization catalog's permissions and

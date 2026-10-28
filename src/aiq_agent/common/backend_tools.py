@@ -16,7 +16,7 @@ tool contract is written once and a stale copy fails a test.
 
 The names are the NAT function names the workflow config binds, which are what
 the chat model sees. Only reads belong here. A write stays a BFF route, because
-the BFF is the single writer of ``grid_app`` (ADR-0003) and a person gates it.
+the BFF is the single writer of ``app`` (ADR-0003) and a person gates it.
 """
 
 from __future__ import annotations

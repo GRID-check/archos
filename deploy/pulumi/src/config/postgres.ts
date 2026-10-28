@@ -17,7 +17,7 @@ export type BarmanEncryption = "AES256" | "aws:kms";
  * The scaler login's password when `pgScalerPassword` is not set: an HMAC of a
  * fixed label under the owner's password. One-way, so holding the scaler DSN
  * says nothing about `pgAppPassword` (Postgres authenticates by role AND
- * password, which is the whole reason `grid_app_rw` has a password of its own),
+ * password, which is the whole reason `app_rw` has a password of its own),
  * and URL-safe, so it needs no care in a DSN. It follows `pgAppPassword` when
  * that rotates.
  */
@@ -62,7 +62,7 @@ export interface PostgresConfig {
   /** App role password. Secret. Drives every DSN. */
   appPassword: pulumi.Output<string>;
   /**
-   * Password for `grid_app_rw`, the least-privilege role the app tier
+   * Password for `app_rw`, the least-privilege role the app tier
    * connects as under row-level security (ADR-0041). REQUIRED, and
    * deliberately without a fallback to `pgAppPassword`.
    *
@@ -78,7 +78,7 @@ export interface PostgresConfig {
    */
   runtimePassword: pulumi.Output<string>;
   /**
-   * Password for `grid_keda_scaler`, the read-only login KEDA's `postgresql`
+   * Password for `keda_scaler`, the read-only login KEDA's `postgresql`
    * scaler counts the queue tables with (ADR-0079). Optional
    * (`pgScalerPassword`): unset, it is derived from `pgAppPassword` by a
    * one-way HMAC, so it is never the owner's password and an existing stack
@@ -201,7 +201,7 @@ export function loadPostgres(cfg: pulumi.Config): PostgresConfig {
   if (pgBackupsEnabled && pgBackupEncryption === undefined) {
     pulumi.log.warn(
       "Postgres PITR archive is UNENCRYPTED at rest. WAL and base backups are a byte-for-byte copy " +
-        "of all three databases (conversations, LangGraph checkpoints, the whole grid_app schema) " +
+        "of all three databases (conversations, LangGraph checkpoints, the whole app schema) " +
         `and go to ${pgBackupEndpoint} with no encryption requested. On the in-cluster SeaweedFS ` +
         "there is no fix available in this program — SeaweedFS 3.80 has no SSE, and volume-chunk " +
         "encryption (seaweedfsEncryptVolumeData) is the only at-rest control that applies. For a " +

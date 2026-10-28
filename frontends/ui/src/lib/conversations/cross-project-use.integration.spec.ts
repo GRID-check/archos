@@ -4,7 +4,7 @@
  * A chat's use of OTHER projects (ADR-0094, migration 0125) against a REAL
  * Postgres, through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/conversations/cross-project-use.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.

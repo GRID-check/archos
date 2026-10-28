@@ -2,7 +2,7 @@
  * Agent Skills API Client
  *
  * Typed fetch client for the org toolbox BFF endpoints (`/api/skills…`). These
- * are grid_app-owned BFF routes, so they are always called same-origin and
+ * are `app`-owned BFF routes, so they are always called same-origin and
  * return the camelCase JSON envelope the BFF service layer produces.
  *
  * Jobs — a prompt on a timer, which MAY attach one of these skills — live in

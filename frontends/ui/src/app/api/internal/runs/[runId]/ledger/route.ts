@@ -7,7 +7,7 @@
  * runner) and stored where the reader is (`messages.metadata.run_ledger`). This
  * is the one door between the two, and it is an HTTP route with a typed client
  * (`lib/runs/run-ledger-client.ts`) rather than a database call, because the BFF
- * is the single writer of `grid_app` (ADR-0003) and because a workspace
+ * is the single writer of `app` (ADR-0003) and because a workspace
  * primitive has ONE surface every consumer is an equal client of (ADR-0055).
  *
  * ## The op set is closed at two, and the run id is in the path

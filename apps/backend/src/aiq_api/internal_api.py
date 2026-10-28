@@ -1,6 +1,6 @@
 """The backend's writes into the BFF's internal API: a message row, a run's report, a turn's outcome.
 
-Python never touches the database (``grid_app`` is single-writer); every write
+Python never touches the database (``app`` is single-writer); every write
 goes over the internal HTTP API with the shared ``GRID_INTERNAL_API_TOKEN``.
 The chat socket persists a finished turn through here (``chat_socket``), and so
 do the jobs runner and its notifiers (``jobs/``), so there is one place that
@@ -167,7 +167,7 @@ async def post_internal_run_report(
     still lands the report in front of the reader.
 
     The write goes over the internal HTTP API with the service token, like every
-    other backend→BFF write: ``grid_app`` is single-writer and Python never
+    other backend→BFF write: ``app`` is single-writer and Python never
     touches the database.
 
     Retried briefly (``internal_retry``). ``expect_run`` says the job was

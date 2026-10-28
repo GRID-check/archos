@@ -12,7 +12,7 @@
  * organization, and that an event with no conversation drops out of a
  * project-filtered view.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/citations/repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database.

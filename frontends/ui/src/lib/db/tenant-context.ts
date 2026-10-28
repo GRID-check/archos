@@ -61,7 +61,7 @@ export const USER_SETTING = 'grid.user_id'
  * `pg_stat_activity` and the query log — a cross-tenant read is a fact the
  * database records, not an application claim.
  */
-export const PLATFORM_ROLE = 'grid_app_platform'
+export const PLATFORM_ROLE = 'app_platform'
 
 /** One tenant, for the ordinary case: a signed-in member doing their own work. */
 export interface TenantScope {

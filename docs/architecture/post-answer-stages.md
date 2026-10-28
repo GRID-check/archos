@@ -728,7 +728,7 @@ and the chip becomes per-turn instead of per-conversation — which is what it
 always claimed to be.
 
 **The DB write stays the source of truth.** The frame is a notification, not a
-transfer of authority. `grid_app` stays single-writer.
+transfer of authority. `app` stays single-writer.
 
 > **[as built, slice 4b]** Four corrections, all small and all in the same
 > direction: the frame has to carry enough that nobody asks the database again.
@@ -985,7 +985,7 @@ The answer is complete and being streamed before any stage task runs
   `'organization_id = current_org() AND (project_id IS NULL OR EXISTS
   (SELECT 1 FROM projects p WHERE p.id = project_id AND p.organization_id =
   current_org()))'` (`0031_row_level_security.sql:238-239`) — unchanged, and
-  it keeps writing through the token-guarded internal route so `grid_app` stays
+  it keeps writing through the token-guarded internal route so `app` stays
   single-writer.
 - **Telemetry (§7.4) reuses `agent_profiler_spans`**, already covered by
   `'organization_id = current_org()'` (`0031_row_level_security.sql:219`).

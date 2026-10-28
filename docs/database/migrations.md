@@ -12,7 +12,7 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    // The OWNER credential — migrations run DDL and backfills, and `grid_app_rw`
+    // The OWNER credential — migrations run DDL and backfills, and `app_rw`
     // can do neither (ADR-0041). The fallback exists only so a local checkout
     // pointed at a single-credential throwaway database still works; it is not a
     // supported way to migrate a deployment.
@@ -25,7 +25,7 @@ export default defineConfig({
 - **Schema source:** `./src/lib/db/schema/*.ts` (6 files, barrel-exported)
 - **Output directory:** `./drizzle/`
 - **Dialect:** PostgreSQL
-- **Connection:** via `GRID_APP_MIGRATION_DATABASE_URL` — the schema OWNER, and what every deployment must use. `GRID_APP_DATABASE_URL` is only a fallback for a local single-credential database; it is the DML-only runtime role, which cannot run DDL and whose backfills would touch zero rows under row-level security (ADR-0041). Either way it must point at the `grid_app` database.
+- **Connection:** via `GRID_APP_MIGRATION_DATABASE_URL` — the schema OWNER, and what every deployment must use. `GRID_APP_DATABASE_URL` is only a fallback for a local single-credential database; it is the DML-only runtime role, which cannot run DDL and whose backfills would touch zero rows under row-level security (ADR-0041). Either way it must point at the `app` database.
 
 ---
 
@@ -47,7 +47,7 @@ This reads the current schema, diffs against the last snapshot in `drizzle/meta/
 ### 3. Apply Migration
 
 > **Migrations connect as the schema OWNER.** `GRID_APP_DATABASE_URL` now points
-> at `grid_app_rw`, which holds DML only and is subject to row-level security —
+> at `app_rw`, which holds DML only and is subject to row-level security —
 > correct for serving requests, useless for DDL, and actively dangerous for a
 > data backfill, which would silently touch zero rows. Set
 > `GRID_APP_MIGRATION_DATABASE_URL` to the owner credential; `drizzle.config.ts`
@@ -226,9 +226,9 @@ Timestamps from journal:
 This is **not** a Drizzle migration — it is a PostgreSQL `psql` entrypoint script that runs on **first container startup** of the database container. It is:
 
 - **Idempotent** — all statements use `IF NOT EXISTS` / `CREATE ... IF NOT EXISTS`.
-- **Responsible for:** creating the `checkpoints` and `grid_app` databases (if absent), granting privileges, and creating tables in `jobs` and `checkpoints`.
+- **Responsible for:** creating the `checkpoints` and `app` databases (if absent), granting privileges, and creating tables in `jobs` and `checkpoints`.
 
-These tables are separate from Drizzle ORM (the Next.js app only manages `grid_app`). The `jobs` and `checkpoints` databases are managed by the Python backend but must exist before the backend connects.
+These tables are separate from Drizzle ORM (the Next.js app only manages `app`). The `jobs` and `checkpoints` databases are managed by the Python backend but must exist before the backend connects.
 
 ---
 

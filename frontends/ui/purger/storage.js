@@ -108,7 +108,7 @@ async function deleteStoragePrefix(s3, bucket, prefix) {
     const keys = (page.Contents || []).map((/** @type {{ Key?: string }} */ obj) => ({ Key: obj.Key }))
     if (keys.length > 0) {
       // Quiet:true returns ONLY per-key errors. A 200 response can still carry
-      // partial failures — if we ignore them the purge "succeeds", the grid_app
+      // partial failures — if we ignore them the purge "succeeds", the `app`
       // pointer is deleted, and the surviving objects become unrecoverable
       // orphans (a GDPR-erasure failure). Throw so the queue row retries.
       // Inside the same guard as the List. A bucket dropped between the two

@@ -1,6 +1,6 @@
 """Folder card points: a written folder card as a Qdrant point in its folder's own scope (ADR-0127).
 
-The card itself is a row in ``grid_app.folder_cards`` behind the BFF (ADR-0003);
+The card itself is a row in ``app.folder_cards`` behind the BFF (ADR-0003);
 the point is a derived copy so that a search can land on a folder and send the
 model down into it. One point per card, ``kind = folder``, in the scope of the
 collection the card was built from, so a restricted folder's card is as

@@ -6,7 +6,7 @@
  * across the purge — the claim (Phase A) commits its own transaction, and this
  * runs in a fresh `tx` that does not re-lock the row. What prevents a
  * concurrent re-claim or restore is the row's `status='purging'`, not a lock.
- * grid_app rows are deleted only after every external store confirmed cleanup,
+ * `app` rows are deleted only after every external store confirmed cleanup,
  * and the project row dies LAST so pointers stay recoverable on retry.
  *
  * Legal-hold residual window: the hold is re-checked before each external
@@ -328,7 +328,7 @@ async function purgeProject(tx, entry, deps) {
     }
   }
 
-  // 4. grid_app rows: the collaboration rows FIRST, then conversations
+  // 4. `app` rows: the collaboration rows FIRST, then conversations
   //    (messages and conversation_reads cascade), then the project row
   //    (documents / folders / project-scoped memory cascade).
   //

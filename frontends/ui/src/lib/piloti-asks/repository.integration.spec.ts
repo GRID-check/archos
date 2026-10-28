@@ -4,7 +4,7 @@
  * The asks against a REAL Postgres (migration 0179, ADR-0124), through the
  * restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   GRID_TEST_DATABASE_URL=postgres://app_rw@host:port/app \
  *     npx vitest run src/lib/piloti-asks/repository.integration.spec.ts
  *
  * The unit specs mock this module; these prove the SQL the service rests on:
