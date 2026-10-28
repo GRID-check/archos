@@ -644,6 +644,10 @@
     "de": "Ein geplanter Rechercheauftrag legt seinen Bericht jetzt unter „Berichte“ im Projekt ab, mit den Rechten der Person, die ihn eingerichtet hat. Bisher verfiel der Bericht eines nächtlichen Laufs nach einem Tag, wenn ihn niemand öffnete."
   },
   {
+    "en": "A search for a word no document contains no longer fills the list with unrelated files, while a question asked in other words still finds the passages that answer it.",
+    "de": "Eine Suche nach einem Wort, das in keinem Dokument vorkommt, füllt die Liste nicht mehr mit irrelevanten Dateien, während eine anders formulierte Frage weiterhin die passenden Passagen findet."
+  },
+  {
     "en": "A search over your files or the Archiv that failed to run, for instance because it timed out, used to report \"no matches for …\", a statement about your own documents that Piloti had no way of making. Now it says the search failed and offers to run the same query again.",
     "de": "Eine Suche in Ihren Dateien oder im Archiv, die nicht laufen konnte, etwa weil die Zeit abgelaufen ist, meldete bisher „keine Treffer für …“. Das war eine Aussage über Ihre eigenen Dokumente, die Piloti gar nicht beurteilen konnte. Jetzt sagt Piloti, dass die Suche fehlgeschlagen ist, und bietet an, dieselbe Anfrage erneut auszuführen."
   },
@@ -3422,6 +3426,10 @@
   {
     "en": "The search in Dateien now sits in the header, next to the view switcher, the Alle / Meine / Nicht zugewiesen filter and Hochladen. The documents start a row higher, and there is one search on the page instead of two.",
     "de": "Die Suche in „Dateien“ sitzt jetzt in der Kopfzeile, neben dem Ansichtsumschalter, dem Filter Alle / Meine / Nicht zugewiesen und Hochladen. Die Dokumente beginnen eine Zeile höher, und es gibt nur noch eine Suche auf der Seite statt zwei."
+  },
+  {
+    "en": "The search now finds the same documents whether you type Flächenwidmung or Flaechenwidmung, and \"current only\" keeps every matching document instead of dropping older uploads.",
+    "de": "Die Suche findet jetzt dieselben Dokumente, egal ob Sie Flächenwidmung oder Flaechenwidmung eingeben, und die Einstellung „nur aktuelle“ berücksichtigt alle passenden Dokumente, statt ältere Uploads auszuschließen."
   },
   {
     "en": "The settings overview of a project whose intake was never completed no longer shows an error. Its similar closed projects load again.",
