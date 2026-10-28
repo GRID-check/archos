@@ -3771,7 +3771,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
+    "from": "src/features/layout/components/input-area/composer-helpers.ts",
     "to": "src/features/chat/hooks/use-websocket-chat.ts",
     "unresolvedTo": "@/features/chat/hooks/use-websocket-chat",
     "dependencyTypes": [
@@ -3942,7 +3942,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
+    "from": "src/features/layout/components/input-area/file-chip.tsx",
     "to": "src/features/documents/components/ingest-failure-notice.tsx",
     "unresolvedTo": "@/features/documents/components/ingest-failure-notice",
     "dependencyTypes": [
@@ -3959,7 +3959,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
+    "from": "src/features/layout/components/input-area/file-chip.tsx",
     "to": "src/features/documents/lib/ingest-failure.ts",
     "unresolvedTo": "@/features/documents/lib/ingest-failure",
     "dependencyTypes": [
@@ -5964,23 +5964,6 @@
     "from": "src/lib/answer-export/citations.ts",
     "to": "src/features/layout/lib/report-citations.ts",
     "unresolvedTo": "@/features/layout/lib/report-citations",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "lib-imports-ui"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/lib/answer-export/service.ts",
-    "to": "src/features/chat/lib/answer-markdown.ts",
-    "unresolvedTo": "@/features/chat/lib/answer-markdown",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",

@@ -14,16 +14,11 @@
  * Pure, and safe in the browser: no I/O, no `server-only`.
  */
 
-import {
-  answerKeyFor,
-  answersFromProfile,
-  defaultBuildings,
-  evaluateIntakeCondition,
-  flattenIntakeQuestions,
-  isIntakeAnswerProvided,
-  projectIntakeDefinitionV1,
-  type ProjectIntakeQuestion,
-} from '@/lib/project-profile/intake-definition'
+import { answerKeyFor, defaultBuildings } from '@/lib/project-profile/intake-building-keys'
+import { evaluateIntakeCondition, flattenIntakeQuestions, isIntakeAnswerProvided } from '@/lib/project-profile/intake-conditions'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { answersFromProfile } from '@/lib/project-profile/intake-profile'
+import type { ProjectIntakeQuestion } from '@/lib/project-profile/intake-types'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import { confirmedSimilarityFacts, similarityFacts, type SharedTrait, type SimilarityFacts } from './similarity'
 

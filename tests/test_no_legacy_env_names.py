@@ -1,10 +1,11 @@
 """No environment variable is read or set under its old ``AIQ_`` name (ADR-0145 row 10b).
 
-Every variable took the house prefix ``GRID_``. For one release the image
-entrypoint still adopts an old name an operator set by hand, and the Compose
-files interpolate it; those, the rename table and the published release notes
-are the only files that may spell one. Remove an entry here when its fallback
-goes.
+Every variable lost its prefix: ``GRID_X``, and ``AIQ_X`` before it, is now
+``X``. For one release the images' start (``deploy/entrypoint.py`` for the
+backend, ``legacy-env-names.cjs`` for the UI) still adopts an old name an
+operator set by hand, and the Compose files interpolate it; those, the rename
+table and the published release notes are the only files that may spell one.
+Remove an entry here when its fallback goes.
 """
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ ALLOWED = (
     "deploy/entrypoint.py",
     "tests/test_entrypoint_roles.py",
     "tests/test_no_legacy_env_names.py",
+    "frontends/ui/scripts/legacy-env-names.cjs",
+    "frontends/ui/scripts/legacy-env-names.spec.mjs",
     "deploy/compose/docker-compose.yaml",
     "deploy/compose/docker-compose.coolify.yaml",
     "docs/deployment/environment-variables.md",
@@ -43,4 +46,4 @@ def test_no_file_spells_an_old_environment_variable_name():
             continue
         offenders += [f"{path}:{n}" for n, line in enumerate(text.splitlines(), 1) if OLD_NAME.search(line)]
 
-    assert not offenders, "Old AIQ_ names; use GRID_:\n" + "\n".join(offenders)
+    assert not offenders, "Old AIQ_ names; drop the prefix:\n" + "\n".join(offenders)

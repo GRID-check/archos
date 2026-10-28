@@ -7,7 +7,8 @@
 
 import { describe, expect, it } from 'vitest'
 import type { Project } from '@/lib/db/schema/projects'
-import { buildIntakeProfile, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
+import { buildIntakeProfile } from '@/lib/project-profile/intake-profile'
 import { SIMILARITY_WEIGHTS, federalStateOf, rankBySimilarity, sharedTraits, similarity, similarityFacts } from './similarity'
 
 type Profile = Project['profile']

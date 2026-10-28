@@ -2,10 +2,8 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import {
-  flattenIntakeQuestions,
-  projectIntakeDefinitionV1,
-} from '@/lib/project-profile/intake-definition'
+import { flattenIntakeQuestions } from '@/lib/project-profile/intake-conditions'
+import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
 import {
   decisiveInputs,

@@ -16,17 +16,10 @@
  * already opens the building questions the reading should look for.
  */
 
-import {
-  answerKeyFor,
-  answersFromProfile,
-  evaluateIntakeCondition,
-  isBuildingId,
-  modeKeyFor,
-  type BuildingInstance,
-  type ProjectIntakeDefinition,
-  type ProjectIntakeQuestion,
-  type ProjectIntakeStage,
-} from '@/lib/project-profile/intake-definition'
+import { answerKeyFor, isBuildingId, modeKeyFor, type BuildingInstance } from '@/lib/project-profile/intake-building-keys'
+import { evaluateIntakeCondition } from '@/lib/project-profile/intake-conditions'
+import { answersFromProfile } from '@/lib/project-profile/intake-profile'
+import type { ProjectIntakeDefinition, ProjectIntakeQuestion, ProjectIntakeStage } from '@/lib/project-profile/intake-types'
 import type {
   ProjectFact,
   ProjectPrimitiveValue,

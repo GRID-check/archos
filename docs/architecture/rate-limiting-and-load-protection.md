@@ -265,7 +265,7 @@ be argued rather than assumed. Two options:
 
 **Decision: (b).** The premise's real goal is *"I don't want to re-implement this
 in every app"* — and that is already satisfied, because there is exactly **one**
-user-facing app. `frontends/web` is a static Astro site (L1 covers it),
+user-facing app. `apps/site` is a static Astro site (L1 covers it),
 `frontends/aiq_api` is not publicly routed (no HTTPRoute), and the workers have
 no ingress. Option (a) buys architectural purity for the price of a new
 always-in-path service that can take chat down, and it would have to duplicate

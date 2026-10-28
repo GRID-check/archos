@@ -21,7 +21,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - frontends/web/src/content/**
+      - apps/site/src/content/**
       - .github/workflows/blog-preview.yml
 
 concurrency:
@@ -62,7 +62,7 @@ jobs:
           # `fetch-depth: 0` already fetched every branch, and with
           # persist-credentials:false a further fetch would have no credential.
           CHANGED=$(git diff --name-only --diff-filter=d \
-            "origin/$BASE_REF...HEAD" -- 'frontends/web/src/content/blog/')
+            "origin/$BASE_REF...HEAD" -- 'apps/site/src/content/blog/')
 
           # Two kinds of change reach a rendered post: the entry itself, and an
           # image under _images/<slug>/ that some entry references. Swapping a
@@ -70,12 +70,12 @@ jobs:
           # so map image paths back to whichever locale entries exist for that slug.
           ENTRIES=""
           for file in $CHANGED; do
-            rel="${file#frontends/web/src/content/blog/}"
+            rel="${file#apps/site/src/content/blog/}"
             case "$rel" in
               _images/*)
                 slug="$(printf '%s' "${rel#_images/}" | cut -d/ -f1)"
                 for locale in de en; do
-                  [ -f "frontends/web/src/content/blog/$locale/$slug.mdx" ] \
+                  [ -f "apps/site/src/content/blog/$locale/$slug.mdx" ] \
                     && ENTRIES="$ENTRIES $locale/$slug.mdx"
                 done
                 ;;
@@ -119,7 +119,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # Informational: a flaky browser or a preview-only build failure must never
-    # block a content PR. `task web:verify` in ci.yml is the check that gates it.
+    # block a content PR. `task site:verify` in ci.yml is the check that gates it.
     continue-on-error: true
     permissions:
       contents: read
@@ -142,17 +142,17 @@ jobs:
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: frontends/web/.astro-cache
-          key: astro-cache-${{ runner.os }}-${{ hashFiles('frontends/web/src/content/blog/_images/**', 'frontends/web/src/assets/**') }}
+          path: apps/site/.astro-cache
+          key: astro-cache-${{ runner.os }}-${{ hashFiles('apps/site/src/content/blog/_images/**', 'apps/site/src/assets/**') }}
           restore-keys: |
             astro-cache-${{ runner.os }}-
 
       - uses: ./.github/actions/setup-task
 
       - name: Install + build with drafts rendered
-        # Defined in the root Taskfile so `task web:preview` locally runs exactly
+        # Defined in the root Taskfile so `task site:preview` locally runs exactly
         # what CI runs here.
-        run: task web:preview
+        run: task site:preview
 
       - name: Cache the Playwright Chromium download
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -164,7 +164,7 @@ jobs:
           key: playwright-chromium-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
 
       - name: Install playwright-core + Chromium
-        working-directory: frontends/web
+        working-directory: apps/site
         # CI-only dependency: kept out of package.json so it never reaches the
         # web image's dependency layer. Pinned because there is no lockfile entry
         # to hold it — unpinned, every run would resolve whatever `latest` is and
@@ -174,7 +174,7 @@ jobs:
           ./node_modules/.bin/playwright-core install chromium
 
       - name: Start the built server
-        working-directory: frontends/web
+        working-directory: apps/site
         run: |
           node dist/server/entry.mjs &
           echo $! > /tmp/web.pid
@@ -186,7 +186,7 @@ jobs:
           exit 1
 
       - name: Capture the changed posts
-        working-directory: frontends/web
+        working-directory: apps/site
         env:
           PATHS: ${{ needs.detect.outputs.paths }}
         # Unquoted on purpose: the paths are a validated, space-separated list.

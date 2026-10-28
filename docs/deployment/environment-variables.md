@@ -677,7 +677,7 @@ vars. See `docs/architecture/usage-budgets.md`.
 |----------|----------|---------|-------------|
 | `GRID_PLATFORM_OWNER_EMAILS` | No | — | Break-glass bootstrap: comma-separated emails treated as platform owner even without the WorkOS platform-org membership. For first-run in a fresh environment; keep empty in steady state. |
 | `GRID_PLATFORM_ORG_EXTERNAL_ID` | No | `grid-platform` | External id of the GRID Platform organization in WorkOS. |
-| `GRID_LANDING_URL` | No | — | Base URL of the public landing site (Astro microservice, `frontends/web`) that replaces the retired in-app marketing page. The signed-out root redirect (`/`) points here — but only when `REQUIRE_AUTH=true` (the redirect lives inside the `isAuthRequired()` branch of `frontends/ui/src/app/page.tsx`; with auth off, `/` always goes to `/app/projects`). Unset falls back to the WorkOS sign-in URL. Set by the Kubernetes deployment from `ingress.webDomain`. **`/?sign-in` bypasses this bounce and goes to WorkOS** — the landing site's sign-in link hands off through it (the `/sign-in` endpoint on the landing site redirects here), or the button would return the visitor to the landing site and the app has no reachable entry point. |
+| `GRID_LANDING_URL` | No | — | Base URL of the public landing site (Astro microservice, `apps/site`) that replaces the retired in-app marketing page. The signed-out root redirect (`/`) points here — but only when `REQUIRE_AUTH=true` (the redirect lives inside the `isAuthRequired()` branch of `frontends/ui/src/app/page.tsx`; with auth off, `/` always goes to `/app/projects`). Unset falls back to the WorkOS sign-in URL. Set by the Kubernetes deployment from `ingress.webDomain`. **`/?sign-in` bypasses this bounce and goes to WorkOS** — the landing site's sign-in link hands off through it (the `/sign-in` endpoint on the landing site redirects here), or the button would return the visitor to the landing site and the app has no reachable entry point. |
 | `GRID_DISABLE_SELF_SERVE_ORGS` | No | `false` | `true` makes the platform invite-only: fresh users can no longer self-create organizations (403 `self-serve-disabled`). |
 
 ## Project Authorization (frontend)
@@ -694,7 +694,7 @@ Tune the per-project FGA authorization path (`lib/authz/projects.ts`), the WorkO
 
 ## Landing Site (web tier, Kubernetes/Pulumi-injected)
 
-The Astro landing service (`frontends/web`) carries no secrets; its
+The Astro landing service (`apps/site`) carries no secrets; its
 deployment knobs are where sign-in hands off and whether PostHog web analytics
 loads (ADR-0100). One image serves every stack —
 the app host is resolved at request time, never baked into the prerendered
@@ -709,7 +709,18 @@ HTML (a baked host is how prod once linked at the dev app).
 
 ## Renamed variables
 
-Every variable that started `AIQ_` now starts `GRID_` with the same rest (ADR-0145 row 10b). For one release the image entrypoint (`deploy/entrypoint.py`, `adopt_legacy_names`) still reads an old name: it copies `AIQ_X` onto `GRID_X` when that is unset and logs a deprecation warning, and the Compose files interpolate `${GRID_X:-${AIQ_X:-default}}`. The release after drops both. Nothing else reads an old name; `tests/test_no_legacy_env_names.py` keeps it that way.
+No variable carries the product's name. Every variable that started `GRID_`, or `AIQ_` before that, is now read under the rest of its name: `GRID_MAX_ACTIVE_JOBS_PER_ORG` is `MAX_ACTIVE_JOBS_PER_ORG` (`docs/contributing/code-conventions.md#no-brand-names`). For one release both images still read an old name: the backend's entrypoint (`deploy/entrypoint.py`, `adopt_legacy_names`) and every Node process of the UI image (`frontends/ui/scripts/legacy-env-names.cjs`, loaded through `NODE_OPTIONS`) copy `GRID_X`, else `AIQ_X`, onto `X` when that is unset (with a deprecation warning, once the deployments themselves have moved to the new names), and the Compose files interpolate `${X:-${GRID_X:-${AIQ_X:-default}}}`. A name already set wins. The release after drops all of it.
+
+Where the bare name would collide with a variable a library or the platform already reads, or would still carry the product's name, the variable took a name of its own:
+
+| Old name | New name | Why not the bare name |
+|---|---|---|
+| `GRID_ROLE` | `PROCESS_ROLE` | `ROLE` is generic, and Coolify reserves names under `SERVICE_` |
+| `GRID_VERBOSE` | `AGENT_VERBOSE` | `VERBOSE` is read by build tools and shells |
+| `GRID_LANGFUSE_TRACE_RETENTION_DAYS` | `TRACE_RETENTION_DAYS` | `LANGFUSE_` is the Langfuse SDK's and server's namespace |
+| `GRID_PILOTI_ASK_MAX_SECONDS` | `AGENT_ASK_MAX_SECONDS` | the bare name still carries the product's name |
+
+The earlier `AIQ_` to `GRID_` rename, for reference (each `AIQ_X` is now read as `X`, like its `GRID_X`):
 
 | Old name | New name |
 |---|---|

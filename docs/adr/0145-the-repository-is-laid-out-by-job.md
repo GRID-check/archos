@@ -272,7 +272,7 @@ open PRs touching that tree have drained or been rebased by their authors.
 
 | # | Move | Lines | Waits on |
 |---|---|---|---|
-| 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter; in flight, and written here if that PR has not merged), and `tests/test_repo_layout.py` (below) | — | — |
+| 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter, `tests/test_ci_filter_coverage.py`), and `tests/test_repo_layout.py` (below), which every later row edits: it drops its legacy name and adds its old path to `MOVED` | — | — |
 | 1 | `plans/` and `docs/superpowers/` deleted (#1250, #1252) | — | — |
 | 2 | `frontends/benchmarks/oib_retrieval` + `tests/benchmarks` → `evals/`; distribution name per rule 3; `oib_compliance` deleted | 140 | — |
 | 3 | `frontends/web` → `apps/site`; `shared/brand` and the brand script → `packages/brand`; task namespace `web:` → `site:` | ~140 | open site PRs |
@@ -433,7 +433,7 @@ them:
   fall.
 - Each move is verified by `task lint:repo` and `task verify`, plus:
   - `task be:test:sources` for row 6;
-  - `task web:build` for row 3, which renders the brand assets;
+  - `task site:verify` for row 3, whose `site:check` checks the brand copies against the master (`build-brand-assets.mjs --check`);
   - `task db:test:rls` for row 9 (the tenant boundary moves);
   - one local build of any image whose Dockerfile or context moved.
 

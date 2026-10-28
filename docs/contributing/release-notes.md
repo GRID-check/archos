@@ -219,7 +219,7 @@ linted and translated like a note. A week without an entry shows its notes only.
    `scripts/release_notes.py publish`: reno reads the notes **through git
    history**; each new English sentence is translated into German once and
    cached in `releasenotes/translations/de.json`.
-3. The regenerated `frontends/web/src/data/changelog.json` is committed back to
+3. The regenerated `apps/site/src/data/changelog.json` is committed back to
    `develop`. Publishing runs on pushes to `develop` only, and the push is
    authenticated as the `RELEASE_PAT` owner when that secret is set (falling
    back to `GITHUB_TOKEN`), because the branch ruleset requires changes to
@@ -249,7 +249,7 @@ that exists.
 
 ### The generated file
 
-`frontends/web/src/data/changelog.json` is generated. Do not edit it; if two
+`apps/site/src/data/changelog.json` is generated. Do not edit it; if two
 branches conflict in it, regenerate rather than hand-merge:
 
 ```bash
