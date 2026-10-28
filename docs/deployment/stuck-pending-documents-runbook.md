@@ -32,9 +32,14 @@ that aged out while stuck is included. The scheduler never sends it.
 kubectl -n grid exec deploy/frontend -c frontend -- node -e '
 fetch("http://localhost:3000/api/internal/upload-batches/sweep?windowDays=30", {
   method: "POST",
-  headers: { "x-grid-internal-token": process.env.INTERNAL_API_TOKEN },
+  headers: { "x-internal-token": process.env.INTERNAL_API_TOKEN },
 }).then(async (r) => console.log(r.status, await r.text()))'
 ```
+
+The token header is `x-internal-token`. The receivers still accept the old
+`x-grid-internal-token` until the cleanup release, so the command works on
+either side of the header rename; swap the name if a pod runs a build that
+predates it.
 
 The answer is the sweep's counts: `checked`, `sealed`, `completed`, `failed`. One call
 handles the 25 newest open batches in the window; repeat it until `checked` stops
