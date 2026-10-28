@@ -21,12 +21,12 @@ from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer_testing import reingest
 from knowledge_layer_testing.qdrant import FakeEmbedder
 
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_agent.knowledge.schema import stable_file_id
+from agent.knowledge import ingest_status_store
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from agent.knowledge.schema import stable_file_id
 
 COLLECTION = "proj_two_processes"
 

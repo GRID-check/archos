@@ -3,7 +3,7 @@ hands back.
 
 The two ``_StrictContract`` models are sent to a model as native strict
 ``json_schema`` structured output via
-:func:`aiq_agent.common.strict_json_response_format`, so both obey the
+:func:`agent.common.strict_json_response_format`, so both obey the
 strict-mode contract: every property is required (an optional one is expressed
 as nullable, never as a default) and ``extra="forbid"`` puts
 ``additionalProperties: false`` in the emitted schema. A schema that omits a
@@ -25,8 +25,8 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.common.plan_vocabulary import modernize_plan
+from agent.common.plan_documents import PlanDocuments
+from agent.common.plan_vocabulary import modernize_plan
 
 PlanDecision = Literal["approved", "shallow", "cancelled", "feedback"]
 """What one reply to the plan preview asks for. ``feedback`` means "revise it"."""

@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from knowledge_layer.browse import file_rows
 
-from aiq_agent.knowledge.folder_cards.inputs import PROMPT_VERSION
-from aiq_agent.knowledge.folder_cards.inputs import folder_inputs
-from aiq_agent.knowledge.folder_cards.inputs import input_hash
+from agent.knowledge.folder_cards.inputs import PROMPT_VERSION
+from agent.knowledge.folder_cards.inputs import folder_inputs
+from agent.knowledge.folder_cards.inputs import input_hash
 
 
 def _row(name, folder, summary="Ein Dokument.", **extra):
@@ -86,7 +86,7 @@ class TestInputHash:
         assert input_hash(_inputs(cards=cards)) == input_hash(_inputs(more, cards=cards))
 
     def test_the_prompt_version_is_part_of_it(self, monkeypatch):
-        from aiq_agent.knowledge.folder_cards import inputs as module
+        from agent.knowledge.folder_cards import inputs as module
 
         before = input_hash(_inputs())
         monkeypatch.setattr(module, "PROMPT_VERSION", f"{PROMPT_VERSION}-next")
@@ -96,7 +96,7 @@ class TestInputHash:
 
 def test_a_folder_without_a_card_still_reads_its_description():
     """The first build of a folder reads what a person wrote about it, before any card exists."""
-    from aiq_agent.knowledge.folder_cards.inputs import folder_inputs
+    from agent.knowledge.folder_cards.inputs import folder_inputs
 
     inputs = folder_inputs("proj_a", "Gutachten", [], {}, {"Gutachten": "Alle   externen Gutachten"})
     assert inputs.description == "Alle externen Gutachten"

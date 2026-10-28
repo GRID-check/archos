@@ -22,12 +22,12 @@ from knowledge_layer.page_image import PageImage
 from knowledge_layer.page_image import PageImageUnavailable
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from aiq_agent.common import cache
-from aiq_agent.knowledge import revision_compare as compare
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.observability import direct_trace
-from aiq_api.routes import revision_compare as route
-from aiq_api.routes.revision_compare import add_revision_compare_routes
+from agent.common import cache
+from agent.knowledge import revision_compare as compare
+from agent.knowledge.schema import AvailableDocument
+from agent.observability import direct_trace
+from backend.routes import revision_compare as route
+from backend.routes.revision_compare import add_revision_compare_routes
 
 COLLECTION = "proj_a"
 OLDER = "Grundriss_EG_Index_B.pdf"
@@ -294,7 +294,7 @@ class TestTracing:
 
     async def test_the_vision_call_is_booked_to_the_named_organization_and_person(self, pages, ingested, monkeypatch):
         """A notice's spend reaches the ledger the budget gate reads; a cache hit books nothing (ADR-0130)."""
-        from aiq_agent.common import cost_tracking
+        from agent.common import cost_tracking
 
         posted: list[dict] = []
         monkeypatch.setattr(cost_tracking, "_post_usage_events", posted.append)
@@ -343,9 +343,7 @@ class TestChangedPages:
             OLDER: [("Grundriss EG\nWand 2,50 m", {"page_label": "1"}), ("Schnitt\nREI 90", {"page_label": "2"})],
             NEWER: [("Grundriss EG\nWand 2,50 m", {"page_label": "1"}), ("Schnitt\nREI 60", {"page_label": "2"})],
         }
-        monkeypatch.setattr(
-            "aiq_agent.knowledge.collection_pages.read_chunks", lambda collection, name: chunks.get(name)
-        )
+        monkeypatch.setattr("agent.knowledge.collection_pages.read_chunks", lambda collection, name: chunks.get(name))
         return chunks
 
     async def _pages(self, body=None, gateway=None):
@@ -382,7 +380,7 @@ class TestChangedPages:
         def down(collection, name):
             raise ConnectionError("qdrant down")
 
-        monkeypatch.setattr("aiq_agent.knowledge.collection_pages.read_chunks", down)
+        monkeypatch.setattr("agent.knowledge.collection_pages.read_chunks", down)
 
         response, _ = await self._pages()
 

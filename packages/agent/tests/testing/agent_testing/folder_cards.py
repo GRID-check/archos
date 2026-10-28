@@ -28,8 +28,8 @@ def _database_url(backend: str, tmp_path: Path) -> str:
     """A SQLite file per test, or the throwaway Postgres with the builder's tables cleared."""
     from sqlalchemy import text
 
-    from aiq_agent.knowledge import document_metadata_store as store
-    from aiq_agent.knowledge.folder_cards import queue
+    from agent.knowledge import document_metadata_store as store
+    from agent.knowledge.folder_cards import queue
 
     if backend == "sqlite":
         return f"sqlite:///{tmp_path / 'agent.db'}"
@@ -53,8 +53,8 @@ def agent_db(request, tmp_path, monkeypatch, folder_cards_flag):
     """A fresh agent DB as ``document_metadata`` and the queue's home; folder cards on."""
     from sqlalchemy import text
 
-    from aiq_agent.knowledge import factory
-    from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+    from agent.knowledge import factory
+    from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
     previous = factory._document_metadata_store
     url = _database_url(request.param, tmp_path)
@@ -65,7 +65,7 @@ def agent_db(request, tmp_path, monkeypatch, folder_cards_flag):
     factory.configure_summary_db(url)
     folder_cards_flag.on("org_1")
     # The organization the hooks gate on when no request or ingest context names one.
-    from aiq_agent.knowledge.folder_cards import queue
+    from agent.knowledge.folder_cards import queue
 
     queue.remember_collection("proj", "org_1")
     yield url
@@ -77,7 +77,7 @@ class FolderCardsFlag:
     """The ``folder-cards`` WorkOS flag as the BFF answers it (``gate._fetch``), per organization."""
 
     def __init__(self, monkeypatch) -> None:
-        from aiq_agent.knowledge.folder_cards import gate
+        from agent.knowledge.folder_cards import gate
 
         self.enabled: set[str] = set()
         self.asked: list[str] = []
@@ -153,7 +153,7 @@ class FakeBff:
 
 @pytest.fixture
 def bff(monkeypatch) -> FakeBff:
-    from aiq_agent.knowledge.folder_cards import client
+    from agent.knowledge.folder_cards import client
 
     fake = FakeBff()
     monkeypatch.setattr(client, "put_card", fake.put_card)
@@ -161,7 +161,7 @@ def bff(monkeypatch) -> FakeBff:
     monkeypatch.setattr(client, "read_collection", fake.read_collection)
     monkeypatch.setattr(client, "delete_card", fake.delete_card)
     # The point writes need an embedder and a Qdrant; ``test_folder_card_points.py`` runs them for real.
-    from aiq_agent.knowledge.folder_cards import worker
+    from agent.knowledge.folder_cards import worker
 
     monkeypatch.setattr(
         worker,

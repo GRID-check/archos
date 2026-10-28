@@ -11,8 +11,8 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
 
-from aiq_agent.knowledge.base import BaseIngestor
-from aiq_agent.knowledge.schema import CollectionInfo
+from agent.knowledge.base import BaseIngestor
+from agent.knowledge.schema import CollectionInfo
 
 from ..models.requests import CreateCollectionRequest
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def _require_ingestor() -> BaseIngestor:
-    from aiq_agent.knowledge.factory import get_active_ingestor
+    from agent.knowledge.factory import get_active_ingestor
 
     ingestor = get_active_ingestor()
     if ingestor is None:

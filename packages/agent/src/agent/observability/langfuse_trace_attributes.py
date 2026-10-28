@@ -20,7 +20,7 @@ installed NAT, not assumed:
 * ``user.id`` — NAT 1.9 sets it from ``Context.user_id`` at span creation
   (#2152), and Langfuse maps ``user.id`` to the trace's user. The chat socket
   opens every turn's session with ``user_id`` = the VERIFIED subject
-  (``aiq_api.chat_socket``), the same WorkOS user id the envelope carries, so
+  (``backend.chat_socket``), the same WorkOS user id the envelope carries, so
   this module no longer writes ``langfuse.user.id``
   (``test_nat_puts_the_session_user_on_every_span`` pins NAT's half). NAT sets
   it, and ``<prefix>.user.id``, on every span whatever
@@ -339,12 +339,12 @@ def reset_contributions() -> None:
 # in the span metadata — ingests the OpenRouter-reported cost verbatim.
 #
 # No client-side price table is consulted: the only ``PricingRegistry`` in
-# this repo (``aiq_agent.tokenomics.pricing``) is eval-only, built from the
+# this repo (``agent.tokenomics.pricing``) is eval-only, built from the
 # ``tokenomics.pricing`` section of an eval YAML that is never deployed.
 # Per-span cost computation against a deployed table is the follow-up; until
 # then spans carry usage (+model for server-side inference, +verbatim cost
 # when the provider reported one) and per-turn dollars land on the trace
-# via ``aiq_agent.observability.usage_rollup``.
+# via ``agent.observability.usage_rollup``.
 
 #: OTel GenAI semconv usage keys Langfuse maps to ``usageDetails`` (it
 #: normalizes cache buckets server-side, so these stay provider-verbatim).
@@ -793,8 +793,8 @@ def current_langfuse_attributes() -> dict[str, Any]:
     observe a concurrent researcher's later writes.
     """
     try:
-        from aiq_agent.project_context import GridRequestContext
-        from aiq_agent.project_context import get_conversation_id_from_context
+        from agent.project_context import GridRequestContext
+        from agent.project_context import get_conversation_id_from_context
 
         context = GridRequestContext.from_context()
         return langfuse_attributes_for(
@@ -853,12 +853,12 @@ def context_attributes_for(
     observation type. A root span also names its trace and carries the turn's
     outcome when the turn recorded one.
     """
-    from aiq_agent.observability.trace_context import OBSERVATION_TYPE_ATTRIBUTE
-    from aiq_agent.observability.trace_context import TRACE_NAME_ATTRIBUTE
-    from aiq_agent.observability.trace_context import observation_type
-    from aiq_agent.observability.trace_context import process_trace_attributes
-    from aiq_agent.observability.trace_context import span_kind
-    from aiq_agent.observability.trace_context import trace_name_for_root
+    from agent.observability.trace_context import OBSERVATION_TYPE_ATTRIBUTE
+    from agent.observability.trace_context import TRACE_NAME_ATTRIBUTE
+    from agent.observability.trace_context import observation_type
+    from agent.observability.trace_context import process_trace_attributes
+    from agent.observability.trace_context import span_kind
+    from agent.observability.trace_context import trace_name_for_root
 
     additions = process_trace_attributes()
     kind = observation_type(name=name, kind=span_kind(attributes))
@@ -924,8 +924,8 @@ try:
 
         async def process(self, item: Span) -> Span:
             try:
-                from aiq_agent.observability.trace_context import OBSERVATION_LEVEL_ATTRIBUTE
-                from aiq_agent.observability.turn_outcome import current_turn_outcome
+                from agent.observability.trace_context import OBSERVATION_LEVEL_ATTRIBUTE
+                from agent.observability.turn_outcome import current_turn_outcome
 
                 is_root = item.parent is None
                 additions = context_attributes_for(
@@ -983,8 +983,8 @@ try:
             """
             try:
                 attributes = item.attributes or {}
-                from aiq_agent.observability.decision_trace import decision_usage
-                from aiq_agent.observability.decision_trace import is_decision_span
+                from agent.observability.decision_trace import decision_usage
+                from agent.observability.decision_trace import is_decision_span
 
                 if is_decision_span(item.name):
                     # The decision model's calls bypass LangChain; their usage
@@ -1073,7 +1073,7 @@ try:
 
         async def process(self, item: Span) -> Span:
             try:
-                from aiq_agent.common.image_redaction import redact_inline_images
+                from agent.common.image_redaction import redact_inline_images
 
                 for key, value in list((item.attributes or {}).items()):
                     if isinstance(value, str) and "data:image" in value:

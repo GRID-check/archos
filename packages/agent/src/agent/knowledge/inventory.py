@@ -21,9 +21,9 @@ from contextvars import ContextVar
 from datetime import datetime
 from typing import Any
 
-from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import parse_shelf
+from agent.common.source_kinds import SHELF_QUALIFIERS
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import parse_shelf
 
 _listing_shelf: ContextVar[Shelf | None] = ContextVar("grid_listing_shelf", default=None)
 
@@ -466,7 +466,7 @@ def set_norm_families(families: Sequence[Any] | None) -> None:
 
 
 def get_norm_families() -> tuple[Any, ...]:
-    """The turn's families (:class:`~aiq_agent.common.norm_registry.NormFamily`)."""
+    """The turn's families (:class:`~agent.common.norm_registry.NormFamily`)."""
     return _norm_families.get()
 
 
@@ -759,7 +759,7 @@ def render_inventory_block(
 def in_scope_shelves_from_context() -> list[Shelf]:
     """Shelves the current turn is authorized to read, or empty when unknown."""
     try:
-        from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+        from agent.knowledge.scoping import get_scoped_collections_from_context
 
         entries = get_scoped_collections_from_context()
     except Exception:

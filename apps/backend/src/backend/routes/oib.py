@@ -22,8 +22,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.knowledge.document_classification import canonical_doc_class
-from aiq_agent.oib_status import OibKnowledgeStatus
+from agent.knowledge.document_classification import canonical_doc_class
+from agent.oib_status import OibKnowledgeStatus
 
 from ..jobs.ingest_dispatch import enqueue_only
 from ..models.requests import OibDocumentDeleteResponse
@@ -72,7 +72,7 @@ def _corpus_tarball() -> Path:
     replica's cache on the way if it is not there yet. PDFs are already
     compressed; level 1 spends no time on a gain that is not there.
     """
-    from aiq_agent import corpus_store
+    from agent import corpus_store
 
     handle = tempfile.NamedTemporaryFile(prefix="oib-corpus-", suffix=".tar.gz", delete=False)
     handle.close()
@@ -108,13 +108,13 @@ class _TemporaryFileResponse(FileResponse):
 
 # The two below import late: the corpus and the status pull the knowledge layer in.
 def _run_ingestion():
-    from aiq_agent.oib_sync import sync
+    from agent.oib_sync import sync
 
     return sync(enqueue=enqueue_only)
 
 
 def _compute_status():
-    from aiq_agent.oib_status import get_status
+    from agent.oib_status import get_status
 
     return get_status()
 
@@ -139,7 +139,7 @@ def _store_upload(name: str, content: bytes, doc_class: str | None) -> None:
     the route answers with an error rather than a pending job that would never
     find its file; so does a queue that cannot take the job.
     """
-    from aiq_agent import oib_sync
+    from agent import oib_sync
 
     oib_sync.store_and_request(name, content, doc_class, enqueue=enqueue_only)
 
@@ -218,7 +218,7 @@ def _extract_zip_pdfs(content: bytes) -> tuple[list[tuple[str, bytes]], list[tup
 
 def _queue_reingest(names: list[str]) -> tuple[list[str], list[str]]:
     """``(queued, unknown)``: each known name made to need ingestion again, with a job queued for it."""
-    from aiq_agent import oib_sync
+    from agent import oib_sync
 
     queued: list[str] = []
     unknown: list[str] = []
@@ -232,7 +232,7 @@ def _queue_reingest(names: list[str]) -> tuple[list[str], list[str]]:
 
 
 def _remove_document(name: str) -> bool:
-    from aiq_agent import oib_sync
+    from agent import oib_sync
 
     return oib_sync.remove_document(name)
 
@@ -243,7 +243,7 @@ def _resolve_corpus_pdf(file_name: str) -> Path | None:
     Refuses any path component in the input; ``None`` when the corpus does not
     list the file. A listed file that cannot be fetched raises ``CorpusStoreError``.
     """
-    from aiq_agent import corpus_store
+    from agent import corpus_store
 
     return corpus_store.ensure_local(file_name)
 
@@ -307,7 +307,7 @@ async def get_oib_document(file_name: str) -> FileResponse:
     corpus does not list the file, 503 when it lists it but the object
     store cannot serve it right now.
     """
-    from aiq_agent.corpus_store import CorpusStoreError
+    from agent.corpus_store import CorpusStoreError
 
     try:
         path = await asyncio.to_thread(_resolve_corpus_pdf, file_name)
@@ -332,7 +332,7 @@ def _is_zip_upload(upload: UploadFile) -> bool:
 
 def _resolved_doc_class(doc_class: str | None, name: str) -> str:
     """The Dokumentart a single upload is stored under: the explicit one (400 when off-vocabulary), else guessed."""
-    from aiq_agent.common.norm_registry import guess_doc_class
+    from agent.common.norm_registry import guess_doc_class
 
     if doc_class is not None:
         # An admin tab that has not reloaded since the rename still sends the German key.
@@ -401,7 +401,7 @@ async def upload_oib_document(
 
 
 async def _handle_zip_upload(content: bytes) -> OibDocumentUploadResponse:
-    from aiq_agent.common.norm_registry import guess_doc_class
+    from agent.common.norm_registry import guess_doc_class
 
     accepted, rejected = await asyncio.to_thread(_extract_zip_pdfs, content)
     if not accepted and not rejected:
@@ -520,9 +520,9 @@ async def update_oib_doc_class(
     the document (the summary is the anchor; there is nothing to classify
     without one).
     """
-    from aiq_agent import oib_sync
-    from aiq_agent.knowledge.factory import set_document_doc_class
-    from aiq_agent.knowledge.factory import set_document_doc_class_suggestion
+    from agent import oib_sync
+    from agent.knowledge.factory import set_document_doc_class
+    from agent.knowledge.factory import set_document_doc_class_suggestion
 
     name = Path(file_name).name
     doc_class = canonical_doc_class(request.doc_class)
@@ -571,8 +571,8 @@ async def update_oib_display_title(
     blank value clears the override, restoring the derived default. 404s when
     no metadata row exists for the document (the summary is the anchor).
     """
-    from aiq_agent import oib_sync
-    from aiq_agent.knowledge.factory import set_document_display_title
+    from agent import oib_sync
+    from agent.knowledge.factory import set_document_display_title
 
     name = Path(file_name).name
     new_title = (request.display_title or "").strip() or None

@@ -23,18 +23,18 @@ from langchain_core.tools import tool
 from langgraph.store.memory import InMemoryStore
 from langgraph.types import Checkpointer
 
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common import render_prompt_template
-from aiq_agent.common.norm_registry import JURISDICTION_GROUNDING
-from aiq_agent.common.norm_registry import doctrine_for
-from aiq_agent.common.norm_registry import parcel_note
-from aiq_agent.common.norm_registry import render_block_for_prompt
-from aiq_agent.skills import OFFICE_SOURCE
-from aiq_agent.skills import SKILLS_ROOT
-from aiq_agent.skills import SkillRuntime
-from aiq_agent.skills import skills_middleware
-from aiq_agent.skills.runtime import source_path
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common import render_prompt_template
+from agent.common.norm_registry import JURISDICTION_GROUNDING
+from agent.common.norm_registry import doctrine_for
+from agent.common.norm_registry import parcel_note
+from agent.common.norm_registry import render_block_for_prompt
+from agent.skills import OFFICE_SOURCE
+from agent.skills import SKILLS_ROOT
+from agent.skills import SkillRuntime
+from agent.skills import skills_middleware
+from agent.skills.runtime import source_path
 
 from .custom_middleware import DeferredStructuredOutputMiddleware
 from .custom_middleware import EmptyContentFixMiddleware

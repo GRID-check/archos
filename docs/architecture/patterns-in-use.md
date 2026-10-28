@@ -25,7 +25,7 @@ Layers and rules:
 
 The UI's layers point one way, `app` → `features` → `components` → `lib`, and a
 feature reaches another only through its index and never in a circle. In
-Python, `aiq_agent` never imports `aiq_api` (the API tier owns the request
+Python, `agent` never imports `backend` (the API tier owns the request
 identity's writes and hands its capabilities in) and reaches `knowledge_layer`
 only through the port in `knowledge/factory.py` (ADR-0072).
 The rules and the baselines that hold today's exceptions:
@@ -62,8 +62,8 @@ fail on a difference.
 
 | Artifact | Generated from | Guarded |
 |---|---|---|
-| `apps/workspace/bff/skills/platform-skills.ts` | `packages/agent/src/aiq_agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
-| `contracts/cards/schemas.json` | the card models (`packages/agent/src/aiq_agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
+| `apps/workspace/bff/skills/platform-skills.ts` | `packages/agent/src/agent/skills/builtin/*/SKILL.md` | yes, the `sync-platform-skills` pre-commit hook |
+| `contracts/cards/schemas.json` | the card models (`packages/agent/src/agent/cards/models.py` and its card modules), via `scripts/generate_card_schema.py` | yes, the `card-schemas` pre-commit hook |
 | `apps/workspace/shared/cards/generated.ts` | `contracts/cards/schemas.json`, via `apps/workspace/scripts/generate-card-schemas.mjs` | yes, the same hook |
 
 The card schema is a two-stage pipeline from Pydantic models to Zod. Neither

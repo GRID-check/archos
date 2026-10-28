@@ -5,13 +5,13 @@ from unittest.mock import MagicMock
 import pytest
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.common.data_sources import DEFAULT_DATA_SOURCES
-from aiq_agent.common.data_sources import extract_messages_and_sources
-from aiq_agent.common.data_sources import filter_tools_by_sources
-from aiq_agent.common.data_sources import format_data_source_tools
-from aiq_agent.common.data_sources import parse_data_sources
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from agent.common.data_sources import DEFAULT_DATA_SOURCES
+from agent.common.data_sources import extract_messages_and_sources
+from agent.common.data_sources import filter_tools_by_sources
+from agent.common.data_sources import format_data_source_tools
+from agent.common.data_sources import parse_data_sources
 
 
 @pytest.fixture(autouse=True)
@@ -373,7 +373,7 @@ class TestAllMappedToolsFilteredOut:
 
     def test_none_data_sources_returns_false(self):
         """None means no filtering; nothing was filtered out."""
-        from aiq_agent.common.data_sources import all_mapped_tools_filtered_out
+        from agent.common.data_sources import all_mapped_tools_filtered_out
 
         web_tool = MagicMock()
         web_tool.name = "web_search_tool"
@@ -381,7 +381,7 @@ class TestAllMappedToolsFilteredOut:
 
     def test_no_mapped_tools_in_input_returns_false(self):
         """If the tools list had no mapped tools to begin with, nothing was lost."""
-        from aiq_agent.common.data_sources import all_mapped_tools_filtered_out
+        from agent.common.data_sources import all_mapped_tools_filtered_out
 
         calculator = MagicMock()
         calculator.name = "calculator"
@@ -389,7 +389,7 @@ class TestAllMappedToolsFilteredOut:
 
     def test_empty_sources_drops_all_mapped_returns_true(self):
         """data_sources=[] drops every mapped tool -> predicate fires."""
-        from aiq_agent.common.data_sources import all_mapped_tools_filtered_out
+        from agent.common.data_sources import all_mapped_tools_filtered_out
 
         web_tool = MagicMock()
         web_tool.name = "web_search_tool"
@@ -399,7 +399,7 @@ class TestAllMappedToolsFilteredOut:
 
     def test_unknown_source_drops_all_mapped_returns_true(self):
         """User requested a source that matches zero configured tools."""
-        from aiq_agent.common.data_sources import all_mapped_tools_filtered_out
+        from agent.common.data_sources import all_mapped_tools_filtered_out
 
         web_tool = MagicMock()
         web_tool.name = "web_search_tool"
@@ -407,7 +407,7 @@ class TestAllMappedToolsFilteredOut:
 
     def test_some_mapped_tools_survive_returns_false(self):
         """At least one mapped tool survived -> predicate does not fire."""
-        from aiq_agent.common.data_sources import all_mapped_tools_filtered_out
+        from agent.common.data_sources import all_mapped_tools_filtered_out
 
         web_tool = MagicMock()
         web_tool.name = "web_search_tool"

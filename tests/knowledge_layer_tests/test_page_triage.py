@@ -34,7 +34,7 @@ from knowledge_layer.llamaindex.page_triage import text_quality
 from knowledge_layer_testing.qdrant import FakeEmbedder
 from knowledge_layer_testing.qdrant import capture_indexed_documents
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
+from agent.common.credential_resolution import ResolvedCredential
 
 GERMAN = (
     "Gemäß § 70 der Bauordnung für Wien wird die Bewilligung unter folgenden Auflagen erteilt: "
@@ -452,8 +452,8 @@ class TestTranscribePdfPages:
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")

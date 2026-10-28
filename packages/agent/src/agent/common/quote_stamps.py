@@ -32,11 +32,11 @@ from collections.abc import Iterator
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.quote_matching import MIN_QUOTE_LEN
-from aiq_agent.citations.quote_matching import QUOTE_MATCH_THRESHOLD
-from aiq_agent.citations.quote_matching import quote_coverage
-from aiq_agent.citations.wire import source_entry_to_wire
+from agent.citations.entries import SourceEntry
+from agent.citations.quote_matching import MIN_QUOTE_LEN
+from agent.citations.quote_matching import QUOTE_MATCH_THRESHOLD
+from agent.citations.quote_matching import quote_coverage
+from agent.citations.wire import source_entry_to_wire
 
 #: What the reader needs to open the passage: the fields a citation chip opens
 #: its document from (``source_entry_to_wire``), and nothing that restates it.

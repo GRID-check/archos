@@ -292,7 +292,7 @@ export function installNetworkPolicies(
 
   // 11d. The backend tiers → Langfuse web public API. The agent writes the
   //      answer pipeline's checks as scores on each turn's trace (ADR-0089,
-  //      `aiq_agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
+  //      `agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
   //      the in-cluster Service, for the reason rule 11c gives. The three roles
   //      that run answers or serve them: chat and api (each under both names
   //      while they run side by side, `tier-names.ts`) and the research worker (`agent-worker`). The ingest worker is not

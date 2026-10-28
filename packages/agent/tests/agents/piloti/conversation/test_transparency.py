@@ -21,22 +21,22 @@ from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.conversation import ANSWER_LIFTS
-from aiq_agent.agents.piloti.conversation import DEEP_RESEARCH_UNAVAILABLE_NOTE
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.conversation import _finalize_answer
-from aiq_agent.agents.piloti.ledger import citations_removed_summary
-from aiq_agent.agents.piloti.markers import ESCALATION_MARKER
-from aiq_agent.agents.piloti.markers import answer_confidence_capped_reason
-from aiq_agent.agents.piloti.markers import surface_answer_confidence
-from aiq_agent.agents.piloti.models import ClarifyResult
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common.canned_replies import GENERIC_ERROR_MESSAGE
-from aiq_agent.common.job_admission import JobAdmissionError
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.turn.commission import CommissionedRun
-from aiq_agent.turn.commission import CommissionRefused
+from agent.agents.piloti.conversation import ANSWER_LIFTS
+from agent.agents.piloti.conversation import DEEP_RESEARCH_UNAVAILABLE_NOTE
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.conversation import _finalize_answer
+from agent.agents.piloti.ledger import citations_removed_summary
+from agent.agents.piloti.markers import ESCALATION_MARKER
+from agent.agents.piloti.markers import answer_confidence_capped_reason
+from agent.agents.piloti.markers import surface_answer_confidence
+from agent.agents.piloti.models import ClarifyResult
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common.canned_replies import GENERIC_ERROR_MESSAGE
+from agent.common.job_admission import JobAdmissionError
+from agent.common.wire_v2 import TurnResult
+from agent.turn.commission import CommissionedRun
+from agent.turn.commission import CommissionRefused
 
 
 def _signals(**fields) -> ResearchAgentState:
@@ -548,7 +548,7 @@ class TestEscalationReasonEndToEnd:
     @pytest.mark.asyncio
     async def test_a_zdr_refusal_names_the_fix_instead_of_asking_for_a_retry(self):
         """No endpoint satisfies the org's ZDR setting: a retry cannot help (ADR-0074)."""
-        from aiq_agent.common.canned_replies import ZDR_MODEL_REFUSED_MESSAGE
+        from agent.common.canned_replies import ZDR_MODEL_REFUSED_MESSAGE
 
         async def refused(state):
             raise RuntimeError("Error code: 404 - No endpoints found matching your data policy")

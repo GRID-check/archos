@@ -7,7 +7,7 @@ in a document set — or loops on a tool result it cannot parse — would otherw
 spend the turn's whole budget on images. The card registry's problem, in
 another shape: something per-turn that a tool must see and that must not
 leak into the next turn or another tenant, so it is the same ContextVar
-pattern (:mod:`aiq_agent.cards.registry`).
+pattern (:mod:`agent.cards.registry`).
 
 Two limits, one budget (ADR-0128): at most :data:`MAX_IMAGE_VIEWS_PER_TURN`
 looks, and of those at most :data:`MAX_OVERVIEW_VIEWS_PER_TURN` whole pages (an

@@ -77,11 +77,11 @@ from pydantic import Field
 from pydantic import ValidationError
 from pydantic import field_validator
 
-from aiq_agent.common.provenance import normalize_document_name
-from aiq_agent.common.turn_notices import VERDICT_DROP_AGENT_AUTHORED
-from aiq_agent.common.turn_notices import VERDICT_DROP_UNREFERENCED_WITH_AGENT_SOURCE
-from aiq_agent.common.turn_notices import emit_anatomy_dropped
-from aiq_agent.common.turn_notices import emit_verdict_dropped
+from agent.common.provenance import normalize_document_name
+from agent.common.turn_notices import VERDICT_DROP_AGENT_AUTHORED
+from agent.common.turn_notices import VERDICT_DROP_UNREFERENCED_WITH_AGENT_SOURCE
+from agent.common.turn_notices import emit_anatomy_dropped
+from agent.common.turn_notices import emit_verdict_dropped
 
 logger = logging.getLogger(__name__)
 
@@ -1379,6 +1379,6 @@ def render_envelope_schema() -> str:
     # catalog so it cannot drift from the validator. Imported here because the
     # cards package validates with pydantic models of its own and never needs
     # this module; the dependency runs one way.
-    from aiq_agent.cards.envelope import render_envelope_cards_contract
+    from agent.cards.envelope import render_envelope_cards_contract
 
     return rendered + "\n\nCARDS (the `cards` field):\n" + render_envelope_cards_contract()

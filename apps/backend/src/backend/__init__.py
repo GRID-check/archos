@@ -5,19 +5,19 @@ This package combines:
 - Knowledge API: Collection and document management
 - Async Job API: Agent job submission and SSE streaming
 
-``AIQAPIConfig`` and ``AIQAPIWorker`` load on first use. Importing ``.plugin``
+``BackendConfig`` and ``BackendWorker`` load on first use. Importing ``.plugin``
 here pulled the routes, the job runner and the agents in with ANY submodule
-(``aiq_api.auth.errors`` included). NAT registers through ``aiq_api.register``.
+(``backend.auth.errors`` included). NAT registers through ``backend.register``.
 """
 
 from typing import TYPE_CHECKING
 from typing import Any
 
 if TYPE_CHECKING:
-    from .plugin import AIQAPIConfig
-    from .plugin import AIQAPIWorker
+    from .plugin import BackendConfig
+    from .plugin import BackendWorker
 
-__all__ = ["AIQAPIConfig", "AIQAPIWorker"]
+__all__ = ["BackendConfig", "BackendWorker"]
 
 
 def __getattr__(name: str) -> Any:

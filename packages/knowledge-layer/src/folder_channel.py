@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 def _enabled() -> bool:
     """The turn's organization has the ``folder-cards`` flag. Blocking (the BFF answers, then a minute's cache)."""
-    from aiq_agent.knowledge.folder_cards import gate
-    from aiq_agent.project_context import get_organization_id_from_context
+    from agent.knowledge.folder_cards import gate
+    from agent.project_context import get_organization_id_from_context
 
     return gate.enabled_for(get_organization_id_from_context())
 

@@ -12,7 +12,7 @@
  *
  * The obvious shape — seed the rows in a `drizzle` migration — is wrong here,
  * and dangerously so. A platform default replaces the model id and NOTHING else:
- * `override_model` (packages/agent/src/aiq_agent/common/model_overrides.py) deliberately leaves
+ * `override_model` (packages/agent/src/agent/common/model_overrides.py) deliberately leaves
  * `base_url` and `api_key` alone, so that an override can never re-point traffic
  * at another provider. A migration runs on every deployment regardless of which
  * `BACKEND_CONFIG` that deployment loaded, and a deployment may point that at a

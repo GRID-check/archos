@@ -42,9 +42,9 @@ from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
 
-from aiq_agent.common import bff_http
-from aiq_agent.common.cache import cache_counters
-from aiq_agent.common.cache import count_cache_operations
+from agent.common import bff_http
+from agent.common.cache import cache_counters
+from agent.common.cache import count_cache_operations
 
 logger = logging.getLogger(__name__)
 
@@ -407,8 +407,8 @@ def annotate_current_span(**facts: Any) -> None:
 
 
 def _read_identity_from_context() -> dict[str, str | None]:
-    from aiq_agent.project_context import get_conversation_id_from_context
-    from aiq_agent.project_context import get_organization_id_from_context
+    from agent.project_context import get_conversation_id_from_context
+    from agent.project_context import get_organization_id_from_context
 
     return {
         "organization_id": get_organization_id_from_context(),
@@ -552,7 +552,7 @@ async def flush_after_answer(*ledgers: Any, timeout_seconds: float | None = None
     # when there was nothing left to flush (a spent tracker may already be
     # empty) and never raises.
     try:
-        from aiq_agent.observability.usage_rollup import record_usage_turn
+        from agent.observability.usage_rollup import record_usage_turn
 
         profiler_like = next((entry for entry in ledgers if hasattr(entry, "turn_id")), None)
         for ledger in ledgers:

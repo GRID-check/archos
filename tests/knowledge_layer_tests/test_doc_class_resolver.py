@@ -13,10 +13,10 @@ from types import SimpleNamespace
 
 from knowledge_layer.search_results import format_results
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.factory import configure_summary_db
-from aiq_agent.knowledge.factory import register_summary
-from aiq_agent.knowledge.factory import set_document_doc_class
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.factory import configure_summary_db
+from agent.knowledge.factory import register_summary
+from agent.knowledge.factory import set_document_doc_class
 
 
 def _chunk(*, file_name: str, collection: str, doc_class: str | None):
@@ -84,7 +84,7 @@ def test_stored_display_title_is_the_source_label():
         configure_summary_db(db_url)
 
         register_summary("oib_knowledge", "oib-rl_2_ausgabe_mai_2023.pdf", "Brandschutz.")
-        from aiq_agent.knowledge.factory import set_document_display_title
+        from agent.knowledge.factory import set_document_display_title
 
         assert set_document_display_title("oib_knowledge", "oib-rl_2_ausgabe_mai_2023.pdf", "Custom OIB Name")
 

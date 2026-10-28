@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge.project_memory import insert_memory_item
-from aiq_agent.knowledge.project_memory import looks_like_personal_data
+from agent.common import bff_http
+from agent.knowledge.project_memory import insert_memory_item
+from agent.knowledge.project_memory import looks_like_personal_data
 
 
 @pytest.mark.parametrize(

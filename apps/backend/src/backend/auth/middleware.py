@@ -13,11 +13,11 @@ Three independent checks:
 CONTEXTVAR PROPAGATION
 -----------------------
 The middleware binds the resolved user dict in the agent tier's ``ContextVar``
-(``aiq_agent.auth.request_identity``) so that
+(``agent.auth.request_identity``) so that
 NAT workflow functions (which do not receive the ASGI ``Request`` object)
 can read the caller type without framework coupling.
 
-    from aiq_agent.auth.request_identity import get_current_user
+    from agent.auth.request_identity import get_current_user
     user = get_current_user()          # {"type": "jwt"|"internal"|"anonymous"|...}
     skip = user.get("skip_clarifier")  # True / False
 
@@ -84,7 +84,7 @@ from starlette.types import Receive
 from starlette.types import Scope
 from starlette.types import Send
 
-from aiq_agent.auth.request_identity import user_context
+from agent.auth.request_identity import user_context
 
 from . import utils as auth_utils
 from .request_trace import get_request_trace_tags
@@ -142,7 +142,7 @@ def build_request_trace_tags(
 # does NOT match one of these receives 404.  Prefix entries must end with "/".
 # No turn route is here: a turn runs on the chat socket alone (ADR-0068), and
 # NAT's HTTP turn routes (`/chat`, `/generate`, `/v1/chat`, ...) are
-# not mounted (`aiq_api.plugin.AIQAPIConfig`).
+# not mounted (`backend.plugin.BackendConfig`).
 EXTERNAL_ALLOWED_PATHS: list[str] = [
     "/health",
     "/docs",
@@ -341,7 +341,7 @@ class AuthMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             # WebSocket connections are authenticated in
-            # aiq_api.chat_socket.authenticate_websocket_connection,
+            # backend.chat_socket.authenticate_websocket_connection,
             # which validates the handshake Authorization header and binds the
             # identity per message via user_context().
             await self.app(scope, receive, send)

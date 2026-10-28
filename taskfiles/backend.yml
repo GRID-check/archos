@@ -30,8 +30,8 @@ tasks:
       # --output-format unstable and warns about it.
       - '{{.RUFF}} check . {{.CLI_ARGS}}'
       - '{{.RUFF}} format --check .'
-      # The contracts in pyproject.toml's [tool.importlinter]: aiq_agent reaches
-      # aiq_api and knowledge_layer only through their seams. About a second.
+      # The contracts in pyproject.toml's [tool.importlinter]: agent reaches
+      # backend and knowledge_layer only through their seams. About a second.
       # docs/contributing/module-seams.md
       - '{{.LINT_IMPORTS}} --no-cache'
 
@@ -300,7 +300,7 @@ tasks:
     cmds:
       - >-
         {{.PY}} -X faulthandler -m pytest tests/ packages/agent/tests/ evals/ -q {{.XDIST}}
-        --cov=packages/agent/src/aiq_agent --cov-report=xml:coverage.xml --cov-report=term
+        --cov=packages/agent/src/agent --cov-report=xml:coverage.xml --cov-report=term
         --cov-fail-under=65
 
   be:test:shard:
@@ -320,7 +320,7 @@ tasks:
         {{.PY}} -X faulthandler -m pytest tests/ packages/agent/tests/ evals/ -q {{.XDIST}}
         --splits {{.TOTAL}} --group {{.INDEX}} --splitting-algorithm least_duration
         --durations-path tests/.test_durations
-        --cov=packages/agent/src/aiq_agent --cov-report=
+        --cov=packages/agent/src/agent --cov-report=
 
   be:test:coverage:
     desc: Combine the core shards' coverage data and apply the gate CI enforces
@@ -340,7 +340,7 @@ tasks:
         d = json.loads(p.read_text()); p.write_text(json.dumps({k: round(v, 3) for k, v in sorted(d.items())}, indent=0) + chr(10))"
 
   be:test:api:
-    desc: aiq_api plugin suite
+    desc: backend plugin suite
     cmds:
       - '{{.PY}} -X faulthandler -m pytest apps/backend/tests/ -q {{.XDIST}}'
 

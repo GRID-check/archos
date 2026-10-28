@@ -15,7 +15,7 @@ The drafts-only notes follow.
 The four file verbs over the drafts, and nothing else.
 
 ``ls``, ``read_file``, ``write_file``, ``edit_file`` — stock DeepAgents tools
-over :class:`~aiq_agent.tools.documents.draft_store.DraftBackend`. The
+over :class:`~agent.tools.documents.draft_store.DraftBackend`. The
 middleware's ``tools=`` allowlist builds only these four: ``glob`` and ``grep``
 buy nothing over one flat directory of at most a handful of files, ``execute``
 has no sandbox behind it, and ``delete`` (DeepAgents 0.7, recursive, offered
@@ -52,8 +52,8 @@ from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.filesystem import FilesystemPermission
 from langchain_core.tools import BaseTool
 
-from aiq_agent.project_context import get_conversation_id_from_context
-from aiq_agent.skills import SKILLS_ROOT
+from agent.project_context import get_conversation_id_from_context
+from agent.skills import SKILLS_ROOT
 
 from .draft_store import DRAFT_ROOT
 from .draft_store import DraftBackend

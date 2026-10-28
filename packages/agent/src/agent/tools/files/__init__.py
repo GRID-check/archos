@@ -9,6 +9,6 @@ accepting person's session. The browser executes nothing: where the server
 cannot store the proposal, the tool reports that it could not propose, and the
 card it leaves behind is a read-only notice.
 
-See ``packages/agent/src/aiq_agent/tools/AGENTS.md`` for why that is the only shape a write
+See ``packages/agent/src/agent/tools/AGENTS.md`` for why that is the only shape a write
 from this tier may take.
 """

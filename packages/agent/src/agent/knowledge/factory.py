@@ -22,7 +22,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.common.db_utils import redact_db_url
+from agent.common.db_utils import redact_db_url
 
 from .base import BaseIngestor
 from .base import BaseRetriever
@@ -189,7 +189,7 @@ def get_retriever(
 
     Correctness: a long-lived result cache is only safe because cache entries
     are keyed on the collection write-version from
-    ``aiq_agent.knowledge.collection_version``, which is shared across replicas.
+    ``agent.knowledge.collection_version``, which is shared across replicas.
     Without that, caching an adapter here would extend a same-process
     invalidation window into a fleet-wide staleness window bounded only by the
     TTL. The two changes are one change; do not revert either alone.
@@ -614,7 +614,7 @@ def set_document_revision_facts(collection: str, filename: str, facts: dict[str,
     """Set the title-block facts (Plankopf: number, Index, date, scale, title) of a document; ``None`` clears them.
 
     ``facts`` is read by the vision model during ingestion and normalised by the store
-    (:func:`~aiq_agent.knowledge.title_block.normalise_revision_facts`). UPDATE-only, like
+    (:func:`~agent.knowledge.title_block.normalise_revision_facts`). UPDATE-only, like
     :func:`set_document_capture`: ``False`` when the document has no metadata row.
     """
     return _get_document_metadata_store().set_revision_facts(collection, filename, facts or None)
@@ -1095,7 +1095,7 @@ async def warm_search_query(query: str) -> None:
     if retriever is None or not query:
         return
     try:
-        from aiq_agent.common.query_expansion import augmented_query
+        from agent.common.query_expansion import augmented_query
 
         await retriever.warm_query(augmented_query(query, log_miss=False))
     except Exception:  # noqa: BLE001 - a warm-up is worth less than the turn

@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.common.llm_provider import LLMProvider
-from aiq_agent.common.llm_provider import LLMRole
+from agent.common.llm_provider import LLMProvider
+from agent.common.llm_provider import LLMRole
 
 
 class TestLLMRole:
@@ -175,7 +175,7 @@ class TestProviderWithZdr:
     def test_zdr_on_rebuilds_all_llms_via_apply_zdr_routing(self, monkeypatch):
         """zdr_only=True returns a new provider whose every LLM went through
         apply_zdr_routing, preserving the role topology and default fallback."""
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         wrapped = {}
 
@@ -202,7 +202,7 @@ class TestProviderWithZdr:
 
     def test_shared_instances_deduped(self, monkeypatch):
         """An LLM shared across roles is ZDR-wrapped exactly once."""
-        import aiq_agent.common.model_overrides as M
+        import agent.common.model_overrides as M
 
         calls = []
 

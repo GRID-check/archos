@@ -1,7 +1,7 @@
 """Discovery of the platform's builtin (filesystem) skills.
 
 Builtin skills are SKILL.md files shipped with the backend under
-``packages/agent/src/aiq_agent/skills/builtin/<collection>/<name>/SKILL.md`` — the same
+``packages/agent/src/agent/skills/builtin/<collection>/<name>/SKILL.md`` — the same
 substrate layout deepagents' ``discover_skill_collections`` reads (collection =
 mid-level dir, skill = leaf dir). Unlike deepagents' warn-and-continue scan,
 GRID's own discovery validates STRICTLY: a malformed builtin skill is a

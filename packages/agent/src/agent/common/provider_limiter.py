@@ -79,7 +79,7 @@ refuses) every call proceeds, as in every other layer but the budget: a limiter
 that turns a cache outage into stalled answers is worse than one that over-admits
 for as long as the outage lasts. ``PROVIDER_LIMITER=off`` turns it off.
 
-Meters (OpenTelemetry API only; the provider is wired in ``aiq_agent.observability``):
+Meters (OpenTelemetry API only; the provider is wired in ``agent.observability``):
 ``grid.provider.inflight``, ``grid.provider.limit{scope,model}``,
 ``grid.provider.wait_seconds{class}``, ``grid.provider.throttled_total{model,scope}``.
 """
@@ -107,8 +107,8 @@ from typing import Any
 from typing import ParamSpec
 from typing import TypeVar
 
-from aiq_agent.common import cache
-from aiq_agent.common import lease_slots
+from agent.common import cache
+from agent.common import lease_slots
 
 logger = logging.getLogger(__name__)
 
@@ -437,7 +437,7 @@ _instruments_lock = threading.Lock()
 def _meter() -> Any:
     from opentelemetry import metrics
 
-    return metrics.get_meter("aiq_agent.provider_limiter")
+    return metrics.get_meter("agent.provider_limiter")
 
 
 def _observe_limit(_options: Any) -> list[Any]:

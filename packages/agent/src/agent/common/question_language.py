@@ -43,7 +43,7 @@ from typing import NamedTuple
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.common.message_utils import content_to_text
+from agent.common.message_utils import content_to_text
 
 #: The product's default answer language; a question in it gets no line.
 DEFAULT_LANGUAGE = "de"

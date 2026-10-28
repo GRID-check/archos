@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime
 
-from aiq_agent.common.db_utils import ensure_schema
+from agent.common.db_utils import ensure_schema
 
 logger = logging.getLogger(__name__)
 
@@ -99,13 +99,13 @@ def month_of(now: float) -> str:
 
 def db_url() -> str:
     """The agent database: the one ``document_metadata`` lives in."""
-    from aiq_agent.knowledge.factory import _get_document_metadata_store
+    from agent.knowledge.factory import _get_document_metadata_store
 
     return _get_document_metadata_store().db_url
 
 
 def _engine(url: str):
-    from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+    from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
     engine = DocumentMetadataStore._get_or_create_sync_engine(url)
     with _lock:

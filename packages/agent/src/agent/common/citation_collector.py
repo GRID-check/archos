@@ -27,7 +27,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any
 
-from aiq_agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import GroundingHit
 
 logger = logging.getLogger(__name__)
 

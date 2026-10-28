@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 
-from aiq_agent.common import turn_status
+from agent.common import turn_status
 
 logger = logging.getLogger(__name__)
 

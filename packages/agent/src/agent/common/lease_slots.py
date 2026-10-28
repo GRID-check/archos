@@ -33,7 +33,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from aiq_agent.common import cache
+from agent.common import cache
 
 logger = logging.getLogger(__name__)
 

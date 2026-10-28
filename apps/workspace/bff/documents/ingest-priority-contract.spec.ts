@@ -1,4 +1,4 @@
-// @disk-inputs: ../backend/src/aiq_api/models/requests.py
+// @disk-inputs: ../backend/src/backend/models/requests.py
 /**
  * @vitest-environment node
  */
@@ -19,7 +19,7 @@ import { INGEST_PRIORITIES } from './ingest-dispatch'
 
 /** Repo root, from this spec's own location. */
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..')
-const REQUESTS = join(REPO_ROOT, 'apps', 'backend', 'src', 'aiq_api', 'models', 'requests.py')
+const REQUESTS = join(REPO_ROOT, 'apps', 'backend', 'src', 'backend', 'models', 'requests.py')
 
 const backendPriorities = (): string[] => {
   const source = readFileSync(REQUESTS, 'utf8')

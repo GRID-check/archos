@@ -137,7 +137,7 @@ unhandled errors, survey and replay events). They are configured in
 
 | Event | Why not |
 |---|---|
-| `skill_run` | `GET /api/internal/skills/resolve` resolves the skills an agent MAY use at the start of a run; it is not a run of one, and a per-resolve event would fire on every turn. The honest site is where the agent loads a skill (`use_skill`, Python), through `aiq_agent.observability.posthog_client.capture` |
+| `skill_run` | `GET /api/internal/skills/resolve` resolves the skills an agent MAY use at the start of a run; it is not a run of one, and a per-resolve event would fire on every turn. The honest site is where the agent loads a skill (`use_skill`, Python), through `agent.observability.posthog_client.capture` |
 | `member_joined`, `member_removed`, `member_role_changed` | Done in WorkOS's own widgets in the browser; no code path of ours sees them. They need a WorkOS webhook route |
 | `annotation_answered_from_inbox` | The row's „Antworten“ posts the thread's own reply (`POST …/annotations/{id}/replies`) through the same typed client as the Prüfansicht, so the server cannot tell the two apart. The room's peer header is missing on a row's reply, but also on any reply while the room is down, so it would count wrong. It needs the client to say where it answered |
 | `answer_completed`, `citation_opened`, `document_opened`, `ifc_model_opened` | Browser events the analytics review proposes; they belong to the browser client and get a row here when they land |

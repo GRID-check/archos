@@ -423,11 +423,11 @@ def _verify_selects(candidates: list[_Candidate], session: IntakeSession) -> dic
     Blocking. Returns the refusal per candidate index; a multi-select value it
     trims keeps its remaining tokens in place.
     """
-    from aiq_agent.knowledge.fingerprint_verify import verify_fingerprint
-    from aiq_agent.knowledge.project_experience import Evidence
-    from aiq_agent.knowledge.project_experience import FingerprintValue
-    from aiq_agent.knowledge.project_experience import VocabularyEntry
-    from aiq_agent.knowledge.project_experience import VocabularyOption
+    from agent.knowledge.fingerprint_verify import verify_fingerprint
+    from agent.knowledge.project_experience import Evidence
+    from agent.knowledge.project_experience import FingerprintValue
+    from agent.knowledge.project_experience import VocabularyEntry
+    from agent.knowledge.project_experience import VocabularyOption
 
     selects = [c for c in candidates if c.need and c.need.get("type") in SELECT_TYPES]
     if not selects:
@@ -618,7 +618,7 @@ FINISH_INTAKE_DESCRIPTION = (
 
 async def finish_intake(session: IntakeSession, summary: str) -> str:
     """POST ``finish`` once, with the files the run opened and the trace id. Never raises."""
-    from aiq_agent.observability.turn_trace import current_trace_id_hex
+    from agent.observability.turn_trace import current_trace_id_hex
 
     if session.finished:
         return "The intake is already finished."

@@ -15,15 +15,15 @@ from typing import Any
 import pytest
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.knowledge import permit_extraction
-from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
-from aiq_agent.knowledge.permit_extraction import MAX_OUTPUT_TOKENS
-from aiq_agent.knowledge.permit_extraction import MAX_REQUIREMENTS
-from aiq_agent.knowledge.permit_extraction import MAX_TEXT_CHARS
-from aiq_agent.knowledge.permit_extraction import PermitExtraction
-from aiq_agent.knowledge.permit_extraction import extract_permit_record
-from aiq_agent.knowledge.permit_extraction import is_permit_decision
-from aiq_agent.knowledge.permit_extraction import pages_with_markers
+from agent.knowledge import permit_extraction
+from agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+from agent.knowledge.permit_extraction import MAX_OUTPUT_TOKENS
+from agent.knowledge.permit_extraction import MAX_REQUIREMENTS
+from agent.knowledge.permit_extraction import MAX_TEXT_CHARS
+from agent.knowledge.permit_extraction import PermitExtraction
+from agent.knowledge.permit_extraction import extract_permit_record
+from agent.knowledge.permit_extraction import is_permit_decision
+from agent.knowledge.permit_extraction import pages_with_markers
 
 # docs/design/permitting-memory.md, "Contract": the kinds the tables' CHECK constraints allow.
 CONTRACT_RECORD_KINDS = ["approval", "information_request", "refusal", "other"]
@@ -264,7 +264,7 @@ def test_the_synthetic_notices_reach_the_model_whole(document_id):
 def test_extract_and_store_hands_the_record_to_the_client(monkeypatch):
     stored: list[tuple] = []
     monkeypatch.setattr(
-        "aiq_agent.knowledge.permit_records_client.store_permit_record", lambda *args: stored.append(args) or True
+        "agent.knowledge.permit_records_client.store_permit_record", lambda *args: stored.append(args) or True
     )
 
     landed = permit_extraction.extract_and_store_permit_record(
@@ -285,7 +285,7 @@ def test_extract_and_store_hands_the_record_to_the_client(monkeypatch):
 def test_nothing_extracted_leaves_the_stored_record_alone(monkeypatch):
     stored: list[tuple] = []
     monkeypatch.setattr(
-        "aiq_agent.knowledge.permit_records_client.store_permit_record", lambda *args: stored.append(args) or True
+        "agent.knowledge.permit_records_client.store_permit_record", lambda *args: stored.append(args) or True
     )
 
     landed = permit_extraction.extract_and_store_permit_record(
@@ -302,8 +302,8 @@ def test_nothing_extracted_leaves_the_stored_record_alone(monkeypatch):
 
 
 def test_a_legacy_kind_maps_to_the_current_one_and_a_current_one_stays():
-    from aiq_agent.knowledge.permit_extraction import canonical_record_kind
-    from aiq_agent.knowledge.permit_extraction import canonical_requirement_kind
+    from agent.knowledge.permit_extraction import canonical_record_kind
+    from agent.knowledge.permit_extraction import canonical_requirement_kind
 
     assert [canonical_record_kind(kind) for kind in ("bewilligung", "nachforderung", "ablehnung", "other")] == [
         "approval",

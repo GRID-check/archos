@@ -103,7 +103,7 @@ The client is `createTurnSocket` (`apps/workspace/ui/adapters/api/turn-socket.ts
 { "v": 2, "type": "CUSTOM", "name": "heartbeat", "conversation_id": "s_<uuid>", "turn_id": "<message_id>", "seq": 10, "ts": 1759000016777, "value": { "every_ms": 20000 } }
 ```
 
-Stamped by the turn's own sequencer (`aiq_api.chat_socket.TurnWire`) every
+Stamped by the turn's own sequencer (`backend.chat_socket.TurnWire`) every
 `TURN_HEARTBEAT_SECONDS`, by a task that lives exactly as long as the turn does,
 so it covers what the answer stream cannot: context loading before the graph
 starts, a ten-minute tool call, and the whole of a deep-research turn that runs

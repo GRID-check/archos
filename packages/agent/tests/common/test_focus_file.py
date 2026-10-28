@@ -2,12 +2,12 @@
 
 import pytest
 
-from aiq_agent.common.focus_file import get_focused_file_name
-from aiq_agent.common.focus_file import get_focused_shelf
-from aiq_agent.common.focus_file import get_turn_shelves
-from aiq_agent.common.focus_file import set_focus
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.common.focus_file import shelves_for_turn
+from agent.common.focus_file import get_focused_file_name
+from agent.common.focus_file import get_focused_shelf
+from agent.common.focus_file import get_turn_shelves
+from agent.common.focus_file import set_focus
+from agent.common.focus_file import set_turn_intent
+from agent.common.focus_file import shelves_for_turn
 
 
 @pytest.mark.parametrize(

@@ -36,15 +36,15 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from typing import Any
 
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.common.wire_v2 import StageValue
-from aiq_agent.stages.delivery import deliver_stage_frame
-from aiq_agent.stages.registry import iter_stages
-from aiq_agent.stages.spec import StageContext
-from aiq_agent.stages.spec import StageEmpty
-from aiq_agent.stages.spec import StageOutcome
-from aiq_agent.stages.spec import StageSpec
-from aiq_agent.stages.spec import TurnFacts
+from agent.common.model_overrides import AgentGroup
+from agent.common.wire_v2 import StageValue
+from agent.stages.delivery import deliver_stage_frame
+from agent.stages.registry import iter_stages
+from agent.stages.spec import StageContext
+from agent.stages.spec import StageEmpty
+from agent.stages.spec import StageOutcome
+from agent.stages.spec import StageSpec
+from agent.stages.spec import TurnFacts
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +127,9 @@ def resolve_group_llm(base: Any, agent_group: AgentGroup, *, label: str) -> Any:
     """
     if base is None:
         return None
-    from aiq_agent.common import apply_model_override
-    from aiq_agent.common import apply_org_credential
-    from aiq_agent.common import apply_zdr_routing
+    from agent.common import apply_model_override
+    from agent.common import apply_org_credential
+    from agent.common import apply_zdr_routing
 
     try:
         return apply_model_override(apply_org_credential(base), agent_group)
@@ -253,7 +253,7 @@ def _answer_message_id(facts: TurnFacts) -> str | None:
     """The id of the answer this stage follows, or ``None`` off the WebSocket path."""
     if not facts.ws_parent_id:
         return None
-    from aiq_agent.turn.response import answer_message_id
+    from agent.turn.response import answer_message_id
 
     return answer_message_id(facts.conversation_id, facts.ws_parent_id)
 
@@ -277,7 +277,7 @@ async def _emit_span(spec: StageSpec, facts: TurnFacts, outcome: StageOutcome) -
     GROUP BY. Never raises: telemetry may not be the thing that breaks a stage.
     """
     try:
-        from aiq_agent.common.profiler import track_agent_profile
+        from agent.common.profiler import track_agent_profile
 
         metadata = {"stage": spec.id, "outcome": outcome.status, "reason": outcome.reason}
         with track_agent_profile(agent_name=f"stage:{spec.id}", identity=_identity(facts), metadata=metadata):
@@ -295,9 +295,9 @@ async def _run_stage(spec: StageSpec, ctx: StageContext) -> StageOutcome:
     status = "failed"
     reason: str | None = "unknown"
 
-    from aiq_agent.common.cost_tracking import BudgetSnapshot
-    from aiq_agent.common.cost_tracking import track_llm_costs
-    from aiq_agent.common.profiler import track_agent_profile
+    from agent.common.cost_tracking import BudgetSnapshot
+    from agent.common.cost_tracking import track_llm_costs
+    from agent.common.profiler import track_agent_profile
 
     metadata: dict[str, Any] = {"stage": spec.id, "outcome": "failed", "reason": "unknown"}
     try:

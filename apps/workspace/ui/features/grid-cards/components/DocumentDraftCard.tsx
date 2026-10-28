@@ -4,7 +4,7 @@
  * DocumentDraftCard — a document Piloti wrote, and what can be done with it.
  *
  * System-emitted: the working directory's `write_file` / `edit_file` pushes the
- * card (`aiq_agent/tools/documents/cards.py`), the same way `remember` pushes a
+ * card (`agent/tools/documents/cards.py`), the same way `remember` pushes a
  * `memory_proposal`, and `file_draft` pushes it again once the draft has become
  * a project document. The model cannot fabricate one, so the card names a file
  * that exists — which is what lets it be this plain.

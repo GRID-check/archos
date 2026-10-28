@@ -58,8 +58,8 @@ from dataclasses import field
 from typing import Any
 from urllib.parse import urlsplit
 
-from aiq_agent.common.openrouter import PLATFORM_FIXED
-from aiq_agent.common.openrouter import limited_async_http_client
+from agent.common.openrouter import PLATFORM_FIXED
+from agent.common.openrouter import limited_async_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ def _resolve_endpoint_blocking(organization_id: str | None) -> tuple[_Endpoint |
     """
     model = os.environ.get(MODEL_ENV, "").strip() or DEFAULT_MODEL
     try:
-        from aiq_agent.common.credential_resolution import resolve_llm_credential
+        from agent.common.credential_resolution import resolve_llm_credential
 
         resolved = resolve_llm_credential(
             primary_env=DEDICATED_ENV,
@@ -345,7 +345,7 @@ def _context_organization_id() -> str | None:
     guard exists to prevent.
     """
     try:
-        from aiq_agent.project_context import get_organization_id_from_context
+        from agent.project_context import get_organization_id_from_context
 
         return get_organization_id_from_context()
     except Exception:  # noqa: BLE001 — no request context is no organization
@@ -453,7 +453,7 @@ async def _post(
 
 def _record_cost(decision: Decision, *, byok: bool) -> None:
     try:
-        from aiq_agent.common.cost_tracking import record_usage_event
+        from agent.common.cost_tracking import record_usage_event
 
         record_usage_event(
             model=decision.model,
@@ -473,7 +473,7 @@ def _record_cost(decision: Decision, *, byok: bool) -> None:
 
 def _record(slot: str, detail: dict[str, Any]) -> None:
     """The technical record of a decision: numbers, never the reader's text."""
-    from aiq_agent.common.turn_status import emit_technical
+    from agent.common.turn_status import emit_technical
 
     emit_technical(f"decision:{slot}", **detail)
 
@@ -494,8 +494,8 @@ def _observe(
 ) -> None:
     """The Langfuse generation for one call or batch (``decide.<slot>``). Never raises."""
     try:
-        from aiq_agent.observability.decision_trace import decision_observation
-        from aiq_agent.observability.decision_trace import emit_decision_span
+        from agent.observability.decision_trace import decision_observation
+        from agent.observability.decision_trace import emit_decision_span
 
         made = [decision for decision in decisions if decision is not None]
         costs = [decision.cost_usd for decision in made if decision.cost_usd is not None]

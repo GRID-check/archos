@@ -8,11 +8,11 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.cards.card_model import CardModel
-from aiq_agent.cards.look_card import NOT_A_DATA_URL
-from aiq_agent.cards.look_card import UUID_PATTERN
-from aiq_agent.cards.look_card import Share
-from aiq_agent.cards.look_card import refuse_data_urls
+from agent.cards.card_model import CardModel
+from agent.cards.look_card import NOT_A_DATA_URL
+from agent.cards.look_card import UUID_PATTERN
+from agent.cards.look_card import Share
+from agent.cards.look_card import refuse_data_urls
 
 #: Changes one card carries: the comparison returns at most this many boxes.
 MAX_REVISION_CHANGES = 12

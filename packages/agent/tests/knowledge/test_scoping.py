@@ -5,11 +5,11 @@ import json
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.scoping import ScopedCollection
-from aiq_agent.knowledge.scoping import _base64url_decode
-from aiq_agent.knowledge.scoping import get_collection_scope_from_context
-from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+from agent.common.source_kinds import Shelf
+from agent.knowledge.scoping import ScopedCollection
+from agent.knowledge.scoping import _base64url_decode
+from agent.knowledge.scoping import get_collection_scope_from_context
+from agent.knowledge.scoping import get_scoped_collections_from_context
 
 
 class TestBase64UrlDecode:
@@ -50,64 +50,64 @@ class TestGetCollectionScopeFromContext:
         scope = ["oib_knowledge", "proj_test", "s_conv123"]
         encoded = base64.urlsafe_b64encode(json.dumps(scope).encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result == scope
 
     def test_missing_header(self):
         ctx = _MockContext(None)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result is None
 
     def test_context_get_returns_none(self):
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=None):
+        with patch("agent.knowledge.scoping.Context.get", return_value=None):
             result = get_collection_scope_from_context()
             assert result is None
 
     def test_context_metadata_none(self):
         ctx = MagicMock()
         ctx.metadata = None
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result is None
 
     def test_context_get_raises(self):
-        with patch("aiq_agent.knowledge.scoping.Context.get", side_effect=RuntimeError("boom")):
+        with patch("agent.knowledge.scoping.Context.get", side_effect=RuntimeError("boom")):
             result = get_collection_scope_from_context()
             assert result is None
 
     def test_malformed_base64(self):
         ctx = _MockContext("!!!not-valid-base64!!!")
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result is None
 
     def test_malformed_json(self):
         encoded = base64.urlsafe_b64encode(b"not json").decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result is None
 
     def test_non_list_json(self):
         encoded = base64.urlsafe_b64encode(json.dumps({"key": "value"}).encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result is None
 
     def test_json_string_not_list(self):
         encoded = base64.urlsafe_b64encode(json.dumps("just a string").encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result is None
 
     def test_json_list_with_non_strings(self):
         encoded = base64.urlsafe_b64encode(json.dumps(["good", 42, "also good"]).encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result is None
 
@@ -115,7 +115,7 @@ class TestGetCollectionScopeFromContext:
         scope = ["oib_knowledge", "proj_x", "oib_knowledge", "s_conv1", "proj_x"]
         encoded = base64.urlsafe_b64encode(json.dumps(scope).encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result == ["oib_knowledge", "proj_x", "s_conv1"]
 
@@ -123,21 +123,21 @@ class TestGetCollectionScopeFromContext:
         scope = ["oib_knowledge", "proj_x", "s_s_conv1"]
         encoded = base64.urlsafe_b64encode(json.dumps(scope).encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result == ["oib_knowledge", "proj_x", "s_conv1"]
 
     def test_empty_list(self):
         encoded = base64.urlsafe_b64encode(json.dumps([]).encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result == []
 
     def test_single_item(self):
         encoded = base64.urlsafe_b64encode(json.dumps(["only_one"]).encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
             assert result == ["only_one"]
 
@@ -164,7 +164,7 @@ class TestTheShelfTravelsInTheHeader:
                 {"collection": "s_9f2a4c", "shelf": "session"},
             ]
         )
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             assert get_scoped_collections_from_context() == [
                 ScopedCollection("oib_knowledge", Shelf.BASE),
                 ScopedCollection("archiv_org1", Shelf.OFFICE_SHELF),
@@ -176,14 +176,14 @@ class TestTheShelfTravelsInTheHeader:
         # The headline bug: `('s_', 'projekt')` was the only guess available, so
         # a private chat attachment was attributed to project knowledge.
         ctx = self._ctx([{"collection": "s_9f2a4c", "shelf": "session"}])
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             (entry,) = get_scoped_collections_from_context()
         assert entry.shelf is Shelf.SESSION
         assert entry.shelf != Shelf.PROJECT
 
     def test_the_legacy_bare_string_form_leaves_the_shelf_unknown(self):
         ctx = self._ctx(["oib_knowledge", "s_9f2a4c"])
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             assert get_scoped_collections_from_context() == [
                 ScopedCollection("oib_knowledge", None),
                 ScopedCollection("s_9f2a4c", None),
@@ -199,7 +199,7 @@ class TestTheShelfTravelsInTheHeader:
                 {"collection": "oib_knowledge"},
             ]
         )
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             entries = get_scoped_collections_from_context()
         assert [entry.shelf for entry in entries] == [None, None, None]
         assert [entry.collection for entry in entries] == ["proj_alpha", "archiv_org1", "oib_knowledge"]
@@ -212,7 +212,7 @@ class TestTheShelfTravelsInTheHeader:
                 {"collection": "proj_alpha", "shelf": "project"},
             ]
         )
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             entries = get_scoped_collections_from_context()
         # The double-prefixed name normalizes onto the same collection, and the
         # FIRST entry wins so the stated shelf is not lost to a bare repeat.
@@ -223,14 +223,14 @@ class TestTheShelfTravelsInTheHeader:
 
     def test_the_names_only_projection_matches(self):
         ctx = self._ctx([{"collection": "proj_alpha", "shelf": "project"}, "s_9f2a4c"])
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             assert get_collection_scope_from_context() == ["proj_alpha", "s_9f2a4c"]
 
     def test_an_entry_in_neither_shape_voids_the_whole_scope(self):
         # The scope is an authorization boundary: an unreadable one is no scope,
         # never a partially-read one.
         ctx = self._ctx([{"collection": "proj_alpha", "shelf": "project"}, {"shelf": "session"}])
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             assert get_scoped_collections_from_context() is None
 
 
@@ -261,7 +261,7 @@ class TestABlankNameMeansTheSameOnBothSidesOfTheSeam:
                 {"collection": "s_conv1", "shelf": "session"},
             ]
         )
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             assert get_scoped_collections_from_context() == [
                 ScopedCollection("proj_alpha", Shelf.PROJECT),
                 ScopedCollection("s_conv1", Shelf.SESSION),
@@ -269,12 +269,12 @@ class TestABlankNameMeansTheSameOnBothSidesOfTheSeam:
 
     def test_a_whitespace_only_name_is_blank_too(self):
         ctx = self._ctx([{"collection": "   "}, "proj_alpha", "  "])
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             assert get_scoped_collections_from_context() == [ScopedCollection("proj_alpha", None)]
 
     def test_both_parsers_read_the_same_payload_the_same_way(self):
-        from aiq_agent.project_context import _as_scope_entries
-        from aiq_agent.project_context import _scope_names
+        from agent.project_context import _as_scope_entries
+        from agent.project_context import _scope_names
 
         payload = [
             {"collection": "proj_alpha", "shelf": "project"},
@@ -285,20 +285,20 @@ class TestABlankNameMeansTheSameOnBothSidesOfTheSeam:
         envelope_names = _scope_names(_as_scope_entries(payload))
 
         ctx = self._ctx(payload)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             resolver_names = get_collection_scope_from_context()
 
         assert envelope_names == ["proj_alpha", "s_conv1"]
         assert resolver_names == envelope_names
 
     def test_an_unreadable_entry_still_voids_the_payload_on_both_sides(self):
-        from aiq_agent.project_context import _as_scope_entries
+        from agent.project_context import _as_scope_entries
 
         payload = [{"collection": "proj_alpha", "shelf": "project"}, {"shelf": "session"}]
         assert _as_scope_entries(payload) is None
 
         ctx = self._ctx(payload)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             assert get_scoped_collections_from_context() is None
 
 
@@ -343,7 +343,7 @@ class TestSignedEnvelopePrecedence:
                 "x-grid-collection-scope": forged_header,
             }
         )
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
 
         assert result == trusted
@@ -365,7 +365,7 @@ class TestSignedEnvelopePrecedence:
                 "x-grid-request-context-sig": "deadbeef" * 8,
             }
         )
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
 
         assert result is None
@@ -377,7 +377,7 @@ class TestSignedEnvelopePrecedence:
         scope = ["oib_knowledge", "s_conv"]
         header = base64.urlsafe_b64encode(json.dumps(scope).encode()).decode()
         ctx = _HeaderContext({"x-grid-collection-scope": header})
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context()
 
         assert result == scope
@@ -387,17 +387,17 @@ class TestGetCollectionScopeFromContextOr:
     """Tests for get_collection_scope_from_context_or."""
 
     def test_context_scope_takes_precedence(self):
-        from aiq_agent.knowledge.scoping import get_collection_scope_from_context_or
+        from agent.knowledge.scoping import get_collection_scope_from_context_or
 
         scope = ["oib_knowledge", "proj_test"]
         encoded = base64.urlsafe_b64encode(json.dumps(scope).encode()).decode()
         ctx = _MockContext(encoded)
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_collection_scope_from_context_or(None, None)
             assert result == scope
 
     def test_context_empty_list_falls_back(self):
-        from aiq_agent.knowledge.scoping import get_collection_scope_from_context_or
+        from agent.knowledge.scoping import get_collection_scope_from_context_or
 
         encoded = base64.urlsafe_b64encode(json.dumps([]).encode()).decode()
         ctx = _MockContext(encoded)
@@ -410,7 +410,7 @@ class TestGetCollectionScopeFromContextOr:
         mock_config.project_collections = []
 
         with (
-            patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx),
+            patch("agent.knowledge.scoping.Context.get", return_value=ctx),
             patch(
                 "knowledge_layer.search_scope.resolve_scoped_collections",
                 return_value=[ScopedCollection("oib_knowledge", Shelf.BASE)],
@@ -420,7 +420,7 @@ class TestGetCollectionScopeFromContextOr:
             assert result == ["oib_knowledge"]
 
     def test_missing_header_falls_back(self):
-        from aiq_agent.knowledge.scoping import get_collection_scope_from_context_or
+        from agent.knowledge.scoping import get_collection_scope_from_context_or
 
         ctx = _MockContext(None)
 
@@ -432,7 +432,7 @@ class TestGetCollectionScopeFromContextOr:
         mock_config.project_collections = ["proj_extra"]
 
         with (
-            patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx),
+            patch("agent.knowledge.scoping.Context.get", return_value=ctx),
             patch(
                 "knowledge_layer.search_scope.resolve_scoped_collections",
                 return_value=[
@@ -448,7 +448,7 @@ class TestGetCollectionScopeFromContextOr:
     def test_the_legacy_fallback_states_each_layer_s_shelf(self):
         """The config path BUILDS the layers, so it knows which is which — the
         shelf is stated there, not guessed back from the collection name."""
-        from aiq_agent.knowledge.scoping import get_scoped_collections_from_context_or
+        from agent.knowledge.scoping import get_scoped_collections_from_context_or
 
         ctx = _MockContext(None)
 
@@ -459,7 +459,7 @@ class TestGetCollectionScopeFromContextOr:
         mock_config.include_session_collection = True
         mock_config.project_collections = ["proj_extra"]
 
-        with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
+        with patch("agent.knowledge.scoping.Context.get", return_value=ctx):
             result = get_scoped_collections_from_context_or(mock_config, "abc")
 
         assert result == [

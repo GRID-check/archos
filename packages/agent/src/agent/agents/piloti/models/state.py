@@ -8,10 +8,10 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 
-from aiq_agent.common.steering import AppliedSteer
-from aiq_agent.common.wire_v2 import FocusRegion
-from aiq_agent.common.wire_v2 import TurnTrigger
-from aiq_agent.knowledge import AvailableDocument
+from agent.common.steering import AppliedSteer
+from agent.common.wire_v2 import FocusRegion
+from agent.common.wire_v2 import TurnTrigger
+from agent.knowledge import AvailableDocument
 
 from ..markers import CONFIDENCE_RULE_VERSION
 from ..markers import CappedReason

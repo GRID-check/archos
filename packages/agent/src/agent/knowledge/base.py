@@ -119,7 +119,7 @@ class PreparedIngestJob:
 
     ``BaseIngestor.prepare_job`` makes one; whoever holds it decides where it
     runs: ``submit_prepared`` in this process's pool, or the durable queue for
-    any worker that claims it (``aiq_api.jobs.ingest_queue``), which runs it
+    any worker that claims it (``backend.jobs.ingest_queue``), which runs it
     with ``run_prepared``. ``file_paths`` are local paths or deferred downloads,
     as ``submit_job`` takes them.
     """

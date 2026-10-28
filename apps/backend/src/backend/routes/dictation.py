@@ -18,7 +18,7 @@ language chooses only the wording hint (:func:`wording_hint`), a sample of
 clean, mixed-language text that the provider may use as a style prompt.
 
 **The organization's credential, the platform's limiter.** The endpoint is
-resolved by :func:`~aiq_agent.common.credential_resolution.resolve_llm_credential`,
+resolved by :func:`~agent.common.credential_resolution.resolve_llm_credential`,
 so an organization's own key (BYOK) is used exactly as for every other call. On
 the platform's key the body is pinned to zero data retention, because the
 platform fixes the model (:func:`_credential`). Every attempt queues for a
@@ -50,17 +50,17 @@ from fastapi import APIRouter
 from fastapi import Header
 from fastapi import Request
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.cost_tracking import USAGE_ACTIVITY_DICTATION
-from aiq_agent.common.cost_tracking import USAGE_ROLE_DICTATION
-from aiq_agent.common.cost_tracking import GridCostTracker
-from aiq_agent.common.cost_tracking import UsageEvent
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.credential_resolution import read_api_key_env
-from aiq_agent.common.credential_resolution import resolve_llm_credential
-from aiq_agent.common.openrouter import PLATFORM_FIXED
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.common.openrouter import targets_openrouter
+from agent.common import provider_limiter
+from agent.common.cost_tracking import USAGE_ACTIVITY_DICTATION
+from agent.common.cost_tracking import USAGE_ROLE_DICTATION
+from agent.common.cost_tracking import GridCostTracker
+from agent.common.cost_tracking import UsageEvent
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.credential_resolution import read_api_key_env
+from agent.common.credential_resolution import resolve_llm_credential
+from agent.common.openrouter import PLATFORM_FIXED
+from agent.common.openrouter import limited_async_http_client
+from agent.common.openrouter import targets_openrouter
 
 from ..models.requests import MAX_DICTATION_AUDIO_BYTES
 from ..models.requests import DictationRequest

@@ -98,7 +98,7 @@ MAX_TITLE_CHARS = 60
 #:
 #: Hidden means "not in the live one-liner by default", NEVER "concealed". The
 #: activation event STILL fires and STILL records; it is merely routed to the
-#: technical channel instead of the live one (see :mod:`aiq_agent.skills.events`),
+#: technical channel instead of the live one (see :mod:`agent.skills.events`),
 #: so it stays out of the running line but remains in the recorded trace and in
 #: ``skills_activated`` — the disclosure names it like any other skill, and a
 #: reader who turns on the "reasoning" preference surfaces it. This is doctrine,
@@ -258,7 +258,7 @@ def _validate_grid_cards(value: str, *, strict: bool) -> str | None:
     emitted by a tool on a sanctioned path, and telling the model to produce one
     would be inviting it to fabricate a card the product treats as trustworthy.
     """
-    from aiq_agent.cards.catalog import model_facing_card_types
+    from agent.cards.catalog import model_facing_card_types
 
     known = model_facing_card_types()
     names = split_metadata_list(value)
@@ -429,7 +429,7 @@ def preferred_cards(metadata: dict[str, str]) -> tuple[str, ...]:
     persisted before a card type was retired would otherwise name a card the
     renderer no longer has.
     """
-    from aiq_agent.cards.catalog import model_facing_card_types
+    from agent.cards.catalog import model_facing_card_types
 
     raw = metadata.get(GRID_CARDS_KEY)
     if not raw:
@@ -452,7 +452,7 @@ def skill_hidden(metadata: dict[str, str]) -> bool:
     """Whether this skill's live activation line is suppressed by default.
 
     ``True`` routes the activation to the technical channel instead of the live
-    one (see :mod:`aiq_agent.skills.events`), keeping it out of the noisy live
+    one (see :mod:`agent.skills.events`), keeping it out of the noisy live
     line while the event still fires and still records. Hidden is never
     concealed: the disclosure still names the skill and a reader who turns on
     the "reasoning" preference surfaces it — see :data:`GRID_HIDDEN_KEY`.

@@ -1,6 +1,6 @@
 """BIM query client — deterministic read access to a project's IFC models.
 
-Same separation of concerns as :mod:`aiq_agent.knowledge.project_memory`: the
+Same separation of concerns as :mod:`agent.knowledge.project_memory`: the
 ``app`` database has exactly one owner, the Next.js BFF, and the backend
 never opens a connection to it. The ``ifc_query`` tool posts to the internal
 endpoint ``POST /api/internal/bim/query`` over the compose network,
@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiq_agent.common import bff_http
+from agent.common import bff_http
 
 logger = logging.getLogger(__name__)
 

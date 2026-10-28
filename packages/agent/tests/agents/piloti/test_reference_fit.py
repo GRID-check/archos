@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import pytest
 
-import aiq_agent.agents.piloti.register as register_module
-from aiq_agent.agents.piloti.reference_fit import FIT_THRESHOLD
-from aiq_agent.agents.piloti.reference_fit import ReferenceFit
-from aiq_agent.agents.piloti.reference_fit import fit_references
-from aiq_agent.agents.piloti.reference_fit import line_state
-from aiq_agent.agents.piloti.reference_fit import parse_catalog
-from aiq_agent.agents.piloti.reference_fit import reorder
-from aiq_agent.common.decisions import Decision
-from aiq_agent.knowledge.restricted_use import CrossProjectTurn
-from aiq_agent.knowledge.restricted_use import bind_cross_project_turn
-from aiq_agent.knowledge.restricted_use import reset_cross_project_turn
+import agent.agents.piloti.register as register_module
+from agent.agents.piloti.reference_fit import FIT_THRESHOLD
+from agent.agents.piloti.reference_fit import ReferenceFit
+from agent.agents.piloti.reference_fit import fit_references
+from agent.agents.piloti.reference_fit import line_state
+from agent.agents.piloti.reference_fit import parse_catalog
+from agent.agents.piloti.reference_fit import reorder
+from agent.common.decisions import Decision
+from agent.knowledge.restricted_use import CrossProjectTurn
+from agent.knowledge.restricted_use import bind_cross_project_turn
+from agent.knowledge.restricted_use import reset_cross_project_turn
 
 BADEN = "b0000000-0000-4000-8000-000000000002"
 MOEDLING = "c0000000-0000-4000-8000-000000000003"
@@ -37,7 +37,7 @@ def _answering(monkeypatch, scores):
         seen.extend(states)
         return [None if p is None else Decision(answers={"fits": {"type": "noul", "noul": p}}) for p in scores]
 
-    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", decide)
+    monkeypatch.setattr("agent.common.decisions.decide_many", decide)
     return seen
 
 
@@ -118,7 +118,7 @@ def test_the_turn_reads_the_fit_order_and_the_trace_says_how_many_fit(monkeypatc
 
 @pytest.mark.parametrize("words", ["Traufe", "Traufe Holzbau"])
 async def test_a_first_message_of_one_or_two_words_asks_nothing(monkeypatch, words):
-    from aiq_agent.agents.piloti.decisions import TurnFacts
+    from agent.agents.piloti.decisions import TurnFacts
 
     seen = _answering(monkeypatch, [0.9, 0.9, 0.9])
 

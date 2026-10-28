@@ -13,16 +13,16 @@ from uuid import uuid4
 
 from langchain_core.callbacks import AsyncCallbackHandler
 
-from aiq_agent.common import turn_status
-from aiq_agent.common.tool_calls import FILESYSTEM_READ_TOOLS
-from aiq_agent.common.tool_calls import tool_basename
-from aiq_agent.common.turn_status import clip
-from aiq_agent.common.turn_status import current_retrieval_round
-from aiq_agent.common.turn_status import current_subagent
-from aiq_agent.common.wire_v2 import ActionCounts
-from aiq_agent.common.wire_v2 import ActionStep
-from aiq_agent.common.wire_v2 import ActionVerb
-from aiq_agent.common.wire_v2 import ToolStep
+from agent.common import turn_status
+from agent.common.tool_calls import FILESYSTEM_READ_TOOLS
+from agent.common.tool_calls import tool_basename
+from agent.common.turn_status import clip
+from agent.common.turn_status import current_retrieval_round
+from agent.common.turn_status import current_subagent
+from agent.common.wire_v2 import ActionCounts
+from agent.common.wire_v2 import ActionStep
+from agent.common.wire_v2 import ActionVerb
+from agent.common.wire_v2 import ToolStep
 
 logger = logging.getLogger(__name__)
 
@@ -201,8 +201,8 @@ def _tool_mount(tool: str, inputs: Any) -> str | None:
     The step stores the tool's name and never its arguments, so without this an
     estate ``read_file`` and a draft ``read_file`` were one step, drawn as a draft.
     """
-    from aiq_agent.common.estate_paths import WRITE_TOOLS
-    from aiq_agent.common.estate_paths import call_mount
+    from agent.common.estate_paths import WRITE_TOOLS
+    from agent.common.estate_paths import call_mount
 
     if tool not in FILESYSTEM_READ_TOOLS and tool not in WRITE_TOOLS:
         return None

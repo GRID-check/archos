@@ -9,7 +9,7 @@ token from the current task's context, or None if no token is set.
 
 from contextvars import ContextVar
 
-from aiq_agent.auth import register_token_fetcher
+from agent.auth import register_token_fetcher
 
 job_auth_token: ContextVar[str | None] = ContextVar("job_auth_token", default=None)
 

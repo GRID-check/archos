@@ -11,7 +11,7 @@ records as an *open* frame on the run's ``active_span_id_stack`` and in its
 ``_outstanding_start_steps`` map, to be popped by the matching END event.
 
 When a LangChain call is wrapped with ``.with_retry()`` (as our LLMs are, see
-``aiq_agent.common.llm_factory``), each retry attempt gets its **own**
+``agent.common.llm_factory``), each retry attempt gets its **own**
 ``run_id`` and its own ``on_llm_start``/(``on_llm_end`` or ``on_llm_error``)
 pair. An errored attempt therefore pushes a START that is never matched by an
 END -- because the handler has no ``on_llm_error`` -- and the frame is leaked
@@ -36,7 +36,7 @@ override (see that method's docstring for why pushing an END there would
 itself be wrong).
 
 Finally, it implements ``for_new_run()`` -- the duck-typed protocol used by
-``aiq_agent.common.callbacks.VerboseTraceCallback`` and consumed in
+``agent.common.callbacks.VerboseTraceCallback`` and consumed in
 ``deep_researcher/agent.py`` and ``deep_researcher/tools/research.py``
 (``cb.for_new_run() if hasattr(cb, "for_new_run") else cb for cb in
 callbacks``) -- so a fresh instance is handed out per researcher worker
@@ -82,7 +82,7 @@ class SpanClosingProfilerHandler(LangchainProfilerHandler):
         """Return a fresh instance for one job/worker run.
 
         Mirrors the ``for_new_run()`` protocol on
-        ``aiq_agent.common.callbacks.VerboseTraceCallback`` so this handler
+        ``agent.common.callbacks.VerboseTraceCallback`` so this handler
         participates in the same per-worker callback isolation already used
         in ``deep_researcher/agent.py`` and
         ``deep_researcher/tools/research.py``

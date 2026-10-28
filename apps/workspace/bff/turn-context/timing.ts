@@ -2,7 +2,7 @@
  * Where a turn-context build's time went, as a W3C `Server-Timing` header.
  *
  * The agent records the header on its `setup.project_context` phase in Langfuse
- * (`aiq_agent/turn/context_client.py`), so a slow turn names the read that made
+ * (`agent/turn/context_client.py`), so a slow turn names the read that made
  * it slow instead of showing one opaque second. The phases are the service's
  * own reads; `memory` carries the dense channel's outcome as its description,
  * because whether the query embed was waited for is what decides its cost.

@@ -12,12 +12,12 @@ from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from aiq_agent.auth import Principal
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_api.registry import AgentConfig
-from aiq_api.routes import job_data_sources
-from aiq_api.routes import job_handlers
+from agent.auth import Principal
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from backend.registry import AgentConfig
+from backend.routes import job_data_sources
+from backend.routes import job_handlers
 
 
 @pytest.fixture(autouse=True)
@@ -47,22 +47,22 @@ def data_source_registry():
 @pytest.fixture
 async def submit_app(monkeypatch, tmp_path):
     """Build a minimal app with async submit routes and patched side effects."""
-    import aiq_agent.auth
-    import aiq_api.routes.jobs as jobs_routes
+    import agent.auth
+    import backend.routes.jobs as jobs_routes
 
     submitted_job = AsyncMock(return_value="job-1")
     agent_config = AgentConfig(
-        class_path="aiq_agent.agents.deep_researcher.agent.DeepResearcherAgent",
+        class_path="agent.agents.deep_researcher.agent.DeepResearcherAgent",
         config_name="deep_research_agent",
         description="Test deep researcher",
     )
     monkeypatch.setattr(job_handlers, "get_agent_config", lambda _agent_type: agent_config)
 
-    monkeypatch.setattr(aiq_agent.auth, "get_auth_token", lambda: "token-1")
+    monkeypatch.setattr(agent.auth, "get_auth_token", lambda: "token-1")
 
-    from aiq_api.jobs import access
-    from aiq_api.jobs import event_store
-    from aiq_api.jobs import submit
+    from backend.jobs import access
+    from backend.jobs import event_store
+    from backend.jobs import submit
 
     monkeypatch.setattr(access, "ensure_job_access_table", MagicMock())
     monkeypatch.setattr(
@@ -424,7 +424,7 @@ async def test_submit_job_validates_sources_for_researcher(submit_app, monkeypat
     app, submitted_job, builder = submit_app
 
     research_config = AgentConfig(
-        class_path="aiq_agent.agents.piloti.agent.PilotiAgent",
+        class_path="agent.agents.piloti.agent.PilotiAgent",
         config_name="shallow_research_agent",
         description="Test researcher",
     )
@@ -543,7 +543,7 @@ async def test_submit_job_agent_type_validation_runs_before_auth(submit_app, mon
 async def test_submit_job_returns_500_when_validation_tool_resolution_fails_for_known_source(submit_app, caplog):
     app, submitted_job, builder = submit_app
     builder.get_tools.side_effect = RuntimeError("tool resolution failed")
-    caplog.set_level(logging.ERROR, logger="aiq_api.routes.jobs")
+    caplog.set_level(logging.ERROR, logger="backend.routes.jobs")
 
     with TestClient(app) as client:
         response = client.post(

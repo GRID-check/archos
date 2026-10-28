@@ -26,9 +26,9 @@ import json
 import logging
 import re
 
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import get_card_registry
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import get_card_registry
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ def _consume_dsml_region(region: str) -> int:
 def _salvage_card(card_json: str) -> None:
     """Validate and register one card the way the real ``emit_card`` tool does.
 
-    Mirrors ``aiq_agent.cards.register.emit_card``: parse → validate against the
+    Mirrors ``agent.cards.register.emit_card``: parse → validate against the
     shared adapter → reject system card types → push into the active
     conversation card registry. Fail-soft.
     """

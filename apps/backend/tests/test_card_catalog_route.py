@@ -6,9 +6,9 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.cards.models import GridCard
-from aiq_api.routes.cards import FEATURE_REQUEST_URL
-from aiq_api.routes.cards import add_card_catalog_routes
+from agent.cards.models import GridCard
+from backend.routes.cards import FEATURE_REQUEST_URL
+from backend.routes.cards import add_card_catalog_routes
 
 _CARD_TYPES = [getattr(c.model_fields["type"].annotation, "__args__", ("?",))[0] for c in GridCard.__args__]
 

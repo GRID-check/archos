@@ -26,20 +26,20 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 
-from aiq_agent.skills import OFFICE_SOURCE
-from aiq_agent.skills import SKILLS_ROOT
-from aiq_agent.skills import Skill
-from aiq_agent.skills import SkillRuntime
-from aiq_agent.skills.builtin import discover_builtin_skills
-from aiq_agent.skills.resolver import _is_curated
-from aiq_agent.skills.runtime import source_path
+from agent.skills import OFFICE_SOURCE
+from agent.skills import SKILLS_ROOT
+from agent.skills import Skill
+from agent.skills import SkillRuntime
+from agent.skills.builtin import discover_builtin_skills
+from agent.skills.resolver import _is_curated
+from agent.skills.runtime import source_path
 from nat.plugin_api import FunctionBaseConfig
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-# Builtin skills live in the shared substrate layout (packages/agent/src/aiq_agent/skills/builtin):
+# Builtin skills live in the shared substrate layout (packages/agent/src/agent/skills/builtin):
 # collection = mid-level dir name, skill = leaf dir name. Only the collections
 # NAMED in `deep_research_skills.agents` are offered to a subagent, each as its
 # own source `/skills/<collection>/` on the run's skills backend (ADR-0135).

@@ -1,7 +1,7 @@
 """The project-experience route (`POST /v1/internal/project-experience`).
 
 Called by the BFF's close dialog and by the archive import, once per project. The reading is
-`aiq_agent.knowledge.project_experience`; this route only supplies the retriever's summary model
+`agent.knowledge.project_experience`; this route only supplies the retriever's summary model
 and its chunks, read from the project's collection. It fails open like `note_embeddings`: any
 fault is answered as `error` with empty lists, never as a non-200. A bad request body is FastAPI's
 422, as everywhere else.
@@ -13,9 +13,9 @@ import logging
 from fastapi import APIRouter
 from fastapi import Request
 
-from aiq_agent.knowledge.project_experience import ProjectExperienceRequest
-from aiq_agent.knowledge.project_experience import ProjectExperienceResponse
-from aiq_agent.knowledge.project_experience import read_project_experience
+from agent.knowledge.project_experience import ProjectExperienceRequest
+from agent.knowledge.project_experience import ProjectExperienceResponse
+from agent.knowledge.project_experience import read_project_experience
 
 from .internal_auth import _require_internal_token
 
@@ -30,9 +30,9 @@ def _read_project(request: ProjectExperienceRequest) -> ProjectExperienceRespons
     answered "no model" in every deployment.
     """
     try:
-        from aiq_agent.knowledge.collection_pages import read_pages
-        from aiq_agent.knowledge.factory import get_active_ingestor
-        from aiq_agent.knowledge.factory import get_available_documents
+        from agent.knowledge.collection_pages import read_pages
+        from agent.knowledge.factory import get_active_ingestor
+        from agent.knowledge.factory import get_available_documents
 
         return read_project_experience(
             request,

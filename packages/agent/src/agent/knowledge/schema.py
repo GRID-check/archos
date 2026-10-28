@@ -428,7 +428,7 @@ class FileProgress(BaseModel):
     failure_category: str | None = Field(
         default=None,
         description=(
-            "Why a FAILED file failed, as a machine category (`aiq_agent.knowledge.ingest_failures`): "
+            "Why a FAILED file failed, as a machine category (`agent.knowledge.ingest_failures`): "
             "`transient` (interrupted, timed out, a download or upstream call failed: reading it again "
             "may work), `configuration` (the deployment lacks something, e.g. a vision model: reading it "
             "again works once that is configured), `deterministic` (the bytes themselves: empty, "

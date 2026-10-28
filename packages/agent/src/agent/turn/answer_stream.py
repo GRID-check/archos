@@ -1,7 +1,7 @@
 """The answer's prose on the wire while the final call is still writing it.
 
 The answering LLM call streams (``bind(stream=True)``), a callback reads its
-tokens through :class:`~aiq_agent.common.answer_prose_stream.AnswerProseStream`,
+tokens through :class:`~agent.common.answer_prose_stream.AnswerProseStream`,
 and what may be shown goes out as wire bodies through the graph's own writer
 (``turn_status.emit``, chat wire v2 §b): ``TEXT_MESSAGE_START``, coalesced
 ``TEXT_MESSAGE_CONTENT``, ``TEXT_MESSAGE_END`` when the ``answer`` string
@@ -35,23 +35,23 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.callbacks.manager import AsyncCallbackManager
 from langchain_core.runnables.config import ensure_config
 
-from aiq_agent.common import turn_status
-from aiq_agent.common.answer_prose_stream import AnswerProseStream
-from aiq_agent.common.wire_v2 import AnswerRetractedBody
-from aiq_agent.common.wire_v2 import AnswerSnapshot
-from aiq_agent.common.wire_v2 import CardBody
-from aiq_agent.common.wire_v2 import CardRefusedBody
-from aiq_agent.common.wire_v2 import CardRefusedValue
-from aiq_agent.common.wire_v2 import CardValue
-from aiq_agent.common.wire_v2 import EmptyValue
-from aiq_agent.common.wire_v2 import EventBody
-from aiq_agent.common.wire_v2 import MastheadBody
-from aiq_agent.common.wire_v2 import MastheadValue
-from aiq_agent.common.wire_v2 import StateSnapshotBody
-from aiq_agent.common.wire_v2 import TextMessageContentBody
-from aiq_agent.common.wire_v2 import TextMessageEndBody
-from aiq_agent.common.wire_v2 import TextMessageStartBody
-from aiq_agent.common.wire_v2 import card_key
+from agent.common import turn_status
+from agent.common.answer_prose_stream import AnswerProseStream
+from agent.common.wire_v2 import AnswerRetractedBody
+from agent.common.wire_v2 import AnswerSnapshot
+from agent.common.wire_v2 import CardBody
+from agent.common.wire_v2 import CardRefusedBody
+from agent.common.wire_v2 import CardRefusedValue
+from agent.common.wire_v2 import CardValue
+from agent.common.wire_v2 import EmptyValue
+from agent.common.wire_v2 import EventBody
+from agent.common.wire_v2 import MastheadBody
+from agent.common.wire_v2 import MastheadValue
+from agent.common.wire_v2 import StateSnapshotBody
+from agent.common.wire_v2 import TextMessageContentBody
+from agent.common.wire_v2 import TextMessageEndBody
+from agent.common.wire_v2 import TextMessageStartBody
+from agent.common.wire_v2 import card_key
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def answer_streaming_enabled() -> bool:
     reasoning steps still go out live. Blocking I/O on a cache miss: call it
     through ``asyncio.to_thread``.
     """
-    from aiq_agent.common.retrieval_settings import get_retrieval_setting
+    from agent.common.retrieval_settings import get_retrieval_setting
 
     return get_retrieval_setting("chat.answer_streaming", 1) == 1
 

@@ -54,8 +54,8 @@ from typing import Literal
 
 from pydantic import Field
 
-from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.action_rows import ActionRow
+from agent.common.action_outcome import ActionOutcome
+from agent.common.action_rows import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -264,13 +264,13 @@ async def _turn_rows(search_config: Any) -> list[FileRow]:
     the rows themselves rather than on one of the two sources, because the
     fallback below is the path a failed inventory load takes.
     """
-    from aiq_agent.knowledge.restricted_collections import is_restricted_collection
+    from agent.knowledge.restricted_collections import is_restricted_collection
 
     return [row for row in await _readable_rows(search_config) if not is_restricted_collection(row.collection)]
 
 
 def _in_flight(collections: Sequence[str]) -> list[str]:
-    from aiq_agent.knowledge import ingest_status_store
+    from agent.knowledge import ingest_status_store
 
     try:
         pending = ingest_status_store.in_flight_files(list(collections))
@@ -408,8 +408,8 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             return "`added_since` must be a date written YYYY-MM-DD."
         doc_class = (doc_class or "").strip() or None
         if doc_class is not None:
-            from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
-            from aiq_agent.knowledge.document_classification import canonical_doc_class
+            from agent.knowledge.document_classification import DOCUMENT_CLASSES
+            from agent.knowledge.document_classification import canonical_doc_class
 
             current_doc_class = canonical_doc_class(doc_class)
             if current_doc_class is None:
@@ -453,7 +453,7 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             depth=_coerce_int(depth, DEFAULT_TREE_DEPTH, low=1, high=MAX_TREE_DEPTH),
             series_rows=on_shelves(rows, shelf=shelf, default_shelves=turn.own_shelves),
         )
-        from aiq_agent.knowledge.folder_cards import listing_abstracts
+        from agent.knowledge.folder_cards import listing_abstracts
 
         outcome.folders = len(cards)
         return render_tree(
@@ -764,7 +764,7 @@ async def _search(
     # is content of each file it names, passages shown or not: reported for the
     # restricted-use admission (ADR-0088), beside the passages the grounding
     # block reports itself.
-    from aiq_agent.knowledge.restricted_use import note_collections_read
+    from agent.knowledge.restricted_use import note_collections_read
 
     note_collections_read(group.collection for group in groups)
     passages = pick_passages(groups)

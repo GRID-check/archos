@@ -405,7 +405,7 @@ def citation_scores(events: Iterable[Any]) -> list[RuntimeScore]:
         return [_boolean("sources-empty", True), _boolean("citation-health", False, "registry_empty")]
     if "turn_verified" not in by_kind:
         return []
-    from aiq_agent.common.citation_events import SEVERITY_BY_KIND
+    from agent.common.citation_events import SEVERITY_BY_KIND
 
     unhealthy = sorted(kind for kind in by_kind if SEVERITY_BY_KIND.get(kind) in _UNHEALTHY_SEVERITIES)
     scores = [
@@ -536,7 +536,7 @@ def formula_provenance_score(card: dict[str, Any], *, index: int) -> RuntimeScor
     """
     if card.get("type") != "formula":
         return None
-    from aiq_agent.cards.formula_card import formula_inputs
+    from agent.cards.formula_card import formula_inputs
 
     inputs = formula_inputs(card)
     given = [item for item in inputs if item.get("value") is not None]
@@ -656,12 +656,12 @@ def emit_scores(scores: Iterable[RuntimeScore], *, writer: str, trace_id: str | 
         if credentials is None:
             return 0
         if trace_id is None:
-            from aiq_agent.observability.turn_trace import current_trace_id_hex
+            from agent.observability.turn_trace import current_trace_id_hex
 
             trace_id = current_trace_id_hex()
         if not trace_id:
             return 0
-        from aiq_agent.observability.trace_context import langfuse_environment
+        from agent.observability.trace_context import langfuse_environment
 
         host, public_key, secret_key = credentials
         environment = langfuse_environment()

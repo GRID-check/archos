@@ -30,7 +30,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.image_redaction import redact_inline_images
+from agent.common.image_redaction import redact_inline_images
 
 #: Bumped whenever the prompt or the reply handling changes. Part of the cache
 #: identity, so a new prompt is never answered from the old one's results.

@@ -450,7 +450,7 @@ Covered by `tests/gateway/ws-frame-limits.test.ts`, which spawns the real gatewa
 and pushes real frames — the same harness style as the existing upgrade tests,
 because `server.js` has no unit seam.
 
-### L3 — interactive-turn admission (`packages/agent/src/aiq_agent/common/turn_admission.py`)
+### L3 — interactive-turn admission (`packages/agent/src/agent/common/turn_admission.py`)
 
 A lease-based semaphore around `agent.run(...)` in `piloti/conversation_register.py`:
 slots held for the duration of a turn, per organization and globally, refused
@@ -476,7 +476,7 @@ than an admission.
   running fleet-wide, then the one served longest ago. A lone office uses every
   worker; a second office's upload takes the next worker that frees up.
   `INGEST_MAX_PER_ORG` adds a hard cap, off by default. The claim is the
-  generic `aiq_agent.common.claim_queue` (ADR-0079); `ingest_queue` is the
+  generic `agent.common.claim_queue` (ADR-0079); `ingest_queue` is the
   ingestion table on it.
 - **Priority inside an office.** `POST /v1/ingest` takes
   `priority: "interactive" | "bulk"` (default `interactive`). An office's own
@@ -521,7 +521,7 @@ L3 and L3b bound how much *work* runs. None of them knows what the provider will
 take, or that a person waiting on an answer should go before a bulk reindex when
 it will not. The provider limiter is the one pool of *model calls in flight*
 that chat, research, ingestion and embeddings all draw from
-(`aiq_agent.common.provider_limiter`).
+(`agent.common.provider_limiter`).
 
 - **Priority classes, served in order.** `chat`, `interactive`, `research`,
   `bulk`. A caller that finds the pool full takes a ticket in the sorted set of
@@ -607,7 +607,7 @@ waits, so its L3 is the same order and ceiling ingestion has.
 - **Capacity waits, it never fails.** A submit is a row in
   `research_job_queue` and the job is `SUBMITTED` until a worker claims it; the
   UI reads that as `queued`.
-- **Fair share.** The claim is the same `aiq_agent.common.claim_queue`: a free
+- **Fair share.** The claim is the same `agent.common.claim_queue`: a free
   worker takes the next job of the organisation with the fewest research jobs
   running fleet-wide, then the one served longest ago. One office's sweep of
   twenty scheduled runs does not make another office's question wait for all of

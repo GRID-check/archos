@@ -1,7 +1,7 @@
 """The content screen: spans, the mask, and the fixture the browser's twin reads too.
 
 ``tests/fixtures/content_screen_cases.json`` is the contract between
-``aiq_agent.common.content_screen`` and ``apps/workspace/bff/upload-screening/content-screen.ts``:
+``agent.common.content_screen`` and ``apps/workspace/bff/upload-screening/content-screen.ts``:
 both read that one file, run every case and must produce the same matches, the
 same masked text and the same findings. It also holds the character tables both
 twins must agree on (whitespace, decimal digits, letter/number/mark classes, the
@@ -23,16 +23,16 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.content_screen import DETECTORS
-from aiq_agent.common.content_screen import DETECTORS_ONLY
-from aiq_agent.common.content_screen import IBAN_LENGTHS
-from aiq_agent.common.content_screen import PLACEHOLDERS
-from aiq_agent.common.content_screen import WHITESPACE
-from aiq_agent.common.content_screen import ScreeningRules
-from aiq_agent.common.content_screen import find_spans
-from aiq_agent.common.content_screen import findings_summary
-from aiq_agent.common.content_screen import fold
-from aiq_agent.common.content_screen import mask_text
+from agent.common.content_screen import DETECTORS
+from agent.common.content_screen import DETECTORS_ONLY
+from agent.common.content_screen import IBAN_LENGTHS
+from agent.common.content_screen import PLACEHOLDERS
+from agent.common.content_screen import WHITESPACE
+from agent.common.content_screen import ScreeningRules
+from agent.common.content_screen import find_spans
+from agent.common.content_screen import findings_summary
+from agent.common.content_screen import fold
+from agent.common.content_screen import mask_text
 
 REPO = Path(__file__).resolve().parents[4]
 FIXTURE_PATH = REPO / "tests" / "fixtures" / "content_screen_cases.json"

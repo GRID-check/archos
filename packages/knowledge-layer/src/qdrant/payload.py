@@ -25,9 +25,9 @@ from datetime import date
 from datetime import datetime
 from typing import Any
 
-from aiq_agent.knowledge.base import reading_order
-from aiq_agent.knowledge.document_classification import canonical_doc_class
-from aiq_agent.knowledge.document_classification import qdrant_doc_class
+from agent.knowledge.base import reading_order
+from agent.knowledge.document_classification import canonical_doc_class
+from agent.knowledge.document_classification import qdrant_doc_class
 
 from .prefilter import FOLDER_FIELD
 from .prefilter import folder_ancestors

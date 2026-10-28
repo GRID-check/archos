@@ -332,7 +332,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "backend-chat"): EnvV
     // WorkOS, the same two values the frontend gets (frontendEnv). With
     // REQUIRE_AUTH=true the backend enforces job ownership and the signed-envelope
     // rule for JWT callers, and it refuses to boot without a validator, which
-    // needs the client id (aiq_api/plugin.py). Left unset, every tier ran with
+    // needs the client id (backend/plugin.py). Left unset, every tier ran with
     // ownership off while the frontend required login.
     { name: "REQUIRE_AUTH", value: String(cfg.auth.requireAuth) },
     { name: "WORKOS_CLIENT_ID", value: cfg.auth.workosClientId },
@@ -468,7 +468,7 @@ export function apiEnv(w: AppWiring): EnvVar[] {
  * Research worker (ADR-0021) environment: the full backend env (DB DSNs, shared
  * Qdrant, LLM keys, object storage — the worker runs the same `run_agent_job`)
  * plus the worker role + per-process concurrency. `PROCESS_ROLE=worker` makes the
- * entrypoint run `python -m aiq_api.jobs.worker` with no web server.
+ * entrypoint run `python -m backend.jobs.worker` with no web server.
  */
 export function workerEnv(w: AppWiring): EnvVar[] {
   return [
@@ -672,7 +672,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
  * (`withLangfuseKeysChecksum`) and a rotation rolls it.
  *
  * Also on the backend tiers (`backendEnv`), which write the answer pipeline's
- * checks as scores (ADR-0089, `aiq_agent/observability/langfuse_scores.py`)
+ * checks as scores (ADR-0089, `agent/observability/langfuse_scores.py`)
  * and, once `LANGFUSE_PROMPTS_ENABLED` is set, read the platform prompt.
  */
 export function langfuseApiEnv(cfg: GridConfig): EnvVar[] {

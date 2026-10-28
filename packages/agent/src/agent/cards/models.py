@@ -8,37 +8,37 @@ from typing import Annotated
 from pydantic import Field
 from pydantic import TypeAdapter
 
-from aiq_agent.cards.calculation_card import CalculationCard
-from aiq_agent.cards.canvas_activity_card import CanvasActivityCard
+from agent.cards.calculation_card import CalculationCard
+from agent.cards.canvas_activity_card import CanvasActivityCard
 
 # The catalog imports this module only inside functions, so this is no cycle.
-from aiq_agent.cards.catalog import CHAT_ONLY_CARD_TYPES
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.file_operation_card import FileOperationProposalCard
-from aiq_agent.cards.formula_card import FormulaCard
-from aiq_agent.cards.ifc_cards import IfcComplianceCard
-from aiq_agent.cards.ifc_cards import IfcDiffCard
-from aiq_agent.cards.ifc_cards import IfcElementCard
-from aiq_agent.cards.ifc_cards import IfcModelPickerCard
-from aiq_agent.cards.ifc_cards import IfcScheduleCard
-from aiq_agent.cards.ifc_cards import IfcViewerCard
-from aiq_agent.cards.look_card import LookCard
-from aiq_agent.cards.proposal_cards import MemoryProposalCard
-from aiq_agent.cards.proposal_cards import OperationProposalCard
-from aiq_agent.cards.proposal_cards import ProjectProfilePatchCard
-from aiq_agent.cards.revision_compare_card import RevisionCompareCard
-from aiq_agent.cards.schematic_cards import BuildingSectionCard
-from aiq_agent.cards.schematic_cards import DaylightIncidenceCard
-from aiq_agent.cards.schematic_cards import DimensionDiagramCard
-from aiq_agent.cards.schematic_cards import EgressDiagramCard
-from aiq_agent.cards.schematic_cards import FireAccessPlanCard
-from aiq_agent.cards.schematic_cards import GuardrailCheckCard
-from aiq_agent.cards.schematic_cards import SetbackPlanCard
-from aiq_agent.cards.schematic_cards import StairDiagramCard
-from aiq_agent.cards.surface_card import SurfaceCard
-from aiq_agent.cards.workspace_cards import DocumentDraftCard
-from aiq_agent.cards.workspace_cards import DocumentGridCard
-from aiq_agent.cards.workspace_cards import TaskCreatedCard
+from agent.cards.catalog import CHAT_ONLY_CARD_TYPES
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.file_operation_card import FileOperationProposalCard
+from agent.cards.formula_card import FormulaCard
+from agent.cards.ifc_cards import IfcComplianceCard
+from agent.cards.ifc_cards import IfcDiffCard
+from agent.cards.ifc_cards import IfcElementCard
+from agent.cards.ifc_cards import IfcModelPickerCard
+from agent.cards.ifc_cards import IfcScheduleCard
+from agent.cards.ifc_cards import IfcViewerCard
+from agent.cards.look_card import LookCard
+from agent.cards.proposal_cards import MemoryProposalCard
+from agent.cards.proposal_cards import OperationProposalCard
+from agent.cards.proposal_cards import ProjectProfilePatchCard
+from agent.cards.revision_compare_card import RevisionCompareCard
+from agent.cards.schematic_cards import BuildingSectionCard
+from agent.cards.schematic_cards import DaylightIncidenceCard
+from agent.cards.schematic_cards import DimensionDiagramCard
+from agent.cards.schematic_cards import EgressDiagramCard
+from agent.cards.schematic_cards import FireAccessPlanCard
+from agent.cards.schematic_cards import GuardrailCheckCard
+from agent.cards.schematic_cards import SetbackPlanCard
+from agent.cards.schematic_cards import StairDiagramCard
+from agent.cards.surface_card import SurfaceCard
+from agent.cards.workspace_cards import DocumentDraftCard
+from agent.cards.workspace_cards import DocumentGridCard
+from agent.cards.workspace_cards import TaskCreatedCard
 
 GridCard = (
     ProjectProfilePatchCard

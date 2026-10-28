@@ -11,7 +11,7 @@ measures, what it does not, and how far the number may be carried.
 | # | Measurement | Needs a key? | What it is worth |
 |---|-------------|--------------|------------------|
 | 1 | **Structural retrievability** — what fraction of the 946 indexed Punkte survive each chunking strategy as a citable unit | no | **Fully real, absolute.** No model of any kind is involved. It is a property of the corpus and the chunker, and it decides whether a citation can ever be precise. |
-| 2 | **Lexical-channel recall** — recall@k / nDCG@k / MRR through `aiq_agent.common.german_text` over the real corpus | no | **Real for the shipped analyzer.** German numbers are that channel's recall. English numbers are real too, and near zero: the channel is monolingual *by construction* (see that module's docstring). |
+| 2 | **Lexical-channel recall** — recall@k / nDCG@k / MRR through `agent.common.german_text` over the real corpus | no | **Real for the shipped analyzer.** German numbers are that channel's recall. English numbers are real too, and near zero: the channel is monolingual *by construction* (see that module's docstring). |
 | 3 | **Dense channel** — `--embedder hashed` or `--embedder e5` | no | `hashed`: **wiring only**, see below. `e5`: **real but relative only**, see below. |
 | 4 | **Hybrid** — dense fused with lexical through the production `reciprocal_rank_fusion` and `_merge_results` | no | Inherits the dense arm's caveat; the *delta* against dense-alone is the number the fusion work is judged on. |
 
@@ -74,8 +74,8 @@ the dense A/B, is the load-bearing evidence for the chunking change.
   incomplete without it; 1 = context an expert would want beside it. nDCG uses the
   exponential gain `2**grade - 1`.
 * **Questions come from the repo's own taxonomy**, not invented: `contracts/cards/schemas.json`
-  card descriptions name a question class *and* its Richtlinie, `packages/agent/src/aiq_agent/cards/catalog.py`
-  `CARD_EXAMPLES` carries Punkt-level references, `packages/agent/src/aiq_agent/common/applicability.py`
+  card descriptions name a question class *and* its Richtlinie, `packages/agent/src/agent/cards/catalog.py`
+  `CARD_EXAMPLES` carries Punkt-level references, `packages/agent/src/agent/common/applicability.py`
   supplies the intake vocabulary, and `configs/norms/at/registry.yml` marks what is corpus
   and what is a RIS pointer. Every entry's `provenance` names which.
 * **Every German question has an English sibling with IDENTICAL qrels.** The requirement is
@@ -175,7 +175,7 @@ and cannot measure (no dense arm offline).
 | `src/oib_retrieval/qrels.py` | PURE. Golden schema, loader, and the Punkt → `(file_name, page)` expansion. Strict: an unresolvable label raises. |
 | `src/oib_retrieval/corpus.py` | Extraction (via the production `_extract_text_from_pdf`) and the two chunking arms; reads production's `top_k` / diversity cap / exclusion list from `configs/config_oib_openrouter.yml`. |
 | `src/oib_retrieval/structure.py` | The structural before/after. |
-| `src/oib_retrieval/lexical.py` | In-memory inverted index built from `aiq_agent.common.german_text`. |
+| `src/oib_retrieval/lexical.py` | In-memory inverted index built from `agent.common.german_text`. |
 | `src/oib_retrieval/dense.py` | `HashedEmbedder` (CI) and `E5Embedder` (gated), plus exact cosine search. |
 | `src/oib_retrieval/citations.py` | PURE. Parses `file.pdf, p.N` out of an answer. |
 | `src/oib_retrieval/runner.py` | Drives everything and prints the report. |

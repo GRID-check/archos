@@ -86,7 +86,7 @@ import { isProjectClosed, projectClosedError } from '@/lib/projects/project-stat
  * when the org has configured overrides.
  *
  * The envelope goes on every method, not only the submit: the backend
- * authorizes a job by the scope it signs (`aiq_api/jobs/access.py`). It lets the
+ * authorizes a job by the scope it signs (`backend/jobs/access.py`). It lets the
  * owner through on the bearer alone and anyone else only inside the project or
  * conversation this tier checked, so a teammate's stream, status, report and
  * cancel all need it. Without it the caller reaches only the jobs it owns.

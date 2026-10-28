@@ -10,10 +10,10 @@ from urllib.parse import urlparse
 from langchain_core.tools import BaseTool
 from langchain_core.tools import tool
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.common import load_prompt
-from aiq_agent.common import render_prompt_template
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import normalize_url
+from agent.common import load_prompt
+from agent.common import render_prompt_template
 
 if TYPE_CHECKING:
     from ..custom_middleware import SourceRegistryMiddleware

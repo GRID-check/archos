@@ -5,7 +5,7 @@ request-context envelope this module forwards byte-for-byte, builds that
 person's pinned session, decides which projects and folders are in reach,
 records what it hands out on the conversation, and refuses a conversation that
 is not its asker's alone (ADR-0054 §4, ADR-0055, ADR-0094). Echo, never sign:
-see ``packages/agent/src/aiq_agent/tools/AGENTS.md``.
+see ``packages/agent/src/agent/tools/AGENTS.md``.
 
 The request bodies are described once, in zod (``apps/workspace/bff/cross-project/types.ts``),
 and exported as JSON Schema (``apps/workspace/tests/fixtures/cross-project.schema.json``);
@@ -18,8 +18,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiq_agent.common import bff_http
-from aiq_agent.common.bff_http import SignedEnvelope
+from agent.common import bff_http
+from agent.common.bff_http import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 

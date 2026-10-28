@@ -33,7 +33,7 @@ def _load(name: str, relative: str):
 
 pull = _load("scripts.prompts_pull", "scripts/prompts_pull.py")
 
-BUNDLED = REPO_ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md"
+BUNDLED = REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/piloti_static.md"
 
 
 @pytest.fixture(autouse=True)
@@ -130,7 +130,7 @@ class TestWriteFallback:
         The committed fallback is already normalized, so pulling the version it
         came from must be a no-op rather than a whitespace diff on every run.
         """
-        bundled = REPO_ROOT / "packages/agent/src/aiq_agent/agents/piloti/prompts/piloti_static.md"
+        bundled = REPO_ROOT / "packages/agent/src/agent/agents/piloti/prompts/piloti_static.md"
         target = tmp_path / "copy.md"
         target.write_text(bundled.read_text(encoding="utf-8"), encoding="utf-8")
 

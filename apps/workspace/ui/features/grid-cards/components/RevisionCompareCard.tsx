@@ -5,7 +5,7 @@
  * boxed on each (ADR-0128, slice V10).
  *
  * System-emitted when Piloti compared two Fassungen through the workspace door
- * (`aiq_agent/tools/workspace/cards.py`, from the result of
+ * (`agent/tools/workspace/cards.py`, from the result of
  * `document-revision-compare`). The card is an ADDRESS: the two documents' ids,
  * the page, the boxes. Each side is the whole page drawn from that document's
  * own routes (`PageRegionThumbnail`), so only a reader who may open both sees

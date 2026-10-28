@@ -23,11 +23,11 @@ from langchain_core.outputs import ChatGeneration
 from langchain_core.outputs import ChatResult
 from pydantic import PrivateAttr
 
-from aiq_agent.agents.intake.agent import ProjectIntakeAgent
-from aiq_agent.agents.intake.models import IntakeAgentState
-from aiq_agent.agents.intake.read_log import current_read_log
-from aiq_agent.common import LLMProvider
-from aiq_agent.common.cost_tracking import BudgetExceededError
+from agent.agents.intake.agent import ProjectIntakeAgent
+from agent.agents.intake.models import IntakeAgentState
+from agent.agents.intake.read_log import current_read_log
+from agent.common import LLMProvider
+from agent.common.cost_tracking import BudgetExceededError
 
 
 class ScriptedModel(BaseChatModel):
@@ -107,15 +107,15 @@ def needs_covered_after_record():
 
 class TestTheRunnerContract:
     def test_it_declares_its_state_and_writes_no_report(self):
-        from aiq_api.jobs.runner import _get_agent_state_class
-        from aiq_api.jobs.runner import _produces_report
+        from backend.jobs.runner import _get_agent_state_class
+        from backend.jobs.runner import _produces_report
 
         agent = _agent(ScriptedModel([AIMessage(content="x")]))
         assert _get_agent_state_class(agent) is IntakeAgentState
         assert _produces_report(ProjectIntakeAgent) is False
 
     def test_the_runner_constructs_it_the_way_it_constructs_every_agent(self):
-        from aiq_api.jobs.runner import _create_agent_instance
+        from backend.jobs.runner import _create_agent_instance
 
         agent = _create_agent_instance(
             ProjectIntakeAgent, LLMProvider(), None, [], object(), verbose=False, callbacks=[], job_id=JOB
@@ -123,8 +123,8 @@ class TestTheRunnerContract:
         assert isinstance(agent, ProjectIntakeAgent)
 
     def test_the_runner_hands_it_the_budgets_its_config_names(self):
-        from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
-        from aiq_api.jobs.runner import _create_agent_instance
+        from agent.agents.intake.register import ProjectIntakeAgentConfig
+        from backend.jobs.runner import _create_agent_instance
 
         config = ProjectIntakeAgentConfig(llm="research_llm", max_tool_steps=12, max_run_seconds=90)
         agent = _create_agent_instance(
@@ -133,9 +133,9 @@ class TestTheRunnerContract:
         assert (agent.max_tool_steps, agent.max_run_seconds, agent._job_id) == (12, 90, JOB)
 
     def test_the_config_defaults_are_the_agents(self):
-        from aiq_agent.agents.intake.agent import DEFAULT_MAX_RUN_SECONDS
-        from aiq_agent.agents.intake.agent import DEFAULT_MAX_TOOL_STEPS
-        from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
+        from agent.agents.intake.agent import DEFAULT_MAX_RUN_SECONDS
+        from agent.agents.intake.agent import DEFAULT_MAX_TOOL_STEPS
+        from agent.agents.intake.register import ProjectIntakeAgentConfig
 
         config = ProjectIntakeAgentConfig(llm="research_llm")
         assert (config.max_tool_steps, config.max_run_seconds) == (DEFAULT_MAX_TOOL_STEPS, DEFAULT_MAX_RUN_SECONDS)
@@ -145,7 +145,7 @@ class TestTheRunnerContract:
     async def test_the_result_is_the_summary_the_runner_reports(
         self, signed_run, route, project, needs_covered_after_record
     ):
-        from aiq_api.jobs.run_result import extract_result
+        from backend.jobs.run_result import extract_result
 
         route(record=recorded_all(), needs=needs_covered_after_record)
         result = await _agent(
@@ -311,7 +311,7 @@ class TestTheOpening:
     def test_it_is_the_projects_state_with_the_last_readings_note(self):
         from agent_testing.intake import NEEDS_BODY
 
-        from aiq_agent.agents.intake.agent import first_message
+        from agent.agents.intake.agent import first_message
 
         opening = first_message(
             "Neue Dokumente hochgeladen", {**NEEDS_BODY, "previousSummary": "Einreichplan gelesen; Fluchtniveau offen."}
@@ -328,8 +328,8 @@ class TestThePrompt:
         from agent_testing.product_framing import OLD_FRAME
         from agent_testing.product_framing import PROMPTS
 
-        assert "packages/agent/src/aiq_agent/agents/intake/prompts/system.j2" in PROMPTS
-        from aiq_agent.agents.intake.agent import system_prompt
+        assert "packages/agent/src/agent/agents/intake/prompts/system.j2" in PROMPTS
+        from agent.agents.intake.agent import system_prompt
 
         rendered = system_prompt()
         assert not FILE_AS_PLAN.search(rendered) and not OLD_FRAME.search(rendered)
@@ -337,7 +337,7 @@ class TestThePrompt:
 
     @pytest.mark.parametrize("phrase", ["Never guess", "Zielzustand", "newest Fassung", "Never compute it"])
     def test_the_rules_the_tools_cannot_carry_are_in_it(self, phrase):
-        from aiq_agent.agents.intake.agent import system_prompt
+        from agent.agents.intake.agent import system_prompt
 
         assert phrase in system_prompt()
 
@@ -345,7 +345,7 @@ class TestThePrompt:
         """Goal, rules, tools and budget; the model chooses its way (the product owner's direction)."""
         import re
 
-        from aiq_agent.agents.intake.agent import system_prompt
+        from agent.agents.intake.agent import system_prompt
 
         rendered = system_prompt()
         assert "<loop>" not in rendered
@@ -353,7 +353,7 @@ class TestThePrompt:
         assert "yours to choose" in rendered
 
     def test_it_names_every_tool_once_and_states_the_budget_as_information(self):
-        from aiq_agent.agents.intake.agent import system_prompt
+        from agent.agents.intake.agent import system_prompt
 
         rendered = system_prompt(max_steps=80, max_run_seconds=1200)
         assert "About 80 tool calls and 20 minutes" in rendered
@@ -370,7 +370,7 @@ class TestThePrompt:
             assert f"`{tool}`" in rendered, tool
 
     def test_it_says_the_run_is_unattended_and_the_summary_is_grounded(self):
-        from aiq_agent.agents.intake.agent import system_prompt
+        from agent.agents.intake.agent import system_prompt
 
         rendered = system_prompt()
         assert "nobody can answer" in rendered and "Do not end a turn with a plan" in rendered

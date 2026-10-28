@@ -27,12 +27,12 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.session import get_session_registry
-from aiq_agent.citations.verification import cited_document_entries
-from aiq_agent.citations.wire import source_entry_to_wire
+from agent.citations.entries import SourceEntry
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.registry import SourceRegistry
+from agent.citations.session import get_session_registry
+from agent.citations.verification import cited_document_entries
+from agent.citations.wire import source_entry_to_wire
 
 if TYPE_CHECKING:
     from .event_store import EventStore

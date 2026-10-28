@@ -27,7 +27,7 @@ def _chunk(collection: str = "proj_1", file_name: str = "plan.pdf") -> SimpleNam
     ],
 )
 def test_a_store_read_failure_is_fail_open_and_logged(monkeypatch, caplog, resolver, factory_fn, what):
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import factory
 
     def boom(collection, filenames):
         raise RuntimeError("metadata store unreachable")
@@ -47,7 +47,7 @@ def test_a_store_read_failure_is_fail_open_and_logged(monkeypatch, caplog, resol
 
 
 def test_a_healthy_store_stays_silent(monkeypatch, caplog):
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import factory
 
     monkeypatch.setattr(factory, "get_document_doc_classes", lambda collection, filenames: {"plan.pdf": "plan"})
 

@@ -11,26 +11,26 @@ from collections.abc import Iterator
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from aiq_agent.citations.entries import UNVERIFIED_QUOTE_MARKER
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.citations.markdown_code import code_spans
-from aiq_agent.citations.markdown_code import inside
-from aiq_agent.citations.quote_matching import MIN_QUOTE_LEN
-from aiq_agent.citations.quote_matching import QUOTE_MATCH_THRESHOLD
-from aiq_agent.citations.quote_matching import QUOTED_SPAN_RE
-from aiq_agent.citations.quote_matching import UnverifiedQuote
-from aiq_agent.citations.quote_matching import normalize_for_quote_match
-from aiq_agent.citations.quote_matching import normalized_closeness
-from aiq_agent.citations.quote_matching import normalized_coverage
-from aiq_agent.citations.references import CITATION_LINE_RE
-from aiq_agent.citations.references import INLINE_CITATION_RE
-from aiq_agent.citations.references import REFERENCE_SECTION_RE
-from aiq_agent.citations.references import document_identity
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.report_layout import ORIGIN_TOKEN_RE
-from aiq_agent.citations.report_layout import normalize_citation_syntax
-from aiq_agent.citations.verification import resolve_source_line
+from agent.citations.entries import UNVERIFIED_QUOTE_MARKER
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import normalize_url
+from agent.citations.markdown_code import code_spans
+from agent.citations.markdown_code import inside
+from agent.citations.quote_matching import MIN_QUOTE_LEN
+from agent.citations.quote_matching import QUOTE_MATCH_THRESHOLD
+from agent.citations.quote_matching import QUOTED_SPAN_RE
+from agent.citations.quote_matching import UnverifiedQuote
+from agent.citations.quote_matching import normalize_for_quote_match
+from agent.citations.quote_matching import normalized_closeness
+from agent.citations.quote_matching import normalized_coverage
+from agent.citations.references import CITATION_LINE_RE
+from agent.citations.references import INLINE_CITATION_RE
+from agent.citations.references import REFERENCE_SECTION_RE
+from agent.citations.references import document_identity
+from agent.citations.registry import SourceRegistry
+from agent.citations.report_layout import ORIGIN_TOKEN_RE
+from agent.citations.report_layout import normalize_citation_syntax
+from agent.citations.verification import resolve_source_line
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 
 How the base corpus (the OIB, Österreichisches Institut für Bautechnik, Richtlinien and the other documents the platform owner uploads) is stored and ingested into the `oib_knowledge` collection in Qdrant. ADR-0082 step A2.
 
-There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `packages/agent/src/aiq_agent/corpus_store.py` (storage, table, cache), `packages/agent/src/aiq_agent/oib_sync.py` (ingestion), `packages/agent/src/aiq_agent/oib_status.py` (the status view) and `apps/backend/src/aiq_api/routes/oib.py` (the routes).
+There is one design and no switch: the corpus lives in object storage, one table says what is in it, and every file that is not indexed yet becomes one job on the durable ingest queue (ADR-0076), run by the ingest workers. Nothing is ingested in the web process. The code is `packages/agent/src/agent/corpus_store.py` (storage, table, cache), `packages/agent/src/agent/oib_sync.py` (ingestion), `packages/agent/src/agent/oib_status.py` (the status view) and `apps/backend/src/backend/routes/oib.py` (the routes).
 
 ---
 
@@ -10,7 +10,7 @@ There is one design and no switch: the corpus lives in object storage, one table
 
 | Piece | Where |
 |-------|-------|
-| A PDF | The object `base-corpus/<file name>` in `SEAWEED_BUCKET`. Written through the BFF (`POST /api/internal/base-corpus/upload-url`, then a presigned `PUT` as `application/pdf`; `DELETE /api/internal/base-corpus/<name>`, header `x-grid-internal-token`), because the backend's S3 credential is read-only. Read with that credential (`aiq_agent.common.seaweed_s3`, shared with `look`) |
+| A PDF | The object `base-corpus/<file name>` in `SEAWEED_BUCKET`. Written through the BFF (`POST /api/internal/base-corpus/upload-url`, then a presigned `PUT` as `application/pdf`; `DELETE /api/internal/base-corpus/<name>`, header `x-grid-internal-token`), because the backend's S3 credential is read-only. Read with that credential (`agent.common.seaweed_s3`, shared with `look`) |
 | The list of PDFs and what ingestion knows about each | One table in the knowledge database (`SUMMARY_DB`), `oib_corpus_files`, created on first use |
 | A copy on a replica's disk | A cache in `BASE_CORPUS_CACHE_DIR` (default `/tmp/base-corpus`), filled one file at a time |
 
@@ -58,7 +58,7 @@ The hash and version are written only after the file's job reached `FileStatus.S
 
 ## Who runs ingestion
 
-**The ingest workers do.** A file that needs ingestion becomes exactly one job on the `ingest_job_queue` table, the queue `POST /v1/ingest` uses (`aiq_agent.knowledge.ingest_queue`), in the platform lane (no organisation) at `bulk` priority. It is claimed by the ingest-worker tier, and by nothing else: the `chat` and `api` roles only enqueue (ADR-0082 step B). Kubernetes runs it as the `ingest-worker` Deployment and both Compose files as the `ingest-worker` service, with the queue's heartbeat, stale-claim reclaim, attempt limit, dead rows and drain behaviour. The queue is on whenever `SUMMARY_DB` is set, which the corpus needs anyway.
+**The ingest workers do.** A file that needs ingestion becomes exactly one job on the `ingest_job_queue` table, the queue `POST /v1/ingest` uses (`agent.knowledge.ingest_queue`), in the platform lane (no organisation) at `bulk` priority. It is claimed by the ingest-worker tier, and by nothing else: the `chat` and `api` roles only enqueue (ADR-0082 step B). Kubernetes runs it as the `ingest-worker` Deployment and both Compose files as the `ingest-worker` service, with the queue's heartbeat, stale-claim reclaim, attempt limit, dead rows and drain behaviour. The queue is on whenever `SUMMARY_DB` is set, which the corpus needs anyway.
 
 **There is no in-process path.** `oib_sync` never calls `upload_file`, `submit_job` or `run_prepared`, and has no thread pool (a test greps for it). If the queue is off or cannot take the job (`INGEST_QUEUE=off`, no database, a write error), `ingest_dispatch.enqueue_only` (the API tier's own enqueue, which its routes hand to `oib_sync` as `enqueue`, so the agent tier never imports the API tier) raises `QueueUnavailable`: the upload route answers 500, the sync cycle fails loudly, and the next cycle queues the file once the queue is back.
 
@@ -182,7 +182,7 @@ which sends each PDF through `POST /v1/admin/oib/documents` (header `X-Admin-Tok
 `oib_sync` imports `knowledge_layer.llamaindex.adapter` lazily to register the ingestor backend with the factory, then obtains an ingestor, which it uses only to prepare jobs and to read and clean the collection, via:
 
 ```python
-from aiq_agent.knowledge.factory import get_ingestor
+from agent.knowledge.factory import get_ingestor
 
 ingestor = get_ingestor("llamaindex")
 ```
@@ -197,18 +197,18 @@ The adapter reaches Qdrant at `QDRANT_URL`, in every deployment and in local dev
 apps/backend routes/oib.py  ·  routes/jobs.py (housekeeping/base-corpus)
        │
        ▼
-packages/agent/src/aiq_agent/oib_sync.py ──────────► packages/agent/src/aiq_agent/corpus_store.py
+packages/agent/src/agent/oib_sync.py ──────────► packages/agent/src/agent/corpus_store.py
        │   │                              │ table: oib_corpus_files (SUMMARY_DB)
        │   │                              │ writes: BFF presigned URLs / delete
-       │   │                              │ reads:  aiq_agent.common.seaweed_s3
+       │   │                              │ reads:  agent.common.seaweed_s3
        │   │                              └ cache:  BASE_CORPUS_CACHE_DIR
-       │   └── enqueue (handed in by the route) ─► aiq_api.jobs.ingest_dispatch.enqueue_only ─► ingest_job_queue
+       │   └── enqueue (handed in by the route) ─► backend.jobs.ingest_dispatch.enqueue_only ─► ingest_job_queue
        │                                                          │ claimed by
        │                                                          ▼
        │                                         ingest workers (QueueSource) ─► CorpusObjectDownload
        ├── knowledge_layer.llamaindex.adapter   (prepare_job; the worker runs the job)
-       ├── aiq_agent.knowledge.ingest_status_store (job outcomes, read by settle)
-       ├── aiq_agent.knowledge.leader_lock
+       ├── agent.knowledge.ingest_status_store (job outcomes, read by settle)
+       ├── agent.knowledge.leader_lock
        └── Qdrant (oib_knowledge scope)
 ```
 

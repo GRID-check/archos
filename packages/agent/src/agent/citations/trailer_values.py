@@ -7,8 +7,8 @@ import re
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.citations.citation_keys import parse_citation_key
-from aiq_agent.citations.entries import SourceEntry
+from agent.citations.citation_keys import parse_citation_key
+from agent.citations.entries import SourceEntry
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def _turn_source_names(turn_sources: Sequence[SourceEntry]) -> frozenset[str]:
     like :func:`agent_authored_document_names`. Short names are dropped at the
     match, not here.
     """
-    from aiq_agent.common.provenance import normalize_document_name
+    from agent.common.provenance import normalize_document_name
 
     names: set[str] = set()
     for entry in turn_sources or ():
@@ -76,7 +76,7 @@ def _turn_source_names(turn_sources: Sequence[SourceEntry]) -> frozenset[str]:
 
 def _names_turn_source(signal: str, names: frozenset[str]) -> bool:
     """Whether a Fundstelle signal names a document this turn retrieved."""
-    from aiq_agent.common.provenance import normalize_document_name
+    from agent.common.provenance import normalize_document_name
 
     named = normalize_document_name(signal)
     if len(named) < _VALUE_MIN_MATCHABLE_NAME_CHARS:

@@ -7,23 +7,23 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.wire_v2 import WIRE_EVENT
-from aiq_agent.common.wire_v2 import AnswerRetractedBody
-from aiq_agent.common.wire_v2 import AnswerSnapshot
-from aiq_agent.common.wire_v2 import CardBody
-from aiq_agent.common.wire_v2 import CardValue
-from aiq_agent.common.wire_v2 import EmptyValue
-from aiq_agent.common.wire_v2 import MastheadBody
-from aiq_agent.common.wire_v2 import MastheadValue
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import ShownAnswer
-from aiq_agent.common.wire_v2 import StateSnapshotBody
-from aiq_agent.common.wire_v2 import TextMessageContentBody
-from aiq_agent.common.wire_v2 import TextMessageStartBody
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.common.wire_v2 import WireSource
-from aiq_agent.turn.streaming import TurnTextFold
-from aiq_agent.turn.streaming import fold_turn
+from agent.common.wire_v2 import WIRE_EVENT
+from agent.common.wire_v2 import AnswerRetractedBody
+from agent.common.wire_v2 import AnswerSnapshot
+from agent.common.wire_v2 import CardBody
+from agent.common.wire_v2 import CardValue
+from agent.common.wire_v2 import EmptyValue
+from agent.common.wire_v2 import MastheadBody
+from agent.common.wire_v2 import MastheadValue
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import ShownAnswer
+from agent.common.wire_v2 import StateSnapshotBody
+from agent.common.wire_v2 import TextMessageContentBody
+from agent.common.wire_v2 import TextMessageStartBody
+from agent.common.wire_v2 import TurnResult
+from agent.common.wire_v2 import WireSource
+from agent.turn.streaming import TurnTextFold
+from agent.turn.streaming import fold_turn
 
 
 def _delta(text: str) -> TextMessageContentBody:

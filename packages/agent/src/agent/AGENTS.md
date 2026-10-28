@@ -1,4 +1,4 @@
-# The agent: `packages/agent/src/aiq_agent`
+# The agent: `packages/agent/src/agent`
 
 The Python half of Piloti: LangGraph agents on the NeMo Agent Toolkit (NAT), the
 card surface, the post-answer stages, and the knowledge layer. Stateless per

@@ -5,18 +5,18 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiq_agent.citations.binding import BindingClassification
-from aiq_agent.citations.binding import binding_classification_for_entry
-from aiq_agent.citations.binding import binding_note_for_entry
-from aiq_agent.citations.binding import document_key
-from aiq_agent.citations.binding import source_lane
-from aiq_agent.citations.binding import source_origin_token
-from aiq_agent.citations.citation_keys import entry_shelf
-from aiq_agent.citations.citation_keys import parse_citation_key
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import is_look_place
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import kind_for_lane
+from agent.citations.binding import BindingClassification
+from agent.citations.binding import binding_classification_for_entry
+from agent.citations.binding import binding_note_for_entry
+from agent.citations.binding import document_key
+from agent.citations.binding import source_lane
+from agent.citations.binding import source_origin_token
+from agent.citations.citation_keys import entry_shelf
+from agent.citations.citation_keys import parse_citation_key
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import is_look_place
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import kind_for_lane
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +63,8 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
     # The norm registry is static within a turn; load it at most once here
     # (only for RIS entries, mirroring both helpers' guard) and hand the same
     # instance to source_lane and binding_note_for_entry so neither reloads it.
-    from aiq_agent.common.norm_registry import load_registry
-    from aiq_agent.common.norm_registry import resolve_federal_state
+    from agent.common.norm_registry import load_registry
+    from agent.common.norm_registry import resolve_federal_state
 
     # Load the registry once for anything that could resolve to a catalogued norm:
     # a RIS URL (source_lane/binding_note) OR a document identifier (the WIDENED

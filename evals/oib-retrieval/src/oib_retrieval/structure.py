@@ -75,8 +75,8 @@ def _normalise(text: str) -> str:
     """
     from knowledge_layer.llamaindex.clause_chunking import _dehyphenate
 
-    from aiq_agent.common.german_text import fold
-    from aiq_agent.common.german_text import tokenize
+    from agent.common.german_text import fold
+    from agent.common.german_text import tokenize
 
     return " " + " ".join(tokenize(fold(_dehyphenate(text)))) + " "
 

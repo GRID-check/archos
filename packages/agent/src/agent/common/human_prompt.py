@@ -23,10 +23,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from aiq_agent.common.wire_v2 import InteractionOption
-from aiq_agent.common.wire_v2 import InteractionRequestValue
-from aiq_agent.common.wire_v2 import OptionAnswer
-from aiq_agent.common.wire_v2 import TextAnswer
+from agent.common.wire_v2 import InteractionOption
+from agent.common.wire_v2 import InteractionRequestValue
+from agent.common.wire_v2 import OptionAnswer
+from agent.common.wire_v2 import TextAnswer
 from nat.plugin_api import HumanPrompt
 from nat.plugin_api import HumanPromptRadio
 from nat.plugin_api import HumanPromptText

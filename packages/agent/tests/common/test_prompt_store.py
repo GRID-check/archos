@@ -13,19 +13,19 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.prompt_store import CACHE_TTL_ENV
-from aiq_agent.common.prompt_store import ENABLED_ENV
-from aiq_agent.common.prompt_store import PUBLIC_KEY_ENV
-from aiq_agent.common.prompt_store import SECRET_KEY_ENV
-from aiq_agent.common.prompt_store import PromptStore
-from aiq_agent.common.prompt_store import ResolvedPrompt
-from aiq_agent.common.prompt_store import build_langfuse_client
-from aiq_agent.common.prompt_store import configured_cache_ttl_seconds
-from aiq_agent.common.prompt_store import configured_label
-from aiq_agent.common.prompt_store import git_blob_version
-from aiq_agent.common.prompt_store import prompt_management_enabled
-from aiq_agent.common.prompt_store import prompt_store
-from aiq_agent.common.prompt_store import reset_prompt_store
+from agent.common.prompt_store import CACHE_TTL_ENV
+from agent.common.prompt_store import ENABLED_ENV
+from agent.common.prompt_store import PUBLIC_KEY_ENV
+from agent.common.prompt_store import SECRET_KEY_ENV
+from agent.common.prompt_store import PromptStore
+from agent.common.prompt_store import ResolvedPrompt
+from agent.common.prompt_store import build_langfuse_client
+from agent.common.prompt_store import configured_cache_ttl_seconds
+from agent.common.prompt_store import configured_label
+from agent.common.prompt_store import git_blob_version
+from agent.common.prompt_store import prompt_management_enabled
+from agent.common.prompt_store import prompt_store
+from agent.common.prompt_store import reset_prompt_store
 
 FALLBACK = ResolvedPrompt(text="COMMITTED TEXT", name="git:prompts/x.md", version="abc1234", is_fallback=True)
 

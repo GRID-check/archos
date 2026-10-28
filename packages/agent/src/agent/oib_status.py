@@ -21,9 +21,9 @@ from enum import StrEnum
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent import corpus_store
-from aiq_agent import oib_sync
-from aiq_agent.knowledge.schema import FileInfo
+from agent import corpus_store
+from agent import oib_sync
+from agent.knowledge.schema import FileInfo
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ class OibKnowledgeStatus(BaseModel):
 def _load_suggestions(collection_name: str, file_names: list[str]) -> dict[str, str]:
     """Best-effort batch read of the Dokumentart suggestions; empty on any store hiccup."""
     try:
-        from aiq_agent.knowledge.factory import get_document_doc_class_suggestions
+        from agent.knowledge.factory import get_document_doc_class_suggestions
 
         return get_document_doc_class_suggestions(collection_name, file_names)
     except Exception as e:
@@ -132,7 +132,7 @@ def _load_summaries(collection_name: str) -> dict[str, tuple[str | None, str | N
     still shows an effective name.
     """
     try:
-        from aiq_agent.knowledge.factory import get_available_documents
+        from agent.knowledge.factory import get_available_documents
 
         return {
             doc.file_name: (doc.summary, doc.doc_class, doc.display_title)
@@ -188,7 +188,7 @@ def _entry_for_orphan(name: str, info: FileInfo) -> OibFileEntry:
 
 
 def _with_metadata(entries: list[OibFileEntry], collection_name: str) -> None:
-    from aiq_agent.common.norm_registry import guess_display_title
+    from agent.common.norm_registry import guess_display_title
 
     summaries = _load_summaries(collection_name)
     suggestions = _load_suggestions(collection_name, [entry.file_name for entry in entries])

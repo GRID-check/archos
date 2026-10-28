@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import json
 
-from aiq_agent.knowledge.revision_diff import RevisionChunk
-from aiq_agent.knowledge.revision_diff import changed_pages
-from aiq_agent.knowledge.revision_diff import chunk_from_store
-from aiq_agent.knowledge.revision_diff import diff_revisions
-from aiq_agent.knowledge.revision_diff import diff_title_blocks
-from aiq_agent.knowledge.revision_diff import render_diff
+from agent.knowledge.revision_diff import RevisionChunk
+from agent.knowledge.revision_diff import changed_pages
+from agent.knowledge.revision_diff import chunk_from_store
+from agent.knowledge.revision_diff import diff_revisions
+from agent.knowledge.revision_diff import diff_title_blocks
+from agent.knowledge.revision_diff import render_diff
 
 PAGE_1 = "Brandschutzkonzept Wohnbau Nord\nGebäudeklasse 4\nFluchtweglänge 38 m bis zum Stiegenhaus"
 PAGE_2 = "Tragwerk\nDecken REI 90\nWände REI 90"

@@ -4,10 +4,10 @@ Covers ``_merge_summaries``, the route-level seam that layers SummaryStore rows
 (the source of truth) onto the ingestor's collection file list.
 """
 
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import FileInfo
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_api.routes.documents import _merge_summaries
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import FileInfo
+from agent.knowledge.schema import FileStatus
+from backend.routes.documents import _merge_summaries
 
 
 def _file(name: str, summary: str | None = None) -> FileInfo:

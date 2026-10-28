@@ -10,21 +10,21 @@ from collections.abc import Iterator
 
 import pytest
 
-from aiq_agent.common.platform_lessons import LessonsResolution
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.stages import TurnFacts
-from aiq_agent.stages.flags import TurnFlags
-from aiq_agent.turn import context as context_mod
-from aiq_agent.turn.context import load_turn_context
-from aiq_agent.turn.context import settle_restriction
-from aiq_agent.turn.context import thread_id_for_turn
-from aiq_agent.turn.context import turn_identity
-from aiq_agent.turn.context import user_info_for
-from aiq_agent.turn.context_client import ContextBlocks
-from aiq_agent.turn.context_client import TurnContextError
+from agent.common.platform_lessons import LessonsResolution
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import reset_restricted_use
+from agent.project_context import GridRequestContext
+from agent.stages import TurnFacts
+from agent.stages.flags import TurnFlags
+from agent.turn import context as context_mod
+from agent.turn.context import load_turn_context
+from agent.turn.context import settle_restriction
+from agent.turn.context import thread_id_for_turn
+from agent.turn.context import turn_identity
+from agent.turn.context import user_info_for
+from agent.turn.context_client import ContextBlocks
+from agent.turn.context_client import TurnContextError
 
 
 def _request(**fields) -> GridRequestContext:
@@ -438,8 +438,8 @@ class TestLessonsReachTheTrace:
     LESSON_A = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
 
     async def test_the_arm_and_the_lesson_ids_are_on_the_turns_trace_metadata(self, stubs, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         reset_contributions()
         monkeypatch.setattr(
@@ -458,8 +458,8 @@ class TestLessonsReachTheTrace:
         reset_contributions()
 
     async def test_a_holdout_turn_records_the_arm_and_injects_nothing(self, stubs, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         reset_contributions()
         monkeypatch.setattr(
@@ -476,8 +476,8 @@ class TestLessonsReachTheTrace:
         reset_contributions()
 
     async def test_a_failed_lookup_claims_no_arm(self, stubs, monkeypatch):
-        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
-        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+        from agent.observability.langfuse_trace_attributes import reset_contributions
+        from agent.observability.langfuse_trace_attributes import snapshot_contributions
 
         def fail(_cid):
             raise RuntimeError("lessons unavailable")

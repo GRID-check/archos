@@ -8,7 +8,7 @@ import logging
 import os
 import time
 
-from aiq_agent.common.db_utils import redact_db_url
+from agent.common.db_utils import redact_db_url
 
 logger = logging.getLogger(__name__)
 

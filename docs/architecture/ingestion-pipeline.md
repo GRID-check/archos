@@ -13,7 +13,7 @@ ADR-0076 (the queue), ADR-0117 (the page pipeline, proposed, not built).
 
 Short forms: **A** is `packages/knowledge-layer/src/llamaindex/adapter.py`, **S** is
 `apps/workspace/bff/documents/service.ts` as it stood before it was split (its `S:N` line references are from then; `dispatchDocument` is now in `document-dispatch.ts`, `dispatchIngest` in `ingest-dispatch.ts`), **D** is
-`apps/backend/src/aiq_api/jobs/ingest_dispatch.py`.
+`apps/backend/src/backend/jobs/ingest_dispatch.py`.
 
 ## 1. The whole thing on one page
 
@@ -32,7 +32,7 @@ flowchart LR
     SW[(SeaweedFS<br/>original + rendition)]
     PG[(Postgres<br/>documents, ingest_jobs,<br/>ingest_job_queue)]
   end
-  subgraph API["aiq_api"]
+  subgraph API["backend"]
     IN[/v1/ingest<br/>idempotent per document/]
   end
   subgraph Worker["ingest-worker tier (KEDA, 1 to 5 pods x 3 jobs)"]
@@ -326,6 +326,6 @@ order, so B's document waits for one document of A's to finish before it starts.
 | Why did this file fail? | `documents.ingest_error`, the job's `file_details`, `[ingest-perf]` and the worker log for the job id |
 | Why is this page missing from search? | page triage (`page_triage.classify_page`), the render cap (`MAX_RENDERED_PAGES`), a skipped vision or OCR call (warning in the log only) |
 | What did it cost? | `llm_usage_events` where `activity = 'ingest'` and the job id |
-| Who decides the order of jobs? | `aiq_agent.knowledge.ingest_queue.claim_next`, ADR-0076 and ADR-0079 |
+| Who decides the order of jobs? | `agent.knowledge.ingest_queue.claim_next`, ADR-0076 and ADR-0079 |
 | Where is the vision prompt? | `visual_analysis.build_prompt` over `visual_domains` |
 | What runs after a document settles? | `apps/workspace/bff/upload-batches/settle.ts` (`onDocumentsSettled`) |

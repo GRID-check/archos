@@ -160,7 +160,7 @@ it.
 
 `None` from the resolver means "leave the role's configured value alone" and is
 NOT the level `none`, which actively disables reasoning. Both sides encode the
-vocabulary — the BFF validates on write, `aiq_agent/common/reasoning_settings.py`
+vocabulary — the BFF validates on write, `agent/common/reasoning_settings.py`
 on read — so a hand-edited row can never push a provider-native tier name (e.g.
 DeepSeek's `max`, which OpenRouter rejects) into a request. Parity is pinned by
 `apps/workspace/tests/fixtures/reasoning_efforts_catalog.json` from both languages.
@@ -172,7 +172,7 @@ through `LLMProvider`, so the effort has its own provider method,
 `RequestLLMContext.apply` (`common/request_llm_context.py`, which chat's
 `_active_provider`, `Clarifier.deps_for` and deep research's
 `_agent_for_request` all go through), and in the detached worker
-(`aiq_api/jobs/runner.py`) after the captured overrides. The four per-request
+(`backend/jobs/runner.py`) after the captured overrides. The four per-request
 lookups (overrides, efforts, BYOK credential, ZDR) are read there by
 `read_request_llm_context`, each on its own `asyncio.to_thread` hop: every one
 can fall back to a blocking BFF call, and on the loop a cold miss stalled every
@@ -206,7 +206,7 @@ explicit `settings.zdrOnly === false` turns it off. Because every org inherits
 the platform defaults under ZDR, a platform default without a ZDR endpoint is
 refused at save, and the platform page checks saved defaults against the live
 ZDR list (a stored snapshot would go stale). The pin itself
-is applied in one place, `packages/agent/src/aiq_agent/common/openrouter.py`: the per-request
+is applied in one place, `packages/agent/src/agent/common/openrouter.py`: the per-request
 dials above carry it for the models an org chooses (`RequestLLMContext.apply`,
 `apply_model_override`, the worker's `provider.with_zdr` after BYOK), and every
 model the platform fixes (embeddings, reranker, decision model, `summary_llm`,
@@ -220,7 +220,7 @@ still fail open to the YAML models.
 The override points sit *above* the YAML LLM names, so the YAML can reshuffle
 freely. Registry: `apps/workspace/bff/model-config/agent-groups.ts` (with
 capability requirements) mirrored by `AgentGroup` in
-`packages/agent/src/aiq_agent/common/model_overrides.py` (**keep in sync**).
+`packages/agent/src/agent/common/model_overrides.py` (**keep in sync**).
 
 | Group id | Covers (config LLMs) | Requirements (catalog) |
 |---|---|---|
@@ -358,7 +358,7 @@ modality.
 one you get depends on which question is being asked:
 
 - `getWorkflowGroupDefaults()` — the backend's loaded YAML models, from
-  `GET /v1/config/llm-defaults` (aiq_api `routes/config_info.py`,
+  `GET /v1/config/llm-defaults` (backend `routes/config_info.py`,
   internal-token guarded) mapped through `configLlmRefs`. The **platform**
   screen shows this, because that is what clearing a default returns to.
 - `getGroupDefaults()` — the same with the platform defaults layered over it.
@@ -482,7 +482,7 @@ invalidation path is intact:
   each side falls back to a per-process (BFF: per-replica) memory store, the
   delete reaches only the replica that performed the save, and every other
   replica serves its memo until the TTLs below expire.
-- **Backend tiers** (`packages/agent/src/aiq_agent/common/model_overrides.py`): L1 10 s
+- **Backend tiers** (`packages/agent/src/agent/common/model_overrides.py`): L1 10 s
   in-process memo, L2 60 s shared entry, both write-invalidated by the BFF
   delete. Errors are negative-cached for 1 s in L1 only; empty successes
   (`{}, False` — also what a missing `INTERNAL_API_TOKEN` resolves to)

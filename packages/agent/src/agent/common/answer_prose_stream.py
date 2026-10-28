@@ -1,7 +1,7 @@
 """The answer's prose while the model is still writing it, safe to show.
 
 The final call writes one ```answer_json envelope: the masthead fields
-(``MASTHEAD_FIELDS`` in :mod:`aiq_agent.common.answer_envelope`) first, then the
+(``MASTHEAD_FIELDS`` in :mod:`agent.common.answer_envelope`) first, then the
 ``answer`` string, then the cards. The strict schema and every example put them
 in that order, and the order is load-bearing (ADR-0066): a masthead written
 after ``answer`` cannot stand above the prose until the terminal frame. This
@@ -44,9 +44,9 @@ import re
 from dataclasses import dataclass
 from dataclasses import field
 
-from aiq_agent.citations.references import _GROUPED_CITATION_RE
-from aiq_agent.citations.references import REFERENCE_HEADING_LINE_RE
-from aiq_agent.citations.references import expand_grouped_citations
+from agent.citations.references import _GROUPED_CITATION_RE
+from agent.citations.references import REFERENCE_HEADING_LINE_RE
+from agent.citations.references import expand_grouped_citations
 
 #: How far into the reply the ``"answer"`` key may start. Only the masthead
 #: comes before it (a verdict with its reference and a summary fit well

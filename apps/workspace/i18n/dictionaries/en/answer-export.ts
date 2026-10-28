@@ -8,7 +8,7 @@
  * document whose body is English is a defect the reader blames the answer for.
  *
  * `fields` is a FLAT map of the card payload's own field names (the Pydantic
- * models in `packages/agent/src/aiq_agent/cards/models.py`), deliberately not nested per card
+ * models in `packages/agent/src/agent/cards/models.py`), deliberately not nested per card
  * type: the same names recur across the catalogue — `reference`, `status`,
  * `note`, `label` — and one entry per name is what keeps 27 card types from
  * needing 27 label tables that would then drift apart. A name that is missing

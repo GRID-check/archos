@@ -41,15 +41,15 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
-from aiq_agent.common.client_tools import claim_once
-from aiq_agent.common.client_tools import client_tool_declared
-from aiq_agent.common.turn_status import emit
-from aiq_agent.common.wire_v2 import MAX_VIEWER_PASSAGE_CHARS
-from aiq_agent.common.wire_v2 import ViewerActionBody
-from aiq_agent.common.wire_v2 import ViewerActionName
-from aiq_agent.common.wire_v2 import ViewerActionValue
-from aiq_agent.knowledge.base import SESSION_COLLECTION_PREFIX
-from aiq_agent.observability.retrieval_trace import emit_step_span
+from agent.common.client_tools import claim_once
+from agent.common.client_tools import client_tool_declared
+from agent.common.turn_status import emit
+from agent.common.wire_v2 import MAX_VIEWER_PASSAGE_CHARS
+from agent.common.wire_v2 import ViewerActionBody
+from agent.common.wire_v2 import ViewerActionName
+from agent.common.wire_v2 import ViewerActionValue
+from agent.knowledge.base import SESSION_COLLECTION_PREFIX
+from agent.observability.retrieval_trace import emit_step_span
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo

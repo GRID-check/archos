@@ -17,7 +17,7 @@ from fastapi import APIRouter
 from fastapi import HTTPException
 from fastapi import Request
 
-from aiq_agent.common import turn_admission
+from agent.common import turn_admission
 
 from .internal_auth import _require_internal_token
 

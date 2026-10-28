@@ -12,8 +12,8 @@ from typing import Any
 from knowledge_layer import search_scope
 from knowledge_layer.ranked_search import RankedSearch
 
-from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.action_rows import ActionRow
+from agent.common.action_outcome import ActionOutcome
+from agent.common.action_rows import ActionRow
 from nat.plugin_api import Context
 
 from .chunk_noise import noise_filter_enabled
@@ -73,8 +73,8 @@ def parse_args(
     if not query:
         return EMPTY_QUERY_REFUSAL
     if doc_class is not None:
-        from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
-        from aiq_agent.knowledge.document_classification import canonical_doc_class
+        from agent.knowledge.document_classification import DOCUMENT_CLASSES
+        from agent.knowledge.document_classification import canonical_doc_class
 
         # A conversation holding a search by the German key invites the model to repeat it.
         current_doc_class = canonical_doc_class(doc_class)
@@ -86,7 +86,7 @@ def parse_args(
         doc_class = current_doc_class
     document_type = (document_type or "").strip().casefold().replace(" ", "_") or None
     if document_type is not None:
-        from aiq_agent.knowledge.dossier import DOCUMENT_TYPES
+        from agent.knowledge.dossier import DOCUMENT_TYPES
 
         if document_type not in DOCUMENT_TYPES:
             return (
@@ -204,7 +204,7 @@ class KnowledgeSearch:
         # Platform-tunable counts (Platform → Retrieval), resolved per call so
         # an admin save takes effect without a redeploy; fail-open to the YAML
         # build-time values.
-        from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        from agent.common.retrieval_settings import get_retrieval_setting
 
         from .browse import entries_on_shelf
 
@@ -247,7 +247,7 @@ class KnowledgeSearch:
         )
 
     async def _literal(self, outcome: ActionOutcome, args: SearchArgs, targets: list) -> str:
-        from aiq_agent.common.action_rows import emit_literal_search
+        from agent.common.action_rows import emit_literal_search
 
         from .browse import exact_search
 
@@ -296,10 +296,10 @@ def path_scope(
     the file (``Plan.pdf.md`` is ``Plan.pdf``). Raises ``ValueError`` with the refusal for a path that is
     not canonical or names no place.
     """
-    from aiq_agent.common.estate_paths import MOUNT_SHELVES
-    from aiq_agent.common.estate_paths import PathRefused
-    from aiq_agent.common.estate_paths import file_name_candidates
-    from aiq_agent.common.estate_paths import parse_estate_path
+    from agent.common.estate_paths import MOUNT_SHELVES
+    from agent.common.estate_paths import PathRefused
+    from agent.common.estate_paths import file_name_candidates
+    from agent.common.estate_paths import parse_estate_path
 
     try:
         parsed = parse_estate_path(path)

@@ -7,23 +7,23 @@ from pydantic import Field
 from pydantic import field_validator
 from pydantic import model_validator
 
-from aiq_agent.tools.bim.measure_vocab import _CASE_FOLDED
-from aiq_agent.tools.bim.measure_vocab import _LEGACY_TOKENS
-from aiq_agent.tools.bim.measure_vocab import DISTANCE_MODES
-from aiq_agent.tools.bim.measure_vocab import ENVELOPE_ASPECTS
-from aiq_agent.tools.bim.measure_vocab import FIRE_ASPECTS
-from aiq_agent.tools.bim.measure_vocab import KINDS
-from aiq_agent.tools.bim.measure_vocab import MAX_BATCH
-from aiq_agent.tools.bim.measure_vocab import MEASURES
-from aiq_agent.tools.bim.measure_vocab import OPERATIONS
-from aiq_agent.tools.bim.measure_vocab import PROFILE_KINDS
-from aiq_agent.tools.bim.measure_vocab import RELATIONS
-from aiq_agent.tools.bim.measure_vocab import ROOM_KINDS
-from aiq_agent.tools.bim.measure_vocab import VIEW_MODES
-from aiq_agent.tools.bim.measure_vocab import _canonical
-from aiq_agent.tools.bim.measure_vocab import _enum_lines
-from aiq_agent.tools.bim.measure_vocab import _literal
-from aiq_agent.tools.bim.measure_vocab import _record_misses
+from agent.tools.bim.measure_vocab import _CASE_FOLDED
+from agent.tools.bim.measure_vocab import _LEGACY_TOKENS
+from agent.tools.bim.measure_vocab import DISTANCE_MODES
+from agent.tools.bim.measure_vocab import ENVELOPE_ASPECTS
+from agent.tools.bim.measure_vocab import FIRE_ASPECTS
+from agent.tools.bim.measure_vocab import KINDS
+from agent.tools.bim.measure_vocab import MAX_BATCH
+from agent.tools.bim.measure_vocab import MEASURES
+from agent.tools.bim.measure_vocab import OPERATIONS
+from agent.tools.bim.measure_vocab import PROFILE_KINDS
+from agent.tools.bim.measure_vocab import RELATIONS
+from agent.tools.bim.measure_vocab import ROOM_KINDS
+from agent.tools.bim.measure_vocab import VIEW_MODES
+from agent.tools.bim.measure_vocab import _canonical
+from agent.tools.bim.measure_vocab import _enum_lines
+from agent.tools.bim.measure_vocab import _literal
+from agent.tools.bim.measure_vocab import _record_misses
 
 
 class IfcMeasureInput(BaseModel):

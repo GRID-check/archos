@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from aiq_api.routes import jobs as jobs_routes
+from backend.routes import jobs as jobs_routes
 
 TOKEN = "real-secret"  # pragma: allowlist secret
 AUTH = {"x-grid-internal-token": TOKEN}
@@ -63,7 +63,7 @@ def test_job_events_runs_one_cleanup_cycle_with_the_expiry_settings(
 
 
 def test_chat_checkpoints_reports_threads_reaped(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    from aiq_api.jobs import checkpoint_retention
+    from backend.jobs import checkpoint_retention
 
     monkeypatch.setenv("CHECKPOINT_DB", "postgresql://grid@db/checkpoints")
     monkeypatch.setenv("CHAT_CHECKPOINT_RETENTION_SECONDS", "60")
@@ -83,8 +83,8 @@ def test_chat_checkpoints_without_a_checkpoint_db_says_why_it_did_nothing(
 
 
 def test_base_corpus_runs_one_sync_cycle_and_reports_its_counts(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    from aiq_agent import oib_sync
-    from aiq_api.jobs import ingest_dispatch
+    from agent import oib_sync
+    from backend.jobs import ingest_dispatch
 
     calls = []
 
@@ -101,7 +101,7 @@ def test_base_corpus_runs_one_sync_cycle_and_reports_its_counts(client: TestClie
 
 
 def test_base_corpus_does_not_sync_for_a_caller_without_the_token(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    from aiq_agent import oib_sync
+    from agent import oib_sync
 
     monkeypatch.setattr(oib_sync, "sync", lambda **_: pytest.fail("an unauthenticated call must not start a sync"))
     assert client.post("/v1/maintenance/housekeeping/base-corpus").status_code == 403
@@ -110,7 +110,7 @@ def test_base_corpus_does_not_sync_for_a_caller_without_the_token(client: TestCl
 def test_base_corpus_that_cannot_run_fails_the_call_so_the_scheduler_shows_it(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
-    from aiq_agent import oib_sync
+    from agent import oib_sync
 
     def broken(**_kwargs):
         raise RuntimeError("the base corpus needs SUMMARY_DB")

@@ -26,18 +26,18 @@ from agent_testing.canvas import REPLY_BODY
 from agent_testing.canvas import UPDATE_BODY
 from agent_testing.canvas import answering
 
-from aiq_agent.common import bff_http
-from aiq_agent.tools.canvas import calls as canvas_calls
-from aiq_agent.tools.canvas import client as canvas_client
-from aiq_agent.tools.canvas.client import CanvasRequestError
-from aiq_agent.tools.canvas.register import DESCRIPTIONS
-from aiq_agent.tools.canvas.register import run_delete
-from aiq_agent.tools.canvas.register import run_mark
-from aiq_agent.tools.canvas.register import run_reply
-from aiq_agent.tools.canvas.register import run_update
-from aiq_agent.turn.annotation_reply import ThreadReply
-from aiq_agent.turn.annotation_reply import bind_thread_reply
-from aiq_agent.turn.annotation_reply import reset_thread_reply
+from agent.common import bff_http
+from agent.tools.canvas import calls as canvas_calls
+from agent.tools.canvas import client as canvas_client
+from agent.tools.canvas.client import CanvasRequestError
+from agent.tools.canvas.register import DESCRIPTIONS
+from agent.tools.canvas.register import run_delete
+from agent.tools.canvas.register import run_mark
+from agent.tools.canvas.register import run_reply
+from agent.tools.canvas.register import run_update
+from agent.turn.annotation_reply import ThreadReply
+from agent.turn.annotation_reply import bind_thread_reply
+from agent.turn.annotation_reply import reset_thread_reply
 
 NOTE = "Erledigt: Die lichte Breite ist im Schnitt B-B mit 1,25 m kotiert."
 

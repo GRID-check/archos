@@ -11,7 +11,7 @@ An edge line (one of a page's first or last two) is furniture when, with its
 digits read as ``#``, it repeats on at least half the pages and on at least
 three: a page number changes, the line does not.
 
-It lives in ``aiq_agent.common`` so both can import it without loading
+It lives in ``agent.common`` so both can import it without loading
 LlamaIndex.
 """
 

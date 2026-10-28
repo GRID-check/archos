@@ -381,9 +381,9 @@ class TestTheRoute:
 
 class TestTheReadingTools:
     async def test_a_search_hit_is_filed_where_the_read_log_finds_it(self):
-        from aiq_agent.agents.intake.reading import passages_in
-        from aiq_agent.common.grounding_block import begin_grounding_capture
-        from aiq_agent.common.grounding_block import end_grounding_capture
+        from agent.agents.intake.reading import passages_in
+        from agent.common.grounding_block import begin_grounding_capture
+        from agent.common.grounding_block import end_grounding_capture
         from scripts.intake_eval.fixture import shared_tools
 
         tools = {tool.name: tool for tool in shared_tools(load_fixture())}

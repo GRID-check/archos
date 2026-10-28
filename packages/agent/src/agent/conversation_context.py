@@ -19,7 +19,7 @@ generated, streamed, or charged.
 This module is the agent-tier half of that (the socket reads the flat
 ``context_only`` and ``author_name`` fields of a v2 ``user_message``): the bounded
 attribution formatting, and the indirection the WebSocket front end uses to reach the
-compiled chat graph without importing it (``aiq_api`` owns the socket, ``aiq_agent``
+compiled chat graph without importing it (``backend`` owns the socket, ``agent``
 owns the graph).
 """
 

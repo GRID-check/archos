@@ -4,7 +4,7 @@ import 'server-only'
  * of the turn that drew it (ADR-0089, ADR-0141).
  *
  * `diagram-filed`, `CATEGORICAL`, value `as_drawn | edited`, declared in
- * `aiq_agent.observability.langfuse_scores.SCORE_DEFINITIONS`. `as_drawn` is
+ * `agent.observability.langfuse_scores.SCORE_DEFINITIONS`. `as_drawn` is
  * the drawing kept as Piloti made it; `edited` is the same drawing reworked in
  * the sketch editor first. The share of `edited` is how often Piloti's drawing
  * was a starting point rather than the result, which is what decides whether

@@ -32,10 +32,10 @@ from typing import Any
 
 from pydantic import Field
 
-from aiq_agent.common.action_rows import ActionRow
-from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
-from aiq_agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
-from aiq_agent.observability.retrieval_trace import emit_step_span
+from agent.common.action_rows import ActionRow
+from agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
+from agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
+from agent.observability.retrieval_trace import emit_step_span
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -193,7 +193,7 @@ def _row_document(resolved: Resolved | str | None) -> dict[str, str]:
     (listing is not use, ADR-0088). The name is the one the ``look`` step
     carries, so the row finds its crop.
     """
-    from aiq_agent.knowledge.restricted_use import may_name
+    from agent.knowledge.restricted_use import may_name
 
     if not isinstance(resolved, Resolved) or not may_name(resolved.collection):
         return {}

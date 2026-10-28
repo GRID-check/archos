@@ -12,8 +12,8 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.models.requests import MAX_DIGEST_SAMPLES
-from aiq_api.routes.feedback_digest import add_feedback_digest_routes
+from backend.models.requests import MAX_DIGEST_SAMPLES
+from backend.routes.feedback_digest import add_feedback_digest_routes
 
 
 @pytest.fixture
@@ -100,8 +100,8 @@ async def test_the_digest_is_pinned_to_zdr_whatever_the_callers_setting(app, mon
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         with (
             patch("httpx.AsyncClient", _fake_async_client(mock_post)),
-            patch("aiq_agent.common.model_overrides.resolve_org_zdr_only", return_value=False),
-            patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None),
+            patch("agent.common.model_overrides.resolve_org_zdr_only", return_value=False),
+            patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=None),
         ):
             await client.post("/v1/feedback-digest", json=_BODY, headers={"x-grid-organization-id": "org_platform"})
 
@@ -390,7 +390,7 @@ async def test_down_votes_are_labelled_by_cause_and_the_counts_reach_brief_and_p
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         with (
             patch("httpx.AsyncClient", _fake_async_client(mock_post)),
-            patch("aiq_agent.common.feedback_causes.label_causes", labelled),
+            patch("agent.common.feedback_causes.label_causes", labelled),
         ):
             response = await client.post("/v1/feedback-digest", json=_with_comment("In GK 4 ist es R 60, nicht R 90."))
 
@@ -418,7 +418,7 @@ async def test_a_labelling_failure_leaves_the_digest_whole(app):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         with (
             patch("httpx.AsyncClient", _fake_async_client(mock_post)),
-            patch("aiq_agent.common.feedback_causes.label_causes", AsyncMock(side_effect=RuntimeError)),
+            patch("agent.common.feedback_causes.label_causes", AsyncMock(side_effect=RuntimeError)),
         ):
             response = await client.post("/v1/feedback-digest", json=_BODY)
     assert response.json()["causes"] == {} and response.json()["error"] is None

@@ -10,16 +10,16 @@ this module is its reader and must agree with it.
 Retrieval needs nothing from here: every read path stays inside the signed
 scope. Two other kinds of reader do:
 
-- whoever derives the project from a scope (``aiq_api.jobs.submit``), which must
+- whoever derives the project from a scope (``backend.jobs.submit``), which must
   read a restricted collection as its base project collection rather than as a
   second, competing project;
 - whoever writes something that outlives the turn and is read by people the
   restriction excludes. Project memory is that (ADR-0087): what a turn with
   restricted collections in scope remembers is restricted memory, carrying the
-  collections it depends on (``aiq_agent/memory/restriction.py``).
+  collections it depends on (``agent/memory/restriction.py``).
 
 Prefix readers need nothing either: the name keeps its ``proj_`` prefix, so
-:func:`aiq_agent.common.source_kinds.legacy_shelf_for_collection_name` already
+:func:`agent.common.source_kinds.legacy_shelf_for_collection_name` already
 reads it as the project shelf.
 """
 

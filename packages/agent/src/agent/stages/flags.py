@@ -32,8 +32,8 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-from aiq_agent.common import bff_http
-from aiq_agent.stages.registry import iter_stages
+from agent.common import bff_http
+from agent.stages.registry import iter_stages
 
 logger = logging.getLogger(__name__)
 

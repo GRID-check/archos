@@ -84,8 +84,8 @@ class PageText:
 
 def strip_furniture(pages: list[PageText]) -> tuple[list[PageText], bool]:
     """The pages without the running headers and footers that repeat on most of them; and whether any were. Pure."""
-    from aiq_agent.common.page_text import running_furniture
-    from aiq_agent.common.page_text import without_furniture
+    from agent.common.page_text import running_furniture
+    from agent.common.page_text import without_furniture
 
     lines = [page.text.splitlines() for page in pages]
     furniture = running_furniture(lines)

@@ -19,7 +19,7 @@ def _normalize_session_collection_name(session_id: str | None) -> str | None:
     """Return the UI session collection name for a raw conversation ID."""
     if not session_id:
         return None
-    from aiq_agent.knowledge.base import SESSION_COLLECTION_PREFIX
+    from agent.knowledge.base import SESSION_COLLECTION_PREFIX
 
     if session_id.startswith(SESSION_COLLECTION_PREFIX):
         return session_id
@@ -43,10 +43,10 @@ def resolve_base_collection(config: KnowledgeRetrievalConfig) -> str:
     Fail-open: any lookup problem keeps the configured ``collection_name``.
     """
     try:
-        from aiq_agent.common.country_profile import DEFAULT_COUNTRY
-        from aiq_agent.common.country_profile import get_country_profile
-        from aiq_agent.common.norm_registry import resolve_country
-        from aiq_agent.project_context import get_profile_context_from_context
+        from agent.common.country_profile import DEFAULT_COUNTRY
+        from agent.common.country_profile import get_country_profile
+        from agent.common.norm_registry import resolve_country
+        from agent.project_context import get_profile_context_from_context
 
         # Precedence: an EXPLICIT non-default config wins (test/bench/dev configs
         # pointing at e.g. `test_collection` must never be silently re-routed);
@@ -104,12 +104,12 @@ def resolve_scoped_collections(
     Returns:
         Ordered, de-duplicated list of ``ScopedCollection`` (never empty).
     """
-    from aiq_agent.common.source_kinds import Shelf
-    from aiq_agent.knowledge.scoping import ScopedCollection
+    from agent.common.source_kinds import Shelf
+    from agent.knowledge.scoping import ScopedCollection
 
     # Header-based collection scope takes precedence.
     try:
-        from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+        from agent.knowledge.scoping import get_scoped_collections_from_context
 
         header_scope = get_scoped_collections_from_context()
         if header_scope:
@@ -170,7 +170,7 @@ def restrict_scope_to_turn(entries):
     keep searching the Büroablage (#436).
     """
     try:
-        from aiq_agent.common.focus_file import get_turn_shelves
+        from agent.common.focus_file import get_turn_shelves
 
         allowed = get_turn_shelves()
     except Exception:

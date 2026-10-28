@@ -266,7 +266,7 @@ again if it is still large. The result carries `layered: true` and `field`.
 The meta-tools are written once, `metaToolsFor` in `discovery.ts`, per caller:
 the domain list is the office door's (never `platform`), and Piloti's
 `call-operation` says a write comes back as a proposal. Piloti's client reads its variant from
-`packages/agent/src/aiq_agent/tools/workspace/meta_tools.json`, which `meta-tools.spec.ts`
+`packages/agent/src/agent/tools/workspace/meta_tools.json`, which `meta-tools.spec.ts`
 writes (`UPDATE_FIXTURES=1`) and holds current; Python keeps no copy and renames
 only the tool names to its own (`workspace__call`).
 
@@ -552,7 +552,7 @@ own and the page that runs it is the asker's. Regenerate with
 | Layer | What | Where |
 |---|---|---|
 | 1. Atomic operations | One per route method. The layer the rule is checked on | `lib/agent-api/catalog/` |
-| 2. Task-shaped tools | Where an agent needs more than CRUD: retrieval, IFC, canvas | `packages/agent/src/aiq_agent/tools/`, served through the MCP in phase 2 |
+| 2. Task-shaped tools | Where an agent needs more than CRUD: retrieval, IFC, canvas | `packages/agent/src/agent/tools/`, served through the MCP in phase 2 |
 | 3. Workflows and skills | "Brief me on a project"; the office's own skills, found and read by the agent | MCP prompts, `lib/agent-api/door/`; `skill-search` and `skill-get` ([below](#the-offices-skills)) |
 
 The Python-only reads (`knowledge_search`, `read_passage`, `list_files`,

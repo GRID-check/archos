@@ -49,7 +49,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 
-from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 
 #: Chunk/document metadata keys. Spelled once, because the BFF writes them and
 #: this module reads them and a typo on either side is silent.

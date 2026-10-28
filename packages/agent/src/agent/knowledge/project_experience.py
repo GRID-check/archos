@@ -41,13 +41,13 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 
-from aiq_agent.common.json_utils import extract_json
-from aiq_agent.common.llm_factory import strict_json_response_format
-from aiq_agent.common.message_utils import content_to_text
-from aiq_agent.knowledge.fingerprint_verify import verify_fingerprint
-from aiq_agent.knowledge.permit_extraction import llm_model_name
-from aiq_agent.knowledge.permit_extraction import pages_with_markers
-from aiq_agent.knowledge.schema import AvailableDocument
+from agent.common.json_utils import extract_json
+from agent.common.llm_factory import strict_json_response_format
+from agent.common.message_utils import content_to_text
+from agent.knowledge.fingerprint_verify import verify_fingerprint
+from agent.knowledge.permit_extraction import llm_model_name
+from agent.knowledge.permit_extraction import pages_with_markers
+from agent.knowledge.schema import AvailableDocument
 
 logger = logging.getLogger(__name__)
 
@@ -413,7 +413,7 @@ def folded_for_quote(text: str) -> str:
     A PDF's line breaks are not the model's to reproduce, and neither is the
     Unicode form an extractor happened to emit: „ä" composed and „a" plus a
     combining diaeresis read the same, and only NFC makes them compare equal
-    (``packages/agent/src/aiq_agent/tools/AGENTS.md``). The closed-project reading and the
+    (``packages/agent/src/agent/tools/AGENTS.md``). The closed-project reading and the
     intake's read log (``agents/intake/read_log.py``) both check quotes with it.
     """
     return " ".join(unicodedata.normalize("NFC", text).split()).casefold()

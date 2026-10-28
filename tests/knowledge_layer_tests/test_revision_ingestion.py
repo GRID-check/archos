@@ -26,7 +26,7 @@ from knowledge_layer_testing.revision_ingestion import _ingest
 from knowledge_layer_testing.revision_ingestion import _seed_previous_version
 from langchain_core.messages import AIMessage
 
-from aiq_agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import AvailableDocument
 
 # The harness's fixtures, under the names these tests ask for.
 live_ingestor = harness.live_ingestor
@@ -118,7 +118,7 @@ def _job(*files):
 
 @pytest.fixture
 def job_store(monkeypatch):
-    from aiq_agent.knowledge import ingest_status_store
+    from agent.knowledge import ingest_status_store
 
     state = SimpleNamespace(in_flight={}, jobs=[], error=None)
 
@@ -167,7 +167,7 @@ class TestSuggestRevision:
 
     @pytest.fixture
     def stored(self, monkeypatch):
-        from aiq_agent import knowledge
+        from agent import knowledge
 
         calls = []
         monkeypatch.setattr(knowledge, "set_document_revision_suggestion", lambda *args: calls.append(args) or True)
@@ -270,9 +270,9 @@ class TestCarriedLinks:
 @pytest.fixture
 def real_store():
     """A real metadata store behind the factory seams, so a link goes through the one locked step."""
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
-    from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
+    from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
     with tempfile.TemporaryDirectory() as tmpdir:
         url = f"sqlite:///{Path(tmpdir) / 'confirm_revision.db'}"
@@ -441,7 +441,7 @@ class TestANewNameMayBeANewerRevision:
     def test_a_confident_judgement_is_stored_as_a_suggestion_and_links_nothing(
         self, tmp_path, live_ingestor, stores, model
     ):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_new", "Grundriss_EG_Index_B.txt", "Grundriss Erdgeschoss, Stiege im Süden.")
         model.judge = (
@@ -465,7 +465,7 @@ class TestANewNameMayBeANewerRevision:
         assert "Grundriss_EG_Index_B.txt" in prompt and "Grundriss Erdgeschoss, Stiege im Süden." in prompt
 
     def test_a_reading_of_the_content_alone_has_the_basis_content(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_content", "Tragwerk Bericht.txt", "Statik des Bauteils B.")
         model.judge = '{"of": "Tragwerk Bericht.txt", "confidence": 0.8, "reason": "Gleicher Bericht, neu bewehrt."}'
@@ -475,7 +475,7 @@ class TestANewNameMayBeANewerRevision:
         assert _documents("proj_content")["Statik Bauteil B final.txt"].revision_suggestion["basis"] == "content"
 
     def test_a_judgement_below_the_threshold_stores_nothing(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_low", "B.txt", "Statik.")
         model.judge = '{"of": "B.txt", "confidence": 0.6, "reason": "Vielleicht."}'
@@ -485,7 +485,7 @@ class TestANewNameMayBeANewerRevision:
         assert _documents("proj_low")["C.txt"].revision_suggestion is None
 
     def test_a_failing_judge_never_fails_the_ingest(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_boom", "B.txt", "Statik.")
         model.fail_on = "NEWER FASSUNG"
@@ -499,8 +499,8 @@ class TestANewNameMayBeANewerRevision:
         assert model.asked("NEWER FASSUNG") == []
 
     def test_a_document_a_person_already_replaced_is_not_offered(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
-        from aiq_agent.knowledge import set_document_superseded_by
+        from agent.knowledge import register_summary
+        from agent.knowledge import set_document_superseded_by
 
         register_summary("proj_done", "A.txt", "Statik, Stand eins.")
         register_summary("proj_done", "B.txt", "Statik, Stand zwei.")
@@ -514,7 +514,7 @@ class TestANewNameMayBeANewerRevision:
     def test_a_quarantined_file_in_the_collection_is_not_named_to_the_model(
         self, tmp_path, live_ingestor, stores, model, job_store
     ):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_held", "gehalten.txt", "Eine Datei, die gerade gesperrt ist.")
         register_summary("proj_held", "B.txt", "Statik.")
@@ -526,7 +526,7 @@ class TestANewNameMayBeANewerRevision:
         assert "B.txt" in prompt and "gehalten.txt" not in prompt
 
     def test_the_base_corpus_is_never_asked(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("oib_knowledge", "B.txt", "Statik.")
 
@@ -536,7 +536,7 @@ class TestANewNameMayBeANewerRevision:
         assert model.asked("replaced one Fassung") == []
 
     def test_without_a_summary_model_nothing_is_asked_and_nothing_breaks(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         live_ingestor.generate_summary_enabled = False
         register_summary("proj_off", "B.txt", "Statik.")
@@ -551,7 +551,7 @@ class TestARevisionChosenAtUpload:
     def test_the_link_and_its_change_line_are_written_once_the_file_has_been_read(
         self, tmp_path, live_ingestor, stores, model
     ):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_chosen", "Grundriss_EG_Index_B.txt", "Grundriss Erdgeschoss, Stiege im Süden.")
 
@@ -570,7 +570,7 @@ class TestARevisionChosenAtUpload:
 
     def test_a_job_queued_before_the_rename_still_carries_the_old_key(self, tmp_path, live_ingestor, stores, model):
         """`fassung_of` was the config key until migration 0165; the queue outlives a deploy."""
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_queued", "Grundriss_EG_Index_B.txt", "Grundriss Erdgeschoss, Stiege im Süden.")
 
@@ -582,7 +582,7 @@ class TestARevisionChosenAtUpload:
 
     def test_without_the_summary_model_the_link_is_still_written(self, tmp_path, live_ingestor, stores, model):
         # The person's choice does not wait for the model: only the change line needs it.
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         live_ingestor.generate_summary_enabled = False
         register_summary("proj_nomodel", "B.txt", "Statik.")
@@ -597,9 +597,9 @@ class TestARevisionChosenAtUpload:
     def test_without_a_summary_the_link_is_written_and_waits_for_the_row(
         self, tmp_path, live_ingestor, stores, model, monkeypatch
     ):
-        from aiq_agent.knowledge import document_classification
-        from aiq_agent.knowledge import get_document_superseded_by
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import document_classification
+        from agent.knowledge import get_document_superseded_by
+        from agent.knowledge import register_summary
 
         live_ingestor.generate_summary_enabled = False
         monkeypatch.setattr(document_classification, "fallback_summary_from_text", lambda _text: "")
@@ -620,7 +620,7 @@ class TestARevisionChosenAtUpload:
         # A caller that waits for COMPLETED and then lists the collection (the BFF's settle,
         # the test above) must find the row the reconciliation writes. It once ran after the
         # terminal status, and CI's slower runner listed in between.
-        from aiq_agent.knowledge import factory
+        from agent.knowledge import factory
 
         seen: list[str] = []
         reconcile = factory.reconcile_collection_summaries
@@ -639,7 +639,7 @@ class TestARevisionChosenAtUpload:
     def test_an_older_file_that_is_gone_falls_back_to_the_ordinary_suggestion(
         self, tmp_path, live_ingestor, stores, model
     ):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_gone", "B.txt", "Statik.")
         model.judge = '{"of": "B.txt", "confidence": 0.9, "reason": "Gleiche Statik."}'
@@ -651,8 +651,8 @@ class TestARevisionChosenAtUpload:
         assert docs["C.txt"].revision_suggestion["of"] == "B.txt"
 
     def test_a_loop_is_not_closed(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
-        from aiq_agent.knowledge import set_document_superseded_by
+        from agent.knowledge import register_summary
+        from agent.knowledge import set_document_superseded_by
 
         register_summary("proj_loop", "B.txt", "Statik.")
         register_summary("proj_loop", "C.txt", "Statik, neu.")
@@ -665,7 +665,7 @@ class TestARevisionChosenAtUpload:
         assert docs["C.txt"].superseded_by == "B.txt"
 
     def test_a_choice_for_a_name_already_in_the_collection_still_links(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("proj_again", "B.txt", "Die alte Statik.")
         _seed_previous_version(live_ingestor, stores, "proj_again", "C.txt")
@@ -678,7 +678,7 @@ class TestARevisionChosenAtUpload:
         assert docs["C.txt"].change_basis == "B.txt"
 
     def test_the_base_corpus_ignores_it(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary("oib_knowledge", "B.txt", "Statik.")
 
@@ -691,7 +691,7 @@ class TestAPurgeThatCanBeUndone:
     """Archive and restore, the folder bin, a publish: the BFF purges, then reads the document again."""
 
     def _linked(self, live_ingestor, tmp_path, collection):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         register_summary(collection, "B.txt", "Statik.")
         _ingest(live_ingestor, tmp_path, collection, "C.txt", revision_of="B.txt")
@@ -747,7 +747,7 @@ class TestAReuploadSaysWhatChanged:
         assert doc.revision_suggestion is None
 
     def test_a_failed_comparison_clears_the_line_of_the_upload_before(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import set_document_change_summary
+        from agent.knowledge import set_document_change_summary
 
         _seed_previous_version(live_ingestor, stores, "proj_stale", "statik.txt")
         set_document_change_summary("proj_stale", "statik.txt", "- Alt, gegenüber der Upload davor", "statik.txt")
@@ -764,14 +764,14 @@ class TestAReuploadSaysWhatChanged:
         assert model.asked("replaced one Fassung") == []
 
     def test_identical_descriptions_are_no_change_and_cost_no_call(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
+        from agent.knowledge import register_summary
 
         _seed_previous_version(live_ingestor, stores, "proj_same_text", "statik.txt")
         register_summary("proj_same_text", "statik.txt", "Neue Statik mit anderer Bewehrung.")
 
         _ingest(live_ingestor, tmp_path, "proj_same_text", "statik.txt")
 
-        from aiq_agent.knowledge.document_revisions import NO_CHANGE_TEXT
+        from agent.knowledge.document_revisions import NO_CHANGE_TEXT
 
         assert _documents("proj_same_text")["statik.txt"].change_summary == NO_CHANGE_TEXT
         assert model.asked("replaced one Fassung") == []
@@ -779,8 +779,8 @@ class TestAReuploadSaysWhatChanged:
 
 class TestAPersonsDecisionsSurviveTheReread:
     def test_a_confirmed_link_survives_a_same_name_reupload(self, tmp_path, live_ingestor, stores, model):
-        from aiq_agent.knowledge import register_summary
-        from aiq_agent.knowledge import set_document_superseded_by
+        from agent.knowledge import register_summary
+        from agent.knowledge import set_document_superseded_by
 
         _seed_previous_version(live_ingestor, stores, "proj_keep", "statik.txt")
         register_summary("proj_keep", "statik_neu.txt", "Die neue Statik.")
@@ -795,9 +795,9 @@ class TestAPersonsDecisionsSurviveTheReread:
     def test_a_link_and_a_dismissal_are_carried_from_another_spelling_of_the_name(
         self, tmp_path, live_ingestor, stores, model
     ):
-        from aiq_agent.knowledge import register_summary
-        from aiq_agent.knowledge import set_document_revision_suggestion
-        from aiq_agent.knowledge import set_document_superseded_by
+        from agent.knowledge import register_summary
+        from agent.knowledge import set_document_revision_suggestion
+        from agent.knowledge import set_document_superseded_by
 
         _seed_previous_version(live_ingestor, stores, "proj_tmp", "tmpa1b2c3d4_statik.txt")
         register_summary("proj_tmp", "statik_neu.txt", "Die neue Statik.")
@@ -812,7 +812,7 @@ class TestAPersonsDecisionsSurviveTheReread:
         assert docs["statik.txt"].revision_suggestion["dismissed"] is True
 
     def test_the_previous_versions_link_and_suggestion_are_read_with_the_other_person_set_fields(self, monkeypatch):
-        from aiq_agent import knowledge
+        from agent import knowledge
 
         monkeypatch.setattr(knowledge, "get_document_superseded_by", lambda coll, names: {"statik.pdf": "neu.pdf"})
         monkeypatch.setattr(

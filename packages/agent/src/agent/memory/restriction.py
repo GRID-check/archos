@@ -71,8 +71,8 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import ValidationError
 
-from aiq_agent.common.json_utils import extract_json
-from aiq_agent.knowledge.restricted_collections import restricted_collections_in
+from agent.common.json_utils import extract_json
+from agent.knowledge.restricted_collections import restricted_collections_in
 
 logger = logging.getLogger(__name__)
 
@@ -363,7 +363,7 @@ async def judge(contents: Sequence[str], documents: Sequence[_Judged], *, llm: A
     """
     if llm is None or not contents or not documents:
         return None
-    from aiq_agent.memory.reflection import structured_reply
+    from agent.memory.reflection import structured_reply
 
     messages = [SystemMessage(content=JUDGE_SYSTEM_PROMPT), HumanMessage(content=_judge_prompt(contents, documents))]
     try:

@@ -113,7 +113,7 @@ def _member_title(file_name: str) -> str:
     :func:`_matches` accepts back as ``document=``, so the heading doubles as
     the argument for opening one of its Punkte.
     """
-    from aiq_agent.common.norm_registry import guess_display_title
+    from agent.common.norm_registry import guess_display_title
 
     try:
         return guess_display_title(file_name) or file_name
@@ -130,12 +130,12 @@ async def _corpus_families(base: Any) -> list[Any]:
     list, and the collection's registered documents answer a run with no turn
     around it at all.
     """
-    from aiq_agent.common.norm_registry import oib_families
-    from aiq_agent.common.source_kinds import Shelf
+    from agent.common.norm_registry import oib_families
+    from agent.common.source_kinds import Shelf
 
     try:
-        from aiq_agent.knowledge.inventory import get_norm_families
-        from aiq_agent.knowledge.inventory import get_turn_documents
+        from agent.knowledge.inventory import get_norm_families
+        from agent.knowledge.inventory import get_turn_documents
 
         families = list(get_norm_families())
         if families:
@@ -183,7 +183,7 @@ async def family_overview(entries: Sequence[Any], family_key: str) -> FamilyOver
     such family. A family it does hold, of which no member could be read,
     raises :class:`FamilyUnreadable`.
     """
-    from aiq_agent.common.source_kinds import Shelf
+    from agent.common.source_kinds import Shelf
 
     base = next((entry for entry in entries if getattr(entry, "shelf", None) is Shelf.BASE), None)
     if base is None:

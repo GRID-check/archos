@@ -2,16 +2,16 @@
 
 import pytest
 
-from aiq_agent.common.data_source_registry import DataSourceEntry
-from aiq_agent.common.data_source_registry import DataSourceMeta
-from aiq_agent.common.data_source_registry import get_all_sources
-from aiq_agent.common.data_source_registry import get_all_tool_refs
-from aiq_agent.common.data_source_registry import get_source
-from aiq_agent.common.data_source_registry import get_source_id_for_tool
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.common.data_source_registry import set_group_source_map
-from aiq_agent.common.data_source_registry import set_tool_source_map
+from agent.common.data_source_registry import DataSourceEntry
+from agent.common.data_source_registry import DataSourceMeta
+from agent.common.data_source_registry import get_all_sources
+from agent.common.data_source_registry import get_all_tool_refs
+from agent.common.data_source_registry import get_source
+from agent.common.data_source_registry import get_source_id_for_tool
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from agent.common.data_source_registry import set_group_source_map
+from agent.common.data_source_registry import set_tool_source_map
 
 
 @pytest.fixture(autouse=True)

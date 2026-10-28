@@ -7,16 +7,16 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.knowledge.document_classification import canonical_doc_class
-from aiq_agent.knowledge.page_count import page_number
+from agent.knowledge.document_classification import canonical_doc_class
+from agent.knowledge.page_count import page_number
 
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge import document_metadata_store as facade
-from aiq_agent.knowledge.document_metadata_constants import _RETAINED_COLUMNS
-from aiq_agent.knowledge.document_metadata_constants import REFUSAL_REASON
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge import document_metadata_store as facade
+from agent.knowledge.document_metadata_constants import _RETAINED_COLUMNS
+from agent.knowledge.document_metadata_constants import REFUSAL_REASON
+from agent.knowledge.document_metadata_constants import TABLE_NAME
 
 
 class LinkOutcome(StrEnum):

@@ -17,7 +17,7 @@ from pydantic import create_model
 from pydantic import model_validator
 from pydantic.json_schema import SkipJsonSchema
 
-from aiq_agent.common.tool_calls import CONCLUSION_DESCRIPTION
+from agent.common.tool_calls import CONCLUSION_DESCRIPTION
 
 from .browse import _LIST_FILES_DESCRIPTION
 from .browse import TREE_PARAGRAPH
@@ -40,7 +40,7 @@ DROPPED = {"knowledge_search": ("match", "stemmed", "context", "filters"), "list
 
 def _note_hidden(model: Any) -> Any:
     if any(getattr(model, name, None) for name in HIDDEN):
-        from aiq_agent.common.retired_calls import note_retired_call
+        from agent.common.retired_calls import note_retired_call
 
         note_retired_call()
     return model

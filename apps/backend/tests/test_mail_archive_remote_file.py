@@ -12,9 +12,9 @@ import io
 import httpx
 import pytest
 
-from aiq_api.mail_archive import remote_file
-from aiq_api.mail_archive.remote_file import RangeFile
-from aiq_api.mail_archive.remote_file import RemoteFileError
+from backend.mail_archive import remote_file
+from backend.mail_archive.remote_file import RangeFile
+from backend.mail_archive.remote_file import RemoteFileError
 
 BLOB = bytes(range(256)) * 40  # 10,240 bytes
 

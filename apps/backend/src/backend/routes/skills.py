@@ -49,8 +49,8 @@ from pydantic import BaseModel
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.auth import Principal
-from aiq_agent.common.job_admission import JobAdmissionError
+from agent.auth import Principal
+from agent.common.job_admission import JobAdmissionError
 
 from ..registry import get_agent_config
 from .internal_auth import _require_internal_token
@@ -274,7 +274,7 @@ async def _check_skill_data_sources(body: SkillSubmitPayload, agent_type: str, c
         # don't silently skip validation — fall back to the registry-level
         # check (unknown IDs still 422; only per-agent availability is
         # unverifiable without the builder).
-        from aiq_agent.common.data_source_registry import get_all_sources
+        from agent.common.data_source_registry import get_all_sources
 
         known_ids = {source.id for source in get_all_sources()}
         unknown = sorted(set(body.data_sources) - known_ids)

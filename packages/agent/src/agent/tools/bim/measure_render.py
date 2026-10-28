@@ -3,12 +3,12 @@
 from collections.abc import Callable
 from typing import Any
 
-from aiq_agent.tools.bim.measure_format import _angle
-from aiq_agent.tools.bim.measure_format import _decimals
-from aiq_agent.tools.bim.measure_format import _num
-from aiq_agent.tools.bim.measure_format import _tolerance_text
-from aiq_agent.tools.bim.measure_format import _value_text
-from aiq_agent.tools.bim.rendering import listed
+from agent.tools.bim.measure_format import _angle
+from agent.tools.bim.measure_format import _decimals
+from agent.tools.bim.measure_format import _num
+from agent.tools.bim.measure_format import _tolerance_text
+from agent.tools.bim.measure_format import _value_text
+from agent.tools.bim.rendering import listed
 
 
 def _element_line(entry: dict[str, Any]) -> str:

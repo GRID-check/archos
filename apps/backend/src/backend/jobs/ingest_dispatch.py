@@ -1,7 +1,7 @@
 """Where an ingestion job runs: the durable queue, claimed by any worker.
 
 ``POST /v1/ingest`` prepares a job (validated, recorded PENDING) and puts it in
-the durable, fair queue (``aiq_agent.knowledge.ingest_queue``). Every process
+the durable, fair queue (``agent.knowledge.ingest_queue``). Every process
 that claims (only the dedicated ingest-worker tier, ``ingest_worker``: the
 ``chat`` and ``api`` roles accept jobs and never claim them) attaches
 ``QueueSource`` to its ingestor, so its free workers claim the next job fairly
@@ -42,16 +42,16 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from aiq_agent.common.provider_limiter import priority_scope
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.base import BaseIngestor
-from aiq_agent.knowledge.base import PreparedIngestJob
-from aiq_agent.knowledge.ingest_failures import classify_failure
-from aiq_agent.knowledge.ingest_scheduler import per_org_cap_from_env
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
+from agent.common.provider_limiter import priority_scope
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.base import BaseIngestor
+from agent.knowledge.base import PreparedIngestJob
+from agent.knowledge.ingest_failures import classify_failure
+from agent.knowledge.ingest_scheduler import per_org_cap_from_env
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
 
 from . import lease_policy
 from . import payload_crypto
@@ -163,7 +163,7 @@ def _dead_retention_seconds() -> int:
 
 
 def _encode_entry(entry: Any) -> Any:
-    from aiq_agent.corpus_store import CorpusObjectDownload
+    from agent.corpus_store import CorpusObjectDownload
 
     from ..routes.ingest import DeferredObjectDownload
 
@@ -176,7 +176,7 @@ def _encode_entry(entry: Any) -> Any:
 
 def durable(prepared: PreparedIngestJob) -> bool:
     """Whether the job can run in another process: every file a deferred download."""
-    from aiq_agent.corpus_store import CorpusObjectDownload
+    from agent.corpus_store import CorpusObjectDownload
 
     from ..routes.ingest import DeferredObjectDownload
 
@@ -206,7 +206,7 @@ def encode(prepared: PreparedIngestJob) -> str:
 
 
 def _decode_entry(entry: Any) -> Any:
-    from aiq_agent.corpus_store import CorpusObjectDownload
+    from agent.corpus_store import CorpusObjectDownload
 
     from ..routes.ingest import DeferredObjectDownload
 

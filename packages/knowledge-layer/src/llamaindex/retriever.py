@@ -14,10 +14,10 @@ import time
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.knowledge.base import BaseRetriever
-from aiq_agent.knowledge.factory import register_retriever
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import RetrievalResult
+from agent.knowledge.base import BaseRetriever
+from agent.knowledge.factory import register_retriever
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import RetrievalResult
 
 from . import dependencies
 from . import embedding
@@ -42,7 +42,7 @@ def collection_version(collection_name: str) -> int | None:
     replica keeps serving superseded legal text through a cache outage -- every entry
     another replica stored under version 0 would match again.
     """
-    from aiq_agent.knowledge import collection_version as _collection_version
+    from agent.knowledge import collection_version as _collection_version
 
     return _collection_version.current(collection_name)
 
@@ -541,8 +541,8 @@ class LlamaIndexRetriever(BaseRetriever):
 
     def _grouped_chunk(self, hit: Any) -> Chunk:
         """A grouped hit as a Chunk stating its place in the fused ranking and whether it holds the words."""
-        from aiq_agent.knowledge.base import FUSED_SCORE_KEY
-        from aiq_agent.knowledge.base import LEXICAL_MATCH_KEY
+        from agent.knowledge.base import FUSED_SCORE_KEY
+        from agent.knowledge.base import LEXICAL_MATCH_KEY
 
         chunk = self._chunk_from_hit(hit)
         chunk.metadata.update({FUSED_SCORE_KEY: float(hit.fused), LEXICAL_MATCH_KEY: bool(hit.lexical)})

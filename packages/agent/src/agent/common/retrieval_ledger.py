@@ -18,8 +18,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.common.tool_calls import LOCATOR_TOOL_BASENAMES
-from aiq_agent.common.tool_calls import tool_fetches_evidence
+from agent.common.tool_calls import LOCATOR_TOOL_BASENAMES
+from agent.common.tool_calls import tool_fetches_evidence
 
 
 def _lane_doc_key(name: str) -> str:

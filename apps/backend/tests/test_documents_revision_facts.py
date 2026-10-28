@@ -7,10 +7,10 @@ as the other per-document metadata: stored values fill an empty field and never 
 
 import json
 
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.schema import FileInfo
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_api.routes.documents import _merge_summaries
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.schema import FileInfo
+from agent.knowledge.schema import FileStatus
+from backend.routes.documents import _merge_summaries
 
 FACTS = {
     "document_number": "A-101",

@@ -18,17 +18,17 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.wire_v2 import AnswerRetractedBody
-from aiq_agent.common.wire_v2 import CardBody
-from aiq_agent.common.wire_v2 import CardRefusedBody
-from aiq_agent.common.wire_v2 import EventBody
-from aiq_agent.common.wire_v2 import KeyedCard
-from aiq_agent.common.wire_v2 import MastheadBody
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import ShownAnswer
-from aiq_agent.common.wire_v2 import StateSnapshotBody
-from aiq_agent.common.wire_v2 import TextMessageContentBody
-from aiq_agent.common.wire_v2 import WireSource
+from agent.common.wire_v2 import AnswerRetractedBody
+from agent.common.wire_v2 import CardBody
+from agent.common.wire_v2 import CardRefusedBody
+from agent.common.wire_v2 import EventBody
+from agent.common.wire_v2 import KeyedCard
+from agent.common.wire_v2 import MastheadBody
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import ShownAnswer
+from agent.common.wire_v2 import StateSnapshotBody
+from agent.common.wire_v2 import TextMessageContentBody
+from agent.common.wire_v2 import WireSource
 
 logger = logging.getLogger(__name__)
 

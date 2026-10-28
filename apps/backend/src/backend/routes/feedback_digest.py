@@ -33,10 +33,10 @@ import httpx
 from fastapi import APIRouter
 from fastapi import Header
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.openrouter import ZERO_DATA_RETENTION
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.observability.direct_trace import observed_generation
+from agent.common import provider_limiter
+from agent.common.openrouter import ZERO_DATA_RETENTION
+from agent.common.openrouter import limited_async_http_client
+from agent.observability.direct_trace import observed_generation
 
 from ..models.requests import MAX_DIGEST_SAMPLES
 from ..models.requests import FeedbackDigestRequest
@@ -267,8 +267,8 @@ async def _label_causes(request: FeedbackDigestRequest, organization_id: str | N
     if not disliked:
         return {}
     try:
-        from aiq_agent.common.feedback_causes import count_causes
-        from aiq_agent.common.feedback_causes import label_causes
+        from agent.common.feedback_causes import count_causes
+        from agent.common.feedback_causes import label_causes
 
         return count_causes(await label_causes(disliked, organization_id=organization_id))
     except Exception as exc:  # noqa: BLE001 — a label is worth less than the digest

@@ -24,16 +24,16 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_agent.knowledge.schema import CollectionInfo
-from aiq_agent.knowledge.schema import FileInfo
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_api.routes import documents as documents_module
-from aiq_api.routes.collections import add_collection_routes
-from aiq_api.routes.documents import add_document_routes
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import set_active_ingestor
+from agent.knowledge.schema import CollectionInfo
+from agent.knowledge.schema import FileInfo
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from backend.routes import documents as documents_module
+from backend.routes.collections import add_collection_routes
+from backend.routes.documents import add_document_routes
 
 
 class _RecordingIngestor:

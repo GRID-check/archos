@@ -6,6 +6,6 @@ Import the plugin registration to make it discoverable.
 """
 
 # Import the plugin registration - this makes it discoverable by NAT
-from .plugin import register_aiq_api
+from .plugin import register_backend
 
-__all__ = ["register_aiq_api"]
+__all__ = ["register_backend"]

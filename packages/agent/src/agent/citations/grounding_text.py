@@ -6,11 +6,11 @@ import logging
 import math
 import re
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import MAX_REGIONS_PER_SOURCE
-from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
-from aiq_agent.common.grounding_block import SourceRegion
-from aiq_agent.common.source_kinds import parse_shelf
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import MAX_REGIONS_PER_SOURCE
+from agent.common.grounding_block import PROJECT_STATUS_LABELS
+from agent.common.grounding_block import SourceRegion
+from agent.common.source_kinds import parse_shelf
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ def _parse_kl_doc_class(raw: str | None) -> str | None:
     key = raw.split("—")[0].split(" - ")[0].strip() or None
     if not key:
         return None
-    from aiq_agent.knowledge.document_classification import canonical_doc_class
+    from agent.knowledge.document_classification import canonical_doc_class
 
     # A tool result kept in an older conversation names the German key.
     return canonical_doc_class(key) or key
@@ -203,8 +203,8 @@ def _parse_kl_authored_by(raw: str | None) -> str | None:
     same for every reader downstream, and only this exact token buys the
     document its Piloti lane and its verdict ban.
     """
-    from aiq_agent.common.provenance import AGENT_AUTHOR
-    from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
+    from agent.common.provenance import AGENT_AUTHOR
+    from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 
     value = (raw or "").strip()
     return AGENT_AUTHOR if value.startswith(AGENT_AUTHORED_LANE_LABEL) else None

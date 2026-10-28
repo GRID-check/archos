@@ -1,6 +1,6 @@
 """The API tier's token failures, each an :class:`AuthError` the agent tier owns and catches."""
 
-from aiq_agent.auth.errors import AuthError
+from agent.auth.errors import AuthError
 
 __all__ = ["AuthError", "TokenExpiredError", "TokenInvalidError"]
 

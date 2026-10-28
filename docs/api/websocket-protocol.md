@@ -6,7 +6,7 @@ events (`RUN_STARTED` … `RUN_FINISHED`, AG-UI's names), the client sends four
 messages. The design, and why it replaced NAT's step stream, is
 [`design/chat-wire-v2.md`](../design/chat-wire-v2.md) (ADR-0068).
 
-**The contract is code, not this page.** `packages/agent/src/aiq_agent/common/wire_v2.py`
+**The contract is code, not this page.** `packages/agent/src/agent/common/wire_v2.py`
 (Pydantic) is the source. `contracts/wire/v2.schema.json` is its JSON Schema,
 `apps/workspace/ui/adapters/api/wire-v2.generated.ts` the Zod module generated
 from that (`npm run generate:wire`; the `wire-schemas` pre-commit hook fails a
@@ -124,13 +124,13 @@ with an explicit error instead of answering without its project context.
 Legacy and anonymous callers retain their previous inline-context behavior.
 Deploy backend support before the frontend starts emitting compact mode.
 
-Backend-side, `aiq_agent.project_context.GridRequestContext.from_context()`
+Backend-side, `agent.project_context.GridRequestContext.from_context()`
 prefers a present-and-valid envelope over the individual headers; an
 invalid/missing signature is treated as an ABSENT envelope (logged as a
 WARNING tamper signal), falling back to parsing the individual headers
 exactly as before the envelope existed.
 
-**Enforcement matrix** (`aiq_api.context_envelope.GridContextEnvelopeMiddleware`,
+**Enforcement matrix** (`backend.context_envelope.GridContextEnvelopeMiddleware`,
 403 / WS policy-violation close): applies only when ALL of — `REQUIRE_AUTH=true`;
 the caller is a WorkOS-authenticated JWT user (not internal-token, not
 anonymous); the path is NOT on the short exempt list; and no valid envelope is
@@ -144,10 +144,10 @@ list used to be the other way round (an allowlist of enforced paths), and the
 unlisted NAT routes (`/chat`, `/v1/chat/completions`, `/v1/workflow`,
 `/generate`, …) ran full agent turns with no organization, budget or source
 policy. Those routes are no longer mounted at all: this socket is the only way
-a turn runs (`aiq_api.plugin.AIQAPIConfig`). Always exempt: anonymous mode (`REQUIRE_AUTH=false`) and
+a turn runs (`backend.plugin.BackendConfig`). Always exempt: anonymous mode (`REQUIRE_AUTH=false`) and
 internal-token-authenticated service calls.
 See `docs/architecture/backend-deep-dive.md` and
-`apps/backend/src/aiq_api/context_envelope.py`'s module docstring for the
+`apps/backend/src/backend/context_envelope.py`'s module docstring for the
 full design.
 
 ### Environment Variables
@@ -365,8 +365,8 @@ client that did not. The socket reads the policy once per connection from
 `GET /api/internal/chat-screening`, so a policy change applies from the next
 connection; until it can be read (no signed organization, an older BFF, an
 error) every detector applies and no term. A chosen `{option_id}` is not free
-text and passes as it is. `aiq_api.chat_socket.ChatSocket._masked`;
-the matcher is `aiq_agent.common.content_screen`.
+text and passes as it is. `backend.chat_socket.ChatSocket._masked`;
+the matcher is `agent.common.content_screen`.
 
 ### Invoking a skill (no wire field)
 
@@ -400,7 +400,7 @@ Who a message is addressed to is decided by the **server** at persist time
 tier, so routing never becomes a model's judgement. Delivery is best-effort:
 the message is already persisted by the BFF, so a dropped context message costs
 the agent a line of memory and the thread nothing. The stored text is capped at
-4000 chars (`aiq_agent/conversation_context.py`).
+4000 chars (`agent/conversation_context.py`).
 
 ### Turn retrieval intent (`focus_file_name` / `focus_shelf` / `source_preset`)
 
@@ -421,7 +421,7 @@ expanded collection list:
 ```
 
 The backend maps that intent via `shelves_for_turn`
-(`packages/agent/src/aiq_agent/common/focus_file.py`) and subtracts other shelves at the
+(`packages/agent/src/agent/common/focus_file.py`) and subtracts other shelves at the
 knowledge-layer retrieve site. `include_shelves` does not exist: the contract
 **refuses** a message that carries it, because the mapping owns the expansion so a client cannot ask for
 Archiv while claiming a project file. A subject shelf never subtracts the
@@ -467,7 +467,7 @@ except that Befund. Told which version the subject is, the backend reads that
 version's own bytes through
 `GET /api/internal/document-versions/[versionId]/content` and writes them into
 the conversation's working directory as `/entwuerfe/<name>.md`
-(`packages/agent/src/aiq_agent/turn/subject_document.py`), stamped with the filing record that
+(`packages/agent/src/agent/turn/subject_document.py`), stamped with the filing record that
 makes a later `file_draft` on that path replace this version rather than file a
 second document. The fail-open in the focus filter is unchanged; this is
 upstream of it.
@@ -545,7 +545,7 @@ question asked while the socket has given up opens a new one with a fresh ladder
 
 A run — a deep-research run, a task run — streams its own events from
 `job_events` rather than over the socket: `GET /v1/jobs/async/{jobId}/events`
-(`aiq_api.routes.job_handlers.JobRouteHandlers.stream_job_events`), replayable from `last_event_id`. That
+(`backend.routes.job_handlers.JobRouteHandlers.stream_job_events`), replayable from `last_event_id`. That
 stream carries the `job.*` lifecycle events (`job.phase`, `job.heartbeat`,
 `job.degraded`, `job.error`, `job.cancelled`), the `artifact.update` events the
 agent callbacks emit, and one more:
@@ -564,7 +564,7 @@ fixture `apps/workspace/tests/fixtures/run-ledger.schema.json` pins.
 Two properties a client should rely on:
 
 - **It is a snapshot, not a delta.** Replace what you hold with the payload. The
-  ledger is folded in exactly one place (`aiq_api.jobs.run_ledger_fold`), and a
+  ledger is folded in exactly one place (`backend.jobs.run_ledger_fold`), and a
   client that folded its own from the raw events would be a second account of
   one run, differing from the stored one precisely when something went wrong.
 - **It is emitted on every flush** — debounced to about a second, and always on

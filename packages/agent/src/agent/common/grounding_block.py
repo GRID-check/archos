@@ -38,15 +38,15 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 from pydantic import ConfigDict
 
-from aiq_agent.common.action_rows import current_action_call
-from aiq_agent.common.provenance import AGENT_AUTHOR
-from aiq_agent.common.provenance import AgentProvenance
-from aiq_agent.common.provenance import provenance_label
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import current_retrieval_round
-from aiq_agent.common.turn_status import emit_step
-from aiq_agent.common.wire_v2 import SourcesStep
-from aiq_agent.common.wire_v2 import TraceLane
+from agent.common.action_rows import current_action_call
+from agent.common.provenance import AGENT_AUTHOR
+from agent.common.provenance import AgentProvenance
+from agent.common.provenance import provenance_label
+from agent.common.source_kinds import Shelf
+from agent.common.turn_status import current_retrieval_round
+from agent.common.turn_status import emit_step
+from agent.common.wire_v2 import SourcesStep
+from agent.common.wire_v2 import TraceLane
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +174,7 @@ class GroundingHit(BaseModel):
     #: header/body delimiter: a hit with no score would render a body that
     #: reads as more header.
     score: float
-    #: One of the five :class:`~aiq_agent.knowledge.schema.ContentType` values.
+    #: One of the five :class:`~agent.knowledge.schema.ContentType` values.
     content_type: str
     #: The provenance of an agent-authored, human-approved document, or
     #: ``None`` for everything a human wrote (``common/provenance.py``).
@@ -338,7 +338,7 @@ def render_grounding_block(block: GroundingBlock) -> str:
     # block, which is what admits a restricted folder's passages before the
     # model reads them (ADR-0088). Here and not in the producers, for the
     # reason recording is: no evidence tool can render a hit and skip it.
-    from aiq_agent.knowledge.restricted_use import note_collections_read
+    from agent.knowledge.restricted_use import note_collections_read
 
     note_collections_read(hit.collection for hit in block.hits)
     lanes = _nameable_lanes(block)
@@ -363,13 +363,13 @@ def _nameable_lanes(block: GroundingBlock) -> list[TraceLane]:
     The step is emitted inside the tool, before the round's results are
     admitted, and a stored step is read by everyone the conversation is shared
     with later. So a document of a restricted folder this turn has not admitted
-    (:func:`~aiq_agent.knowledge.restricted_use.may_name`) leaves the lane, and
+    (:func:`~agent.knowledge.restricted_use.may_name`) leaves the lane, and
     its hits leave the lane's count: listing is not use (ADR-0088). The rows of
     the same calls follow the same rule (``ActionOutcome.record``). A lane left
     with no document goes; the ``## Trace-Lanes`` line in the text is untouched,
     since the text itself is withheld by the admission.
     """
-    from aiq_agent.knowledge.restricted_use import may_name
+    from agent.knowledge.restricted_use import may_name
 
     withheld = [hit.file_name for hit in block.hits if not may_name(hit.collection)]
     if not withheld:
@@ -427,7 +427,7 @@ def _header_lines(hit: GroundingHit) -> Iterator[str]:
     Every string value goes through :func:`_line`, because a header field is
     one line by definition and several of these values come from a document's
     own text (a title read out of a PDF, a folder a user named). The numbers
-    and the :class:`~aiq_agent.common.source_kinds.Shelf` enum cannot carry a
+    and the :class:`~agent.common.source_kinds.Shelf` enum cannot carry a
     newline, so they go in as they are.
     """
     yield f"Source: {_line(hit.display_title)}"
@@ -503,12 +503,12 @@ def _line(value: str) -> str:
 def _doc_class_label(doc_class: str) -> str:
     """The German label for a doc_class key, or the key when it has none.
 
-    Imported here rather than at module scope: ``aiq_agent.knowledge`` pulls in
+    Imported here rather than at module scope: ``agent.knowledge`` pulls in
     the retriever factory, and this module is on the import path of the tool
     tier that must load without it.
     """
-    from aiq_agent.knowledge.document_classification import DOCUMENT_CLASS_LABELS
-    from aiq_agent.knowledge.document_classification import canonical_doc_class
+    from agent.knowledge.document_classification import DOCUMENT_CLASS_LABELS
+    from agent.knowledge.document_classification import canonical_doc_class
 
     return DOCUMENT_CLASS_LABELS.get(canonical_doc_class(doc_class) or doc_class, doc_class)
 

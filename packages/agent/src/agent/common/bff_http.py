@@ -28,7 +28,7 @@ the four things each caller used to copy:
   did not answer" can catch the base.
 
 The signed request-context envelope is echoed, never signed
-(``packages/agent/src/aiq_agent/tools/AGENTS.md``): :class:`SignedEnvelope` carries the two
+(``packages/agent/src/agent/tools/AGENTS.md``): :class:`SignedEnvelope` carries the two
 strings the BFF minted and :meth:`SignedEnvelope.headers` forwards them
 byte-for-byte.
 

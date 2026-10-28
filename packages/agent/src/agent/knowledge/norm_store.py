@@ -1,13 +1,13 @@
 """Admin-managed store for the curated norm registry (SQLAlchemy-backed).
 
-Persists the ``NormsFile`` payload (see ``aiq_agent.common.norm_registry``) so
+Persists the ``NormsFile`` payload (see ``agent.common.norm_registry``) so
 the platform admin UI can edit the catalog at runtime while the YAML seed at
 ``configs/norms/<country>/registry.yml`` remains the build-time seed / fallback.
 The store registers itself as ``norm_registry``'s runtime source via
 ``set_db_loader``; the registry stays fail-open (a broken store falls back to
 the YAML seed, never breaks the prompt-building hot path).
 
-Modeled on :mod:`aiq_agent.knowledge.document_metadata_store` (URL normalization, engine
+Modeled on :mod:`agent.knowledge.document_metadata_store` (URL normalization, engine
 cache with TTL, lazy ``_ensure_table`` via ``inspect().has_table``, fail-open
 try/except → ``logger.warning``).
 
@@ -28,11 +28,11 @@ from datetime import UTC
 from datetime import datetime
 from typing import Any
 
-from aiq_agent.common import norm_registry
-from aiq_agent.common.db_utils import ensure_schema
-from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
-from aiq_agent.common.db_utils import redact_db_url
-from aiq_agent.common.norm_registry import NormsFile
+from agent.common import norm_registry
+from agent.common.db_utils import ensure_schema
+from agent.common.db_utils import normalize_db_url as _normalize_db_url
+from agent.common.db_utils import redact_db_url
+from agent.common.norm_registry import NormsFile
 
 logger = logging.getLogger(__name__)
 

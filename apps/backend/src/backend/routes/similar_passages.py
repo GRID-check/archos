@@ -23,7 +23,7 @@ from fastapi import APIRouter
 from fastapi import HTTPException
 from fastapi import Request
 
-from aiq_agent.observability.direct_trace import observed_retrieval
+from agent.observability.direct_trace import observed_retrieval
 
 from ..models.similar import SimilarDocument
 from ..models.similar import SimilarPassage
@@ -105,7 +105,7 @@ def _search(request: SimilarPassagesRequest, collections: list[str]) -> Any:
     from knowledge_layer.qdrant.similar import find_similar
     from knowledge_layer.qdrant.store import get_store
 
-    from aiq_agent.knowledge.factory import get_active_retriever
+    from agent.knowledge.factory import get_active_retriever
 
     retriever = get_active_retriever()
     source = PassageSource(

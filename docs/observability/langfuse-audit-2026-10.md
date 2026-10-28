@@ -119,7 +119,7 @@ needed.
    chat. Adding an optional `conversation_id` to the title request and sending
    it from the BFF closes it for the one route where it matters.
 7. **One more model call outside NAT.** The feedback digest's cause labelling
-   (`aiq_agent.common.feedback_causes.label_causes`) is not under `routes/`, so
+   (`agent.common.feedback_causes.label_causes`) is not under `routes/`, so
    the contract test does not see it. Wrap it.
 8. **Embeddings and rerank have no observation.** Both are metered in the cost
    ledger and counted in the turn's totals, but no span is wrapped around the

@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.routes.lesson_distill import add_lesson_distill_routes
+from backend.routes.lesson_distill import add_lesson_distill_routes
 
 
 @pytest.fixture

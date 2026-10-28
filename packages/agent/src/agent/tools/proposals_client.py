@@ -27,7 +27,7 @@ against that file, for every kind. There is no Pydantic twin.
 
 The turn's signed envelope goes out byte-for-byte, beside the service token;
 the BFF verifies it and records the person it names as the one Piloti acted
-for. The rule and its reason are in ``packages/agent/src/aiq_agent/tools/AGENTS.md``.
+for. The rule and its reason are in ``packages/agent/src/agent/tools/AGENTS.md``.
 
 ## Every failure is a card without an id, not an error
 
@@ -49,7 +49,7 @@ asked for twice returns the first proposal. The index is therefore the card's
 REAL position in the turn's registry, which :func:`add_card` fixes by putting
 the card in the registry first and asking for the proposal second.
 
-The transport is :mod:`aiq_agent.common.bff_http`, the one BFF client.
+The transport is :mod:`agent.common.bff_http`, the one BFF client.
 """
 
 from __future__ import annotations
@@ -60,12 +60,12 @@ import uuid
 from typing import Any
 from typing import Literal
 
-from aiq_agent import project_context
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.common import bff_http
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.observability.retrieval_trace import emit_step_span
-from aiq_agent.turn.response import turn_answer_message_id
+from agent import project_context
+from agent.cards.registry import CardRegistry
+from agent.common import bff_http
+from agent.common.bff_http import SignedEnvelope
+from agent.observability.retrieval_trace import emit_step_span
+from agent.turn.response import turn_answer_message_id
 
 logger = logging.getLogger(__name__)
 

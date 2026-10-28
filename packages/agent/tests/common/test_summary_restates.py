@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.answer_envelope import AnswerMeta
-from aiq_agent.common.answer_envelope import _summary_redundant
-from aiq_agent.common.answer_envelope import gate_answer_meta
+from agent.common.answer_envelope import AnswerMeta
+from agent.common.answer_envelope import _summary_redundant
+from agent.common.answer_envelope import gate_answer_meta
 
 OIB2_PROSE = (
     "Die OIB-Richtlinie 2 ist das Regelwerk zum **Brandschutz bei Gebäuden**. Die Ausgabe Mai 2023 besteht "
@@ -69,7 +69,7 @@ def test_the_gate_drops_it_from_the_wire_and_keeps_it_without_prose():
 
 def test_an_envelope_without_its_opening_is_salvaged():
     """Seen live: the reply began with the prose and switched into JSON half way."""
-    from aiq_agent.common.answer_envelope import extract_answer_envelope
+    from agent.common.answer_envelope import extract_answer_envelope
 
     reply = (
         "In GK 5 brauchen tragende Wände **R 90** [1].\n\n```mermaid\nflowchart TD\n  A --> B\n```\n\n"
@@ -84,7 +84,7 @@ def test_an_envelope_without_its_opening_is_salvaged():
 
 
 def test_prose_that_merely_quotes_json_is_left_alone():
-    from aiq_agent.common.answer_envelope import extract_answer_envelope
+    from agent.common.answer_envelope import extract_answer_envelope
 
     reply = 'Das Feld heißt so: "x", "kind": "y" – mehr nicht.'
     assert extract_answer_envelope(reply) == (reply, None)

@@ -38,31 +38,31 @@ from langchain_core.messages import BaseMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 
-from aiq_agent.common import load_prompt
-from aiq_agent.common import render_prompt_template
-from aiq_agent.common.applicability import render_project_block
-from aiq_agent.common.estate_paths import estate_path
-from aiq_agent.common.estate_paths import reads_the_estate
-from aiq_agent.common.norm_registry import parcel_note
-from aiq_agent.common.page_region_words import percent
-from aiq_agent.common.page_region_words import where_on_the_page_en
-from aiq_agent.common.platform_lessons import render_lessons_block
-from aiq_agent.common.prompt_store import ResolvedPrompt
-from aiq_agent.common.prompt_store import git_blob_version
-from aiq_agent.common.prompt_store import prompt_store
-from aiq_agent.common.prompt_utils import PromptError
-from aiq_agent.common.question_language import answer_language_line
-from aiq_agent.common.question_language import question_language
-from aiq_agent.common.question_language import trace_metadata as question_language_metadata
-from aiq_agent.common.question_language import warm as warm_language_detector
-from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
-from aiq_agent.common.source_kinds import parse_shelf
-from aiq_agent.common.steering import AppliedSteer
-from aiq_agent.common.steering import with_steering
-from aiq_agent.knowledge.already_read import render_already_read_block
-from aiq_agent.observability.langfuse_trace_attributes import current_fallback_identity
-from aiq_agent.observability.langfuse_trace_attributes import record_prompt_link
-from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
+from agent.common import load_prompt
+from agent.common import render_prompt_template
+from agent.common.applicability import render_project_block
+from agent.common.estate_paths import estate_path
+from agent.common.estate_paths import reads_the_estate
+from agent.common.norm_registry import parcel_note
+from agent.common.page_region_words import percent
+from agent.common.page_region_words import where_on_the_page_en
+from agent.common.platform_lessons import render_lessons_block
+from agent.common.prompt_store import ResolvedPrompt
+from agent.common.prompt_store import git_blob_version
+from agent.common.prompt_store import prompt_store
+from agent.common.prompt_utils import PromptError
+from agent.common.question_language import answer_language_line
+from agent.common.question_language import question_language
+from agent.common.question_language import trace_metadata as question_language_metadata
+from agent.common.question_language import warm as warm_language_detector
+from agent.common.source_kinds import SHELF_QUALIFIERS
+from agent.common.source_kinds import parse_shelf
+from agent.common.steering import AppliedSteer
+from agent.common.steering import with_steering
+from agent.knowledge.already_read import render_already_read_block
+from agent.observability.langfuse_trace_attributes import current_fallback_identity
+from agent.observability.langfuse_trace_attributes import record_prompt_link
+from agent.observability.langfuse_trace_attributes import record_trace_metadata
 
 from .models import ResearchAgentState
 

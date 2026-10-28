@@ -87,7 +87,7 @@ def format_results(
     """Build this result set's grounding hits and render them for the LLM.
 
     The layout itself lives in
-    :func:`~aiq_agent.common.grounding_block.render_grounding_block`, which also
+    :func:`~agent.common.grounding_block.render_grounding_block`, which also
     files the records under the hash of the bytes it returns, so the citation
     registry reads fields rather than re-parsing this text (ADR-0061). That is
     why both decorations are rendered here and neither is glued on by the
@@ -134,10 +134,10 @@ def format_results(
     if not retrieval_result.chunks:
         return f"{degraded_banner}No relevant documents found for query: '{query}'{tail}"
 
-    from aiq_agent.common.grounding_block import GroundingBlock
-    from aiq_agent.common.grounding_block import render_grounding_block
-    from aiq_agent.common.tool_calls import KNOWLEDGE_SEARCH_TOOL
-    from aiq_agent.common.turn_status import current_lane_tool
+    from agent.common.grounding_block import GroundingBlock
+    from agent.common.grounding_block import render_grounding_block
+    from agent.common.tool_calls import KNOWLEDGE_SEARCH_TOOL
+    from agent.common.turn_status import current_lane_tool
 
     hits = grounding_hits(retrieval_result.chunks)
     if reading_of:

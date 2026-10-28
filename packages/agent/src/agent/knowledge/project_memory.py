@@ -20,8 +20,8 @@ from contextvars import Token
 from dataclasses import dataclass
 from dataclasses import field
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge.restricted_use import current_restricted_use
+from agent.common import bff_http
+from agent.knowledge.restricted_use import current_restricted_use
 
 logger = logging.getLogger(__name__)
 
@@ -166,10 +166,10 @@ def fetch_memory_digest(
     carries — never a scope it read from an unsigned header, and nothing at all
     off the interactive chat path. When the BFF says it served restricted notes
     (``restrictedFoldersServed``), the turn's bound
-    :class:`aiq_agent.knowledge.restricted_use.RestrictedUse` is confined.
+    :class:`agent.knowledge.restricted_use.RestrictedUse` is confined.
 
     Returns the digest string, or ``None`` when there is no active memory (a valid
-    empty result). Raises :class:`aiq_agent.common.bff_http.BffError` (a
+    empty result). Raises :class:`agent.common.bff_http.BffError` (a
     ``RuntimeError``) on configuration, refusal and transport problems alike, so
     the caller can fall back to the frozen header digest
     instead of dropping memory entirely. Blocking; call via ``asyncio.to_thread``
@@ -181,7 +181,7 @@ def fetch_memory_digest(
         # Imported here rather than at module scope: `project_context` is the
         # header layer and this module is a knowledge one, and the four other
         # readers of the NAT context in this package do the same.
-        from aiq_agent.project_context import get_conversation_id_from_context
+        from agent.project_context import get_conversation_id_from_context
 
         conversation_id = get_conversation_id_from_context()
 
@@ -292,7 +292,7 @@ def insert_memory_item(
 
     ``restricted_collections`` makes the item restricted memory (ADR-0087): the
     restricted-folder collections it depends on, as
-    :mod:`aiq_agent.memory.restriction` decided. Project scope only — the BFF
+    :mod:`agent.memory.restriction` decided. Project scope only — the BFF
     refuses a restricted organization write, and refuses (400) a collection that
     is not a current restricted collection of the project.
 
@@ -301,7 +301,7 @@ def insert_memory_item(
     trail with the item it was about. Collections only, never text.
 
     Returns the new item id, or None when the target (project/org) is unknown.
-    Raises :class:`aiq_agent.common.bff_http.BffError` (a ``RuntimeError``)
+    Raises :class:`agent.common.bff_http.BffError` (a ``RuntimeError``)
     for configuration, refusal and transport failures — callers translate these
     into friendly tool output.
     Blocking; call via ``asyncio.to_thread`` from async code.

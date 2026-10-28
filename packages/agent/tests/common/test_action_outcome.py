@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.action_rows import ActionRow
+from agent.common.action_outcome import ActionOutcome
+from agent.common.action_rows import ActionRow
 
 
 def _chunk(name: str, collection: str = "c"):
@@ -59,8 +59,8 @@ async def test_parallel_calls_keep_their_own_call_id_for_their_sources(monkeypat
     """Sources a call returns carry that call's id, even beside a sibling call (ADR-0132)."""
     import asyncio
 
-    from aiq_agent.common import action_rows
-    from aiq_agent.common import turn_status
+    from agent.common import action_rows
+    from agent.common import turn_status
 
     bodies: list = []
     monkeypatch.setattr(turn_status, "emit", bodies.append)
@@ -82,7 +82,7 @@ async def test_parallel_calls_keep_their_own_call_id_for_their_sources(monkeypat
 
 def test_an_incomplete_search_says_so_on_its_row(monkeypatch):
     """A literal search that could not search everything is never drawn as a complete count (ADR-0133)."""
-    from aiq_agent.common import turn_status
+    from agent.common import turn_status
 
     steps: list = []
     monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: steps.append(step))
@@ -97,7 +97,7 @@ def test_an_incomplete_search_says_so_on_its_row(monkeypatch):
 
 
 def test_a_complete_search_carries_no_incomplete_flag(monkeypatch):
-    from aiq_agent.common import turn_status
+    from agent.common import turn_status
 
     steps: list = []
     monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: steps.append(step))
@@ -108,7 +108,7 @@ def test_a_complete_search_carries_no_incomplete_flag(monkeypatch):
 
 def test_a_settled_place_replaces_the_running_one(monkeypatch):
     """A row that settles at a place's root drops the name it showed while running (ADR-0132)."""
-    from aiq_agent.common import turn_status
+    from agent.common import turn_status
 
     steps: list = []
     monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: steps.append(step))

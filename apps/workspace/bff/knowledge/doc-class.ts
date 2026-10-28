@@ -3,7 +3,7 @@
  * document classes the platform owner assigns from the base-knowledge admin UI.
  *
  * SINGLE SOURCE OF TRUTH: the canonical vocabulary lives in the Python backend
- * (`packages/agent/src/aiq_agent/knowledge/document_classification.py` — `DOCUMENT_CLASSES`,
+ * (`packages/agent/src/agent/knowledge/document_classification.py` — `DOCUMENT_CLASSES`,
  * `DOCUMENT_CLASS_LABELS`, `DOCUMENT_CLASS_LANES`, `DEFAULT_DOC_CLASS`), which the
  * doc-class edit endpoint validates every write against. This file is a
  * hand-kept TypeScript mirror used only to render the editor's dropdown + badge.

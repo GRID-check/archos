@@ -26,19 +26,19 @@ from typing import Any
 
 from starlette.datastructures import Headers
 
-from aiq_agent.agents.deep_researcher.anatomy import ReportAnatomy
-from aiq_agent.cards.generate import CardGenerationResult
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common.plan_documents import PlanDocument
-from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.common.plan_documents import sanitize_plan_documents
-from aiq_agent.project_context import ORGANIZATION_ID_HEADER
-from aiq_agent.project_context import PROJECT_ID_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from aiq_agent.project_context import USER_ID_HEADER
+from agent.agents.deep_researcher.anatomy import ReportAnatomy
+from agent.cards.generate import CardGenerationResult
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.common.plan_documents import PlanDocument
+from agent.common.plan_documents import PlanDocuments
+from agent.common.plan_documents import sanitize_plan_documents
+from agent.project_context import ORGANIZATION_ID_HEADER
+from agent.project_context import PROJECT_ID_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+from agent.project_context import USER_ID_HEADER
 
 from .conversation_output import INTERRUPTED_NOTICE
 from .conversation_output import write_job_notice
@@ -112,7 +112,7 @@ JOB_OWNERSHIP_LOST_EVENT_TYPE = "job.ownership-lost"
 _OWNERSHIP_LOST_REASON = "queue claim reclaimed by another worker"
 
 #: The request-context headers a worker supplies to the tools it runs, from
-#: the run's identity. The contract `aiq_agent.project_context.
+#: the run's identity. The contract `agent.project_context.
 #: TOOL_CONTEXT_REQUIREMENTS` is checked against THIS tuple by
 #: `packages/agent/tests/test_tool_context_contract.py`: a tool that needs a header
 #: the worker does not inject fails that test rather than every unattended run.
@@ -145,8 +145,8 @@ def sanitize_job_error(exc: BaseException) -> str:
     NOTE: cancellation paths intentionally bypass this — the UI string-matches
     the exact error "cancelled by user".
     """
-    from aiq_agent.common import RunBudgetExceededError
-    from aiq_agent.common.cost_tracking import BudgetExceededError
+    from agent.common import RunBudgetExceededError
+    from agent.common.cost_tracking import BudgetExceededError
 
     if isinstance(exc, (RunBudgetExceededError, BudgetExceededError)):
         # Already curated, user-safe messages ("run exceeded the configured
@@ -164,8 +164,8 @@ def sanitize_job_error(exc: BaseException) -> str:
         if "wall-clock" in str(exc).lower():
             return _WALL_CLOCK_TIMEOUT_MSG
         return _GENERIC_TIMEOUT_MSG
-    from aiq_agent.common.canned_replies import ZDR_MODEL_REFUSED_MESSAGE
-    from aiq_agent.common.openrouter import is_data_policy_refusal
+    from agent.common.canned_replies import ZDR_MODEL_REFUSED_MESSAGE
+    from agent.common.openrouter import is_data_policy_refusal
 
     if is_data_policy_refusal(exc):
         # Curated and actionable: the model has no zero-data-retention
@@ -727,7 +727,7 @@ def _resolve_worker_tool_refs(fn_config: Any) -> list[str]:
     """
     tool_refs = getattr(fn_config, "tools", None)
     if not tool_refs:
-        from aiq_agent.common import get_all_tool_refs
+        from agent.common import get_all_tool_refs
 
         return get_all_tool_refs()
     return list(tool_refs)
@@ -743,7 +743,7 @@ async def _resolve_deep_research_checkpointer(fn_config: Any) -> Any | None:
     marks it FAILURE with nothing to resume.
 
     When ``deep_research_agent.checkpoint_db`` is configured, this builds (and
-    caches, via ``aiq_agent.common.get_checkpointer``) a durable checkpointer
+    caches, via ``agent.common.get_checkpointer``) a durable checkpointer
     keyed by that database path/DSN. ``DeepResearcherAgent.run()`` then uses
     the job_id as the graph's thread_id, so a re-invocation of the same
     job_id resumes from the last persisted checkpoint instead of starting
@@ -760,7 +760,7 @@ async def _resolve_deep_research_checkpointer(fn_config: Any) -> Any | None:
     if not checkpoint_db:
         return None
 
-    from aiq_agent.common import get_checkpointer
+    from agent.common import get_checkpointer
 
     return await get_checkpointer(checkpoint_db)
 
@@ -822,7 +822,7 @@ def _load_agent_class(agent_class_path: str) -> type:
     Dynamically load an agent class from its module path.
 
     Args:
-        agent_class_path: Full path like 'aiq_agent.agents.deep_researcher.agent.DeepResearcherAgent'
+        agent_class_path: Full path like 'agent.agents.deep_researcher.agent.DeepResearcherAgent'
 
     Returns:
         The agent class.
@@ -849,10 +849,10 @@ _JOB_PROFILE_NAMES = {"project_intake_agent": "project_intake_job"}
 
 async def _create_llm_provider(builder: Any, fn_config: Any) -> tuple[Any, Any]:
     """Create a role-aware LLM provider from a NAT function config."""
-    from aiq_agent.common import AgentGroup
-    from aiq_agent.common import LLMProvider
-    from aiq_agent.common import LLMRole
-    from aiq_agent.common import get_langchain_llm
+    from agent.common import AgentGroup
+    from agent.common import LLMProvider
+    from agent.common import LLMRole
+    from agent.common import get_langchain_llm
 
     # Agent-group tags mirror the sync registrations (deep_researcher/register.py)
     # so per-org runtime model overrides apply identically to async jobs.
@@ -902,7 +902,7 @@ def _b64url_encode_text(value: str) -> str:
     with German quotes („U+201E), em-dashes or newlines throws
     ``UnicodeEncodeError`` at injection time — killing the job before the agent
     starts. The header contract on the read side
-    (``aiq_agent.project_context._read_encoded_header``) is base64url with a
+    (``agent.project_context._read_encoded_header``) is base64url with a
     raw fallback, so every multi-line/free-text header on this path goes
     through here.
     """
@@ -935,8 +935,8 @@ def _run_user_info(user_info: dict | None, envelope_headers: dict[str, str] | No
     """
     if user_info is not None or not envelope_headers:
         return user_info
-    from aiq_agent.project_context import GridRequestContext
-    from aiq_agent.turn.context import user_info_for
+    from agent.project_context import GridRequestContext
+    from agent.turn.context import user_info_for
 
     request = GridRequestContext.from_headers(envelope_headers, secret=os.environ.get("INTERNAL_API_TOKEN"))
     return user_info_for(request)
@@ -979,8 +979,8 @@ def _create_agent_instance(
 
 def _configured_agent(agent_cls, llm_provider, tools, fn_config, verbose, callbacks, job_id, checkpointer) -> Any:
     """An intake or deep-research agent built from its own config, or None for any other agent."""
-    from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-    from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
+    from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+    from agent.agents.intake.register import ProjectIntakeAgentConfig
 
     if isinstance(fn_config, ProjectIntakeAgentConfig):
         # The reading's budgets are config, so a deployment moves them without a release.
@@ -1098,7 +1098,7 @@ def _model_state(state_cls: type, input_text: str, data_sources, available_docum
     state_kwargs.update({name: value for name, value in fields.items() if value is not None and name in declared})
     if available_documents:
         try:
-            from aiq_agent.knowledge import AvailableDocument
+            from agent.knowledge import AvailableDocument
 
             state_kwargs["available_documents"] = [AvailableDocument(**doc) for doc in available_documents]
             logger.debug("Research worker passing %d available documents to agent state", len(available_documents))
@@ -1130,10 +1130,10 @@ async def _run_with_reader_controls(agent, state: Any, monitor: CancellationMoni
     research tool through per-run bindings; the task ``run_with_cancellation``
     creates inherits them.
     """
-    from aiq_agent.agents.deep_researcher.control import bind_added_documents
-    from aiq_agent.agents.deep_researcher.control import bind_write_now
-    from aiq_agent.agents.deep_researcher.control import reset_added_documents
-    from aiq_agent.agents.deep_researcher.control import reset_write_now
+    from agent.agents.deep_researcher.control import bind_added_documents
+    from agent.agents.deep_researcher.control import bind_write_now
+    from agent.agents.deep_researcher.control import reset_added_documents
+    from agent.agents.deep_researcher.control import reset_write_now
 
     token = bind_write_now(monitor.write_now)
     added_token = bind_added_documents(monitor.added_documents)
@@ -1206,7 +1206,7 @@ def _bound_card_registry() -> Iterator[CardRegistry]:
     The chat turn does the same around ``agent.run`` (``piloti/conversation_register.py``),
     with a conversation-scoped registry it clears per turn. A job has no
     conversation of its own to key on and runs once, so a fresh registry is the
-    per-turn state here — the ``ContextVar`` rule in ``packages/agent/src/aiq_agent/AGENTS.md``.
+    per-turn state here — the ``ContextVar`` rule in ``packages/agent/src/agent/AGENTS.md``.
     Reset in ``finally`` so a failed run leaves nothing bound for the next job
     this worker picks up.
     """
@@ -1307,7 +1307,7 @@ def _reflection_text(report: str, findings: dict[str, Any] | None) -> str:
 async def _extract_report_anatomy(llm: Any, query: str, report: str) -> ReportAnatomy:
     """The masthead and the findings of the finished report; never raises."""
     try:
-        from aiq_agent.agents.deep_researcher.anatomy import extract_report_anatomy
+        from agent.agents.deep_researcher.anatomy import extract_report_anatomy
 
         anatomy = await extract_report_anatomy(llm, query, report)
         if anatomy.findings:
@@ -1330,10 +1330,10 @@ async def _propose_report_follow_ups(
     client would have mirrored a frame. Never raises.
     """
     try:
-        from aiq_agent.stages import StageContext
-        from aiq_agent.stages import TurnFacts
-        from aiq_agent.stages.flags import resolve_enabled_stages
-        from aiq_agent.stages.follow_ups import FOLLOW_UPS
+        from agent.stages import StageContext
+        from agent.stages import TurnFacts
+        from agent.stages.flags import resolve_enabled_stages
+        from agent.stages.follow_ups import FOLLOW_UPS
 
         enabled = await resolve_enabled_stages(organization_id=organization_id, memory_reflection_enabled=False)
         if FOLLOW_UPS.id not in enabled:
@@ -1355,7 +1355,7 @@ async def _generate_grid_cards(llm: Any, query: str, report: str) -> CardGenerat
     warranted no proposals, and the reader had no way to ask for them again.
     """
     try:
-        from aiq_agent.cards.generate import generate_cards_result
+        from agent.cards.generate import generate_cards_result
 
         result = await generate_cards_result(llm, query, report)
         if result.cards:
@@ -1407,7 +1407,7 @@ async def _run_deep_research_reflection(
     identity = _reflection_identity(usage_context)
     if identity is None:
         return
-    from aiq_agent.stages.memory_reflection import REFLECTION_TIMEOUT_S
+    from agent.stages.memory_reflection import REFLECTION_TIMEOUT_S
 
     try:
         reflection_llm = await _reflection_llm(builder, reflection_llm_ref, org_credential, model_overrides, zdr_only)
@@ -1448,10 +1448,10 @@ async def _reflect(
     llm: Any, identity: dict, *, job_id: str, query: str, report: str, memory_digest: str | None
 ) -> None:
     """One reflection pass over the report, profiled and costed under the run's identity."""
-    from aiq_agent.common.cost_tracking import BudgetSnapshot
-    from aiq_agent.common.cost_tracking import track_llm_costs
-    from aiq_agent.common.profiler import track_agent_profile
-    from aiq_agent.memory.reflection import run_memory_reflection
+    from agent.common.cost_tracking import BudgetSnapshot
+    from agent.common.cost_tracking import track_llm_costs
+    from agent.common.profiler import track_agent_profile
+    from agent.memory.reflection import run_memory_reflection
 
     with (
         track_agent_profile(agent_name="project_memory_reflection", job_id=job_id, identity=identity),
@@ -1481,11 +1481,11 @@ async def _reflection_llm(
     credential goes first, so the ZDR pin lands only on a model that still
     points at OpenRouter.
     """
-    from aiq_agent.common import AgentGroup
-    from aiq_agent.common import apply_model_override
-    from aiq_agent.common import apply_org_credential
-    from aiq_agent.common import get_langchain_llm
-    from aiq_agent.common import sanitize_model_overrides
+    from agent.common import AgentGroup
+    from agent.common import apply_model_override
+    from agent.common import apply_org_credential
+    from agent.common import get_langchain_llm
+    from agent.common import sanitize_model_overrides
 
     llm = await get_langchain_llm(builder, llm_ref)
     overrides = sanitize_model_overrides(model_overrides) if model_overrides else {}

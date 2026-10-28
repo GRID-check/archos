@@ -9,17 +9,17 @@ and a listing question about one shelf cannot be answered from another.
 
 from __future__ import annotations
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import allocate_inventory
-from aiq_agent.knowledge.inventory import allocate_inventory_detailed
-from aiq_agent.knowledge.inventory import document_identity
-from aiq_agent.knowledge.inventory import render_inventory_block
-from aiq_agent.knowledge.inventory import set_inventory_drops
-from aiq_agent.knowledge.inventory import set_norm_families
-from aiq_agent.knowledge.inventory import shelf_hint_from_query
-from aiq_agent.knowledge.inventory import stamp_document
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import allocate_inventory
+from agent.knowledge.inventory import allocate_inventory_detailed
+from agent.knowledge.inventory import document_identity
+from agent.knowledge.inventory import render_inventory_block
+from agent.knowledge.inventory import set_inventory_drops
+from agent.knowledge.inventory import set_norm_families
+from agent.knowledge.inventory import shelf_hint_from_query
+from agent.knowledge.inventory import stamp_document
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.scoping import ScopedCollection
 
 
 def _doc(
@@ -559,7 +559,7 @@ class TestTheFamiliesAreNamed:
         return [_doc(name, collection="oib_knowledge", shelf="base") for name in names]
 
     def test_the_folded_shelf_lists_each_family_and_its_members(self):
-        from aiq_agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import oib_families
 
         names = [
             "oib-rl_2_ausgabe_mai_2023.pdf",
@@ -578,7 +578,7 @@ class TestTheFamiliesAreNamed:
         assert "oib-rl_2.3_ausgabe_mai_2023.pdf" not in text
 
     def test_it_says_what_an_unread_member_may_be_called(self):
-        from aiq_agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import oib_families
 
         set_norm_families(oib_families(["oib-rl_2_x.pdf", "oib-rl_2.1_x.pdf"]))
         text = render_inventory_block(self._base("oib-rl_2_x.pdf", "oib-rl_2.1_x.pdf"))
@@ -596,7 +596,7 @@ class TestTheFamiliesAreNamed:
     def test_a_listing_turn_about_base_prints_names_rather_than_families(self):
         """The fold is what the family lines belong to. With the full list on
         screen the members are visible as filenames."""
-        from aiq_agent.common.norm_registry import oib_families
+        from agent.common.norm_registry import oib_families
 
         names = ["oib-rl_2_x.pdf", "oib-rl_2.3_x.pdf"]
         set_norm_families(oib_families(names))

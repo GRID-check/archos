@@ -1,4 +1,4 @@
-# The BIM surface: `packages/agent/src/aiq_agent/tools/bim`
+# The BIM surface: `packages/agent/src/agent/tools/bim`
 
 Two tools over the project's IFC model, not an agent. `register.py` is
 `ifc_query` — a structured read of the extracted index, answering what the
@@ -25,5 +25,5 @@ call that cannot be made costs the reader a whole turn.
 
 | When you | You must | What fails you |
 |---|---|---|
-| Add, rename or drop an operation or an enum value | Update `packages/agent/src/aiq_agent/skills/builtin/bim/ifc-spatial-reasoning/SKILL.md`, on the side of the routing table that really has it | `packages/agent/tests/skills/test_ifc_spatial_skill.py` |
+| Add, rename or drop an operation or an enum value | Update `packages/agent/src/agent/skills/builtin/bim/ifc-spatial-reasoning/SKILL.md`, on the side of the routing table that really has it | `packages/agent/tests/skills/test_ifc_spatial_skill.py` |
 | Record a capability gap | Only for a value in no vocabulary, and only a name-shaped one — never for `decidable: false` or a bad GlobalId, and never in a way that can fail a working measurement | Nothing. A ledger that logs every refusal is a log nobody reads |

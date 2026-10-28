@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.tools.tasks import register as task_tools
-from aiq_agent.tools.tasks.client import DelegationError
+from agent.tools.tasks import register as task_tools
+from agent.tools.tasks.client import DelegationError
 
 from .conftest import ACCEPTED
 from .conftest import ENVELOPE_HEADER

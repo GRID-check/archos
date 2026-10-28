@@ -38,20 +38,20 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.cards.catalog import RETIRED_CARD_TYPES
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.catalog import render_card_details
-from aiq_agent.cards.catalog import render_card_doctrine
-from aiq_agent.cards.catalog import render_card_index
-from aiq_agent.cards.catalog import retired_refusal
-from aiq_agent.cards.catalog import shape_hint_for
-from aiq_agent.cards.proposal_cards import SERVER_FILLED_CARD_FIELDS
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.surface_card import SURFACE_MAX_CHILDREN
-from aiq_agent.cards.surface_card import SURFACE_MAX_LEAVES
-from aiq_agent.cards.surface_card import SURFACE_MAX_TABS
-from aiq_agent.cards.surface_card import SURFACE_TEXT_MAX
-from aiq_agent.common.tool_errors import render_error_detail
+from agent.cards.catalog import RETIRED_CARD_TYPES
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.catalog import render_card_details
+from agent.cards.catalog import render_card_doctrine
+from agent.cards.catalog import render_card_index
+from agent.cards.catalog import retired_refusal
+from agent.cards.catalog import shape_hint_for
+from agent.cards.proposal_cards import SERVER_FILLED_CARD_FIELDS
+from agent.cards.registry import CardRegistry
+from agent.cards.surface_card import SURFACE_MAX_CHILDREN
+from agent.cards.surface_card import SURFACE_MAX_LEAVES
+from agent.cards.surface_card import SURFACE_MAX_TABS
+from agent.cards.surface_card import SURFACE_TEXT_MAX
+from agent.common.tool_errors import render_error_detail
 
 logger = logging.getLogger(__name__)
 
@@ -163,13 +163,13 @@ def _turn_is_confined() -> bool:
     """Whether this turn may draw on, or its conversation already drew on, a restricted folder; False outside a request.
 
     The scope read is already narrowed to what the turn may draw on
-    (:func:`aiq_agent.knowledge.scoping.get_scoped_collections_from_context`);
+    (:func:`agent.knowledge.scoping.get_scoped_collections_from_context`);
     the bound use adds what the conversation recorded (ADR-0087, ADR-0088).
     """
-    from aiq_agent.knowledge.restricted_collections import restricted_collections_in
-    from aiq_agent.knowledge.restricted_use import current_restricted_use
-    from aiq_agent.knowledge.restricted_use import drew_on_other_projects
-    from aiq_agent.knowledge.scoping import get_collection_scope_from_context
+    from agent.knowledge.restricted_collections import restricted_collections_in
+    from agent.knowledge.restricted_use import current_restricted_use
+    from agent.knowledge.restricted_use import drew_on_other_projects
+    from agent.knowledge.scoping import get_collection_scope_from_context
 
     try:
         use = current_restricted_use()
@@ -231,7 +231,7 @@ def validate_model_card(payload: object) -> tuple[dict[str, Any] | None, CardRef
     a turn that came back with no card must be tellable from one that never
     reached for a card, and the two call for opposite fixes.
     """
-    from aiq_agent.cards.models import grid_card_adapter
+    from agent.cards.models import grid_card_adapter
 
     if not isinstance(payload, dict):
         logger.warning("card rejected: card_json is a %s, not a JSON object", type(payload).__name__)
@@ -282,7 +282,7 @@ async def register_envelope_card(registry: CardRegistry, card: dict[str, Any]) -
     The proposal records the title, the rationale and the patch. ``preview``,
     which the model may still write, is neither rendered nor recorded.
     """
-    from aiq_agent.tools.proposals_client import add_card
+    from agent.tools.proposals_client import add_card
 
     if card.get("type") != "project_profile_patch":
         registry.add(card)

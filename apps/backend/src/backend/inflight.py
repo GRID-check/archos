@@ -6,7 +6,7 @@ can therefore show a quiet CPU. Before the trigger changes, this module measures
 the thing it would scale on, so the decision is made on readings from the
 cluster and not on a guess.
 
-Two instruments, both on the OpenTelemetry API (``aiq_agent.observability``
+Two instruments, both on the OpenTelemetry API (``agent.observability``
 installs the provider; without one they are no-ops):
 
 - ``grid.http.requests_in_flight`` (UpDownCounter): +1 when an HTTP request
@@ -77,7 +77,7 @@ def instruments() -> _Instruments:
     global _instruments
     with _instruments_lock:
         if _instruments is None:
-            _instruments = _Instruments(metrics.get_meter("aiq_api.inflight"))
+            _instruments = _Instruments(metrics.get_meter("backend.inflight"))
         return _instruments
 
 

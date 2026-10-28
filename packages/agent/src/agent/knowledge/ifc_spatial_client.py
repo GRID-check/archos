@@ -1,6 +1,6 @@
 """Spatial engine client — the model's own BYTES, and one operator over them.
 
-Where :mod:`aiq_agent.knowledge.bim_query` asks the BFF a question and reports
+Where :mod:`agent.knowledge.bim_query` asks the BFF a question and reports
 the answer, this module asks the BFF for a FILE and answers the question here.
 The difference is not architectural taste, it is where the capability lives:
 the extracted index in Postgres knows what the export wrote down, and the
@@ -54,9 +54,9 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge.bim_query import BimQueryRejectedError
-from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
+from agent.common import bff_http
+from agent.knowledge.bim_query import BimQueryRejectedError
+from agent.knowledge.bim_query import BimQueryUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -216,8 +216,8 @@ def resolve_model_source(
     :raises BimQueryRejectedError: the endpoint understood the request and
         refused it, which is correctable by the caller.
     """
-    from aiq_agent.knowledge.bim_query import _rejection_message
-    from aiq_agent.knowledge.bim_query import is_correctable
+    from agent.knowledge.bim_query import _rejection_message
+    from agent.knowledge.bim_query import is_correctable
 
     payload: dict[str, Any] = {"organizationId": organization_id}
     if project_id:

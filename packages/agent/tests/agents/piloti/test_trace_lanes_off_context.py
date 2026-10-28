@@ -19,13 +19,13 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
-from aiq_agent.common.grounding_block import TRACE_LANES_MARKER
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common import turn_status
+from agent.common.grounding_block import TRACE_LANES_MARKER
 
 _RESULT = (
     "Found 1 relevant document(s):\n"
@@ -55,8 +55,8 @@ def knowledge_search(query: str) -> str:
 def _bypass_citation_pipeline():
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]

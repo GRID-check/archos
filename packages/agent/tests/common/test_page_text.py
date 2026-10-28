@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from aiq_agent.common.page_text import furniture_key
-from aiq_agent.common.page_text import running_furniture
-from aiq_agent.common.page_text import without_furniture
+from agent.common.page_text import furniture_key
+from agent.common.page_text import running_furniture
+from agent.common.page_text import without_furniture
 
 
 def test_a_page_number_line_is_one_key_on_every_page():

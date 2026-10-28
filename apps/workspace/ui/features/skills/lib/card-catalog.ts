@@ -9,7 +9,7 @@
  * offering the new card, or offers one the backend rejects at write time).
  *
  * Two things are dropped on the way out, mirroring
- * `aiq_agent.cards.catalog.model_facing_card_types()`:
+ * `agent.cards.catalog.model_facing_card_types()`:
  *
  *  - SYSTEM cards, which a tool emits on a sanctioned path. They are valid union
  *    members (they must render), but the model is never told they exist, so an
@@ -25,7 +25,7 @@ import { gridCardSchema } from '@/shared/cards/schemas'
 /**
  * Card types emitted only by a tool, never by the model.
  *
- * Kept in sync with `SYSTEM_CARD_TYPES` in `packages/agent/src/aiq_agent/cards/catalog.py`,
+ * Kept in sync with `SYSTEM_CARD_TYPES` in `packages/agent/src/agent/cards/catalog.py`,
  * whose `model_facing_card_types()` — the set the backend validates a saved
  * `grid-cards` value against — excludes them. A denylist rather than a derived
  * value because nothing in the generated Zod schemas records the distinction —

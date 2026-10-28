@@ -40,10 +40,10 @@ from knowledge_layer.qdrant.payload import chunk_metadata
 from knowledge_layer.qdrant.search import Hit
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.base import READING_ORDER
-from aiq_agent.knowledge.base import reading_order
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.base import READING_ORDER
+from agent.knowledge.base import reading_order
+from agent.knowledge.scoping import ScopedCollection
 
 rp = importlib.import_module("knowledge_layer.read_passage")
 
@@ -202,14 +202,14 @@ def corpus(retriever, monkeypatch):
     async def _documents(collection: str):
         return list(documents)
 
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+    monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: retriever)
+    monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection(SCOPE, Shelf.BASE)],
     )
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     return retriever
 
 
@@ -389,7 +389,7 @@ async def test_a_cursor_continues_on_the_key_the_read_sorts_by(corpus, monkeypat
     async def _documents(collection: str):
         return [statik]
 
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+    monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
 
     first = await _read(document=file_name, pages="1", conclusion="x")
     cursor = re.search(r'cursor="([^"]+)"', first).group(1)

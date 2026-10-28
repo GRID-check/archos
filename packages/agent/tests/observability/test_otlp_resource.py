@@ -2,8 +2,8 @@
 
 import pytest
 
-from aiq_agent.observability.otlp_resource import resource_attributes
-from aiq_agent.observability.otlp_resource import signal_endpoint
+from agent.observability.otlp_resource import resource_attributes
+from agent.observability.otlp_resource import signal_endpoint
 
 
 @pytest.mark.parametrize(

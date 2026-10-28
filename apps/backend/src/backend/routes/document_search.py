@@ -15,15 +15,15 @@ from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import Request
 
-from aiq_agent.knowledge.base import FUSED_SCORE_KEY
-from aiq_agent.knowledge.base import LEXICAL_MATCH_KEY
-from aiq_agent.knowledge.base import BaseIngestor
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.scoping import _normalize_collection_name
-from aiq_agent.observability.direct_trace import observed_retrieval
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from aiq_agent.project_context import GridRequestContext
+from agent.knowledge.base import FUSED_SCORE_KEY
+from agent.knowledge.base import LEXICAL_MATCH_KEY
+from agent.knowledge.base import BaseIngestor
+from agent.knowledge.schema import Chunk
+from agent.knowledge.scoping import _normalize_collection_name
+from agent.observability.direct_trace import observed_retrieval
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+from agent.project_context import GridRequestContext
 
 from ..models.document_search import DocumentSearchHit
 from ..models.document_search import DocumentSearchRequest
@@ -395,7 +395,7 @@ async def _search_grouped(
     request: GroupedDocumentSearchRequest, collections: list[str]
 ) -> tuple[list[DocumentSearchHit], list[tuple[str, list[Chunk]]]]:
     """The grouped search's documents, and the groups it ranked them from; none when the filters admit nothing."""
-    from aiq_agent.knowledge.factory import get_active_retriever
+    from agent.knowledge.factory import get_active_retriever
 
     try:
         filters = grouped_filters(request.filters)
@@ -504,7 +504,7 @@ def add_document_search_routes(router: APIRouter):
         await require_collection(ingestor, collection_name)
 
         try:
-            from aiq_agent.knowledge.factory import get_active_retriever
+            from agent.knowledge.factory import get_active_retriever
 
             result = await get_active_retriever().retrieve(
                 query=request.query,

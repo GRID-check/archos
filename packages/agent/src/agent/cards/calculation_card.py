@@ -5,9 +5,9 @@ from typing import Literal
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.cards.card_model import CardModel
-from aiq_agent.cards.schematic_cards import NormReference
-from aiq_agent.cards.schematic_cards import Provenance
+from agent.cards.card_model import CardModel
+from agent.cards.schematic_cards import NormReference
+from agent.cards.schematic_cards import Provenance
 
 CalculationOperation = Literal["sum", "product", "quotient", "percent_of", "percent_ratio"]
 

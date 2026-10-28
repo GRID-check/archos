@@ -2,7 +2,7 @@
 
 import logging
 
-from aiq_agent.common.logging_utils import suppress_noisy_dependency_logs
+from agent.common.logging_utils import suppress_noisy_dependency_logs
 
 
 def test_step_manager_warnings_are_suppressed_but_errors_kept():

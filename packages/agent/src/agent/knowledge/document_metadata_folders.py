@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import logger
-from aiq_agent.knowledge.document_metadata_helpers import _escape_like
+from agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge.document_metadata_constants import logger
+from agent.knowledge.document_metadata_helpers import _escape_like
 
 
 def rewrite_folder_paths(store, collection: str, from_path: str, to_path: str | None) -> int:

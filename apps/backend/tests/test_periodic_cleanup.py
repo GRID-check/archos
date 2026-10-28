@@ -8,8 +8,8 @@ from datetime import timedelta
 
 import pytest
 
-from aiq_api.jobs.event_store import EventStore
-from aiq_api.routes.job_event_cleanup import run_event_cleanup
+from backend.jobs.event_store import EventStore
+from backend.routes.job_event_cleanup import run_event_cleanup
 
 
 @pytest.fixture

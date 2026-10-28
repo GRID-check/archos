@@ -1,4 +1,4 @@
-# Piloti: `packages/agent/src/aiq_agent/agents/piloti`
+# Piloti: `packages/agent/src/agent/agents/piloti`
 
 The agent that answers every chat turn, and the conversation graph that gives
 it a checkpointer and one outgoing edge. Two NAT registrations: `register.py`
@@ -85,7 +85,7 @@ site naming the reader that would break.
 | `chat_researcher` | `PROFILE_AGENT_NAME`, the profiler span the reasoning view labels by | `turn/admission.py` |
 | `research_llm` | config key. `researcher_llm` is deep research's own role field and cannot be reused | `register.py` |
 | `researcher` (skill scope) | `platform_skills.grid_agents` and every skill's frontmatter; both resolvers IGNORE a name they do not know, so a rename without a migration serves chat-scoped skills to deep research in silence | `skills/resolver.py`, `register.py` |
-| `researcher` (job agent type) | `AGENT_REGISTRY`, a schedule's stored `agent_type` | `apps/backend/src/aiq_api/registry.py` |
+| `researcher` (job agent type) | `AGENT_REGISTRY`, a schedule's stored `agent_type` | `apps/backend/src/backend/registry.py` |
 | `aiq_researcher`, `aiq_researcher_conversation` | `nat.plugins` entry-point names, carried in the installed dist metadata | `pyproject.toml` |
 | `LLMRole.RESEARCHER` | a semantic LLM role shared with deep research | `common/llm_provider.py` |
 

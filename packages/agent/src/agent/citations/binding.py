@@ -10,12 +10,12 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 if TYPE_CHECKING:
-    from aiq_agent.common.norm_registry import NormRank
-    from aiq_agent.common.norm_registry import NormRegistry
-from aiq_agent.citations.citation_keys import parse_citation_key
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.citations.registry import SourceRegistry
+    from agent.common.norm_registry import NormRank
+    from agent.common.norm_registry import NormRegistry
+from agent.citations.citation_keys import parse_citation_key
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import normalize_url
+from agent.citations.registry import SourceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +51,9 @@ def source_lane(entry: SourceEntry, registry: NormRegistry | None = None) -> tup
     (``[KB]``/``[RIS]``/``[Web]``) are unchanged; the fan-out UI reads this
     richer label from the structured source payloads instead.
     """
-    from aiq_agent.common.norm_registry import lane_for_hit
-    from aiq_agent.common.norm_registry import lane_for_knowledge_hit
-    from aiq_agent.common.norm_registry import load_registry
+    from agent.common.norm_registry import lane_for_hit
+    from agent.common.norm_registry import lane_for_knowledge_hit
+    from agent.common.norm_registry import load_registry
 
     file_name = None
     if entry.citation_key:
@@ -90,7 +90,7 @@ def binding_note_for_entry(entry: SourceEntry, registry: NormRegistry | None = N
     if not (entry.url and "ris.bka.gv.at" in entry.url):
         return None
     try:
-        from aiq_agent.common.norm_registry import load_registry
+        from agent.common.norm_registry import load_registry
 
         # Reuse a caller-supplied registry when present; otherwise load it as
         # before. The load stays inside the fail-open guard.
@@ -195,9 +195,9 @@ def _match_registry_entry(
     for a Tirol project, so its rank is never claimed for the wrong jurisdiction
     (the classification then falls through to ``unknown`` rather than lying).
     """
-    from aiq_agent.common.norm_registry import focus_entries
-    from aiq_agent.common.norm_registry import load_registry
-    from aiq_agent.common.norm_registry import match_entries
+    from agent.common.norm_registry import focus_entries
+    from agent.common.norm_registry import load_registry
+    from agent.common.norm_registry import match_entries
 
     # Only a source that could name a catalogued norm is worth a registry load:
     # a RIS URL, or a document identifier (citation_key/title). A bare web URL
@@ -234,8 +234,8 @@ def _oib_binding_status(entry: SourceEntry) -> str | None:
     ``rank`` stays ``None`` (the OIB corpus carries no RIS rank); only the coarse
     role is asserted. ``None`` when the source is not an OIB corpus document.
     """
-    from aiq_agent.common.norm_registry import oib_doc_class
-    from aiq_agent.knowledge.document_classification import canonical_doc_class
+    from agent.common.norm_registry import oib_doc_class
+    from agent.knowledge.document_classification import canonical_doc_class
 
     doc_class = canonical_doc_class(entry.doc_class) or entry.doc_class
     if doc_class in _OIB_GUIDELINE_DOC_CLASSES:
@@ -375,7 +375,7 @@ def agent_authored_document_names(registry: SourceRegistry | None) -> frozenset[
     has a model-written ``reference.document`` and no registry of its own. Both
     identities a model could name a document by are included — the indexed
     filename and the display title — each reduced through
-    :func:`~aiq_agent.common.provenance.normalize_document_name` so
+    :func:`~agent.common.provenance.normalize_document_name` so
     ``"**Brandschutzkonzept Haus B.md**"`` and ``"Brandschutzkonzept Haus-B"``
     are the same name.
 
@@ -383,8 +383,8 @@ def agent_authored_document_names(registry: SourceRegistry | None) -> frozenset[
     common case and the one that must cost nothing: an empty set makes the gate
     a no-op.
     """
-    from aiq_agent.common.provenance import is_agent_author
-    from aiq_agent.common.provenance import normalize_document_name
+    from agent.common.provenance import is_agent_author
+    from agent.common.provenance import normalize_document_name
 
     names: set[str] = set()
     for entry in registry.all_sources() if registry else ():

@@ -24,8 +24,8 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi import Request
 
-from aiq_agent.common.data_source_registry import get_all_sources
-from aiq_agent.common.db_utils import redact_db_url
+from agent.common.data_source_registry import get_all_sources
+from agent.common.db_utils import redact_db_url
 
 if TYPE_CHECKING:
     from nat.builder.workflow_builder import WorkflowBuilder
@@ -362,7 +362,7 @@ def _add_housekeeping_routes(app: FastAPI, job_store, db_url: str, expiry_second
 
     @app.post("/v1/maintenance/housekeeping/base-corpus", tags=["maintenance"], include_in_schema=False)
     async def housekeeping_base_corpus(request: Request) -> dict:
-        from aiq_agent import oib_sync
+        from agent import oib_sync
 
         _require_internal_token(request)
         result = await asyncio.to_thread(oib_sync.sync, enqueue=enqueue_only)

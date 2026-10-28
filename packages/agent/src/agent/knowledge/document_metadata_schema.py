@@ -2,27 +2,27 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from aiq_agent.common.db_utils import ensure_schema
-from aiq_agent.common.db_utils import lock_schema
-from aiq_agent.common.db_utils import present_columns
-from aiq_agent.common.db_utils import present_indexes
-from aiq_agent.common.db_utils import redact_db_url
-from aiq_agent.knowledge.document_classification import LEGACY_DOC_CLASSES
+from agent.common.db_utils import ensure_schema
+from agent.common.db_utils import lock_schema
+from agent.common.db_utils import present_columns
+from agent.common.db_utils import present_indexes
+from agent.common.db_utils import redact_db_url
+from agent.knowledge.document_classification import LEGACY_DOC_CLASSES
 
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge import document_metadata_store as facade
-from aiq_agent.knowledge.document_metadata_constants import _INDEX_NAME
-from aiq_agent.knowledge.document_metadata_constants import _LEGACY_INDEX_NAME
-from aiq_agent.knowledge.document_metadata_constants import _OPTIONAL_COLUMN_TYPES
-from aiq_agent.knowledge.document_metadata_constants import _OPTIONAL_COLUMNS
-from aiq_agent.knowledge.document_metadata_constants import _RETAINED_COLUMNS
-from aiq_agent.knowledge.document_metadata_constants import LEGACY_RETAINED_TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import LEGACY_TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import RETAINED_TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import logger
+from agent.knowledge import document_metadata_store as facade
+from agent.knowledge.document_metadata_constants import _INDEX_NAME
+from agent.knowledge.document_metadata_constants import _LEGACY_INDEX_NAME
+from agent.knowledge.document_metadata_constants import _OPTIONAL_COLUMN_TYPES
+from agent.knowledge.document_metadata_constants import _OPTIONAL_COLUMNS
+from agent.knowledge.document_metadata_constants import _RETAINED_COLUMNS
+from agent.knowledge.document_metadata_constants import LEGACY_RETAINED_TABLE_NAME
+from agent.knowledge.document_metadata_constants import LEGACY_TABLE_NAME
+from agent.knowledge.document_metadata_constants import RETAINED_TABLE_NAME
+from agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge.document_metadata_constants import logger
 
 
 def _is_postgres(store) -> bool:

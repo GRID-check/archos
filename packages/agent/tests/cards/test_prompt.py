@@ -2,13 +2,13 @@
 
 import pytest
 
-from aiq_agent.cards.catalog import CHAT_ONLY_CARD_TYPES
-from aiq_agent.cards.catalog import MODEL_BACKED_CARD_TYPES
-from aiq_agent.cards.catalog import render_card_catalog
-from aiq_agent.cards.catalog import render_card_doctrine
-from aiq_agent.cards.catalog import render_card_index
-from aiq_agent.cards.prompt import build_card_generation_prompt
-from aiq_agent.cards.register import _build_tool_description
+from agent.cards.catalog import CHAT_ONLY_CARD_TYPES
+from agent.cards.catalog import MODEL_BACKED_CARD_TYPES
+from agent.cards.catalog import render_card_catalog
+from agent.cards.catalog import render_card_doctrine
+from agent.cards.catalog import render_card_index
+from agent.cards.prompt import build_card_generation_prompt
+from agent.cards.register import _build_tool_description
 
 
 class TestBuildCardGenerationPrompt:
@@ -107,7 +107,7 @@ class TestCatalogSharedAcrossSurfaces:
 
     def test_the_withheld_set_is_real(self):
         # A typo here withholds nothing and reads as protection.
-        from aiq_agent.cards.models import GridCard
+        from agent.cards.models import GridCard
 
         real = {getattr(card.model_fields["type"].annotation, "__args__", ("?",))[0] for card in GridCard.__args__}
         assert sorted(MODEL_BACKED_CARD_TYPES - real) == []

@@ -1,6 +1,6 @@
 """The project intake agent is hosted by the research worker (slice 4 of agentic project intake).
 
-Module under test: ``aiq_api.jobs.runner`` and ``aiq_api.registry``.
+Module under test: ``backend.jobs.runner`` and ``backend.registry``.
 
 The intake writes suggested values onto a project, not a report. Three things
 follow, each pinned here: the post-report model calls (grid cards, anatomy,
@@ -18,10 +18,10 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common import AgentGroup
-from aiq_api.jobs import runner
-from aiq_api.registry import AGENT_REGISTRY
-from aiq_api.registry import get_agent_config
+from agent.common import AgentGroup
+from backend.jobs import runner
+from backend.registry import AGENT_REGISTRY
+from backend.registry import get_agent_config
 
 
 class _Reportless:
@@ -108,8 +108,8 @@ async def _default_group(fn_config) -> AgentGroup:
         return MagicMock(name="llm")
 
     with (
-        patch("aiq_agent.common.get_langchain_llm", fake_llm),
-        patch("aiq_agent.common.LLMProvider", _Provider),
+        patch("agent.common.get_langchain_llm", fake_llm),
+        patch("agent.common.LLMProvider", _Provider),
     ):
         await runner._create_llm_provider(object(), fn_config)
     return captured["group"]
@@ -143,6 +143,6 @@ class TestRunnerWiring:
 class TestRegistryEntry:
     def test_the_intake_agent_is_registered_by_path(self) -> None:
         entry = get_agent_config("project_intake")
-        assert entry.class_path == "aiq_agent.agents.intake.agent.ProjectIntakeAgent"
+        assert entry.class_path == "agent.agents.intake.agent.ProjectIntakeAgent"
         assert entry.config_name == "project_intake_agent"
         assert entry.description

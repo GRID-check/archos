@@ -16,12 +16,12 @@ from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.search_scope import _resolve_target_collections
 from knowledge_layer.search_scope import restrict_scope_to_turn
 
-from aiq_agent.knowledge.base import SESSION_COLLECTION_PREFIX
-from aiq_agent.knowledge.base import TTLCleanupMixin
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import CollectionInfo
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
+from agent.knowledge.base import SESSION_COLLECTION_PREFIX
+from agent.knowledge.base import TTLCleanupMixin
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import CollectionInfo
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
 
 
 def _chunk(score: float, name: str = "doc.pdf", rank: int | None = None, collection: str | None = None) -> Chunk:
@@ -145,9 +145,9 @@ class TestRestrictScopeToTurn:
         question: attach a plan, ask whether it meets the escape-route
         requirement, and retrieval held the plan and no OIB at all.
         """
-        from aiq_agent.common.focus_file import set_turn_intent
-        from aiq_agent.common.source_kinds import Shelf
-        from aiq_agent.knowledge.scoping import ScopedCollection
+        from agent.common.focus_file import set_turn_intent
+        from agent.common.source_kinds import Shelf
+        from agent.knowledge.scoping import ScopedCollection
 
         set_turn_intent(shelf="session")
         try:
@@ -164,9 +164,9 @@ class TestRestrictScopeToTurn:
             set_turn_intent()
 
     def test_project_preset_drops_office_shelf(self):
-        from aiq_agent.common.focus_file import set_turn_intent
-        from aiq_agent.common.source_kinds import Shelf
-        from aiq_agent.knowledge.scoping import ScopedCollection
+        from agent.common.focus_file import set_turn_intent
+        from agent.common.source_kinds import Shelf
+        from agent.knowledge.scoping import ScopedCollection
 
         set_turn_intent(source_preset="project")
         try:
@@ -204,11 +204,11 @@ class TestMergeResults:
 
     def test_focused_file_does_not_pad_with_other_corpora(self, monkeypatch):
         monkeypatch.setattr(
-            "aiq_agent.common.focus_file.get_focused_file_name",
+            "agent.common.focus_file.get_focused_file_name",
             lambda: "upload.pdf",
         )
         monkeypatch.setattr(
-            "aiq_agent.common.focus_file.get_focused_shelf",
+            "agent.common.focus_file.get_focused_shelf",
             lambda: None,
         )
         r1 = _result([_chunk(0.95, "upload.pdf"), _chunk(0.9, "archiv-plan.pdf")])
@@ -474,12 +474,12 @@ class TestRelevanceFloor:
         Shipping a default would repeat MIN_SURFACE_SCORE's whole history: a value
         calibrated elsewhere, silently wrong here. 0 means "not calibrated yet".
         """
-        from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        from agent.common.retrieval_settings import get_retrieval_setting
 
         assert get_retrieval_setting("knowledge.relevance_floor_pct", 0) == 0
 
     def test_the_catalog_allows_a_floor_but_never_a_total_blackout(self) -> None:
-        from aiq_agent.common.retrieval_settings import _BOUNDS
+        from agent.common.retrieval_settings import _BOUNDS
 
         low, high = _BOUNDS["knowledge.relevance_floor_pct"]
         assert low == 0, "0 must remain expressible — it is the disabled state"

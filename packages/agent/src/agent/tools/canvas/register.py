@@ -23,7 +23,7 @@ asker's own access and the turn's signed scope, and acts as the person the
 signed envelope names (echo, never sign: ``tools/AGENTS.md``). A thread question
 is answered when the model calls ``reply``, which the prompt asks it to do; when
 it does not, the turn's answer goes into the thread once the turn has ended
-(``aiq_agent.turn.annotation_reply``), so ``reply``, ``update`` with its note and
+(``agent.turn.annotation_reply``), so ``reply``, ``update`` with its note and
 ``delete`` each note the mark they spoke in.
 
 ## What everyone sees
@@ -57,7 +57,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiq_agent.turn.annotation_reply import note_thread_post
+from agent.turn.annotation_reply import note_thread_post
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionGroup
 from nat.plugin_api import FunctionGroupBaseConfig

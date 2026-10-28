@@ -7,7 +7,7 @@ import 'server-only'
  * browser, page images, the two BIM tools and RIS. An outside agent must get
  * them too, so each is an operation here, and the MCP server lists them beside
  * the catalog's. A call goes to the backend's `POST /v1/internal/tools/{name}`
- * (`apps/backend/src/aiq_api/routes/internal_tools.py`).
+ * (`apps/backend/src/backend/routes/internal_tools.py`).
  *
  * The input schema is the one the chat model reads, generated from the Python
  * functions into `tests/fixtures/backend-tools.schema.json`

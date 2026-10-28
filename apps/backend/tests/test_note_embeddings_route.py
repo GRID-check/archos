@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.routes.note_embeddings import add_note_embedding_routes
+from backend.routes.note_embeddings import add_note_embedding_routes
 
 TOKEN = "note-embeddings-test-token"
 

@@ -1,4 +1,4 @@
-// @disk-inputs: ../../contracts/wire/v2/**, ../../packages/agent/src/aiq_agent/common/status_keys.py, ../../packages/agent/src/aiq_agent/skills/events.py, ../contracts/wire/v2, contracts/wire/v2
+// @disk-inputs: ../../contracts/wire/v2/**, ../../packages/agent/src/agent/common/status_keys.py, ../../packages/agent/src/agent/skills/events.py, ../contracts/wire/v2, contracts/wire/v2
 /**
  * @vitest-environment node
  */
@@ -90,8 +90,8 @@ describe('every key the backend can emit has words in every locale', () => {
   }
 
   const backendKeys = [
-    ...registry('packages/agent/src/aiq_agent/common/status_keys.py', 'ALL_STATUS_KEYS'),
-    ...registry('packages/agent/src/aiq_agent/skills/events.py', 'ALL_SKILL_KEYS'),
+    ...registry('packages/agent/src/agent/common/status_keys.py', 'ALL_STATUS_KEYS'),
+    ...registry('packages/agent/src/agent/skills/events.py', 'ALL_SKILL_KEYS'),
   ]
 
   test('the guard is actually reading the backend', () => {

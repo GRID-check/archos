@@ -1,7 +1,7 @@
 """The Erfassungs-Agent: Piloti sets a project up from its documents (ADR-0111).
 
 A run of agent type ``project_intake`` on the research worker
-(``aiq_api/registry.py``), started by the BFF when a finished upload batch lands
+(``backend/registry.py``), started by the BFF when a finished upload batch lands
 on a project with an intake, or by a person's click. It acts as that person
 through the signed envelope the run carries (ADR-0108), and reads only the
 project's main collection, the scope the BFF signed.
@@ -48,11 +48,11 @@ from typing import Any
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.message_utils import content_to_text
-from aiq_agent.common.prompt_utils import load_prompt
-from aiq_agent.common.prompt_utils import render_prompt_template
+from agent.common.budget_guard import RunBudgetExceededError
+from agent.common.cost_tracking import BudgetExceededError
+from agent.common.message_utils import content_to_text
+from agent.common.prompt_utils import load_prompt
+from agent.common.prompt_utils import render_prompt_template
 
 from . import client
 from .models import IntakeAgentState
@@ -189,7 +189,7 @@ class ProjectIntakeAgent:
         self._job_id = job_id
 
     def _model(self) -> Any:
-        from aiq_agent.common import LLMRole
+        from agent.common import LLMRole
 
         if self.llm_provider is None:
             return None
@@ -273,8 +273,8 @@ class ProjectIntakeAgent:
 
     async def run(self, state: IntakeAgentState | dict[str, Any]) -> IntakeAgentState:
         """Read the project, record what its documents state, and finish. Never raises but on cancellation."""
-        from aiq_agent.common.grounding_block import begin_grounding_capture
-        from aiq_agent.common.grounding_block import end_grounding_capture
+        from agent.common.grounding_block import begin_grounding_capture
+        from agent.common.grounding_block import end_grounding_capture
 
         if not isinstance(state, IntakeAgentState):
             state = IntakeAgentState.model_validate(state)
@@ -313,7 +313,7 @@ def _outcome(ended: str, session: IntakeSession, documents_read: list[str]) -> d
 
 def _record_trace(outcome: dict[str, Any]) -> None:
     """The run's facts as trace metadata on its ``research-job`` trace (ADR-0089). Never raises."""
-    from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
+    from agent.observability.langfuse_trace_attributes import record_trace_metadata
 
     refusals = ",".join(f"{reason}={count}" for reason, count in sorted(outcome["refusals"].items()))
     record_trace_metadata(

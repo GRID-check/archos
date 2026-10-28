@@ -34,13 +34,13 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.common.canned_replies import NON_ANSWER_PREFIXES
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.stages.registry import register_stage
-from aiq_agent.stages.spec import GateDecision
-from aiq_agent.stages.spec import StageContext
-from aiq_agent.stages.spec import StageSpec
-from aiq_agent.stages.spec import TurnFacts
+from agent.common.canned_replies import NON_ANSWER_PREFIXES
+from agent.common.model_overrides import AgentGroup
+from agent.stages.registry import register_stage
+from agent.stages.spec import GateDecision
+from agent.stages.spec import StageContext
+from agent.stages.spec import StageSpec
+from agent.stages.spec import TurnFacts
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +169,7 @@ async def _handler(ctx: StageContext) -> dict[str, Any] | None:
     """One reflection pass. ``None`` when the turn established nothing durable —
     the common, correct outcome, recorded as ``empty`` rather than invented into
     a payload."""
-    from aiq_agent.memory.reflection import run_memory_reflection
+    from agent.memory.reflection import run_memory_reflection
 
     facts = ctx.facts
     if facts.drew_on_other_projects:

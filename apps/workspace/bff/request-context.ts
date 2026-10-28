@@ -1,7 +1,7 @@
 /**
  * GridRequestContext — the single typed builder for every `X-Grid-*`
  * cross-cutting context header the BFF forwards to the Python backend
- * (aiq_agent) on a submission path.
+ * (agent) on a submission path.
  *
  * Backlog T3-9 (2026-07-16 audit): each submission path used to hand-roll its
  * own subset of these headers — the WS-upgrade block in `server.js`, the
@@ -9,7 +9,7 @@
  * workflows submission path all independently remembered (or, in one
  * audited case, forgot) to forward `x-grid-model-overrides`. This module is
  * the wire contract: build the input once, get back every header with the
- * exact encoding the Python side (`packages/agent/src/aiq_agent/project_context.py`,
+ * exact encoding the Python side (`packages/agent/src/agent/project_context.py`,
  * `common/model_overrides.py`, `common/cost_tracking.py`,
  * `common/data_sources.py`, `knowledge/scoping.py`) expects. A path that
  * forgets a field now gets it via `buildGridRequestContextHeaders`; a path
@@ -18,7 +18,7 @@
  *
  * Header inventory (every `x-grid-*` header found via
  * `grep -rniE "x-grid-[a-z-]+"` across `apps/workspace/src`, `server.js`, and
- * `packages/agent/src/aiq_agent` as of this audit):
+ * `packages/agent/src/agent` as of this audit):
  *
  * | Header                              | Wire encoding                          | Source of truth (pre-refactor)                          |
  * |--------------------------------------|-----------------------------------------|----------------------------------------------------------|
@@ -48,7 +48,7 @@
  * had an individual `X-Grid-*` header to dual-write, so
  * `buildGridRequestContextHeaders` below has no case for it — only
  * `buildGridRequestContextEnvelopePayload` does. See
- * `aiq_agent.project_context`'s module docstring for the matching Python-side
+ * `agent.project_context`'s module docstring for the matching Python-side
  * choice (envelope-only parsing, no legacy individual-header fallback).
  */
 
@@ -238,7 +238,7 @@ export const GRID_HEADER_NAMES = {
    * the internal token — see the module docstring), sent ALONGSIDE the
    * individual headers (dual-write; legacy removal is a later cleanup). See
    * `buildGridRequestContextEnvelope` below for the exact payload shape and
-   * `aiq_agent.project_context.GridRequestContext.from_envelope` for the
+   * `agent.project_context.GridRequestContext.from_envelope` for the
    * Python-side verify+parse counterpart.
    */
   REQUEST_CONTEXT: 'X-Grid-Request-Context',
@@ -343,7 +343,7 @@ export function buildGridRequestContextHeaders(input: GridRequestContextInput): 
 // plain CommonJS and cannot import this TS module) reduces to calling
 // `buildGridRequestContextEnvelope`/`buildGridRequestContextWireHeaders` so
 // the wire format can never drift between paths. The backend
-// (`aiq_agent.project_context.GridRequestContext.from_envelope`) verifies the
+// (`agent.project_context.GridRequestContext.from_envelope`) verifies the
 // signature with `hmac.compare_digest` and treats an invalid/missing
 // signature as an ABSENT envelope (logged as a WARNING tamper signal), not
 // an error — callers fall back to the individual headers during the DUAL-WRITE
@@ -556,7 +556,7 @@ function scopeNames(raw: unknown): string[] {
  * ## Why a BFF route verifies something the BFF signed
  *
  * Until now the envelope travelled one way: the BFF minted it and the Python
- * tier verified it (`aiq_agent.project_context.GridRequestContext.from_envelope`).
+ * tier verified it (`agent.project_context.GridRequestContext.from_envelope`).
  * The agent's document route is the first hop in the other direction, and the
  * problem it solves is the one ADR-0051 named for scheduled work: **an internal
  * route carries a service token and no user.** `INTERNAL_API_TOKEN`

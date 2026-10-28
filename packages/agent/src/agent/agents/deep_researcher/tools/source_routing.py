@@ -12,9 +12,9 @@ from langchain_core.tools import tool
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.common import filter_tools_by_sources
-from aiq_agent.common import get_source_id_for_tool
-from aiq_agent.common.data_source_registry import get_source
+from agent.common import filter_tools_by_sources
+from agent.common import get_source_id_for_tool
+from agent.common.data_source_registry import get_source
 
 
 class DomainCatalogEntry(BaseModel):

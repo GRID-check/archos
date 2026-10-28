@@ -30,7 +30,7 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.stages import iter_stages
+from agent.stages import iter_stages
 
 _MIRROR = Path("apps/workspace/bff/workos/feature-flags.ts")
 

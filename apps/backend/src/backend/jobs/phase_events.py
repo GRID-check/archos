@@ -6,16 +6,16 @@ from the subagent dispatches the orchestrator already makes through the
 ``task`` tool (DeepAgents' subagent dispatcher --
 ``deepagents.middleware.subagents._build_task_tool``) and the
 ``run_research_batch`` tool (the orchestrator-only batched-research tool
-built in ``aiq_agent.agents.deep_researcher.tools.research``) -- WITHOUT
+built in ``agent.agents.deep_researcher.tools.research``) -- WITHOUT
 importing or modifying the deep_researcher package itself. The subagent name
 strings ("planner-agent", "writer-agent", ...) are a stable, documented
-contract owned by ``aiq_agent.agents.deep_researcher.factory`` (PLANNER_AGENT,
+contract owned by ``agent.agents.deep_researcher.factory`` (PLANNER_AGENT,
 WRITER_AGENT, ...); they are duplicated here rather than imported so this
 module never needs to import the (off-limits-to-edit) deep_researcher
 package.
 
 Detection hook: ``on_tool_start``/``on_tool_end`` on the standard LangChain
-callback stack already assembled in ``aiq_api.jobs.runner`` for every
+callback stack already assembled in ``backend.jobs.runner`` for every
 deep-research job (the same stack ``AgentEventCallback`` and
 ``VerboseTraceCallback`` use). LangChain's ``ToolCallbackManager`` forwards
 the tool's original (pre-string-formatting) argument dict as the ``inputs``
@@ -34,7 +34,7 @@ that ``task`` call's ``on_tool_end``.
 
 Persisted as ``job.phase`` job_events rows -- ``{"type": "job.phase", "data":
 {"phase": ..., ...}}`` -- matching the shape of the other job.* lifecycle
-events already emitted directly in ``aiq_api.jobs.runner``
+events already emitted directly in ``backend.jobs.runner``
 (job.heartbeat, job.error, job.cancelled, job.cancellation_requested) so the
 existing SSE surface streams them to the UI unchanged.
 """
@@ -48,7 +48,7 @@ from langchain_core.callbacks import BaseCallbackHandler
 
 logger = logging.getLogger(__name__)
 
-# Stable subagent-name contract from aiq_agent.agents.deep_researcher.factory
+# Stable subagent-name contract from agent.agents.deep_researcher.factory
 # (PLANNER_AGENT / WRITER_AGENT). Duplicated rather than imported -- see
 # module docstring.
 PLANNER_AGENT_NAME = "planner-agent"
@@ -70,7 +70,7 @@ def emit_phase_event(event_store: Any, phase: str, **extra: Any) -> None:
     """Store one ``job.phase`` job_events row.
 
     Best-effort like the other job.* lifecycle events written directly in
-    ``aiq_api.jobs.runner`` -- a phase-event failure must never fail or even
+    ``backend.jobs.runner`` -- a phase-event failure must never fail or even
     slow down the underlying research job.
     """
     if event_store is None:

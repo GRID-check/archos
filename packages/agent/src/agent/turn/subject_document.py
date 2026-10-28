@@ -37,7 +37,7 @@ Abschnitt 3" without a hop: the file is there, ``edit_file`` works on it, and
 ``file_draft`` files it back.
 
 **Which is exactly why the filing record is stamped here.** The file is written
-with the four :data:`~aiq_agent.tools.documents.draft_store.FILING_KEYS` of the
+with the four :data:`~agent.tools.documents.draft_store.FILING_KEYS` of the
 version it came from, so a later ``file_draft`` on that path takes the ``update``
 branch and REPLACES this document's open version. Without them the tool would
 see an unfiled draft, call ``create``, and the conversation would end with two
@@ -70,26 +70,26 @@ import asyncio
 import logging
 import unicodedata
 
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common.retrieval_status import SUBJECT_ABSENT
-from aiq_agent.common.retrieval_status import SUBJECT_EMPTY
-from aiq_agent.common.retrieval_status import SUBJECT_NOT_STORED
-from aiq_agent.common.retrieval_status import SUBJECT_REFUSED
-from aiq_agent.common.retrieval_status import SUBJECT_UNREACHABLE
-from aiq_agent.common.retrieval_status import subject_document_step
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.knowledge.restricted_use import current_restricted_use
-from aiq_agent.tools.documents.draft_store import DRAFT_ROOT
-from aiq_agent.tools.documents.draft_store import FILED_DOCUMENT_KEY
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.tools.documents.draft_store import DraftUsage
-from aiq_agent.tools.documents.draft_store import filing_record
-from aiq_agent.tools.documents.draft_store import get_draft_backend
-from aiq_agent.tools.documents.filing import FilingError
-from aiq_agent.tools.documents.filing import get_document_version_content
-from aiq_agent.turn.payload import SubjectVersion
-from aiq_agent.turn.response import turn_answer_message_id
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.common.retrieval_status import SUBJECT_ABSENT
+from agent.common.retrieval_status import SUBJECT_EMPTY
+from agent.common.retrieval_status import SUBJECT_NOT_STORED
+from agent.common.retrieval_status import SUBJECT_REFUSED
+from agent.common.retrieval_status import SUBJECT_UNREACHABLE
+from agent.common.retrieval_status import subject_document_step
+from agent.common.wire_v2 import StatusStep
+from agent.knowledge.restricted_use import current_restricted_use
+from agent.tools.documents.draft_store import DRAFT_ROOT
+from agent.tools.documents.draft_store import FILED_DOCUMENT_KEY
+from agent.tools.documents.draft_store import DraftBackend
+from agent.tools.documents.draft_store import DraftUsage
+from agent.tools.documents.draft_store import filing_record
+from agent.tools.documents.draft_store import get_draft_backend
+from agent.tools.documents.filing import FilingError
+from agent.tools.documents.filing import get_document_version_content
+from agent.turn.payload import SubjectVersion
+from agent.turn.response import turn_answer_message_id
 
 logger = logging.getLogger(__name__)
 

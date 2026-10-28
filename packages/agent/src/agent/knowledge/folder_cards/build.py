@@ -26,9 +26,9 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import ConfigDict
 
-from aiq_agent.knowledge.folder_cards.inputs import MAX_LISTED_DOCUMENTS
-from aiq_agent.knowledge.folder_cards.inputs import PROMPT_VERSION
-from aiq_agent.knowledge.folder_cards.inputs import FolderInputs
+from agent.knowledge.folder_cards.inputs import MAX_LISTED_DOCUMENTS
+from agent.knowledge.folder_cards.inputs import PROMPT_VERSION
+from agent.knowledge.folder_cards.inputs import FolderInputs
 
 logger = logging.getLogger(__name__)
 
@@ -259,11 +259,11 @@ async def generate(
     from langchain_core.messages import HumanMessage
     from langchain_core.messages import SystemMessage
 
-    from aiq_agent.common.json_utils import extract_json
-    from aiq_agent.common.llm_factory import strict_json_response_format
-    from aiq_agent.common.message_utils import content_to_text
-    from aiq_agent.knowledge.permit_extraction import llm_model_name
-    from aiq_agent.observability.direct_trace import observed_generation
+    from agent.common.json_utils import extract_json
+    from agent.common.llm_factory import strict_json_response_format
+    from agent.common.message_utils import content_to_text
+    from agent.knowledge.permit_extraction import llm_model_name
+    from agent.observability.direct_trace import observed_generation
 
     system = SYSTEM_PROMPT + (INCREMENTAL_NOTE if mode == "incremental" else "")
     prompt = prompt if prompt is not None else user_prompt(inputs)

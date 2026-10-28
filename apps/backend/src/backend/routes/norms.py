@@ -1,6 +1,6 @@
 """Admin CRUD routes for the curated norm registry.
 
-Follows the factory pattern of :mod:`aiq_api.routes.oib` (``add_norm_routes`` +
+Follows the factory pattern of :mod:`backend.routes.oib` (``add_norm_routes`` +
 the ``X-Admin-Token`` guard). Three endpoints under ``/v1/admin/norms``:
 
 - ``GET``    — read the current registry (store first, YAML seed fallback).
@@ -23,10 +23,10 @@ from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.common import norm_registry
-from aiq_agent.common.norm_registry import BUNDESLAENDER
-from aiq_agent.common.norm_registry import KNOWN_APPLICATIONS
-from aiq_agent.common.norm_registry import NormsFile
+from agent.common import norm_registry
+from agent.common.norm_registry import BUNDESLAENDER
+from agent.common.norm_registry import KNOWN_APPLICATIONS
+from agent.common.norm_registry import NormsFile
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ def add_norm_routes(router: APIRouter) -> None:
         summary="Read the curated norm registry (admin)",
     )
     async def get_norms(_: None = Depends(_require_admin_token)) -> dict:
-        from aiq_agent.knowledge.norm_store import get_norm_store
+        from agent.knowledge.norm_store import get_norm_store
 
         store = get_norm_store()
         if store is not None:
@@ -129,7 +129,7 @@ def add_norm_routes(router: APIRouter) -> None:
         summary="Replace the curated norm registry (admin)",
     )
     async def put_norms(body: NormsPutRequest, _: None = Depends(_require_admin_token)) -> dict:
-        from aiq_agent.knowledge.norm_store import get_norm_store
+        from agent.knowledge.norm_store import get_norm_store
 
         # NormsFile schema validation already ran (FastAPI -> 422 with details).
         # Second gate: entries norm_registry would silently drop must be an

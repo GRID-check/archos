@@ -8,8 +8,8 @@
  * the headless socket's `unavailable` reasons (`lib/turns/headless-turn.ts`),
  * the turn's outcome (`lib/turns/outcome.ts`, `DEFAULT_FAILURE_REASON`), and
  * the agent's refusals and `RUN_ERROR` messages (`common/turn_admission.py`,
- * `common/cost_tracking.py`, `aiq_api/chat_socket.py` `_error_for` and its turn
- * fence, `aiq_api/jobs/submit.py`). A new writer adds its string here.
+ * `common/cost_tracking.py`, `backend/chat_socket.py` `_error_for` and its turn
+ * fence, `backend/jobs/submit.py`). A new writer adds its string here.
  */
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_FAILURE_REASON } from '@/lib/turns/outcome'

@@ -11,11 +11,11 @@ from langchain_core.tools import StructuredTool
 from langchain_core.tools import tool
 from pydantic import BaseModel
 
-from aiq_agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
-from aiq_agent.agents.deep_researcher.tools.source_tool_batching import SourceToolConcurrencyLimiter
-from aiq_agent.agents.deep_researcher.tools.source_tool_batching import SourceToolSlotTimeout
-from aiq_agent.agents.deep_researcher.tools.source_tool_batching import _make_throttled_source_tool
-from aiq_agent.agents.deep_researcher.tools.source_tool_batching import adapt_source_tools_for_research
+from agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
+from agent.agents.deep_researcher.tools.source_tool_batching import SourceToolConcurrencyLimiter
+from agent.agents.deep_researcher.tools.source_tool_batching import SourceToolSlotTimeout
+from agent.agents.deep_researcher.tools.source_tool_batching import _make_throttled_source_tool
+from agent.agents.deep_researcher.tools.source_tool_batching import adapt_source_tools_for_research
 
 
 @pytest.mark.asyncio

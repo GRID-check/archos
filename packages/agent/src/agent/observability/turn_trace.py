@@ -16,7 +16,7 @@ Two halves close that, and both live here so they cannot drift apart:
   size of a UUID. :func:`trace_id_for_message` is that identity; the chat
   socket binds it with :func:`pinned_trace` before the run starts, so the turn's
   spans, and the research job it hands off (which inherits the parent's trace,
-  ``aiq_api.jobs.submit``), land in the trace named by the answer.
+  ``backend.jobs.submit``), land in the trace named by the answer.
 * **The persisted answer row says which trace it is in**, under
   :data:`TRACE_ID_METADATA_KEY`, as the 32-hex-digit spelling Langfuse shows in
   its URLs. The chat socket writes the pinned id; the jobs runner writes the id

@@ -2,7 +2,7 @@
 
 ``look`` shows a page to the model inside a turn: it is bound to
 the turn's scope and its per-turn image budget, and it answers in content
-blocks. The Fassung comparison (``aiq_api.routes.revision_compare``) needs the
+blocks. The Fassung comparison (``backend.routes.revision_compare``) needs the
 same bytes outside a turn, so this is the same three steps without the tool
 around them: ask the BFF where the document lives (``GET
 /api/internal/document-file``), fetch the object from SeaweedFS, render the page

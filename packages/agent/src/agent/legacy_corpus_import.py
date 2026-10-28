@@ -13,8 +13,8 @@ and runs as a one-shot service on Compose; it is safe to run again: a file
 already stored with the same bytes is skipped. Once every Compose install has
 run it, delete this module with its Compose service.
 
-    python -m aiq_agent.legacy_corpus_import /legacy               # a pod mounting the old volume
-    python -m aiq_agent.legacy_corpus_import /legacy/data /legacy/oib  # Compose: the volume and the host's data/oib
+    python -m agent.legacy_corpus_import /legacy               # a pod mounting the old volume
+    python -m agent.legacy_corpus_import /legacy/data /legacy/oib  # Compose: the volume and the host's data/oib
 
 Compose bind-mounted the operator PDFs from the host over ``/app/data/oib``, so
 there they live beside the volume rather than in it; the second argument names
@@ -29,7 +29,7 @@ import logging
 import sys
 from pathlib import Path
 
-from aiq_agent import corpus_store
+from agent import corpus_store
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ def import_legacy_corpus(root: Path, operator_dir: Path | None = None) -> dict[s
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if len(args) not in (1, 2):
-        print("usage: python -m aiq_agent.legacy_corpus_import <old /app/data> [operator oib dir]", file=sys.stderr)
+        print("usage: python -m agent.legacy_corpus_import <old /app/data> [operator oib dir]", file=sys.stderr)
         return 2
     logging.basicConfig(level=logging.INFO)
     counts = import_legacy_corpus(Path(args[0]), Path(args[1]) if len(args) == 2 else None)

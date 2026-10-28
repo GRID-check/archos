@@ -43,9 +43,9 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.observability.direct_trace import observed_generation
+from agent.common import provider_limiter
+from agent.common.openrouter import limited_async_http_client
+from agent.observability.direct_trace import observed_generation
 
 from ._llm_json import extract_json_object
 from ._llm_json import message_content
@@ -70,7 +70,7 @@ SCORE_SLOT = "folder-proposals"
 # The BFF waits at most 240 s for this endpoint, inside a 300 s job slice. Worst case with these numbers:
 # 10 chunks at MAP_CONCURRENCY 5 are 2 rounds of 45 s, the reduce 45 s, the verification 60 s: 195 s.
 # The provider slot wait is not in that sum: an interactive call waits as long as the pool stays full
-# (aiq_agent.common.openrouter._slot_wait), so a saturated fleet can still outlast the BFF's 240 s.
+# (agent.common.openrouter._slot_wait), so a saturated fleet can still outlast the BFF's 240 s.
 MAX_DOCUMENTS = 1000
 MAP_CHUNK = 100
 MAP_CONCURRENCY = 5
@@ -400,8 +400,8 @@ async def _verify(
     documents: Sequence[FolderProposalDocument], proposals: Sequence[FolderProposal], organization_id: str | None
 ) -> None:
     """Jev's p(the assigned folder) per document, set on each proposal's ``confidences``. Never drops one (ADR-0064)."""
-    from aiq_agent.common.decisions import choice
-    from aiq_agent.common.decisions import decide_many
+    from agent.common.decisions import choice
+    from agent.common.decisions import decide_many
 
     if not proposals or len(proposals) > MAX_SCORED_FOLDERS:
         return

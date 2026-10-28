@@ -59,11 +59,11 @@ from pydantic import BeforeValidator
 from pydantic import ConfigDict
 from pydantic import Field
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.decisions import Decision
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.common.source_kinds import LEGACY_SHELF_VALUES
-from aiq_agent.observability.direct_trace import observed_generation
+from agent.common import provider_limiter
+from agent.common.decisions import Decision
+from agent.common.openrouter import limited_async_http_client
+from agent.common.source_kinds import LEGACY_SHELF_VALUES
+from agent.observability.direct_trace import observed_generation
 
 from ._llm_json import extract_json_object
 from ._llm_json import message_content
@@ -320,8 +320,8 @@ async def score_moves(
     many folders to offer as options leaves every confidence ``None`` and the
     moves as they were.
     """
-    from aiq_agent.common.decisions import choice
-    from aiq_agent.common.decisions import decide_many
+    from agent.common.decisions import choice
+    from agent.common.decisions import decide_many
 
     candidates = _candidate_folders(request)
     if not moves or len(candidates) > MAX_SCORED_FOLDERS:

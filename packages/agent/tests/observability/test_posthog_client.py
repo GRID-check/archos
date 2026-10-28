@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.observability import posthog_client
+from agent.observability import posthog_client
 
 
 class FakePosthog:
@@ -98,7 +98,7 @@ def test_builds_one_client_with_the_promised_options(configured_env: None, fake_
         "enable_exception_autocapture": False,
         "before_send": posthog_client._scrub_event,
         "super_properties": {"environment": "staging", "service": "grid-agent-worker"},
-        "in_app_modules": ["aiq_agent", "aiq_api"],
+        "in_app_modules": ["agent", "backend"],
     }
 
 
@@ -148,10 +148,10 @@ def test_the_deploys_release_id_links_every_event(sent: list[dict[str, Any]], mo
 
 
 def test_an_exception_without_a_user_mints_no_person_and_marks_our_frames(sent: list[dict[str, Any]]) -> None:
-    from aiq_agent.observability import trace_context
+    from agent.observability import trace_context
 
     try:
-        trace_context.langfuse_environment(raw=42)  # type: ignore[arg-type] - raises inside aiq_agent
+        trace_context.langfuse_environment(raw=42)  # type: ignore[arg-type] - raises inside agent
     except AttributeError as error:
         assert posthog_client.capture_exception(error, properties={"logger": "x"}) is True
 

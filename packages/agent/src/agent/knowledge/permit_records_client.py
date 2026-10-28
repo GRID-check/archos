@@ -17,7 +17,7 @@ import os
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from aiq_agent.knowledge.permit_extraction import PermitRecord
+    from agent.knowledge.permit_extraction import PermitRecord
 
 logger = logging.getLogger(__name__)
 

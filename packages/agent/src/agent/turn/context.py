@@ -17,25 +17,25 @@ from dataclasses import field
 from dataclasses import replace
 from typing import Any
 
-from aiq_agent.auth import get_current_principal
-from aiq_agent.common.platform_lessons import LessonsResolution
-from aiq_agent.common.platform_lessons import resolve_platform_lessons
-from aiq_agent.knowledge.project_memory import fetch_memory_digest
-from aiq_agent.knowledge.restricted_collections import restricted_collections_in
-from aiq_agent.knowledge.restricted_use import current_cross_project_turn
-from aiq_agent.knowledge.restricted_use import current_restricted_use
-from aiq_agent.knowledge.restricted_use import drew_on_other_projects
-from aiq_agent.observability.langfuse_trace_attributes import record_lessons
-from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.project_context import compose_project_context
-from aiq_agent.project_context import get_user_message_id_from_context
-from aiq_agent.stages import TurnFacts
-from aiq_agent.stages.flags import TurnFlags
-from aiq_agent.stages.flags import resolve_turn_flags
-from aiq_agent.turn.context_client import ContextBlocks
-from aiq_agent.turn.context_client import fetch_turn_context
-from aiq_agent.turn.context_client import office_convention_lines
+from agent.auth import get_current_principal
+from agent.common.platform_lessons import LessonsResolution
+from agent.common.platform_lessons import resolve_platform_lessons
+from agent.knowledge.project_memory import fetch_memory_digest
+from agent.knowledge.restricted_collections import restricted_collections_in
+from agent.knowledge.restricted_use import current_cross_project_turn
+from agent.knowledge.restricted_use import current_restricted_use
+from agent.knowledge.restricted_use import drew_on_other_projects
+from agent.observability.langfuse_trace_attributes import record_lessons
+from agent.observability.langfuse_trace_attributes import record_trace_metadata
+from agent.project_context import GridRequestContext
+from agent.project_context import compose_project_context
+from agent.project_context import get_user_message_id_from_context
+from agent.stages import TurnFacts
+from agent.stages.flags import TurnFlags
+from agent.stages.flags import resolve_turn_flags
+from agent.turn.context_client import ContextBlocks
+from agent.turn.context_client import fetch_turn_context
+from agent.turn.context_client import office_convention_lines
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class TurnContext:
     #: Whether this turn may OFFER a deep-research run. False withdraws the
     #: hand-off before it is proposed, so the reader is never shown a plan whose
     #: approval the job queue would refuse. True on every failure path: see
-    #: :class:`aiq_agent.stages.flags.TurnFlags`.
+    #: :class:`agent.stages.flags.TurnFlags`.
     deep_research_allowed: bool = True
     #: The office's reference projects (closed, most like this one), one line
     #: each: rendered as ``<reference_projects>`` so the agent looks there unasked
@@ -71,7 +71,7 @@ class TurnContext:
     #: with every status. Rendered when the workspace tools are bound.
     workspace: str | None = None
     #: Whether this turn may hand work over (`create_task`). Its own flag, see
-    #: :class:`aiq_agent.stages.flags.TurnFlags`.
+    #: :class:`agent.stages.flags.TurnFlags`.
     tasks_allowed: bool = True
     #: The restricted-folder collections this turn may draw on (ADR-0087,
     #: ADR-0088): those of its VERIFIED scope that the asker and everyone the
@@ -171,7 +171,7 @@ def signed_restricted_collections(request: GridRequestContext) -> list[str]:
     What the live digest may serve restricted memory for. The BFF puts them in a
     scope only for an interactive chat turn of a session cleared for them; of
     those, the turn keeps the ones it may draw on with the conversation's
-    current audience (:func:`aiq_agent.knowledge.restricted_use.begin_restricted_use`).
+    current audience (:func:`agent.knowledge.restricted_use.begin_restricted_use`).
     A scope read from the unsigned header fallback (no envelope) gets none,
     because nothing vouches for it.
     """

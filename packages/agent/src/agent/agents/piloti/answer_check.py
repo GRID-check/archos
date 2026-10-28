@@ -16,19 +16,19 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import is_look_place
-from aiq_agent.citations.quote_matching import MIN_QUOTE_LEN
-from aiq_agent.citations.quote_matching import UnverifiedQuote
-from aiq_agent.citations.quote_verification import _answer_body_before_sources
-from aiq_agent.citations.quote_verification import _quoted_spans
-from aiq_agent.common import content_to_text
-from aiq_agent.common.claim_judge import Evidence
-from aiq_agent.common.claim_judge import JudgeFn
-from aiq_agent.common.claim_judge import Passage
-from aiq_agent.common.workspace_records import records_from_messages
-from aiq_agent.observability.langfuse_scores import answer_check_scores
-from aiq_agent.observability.langfuse_scores import emit_scores
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import is_look_place
+from agent.citations.quote_matching import MIN_QUOTE_LEN
+from agent.citations.quote_matching import UnverifiedQuote
+from agent.citations.quote_verification import _answer_body_before_sources
+from agent.citations.quote_verification import _quoted_spans
+from agent.common import content_to_text
+from agent.common.claim_judge import Evidence
+from agent.common.claim_judge import JudgeFn
+from agent.common.claim_judge import Passage
+from agent.common.workspace_records import records_from_messages
+from agent.observability.langfuse_scores import answer_check_scores
+from agent.observability.langfuse_scores import emit_scores
 
 
 @dataclass(frozen=True)
@@ -56,11 +56,11 @@ class Answered:
 
 def turn_check(state: Any, llm: Any) -> TurnCheck:
     """The turn's check: its judge on the org's follow-ups model (override, BYOK), and the turn context."""
-    from aiq_agent.common.claim_judge import llm_judge
-    from aiq_agent.common.model_overrides import AgentGroup
-    from aiq_agent.knowledge.inventory import in_scope_shelves_from_context
-    from aiq_agent.knowledge.inventory import render_inventory_block
-    from aiq_agent.stages.runner import resolve_group_llm
+    from agent.common.claim_judge import llm_judge
+    from agent.common.model_overrides import AgentGroup
+    from agent.knowledge.inventory import in_scope_shelves_from_context
+    from agent.knowledge.inventory import render_inventory_block
+    from agent.stages.runner import resolve_group_llm
 
     resolved = resolve_group_llm(llm, AgentGroup.FOLLOW_UPS, label="answer check")
     documents = [doc.model_dump() for doc in (getattr(state, "available_documents", None) or [])]
@@ -101,7 +101,7 @@ def evidence_for(answered: Answered, context: Sequence[str] = ()) -> Evidence:
     readings, a cited place's among them; and which quotations the server's
     quote check found in their passage.
     """
-    from aiq_agent.agents.piloti.answer_pipeline import prose_without_references
+    from agent.agents.piloti.answer_pipeline import prose_without_references
 
     passages = _passages(answered)
     not_found = [quote.quote for quote in answered.unverified_quotes]

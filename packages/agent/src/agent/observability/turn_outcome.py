@@ -34,8 +34,8 @@ import logging
 from collections import Counter
 from typing import Any
 
-from aiq_agent.observability.trace_context import OBSERVATION_LEVEL_ATTRIBUTE
-from aiq_agent.observability.trace_context import OBSERVATION_STATUS_MESSAGE_ATTRIBUTE
+from agent.observability.trace_context import OBSERVATION_LEVEL_ATTRIBUTE
+from agent.observability.trace_context import OBSERVATION_STATUS_MESSAGE_ATTRIBUTE
 
 logger = logging.getLogger(__name__)
 

@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.answer_dialect import BUDGET
-from aiq_agent.common.answer_dialect import DIRECTIVE_BLOCKS
-from aiq_agent.common.answer_dialect import PROJECT_KEYS
-from aiq_agent.common.answer_dialect import validate_dialect
+from agent.common.answer_dialect import BUDGET
+from agent.common.answer_dialect import DIRECTIVE_BLOCKS
+from agent.common.answer_dialect import PROJECT_KEYS
+from agent.common.answer_dialect import validate_dialect
 
 CHECK = (
     ":::check\n| Anforderung | Nachweis | Status | Fundstelle |\n|---|---|---|---|\n"

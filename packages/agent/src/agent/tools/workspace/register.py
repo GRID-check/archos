@@ -25,14 +25,14 @@ import re
 from pathlib import Path
 from typing import Any
 
-from aiq_agent import project_context
-from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.action_rows import ActionRow
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.turn_status import record_lane_hit
-from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
-from aiq_agent.observability.retrieval_trace import emit_step_span
-from aiq_agent.turn.response import turn_answer_message_id
+from agent import project_context
+from agent.common.action_outcome import ActionOutcome
+from agent.common.action_rows import ActionRow
+from agent.common.bff_http import SignedEnvelope
+from agent.common.turn_status import record_lane_hit
+from agent.observability.langfuse_trace_attributes import add_trace_tag
+from agent.observability.retrieval_trace import emit_step_span
+from agent.turn.response import turn_answer_message_id
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionGroup
 from nat.plugin_api import FunctionGroupBaseConfig

@@ -3,7 +3,7 @@
 A turn asked from a thread (a person writing @Piloti there, answering Piloti's
 question, or delegating the mark to Piloti, ADR-0106) carries
 ``reply_in_thread`` and the mark's id in ``focus_region.annotation_id``
-(:func:`aiq_agent.turn.payload.thread_reply_requested`). The prompt asks the
+(:func:`agent.turn.payload.thread_reply_requested`). The prompt asks the
 model to answer with ``canvas__reply``. Nothing guarantees that it does, and a
 thread that asked Piloti and got nothing back reads as Piloti ignoring the
 person, while the answer sits in a chat nobody opened.
@@ -11,7 +11,7 @@ person, while the answer sits in a chat nobody opened.
 So the turn keeps a record, :class:`ThreadReply`, and the chat socket posts the
 turn's answer into the thread when the model did not (:func:`post_fallback_reply`).
 
-**Per-turn state in the ContextVar pattern** (``packages/agent/src/aiq_agent/AGENTS.md``): the
+**Per-turn state in the ContextVar pattern** (``packages/agent/src/agent/AGENTS.md``): the
 chat socket builds one record per turn (:meth:`ThreadReply.requested_by`), binds
 it before the workflow runs (:func:`bind_thread_reply`), and the canvas tools,
 which run in copies of that context, mark the one object
@@ -37,7 +37,7 @@ the last one's reply.
 uses (``POST /api/internal/document-annotations``, op ``reply``), with the
 turn's signed envelope forwarded unchanged and the answer's id as
 ``answerMessageId``, so the BFF acts as the person who asked, exactly as it
-does for the tool (``packages/agent/src/aiq_agent/tools/AGENTS.md``).
+does for the tool (``packages/agent/src/agent/tools/AGENTS.md``).
 """
 
 from __future__ import annotations
@@ -50,18 +50,18 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import UserMessage
-from aiq_agent.observability.langfuse_scores import emit_scores
-from aiq_agent.observability.langfuse_scores import thread_reply_scores
-from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
-from aiq_agent.tools.canvas.client import CanvasRequestError
-from aiq_agent.tools.canvas.client import post_canvas
-from aiq_agent.tools.canvas.marks import MAX_BODY
-from aiq_agent.tools.canvas.policy import shared_write_refusal
-from aiq_agent.tools.canvas.target import is_uuid
-from aiq_agent.turn.payload import thread_reply_requested
+from agent.common.bff_http import SignedEnvelope
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import UserMessage
+from agent.observability.langfuse_scores import emit_scores
+from agent.observability.langfuse_scores import thread_reply_scores
+from agent.observability.langfuse_trace_attributes import record_trace_metadata
+from agent.tools.canvas.client import CanvasRequestError
+from agent.tools.canvas.client import post_canvas
+from agent.tools.canvas.marks import MAX_BODY
+from agent.tools.canvas.policy import shared_write_refusal
+from agent.tools.canvas.target import is_uuid
+from agent.turn.payload import thread_reply_requested
 
 logger = logging.getLogger(__name__)
 

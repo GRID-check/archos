@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from sqlalchemy import text
 
-from aiq_agent.common.db_utils import present_columns
+from agent.common.db_utils import present_columns
 
 
 def upgrade_columns(conn, table: str, wanted: dict[str, str], *, postgres: bool) -> None:

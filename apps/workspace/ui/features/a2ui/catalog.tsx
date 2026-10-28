@@ -185,7 +185,7 @@ export function pilotiCatalogApi(): Catalog<ComponentApi> {
 
 /**
  * Card types that may not be a leaf of a surface. Mirrors
- * `SURFACE_EXCLUDED_LEAVES` in `packages/agent/src/aiq_agent/cards/models.py`, which refuses
+ * `SURFACE_EXCLUDED_LEAVES` in `packages/agent/src/agent/cards/models.py`, which refuses
  * them when the surface is written: system cards are pushed by tools, and an
  * interactive card's decision is
  * keyed by its position in the message (`card-decision.ts`), which a card

@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.common.turn_notices import DEGRADED_CARDS_GENERATION_FAILED
-from aiq_agent.observability.turn_trace import current_trace_id_hex
+from agent.common.turn_notices import DEGRADED_CARDS_GENERATION_FAILED
+from agent.observability.turn_trace import current_trace_id_hex
 
 from .conversation_output import FAILURE_NOTICE
 from .conversation_output import write_job_notice

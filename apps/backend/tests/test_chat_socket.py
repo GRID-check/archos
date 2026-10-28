@@ -1,4 +1,4 @@
-"""The chat socket, wire v2 (``aiq_api.chat_socket``, design §c/§d/§g).
+"""The chat socket, wire v2 (``backend.chat_socket``, design §c/§d/§g).
 
 Driven through ``ChatSocket.serve`` over an in-memory socket, with NAT's session
 API stood in by a fake whose run yields what a turn's ``_run`` yields: wire
@@ -34,51 +34,51 @@ from langgraph.checkpoint.memory import InMemorySaver
 from starlette.datastructures import QueryParams
 from starlette.websockets import WebSocketDisconnect
 
-from aiq_agent.common.content_screen import ScreeningRules
-from aiq_agent.common.fenced_checkpointer import FencedCheckpointer
-from aiq_agent.common.human_prompt import build_human_prompt
-from aiq_agent.common.human_prompt import extract_user_response
-from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
-from aiq_agent.common.wire_v2 import HELLO
-from aiq_agent.common.wire_v2 import WIRE_EVENT
-from aiq_agent.common.wire_v2 import AnswerSnapshot
-from aiq_agent.common.wire_v2 import CancelTurn
-from aiq_agent.common.wire_v2 import KeyedCard
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import ShownAnswer
-from aiq_agent.common.wire_v2 import StageValue
-from aiq_agent.common.wire_v2 import StateSnapshotBody
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import StepFinishedBody
-from aiq_agent.common.wire_v2 import StepStartedBody
-from aiq_agent.common.wire_v2 import TextMessageContentBody
-from aiq_agent.common.wire_v2 import TextMessageStartBody
-from aiq_agent.common.wire_v2 import ToolStep
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.common.wire_v2 import WireSource
-from aiq_agent.common.write_fence import TurnFenced
-from aiq_agent.common.write_fence import current_write_fence
-from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
-from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
-from aiq_agent.turn import annotation_reply
-from aiq_agent.turn.annotation_reply import note_thread_post
-from aiq_agent.turn.annotation_reply import settle_thread_reply
-from aiq_agent.turn.response import answer_message_id
-from aiq_api import after_terminal_writes
-from aiq_api import chat_socket
-from aiq_api import internal_api as chat_socket_internal
-from aiq_api.auth.errors import AuthError
-from aiq_api.chat_socket import ChatRegistry
-from aiq_api.chat_socket import ChatSocket
-from aiq_api.chat_socket import authenticate_websocket_connection
-from aiq_api.chat_socket import configure_websocket_auth
-from aiq_api.chat_socket import handshake_conversation_binding
-from aiq_api.chat_socket import persist_turn_result
-from aiq_api.chat_socket import turn_row_metadata
-from aiq_api.conversation_bus import ConversationBus
-from aiq_api.conversation_bus import force_multi_replica_for_tests
-from aiq_api.conversation_bus import reset_bus_for_tests
-from aiq_api.internal_api import ChatScreening
+from agent.common.content_screen import ScreeningRules
+from agent.common.fenced_checkpointer import FencedCheckpointer
+from agent.common.human_prompt import build_human_prompt
+from agent.common.human_prompt import extract_user_response
+from agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
+from agent.common.wire_v2 import HELLO
+from agent.common.wire_v2 import WIRE_EVENT
+from agent.common.wire_v2 import AnswerSnapshot
+from agent.common.wire_v2 import CancelTurn
+from agent.common.wire_v2 import KeyedCard
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import ShownAnswer
+from agent.common.wire_v2 import StageValue
+from agent.common.wire_v2 import StateSnapshotBody
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import StepFinishedBody
+from agent.common.wire_v2 import StepStartedBody
+from agent.common.wire_v2 import TextMessageContentBody
+from agent.common.wire_v2 import TextMessageStartBody
+from agent.common.wire_v2 import ToolStep
+from agent.common.wire_v2 import TurnResult
+from agent.common.wire_v2 import WireSource
+from agent.common.write_fence import TurnFenced
+from agent.common.write_fence import current_write_fence
+from agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
+from agent.observability.langfuse_trace_attributes import snapshot_contributions
+from agent.turn import annotation_reply
+from agent.turn.annotation_reply import note_thread_post
+from agent.turn.annotation_reply import settle_thread_reply
+from agent.turn.response import answer_message_id
+from backend import after_terminal_writes
+from backend import chat_socket
+from backend import internal_api as chat_socket_internal
+from backend.auth.errors import AuthError
+from backend.chat_socket import ChatRegistry
+from backend.chat_socket import ChatSocket
+from backend.chat_socket import authenticate_websocket_connection
+from backend.chat_socket import configure_websocket_auth
+from backend.chat_socket import handshake_conversation_binding
+from backend.chat_socket import persist_turn_result
+from backend.chat_socket import turn_row_metadata
+from backend.conversation_bus import ConversationBus
+from backend.conversation_bus import force_multi_replica_for_tests
+from backend.conversation_bus import reset_bus_for_tests
+from backend.internal_api import ChatScreening
 from nat.plugin_api import InteractionPrompt
 
 CONV = "conv-1"
@@ -292,8 +292,8 @@ def _types(events: list[dict]) -> list[str]:
 async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypatch):
     from fastapi import FastAPI
 
-    from aiq_api.plugin import AIQAPIConfig
-    from aiq_api.plugin import AIQAPIWorker
+    from backend.plugin import BackendConfig
+    from backend.plugin import BackendWorker
     from nat.data_models.config import Config
     from nat.data_models.config import GeneralConfig
     from nat.data_models.step_adaptor import StepAdaptorMode
@@ -302,13 +302,13 @@ async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypa
     from nat.front_ends.fastapi.fastapi_front_end_plugin_worker import FastApiFrontEndPluginWorker
     from nat.front_ends.fastapi.routes import websocket as websocket_routes
 
-    config = AIQAPIConfig()
+    config = BackendConfig()
     assert config.workflow.websocket_path is None
     assert config.step_adaptor.mode == StepAdaptorMode.OFF
 
     monkeypatch.setenv("NAT_CONFIG_FILE", "configs/config_oib_openrouter.yml")
     monkeypatch.setenv("PROCESS_ROLE", "chat")
-    worker = AIQAPIWorker(Config(general=GeneralConfig(front_end=config)))
+    worker = BackendWorker(Config(general=GeneralConfig(front_end=config)))
     session_manager = object()
     monkeypatch.setattr(worker, "_create_chat_session_manager", AsyncMock(return_value=session_manager))
     monkeypatch.setattr(FastApiFrontEndPluginWorker, "add_routes", AsyncMock())
@@ -323,18 +323,18 @@ async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypa
 
     sockets = [route for route in app.routes if route.path == "/websocket"]
     assert len(sockets) == 1
-    assert sockets[0].endpoint.__module__ == "aiq_api.chat_socket"
+    assert sockets[0].endpoint.__module__ == "backend.chat_socket"
     assert websocket_routes.websocket_endpoint.__module__ == "nat.front_ends.fastapi.routes.websocket"
     assert websocket_routes.WebSocketMessageHandler is message_handler.WebSocketMessageHandler
     assert worker_module.WebSocketMessageHandler is message_handler.WebSocketMessageHandler
 
 
 def test_a_config_that_asks_nat_for_a_socket_is_refused():
-    from aiq_api.plugin import AIQAPIConfig
+    from backend.plugin import BackendConfig
 
-    workflow = {**AIQAPIConfig().workflow.model_dump(), "websocket_path": "/websocket"}
+    workflow = {**BackendConfig().workflow.model_dump(), "websocket_path": "/websocket"}
     with pytest.raises(ValueError, match="websocket_path"):
-        AIQAPIConfig(workflow=workflow)
+        BackendConfig(workflow=workflow)
 
 
 # ---------------------------------------------------------------------------
@@ -1039,8 +1039,8 @@ async def test_stages_follow_the_terminal_on_the_turn_s_seq(harness, monkeypatch
 @pytest.fixture
 def one_frame_stage():
     """Only the stage a test declares runs; the built-in ones stay out of the way."""
-    from aiq_agent.stages import registry as stages
-    from aiq_agent.stages import runner
+    from agent.stages import registry as stages
+    from agent.stages import runner
 
     saved = dict(stages._STAGES)
     stages._STAGES.clear()
@@ -1063,12 +1063,12 @@ async def test_a_failing_stage_never_changes_the_answer_frames(harness, one_fram
     raises or times out puts the same answer events on the socket as a turn
     with no stage, and its stage event, if any, comes after the terminal.
     """
-    from aiq_agent.common.model_overrides import AgentGroup
-    from aiq_agent.stages import delivery
-    from aiq_agent.stages import runner
-    from aiq_agent.stages.spec import GateDecision
-    from aiq_agent.stages.spec import StageSpec
-    from aiq_agent.stages.spec import TurnFacts
+    from agent.common.model_overrides import AgentGroup
+    from agent.stages import delivery
+    from agent.stages import runner
+    from agent.stages.spec import GateDecision
+    from agent.stages.spec import StageSpec
+    from agent.stages.spec import TurnFacts
 
     monkeypatch.delenv("INTERNAL_API_TOKEN")  # no BFF to ask for the stage model's settings
     if handler is not None:
@@ -1180,7 +1180,7 @@ async def test_waiting_on_a_person_does_not_count_against_the_deadline_but_model
 
 def test_the_deadline_never_pre_empts_the_in_process_deep_research_budget():
     """The longest legitimate chat turn is the deep-research fallback; its own clock must fire first."""
-    from aiq_agent.agents.deep_researcher.agent import DEFAULT_MAX_RUN_SECONDS
+    from agent.agents.deep_researcher.agent import DEFAULT_MAX_RUN_SECONDS
 
     assert chat_socket.TurnDeadline().seconds > DEFAULT_MAX_RUN_SECONDS
 
@@ -1202,7 +1202,7 @@ async def test_a_base_exception_group_still_ends_the_turn_and_is_logged(harness,
 
 
 async def test_a_stop_ends_the_turn_even_when_the_workflow_teardown_hangs(harness, monkeypatch, persisted):
-    from aiq_api import workflow_stream
+    from backend import workflow_stream
 
     monkeypatch.setattr(workflow_stream, "PRODUCER_TEARDOWN_SECONDS", 0.05)
     started, unstuck = asyncio.Event(), asyncio.Event()
@@ -1425,7 +1425,7 @@ async def test_a_question_is_refused_when_the_running_turn_does_not_stop_in_time
 
 
 async def test_a_dead_owner_s_marker_expires_and_the_question_runs(harness, monkeypatch):
-    from aiq_api import conversation_bus
+    from backend import conversation_bus
 
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", 0.2)
     owner, relay, relay_bus = _replicas()
@@ -1439,7 +1439,7 @@ async def test_a_dead_owner_s_marker_expires_and_the_question_runs(harness, monk
 
 
 async def test_a_running_turn_keeps_its_marker_past_the_ttl_and_gives_it_back_at_the_end(harness, monkeypatch):
-    from aiq_api import conversation_bus
+    from backend import conversation_bus
 
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", 0.15)
     owner, relay, relay_bus = _replicas()
@@ -1563,9 +1563,9 @@ async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
 
     The one concurrency gate is ADR-0040's admission, which refuses at once.
     """
-    from aiq_api import plugin
-    from aiq_api.plugin import AIQAPIConfig
-    from aiq_api.plugin import AIQAPIWorker
+    from backend import plugin
+    from backend.plugin import BackendConfig
+    from backend.plugin import BackendWorker
     from nat.data_models.config import Config
     from nat.data_models.config import GeneralConfig
 
@@ -1573,7 +1573,7 @@ async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
     monkeypatch.setattr(plugin.SessionManager, "create", create)
     monkeypatch.setenv("NAT_CONFIG_FILE", "configs/config_oib_openrouter.yml")
     monkeypatch.setenv("PROCESS_ROLE", "chat")
-    worker = AIQAPIWorker(Config(general=GeneralConfig(front_end=AIQAPIConfig())))
+    worker = BackendWorker(Config(general=GeneralConfig(front_end=BackendConfig())))
 
     manager = await worker._create_chat_session_manager(builder=object())
 
@@ -1771,7 +1771,7 @@ async def test_a_restricted_scope_runs_the_turn_on_the_same_socket(harness):
 
     The socket used to close when the thread had been shared since the upgrade
     signed its scope. A restricted collection is now narrowed away per turn
-    (``aiq_agent.knowledge.restricted_use``), so the socket stays and the turn runs.
+    (``agent.knowledge.restricted_use``), so the socket stays and the turn runs.
     """
     h = harness()
     sock = h.connect(headers=_restricted_envelope(_RESTRICTED))
@@ -2030,8 +2030,8 @@ class FencedReplica:
 
 def _fenced_cluster(monkeypatch, log: WriteLog) -> tuple[FencedReplica, FencedReplica, ConversationBus]:
     """Two replicas on one Dragonfly with affinity off, and a log of every time a replica takes the marker."""
-    from aiq_api import conversation_bus
-    from aiq_api import turn_fence
+    from backend import conversation_bus
+    from backend import turn_fence
 
     monkeypatch.setenv("CHAT_AFFINITY", "0")
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", FENCE_TTL)
@@ -2142,7 +2142,7 @@ async def test_a_write_in_flight_when_the_deadline_passes_lands_before_a_new_own
 
 async def test_one_failed_bus_command_for_another_conversation_does_not_starve_the_renewals(harness, monkeypatch):
     """The fail-fast window refuses commands without I/O; the renewal must not be one of them."""
-    from aiq_api.conversation_bus import BusUnavailable
+    from backend.conversation_bus import BusUnavailable
 
     log = WriteLog()
     a, _, shared = _fenced_cluster(monkeypatch, log)
@@ -2250,7 +2250,7 @@ async def test_two_questions_racing_from_an_empty_marker_never_run_at_once(harne
 
 async def test_with_affinity_on_an_owner_that_cannot_renew_keeps_running_as_before(harness, monkeypatch):
     """Affinity keeps both turns of a conversation in one process: the fence fails open, as the bus does."""
-    from aiq_api import conversation_bus
+    from backend import conversation_bus
 
     monkeypatch.delenv("CHAT_AFFINITY", raising=False)
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", FENCE_TTL)
@@ -2378,9 +2378,9 @@ class Steered:
         self.torn_down = False
 
     async def turn(self, request, ask):
-        from aiq_agent.common.steering import current_steer_inbox
-        from aiq_agent.common.wire_v2 import SteerAppliedBody
-        from aiq_agent.common.wire_v2 import SteerAppliedValue
+        from agent.common.steering import current_steer_inbox
+        from agent.common.wire_v2 import SteerAppliedBody
+        from agent.common.wire_v2 import SteerAppliedValue
 
         inbox = current_steer_inbox()
         try:
@@ -2469,7 +2469,7 @@ async def test_a_note_for_no_running_turn_is_turn_not_found(harness):
 
 
 async def test_the_note_past_the_cap_is_refused_and_the_turn_runs_on(harness):
-    from aiq_agent.common.steering import MAX_STEERS_PER_TURN
+    from agent.common.steering import MAX_STEERS_PER_TURN
 
     gate = Gate()
     sock = harness(gate.turn).connect()
@@ -2541,12 +2541,12 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
     from langchain_core.messages import ToolMessage
     from langchain_core.tools import tool
 
-    from aiq_agent.agents.piloti.agent import PilotiAgent
-    from aiq_agent.agents.piloti.models import ResearchAgentState
-    from aiq_agent.citations.entries import SourceEntry
-    from aiq_agent.citations.registry import SourceRegistry
-    from aiq_agent.common import LLMProvider
-    from aiq_agent.common.steering import HELD_FOR_STEER
+    from agent.agents.piloti.agent import PilotiAgent
+    from agent.agents.piloti.models import ResearchAgentState
+    from agent.citations.entries import SourceEntry
+    from agent.citations.registry import SourceRegistry
+    from agent.common import LLMProvider
+    from agent.common.steering import HELD_FOR_STEER
 
     ran: list[str] = []
     requests: list[list] = []
@@ -2592,11 +2592,11 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
 
     async def graph_turn(request, ask):
         bodies: asyncio.Queue = asyncio.Queue()
-        monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.put_nowait)
+        monkeypatch.setattr("agent.common.turn_status.get_stream_writer", lambda: bodies.put_nowait)
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
         ):
             verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -3094,7 +3094,7 @@ async def test_a_turn_that_listed_and_searched_scores_both(harness, monkeypatch)
 
 
 async def test_a_turn_whose_only_search_was_literal_scores_navigate(harness, monkeypatch):
-    from aiq_agent.common.turn_status import status_step
+    from agent.common.turn_status import status_step
 
     scored: list[tuple[str, float | str]] = []
 

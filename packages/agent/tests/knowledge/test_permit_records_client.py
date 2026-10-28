@@ -13,8 +13,8 @@ from http.server import HTTPServer
 
 import pytest
 
-from aiq_agent.knowledge.permit_extraction import PermitRecord
-from aiq_agent.knowledge.permit_records_client import store_permit_record
+from agent.knowledge.permit_extraction import PermitRecord
+from agent.knowledge.permit_records_client import store_permit_record
 
 
 class _Bff:

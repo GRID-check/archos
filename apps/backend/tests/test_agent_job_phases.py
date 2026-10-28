@@ -1,6 +1,6 @@
 """``run_agent_job`` as its phases: what each one decides, and that the terminal paths always run.
 
-Module under test: ``aiq_api.jobs.agent_job`` (claim, run, release),
+Module under test: ``backend.jobs.agent_job`` (claim, run, release),
 ``agent_job_setup`` (prepare) and ``job_outcome`` (persist, finish, failure).
 """
 
@@ -15,11 +15,11 @@ from typing import Any
 
 import pytest
 
-from aiq_api.jobs import agent_job
-from aiq_api.jobs import agent_job_setup
-from aiq_api.jobs import job_outcome
-from aiq_api.jobs.agent_job import JobRequest
-from aiq_api.jobs.agent_job import run_agent_job
+from backend.jobs import agent_job
+from backend.jobs import agent_job_setup
+from backend.jobs import job_outcome
+from backend.jobs.agent_job import JobRequest
+from backend.jobs.agent_job import run_agent_job
 
 
 def _request(**overrides: Any) -> JobRequest:
@@ -134,7 +134,7 @@ async def test_a_failure_in_prepare_is_recorded_and_the_job_released(monkeypatch
 
     await run_agent_job(**_payload(auth_token="tok"))
 
-    from aiq_api.jobs._auth_context import job_auth_token
+    from backend.jobs._auth_context import job_auth_token
 
     assert statuses == ["running", "failure"]
     assert notified == ["failure"]
@@ -177,10 +177,10 @@ async def test_the_models_get_every_dial_in_order_and_the_llm_follows_the_last(m
         return _Provider(), ("llm", ())
 
     monkeypatch.setattr(agent_job_setup, "_create_llm_provider", create)
-    monkeypatch.setattr("aiq_agent.common.get_reasoning_efforts", lambda: {})
-    monkeypatch.setattr("aiq_agent.common.resolve_org_llm_credential", lambda org: f"key-{org}")
-    monkeypatch.setattr("aiq_agent.common.sanitize_model_overrides", lambda overrides: overrides)
-    monkeypatch.setattr("aiq_agent.common.openrouter.data_policy_for", lambda _org: SimpleNamespace(zdr=True))
+    monkeypatch.setattr("agent.common.get_reasoning_efforts", lambda: {})
+    monkeypatch.setattr("agent.common.resolve_org_llm_credential", lambda org: f"key-{org}")
+    monkeypatch.setattr("agent.common.sanitize_model_overrides", lambda overrides: overrides)
+    monkeypatch.setattr("agent.common.openrouter.data_policy_for", lambda _org: SimpleNamespace(zdr=True))
     request = _request(model_overrides={"research": "m"}, usage_context={"identity": {"organization_id": "org-a"}})
 
     models = await agent_job_setup.prepare_models(builder, request)
@@ -224,9 +224,9 @@ async def test_a_job_runs_its_phases_to_a_success_and_one_thread_turn(monkeypatc
     """The happy path end to end, with only NAT's config and builder and the agent itself faked."""
     from contextlib import asynccontextmanager
 
-    from aiq_agent.agents.deep_researcher.anatomy import ReportAnatomy
-    from aiq_agent.cards.generate import CardGenerationResult
-    from aiq_api.jobs.agent_job_setup import JobModels
+    from agent.agents.deep_researcher.anatomy import ReportAnatomy
+    from agent.cards.generate import CardGenerationResult
+    from backend.jobs.agent_job_setup import JobModels
 
     store = _Store()
     builder = SimpleNamespace(_telemetry_exporters={})

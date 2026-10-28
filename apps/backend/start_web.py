@@ -138,7 +138,7 @@ def configure_logging():
 
     # Set specific loggers to appropriate levels
     # These match NAT's default logging configuration
-    logger_names = ("nat", "aiq_agent", "aiq_api", "knowledge_layer")
+    logger_names = ("nat", "agent", "backend", "knowledge_layer")
     for logger_name in logger_names:
         logging.getLogger(logger_name).setLevel(getattr(logging, log_level, logging.INFO))
 
@@ -157,9 +157,9 @@ def load_nat_config(config_file: str):
     The JOIN `start_web` actually runs: a process that has imported none of
     pytest's plugins. `load_config` alone is not enough.
     """
-    from aiq_agent.observability import ensure_registered as register_grid_telemetry
-    from aiq_agent.observability.boot_timing import BootClock
-    from aiq_api.roles import web_role
+    from agent.observability import ensure_registered as register_grid_telemetry
+    from agent.observability.boot_timing import BootClock
+    from backend.roles import web_role
     from nat.runtime.loader import load_config
 
     register_grid_telemetry()

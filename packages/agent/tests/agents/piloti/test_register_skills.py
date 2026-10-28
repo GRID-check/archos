@@ -15,11 +15,11 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-import aiq_agent.agents.piloti.register as register_module
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.register import ResearchAgentConfig
-from aiq_agent.agents.piloti.register import research_agent
-from aiq_agent.common import request_llm_context
+import agent.agents.piloti.register as register_module
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.register import ResearchAgentConfig
+from agent.agents.piloti.register import research_agent
+from agent.common import request_llm_context
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -85,7 +85,7 @@ def _skill_runtime(resolved, *, activated=()):
     nothing, which is the honest default now that a turn can only be OFFERED a
     skill: a catalog the model read past activates none of it.
     """
-    from aiq_agent.skills.backend import SkillsBackend
+    from agent.skills.backend import SkillsBackend
 
     runtime = MagicMock()
     runtime.prompt_block.return_value = "## Skills"
@@ -564,7 +564,7 @@ async def test_a_real_runtime_serves_the_catalog_and_records_what_the_model_read
     """End to end through the register with the real runtime: catalog in, read out, activation reported."""
     from types import SimpleNamespace
 
-    from aiq_agent.skills.models import Skill
+    from agent.skills.models import Skill
 
     builder = _FakeBuilder({"web_search_tool": web_search_tool})
     config = ResearchAgentConfig(llm="research_llm", tools=["web_search_tool"], skills_enabled=True)

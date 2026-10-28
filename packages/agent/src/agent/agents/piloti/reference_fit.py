@@ -132,7 +132,7 @@ async def fit_references(
     question: str, catalog: str | None, *, organization_id: str | None = None
 ) -> ReferenceFit | None:
     """The catalog verified against the question, or None when nothing was decided."""
-    from aiq_agent.common.decisions import decide_many
+    from agent.common.decisions import decide_many
 
     lines, rest = parse_catalog(catalog)
     if len(lines) < MIN_LINES or not question.strip():

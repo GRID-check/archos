@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from contextvars import ContextVar
 
-from aiq_agent.common.source_kinds import canonical_shelf_value
+from agent.common.source_kinds import canonical_shelf_value
 
 SHELVES = frozenset({"office_shelf", "project", "session", "base"})
 PRESETS = frozenset({"law", "project", "office"})

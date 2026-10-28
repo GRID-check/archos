@@ -5,22 +5,22 @@ from __future__ import annotations
 import logging
 import re
 
-from aiq_agent.citations.binding import source_origin_token
-from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
-from aiq_agent.citations.entries import LOCUS_MISMATCH_REASON
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.references import CITATION_LINE_RE
-from aiq_agent.citations.references import COLLAPSED_SOURCE_BOUNDARY_RE
-from aiq_agent.citations.references import FOOTNOTE_INLINE_CITATION_RE
-from aiq_agent.citations.references import FOOTNOTE_REFERENCE_LINE_RE
-from aiq_agent.citations.references import GERMAN_REFERENCE_HEADING_LABEL_RE
-from aiq_agent.citations.references import INLINE_CITATION_RE
-from aiq_agent.citations.references import KL_CITATION_PATTERN_RE
-from aiq_agent.citations.references import ORDERED_REFERENCE_LINE_RE
-from aiq_agent.citations.references import REFERENCE_HEADING_LINE_RE
-from aiq_agent.citations.references import SOURCE_LOCATION_CITATION_RE
-from aiq_agent.citations.references import URL_IN_LINE_RE
-from aiq_agent.citations.registry import SourceRegistry
+from agent.citations.binding import source_origin_token
+from agent.citations.entries import DROPPED_CITATION_MARKER
+from agent.citations.entries import LOCUS_MISMATCH_REASON
+from agent.citations.entries import SourceEntry
+from agent.citations.references import CITATION_LINE_RE
+from agent.citations.references import COLLAPSED_SOURCE_BOUNDARY_RE
+from agent.citations.references import FOOTNOTE_INLINE_CITATION_RE
+from agent.citations.references import FOOTNOTE_REFERENCE_LINE_RE
+from agent.citations.references import GERMAN_REFERENCE_HEADING_LABEL_RE
+from agent.citations.references import INLINE_CITATION_RE
+from agent.citations.references import KL_CITATION_PATTERN_RE
+from agent.citations.references import ORDERED_REFERENCE_LINE_RE
+from agent.citations.references import REFERENCE_HEADING_LINE_RE
+from agent.citations.references import SOURCE_LOCATION_CITATION_RE
+from agent.citations.references import URL_IN_LINE_RE
+from agent.citations.registry import SourceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +185,7 @@ def label_locus_mismatches(
     Returns the body, one removal record per labelled occurrence, and the
     numbers that have no occurrence left: those lose their source line too.
     """
-    from aiq_agent.common.citation_locus import locus_mismatches
+    from agent.common.citation_locus import locus_mismatches
 
     entries = {
         citation["number"]: entry

@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.knowledge.title_block import normalise_revision_facts
+from agent.knowledge.title_block import normalise_revision_facts
 
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge.document_metadata_constants import SUGGESTION_BASES
-from aiq_agent.knowledge.document_metadata_helpers import dismissed_revisions
+from agent.knowledge.document_metadata_constants import SUGGESTION_BASES
+from agent.knowledge.document_metadata_helpers import dismissed_revisions
 
 
 def _decode_tags(raw: Any) -> list[str] | None:

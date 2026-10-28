@@ -18,30 +18,30 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.agents.piloti.markers import ConfidenceLevel
-from aiq_agent.agents.piloti.markers import answer_confidence_capped_reason
-from aiq_agent.agents.piloti.markers import surface_answer_confidence
-from aiq_agent.citations.binding import source_label
-from aiq_agent.citations.binding import source_origin_token
-from aiq_agent.citations.entries import lost_citations
-from aiq_agent.citations.quote_verification import annotate_unverified_quotes
-from aiq_agent.citations.quote_verification import verify_quoted_spans
-from aiq_agent.citations.references import expand_grouped_citations
-from aiq_agent.citations.sanitize import sanitize_report
-from aiq_agent.citations.verification import verify_citations
-from aiq_agent.citations.wire import source_entry_to_wire
-from aiq_agent.common import citation_events
-from aiq_agent.common.retrieval_ledger import build_retrieval_ledger
-from aiq_agent.common.turn_notices import CUTOFF_RUN_BUDGET
-from aiq_agent.common.turn_notices import CUTOFF_STEP_LIMIT
-from aiq_agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
-from aiq_agent.common.turn_notices import CUTOFF_USER_REQUESTED
-from aiq_agent.common.turn_notices import CUTOFF_WALL_CLOCK
-from aiq_agent.common.turn_notices import DEGRADED_BASIS_UNREAD
-from aiq_agent.common.turn_notices import DEGRADED_NO_VALID_CITATIONS
-from aiq_agent.common.turn_notices import DEGRADED_UNVERIFIED_QUOTES
-from aiq_agent.common.turn_notices import emit_answer_degraded
-from aiq_agent.skills import SkillRuntime
+from agent.agents.piloti.markers import ConfidenceLevel
+from agent.agents.piloti.markers import answer_confidence_capped_reason
+from agent.agents.piloti.markers import surface_answer_confidence
+from agent.citations.binding import source_label
+from agent.citations.binding import source_origin_token
+from agent.citations.entries import lost_citations
+from agent.citations.quote_verification import annotate_unverified_quotes
+from agent.citations.quote_verification import verify_quoted_spans
+from agent.citations.references import expand_grouped_citations
+from agent.citations.sanitize import sanitize_report
+from agent.citations.verification import verify_citations
+from agent.citations.wire import source_entry_to_wire
+from agent.common import citation_events
+from agent.common.retrieval_ledger import build_retrieval_ledger
+from agent.common.turn_notices import CUTOFF_RUN_BUDGET
+from agent.common.turn_notices import CUTOFF_STEP_LIMIT
+from agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
+from agent.common.turn_notices import CUTOFF_USER_REQUESTED
+from agent.common.turn_notices import CUTOFF_WALL_CLOCK
+from agent.common.turn_notices import DEGRADED_BASIS_UNREAD
+from agent.common.turn_notices import DEGRADED_NO_VALID_CITATIONS
+from agent.common.turn_notices import DEGRADED_UNVERIFIED_QUOTES
+from agent.common.turn_notices import emit_answer_degraded
+from agent.skills import SkillRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +190,7 @@ def _prepend_honesty_banner(
     the job output, the exported PDF — and someone reading only that must still
     be able to tell that it is partial.
     """
-    from aiq_agent.common.query_expansion import detect_language
+    from agent.common.query_expansion import detect_language
 
     english = detect_language(report[:4000]) == "en"
     sentences: list[str] = []
@@ -541,7 +541,7 @@ def _append_unread_basis(report: str, unread: Sequence[str]) -> str:
     """
     if not unread:
         return report
-    from aiq_agent.common.query_expansion import detect_language
+    from agent.common.query_expansion import detect_language
 
     english = detect_language(report[:4000]) == "en"
     heading = "## Documents not read" if english else "## Nicht gelesene Unterlagen"

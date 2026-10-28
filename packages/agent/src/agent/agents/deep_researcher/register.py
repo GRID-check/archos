@@ -13,23 +13,23 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 
-from aiq_agent.common import AgentGroup
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common import VerboseTraceCallback
-from aiq_agent.common import all_mapped_tools_filtered_out
-from aiq_agent.common import filter_tools_by_sources
-from aiq_agent.common import format_user_facing_tool_error
-from aiq_agent.common import get_all_tool_refs
-from aiq_agent.common import get_checkpointer
-from aiq_agent.common import get_langchain_llm
-from aiq_agent.common import is_verbose
-from aiq_agent.common import validate_tool_availability
-from aiq_agent.common.agent_tools import load_agent_tools
-from aiq_agent.common.image_view_budget import begin_image_view_budget
-from aiq_agent.common.image_view_budget import end_image_view_budget
-from aiq_agent.common.request_llm_context import RequestLLMContext
-from aiq_agent.common.request_llm_context import read_request_llm_context
+from agent.common import AgentGroup
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common import VerboseTraceCallback
+from agent.common import all_mapped_tools_filtered_out
+from agent.common import filter_tools_by_sources
+from agent.common import format_user_facing_tool_error
+from agent.common import get_all_tool_refs
+from agent.common import get_checkpointer
+from agent.common import get_langchain_llm
+from agent.common import is_verbose
+from agent.common import validate_tool_availability
+from agent.common.agent_tools import load_agent_tools
+from agent.common.image_view_budget import begin_image_view_budget
+from agent.common.image_view_budget import end_image_view_budget
+from agent.common.request_llm_context import RequestLLMContext
+from agent.common.request_llm_context import read_request_llm_context
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
 from nat.plugin_api import FunctionBaseConfig
@@ -344,7 +344,7 @@ def _agent_for_request(
     means "nothing to apply" keeps the prebuilt agent. There is deliberately no
     ``data_sources is not None`` guard: org-disabled sources narrow
     ``selected_tools`` even on "all tools" requests. A sandbox is scoped to the
-    async job_id NAT carries (set by ``aiq_api/jobs/agent_job.py``; a per-request
+    async job_id NAT carries (set by ``backend/jobs/agent_job.py``; a per-request
     uuid in ``DeepAgentsRuntime`` when None), so it is always rebuilt.
     """
     provider = llm_context.apply(blueprint.provider)

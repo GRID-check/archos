@@ -85,7 +85,7 @@ def reset_reasoning_settings_cache() -> None:
 
 def sanitize_reasoning_efforts(data: object) -> dict[str, str]:
     """Reduce an untrusted mapping to ``{known_group: known_effort}``."""
-    from aiq_agent.common.model_overrides import AgentGroup
+    from agent.common.model_overrides import AgentGroup
 
     if not isinstance(data, dict):
         logger.warning("Ignoring reasoning efforts: expected JSON object, got %s", type(data).__name__)
@@ -131,7 +131,7 @@ def _resolve() -> dict[str, str]:
     """Cached resolution of the platform efforts (shared hot path)."""
     global _cache
     now = time.monotonic()
-    from aiq_agent.common.profiler import annotate_current_span
+    from agent.common.profiler import annotate_current_span
 
     with _cache_lock:
         if _cache is not None and _cache.expires_at > now:

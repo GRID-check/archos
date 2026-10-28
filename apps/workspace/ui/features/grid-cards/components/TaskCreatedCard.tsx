@@ -3,7 +3,7 @@
 /**
  * TaskCreatedCard — work Piloti has taken on, as something a reader can go back to.
  *
- * System-emitted: `create_task` (`aiq_agent/tools/tasks/register.py`) pushes it
+ * System-emitted: `create_task` (`agent/tools/tasks/register.py`) pushes it
  * once the BFF has written the row, the same way the working directory pushes
  * `document_draft`. The model cannot fabricate one — which is the whole point,
  * because the sentence this card exists beside is „ich mache den Einreichcheck

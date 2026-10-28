@@ -3,7 +3,7 @@
  *
  * CI guard for the GENERATED platform-skills module: running the sync script in
  * --check mode must pass, or the generated module is stale. A skill file change
- * (builtin skill markdown under packages/agent/src/aiq_agent/skills) therefore fails the build
+ * (builtin skill markdown under packages/agent/src/agent/skills) therefore fails the build
  * until `node scripts/sync-platform-skills.mjs` has been re-run (same shape as
  * the other generated-asset guards, e.g. scripts/generate-card-schemas.mjs).
  */

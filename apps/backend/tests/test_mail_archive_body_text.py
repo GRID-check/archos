@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from aiq_api.mail_archive import body_text as module
-from aiq_api.mail_archive.body_text import body_text
-from aiq_api.mail_archive.body_text import html_to_text
+from backend.mail_archive import body_text as module
+from backend.mail_archive.body_text import body_text
+from backend.mail_archive.body_text import html_to_text
 
 
 def test_plain_text_wins_over_html_and_rtf():

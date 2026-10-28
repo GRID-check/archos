@@ -18,7 +18,7 @@ The run carries the envelope the BFF signed for the person whose upload or
 click started it (ADR-0108), injected by the worker at claim. It goes out
 byte-for-byte beside the service token; the project is the envelope's, so no
 body names one. A run without an envelope acts as nobody and gets a refusal,
-never a fallback to the unsigned headers (``packages/agent/src/aiq_agent/tools/AGENTS.md``).
+never a fallback to the unsigned headers (``packages/agent/src/agent/tools/AGENTS.md``).
 
 ## Never raises
 
@@ -26,7 +26,7 @@ Every failure, a refusal included, comes back as an :class:`IntakeReply` with
 ``ok=False`` and a sentence the model can act on, and is one
 ``project_intake.<op>`` observation in Langfuse.
 
-The transport is :mod:`aiq_agent.common.bff_http`, the one BFF client.
+The transport is :mod:`agent.common.bff_http`, the one BFF client.
 """
 
 from __future__ import annotations
@@ -38,10 +38,10 @@ from dataclasses import field
 from typing import Any
 from typing import Literal
 
-from aiq_agent import project_context
-from aiq_agent.common import bff_http
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.observability.retrieval_trace import emit_step_span
+from agent import project_context
+from agent.common import bff_http
+from agent.common.bff_http import SignedEnvelope
+from agent.observability.retrieval_trace import emit_step_span
 
 logger = logging.getLogger(__name__)
 

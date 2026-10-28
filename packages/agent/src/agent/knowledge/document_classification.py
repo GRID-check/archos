@@ -37,7 +37,7 @@ import re
 from collections.abc import Iterable
 from collections.abc import Sequence
 
-from aiq_agent.common.message_utils import response_text
+from agent.common.message_utils import response_text
 
 logger = logging.getLogger(__name__)
 
@@ -231,8 +231,8 @@ def suggest_doc_class(text: str, file_name: str, *, organization_id: str | None 
     if not text or not text.strip():
         return None
     try:
-        from aiq_agent.common.decisions import choice
-        from aiq_agent.common.decisions import decide_blocking
+        from agent.common.decisions import choice
+        from agent.common.decisions import decide_blocking
 
         decision = decide_blocking(
             {"file_name": file_name, "text": text[:CLASSIFY_MAX_INPUT_CHARS]},
@@ -460,8 +460,8 @@ TAG_DECISION_TIMEOUT_S = 5.0
 
 def tag_questions() -> dict[str, dict]:
     """The decision's questions, built from the vocabulary so the two cannot drift."""
-    from aiq_agent.common.decisions import choice
-    from aiq_agent.common.decisions import noul
+    from agent.common.decisions import choice
+    from agent.common.decisions import noul
 
     questions = {
         "type": choice(
@@ -501,7 +501,7 @@ def decide_document_tags(text: str, file_name: str, *, organization_id: str | No
     if not text or not text.strip():
         return None
     try:
-        from aiq_agent.common.decisions import decide_blocking
+        from agent.common.decisions import decide_blocking
 
         decision = decide_blocking(
             {"file_name": file_name, "text": text[:CLASSIFY_MAX_INPUT_CHARS]},

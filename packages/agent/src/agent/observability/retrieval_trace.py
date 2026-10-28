@@ -99,7 +99,7 @@ def build_retrieval_input(
 def build_retrieval_output(*, chunks: list[Any]) -> dict[str, Any]:
     """The picks themselves — ids and scores, never chunk text.
 
-    Accepts anything shaped like ``aiq_agent.knowledge.schema.Chunk``
+    Accepts anything shaped like ``agent.knowledge.schema.Chunk``
     (attribute access); fields the backend did not populate stay absent.
     """
     picked = []

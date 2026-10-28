@@ -114,8 +114,8 @@ def build_client() -> Any:
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from aiq_api.routes.filing_fit import add_filing_fit_routes
-    from aiq_api.routes.folder_proposals import add_folder_proposals_routes
+    from backend.routes.filing_fit import add_filing_fit_routes
+    from backend.routes.folder_proposals import add_folder_proposals_routes
 
     router = APIRouter()
     add_filing_fit_routes(router)

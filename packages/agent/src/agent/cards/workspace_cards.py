@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.cards.card_model import CardModel
+from agent.cards.card_model import CardModel
 
 
 class SurfacedDocument(CardModel):

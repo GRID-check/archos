@@ -29,9 +29,9 @@ from langchain_core.messages import SystemMessage
 from pydantic import BaseModel
 from pydantic import ConfigDict
 
-from aiq_agent.common.answer_envelope import AnswerMeta
-from aiq_agent.common.answer_envelope import gate_answer_meta
-from aiq_agent.common.findings import sanitize_findings
+from agent.common.answer_envelope import AnswerMeta
+from agent.common.answer_envelope import gate_answer_meta
+from agent.common.findings import sanitize_findings
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +162,7 @@ async def extract_report_anatomy(llm: Any, query: str, report: str) -> ReportAna
 
 
 async def _ask(llm: Any, query: str, report: str) -> ReportAnatomyDraft | None:
-    from aiq_agent.common.llm_factory import strict_json_response_format
+    from agent.common.llm_factory import strict_json_response_format
 
     messages = [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=_user_prompt(query, report))]
     try:

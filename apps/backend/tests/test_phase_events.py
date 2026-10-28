@@ -10,14 +10,14 @@ store.
 
 from __future__ import annotations
 
-from aiq_api.jobs.phase_events import JOB_PHASE_EVENT_TYPE
-from aiq_api.jobs.phase_events import PHASE_CITATION_VERIFICATION_STARTED
-from aiq_api.jobs.phase_events import PHASE_DONE
-from aiq_api.jobs.phase_events import PHASE_PLANNING_STARTED
-from aiq_api.jobs.phase_events import PHASE_RESEARCH_STARTED
-from aiq_api.jobs.phase_events import PHASE_WRITING_STARTED
-from aiq_api.jobs.phase_events import PhaseProgressCallback
-from aiq_api.jobs.phase_events import emit_phase_event
+from backend.jobs.phase_events import JOB_PHASE_EVENT_TYPE
+from backend.jobs.phase_events import PHASE_CITATION_VERIFICATION_STARTED
+from backend.jobs.phase_events import PHASE_DONE
+from backend.jobs.phase_events import PHASE_PLANNING_STARTED
+from backend.jobs.phase_events import PHASE_RESEARCH_STARTED
+from backend.jobs.phase_events import PHASE_WRITING_STARTED
+from backend.jobs.phase_events import PhaseProgressCallback
+from backend.jobs.phase_events import emit_phase_event
 
 
 class FakeEventStore:

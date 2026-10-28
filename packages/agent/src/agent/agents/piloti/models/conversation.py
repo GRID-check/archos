@@ -6,7 +6,7 @@ one research turn's own working state and is never checkpointed.
 
 NOTE: any new pydantic state type added below (or nested inside these fields)
 MUST also be added to the checkpointer allow-list in
-``aiq_agent/common/__init__.py`` (``_build_checkpointer_serde``). The
+``agent/common/__init__.py`` (``_build_checkpointer_serde``). The
 checkpointer deserializes with a STRICT msgpack allow-list; a type missing from
 that list will break checkpoint restore for states that contain it.
 """
@@ -19,10 +19,10 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 
-from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.common.wire_v2 import FocusRegion
-from aiq_agent.common.wire_v2 import TurnTrigger
-from aiq_agent.knowledge import AvailableDocument
+from agent.common.plan_documents import PlanDocuments
+from agent.common.wire_v2 import FocusRegion
+from agent.common.wire_v2 import TurnTrigger
+from agent.knowledge import AvailableDocument
 
 #: Which path a turn took. ``meta`` and ``shallow`` are OBSERVED off the
 #: finished answer (``ResearchAgentState.observed_routing``); ``deep``
@@ -161,7 +161,7 @@ class ConversationState(BaseModel):
     # and an office preference about form must never inherit "confirmed facts
     # bind" framing. None when the office set none.
     # NOTE: plain types only (str | None) — a new pydantic TYPE would also need
-    # registering in the checkpointer serde allowlist (aiq_agent/common/__init__.py).
+    # registering in the checkpointer serde allowlist (agent/common/__init__.py).
     org_instructions: str | None = None
     # The office's reference projects (closed, most like this one), one line
     # each, from the turn context; rendered as ``<reference_projects>`` when
@@ -192,7 +192,7 @@ class ConversationState(BaseModel):
     # terminal TurnResult as ``read_sources`` for the "Gelesen, nicht
     # zitiert" disclosure. Plain dicts only, like ``verified_sources`` — a
     # new pydantic type here would also need the checkpointer serde
-    # allowlist (``aiq_agent/common/__init__.py``).
+    # allowlist (``agent/common/__init__.py``).
     read_sources: list[dict[str, Any]] | None = None
     # Conversation-scoped "already read" digest: one line per document opened
     # earlier in THIS conversation (``"<file> | <collection> | Seiten <p> |
@@ -205,7 +205,7 @@ class ConversationState(BaseModel):
     # no-passage/unknown and the turn falls back to ``knowledge_search``.
     # NOTE: plain types only (list[str] | None) — a new pydantic TYPE would
     # also need registering in the checkpointer serde allowlist
-    # (aiq_agent/common/__init__.py).
+    # (agent/common/__init__.py).
     already_read_digest: list[str] | None = None
     # The backend's own account of this turn's retrieval rounds (one entry per
     # announced round: query, tools, returned docs, new docs). Carried for the

@@ -8,10 +8,10 @@ the turn is over, however it ended.
 
 from __future__ import annotations
 
-from aiq_agent.agents.piloti import conversation_register as cr
-from aiq_agent.common.wire_v2 import FocusRegion
-from aiq_agent.tools.canvas import presence
-from aiq_agent.turn.payload import TurnInputs
+from agent.agents.piloti import conversation_register as cr
+from agent.common.wire_v2 import FocusRegion
+from agent.tools.canvas import presence
+from agent.turn.payload import TurnInputs
 
 from .test_settled_replaced import _terminal
 from .test_settled_replaced import workflow  # noqa: F401 - the shared `_run` harness

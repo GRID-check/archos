@@ -15,12 +15,12 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 from typing import Protocol
 
-from aiq_agent.common import get_latest_user_query
-from aiq_agent.turn.commission import CommissionedRun
-from aiq_agent.turn.commission import commission_research_run
+from agent.common import get_latest_user_query
+from agent.turn.commission import CommissionedRun
+from agent.turn.commission import commission_research_run
 
 if TYPE_CHECKING:
-    from aiq_agent.agents.piloti.models import ConversationState
+    from agent.agents.piloti.models import ConversationState
 
 logger = logging.getLogger(__name__)
 

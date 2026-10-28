@@ -37,11 +37,11 @@ import logging
 import httpx
 from fastapi import APIRouter
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.openrouter import ZERO_DATA_RETENTION
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.observability.direct_trace import observed_generation
+from agent.common import provider_limiter
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.openrouter import ZERO_DATA_RETENTION
+from agent.common.openrouter import limited_async_http_client
+from agent.observability.direct_trace import observed_generation
 
 from ..models.requests import LessonDistillRequest
 from ..models.requests import LessonDistillResponse

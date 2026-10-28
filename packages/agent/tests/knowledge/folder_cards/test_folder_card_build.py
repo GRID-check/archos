@@ -7,10 +7,10 @@ from agent_testing.folder_cards import FakeModel
 from knowledge_layer.browse import file_rows
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from aiq_agent.knowledge.folder_cards import build
-from aiq_agent.knowledge.folder_cards.inputs import MAX_LISTED_DOCUMENTS
-from aiq_agent.knowledge.folder_cards.inputs import folder_inputs
-from aiq_agent.observability import direct_trace
+from agent.knowledge.folder_cards import build
+from agent.knowledge.folder_cards.inputs import MAX_LISTED_DOCUMENTS
+from agent.knowledge.folder_cards.inputs import folder_inputs
+from agent.observability import direct_trace
 
 ROWS = [
     {"file_name": "BS-Gutachten.pdf", "folder_path": "Gutachten", "collection": "proj", "summary": "Brandschutz."},

@@ -15,11 +15,11 @@ from knowledge_layer import browse
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.schema import RetrievalResult
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.schema import RetrievalResult
+from agent.knowledge.scoping import ScopedCollection
 
 rp = importlib.import_module("knowledge_layer.read_passage")
 
@@ -31,7 +31,7 @@ OIB = "oib-rl_2_ausgabe_mai_2023.pdf"
 def rows(monkeypatch) -> list:
     """The action steps written during the test, in order."""
     bodies: list = []
-    monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.append)
+    monkeypatch.setattr("agent.common.turn_status.get_stream_writer", lambda: bodies.append)
     return bodies
 
 
@@ -93,16 +93,16 @@ def corpus(monkeypatch):
 
         monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: store)
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: store)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
-        monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-        monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: store)
+        monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
+        monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+        monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         monkeypatch.setattr(
-            "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+            "agent.knowledge.scoping.get_scoped_collections_from_context",
             lambda: [ScopedCollection(BASE, Shelf.BASE)],
         )
         for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-            monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+            monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
         monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         return store
 
@@ -344,9 +344,9 @@ def restricted(corpus, monkeypatch):
                 return []
             return [SimpleNamespace(file_name=SECRET, display_title=None, summary=None, tags=None)]
 
-        monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+        monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
         monkeypatch.setattr(
-            "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+            "agent.knowledge.scoping.get_scoped_collections_from_context",
             lambda: [ScopedCollection(RESTRICTED, Shelf.PROJECT)],
         )
         return store
@@ -357,11 +357,11 @@ def restricted(corpus, monkeypatch):
 @pytest.fixture
 def admit(monkeypatch):
     """Call it to admit :data:`RESTRICTED` for the turn."""
-    from aiq_agent.knowledge.restricted_use import RestrictedUse
+    from agent.knowledge.restricted_use import RestrictedUse
 
     def _admit() -> None:
         use = RestrictedUse("org", "user", "conv", "proj", drawable={RESTRICTED}, admitted={RESTRICTED})
-        monkeypatch.setattr("aiq_agent.knowledge.restricted_use.current_restricted_use", lambda: use)
+        monkeypatch.setattr("agent.knowledge.restricted_use.current_restricted_use", lambda: use)
 
     return _admit
 
@@ -460,7 +460,7 @@ class TestExactSearchPartialFailure:
     async def test_no_match_while_a_collection_failed_is_an_error(self, corpus, rows, monkeypatch) -> None:
         store = corpus([])
         monkeypatch.setattr(
-            "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+            "agent.knowledge.scoping.get_scoped_collections_from_context",
             lambda: [ScopedCollection(BASE, Shelf.BASE), ScopedCollection("proj_1", Shelf.PROJECT)],
         )
 

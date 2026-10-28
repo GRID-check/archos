@@ -5,20 +5,20 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.citation_events import build_turn_events
-from aiq_agent.common.wire_v2 import QuoteStamp
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.observability import langfuse_scores
-from aiq_agent.observability.answer_scores import dialect_scores
-from aiq_agent.observability.langfuse_scores import SCORE_DEFINITIONS
-from aiq_agent.observability.langfuse_scores import RuntimeScore
-from aiq_agent.observability.langfuse_scores import card_validity_score
-from aiq_agent.observability.langfuse_scores import citation_scores
-from aiq_agent.observability.langfuse_scores import emit_scores
-from aiq_agent.observability.langfuse_scores import score_body
-from aiq_agent.observability.langfuse_scores import score_id
-from aiq_agent.observability.langfuse_scores import thread_reply_scores
-from aiq_agent.observability.langfuse_scores import turn_outcome_scores
+from agent.common.citation_events import build_turn_events
+from agent.common.wire_v2 import QuoteStamp
+from agent.common.wire_v2 import TurnResult
+from agent.observability import langfuse_scores
+from agent.observability.answer_scores import dialect_scores
+from agent.observability.langfuse_scores import SCORE_DEFINITIONS
+from agent.observability.langfuse_scores import RuntimeScore
+from agent.observability.langfuse_scores import card_validity_score
+from agent.observability.langfuse_scores import citation_scores
+from agent.observability.langfuse_scores import emit_scores
+from agent.observability.langfuse_scores import score_body
+from agent.observability.langfuse_scores import score_id
+from agent.observability.langfuse_scores import thread_reply_scores
+from agent.observability.langfuse_scores import turn_outcome_scores
 
 REPO = Path(__file__).resolve().parents[4]
 TRACE = "0" * 31 + "1"
@@ -66,7 +66,7 @@ class TestCitationScores:
         assert _by_name(scores)["answer-grounded"] == 0.0
 
     def test_an_empty_registry_is_its_own_outcome(self):
-        from aiq_agent.common.citation_events import CitationEvent
+        from agent.common.citation_events import CitationEvent
 
         scores = _by_name(citation_scores([CitationEvent(kind="registry_empty")]))
 
@@ -191,9 +191,9 @@ class TestOneListOfNames:
 
 class TestSteerCount:
     def test_a_steered_turn_scores_its_notes_and_says_how_many_were_read(self):
-        from aiq_agent.common.steering import SteerInbox
-        from aiq_agent.common.steering import SteerNote
-        from aiq_agent.observability.langfuse_scores import steer_scores
+        from agent.common.steering import SteerInbox
+        from agent.common.steering import SteerNote
+        from agent.observability.langfuse_scores import steer_scores
 
         inbox = SteerInbox()
         inbox.offer(SteerNote(steer_id="a", text="x"))
@@ -207,8 +207,8 @@ class TestSteerCount:
         assert score.data_type == "NUMERIC"
 
     def test_an_unsteered_turn_writes_no_score(self):
-        from aiq_agent.common.steering import SteerInbox
-        from aiq_agent.observability.langfuse_scores import steer_scores
+        from agent.common.steering import SteerInbox
+        from agent.observability.langfuse_scores import steer_scores
 
         assert steer_scores(SteerInbox()) == []
 
@@ -225,7 +225,7 @@ class TestFileToolsUsed:
         ],
     )
     def test_the_moves_a_turn_made(self, tools, expected):
-        from aiq_agent.observability.langfuse_scores import file_tool_scores
+        from agent.observability.langfuse_scores import file_tool_scores
 
         [score] = file_tool_scores(tools)
 
@@ -234,7 +234,7 @@ class TestFileToolsUsed:
         assert expected in next(d for d in SCORE_DEFINITIONS if d.name == "file-tools-used").categories
 
     def test_a_turn_with_no_tool_calls_writes_no_score(self):
-        from aiq_agent.observability.langfuse_scores import file_tool_scores
+        from agent.observability.langfuse_scores import file_tool_scores
 
         assert file_tool_scores([]) == []
 
@@ -249,7 +249,7 @@ class TestFileToolsUsed:
     )
     def test_a_literal_search_is_navigation_as_the_eval_arms_count_it(self, tools, literal, expected):
         """The files eval's navigate arm is list, read and LITERAL search; ranked search is the search arm."""
-        from aiq_agent.observability.langfuse_scores import file_tool_scores
+        from agent.observability.langfuse_scores import file_tool_scores
 
         [score] = file_tool_scores(tools, literal)
 

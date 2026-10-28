@@ -14,22 +14,22 @@ import pytest
 from langchain_core.messages import HumanMessage
 from pydantic import ValidationError
 
-from aiq_agent.knowledge.project_experience import MAX_DECISIONS
-from aiq_agent.knowledge.project_experience import MAX_TEXT_CHARS
-from aiq_agent.knowledge.project_experience import ChosenFiles
-from aiq_agent.knowledge.project_experience import DecisionReply
-from aiq_agent.knowledge.project_experience import DraftedDecision
-from aiq_agent.knowledge.project_experience import Evidence
-from aiq_agent.knowledge.project_experience import FingerprintReply
-from aiq_agent.knowledge.project_experience import FingerprintValue
-from aiq_agent.knowledge.project_experience import ProjectExperienceRequest
-from aiq_agent.knowledge.project_experience import VocabularyEntry
-from aiq_agent.knowledge.project_experience import VocabularyOption
-from aiq_agent.knowledge.project_experience import choose_documents
-from aiq_agent.knowledge.project_experience import draft_decisions
-from aiq_agent.knowledge.project_experience import extract_fingerprint
-from aiq_agent.knowledge.project_experience import read_project_experience
-from aiq_agent.knowledge.schema import AvailableDocument
+from agent.knowledge.project_experience import MAX_DECISIONS
+from agent.knowledge.project_experience import MAX_TEXT_CHARS
+from agent.knowledge.project_experience import ChosenFiles
+from agent.knowledge.project_experience import DecisionReply
+from agent.knowledge.project_experience import DraftedDecision
+from agent.knowledge.project_experience import Evidence
+from agent.knowledge.project_experience import FingerprintReply
+from agent.knowledge.project_experience import FingerprintValue
+from agent.knowledge.project_experience import ProjectExperienceRequest
+from agent.knowledge.project_experience import VocabularyEntry
+from agent.knowledge.project_experience import VocabularyOption
+from agent.knowledge.project_experience import choose_documents
+from agent.knowledge.project_experience import draft_decisions
+from agent.knowledge.project_experience import extract_fingerprint
+from agent.knowledge.project_experience import read_project_experience
+from agent.knowledge.schema import AvailableDocument
 
 
 class FakeLLM:

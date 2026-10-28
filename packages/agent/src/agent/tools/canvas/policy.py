@@ -14,7 +14,7 @@ BFF recorded a restricted folder on it (in this turn or an earlier one, its
 subject included, or the check could not be made: ``RestrictedUse.confined``
 fails closed), this turn admitted restricted content (``admitted``), or it drew
 on another project in a way that narrows its readers
-(:func:`~aiq_agent.knowledge.restricted_use.drew_on_other_projects`).
+(:func:`~agent.knowledge.restricted_use.drew_on_other_projects`).
 
 Two consequences, both deliberate:
 
@@ -32,8 +32,8 @@ step as ``{"refused": "restricted"}``.
 
 from __future__ import annotations
 
-from aiq_agent.knowledge.restricted_use import current_restricted_use
-from aiq_agent.knowledge.restricted_use import drew_on_other_projects
+from agent.knowledge.restricted_use import current_restricted_use
+from agent.knowledge.restricted_use import drew_on_other_projects
 
 RESTRICTED_REFUSAL = (
     "Not possible: This conversation has used content from a folder with restricted access or from "

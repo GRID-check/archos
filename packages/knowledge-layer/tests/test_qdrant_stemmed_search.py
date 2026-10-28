@@ -29,10 +29,10 @@ from knowledge_layer_testing.qdrant import record
 from knowledge_layer_testing.qdrant import vector
 from knowledge_layer_testing.qdrant import write
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.schema import AvailableDocument
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.schema import AvailableDocument
+from agent.knowledge.scoping import ScopedCollection
 
 PROJECT = "proj_stem"
 BASE = "oib_knowledge"
@@ -159,14 +159,14 @@ def tool(qdrant_store, monkeypatch):
     monkeypatch.setattr(instance, "_embed_query_cached", lambda query: vector(query))
     write(PROJECT, [record(text, name, chunk_id=str(uuid.uuid4())) for name, text in TEXTS.items()])
     docs = [AvailableDocument(file_name=name, collection=PROJECT, shelf="project") for name in TEXTS]
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
-    monkeypatch.setattr("aiq_agent.knowledge.get_superseded_files", lambda collection: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
+    monkeypatch.setattr("agent.knowledge.get_superseded_files", lambda collection: {})
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection(PROJECT, Shelf.PROJECT)],
     )
     monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: instance)

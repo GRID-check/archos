@@ -1,6 +1,6 @@
 """What one tool call found, held while it runs so its Herleitung row can settle (ADR-0132).
 
-A tool that emits an :class:`~aiq_agent.common.action_rows.ActionRow` fills one
+A tool that emits an :class:`~agent.common.action_rows.ActionRow` fills one
 of these from the typed values it already holds (the chunks it ranked, the
 groups it counted, the rows it listed) and calls :meth:`ActionOutcome.settle`
 once, on every path out. It never reads the text the tool returns.
@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
-from aiq_agent.common.action_rows import ActionRow
+from agent.common.action_rows import ActionRow
 
 SettledStatus = Literal["ok", "empty", "error"]
 
@@ -57,7 +57,7 @@ class ActionOutcome:
         any of ``collections`` is a restricted folder this turn has not admitted,
         nothing is counted and the call is only marked as having found something.
         """
-        from aiq_agent.knowledge.restricted_use import may_name
+        from agent.knowledge.restricted_use import may_name
 
         if all(may_name(collection) for collection in collections):
             self.hits, self.documents = hits, documents

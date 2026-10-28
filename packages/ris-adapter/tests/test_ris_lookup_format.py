@@ -17,7 +17,7 @@ import json
 
 import pytest
 
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.extraction import extract_sources_from_tool_result
 
 pytestmark = pytest.mark.asyncio
 

@@ -39,8 +39,8 @@ import logging
 import re
 from typing import Any
 
-from aiq_agent.common.legal_terms import extract_exact_terms
-from aiq_agent.common.message_utils import response_text
+from agent.common.legal_terms import extract_exact_terms
+from agent.common.message_utils import response_text
 
 logger = logging.getLogger(__name__)
 

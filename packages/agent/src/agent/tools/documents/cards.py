@@ -13,8 +13,8 @@ import logging
 
 from pydantic import ValidationError
 
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import get_card_registry
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import get_card_registry
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def emit_draft_card(
     the card is how it is announced.
 
     ``filing`` is the draft store's record of the project document this path was
-    filed as (:data:`~aiq_agent.tools.documents.draft_store.FILING_KEYS`). Passed
+    filed as (:data:`~agent.tools.documents.draft_store.FILING_KEYS`). Passed
     through rather than looked up here, because the two callers know it for
     different reasons: a write or an edit carries forward what the store held,
     and ``file_draft`` carries what the BFF just answered. A card whose filing is

@@ -40,12 +40,12 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.focus_file import get_focused_document_id
-from aiq_agent.common.focus_file import get_focused_file_name
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import parse_shelf
-from aiq_agent.knowledge.inventory import get_turn_documents
+from agent.common.bff_http import SignedEnvelope
+from agent.common.focus_file import get_focused_document_id
+from agent.common.focus_file import get_focused_file_name
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import parse_shelf
+from agent.knowledge.inventory import get_turn_documents
 
 from .client import lookup_document_id
 
@@ -176,7 +176,7 @@ def collection_of(file_name: str) -> str | None:
 
 def probe_collections() -> list[str]:
     """The non-base collections this turn may read, for a file the inventory does not list. Bounded."""
-    from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+    from agent.knowledge.scoping import get_scoped_collections_from_context
 
     try:
         entries = get_scoped_collections_from_context() or []

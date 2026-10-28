@@ -10,7 +10,7 @@ research it cites; this module is the one place both tiers meet.
 Three halves, one object
 ------------------------
 
-* **The socket** (``aiq_api.chat_socket``) owns a :class:`SteerInbox` per
+* **The socket** (``backend.chat_socket``) owns a :class:`SteerInbox` per
   turn and binds it with :func:`bind_steer_inbox` before the workflow runs, the
   pattern of ``tools/canvas/presence.py``: the graph's tasks copy the context,
   so they all see the one object. It :meth:`SteerInbox.offer`\\ s each note
@@ -49,8 +49,8 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 from pydantic import ConfigDict
 
-from aiq_agent.common.tool_calls import tool_basename
-from aiq_agent.common.wire_v2 import FocusRegion
+from agent.common.tool_calls import tool_basename
+from agent.common.wire_v2 import FocusRegion
 
 #: Notes one turn takes. The gateway's frame limiter counts only questions
 #: (``ws-frames.js``), so this is the bound on what steering can cost: each

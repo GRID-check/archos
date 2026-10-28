@@ -6,14 +6,14 @@ import logging
 from urllib.parse import parse_qs
 from urllib.parse import urlparse
 
-from aiq_agent.citations.citation_keys import ParsedURL
-from aiq_agent.citations.citation_keys import entry_shelf
-from aiq_agent.citations.citation_keys import key_file_names
-from aiq_agent.citations.citation_keys import parse_citation_key
-from aiq_agent.citations.citation_keys import parse_citation_ref
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.common.grounding_block import SourceRegion
+from agent.citations.citation_keys import ParsedURL
+from agent.citations.citation_keys import entry_shelf
+from agent.citations.citation_keys import key_file_names
+from agent.citations.citation_keys import parse_citation_key
+from agent.citations.citation_keys import parse_citation_ref
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import normalize_url
+from agent.common.grounding_block import SourceRegion
 
 logger = logging.getLogger(__name__)
 

@@ -123,8 +123,8 @@ ESTATE_LISTING_TOOLS = ("ls", "glob")
 
 def is_estate_listing(tool_name: str, call: dict[str, Any] | None) -> bool:
     """Whether a result is an ``ls`` or ``glob`` of the estate; one of the drafts or the skills lists no files."""
-    from aiq_agent.common.estate_paths import call_mount
-    from aiq_agent.common.tool_calls import tool_basename
+    from agent.common.estate_paths import call_mount
+    from agent.common.tool_calls import tool_basename
 
     base = tool_basename(tool_name or "")
     if base not in ESTATE_LISTING_TOOLS or call is None:

@@ -42,14 +42,14 @@ from pydantic import Field
 from pydantic import ValidationError
 from pydantic_core import to_jsonable_python
 
-from aiq_agent.common.backend_tools import is_backend_read_tool
-from aiq_agent.common.grounding_block import strip_trace_lanes
-from aiq_agent.project_context import ORGANIZATION_ID_HEADER
-from aiq_agent.project_context import PROJECT_ID_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from aiq_agent.project_context import USER_ID_HEADER
-from aiq_agent.project_context import GridRequestContext
+from agent.common.backend_tools import is_backend_read_tool
+from agent.common.grounding_block import strip_trace_lanes
+from agent.project_context import ORGANIZATION_ID_HEADER
+from agent.project_context import PROJECT_ID_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+from agent.project_context import USER_ID_HEADER
+from agent.project_context import GridRequestContext
 
 from ..jobs.access import JOB_ENVELOPE_MAX_AGE_MS
 from .builder_state import get_active_builder
@@ -140,9 +140,9 @@ def _metered_call() -> Iterator[None]:
     look, its reading included. The door's
     calls themselves are bounded by the budget, not by a per-call price.
     """
-    from aiq_agent.common.cost_tracking import track_llm_costs
-    from aiq_agent.common.image_view_budget import begin_image_view_budget
-    from aiq_agent.common.image_view_budget import end_image_view_budget
+    from agent.common.cost_tracking import track_llm_costs
+    from agent.common.image_view_budget import begin_image_view_budget
+    from agent.common.image_view_budget import end_image_view_budget
 
     token = begin_image_view_budget(limit=DOOR_LOOKS_PER_CALL)
     try:

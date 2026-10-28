@@ -1,6 +1,6 @@
 """The two boundaries ADR-0100 draws around PostHog, held by something other than review.
 
-1. **One client per runtime.** ``packages/agent/src/aiq_agent/observability/posthog_client.py``
+1. **One client per runtime.** ``packages/agent/src/agent/observability/posthog_client.py``
    is the only Python module that imports the ``posthog`` SDK, and
    ``apps/workspace/bff/analytics/posthog-server.ts`` the only BFF module that
    imports ``posthog-node``. ``posthog-js`` is reached only through
@@ -54,7 +54,7 @@ TS_ROOTS = tuple(
 )
 TS_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".cjs"}
 
-PYTHON_CLIENT = "packages/agent/src/aiq_agent/observability/posthog_client.py"
+PYTHON_CLIENT = "packages/agent/src/agent/observability/posthog_client.py"
 BROWSER_CLIENT = "apps/workspace/bff/analytics/posthog.ts"
 SERVER_CLIENT = "apps/workspace/bff/analytics/posthog-server.ts"
 REQUEST_ERRORS = "apps/workspace/bff/analytics/request-error.ts"
@@ -133,7 +133,7 @@ def test_the_scanners_see_what_they_guard(tmp_path: Path) -> None:
     """The regexes fire on the shapes they exist to catch, so a green run means something."""
     assert _PY_IMPORT.search("from posthog import Posthog")
     assert _PY_IMPORT.search("import posthog")
-    assert not _PY_IMPORT.search("from aiq_agent.observability import posthog_client")
+    assert not _PY_IMPORT.search("from agent.observability import posthog_client")
     assert _TS_IMPORT.findall("import { PostHog } from 'posthog-node'") == ["posthog-node"]
     assert _TS_IMPORT.findall('import posthog from "posthog-js/react"') == ["posthog-js"]
     assert _TS_IMPORT.findall("import { useThumbSurvey } from '@posthog/react'") == ["@posthog/react"]

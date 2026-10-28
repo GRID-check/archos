@@ -6,20 +6,20 @@ import asyncio
 
 import pytest
 
-from aiq_agent.agents.piloti import quote_patch
-from aiq_agent.agents.piloti.quote_patch import PATCH_FLOOR
-from aiq_agent.agents.piloti.quote_patch import accept
-from aiq_agent.agents.piloti.quote_patch import patch_quotes
-from aiq_agent.agents.piloti.quote_patch import select
-from aiq_agent.agents.piloti.quote_patch import splice
-from aiq_agent.citations import quote_matching
-from aiq_agent.citations import quote_verification
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.quote_matching import UnverifiedQuote
-from aiq_agent.citations.quote_matching import closeness
-from aiq_agent.citations.quote_verification import verify_quoted_spans
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.verification import verify_citations
+from agent.agents.piloti import quote_patch
+from agent.agents.piloti.quote_patch import PATCH_FLOOR
+from agent.agents.piloti.quote_patch import accept
+from agent.agents.piloti.quote_patch import patch_quotes
+from agent.agents.piloti.quote_patch import select
+from agent.agents.piloti.quote_patch import splice
+from agent.citations import quote_matching
+from agent.citations import quote_verification
+from agent.citations.entries import SourceEntry
+from agent.citations.quote_matching import UnverifiedQuote
+from agent.citations.quote_matching import closeness
+from agent.citations.quote_verification import verify_quoted_spans
+from agent.citations.registry import SourceRegistry
+from agent.citations.verification import verify_citations
 
 PASSAGE = (
     "Vorher steht ein Satz über Geländer und Brüstungen. Die lichte Durchgangshöhe von Treppen muss "

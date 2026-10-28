@@ -1,8 +1,8 @@
 """Shared prompt builder for post-hoc Grid response card generation."""
 
-from aiq_agent.cards.catalog import CHAT_ONLY_CARD_TYPES
-from aiq_agent.cards.catalog import render_card_catalog
-from aiq_agent.cards.catalog import render_card_doctrine
+from agent.cards.catalog import CHAT_ONLY_CARD_TYPES
+from agent.cards.catalog import render_card_catalog
+from agent.cards.catalog import render_card_doctrine
 
 # What this path may build a card OUT OF, said before anything else it is asked to do.
 #
@@ -41,7 +41,7 @@ already the reader's; a card that repeats it is a restatement. One or two cards 
 substance is a full kit even for a very long report."""
 
 # Ordering, which is the whole of what this path controls about placement. The runner attaches the
-# returned list to the finished report as-is (see `aiq_api.jobs.runner`), so list order IS render
+# returned list to the finished report as-is (see `backend.jobs.runner`), so list order IS render
 # order and there is no marker, no anchor and no way to put a card beside the paragraph it belongs
 # to. Saying so is not pedantry: without this sentence the model has no way to know that the list it
 # returns is the order the reader reads.
@@ -55,8 +55,8 @@ def build_card_generation_prompt() -> str:
     """Build a system prompt for batch card generation from a finished report.
 
     Renders the same catalog AND the same trigger doctrine as the ``emit_card``
-    tool (:func:`aiq_agent.cards.catalog.render_card_catalog` and
-    :func:`~aiq_agent.cards.catalog.render_card_doctrine`), so neither the card
+    tool (:func:`agent.cards.catalog.render_card_catalog` and
+    :func:`~agent.cards.catalog.render_card_doctrine`), so neither the card
     shapes nor the question of which content takes which card can drift between
     the two surfaces. The doctrine matters most here: this path produces cards
     for the LONGEST answers Grid writes, and until it rendered the doctrine its

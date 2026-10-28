@@ -176,7 +176,7 @@ def _holdout_arm(conversation_id: str | None) -> LessonsArm:
     if not conversation_id:
         return "off"
     try:
-        from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        from agent.common.retrieval_settings import get_retrieval_setting
 
         holdout_pct = get_retrieval_setting("lessons.holdout_pct", 0)
         if holdout_pct <= 0:

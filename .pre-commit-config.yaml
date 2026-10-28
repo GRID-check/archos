@@ -37,7 +37,7 @@ repos:
         entry: node apps/workspace/scripts/sync-platform-skills.mjs --check
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent/skills/builtin/.*/SKILL\.md|apps/workspace/bff/skills/platform-skills\.ts|apps/workspace/scripts/sync-platform-skills\.mjs)$
+        files: ^(packages/agent/src/agent/skills/builtin/.*/SKILL\.md|apps/workspace/bff/skills/platform-skills\.ts|apps/workspace/scripts/sync-platform-skills\.mjs)$
 
       - id: card-schemas
         name: the card schemas are generated from the card models (cards/models.py and its card modules)
@@ -71,7 +71,7 @@ repos:
           (task workspace:cards:check covers it)"; fi'
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent/cards/(models|card_model|proposal_cards|schematic_cards|calculation_card|formula_card|workspace_cards|file_operation_card|canvas_activity_card|look_card|revision_compare_card|ifc_cards|surface_card)\.py|contracts/cards/schemas\.json|scripts/generate_card_schema\.py|apps/workspace/scripts/generate-card-schemas\.mjs|apps/workspace/shared/cards/generated\.ts)$
+        files: ^(packages/agent/src/agent/cards/(models|card_model|proposal_cards|schematic_cards|calculation_card|formula_card|workspace_cards|file_operation_card|canvas_activity_card|look_card|revision_compare_card|ifc_cards|surface_card)\.py|contracts/cards/schemas\.json|scripts/generate_card_schema\.py|apps/workspace/scripts/generate-card-schemas\.mjs|apps/workspace/shared/cards/generated\.ts)$
 
       - id: wire-schemas
         name: the chat wire v2 schemas are generated from common/wire_v2.py
@@ -86,7 +86,7 @@ repos:
           else echo "skipping the Zod stage, apps/workspace/node_modules is absent"; fi'
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent/common/wire_v2\.py|contracts/wire/v2\.schema\.json|scripts/generate_wire_schema\.py|apps/workspace/scripts/generate-(wire|card)-schemas\.mjs|apps/workspace/ui/adapters/api/wire-v2\.generated\.ts)$
+        files: ^(packages/agent/src/agent/common/wire_v2\.py|contracts/wire/v2\.schema\.json|scripts/generate_wire_schema\.py|apps/workspace/scripts/generate-(wire|card)-schemas\.mjs|apps/workspace/ui/adapters/api/wire-v2\.generated\.ts)$
 
       - id: vocabularies
         name: the UI's shared vocabularies are generated from their Python sources
@@ -96,7 +96,7 @@ repos:
         entry: bash -c 'PYTHONPATH=packages/agent/src .venv/bin/python scripts/generate_vocabularies.py'
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent/cards/workspace_cards\.py|packages/agent/src/aiq_agent/common/source_kinds\.py|scripts/generate_vocabularies\.py|apps/workspace/shared/vocabularies\.generated\.ts)$
+        files: ^(packages/agent/src/agent/cards/workspace_cards\.py|packages/agent/src/agent/common/source_kinds\.py|scripts/generate_vocabularies\.py|apps/workspace/shared/vocabularies\.generated\.ts)$
 
       - id: agent-docs
         name: every AGENTS.md is reachable by the agents that need it
@@ -159,7 +159,7 @@ repos:
         entry: .venv/bin/lint-imports --no-cache
         language: system
         pass_filenames: false
-        files: ^(packages/agent/src/aiq_agent|apps/backend/src|packages/knowledge-layer/src)/.*\.py$|^pyproject\.toml$
+        files: ^(packages/agent/src/agent|apps/backend/src|packages/knowledge-layer/src)/.*\.py$|^pyproject\.toml$
 
       - id: file-size
         name: no source file passes 600 lines, no Python function 60, and no giant grows
@@ -197,7 +197,7 @@ repos:
         entry: python3 scripts/check_env_docs.py
         language: system
         pass_filenames: false
-        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^apps/backend/src/aiq_api/jobs/.*\.py$|^packages/agent/src/aiq_agent/knowledge/ingest_.*\.py$|^apps/workspace/(workers|purger|scheduler)/.*\.js$|^apps/workspace/bff/(jobs-queue|mail-import)/.*\.ts$
+        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^apps/backend/src/backend/jobs/.*\.py$|^packages/agent/src/agent/knowledge/ingest_.*\.py$|^apps/workspace/(workers|purger|scheduler)/.*\.js$|^apps/workspace/bff/(jobs-queue|mail-import)/.*\.ts$
 
       - id: validate-skills
         name: skill bundles are well-formed
@@ -237,12 +237,12 @@ repos:
       - id: markdown-link-check
         args: ["-q", "--config", "ci/markdown-link-check-config.json"]
         # The vendored SkillCheck rulebook is excluded because it is vendored
-        # VERBATIM (see packages/agent/src/aiq_agent/skills/review/README.md): its relative
+        # VERBATIM (see packages/agent/src/agent/skills/review/README.md): its relative
         # links resolve upstream, where the whole `references/` directory
         # exists, and we deliberately took only the one file. Rewriting its
         # links to make a link checker happy would break the byte-for-byte
         # guarantee that keeps its MIT licence and attribution intact.
-        exclude: ^packages/agent/src/aiq_agent/skills/review/skill-check/SKILL\.md$
+        exclude: ^packages/agent/src/agent/skills/review/skill-check/SKILL\.md$
 
 default_language_version:
   python: python3

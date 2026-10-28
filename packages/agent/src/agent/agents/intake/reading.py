@@ -36,11 +36,11 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.common.grounding_block import strip_trace_lanes
-from aiq_agent.common.message_utils import content_to_text
-from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.restricted_collections import is_restricted_collection
+from agent.common.grounding_block import strip_trace_lanes
+from agent.common.message_utils import content_to_text
+from agent.common.source_kinds import SHELF_QUALIFIERS
+from agent.common.source_kinds import Shelf
+from agent.knowledge.restricted_collections import is_restricted_collection
 
 from .read_log import IntakeReadLog
 from .read_log import current_read_log
@@ -121,7 +121,7 @@ def project_collections() -> list[str]:
     collection should never be here. It is refused anyway: what the intake reads becomes a profile
     every member reads (ADR-0087, ADR-0111), and a scope that drifted must not widen that.
     """
-    from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+    from agent.knowledge.scoping import get_scoped_collections_from_context
 
     entries = get_scoped_collections_from_context() or []
     return [
@@ -133,7 +133,7 @@ def project_collections() -> list[str]:
 
 async def project_documents() -> list[ProjectDocument]:
     """Every document registered for the run's project shelves; empty on a store error."""
-    from aiq_agent.knowledge.factory import get_available_documents_async
+    from agent.knowledge.factory import get_available_documents_async
 
     found: list[ProjectDocument] = []
     for collection in project_collections():
@@ -148,7 +148,7 @@ async def project_documents() -> list[ProjectDocument]:
 
 def fetch_document_pages(collection: str, file_name: str) -> list[tuple[Any, str]] | None:
     """``(page_label, chunk text)`` of one file from its collection's chunks. Blocking; raises on a store outage."""
-    from aiq_agent.knowledge.collection_pages import read_pages
+    from agent.knowledge.collection_pages import read_pages
 
     return read_pages(collection, file_name)
 
@@ -324,8 +324,8 @@ def passages_in(tool_name: str, text: str) -> list[tuple[str, int | None, str, s
     (``extract_sources_from_tool_result``), which recovers the file and page from
     the citation key.
     """
-    from aiq_agent.citations.extraction import extract_sources_from_tool_result
-    from aiq_agent.common.grounding_block import get_grounding_block
+    from agent.citations.extraction import extract_sources_from_tool_result
+    from agent.common.grounding_block import get_grounding_block
 
     block = get_grounding_block(text)
     if block is not None:

@@ -49,19 +49,19 @@ from pydantic import Field
 from pydantic import field_validator
 from pydantic import model_validator
 
-from aiq_agent.common.message_utils import response_text
-from aiq_agent.common.model_overrides import AgentGroup
+from agent.common.message_utils import response_text
+from agent.common.model_overrides import AgentGroup
 
 # The same canned non-answers memory reflection's gate refuses. Imported rather
 # than copied: two lists of "this turn produced no answer" would drift, and the
 # turn shapes they name are the system's, not either stage's.
-from aiq_agent.stages.memory_reflection import REFLECTION_NON_ANSWERS as _NON_ANSWERS
-from aiq_agent.stages.registry import register_stage
-from aiq_agent.stages.spec import GateDecision
-from aiq_agent.stages.spec import StageContext
-from aiq_agent.stages.spec import StageEmpty
-from aiq_agent.stages.spec import StageSpec
-from aiq_agent.stages.spec import TurnFacts
+from agent.stages.memory_reflection import REFLECTION_NON_ANSWERS as _NON_ANSWERS
+from agent.stages.registry import register_stage
+from agent.stages.spec import GateDecision
+from agent.stages.spec import StageContext
+from agent.stages.spec import StageEmpty
+from agent.stages.spec import StageSpec
+from agent.stages.spec import TurnFacts
 
 logger = logging.getLogger(__name__)
 
@@ -539,8 +539,8 @@ async def _handler(ctx: StageContext) -> dict[str, Any] | StageEmpty | None:
     from langchain_core.messages import HumanMessage
     from langchain_core.messages import SystemMessage
 
-    from aiq_agent.common.json_utils import extract_json
-    from aiq_agent.common.llm_factory import strict_json_response_format
+    from agent.common.json_utils import extract_json
+    from agent.common.llm_factory import strict_json_response_format
 
     facts = ctx.facts
     messages = [

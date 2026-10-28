@@ -9,7 +9,7 @@ from langgraph.graph import END
 from langgraph.graph import START
 from langgraph.graph import StateGraph
 
-from aiq_agent.common.nat_step_repair import install_step_stack_repair
+from agent.common.nat_step_repair import install_step_stack_repair
 from nat.data_models.intermediate_step import IntermediateStepPayload
 from nat.data_models.intermediate_step import IntermediateStepState
 from nat.data_models.intermediate_step import IntermediateStepType

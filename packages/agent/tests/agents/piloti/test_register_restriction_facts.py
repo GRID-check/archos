@@ -16,12 +16,12 @@ from unittest.mock import patch
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti import conversation_register
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.stages import TurnFacts
-from aiq_agent.turn.admission import TurnOutcome
-from aiq_agent.turn.registries import TurnRegistries
+from agent.agents.piloti import conversation_register
+from agent.agents.piloti.models import ConversationState
+from agent.cards.registry import CardRegistry
+from agent.stages import TurnFacts
+from agent.turn.admission import TurnOutcome
+from agent.turn.registries import TurnRegistries
 
 RESTRICTED = "proj_1_r0123456789ab"
 

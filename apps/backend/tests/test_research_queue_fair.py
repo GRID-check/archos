@@ -16,10 +16,10 @@ import os
 import pytest
 from sqlalchemy import text
 
-from aiq_agent.common import claim_queue
-from aiq_api.jobs import payload_crypto
-from aiq_api.jobs import queue
-from aiq_api.jobs.runner import _lost_claim
+from agent.common import claim_queue
+from backend.jobs import payload_crypto
+from backend.jobs import queue
+from backend.jobs.runner import _lost_claim
 
 _POSTGRES = os.environ.get("TEST_POSTGRES_URL")
 

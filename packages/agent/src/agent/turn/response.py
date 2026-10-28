@@ -1,7 +1,7 @@
 """The crossing from finished graph state to the turn's result and to the
 post-answer stages' facts.
 
-State field in, :class:`~aiq_agent.common.wire_v2.TurnResult` field (or
+State field in, :class:`~agent.common.wire_v2.TurnResult` field (or
 ``TurnFacts`` field) out. Kept as module-level functions rather than inline
 code in the workflow because inline they could only be exercised by standing
 up the whole NAT workflow — which is how ``skills_hidden`` could be set by
@@ -19,23 +19,23 @@ import uuid
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.common.canned_replies import NO_RESPONSE_TEXT
-from aiq_agent.common.wire_v2 import ConfidenceCheck
-from aiq_agent.common.wire_v2 import KeyedCard
-from aiq_agent.common.wire_v2 import QuoteStamp
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import RunHandoff
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.common.wire_v2 import card_key
-from aiq_agent.knowledge.restricted_use import drew_on_other_projects
-from aiq_agent.memory.restriction import RestrictionEvidence
-from aiq_agent.memory.restriction import restricted_digest_notes
-from aiq_agent.memory.restriction import restriction_evidence
-from aiq_agent.memory.shown_notes import ShownNotes
-from aiq_agent.stages import TurnFacts
+from agent.common.canned_replies import NO_RESPONSE_TEXT
+from agent.common.wire_v2 import ConfidenceCheck
+from agent.common.wire_v2 import KeyedCard
+from agent.common.wire_v2 import QuoteStamp
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import RunHandoff
+from agent.common.wire_v2 import TurnResult
+from agent.common.wire_v2 import card_key
+from agent.knowledge.restricted_use import drew_on_other_projects
+from agent.memory.restriction import RestrictionEvidence
+from agent.memory.restriction import restricted_digest_notes
+from agent.memory.restriction import restriction_evidence
+from agent.memory.shown_notes import ShownNotes
+from agent.stages import TurnFacts
 
 if TYPE_CHECKING:
-    from aiq_agent.agents.piloti.models import ConversationState
+    from agent.agents.piloti.models import ConversationState
 
 
 def answer_message_id(conversation_id: str | None, turn_id: str | None) -> str:
@@ -55,7 +55,7 @@ def turn_answer_message_id(conversation_id: str | None) -> str:
     when restricted content is admitted into the turn (ADR-0093), so a vote on
     it is judged by the server's record whether or not the answer is persisted.
     """
-    from aiq_agent.project_context import get_user_message_id_from_context
+    from agent.project_context import get_user_message_id_from_context
 
     return answer_message_id(conversation_id, get_user_message_id_from_context())
 

@@ -1,6 +1,6 @@
 """The deep researcher: a multi-round research agent run as a subagent of a chat turn."""
 
-from aiq_agent.lazy_exports import lazy_exports
+from agent.lazy_exports import lazy_exports
 
 # Loaded on first use (PEP 562): importing any submodule of this package
 # executes this file first, and the registrations pull in the whole agent

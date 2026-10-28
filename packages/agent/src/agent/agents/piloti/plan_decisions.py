@@ -13,8 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.decisions import choice
-from aiq_agent.common.decisions import decide
+from agent.common.decisions import choice
+from agent.common.decisions import decide
 
 SLOT = "plan"
 THRESHOLD = 0.5

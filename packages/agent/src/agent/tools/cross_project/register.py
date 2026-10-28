@@ -73,28 +73,28 @@ from typing import Literal
 
 from pydantic import BeforeValidator
 
-from aiq_agent import project_context
-from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.action_rows import ActionRow
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
-from aiq_agent.common.grounding_block import GroundingBlock
-from aiq_agent.common.grounding_block import GroundingHit
-from aiq_agent.common.grounding_block import SourceProject
-from aiq_agent.common.grounding_block import render_grounding_block
-from aiq_agent.common.norm_registry import FEDERAL_STATE_TOKENS
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.permit_extraction import canonical_record_kind
-from aiq_agent.knowledge.permit_extraction import canonical_requirement_kind
-from aiq_agent.knowledge.restricted_collections import is_restricted_collection
-from aiq_agent.knowledge.restricted_use import note_collections_read
-from aiq_agent.knowledge.restricted_use import note_cross_project_hand_out
-from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
-from aiq_agent.observability.retrieval_trace import PICK_LIMIT
-from aiq_agent.observability.retrieval_trace import emit_retrieval_span
-from aiq_agent.profile_names import LEGACY_PROFILE_TOKENS
-from aiq_agent.profile_names import normalize_profile_token
-from aiq_agent.turn.response import turn_answer_message_id
+from agent import project_context
+from agent.common.action_outcome import ActionOutcome
+from agent.common.action_rows import ActionRow
+from agent.common.bff_http import SignedEnvelope
+from agent.common.grounding_block import PROJECT_STATUS_LABELS
+from agent.common.grounding_block import GroundingBlock
+from agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import SourceProject
+from agent.common.grounding_block import render_grounding_block
+from agent.common.norm_registry import FEDERAL_STATE_TOKENS
+from agent.common.source_kinds import Shelf
+from agent.knowledge.permit_extraction import canonical_record_kind
+from agent.knowledge.permit_extraction import canonical_requirement_kind
+from agent.knowledge.restricted_collections import is_restricted_collection
+from agent.knowledge.restricted_use import note_collections_read
+from agent.knowledge.restricted_use import note_cross_project_hand_out
+from agent.observability.langfuse_trace_attributes import add_trace_tag
+from agent.observability.retrieval_trace import PICK_LIMIT
+from agent.observability.retrieval_trace import emit_retrieval_span
+from agent.profile_names import LEGACY_PROFILE_TOKENS
+from agent.profile_names import normalize_profile_token
+from agent.turn.response import turn_answer_message_id
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -897,7 +897,7 @@ async def _judge(query: str, body: dict[str, Any]) -> HitVerdicts | None:
 
 def _reference_order() -> list[str]:
     """The order the turn's reference fit put the catalog in; empty outside a turn or when none ran."""
-    from aiq_agent.knowledge.restricted_use import current_cross_project_turn
+    from agent.knowledge.restricted_use import current_cross_project_turn
 
     turn = current_cross_project_turn()
     return list(turn.reference_order) if turn is not None else []

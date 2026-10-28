@@ -1,10 +1,10 @@
 # Post-answer stages — a platform primitive
 
-> **Status:** **all slices are built** (`packages/agent/src/aiq_agent/stages/`, memory
+> **Status:** **all slices are built** (`packages/agent/src/agent/stages/`, memory
 > reflection migrated onto the primitive, the kill switch moved per-turn, the
 > whole client half — frame schema, `onStage`, the `stages` key on the message
 > row, and the rail below the answer — and, as of slice 3, the two halves
-> connected: `aiq_api` publishes the frame sink and `follow_ups` declares
+> connected: `backend` publishes the frame sink and `follow_ups` declares
 > `delivery="frame"`. **A real turn produces a real frame that reaches a browser
 > and renders the rail.** Slice 4 retired the in-answer `follow_ups` CARD
 > (`SYSTEM_CARD_TYPES`, its prompt weight removed on every surface, migration
@@ -45,8 +45,8 @@ The three things that are already the same shape, built three times:
 
 | what | where | runs after | delivery | timeout | gate | observability |
 |---|---|---|---|---|---|---|
-| memory reflection | `packages/agent/src/aiq_agent/memory/reflection.py:398` | the answer is generated | DB row → REST poll | **none** | `_reflection_answer_is_substantive` | profiler span |
-| post-hoc card generation | `packages/agent/src/aiq_agent/cards/generate.py:105` | the deep report is delivered | job SSE artifact re-emit | `30.0s` (`generate.py:22`) | `if not report` | none |
+| memory reflection | `packages/agent/src/agent/memory/reflection.py:398` | the answer is generated | DB row → REST poll | **none** | `_reflection_answer_is_substantive` | profiler span |
+| post-hoc card generation | `packages/agent/src/agent/cards/generate.py:105` | the deep report is delivered | job SSE artifact re-emit | `30.0s` (`generate.py:22`) | `if not report` | none |
 | follow-ups (today) | inside the answering LLM call | — | terminal WS frame (`cards`) | — | the model's judgement | none |
 
 Three delivery channels, two timeout policies, one of which is "none", and one
@@ -76,12 +76,12 @@ earlier pass missed. Three separate things surface memory in the UI and only one
 of them is the reflection stage:
 
 1. **The in-turn `remember` tool** emits a `memory_proposal` card
-   (`packages/agent/src/aiq_agent/memory/register.py:38-65`). That card goes into
+   (`packages/agent/src/agent/memory/register.py:38-65`). That card goes into
    the conversation-scoped `CardRegistry`, is lifted onto the answer as
    `response.cards` (`piloti/conversation_register.py:1204-1206`), rides
    `_STREAM_EXTRA_FIELDS` (`register.py:200-221`) onto the terminal
    `finish_reason="stop"` chunk (`register.py:337-375`), is attached to the
-   WebSocket frame (`aiq_api/websocket_reconnect.py:1059-1063`) and rendered
+   WebSocket frame (`backend/websocket_reconnect.py:1059-1063`) and rendered
    **inside** the message. **This is streamed.** It is not reflection.
 2. **The reflection stage** writes `project_memory` rows through the internal
    token-guarded endpoint (`reflection.py:343-358` →
@@ -131,7 +131,7 @@ per-turn chip … **polls** conversation-scoped memory after each answer"
 **Consequence for this design:** there is *no existing streamed post-answer
 channel on the chat path* to copy. The nearest thing is the deep-research job
 runner, which does re-emit its artifact after the answer
-(`aiq_api/jobs/runner.py:939-947` → `jobs/callbacks.py:355-373`). The chat path
+(`backend/jobs/runner.py:939-947` → `jobs/callbacks.py:355-373`). The chat path
 needs the channel built. Section 4 builds it out of parts that already exist.
 
 ### 1.2 How it is scheduled and forced
@@ -238,9 +238,9 @@ The agent tier's only handle on the turn is the third one — NAT stores it as
 `self._message_parent_id` (`nat/front_ends/fastapi/message_handler.py:125`).
 
 > **[as built]** This section was written as though that handle lived only inside
-> `aiq_api`. It does not: NAT's session publishes it as a ContextVar
+> `backend`. It does not: NAT's session publishes it as a ContextVar
 > (`nat/runtime/session.py:487`) exposed as `Context.user_message_id`
-> (`nat/builder/context.py:206-210`), so `aiq_agent` reads it directly —
+> (`nat/builder/context.py:206-210`), so `agent` reads it directly —
 > `get_user_message_id_from_context()` in `project_context.py`.
 > `TurnFacts.ws_parent_id` is therefore a real value on the WebSocket path from
 > slice 0, and the idempotency key of §7.2 is real rather than aspirational.
@@ -346,7 +346,7 @@ Two properties are load-bearing and non-negotiable:
 
 ### 2.2 What a stage declares
 
-New package `packages/agent/src/aiq_agent/stages/`. One frozen declaration per stage:
+New package `packages/agent/src/agent/stages/`. One frozen declaration per stage:
 
 ```python
 @dataclass(frozen=True)
@@ -433,7 +433,7 @@ handler to invent output.
 
 ### 2.5 Registration point
 
-`packages/agent/src/aiq_agent/stages/registry.py`, a module-level `register_stage()` and
+`packages/agent/src/agent/stages/registry.py`, a module-level `register_stage()` and
 `iter_stages()`.
 
 > **[as built]** `register_stage` is a function that returns its argument
@@ -503,11 +503,11 @@ often does the model decline").
 A stage that declares `delivery="frame"` needs to push a frame down a socket the
 agent tier does not own. That inversion already exists in this repo, in the
 opposite direction: `conversation_context.register_context_appender`
-(`packages/agent/src/aiq_agent/conversation_context.py:52-56`, registered at
-`piloti/conversation_register.py:822`) — "`aiq_api` owns the socket, `aiq_agent`
+(`packages/agent/src/agent/conversation_context.py:52-56`, registered at
+`piloti/conversation_register.py:822`) — "`backend` owns the socket, `agent`
 owns the graph".
 
-So: `packages/agent/src/aiq_agent/stages/delivery.py` declares
+So: `packages/agent/src/agent/stages/delivery.py` declares
 
 ```python
 StageFrameSink = Callable[[str, dict], Awaitable[bool]]  # (conversation_id, frame) -> delivered
@@ -516,7 +516,7 @@ StageFrameSink = Callable[[str, dict], Awaitable[bool]]  # (conversation_id, fra
 def register_stage_frame_sink(sink: StageFrameSink) -> None: ...
 ```
 
-and `aiq_api/plugin.py` registers an implementation that calls
+and `backend/plugin.py` registers an implementation that calls
 `_registry.send(conversation_id, GridStageMessage(**frame))`
 (`websocket_reconnect.py:214-247`, `async def send`). Doing it through `_registry.send` and not
 through the socket directly buys the **multi-replica relay for free**: `send`
@@ -532,9 +532,9 @@ patching the dependency. `_registry.send` takes any `BaseModel` and calls
 frame type is `grid_`-prefixed.
 
 > **[as built, slice 3]** The implementation is `GridStageMessage` and
-> `send_stage_frame` in `aiq_api/websocket_reconnect.py`, registered by
+> `send_stage_frame` in `backend/websocket_reconnect.py`, registered by
 > `register_stage_frame_sink(send_stage_frame)` at **import** of
-> `aiq_api/plugin.py`, next to `install_reconnectable_handler()`. Import-time and
+> `backend/plugin.py`, next to `install_reconnectable_handler()`. Import-time and
 > not inside `add_routes`, because that is what "the front end starts up" means:
 > a process that never loads this front end — a CLI run, a research worker —
 > leaves the sink unset, and a `frame` stage there still runs, is still bounded
@@ -599,7 +599,7 @@ section, not against each other. Nothing below depends on either half existing.
 
 ### 4.1 The event
 
-A stage's outcome is a chat wire v2 event (`packages/agent/src/aiq_agent/common/wire_v2.py`,
+A stage's outcome is a chat wire v2 event (`packages/agent/src/agent/common/wire_v2.py`,
 `StageBody`; [`websocket-protocol.md`](../api/websocket-protocol.md)), sent on
 the socket of the turn it follows:
 
@@ -780,7 +780,7 @@ FOLLOW_UPS = StageSpec(
 )
 ```
 
-> **[as built]** Three corrections, all in `packages/agent/src/aiq_agent/stages/follow_ups.py`.
+> **[as built]** Three corrections, all in `packages/agent/src/agent/stages/follow_ups.py`.
 >
 > **`delivery="silent"` in slice 1, `"frame"` from slice 3.** Slice 1 was the
 > measurement and shipped `silent` deliberately; slice 3 flipped it, and nothing
@@ -1545,7 +1545,7 @@ alone. Nothing else may start before 0.**
 | **0** ✅ | **BUILT.** The primitive: `stages/` package, `StageSpec`, `TurnFacts`, runner (semaphore + timeout + span), registry, sink interface. Reflection ported onto it, behaviour-identical, flag unchanged. No new stage, no frame. Carries the §1.4 and §1.5 fixes and the §7.8 kill-switch fix. | — | yes — a pure refactor with the §1.4/§1.5 fixes | revert |
 | **1** ✅ | **BUILT.** Backend `follow_ups`: gate, handler, prompt, payload model. `delivery="silent"` — **it runs and is measured, and delivers nothing.** Carries `StageEmpty` (§2.4), per-stage cost on the span (§7.4) and the backend↔BFF stage-flag parity guard. | 0 | yes | flag off |
 | **2** ✅ | **BUILT.** Frontend: `NATStageMessageSchema`, `onStage`, `wsParentId` on the message, `stages` on the PATCH + its sanitiser, `FollowUpsRail`, `/dev` variant, registry.mjs rewrite (§6.3). Built against the §4 fixtures, which now exist as `shared/stages/frames.json`. Carries the §8 correction (three arrival conditions, not two) and the §6.2 one. | — (contract only) | yes — renders from fixtures with no backend | revert |
-| **3** ✅ | **BUILT.** Wire them: `aiq_api` publishes the frame sink (`GridStageMessage` + `send_stage_frame`, registered at plugin import), `follow_ups` declares `delivery="frame"`, and the `post-answer-follow-ups` flag is on for one organization and off everywhere else. Carries the §9 contract test's Python half, which replaces the slice-2 stand-in. | 0,1,2 | yes | flag off |
+| **3** ✅ | **BUILT.** Wire them: `backend` publishes the frame sink (`GridStageMessage` + `send_stage_frame`, registered at plugin import), `follow_ups` declares `delivery="frame"`, and the `post-answer-follow-ups` flag is on for one organization and off everywhere else. Carries the §9 contract test's Python half, which replaces the slice-2 stand-in. | 0,1,2 | yes | flag off |
 | **4** ✅ | **BUILT.** Retire the card: `SYSTEM_CARD_TYPES`, prompt-weight removal (catalog, post-hoc craft, and the seeded skill's `grid-cards` list + craft section via `0062`), export skip already done by PR #474 (§7.10). The `post-answer-follow-ups` flag is on for ALL orgs in both environments and `defaultOn` follows it. | 3 | yes | §7.10's revert path — step 1 **plus** reverting the step-2 commit **plus** `0062_…down.sql`; **performed and verified end to end**, not assumed |
 | **4b** ✅ | **BUILT.** Reflection's own frame + the per-turn chip; the poll deleted (§5.1, §1.7). `memory_reflection` declares `delivery="frame"` and its payload carries the rows it wrote; the client stores them under `stages.memoryReflection`, and `useConversationMemory` is gone. Carries the §1.1 correction (which half of path 1 the chip's in-turn label actually was) and the §5.1 one (§8's conditions are the rail's, not every stage's). | 3 | yes | flag off |
 
@@ -1635,7 +1635,7 @@ Then the specific risks:
 5. **A stage becomes a dumping ground.** "Post-answer" is an attractive place to
    put anything slow. Mitigation: the definition in §2.1 — *at most one payload,
    addressed to one turn, may not affect the answer*. Work that does not fit is a
-   job (`aiq_api/jobs/`), not a stage.
+   job (`backend/jobs/`), not a stage.
 6. **Prompt injection.** `follow_ups` reads user text and answer text and its
    output becomes clickable chips. The chips only **prefill the composer** —
    `setComposerPrefill` and nothing else (`FollowUpsCard.tsx:106`) — so the worst

@@ -31,21 +31,21 @@ from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.answer_pipeline import this_turn
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
-from aiq_agent.common.steering import HELD_FOR_STEER
-from aiq_agent.common.steering import SteerInbox
-from aiq_agent.common.steering import SteerNote
-from aiq_agent.common.steering import bind_steer_inbox
-from aiq_agent.common.steering import unbind_steer_inbox
-from aiq_agent.common.wire_v2 import FocusRegion
-from aiq_agent.common.wire_v2 import SteerAppliedBody
+from agent.agents.piloti.agent import _SYNTHESIS_ANCHOR
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.answer_pipeline import this_turn
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common import turn_status
+from agent.common.steering import HELD_FOR_STEER
+from agent.common.steering import SteerInbox
+from agent.common.steering import SteerNote
+from agent.common.steering import bind_steer_inbox
+from agent.common.steering import unbind_steer_inbox
+from agent.common.wire_v2 import FocusRegion
+from agent.common.wire_v2 import SteerAppliedBody
 
 _PROMPT = "Du bist Piloti."
 _QUESTION = "Markier die Tür im Erdgeschoss."
@@ -82,8 +82,8 @@ def _bypass_citation_pipeline():
     """The answer pipeline is not what these tests are about."""
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]

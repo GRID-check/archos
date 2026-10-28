@@ -1,7 +1,7 @@
 # The API plugin: `apps/backend`
 
 The backend's FastAPI front end, loaded by NAT as a front-end plugin
-(`_type: aiq_api`): REST routes, the async job API with SSE streaming, and
+(`_type: backend`): REST routes, the async job API with SSE streaming, and
 `/v1/ingest`. A uv workspace member, installed into the same venv as the agent.
 
 The backend image is built here too (ADR-0145 rule 2): `Dockerfile` (context
@@ -14,8 +14,8 @@ whole and runs them from `/app/apps/backend/`.
 
 | When you | You must | What fails you |
 |---|---|---|
-| Add a route | Put it in `src/aiq_api/routes/` and register it in exactly one role's list in `plugin.py`: `api_routers` / `API_APP_REGISTRARS` for `api`, `CHAT_ROUTERS` for `chat` (ADR-0082). Almost every route is `api`'s; `chat` serves the socket and what KEDA reads from it | `tests/test_roles.py`: a router under `routes/` that no role mounts, or both do, fails it. Without the list, the route exists and nothing serves it |
-| Accept a request | Authenticate through `auth/middleware.py`; the validator is resolved from the `aiq_api.validators` entry point, not imported | The WorkOS validator is pluggable on purpose (ADR-0002). A direct import hard-wires identity into the API tier |
+| Add a route | Put it in `src/backend/routes/` and register it in exactly one role's list in `plugin.py`: `api_routers` / `API_APP_REGISTRARS` for `api`, `CHAT_ROUTERS` for `chat` (ADR-0082). Almost every route is `api`'s; `chat` serves the socket and what KEDA reads from it | `tests/test_roles.py`: a router under `routes/` that no role mounts, or both do, fails it. Without the list, the route exists and nothing serves it |
+| Accept a request | Authenticate through `auth/middleware.py`; the validator is resolved from the `backend.validators` entry point, not imported | The WorkOS validator is pluggable on purpose (ADR-0002). A direct import hard-wires identity into the API tier |
 | Add a job phase | Emit it through `jobs/phase_events.py` so the SSE stream and the event store agree. A research job's own steps (claim, prepare, run, persist, finish) are functions in `jobs/agent_job.py`, `agent_job_setup.py` and `job_outcome.py`; a new step is a new function there, not a branch in `run_agent_job` | The UI's progress display and the stored history diverge, and only one of them is replayable |
 | Store job payloads | Go through `jobs/payload_crypto.py` | Job payloads carry tenant content into a shared store |
 | Remove or rename a `run_agent_job` parameter | Name the old key in `RETIRED_PAYLOAD_KEYS` (`jobs/worker.py`) in the same change, and change its field on `JobRequest` (`jobs/agent_job.py`) with it. Rows queued, and jobs running, at the upgrade replay the old payload | Every job in flight at the upgrade fails with a TypeError. `tests/test_retired_payload_keys.py` binds replays to the real signature, and `tests/test_agent_job_phases.py` fails a parameter `JobRequest` lacks |
@@ -29,7 +29,7 @@ are. The BFF decided that (ADR-0003, ADR-0007). Anything that needs to *decide*
 access belongs in the BFF, not here.
 
 **Job workers are claimed in the database, not assigned.** Both queues are
-tables on one claim, `aiq_agent.common.claim_queue` (ADR-0079): fewest running in
+tables on one claim, `agent.common.claim_queue` (ADR-0079): fewest running in
 the lane (the organization) fleet-wide first, then the lane served longest ago,
 then the lane with the oldest job, then the lane name; inside the lane
 `interactive` before `bulk`, then oldest. Priority never picks the lane. It also
@@ -38,7 +38,7 @@ attempt spent), and `dead` rows kept as a trace instead of a `DELETE`. A change 
 rows is made there, once. `jobs/queue.py` and `jobs/worker.py` are research's
 table, encrypted payload and poison verdict on it; the reaper and the checkpoint
 retention sweep assume it. Ingestion claims from its own table,
-`aiq_agent.knowledge.ingest_queue`; `jobs/ingest_dispatch.py` puts jobs there and
+`agent.knowledge.ingest_queue`; `jobs/ingest_dispatch.py` puts jobs there and
 `jobs/ingest_worker.py` is its dedicated tier, the only process that claims
 (ADR-0076): the `chat` and `api` roles enqueue and never claim. New work of either kind
 joins by claiming through its queue, never by an in-process pool alone.

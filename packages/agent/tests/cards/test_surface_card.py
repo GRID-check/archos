@@ -16,15 +16,15 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from aiq_agent.cards.envelope import render_envelope_cards_contract
-from aiq_agent.cards.envelope import validate_model_card
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
-from aiq_agent.cards.surface_card import SURFACE_MAX_CHILDREN
-from aiq_agent.cards.surface_card import SURFACE_MAX_LEAVES
-from aiq_agent.cards.surface_card import SURFACE_MAX_TABS
-from aiq_agent.cards.surface_card import SURFACE_TEXT_MAX
-from aiq_agent.cards.surface_card import SurfaceCard
+from agent.cards.envelope import render_envelope_cards_contract
+from agent.cards.envelope import validate_model_card
+from agent.cards.models import grid_card_adapter
+from agent.cards.surface_card import SURFACE_EXCLUDED_LEAVES
+from agent.cards.surface_card import SURFACE_MAX_CHILDREN
+from agent.cards.surface_card import SURFACE_MAX_LEAVES
+from agent.cards.surface_card import SURFACE_MAX_TABS
+from agent.cards.surface_card import SURFACE_TEXT_MAX
+from agent.cards.surface_card import SurfaceCard
 
 BASIS_A = {"id": "a", "component": "ifc_model_picker", "title": "Haus A", "note": "GK 4: REI 60."}
 BASIS_B = {"id": "b", "component": "ifc_model_picker", "title": "Haus B", "note": "GK 5: R 90."}
@@ -184,7 +184,7 @@ class TestTextCitations:
     """A tab's `[N]` follows the prose's renumbering, or goes."""
 
     def test_renumbered_with_the_prose_and_uncited_dropped(self):
-        from aiq_agent.cards.surface_citations import recite_text
+        from agent.cards.surface_citations import recite_text
 
         # sanitize's map: every SURVIVING number, old → new. [2] and [4] were removed.
         text = "REI 90 [3], Rauchabzug [5]. Siehe [[card:1]] und [OIB](https://oib.or.at)."
@@ -194,13 +194,13 @@ class TestTextCitations:
         )
 
     def test_a_removed_number_never_lands_on_the_survivor_renumbered_onto_it(self):
-        from aiq_agent.cards.surface_citations import recite_text
+        from agent.cards.surface_citations import recite_text
 
         # [2] was removed; [3] became [2]. A tab's [2] meant the removed source.
         assert recite_text("A [1], B [2], C [3].", {1: 1, 3: 2}, {1, 2}) == "A [1], B, C [2]."
 
     def test_only_surfaces_are_touched(self):
-        from aiq_agent.cards.surface_citations import recite_surface
+        from agent.cards.surface_citations import recite_surface
 
         basis = {"type": "ifc_model_picker", "title": "[9]"}
         assert recite_surface(basis, {}, set()) is basis
@@ -212,21 +212,21 @@ class TestTextRecital:
     """What the prose's citation steps do to a tab's markers, and nothing else."""
 
     def test_a_group_is_expanded_before_it_is_renumbered(self):
-        from aiq_agent.cards.surface_citations import recite_text
+        from agent.cards.surface_citations import recite_text
 
         # The prose's groups are expanded first; a tab's must be, or [2, 3]
         # stays in the numbering from before verification.
         assert recite_text("REI 90 [2, 3]. Und [3].", {2: 1, 3: 2}, {1, 2}) == "REI 90 [1][2]. Und [2]."
 
     def test_a_merged_duplicate_is_rewritten_not_dropped(self):
-        from aiq_agent.cards.surface_citations import recite_text
+        from agent.cards.surface_citations import recite_text
 
         # [1] and [2] cite one page: the prose's [2] became [1], [2]'s line
         # went, and sanitize kept {1: 1, 3: 2}. The tab's [2] is that source.
         assert recite_text("A [2], B [3].", {1: 1, 3: 2}, {1, 2}, merged={2: 1}) == "A [1], B [2]."
 
     def test_merged_duplicates_are_read_off_the_removals(self):
-        from aiq_agent.citations.entries import merged_citations
+        from agent.citations.entries import merged_citations
 
         removed = [
             {"number": 2, "line": "- [2] oib.pdf, p.3", "reason": "duplicate_of_citation_1"},
@@ -235,7 +235,7 @@ class TestTextRecital:
         assert merged_citations(removed) == {2: 1}
 
     def test_nothing_but_the_markers_changes(self):
-        from aiq_agent.cards.surface_citations import recite_text
+        from agent.cards.surface_citations import recite_text
 
         text = (
             "| Punkt | Wert |\n| :--- | ---: |\n| REI [4] | ( a ) |\n\n"
@@ -249,12 +249,12 @@ class TestTextRecital:
         )
 
     def test_a_removed_marker_mid_sentence_leaves_one_space(self):
-        from aiq_agent.cards.surface_citations import recite_text
+        from agent.cards.surface_citations import recite_text
 
         assert recite_text("Die Wand [4] trägt.", {}, set()) == "Die Wand trägt."
 
     def test_a_text_left_blank_is_dropped_with_its_tab(self):
-        from aiq_agent.cards.surface_citations import recite_surface
+        from agent.cards.surface_citations import recite_surface
 
         card = _tabs(
             components=[
@@ -280,7 +280,7 @@ class TestTextRecital:
         grid_card_adapter.validate_python(recited)
 
     def test_a_surface_left_with_one_card_is_that_card(self):
-        from aiq_agent.cards.surface_citations import recite_surface
+        from agent.cards.surface_citations import recite_surface
 
         card = _tabs(components=[_tabs()["components"][0], copy.deepcopy(BASIS_A), _text("b", "[4]")])
 
@@ -290,8 +290,8 @@ class TestTextRecital:
         grid_card_adapter.validate_python(recited)
 
     def test_a_surface_left_with_one_text_keeps_the_blank_marked_and_recites_the_rest(self):
-        from aiq_agent.cards.surface_citations import BLANK_TEXT
-        from aiq_agent.cards.surface_citations import recite_surface
+        from agent.cards.surface_citations import BLANK_TEXT
+        from agent.cards.surface_citations import recite_surface
 
         card = _tabs(components=[_tabs()["components"][0], _text("a", "[3]"), _text("b", "REI 90 [5]")])
 
@@ -303,7 +303,7 @@ class TestTextRecital:
         grid_card_adapter.validate_python(recited)
 
     def test_a_marker_inside_code_is_code(self):
-        from aiq_agent.cards.surface_citations import recite_text
+        from agent.cards.surface_citations import recite_text
 
         text = "Siehe `x[1]` [4].\n\n```mermaid\nflowchart LR\n  S[1] --> T[2]\n```\nWand [1]."
         assert recite_text(text, {}, {1}) == (
@@ -383,7 +383,7 @@ class TestWhereASurfaceIsTaught:
     """Only the chat envelope teaches COMPOSE and recites a tab's [N]; only it offers a surface."""
 
     def test_the_shape_hint_is_the_compose_rule(self):
-        from aiq_agent.cards.catalog import shape_hint_for
+        from agent.cards.catalog import shape_hint_for
 
         hint = shape_hint_for("surface") or ""
         assert hint.startswith("COMPOSE.")
@@ -393,8 +393,8 @@ class TestWhereASurfaceIsTaught:
 
     def test_the_rendered_details_are_the_compose_rule(self):
         # describe_card, a skill's preferred cards and the turn decision's picks all render here.
-        from aiq_agent.cards.catalog import render_card_details
-        from aiq_agent.cards.envelope import compose_rule
+        from agent.cards.catalog import render_card_details
+        from agent.cards.envelope import compose_rule
 
         assert render_card_details(["surface"]) == compose_rule()
         with_another = render_card_details(["surface", "ifc_model_picker"])
@@ -413,11 +413,11 @@ class TestWhereASurfaceIsTaught:
         import json
         from unittest.mock import MagicMock
 
-        from aiq_agent.cards.register import EmitCardConfig
-        from aiq_agent.cards.register import emit_card
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import reset_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.cards.register import EmitCardConfig
+        from agent.cards.register import emit_card
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import reset_card_registry
+        from agent.cards.registry import set_card_registry
 
         registry = CardRegistry()
         token = set_card_registry(registry)
@@ -432,8 +432,8 @@ class TestWhereASurfaceIsTaught:
     async def test_describe_card_does_not_offer_a_surface(self):
         from unittest.mock import MagicMock
 
-        from aiq_agent.cards.register import DescribeCardConfig
-        from aiq_agent.cards.register import describe_card
+        from agent.cards.register import DescribeCardConfig
+        from agent.cards.register import describe_card
 
         async with describe_card(DescribeCardConfig(), MagicMock()) as info:
             message = await info.single_fn(card_types="surface")
@@ -441,15 +441,15 @@ class TestWhereASurfaceIsTaught:
         assert "surface" not in message.split("Available types:")[1]
 
     def test_the_post_hoc_validator_drops_a_surface(self):
-        from aiq_agent.cards.models import validate_cards
+        from agent.cards.models import validate_cards
 
         basis = {key: value for key, value in BASIS_A.items() if key not in ("id", "component")}
         validated = validate_cards([_tabs(), {**basis, "type": "ifc_model_picker"}])
         assert [card["type"] for card in validated] == ["ifc_model_picker"]
 
     def test_the_chat_contract_s_craft_names_no_card_it_withholds(self):
-        from aiq_agent.cards.catalog import RETIRED_CARD_TYPES
-        from aiq_agent.cards.catalog import render_card_doctrine
+        from agent.cards.catalog import RETIRED_CARD_TYPES
+        from agent.cards.catalog import render_card_doctrine
 
         doctrine = render_card_doctrine()
         withheld = [card for card in RETIRED_CARD_TYPES if re.search(rf"-> {card}\b", doctrine)]
@@ -457,12 +457,12 @@ class TestWhereASurfaceIsTaught:
         assert "MARKDOWN FIRST" in doctrine
 
     def test_the_post_hoc_prompt_withholds_the_surface(self):
-        from aiq_agent.cards.prompt import build_card_generation_prompt
+        from agent.cards.prompt import build_card_generation_prompt
 
         assert '"surface"' not in build_card_generation_prompt()
 
     def test_the_emit_card_index_withholds_the_surface(self):
-        from aiq_agent.cards.register import _build_tool_description
+        from agent.cards.register import _build_tool_description
 
         assert '"surface"' not in _build_tool_description()
 
@@ -470,7 +470,7 @@ class TestWhereASurfaceIsTaught:
         assert '"surface"' in render_envelope_cards_contract()
 
     def test_the_compose_rule_states_the_validators_limits(self):
-        from aiq_agent.cards import surface_card
+        from agent.cards import surface_card
 
         contract = render_envelope_cards_contract()
         assert f"2 to {surface_card.SURFACE_MAX_CHILDREN} children" in contract
@@ -485,10 +485,10 @@ class TestPipelineRecital:
     def test_a_surface_that_would_collapse_is_stored_recited_in_place(self):
         from types import SimpleNamespace
 
-        from aiq_agent.agents.piloti.answer_pipeline import _recite_surface_cards
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import reset_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.agents.piloti.answer_pipeline import _recite_surface_cards
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import reset_card_registry
+        from agent.cards.registry import set_card_registry
 
         before = {"type": "ifc_model_picker", "title": "OIB-Richtlinie 2", "note": "x"}
         card = _tabs(components=[_tabs()["components"][0], _text("a", "[3]"), _text("b", "REI 90 [5]")])
@@ -509,10 +509,10 @@ class TestPipelineRecital:
     def test_a_merged_duplicate_in_a_tab_follows_the_prose(self):
         from types import SimpleNamespace
 
-        from aiq_agent.agents.piloti.answer_pipeline import _recite_surface_cards
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import reset_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.agents.piloti.answer_pipeline import _recite_surface_cards
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import reset_card_registry
+        from agent.cards.registry import set_card_registry
 
         card = _tabs(components=[_tabs()["components"][0], copy.deepcopy(BASIS_A), _text("b", "Brandwand [2].")])
         registry = CardRegistry()
@@ -593,7 +593,7 @@ class TestSurfaceLimits:
 
 
 def test_a_tab_title_is_plain_text_like_every_other_card_string():
-    from aiq_agent.cards.surface_card import SurfaceCard
+    from agent.cards.surface_card import SurfaceCard
 
     card = SurfaceCard(
         type="surface",

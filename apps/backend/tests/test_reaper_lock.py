@@ -4,7 +4,7 @@ The reaper used to run its own ``pg_try_advisory_lock`` on the job-store engine.
 Behind the transaction pooler that lock is taken on one server connection and
 "released" on another, so one replica would hold it until the pooler recycled
 the connection and no replica would reap. It now elects through
-``aiq_agent.knowledge.leader_lock`` like every other session lock, so these
+``agent.knowledge.leader_lock`` like every other session lock, so these
 tests pin the one fact that matters: which connection, and which statements.
 
 The suite has no Postgres server, so the engine is a double and the tests read
@@ -18,8 +18,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiq_agent.knowledge import leader_lock
-from aiq_api.routes import job_reaper
+from agent.knowledge import leader_lock
+from backend.routes import job_reaper
 
 POOLED = "postgresql+asyncpg://agent:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret
 DIRECT = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret

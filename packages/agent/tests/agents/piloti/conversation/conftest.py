@@ -7,15 +7,15 @@ from types import SimpleNamespace
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
-from aiq_agent.agents.piloti import conversation_register as register_mod
-from aiq_agent.agents.piloti.conversation_register import ChatDeepResearcherConfig
-from aiq_agent.agents.piloti.conversation_register import chat_deepresearcher_agent
-from aiq_agent.common import profiler as profiler_mod
-from aiq_agent.common.platform_lessons import LessonsResolution
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.turn import context as context_mod
-from aiq_agent.turn import inventory as inventory_mod
+from agent.agents.piloti import conversation_register as register_mod
+from agent.agents.piloti.conversation_register import ChatDeepResearcherConfig
+from agent.agents.piloti.conversation_register import chat_deepresearcher_agent
+from agent.common import profiler as profiler_mod
+from agent.common.platform_lessons import LessonsResolution
+from agent.knowledge import ingest_status_store
+from agent.project_context import GridRequestContext
+from agent.turn import context as context_mod
+from agent.turn import inventory as inventory_mod
 
 
 class _Fn:

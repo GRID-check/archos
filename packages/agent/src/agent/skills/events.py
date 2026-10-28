@@ -24,7 +24,7 @@ One event is for the reader:
   their own working method, the same word in every locale, and the hyphenated
   id is a routing key and not a name.
 
-One is telemetry, on :data:`~aiq_agent.common.turn_status.CHANNEL_TECHNICAL`,
+One is telemetry, on :data:`~agent.common.turn_status.CHANNEL_TECHNICAL`,
 so it can only reach the opt-in details panel: ``offered``, how large the
 catalog was. Catalog SIZE is availability, not activity; rendering it live
 would repeat the mistake that once put a phantom "web search" in front of
@@ -37,8 +37,8 @@ the system cannot make.
 Wire contract
 -------------
 
-Each event is a :class:`~aiq_agent.common.wire_v2.SkillStep`, emitted through
-:func:`~aiq_agent.common.turn_status.emit_step`. The step id is load-bearing:
+Each event is a :class:`~agent.common.wire_v2.SkillStep`, emitted through
+:func:`~agent.common.turn_status.emit_step`. The step id is load-bearing:
 the same id replaces the row, so every skill gets its own ``skill:<name>`` id.
 """
 
@@ -46,10 +46,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from aiq_agent.common.turn_status import CHANNEL_LIVE
-from aiq_agent.common.turn_status import CHANNEL_TECHNICAL
-from aiq_agent.common.turn_status import emit_step
-from aiq_agent.common.wire_v2 import SkillStep
+from agent.common.turn_status import CHANNEL_LIVE
+from agent.common.turn_status import CHANNEL_TECHNICAL
+from agent.common.turn_status import emit_step
+from agent.common.wire_v2 import SkillStep
 
 from .models import Skill
 from .models import skill_hidden
@@ -73,7 +73,7 @@ SKILL_STEP_PREFIX = "skill:"
 KEY_SKILL_ACTIVATED = "skill.activated"
 
 #: EVERY key a skill step can put on the live line: the counterpart of
-#: :data:`~aiq_agent.common.status_keys.ALL_STATUS_KEYS`, and read by the same
+#: :data:`~agent.common.status_keys.ALL_STATUS_KEYS`, and read by the same
 #: two tests.
 ALL_SKILL_KEYS: tuple[str, ...] = ("skill.activated",)
 

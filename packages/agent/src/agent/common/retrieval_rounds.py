@@ -7,7 +7,7 @@ something, which of them merely failed, and what the model said it concluded
 before asking. None of those answers depends on which agent asked, so they live
 here rather than in either.
 
-What stayed in :mod:`aiq_agent.agents.piloti.agent` is everything that does
+What stayed in :mod:`agent.agents.piloti.agent` is everything that does
 depend on Piloti: the width cap and the switched-off-source refusal read a
 Piloti turn's state and answer their withheld calls with Piloti's own
 sentences, so ``_RoundSplit`` and ``_split_round`` are built there out of these
@@ -22,9 +22,9 @@ from typing import Any
 
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.common.message_utils import content_to_text
-from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
-from aiq_agent.common.tool_calls import fetch_signature
+from agent.common.message_utils import content_to_text
+from agent.common.tool_calls import FETCH_FAILED_MARKER
+from agent.common.tool_calls import fetch_signature
 
 
 def repeat_fetches(calls: Sequence[Any], executed: Sequence[str]) -> list[Any]:

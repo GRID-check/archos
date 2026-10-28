@@ -27,7 +27,7 @@ import contextlib
 from collections.abc import Iterator
 from typing import Any
 
-from aiq_agent.observability.retrieval_trace import emit_step_span
+from agent.observability.retrieval_trace import emit_step_span
 
 
 def now() -> float:

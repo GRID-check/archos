@@ -27,9 +27,9 @@ import os
 
 import pytest
 
-from aiq_api.jobs import queue
-from aiq_api.jobs import worker as worker_mod
-from aiq_api.jobs.agent_job import run_agent_job
+from backend.jobs import queue
+from backend.jobs import worker as worker_mod
+from backend.jobs.agent_job import run_agent_job
 
 from .test_job_queue import _age_heartbeat
 
@@ -42,7 +42,7 @@ OLD_PAYLOAD = {
     "config_file_path": "configs/config.yml",
     "job_id": "job-old",
     "input_text": "pre-upgrade question",
-    "agent_class_path": "aiq_agent.agents.deep_researcher.agent.DeepResearcherAgent",
+    "agent_class_path": "agent.agents.deep_researcher.agent.DeepResearcherAgent",
     "agent_config_name": "deep_research_agent",
     "claim_owner": None,
 }

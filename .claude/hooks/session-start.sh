@@ -91,7 +91,7 @@ uvx --from "apm-cli==${APM_VERSION}" apm install --frozen
 
 # pytest puts this checkout's `src/` first itself (pyproject `pythonpath`), so
 # a bare pytest tests this tree. The export still covers everything else that
-# imports `aiq_agent` by name: `nat run`, ad-hoc scripts and the census.
+# imports `agent` by name: `nat run`, ad-hoc scripts and the census.
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo 'export PYTHONPATH="packages/agent/src"' >> "$CLAUDE_ENV_FILE"
 fi

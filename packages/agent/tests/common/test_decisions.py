@@ -15,14 +15,14 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from aiq_agent.common import decisions
-from aiq_agent.common.decisions import Decision
-from aiq_agent.common.decisions import choice
-from aiq_agent.common.decisions import decide
-from aiq_agent.common.decisions import decide_many
-from aiq_agent.common.decisions import noul
-from aiq_agent.common.decisions import score
-from aiq_agent.common.wire_v2 import StatusStep
+from agent.common import decisions
+from agent.common.decisions import Decision
+from agent.common.decisions import choice
+from agent.common.decisions import decide
+from agent.common.decisions import decide_many
+from agent.common.decisions import noul
+from agent.common.decisions import score
+from agent.common.wire_v2 import StatusStep
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -189,7 +189,7 @@ class TestFailOpen:
         assert records.call_args.args[1] == {"skipped": "disabled"}
 
     async def test_a_byok_key_on_another_host_skips(self):
-        with patch("aiq_agent.common.credential_resolution.resolve_llm_credential") as resolve:
+        with patch("agent.common.credential_resolution.resolve_llm_credential") as resolve:
             resolve.return_value.api_key = "k"
             resolve.return_value.base_url = "https://api.openai.com/v1"
             resolve.return_value.source = "byok"
@@ -199,7 +199,7 @@ class TestFailOpen:
     async def test_a_caller_without_an_organization_resolves_under_the_requests_one(self):
         """The knowledge layer decides without an org id; BYOK must still see the org."""
         with (
-            patch("aiq_agent.project_context.get_organization_id_from_context", return_value="org-ctx"),
+            patch("agent.project_context.get_organization_id_from_context", return_value="org-ctx"),
             patch.object(decisions, "_resolve_endpoint_blocking", return_value=(_ENDPOINT, None)) as resolve,
         ):
             await decisions._endpoint(None)
@@ -214,7 +214,7 @@ class TestFailOpen:
             seen.append(request)
             return _ok(request)
 
-        with patch("aiq_agent.common.model_overrides.resolve_org_zdr_only", return_value=True):
+        with patch("agent.common.model_overrides.resolve_org_zdr_only", return_value=True):
             decision = await decide("s", QUESTIONS, slot="t", transport=_transport(handler))
         assert decision is not None
         assert json.loads(seen[0].content)["provider"]["zdr"] is True
@@ -316,7 +316,7 @@ class _ClosingTransport(httpx.AsyncBaseTransport):
 
 class TestTheCostIsOnTheLedger:
     async def test_a_decision_records_a_usage_event(self):
-        with patch("aiq_agent.common.cost_tracking.record_usage_event") as record:
+        with patch("agent.common.cost_tracking.record_usage_event") as record:
             await decide("s", QUESTIONS, slot="t", transport=_transport(_ok))
         record.assert_called_once()
         kwargs = record.call_args.kwargs
@@ -334,7 +334,7 @@ class TestLangfuseSeesEveryDecision:
     def spans(self, monkeypatch):
         seen: list[tuple[str, dict, dict]] = []
         monkeypatch.setattr(
-            "aiq_agent.observability.decision_trace.emit_decision_span",
+            "agent.observability.decision_trace.emit_decision_span",
             lambda slot, body_in, body_out: seen.append((slot, body_in, body_out)),
         )
         return seen

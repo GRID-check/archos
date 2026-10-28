@@ -18,14 +18,14 @@ from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
-from aiq_agent.agents.piloti.conversation import CONFINED_DEEP_RESEARCH_NOTE
-from aiq_agent.agents.piloti.conversation import DEEP_RESEARCH_UNAVAILABLE_NOTE
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.conversation import _finalize_answer
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.turn.commission import CommissionRefused
+from agent.agents.deep_researcher.models import DeepResearchAgentState
+from agent.agents.piloti.conversation import CONFINED_DEEP_RESEARCH_NOTE
+from agent.agents.piloti.conversation import DEEP_RESEARCH_UNAVAILABLE_NOTE
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.conversation import _finalize_answer
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
+from agent.turn.commission import CommissionRefused
 
 
 async def _unused_research(_state):  # pragma: no cover - the commission path never reaches it

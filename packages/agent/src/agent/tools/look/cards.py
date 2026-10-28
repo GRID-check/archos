@@ -47,12 +47,12 @@ from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
-from aiq_agent.cards.look_card import MAX_LOOK_ITEMS
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import extend_or_add
-from aiq_agent.cards.registry import get_card_registry
-from aiq_agent.common.page_region_words import where_on_the_page
-from aiq_agent.common.retrieval_status import emit_look_step
+from agent.cards.look_card import MAX_LOOK_ITEMS
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import extend_or_add
+from agent.cards.registry import get_card_registry
+from agent.common.page_region_words import where_on_the_page
+from agent.common.retrieval_status import emit_look_step
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ def note_look(
 ) -> None:
     """Record one look that rendered: hold its card item, emit its Herleitung row. Never raises.
 
-    ``resolved`` is ``look``'s :class:`~aiq_agent.tools.look.resolve.Resolved`.
+    ``resolved`` is ``look``'s :class:`~agent.tools.look.resolve.Resolved`.
     ``revision_id`` is the Fassung when the caller knows it; absent, the reader
     is shown the document's current Fassung. ``read`` is the whole reading
     (every line), for the claim provenance; ``reading`` is the card's short one.
@@ -181,13 +181,13 @@ def _may_show(resolved: Any) -> bool:
 
     A stored step is read by everyone the conversation is shared with later, so
     a page of a restricted folder this turn has not admitted
-    (:func:`~aiq_agent.knowledge.restricted_use.may_name`) leaves no step at
+    (:func:`~agent.knowledge.restricted_use.may_name`) leaves no step at
     all: its name, id and reading are what the admission may still refuse
     (listing is not use, ADR-0088). The held card item stays, since a card is
     placed only for a document the answer cites, which the model read after
     admission.
     """
-    from aiq_agent.knowledge.restricted_use import may_name
+    from agent.knowledge.restricted_use import may_name
 
     return may_name(getattr(resolved, "collection", "") or None)
 
@@ -228,7 +228,7 @@ def take_looks() -> list[dict[str, Any]]:
 
 def _cited_names(cited: Iterable[Any]) -> set[str]:
     """The file names (basename, case-folded) of the answer's cited sources."""
-    from aiq_agent.citations.wire import source_entry_to_wire
+    from agent.citations.wire import source_entry_to_wire
 
     names: set[str] = set()
     for source in cited:
@@ -338,7 +338,7 @@ def drawing_value_status(
     overview or nothing (ADR-0128, the ``looked-before-measurement`` score).
     """
     try:
-        from aiq_agent.citations.wire import source_entry_to_wire
+        from agent.citations.wire import source_entry_to_wire
 
         drawn = [
             source.entry

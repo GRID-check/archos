@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from aiq_agent.knowledge import document_classification
+from agent.knowledge import document_classification
 
 from .test_ingest_screen_before_tables import _ingest
 from .test_ingest_screen_before_tables import _pdf
@@ -73,7 +73,7 @@ def reading(calls, monkeypatch):  # noqa: F811
         ingestor.generate_summary_enabled = True
         ingestor.summary_llm = model = _SummaryModel(dossier)
         detail = _ingest(calls, _pdf(tmp_path, *_LINES), "Baubeschreibung.pdf", None)
-        from aiq_agent.knowledge import get_available_documents
+        from agent.knowledge import get_available_documents
 
         return detail, get_available_documents("proj_1")[0], model
 

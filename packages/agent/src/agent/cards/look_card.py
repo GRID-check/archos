@@ -8,7 +8,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.cards.card_model import CardModel
+from agent.cards.card_model import CardModel
 
 #: How many items one card carries: the turn's look budget is 6, plus the
 #: gestures that point at the same document.

@@ -5,7 +5,7 @@ One plugin, two web roles (``PROCESS_ROLE``, ``roles.WebRole``, ADR-0082 step B)
 
 * ``chat`` mounts the chat socket, the chat-occupancy route KEDA reads, and
   what is left of NAT's own routes once its HTTP turn routes are off (see
-  ``AIQAPIConfig``), and drains running chat turns at shutdown.
+  ``BackendConfig``), and drains running chat turns at shutdown.
 * ``api`` mounts the Knowledge API (collections/documents, the LLM utilities,
   admin) and the Async Job API (agent jobs, SSE streaming, housekeeping), and
   closes its SSE streams at shutdown.
@@ -42,13 +42,13 @@ from fastapi import FastAPI
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
-from aiq_agent.knowledge.leader_lock import require_direct_dsns
-from aiq_agent.observability import posthog_exceptions
-from aiq_agent.stages.delivery import register_stage_frame_sink
-from aiq_api.auth.middleware import AuthMiddleware
-from aiq_api.context_envelope import GridContextEnvelopeMiddleware
-from aiq_api.legacy_headers import LegacyHeaderNamesMiddleware
+from agent.common.log_redaction import install_presigned_url_scrubbing
+from agent.knowledge.leader_lock import require_direct_dsns
+from agent.observability import posthog_exceptions
+from agent.stages.delivery import register_stage_frame_sink
+from backend.auth.middleware import AuthMiddleware
+from backend.context_envelope import GridContextEnvelopeMiddleware
+from backend.legacy_headers import LegacyHeaderNamesMiddleware
 from nat.builder.workflow_builder import WorkflowBuilder
 from nat.cli.register_workflow import register_front_end  # noqa: TID251
 from nat.data_models.config import Config
@@ -110,7 +110,7 @@ logger = logging.getLogger(__name__)
 CHAT_SOCKET_PATH = "/websocket"
 
 # The post-answer stage channel (docs/architecture/post-answer-stages.md §2.7).
-# `aiq_agent` owns the graph and may not import a WebSocket; this tier owns the
+# `agent` owns the graph and may not import a WebSocket; this tier owns the
 # socket and publishes the sink to it, the same inversion
 # `register_context_appender` uses in the opposite direction.
 #
@@ -133,7 +133,7 @@ def register_validator(validator) -> None:
 
     Example::
 
-        from aiq_api.plugin import register_validator
+        from backend.plugin import register_validator
         from mypackage.auth import MyCustomValidator
         register_validator(MyCustomValidator(...))
     """
@@ -141,13 +141,13 @@ def register_validator(validator) -> None:
 
 
 def _load_validators_from_entry_points() -> list:
-    """Discover validators registered via the ``aiq_api.validators`` entry-point group.
+    """Discover validators registered via the ``backend.validators`` entry-point group.
 
     Any installed package can contribute validators by declaring an entry point
     that returns a list of validator instances::
 
         # pyproject.toml (in the internal / deployment package)
-        [project.entry-points."aiq_api.validators"]
+        [project.entry-points."backend.validators"]
         my_provider = "mypackage.auth:get_validators"
 
         # mypackage/auth.py
@@ -160,7 +160,7 @@ def _load_validators_from_entry_points() -> list:
     from importlib.metadata import entry_points
 
     validators = []
-    for ep in entry_points(group="aiq_api.validators"):
+    for ep in entry_points(group="backend.validators"):
         try:
             factory = ep.load()
             result = factory()
@@ -176,7 +176,7 @@ def _load_validators_from_entry_points() -> list:
 
 
 #: The fields of a NAT endpoint config that each mount a route running the
-#: workflow: the HTTP turn routes and NAT's own WebSocket. ``AIQAPIConfig`` leaves
+#: workflow: the HTTP turn routes and NAT's own WebSocket. ``BackendConfig`` leaves
 #: every one unset and refuses a config that sets one.
 WORKFLOW_ROUTE_FIELDS = (
     "path",
@@ -188,7 +188,7 @@ WORKFLOW_ROUTE_FIELDS = (
 )
 
 
-class AIQAPIConfig(FastApiFrontEndConfig, name="aiq_api"):
+class BackendConfig(FastApiFrontEndConfig, name="backend"):
     """
     Configuration for unified AI-Q API endpoints.
 
@@ -223,7 +223,7 @@ class AIQAPIConfig(FastApiFrontEndConfig, name="aiq_api"):
     step_adaptor: StepAdaptorConfig = StepAdaptorConfig(mode=StepAdaptorMode.OFF)
 
     @model_validator(mode="after")
-    def _the_chat_socket_is_the_only_turn_route(self) -> AIQAPIConfig:
+    def _the_chat_socket_is_the_only_turn_route(self) -> BackendConfig:
         """Refuse a config that puts a NAT route in front of the workflow, rather than serve it.
 
         NAT's defaults put the workflow behind ``/v1/workflow*``, ``/generate*``,
@@ -242,7 +242,7 @@ class AIQAPIConfig(FastApiFrontEndConfig, name="aiq_api"):
         served += [f"endpoints[{endpoint.function_name}]" for endpoint in self.endpoints]
         if served:
             raise ValueError(
-                f"aiq_api serves a turn over its own chat socket only (ADR-0068); leave {', '.join(served)} unset"
+                f"backend serves a turn over its own chat socket only (ADR-0068); leave {', '.join(served)} unset"
             )
         return self
 
@@ -305,7 +305,7 @@ def _create_shutdown_signal_handler(
 
 #: The routers the ``chat`` role mounts on its router. The chat socket and what
 #: is left of NAT's own routes are the rest of what it serves
-#: (``AIQAPIWorker._add_chat_routes``).
+#: (``BackendWorker._add_chat_routes``).
 CHAT_ROUTERS: tuple[Callable[[APIRouter], None], ...] = (
     # The chat tier's scaling signal, read by KEDA (ADR-0080). Internal-token
     # only, so it stays off the external allowlist like the maintenance routes.
@@ -395,21 +395,21 @@ def _add_request_middleware(app: FastAPI, *, validators: list, require_auth: boo
     GridContextEnvelopeMiddleware is added BEFORE AuthMiddleware so that
     AuthMiddleware (added, and therefore outer, second) always resolves
     scope["state"]["user"] before the envelope-enforcement middleware reads it
-    for HTTP requests. See aiq_api.context_envelope's module docstring for the
+    for HTTP requests. See backend.context_envelope's module docstring for the
     full enforcement design (matrix, WebSocket handling, exemptions).
     """
     app.add_middleware(GridContextEnvelopeMiddleware, require_auth=require_auth, validators=validators)
     app.add_middleware(AuthMiddleware, validators=validators, require_auth=require_auth)
     # Outside both: a service header that arrives under its new name is copied
-    # onto the old one before auth and the envelope read it (aiq_api.legacy_headers).
+    # onto the old one before auth and the envelope read it (backend.legacy_headers).
     app.add_middleware(LegacyHeaderNamesMiddleware)
     # Added last, so outermost: it counts every HTTP request this process
     # takes, the ones auth refuses included, which is the load the scaling
-    # signal must see. See aiq_api.inflight.
+    # signal must see. See backend.inflight.
     app.add_middleware(InFlightMiddleware, role=role.value)
 
 
-class AIQAPIWorker(FastApiFrontEndPluginWorker):
+class BackendWorker(FastApiFrontEndPluginWorker):
     """
     Worker that adds the AI-Q routes of one web role to the FastAPI app.
 
@@ -434,8 +434,8 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
 
     @override
     def build_app(self) -> FastAPI:
-        from aiq_agent.common.logging_utils import suppress_noisy_dependency_logs
-        from aiq_agent.common.nat_step_repair import install_step_stack_repair
+        from agent.common.logging_utils import suppress_noisy_dependency_logs
+        from agent.common.nat_step_repair import install_step_stack_repair
 
         suppress_noisy_dependency_logs()
         install_step_stack_repair()
@@ -478,8 +478,8 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         if require_auth and not validators:
             raise RuntimeError(
                 "REQUIRE_AUTH=true but no validators have been registered. "
-                "Either call aiq_api.plugin.register_validator() before starting the server, "
-                "or declare an 'aiq_api.validators' entry point in your package."
+                "Either call backend.plugin.register_validator() before starting the server, "
+                "or declare an 'backend.validators' entry point in your package."
             )
         _add_request_middleware(app, validators=validators, require_auth=require_auth, role=self._role)
         if self._role is WebRole.CHAT:
@@ -497,7 +497,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         """Nothing: a turn's one route is the chat socket, which ``_add_chat_routes`` mounts.
 
         NAT's version mounts the generate, chat and socket routes the
-        ``workflow`` config names, which ``AIQAPIConfig`` leaves unset. It also
+        ``workflow`` config names, which ``BackendConfig`` leaves unset. It also
         mounts the async generate route whenever a Dask scheduler is reachable,
         whatever the config says, as ``None/async`` when ``workflow.path`` is
         unset. So the routes are left out here, not by the config alone.
@@ -511,7 +511,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
             await self._add_api_routes(app, builder)
 
         # One /health for both roles, ours and not NAT's: the sha and the role,
-        # no database ping (aiq_api.health). Last, so it replaces the NAT route
+        # no database ping (backend.health). Last, so it replaces the NAT route
         # `super().add_routes` mounted on chat.
         install_health_route(app, self._role)
 
@@ -533,7 +533,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         # The workflow is built and every route registered: this replica serves
         # from here, and the meter provider exists to take the boot readings.
         # Both roles, so the chat tier's cold start is a series too.
-        from aiq_agent.observability import boot_timing
+        from agent.observability import boot_timing
 
         boot_timing.BootClock(self._role.value).ready()
         boot_timing.flush()
@@ -581,7 +581,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         up to ``HITL_RESPONSE_TIMEOUT_SECONDS``, and the ninth turn queued
         behind them unseen, after ``RUN_STARTED``, while its heartbeat kept the
         reader's spinner alive. Nobody chose that number. The chosen gate is
-        ADR-0040's admission (``aiq_agent.common.turn_admission``,
+        ADR-0040's admission (``agent.common.turn_admission``,
         ``MAX_ACTIVE_TURNS``), held around every chat turn, which refuses
         a turn it has no slot for at once with a retry hint instead of queueing
         it. Registered with the worker's others so NAT shuts it down with them.
@@ -600,7 +600,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
 
         async def _run() -> None:
             try:
-                from aiq_agent.knowledge.project_memory import check_internal_api
+                from agent.knowledge.project_memory import check_internal_api
 
                 await asyncio.to_thread(check_internal_api)
             except Exception as e:  # noqa: BLE001 — diagnostic only, must not crash startup
@@ -642,19 +642,19 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
             logger.warning("Failed to restore signal handlers: %s", e)
 
 
-class AIQAPIPlugin(FastApiFrontEndPlugin):
+class BackendPlugin(FastApiFrontEndPlugin):
     """Plugin that adds unified AI-Q API endpoints to the FastAPI server."""
 
-    def __init__(self, full_config: Config, config: AIQAPIConfig):
+    def __init__(self, full_config: Config, config: BackendConfig):
         super().__init__(full_config=full_config)
         self.config = config
 
     @override
     def get_worker_class(self) -> type[FastApiFrontEndPluginWorkerBase]:
-        return AIQAPIWorker
+        return BackendWorker
 
 
-@register_front_end(config_type=AIQAPIConfig)
-async def register_aiq_api(config: AIQAPIConfig, full_config: Config):
+@register_front_end(config_type=BackendConfig)
+async def register_backend(config: BackendConfig, full_config: Config):
     """Register unified AI-Q API with NAT framework."""
-    yield AIQAPIPlugin(full_config=full_config, config=config)
+    yield BackendPlugin(full_config=full_config, config=config)

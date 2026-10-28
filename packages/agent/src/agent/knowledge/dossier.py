@@ -284,7 +284,7 @@ def dossier_record(reply: DossierReply) -> dict[str, Any]:
 
 def parse_dossier(raw: Any) -> dict[str, Any] | None:
     """A reply (a JSON object, or its text) as the stored record, or ``None`` when it does not fit. Pure."""
-    from aiq_agent.common.json_utils import extract_json
+    from agent.common.json_utils import extract_json
 
     parsed = extract_json(raw) if isinstance(raw, str) else raw
     if not isinstance(parsed, dict):
@@ -347,10 +347,10 @@ def write_dossier(digest: str, llm: Any, *, file_name: str) -> dict[str, Any] | 
     from langchain_core.messages import HumanMessage
     from langchain_core.messages import SystemMessage
 
-    from aiq_agent.common.llm_factory import strict_json_response_format
-    from aiq_agent.common.message_utils import content_to_text
-    from aiq_agent.knowledge.permit_extraction import llm_model_name
-    from aiq_agent.observability.direct_trace import observed_generation
+    from agent.common.llm_factory import strict_json_response_format
+    from agent.common.message_utils import content_to_text
+    from agent.knowledge.permit_extraction import llm_model_name
+    from agent.observability.direct_trace import observed_generation
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": digest}]
     try:

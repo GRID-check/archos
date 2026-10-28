@@ -189,7 +189,7 @@ def build_messages(evidence: Evidence) -> list[Any]:
 
 def parse_reply(text: str) -> Check | None:
     """The check the reply states; ``None`` when it is no such object."""
-    from aiq_agent.common.json_utils import extract_json
+    from agent.common.json_utils import extract_json
 
     try:
         reply = CheckReply.model_validate(extract_json(text))
@@ -207,7 +207,7 @@ def llm_judge(llm: Any) -> JudgeFn:
     """A :data:`JudgeFn` on a LangChain chat model: one structured call at temperature 0, bounded, never raising."""
 
     async def judge(evidence: Evidence) -> Check | None:
-        from aiq_agent.memory.reflection import structured_reply
+        from agent.memory.reflection import structured_reply
 
         try:
             model = llm.bind(temperature=0, max_tokens=MAX_OUTPUT_TOKENS)

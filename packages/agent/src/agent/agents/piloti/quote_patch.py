@@ -43,12 +43,12 @@ from typing import Any
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 
-from aiq_agent.citations.quote_matching import MIN_QUOTE_LEN
-from aiq_agent.citations.quote_matching import QUOTED_SPAN_RE
-from aiq_agent.citations.quote_matching import UnverifiedQuote
-from aiq_agent.citations.quote_matching import normalize_for_quote_match
-from aiq_agent.citations.quote_verification import QUOTE_MAX_WORDS
-from aiq_agent.common import content_to_text
+from agent.citations.quote_matching import MIN_QUOTE_LEN
+from agent.citations.quote_matching import QUOTED_SPAN_RE
+from agent.citations.quote_matching import UnverifiedQuote
+from agent.citations.quote_matching import normalize_for_quote_match
+from agent.citations.quote_verification import QUOTE_MAX_WORDS
+from agent.common import content_to_text
 
 logger = logging.getLogger(__name__)
 

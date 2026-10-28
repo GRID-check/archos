@@ -9,12 +9,12 @@ from typing import Any
 if TYPE_CHECKING:
     from .schema import AvailableDocument
 
-from aiq_agent.knowledge.document_metadata_constants import _DOCUMENT_COLUMNS
-from aiq_agent.knowledge.document_metadata_constants import _OFFICE_TIMEZONE
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import logger
-from aiq_agent.knowledge.document_metadata_helpers import _current_doc_class
-from aiq_agent.knowledge.document_metadata_helpers import _decode_page_count
+from agent.knowledge.document_metadata_constants import _DOCUMENT_COLUMNS
+from agent.knowledge.document_metadata_constants import _OFFICE_TIMEZONE
+from agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge.document_metadata_constants import logger
+from agent.knowledge.document_metadata_helpers import _current_doc_class
+from agent.knowledge.document_metadata_helpers import _decode_page_count
 
 
 def _row_to_document(store, row: Any, collection: str | None = None) -> AvailableDocument:

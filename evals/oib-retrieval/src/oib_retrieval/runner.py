@@ -12,7 +12,7 @@ WHAT EACH SECTION IS WORTH
    how many of the Punkt index's leaf Punkte survive each chunking strategy as a citable
    unit. This is the number that decides whether a citation can be precise.
 2. **Lexical channel** — fully real for German. It is the shipped analyzer
-   (``aiq_agent.common.german_text``) over the real corpus, so its recall is the recall
+   (``agent.common.german_text``) over the real corpus, so its recall is the recall
    that channel has. Its English numbers are real too, and are expected to be zero: that
    channel is monolingual by construction, which its own module docstring states.
 3. **Dense channel** — depends on ``--embedder``:
@@ -109,7 +109,7 @@ def _to_schema_chunks(chunks: list[corpus.Chunk]):
     cosine here would be worse — it would imply the two channels' scores are comparable,
     which is the exact mistake the production merge exists to avoid.
     """
-    from aiq_agent.knowledge.schema import Chunk as SchemaChunk
+    from agent.knowledge.schema import Chunk as SchemaChunk
 
     return [
         SchemaChunk(

@@ -2,8 +2,8 @@
 
 The design of record is ``docs/design/chat-wire-v2.md``. This module is the
 contract that design names, and nothing else: no I/O, no NAT import, no
-LangChain import, so the producers in ``aiq_agent`` (and ``sources/``) and the
-socket handler in ``aiq_api`` all import it without a cycle.
+LangChain import, so the producers in ``agent`` (and ``sources/``) and the
+socket handler in ``backend`` all import it without a cycle.
 
 Three layers
 ------------
@@ -78,7 +78,7 @@ from pydantic import WithJsonSchema
 from pydantic import model_serializer
 from pydantic import model_validator
 
-from aiq_agent.common.source_kinds import LEGACY_SHELF_VALUES
+from agent.common.source_kinds import LEGACY_SHELF_VALUES
 
 #: The only wire version. There is no ``v: 1`` reader anywhere (ADR-0068).
 WIRE_VERSION: Literal[2] = 2
@@ -429,7 +429,7 @@ class TurnResult(_Model):
 
     It replaces the text once more and takes back what it omits (a card
     suppressed, a masthead gated out). The persisted row is built from this
-    model and nothing else (``aiq_api`` ``persist_turn_result``).
+    model and nothing else (``backend`` ``persist_turn_result``).
     """
 
     message_id: str = Field(min_length=1, description="turn.response.answer_message_id(conversation, turn).")
@@ -475,7 +475,7 @@ class TurnResult(_Model):
     #: state is gone by then, and a stated level is the one the answering call
     #: runs at, so the two differ only for a turn that stated none.
     #: Withheld from the frame only while ``WIRE_V2_ADDITIVE_FIELDS`` is
-    #: set ``off``, the rollback (``aiq_api.chat_socket.STAGED_SERVER_FIELDS``);
+    #: set ``off``, the rollback (``backend.chat_socket.STAGED_SERVER_FIELDS``);
     #: the row keeps it.
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
 
@@ -1418,7 +1418,7 @@ def wire_json_schema() -> dict[str, Any]:
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "Piloti chat wire v2",
         "description": (
-            "Generated from packages/agent/src/aiq_agent/common/wire_v2.py by scripts/generate_wire_schema.py. "
+            "Generated from packages/agent/src/agent/common/wire_v2.py by scripts/generate_wire_schema.py. "
             "Do not edit by hand; packages/agent/tests/common/test_wire_v2.py fails when it is stale."
         ),
         "$defs": dict(sorted(defs.items())),

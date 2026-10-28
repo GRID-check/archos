@@ -6,9 +6,9 @@ exists — plus the GitHub link for requesting a card, or a value on an existing
 card, that the catalog does not carry yet. Grid's answers are only as rich as
 this list, so "which figures can it actually show me?" is a question the product
 should answer itself instead of sending someone to read
-``packages/agent/src/aiq_agent/cards/models.py``.
+``packages/agent/src/agent/cards/models.py``.
 
-Derived from the Pydantic union via :func:`aiq_agent.cards.catalog.describe_card_catalog`,
+Derived from the Pydantic union via :func:`agent.cards.catalog.describe_card_catalog`,
 the same source the ``emit_card`` tool description and the generated frontend Zod
 schema come from — a new card type shows up here without anyone maintaining a
 second list.
@@ -26,7 +26,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from aiq_agent.cards.catalog import describe_card_catalog
+from agent.cards.catalog import describe_card_catalog
 
 # Where a user asks for a card type, or a value on one, that Grid cannot render
 # yet. The issue FORM is linked rather than the bare issue list: an enhancement

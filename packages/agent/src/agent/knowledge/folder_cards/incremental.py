@@ -36,10 +36,10 @@ from dataclasses import field
 from typing import Any
 from typing import Literal
 
-from aiq_agent.knowledge.folder_cards.inputs import PROMPT_VERSION
-from aiq_agent.knowledge.folder_cards.inputs import ChildDocument
-from aiq_agent.knowledge.folder_cards.inputs import ChildFolder
-from aiq_agent.knowledge.folder_cards.inputs import FolderInputs
+from agent.knowledge.folder_cards.inputs import PROMPT_VERSION
+from agent.knowledge.folder_cards.inputs import ChildDocument
+from agent.knowledge.folder_cards.inputs import ChildFolder
+from agent.knowledge.folder_cards.inputs import FolderInputs
 
 #: Incremental updates after which the next build is a full one.
 MAX_INCREMENTS = 10

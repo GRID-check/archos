@@ -2,7 +2,7 @@
 
 The model counterpart of ``knowledge_search``: a structured query against the
 extracted index, run by the BFF's internal endpoint
-(:mod:`aiq_agent.knowledge.bim_query`), rendered as the German lines the agent
+(:mod:`agent.knowledge.bim_query`), rendered as the German lines the agent
 quotes. Models are addressed by project and file name, never by UUID. The
 defects each rule here answers are catalogued in
 ``docs/roadmap/ifc-review-findings.md``.
@@ -20,22 +20,22 @@ from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.action_rows import ActionRow
-from aiq_agent.knowledge.bim_query import run_bim_query
-from aiq_agent.profile_names import normalize_profile_token
-from aiq_agent.project_context import get_organization_id_from_context
-from aiq_agent.project_context import get_project_id_from_context
-from aiq_agent.tools.bim.failures import NO_ORG_TEXT
-from aiq_agent.tools.bim.failures import NO_PROJECT_TEXT
-from aiq_agent.tools.bim.failures import QUERY_FAILURES
-from aiq_agent.tools.bim.measurement_sources import note_model_read
-from aiq_agent.tools.bim.rendering import clipped
-from aiq_agent.tools.bim.rendering import listed
-from aiq_agent.tools.bim.rendering import render_unresolved
-from aiq_agent.tools.bim.rendering import shelf_notice
-from aiq_agent.tools.bim.trace import model_handle
-from aiq_agent.tools.bim.trace import record_ifc_call
+from agent.common.action_outcome import ActionOutcome
+from agent.common.action_rows import ActionRow
+from agent.knowledge.bim_query import run_bim_query
+from agent.profile_names import normalize_profile_token
+from agent.project_context import get_organization_id_from_context
+from agent.project_context import get_project_id_from_context
+from agent.tools.bim.failures import NO_ORG_TEXT
+from agent.tools.bim.failures import NO_PROJECT_TEXT
+from agent.tools.bim.failures import QUERY_FAILURES
+from agent.tools.bim.measurement_sources import note_model_read
+from agent.tools.bim.rendering import clipped
+from agent.tools.bim.rendering import listed
+from agent.tools.bim.rendering import render_unresolved
+from agent.tools.bim.rendering import shelf_notice
+from agent.tools.bim.trace import model_handle
+from agent.tools.bim.trace import record_ifc_call
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo

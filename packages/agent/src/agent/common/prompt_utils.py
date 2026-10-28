@@ -11,7 +11,7 @@ from typing import Any
 
 import jinja2
 
-from aiq_agent.common.brand import PRODUCT_NAME
+from agent.common.brand import PRODUCT_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +77,9 @@ def render_prompt_template(template: str, **kwargs: Any) -> str:
         PromptError: If template rendering fails.
     """
     if "document_inventory" not in kwargs:
-        from aiq_agent.knowledge.inventory import get_listing_shelf
-        from aiq_agent.knowledge.inventory import in_scope_shelves_from_context
-        from aiq_agent.knowledge.inventory import render_inventory_block
+        from agent.knowledge.inventory import get_listing_shelf
+        from agent.knowledge.inventory import in_scope_shelves_from_context
+        from agent.knowledge.inventory import render_inventory_block
 
         docs = kwargs.get("available_documents") or []
         scoped = in_scope_shelves_from_context()
@@ -96,7 +96,7 @@ def render_prompt_template(template: str, **kwargs: Any) -> str:
         # rendered from the models that validate it (one source of truth), and
         # defaulting it HERE means no caller can render a prompt whose
         # <answer_envelope> section silently teaches an empty schema.
-        from aiq_agent.common.answer_envelope import render_envelope_schema
+        from agent.common.answer_envelope import render_envelope_schema
 
         kwargs["answer_envelope_schema"] = render_envelope_schema()
     kwargs.setdefault("product_name", PRODUCT_NAME)

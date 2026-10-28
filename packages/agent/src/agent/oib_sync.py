@@ -1,7 +1,7 @@
 """Ingestion of the base corpus into the oib_knowledge collection (ADR-0082).
 
 The corpus is the ``oib_corpus_files`` table plus the objects it points at
-(``aiq_agent.corpus_store``). A file needs ingestion when the index was not built
+(``agent.corpus_store``). A file needs ingestion when the index was not built
 from its current bytes by the current chunking pipeline
 (``FileRow.needs_ingestion``).
 
@@ -28,7 +28,7 @@ Two callers drive it: an admin upload stores the file and queues its job at once
 admin's "run it now") records what finished, then queues every file that still
 needs a job.
 
-The queue write itself is the API tier's (``aiq_api.jobs.ingest_dispatch.enqueue_only``:
+The queue write itself is the API tier's (``backend.jobs.ingest_dispatch.enqueue_only``:
 it encrypts the payload, which carries URLs). The API routes that drive this module hand it
 in as ``enqueue``, so the dependency runs from the API tier to this one and never back.
 """
@@ -44,14 +44,14 @@ from dataclasses import replace
 from enum import StrEnum
 from typing import Any
 
-from aiq_agent import corpus_store
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.factory import get_ingestor
-from aiq_agent.knowledge.factory import unregister_summary
-from aiq_agent.knowledge.leader_lock import keyed_lock
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import JobState
+from agent import corpus_store
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.factory import get_ingestor
+from agent.knowledge.factory import unregister_summary
+from agent.knowledge.leader_lock import keyed_lock
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import JobState
 
 logger = logging.getLogger(__name__)
 

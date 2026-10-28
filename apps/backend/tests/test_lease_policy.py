@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from aiq_api.jobs import lease_policy
-from aiq_api.jobs import worker as worker_mod
+from backend.jobs import lease_policy
+from backend.jobs import worker as worker_mod
 
 _BFF_RUNNER = Path(__file__).resolve().parents[3] / "apps" / "workspace" / "workers" / "jobs" / "index.js"
 

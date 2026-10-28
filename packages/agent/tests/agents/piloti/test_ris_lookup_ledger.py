@@ -31,12 +31,12 @@ from langchain_core.tools import tool
 from ris_adapter.lookup.passages import Passage
 from ris_adapter.lookup.telemetry import capture_passages
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
+from agent.common import turn_status
 
 _LAW_URL = "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000006"
 _GARAGE_URL = "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000098"
@@ -82,8 +82,8 @@ def _bypass_citation_pipeline():
     """The answer pipeline is not what this file is about."""
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]

@@ -1,10 +1,10 @@
 """What an import loads stays what it needs.
 
-Importing ``aiq_agent.common.turn_status`` executes ``aiq_agent/__init__.py`` and
-``aiq_agent/common/__init__.py`` first, and the root conftest loads before every
+Importing ``agent.common.turn_status`` executes ``agent/__init__.py`` and
+``agent/common/__init__.py`` first, and the root conftest loads before every
 test. When those imported their whole package, a one-line harness test spent
 4.6 s of its 5.7 s loading LangChain, NAT, LangGraph's checkpointers and the
-Qdrant client, and every test importing one ``aiq_agent.common`` module loaded
+Qdrant client, and every test importing one ``agent.common`` module loaded
 all sixty (docs/audit/blast-radius-2026-10.md). Each import check runs in a
 fresh interpreter, because this one has long since imported everything.
 """
@@ -24,23 +24,23 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 # Packages whose ``__init__`` was an eager barrel and now loads nothing of its
-# own but ``aiq_agent.lazy_exports``, nothing heavy, and re-exports no name that
+# own but ``agent.lazy_exports``, nothing heavy, and re-exports no name that
 # is also a submodule's: the import system binds a submodule's name to the
 # module whenever it is imported, so such an export reads the function or the
 # module depending on import order.
 LAZY_PACKAGES = [
-    "aiq_agent",
-    "aiq_agent.agents",
-    "aiq_agent.agents.piloti",
-    "aiq_agent.agents.deep_researcher",
-    "aiq_agent.common",
+    "agent",
+    "agent.agents",
+    "agent.agents.piloti",
+    "agent.agents.deep_researcher",
+    "agent.common",
     "knowledge_layer",
 ]
 
 # What a package ``__init__`` or a conftest every test loads may not load: each
 # is a second or more, and most tests never touch it. A fixture that needs one
 # imports it in its body.
-HEAVY = ["langchain_core", "langgraph", "nat", "qdrant_client", "llama_index", "openai", "aiq_agent.common"]
+HEAVY = ["langchain_core", "langgraph", "nat", "qdrant_client", "llama_index", "openai", "agent.common"]
 
 
 def _loaded_by(statement: str) -> list[str]:
@@ -69,7 +69,7 @@ def test_a_lazy_package_loads_none_of_its_submodules(package):
     loaded = _loaded_by(f"import {package}")
     own = [name for name in loaded if name.startswith(f"{package}.")]
 
-    assert own in ([], ["aiq_agent.lazy_exports"]), f"{package}/__init__.py imports {own}"
+    assert own in ([], ["agent.lazy_exports"]), f"{package}/__init__.py imports {own}"
     assert _heavy([name for name in loaded if not name.startswith(package)]) == []
 
 

@@ -92,7 +92,7 @@ def get_country_profile(country: str | None = None) -> CountryProfile | None:
     if base is None:
         return None
     try:
-        from aiq_agent.common import norm_registry
+        from agent.common import norm_registry
 
         norms_file = norm_registry.load_norms_file(code)
     except Exception:  # noqa: BLE001 — profile lookup must never break the hot path
@@ -112,8 +112,8 @@ def get_country_profile(country: str | None = None) -> CountryProfile | None:
 
 def _register_austria() -> None:
     """Austria: implementation #1 of the contract. Defaults live in norm_registry."""
-    from aiq_agent.common import applicability as at_applicability
-    from aiq_agent.common import norm_registry as nr
+    from agent.common import applicability as at_applicability
+    from agent.common import norm_registry as nr
 
     register_country_profile(
         CountryProfile(

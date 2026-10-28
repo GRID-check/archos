@@ -20,11 +20,11 @@ from knowledge_layer.llamaindex.screening import ScreeningRules
 from knowledge_layer.llamaindex.screening import quarantine_error
 from knowledge_layer.llamaindex.screening import screen_pages
 
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_agent.knowledge.schema import QuarantineVerdict
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from agent.knowledge.schema import QuarantineVerdict
 
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "quarantine_verdict_cases.json"
 CASES = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))["cases"]

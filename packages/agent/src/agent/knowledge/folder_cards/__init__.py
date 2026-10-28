@@ -43,7 +43,7 @@ def organization_hint(collection: str) -> str | None:
     ``None`` leaves it to ``queue.organization_of`` at build time.
     """
     try:
-        from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+        from agent.common.cost_tracking import grid_cost_tracker_var
 
         tracker = grid_cost_tracker_var.get()
         if tracker is not None and tracker.organization_id:
@@ -51,7 +51,7 @@ def organization_hint(collection: str) -> str | None:
     except Exception:  # noqa: BLE001 — a hint, never a reason to fail
         pass
     try:
-        from aiq_agent.project_context import get_organization_id_from_context
+        from agent.project_context import get_organization_id_from_context
 
         organization_id = get_organization_id_from_context()
         if organization_id:
@@ -59,7 +59,7 @@ def organization_hint(collection: str) -> str | None:
     except Exception:  # noqa: BLE001
         pass
     try:
-        from aiq_agent.common.source_kinds import office_shelf_organization_id
+        from agent.common.source_kinds import office_shelf_organization_id
 
         return office_shelf_organization_id(collection)
     except Exception:  # noqa: BLE001
@@ -110,7 +110,7 @@ def mark_files(collection: str, file_names: Sequence[str] | None, store=None) ->
         return
     try:
         if store is None:
-            from aiq_agent.knowledge.factory import _get_document_metadata_store
+            from agent.knowledge.factory import _get_document_metadata_store
 
             store = _get_document_metadata_store()
         mark_folders(collection, store.get_folder_paths_batch(collection, list(file_names)).values())
@@ -137,7 +137,7 @@ async def listing_abstracts(collections: Sequence[str]) -> dict[tuple[str, str],
     """
     if not collections:
         return {}
-    from aiq_agent.project_context import get_organization_id_from_context
+    from agent.project_context import get_organization_id_from_context
 
     from . import client
 

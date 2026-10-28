@@ -5,7 +5,7 @@ Daten" policy (ADR-0086):
 
 * the ingest job's content gate (``knowledge_layer.llamaindex.screening``) turns
   the spans into a quarantine verdict before the first model call;
-* the chat socket (``aiq_api.chat_socket``) replaces them with a placeholder
+* the chat socket (``backend.chat_socket``) replaces them with a placeholder
   before the agent sees a message or its history keeps one.
 
 The browser runs a TypeScript twin (``apps/workspace/bff/upload-screening/content-screen.ts``)
@@ -16,7 +16,7 @@ sides. The twins agree by construction rather than by luck: neither uses its
 runtime's own idea of whitespace, case folding or digits, and the detectors are
 the same small parsers on both sides, not two regex dialects.
 
-It lives in ``aiq_agent.common`` because both Python consumers already import
+It lives in ``agent.common`` because both Python consumers already import
 from here, while importing anything under ``knowledge_layer.llamaindex`` loads
 LlamaIndex (seconds) into a process that only wants a regex.
 
@@ -143,7 +143,7 @@ Detector = Literal["iban", "at_svnr", "credit_card"]
 #: Detectors in the order their findings are reported.
 DETECTORS: tuple[str, ...] = ("iban", "at_svnr", "credit_card")
 
-#: Bounds the request model enforces too (``aiq_api.models.requests.ScreeningPolicy``).
+#: Bounds the request model enforces too (``backend.models.requests.ScreeningPolicy``).
 MAX_TERMS = 200
 MIN_TERM_CHARS = 2
 MAX_TERM_CHARS = 80

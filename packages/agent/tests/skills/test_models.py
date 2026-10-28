@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.skills.models import GRID_METADATA_KEYS
-from aiq_agent.skills.models import MAX_DESCRIPTION_CHARS
-from aiq_agent.skills.models import MAX_TITLE_CHARS
-from aiq_agent.skills.models import SkillValidationError
-from aiq_agent.skills.models import build_skill_from_payload
-from aiq_agent.skills.models import parse_skill_md
-from aiq_agent.skills.models import preferred_cards
-from aiq_agent.skills.models import skill_hidden
-from aiq_agent.skills.models import skill_title
+from agent.skills.models import GRID_METADATA_KEYS
+from agent.skills.models import MAX_DESCRIPTION_CHARS
+from agent.skills.models import MAX_TITLE_CHARS
+from agent.skills.models import SkillValidationError
+from agent.skills.models import build_skill_from_payload
+from agent.skills.models import parse_skill_md
+from agent.skills.models import preferred_cards
+from agent.skills.models import skill_hidden
+from agent.skills.models import skill_title
 
 VALID_MD = """---
 name: forecast-analysis

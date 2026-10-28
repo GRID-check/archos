@@ -12,7 +12,7 @@ Two scopes:
   the user's organization (never shared across organizations).
 
 A turn whose scope holds a restricted folder's collection (ADR-0087) still
-remembers: :mod:`aiq_agent.memory.restriction` decides which restricted
+remembers: :mod:`agent.memory.restriction` decides which restricted
 collections the finding depends on, and it is stored as restricted memory that
 only people cleared for them are served or shown. Such a finding is never
 organization memory (that reaches every project): it is filed in the turn's
@@ -34,20 +34,20 @@ from pydantic import BeforeValidator
 from pydantic import Field
 from pydantic import ValidationError
 
-from aiq_agent import project_context
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import get_card_registry
-from aiq_agent.knowledge import project_memory as memory_client
-from aiq_agent.knowledge import scoping
-from aiq_agent.knowledge.restricted_collections import restricted_collections_in
-from aiq_agent.knowledge.restricted_use import drew_on_other_projects
-from aiq_agent.memory.restriction import RestrictionDecision
-from aiq_agent.memory.restriction import RestrictionEvidence
-from aiq_agent.memory.restriction import restricted_digest_notes
-from aiq_agent.memory.restriction import restriction_decisions
-from aiq_agent.memory.restriction import restriction_evidence
-from aiq_agent.memory.shown_notes import turn_shown_notes
-from aiq_agent.tools.proposals_client import add_card
+from agent import project_context
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import get_card_registry
+from agent.knowledge import project_memory as memory_client
+from agent.knowledge import scoping
+from agent.knowledge.restricted_collections import restricted_collections_in
+from agent.knowledge.restricted_use import drew_on_other_projects
+from agent.memory.restriction import RestrictionDecision
+from agent.memory.restriction import RestrictionEvidence
+from agent.memory.restriction import restricted_digest_notes
+from agent.memory.restriction import restriction_decisions
+from agent.memory.restriction import restriction_evidence
+from agent.memory.shown_notes import turn_shown_notes
+from agent.tools.proposals_client import add_card
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -172,9 +172,9 @@ def _turn_restriction_evidence() -> RestrictionEvidence:
     earlier = turn_shown_notes()
     if not restricted_collections_in(scope) and earlier.empty:
         return RestrictionEvidence()
-    from aiq_agent.citations.session import get_session_registry
-    from aiq_agent.citations.session import get_turn_captures
-    from aiq_agent.knowledge.inventory import get_turn_documents
+    from agent.citations.session import get_session_registry
+    from agent.citations.session import get_turn_captures
+    from agent.knowledge.inventory import get_turn_documents
 
     sources = list(get_turn_captures())
     registry = get_session_registry()
@@ -365,7 +365,7 @@ async def _base_judge_llm(builder: Builder, ref: LLMRef | None) -> Any:
     if ref is None:
         return None
     try:
-        from aiq_agent.common import get_langchain_llm
+        from agent.common import get_langchain_llm
 
         return await get_langchain_llm(builder, ref)
     except Exception:  # noqa: BLE001 - the judge is optional; without it restricted findings fail closed
@@ -377,8 +377,8 @@ def _turn_judge_llm(base: Any) -> Any:
     """``base`` with this turn's org override and credential, as the reflection stage resolves it."""
     if base is None:
         return None
-    from aiq_agent.common.model_overrides import AgentGroup
-    from aiq_agent.stages.runner import resolve_group_llm
+    from agent.common.model_overrides import AgentGroup
+    from agent.stages.runner import resolve_group_llm
 
     return resolve_group_llm(base, AgentGroup.MEMORY_REFLECTION, label="remember judge")
 

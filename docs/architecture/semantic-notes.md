@@ -230,5 +230,5 @@ where the actual defect was.
 | Bounded injection-safe digests | `apps/workspace/bff/knowledge/digest-format.ts` |
 | Memory recall + semantic dedup | `apps/workspace/bff/projects/memory-service.ts` |
 | Lesson semantic matching | `apps/workspace/bff/platform-lessons/repository.ts` |
-| Backend embedding endpoint | `apps/backend/src/aiq_api/routes/note_embeddings.py` |
+| Backend embedding endpoint | `apps/backend/src/backend/routes/note_embeddings.py` |
 | Cosine in SQL + columns | `apps/workspace/migrations/0069_semantic_notes.sql` |

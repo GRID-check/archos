@@ -25,12 +25,12 @@ replica B serving the superseded answer for the full hour of the TTL, with the
 TTL as the only bound. On legal text ("welche Fassung gilt?") that is not a
 performance detail, it is a wrong answer delivered confidently.
 
-So the version lives in the shared cache (``aiq_agent.common.cache``, ADR-0020),
+So the version lives in the shared cache (``agent.common.cache``, ADR-0020),
 incremented server-side and atomically, and every replica reads the same number.
 
 ## Why unknown must not read as zero
 
-``aiq_agent.common.cache`` is deliberately FAIL-OPEN: when Dragonfly is
+``agent.common.cache`` is deliberately FAIL-OPEN: when Dragonfly is
 unreachable, ``get_json``/``set_json`` silently fall back to a per-process map.
 For a rate limiter or a caption cache that is the right trade. For a cache
 *invalidation* key it is the worst possible one — a replica that cannot see the
@@ -87,11 +87,11 @@ import os
 import threading
 import time
 
-from aiq_agent.common import cache
+from agent.common import cache
 
 logger = logging.getLogger(__name__)
 
-# Same variable ``aiq_agent.common.cache`` keys off. Read here (rather than
+# Same variable ``agent.common.cache`` keys off. Read here (rather than
 # importing its private name) purely to tell "no shared store configured" apart
 # from "shared store configured but not answering" — those two demand opposite
 # answers from ``current``.

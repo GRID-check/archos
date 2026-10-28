@@ -52,9 +52,9 @@ import logging
 from typing import Any
 from typing import get_args
 
-from aiq_agent import project_context
-from aiq_agent.cards.workspace_cards import TaskKind
-from aiq_agent.common.bff_http import SignedEnvelope
+from agent import project_context
+from agent.cards.workspace_cards import TaskKind
+from agent.common.bff_http import SignedEnvelope
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo

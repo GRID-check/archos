@@ -19,8 +19,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.project_context import PROJECT_MEMORY_HEADER
-from aiq_agent.project_context import compose_project_context
+from agent.project_context import PROJECT_MEMORY_HEADER
+from agent.project_context import compose_project_context
 
 from .run_envelope import envelope_headers_for_run
 from .run_result import extract_result
@@ -117,11 +117,11 @@ class RunContext:
 
 async def prepare_models(builder: Any, request: JobRequest) -> JobModels:
     """The agent's config and its models: per-org overrides, thinking level, BYOK, then zero data retention."""
-    from aiq_agent.common import LLMRole
-    from aiq_agent.common import get_reasoning_efforts
-    from aiq_agent.common import resolve_org_llm_credential
-    from aiq_agent.common import sanitize_model_overrides
-    from aiq_agent.common.openrouter import data_policy_for
+    from agent.common import LLMRole
+    from agent.common import get_reasoning_efforts
+    from agent.common import resolve_org_llm_credential
+    from agent.common import sanitize_model_overrides
+    from agent.common.openrouter import data_policy_for
 
     fn_config = _function_config(builder, request.agent_config_name)
     built, llm = await _create_llm_provider(builder, fn_config)
@@ -158,8 +158,8 @@ def _function_config(builder: Any, name: str) -> Any:
     fn_config = builder.get_function_config(name)
     if getattr(fn_config, "type", None) != "deep_research_agent":
         return fn_config
-    from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-    from aiq_agent.agents.deep_researcher.register import resolve_deep_research_runtime_config
+    from agent.agents.deep_researcher.register import DeepResearchAgentConfig
+    from agent.agents.deep_researcher.register import resolve_deep_research_runtime_config
 
     if not isinstance(fn_config, DeepResearchAgentConfig):
         return fn_config
@@ -177,7 +177,7 @@ async def prepare_tools(builder: Any, fn_config: Any, data_sources: list[str] | 
     excluded = set(getattr(fn_config, "exclude_tools", None) or ())
     tools = [tool for tool in tools if getattr(tool, "name", "") not in excluded]
     if data_sources is not None:
-        from aiq_agent.common import filter_tools_by_sources
+        from agent.common import filter_tools_by_sources
 
         tools = filter_tools_by_sources(tools, data_sources)
     return tools
@@ -230,8 +230,8 @@ def _inject_scope_headers(state: Any, request: JobRequest, fn_config: Any) -> No
     quote or em-dash makes Starlette's latin-1 header encoding throw before the
     agent ever starts, an instant job failure with zero events.
     """
-    from aiq_agent.common import MODEL_OVERRIDES_HEADER
-    from aiq_agent.project_context import normalize_project_context
+    from agent.common import MODEL_OVERRIDES_HEADER
+    from agent.project_context import normalize_project_context
 
     headers: dict[str, str] = {}
     if request.collection_scope is not None:
@@ -301,7 +301,7 @@ async def _inject_memory_header(state: Any, request: JobRequest) -> str | None:
     digest = request.project_memory
     if identity.get("project_id") or identity.get("organization_id"):
         try:
-            from aiq_agent.knowledge.project_memory import fetch_memory_digest
+            from agent.knowledge.project_memory import fetch_memory_digest
 
             digest = await asyncio.to_thread(
                 fetch_memory_digest,

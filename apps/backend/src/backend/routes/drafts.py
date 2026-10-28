@@ -56,15 +56,15 @@ from fastapi import Query
 from fastapi import Request
 from fastapi import Response
 
-from aiq_agent.tools.documents import draft_store
-from aiq_agent.tools.documents.draft_store import MAX_DRAFT_BYTES
-from aiq_agent.tools.documents.draft_store import VERSION_KEY
-from aiq_agent.tools.documents.draft_store import delete_conversation_drafts
-from aiq_agent.tools.documents.draft_store import draft_bytes
-from aiq_agent.tools.documents.draft_store import draft_namespace
-from aiq_agent.tools.documents.draft_store import filing_from_value
-from aiq_agent.tools.documents.draft_store import modernize_draft_path
-from aiq_agent.tools.documents.draft_store import path_refusal
+from agent.tools.documents import draft_store
+from agent.tools.documents.draft_store import MAX_DRAFT_BYTES
+from agent.tools.documents.draft_store import VERSION_KEY
+from agent.tools.documents.draft_store import delete_conversation_drafts
+from agent.tools.documents.draft_store import draft_bytes
+from agent.tools.documents.draft_store import draft_namespace
+from agent.tools.documents.draft_store import filing_from_value
+from agent.tools.documents.draft_store import modernize_draft_path
+from agent.tools.documents.draft_store import path_refusal
 
 from .internal_auth import _require_internal_token
 

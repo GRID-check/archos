@@ -6,9 +6,9 @@ from enum import StrEnum
 
 from langchain_core.language_models import BaseChatModel
 
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.common.model_overrides import override_model
-from aiq_agent.common.model_overrides import override_reasoning_effort
+from agent.common.model_overrides import AgentGroup
+from agent.common.model_overrides import override_model
+from agent.common.model_overrides import override_reasoning_effort
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class LLMProvider:
         self._llms: dict[LLMRole, BaseChatModel] = {}
         self._default: BaseChatModel | None = None
         # Agent-group tags used by with_model_overrides() to apply per-org
-        # runtime model overrides (see aiq_agent.common.model_overrides).
+        # runtime model overrides (see agent.common.model_overrides).
         self._groups: dict[LLMRole, AgentGroup] = {}
         self._default_group: AgentGroup | None = None
 
@@ -193,7 +193,7 @@ class LLMProvider:
         if not zdr_only:
             return self
 
-        from aiq_agent.common.model_overrides import apply_zdr_routing
+        from agent.common.model_overrides import apply_zdr_routing
 
         rebuilt: dict[int, BaseChatModel] = {}
 
@@ -224,7 +224,7 @@ class LLMProvider:
         if credential is None:
             return self
 
-        from aiq_agent.common.llm_credentials import apply_org_credential
+        from agent.common.llm_credentials import apply_org_credential
 
         rebuilt: dict[int, BaseChatModel] = {}
 

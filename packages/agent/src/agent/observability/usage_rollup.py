@@ -148,7 +148,7 @@ def _resolve_turn(turn_id: str | None, job_id: str | None, tracker: Any) -> tupl
     resolved_job = job_id if job_id is not None else getattr(tracker, "job_id", None)
     if resolved_turn is None:
         try:
-            from aiq_agent.common.profiler import agent_profiler_var
+            from agent.common.profiler import agent_profiler_var
 
             profiler = agent_profiler_var.get()
             if profiler is not None:
@@ -198,7 +198,7 @@ def record_usage_turn(
         logger.warning("Could not assemble the turn usage rollup", exc_info=True)
         return None
     try:
-        from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
+        from agent.observability.langfuse_trace_attributes import record_trace_metadata
 
         record_trace_metadata(
             usage_llm_calls=rollup.llm_calls,

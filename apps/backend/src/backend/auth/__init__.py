@@ -1,6 +1,6 @@
 """Auth components for the AIQ API frontend."""
 
-from aiq_agent.auth.request_identity import get_current_user
+from agent.auth.request_identity import get_current_user
 
 from .base import TokenValidator
 from .errors import AuthError

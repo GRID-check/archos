@@ -40,7 +40,7 @@ export const ASK_WAIT_SECONDS = 40
 
 /**
  * The chat turn's own clock (`CHAT_TURN_DEADLINE_SECONDS` in
- * `apps/backend/src/aiq_api/chat_socket.py`): a turn still running then is
+ * `apps/backend/src/backend/chat_socket.py`): a turn still running then is
  * ended `failed` by the socket, which reports it. `ask-wire.spec.ts` holds the two equal.
  */
 export const CHAT_TURN_DEADLINE_SECONDS = 2_700

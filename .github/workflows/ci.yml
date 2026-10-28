@@ -402,7 +402,7 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
-  # The core suite's coverage gate (65% of packages/agent/src/aiq_agent) over all four shards,
+  # The core suite's coverage gate (65% of packages/agent/src/agent) over all four shards,
   # and the PR comment. In `CI OK`, unlike the workspace's comment-only merge,
   # because the gate is a check.
   backend-coverage:
@@ -442,11 +442,11 @@ jobs:
           # The whole-tree table passed GitHub's 65,536-character comment
           # limit, and the action then posted only the badge.
           report-only-changed-files: true
-          title: Backend coverage (packages/agent/src/aiq_agent)
+          title: Backend coverage (packages/agent/src/agent)
           unique-id-for-comment: backend-coverage
 
   # Every Python suite but the core one, one job each. Run back to back in one
-  # job they took 4:50 (sources 2:32, aiq_api 1:00, the rest 0:36), the
+  # job they took 4:50 (sources 2:32, backend 1:00, the rest 0:36), the
   # longest job of a full pull request; side by side the longest is sources.
   backend-suites:
     name: Backend suites (${{ matrix.suite }})
@@ -457,7 +457,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [aiq_api, sources, migration and claim queues]
+        suite: [backend, sources, migration and claim queues]
     services:
       qdrant:
         image: qdrant/qdrant:v1.19.2
@@ -473,8 +473,8 @@ jobs:
         with:
           python-version: "3.14"
       - uses: ./.github/actions/setup-task
-      - name: aiq_api plugin suite
-        if: matrix.suite == 'aiq_api'
+      - name: backend plugin suite
+        if: matrix.suite == 'backend'
         run: task be:test:api
       - name: Python package suites (packages/knowledge-layer, ris-adapter, tavily-web-search)
         if: matrix.suite == 'sources'

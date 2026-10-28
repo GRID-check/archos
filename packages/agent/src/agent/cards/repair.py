@@ -21,9 +21,9 @@ from typing import Any
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 
-from aiq_agent.cards.generate import _ainvoke_card_llm
-from aiq_agent.cards.generate import _parse_cards_text
-from aiq_agent.common.message_utils import response_text
+from agent.cards.generate import _ainvoke_card_llm
+from agent.cards.generate import _parse_cards_text
+from agent.common.message_utils import response_text
 
 logger = logging.getLogger(__name__)
 

@@ -29,8 +29,8 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 if TYPE_CHECKING:
-    from aiq_agent.knowledge.project_experience import FingerprintValue
-    from aiq_agent.knowledge.project_experience import VocabularyEntry
+    from agent.knowledge.project_experience import FingerprintValue
+    from agent.knowledge.project_experience import VocabularyEntry
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ def verify_fingerprint(
     if not states:
         return list(values)
     try:
-        from aiq_agent.common.decisions import decide_many_blocking
+        from agent.common.decisions import decide_many_blocking
 
         decided = decide_many_blocking(states, {"stated": STATED_QUESTION}, slot=SLOT, organization_id=organization_id)
     except Exception:  # noqa: BLE001 — the reading stands as it was

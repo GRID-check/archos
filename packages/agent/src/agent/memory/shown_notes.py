@@ -32,8 +32,8 @@ from contextvars import Token
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.knowledge.restricted_collections import restricted_collections_in
-from aiq_agent.memory.restriction import RestrictedNote
+from agent.knowledge.restricted_collections import restricted_collections_in
+from agent.memory.restriction import RestrictedNote
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ def load_shown_notes(conversation_id: str | None) -> ShownNotes:
     """
     if not conversation_id:
         return ShownNotes()
-    from aiq_agent.common import cache
+    from agent.common import cache
 
     try:
         return _decode(cache.get_json(_key(conversation_id)))
@@ -139,7 +139,7 @@ def persist_shown_notes(conversation_id: str | None, shown: ShownNotes) -> None:
     """Write the record (synchronous, best-effort). An empty record writes nothing."""
     if not conversation_id or shown.empty:
         return
-    from aiq_agent.common import cache
+    from agent.common import cache
 
     cache.set_json(_key(conversation_id), _encode(shown), _TTL_SECONDS)
 

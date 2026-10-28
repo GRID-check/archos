@@ -7,7 +7,7 @@
  * file certain to fail the same way: an empty or encrypted PDF fails
  * identically on every attempt, and each attempt spends a download, a parse and
  * sometimes vision calls. The backend now says WHY a file failed
- * (`aiq_agent/knowledge/ingest_failures.py`): a category, a `retryable` flag
+ * (`agent/knowledge/ingest_failures.py`): a category, a `retryable` flag
  * and the reader version that read it, which the reconcile persists on the row
  * (migration 0134). This module turns those into one answer.
  *

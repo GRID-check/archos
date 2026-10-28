@@ -26,8 +26,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import get_card_registry
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import get_card_registry
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ REVISION_COMPARE_CARD_TYPE = "revision_compare"
 
 def _compare_changes(structured: dict[str, Any], page: int) -> list[dict[str, Any]]:
     """The boxes of a comparison result that sit on ``page`` and can be drawn, clamped onto it."""
-    from aiq_agent.tools.look.cards import clamp_region
+    from agent.tools.look.cards import clamp_region
 
     changes: list[dict[str, Any]] = []
     for item in structured.get("regions") or []:

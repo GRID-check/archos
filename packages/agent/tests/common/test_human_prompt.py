@@ -2,14 +2,14 @@
 
 import pytest
 
-from aiq_agent.common import build_human_prompt
-from aiq_agent.common import extract_user_response
-from aiq_agent.common.human_prompt import DEFAULT_TEXT_PLACEHOLDER
-from aiq_agent.common.human_prompt import human_response
-from aiq_agent.common.human_prompt import interaction_request
-from aiq_agent.common.wire_v2 import InteractionRequestValue
-from aiq_agent.common.wire_v2 import OptionAnswer
-from aiq_agent.common.wire_v2 import TextAnswer
+from agent.common import build_human_prompt
+from agent.common import extract_user_response
+from agent.common.human_prompt import DEFAULT_TEXT_PLACEHOLDER
+from agent.common.human_prompt import human_response
+from agent.common.human_prompt import interaction_request
+from agent.common.wire_v2 import InteractionRequestValue
+from agent.common.wire_v2 import OptionAnswer
+from agent.common.wire_v2 import TextAnswer
 from nat.plugin_api import Context
 from nat.plugin_api import ContextState
 from nat.plugin_api import HumanPromptCheckbox

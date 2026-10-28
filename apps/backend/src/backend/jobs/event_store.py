@@ -13,10 +13,10 @@ import time
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.common.db_utils import ensure_schema
-from aiq_agent.common.db_utils import lock_schema
-from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
-from aiq_agent.common.db_utils import redact_db_url
+from agent.common.db_utils import ensure_schema
+from agent.common.db_utils import lock_schema
+from agent.common.db_utils import normalize_db_url as _normalize_db_url
+from agent.common.db_utils import redact_db_url
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +155,7 @@ class EventStore:
                 except ImportError as e:
                     raise ImportError(
                         "PostgreSQL support requires psycopg (v3). "
-                        "Install with: pip install 'aiq-api[postgres]' or pip install 'psycopg[binary]'"
+                        "Install with: pip install 'backend[postgres]' or pip install 'psycopg[binary]'"
                     ) from e
 
             engine = create_engine(

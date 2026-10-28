@@ -4,15 +4,15 @@ import time
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
-from aiq_agent.common.db_utils import redact_db_url
+from agent.common.db_utils import normalize_db_url as _normalize_db_url
+from agent.common.db_utils import redact_db_url
 
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge.document_metadata_constants import ENGINE_CACHE_MAX_SIZE
-from aiq_agent.knowledge.document_metadata_constants import ENGINE_CACHE_TTL_SECONDS
-from aiq_agent.knowledge.document_metadata_constants import logger
+from agent.knowledge.document_metadata_constants import ENGINE_CACHE_MAX_SIZE
+from agent.knowledge.document_metadata_constants import ENGINE_CACHE_TTL_SECONDS
+from agent.knowledge.document_metadata_constants import logger
 
 
 def _get_or_create_sync_engine(cls, db_url: str):

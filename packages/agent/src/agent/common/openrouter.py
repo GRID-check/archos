@@ -28,7 +28,7 @@ A call site picks the adapter for its shape and never writes its own merge:
 - a LangChain chat model: :func:`pin_chat_model`;
 - a JSON body it builds (``httpx``): ``policy.apply(body)``, or
   ``ResolvedCredential.request_body`` when it resolved its endpoint through
-  :func:`aiq_agent.common.credential_resolution.resolve_llm_credential`;
+  :func:`agent.common.credential_resolution.resolve_llm_credential`;
 - an OpenAI SDK client: :func:`openai_client`;
 - a client that builds its own body (llama-index's embedding client):
   :func:`pinned_http_client` / :func:`pinned_async_http_client`;
@@ -66,7 +66,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from aiq_agent.common import provider_limiter
+from agent.common import provider_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +171,7 @@ def data_policy_for(organization_id: str | None) -> DataPolicy:
     if not organization_id:
         return NO_RETENTION_LIMITS
     try:
-        from aiq_agent.common.model_overrides import resolve_org_zdr_only
+        from agent.common.model_overrides import resolve_org_zdr_only
 
         return ZERO_DATA_RETENTION if resolve_org_zdr_only(organization_id) else NO_RETENTION_LIMITS
     except Exception:  # noqa: BLE001 - fails closed, and says so
@@ -215,7 +215,7 @@ def pin_chat_model(llm: object, policy: DataPolicy) -> object:
     """
     if not policy.zdr:
         return llm
-    from aiq_agent.common.llm_factory import llm_targets_openrouter
+    from agent.common.llm_factory import llm_targets_openrouter
 
     if not llm_targets_openrouter(llm):
         return llm
@@ -229,7 +229,7 @@ def pin_chat_model(llm: object, policy: DataPolicy) -> object:
     except Exception as exc:
         raise ZdrRoutingError(f"cannot pin {type(llm).__name__} to ZDR endpoints") from exc
 
-    from aiq_agent.common.model_overrides import _rebind_instance_method_patches
+    from agent.common.model_overrides import _rebind_instance_method_patches
 
     _rebind_instance_method_patches(llm, pinned)
     return pinned

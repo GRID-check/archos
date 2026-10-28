@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from aiq_agent.tools.bim.failures import NO_MODEL_TEXT
-from aiq_agent.tools.bim.failures import NOT_READY_TEXT
+from agent.tools.bim.failures import NO_MODEL_TEXT
+from agent.tools.bim.failures import NOT_READY_TEXT
 
 #: Plural noun → its singular. A lookup rather than a rule because English
 #: plurals are not derivable either ("storeys", "properties"), and
@@ -82,11 +82,11 @@ def render_unresolved(result: dict[str, Any], fallback: str) -> str:
     building with no elements.
 
     A project with nothing to read gets the sentence saying so AND what to do
-    with it (:data:`~aiq_agent.tools.bim.failures.NO_MODEL_TEXT`). The route's
+    with it (:data:`~agent.tools.bim.failures.NO_MODEL_TEXT`). The route's
     „Für dieses Projekt ist kein IFC-Modell hinterlegt" (the route's German sentence) alone reads as one
     operation's miss, and the agent spent the rest of its rounds trying the
     others. ``not_ready`` gets its own sentence
-    (:data:`~aiq_agent.tools.bim.failures.NOT_READY_TEXT`) for the same reason
+    (:data:`~agent.tools.bim.failures.NOT_READY_TEXT`) for the same reason
     and a different fact: extraction finishes after this turn, so the model
     named under "not yet queryable" answers a later question and not this
     one.

@@ -15,7 +15,7 @@ from datetime import timezone
 
 import pytest
 
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
 iso_date = DocumentMetadataStore._iso_date
 

@@ -26,7 +26,7 @@ Design notes:
   and never delays it: batches go to a daemon thread pool, exactly like the
   profiler's ``wait=False`` flush.
 - **Correlated with the profiler.** The turn id is borrowed from the active
-  :class:`~aiq_agent.common.profiler.AgentProfiler` when one is running, so a
+  :class:`~agent.common.profiler.AgentProfiler` when one is running, so a
   citation defect on the dashboard links to that turn's execution timeline.
 """
 
@@ -44,7 +44,7 @@ from threading import Lock
 from typing import Any
 from typing import Literal
 
-from aiq_agent.common import bff_http
+from agent.common import bff_http
 
 logger = logging.getLogger(__name__)
 
@@ -402,8 +402,8 @@ def _events_enabled() -> bool:
 def _read_identity() -> dict[str, str | None]:
     """Organization / conversation for the live request, if any."""
     try:
-        from aiq_agent.project_context import get_conversation_id_from_context
-        from aiq_agent.project_context import get_organization_id_from_context
+        from agent.project_context import get_conversation_id_from_context
+        from agent.project_context import get_organization_id_from_context
 
         return {
             "organization_id": get_organization_id_from_context(),
@@ -417,7 +417,7 @@ def _read_identity() -> dict[str, str | None]:
 def _active_profiler() -> Any | None:
     """The :class:`AgentProfiler` covering this turn, when one is active."""
     try:
-        from aiq_agent.common.profiler import agent_profiler_var
+        from agent.common.profiler import agent_profiler_var
 
         return agent_profiler_var.get()
     except Exception:  # pragma: no cover - defensive
@@ -471,8 +471,8 @@ def _score_in_langfuse(events: list[CitationEvent], agent: str) -> None:
     vote and its prompt version.
     """
     try:
-        from aiq_agent.observability.langfuse_scores import citation_scores
-        from aiq_agent.observability.langfuse_scores import emit_scores
+        from agent.observability.langfuse_scores import citation_scores
+        from agent.observability.langfuse_scores import emit_scores
 
         emit_scores(citation_scores(events), writer=f"citations-{agent}")
     except Exception:

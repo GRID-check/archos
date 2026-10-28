@@ -3,12 +3,12 @@ import os
 
 from pydantic import Field
 
-from aiq_agent.common.log_redaction import PresignedUrlFilter
-from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
-from aiq_agent.observability import otlp_metrics
-from aiq_agent.observability import posthog_exceptions
-from aiq_agent.observability.otlp_resource import resource_attributes
-from aiq_agent.observability.otlp_resource import signal_endpoint
+from agent.common.log_redaction import PresignedUrlFilter
+from agent.common.log_redaction import install_presigned_url_scrubbing
+from agent.observability import otlp_metrics
+from agent.observability import posthog_exceptions
+from agent.observability.otlp_resource import resource_attributes
+from agent.observability.otlp_resource import signal_endpoint
 from nat.cli.register_workflow import register_logging_method  # noqa: TID251
 from nat.data_models.logging import LoggingBaseConfig
 from nat.plugin_api import Builder
@@ -111,7 +111,7 @@ async def otlp_logging_method(config: OtlpLoggingMethodConfig, _builder: Builder
     # Exported logs leave the cluster and are retained by whatever is on the
     # other end, so this is the sink where a leaked presigned URL is hardest to
     # take back. Attached here rather than trusted to every call site — see
-    # aiq_agent.common.log_redaction.
+    # agent.common.log_redaction.
     handler.addFilter(PresignedUrlFilter())
 
     # Every other handler already on the root logger (stdout, and anything the

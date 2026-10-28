@@ -21,7 +21,7 @@ produces exactly one thing the office wanted: a report. That report is written
 by `writer-agent` to `/shared/output.md`, read back out by
 `_extract_final_markdown`, returned as a chat message, and **discarded** — the
 run's whole file system with it
-(`packages/agent/src/aiq_agent/agents/deep_researcher/agent.py`, `deepagents_runtime.py`).
+(`packages/agent/src/agent/agents/deep_researcher/agent.py`, `deepagents_runtime.py`).
 There is even a fallback that mines the last assistant message when the file is
 missing, which is the code saying the file, not the message, was the artifact.
 

@@ -14,11 +14,11 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from aiq_agent.knowledge.bim_query import BimQueryRejectedError
-from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
-from aiq_agent.knowledge.ifc_spatial_client import ModelTooLargeError
-from aiq_agent.knowledge.ifc_spatial_client import SpatialEngineUnavailableError
-from aiq_agent.knowledge.ifc_spatial_client import SpatialToolError
+from agent.knowledge.bim_query import BimQueryRejectedError
+from agent.knowledge.bim_query import BimQueryUnavailableError
+from agent.knowledge.ifc_spatial_client import ModelTooLargeError
+from agent.knowledge.ifc_spatial_client import SpatialEngineUnavailableError
+from agent.knowledge.ifc_spatial_client import SpatialToolError
 
 #: No project on this conversation, so there is no model to address. "Do not
 #: retry" is the operative half: no argument can fix it, and without being told

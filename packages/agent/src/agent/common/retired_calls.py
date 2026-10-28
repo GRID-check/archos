@@ -32,6 +32,6 @@ def retired_hints(fields: Iterable[str]) -> list[str]:
 
 def note_retired_call() -> None:
     """Tag the turn's trace: an old spelling is still in use."""
-    from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
+    from agent.observability.langfuse_trace_attributes import add_trace_tag
 
     add_trace_tag(RETIRED_CALL_TAG)

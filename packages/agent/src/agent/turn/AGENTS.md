@@ -1,4 +1,4 @@
-# The per-turn harness: `packages/agent/src/aiq_agent/turn`
+# The per-turn harness: `packages/agent/src/agent/turn`
 
 Everything that happens exactly once per chat turn and is **not** the answering
 agent: parsing what the request says about the turn, loading its context and
@@ -18,8 +18,8 @@ without standing up a NAT workflow. That is the point of the package: the
 harness used to be one closure, and a field could be written, declared by the
 frontend and reach nobody without a single test noticing.
 
-**The dependency runs one way.** `aiq_api` hosts this workflow and imports it;
-nothing under `aiq_agent` imports `aiq_api`. What the agent needs from a request
+**The dependency runs one way.** `backend` hosts this workflow and imports it;
+nothing under `agent` imports `backend`. What the agent needs from a request
 lives in the agent tier and the API tier writes it there: the caller identity
 (`auth/request_identity.py`, bound by the middleware), the auth error
 (`auth/errors.py`, subclassed by the token errors). An API-tier capability the
@@ -32,7 +32,7 @@ only.
 
 | When you | You must | What fails you |
 |---|---|---|
-| Need something from `aiq_api` | Own the type or state here and let `aiq_api` write it, or take the capability as a parameter its API-tier caller passes | The `agent-api-seam` import-linter contract (`pyproject.toml`, run by `task be:lint`), over every module in `aiq_agent` |
+| Need something from `backend` | Own the type or state here and let `backend` write it, or take the capability as a parameter its API-tier caller passes | The `agent-api-seam` import-linter contract (`pyproject.toml`, run by `task be:lint`), over every module in `agent` |
 | Add a wire field or a stage fact | Add it to `TurnResult` (`common/wire_v2.py`), lift it in `response.build_result`, and give it a test that reads it back | Nothing. A field nobody lifts is set, valid, and invisible |
 | Add setup I/O to the turn | Gather it with the existing `asyncio.gather` and let it fail open on its own | It lands on the time-to-first-byte path in series |
 

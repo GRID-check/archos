@@ -1,10 +1,10 @@
 """The chat socket: chat wire v2 over one WebSocket per conversation (ADR-0068).
 
 The design is ``docs/design/chat-wire-v2.md`` §c/§d, the contract
-``aiq_agent.common.wire_v2``, and the protocol page
+``agent.common.wire_v2``, and the protocol page
 ``docs/api/websocket-protocol.md``.
 
-NAT's WebSocket route is off (``websocket_path: null``, ``plugin.AIQAPIConfig``)
+NAT's WebSocket route is off (``websocket_path: null``, ``plugin.BackendConfig``)
 and this module is mounted at ``/websocket`` instead. It runs the workflow
 through NAT's public session API (``SessionManager.session`` →
 ``Session.run`` → ``Runner.result_stream``, via ``workflow_stream``) and
@@ -13,7 +13,7 @@ here, by the turn's sequencer (:class:`TurnWire`), because only the socket owns
 ``seq``: the heartbeat, HITL, the stage events and the errors are its own, and
 they share the counter with everything the workflow yields.
 
-The first frame on every socket is ``hello`` (:class:`~aiq_agent.common.wire_v2.Hello`),
+The first frame on every socket is ``hello`` (:class:`~agent.common.wire_v2.Hello`),
 sent once the version and the caller have passed; the client sends nothing
 before it. Every client message gets an answer or a turn: one this wire does not
 describe, unknown type or not JSON at all, is ``rejected{invalid_message}``.
@@ -42,7 +42,7 @@ What a socket holds, in order of the checks on every client message:
 
 A ``steer`` is not a turn. It never claims, holds or supersedes the
 conversation: it goes into the running turn's inbox
-(``aiq_agent.common.steering``), which the graph reads at its next tool-round
+(``agent.common.steering``), which the graph reads at its next tool-round
 boundary. A ``user_message`` that says ``if_idle`` (a turn an event woke, sent
 by the BFF's wake job) never supersedes either: a conversation with a running
 turn refuses it as ``busy``, and the sender retries.
@@ -55,7 +55,7 @@ a deterministic id, so the browser's own write of it is a no-op.
 What follows a terminal goes out off the turn's path, in order, once
 (:func:`_after_terminal`): the answer row; the answer into an Anmerkung's thread
 when the turn was asked there and the model did not reply in it
-(``aiq_agent.turn.annotation_reply``); and, for a turn a headless caller (the
+(``agent.turn.annotation_reply``); and, for a turn a headless caller (the
 BFF's wake job, ``X-Chat-Mode: headless``) started, how it ended
 (``POST /api/internal/turns/outcome``), because that caller has let go of the
 socket by then.
@@ -88,114 +88,114 @@ from fastapi import WebSocket
 from pydantic import ValidationError
 from starlette.websockets import WebSocketDisconnect
 
-from aiq_agent.auth.errors import AuthError
-from aiq_agent.common.action_rows import is_literal_search
-from aiq_agent.common.content_screen import ScreeningRules
-from aiq_agent.common.content_screen import findings_summary
-from aiq_agent.common.content_screen import mask_text
-from aiq_agent.common.human_prompt import human_response
-from aiq_agent.common.human_prompt import interaction_request
-from aiq_agent.common.steering import SteerInbox
-from aiq_agent.common.steering import SteerNote
-from aiq_agent.common.steering import bind_steer_inbox
-from aiq_agent.common.steering import unbind_steer_inbox
-from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
-from aiq_agent.common.wire_v2 import CLIENT_MESSAGE
-from aiq_agent.common.wire_v2 import CLOSE_CLIENT_OUTDATED
-from aiq_agent.common.wire_v2 import WIRE_VERSION
-from aiq_agent.common.wire_v2 import Attach
-from aiq_agent.common.wire_v2 import CancelTurn
-from aiq_agent.common.wire_v2 import EventBody
-from aiq_agent.common.wire_v2 import HeartbeatBody
-from aiq_agent.common.wire_v2 import HeartbeatValue
-from aiq_agent.common.wire_v2 import Hello
-from aiq_agent.common.wire_v2 import HelloValue
-from aiq_agent.common.wire_v2 import InteractionRequestBody
-from aiq_agent.common.wire_v2 import InteractionResolvedBody
-from aiq_agent.common.wire_v2 import InteractionResolvedValue
-from aiq_agent.common.wire_v2 import InteractionResponse
-from aiq_agent.common.wire_v2 import RejectedBody
-from aiq_agent.common.wire_v2 import RejectedValue
-from aiq_agent.common.wire_v2 import RunErrorBody
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import RunStartedBody
-from aiq_agent.common.wire_v2 import ShownAnswer
-from aiq_agent.common.wire_v2 import StageBody
-from aiq_agent.common.wire_v2 import StageValue
-from aiq_agent.common.wire_v2 import Steer
-from aiq_agent.common.wire_v2 import SteerReceivedBody
-from aiq_agent.common.wire_v2 import SteerReceivedValue
-from aiq_agent.common.wire_v2 import TextAnswer
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.common.wire_v2 import UserMessage
-from aiq_agent.common.wire_v2 import stamp
-from aiq_agent.common.wire_v2 import to_frame
-from aiq_agent.common.write_fence import TurnFenced
-from aiq_agent.common.write_fence import WriteFence
-from aiq_agent.common.write_fence import bind_write_fence
-from aiq_agent.common.write_fence import check_write
-from aiq_agent.common.write_fence import unbind_write_fence
-from aiq_agent.conversation_context import ContextOnlyMessage
-from aiq_agent.conversation_context import append_conversation_context
-from aiq_agent.conversation_context import format_context_turn
-from aiq_agent.observability.langfuse_scores import emit_scores
-from aiq_agent.observability.langfuse_scores import file_tool_scores
-from aiq_agent.observability.langfuse_scores import steer_scores
-from aiq_agent.observability.langfuse_scores import turn_outcome_scores
-from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
-from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
-from aiq_agent.observability.langfuse_trace_attributes import record_posthog_session
-from aiq_agent.observability.langfuse_trace_attributes import record_turn_surface
-from aiq_agent.observability.langfuse_trace_attributes import record_turn_trigger
-from aiq_agent.observability.turn_outcome import begin_turn_outcome
-from aiq_agent.observability.turn_outcome import end_turn_outcome
-from aiq_agent.observability.turn_outcome import record_turn_error
-from aiq_agent.observability.turn_outcome import record_turn_finished
-from aiq_agent.observability.turn_trace import TRACE_ID_METADATA_KEY
-from aiq_agent.observability.turn_trace import pinned_trace
-from aiq_agent.observability.turn_trace import trace_id_for_message
-from aiq_agent.observability.turn_trace import trace_id_hex
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.tools.documents.filing import SignedEnvelope
-from aiq_agent.turn.admission import TurnRefusal
-from aiq_agent.turn.admission import refused
-from aiq_agent.turn.annotation_reply import ThreadReply
-from aiq_agent.turn.annotation_reply import bind_thread_reply
-from aiq_agent.turn.annotation_reply import post_fallback_reply
-from aiq_agent.turn.annotation_reply import reset_thread_reply
-from aiq_agent.turn.payload import thread_reply_requested
-from aiq_agent.turn.payload import turn_surface
-from aiq_agent.turn.response import answer_message_id
-from aiq_agent.turn.streaming import TurnTextFold
-from aiq_api.after_terminal_writes import drain_after_terminal
-from aiq_api.after_terminal_writes import in_background
-from aiq_api.auth.middleware import build_request_trace_tags
-from aiq_api.auth.middleware import detect_internal_caller
-from aiq_api.auth.middleware import resolve_request_user
-from aiq_api.auth.middleware import user_context
-from aiq_api.auth.request_trace import request_trace_tag_context
-from aiq_api.conversation_bus import CANCEL
-from aiq_api.conversation_bus import FRAME
-from aiq_api.conversation_bus import HITL_ANSWER
-from aiq_api.conversation_bus import STEER
-from aiq_api.conversation_bus import SUPERSEDE
-from aiq_api.conversation_bus import BusUnavailable
-from aiq_api.conversation_bus import ConversationBus
-from aiq_api.conversation_bus import Envelope
-from aiq_api.conversation_bus import get_bus
-from aiq_api.conversation_bus import is_multi_replica_bus
-from aiq_api.conversation_bus import running_renew_interval
-from aiq_api.conversation_bus import running_ttl
-from aiq_api.internal_api import ChatScreening
-from aiq_api.internal_api import chat_screening_for
-from aiq_api.internal_api import post_internal_conversation_message
-from aiq_api.internal_api import post_internal_turn_outcome
-from aiq_api.startup_banner import deployed_sha
-from aiq_api.turn_fence import TurnFence
-from aiq_api.turn_fence import validate_running_ttl
-from aiq_api.workflow_stream import stream_workflow
+from agent.auth.errors import AuthError
+from agent.common.action_rows import is_literal_search
+from agent.common.content_screen import ScreeningRules
+from agent.common.content_screen import findings_summary
+from agent.common.content_screen import mask_text
+from agent.common.human_prompt import human_response
+from agent.common.human_prompt import interaction_request
+from agent.common.steering import SteerInbox
+from agent.common.steering import SteerNote
+from agent.common.steering import bind_steer_inbox
+from agent.common.steering import unbind_steer_inbox
+from agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
+from agent.common.wire_v2 import CLIENT_MESSAGE
+from agent.common.wire_v2 import CLOSE_CLIENT_OUTDATED
+from agent.common.wire_v2 import WIRE_VERSION
+from agent.common.wire_v2 import Attach
+from agent.common.wire_v2 import CancelTurn
+from agent.common.wire_v2 import EventBody
+from agent.common.wire_v2 import HeartbeatBody
+from agent.common.wire_v2 import HeartbeatValue
+from agent.common.wire_v2 import Hello
+from agent.common.wire_v2 import HelloValue
+from agent.common.wire_v2 import InteractionRequestBody
+from agent.common.wire_v2 import InteractionResolvedBody
+from agent.common.wire_v2 import InteractionResolvedValue
+from agent.common.wire_v2 import InteractionResponse
+from agent.common.wire_v2 import RejectedBody
+from agent.common.wire_v2 import RejectedValue
+from agent.common.wire_v2 import RunErrorBody
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import RunStartedBody
+from agent.common.wire_v2 import ShownAnswer
+from agent.common.wire_v2 import StageBody
+from agent.common.wire_v2 import StageValue
+from agent.common.wire_v2 import Steer
+from agent.common.wire_v2 import SteerReceivedBody
+from agent.common.wire_v2 import SteerReceivedValue
+from agent.common.wire_v2 import TextAnswer
+from agent.common.wire_v2 import TurnResult
+from agent.common.wire_v2 import UserMessage
+from agent.common.wire_v2 import stamp
+from agent.common.wire_v2 import to_frame
+from agent.common.write_fence import TurnFenced
+from agent.common.write_fence import WriteFence
+from agent.common.write_fence import bind_write_fence
+from agent.common.write_fence import check_write
+from agent.common.write_fence import unbind_write_fence
+from agent.conversation_context import ContextOnlyMessage
+from agent.conversation_context import append_conversation_context
+from agent.conversation_context import format_context_turn
+from agent.observability.langfuse_scores import emit_scores
+from agent.observability.langfuse_scores import file_tool_scores
+from agent.observability.langfuse_scores import steer_scores
+from agent.observability.langfuse_scores import turn_outcome_scores
+from agent.observability.langfuse_trace_attributes import begin_trace_contributions
+from agent.observability.langfuse_trace_attributes import end_trace_contributions
+from agent.observability.langfuse_trace_attributes import record_posthog_session
+from agent.observability.langfuse_trace_attributes import record_turn_surface
+from agent.observability.langfuse_trace_attributes import record_turn_trigger
+from agent.observability.turn_outcome import begin_turn_outcome
+from agent.observability.turn_outcome import end_turn_outcome
+from agent.observability.turn_outcome import record_turn_error
+from agent.observability.turn_outcome import record_turn_finished
+from agent.observability.turn_trace import TRACE_ID_METADATA_KEY
+from agent.observability.turn_trace import pinned_trace
+from agent.observability.turn_trace import trace_id_for_message
+from agent.observability.turn_trace import trace_id_hex
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+from agent.project_context import GridRequestContext
+from agent.tools.documents.filing import SignedEnvelope
+from agent.turn.admission import TurnRefusal
+from agent.turn.admission import refused
+from agent.turn.annotation_reply import ThreadReply
+from agent.turn.annotation_reply import bind_thread_reply
+from agent.turn.annotation_reply import post_fallback_reply
+from agent.turn.annotation_reply import reset_thread_reply
+from agent.turn.payload import thread_reply_requested
+from agent.turn.payload import turn_surface
+from agent.turn.response import answer_message_id
+from agent.turn.streaming import TurnTextFold
+from backend.after_terminal_writes import drain_after_terminal
+from backend.after_terminal_writes import in_background
+from backend.auth.middleware import build_request_trace_tags
+from backend.auth.middleware import detect_internal_caller
+from backend.auth.middleware import resolve_request_user
+from backend.auth.middleware import user_context
+from backend.auth.request_trace import request_trace_tag_context
+from backend.conversation_bus import CANCEL
+from backend.conversation_bus import FRAME
+from backend.conversation_bus import HITL_ANSWER
+from backend.conversation_bus import STEER
+from backend.conversation_bus import SUPERSEDE
+from backend.conversation_bus import BusUnavailable
+from backend.conversation_bus import ConversationBus
+from backend.conversation_bus import Envelope
+from backend.conversation_bus import get_bus
+from backend.conversation_bus import is_multi_replica_bus
+from backend.conversation_bus import running_renew_interval
+from backend.conversation_bus import running_ttl
+from backend.internal_api import ChatScreening
+from backend.internal_api import chat_screening_for
+from backend.internal_api import post_internal_conversation_message
+from backend.internal_api import post_internal_turn_outcome
+from backend.startup_banner import deployed_sha
+from backend.turn_fence import TurnFence
+from backend.turn_fence import validate_running_ttl
+from backend.workflow_stream import stream_workflow
 from nat.plugin_api import HumanResponse
 from nat.plugin_api import InteractionPrompt
 
@@ -229,7 +229,7 @@ STAGE_WIRE_TTL_S = 600.0
 #: returns. How many turns run at once is not decided here: ADR-0040's
 #: admission (``MAX_ACTIVE_TURNS``) refuses a turn it has no slot for at
 #: once, and NAT's own semaphore, which queued it silently, is off
-#: (``plugin.AIQAPIWorker._create_chat_session_manager``).
+#: (``plugin.BackendWorker._create_chat_session_manager``).
 TURN_DEADLINE_SECONDS = float(os.getenv("CHAT_TURN_DEADLINE_SECONDS", "2700"))
 
 #: How many of its own frames a turn's sequencer keeps for ``attach``, so the
@@ -341,7 +341,7 @@ def for_open_tabs(frame: dict[str, Any]) -> dict[str, Any]:
 
 
 if not chat_affinity_enabled():
-    # The owner fences itself (`aiq_api.turn_fence`): a TTL it cannot write inside is a misconfiguration to stop on.
+    # The owner fences itself (`backend.turn_fence`): a TTL it cannot write inside is a misconfiguration to stop on.
     validate_running_ttl(running_ttl())
 
 
@@ -775,7 +775,7 @@ class Fence:
     that did not (single process, the bus down with affinity on, a marker that
     already names it) has nothing to give back. ``refusal`` is the reason the
     question may not run, never both. ``guard`` is the holder's own clock on the
-    marker (:class:`~aiq_api.turn_fence.TurnFence`).
+    marker (:class:`~backend.turn_fence.TurnFence`).
     """
 
     held: bool = False
@@ -815,7 +815,7 @@ class RunningTurn:
     inbox: SteerInbox = field(default_factory=SteerInbox)
     #: A headless caller started it (``X-Chat-Mode: headless``): it is told the outcome (:func:`_after_terminal`).
     headless: bool = False
-    #: The thread the question asks its answer in, or None (``aiq_agent.turn.annotation_reply``),
+    #: The thread the question asks its answer in, or None (``agent.turn.annotation_reply``),
     #: bound into the workflow's context by :func:`_drive` so the canvas tools mark it.
     thread_reply: ThreadReply | None = None
     #: The socket's signed envelope as received, echoed by the thread's answer (echo, never sign).
@@ -1483,7 +1483,7 @@ async def drain_chat_turns(timeout: float | None = None) -> int:
 
 
 async def send_stage(conversation_id: str, turn_id: str, value: StageValue) -> bool:
-    """The ``aiq_agent.stages.delivery.StageFrameSink`` this front end publishes."""
+    """The ``agent.stages.delivery.StageFrameSink`` this front end publishes."""
     return await _registry.send_stage(conversation_id, turn_id, value)
 
 
@@ -1711,7 +1711,7 @@ class ChatSocket:
         self.bound = envelope.conversation_id if envelope is not None else None
         #: The signed organization, for the office's chat screening. Which
         #: restricted folders a turn may draw on is asked per TURN by the agent
-        #: (``aiq_agent.knowledge.restricted_use``), never fixed per socket.
+        #: (``agent.knowledge.restricted_use``), never fixed per socket.
         self.signed_org_id = envelope.organization_id if envelope is not None else None
         #: The envelope's bytes as received, for a write that acts as the asker (echo, never sign).
         self.signed = (

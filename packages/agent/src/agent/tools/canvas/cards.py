@@ -15,10 +15,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from aiq_agent.cards.canvas_activity_card import MAX_CANVAS_ACTIVITY_ITEMS
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import extend_or_add
-from aiq_agent.cards.registry import get_card_registry
+from agent.cards.canvas_activity_card import MAX_CANVAS_ACTIVITY_ITEMS
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import extend_or_add
+from agent.cards.registry import get_card_registry
 
 CARD_TYPE = "canvas_activity"
 

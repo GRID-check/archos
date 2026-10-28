@@ -8,12 +8,12 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.common.answer_envelope import drop_unfiled_proposals
-from aiq_agent.common.workspace_records import LISTING_MAX_CHARS
-from aiq_agent.common.workspace_records import filed_proposal_ids
-from aiq_agent.common.workspace_records import is_workspace_call
-from aiq_agent.common.workspace_records import record_from_result
-from aiq_agent.common.workspace_records import records_from_messages
+from agent.common.answer_envelope import drop_unfiled_proposals
+from agent.common.workspace_records import LISTING_MAX_CHARS
+from agent.common.workspace_records import filed_proposal_ids
+from agent.common.workspace_records import is_workspace_call
+from agent.common.workspace_records import record_from_result
+from agent.common.workspace_records import records_from_messages
 
 
 def _call(call_id: str, operation: str, result: str, *, tool: str = "workspace__call", **input_):
@@ -76,7 +76,7 @@ def test_a_result_without_its_call_names_nothing_and_is_skipped():
 
 
 def test_the_ids_this_turn_filed_are_read_off_the_text_the_tool_gave_the_model():
-    from aiq_agent.tools.workspace.register import _show_proposal
+    from agent.tools.workspace.register import _show_proposal
 
     filed = "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c"
     structured = {"decision": "propose", "proposalId": filed.upper(), "operation": "folder-create", "summary": "Neu."}
@@ -110,8 +110,8 @@ def test_unfiled_proposed_lines_are_dropped_and_counted():
 
 
 def test_a_notice_the_agent_answered_the_call_with_is_no_record():
-    from aiq_agent.common.steering import HELD_FOR_STEER
-    from aiq_agent.tools.workspace.register import RATE_LIMITED
+    from agent.common.steering import HELD_FOR_STEER
+    from agent.tools.workspace.register import RATE_LIMITED
 
     for text in (HELD_FOR_STEER, RATE_LIMITED, "Error reaching the workspace: timeout. Nothing was changed."):
         assert record_from_result("task-get", {}, text) is None

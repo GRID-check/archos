@@ -13,7 +13,7 @@ agent's side of that, and the one place it is decided:
   whether the conversation already recorded a restricted folder
   (``confined``). The turn's scope is narrowed to the drawable ones at the one
   place every read path takes its scope from
-  (:func:`aiq_agent.knowledge.scoping.get_scoped_collections_from_context`), so
+  (:func:`agent.knowledge.scoping.get_scoped_collections_from_context`), so
   a share made between turns narrows the next turn's search;
 - every tool call REPORTS the collections it returns content from
   (:func:`note_collections_read`, stamped onto the result by
@@ -57,9 +57,9 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common import bff_http
-from aiq_agent.knowledge.restricted_collections import is_restricted_collection
-from aiq_agent.knowledge.restricted_collections import restricted_collections_in
+from agent.common import bff_http
+from agent.knowledge.restricted_collections import is_restricted_collection
+from agent.knowledge.restricted_collections import restricted_collections_in
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +274,7 @@ async def begin_restricted_use(
 ) -> RestrictedUse | None:
     """The turn's restricted use, asked of the BFF; ``None`` when its scope holds no restricted collection.
 
-    ``request`` is the turn's :class:`aiq_agent.project_context.GridRequestContext`.
+    ``request`` is the turn's :class:`agent.project_context.GridRequestContext`.
     ``answer_message_id`` is the answer the turn writes: the BFF marks it now
     when an earlier turn already drew on a restricted folder, and at every
     admission later in the turn.

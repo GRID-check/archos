@@ -4,7 +4,7 @@ A route under ``routes/`` runs outside any NAT workflow, so NAT's span exporter
 never sees a ``/chat/completions`` POST it makes: six such calls once cost money
 and seconds with no trace anywhere. The ratchet is a source scan: every call
 that names the endpoint must sit inside an ``async with observed_generation(...)``
-block (``aiq_agent.observability.direct_trace``), so a seventh route that skips
+block (``agent.observability.direct_trace``), so a seventh route that skips
 it fails here instead of going dark in production.
 
 The route-level test below proves the wrapping is live, not just present: the
@@ -27,9 +27,9 @@ from httpx import ASGITransport
 from httpx import AsyncClient
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from aiq_agent.observability import direct_trace
+from agent.observability import direct_trace
 
-ROUTES = Path(__file__).resolve().parents[1] / "src" / "aiq_api" / "routes"
+ROUTES = Path(__file__).resolve().parents[1] / "src" / "backend" / "routes"
 MODEL_ENDPOINT = "/chat/completions"
 WRAPPER = "observed_generation"
 
@@ -114,7 +114,7 @@ def test_every_model_call_under_routes_is_an_observed_generation():
     assert not untraced, (
         f"These routes post to {MODEL_ENDPOINT} outside `async with {WRAPPER}(...)`, so the call is "
         f"invisible in Langfuse: {untraced}. Wrap the request and `.finish()` the reply "
-        "(aiq_agent.observability.direct_trace)."
+        "(agent.observability.direct_trace)."
     )
 
 
@@ -129,7 +129,7 @@ def exporter(monkeypatch):
 
 
 def _app() -> FastAPI:
-    from aiq_api.routes.generate_summary import add_generate_summary_routes
+    from backend.routes.generate_summary import add_generate_summary_routes
 
     app = FastAPI()
     router = APIRouter()

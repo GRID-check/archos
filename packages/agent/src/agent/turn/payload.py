@@ -12,15 +12,15 @@ from dataclasses import dataclass
 from typing import Literal
 from typing import NamedTuple
 
-from aiq_agent.common import parse_data_sources
-from aiq_agent.common.client_tools import set_turn_client_tools
-from aiq_agent.common.focus_file import get_focused_file_name
-from aiq_agent.common.focus_file import get_focused_shelf
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.common.reasoning_settings import set_turn_reasoning_effort
-from aiq_agent.common.wire_v2 import FocusRegion
-from aiq_agent.common.wire_v2 import TurnTrigger
-from aiq_agent.common.wire_v2 import UserMessage
+from agent.common import parse_data_sources
+from agent.common.client_tools import set_turn_client_tools
+from agent.common.focus_file import get_focused_file_name
+from agent.common.focus_file import get_focused_shelf
+from agent.common.focus_file import set_turn_intent
+from agent.common.reasoning_settings import set_turn_reasoning_effort
+from agent.common.wire_v2 import FocusRegion
+from agent.common.wire_v2 import TurnTrigger
+from agent.common.wire_v2 import UserMessage
 
 
 @dataclass(frozen=True)
@@ -102,7 +102,7 @@ class TurnInputs(NamedTuple):
     #: prompt names it and tells the model to look at that crop first.
     focus_region: FocusRegion | None = None
     #: Post the answer into the thread of ``focus_region.annotation_id``
-    #: (:mod:`aiq_agent.turn.annotation_reply`). Only ever True with a region
+    #: (:mod:`agent.turn.annotation_reply`). Only ever True with a region
     #: that names its Anmerkung: the wire flag alone has no thread to answer in.
     reply_in_thread: bool = False
     #: The event that woke this turn when nobody typed it (``wire_v2.TurnTrigger``),

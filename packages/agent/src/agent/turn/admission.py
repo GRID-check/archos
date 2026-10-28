@@ -29,18 +29,18 @@ from typing import Protocol
 from typing import TypeVar
 from typing import get_args
 
-from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.cost_tracking import track_llm_costs
-from aiq_agent.common.profiler import annotate_current_span
-from aiq_agent.common.profiler import profiled_span
-from aiq_agent.common.provider_limiter import CHAT
-from aiq_agent.common.provider_limiter import provider_class
-from aiq_agent.common.turn_admission import TurnAdmissionError
-from aiq_agent.common.turn_admission import admit_turn_async
-from aiq_agent.common.wire_v2 import EventBody
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import TurnResult
-from aiq_agent.observability.turn_phases import observed_phase
+from agent.common.cost_tracking import BudgetExceededError
+from agent.common.cost_tracking import track_llm_costs
+from agent.common.profiler import annotate_current_span
+from agent.common.profiler import profiled_span
+from agent.common.provider_limiter import CHAT
+from agent.common.provider_limiter import provider_class
+from agent.common.turn_admission import TurnAdmissionError
+from agent.common.turn_admission import admit_turn_async
+from agent.common.wire_v2 import EventBody
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import TurnResult
+from agent.observability.turn_phases import observed_phase
 
 logger = logging.getLogger(__name__)
 

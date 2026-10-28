@@ -29,7 +29,7 @@ Turning context into a **request** is a different concern, and it is the one
 that carries a provider contract. Keeping the two apart is what makes this
 fixable in one place: agents keep assembling context however they like, and this
 module owns the single question "is this a legal request on every provider we
-route to?". :mod:`aiq_agent.common.llm_factory` applies it to every chat model
+route to?". :mod:`agent.common.llm_factory` applies it to every chat model
 the fleet resolves, so no agent — present or future — can put a
 provider-invalid sequence on the wire.
 

@@ -6,10 +6,10 @@ only this. The built-in registrations are at the bottom of this file, in the ord
 
 from collections.abc import Callable
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import is_look_tool
-from aiq_agent.citations.grounding_text import parse_knowledge_layer
-from aiq_agent.citations.grounding_text import parse_look
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import is_look_tool
+from agent.citations.grounding_text import parse_knowledge_layer
+from agent.citations.grounding_text import parse_look
 
 SourceParser = Callable[[str, str], list[SourceEntry]]
 

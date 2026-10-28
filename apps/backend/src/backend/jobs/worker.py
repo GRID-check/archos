@@ -1,7 +1,7 @@
 """DB-claimed research worker (ADR-0021, ADR-0079).
 
-Run as a dedicated container: ``python -m aiq_api.jobs.worker``. It claims
-``research_job_queue`` rows on the claim substrate (``aiq_agent.common.claim_queue``:
+Run as a dedicated container: ``python -m backend.jobs.worker``. It claims
+``research_job_queue`` rows on the claim substrate (``agent.common.claim_queue``:
 fairly across organizations, interactive before bulk inside one, at most
 ``MAX_ACTIVE_JOBS_PER_ORG`` of an organization's jobs running at once),
 executes the ``run_agent_job`` body, heartbeats the claim
@@ -38,9 +38,9 @@ import signal
 import socket
 import time
 
-from aiq_agent.knowledge.leader_lock import require_direct_dsns
-from aiq_agent.observability import otlp_metrics
-from aiq_agent.observability.boot_timing import BootClock
+from agent.knowledge.leader_lock import require_direct_dsns
+from agent.observability import otlp_metrics
+from agent.observability.boot_timing import BootClock
 
 from . import lease_policy
 from . import queue

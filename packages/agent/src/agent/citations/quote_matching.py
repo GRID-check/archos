@@ -9,8 +9,8 @@ import unicodedata
 from dataclasses import dataclass
 from dataclasses import field
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.common.quote_polarity import polarity_agrees
+from agent.citations.entries import SourceEntry
+from agent.common.quote_polarity import polarity_agrees
 
 logger = logging.getLogger(__name__)
 

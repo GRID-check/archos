@@ -35,12 +35,12 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.common.plan_documents import sanitize_plan_documents
-from aiq_agent.common.provider_limiter import RESEARCH
-from aiq_agent.common.provider_limiter import with_provider_class
-from aiq_agent.observability import boot_timing
-from aiq_agent.observability.boot_timing import BootClock
+from agent.common.plan_documents import PlanDocuments
+from agent.common.plan_documents import sanitize_plan_documents
+from agent.common.provider_limiter import RESEARCH
+from agent.common.provider_limiter import with_provider_class
+from agent.observability import boot_timing
+from agent.observability.boot_timing import BootClock
 
 from .agent_job_setup import RunContext
 from .agent_job_setup import bind_request
@@ -245,9 +245,9 @@ def _prepare_process(scope: JobScope, request: JobRequest, configure_logging: bo
 
         scope.auth_token_reset = job_auth_token.set(request.auth_token)
 
-    from aiq_agent.common.logging_utils import suppress_noisy_dependency_logs
-    from aiq_agent.common.nat_step_repair import install_step_stack_repair
-    from aiq_api.auth.request_trace import install_request_trace_span_injection
+    from agent.common.logging_utils import suppress_noisy_dependency_logs
+    from agent.common.nat_step_repair import install_step_stack_repair
+    from backend.auth.request_trace import install_request_trace_span_injection
 
     install_request_trace_span_injection()
     if configure_logging:
@@ -275,8 +275,8 @@ async def _execute(scope: JobScope, request: JobRequest) -> None:
     if not await _claim(scope, request):
         logger.info("Job %s already terminal before start; aborting run", request.job_id)
         return
-    from aiq_agent.observability import ensure_registered as register_grid_telemetry
-    from aiq_api.auth.request_trace import request_trace_tag_context
+    from agent.observability import ensure_registered as register_grid_telemetry
+    from backend.auth.request_trace import request_trace_tag_context
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.observability.exporter_manager import ExporterManager
     from nat.runtime.loader import load_config
@@ -331,9 +331,9 @@ async def _claim(scope: JobScope, request: JobRequest) -> bool:
 
 async def _run(scope: JobScope, request: JobRequest, run: RunContext, *, agent_cls: type, models, tools) -> Any:
     """Run the agent inside its workflow span, its cost tracking and its card channel; its raw result."""
-    from aiq_agent.common.cost_tracking import BudgetSnapshot
-    from aiq_agent.common.cost_tracking import track_llm_costs
-    from aiq_agent.common.profiler import track_agent_profile
+    from agent.common.cost_tracking import BudgetSnapshot
+    from agent.common.cost_tracking import track_llm_costs
+    from agent.common.profiler import track_agent_profile
 
     workflow_metadata, parent_metadata = trace_metadata(request, run)
     run.open_spans(request, workflow_metadata, parent_metadata)
@@ -388,9 +388,9 @@ async def _run(scope: JobScope, request: JobRequest, run: RunContext, *, agent_c
 
 def _callbacks(scope: JobScope, request: JobRequest, fn_config: Any) -> tuple[list[Any], bool]:
     """The agent's callbacks, and the event store and run ledger they write through; and whether verbose."""
-    from aiq_agent.common import VerboseTraceCallback
-    from aiq_agent.common import is_verbose
-    from aiq_agent.common.nat_step_repair import SpanClosingProfilerHandler
+    from agent.common import VerboseTraceCallback
+    from agent.common import is_verbose
+    from agent.common.nat_step_repair import SpanClosingProfilerHandler
 
     verbose = is_verbose(getattr(fn_config, "verbose", False))
     callbacks: list[Any] = [VerboseTraceCallback()] if verbose else []
@@ -418,7 +418,7 @@ def _callbacks(scope: JobScope, request: JobRequest, fn_config: Any) -> tuple[li
         max_concurrency = getattr(fn_config, "max_research_concurrency", None)
         callbacks.append(PhaseProgressCallback(scope.event_store, max_research_concurrency=max_concurrency))
     if fn_type in _BUDGET_GUARDED_AGENT_TYPES:
-        from aiq_agent.common import create_budget_guard_callback
+        from agent.common import create_budget_guard_callback
 
         budget_guard = create_budget_guard_callback()
         if budget_guard is not None:

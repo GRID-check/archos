@@ -3,7 +3,7 @@
 An office capability's on/off switch is a WorkOS flag, decided per organization
 by the BFF (``GET /api/internal/stages``, ``features.folderCards``). This tier has
 no WorkOS client; it asks the BFF the way the per-turn stage read does
-(``aiq_agent.stages.flags.fetch_turn_flags``) and keeps the answer for
+(``agent.stages.flags.fetch_turn_flags``) and keeps the answer for
 :data:`TTL_SECONDS`, because a mark happens once per changed document and a
 bulk import changes hundreds.
 
@@ -21,7 +21,7 @@ from __future__ import annotations
 import threading
 import time
 
-from aiq_agent.stages.flags import fetch_turn_flags
+from agent.stages.flags import fetch_turn_flags
 
 #: How long one organization's answer is reused. The BFF keeps its own 30 s cache underneath.
 TTL_SECONDS = 60

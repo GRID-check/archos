@@ -103,17 +103,17 @@ from uuid import uuid4
 from langgraph.config import get_stream_writer
 from langgraph.errors import GraphBubbleUp
 
-from aiq_agent.common.wire_v2 import Channel
-from aiq_agent.common.wire_v2 import EventBody
-from aiq_agent.common.wire_v2 import Scalar
-from aiq_agent.common.wire_v2 import Scope
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import Step
-from aiq_agent.common.wire_v2 import StepFinishedBody
-from aiq_agent.common.wire_v2 import StepStartedBody
-from aiq_agent.common.wire_v2 import SubagentErrorBody
-from aiq_agent.common.wire_v2 import SubagentFinishedBody
-from aiq_agent.common.wire_v2 import SubagentStartedBody
+from agent.common.wire_v2 import Channel
+from agent.common.wire_v2 import EventBody
+from agent.common.wire_v2 import Scalar
+from agent.common.wire_v2 import Scope
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import Step
+from agent.common.wire_v2 import StepFinishedBody
+from agent.common.wire_v2 import StepStartedBody
+from agent.common.wire_v2 import SubagentErrorBody
+from agent.common.wire_v2 import SubagentFinishedBody
+from agent.common.wire_v2 import SubagentStartedBody
 
 logger = logging.getLogger(__name__)
 
@@ -355,7 +355,7 @@ def lane_tool_scope(tool: str | None) -> Iterator[None]:
 #: disagree.
 #:
 #: ``tool`` is IN-PROCESS only. It travels from this capture to
-#: :func:`~aiq_agent.common.retrieval_ledger.build_retrieval_ledger` and stops
+#: :func:`~agent.common.retrieval_ledger.build_retrieval_ledger` and stops
 #: there: the ledger's wire docs carry name/title/detail/shelf and nothing
 #: else, because which tool fetched a passage is how the repeat verdict is
 #: DERIVED, not something a reader is shown.

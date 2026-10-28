@@ -9,20 +9,20 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
-from aiq_agent.citations.entries import EmptySourceRegistryError
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.session import reset_session_registry
-from aiq_agent.citations.session import set_session_registry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common.answer_envelope import render_envelope_response_format
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.common.retrieval_rounds import assistant_checkpoint
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import DROPPED_CITATION_MARKER
+from agent.citations.entries import EmptySourceRegistryError
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.citations.session import reset_session_registry
+from agent.citations.session import set_session_registry
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common.answer_envelope import render_envelope_response_format
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from agent.common.retrieval_rounds import assistant_checkpoint
 from tests.fixtures.drafting_turns import COMMISSION
 from tests.fixtures.drafting_turns import FILE
 from tests.fixtures.drafting_turns import REVISE
@@ -93,7 +93,7 @@ def _piloti_prompt_source() -> str:
     """
     from pathlib import Path
 
-    from aiq_agent.agents.piloti import agent as piloti_agent
+    from agent.agents.piloti import agent as piloti_agent
 
     prompts = Path(piloti_agent.__file__).parent / "prompts"
     static = (prompts / "piloti_static.md").read_text(encoding="utf-8")
@@ -108,8 +108,8 @@ def _bundled_static_block() -> str:
     which opens with `{{ static_block }}`). A test that renders the template
     directly has to supply the half the prompt store would have resolved.
     """
-    from aiq_agent.agents.piloti.prompt import bundled_static_block
-    from aiq_agent.agents.piloti.prompt import render_static_block
+    from agent.agents.piloti.prompt import bundled_static_block
+    from agent.agents.piloti.prompt import render_static_block
 
     return render_static_block(bundled_static_block().text)
 
@@ -121,8 +121,8 @@ def _bundled_prompt_text() -> str:
     KV-cache boundary is resolved per render — so asserting prompt content
     against it would silently stop seeing most of the prompt.
     """
-    from aiq_agent.agents.piloti.prompt import bundled_static_block
-    from aiq_agent.agents.piloti.prompt import system_prompt_template
+    from agent.agents.piloti.prompt import bundled_static_block
+    from agent.agents.piloti.prompt import system_prompt_template
 
     return bundled_static_block().text + "\n" + system_prompt_template()
 
@@ -140,8 +140,8 @@ class TestPilotiAgent:
         """
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
             mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -657,8 +657,8 @@ class TestPilotiAgent:
 
     def test_a_missing_prompt_is_a_boot_failure(self, mock_llm_provider, real_tool):
         """No stub prompt, ever: production must not run on three lines of filler."""
-        from aiq_agent.agents.piloti import prompt as prompt_module
-        from aiq_agent.common.prompt_utils import PromptError
+        from agent.agents.piloti import prompt as prompt_module
+        from agent.common.prompt_utils import PromptError
 
         prompt_module.system_prompt_template.cache_clear()
         try:
@@ -672,7 +672,7 @@ class TestPilotiAgent:
 
     def test_the_prompt_template_is_read_once_per_process(self, mock_llm_provider, real_tool):
         """Two agents, one disk read: the 43 KB template is cached by name."""
-        from aiq_agent.agents.piloti import prompt as prompt_module
+        from agent.agents.piloti import prompt as prompt_module
 
         prompt_module.system_prompt_template.cache_clear()
         try:
@@ -763,7 +763,7 @@ class TestPilotiAgent:
         *,
         project_context: str | None = None,
     ) -> str:
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
         agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
         # Both messages the turn sends besides the transcript: the system
@@ -1736,7 +1736,7 @@ class TestPilotiSessionRegistry:
     @pytest.mark.asyncio
     async def test_run_uses_session_registry_when_set(self, mock_llm_provider, mock_llm):
         """When session registry is set via ContextVar, run() uses it and doesn't raise."""
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import set_session_registry
 
         # Pre-populate a session registry with a source from a "prior turn"
         session_reg = SourceRegistry()
@@ -1771,7 +1771,7 @@ class TestPilotiSessionRegistry:
     async def test_standalone_runs_never_share_a_registry(self, mock_llm_provider, mock_llm):
         """Without a session registry every run gets a fresh one: a source the
         previous run captured must not be auto-appended as this run's citation."""
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import set_session_registry
 
         set_session_registry(None)  # Ensure no session registry
         populate_from_config(
@@ -1808,8 +1808,8 @@ class TestPilotiSessionRegistry:
     @pytest.mark.asyncio
     async def test_the_session_registry_is_left_bound_after_the_run(self, mock_llm_provider, mock_llm):
         """A run reads the session registry and never unbinds or replaces it."""
-        from aiq_agent.citations.session import get_session_registry
-        from aiq_agent.citations.session import set_session_registry
+        from agent.citations.session import get_session_registry
+        from agent.citations.session import set_session_registry
 
         session_reg = SourceRegistry()
         session_reg.add(SourceEntry(url="https://session.example.com/doc"))
@@ -1893,7 +1893,7 @@ class TestPilotiAnswerGrounding:
         # its registry SourceEntry.
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[source]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="OIB-Richtlinie 2 regelt Brandschutz [1].",
@@ -1913,7 +1913,7 @@ class TestPilotiAnswerGrounding:
         source = SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool")
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[source]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="Answer without any citation.",
@@ -1933,7 +1933,7 @@ class TestPilotiAnswerGrounding:
         ]
         with (
             patch.object(SourceRegistry, "all_sources", return_value=sources),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="Answer.",
@@ -1991,7 +1991,7 @@ class TestPilotiAnswerGrounding:
                 tool_name="ris_search",
             )
         )
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Hallo! Wie kann ich helfen?",
                 valid_citations=[],
@@ -2020,7 +2020,7 @@ class TestPilotiAnswerGrounding:
         registry.add(SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool"))
         registry.add(cited)
         registry.add(SourceEntry(url="https://example.com/c", title="C", tool_name="web_search_tool"))
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1].",
                 valid_citations=[{"number": 1, "url": "https://example.com/b", "citation_key": None, "line": "[1]"}],
@@ -2038,7 +2038,7 @@ class TestPilotiAnswerGrounding:
         registry = SourceRegistry()
         registry.add(SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool"))
         registry.add(SourceEntry(citation_key="oib-richtlinie-2.pdf#p3", title="OIB 2", tool_name="kb_search"))
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1].",
                 valid_citations=[
@@ -2065,7 +2065,7 @@ class TestPilotiAnswerGrounding:
         registry = SourceRegistry()
         only = SourceEntry(url="https://example.com/only", title="Only", tool_name="web_search_tool")
         registry.add(only)
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Answer without any citation.",
                 valid_citations=[],
@@ -2103,7 +2103,7 @@ class TestPilotiAnswerGrounding:
         registry = SourceRegistry()
         registry.add(SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool"))
         registry.add(SourceEntry(citation_key="oib-rl_4.pdf, p.9", title="OIB 4", tool_name="kb_search"))
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
+        with patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1][2].",
                 valid_citations=[
@@ -2152,7 +2152,7 @@ class TestPilotiAnswerGrounding:
         source = SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool")
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[source]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1].",
@@ -2177,7 +2177,7 @@ class TestPilotiAnswerGrounding:
         source = SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool")
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[source]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
         ):
             mock_verify.return_value = MagicMock(
                 verified_report="Antwort [1].",
@@ -2457,7 +2457,7 @@ class TestPilotiRepairPass:
         )
         state = ResearchAgentState(messages=[HumanMessage(content="Treppenhoehe?")])
 
-        with patch("aiq_agent.agents.piloti.agent.quote_patcher") as patcher:
+        with patch("agent.agents.piloti.agent.quote_patcher") as patcher:
             result = await _run_with_bound_registry(agent, state, SourceRegistry())
 
         assert "[nicht wörtlich in der Quelle belegt]" in result.messages[-1].content
@@ -2478,7 +2478,7 @@ class TestClarificationGuidance:
 
     def _render(self, *, project_context):
 
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
         prompt = _piloti_prompt_source()
         return render_prompt_template(
@@ -2516,7 +2516,7 @@ class TestOffTopicDeclineShape:
 
     def _render(self):
 
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
         prompt = _piloti_prompt_source()
         return render_prompt_template(
@@ -2588,8 +2588,8 @@ class TestADirectReplyMayStillEmitACard:
 
     def test_the_card_contract_is_in_every_system_prompt(self):
         """The card contract is rendered from the catalog into the static half, so no turn can lack it."""
-        from aiq_agent.agents.piloti.prompt import bundled_static_block
-        from aiq_agent.agents.piloti.prompt import render_static_block
+        from agent.agents.piloti.prompt import bundled_static_block
+        from agent.agents.piloti.prompt import render_static_block
 
         system = render_static_block(bundled_static_block().text)
         assert "CARDS (the `cards` field)" in system
@@ -2682,7 +2682,7 @@ class TestKnowledgeInventoryIsNotCitable:
     """
 
     def _render(self, prompt: str, documents: list[dict]) -> str:
-        from aiq_agent.common import render_prompt_template
+        from agent.common import render_prompt_template
 
         return render_prompt_template(
             prompt,
@@ -2705,11 +2705,11 @@ class TestKnowledgeInventoryIsNotCitable:
         """The prompt source at this path; for Piloti, both halves recombined."""
         from pathlib import Path
 
-        import aiq_agent
+        import agent
 
         if path == "piloti/prompts/piloti.j2":
             return _piloti_prompt_source()
-        return (Path(aiq_agent.__file__).parent / "agents" / path).read_text(encoding="utf-8")
+        return (Path(agent.__file__).parent / "agents" / path).read_text(encoding="utf-8")
 
     DOCUMENTS = [{"file_name": "oib-rl_2_ausgabe_mai_2023.pdf", "summary": "Brandschutz.", "tags": []}]
 
@@ -2830,21 +2830,21 @@ class TestTheModelCardsAreActuallyAskedFor:
     def _ifc_skill(self) -> str:
         from pathlib import Path
 
-        import aiq_agent
+        import agent
 
         return (
-            Path(aiq_agent.__file__).parent / "skills" / "builtin" / "bim" / "ifc-spatial-reasoning" / "SKILL.md"
+            Path(agent.__file__).parent / "skills" / "builtin" / "bim" / "ifc-spatial-reasoning" / "SKILL.md"
         ).read_text(encoding="utf-8")
 
     def test_the_static_prompt_does_not_teach_the_model_cards(self):
-        from aiq_agent.cards.catalog import MODEL_BACKED_CARD_TYPES
+        from agent.cards.catalog import MODEL_BACKED_CARD_TYPES
 
         static = _piloti_prompt_source().split("<turn_context>")[0]
         for card_type in MODEL_BACKED_CARD_TYPES:
             assert card_type not in static, card_type
 
     def test_every_model_backed_card_is_named_in_the_skill(self):
-        from aiq_agent.cards.catalog import MODEL_BACKED_CARD_TYPES
+        from agent.cards.catalog import MODEL_BACKED_CARD_TYPES
 
         body = self._ifc_skill()
         for card_type in MODEL_BACKED_CARD_TYPES:
@@ -2887,7 +2887,7 @@ _MEASURED_MODEL = {"model": {"filename": "Institut.ifc", "schemaVersion": "IFC4"
 @tool
 def ifc_measure(operation: str = "measure") -> str:
     """Measure the project's IFC/BIM model and report the provenance."""
-    from aiq_agent.tools.bim.measure_register import _render
+    from agent.tools.bim.measure_register import _render
 
     return _render(
         "measure",
@@ -3079,7 +3079,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
         state = ResearchAgentState(
             messages=[HumanMessage(content="Wie hoch ist der Keller?")],
         )
-        with patch("aiq_agent.agents.piloti.ledger.citation_events") as events:
+        with patch("agent.agents.piloti.ledger.citation_events") as events:
             result, _ = await _run_with_captured_registry(agent, state)
 
         assert self._measurement_sources(result)
@@ -3142,8 +3142,8 @@ class TestTruncationIsObservable:
     def _bypass_citation_pipeline(self):
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
         ):
             verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -3190,7 +3190,7 @@ class TestTruncationIsObservable:
     async def test_the_log_says_what_was_cut_off_and_on_what_shape(self, caplog):
         import logging
 
-        with caplog.at_level(logging.WARNING, logger="aiq_agent.agents.piloti.agent"):
+        with caplog.at_level(logging.WARNING, logger="agent.agents.piloti.agent"):
             await self._truncated_run()
 
         lines = [m for m in caplog.messages if "Forcing synthesis (rounds)" in m]
@@ -3313,7 +3313,7 @@ class TestAssistantCheckpoint:
 def _render_researcher_prompt(*, drafting_enabled: bool = False) -> str:
     """The default prompt, rendered with the working directory on or off."""
 
-    from aiq_agent.common import render_prompt_template
+    from agent.common import render_prompt_template
 
     prompt = _piloti_prompt_source()
     return render_prompt_template(
@@ -3357,7 +3357,7 @@ class TestTheWorkingDirectoryBlock:
     def test_a_conversation_without_a_project_is_told_by_the_refusal(self):
         from pathlib import Path
 
-        from aiq_agent.tools.documents import register as documents
+        from agent.tools.documents import register as documents
 
         assert "There is no project in this conversation" in Path(documents.__file__).read_text(encoding="utf-8")
         assert "Without a project" not in _drafts_block()
@@ -3371,8 +3371,8 @@ class TestTheWorkingDirectoryBlock:
 
     def test_the_block_follows_the_tools_and_not_a_second_switch(self):
         """The flag is derived from what is bound, by the renderer itself."""
-        from aiq_agent.agents.piloti.prompt import render_turn_context
-        from aiq_agent.agents.piloti.prompt import system_prompt_template
+        from agent.agents.piloti.prompt import render_turn_context
+        from agent.agents.piloti.prompt import system_prompt_template
 
         state = ResearchAgentState(messages=[HumanMessage(content="Schreib den Aktenvermerk")])
         with_tools = render_turn_context(
@@ -3399,7 +3399,7 @@ class TestTheDraftingRulesLiveInTheTools:
 
     @staticmethod
     def _draft_verbs() -> dict[str, str]:
-        from aiq_agent.tools.documents.tools import _TOOL_DESCRIPTIONS
+        from agent.tools.documents.tools import _TOOL_DESCRIPTIONS
 
         return _TOOL_DESCRIPTIONS
 
@@ -3429,7 +3429,7 @@ class TestTheDraftingRulesLiveInTheTools:
         assert "wrote itself" not in verbs["ls"]
 
     def test_file_draft_says_filing_happens_on_request(self):
-        from aiq_agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
+        from agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
 
         for phrase in ("leg das ins Projekt", "ablegen", "abspeichern"):
             assert phrase in _FILE_DRAFT_DESCRIPTION
@@ -3440,7 +3440,7 @@ class TestTheDraftingRulesLiveInTheTools:
 
     def test_submitting_needs_an_explicit_request(self):
         """`submit_draft` merged into `file_draft(submit=true)`; its rules came with it."""
-        from aiq_agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
+        from agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
 
         assert "Call with `submit=true` only when the user asks for approval" in _FILE_DRAFT_DESCRIPTION
         # „ablegen" alone must not flip the flag.
@@ -3457,7 +3457,7 @@ class TestTheDelegationRulesLiveInTheTool:
 
     @staticmethod
     def _description() -> str:
-        from aiq_agent.tools.tasks.register import _CREATE_TASK_DESCRIPTION
+        from agent.tools.tasks.register import _CREATE_TASK_DESCRIPTION
 
         return _CREATE_TASK_DESCRIPTION
 
@@ -3507,7 +3507,7 @@ class TestTheWorkingDirectoryBudget:
 
     def test_the_recursion_limit_derives_from_the_ceiling_alone(self):
         """Nothing else moves when the ceiling does."""
-        from aiq_agent.agents.piloti.agent import _recursion_limit
+        from agent.agents.piloti.agent import _recursion_limit
 
         assert _recursion_limit(5) == (5 * 2) + 10
 
@@ -3520,7 +3520,7 @@ class TestTheWorkingDirectoryBudget:
         (``get_source_id_for_tool``) is what actually holds, because the file
         verbs ARE in the turn's bound tool set.
         """
-        from aiq_agent.agents.piloti.agent import _capture_sources
+        from agent.agents.piloti.agent import _capture_sources
 
         registry = SourceRegistry()
         for verb in ("ls", "read_file", "write_file", "edit_file"):
@@ -3645,8 +3645,8 @@ class TestATurnThatWritesADraft:
     def _bypass_citation_pipeline(self):
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
             mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -3670,9 +3670,9 @@ class TestATurnThatWritesADraft:
 
     @pytest.fixture
     def cards(self):
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import reset_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import reset_card_registry
+        from agent.cards.registry import set_card_registry
 
         registry = CardRegistry()
         token = set_card_registry(registry)
@@ -3685,8 +3685,8 @@ class TestATurnThatWritesADraft:
     def working_directory(self):
         from langgraph.store.memory import InMemoryStore
 
-        from aiq_agent.tools.documents.draft_store import DraftBackend
-        from aiq_agent.tools.documents.tools import draft_tools
+        from agent.tools.documents.draft_store import DraftBackend
+        from agent.tools.documents.tools import draft_tools
 
         backend = DraftBackend(store=InMemoryStore(), conversation_id="conv-1")
         return backend, draft_tools(backend)
@@ -3761,7 +3761,7 @@ class TestATurnThatWritesADraft:
         """
         from langchain_core.tools import StructuredTool
 
-        from aiq_agent.tools.documents import register as filing_tools
+        from agent.tools.documents import register as filing_tools
 
         backend, tools = working_directory
         posted: list[dict] = []
@@ -3829,7 +3829,7 @@ class TestATurnThatWritesADraft:
 
 
 def _file_verb_descriptions() -> dict[str, str]:
-    from aiq_agent.tools.files import register as files_register
+    from agent.tools.files import register as files_register
 
     # One tool since the merge; the rules below are what its description must
     # still carry for every operation it proposes.
@@ -3899,8 +3899,8 @@ class TestTheThreeDraftingTurnShapes:
     def _bypass_citation_pipeline(self):
         with (
             patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
-            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
+            patch("agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
+            patch("agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
             mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
@@ -3924,9 +3924,9 @@ class TestTheThreeDraftingTurnShapes:
 
     @pytest.fixture
     def cards(self):
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.cards.registry import reset_card_registry
-        from aiq_agent.cards.registry import set_card_registry
+        from agent.cards.registry import CardRegistry
+        from agent.cards.registry import reset_card_registry
+        from agent.cards.registry import set_card_registry
 
         registry = CardRegistry()
         token = set_card_registry(registry)
@@ -3939,8 +3939,8 @@ class TestTheThreeDraftingTurnShapes:
     def working_directory(self):
         from langgraph.store.memory import InMemoryStore
 
-        from aiq_agent.tools.documents.draft_store import DraftBackend
-        from aiq_agent.tools.documents.tools import draft_tools
+        from agent.tools.documents.draft_store import DraftBackend
+        from agent.tools.documents.tools import draft_tools
 
         backend = DraftBackend(store=InMemoryStore(), conversation_id="conv-1")
         return backend, draft_tools(backend)
@@ -3970,7 +3970,7 @@ class TestTheThreeDraftingTurnShapes:
         """`file_draft` with only the HTTP call doubled, as the filing test does."""
         from langchain_core.tools import StructuredTool
 
-        from aiq_agent.tools.documents import register as filing_tools
+        from agent.tools.documents import register as filing_tools
 
         async def _same_backend(conversation_id: str, dsn: str | None = None):
             return backend

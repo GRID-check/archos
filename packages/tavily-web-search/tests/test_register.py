@@ -128,7 +128,7 @@ def _override_setting(monkeypatch, values):
     """Patch the platform retrieval-settings resolver: only the listed keys are
     overridden, every other key falls through to its config fallback — exactly
     what the real resolver does for unpinned keys."""
-    from aiq_agent.common import retrieval_settings
+    from agent.common import retrieval_settings
 
     def fake_get(key, fallback):
         return values.get(key, fallback)
@@ -172,7 +172,7 @@ class TestPlatformMaxResultsOverride:
     async def test_bff_outage_falls_back_to_config(self, fake_langchain_tavily, monkeypatch):
         # The real failure mode is an unreachable BFF: the resolver swallows it
         # (it is contractually never-raising), so the config value stays in force.
-        from aiq_agent.common import retrieval_settings
+        from agent.common import retrieval_settings
 
         def boom():
             raise RuntimeError("BFF unreachable")
@@ -195,7 +195,7 @@ class TestLaneCapture:
 
     async def test_result_urls_are_captured_with_the_round(self, fake_langchain_tavily):
         """Result URLs are captured with the active round."""
-        from aiq_agent.common import turn_status
+        from agent.common import turn_status
 
         token = turn_status.begin_lane_capture()
         try:
@@ -213,7 +213,7 @@ class TestActionRow:
     @pytest.fixture
     def rows(self, monkeypatch):
         bodies = []
-        monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.append)
+        monkeypatch.setattr("agent.common.turn_status.get_stream_writer", lambda: bodies.append)
         return bodies
 
     @staticmethod
@@ -248,9 +248,9 @@ class TestActionRow:
 
 
 class TestStandaloneWithoutTheAgent:
-    """The standalone dist depends on no ``aiq_agent``: it imports and searches without one, drawing no row."""
+    """The standalone dist depends on no ``agent``: it imports and searches without one, drawing no row."""
 
-    async def test_imports_and_searches_without_aiq_agent(self, fake_langchain_tavily, monkeypatch):
+    async def test_imports_and_searches_without_agent(self, fake_langchain_tavily, monkeypatch):
         import importlib.util
         from pathlib import Path
 
@@ -258,9 +258,9 @@ class TestStandaloneWithoutTheAgent:
 
         from nat.cli.type_registry import GlobalTypeRegistry
 
-        for name in [name for name in sys.modules if name == "aiq_agent" or name.startswith("aiq_agent.")]:
+        for name in [name for name in sys.modules if name == "agent" or name.startswith("agent.")]:
             monkeypatch.setitem(sys.modules, name, None)
-        monkeypatch.setitem(sys.modules, "aiq_agent", None)
+        monkeypatch.setitem(sys.modules, "agent", None)
         spec = importlib.util.spec_from_file_location("tavily_standalone_register", Path(installed.__file__))
         module = importlib.util.module_from_spec(spec)
         monkeypatch.setitem(sys.modules, spec.name, module)

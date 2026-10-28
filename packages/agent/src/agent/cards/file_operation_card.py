@@ -5,8 +5,8 @@ from typing import Literal
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.cards.card_model import CardModel
-from aiq_agent.cards.proposal_cards import PROPOSAL_ID_PATTERN
+from agent.cards.card_model import CardModel
+from agent.cards.proposal_cards import PROPOSAL_ID_PATTERN
 
 #: How many operations one card may carry. A tidying turn proposes a handful;
 #: past that the card stops being a decision the reader can actually read
@@ -77,7 +77,7 @@ class FileOperationItem(CardModel):
 class FileOperationProposalCard(CardModel):
     """A workspace change the agent PROPOSES and a person applies.
 
-    System-emitted by ``propose_file_change`` (``packages/agent/src/aiq_agent/tools/files/``).
+    System-emitted by ``propose_file_change`` (``packages/agent/src/agent/tools/files/``).
     Every operation is a write, none of them writes: the tool's own result text
     says plainly that nothing has changed yet. With ``proposal_id`` the card
     shows a proposal stored on the server (ADR-0105), which the server applies

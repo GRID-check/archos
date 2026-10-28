@@ -18,7 +18,7 @@ class AgentConfig:
     """Configuration for a registered agent."""
 
     class_path: str
-    """Full module path to the agent class, e.g., 'aiq_agent.agents.deep_researcher.agent.DeepResearcherAgent'"""
+    """Full module path to the agent class, e.g., 'agent.agents.deep_researcher.agent.DeepResearcherAgent'"""
 
     config_name: str
     """NAT config function name, e.g., 'deep_research_agent'"""
@@ -49,7 +49,7 @@ def register_agent(
     Example:
         register_agent(
             agent_type="deep_researcher",
-            class_path="aiq_agent.agents.deep_researcher.agent.DeepResearcherAgent",
+            class_path="agent.agents.deep_researcher.agent.DeepResearcherAgent",
             config_name="deep_research_agent",
             description="Performs comprehensive multi-loop research",
         )
@@ -84,7 +84,7 @@ def get_agent_config(agent_type: str) -> AgentConfig:
 # Register default agents
 register_agent(
     agent_type="deep_researcher",
-    class_path="aiq_agent.agents.deep_researcher.agent.DeepResearcherAgent",
+    class_path="agent.agents.deep_researcher.agent.DeepResearcherAgent",
     config_name="deep_research_agent",
     description="Performs comprehensive multi-loop deep research",
 )
@@ -96,7 +96,7 @@ register_agent(
 # ``configs/config_oib_openrouter.yml``.
 register_agent(
     agent_type="researcher",
-    class_path="aiq_agent.agents.piloti.agent.PilotiAgent",
+    class_path="agent.agents.piloti.agent.PilotiAgent",
     config_name="shallow_research_agent",
     description="Performs quick single-turn research",
 )
@@ -107,7 +107,7 @@ register_agent(
 # function name in the YAML, whose ``_type`` is also ``project_intake_agent``.
 register_agent(
     agent_type="project_intake",
-    class_path="aiq_agent.agents.intake.agent.ProjectIntakeAgent",
+    class_path="agent.agents.intake.agent.ProjectIntakeAgent",
     config_name="project_intake_agent",
     description="Reads a new project's documents and suggests its profile values (ADR-0111)",
 )

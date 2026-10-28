@@ -8,14 +8,14 @@ from dataclasses import dataclass
 from dataclasses import field
 from urllib.parse import urlparse
 
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.citations.extraction import URL_TRIM_CHARS
-from aiq_agent.citations.markdown_code import map_outside_code
-from aiq_agent.citations.references import CITATION_LINE_RE
-from aiq_agent.citations.references import REFERENCE_SECTION_RE
-from aiq_agent.citations.report_layout import normalize_citation_syntax
-from aiq_agent.citations.report_layout import normalize_source_section_layout
-from aiq_agent.citations.report_layout import renumber_citations
+from agent.citations.entries import normalize_url
+from agent.citations.extraction import URL_TRIM_CHARS
+from agent.citations.markdown_code import map_outside_code
+from agent.citations.references import CITATION_LINE_RE
+from agent.citations.references import REFERENCE_SECTION_RE
+from agent.citations.report_layout import normalize_citation_syntax
+from agent.citations.report_layout import normalize_source_section_layout
+from agent.citations.report_layout import renumber_citations
 
 logger = logging.getLogger(__name__)
 

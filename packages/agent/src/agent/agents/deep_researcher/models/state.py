@@ -9,9 +9,9 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.common.message_utils import content_to_text
-from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.knowledge import AvailableDocument
+from agent.common.message_utils import content_to_text
+from agent.common.plan_documents import PlanDocuments
+from agent.knowledge import AvailableDocument
 
 
 def _merge_dict_state(left: dict[str, Any] | None, right: dict[str, Any] | None) -> dict[str, Any]:

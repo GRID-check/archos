@@ -19,7 +19,7 @@ from fastapi import Depends
 from fastapi import Header
 from fastapi import HTTPException
 
-from aiq_agent.knowledge.base import BaseIngestor
+from agent.knowledge.base import BaseIngestor
 
 from ..models.requests import IngestRequest
 from .collections import _require_ingestor
@@ -186,7 +186,7 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
         config["document_id"] = request.document_id
     # Who wrote this document and who released it (ADR-0054); absent for
     # every human document, which is what the parser expects
-    # (aiq_agent.common.provenance.parse_agent_provenance).
+    # (agent.common.provenance.parse_agent_provenance).
     config.update(_provenance_config(request))
     # The office's upload screening (`knowledge_layer.llamaindex.screening`),
     # as plain data so it rides the durable queue's JSON payload unchanged.
@@ -376,7 +376,7 @@ _DOWNLOAD_CONNECT_TIMEOUT_SECONDS = 5.0
 def _provenance_config(request: IngestRequest) -> dict[str, str]:
     """The provenance keys this request carries, empty fields dropped.
 
-    The four names are spelled in ``aiq_agent.common.provenance`` and read back
+    The four names are spelled in ``agent.common.provenance`` and read back
     from chunk metadata by the same module; this route neither renames nor
     validates them, because a route that re-spells a metadata key is where the
     BFF and the parser silently stop agreeing. An ``authored_by`` that is not
@@ -384,12 +384,12 @@ def _provenance_config(request: IngestRequest) -> dict[str, str]:
     acts on is that token, so anything else is an unmarked document and must not
     arrive carrying half a provenance.
     """
-    from aiq_agent.common.provenance import AGENT_AUTHOR
-    from aiq_agent.common.provenance import KEY_APPROVED_AT
-    from aiq_agent.common.provenance import KEY_APPROVED_BY
-    from aiq_agent.common.provenance import KEY_AUTHORED_BY
-    from aiq_agent.common.provenance import KEY_PRODUCER
-    from aiq_agent.common.provenance import is_agent_author
+    from agent.common.provenance import AGENT_AUTHOR
+    from agent.common.provenance import KEY_APPROVED_AT
+    from agent.common.provenance import KEY_APPROVED_BY
+    from agent.common.provenance import KEY_AUTHORED_BY
+    from agent.common.provenance import KEY_PRODUCER
+    from agent.common.provenance import is_agent_author
 
     if not is_agent_author(request.authored_by):
         return {}

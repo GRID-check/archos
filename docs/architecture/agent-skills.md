@@ -42,7 +42,7 @@ a second flag would only add a way for them to disagree.
 ## Skill model
 
 A skill is a `SKILL.md` with YAML frontmatter (agentskills.io contract),
-validated strictly by `packages/agent/src/aiq_agent/skills/models.py`:
+validated strictly by `packages/agent/src/agent/skills/models.py`:
 
 | Field | Rule |
 |-------|------|
@@ -70,7 +70,7 @@ warning (`resolver._build_org_skills`), never silently half-loaded.
 `grid-schedulable` used to be reserved keys here; both were removed when
 schedules became jobs. Scheduling is a property of the job, and so is the
 output kind (`jobs.output`). The removed keys are **not rejected** — they are
-simply unreserved (`GRID_METADATA_KEYS` in `packages/agent/src/aiq_agent/skills/models.py`,
+simply unreserved (`GRID_METADATA_KEYS` in `packages/agent/src/agent/skills/models.py`,
 `METADATA_AGENTS`/`METADATA_CARDS` in `apps/workspace/bff/skills/types.ts`),
 so a stored org row or a pasted SKILL.md still carrying one keeps it as
 ordinary free-form metadata and nothing reads it. Rejecting them would turn a
@@ -97,7 +97,7 @@ are a parse error for a builtin
 ### Origins
 
 - **Builtin** (`origin="platform"`): SKILL.md files shipped under
-  `packages/agent/src/aiq_agent/skills/builtin/<collection>/<name>/SKILL.md`, discovered
+  `packages/agent/src/agent/skills/builtin/<collection>/<name>/SKILL.md`, discovered
   deterministically by `discover_builtin_skills()`. The BFF sees the same
   files through the generated `@/lib/skills/platform-skills` module
   (`apps/workspace/scripts/sync-platform-skills.mjs`), so both tiers read one
@@ -115,7 +115,7 @@ are a parse error for a builtin
 
 | source | who writes it | who sees it |
 |---|---|---|
-| `packages/agent/src/aiq_agent/skills/builtin/**` (files) | this repository | **nobody.** Pipeline machinery: never listed, never switchable, always resolved. |
+| `packages/agent/src/agent/skills/builtin/**` (files) | this repository | **nobody.** Pipeline machinery: never listed, never switchable, always resolved. |
 | `platform_skills` rows, `delivery: 'offer'` | the platform owner, in **Platform → Skills** | every organization, as an OFFER it may switch on. |
 | `skills` (rows) | an organization | that organization. |
 
@@ -272,7 +272,7 @@ The split is enforced on both tiers, and both must agree:
   activation; `setCuratedSkillEnabled` 404s anything that is not an offer, so
   the machinery cannot be switched off by hand-crafting a request.
 - Backend — `_is_curated` and `SkillResolver.always_on`
-  (`packages/agent/src/aiq_agent/skills/resolver.py`). `resolve()` starts from `always_on`
+  (`packages/agent/src/agent/skills/resolver.py`). `resolve()` starts from `always_on`
   rather than every builtin, because the BFF payload can only ADD to that
   baseline: a curated skill left in it would be on for every tenant regardless
   of what any of them decided. An activated one arrives through the org payload
@@ -286,13 +286,13 @@ must not expose an internal instruction to every tenant as something switchable.
 
 ## Resolution
 
-`SkillResolver(agent)` in `packages/agent/src/aiq_agent/skills/resolver.py` produces the
+`SkillResolver(agent)` in `packages/agent/src/agent/skills/resolver.py` produces the
 effective skill set for one run:
 
 1. Builtin set is discovered once per resolver instance (never per turn).
 2. Org rows are fetched per organization from the BFF fail-open:
    - Cached in the shared Dragonfly/Redis cache
-     (`aiq_agent.common.cache`, ADR-0020) keyed
+     (`agent.common.cache`, ADR-0020) keyed
      `skills:{organization_id}:{agent}` for
      `SKILLS_CACHE_TTL_SECONDS` (default 60s).
    - Any failure (no `INTERNAL_API_TOKEN`, timeout, non-2xx, malformed
@@ -308,7 +308,7 @@ identically on both tiers:
 
 | Tier | Function | File |
 |------|----------|------|
-| Backend | `_skill_applies_to_agent` (delegating to `_agent_allows`) | `packages/agent/src/aiq_agent/skills/resolver.py:89` |
+| Backend | `_skill_applies_to_agent` (delegating to `_agent_allows`) | `packages/agent/src/agent/skills/resolver.py:89` |
 | BFF | `skillTargetsAgent` — **module-private**, called by `resolveSkillsForAgent` | `apps/workspace/bff/skills/service.ts:320` |
 
 They are a deliberate contract pair, kept close in shape as well as behaviour,
@@ -337,7 +337,7 @@ offers exactly the skills this one gate resolves for that agent — which is the
 payoff of consolidating availability onto a single key.
 
 The agent vocabulary is the `AGENT_REGISTRY` identifiers
-(`apps/backend/src/aiq_api/registry.py`): **`researcher`** and
+(`apps/backend/src/backend/registry.py`): **`researcher`** and
 **`deep_researcher`**. There is one spelling; the older `deep_research_agent`
 name is gone from the skills path entirely, because two vocabularies for one
 agent meant a `grid-agents` value that was correct in one file and inert in
@@ -350,7 +350,7 @@ It stayed `researcher` when that agent's package was renamed again, to
 moving it costs another migration and another alias pair.
 Because the name is author-written and was seeded by ten migrations, both
 resolvers read the old spelling as the new one (`AGENT_ALIASES` in
-`packages/agent/src/aiq_agent/skills/resolver.py`, `SKILL_AGENT_ALIASES` in
+`packages/agent/src/agent/skills/resolver.py`, `SKILL_AGENT_ALIASES` in
 `apps/workspace/bff/skills/types.ts`, and the mirror in
 `features/skills/lib/agent-scope.ts`), and
 `apps/workspace/migrations/0081_grid_agents_researcher_rename.sql` moved the stored
@@ -393,7 +393,7 @@ filter applies to platform rows as well as org rows.
 Skill selection is **model-chosen, and only model-chosen**. Nothing can force a
 skill onto a turn: not the request, not the deployment, not a job.
 
-- Chat turns: `packages/agent/src/aiq_agent/turn/payload.py` parses `data_sources` out of the
+- Chat turns: `packages/agent/src/agent/turn/payload.py` parses `data_sources` out of the
   turn input and nothing else. The `skills` array it used to read is gone
   (`force_skills` with it), so a client that still sends one is ignored. The
   `/name` composer invocation below writes a MENTION into the message text
@@ -415,10 +415,10 @@ Progressive disclosure is Deep Agents' `SkillsMiddleware` in both agents
 ([ADR-0135](../adr/0135-skills-run-on-deep-agents-skills-middleware.md)), with
 one measured shortcut (ADR-0063 as amended, ADR-0064).
 
-**One backend.** `SkillRuntime` (`packages/agent/src/aiq_agent/skills/runtime.py`) is built
+**One backend.** `SkillRuntime` (`packages/agent/src/agent/skills/runtime.py`) is built
 per run from the skills already resolved for this tenant and agent (see
 Resolution), laid out as sources on one `SkillsBackend`
-(`packages/agent/src/aiq_agent/skills/backend.py`): an in-memory, read-only filesystem that
+(`packages/agent/src/agent/skills/backend.py`): an in-memory, read-only filesystem that
 serves each skill as `/<source>/<name>/SKILL.md`, rendered from the validated
 model (frontmatter, then body), mounted at `/skills/` behind a
 `CompositeBackend`. Nothing is on disk behind it, and every write verb refuses.
@@ -1001,9 +1001,9 @@ submission subsequently fails — a submit error is not proof the backend never
 received the run (a timeout is the common case), and deleting the thread a run
 is about to write into would destroy the output to tidy up a row.
 
-## Backend internal route (Python, aiq_api)
+## Backend internal route (Python, backend)
 
-`POST /v1/internal/skills/submit` (`aiq_api.routes.skills`) — guarded by
+`POST /v1/internal/skills/submit` (`backend.routes.skills`) — guarded by
 `INTERNAL_API_TOKEN` (constant-time compare, dev-default-token refusal
 outside dev — the `maintenance.py` pattern; NOT on the external-path
 allowlist). It wraps `submit_agent_job`, so admission control, cost tracking
@@ -1035,7 +1035,7 @@ sending `output` is deployed.
 comparison count does not depend on which spelling arrived). This is a bug fix,
 and worth remembering: the guard used to read `x-internal-token` **only**,
 while every caller in the repo — the BFF's skill submit and model-config fetch,
-and the nine Python clients under `packages/agent/src/aiq_agent` — sends
+and the nine Python clients under `packages/agent/src/agent` — sends
 `x-grid-internal-token`. So `/v1/internal/skills/submit` 403'd every real
 request and scheduled runs never worked in a deployment. Nothing caught it
 because the two sides are tested separately and each test pinned its own
@@ -1045,7 +1045,7 @@ request got far enough to look healthy before the route guard refused it.
 
 ### Writing the run into its conversation
 
-`aiq_api/jobs/conversation_output.py` is the other half of the chat-output
+`backend/jobs/conversation_output.py` is the other half of the chat-output
 path. When the finished run has a `conversation_id`, `write_job_turn` posts the
 job's prompt as a `user` message and the report as an `agent_response`,
 carrying the cards in metadata. A run with a run message writes its report

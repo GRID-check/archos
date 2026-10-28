@@ -14,10 +14,10 @@ import re
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.extraction import _entry_from_hit
-from aiq_agent.citations.report_layout import inline_citation_numbers
-from aiq_agent.common.grounding_block import get_grounding_block
+from agent.citations.entries import SourceEntry
+from agent.citations.extraction import _entry_from_hit
+from agent.citations.report_layout import inline_citation_numbers
+from agent.common.grounding_block import get_grounding_block
 
 _RESULT_HEADER_RE = re.compile(r"^--- Result (\d+) ---$", re.MULTILINE)
 
@@ -30,7 +30,7 @@ def turn_passages(results: Sequence[tuple[str, Any, Any]]) -> dict[int, list[Sou
     no block reliably, so the number is only a tie-break for
     :func:`resolve_unlisted_numbers`.
     """
-    from aiq_agent.common.citation_collector import hits_from_artifact
+    from agent.common.citation_collector import hits_from_artifact
 
     numbered: dict[int, list[SourceEntry]] = {}
     for tool_name, content, artifact in results:

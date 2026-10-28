@@ -142,7 +142,7 @@ def _resolve() -> dict[str, int]:
     """Cached resolution of the platform settings (shared hot path)."""
     global _cache
     now = time.monotonic()
-    from aiq_agent.common.profiler import annotate_current_span
+    from agent.common.profiler import annotate_current_span
 
     with _cache_lock:
         if _cache is not None and _cache.expires_at > now:

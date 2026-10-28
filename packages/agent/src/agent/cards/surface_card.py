@@ -8,14 +8,14 @@ from typing import Literal
 from pydantic import Field
 from pydantic import model_validator
 
-from aiq_agent.cards.card_model import CardModel
-from aiq_agent.cards.card_model import flatten_card_markup
+from agent.cards.card_model import CardModel
+from agent.cards.card_model import flatten_card_markup
 
 # The catalog imports this module only inside functions, so this is no cycle.
-from aiq_agent.cards.catalog import INTERACTIVE_CARD_TYPES
-from aiq_agent.cards.catalog import RETIRED_CARD_TYPES
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.catalog import retired_refusal
+from agent.cards.catalog import INTERACTIVE_CARD_TYPES
+from agent.cards.catalog import RETIRED_CARD_TYPES
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.catalog import retired_refusal
 
 #: The layout components a surface may use, named and shaped as in A2UI's
 #: basic catalog (v0.9): Row and Column take `children`, Tabs takes `tabs`.
@@ -179,13 +179,13 @@ def _checked_leaf(component: dict[str, Any]) -> dict[str, Any]:
     if name in SURFACE_EXCLUDED_LEAVES:
         raise ValueError(f"'{component_id}': a '{name}' cannot sit inside a surface.")
     # The union holds this card too, so it is read when a leaf is checked, never at import.
-    from aiq_agent.cards.models import grid_card_adapter
+    from agent.cards.models import grid_card_adapter
 
     props = {key: value for key, value in component.items() if key not in ("id", "component")}
     try:
         card = grid_card_adapter.validate_python({**props, "type": name})
     except Exception as exc:  # the adapter's own clauses, prefixed with where they happened
-        from aiq_agent.common.tool_errors import render_error_detail
+        from agent.common.tool_errors import render_error_detail
 
         raise ValueError(f"'{component_id}' ({name}): {render_error_detail(exc)}") from exc
     normalised = card.model_dump(exclude_none=True)

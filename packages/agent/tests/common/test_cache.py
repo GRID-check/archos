@@ -33,7 +33,7 @@ from redis.exceptions import ReadOnlyError
 from redis.exceptions import ResponseError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
-from aiq_agent.common import cache
+from agent.common import cache
 
 
 def _store_down_cases() -> list[tuple[BaseException, str]]:
@@ -371,12 +371,12 @@ class TestCooldownIsAboutTheStore:
 
     def test_eval_log_levels(self, caplog):
         _install(_FailingClient(RedisConnectionError("refused")))
-        with caplog.at_level(logging.DEBUG, logger="aiq_agent.common.cache"):
+        with caplog.at_level(logging.DEBUG, logger="agent.common.cache"):
             caplog.clear()
             cache.eval_script("return 1", [], [])
         assert any(r.levelno == logging.WARNING and "Shared cache eval failed" in r.message for r in caplog.records)
         _install(_FailingClient(ResponseError("compile error")))
-        with caplog.at_level(logging.DEBUG, logger="aiq_agent.common.cache"):
+        with caplog.at_level(logging.DEBUG, logger="agent.common.cache"):
             caplog.clear()
             cache.eval_script("return 1", [], [])
         assert any(
@@ -386,12 +386,12 @@ class TestCooldownIsAboutTheStore:
 
     def test_transport_logs_warning_per_key_logs_debug(self, caplog):
         _install(_FailingClient(RedisConnectionError("refused")))
-        with caplog.at_level(logging.DEBUG, logger="aiq_agent.common.cache"):
+        with caplog.at_level(logging.DEBUG, logger="agent.common.cache"):
             caplog.clear()
             cache.get_json("k")
         assert any(r.levelno == logging.WARNING and r.exc_info for r in caplog.records)
         _install(_FailingClient(ResponseError("WRONGTYPE")))
-        with caplog.at_level(logging.DEBUG, logger="aiq_agent.common.cache"):
+        with caplog.at_level(logging.DEBUG, logger="agent.common.cache"):
             caplog.clear()
             cache.get_json("k")
         assert not any(r.levelno == logging.WARNING for r in caplog.records)
@@ -568,7 +568,7 @@ class TestAClientThatRefusesEverything:
         unreachable, so a warning per call — with `exc_info` — buries the one
         line that says the cache is gone under its own stack traces.
         """
-        with caplog.at_level(logging.DEBUG, logger="aiq_agent.common.cache"):
+        with caplog.at_level(logging.DEBUG, logger="agent.common.cache"):
             caplog.clear()
             for _ in range(4):
                 for name, _label in _PUBLIC_OPS:
@@ -611,7 +611,7 @@ def caplog_at_debug():
         def emit(self, record: logging.LogRecord) -> None:
             records.append(record)
 
-    logger = logging.getLogger("aiq_agent.common.cache")
+    logger = logging.getLogger("agent.common.cache")
     handler = _Sink(level=logging.DEBUG)
     previous = logger.level
     logger.addHandler(handler)

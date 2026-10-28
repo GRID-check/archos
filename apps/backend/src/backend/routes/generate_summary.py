@@ -13,11 +13,11 @@ import httpx
 from fastapi import APIRouter
 from fastapi import Header
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.openrouter import DataPolicy
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.observability.direct_trace import observed_generation
+from agent.common import provider_limiter
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.openrouter import DataPolicy
+from agent.common.openrouter import limited_async_http_client
+from agent.observability.direct_trace import observed_generation
 
 from ..models.requests import GenerateSummaryRequest
 from ..models.requests import GenerateSummaryResponse
@@ -48,8 +48,8 @@ def _llm_settings(organization_id: str | None = None, *, data_policy: DataPolicy
     ``data_policy`` is for the cross-tenant routes sharing this resolver
     (feedback digest, lesson distill): see ``resolve_llm_credential``.
     """
-    from aiq_agent.common.credential_resolution import read_api_key_env
-    from aiq_agent.common.credential_resolution import resolve_llm_credential
+    from agent.common.credential_resolution import read_api_key_env
+    from agent.common.credential_resolution import resolve_llm_credential
 
     # `read_api_key_env`, not `os.getenv`: docker compose `env_file` does not
     # interpolate `${VAR}` references, so `OPENROUTER_API_KEY=${OPENROUTER_API_KEY}`

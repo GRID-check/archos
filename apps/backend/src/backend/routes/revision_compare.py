@@ -64,19 +64,19 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.cache import get_json
-from aiq_agent.common.cache import set_json
-from aiq_agent.common.cost_tracking import USAGE_ROLE_REVISION_COMPARE
-from aiq_agent.common.cost_tracking import BudgetSnapshot
-from aiq_agent.common.cost_tracking import record_completion_usage
-from aiq_agent.common.cost_tracking import track_llm_costs
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.knowledge import get_available_documents_async
-from aiq_agent.knowledge import revision_compare as compare
-from aiq_agent.knowledge import revision_diff
-from aiq_agent.observability.direct_trace import observed_generation
+from agent.common import provider_limiter
+from agent.common.cache import get_json
+from agent.common.cache import set_json
+from agent.common.cost_tracking import USAGE_ROLE_REVISION_COMPARE
+from agent.common.cost_tracking import BudgetSnapshot
+from agent.common.cost_tracking import record_completion_usage
+from agent.common.cost_tracking import track_llm_costs
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.openrouter import limited_async_http_client
+from agent.knowledge import get_available_documents_async
+from agent.knowledge import revision_compare as compare
+from agent.knowledge import revision_diff
+from agent.observability.direct_trace import observed_generation
 
 from ._llm_json import extract_json_object
 from ._llm_json import message_content
@@ -162,8 +162,8 @@ def _vision_settings(organization_id: str | None) -> ResolvedCredential:
     if not organization_id:
         return cred
     try:
-        from aiq_agent.common.model_overrides import AgentGroup
-        from aiq_agent.common.model_overrides import resolve_org_model_overrides
+        from agent.common.model_overrides import AgentGroup
+        from agent.common.model_overrides import resolve_org_model_overrides
 
         override = resolve_org_model_overrides(organization_id).get(AgentGroup.INGEST_VLM.value)
     except Exception:  # noqa: BLE001 - model selection must never take the comparison down
@@ -273,7 +273,7 @@ def _response(
 
 def _stored_chunks(collection: str, file_name: str) -> list[revision_diff.RevisionChunk] | None:
     """One Fassung as the index holds it, for the cheap compare. Blocking; raises when the store cannot be read."""
-    from aiq_agent.knowledge.collection_pages import read_chunks
+    from agent.knowledge.collection_pages import read_chunks
 
     stored = read_chunks(collection, file_name)
     if stored is None:

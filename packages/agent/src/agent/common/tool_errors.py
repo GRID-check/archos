@@ -33,7 +33,7 @@ def render_tool_error(exc: Exception) -> str:
     validation = _validation_error(exc)
     if validation is None:
         return f"Error: {render_error_detail(exc)}"
-    from aiq_agent.common.retired_calls import retired_hints
+    from agent.common.retired_calls import retired_hints
 
     extra = [str(e["loc"][-1]) for e in validation.errors() if e.get("type") == "extra_forbidden" and e.get("loc")]
     instead = "".join(f" Instead: {hint}." for hint in retired_hints(extra))

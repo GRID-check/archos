@@ -11,16 +11,16 @@ from types import SimpleNamespace
 import pytest
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.agents.intake import reading
-from aiq_agent.agents.intake.reading import IntakeToolMiddleware
-from aiq_agent.agents.intake.reading import make_read_document_tool
-from aiq_agent.common.grounding_block import GroundingBlock
-from aiq_agent.common.grounding_block import GroundingHit
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.grounding_block import render_grounding_block
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.schema import AvailableDocument
+from agent.agents.intake import reading
+from agent.agents.intake.reading import IntakeToolMiddleware
+from agent.agents.intake.reading import make_read_document_tool
+from agent.common.grounding_block import GroundingBlock
+from agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.grounding_block import render_grounding_block
+from agent.common.source_kinds import Shelf
+from agent.knowledge.schema import AvailableDocument
 
 
 async def _read(**arguments) -> str:
@@ -84,7 +84,7 @@ class TestReadDocument:
 
 class TestOnlyTheProjectShelves:
     def test_the_corpus_and_the_archive_are_not_read(self, monkeypatch):
-        from aiq_agent.knowledge.scoping import ScopedCollection
+        from agent.knowledge.scoping import ScopedCollection
 
         scope = [
             ScopedCollection("oib_knowledge", Shelf.BASE),
@@ -92,15 +92,15 @@ class TestOnlyTheProjectShelves:
             ScopedCollection("archiv_1", Shelf.OFFICE_SHELF),
             ScopedCollection("legacy", None),
         ]
-        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
+        monkeypatch.setattr("agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
         assert reading.project_collections() == ["proj_1", "legacy"]
 
     def test_a_restricted_folders_collection_is_never_read(self, monkeypatch):
-        from aiq_agent.knowledge.scoping import ScopedCollection
+        from agent.knowledge.scoping import ScopedCollection
 
         restricted = "proj_1_r0f0e0d0c0b0a"
         scope = [ScopedCollection("proj_1", Shelf.PROJECT), ScopedCollection(restricted, Shelf.PROJECT)]
-        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
+        monkeypatch.setattr("agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
         assert reading.project_collections() == ["proj_1"]
 
 

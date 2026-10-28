@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.answer_dialect import validate_dialect
-from aiq_agent.common.sketch_fence import REFUSED_SKETCH_FENCE_INFO
-from aiq_agent.common.sketch_fence import SKETCH_REFUSALS
-from aiq_agent.common.sketch_fence import check_sketch
-from aiq_agent.common.sketch_fence import sketch_census
-from aiq_agent.observability.answer_scores import sketch_scores
+from agent.common.answer_dialect import validate_dialect
+from agent.common.sketch_fence import REFUSED_SKETCH_FENCE_INFO
+from agent.common.sketch_fence import SKETCH_REFUSALS
+from agent.common.sketch_fence import check_sketch
+from agent.common.sketch_fence import sketch_census
+from agent.observability.answer_scores import sketch_scores
 
 FIXTURES = Path(__file__).resolve().parents[4] / "apps/workspace/bff/diagrams/__fixtures__/sketch-fences.json"
 CASES = json.loads(FIXTURES.read_text(encoding="utf-8"))["cases"]

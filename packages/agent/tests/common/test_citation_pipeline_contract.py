@@ -36,16 +36,16 @@ from ris_adapter.lookup.passages import SCORE_RANKED_TOP
 from ris_adapter.lookup.passages import Passage
 from ris_adapter.lookup.render import format_passages
 
-from aiq_agent.citations.binding import document_key
-from aiq_agent.citations.binding import source_lane
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.sanitize import sanitize_report
-from aiq_agent.citations.verification import verify_citations
-from aiq_agent.citations.wire import source_entry_to_wire
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
+from agent.citations.binding import document_key
+from agent.citations.binding import source_lane
+from agent.citations.entries import SourceEntry
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.registry import SourceRegistry
+from agent.citations.sanitize import sanitize_report
+from agent.citations.verification import verify_citations
+from agent.citations.wire import source_entry_to_wire
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "citation_pipeline"
@@ -60,8 +60,8 @@ def fixture_empty_summary_store(tmp_path):
     producer's bytes would depend on whichever database another test happened to
     configure first, and these tests would pass or fail by test order.
     """
-    from aiq_agent.knowledge import factory
-    from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+    from agent.knowledge import factory
+    from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
     previous = factory._document_metadata_store
     db_url = f"sqlite:///{tmp_path / 'contract.db'}"
@@ -457,9 +457,9 @@ class TestTheNoticeIsInsideTheBytes:
     """
 
     def test_a_widened_search_is_still_read_from_the_records(self):
-        from aiq_agent.common.grounding_block import begin_grounding_capture
-        from aiq_agent.common.grounding_block import end_grounding_capture
-        from aiq_agent.common.grounding_block import get_grounding_block
+        from agent.common.grounding_block import begin_grounding_capture
+        from agent.common.grounding_block import end_grounding_capture
+        from agent.common.grounding_block import get_grounding_block
 
         hit = Hit(file_name="oib-rl_2_ausgabe_mai_2023.pdf", page=12, collection="oib_knowledge")
         result = SimpleNamespace(success=True, error_message=None, chunks=[hit.chunk()])
@@ -535,8 +535,8 @@ class TestTheTwoReadersAgree:
 
     def read_both_ways(self, hits: list[Hit]) -> tuple[list[SourceEntry], list[SourceEntry]]:
         """The same tool output, read once off the records and once off the text."""
-        from aiq_agent.common.grounding_block import begin_grounding_capture
-        from aiq_agent.common.grounding_block import end_grounding_capture
+        from agent.common.grounding_block import begin_grounding_capture
+        from agent.common.grounding_block import end_grounding_capture
 
         token = begin_grounding_capture()
         try:
@@ -626,8 +626,8 @@ class TestTheTwoReadersAgree:
 
     def read_ris_both_ways(self) -> tuple[list[SourceEntry], list[SourceEntry]]:
         """The RIS producer's output, read once off the records and once off the text."""
-        from aiq_agent.common.grounding_block import begin_grounding_capture
-        from aiq_agent.common.grounding_block import end_grounding_capture
+        from agent.common.grounding_block import begin_grounding_capture
+        from agent.common.grounding_block import end_grounding_capture
 
         address = Address(kind="§", number="63", subsection="1", federal_state="W", federal_state_source="the question")
         token = begin_grounding_capture()
@@ -782,7 +782,7 @@ class TestBatchToolOutputContract:
     """
 
     def batch(self, *results: tuple[str, str | None, str | None]) -> str:
-        from aiq_agent.agents.deep_researcher.tools.source_tool_batching import _format_batch_tool_output
+        from agent.agents.deep_researcher.tools.source_tool_batching import _format_batch_tool_output
 
         return _format_batch_tool_output(list(results))
 

@@ -19,10 +19,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.estate_paths import ESTATE_MOUNTS
-from aiq_agent.common.estate_paths import MOUNT_ROOTS
-from aiq_agent.common.estate_paths import EstatePath
-from aiq_agent.common.estate_paths import Mount
+from agent.common.estate_paths import ESTATE_MOUNTS
+from agent.common.estate_paths import MOUNT_ROOTS
+from agent.common.estate_paths import EstatePath
+from agent.common.estate_paths import Mount
 
 from .browse import _card_lines
 from .browse import fold
@@ -110,7 +110,7 @@ def has_real_readme(files: Sequence[EstateFile], mount: Mount, folder: str) -> b
 
 def _file_line(file: EstateFile) -> str:
     """One file row: its leaf, then pages, Dokumentart, Plankopf Index, its own date, and what replaced it."""
-    from aiq_agent.knowledge.title_block import title_block_label
+    from agent.knowledge.title_block import title_block_label
 
     row = file.row
     bits: list[str] = []

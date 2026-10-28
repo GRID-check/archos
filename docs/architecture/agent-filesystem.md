@@ -36,11 +36,11 @@ with the reason. The design text stays as written; this section is the delta.
 
 | Piece | Where |
 |---|---|
-| Paths, mounts, canonical form, `call_mount` | `packages/agent/src/aiq_agent/common/estate_paths.py` |
+| Paths, mounts, canonical form, `call_mount` | `packages/agent/src/agent/common/estate_paths.py` |
 | The read-only async backend (rows, resolution, rendering) | `packages/knowledge-layer/src/estate.py` (`EstateBackend`) |
 | Stored page text and the chunk rebuild | `packages/knowledge-layer/src/stored_pages.py` |
-| The tools, the `CompositeBackend`, the `/drafts/` route | `packages/agent/src/aiq_agent/tools/documents/filesystem.py`, `tools.py` |
-| Citations on `ToolMessage.artifact` | `packages/agent/src/aiq_agent/common/citation_collector.py`; read first by `extract_sources_from_tool_result` |
+| The tools, the `CompositeBackend`, the `/drafts/` route | `packages/agent/src/agent/tools/documents/filesystem.py`, `tools.py` |
+| Citations on `ToolMessage.artifact` | `packages/agent/src/agent/common/citation_collector.py`; read first by `extract_sources_from_tool_result` |
 | `ToolStep.mount` | `common/wire_v2.py`, `action_rows.ToolStepCallback`; the UI's `executed-steps.ts` |
 | Config | `filesystem: knowledge_search` on `shallow_research_agent` (`configs/config_oib_openrouter.yml`) |
 
@@ -142,9 +142,9 @@ the evidence tool surface went from 5,560 to 3,111 tokens per call (o200k).
 
 | Piece | Where |
 |---|---|
-| The descriptions, bare schema fields, `conclusion` on `grep` and `read_file` | `packages/agent/src/aiq_agent/tools/documents/tools.py` (`_ESTATE_DESCRIPTIONS`), `filesystem.py` |
+| The descriptions, bare schema fields, `conclusion` on `grep` and `read_file` | `packages/agent/src/agent/tools/documents/tools.py` (`_ESTATE_DESCRIPTIONS`), `filesystem.py` |
 | `knowledge_search` (ranked only, `path`) and `list_files` (no tree view) where the estate is read | `packages/knowledge-layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` only when `filesystem` is set (`estate_paths.reads_the_estate`) |
-| A retired argument is an error that names it and its replacement | the chat schemas forbid unknown arguments; `packages/agent/src/aiq_agent/common/retired_calls.py` adds the replacement in `tool_errors.render_tool_error` |
+| A retired argument is an error that names it and its replacement | the chat schemas forbid unknown arguments; `packages/agent/src/agent/common/retired_calls.py` adds the replacement in `tool_errors.render_tool_error` |
 | Shared hints state facts and name no tool | `read_passage.py`, `register.py`, `browse.py`, `document_groups.py`, `chunk_noise.py`, `qdrant/folders.py`, `already_read.py`, `revision_diff.py` |
 | A citation written as a path resolves to its key | `citations/citation_keys.py::citation_key_of_path` |
 | The coverage line and the `Herkunft:` line say what they mean | `common/grounding_block.COVERAGE_GAP_NOTE`, `AGENT_DOCUMENT_NOTE` |
@@ -498,7 +498,7 @@ with `listing` and `includeOwnProject`, `lib/search/reach.ts`), so a
 restricted folder is absent in every audience, a solo chat's included; held uploads,
 binned folders and archived documents are absent too. The contract is
 [`docs/api/bff-routes.md`](../api/bff-routes.md) (`/api/internal/estate-tree`); the
-agent's client is `aiq_agent/knowledge/estate_tree_client.py`, which the estate backend
+agent's client is `agent/knowledge/estate_tree_client.py`, which the estate backend
 of slices 2–3 calls. A missing, binned and restricted folder all answer the same 404,
 so `ls` renders each as the same "No file".
 

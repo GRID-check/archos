@@ -17,17 +17,17 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphBubbleUp
 
-from aiq_agent.citations.citation_keys import parse_citation_key
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.session import get_session_registry
-from aiq_agent.common import get_source_id_for_tool
-from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.turn_status import fail_subagent
-from aiq_agent.common.turn_status import subagent_run
+from agent.citations.citation_keys import parse_citation_key
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import normalize_url
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.registry import SourceRegistry
+from agent.citations.session import get_session_registry
+from agent.common import get_source_id_for_tool
+from agent.common.budget_guard import RunBudgetExceededError
+from agent.common.cost_tracking import BudgetExceededError
+from agent.common.turn_status import fail_subagent
+from agent.common.turn_status import subagent_run
 
 logger = logging.getLogger(__name__)
 

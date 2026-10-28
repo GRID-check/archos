@@ -5,10 +5,10 @@ from collections.abc import Sequence
 from typing import Any
 from typing import Literal
 
-from aiq_agent.tools.bim import measure_register
-from aiq_agent.tools.bim.failures import rejected_text
-from aiq_agent.tools.bim.failures import too_large_text
-from aiq_agent.tools.bim.failures import unrunnable_text
+from agent.tools.bim import measure_register
+from agent.tools.bim.failures import rejected_text
+from agent.tools.bim.failures import too_large_text
+from agent.tools.bim.failures import unrunnable_text
 
 logger = logging.getLogger(__name__)
 

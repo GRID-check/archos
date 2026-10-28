@@ -17,20 +17,20 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from dataclasses import field
 
-from aiq_agent.common.profiler import profiled_span
-from aiq_agent.common.retrieval_status import documents_waiting_step
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.knowledge import get_available_documents_async
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.inventory import allocate_inventory_detailed
-from aiq_agent.knowledge.inventory import get_inventory_drops
-from aiq_agent.knowledge.inventory import get_norm_families
-from aiq_agent.knowledge.inventory import set_inventory_drops
-from aiq_agent.knowledge.inventory import set_norm_families
-from aiq_agent.knowledge.inventory import stamp_document
-from aiq_agent.knowledge.scoping import ScopedCollection
-from aiq_agent.turn.admission import spanned
+from agent.common.profiler import profiled_span
+from agent.common.retrieval_status import documents_waiting_step
+from agent.common.source_kinds import Shelf
+from agent.common.wire_v2 import StatusStep
+from agent.knowledge import get_available_documents_async
+from agent.knowledge import ingest_status_store
+from agent.knowledge.inventory import allocate_inventory_detailed
+from agent.knowledge.inventory import get_inventory_drops
+from agent.knowledge.inventory import get_norm_families
+from agent.knowledge.inventory import set_inventory_drops
+from agent.knowledge.inventory import set_norm_families
+from agent.knowledge.inventory import stamp_document
+from agent.knowledge.scoping import ScopedCollection
+from agent.turn.admission import spanned
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ def _base_families(docs: Iterable) -> list:
     of a Richtlinie, not a member of the platform corpus, and counting it would
     tell the model a part exists that a search of the corpus cannot reach.
     """
-    from aiq_agent.common.norm_registry import oib_families
+    from agent.common.norm_registry import oib_families
 
     names = [
         getattr(doc, "file_name", "")

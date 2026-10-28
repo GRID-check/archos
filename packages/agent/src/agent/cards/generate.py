@@ -11,9 +11,9 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 
-from aiq_agent.cards.models import validate_cards
-from aiq_agent.cards.prompt import build_card_generation_prompt
-from aiq_agent.common.message_utils import response_text
+from agent.cards.models import validate_cards
+from agent.cards.prompt import build_card_generation_prompt
+from agent.common.message_utils import response_text
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,7 @@ async def generate_cards_result(llm: Any, query: str, research_context: str) -> 
     """
     # Known follow-up (pre-existing gap): the card LLM is passed in already-built
     # and is NOT run through the org BYOK credential swap
-    # (aiq_agent.common.llm_credentials.apply_org_credential), so card generation
+    # (agent.common.llm_credentials.apply_org_credential), so card generation
     # always uses the platform credential even for BYOK orgs. Wiring it would mean
     # applying the credential where this llm is constructed/handed in (chat path +
     # async job runner), which is out of scope for the unified-resolution change.

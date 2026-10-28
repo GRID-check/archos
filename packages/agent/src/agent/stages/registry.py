@@ -1,7 +1,7 @@
 """Import-time registration of post-answer stages.
 
 Same shape as NAT's ``@register_function`` that the whole agent tier already
-uses: a stage module declares its :class:`~aiq_agent.stages.spec.StageSpec` at
+uses: a stage module declares its :class:`~agent.stages.spec.StageSpec` at
 module level and hands it to :func:`register_stage`, and importing the package
 is what makes it exist. The single call site iterates
 :func:`iter_stages` — it never names a stage, so adding one never touches it.
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 
-from aiq_agent.stages.spec import StageSpec
+from agent.stages.spec import StageSpec
 
 logger = logging.getLogger(__name__)
 

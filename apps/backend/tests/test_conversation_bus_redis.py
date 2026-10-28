@@ -18,10 +18,10 @@ fakeredis = pytest.importorskip("fakeredis")
 import fakeredis.aioredis as fa  # noqa: E402
 from fakeredis import FakeServer  # noqa: E402
 
-from aiq_api.conversation_bus import FRAME  # noqa: E402
-from aiq_api.conversation_bus import HITL_ANSWER  # noqa: E402
-from aiq_api.conversation_bus import ConversationBus  # noqa: E402
-from aiq_api.conversation_bus import RedisTransport  # noqa: E402
+from backend.conversation_bus import FRAME  # noqa: E402
+from backend.conversation_bus import HITL_ANSWER  # noqa: E402
+from backend.conversation_bus import ConversationBus  # noqa: E402
+from backend.conversation_bus import RedisTransport  # noqa: E402
 
 CONV = "conv-redis"
 
@@ -138,7 +138,7 @@ async def test_the_running_marker_is_one_compare_and_write_over_real_redis():
 
 @pytest.mark.asyncio
 async def test_a_running_marker_expires_on_its_ttl_over_real_redis(monkeypatch):
-    from aiq_api import conversation_bus
+    from backend import conversation_bus
 
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", 0.1)
     owner, relay = _redis_replicas()
@@ -162,7 +162,7 @@ async def test_distinct_turns_racing_from_an_empty_marker_over_real_redis_exactl
 
 @pytest.mark.asyncio
 async def test_a_renewal_over_real_redis_restarts_the_expiry_and_a_late_one_does_not_revive_the_marker(monkeypatch):
-    from aiq_api import conversation_bus
+    from backend import conversation_bus
 
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", 0.2)
     owner, relay = _redis_replicas()

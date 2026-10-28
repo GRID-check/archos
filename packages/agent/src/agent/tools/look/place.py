@@ -28,12 +28,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.grounding_block import GroundingBlock
-from aiq_agent.common.grounding_block import GroundingHit
-from aiq_agent.common.grounding_block import SourceRegion
-from aiq_agent.common.grounding_block import render_grounding_block
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import legacy_shelf_for_collection_name
+from agent.common.grounding_block import GroundingBlock
+from agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import SourceRegion
+from agent.common.grounding_block import render_grounding_block
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import legacy_shelf_for_collection_name
 
 TOOL = "look"
 

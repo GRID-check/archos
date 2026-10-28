@@ -34,11 +34,11 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.message_utils import response_text
-from aiq_agent.knowledge.title_block import compare_revisions
-from aiq_agent.knowledge.title_block import display_date
-from aiq_agent.knowledge.title_block import newest_first
-from aiq_agent.knowledge.title_block import same_document
+from agent.common.message_utils import response_text
+from agent.knowledge.title_block import compare_revisions
+from agent.knowledge.title_block import display_date
+from agent.knowledge.title_block import newest_first
+from agent.knowledge.title_block import same_document
 
 logger = logging.getLogger(__name__)
 

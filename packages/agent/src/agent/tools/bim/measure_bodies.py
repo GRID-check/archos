@@ -3,14 +3,14 @@
 from collections.abc import Callable
 from typing import Any
 
-from aiq_agent.tools.bim.measure_format import _decimals
-from aiq_agent.tools.bim.measure_format import _num
-from aiq_agent.tools.bim.measure_format import _value_text
-from aiq_agent.tools.bim.measure_render import _element_line
-from aiq_agent.tools.bim.measure_render import _missing_what
-from aiq_agent.tools.bim.measure_render import _render_answer
-from aiq_agent.tools.bim.rendering import listed
-from aiq_agent.tools.bim.rendering import render_unresolved
+from agent.tools.bim.measure_format import _decimals
+from agent.tools.bim.measure_format import _num
+from agent.tools.bim.measure_format import _value_text
+from agent.tools.bim.measure_render import _element_line
+from agent.tools.bim.measure_render import _missing_what
+from agent.tools.bim.measure_render import _render_answer
+from agent.tools.bim.rendering import listed
+from agent.tools.bim.rendering import render_unresolved
 
 # ── the payload shapes ───────────────────────────────────────────────────────
 

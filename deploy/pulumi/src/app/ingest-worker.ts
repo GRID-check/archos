@@ -13,7 +13,7 @@ import { JOBS_QUEUE_AUTH } from "./jobs-queue-auth";
 import { installQueueScaledObject, queueDepthQuery } from "./keda-scaling";
 import { UID } from "../constants";
 
-/** The durable queue the tier drains (`aiq_agent.knowledge.ingest_queue.TABLE`). */
+/** The durable queue the tier drains (`agent.knowledge.ingest_queue.TABLE`). */
 export const QUEUE_TABLE = "ingest_job_queue";
 
 /**

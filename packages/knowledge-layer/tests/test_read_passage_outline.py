@@ -24,14 +24,14 @@ from unittest.mock import MagicMock
 import pytest
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.grounding_block import get_grounding_block
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.schema import Chunk
-from aiq_agent.knowledge.schema import ContentType
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.grounding_block import get_grounding_block
+from agent.common.source_kinds import Shelf
+from agent.knowledge.schema import Chunk
+from agent.knowledge.schema import ContentType
+from agent.knowledge.scoping import ScopedCollection
 
 rp = importlib.import_module("knowledge_layer.read_passage")
 
@@ -133,16 +133,16 @@ def store(monkeypatch):
     async def _documents(collection: str):
         return list(handle.documents)
 
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: handle)
-    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+    monkeypatch.setattr("agent.knowledge.factory.get_active_retriever", lambda: handle)
+    monkeypatch.setattr("agent.knowledge.factory.get_available_documents_async", _documents)
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection("oib_knowledge", Shelf.BASE)],
     )
     # The formatter's three store lookups are not what these tests are about;
     # an empty map is the documented fail-open and keeps the run database-free.
     for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
-        monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
+        monkeypatch.setattr(f"agent.knowledge.factory.{name}", lambda _c, _f: {})
     return handle
 
 

@@ -16,7 +16,7 @@ second one beside it.
 | It | Put it in | Entry point in |
 |---|---|---|
 | Retrieves evidence from a corpus or an external service | a Python package under `packages/` ([`packages/AGENTS.md`](../../packages/AGENTS.md#the-python-packages-agent-knowledge-layer-ris-adapter-tavily-web-search)) | the package's own `pyproject.toml` |
-| Acts on the user's workspace (files, drafts, the model) | `packages/agent/src/aiq_agent/tools/` ([its `AGENTS.md`](../../packages/agent/src/aiq_agent/tools/AGENTS.md)) | the root `pyproject.toml` |
+| Acts on the user's workspace (files, drafts, the model) | `packages/agent/src/agent/tools/` ([its `AGENTS.md`](../../packages/agent/src/agent/tools/AGENTS.md)) | the root `pyproject.toml` |
 
 Copy the closest existing package rather than inventing a shape:
 `packages/tavily-web-search/` is the minimal one, `packages/ris-adapter/` has a
@@ -85,10 +85,10 @@ YAML `_type`, and an async `@register_function` that yields a `FunctionInfo`.
   on, naming the next call where there is one.
 - **Evidence goes through the grounding block.** A tool whose results an answer
   may cite builds `GroundingHit` records and calls `render_grounding_block`
-  (`packages/agent/src/aiq_agent/common/grounding_block.py`, ADR-0061). It never writes
+  (`packages/agent/src/agent/common/grounding_block.py`, ADR-0061). It never writes
   `Source:` or `Citation:` lines itself.
 - A new kind of evidence is a `SourceKind`, changed in both
-  `packages/agent/src/aiq_agent/common/source_kinds.py` and its TypeScript mirror (the rule in
+  `packages/agent/src/agent/common/source_kinds.py` and its TypeScript mirror (the rule in
   [`AGENTS.md`](../../AGENTS.md#two-rules-that-span-services)).
 
 ## Binding it to an agent
@@ -118,7 +118,7 @@ agent's list is empty, and neither shipped agent's is.
 ## Making it a data source
 
 Add an entry to `data_sources.sources` in the same config. The fields are
-`DataSourceEntry` in `packages/agent/src/aiq_agent/common/data_source_registry.py`:
+`DataSourceEntry` in `packages/agent/src/agent/common/data_source_registry.py`:
 
 ```yaml
 functions:
@@ -141,7 +141,7 @@ functions:
 - A conversation that switches the source off does not unbind the tool on
   Piloti: the call is refused with one sentence the model can repeat, so the
   tool payload and its prompt-cache shard stay the same
-  (`packages/agent/src/aiq_agent/common/data_sources.py`). Deep research drops the tool
+  (`packages/agent/src/agent/common/data_sources.py`). Deep research drops the tool
   instead, because its workers have no point at which to refuse.
 
 ## Verifying it

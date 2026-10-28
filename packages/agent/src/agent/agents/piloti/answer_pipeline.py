@@ -35,48 +35,48 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool
 from pydantic import ValidationError
 
-from aiq_agent.citations.binding import agent_authored_document_names
-from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
-from aiq_agent.citations.entries import EmptySourceRegistryError
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import is_look_place
-from aiq_agent.citations.entries import merged_citations
-from aiq_agent.citations.quote_matching import UnverifiedQuote
-from aiq_agent.citations.quote_verification import annotate_unverified_quotes
-from aiq_agent.citations.quote_verification import verify_quoted_spans
-from aiq_agent.citations.references import expand_grouped_citations
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.sanitize import sanitize_report
-from aiq_agent.citations.session import get_turn_captures
-from aiq_agent.citations.trailer_values import drop_ungrounded_trailer_values
-from aiq_agent.citations.verification import verify_citations
-from aiq_agent.common import citation_events
-from aiq_agent.common import content_to_text
-from aiq_agent.common import get_source_id_for_tool
-from aiq_agent.common.answer_dialect import DialectResult
-from aiq_agent.common.answer_dialect import validate_dialect
-from aiq_agent.common.answer_envelope import TAKEAWAYS_MIN_PROSE_CHARS
-from aiq_agent.common.answer_envelope import AnswerMeta
-from aiq_agent.common.answer_envelope import drop_unfiled_proposals
-from aiq_agent.common.answer_envelope import extract_answer_envelope
-from aiq_agent.common.answer_envelope import gate_answer_meta
-from aiq_agent.common.answer_envelope import resolve_callout_marker
-from aiq_agent.common.quote_stamps import stamp_quote_lines
-from aiq_agent.common.retrieval_status import emit_answer_repair
-from aiq_agent.common.retrieval_status import emit_citation_check
-from aiq_agent.common.tool_validation import validate_tool_availability
-from aiq_agent.common.turn_notices import emit_anatomy_dropped
-from aiq_agent.common.unlisted_citations import writer_numbering
-from aiq_agent.common.workspace_records import filed_proposal_ids
-from aiq_agent.observability.answer_scores import dialect_scores
-from aiq_agent.observability.answer_scores import quote_patch_scores
-from aiq_agent.observability.langfuse_scores import card_validity_score
-from aiq_agent.observability.langfuse_scores import dropped_citation_scores
-from aiq_agent.observability.langfuse_scores import emit_scores
-from aiq_agent.observability.langfuse_scores import formula_provenance_score
-from aiq_agent.observability.langfuse_scores import look_scores
-from aiq_agent.observability.langfuse_scores import work_unfiled_scores
-from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
+from agent.citations.binding import agent_authored_document_names
+from agent.citations.entries import DROPPED_CITATION_MARKER
+from agent.citations.entries import EmptySourceRegistryError
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import is_look_place
+from agent.citations.entries import merged_citations
+from agent.citations.quote_matching import UnverifiedQuote
+from agent.citations.quote_verification import annotate_unverified_quotes
+from agent.citations.quote_verification import verify_quoted_spans
+from agent.citations.references import expand_grouped_citations
+from agent.citations.registry import SourceRegistry
+from agent.citations.sanitize import sanitize_report
+from agent.citations.session import get_turn_captures
+from agent.citations.trailer_values import drop_ungrounded_trailer_values
+from agent.citations.verification import verify_citations
+from agent.common import citation_events
+from agent.common import content_to_text
+from agent.common import get_source_id_for_tool
+from agent.common.answer_dialect import DialectResult
+from agent.common.answer_dialect import validate_dialect
+from agent.common.answer_envelope import TAKEAWAYS_MIN_PROSE_CHARS
+from agent.common.answer_envelope import AnswerMeta
+from agent.common.answer_envelope import drop_unfiled_proposals
+from agent.common.answer_envelope import extract_answer_envelope
+from agent.common.answer_envelope import gate_answer_meta
+from agent.common.answer_envelope import resolve_callout_marker
+from agent.common.quote_stamps import stamp_quote_lines
+from agent.common.retrieval_status import emit_answer_repair
+from agent.common.retrieval_status import emit_citation_check
+from agent.common.tool_validation import validate_tool_availability
+from agent.common.turn_notices import emit_anatomy_dropped
+from agent.common.unlisted_citations import writer_numbering
+from agent.common.workspace_records import filed_proposal_ids
+from agent.observability.answer_scores import dialect_scores
+from agent.observability.answer_scores import quote_patch_scores
+from agent.observability.langfuse_scores import card_validity_score
+from agent.observability.langfuse_scores import dropped_citation_scores
+from agent.observability.langfuse_scores import emit_scores
+from agent.observability.langfuse_scores import formula_provenance_score
+from agent.observability.langfuse_scores import look_scores
+from agent.observability.langfuse_scores import work_unfiled_scores
+from agent.observability.langfuse_trace_attributes import record_trace_metadata
 
 from .answer_check import Answered
 from .answer_check import TurnCheck
@@ -384,10 +384,10 @@ async def _register_envelope_cards(
     become final. Fail-open throughout: no registry
     bound (a CLI run) means the answer ships without cards, as it always did.
     """
-    from aiq_agent.cards.catalog import retired_card_markdown
-    from aiq_agent.cards.envelope import envelope_card_objects
-    from aiq_agent.cards.envelope import register_envelope_card
-    from aiq_agent.cards.registry import get_card_registry
+    from agent.cards.catalog import retired_card_markdown
+    from agent.cards.envelope import envelope_card_objects
+    from agent.cards.envelope import register_envelope_card
+    from agent.cards.registry import get_card_registry
 
     raw = envelope_card_objects(meta.cards if meta is not None else None)
     if not raw:
@@ -426,12 +426,12 @@ async def _checked_envelope_card(
     payload: Any, index: int, content: str, card_repair: CardRepairFn | None
 ) -> dict[str, Any] | None:
     """One envelope card validated, repaired once on a shape miss, or ``None`` (recorded)."""
-    from aiq_agent.cards.envelope import REFUSED_SHAPE
-    from aiq_agent.cards.envelope import validate_model_card
-    from aiq_agent.cards.formula_card import stated_result_fields
-    from aiq_agent.common.turn_notices import CARD_INVALID_DROPPED
-    from aiq_agent.common.turn_notices import CARD_INVALID_REPAIRED
-    from aiq_agent.common.turn_notices import emit_card_invalid
+    from agent.cards.envelope import REFUSED_SHAPE
+    from agent.cards.envelope import validate_model_card
+    from agent.cards.formula_card import stated_result_fields
+    from agent.common.turn_notices import CARD_INVALID_DROPPED
+    from agent.common.turn_notices import CARD_INVALID_REPAIRED
+    from agent.common.turn_notices import emit_card_invalid
 
     validated, refusal = validate_model_card(payload)
     card_type = refusal.card_type if refusal is not None else str(validated["type"])
@@ -713,8 +713,8 @@ def _recite_surface_cards(
     surface that cannot stand once its blank ``Text`` is gone comes back as
     the card left standing, or with that leaf marked, never as stored.
     """
-    from aiq_agent.cards.registry import get_card_registry
-    from aiq_agent.cards.surface_citations import recite_surface
+    from agent.cards.registry import get_card_registry
+    from agent.cards.surface_citations import recite_surface
 
     registry = get_card_registry()
     if registry is None:
@@ -823,7 +823,7 @@ class LiveAnswer:
         self._tool_cards: list[dict[str, Any]] | None = None
 
     def masthead(self, fields: dict[str, Any], prose: str = "") -> dict[str, Any] | None:
-        from aiq_agent.common.answer_envelope import MASTHEAD_FIELDS
+        from agent.common.answer_envelope import MASTHEAD_FIELDS
 
         try:
             meta = AnswerMeta.model_validate({key: value for key, value in fields.items() if key in MASTHEAD_FIELDS})
@@ -865,7 +865,7 @@ class LiveAnswer:
         must count the same cards the frame then carries.
         """
         if self._tool_cards is None:
-            from aiq_agent.cards.registry import get_card_registry
+            from agent.cards.registry import get_card_registry
 
             registry = get_card_registry()
             self._tool_cards = registry.snapshot() if registry is not None else []
@@ -885,8 +885,8 @@ class LiveAnswer:
 
     def card(self, payload: Any) -> dict[str, Any] | None:
         """One envelope card as it closes, validated, its ``[N]`` recited; a tool's card never comes through here."""
-        from aiq_agent.cards.envelope import validate_model_card
-        from aiq_agent.cards.surface_citations import recite_surface
+        from agent.cards.envelope import validate_model_card
+        from agent.cards.surface_citations import recite_surface
 
         card, _refusal = validate_model_card(payload)
         if card is None:
@@ -1040,8 +1040,8 @@ def _suppress_cards(content: str, gated_meta: dict[str, Any] | None) -> tuple[st
     if not _should_suppress_meta_cards(content, gated_meta):
         return content, gated_meta, False
     try:
-        from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-        from aiq_agent.cards.registry import get_card_registry as _get_registry_for_guard
+        from agent.cards.catalog import SYSTEM_CARD_TYPES
+        from agent.cards.registry import get_card_registry as _get_registry_for_guard
 
         _guard_registry = _get_registry_for_guard()
         if _guard_registry is not None and any(
@@ -1061,7 +1061,7 @@ def _suppress_cards(content: str, gated_meta: dict[str, Any] | None) -> tuple[st
         _CARD_SUPPRESS_MIN_PROSE_CHARS,
     )
     try:
-        from aiq_agent.cards.registry import get_card_registry
+        from agent.cards.registry import get_card_registry
 
         registry = get_card_registry()
         if registry is not None and len(registry) > 0:
@@ -1177,9 +1177,9 @@ async def finalize_answer(
     )
     # The looks the answer relies on become `look` cards (ADR-0128), taken before
     # the suppression can clear them and placed after it: they are evidence, not trailer.
-    from aiq_agent.tools.look.cards import place_look_cards
-    from aiq_agent.tools.look.cards import relied_readings
-    from aiq_agent.tools.look.cards import take_looks
+    from agent.tools.look.cards import place_look_cards
+    from agent.tools.look.cards import relied_readings
+    from agent.tools.look.cards import take_looks
 
     looks = take_looks()
     looks_made = sum(1 for entry in looks if entry["item"]["origin"] == "look")
@@ -1228,7 +1228,7 @@ def _emit_answer_scores(
     readings: Sequence[str],
 ) -> None:
     """``look-count``, ``looked-before-measurement`` (ADR-0128) and ``citations-dropped-labelled`` at the turn's end."""
-    from aiq_agent.tools.look.cards import drawing_value_status
+    from agent.tools.look.cards import drawing_value_status
 
     drawing_value, region_look_first = drawing_value_status(looks, content, cited, readings)
     emit_scores(

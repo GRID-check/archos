@@ -6,12 +6,12 @@ import logging
 import re
 from dataclasses import dataclass
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.common.source_kinds import READABLE_QUALIFIERS
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import legacy_shelf_for_collection_name
-from aiq_agent.common.source_kinds import parse_shelf
-from aiq_agent.common.source_kinds import shelf_for_qualifier
+from agent.citations.entries import SourceEntry
+from agent.common.source_kinds import READABLE_QUALIFIERS
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import legacy_shelf_for_collection_name
+from agent.common.source_kinds import parse_shelf
+from agent.common.source_kinds import shelf_for_qualifier
 
 logger = logging.getLogger(__name__)
 
@@ -119,9 +119,9 @@ def citation_key_of_path(text: str) -> tuple[list[str], Shelf | None] | None:
     mount states the shelf, the way a qualifier does. Verification would otherwise drop the citation and
     the answer lose its source without a word; this is that correction held by code, not prompt prose.
     """
-    from aiq_agent.common.estate_paths import MOUNT_SHELVES
-    from aiq_agent.common.estate_paths import file_name_candidates
-    from aiq_agent.common.estate_paths import mount_of_path
+    from agent.common.estate_paths import MOUNT_SHELVES
+    from agent.common.estate_paths import file_name_candidates
+    from agent.common.estate_paths import mount_of_path
 
     candidate = text.strip()
     if not candidate.startswith("/"):

@@ -20,7 +20,7 @@ A job with no organisation (the base-corpus sync, a RIS fetch) is its own lane,
 
 A SOURCE is the other way work arrives: a callable a worker asks when it is
 free, which claims one job from somewhere else (the durable queue,
-``aiq_agent.knowledge.ingest_queue``) and returns it as a zero-argument callable,
+``agent.knowledge.ingest_queue``) and returns it as a zero-argument callable,
 or None when there is nothing. Local lanes and the source take turns, so neither
 starves the other; the source orders its own jobs fairly (the claim query does
 the same fewest-running-first ordering, across every replica).

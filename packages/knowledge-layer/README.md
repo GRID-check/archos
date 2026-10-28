@@ -24,7 +24,7 @@ ever ran it, and it could not run the product's retrieval. It was deleted in
 [ADR-0072](../../docs/adr/0072-the-knowledge-layer-has-one-backend-llamaindex.md).
 
 The `BaseRetriever`/`BaseIngestor` seam and the adapter registry in
-`aiq_agent.knowledge.factory` stay: tests register fakes through them.
+`agent.knowledge.factory` stay: tests register fakes through them.
 
 ## Usage
 

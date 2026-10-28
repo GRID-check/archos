@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aiq_agent.agents.piloti.envelope_call import ainvoke_with_envelope_json_mode
+from agent.agents.piloti.envelope_call import ainvoke_with_envelope_json_mode
 
 
 class _Rejected(Exception):

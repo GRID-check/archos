@@ -9,8 +9,8 @@ import hashlib
 import json
 from typing import Any
 
-from aiq_agent.common.cost_tracking import USAGE_ROLE_EMBEDDING
-from aiq_agent.common.cost_tracking import meter_openai_client
+from agent.common.cost_tracking import USAGE_ROLE_EMBEDDING
+from agent.common.cost_tracking import meter_openai_client
 
 from .env import env_float
 from .env import env_int
@@ -107,7 +107,7 @@ def resolve_embed_api_key(base_url: str, model: str) -> str:
     chat-completions base URL, and embeddings need an embeddings-capable one, so
     there is nothing to point this at yet. Known follow-up — see docs.
     """
-    from aiq_agent.common.credential_resolution import resolve_llm_credential
+    from agent.common.credential_resolution import resolve_llm_credential
 
     return resolve_llm_credential(
         primary_env="EMBED_API_KEY",
@@ -128,8 +128,8 @@ def make_embed_model(*, base_url: str, model: str, api_key: str, **kwargs: Any):
     """
     from llama_index.embeddings.nvidia import NVIDIAEmbedding
 
-    from aiq_agent.common.openrouter import pinned_async_http_client
-    from aiq_agent.common.openrouter import pinned_http_client
+    from agent.common.openrouter import pinned_async_http_client
+    from agent.common.openrouter import pinned_http_client
 
     embed_model = NVIDIAEmbedding(
         base_url=base_url,

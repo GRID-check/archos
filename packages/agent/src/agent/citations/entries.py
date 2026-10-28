@@ -12,7 +12,7 @@ from urllib.parse import unquote
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
 
-from aiq_agent.common.grounding_block import SourceRegion
+from agent.common.grounding_block import SourceRegion
 
 logger = logging.getLogger(__name__)
 

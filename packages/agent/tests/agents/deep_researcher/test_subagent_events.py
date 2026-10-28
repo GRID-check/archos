@@ -25,18 +25,18 @@ from langchain_core.tools import tool
 from langgraph.graph import END
 from langgraph.graph import StateGraph
 
-from aiq_agent.agents.deep_researcher.custom_middleware import SubagentEventsMiddleware
-from aiq_agent.agents.deep_researcher.models import ResearchNotes
-from aiq_agent.agents.deep_researcher.models import ResearchQuery
-from aiq_agent.agents.deep_researcher.tools import research
-from aiq_agent.common.action_rows import ToolStepCallback
-from aiq_agent.common.turn_status import emit_step
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import StepFinishedBody
-from aiq_agent.common.wire_v2 import StepStartedBody
-from aiq_agent.common.wire_v2 import SubagentErrorBody
-from aiq_agent.common.wire_v2 import SubagentFinishedBody
-from aiq_agent.common.wire_v2 import SubagentStartedBody
+from agent.agents.deep_researcher.custom_middleware import SubagentEventsMiddleware
+from agent.agents.deep_researcher.models import ResearchNotes
+from agent.agents.deep_researcher.models import ResearchQuery
+from agent.agents.deep_researcher.tools import research
+from agent.common.action_rows import ToolStepCallback
+from agent.common.turn_status import emit_step
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import StepFinishedBody
+from agent.common.wire_v2 import StepStartedBody
+from agent.common.wire_v2 import SubagentErrorBody
+from agent.common.wire_v2 import SubagentFinishedBody
+from agent.common.wire_v2 import SubagentStartedBody
 
 
 class _ToolCallingFake(GenericFakeChatModel):
@@ -256,7 +256,7 @@ async def test_an_error_result_from_the_task_tool_is_a_failed_subagent_too() -> 
 
 @pytest.fixture(autouse=True)
 def _no_stray_subagent() -> Iterator[None]:
-    from aiq_agent.common.turn_status import current_subagent
+    from agent.common.turn_status import current_subagent
 
     assert current_subagent() is None
     yield

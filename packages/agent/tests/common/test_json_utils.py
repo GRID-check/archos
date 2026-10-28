@@ -1,6 +1,6 @@
 """Tests for JSON utility functions."""
 
-from aiq_agent.common.json_utils import extract_json
+from agent.common.json_utils import extract_json
 
 
 class TestExtractJson:

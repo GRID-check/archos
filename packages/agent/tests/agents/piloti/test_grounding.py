@@ -23,14 +23,14 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.answer_pipeline import prose_without_references
-from aiq_agent.agents.piloti.grounding import MEASUREMENT_TOOL_NAMES
-from aiq_agent.agents.piloti.grounding import tool_result_is_measurement
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common import LLMProvider
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.tools.bim.measure_register import _render
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.answer_pipeline import prose_without_references
+from agent.agents.piloti.grounding import MEASUREMENT_TOOL_NAMES
+from agent.agents.piloti.grounding import tool_result_is_measurement
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common import LLMProvider
+from agent.common.data_source_registry import reset_registry
+from agent.tools.bim.measure_register import _render
 
 FIXTURES = Path(__file__).resolve().parents[5] / "packages" / "ifc-spatial" / "test" / "fixtures"
 #: Geometry everywhere — the fixture that actually measures.
@@ -183,12 +183,12 @@ class TestMeasurementDetectionRejectsFailures:
 
     @staticmethod
     def _error_texts():
-        from aiq_agent.tools.bim.measure_register import ENGINE_UNAVAILABLE_TEXT
-        from aiq_agent.tools.bim.measure_register import UNAVAILABLE_TEXT
-        from aiq_agent.tools.bim.measure_register import _rejected_text
-        from aiq_agent.tools.bim.measure_register import _too_large_text
-        from aiq_agent.tools.bim.measure_register import _unrunnable_text
-        from aiq_agent.tools.bim.register import NO_PROJECT_TEXT
+        from agent.tools.bim.measure_register import ENGINE_UNAVAILABLE_TEXT
+        from agent.tools.bim.measure_register import UNAVAILABLE_TEXT
+        from agent.tools.bim.measure_register import _rejected_text
+        from agent.tools.bim.measure_register import _too_large_text
+        from agent.tools.bim.measure_register import _unrunnable_text
+        from agent.tools.bim.register import NO_PROJECT_TEXT
 
         return [
             UNAVAILABLE_TEXT,

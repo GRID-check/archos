@@ -19,17 +19,17 @@ from agent_testing.canvas import answering
 from agent_testing.look import room  # noqa: F401 - autouse: the canvas route answers
 from agent_testing.look import stored  # noqa: F401 - fixture, used by `pytestmark`
 
-from aiq_agent.common import image_view_budget
-from aiq_agent.common import turn_status
-from aiq_agent.common.focus_file import set_turn_intent
-from aiq_agent.common.wire_v2 import LookStep
-from aiq_agent.common.wire_v2 import StepFinishedBody
-from aiq_agent.tools.canvas.register import run_highlight
-from aiq_agent.tools.canvas.register import run_point
-from aiq_agent.tools.look.cards import place_look_cards
-from aiq_agent.tools.look.cards import relied_on
-from aiq_agent.tools.look.cards import take_looks
-from aiq_agent.tools.look.register import run_look
+from agent.common import image_view_budget
+from agent.common import turn_status
+from agent.common.focus_file import set_turn_intent
+from agent.common.wire_v2 import LookStep
+from agent.common.wire_v2 import StepFinishedBody
+from agent.tools.canvas.register import run_highlight
+from agent.tools.canvas.register import run_point
+from agent.tools.look.cards import place_look_cards
+from agent.tools.look.cards import relied_on
+from agent.tools.look.cards import take_looks
+from agent.tools.look.register import run_look
 
 OG = "22222222-0000-4000-8000-000000000002"
 
@@ -64,7 +64,7 @@ class _Cited:
 
 
 def _cited(*file_names: str) -> list:
-    from aiq_agent.citations.entries import SourceEntry
+    from agent.citations.entries import SourceEntry
 
     return [_Cited(SourceEntry(citation_key=f"{name}, p.1", source_type="knowledge_layer")) for name in file_names]
 
@@ -247,14 +247,14 @@ class TestWhichLooksTheAnswerKeeps:
 
 async def test_a_reading_rides_on_the_card_item(monkeypatch):
     """With a question, the reading the vision model gave is kept for the card, not only sent to the chat model."""
-    from aiq_agent.tools.look import register as look_register
-    from aiq_agent.tools.look.reading import Reading
-    from aiq_agent.tools.look.reading import ReadingLine
+    from agent.tools.look import register as look_register
+    from agent.tools.look.reading import Reading
+    from agent.tools.look.reading import ReadingLine
 
     async def fake_read(_jpeg, _question, region=False):
         return Reading(lines=(ReadingLine(text="Gangbreite 1,10 m", kind="dimension", confidence="high"),))
 
-    monkeypatch.setattr("aiq_agent.tools.look.reading.read_region", fake_read)
+    monkeypatch.setattr("agent.tools.look.reading.read_region", fake_read)
 
     class _View:
         text = "Page 1"
@@ -277,9 +277,9 @@ async def test_a_reading_rides_on_the_card_item(monkeypatch):
 
 async def test_every_line_a_look_read_counts_for_the_provenance_not_only_the_cards_one(registry, monkeypatch):
     """The card keeps the summary; a value on a later ``Gelesen:`` line must still be ``observed``."""
-    from aiq_agent.tools.look.cards import relied_readings
-    from aiq_agent.tools.look.reading import Reading
-    from aiq_agent.tools.look.reading import ReadingLine
+    from agent.tools.look.cards import relied_readings
+    from agent.tools.look.reading import Reading
+    from agent.tools.look.reading import ReadingLine
 
     async def fake_read(_jpeg, _question, region=False):
         return Reading(
@@ -290,7 +290,7 @@ async def test_every_line_a_look_read_counts_for_the_provenance_not_only_the_car
             summary="Ein Raum mit Höhenkote.",
         )
 
-    monkeypatch.setattr("aiq_agent.tools.look.reading.read_region", fake_read)
+    monkeypatch.setattr("agent.tools.look.reading.read_region", fake_read)
     set_turn_intent(file_name="Grundriss_EG.pdf", document_id=DOCUMENT)
 
     await run_look(page=1, region=[0.1, 0.1, 0.3, 0.2], question="Wie hoch ist der Raum?")

@@ -245,7 +245,7 @@ def abstract_lines(found: Mapping[tuple[str, str], Any]) -> dict[str, list[str]]
     """The written (tier-1) abstracts by folder path, one ``About:`` line per collection that has one.
 
     ``found`` maps ``(collection, folder_path)`` to what
-    ``aiq_agent.knowledge.folder_cards.listing_abstracts`` read: ``abstract``,
+    ``agent.knowledge.folder_cards.listing_abstracts`` read: ``abstract``,
     ``status``, ``generated_at``. A card that is not fresh says so and since when.
     """
     lines: dict[str, list[str]] = {}

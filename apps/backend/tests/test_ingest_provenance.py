@@ -9,7 +9,7 @@ documented posture is fail-open.
 
 The names are the contract and both sides pin it: the BFF twin is
 ``dispatch.spec.ts`` ("sends the four provenance keys for a published Piloti
-document"), and the parser is ``aiq_agent.common.provenance``. ``file_name`` is
+document"), and the parser is ``agent.common.provenance``. ``file_name`` is
 asserted here for the same reason — it is the chunk join key every purge
 addresses, and deriving it from the presigned URL is a guess about a string the
 BFF already knows.
@@ -24,9 +24,9 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_agent.knowledge.factory import clear_active_ingestor
-from aiq_agent.knowledge.factory import set_active_ingestor
-from aiq_api.routes.ingest import add_ingest_routes
+from agent.knowledge.factory import clear_active_ingestor
+from agent.knowledge.factory import set_active_ingestor
+from backend.routes.ingest import add_ingest_routes
 
 _PILOTI = {
     "file_ref": "http://seaweedfs.test/bucket/aktenvermerk-2026-09-01.md?X-Amz-Signature=abc",

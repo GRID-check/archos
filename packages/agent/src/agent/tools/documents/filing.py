@@ -30,7 +30,7 @@ implementation detail — **echo, never sign** — and
 unchanged.
 
 The transport, the token and the redirect guard are
-:mod:`aiq_agent.common.bff_http`'s, as for every other BFF client here.
+:mod:`agent.common.bff_http`'s, as for every other BFF client here.
 """
 
 from __future__ import annotations
@@ -39,8 +39,8 @@ import logging
 import urllib.parse
 from typing import Any
 
-from aiq_agent.common import bff_http
-from aiq_agent.common.bff_http import SignedEnvelope
+from agent.common import bff_http
+from agent.common.bff_http import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 

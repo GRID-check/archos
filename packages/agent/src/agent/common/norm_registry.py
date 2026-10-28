@@ -42,9 +42,9 @@ from pydantic import Field
 from pydantic import ValidationError
 from pydantic import field_validator
 
-from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE
-from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
-from aiq_agent.profile_names import normalize_profile_token
+from agent.common.source_kinds import AGENT_AUTHORED_LANE
+from agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
+from agent.profile_names import normalize_profile_token
 
 logger = logging.getLogger(__name__)
 
@@ -283,7 +283,7 @@ class NormsFile(BaseModel):
     version: int = 1
     corpus_collection: str = "oib_knowledge"
     # Optional CountryProfile data overrides (empty = code defaults win; see
-    # aiq_agent.common.country_profile). Admin-editable through the norms store.
+    # agent.common.country_profile). Admin-editable through the norms store.
     language: str = ""
     states: dict[str, str | None] = Field(default_factory=dict)
 
@@ -349,7 +349,7 @@ def set_db_loader(
     reset_registry_cache()
 
 
-# The repository root, three levels above this file (packages/agent/src/aiq_agent/common/).
+# The repository root, three levels above this file (packages/agent/src/agent/common/).
 # Only meaningful for a source checkout; an installed wheel has no seed beside it.
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 
@@ -536,7 +536,7 @@ def resolve_federal_state(text: str | None) -> str | None:
     2. ``extract_federal_state(text)`` — the structured prompt-text line, then
        free-text state-name probing (no live request context).
     """
-    from aiq_agent.project_context import GridRequestContext
+    from agent.project_context import GridRequestContext
 
     structured_token = GridRequestContext.from_context().federal_state
     if structured_token is not None:
@@ -586,7 +586,7 @@ def load_norms_file(country: str = "at") -> NormsFile | None:
 def doctrine_for(project_context: str | None) -> str:
     """The Normenhierarchie doctrine for the project's country (fail-open to AT)."""
     try:
-        from aiq_agent.common.country_profile import get_country_profile
+        from agent.common.country_profile import get_country_profile
 
         profile = get_country_profile(resolve_country(project_context))
         if profile is not None:
@@ -702,7 +702,7 @@ def render_block_for_prompt(project_context: str | None, norms_dir: str | None =
         return None
     corpus_note = None
     try:
-        from aiq_agent.common.country_profile import get_country_profile
+        from agent.common.country_profile import get_country_profile
 
         profile = get_country_profile(resolve_country(project_context))
         corpus_note = profile.corpus_note if profile else None
@@ -710,7 +710,7 @@ def render_block_for_prompt(project_context: str | None, norms_dir: str | None =
         logger.warning("norm_registry: corpus-note profile lookup failed", exc_info=True)
     block = render_prompt_block(registry, federal_state=resolve_federal_state(project_context), corpus_note=corpus_note)
     try:
-        from aiq_agent.common.applicability import render_project_block
+        from agent.common.applicability import render_project_block
 
         section = render_project_block(project_context or "")
     except Exception:  # noqa: BLE001 — applicability must never break prompt building
@@ -733,7 +733,7 @@ _PARCEL_TAGS = ("Bebauungsplan", "Flächenwidmungsplan")
 
 def _parcel_tags_for(country: str | None) -> tuple[str, ...]:
     try:
-        from aiq_agent.common.country_profile import get_country_profile
+        from agent.common.country_profile import get_country_profile
 
         profile = get_country_profile(country)
         if profile is not None:
@@ -820,7 +820,7 @@ _LANE_LABELS: dict[str, str] = {
     "building_law_ris": "Rechtsquelle (RIS)",
     "building_law_base": "Basisdokument",
     # Reachable only through stated PROVENANCE (``authored_by: agent``), never
-    # through a doc_class — see :data:`~aiq_agent.common.source_kinds.AGENT_AUTHORED_LANE`.
+    # through a doc_class — see :data:`~agent.common.source_kinds.AGENT_AUTHORED_LANE`.
     AGENT_AUTHORED_LANE: AGENT_AUTHORED_LANE_LABEL,
 }
 
@@ -882,11 +882,11 @@ def guess_doc_class(file_name: str) -> str:
 
     Wraps :func:`oib_doc_class` and maps its OIB filename class onto the
     doc_class vocabulary. An unknown filename (no OIB hint) resolves to the
-    neutral :data:`~aiq_agent.knowledge.document_classification.DEFAULT_DOC_CLASS`
+    neutral :data:`~agent.knowledge.document_classification.DEFAULT_DOC_CLASS`
     so ingestion always has a real value to store and stamp. Import is local to
     avoid an import cycle with the knowledge package.
     """
-    from aiq_agent.knowledge.document_classification import DEFAULT_DOC_CLASS
+    from agent.knowledge.document_classification import DEFAULT_DOC_CLASS
 
     raw = oib_doc_class(Path(file_name).name) if file_name else None
     return _OIB_CLASS_TO_DOC_CLASS.get(raw, DEFAULT_DOC_CLASS)
@@ -1283,19 +1283,19 @@ def lane_for_hit(
     hierarchy, in law blue, under the ``"Baurecht"`` label fallback. Who wrote
     a document is not a guess any of those signals can overturn.
     """
-    from aiq_agent.common.provenance import is_agent_author
-    from aiq_agent.common.source_kinds import Shelf
-    from aiq_agent.common.source_kinds import legacy_shelf_for_collection_name
-    from aiq_agent.common.source_kinds import parse_shelf
+    from agent.common.provenance import is_agent_author
+    from agent.common.source_kinds import Shelf
+    from agent.common.source_kinds import legacy_shelf_for_collection_name
+    from agent.common.source_kinds import parse_shelf
 
     if is_agent_author(authored_by):
         return (AGENT_AUTHORED_LANE, AGENT_AUTHORED_LANE_LABEL)
     known_shelf = parse_shelf(shelf) or legacy_shelf_for_collection_name(collection)
     users_shelf = known_shelf in (Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION)
     if doc_class:
-        from aiq_agent.knowledge.document_classification import DEFAULT_DOC_CLASS
-        from aiq_agent.knowledge.document_classification import DOCUMENT_CLASS_LANES
-        from aiq_agent.knowledge.document_classification import canonical_doc_class
+        from agent.knowledge.document_classification import DEFAULT_DOC_CLASS
+        from agent.knowledge.document_classification import DOCUMENT_CLASS_LANES
+        from agent.knowledge.document_classification import canonical_doc_class
 
         # A hit from a point written before the English keys still carries the German one.
         doc_class = canonical_doc_class(doc_class)

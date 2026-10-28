@@ -19,11 +19,11 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from langgraph.store.memory import InMemoryStore
 
-from aiq_agent.tools.documents import draft_store
-from aiq_agent.tools.documents.draft_store import DRAFT_ROOT
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.tools.documents.draft_store import draft_namespace
-from aiq_api.routes.internal_auth import _DEV_DEFAULT_TOKEN
+from agent.tools.documents import draft_store
+from agent.tools.documents.draft_store import DRAFT_ROOT
+from agent.tools.documents.draft_store import DraftBackend
+from agent.tools.documents.draft_store import draft_namespace
+from backend.routes.internal_auth import _DEV_DEFAULT_TOKEN
 
 _TOKEN = "real-internal-secret"
 CONVERSATION = "conv-cleanup-1"
@@ -44,7 +44,7 @@ def store(monkeypatch: pytest.MonkeyPatch) -> InMemoryStore:
 
 @pytest.fixture
 def client(store) -> TestClient:
-    from aiq_api.routes.drafts import add_draft_routes
+    from backend.routes.drafts import add_draft_routes
 
     router = APIRouter()
     add_draft_routes(router)
@@ -137,5 +137,5 @@ class TestTheDeletion:
         async def _explode(conversation_id: str, dsn: str | None = None) -> int:
             raise RuntimeError("store is down")
 
-        monkeypatch.setattr("aiq_api.routes.drafts.delete_conversation_drafts", _explode)
+        monkeypatch.setattr("backend.routes.drafts.delete_conversation_drafts", _explode)
         assert _delete(client).status_code == 500

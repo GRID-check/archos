@@ -14,16 +14,16 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-from aiq_agent.auth import Principal
-from aiq_agent.auth import get_current_principal
-from aiq_agent.common.db_utils import ensure_schema
-from aiq_agent.common.db_utils import present_columns
-from aiq_agent.common.db_utils import present_indexes
-from aiq_agent.common.source_kinds import is_office_shelf_collection
-from aiq_agent.knowledge.restricted_collections import base_collection_of
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from aiq_agent.project_context import GridRequestContext
+from agent.auth import Principal
+from agent.auth import get_current_principal
+from agent.common.db_utils import ensure_schema
+from agent.common.db_utils import present_columns
+from agent.common.db_utils import present_indexes
+from agent.common.source_kinds import is_office_shelf_collection
+from agent.knowledge.restricted_collections import base_collection_of
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+from agent.project_context import GridRequestContext
 
 _job_access_schema_initialized: set[str] = set()
 
@@ -311,7 +311,7 @@ def _make_no_auth_principal(owner: str | None = None) -> Principal:
     job submission); otherwise the caller type is used as a stable subject.
     """
     try:
-        from aiq_agent.auth.request_identity import get_current_user
+        from agent.auth.request_identity import get_current_user
 
         current_user = get_current_user()
     except Exception:
@@ -348,7 +348,7 @@ def _base_collection_name() -> str:
     """Return the configured base/OIB knowledge collection name.
 
     Mirrors the env var precedence used elsewhere in the codebase
-    (e.g. ``aiq_agent.oib_sync``): ``OIB_COLLECTION_NAME`` wins over the
+    (e.g. ``agent.oib_sync``): ``OIB_COLLECTION_NAME`` wins over the
     legacy ``COLLECTION_NAME``, defaulting to ``oib_knowledge``.
     """
     return os.environ.get("OIB_COLLECTION_NAME") or os.environ.get("COLLECTION_NAME") or "oib_knowledge"
@@ -600,7 +600,7 @@ def _create_job_access_schema(conn: Connection, db_url: str) -> None:
     # EXISTS`` and ``ADD COLUMN IF NOT EXISTS`` lock the table before they check,
     # so issued on every start they block its writers or readers for nothing, and
     # queue behind any session a dead node left holding the table
-    # (``aiq_agent.common.db_utils.present_columns``). On a current table this
+    # (``agent.common.db_utils.present_columns``). On a current table this
     # issues no DDL at all.
     indexes = present_indexes(conn, "job_access")
     if "idx_job_access_owner" not in indexes:

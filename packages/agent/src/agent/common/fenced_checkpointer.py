@@ -2,7 +2,7 @@
 
 The conversation's LangGraph thread is the one piece of shared state two turns
 of a conversation must never write at once (ADR-0080). This wraps the real
-saver and puts every write to it behind :func:`aiq_agent.common.write_fence.guarded_write`:
+saver and puts every write to it behind :func:`agent.common.write_fence.guarded_write`:
 checked against the turn's fence first, then bounded in time. Reads, and every
 call made outside a turn that has a fence (a job, a single process, affinity
 on), go straight through.
@@ -29,9 +29,9 @@ from langgraph.checkpoint.base import Checkpoint
 from langgraph.checkpoint.base import CheckpointMetadata
 from langgraph.checkpoint.base import CheckpointTuple
 
-from aiq_agent.common.write_fence import check_write
-from aiq_agent.common.write_fence import current_write_fence
-from aiq_agent.common.write_fence import guarded_write
+from agent.common.write_fence import check_write
+from agent.common.write_fence import current_write_fence
+from agent.common.write_fence import guarded_write
 
 
 class FencedCheckpointer(BaseCheckpointSaver):

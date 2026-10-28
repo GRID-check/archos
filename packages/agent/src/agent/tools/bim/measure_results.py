@@ -3,16 +3,16 @@
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.tools.bim.measure_bodies import _is_batch
-from aiq_agent.tools.bim.measure_bodies import _is_profile
-from aiq_agent.tools.bim.measure_bodies import _model_identity
-from aiq_agent.tools.bim.measure_format import _tolerance_text
-from aiq_agent.tools.bim.measure_render import _provenance_line
-from aiq_agent.tools.bim.measure_render import _value_with_unit
-from aiq_agent.tools.bim.measure_vocab import NON_MEASURING_OPERATIONS
-from aiq_agent.tools.bim.measurement_evidence import EVIDENCE_PROVENANCES
-from aiq_agent.tools.bim.measurement_sources import MeasuredElement
-from aiq_agent.tools.bim.measurement_sources import MeasurementSource
+from agent.tools.bim.measure_bodies import _is_batch
+from agent.tools.bim.measure_bodies import _is_profile
+from agent.tools.bim.measure_bodies import _model_identity
+from agent.tools.bim.measure_format import _tolerance_text
+from agent.tools.bim.measure_render import _provenance_line
+from agent.tools.bim.measure_render import _value_with_unit
+from agent.tools.bim.measure_vocab import NON_MEASURING_OPERATIONS
+from agent.tools.bim.measurement_evidence import EVIDENCE_PROVENANCES
+from agent.tools.bim.measurement_sources import MeasuredElement
+from agent.tools.bim.measurement_sources import MeasurementSource
 
 # ── evidence: what the result says about itself ──────────────────────────────
 

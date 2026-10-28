@@ -15,8 +15,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from aiq_agent import corpus_store
-from aiq_agent.common import seaweed_s3
+from agent import corpus_store
+from agent.common import seaweed_s3
 from tests.object_corpus_fakes import FakeBucket
 from tests.object_corpus_fakes import install
 

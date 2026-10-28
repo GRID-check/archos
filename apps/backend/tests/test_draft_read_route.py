@@ -21,16 +21,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from langgraph.store.memory import InMemoryStore
 
-from aiq_agent.tools.documents import draft_store
-from aiq_agent.tools.documents.draft_store import DRAFT_ROOT
-from aiq_agent.tools.documents.draft_store import FILED_DOCUMENT_KEY
-from aiq_agent.tools.documents.draft_store import FILED_HASH_KEY
-from aiq_agent.tools.documents.draft_store import FILED_STATE_KEY
-from aiq_agent.tools.documents.draft_store import FILED_VERSION_KEY
-from aiq_agent.tools.documents.draft_store import MAX_DRAFT_BYTES
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.tools.documents.draft_store import draft_namespace
-from aiq_api.routes.internal_auth import _DEV_DEFAULT_TOKEN
+from agent.tools.documents import draft_store
+from agent.tools.documents.draft_store import DRAFT_ROOT
+from agent.tools.documents.draft_store import FILED_DOCUMENT_KEY
+from agent.tools.documents.draft_store import FILED_HASH_KEY
+from agent.tools.documents.draft_store import FILED_STATE_KEY
+from agent.tools.documents.draft_store import FILED_VERSION_KEY
+from agent.tools.documents.draft_store import MAX_DRAFT_BYTES
+from agent.tools.documents.draft_store import DraftBackend
+from agent.tools.documents.draft_store import draft_namespace
+from backend.routes.internal_auth import _DEV_DEFAULT_TOKEN
 
 _TOKEN = "real-internal-secret"
 CONVERSATION = "conv-read-1"
@@ -53,7 +53,7 @@ def store(monkeypatch: pytest.MonkeyPatch) -> InMemoryStore:
 
 @pytest.fixture
 def client(store) -> TestClient:
-    from aiq_api.routes.drafts import add_draft_routes
+    from backend.routes.drafts import add_draft_routes
 
     router = APIRouter()
     add_draft_routes(router)

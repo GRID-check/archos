@@ -49,76 +49,76 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt import tools_condition
 
-from aiq_agent.citations.entries import is_look_place
-from aiq_agent.citations.entries import is_look_tool
-from aiq_agent.citations.extraction import extract_sources_from_tool_result
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.citations.session import begin_turn_capture
-from aiq_agent.citations.session import end_turn_capture
-from aiq_agent.citations.session import get_session_registry
-from aiq_agent.citations.session import get_turn_captures
-from aiq_agent.citations.session import record_turn_capture
-from aiq_agent.citations.session import reset_session_registry
-from aiq_agent.citations.session import set_session_registry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common import content_to_text
-from aiq_agent.common.cost_tracking import grid_cost_tracker_var
-from aiq_agent.common.data_sources import disabled_source_notice
-from aiq_agent.common.data_sources import source_id_for_call
-from aiq_agent.common.grounding_block import begin_grounding_capture
-from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.grounding_block import strip_trace_lanes
-from aiq_agent.common.model_vision import chat_model_scope
-from aiq_agent.common.model_vision import model_name_of
-from aiq_agent.common.prompt_caching import begin_stable_prefix
-from aiq_agent.common.prompt_caching import end_stable_prefix
-from aiq_agent.common.retrieval_rounds import assistant_checkpoint
-from aiq_agent.common.retrieval_rounds import failed_call_ids
-from aiq_agent.common.retrieval_rounds import ran_signatures
-from aiq_agent.common.retrieval_rounds import repeat_fetches
-from aiq_agent.common.retrieval_rounds import signatures_of
-from aiq_agent.common.retrieval_status import emit_retrieval
-from aiq_agent.common.retrieval_status import emit_synthesis
-from aiq_agent.common.retrieval_status import record_round_announcement
-from aiq_agent.common.steering import HELD_FOR_STEER
-from aiq_agent.common.steering import AppliedSteer
-from aiq_agent.common.steering import SteerInbox
-from aiq_agent.common.steering import SteerNote
-from aiq_agent.common.steering import current_steer_inbox
-from aiq_agent.common.steering import is_write_call
-from aiq_agent.common.steering import render_note
-from aiq_agent.common.tool_calls import fetch_signature
-from aiq_agent.common.tool_calls import is_retrieval_round
-from aiq_agent.common.tool_calls import is_skill_read
-from aiq_agent.common.tool_calls import tool_basename
-from aiq_agent.common.tool_errors import render_tool_error
-from aiq_agent.common.turn_notices import emit_family_coverage
-from aiq_agent.common.turn_notices import emit_input_budget_exhausted
-from aiq_agent.common.turn_notices import emit_refused_source
-from aiq_agent.common.turn_notices import emit_repeat_fetch
-from aiq_agent.common.turn_notices import emit_research_truncated
-from aiq_agent.common.turn_notices import emit_steered_writes
-from aiq_agent.common.turn_notices import emit_width_cap
-from aiq_agent.common.turn_status import begin_lane_capture
-from aiq_agent.common.turn_status import emit
-from aiq_agent.common.turn_status import end_lane_capture
-from aiq_agent.common.turn_status import get_lane_captures
-from aiq_agent.common.turn_status import retrieval_round_scope
-from aiq_agent.common.wire_v2 import SteerAppliedBody
-from aiq_agent.common.wire_v2 import SteerAppliedValue
-from aiq_agent.knowledge.already_read import merge_digest
-from aiq_agent.knowledge.restricted_use import admit_tool_results
-from aiq_agent.knowledge.restricted_use import report_collections_read
-from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
-from aiq_agent.observability.langfuse_trace_attributes import begin_turn_prompt_link
-from aiq_agent.observability.langfuse_trace_attributes import end_turn_prompt_link
-from aiq_agent.observability.retrieval_trace import emit_step_span
-from aiq_agent.observability.turn_outcome import record_turn_facts
-from aiq_agent.tools.bim.measurement_sources import begin_measurement_capture
-from aiq_agent.tools.bim.measurement_sources import end_measurement_capture
-from aiq_agent.tools.bim.measurement_sources import get_measurement_captures
-from aiq_agent.turn.answer_stream import streaming_call
+from agent.citations.entries import is_look_place
+from agent.citations.entries import is_look_tool
+from agent.citations.extraction import extract_sources_from_tool_result
+from agent.citations.registry import SourceRegistry
+from agent.citations.session import begin_turn_capture
+from agent.citations.session import end_turn_capture
+from agent.citations.session import get_session_registry
+from agent.citations.session import get_turn_captures
+from agent.citations.session import record_turn_capture
+from agent.citations.session import reset_session_registry
+from agent.citations.session import set_session_registry
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common import content_to_text
+from agent.common.cost_tracking import grid_cost_tracker_var
+from agent.common.data_sources import disabled_source_notice
+from agent.common.data_sources import source_id_for_call
+from agent.common.grounding_block import begin_grounding_capture
+from agent.common.grounding_block import end_grounding_capture
+from agent.common.grounding_block import strip_trace_lanes
+from agent.common.model_vision import chat_model_scope
+from agent.common.model_vision import model_name_of
+from agent.common.prompt_caching import begin_stable_prefix
+from agent.common.prompt_caching import end_stable_prefix
+from agent.common.retrieval_rounds import assistant_checkpoint
+from agent.common.retrieval_rounds import failed_call_ids
+from agent.common.retrieval_rounds import ran_signatures
+from agent.common.retrieval_rounds import repeat_fetches
+from agent.common.retrieval_rounds import signatures_of
+from agent.common.retrieval_status import emit_retrieval
+from agent.common.retrieval_status import emit_synthesis
+from agent.common.retrieval_status import record_round_announcement
+from agent.common.steering import HELD_FOR_STEER
+from agent.common.steering import AppliedSteer
+from agent.common.steering import SteerInbox
+from agent.common.steering import SteerNote
+from agent.common.steering import current_steer_inbox
+from agent.common.steering import is_write_call
+from agent.common.steering import render_note
+from agent.common.tool_calls import fetch_signature
+from agent.common.tool_calls import is_retrieval_round
+from agent.common.tool_calls import is_skill_read
+from agent.common.tool_calls import tool_basename
+from agent.common.tool_errors import render_tool_error
+from agent.common.turn_notices import emit_family_coverage
+from agent.common.turn_notices import emit_input_budget_exhausted
+from agent.common.turn_notices import emit_refused_source
+from agent.common.turn_notices import emit_repeat_fetch
+from agent.common.turn_notices import emit_research_truncated
+from agent.common.turn_notices import emit_steered_writes
+from agent.common.turn_notices import emit_width_cap
+from agent.common.turn_status import begin_lane_capture
+from agent.common.turn_status import emit
+from agent.common.turn_status import end_lane_capture
+from agent.common.turn_status import get_lane_captures
+from agent.common.turn_status import retrieval_round_scope
+from agent.common.wire_v2 import SteerAppliedBody
+from agent.common.wire_v2 import SteerAppliedValue
+from agent.knowledge.already_read import merge_digest
+from agent.knowledge.restricted_use import admit_tool_results
+from agent.knowledge.restricted_use import report_collections_read
+from agent.observability.langfuse_trace_attributes import add_trace_tag
+from agent.observability.langfuse_trace_attributes import begin_turn_prompt_link
+from agent.observability.langfuse_trace_attributes import end_turn_prompt_link
+from agent.observability.retrieval_trace import emit_step_span
+from agent.observability.turn_outcome import record_turn_facts
+from agent.tools.bim.measurement_sources import begin_measurement_capture
+from agent.tools.bim.measurement_sources import end_measurement_capture
+from agent.tools.bim.measurement_sources import get_measurement_captures
+from agent.turn.answer_stream import streaming_call
 
 from .answer_check import turn_check
 from .answer_pipeline import CardRepairFn
@@ -599,8 +599,8 @@ def _report_family_coverage(turn_sources: Sequence[Any]) -> None:
     answer.
     """
     try:
-        from aiq_agent.common.norm_registry import oib_family_member
-        from aiq_agent.knowledge.inventory import get_norm_families
+        from agent.common.norm_registry import oib_family_member
+        from agent.knowledge.inventory import get_norm_families
 
         families = get_norm_families()
         if not families:
@@ -1004,7 +1004,7 @@ class PilotiAgent:
     #: The state model ``run`` takes. Declared rather than derived: the async
     #: job runner used to spell it out of the class name, so renaming the class
     #: silently handed the agent a bare dict instead of a state object
-    #: (``aiq_api.jobs.runner._get_agent_state_class``).
+    #: (``backend.jobs.runner._get_agent_state_class``).
     state_model = ResearchAgentState
 
     def __init__(
@@ -1446,7 +1446,7 @@ class PilotiAgent:
             return None
 
         async def repair(card: dict[str, Any], refusal: str, answer: str) -> dict[str, Any] | None:
-            from aiq_agent.cards.repair import repair_card
+            from agent.cards.repair import repair_card
 
             return await repair_card(llm, card, refusal, answer)
 

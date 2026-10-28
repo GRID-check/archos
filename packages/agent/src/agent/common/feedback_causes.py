@@ -74,8 +74,8 @@ async def label_causes(samples: Sequence[Any], *, organization_id: str | None = 
     """One cause per down-vote sample, ``None`` where none was decided."""
     if not samples:
         return []
-    from aiq_agent.common.decisions import choice
-    from aiq_agent.common.decisions import decide_many
+    from agent.common.decisions import choice
+    from agent.common.decisions import decide_many
 
     decided = await decide_many(
         [_state(sample) for sample in samples],

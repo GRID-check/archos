@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from aiq_agent.observability.langfuse_scores import turn_outcome_scores
-from aiq_agent.observability.turn_outcome import outcome_metadata
-from aiq_agent.observability.turn_outcome import outcome_tags
+from agent.observability.langfuse_scores import turn_outcome_scores
+from agent.observability.turn_outcome import outcome_metadata
+from agent.observability.turn_outcome import outcome_tags
 
 
 def _card(card: dict) -> SimpleNamespace:

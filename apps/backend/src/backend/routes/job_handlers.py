@@ -16,8 +16,8 @@ from fastapi import HTTPException
 from fastapi import Request
 from fastapi.responses import StreamingResponse
 
-from aiq_agent.common.data_source_registry import get_all_sources
-from aiq_agent.common.job_admission import JobAdmissionError
+from agent.common.data_source_registry import get_all_sources
+from agent.common.job_admission import JobAdmissionError
 
 from ..jobs.access import JobCaller
 from ..jobs.access import require_verified_principal
@@ -113,7 +113,7 @@ async def _submitted(req: JobSubmitRequest, request: Request, principal: Any, ex
     Every failure is a status code with a user-safe message: arbitrary internal
     error text (hosts, DSNs, stack details) is logged here and never echoed.
     """
-    from aiq_agent.auth import get_auth_token
+    from agent.auth import get_auth_token
 
     from ..jobs.run_envelope import capture_request_envelope
     from ..jobs.submit import DuplicateJobIdError

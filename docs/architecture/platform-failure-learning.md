@@ -44,7 +44,7 @@ down-vote (existing WS-7 capture: verdict + reason chip + comment)
                  new + flagged  → CANDIDATE, held for a human
   active lessons ──► bounded digest (≤20 lessons / 1600 chars, cached 5 min) + the ids of the lessons in it
     └─ GET /api/internal/platform-lessons/digest   [token-guarded, cross-tenant]  { digest, lessonIds }
-         └─ aiq_agent.common.platform_lessons      [60 s TTL, fail-open to None]
+         └─ agent.common.platform_lessons      [60 s TTL, fail-open to None]
               └─ piloti.j2 §PLATFORM_LESSONS   [meta-framing, everything outranks it]
 ```
 
@@ -359,10 +359,10 @@ means anything.
 |---|---|
 | Pipeline service + digest | `apps/workspace/bff/platform-lessons/service.ts` |
 | Repository (all SQL) | `apps/workspace/bff/platform-lessons/repository.ts` |
-| Distiller/auditor route | `apps/backend/src/aiq_api/routes/lesson_distill.py` |
+| Distiller/auditor route | `apps/backend/src/backend/routes/lesson_distill.py` |
 | PII scrub | `apps/workspace/bff/text/redact-pii.ts` |
 | Schema | `apps/workspace/bff/db/schema/platform-lessons.ts`, migration `0068` |
 | Trigger | `apps/workspace/app/api/feedback/answers/route.ts` (`after()`) |
-| Internal pull | `apps/workspace/app/api/internal/platform-lessons/digest/route.ts` → `packages/agent/src/aiq_agent/common/platform_lessons.py` |
-| Prompt section | `packages/agent/src/aiq_agent/agents/piloti/prompts/piloti.j2` §PLATFORM_LESSONS |
+| Internal pull | `apps/workspace/app/api/internal/platform-lessons/digest/route.ts` → `packages/agent/src/agent/common/platform_lessons.py` |
+| Prompt section | `packages/agent/src/agent/agents/piloti/prompts/piloti.j2` §PLATFORM_LESSONS |
 | Dashboard | `apps/workspace/app/app/(shell)/platform/lessons/` |

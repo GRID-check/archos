@@ -40,7 +40,7 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
-from aiq_agent.profile_names import normalize_prompt_view
+from agent.profile_names import normalize_prompt_view
 
 Facts = dict[str, Any]
 VerdictName = Literal["required", "likely", "check"]

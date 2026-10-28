@@ -8,7 +8,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 
-from aiq_agent.common.plan_vocabulary import LEGACY_PLAN_GENRE
+from agent.common.plan_vocabulary import LEGACY_PLAN_GENRE
 
 
 class _StrictContract(BaseModel):

@@ -7,7 +7,7 @@
  * `operation`, because the four differ in exactly one line: what each row of
  * the proposal SAYS (`./FileOperationRows`). The lifecycle is the proposal's.
  *
- * System-emitted (`aiq_agent/tools/files/`): the model cannot author one, so
+ * System-emitted (`agent/tools/files/`): the model cannot author one, so
  * every file named here is a file the tool resolved against the reader's own
  * inventory. What it must not claim is the change itself — the backend has no
  * path into `app` (ADR-0003), so until a person applies it nothing has

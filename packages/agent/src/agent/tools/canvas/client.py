@@ -6,7 +6,7 @@ person's pinned session, resolves the document (the ``documentId`` a call
 names, checked against the asker's access and the turn's signed scope, or else
 the envelope's CONVERSATION subject) and applies the rules a person's own
 session would (ADR-0054 §4, ADR-0055). Echo, never sign: see
-``packages/agent/src/aiq_agent/tools/AGENTS.md``.
+``packages/agent/src/agent/tools/AGENTS.md``.
 
 The Anmerkungen bodies are described once, in zod (``apps/workspace/bff/annotations/types.ts``),
 and exported as JSON Schema (``apps/workspace/tests/fixtures/document-annotations.schema.json``);
@@ -21,8 +21,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiq_agent.common import bff_http
-from aiq_agent.common.bff_http import SignedEnvelope
+from agent.common import bff_http
+from agent.common.bff_http import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 

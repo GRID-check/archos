@@ -1,9 +1,9 @@
 """NAT registration for the chat workflow: the conversation graph as a turn.
 
-Beside the graph it registers (:mod:`aiq_agent.agents.piloti.conversation`)
+Beside the graph it registers (:mod:`agent.agents.piloti.conversation`)
 and nothing else: the config, the wiring of the sibling NAT functions into that
 graph, and a ``_run`` that composes the per-turn harness from
-:mod:`aiq_agent.turn`. The answering agent, the escalation edge and the
+:mod:`agent.turn`. The answering agent, the escalation edge and the
 conversation state are Piloti's, which is why this lives here rather
 than in a package of its own.
 """
@@ -20,82 +20,82 @@ from typing import Any
 from langchain_core.messages import HumanMessage
 from pydantic import Field
 
-from aiq_agent.agents.piloti.clarify import ClarifierSettings
-from aiq_agent.agents.piloti.clarify import build_clarifier
-from aiq_agent.agents.piloti.conversation import ConversationGraph
-from aiq_agent.agents.piloti.history import warm_token_encoder
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.auth.request_identity import skip_clarifier_requested
-from aiq_agent.common import AgentGroup
-from aiq_agent.common import filter_tools_by_sources
-from aiq_agent.common import format_tool_unavailability_error
-from aiq_agent.common import get_all_tool_refs
-from aiq_agent.common import get_checkpointer
-from aiq_agent.common import get_langchain_llm
-from aiq_agent.common import validate_tool_availability
-from aiq_agent.common.agent_tools import load_agent_tools
-from aiq_agent.common.fenced_checkpointer import FencedCheckpointer
-from aiq_agent.common.profiler import flush_after_answer
-from aiq_agent.common.profiler import track_agent_profile
-from aiq_agent.common.retrieval_status import documents_loading_step
-from aiq_agent.common.wire_v2 import EventBody
-from aiq_agent.common.wire_v2 import RunFinishedBody
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.common.wire_v2 import StepFinishedBody
-from aiq_agent.conversation_context import register_context_appender
-from aiq_agent.knowledge.inventory import get_turn_documents
-from aiq_agent.knowledge.inventory import set_inventory_drops
-from aiq_agent.knowledge.inventory import set_norm_families
-from aiq_agent.knowledge.inventory import set_turn_documents
-from aiq_agent.knowledge.restricted_use import CrossProjectTurn
-from aiq_agent.knowledge.restricted_use import begin_restricted_use
-from aiq_agent.knowledge.restricted_use import bind_cross_project_turn
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import without_restricted
-from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
-from aiq_agent.memory.shown_notes import ShownNotes
-from aiq_agent.observability.turn_outcome import record_turn_facts
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.stages import schedule_post_answer_stages
-from aiq_agent.tools.canvas.policy import withhold_restricted_for_thread
-from aiq_agent.tools.canvas.presence import begin_canvas_presence
-from aiq_agent.tools.canvas.presence import leave_canvas
-from aiq_agent.turn.admission import PROFILE_AGENT_NAME
-from aiq_agent.turn.admission import TurnLedgers
-from aiq_agent.turn.admission import TurnOutcome
-from aiq_agent.turn.admission import answer_turn
-from aiq_agent.turn.admission import refused
-from aiq_agent.turn.admission import spanned
-from aiq_agent.turn.answer_stream import answer_streaming_enabled
-from aiq_agent.turn.answer_stream import bound_live_prose
-from aiq_agent.turn.context import TurnContext
-from aiq_agent.turn.context import load_turn_context
-from aiq_agent.turn.context import settle_restriction
-from aiq_agent.turn.context import thread_id_for_turn
-from aiq_agent.turn.context import turn_identity
-from aiq_agent.turn.context import user_info_for
-from aiq_agent.turn.dispatch import build_run_commissioner
-from aiq_agent.turn.inventory import Inventory
-from aiq_agent.turn.inventory import load_inventory
-from aiq_agent.turn.inventory import pending_uploads
-from aiq_agent.turn.inventory import resolve_scope
-from aiq_agent.turn.inventory import shelves_in_scope
-from aiq_agent.turn.inventory import wait_for_uploads
-from aiq_agent.turn.payload import TurnInputs
-from aiq_agent.turn.payload import extract_turn_inputs
-from aiq_agent.turn.registries import TurnRegistries
-from aiq_agent.turn.registries import load_session_registry
-from aiq_agent.turn.registries import load_turn_shown_notes
-from aiq_agent.turn.registries import turn_registries
-from aiq_agent.turn.response import answer_message_id
-from aiq_agent.turn.response import build_result
-from aiq_agent.turn.response import finished
-from aiq_agent.turn.response import post_answer_turn_facts
-from aiq_agent.turn.response import turn_answer_message_id
-from aiq_agent.turn.streaming import TurnTextFold
-from aiq_agent.turn.streaming import fold_turn
-from aiq_agent.turn.streaming import note_settled_replaced
-from aiq_agent.turn.subject_document import load_subject_document
+from agent.agents.piloti.clarify import ClarifierSettings
+from agent.agents.piloti.clarify import build_clarifier
+from agent.agents.piloti.conversation import ConversationGraph
+from agent.agents.piloti.history import warm_token_encoder
+from agent.agents.piloti.models import ConversationState
+from agent.auth.request_identity import skip_clarifier_requested
+from agent.common import AgentGroup
+from agent.common import filter_tools_by_sources
+from agent.common import format_tool_unavailability_error
+from agent.common import get_all_tool_refs
+from agent.common import get_checkpointer
+from agent.common import get_langchain_llm
+from agent.common import validate_tool_availability
+from agent.common.agent_tools import load_agent_tools
+from agent.common.fenced_checkpointer import FencedCheckpointer
+from agent.common.profiler import flush_after_answer
+from agent.common.profiler import track_agent_profile
+from agent.common.retrieval_status import documents_loading_step
+from agent.common.wire_v2 import EventBody
+from agent.common.wire_v2 import RunFinishedBody
+from agent.common.wire_v2 import StatusStep
+from agent.common.wire_v2 import StepFinishedBody
+from agent.conversation_context import register_context_appender
+from agent.knowledge.inventory import get_turn_documents
+from agent.knowledge.inventory import set_inventory_drops
+from agent.knowledge.inventory import set_norm_families
+from agent.knowledge.inventory import set_turn_documents
+from agent.knowledge.restricted_use import CrossProjectTurn
+from agent.knowledge.restricted_use import begin_restricted_use
+from agent.knowledge.restricted_use import bind_cross_project_turn
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import without_restricted
+from agent.knowledge.scoping import get_scoped_collections_from_context
+from agent.memory.shown_notes import ShownNotes
+from agent.observability.turn_outcome import record_turn_facts
+from agent.project_context import GridRequestContext
+from agent.stages import schedule_post_answer_stages
+from agent.tools.canvas.policy import withhold_restricted_for_thread
+from agent.tools.canvas.presence import begin_canvas_presence
+from agent.tools.canvas.presence import leave_canvas
+from agent.turn.admission import PROFILE_AGENT_NAME
+from agent.turn.admission import TurnLedgers
+from agent.turn.admission import TurnOutcome
+from agent.turn.admission import answer_turn
+from agent.turn.admission import refused
+from agent.turn.admission import spanned
+from agent.turn.answer_stream import answer_streaming_enabled
+from agent.turn.answer_stream import bound_live_prose
+from agent.turn.context import TurnContext
+from agent.turn.context import load_turn_context
+from agent.turn.context import settle_restriction
+from agent.turn.context import thread_id_for_turn
+from agent.turn.context import turn_identity
+from agent.turn.context import user_info_for
+from agent.turn.dispatch import build_run_commissioner
+from agent.turn.inventory import Inventory
+from agent.turn.inventory import load_inventory
+from agent.turn.inventory import pending_uploads
+from agent.turn.inventory import resolve_scope
+from agent.turn.inventory import shelves_in_scope
+from agent.turn.inventory import wait_for_uploads
+from agent.turn.payload import TurnInputs
+from agent.turn.payload import extract_turn_inputs
+from agent.turn.registries import TurnRegistries
+from agent.turn.registries import load_session_registry
+from agent.turn.registries import load_turn_shown_notes
+from agent.turn.registries import turn_registries
+from agent.turn.response import answer_message_id
+from agent.turn.response import build_result
+from agent.turn.response import finished
+from agent.turn.response import post_answer_turn_facts
+from agent.turn.response import turn_answer_message_id
+from agent.turn.streaming import TurnTextFold
+from agent.turn.streaming import fold_turn
+from agent.turn.streaming import note_settled_replaced
+from agent.turn.subject_document import load_subject_document
 from nat.data_models.streaming import Streaming
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
@@ -298,7 +298,7 @@ def _finished(
     """The terminal a finished turn delivers, with its post-answer stages scheduled.
 
     ONE call site for every stage, fire-and-forget: which stages exist and
-    what gates them is declared in `aiq_agent/stages/`. Every fact a gate may
+    what gates them is declared in `agent/stages/`. Every fact a gate may
     read is captured here, while the request context is still live.
     """
     if inputs.focus_region is not None:
@@ -337,9 +337,9 @@ async def _load_setup(
 ) -> tuple[TurnContext, Inventory, Any, StatusStep | None, ShownNotes]:
     """The four independent setup I/O paths, overlapped.
 
-    Each fails open on its own (:mod:`aiq_agent.turn.context`,
-    :mod:`aiq_agent.turn.inventory`, :mod:`aiq_agent.turn.registries`,
-    :mod:`aiq_agent.turn.subject_document`), so the gather cannot let one dead
+    Each fails open on its own (:mod:`agent.turn.context`,
+    :mod:`agent.turn.inventory`, :mod:`agent.turn.registries`,
+    :mod:`agent.turn.subject_document`), so the gather cannot let one dead
     branch lose the others' results — or the turn.
 
     The subject read is a member and not a step in front of the gather for the
@@ -498,7 +498,7 @@ async def _answer(turn: _Turn, *, message_id: str, stream: bool) -> AsyncIterato
 
 
 def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, stage_llms: dict):
-    """The per-turn entry point NAT calls, composed from ``aiq_agent.turn``."""
+    """The per-turn entry point NAT calls, composed from ``agent.turn``."""
     any_stage_llm = any(llm is not None for llm in stage_llms.values())
 
     async def _run(query: object) -> Annotated[AsyncGenerator[EventBody], Streaming(convert=fold_turn)]:

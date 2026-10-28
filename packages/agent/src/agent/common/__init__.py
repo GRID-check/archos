@@ -9,7 +9,7 @@ import sys
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.lazy_exports import lazy_exports
+from agent.lazy_exports import lazy_exports
 
 if TYPE_CHECKING:
     from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from psycopg_pool import AsyncConnectionPool
 
 # What this package re-exports, and from where. Loaded on first use (PEP 562),
-# not when the package is: importing `aiq_agent.common.turn_status` executes
+# not when the package is: importing `agent.common.turn_status` executes
 # this file first, and the eager form made every such import pay for LangGraph's
 # checkpointers, psycopg's pool, NAT and LangChain, ~1.7 s of a 2.0 s import
 # (docs/audit/blast-radius-2026-10.md). `tests/test_import_weight.py` keeps it
@@ -77,7 +77,7 @@ _LAZY: dict[str, str] = {
     "format_user_facing_tool_error": ".tool_validation",
     "validate_tool_availability": ".tool_validation",
     # The checkpointer backends, read through `_lazy` below so a test that
-    # patches `aiq_agent.common.AsyncPostgresSaver` still reaches the call.
+    # patches `agent.common.AsyncPostgresSaver` still reaches the call.
     "AsyncConnectionPool": "psycopg_pool",
     "AsyncPostgresSaver": "langgraph.checkpoint.postgres.aio",
     "AsyncSqliteSaver": "langgraph.checkpoint.sqlite.aio",
@@ -217,10 +217,10 @@ def _build_checkpointer_serde() -> JsonPlusSerializer:
     longer declares is dropped on restore.
     """
     # Imported lazily to avoid a circular import: the agent state modules import
-    # from ``aiq_agent.common`` at module load time.
-    from aiq_agent.common.wire_v2 import FocusRegion
-    from aiq_agent.common.wire_v2 import TurnTrigger
-    from aiq_agent.knowledge.schema import AvailableDocument
+    # from ``agent.common`` at module load time.
+    from agent.common.wire_v2 import FocusRegion
+    from agent.common.wire_v2 import TurnTrigger
+    from agent.knowledge.schema import AvailableDocument
 
     return _lazy("JsonPlusSerializer")(
         allowed_msgpack_modules=[AvailableDocument, FocusRegion, TurnTrigger],
@@ -278,8 +278,8 @@ async def get_checkpointer(checkpoint_db: str) -> BaseCheckpointSaver:
             return checkpointer
 
         if is_postgres_dsn(checkpoint_db):
-            # Lazy: `aiq_agent.knowledge` imports from this package.
-            from aiq_agent.knowledge.leader_lock import keyed_lock_async
+            # Lazy: `agent.knowledge` imports from this package.
+            from agent.knowledge.leader_lock import keyed_lock_async
 
             saver = _lazy("AsyncPostgresSaver")
             checkpointer = saver(get_checkpoint_pool(checkpoint_db), serde=_build_checkpointer_serde())

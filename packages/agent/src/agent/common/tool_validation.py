@@ -5,9 +5,9 @@ import os
 import re
 from typing import Any
 
-from aiq_agent.common.canned_replies import NO_SOURCES_MESSAGE
-from aiq_agent.common.canned_replies import SCOPED_NO_SOURCES_MESSAGE
-from aiq_agent.common.canned_replies import TOOLS_UNAVAILABLE_MESSAGE
+from agent.common.canned_replies import NO_SOURCES_MESSAGE
+from agent.common.canned_replies import SCOPED_NO_SOURCES_MESSAGE
+from agent.common.canned_replies import TOOLS_UNAVAILABLE_MESSAGE
 
 logger = logging.getLogger(__name__)
 

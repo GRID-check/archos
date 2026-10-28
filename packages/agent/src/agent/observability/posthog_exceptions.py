@@ -50,7 +50,7 @@ exception text again (``posthog_client._scrub_event``) because
 
 * **Recursion.** The SDK logs its own failures on the ``posthog`` logger at
   ERROR with ``exc_info``; reporting those would report the reporter. Records
-  from ``posthog*`` and from ``aiq_agent.observability.posthog*`` are skipped.
+  from ``posthog*`` and from ``agent.observability.posthog*`` are skipped.
 * **Volume.** PostHog's free tier is 100K exceptions a month and a hot loop
   (a retry that fails every 50 ms) is the way to spend it in an afternoon. Each
   fingerprint (exception type, logger, innermost frame) has a small token
@@ -75,8 +75,8 @@ import time
 from collections.abc import Callable
 from types import TracebackType
 
-from aiq_agent.common.log_redaction import scrub_presigned_urls
-from aiq_agent.observability import posthog_client
+from agent.common.log_redaction import scrub_presigned_urls
+from agent.observability import posthog_client
 
 #: Per fingerprint: a burst of 3, then one more every 5 minutes. A hot loop on
 #: one site therefore costs at most 3 + 288/day = ~9K a month, so ten distinct
@@ -93,7 +93,7 @@ _GLOBAL_KEY = "process"
 MESSAGE_MAX = 500
 #: Loggers that must never be reported: the SDK's own, and this package's
 #: PostHog modules (they log at DEBUG, but the rule should not depend on that).
-_SKIPPED_LOGGER_PREFIXES = ("posthog", "aiq_agent.observability.posthog")
+_SKIPPED_LOGGER_PREFIXES = ("posthog", "agent.observability.posthog")
 
 
 def _innermost_frame(traceback: TracebackType | None) -> str:
@@ -126,7 +126,7 @@ def _message(record: logging.LogRecord) -> str:
 def _current_trace_id() -> str | None:
     """The Langfuse trace id of the run this thread is in, or None outside one."""
     try:
-        from aiq_agent.observability.turn_trace import current_trace_id_hex
+        from agent.observability.turn_trace import current_trace_id_hex
 
         return current_trace_id_hex()
     except Exception:  # noqa: BLE001 - no NAT context is not an error

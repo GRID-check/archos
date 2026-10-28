@@ -22,14 +22,14 @@ import logging
 from dataclasses import dataclass
 from dataclasses import field
 
-from aiq_agent.common.llm_credentials import OrgLLMCredential
-from aiq_agent.common.llm_credentials import get_org_llm_credential_from_context
-from aiq_agent.common.llm_provider import LLMProvider
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.common.model_overrides import get_model_overrides_from_context
-from aiq_agent.common.model_overrides import get_zdr_only_from_context
-from aiq_agent.common.reasoning_settings import get_reasoning_efforts
-from aiq_agent.common.reasoning_settings import get_turn_reasoning_effort
+from agent.common.llm_credentials import OrgLLMCredential
+from agent.common.llm_credentials import get_org_llm_credential_from_context
+from agent.common.llm_provider import LLMProvider
+from agent.common.model_overrides import AgentGroup
+from agent.common.model_overrides import get_model_overrides_from_context
+from agent.common.model_overrides import get_zdr_only_from_context
+from agent.common.reasoning_settings import get_reasoning_efforts
+from agent.common.reasoning_settings import get_turn_reasoning_effort
 
 logger = logging.getLogger(__name__)
 

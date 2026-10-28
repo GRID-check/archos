@@ -32,7 +32,7 @@ The categories are mirrored in ``INGEST_FAILURE_CATEGORIES``
 together, along with a category for every ``reason:`` prefix the backend writes.
 
 Pure: no I/O, and no import of the provider SDKs. Exceptions are recognised by
-the names in their MRO, so a classifier in ``aiq_agent`` does not drag httpx,
+the names in their MRO, so a classifier in ``agent`` does not drag httpx,
 openai or pdfminer in, and an SDK upgrade that moves a class keeps its name.
 """
 

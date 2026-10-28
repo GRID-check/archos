@@ -32,7 +32,7 @@ READERS = {"bff/authz/authz-coverage.spec.ts": None}
 #: One reader that declares its inputs, one that does not.
 DECLARED = {
     "app/api/authz-coverage.spec.ts": ("apps/workspace/app/api/**",),
-    "bff/skills/legacy-names.spec.ts": ("packages/agent/src/aiq_agent/skills/builtin.py",),
+    "bff/skills/legacy-names.spec.ts": ("packages/agent/src/agent/skills/builtin.py",),
     "tests/english-names.spec.ts": None,
 }
 
@@ -52,14 +52,14 @@ def mod():
 
 def test_a_change_to_tested_python_selects(mod):
     mode, extra, _ = mod.decide_python(
-        ["packages/agent/src/aiq_agent/common/llm_factory.py", "tests/test_x.py"], TESTS, recorded=True
+        ["packages/agent/src/agent/common/llm_factory.py", "tests/test_x.py"], TESTS, recorded=True
     )
 
     assert (mode, extra) == ("select", [])
 
 
 def test_without_a_recorded_database_everything_runs(mod):
-    assert mod.decide_python(["packages/agent/src/aiq_agent/a.py"], TESTS, recorded=False)[0] == "full"
+    assert mod.decide_python(["packages/agent/src/agent/a.py"], TESTS, recorded=False)[0] == "full"
 
 
 @pytest.mark.parametrize(
@@ -114,7 +114,7 @@ def test_a_file_named_only_by_its_basename_still_counts(mod):
 
 def test_package_data_no_test_names_forces_the_full_suite(mod):
     assert (
-        mod.decide_python(["packages/agent/src/aiq_agent/agents/piloti/prompts/unnamed.md"], TESTS, recorded=True)[0]
+        mod.decide_python(["packages/agent/src/agent/agents/piloti/prompts/unnamed.md"], TESTS, recorded=True)[0]
         == "full"
     )
 
@@ -243,7 +243,7 @@ def test_a_backend_fixture_runs_the_ui_specs_that_read_it(mod):
 
 
 def test_a_change_no_ui_spec_reads_runs_no_ui_spec(mod):
-    assert mod.decide_ui(["packages/agent/src/aiq_agent/common/llm_factory.py"], READERS)[0] == "none"
+    assert mod.decide_ui(["packages/agent/src/agent/common/llm_factory.py"], READERS)[0] == "none"
 
 
 def test_the_disk_readers_are_found_by_what_they_do(mod):
@@ -269,7 +269,7 @@ def test_a_declaring_reader_runs_only_when_its_inputs_change(mod):
 
 def test_a_declared_input_outside_the_ui_selects_its_reader(mod):
     """Before declarations, a change to a Python file a UI spec reads ran no UI spec at all."""
-    mode, files, _ = mod.decide_ui(["packages/agent/src/aiq_agent/skills/builtin.py"], DECLARED)
+    mode, files, _ = mod.decide_ui(["packages/agent/src/agent/skills/builtin.py"], DECLARED)
 
     assert mode == "select"
     assert files == ["bff/skills/legacy-names.spec.ts", "tests/english-names.spec.ts"]
@@ -312,12 +312,12 @@ def test_no_green_run_means_the_whole_pull_request(mod):
 
 def test_the_reference_that_forces_fewer_full_suites_wins(mod):
     whole = (
-        ["packages/agent/src/aiq_agent/a.py", "packages/agent/src/aiq_agent/b.py", "packages/agent/src/aiq_agent/c.py"],
+        ["packages/agent/src/agent/a.py", "packages/agent/src/agent/b.py", "packages/agent/src/agent/c.py"],
         "the base",
         "base",
     )
     since_green = (
-        ["packages/agent/src/aiq_agent/a.py", "pyproject.toml"],
+        ["packages/agent/src/agent/a.py", "pyproject.toml"],
         "the last green run",
         "green",
     )  # develop moved
@@ -329,9 +329,9 @@ def test_the_reference_that_forces_fewer_full_suites_wins(mod):
 
 
 def test_with_equal_cost_the_smaller_reference_wins(mod):
-    whole = (["packages/agent/src/aiq_agent/a.py", "packages/agent/src/aiq_agent/b.py"], "the base", "base")
+    whole = (["packages/agent/src/agent/a.py", "packages/agent/src/agent/b.py"], "the base", "base")
     since_green = (
-        ["packages/agent/src/aiq_agent/b.py"],
+        ["packages/agent/src/agent/b.py"],
         "the last green run",
         "green",
     )  # a push that answered a review

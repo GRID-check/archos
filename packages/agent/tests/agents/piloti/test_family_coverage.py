@@ -24,16 +24,16 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.agent import _opened_documents
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import turn_status
-from aiq_agent.common.data_source_registry import populate_from_config
-from aiq_agent.common.data_source_registry import reset_registry
-from aiq_agent.common.norm_registry import oib_families
-from aiq_agent.knowledge.inventory import set_norm_families
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import _opened_documents
+from agent.agents.piloti.models import ResearchAgentState
+from agent.citations.entries import SourceEntry
+from agent.common import LLMProvider
+from agent.common import turn_status
+from agent.common.data_source_registry import populate_from_config
+from agent.common.data_source_registry import reset_registry
+from agent.common.norm_registry import oib_families
+from agent.knowledge.inventory import set_norm_families
 
 #: The corpus these tests stand in front of: OIB-RL 2 in three parts.
 CORPUS = (
@@ -84,8 +84,8 @@ def _clean_slate():
 @pytest.fixture(autouse=True)
 def _bypass_citation_pipeline():
     with (
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]

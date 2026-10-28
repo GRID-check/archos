@@ -14,7 +14,7 @@ operation is an argument now (docs/architecture/agent-tool-surface.md). The
 card's ``operation`` vocabulary is unchanged, so every stored card reads exactly
 as before.
 
-The reason is the invariant in ``packages/agent/src/aiq_agent/tools/AGENTS.md``: the BFF is
+The reason is the invariant in ``packages/agent/src/agent/tools/AGENTS.md``: the BFF is
 the single writer of ``app`` (ADR-0003), so this tier has no route to a
 document row and must not grow one. The proposal is a server object
 (``proposals_client.py``, ADR-0105): accepting the card asks the BFF to apply it
@@ -37,13 +37,13 @@ from __future__ import annotations
 
 import logging
 
-from aiq_agent import project_context
-from aiq_agent.tools.files.cards import propose_file_operation
-from aiq_agent.tools.files.resolve import Refusal
-from aiq_agent.tools.files.resolve import ResolvedDocument
-from aiq_agent.tools.files.resolve import known_folders
-from aiq_agent.tools.files.resolve import resolve_document
-from aiq_agent.tools.files.resolve import resolve_folder
+from agent import project_context
+from agent.tools.files.cards import propose_file_operation
+from agent.tools.files.resolve import Refusal
+from agent.tools.files.resolve import ResolvedDocument
+from agent.tools.files.resolve import known_folders
+from agent.tools.files.resolve import resolve_document
+from agent.tools.files.resolve import resolve_folder
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo

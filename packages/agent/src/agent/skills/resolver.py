@@ -22,12 +22,12 @@ import logging
 import os
 from typing import Any
 
-from aiq_agent.common import cache as shared_cache
-from aiq_agent.skills.builtin import discover_builtin_skills
-from aiq_agent.skills.models import MAX_NAME_CHARS
-from aiq_agent.skills.models import Skill
-from aiq_agent.skills.models import SkillValidationError
-from aiq_agent.skills.models import build_skill_from_payload
+from agent.common import cache as shared_cache
+from agent.skills.builtin import discover_builtin_skills
+from agent.skills.models import MAX_NAME_CHARS
+from agent.skills.models import Skill
+from agent.skills.models import SkillValidationError
+from agent.skills.models import build_skill_from_payload
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ _REQUEST_TIMEOUT_SECONDS = 5.0
 #: Agents allowed in the ``grid-agents`` metadata comma-list.
 #:
 #: These are the ``AGENT_REGISTRY`` identifiers (see
-#: ``apps/backend/src/aiq_api/registry.py``) — the same strings a schedule's
+#: ``apps/backend/src/backend/registry.py``) — the same strings a schedule's
 #: ``agent_type`` and the job-submit path use, so the feature has ONE agent
 #: vocabulary rather than one per layer. An unknown name in ``grid-agents`` is
 #: logged and ignored rather than silently narrowing a skill to nothing: a typo
@@ -266,7 +266,7 @@ class SkillResolver:
         return tuple(skill for skill in merged_by_name.values() if _skill_applies_to_agent(skill, self.agent))
 
     def _resolve_org_skills(self, organization_id: str) -> tuple[Skill, ...]:
-        from aiq_agent.common.profiler import annotate_current_span
+        from agent.common.profiler import annotate_current_span
 
         cache_key = f"skills:{organization_id}:{self.agent or '_all'}"
         cached = shared_cache.get_json(cache_key)

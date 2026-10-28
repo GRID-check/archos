@@ -19,13 +19,13 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.agent import _shelf_label
-from aiq_agent.agents.piloti.models import ConversationState
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import render_prompt_template
-from aiq_agent.common.data_source_registry import populate_from_config
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import _shelf_label
+from agent.agents.piloti.models import ConversationState
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common import LLMProvider
+from agent.common import render_prompt_template
+from agent.common.data_source_registry import populate_from_config
 
 SUBJECT = "220724_Aufsicht_1_100.pdf"
 
@@ -194,7 +194,7 @@ class TestSubjectSurvivesTheGraphHandoff:
 
     @pytest.mark.asyncio
     async def test_shallow_node_forwards_the_subject(self):
-        from aiq_agent.agents.piloti.conversation import ConversationGraph
+        from agent.agents.piloti.conversation import ConversationGraph
 
         captured: dict = {}
 

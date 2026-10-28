@@ -23,40 +23,40 @@ from langchain_core.messages import HumanMessage
 from pydantic import Field
 from pydantic import field_validator
 
-from aiq_agent.citations.entries import EmptySourceRegistryError
-from aiq_agent.common import AgentGroup
-from aiq_agent.common import LLMProvider
-from aiq_agent.common import LLMRole
-from aiq_agent.common import VerboseTraceCallback
-from aiq_agent.common import format_user_facing_tool_error
-from aiq_agent.common import get_all_tool_refs
-from aiq_agent.common import get_langchain_llm
-from aiq_agent.common import is_verbose
-from aiq_agent.common import unavailable_source_ids
-from aiq_agent.common import validate_tool_availability
-from aiq_agent.common.agent_tools import load_agent_tools
-from aiq_agent.common.client_tools import KNOWN_CLIENT_TOOLS
-from aiq_agent.common.client_tools import client_tool_declared
-from aiq_agent.common.data_source_registry import get_all_sources
-from aiq_agent.common.decisions import SKIPPED_TOO_SHORT
-from aiq_agent.common.decisions import record_skipped
-from aiq_agent.common.openrouter import PLATFORM_FIXED
-from aiq_agent.common.openrouter import pin_chat_model
-from aiq_agent.common.reasoning_settings import effort_of
-from aiq_agent.common.request_llm_context import read_request_llm_context
-from aiq_agent.common.tool_calls import tool_basename
-from aiq_agent.common.tool_validation import format_no_sources_message
-from aiq_agent.knowledge.restricted_use import current_cross_project_turn
-from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
-from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
-from aiq_agent.observability.turn_phases import observed_phase
-from aiq_agent.project_context import get_organization_id_from_context
-from aiq_agent.project_context import get_project_id_from_context
-from aiq_agent.skills import SkillResolver
-from aiq_agent.skills import SkillRuntime
-from aiq_agent.skills.events import emit_skills_offered
-from aiq_agent.tools.documents.tools import filesystem_tools_for_turn
-from aiq_agent.turn.admission import spanned
+from agent.citations.entries import EmptySourceRegistryError
+from agent.common import AgentGroup
+from agent.common import LLMProvider
+from agent.common import LLMRole
+from agent.common import VerboseTraceCallback
+from agent.common import format_user_facing_tool_error
+from agent.common import get_all_tool_refs
+from agent.common import get_langchain_llm
+from agent.common import is_verbose
+from agent.common import unavailable_source_ids
+from agent.common import validate_tool_availability
+from agent.common.agent_tools import load_agent_tools
+from agent.common.client_tools import KNOWN_CLIENT_TOOLS
+from agent.common.client_tools import client_tool_declared
+from agent.common.data_source_registry import get_all_sources
+from agent.common.decisions import SKIPPED_TOO_SHORT
+from agent.common.decisions import record_skipped
+from agent.common.openrouter import PLATFORM_FIXED
+from agent.common.openrouter import pin_chat_model
+from agent.common.reasoning_settings import effort_of
+from agent.common.request_llm_context import read_request_llm_context
+from agent.common.tool_calls import tool_basename
+from agent.common.tool_validation import format_no_sources_message
+from agent.knowledge.restricted_use import current_cross_project_turn
+from agent.observability.langfuse_trace_attributes import add_trace_tag
+from agent.observability.langfuse_trace_attributes import record_trace_metadata
+from agent.observability.turn_phases import observed_phase
+from agent.project_context import get_organization_id_from_context
+from agent.project_context import get_project_id_from_context
+from agent.skills import SkillResolver
+from agent.skills import SkillRuntime
+from agent.skills.events import emit_skills_offered
+from agent.tools.documents.tools import filesystem_tools_for_turn
+from agent.turn.admission import spanned
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionGroupRef
@@ -306,12 +306,12 @@ async def _active_provider(provider: LLMProvider) -> LLMProvider:
 
 def _turn_facts(state: ResearchAgentState, runtime: SkillRuntime | None) -> TurnFacts:
     """What the decider is shown, from the state the gather already filled."""
-    from aiq_agent.cards.catalog import CHAT_ONLY_CARD_TYPES
-    from aiq_agent.cards.catalog import card_index_entries
-    from aiq_agent.cards.envelope import ENVELOPE_SHAPE_TYPES
-    from aiq_agent.common.applicability import facts_from_project_context
-    from aiq_agent.common.source_kinds import Shelf
-    from aiq_agent.knowledge.inventory import get_norm_families
+    from agent.cards.catalog import CHAT_ONLY_CARD_TYPES
+    from agent.cards.catalog import card_index_entries
+    from agent.cards.envelope import ENVELOPE_SHAPE_TYPES
+    from agent.common.applicability import facts_from_project_context
+    from agent.common.source_kinds import Shelf
+    from agent.knowledge.inventory import get_norm_families
 
     humans = [str(m.content) for m in state.messages if isinstance(m, HumanMessage) and isinstance(m.content, str)]
     question = humans[-1] if humans else ""
@@ -431,12 +431,12 @@ def _warm_question(facts: TurnFacts | None) -> None:
     """
     if facts is None or facts.previous_message is not None:
         return
-    from aiq_agent.common.norm_registry import family_query_number
+    from agent.common.norm_registry import family_query_number
 
     query = prefetch_query(facts.question)
     if len(query.split()) < 3 and family_query_number(query) is None:
         return
-    from aiq_agent.knowledge.factory import warm_search_query
+    from agent.knowledge.factory import warm_search_query
 
     # Held until done: the loop keeps only a weak reference to a task.
     task = asyncio.create_task(warm_search_query(query))
@@ -484,9 +484,9 @@ def _apply_decisions(decisions: TurnDecisions, state: ResearchAgentState, runtim
     its shape is the envelope's compose rule, already in the prompt. Still
     offers: the model decides.
     """
-    from aiq_agent.cards.catalog import CHAT_ONLY_CARD_TYPES
-    from aiq_agent.cards.envelope import ENVELOPE_SHAPE_TYPES
-    from aiq_agent.skills.models import preferred_cards
+    from agent.cards.catalog import CHAT_ONLY_CARD_TYPES
+    from agent.cards.envelope import ENVELOPE_SHAPE_TYPES
+    from agent.skills.models import preferred_cards
 
     withheld_shapes = {*ENVELOPE_SHAPE_TYPES, *CHAT_ONLY_CARD_TYPES}
 
@@ -498,7 +498,7 @@ def _apply_decisions(decisions: TurnDecisions, state: ResearchAgentState, runtim
     }
     chosen = attached_card_types(decisions, skill_cards)
     if chosen:
-        from aiq_agent.cards.catalog import render_card_details
+        from agent.cards.catalog import render_card_details
 
         state.card_shapes_block = render_card_details(chosen) or None
 

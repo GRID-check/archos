@@ -29,7 +29,7 @@ import logging
 import math
 from typing import Any
 
-from aiq_agent.common.message_utils import response_text
+from agent.common.message_utils import response_text
 
 logger = logging.getLogger(__name__)
 

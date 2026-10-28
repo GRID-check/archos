@@ -19,8 +19,8 @@ import os
 import pytest
 from sqlalchemy import text
 
-from aiq_api.jobs import payload_crypto
-from aiq_api.jobs import queue
+from backend.jobs import payload_crypto
+from backend.jobs import queue
 
 
 @pytest.fixture
@@ -215,7 +215,7 @@ def test_worker_poll_loop_survives_poison_claim(monkeypatch, tmp_path):
     reclaim/reap."""
     import asyncio
 
-    from aiq_api.jobs import worker as worker_mod
+    from backend.jobs import worker as worker_mod
 
     db_url = f"sqlite:///{tmp_path}/jobs.db"
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", db_url)
@@ -246,8 +246,8 @@ async def test_worker_quarantines_poison_and_runs_healthy(monkeypatch, tmp_path)
     from datetime import UTC
     from datetime import datetime
 
-    from aiq_api.jobs import worker as worker_mod
-    from aiq_api.jobs.event_store import EventStore
+    from backend.jobs import worker as worker_mod
+    from backend.jobs.event_store import EventStore
     from nat.front_ends.fastapi.async_jobs.job_store import JobStore
 
     db_url = f"sqlite:///{tmp_path}/jobs.db"
@@ -344,9 +344,9 @@ def test_reap_exhausted_leader_lock_id_is_distinct():
     """The worker reap lock must not collide with the web-tier reaper/cleanup or
     checkpoint locks — a shared id would make two unrelated reapers mutually
     exclude each other across replicas."""
-    from aiq_api.jobs.checkpoint_retention import _PG_CHECKPOINT_LOCK_ID
-    from aiq_api.routes.job_reaper import _PG_REAPER_LOCK_ID
-    from aiq_api.routes.job_reaper import PG_ADVISORY_LOCK_ID
+    from backend.jobs.checkpoint_retention import _PG_CHECKPOINT_LOCK_ID
+    from backend.routes.job_reaper import _PG_REAPER_LOCK_ID
+    from backend.routes.job_reaper import PG_ADVISORY_LOCK_ID
 
     others = {PG_ADVISORY_LOCK_ID, _PG_REAPER_LOCK_ID, _PG_CHECKPOINT_LOCK_ID}
     assert queue._PG_REAP_EXHAUSTED_LOCK_ID not in others

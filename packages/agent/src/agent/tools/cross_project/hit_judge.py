@@ -113,7 +113,7 @@ def hit_state(query: str, hit: dict[str, Any]) -> dict[str, Any]:
 
 async def judge_hits(query: str, hits: Sequence[dict[str, Any]]) -> HitVerdicts | None:
     """Both questions over every passage; None when nothing was decided, and the hits stay as they came."""
-    from aiq_agent.common.decisions import decide_many
+    from agent.common.decisions import decide_many
 
     if not hits or not query.strip():
         return None

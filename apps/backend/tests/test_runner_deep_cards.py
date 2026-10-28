@@ -1,6 +1,6 @@
 """A card the deep run EMITS reaches the job result, beside the post-hoc ones, at the index it was addressed by.
 
-Module under test: ``aiq_api.jobs.runner`` — ``_bound_card_registry``, ``_merge_job_cards``
+Module under test: ``backend.jobs.runner`` — ``_bound_card_registry``, ``_merge_job_cards``
 and the ``build_job_output`` they feed.
 
 Until now the runner never bound a ``CardRegistry`` around the deep run, so
@@ -14,11 +14,11 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.cards.registry import get_card_registry
-from aiq_api.jobs.run_result import build_job_output
-from aiq_api.jobs.runner import _bound_card_registry
-from aiq_api.jobs.runner import _merge_job_cards
-from aiq_api.jobs.runner import _run_agent
+from agent.cards.registry import get_card_registry
+from backend.jobs.run_result import build_job_output
+from backend.jobs.runner import _bound_card_registry
+from backend.jobs.runner import _merge_job_cards
+from backend.jobs.runner import _run_agent
 
 DOCUMENT_GRID = {"type": "document_grid", "title": "Brandschutzplan.pdf", "query": "Brandschutzplan", "documents": []}
 SUMMARY = {"type": "summary", "title": "Kurzfassung"}

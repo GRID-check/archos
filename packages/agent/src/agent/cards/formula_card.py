@@ -13,9 +13,9 @@ from pydantic import Field
 from pydantic import field_validator
 from pydantic import model_validator
 
-from aiq_agent.cards.card_model import CardModel
-from aiq_agent.cards.schematic_cards import NormReference
-from aiq_agent.cards.schematic_cards import Provenance
+from agent.cards.card_model import CardModel
+from agent.cards.schematic_cards import NormReference
+from agent.cards.schematic_cards import Provenance
 
 FormulaStairType = Literal["main", "dwelling", "secondary"]
 

@@ -38,12 +38,12 @@ from dataclasses import replace
 from typing import Any
 from urllib.parse import urlsplit
 
-from aiq_agent.common.config_validation import NIM_API_HOST
-from aiq_agent.common.config_validation import NIM_UNSUPPORTED_MESSAGE
-from aiq_agent.common.openrouter import NO_RETENTION_LIMITS
-from aiq_agent.common.openrouter import DataPolicy
-from aiq_agent.common.openrouter import data_policy_for
-from aiq_agent.common.openrouter import targets_openrouter
+from agent.common.config_validation import NIM_API_HOST
+from agent.common.config_validation import NIM_UNSUPPORTED_MESSAGE
+from agent.common.openrouter import NO_RETENTION_LIMITS
+from agent.common.openrouter import DataPolicy
+from agent.common.openrouter import data_policy_for
+from agent.common.openrouter import targets_openrouter
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +220,7 @@ def _resolve(
     #    Fail-open lives in resolve_org_llm_credential (a BYOK hiccup returns
     #    None, so we fall through to the env chain below).
     if organization_id:
-        from aiq_agent.common.llm_credentials import resolve_org_llm_credential
+        from agent.common.llm_credentials import resolve_org_llm_credential
 
         credential = resolve_org_llm_credential(organization_id)
         if credential is not None:

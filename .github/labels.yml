@@ -4,7 +4,7 @@
 
 - name: backend
   color: "1d76db"
-  description: "Python backend: agent, aiq_api plugin, data-source packages"
+  description: "Python backend: agent, backend plugin, data-source packages"
 
 - name: frontend
   color: "5319e7"

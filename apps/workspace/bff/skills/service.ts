@@ -876,7 +876,7 @@ async function resolveAll(
  * The resolved skill set for a RUN: the platform builtins merged with the org's
  * enabled rows and the offers it took up, filtered by `grid-agents` when an
  * agent is named (absent = all agents). No session — the internal resolve route
- * (GET /api/internal/skills/resolve, called by `packages/agent/src/aiq_agent/skills/resolver.py`)
+ * (GET /api/internal/skills/resolve, called by `packages/agent/src/agent/skills/resolver.py`)
  * serves it.
  *
  * Every entry is a skill the model MAY load, never one it must: nothing in this
@@ -924,7 +924,7 @@ export async function resolveSelectableSkills(
 
 /**
  * Whether a skill applies to `agent` — the mirror of the backend resolver's
- * `_skill_applies_to_agent` (`packages/agent/src/aiq_agent/skills/resolver.py`).
+ * `_skill_applies_to_agent` (`packages/agent/src/agent/skills/resolver.py`).
  *
  * ONE gate: `grid-agents`, a comma-separated allowlist, absent = every agent.
  * Names that match no known agent are ignored rather than obeyed, so a typo

@@ -12,10 +12,10 @@ on the model's behalf.
 ``leave_canvas`` is also the canvas's one call at the end of the turn in the
 turn's own context, so it settles whether a thread question's answer may still
 be posted into the thread when the model did not reply there
-(:func:`aiq_agent.turn.annotation_reply.settle_thread_reply`): that verdict
+(:func:`agent.turn.annotation_reply.settle_thread_reply`): that verdict
 reads the turn's restricted-use state, which only this context still holds.
 
-Per-turn state in the ``ContextVar`` pattern (``packages/agent/src/aiq_agent/AGENTS.md``): a
+Per-turn state in the ``ContextVar`` pattern (``packages/agent/src/agent/AGENTS.md``): a
 mutable record bound before the graph runs, so the tool calls, which run in
 copies of the turn's context, write into the one object the harness reads.
 """
@@ -29,10 +29,10 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent import project_context
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.observability.retrieval_trace import emit_step_span
-from aiq_agent.turn.annotation_reply import settle_thread_reply
+from agent import project_context
+from agent.common.bff_http import SignedEnvelope
+from agent.observability.retrieval_trace import emit_step_span
+from agent.turn.annotation_reply import settle_thread_reply
 
 from .client import LEAVE_TIMEOUT_SECONDS
 from .client import CanvasRequestError

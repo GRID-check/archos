@@ -3,8 +3,8 @@
 Background work that must outlive the process that accepted it is a row here:
 claimed by whichever worker is free, on any replica or in a dedicated worker
 tier, with ``FOR UPDATE SKIP LOCKED`` so no two claim it, and a heartbeat so a
-crashed worker's job is claimed again. ``aiq_agent.knowledge.ingest_queue`` is
-the first queue on it (ADR-0076); ``aiq_api.jobs.queue``, the research queue,
+crashed worker's job is claimed again. ``agent.knowledge.ingest_queue`` is
+the first queue on it (ADR-0076); ``backend.jobs.queue``, the research queue,
 is the second. Each queue keeps its own table, payload and verdict; this module
 owns the algorithm.
 
@@ -70,10 +70,10 @@ from opentelemetry.metrics import Observation
 from sqlalchemy import bindparam
 from sqlalchemy import text
 
-from aiq_agent.common.claim_queue_schema import ensure_status_guard
-from aiq_agent.common.claim_queue_schema import upgrade_columns
-from aiq_agent.common.db_utils import lock_schema
-from aiq_agent.common.db_utils import present_indexes
+from agent.common.claim_queue_schema import ensure_status_guard
+from agent.common.claim_queue_schema import upgrade_columns
+from agent.common.db_utils import lock_schema
+from agent.common.db_utils import present_indexes
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +192,7 @@ def instruments() -> _Instruments:
     global _instruments
     with _instruments_lock:
         if _instruments is None:
-            _instruments = _Instruments(metrics.get_meter("aiq_agent.claim_queue"))
+            _instruments = _Instruments(metrics.get_meter("agent.claim_queue"))
         return _instruments
 
 

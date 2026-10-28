@@ -1,4 +1,4 @@
-"""Tests for the CountryProfile contract (aiq_agent.common.country_profile).
+"""Tests for the CountryProfile contract (agent.common.country_profile).
 
 Covers the Austria (#1) profile's fields, the registry-file override precedence
 (``with_overrides`` — data wins over code, empty overrides ignored), unknown-country
@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common import country_profile as cp
-from aiq_agent.common import norm_registry as nr
+from agent.common import country_profile as cp
+from agent.common import norm_registry as nr
 
 
 @pytest.fixture(autouse=True)

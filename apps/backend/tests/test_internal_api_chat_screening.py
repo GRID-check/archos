@@ -12,11 +12,11 @@ from typing import Any
 import httpx
 import pytest
 
-from aiq_agent.common.content_screen import DETECTORS
-from aiq_api import internal_api
-from aiq_api.internal_api import CHAT_SCREENING_FALLBACK
-from aiq_api.internal_api import chat_screening_for
-from aiq_api.internal_api import chat_screening_from
+from agent.common.content_screen import DETECTORS
+from backend import internal_api
+from backend.internal_api import CHAT_SCREENING_FALLBACK
+from backend.internal_api import chat_screening_for
+from backend.internal_api import chat_screening_from
 
 
 class _Requests(list):

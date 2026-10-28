@@ -13,8 +13,8 @@ import pytest
 from knowledge_layer.register import KnowledgeRetrievalConfig
 from knowledge_layer.register import knowledge_retrieval
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.knowledge.scoping import ScopedCollection
+from agent.common.source_kinds import Shelf
+from agent.knowledge.scoping import ScopedCollection
 
 
 class TestTheConfigField:
@@ -37,13 +37,13 @@ class TestTheConfigField:
 @pytest.fixture
 def offline(monkeypatch):
     monkeypatch.setattr(
-        "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+        "agent.knowledge.scoping.get_scoped_collections_from_context",
         lambda: [ScopedCollection("proj_1", Shelf.PROJECT)],
     )
     monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: MagicMock())
     monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
-    monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
-    monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.factory.configure_summary_db", lambda url: None)
+    monkeypatch.setattr("agent.knowledge.norm_store.configure_norm_store", lambda url: None)
 
 
 async def _search(modes: str, match: str) -> str:

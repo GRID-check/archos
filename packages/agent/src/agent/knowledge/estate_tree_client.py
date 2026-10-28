@@ -10,7 +10,7 @@ Nothing here decides access. The BFF reads the acting person out of the signed
 request-context envelope this module forwards byte for byte, takes the project
 and the conversation from it, and answers with the search's audience reach:
 restricted folders and held uploads are absent, not marked. Echo, never sign
-(``packages/agent/src/aiq_agent/tools/AGENTS.md``).
+(``packages/agent/src/agent/tools/AGENTS.md``).
 
 The contract is ``apps/workspace/tests/fixtures/estate-tree.schema.json``,
 exported from ``apps/workspace/bff/estate-tree/types.ts``; the tests validate
@@ -26,8 +26,8 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
-from aiq_agent.common import bff_http
-from aiq_agent.common.bff_http import SignedEnvelope
+from agent.common import bff_http
+from agent.common.bff_http import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 

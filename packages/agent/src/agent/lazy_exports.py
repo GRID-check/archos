@@ -1,7 +1,7 @@
 """Package re-exports that load on first use (PEP 562).
 
-Importing ``aiq_agent.common.turn_status`` executes ``aiq_agent/__init__.py``
-and ``aiq_agent/common/__init__.py`` first. A package that re-exports its
+Importing ``agent.common.turn_status`` executes ``agent/__init__.py``
+and ``agent/common/__init__.py`` first. A package that re-exports its
 submodules eagerly therefore makes every import of any one of them pay for all
 of them, and makes every test that imports one re-run when any of them changes
 at module level. A package that wants the short import path gives

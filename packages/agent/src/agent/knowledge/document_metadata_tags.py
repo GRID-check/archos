@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
+from agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
 
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import TAGS_SET_BY_PERSON
-from aiq_agent.knowledge.document_metadata_constants import logger
+from agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge.document_metadata_constants import TAGS_SET_BY_PERSON
+from agent.knowledge.document_metadata_constants import logger
 
 
 def update_tags(store, collection: str, filename: str, tags: list[str] | None) -> bool:

@@ -166,7 +166,7 @@ afterEach(() => {
 })
 
 describe('askAnswerMessageId', () => {
-  it('is the id the agent gives its answer (aiq_agent.turn.response.answer_message_id)', () => {
+  it('is the id the agent gives its answer (agent.turn.response.answer_message_id)', () => {
     // Computed by the Python function for the same pair.
     expect(askAnswerMessageId(THREAD, '22222222-2222-4222-8222-222222222222')).toBe('e007c373-c4c5-504d-9558-2d975bb207d1')
   })

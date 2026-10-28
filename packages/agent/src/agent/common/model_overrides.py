@@ -263,7 +263,7 @@ def _fetch_org_config(organization_id: str) -> tuple[dict[str, str], bool]:
 
 def _read_shared(organization_id: str) -> tuple[dict[str, str], bool] | None:
     """The org's config from the shared tier, or ``None`` on a miss or a bad value."""
-    from aiq_agent.common import cache as shared_cache
+    from agent.common import cache as shared_cache
 
     try:
         value = shared_cache.get_json(shared_model_config_key(organization_id))
@@ -279,7 +279,7 @@ def _read_shared(organization_id: str) -> tuple[dict[str, str], bool] | None:
 
 
 def _write_shared(organization_id: str, overrides: dict[str, str], zdr_only: bool) -> None:
-    from aiq_agent.common import cache as shared_cache
+    from agent.common import cache as shared_cache
 
     try:
         shared_cache.set_json(
@@ -304,7 +304,7 @@ def _resolve_org_config(organization_id: str | None) -> _OverridesCacheEntry | N
     if not organization_id:
         return None
 
-    from aiq_agent.common.profiler import annotate_current_span
+    from agent.common.profiler import annotate_current_span
 
     now = time.monotonic()
     with _overrides_cache_lock:
@@ -321,7 +321,7 @@ def _resolve_org_config(organization_id: str | None) -> _OverridesCacheEntry | N
 
 
 def _resolve_org_config_locked(organization_id: str) -> _OverridesCacheEntry:
-    from aiq_agent.common.profiler import annotate_current_span
+    from agent.common.profiler import annotate_current_span
 
     now = time.monotonic()
     # Re-check L1: whoever held the lock before us has just populated it, which
@@ -415,8 +415,8 @@ def get_model_overrides_from_context() -> dict[str, str]:
     envelope (a job worker run that carries none, which injects the header
     itself; the CLI) reads it.
     """
-    from aiq_agent.project_context import _read_header
-    from aiq_agent.project_context import get_signed_request_context
+    from agent.project_context import _read_header
+    from agent.project_context import get_signed_request_context
 
     envelope = get_signed_request_context()
     if envelope is not None:
@@ -428,7 +428,7 @@ def get_model_overrides_from_context() -> dict[str, str]:
     if raw:
         return parse_model_overrides(raw)
 
-    from aiq_agent.project_context import get_organization_id_from_context
+    from agent.project_context import get_organization_id_from_context
 
     return resolve_org_model_overrides(get_organization_id_from_context())
 
@@ -441,7 +441,7 @@ def get_zdr_only_from_context() -> bool:
     ``False`` when no org applies — anonymous deployments impose no extra
     routing restriction.
     """
-    from aiq_agent.project_context import get_organization_id_from_context
+    from agent.project_context import get_organization_id_from_context
 
     return resolve_org_zdr_only(get_organization_id_from_context())
 
@@ -529,7 +529,7 @@ def _merge_zdr_extra_body(extra_body: object) -> dict[str, object]:
 
     The merge itself is ``openrouter.DataPolicy.apply``; this name stays for its callers.
     """
-    from aiq_agent.common.openrouter import ZERO_DATA_RETENTION
+    from agent.common.openrouter import ZERO_DATA_RETENTION
 
     return ZERO_DATA_RETENTION.apply(extra_body if isinstance(extra_body, dict) else None)
 
@@ -542,8 +542,8 @@ def apply_zdr_routing(llm: object) -> object:
     it, where this used to return the unpinned model and send the request
     anyway. See ``openrouter.pin_chat_model``.
     """
-    from aiq_agent.common.openrouter import ZERO_DATA_RETENTION
-    from aiq_agent.common.openrouter import pin_chat_model
+    from agent.common.openrouter import ZERO_DATA_RETENTION
+    from agent.common.openrouter import pin_chat_model
 
     return pin_chat_model(llm, ZERO_DATA_RETENTION)
 
@@ -594,7 +594,7 @@ def apply_model_override(
     if zdr_only is None:
         zdr_only = get_zdr_only_from_context()
     if reasoning_effort is None:
-        from aiq_agent.common.reasoning_settings import get_reasoning_effort
+        from agent.common.reasoning_settings import get_reasoning_effort
 
         reasoning_effort = get_reasoning_effort(group.value)
     model_id = overrides.get(group.value)

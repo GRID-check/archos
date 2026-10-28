@@ -5,7 +5,7 @@ the BFF's routes do. Piloti's best READ tools live only here, in the Python agen
 they read the office's documents, the building-law corpus, the BIM models and
 RIS. An outside agent that reaches Piloti over MCP must get them too, so the
 ``api`` role serves each of them at ``POST /v1/internal/tools/{name}``
-(``aiq_api/routes/internal_tools.py``) and the BFF's MCP server calls it.
+(``backend/routes/internal_tools.py``) and the BFF's MCP server calls it.
 
 This module is the one list of which tools those are, and the one place that says
 what a tool looks like from outside: its name, the description the model sees,

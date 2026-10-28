@@ -1,7 +1,7 @@
-"""Register a lightweight ``aiq_api`` package before submodule imports.
+"""Register a lightweight ``backend`` package before submodule imports.
 
-Skips ``aiq_api/__init__.py`` (plugin pulls NAT) so tests can load
-``aiq_api.auth`` and peers from ``src/`` without the full runtime stack.
+Skips ``backend/__init__.py`` (plugin pulls NAT) so tests can load
+``backend.auth`` and peers from ``src/`` without the full runtime stack.
 """
 
 from __future__ import annotations
@@ -16,16 +16,16 @@ from knowledge_layer_testing.qdrant_fixtures import fresh_qdrant_store  # noqa: 
 from knowledge_layer_testing.qdrant_fixtures import qdrant_store  # noqa: F401 - the shared store fixture
 
 _SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
-_PKG_DIR = _SRC_ROOT / "aiq_api"
+_PKG_DIR = _SRC_ROOT / "backend"
 
 if _PKG_DIR.is_dir():
     if str(_SRC_ROOT) not in sys.path:
         sys.path.insert(0, str(_SRC_ROOT))
 
-    if "aiq_api" not in sys.modules:
-        _pkg = types.ModuleType("aiq_api")
+    if "backend" not in sys.modules:
+        _pkg = types.ModuleType("backend")
         _pkg.__path__ = [str(_PKG_DIR)]
-        sys.modules["aiq_api"] = _pkg
+        sys.modules["backend"] = _pkg
 
 
 @pytest.fixture(autouse=True)
@@ -55,7 +55,7 @@ def _no_retry_pauses(monkeypatch):
     a test that doubles a failing BFF would otherwise wait 25 s per call. The
     attempts still happen; only the pauses are skipped.
     """
-    from aiq_api import internal_retry
+    from backend import internal_retry
 
     async def _instant(_seconds: float) -> None:
         return None

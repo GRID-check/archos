@@ -1,7 +1,7 @@
 // The Grid card schema is generated from the canonical Pydantic models. This
 // module re-exports the generated Zod schemas under the stable public API and
 // derives the TypeScript types consumed across the app. To change the schema,
-// edit the card models in `packages/agent/src/aiq_agent/cards/`, regenerate `contracts/cards/schemas.json`
+// edit the card models in `packages/agent/src/agent/cards/`, regenerate `contracts/cards/schemas.json`
 // (`uv run python scripts/generate_card_schema.py`), then run
 // `npm run generate:cards`.
 

@@ -33,7 +33,7 @@ from datetime import datetime
 from datetime import timedelta
 from typing import Any
 
-from aiq_agent.observability.turn_trace import TRACE_ID_METADATA_KEY
+from agent.observability.turn_trace import TRACE_ID_METADATA_KEY
 
 from ..internal_api import post_internal_conversation_message
 from ..internal_api import post_internal_run_report

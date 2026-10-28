@@ -19,17 +19,17 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-import aiq_agent.agents.piloti.register as register_module
-from aiq_agent.agents.piloti import prompt as prompt_module
-from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.agent import TurnConfig
-from aiq_agent.agents.piloti.agent import _recursion_limit
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.register import ResearchAgentConfig
-from aiq_agent.agents.piloti.register import research_agent
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common import LLMProvider
+import agent.agents.piloti.register as register_module
+from agent.agents.piloti import prompt as prompt_module
+from agent.agents.piloti.agent import PilotiAgent
+from agent.agents.piloti.agent import TurnConfig
+from agent.agents.piloti.agent import _recursion_limit
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.register import ResearchAgentConfig
+from agent.agents.piloti.register import research_agent
+from agent.citations.entries import SourceEntry
+from agent.citations.registry import SourceRegistry
+from agent.common import LLMProvider
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -63,7 +63,7 @@ def _mock_llm():
 
 
 def _skill_runtime():
-    from aiq_agent.skills.backend import SkillsBackend
+    from agent.skills.backend import SkillsBackend
 
     runtime = MagicMock()
     runtime.prompt_block.return_value = "## Skills"
@@ -78,8 +78,8 @@ def _skill_runtime():
 def _bypass_citation_pipeline():
     with (
         patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
-        patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
-        patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        patch("agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+        patch("agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
         verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]

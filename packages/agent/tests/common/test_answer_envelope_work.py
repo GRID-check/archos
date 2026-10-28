@@ -12,13 +12,13 @@ from __future__ import annotations
 import json
 import pathlib
 
-from aiq_agent.common.answer_envelope import WORK_ITEMS_MAX
-from aiq_agent.common.answer_envelope import WORK_TEXT_MAX_CHARS
-from aiq_agent.common.answer_envelope import AnswerMeta
-from aiq_agent.common.answer_envelope import extract_answer_envelope
-from aiq_agent.common.answer_envelope import gate_answer_meta
-from aiq_agent.common.answer_envelope import render_envelope_response_format
-from aiq_agent.common.answer_envelope import render_envelope_schema
+from agent.common.answer_envelope import WORK_ITEMS_MAX
+from agent.common.answer_envelope import WORK_TEXT_MAX_CHARS
+from agent.common.answer_envelope import AnswerMeta
+from agent.common.answer_envelope import extract_answer_envelope
+from agent.common.answer_envelope import gate_answer_meta
+from agent.common.answer_envelope import render_envelope_response_format
+from agent.common.answer_envelope import render_envelope_schema
 
 FIXTURE = json.loads(
     pathlib.Path(__file__).resolve().parents[4].joinpath("tests/fixtures/answer_meta/work_payload.json").read_text()

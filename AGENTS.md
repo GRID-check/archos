@@ -4,7 +4,7 @@ Piloti is the workspace for architects: a planning office runs its work in it, e
 every process, and Piloti, the agent, is a colleague in that office. Building law is one capability
 among many. [`VISION.md`](VISION.md) says what the product is; read it before you describe Piloti
 anywhere. The code: a Next.js UI and BFF (`apps/workspace`), a Python agent on the NeMo Agent Toolkit
-(`packages/agent/src/aiq_agent`), and the knowledge layer that reads the office's documents and the legal corpus
+(`packages/agent/src/agent`), and the knowledge layer that reads the office's documents and the legal corpus
 (`packages/knowledge-layer`).
 
 ## Setup
@@ -42,7 +42,7 @@ to add here has no home yet: give it one under
 ## Where the scoped guides are
 
 Each service keeps its own `AGENTS.md` beside the code, and inside
-`packages/agent/src/aiq_agent/` so do the packages with invariants of their own, for what holds
+`packages/agent/src/agent/` so do the packages with invariants of their own, for what holds
 only there. **Read the one for the area you are about to touch, before you touch
 it.** They are additive: this file still applies.
 
@@ -199,7 +199,7 @@ for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 ## Two rules that span services
 
 **One coarse `SourceKind` drives all rendering** (`building_law | office |
-project | web | measurement`), defined in `packages/agent/src/aiq_agent/common/source_kinds.py`.
+project | web | measurement`), defined in `packages/agent/src/agent/common/source_kinds.py`.
 The UI's `SOURCE_KINDS` and `SHELVES` are generated from it into
 `apps/workspace/shared/vocabularies.generated.ts` by
 `scripts/generate_vocabularies.py` (the `vocabularies` pre-commit hook), so a

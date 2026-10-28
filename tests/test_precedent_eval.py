@@ -27,7 +27,7 @@ import suite  # noqa: E402
 from fixture_bff import FixtureBFF  # noqa: E402
 from fixture_bff import FixtureOffice  # noqa: E402
 
-from aiq_agent.project_context import GridRequestContext  # noqa: E402
+from agent.project_context import GridRequestContext  # noqa: E402
 
 SCHEMA = json.loads((REPO_ROOT / "apps" / "workspace" / "tests" / "fixtures" / "cross-project.schema.json").read_text())
 TOKEN = "eval-token"

@@ -136,13 +136,13 @@ class JobReportResponse(BaseModel):
     files the report at the moment it reads it off THIS route, and this route
     returned the report and nothing else. The runner has persisted
     ``output["cards"]`` beside ``output["report"]`` since card generation
-    shipped (``aiq_api.jobs.runner``), so the data sat one key away from the one
+    shipped (``backend.jobs.runner``), so the data sat one key away from the one
     consumer that wanted it, and the section stayed dormant — no heading, no
     citations — for want of a field.
 
     ## Why ``list[dict]`` and not the ``GridCard`` union
 
-    These dicts were validated on the way IN. ``aiq_agent.cards.validate_cards``
+    These dicts were validated on the way IN. ``agent.cards.validate_cards``
     put every one of them through ``grid_card_adapter`` and dumped the model
     back out before the runner wrote them, dropping malformed ones card by card
     and system-card fabrications outright. Typing this field as the union would
@@ -176,7 +176,7 @@ class JobReportResponse(BaseModel):
     ## Why nothing is truncated here
 
     The only ceiling on card volume is a prompt one — "Two content cards is a
-    turn's ceiling", ``_CARD_RESTRAINT`` in ``aiq_agent.cards.catalog`` — and it
+    turn's ceiling", ``_CARD_RESTRAINT`` in ``agent.cards.catalog`` — and it
     is advice to a model, not an invariant; no write path enforces a count. So a
     runaway generation is ALREADY persisted in the job output, already on the
     message row, and was already streamed to the browser, and a cap applied only

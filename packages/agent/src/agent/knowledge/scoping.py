@@ -28,10 +28,10 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import parse_shelf
-from aiq_agent.knowledge.restricted_collections import is_restricted_collection
-from aiq_agent.knowledge.restricted_use import current_restricted_use
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import parse_shelf
+from agent.knowledge.restricted_collections import is_restricted_collection
+from agent.knowledge.restricted_use import current_restricted_use
 from nat.plugin_api import Context
 
 logger = logging.getLogger(__name__)
@@ -133,7 +133,7 @@ def _parse_scope_payload(scope: Any) -> list[ScopedCollection] | None:
     because ``None`` hands the turn to the config-derived fallback above, which
     can be WIDER than the scope actually sent. Fail-closed means refusing to
     guess at an entry we cannot parse; a blank name needs no guess. This matches
-    ``aiq_agent.project_context._as_scope_entries``/``_scope_names``, the twin
+    ``agent.project_context._as_scope_entries``/``_scope_names``, the twin
     parser on the envelope side, which likewise keeps the payload and drops only
     the blank entry.
 
@@ -163,7 +163,7 @@ def _raw_collection_scope_from_header() -> list[Any] | None:
     """Decode the UNVERIFIED ``X-Grid-Collection-Scope`` header.
 
     Fallback used only when the signed request-context envelope cannot be parsed
-    (e.g. ``aiq_agent.project_context`` is unavailable to import). Returns the raw
+    (e.g. ``agent.project_context`` is unavailable to import). Returns the raw
     decoded list (bare strings and/or ``{collection, shelf}`` objects), or
     ``None`` when the header is missing or malformed. Not normalized — the
     public functions normalize their result.
@@ -206,7 +206,7 @@ def get_scoped_collections_from_context() -> list[ScopedCollection] | None:
     In an interactive chat turn whose scope carries restricted-folder
     collections (ADR-0087, ADR-0088), only the ones the turn may draw on stay:
     the BFF answered which at turn start
-    (:func:`aiq_agent.knowledge.restricted_use.begin_restricted_use`), and every
+    (:func:`agent.knowledge.restricted_use.begin_restricted_use`), and every
     read path takes its scope from here, so a conversation shared since the
     socket was signed searches only what everyone reading it may read.
 
@@ -217,7 +217,7 @@ def get_scoped_collections_from_context() -> list[ScopedCollection] | None:
     """
     scope: Any = None
     try:
-        from aiq_agent.project_context import GridRequestContext
+        from agent.project_context import GridRequestContext
 
         ctx = GridRequestContext.from_context()
         scope = ctx.collection_scope_entries if ctx.collection_scope_entries is not None else ctx.collection_scope
@@ -254,7 +254,7 @@ def get_collection_scope_from_context() -> list[str] | None:
     consume the envelope's VERIFIED ``collection_scope``; the raw header is
     honored only when no valid envelope is present (anonymous / internal-service
     / dev / legacy) — exactly ``GridRequestContext.from_context()``'s
-    envelope-preferring fallback, and the aiq_api enforcement middleware
+    envelope-preferring fallback, and the backend enforcement middleware
     fail-closes authenticated turns that lack a valid envelope, so an
     authenticated request always resolves against the signed value. In legitimate
     traffic the BFF dual-writes identical values to both header and envelope, so

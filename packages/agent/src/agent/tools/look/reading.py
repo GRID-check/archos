@@ -33,13 +33,13 @@ from typing import Any
 
 import httpx
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.image_redaction import redact_inline_images
-from aiq_agent.common.json_utils import extract_json
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.observability.direct_trace import observed_generation
-from aiq_agent.project_context import get_organization_id_from_context
+from agent.common import provider_limiter
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.image_redaction import redact_inline_images
+from agent.common.json_utils import extract_json
+from agent.common.openrouter import limited_async_http_client
+from agent.observability.direct_trace import observed_generation
+from agent.project_context import get_organization_id_from_context
 
 logger = logging.getLogger(__name__)
 
@@ -137,8 +137,8 @@ def _vision_settings(organization_id: str | None) -> ResolvedCredential:
     if not organization_id:
         return cred
     try:
-        from aiq_agent.common.model_overrides import AgentGroup
-        from aiq_agent.common.model_overrides import resolve_org_model_overrides
+        from agent.common.model_overrides import AgentGroup
+        from agent.common.model_overrides import resolve_org_model_overrides
 
         override = resolve_org_model_overrides(organization_id).get(AgentGroup.INGEST_VLM.value)
     except Exception:  # noqa: BLE001 - model selection must never take a look down
@@ -174,8 +174,8 @@ def _book(data: Any, cred: ResolvedCredential) -> None:
     """Put the reading on the usage ledger, in the turn's budget: the callback path never sees this call."""
     if not isinstance(data, Mapping):
         return
-    from aiq_agent.common.cost_tracking import USAGE_ROLE_LOOK_READING
-    from aiq_agent.common.cost_tracking import record_completion_usage
+    from agent.common.cost_tracking import USAGE_ROLE_LOOK_READING
+    from agent.common.cost_tracking import record_completion_usage
 
     record_completion_usage(
         data, role=USAGE_ROLE_LOOK_READING, requested_model=cred.model, is_byok=cred.source == "byok"

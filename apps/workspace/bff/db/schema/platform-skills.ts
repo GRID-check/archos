@@ -40,7 +40,7 @@ export type PlatformSkillDelivery = (typeof PLATFORM_SKILL_DELIVERIES)[number]
  *
  * Distinct from the two skill sources that already existed:
  *
- *   builtin files   `packages/agent/src/aiq_agent/skills/builtin/**`. The deep-research
+ *   builtin files   `packages/agent/src/agent/skills/builtin/**`. The deep-research
  *                   pipeline's own machinery — never listed, never switchable,
  *                   always resolved. Not an offer and not curation.
  *   `skills`        Org-authored rows, one tenant each.

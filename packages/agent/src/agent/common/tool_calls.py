@@ -13,28 +13,28 @@ import json
 import logging
 from typing import Any
 
-from aiq_agent.common.status_keys import KEY_ACTION_ANNOTATIONS_DELETE
-from aiq_agent.common.status_keys import KEY_ACTION_ANNOTATIONS_PROPOSE
-from aiq_agent.common.status_keys import KEY_ACTION_ANNOTATIONS_READ
-from aiq_agent.common.status_keys import KEY_ACTION_ANNOTATIONS_REPLY
-from aiq_agent.common.status_keys import KEY_ACTION_ANNOTATIONS_SET
-from aiq_agent.common.status_keys import KEY_ACTION_ANNOTATIONS_UPDATE
-from aiq_agent.common.status_keys import KEY_ACTION_CARD
-from aiq_agent.common.status_keys import KEY_ACTION_DRAFT_EDIT
-from aiq_agent.common.status_keys import KEY_ACTION_DRAFT_FILED
-from aiq_agent.common.status_keys import KEY_ACTION_DRAFT_LIST
-from aiq_agent.common.status_keys import KEY_ACTION_DRAFT_READ
-from aiq_agent.common.status_keys import KEY_ACTION_DRAFT_SUBMITTED
-from aiq_agent.common.status_keys import KEY_ACTION_DRAFT_WRITE
-from aiq_agent.common.status_keys import KEY_ACTION_FILE_PROPOSAL
-from aiq_agent.common.status_keys import KEY_ACTION_LOOK
-from aiq_agent.common.status_keys import KEY_ACTION_REMEMBER
-from aiq_agent.common.status_keys import KEY_ACTION_TASK_CREATED
-from aiq_agent.common.status_keys import KEY_ACTION_WORKSPACE_CALL
-from aiq_agent.common.status_keys import KEY_RETRIEVAL_CLAUSE
-from aiq_agent.common.status_keys import KEY_RETRIEVAL_PAGE
-from aiq_agent.common.turn_status import clip
-from aiq_agent.common.workspace_records import is_workspace_call
+from agent.common.status_keys import KEY_ACTION_ANNOTATIONS_DELETE
+from agent.common.status_keys import KEY_ACTION_ANNOTATIONS_PROPOSE
+from agent.common.status_keys import KEY_ACTION_ANNOTATIONS_READ
+from agent.common.status_keys import KEY_ACTION_ANNOTATIONS_REPLY
+from agent.common.status_keys import KEY_ACTION_ANNOTATIONS_SET
+from agent.common.status_keys import KEY_ACTION_ANNOTATIONS_UPDATE
+from agent.common.status_keys import KEY_ACTION_CARD
+from agent.common.status_keys import KEY_ACTION_DRAFT_EDIT
+from agent.common.status_keys import KEY_ACTION_DRAFT_FILED
+from agent.common.status_keys import KEY_ACTION_DRAFT_LIST
+from agent.common.status_keys import KEY_ACTION_DRAFT_READ
+from agent.common.status_keys import KEY_ACTION_DRAFT_SUBMITTED
+from agent.common.status_keys import KEY_ACTION_DRAFT_WRITE
+from agent.common.status_keys import KEY_ACTION_FILE_PROPOSAL
+from agent.common.status_keys import KEY_ACTION_LOOK
+from agent.common.status_keys import KEY_ACTION_REMEMBER
+from agent.common.status_keys import KEY_ACTION_TASK_CREATED
+from agent.common.status_keys import KEY_ACTION_WORKSPACE_CALL
+from agent.common.status_keys import KEY_RETRIEVAL_CLAUSE
+from agent.common.status_keys import KEY_RETRIEVAL_PAGE
+from agent.common.turn_status import clip
+from agent.common.workspace_records import is_workspace_call
 
 logger = logging.getLogger(__name__)
 
@@ -237,7 +237,7 @@ def call_corpus(base: str, args: Any) -> str | None:
     """
     if base not in FILESYSTEM_READ_TOOLS:
         return _search_corpus(base)
-    from aiq_agent.common.estate_paths import call_mount
+    from agent.common.estate_paths import call_mount
 
     mount = call_mount(base, args)
     if mount in (None, "drafts", "skills"):
@@ -259,7 +259,7 @@ def tool_fetches_evidence(base: str) -> bool:
     return bool(base) and _search_corpus(base) is not None
 
 
-#: Where the skills are mounted: ``aiq_agent.skills.SKILLS_ROOT``, spelled out
+#: Where the skills are mounted: ``agent.skills.SKILLS_ROOT``, spelled out
 #: because the skills package imports this module. ``test_turn_status`` pins the two.
 SKILLS_ROOT = "/skills/"
 
@@ -451,8 +451,8 @@ def _filesystem_signature(base: str, args: dict[str, Any]) -> str | None:
     changed, so a call under ``/drafts/`` is never signed (ADR-0133 §6). The
     path is case- and NFC-folded, so two spellings of one path are one read.
     """
-    from aiq_agent.common.estate_paths import nfc
-    from aiq_agent.common.estate_paths import reaches_drafts_only
+    from agent.common.estate_paths import nfc
+    from agent.common.estate_paths import reaches_drafts_only
 
     if reaches_drafts_only(base, args):
         return None

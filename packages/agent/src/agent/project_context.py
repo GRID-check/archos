@@ -41,7 +41,7 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
-from aiq_agent.profile_names import normalize_profile_token
+from agent.profile_names import normalize_profile_token
 
 PROJECT_CONTEXT_HEADER = "x-grid-project-context"
 PROJECT_MEMORY_HEADER = "x-grid-project-memory"
@@ -105,7 +105,7 @@ REQUEST_CONTEXT_ENVELOPE_SIG_HEADER = "x-grid-request-context-sig"
 #: that carry it. DECLARATIVE, so a test can check every entry path that binds
 #: a tool supplies what it needs: the chat path sets these on the WebSocket
 #: upgrade, the job worker injects them from the run's identity
-#: (`aiq_api.jobs.runner.WORKER_IDENTITY_HEADERS`) and, when the run carries
+#: (`backend.jobs.runner.WORKER_IDENTITY_HEADERS`) and, when the run carries
 #: one, the requester's signed envelope (`WORKER_ENVELOPE_HEADERS`). `remember` answered "no
 #: project in scope" on every deep-research run for weeks because this
 #: contract lived in two hand-maintained lists that nothing compared.
@@ -128,7 +128,7 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # the pinned session of the person the envelope names. An entry path
     # supplies it by FORWARDING one the BFF minted, never by building one: the
     # chat path from the turn's live session, the job worker from the
-    # requester's envelope the run carries (ADR-0108, `aiq_api.jobs.run_envelope`).
+    # requester's envelope the run carries (ADR-0108, `backend.jobs.run_envelope`).
     # A run that carries none injects none, and the tool refuses — see the
     # `_NO_ENVELOPE` refusal in `tools/documents/filing.py`.
     "file_draft": (PROJECT_ID_HEADER, REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
@@ -189,7 +189,7 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 # side of this decision), so `from_context`/`from_headers`'s legacy
 # individual-header fallback path simply has no source for it and leaves it
 # `None` — a pre-envelope caller falls through to
-# `aiq_agent.common.norm_registry.extract_federal_state`'s existing prompt-text
+# `agent.common.norm_registry.extract_federal_state`'s existing prompt-text
 # parsing exactly as before this field existed.
 #
 # Vocabulary mirrored (not imported) from `ris_catalog.py`'s
@@ -375,7 +375,7 @@ def _as_scope_entries(value: Any) -> list[Any] | None:
     kept here on purpose: it is perfectly readable and simply names no
     collection, so it is dropped per-entry by :func:`_scope_names` instead of
     voiding an otherwise valid payload. Same rule, same reasoning, as the twin
-    parser ``aiq_agent.knowledge.scoping._parse_scope_payload`` — see its
+    parser ``agent.knowledge.scoping._parse_scope_payload`` — see its
     docstring for why a blank name is not an unreadable one.
     """
     if not isinstance(value, list):
@@ -394,7 +394,7 @@ def _scope_names(entries: list[Any] | None) -> list[str] | None:
 
     A blank name is dropped rather than projected: it authorizes nothing, and
     emitting ``""`` here would put an entry in this list that the resolver
-    (``aiq_agent.knowledge.scoping._parse_scope_payload``) skips — the two sides
+    (``agent.knowledge.scoping._parse_scope_payload``) skips — the two sides
     of the seam would then disagree about what the same payload means.
     """
     if entries is None:
@@ -470,7 +470,7 @@ class GridRequestContext:
     #: the field existed. A reader that GRANTS access on the envelope enforces
     #: the window itself and fails closed on a missing value, as the BFF
     #: verifier (`verifyGridRequestContextEnvelope`) does: the job routes do so
-    #: in `aiq_api.jobs.access.signed_job_scope` (ADR-0084).
+    #: in `backend.jobs.access.signed_job_scope` (ADR-0084).
     issued_at: int | None = None
     #: The envelope EXACTLY as it arrived — the base64url header and its hex
     #: signature, unparsed.
@@ -546,7 +546,7 @@ class GridRequestContext:
 
         Returns ``None`` (treated as ABSENT by every caller — ``from_context``
         falls back to the individual headers, and the enforcement middleware
-        in ``aiq_api`` treats it as "no envelope") when:
+        in ``backend`` treats it as "no envelope") when:
 
         - ``header_value`` is missing/blank;
         - the base64url payload fails to decode or does not parse as a JSON

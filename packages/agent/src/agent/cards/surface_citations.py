@@ -24,12 +24,12 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.surface_card import SURFACE_LAYOUTS
-from aiq_agent.cards.surface_card import SURFACE_TEXT
-from aiq_agent.cards.surface_card import SurfaceCard
-from aiq_agent.citations.markdown_code import map_outside_code
-from aiq_agent.citations.references import expand_grouped_citations
+from agent.cards.models import grid_card_adapter
+from agent.cards.surface_card import SURFACE_LAYOUTS
+from agent.cards.surface_card import SURFACE_TEXT
+from agent.cards.surface_card import SurfaceCard
+from agent.citations.markdown_code import map_outside_code
+from agent.citations.references import expand_grouped_citations
 
 #: A bare ``[N]`` with the blanks before it: not a ``[[card:N]]`` marker, not
 #: the label of a Markdown link. The blanks are group 1 so a dropped marker

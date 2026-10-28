@@ -8,15 +8,15 @@ from typing import Any
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge import document_metadata_store as facade
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import logger
-from aiq_agent.knowledge.document_metadata_helpers import LinkOutcome
-from aiq_agent.knowledge.document_metadata_helpers import _link_lock_key
-from aiq_agent.knowledge.document_metadata_helpers import _LinkRow
-from aiq_agent.knowledge.document_metadata_helpers import _merged_suggestion
-from aiq_agent.knowledge.document_metadata_helpers import _set_columns
-from aiq_agent.knowledge.document_metadata_helpers import _with_refusal
+from agent.knowledge import document_metadata_store as facade
+from agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge.document_metadata_constants import logger
+from agent.knowledge.document_metadata_helpers import LinkOutcome
+from agent.knowledge.document_metadata_helpers import _link_lock_key
+from agent.knowledge.document_metadata_helpers import _LinkRow
+from agent.knowledge.document_metadata_helpers import _merged_suggestion
+from agent.knowledge.document_metadata_helpers import _set_columns
+from agent.knowledge.document_metadata_helpers import _with_refusal
 
 
 def set_superseded_by(store, collection: str, older: str, newer: str | None) -> bool:

@@ -7,7 +7,7 @@ written for. The same variable names the two worker tiers
 (``worker``, ``ingest-worker``), but those never load this front end, so this
 module knows only the two roles that serve HTTP.
 
-Read once, when the worker is built (``plugin.AIQAPIWorker.__init__``), and held
+Read once, when the worker is built (``plugin.BackendWorker.__init__``), and held
 as a value from then on, so no later code re-reads the environment and answers
 differently.
 """

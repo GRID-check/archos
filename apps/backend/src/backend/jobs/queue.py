@@ -5,7 +5,7 @@ containers claim rows, run the job in-process, and heartbeat the row so a crashe
 worker's job is reclaimed. This is what lets research execution scale
 horizontally across worker replicas.
 
-The claim itself is ``aiq_agent.common.claim_queue``, the algorithm ingestion
+The claim itself is ``agent.common.claim_queue``, the algorithm ingestion
 runs on too, so this module is only what is research's own: its table, its lane
 (the organisation), its encrypted payload and its poison verdict.
 
@@ -41,11 +41,11 @@ import logging
 import threading
 from typing import Any
 
-from aiq_agent.common.claim_queue import CLAIMED
-from aiq_agent.common.claim_queue import DEAD
-from aiq_agent.common.claim_queue import QUEUED
-from aiq_agent.common.claim_queue import ClaimQueue
-from aiq_agent.knowledge.ingest_scheduler import lane_of
+from agent.common.claim_queue import CLAIMED
+from agent.common.claim_queue import DEAD
+from agent.common.claim_queue import QUEUED
+from agent.common.claim_queue import ClaimQueue
+from agent.knowledge.ingest_scheduler import lane_of
 
 from . import lease_policy
 from . import payload_crypto

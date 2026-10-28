@@ -11,13 +11,13 @@ from __future__ import annotations
 import asyncio
 import contextvars
 
-from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
-from aiq_agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
-from aiq_agent.common.image_view_budget import begin_image_view_budget
-from aiq_agent.common.image_view_budget import end_image_view_budget
-from aiq_agent.common.image_view_budget import get_image_view_budget
-from aiq_agent.common.image_view_budget import remaining_views_text
-from aiq_agent.common.image_view_budget import try_consume_image_view
+from agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
+from agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
+from agent.common.image_view_budget import begin_image_view_budget
+from agent.common.image_view_budget import end_image_view_budget
+from agent.common.image_view_budget import get_image_view_budget
+from agent.common.image_view_budget import remaining_views_text
+from agent.common.image_view_budget import try_consume_image_view
 
 
 def test_refuses_the_view_past_the_cap_and_recovers_at_turn_end():

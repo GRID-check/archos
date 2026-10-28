@@ -29,8 +29,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.memory.restriction import RestrictionEvidence
+from agent.common.model_overrides import AgentGroup
+from agent.memory.restriction import RestrictionEvidence
 
 #: Terminal states a stage run can end in. Every one of them is recorded, so
 #: "how often did this stage fire, succeed, time out, or skip and why" is a

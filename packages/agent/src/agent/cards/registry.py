@@ -7,7 +7,7 @@ here: on chat, the answer envelope's ``cards`` field
 (``document_draft``, ``document_grid``) is pushed by the tool that did the
 work. The chat entrypoint reads the registry after the turn and attaches the
 cards to the response — the same ContextVar pattern the citation registry
-uses (:mod:`aiq_agent.citations.session`).
+uses (:mod:`agent.citations.session`).
 """
 
 from __future__ import annotations

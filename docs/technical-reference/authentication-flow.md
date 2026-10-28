@@ -173,8 +173,8 @@ The `buildCollectionScopeFromRequest()` helper constructs the collection scope f
 
 ## Python JWT validation
 
-`apps/backend/src/aiq_api/auth/workos_validator.py` creates a `JWTValidator` configured for WorkOS,
-and the `aiq_api.validators` entry point in `apps/backend/pyproject.toml` hands it to the
+`apps/backend/src/backend/auth/workos_validator.py` creates a `JWTValidator` configured for WorkOS,
+and the `backend.validators` entry point in `apps/backend/pyproject.toml` hands it to the
 middleware (ADR-0002: another package can register its own):
 
 ```python
@@ -187,7 +187,7 @@ JWTValidator(
 )
 ```
 
-`JWTValidator` (`apps/backend/src/aiq_api/auth/jwt_validator.py:39`) uses `PyJWT[cryptography]` to verify RS256 signatures:
+`JWTValidator` (`apps/backend/src/backend/auth/jwt_validator.py:39`) uses `PyJWT[cryptography]` to verify RS256 signatures:
 
 1. Fetches JWKS from WorkOS (cached for 6 hours, cache-busted on kid miss)
 2. Extracts the signing key matching the JWT `kid`
@@ -195,11 +195,11 @@ JWTValidator(
 4. Returns a dict with claims (`type: "jwt"`, `sub`, `email`, `name`, `token`) on success
 5. Returns error code `token_expired` or `token_invalid` on failure
 
-The validated principal is accessible in Python via `get_current_principal()` from `packages/agent/src/aiq_agent/auth/utils.py`, which reads the caller identity the middleware binds in `aiq_agent.auth.request_identity`.
+The validated principal is accessible in Python via `get_current_principal()` from `packages/agent/src/agent/auth/utils.py`, which reads the caller identity the middleware binds in `agent.auth.request_identity`.
 
 ## Token retrieval chain
 
-`get_auth_token()` in `packages/agent/src/aiq_agent/auth/utils.py` returns a token from the first available source, checked in priority order:
+`get_auth_token()` in `packages/agent/src/agent/auth/utils.py` returns a token from the first available source, checked in priority order:
 
 1. **Registered token fetchers** — custom fetchers registered via `register_token_fetcher(fn, priority)`, sorted high-to-low
 2. **NAT Context cookies** — `idToken` cookie from the NAT context (browser / web-UI mode)

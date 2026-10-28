@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge.document_metadata_constants import _RETAINED_COLUMNS
-from aiq_agent.knowledge.document_metadata_constants import RETAINED_TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import TAGS_SET_BY_PERSON
-from aiq_agent.knowledge.document_metadata_constants import logger
-from aiq_agent.knowledge.document_metadata_helpers import _LinkRow
-from aiq_agent.knowledge.document_metadata_helpers import _person_made_facts
+from agent.knowledge.document_metadata_constants import _RETAINED_COLUMNS
+from agent.knowledge.document_metadata_constants import RETAINED_TABLE_NAME
+from agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge.document_metadata_constants import TAGS_SET_BY_PERSON
+from agent.knowledge.document_metadata_constants import logger
+from agent.knowledge.document_metadata_helpers import _LinkRow
+from agent.knowledge.document_metadata_helpers import _person_made_facts
 
 
 def register(

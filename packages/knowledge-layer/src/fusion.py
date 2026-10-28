@@ -199,7 +199,7 @@ def merge_results(results, query: str, top_k: int, backend_name: str, max_per_do
         ``error_message`` set when mismatches dropped some channels but others
         survived (degraded), and a plain ``success=True`` otherwise.
     """
-    from aiq_agent.knowledge.schema import RetrievalResult
+    from agent.knowledge.schema import RetrievalResult
 
     channels: list[list] = []
     backend = backend_name
@@ -246,8 +246,8 @@ def merge_results(results, query: str, top_k: int, backend_name: str, max_per_do
         merged_chunks.append(chunk)
 
     try:
-        from aiq_agent.common.focus_file import get_focused_file_name
-        from aiq_agent.common.focus_file import get_focused_shelf
+        from agent.common.focus_file import get_focused_file_name
+        from agent.common.focus_file import get_focused_shelf
 
         focused = get_focused_file_name()
         focused_shelf = get_focused_shelf()

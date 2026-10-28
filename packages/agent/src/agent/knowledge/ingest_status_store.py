@@ -80,7 +80,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import inspect
 from sqlalchemy import text
 
-from aiq_agent.common.db_utils import ensure_schema
+from agent.common.db_utils import ensure_schema
 
 from . import ingest_queue
 from .document_metadata_store import DocumentMetadataStore

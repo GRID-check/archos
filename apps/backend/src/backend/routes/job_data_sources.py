@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
-from aiq_agent.common.data_source_registry import get_all_sources
-from aiq_agent.common.data_source_registry import get_all_tool_refs
-from aiq_agent.common.data_source_registry import get_source_id_for_tool
+from agent.common.data_source_registry import get_all_sources
+from agent.common.data_source_registry import get_all_tool_refs
+from agent.common.data_source_registry import get_source_id_for_tool
 from nat.plugin_api import LLMFrameworkEnum
 
 if TYPE_CHECKING:
@@ -42,7 +42,7 @@ async def _get_agent_available_source_ids(builder: WorkflowBuilder, agent_config
     ``exclude_tools``; partial exclusion does not hide the source.
 
     Assumes agent configs registered for async submission expose typed
-    ``tools`` and ``exclude_tools`` fields (see ``aiq_agent.agents.*.register``).
+    ``tools`` and ``exclude_tools`` fields (see ``agent.agents.*.register``).
     A registered agent without these fields is a registration-time bug, not a
     runtime concern.
     """

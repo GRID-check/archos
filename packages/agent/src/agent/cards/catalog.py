@@ -1,9 +1,9 @@
 """Single, framing-agnostic description of the card catalog for the LLM.
 
 Grid describes the SAME discriminated-union card schema to the model on two
-surfaces — the mid-turn ``emit_card`` tool (:mod:`aiq_agent.cards.register`) and
-the post-hoc batch generator (:mod:`aiq_agent.cards.prompt` /
-:mod:`aiq_agent.cards.generate`). This module owns the one representation they
+surfaces — the mid-turn ``emit_card`` tool (:mod:`agent.cards.register`) and
+the post-hoc batch generator (:mod:`agent.cards.prompt` /
+:mod:`agent.cards.generate`). This module owns the one representation they
 share: compact per-type shapes, shared building blocks defined once, and worked
 examples for the hard-to-nest types. Each surface adds only its own framing
 (tool-call vs batch), so the schema description can never drift between them.
@@ -270,7 +270,7 @@ CHAT_ONLY_CARD_TYPES = frozenset({"surface"})
 #
 # They stay in the catalog for the ``emit_card`` tool, whose caller has the tool
 # rows in context. They are withheld from POST-HOC generation
-# (:func:`aiq_agent.cards.prompt.build_card_generation_prompt`), which sees only
+# (:func:`agent.cards.prompt.build_card_generation_prompt`), which sees only
 # the question and the finished answer text — no tool output at all. From that
 # context the only ids available are whatever survived into the prose, so a
 # model card generated there is built from leftovers or invented outright, and
@@ -630,12 +630,12 @@ def model_facing_card_types() -> frozenset[str]:
     It is exposed separately because other surfaces need to answer "may a
     skill/author name this card?" without parsing the rendered catalog text:
     the skills substrate validates ``grid-cards`` against it (see
-    :mod:`aiq_agent.skills.models`), and the editor's picker derives the same
+    :mod:`agent.skills.models`), and the editor's picker derives the same
     set from the generated Zod schemas. One definition of "advertisable", so a
     new card type appears everywhere at once and a system card can never be
     requested by name.
     """
-    from aiq_agent.cards.models import GridCard
+    from agent.cards.models import GridCard
 
     return frozenset(_card_type_of(c) for c in GridCard.__args__) - SYSTEM_CARD_TYPES
 
@@ -701,7 +701,7 @@ def _is_discriminator(field_name: str, field_info: Any) -> bool:
 
 def _shape(model_cls: type, nested: list[type], *, with_desc: bool) -> str:
     """Render a model's fields as `{ name*: type (desc; constraints), ... }`."""
-    from aiq_agent.cards.proposal_cards import SERVER_FILLED_CARD_FIELDS  # models import this module
+    from agent.cards.proposal_cards import SERVER_FILLED_CARD_FIELDS  # models import this module
 
     parts: list[str] = []
     for field_name, field_info in model_cls.model_fields.items():
@@ -756,7 +756,7 @@ def describe_card_catalog() -> dict[str, Any]:
     type appears here the moment it is added to ``GridCard`` and cannot drift.
     Keys are camelCase because this is a wire shape, not a Python one.
     """
-    from aiq_agent.cards.models import GridCard
+    from agent.cards.models import GridCard
 
     nested: list[type] = []
     cards: list[dict[str, Any]] = []
@@ -840,7 +840,7 @@ def render_card_catalog(*, include_model_backed: bool = True, exclude: frozenset
 
     The system types are withheld unconditionally: a tool owns each one.
     """
-    from aiq_agent.cards.models import GridCard
+    from agent.cards.models import GridCard
 
     withheld = SYSTEM_CARD_TYPES | exclude
     if not include_model_backed:
@@ -1027,7 +1027,7 @@ def render_card_index(*, include_model_backed: bool = True, exclude: frozenset[s
 
     The system types are withheld unconditionally: a tool owns each one.
     """
-    from aiq_agent.cards.models import GridCard
+    from agent.cards.models import GridCard
 
     withheld = SYSTEM_CARD_TYPES | exclude
     if not include_model_backed:
@@ -1053,7 +1053,7 @@ def card_index_entries(
     over "which card would this answer earn" (``agents/piloti/decisions.py``)
     needs as its criteria, without parsing the rendered index back.
     """
-    from aiq_agent.cards.models import GridCard
+    from agent.cards.models import GridCard
 
     withheld = SYSTEM_CARD_TYPES | exclude
     if not include_model_backed:
@@ -1074,7 +1074,7 @@ def render_card_details(card_types: Iterable[str]) -> str:
     a model-supplied name and from skill metadata, and a stale name must not
     take down the turn that mentioned it.
     """
-    from aiq_agent.cards.models import GridCard
+    from agent.cards.models import GridCard
 
     by_type = {_card_type_of(c): c for c in GridCard.__args__}
     withheld = SYSTEM_CARD_TYPES
@@ -1085,7 +1085,7 @@ def render_card_details(card_types: Iterable[str]) -> str:
     # contradict its `Text` leaves.
     compose = ""
     if "surface" in wanted:
-        from aiq_agent.cards.envelope import compose_rule  # envelope imports this module
+        from agent.cards.envelope import compose_rule  # envelope imports this module
 
         wanted.remove("surface")
         compose = compose_rule()

@@ -14,23 +14,23 @@ from typing import Any
 import pytest
 from langgraph.store.memory import InMemoryStore
 
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common.wire_v2 import StatusStep
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
-from aiq_agent.tools.documents import draft_store
-from aiq_agent.tools.documents.draft_store import FILED_DOCUMENT_KEY
-from aiq_agent.tools.documents.draft_store import FILED_HASH_KEY
-from aiq_agent.tools.documents.draft_store import FILED_STATE_KEY
-from aiq_agent.tools.documents.draft_store import FILED_VERSION_KEY
-from aiq_agent.tools.documents.draft_store import DraftBackend
-from aiq_agent.tools.documents.filing import FilingError
-from aiq_agent.turn import subject_document
-from aiq_agent.turn.payload import SubjectVersion
-from aiq_agent.turn.response import answer_message_id
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
+from agent.common.wire_v2 import StatusStep
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import reset_restricted_use
+from agent.tools.documents import draft_store
+from agent.tools.documents.draft_store import FILED_DOCUMENT_KEY
+from agent.tools.documents.draft_store import FILED_HASH_KEY
+from agent.tools.documents.draft_store import FILED_STATE_KEY
+from agent.tools.documents.draft_store import FILED_VERSION_KEY
+from agent.tools.documents.draft_store import DraftBackend
+from agent.tools.documents.filing import FilingError
+from agent.turn import subject_document
+from agent.turn.payload import SubjectVersion
+from agent.turn.response import answer_message_id
 
 CONVERSATION = "conv-subject-1"
 ORGANIZATION = "org_1"

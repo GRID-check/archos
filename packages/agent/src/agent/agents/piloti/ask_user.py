@@ -31,9 +31,9 @@ import threading
 from collections import OrderedDict
 from typing import Any
 
-from aiq_agent.auth.request_identity import headless_turn_requested
-from aiq_agent.common import build_human_prompt
-from aiq_agent.common import extract_user_response
+from agent.auth.request_identity import headless_turn_requested
+from agent.common import build_human_prompt
+from agent.common import extract_user_response
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
 from nat.plugin_api import FunctionBaseConfig

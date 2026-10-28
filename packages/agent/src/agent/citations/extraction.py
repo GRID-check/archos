@@ -1,7 +1,7 @@
 """From a tool result to ``SourceEntry`` records: the structured reader first, then the registered text parsers.
 
 The TOOL side is structured: an evidence tool states
-:class:`~aiq_agent.common.grounding_block.GroundingHit` records and this module reads the fields (ADR-0061).
+:class:`~agent.common.grounding_block.GroundingHit` records and this module reads the fields (ADR-0061).
 The text parsers serve a replayed turn, whose result is only text.
 """
 
@@ -12,14 +12,14 @@ import re
 from html import unescape
 from typing import Any
 
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import is_look_tool
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.citations.registry import MAX_REGIONS_PER_SOURCE
-from aiq_agent.citations.text_parsers import parser_for
-from aiq_agent.common.grounding_block import GroundingHit
-from aiq_agent.common.grounding_block import get_grounding_block
-from aiq_agent.common.source_kinds import TOOL_RESULT_SOURCE_TYPE
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import is_look_tool
+from agent.citations.entries import normalize_url
+from agent.citations.registry import MAX_REGIONS_PER_SOURCE
+from agent.citations.text_parsers import parser_for
+from agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import get_grounding_block
+from agent.common.source_kinds import TOOL_RESULT_SOURCE_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +65,10 @@ def extract_sources_from_tool_result(
     agent's loaded tool set. The optional ``source_id`` is stored on the
     returned entries when callers have resolved this tool to a configured
     data source via
-    :func:`aiq_agent.common.data_source_registry.get_source_id_for_tool`,
+    :func:`agent.common.data_source_registry.get_source_id_for_tool`,
     but it does not gate the fallback.
     """
-    from aiq_agent.common.citation_collector import hits_from_artifact
+    from agent.common.citation_collector import hits_from_artifact
 
     carried = hits_from_artifact(artifact)
     if carried is not None:

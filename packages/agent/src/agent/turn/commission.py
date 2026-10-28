@@ -34,11 +34,11 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
-from aiq_agent import project_context
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.tools.tasks.client import DelegationError
-from aiq_agent.tools.tasks.client import post_task
+from agent import project_context
+from agent.common.bff_http import SignedEnvelope
+from agent.common.plan_documents import PlanDocuments
+from agent.tools.tasks.client import DelegationError
+from agent.tools.tasks.client import post_task
 
 logger = logging.getLogger(__name__)
 

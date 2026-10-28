@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.routes.generate_summary import add_generate_summary_routes
+from backend.routes.generate_summary import add_generate_summary_routes
 
 
 @pytest.fixture
@@ -91,8 +91,8 @@ async def test_the_request_follows_the_organizations_zdr_setting(app, monkeypatc
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         with (
             patch("httpx.AsyncClient", _fake_async_client(mock_post)),
-            patch("aiq_agent.common.model_overrides.resolve_org_zdr_only", return_value=zdr),
-            patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None),
+            patch("agent.common.model_overrides.resolve_org_zdr_only", return_value=zdr),
+            patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=None),
         ):
             await client.post(
                 "/v1/generate-summary", json={"profile_text": "Büro."}, headers={"x-grid-organization-id": "org_1"}
@@ -234,7 +234,7 @@ async def test_generate_summary_upstream_error_returns_empty_summary(app):
 async def test_generate_summary_uses_byok_credential_when_org_header_present(app, monkeypatch):
     """When the BFF forwards an org id and BYOK resolves, the route calls the
     tenant's endpoint/key rather than the env credential."""
-    from aiq_agent.common.llm_credentials import OrgLLMCredential
+    from agent.common.llm_credentials import OrgLLMCredential
 
     monkeypatch.delenv("SUMMARY_LLM_API_KEY", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", "platform-key")
@@ -257,7 +257,7 @@ async def test_generate_summary_uses_byok_credential_when_org_header_present(app
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=byok):
+        with patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=byok):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/generate-summary",
@@ -287,7 +287,7 @@ async def test_generate_summary_env_fallback_when_byok_absent(app, monkeypatch):
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
+        with patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/generate-summary",
@@ -324,7 +324,7 @@ def test_placeholder_openrouter_key_does_not_select_the_openrouter_endpoint(monk
     """Same placeholder trap as the consistency route: an uninterpolated
     `${OPENROUTER_API_KEY}` is truthy but not a key, and reading it raw sent
     LLM_API_KEY to openrouter.ai."""
-    from aiq_api.routes.generate_summary import _llm_settings
+    from backend.routes.generate_summary import _llm_settings
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "${OPENROUTER_API_KEY}")
     monkeypatch.setenv("LLM_API_KEY", "sk-some-other-provider")

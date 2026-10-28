@@ -10,7 +10,7 @@ its BM25 terms with :func:`select_terms` against Qdrant's own counts
 WHY THIS EXISTS
 ---------------
 The previous lexical channel ran Chroma ``where_document {"$contains": term}``
-over the terms of ``aiq_agent.common.legal_terms.extract_exact_terms``. Measured
+over the terms of ``agent.common.legal_terms.extract_exact_terms``. Measured
 against 53 real German questions mined from this repo, 28.3% produced any term
 and only 9.4% a useful one, because ``$contains`` is a raw, CASE-SENSITIVE,
 byte-level substring test: ``'oib'`` misses ``OIB``, ``'§ 3'`` also matches
@@ -38,7 +38,7 @@ noise" is a property of this corpus, not of the German language.
 
 FOLDING: MIRRORED FROM ``norm_registry._normalize``, DELIBERATELY DIVERGENT
 ---------------------------------------------------------------------------
-``aiq_agent.common.norm_registry._normalize`` already encodes this repo's
+``agent.common.norm_registry._normalize`` already encodes this repo's
 knowledge that German matching needs umlaut/ß folding, and the lexical channel
 was the one place not using it. :func:`fold` MIRRORS it (it is not imported) and
 diverges on ONE point, on purpose:
@@ -170,7 +170,7 @@ _MIN_TERM_LENGTH = 3
 def fold(text: str | None) -> str:
     """Lowercase and fold umlauts/ß so spelling variants collapse.
 
-    Mirrors :func:`aiq_agent.common.norm_registry._normalize` in intent and
+    Mirrors :func:`agent.common.norm_registry._normalize` in intent and
     deliberately diverges on the umlaut target — see the module docstring.
     ``None`` folds to the empty string (this module never raises on empty input).
     """

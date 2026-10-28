@@ -152,7 +152,7 @@ def resolve_org_llm_credential(organization_id: str | None) -> OrgLLMCredential 
 
 def get_org_llm_credential_from_context() -> OrgLLMCredential | None:
     """Resolve the BYOK credential for the current request's organization."""
-    from aiq_agent.project_context import get_organization_id_from_context
+    from agent.project_context import get_organization_id_from_context
 
     return resolve_org_llm_credential(get_organization_id_from_context())
 

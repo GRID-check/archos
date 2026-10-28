@@ -1,11 +1,11 @@
 """Tests for tokenomics report statistics helpers.
 
-Module under test: packages/agent/src/aiq_agent/tokenomics/report/_report_stats.py
+Module under test: packages/agent/src/agent/tokenomics/report/_report_stats.py
 """
 
-from aiq_agent.tokenomics.report._report_stats import _latency_stats
-from aiq_agent.tokenomics.report._report_stats import _load_csv_predictions
-from aiq_agent.tokenomics.report._report_stats import _pct
+from agent.tokenomics.report._report_stats import _latency_stats
+from agent.tokenomics.report._report_stats import _load_csv_predictions
+from agent.tokenomics.report._report_stats import _pct
 
 
 def test_pct_empty():

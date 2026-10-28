@@ -24,9 +24,9 @@ from collections.abc import Mapping
 from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
 
-from aiq_agent.observability.otlp_resource import ENDPOINT_ENV
-from aiq_agent.observability.otlp_resource import resource_attributes
-from aiq_agent.observability.otlp_resource import signal_endpoint
+from agent.observability.otlp_resource import ENDPOINT_ENV
+from agent.observability.otlp_resource import resource_attributes
+from agent.observability.otlp_resource import signal_endpoint
 
 logger = logging.getLogger(__name__)
 

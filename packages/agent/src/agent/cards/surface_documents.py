@@ -25,7 +25,7 @@ import asyncio
 import logging
 from typing import Literal
 
-from aiq_agent.common.source_kinds import is_office_shelf_collection
+from agent.common.source_kinds import is_office_shelf_collection
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -134,9 +134,9 @@ def _target_collections(
     the conversation without an admission. Searching it is admitted per tool
     round instead.
     """
-    from aiq_agent.common.source_kinds import Shelf
-    from aiq_agent.common.source_kinds import parse_shelf
-    from aiq_agent.knowledge.restricted_collections import is_restricted_collection
+    from agent.common.source_kinds import Shelf
+    from agent.common.source_kinds import parse_shelf
+    from agent.knowledge.restricted_collections import is_restricted_collection
 
     wanted = parse_shelf(shelf)
     seen: set[str] = set()
@@ -357,9 +357,9 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
         if not query and not filename:
             return "Provide `filename=` (open this named file) or `query=` (search). Use `mode=many` only to browse."
 
-        from aiq_agent.knowledge.inventory import shelf_hint_from_query
-        from aiq_agent.knowledge.scoping import get_collection_scope_from_context
-        from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+        from agent.knowledge.inventory import shelf_hint_from_query
+        from agent.knowledge.scoping import get_collection_scope_from_context
+        from agent.knowledge.scoping import get_scoped_collections_from_context
 
         try:
             scoped_entries = get_scoped_collections_from_context()
@@ -405,7 +405,7 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
 
         effective: SurfaceMode = "many" if mode == "many" and not named else "one"
 
-        from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        from agent.common.retrieval_settings import get_retrieval_setting
 
         chunk_top_k = get_retrieval_setting("surface.chunk_top_k", _CHUNK_TOP_K)
         max_files = get_retrieval_setting("surface.max_files", MAX_SURFACED_FILES)
@@ -441,8 +441,8 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
                 # strips it (the `document_grid` schema has no folder field).
                 doc["_folder_path"] = info.get("folder_path") or None
 
-        from aiq_agent.cards.models import grid_card_adapter
-        from aiq_agent.cards.registry import get_card_registry
+        from agent.cards.models import grid_card_adapter
+        from agent.cards.registry import get_card_registry
 
         heading = (title or "").strip()
         if not heading:
@@ -473,7 +473,7 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
         # filed like a passage would be; without this a surfacing round was
         # announced („Sucht in Ihren Unterlagen") and drew as a search that
         # found nothing. Best-effort by `record_lane_hit`'s own contract.
-        from aiq_agent.common.turn_status import record_lane_hit
+        from agent.common.turn_status import record_lane_hit
 
         for doc in documents:
             record_lane_hit(str(doc["file_name"]), shelf=_SHELF_OF_SOURCE.get(str(doc.get("source") or "")))
@@ -543,7 +543,7 @@ _SOURCE_OF_HIT_SHELF: dict[str, Literal["project", "office"]] = {"project": "pro
 
 def _target_shelves(targets: list[str], scoped: list | None) -> set[str]:
     """Which shelves the targets hold, ``project`` and ``office_shelf``: what the browse may search."""
-    from aiq_agent.common.source_kinds import Shelf
+    from agent.common.source_kinds import Shelf
 
     by_collection = {}
     for entry in scoped or []:
@@ -629,8 +629,8 @@ async def _browse_workspace_search(query: str, shelves: set[str], max_files: int
     ``None`` when the operation could not answer for every shelf asked (no envelope, a
     refusal, an outage); the caller then browses the vector corpora instead.
     """
-    from aiq_agent.project_context import get_project_id_from_context
-    from aiq_agent.tools.workspace.register import read_operation
+    from agent.project_context import get_project_id_from_context
+    from agent.tools.workspace.register import read_operation
 
     text = query.strip()[:500]
     scopes = _search_scopes(shelves, get_project_id_from_context())
@@ -673,14 +673,14 @@ async def _retrieve_all(
     query: str,
     chunk_top_k: int,
 ) -> list[tuple[object, str]]:
-    from aiq_agent.knowledge.factory import get_active_retriever
+    from agent.knowledge.factory import get_active_retriever
 
     retriever = get_active_retriever()
 
     source_by_collection: dict[str, str] = {}
     try:
-        from aiq_agent.common.source_kinds import Shelf
-        from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
+        from agent.common.source_kinds import Shelf
+        from agent.knowledge.scoping import get_scoped_collections_from_context
 
         for entry in get_scoped_collections_from_context() or []:
             if entry.shelf is Shelf.OFFICE_SHELF:
@@ -708,7 +708,7 @@ async def _retrieve_all(
 
 async def _fetch_document_metadata(collections: list[str]) -> dict[str, dict]:
     """Map file_name → {summary, tags, folder_path} across the given collections."""
-    from aiq_agent.knowledge.factory import get_available_documents_async
+    from agent.knowledge.factory import get_available_documents_async
 
     async def _for(collection: str) -> list:
         try:

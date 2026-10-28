@@ -9,7 +9,7 @@ from typing import Literal
 from pydantic import Field
 from pydantic import field_validator
 
-from aiq_agent.cards.card_model import CardModel
+from agent.cards.card_model import CardModel
 
 # Canonical project-profile fact keys (mirrors the intake definition in
 # apps/workspace/bff/project-profile/intake-definition.ts). Included in the

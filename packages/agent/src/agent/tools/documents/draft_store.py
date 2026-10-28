@@ -4,7 +4,7 @@ What this is
 ------------
 ``ls``/``read_file``/``write_file``/``edit_file`` over a LangGraph ``BaseStore``
 namespaced by conversation. The tools themselves are stock DeepAgents
-(:mod:`aiq_agent.tools.documents.tools`); this module is the storage half:
+(:mod:`agent.tools.documents.tools`); this module is the storage half:
 where the bytes live, what a path may be, how much a conversation may keep, and
 the two corrections the stock backend needs.
 
@@ -52,7 +52,7 @@ from deepagents.backends.store import StoreBackend
 from langgraph.store.base import BaseStore
 from langgraph.store.base import Item
 
-from aiq_agent.common import is_postgres_dsn
+from agent.common import is_postgres_dsn
 
 from .cards import emit_draft_card
 
@@ -551,8 +551,8 @@ async def _build_store(dsn: str) -> BaseStore:
 
     from langgraph.store.postgres import AsyncPostgresStore
 
-    from aiq_agent.common import get_checkpoint_pool
-    from aiq_agent.knowledge.leader_lock import keyed_lock_async
+    from agent.common import get_checkpoint_pool
+    from agent.knowledge.leader_lock import keyed_lock_async
 
     store = AsyncPostgresStore(get_checkpoint_pool(dsn))
     # As for the checkpointer (`common.get_checkpointer`): every role runs this, and `setup()` is not safe against it.

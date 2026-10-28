@@ -1,7 +1,7 @@
 """A Langfuse generation for a model call that no NAT workflow makes (ADR-0089).
 
 Every model call must be observable, and NAT's span exporter only sees what runs
-inside a workflow. The auxiliary routes in ``aiq_api`` (conversation title,
+inside a workflow. The auxiliary routes in ``backend`` (conversation title,
 project summary, consistency check, skill review, lesson distill, feedback
 digest) post to the chat-completions endpoint straight from a FastAPI handler, so
 they cost money and took seconds without leaving a span anywhere. This module gives
@@ -44,21 +44,21 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any
 
-from aiq_agent.common.image_redaction import redact_inline_images
-from aiq_agent.observability.langfuse_trace_attributes import GEN_AI_REQUEST_MODEL
-from aiq_agent.observability.langfuse_trace_attributes import METADATA_PREFIX
-from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_MODEL_NAME
-from aiq_agent.observability.langfuse_trace_attributes import SESSION_ID_ATTRIBUTE
-from aiq_agent.observability.langfuse_trace_attributes import TAGS_ATTRIBUTE
-from aiq_agent.observability.langfuse_trace_attributes import usage_observation_attributes
-from aiq_agent.observability.otlp_resource import ENDPOINT_ENV
-from aiq_agent.observability.otlp_resource import resource_attributes
-from aiq_agent.observability.otlp_resource import signal_endpoint
-from aiq_agent.observability.trace_context import OBSERVATION_LEVEL_ATTRIBUTE
-from aiq_agent.observability.trace_context import OBSERVATION_STATUS_MESSAGE_ATTRIBUTE
-from aiq_agent.observability.trace_context import OBSERVATION_TYPE_ATTRIBUTE
-from aiq_agent.observability.trace_context import TRACE_NAME_ATTRIBUTE
-from aiq_agent.observability.trace_context import process_trace_attributes
+from agent.common.image_redaction import redact_inline_images
+from agent.observability.langfuse_trace_attributes import GEN_AI_REQUEST_MODEL
+from agent.observability.langfuse_trace_attributes import METADATA_PREFIX
+from agent.observability.langfuse_trace_attributes import OBSERVATION_MODEL_NAME
+from agent.observability.langfuse_trace_attributes import SESSION_ID_ATTRIBUTE
+from agent.observability.langfuse_trace_attributes import TAGS_ATTRIBUTE
+from agent.observability.langfuse_trace_attributes import usage_observation_attributes
+from agent.observability.otlp_resource import ENDPOINT_ENV
+from agent.observability.otlp_resource import resource_attributes
+from agent.observability.otlp_resource import signal_endpoint
+from agent.observability.trace_context import OBSERVATION_LEVEL_ATTRIBUTE
+from agent.observability.trace_context import OBSERVATION_STATUS_MESSAGE_ATTRIBUTE
+from agent.observability.trace_context import OBSERVATION_TYPE_ATTRIBUTE
+from agent.observability.trace_context import TRACE_NAME_ATTRIBUTE
+from agent.observability.trace_context import process_trace_attributes
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ TRUNCATION_MARKER = "…[truncated]"
 #: Every trace from here is filterable as "not a chat turn" in one click.
 AUXILIARY_SURFACE_TAG = "surface:auxiliary"
 
-_SCOPE = "aiq_agent.observability.direct_trace"
+_SCOPE = "agent.observability.direct_trace"
 
 #: The span a direct generation nests under: an ingest file's (:func:`observed_span`). Unset, a
 #: generation is its own root trace, as every route's is.

@@ -48,7 +48,7 @@ def _phase_histogram():
     global _histogram
     with _histogram_lock:
         if _histogram is None:
-            _histogram = metrics.get_meter("aiq_agent.boot").create_histogram(
+            _histogram = metrics.get_meter("agent.boot").create_histogram(
                 PHASE_HISTOGRAM,
                 unit="s",
                 description="Seconds a process spent in one phase of becoming useful.",

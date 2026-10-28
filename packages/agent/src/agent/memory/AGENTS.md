@@ -1,12 +1,12 @@
-# Project memory: `packages/agent/src/aiq_agent/memory`
+# Project memory: `packages/agent/src/agent/memory`
 
 The two agent-side writers of a project's durable findings: the in-turn
 `remember` tool (`register.py`) and the body of the post-answer reflection pass
 (`reflection.py`), plus the one decision both make about restricted folders
 (`restriction.py`). Not an agent — one NAT tool and one stage handler.
 
-Do not confuse it with `aiq_agent/knowledge/project_memory.py`, which is the
-HTTP client both use, or with `aiq_agent/stages/memory_reflection.py`, which
+Do not confuse it with `agent/knowledge/project_memory.py`, which is the
+HTTP client both use, or with `agent/stages/memory_reflection.py`, which
 declares when the stage runs. This package holds only what a memory *is*.
 
 ## The invariants

@@ -24,7 +24,7 @@ from knowledge_layer.requery import CoverageGap
 from knowledge_layer.requery import judge_coverage
 from knowledge_layer.requery import judge_sufficiency
 
-from aiq_agent.common.decisions import Decision
+from agent.common.decisions import Decision
 
 
 def _chunk(text: str, chunk_id: str = "c1", file_name: str = "oib-rl_2.pdf"):

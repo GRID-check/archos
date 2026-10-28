@@ -339,7 +339,7 @@ compared against YAML is the weak end of the ratchet. What survives:
 - `_INTERACTION_TOOL_BASENAMES` is the one runtime-read classification and
   gains the file verbs. No second table.
 - The evidence sources stay packages under `packages/`. Workspace
-  tools live under `packages/agent/src/aiq_agent/tools/`: `documents/` (the working
+  tools live under `packages/agent/src/agent/tools/`: `documents/` (the working
   directory backend and the `file_draft` tool), `tasks/` (`create_task`),
   `files/` (the proposal-card tools), beside the BIM tools already there.
 - Every tool row in `TOOL_CONTEXT_REQUIREMENTS` declares what it needs from
@@ -351,7 +351,7 @@ Every primitive this build adds is an HTTP route with a typed client first,
 and the agent's tools, the UI, the task runner and any later integration are
 equal clients of it. No service function is reached from a second path. This
 is written as an ADR, given one row in the root `AGENTS.md`, and stated in the
-scoped guides beside `lib/documents/` and `packages/agent/src/aiq_agent/tools/`.
+scoped guides beside `lib/documents/` and `packages/agent/src/agent/tools/`.
 
 ## 8. Slices, order, and done-when
 

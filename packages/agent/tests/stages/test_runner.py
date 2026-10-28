@@ -11,14 +11,14 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_agent.common.model_overrides import AgentGroup
-from aiq_agent.common.wire_v2 import StageValue
-from aiq_agent.stages import registry
-from aiq_agent.stages import runner
-from aiq_agent.stages.spec import GateDecision
-from aiq_agent.stages.spec import StageEmpty
-from aiq_agent.stages.spec import StageSpec
-from aiq_agent.stages.spec import TurnFacts
+from agent.common.model_overrides import AgentGroup
+from agent.common.wire_v2 import StageValue
+from agent.stages import registry
+from agent.stages import runner
+from agent.stages.spec import GateDecision
+from agent.stages.spec import StageEmpty
+from agent.stages.spec import StageSpec
+from agent.stages.spec import TurnFacts
 
 _GROUP = AgentGroup.MEMORY_REFLECTION
 
@@ -190,7 +190,7 @@ class TestObservability:
         _spec(lambda ctx: _returns(None), stage_id="declined", gate=lambda f: GateDecision.skip("routing_meta"))
         facts = _facts(enabled_stages=frozenset({"ran", "declined"}))
 
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             await _run_all(facts)
 
         by_name = {span["name"]: span for span in _spans(post)}
@@ -218,7 +218,7 @@ class TestObservability:
         bucket for both makes the number the stage exists to produce unreadable,
         so the handler may name the case."""
         _spec(lambda ctx: _returns(StageEmpty("model_declined")))
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             outcomes = await _run_all(_facts())
 
         assert outcomes["probe"].status == "empty"
@@ -237,7 +237,7 @@ class TestObservability:
         the conversation, so two stages on one turn are one undifferentiated
         pair of rows. "What does this stage cost per turn" is only a GROUP BY if
         the number sits on the span that already knows which stage it was."""
-        from aiq_agent.common import cost_tracking
+        from agent.common import cost_tracking
 
         async def _spend(ctx):
             tracker = cost_tracking.grid_cost_tracker_var.get()
@@ -246,8 +246,8 @@ class TestObservability:
 
         _spec(_spend)
         with (
-            patch("aiq_agent.common.profiler._post_profiler_spans") as post,
-            patch("aiq_agent.common.cost_tracking._post_usage_events"),
+            patch("agent.common.profiler._post_profiler_spans") as post,
+            patch("agent.common.cost_tracking._post_usage_events"),
         ):
             await _run_all(_facts())
 
@@ -263,7 +263,7 @@ class TestObservability:
             await asyncio.sleep(30)
 
         _spec(_hang, timeout_s=0.05)
-        with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+        with patch("agent.common.profiler._post_profiler_spans") as post:
             await _run_all(_facts())
         span = next(s for s in _spans(post) if s["name"] == "stage:probe")
         assert span["metadata"]["outcome"] == "timeout"
@@ -350,7 +350,7 @@ class TestFrameDelivery:
             sent.append((conversation_id, turn_id, value))
             return True
 
-        from aiq_agent.stages import delivery
+        from agent.stages import delivery
 
         delivery.register_stage_frame_sink(_sink)
         try:
@@ -368,7 +368,7 @@ class TestFrameDelivery:
         async def _sink(conversation_id, turn_id, value):
             raise RuntimeError("socket gone")
 
-        from aiq_agent.stages import delivery
+        from agent.stages import delivery
 
         delivery.register_stage_frame_sink(_sink)
         try:
@@ -390,7 +390,7 @@ class TestFrameDelivery:
         same handler wrote while it was `silent`. If it is not, the week of
         measurement that licensed this flip was measuring something else.
         """
-        from aiq_agent.stages import delivery
+        from agent.stages import delivery
 
         async def _sink(conversation_id, turn_id, value):
             return True
@@ -406,7 +406,7 @@ class TestFrameDelivery:
         try:
             for mode in ("silent", "frame"):
                 facts = _metadata_for(mode)
-                with patch("aiq_agent.common.profiler._post_profiler_spans") as post:
+                with patch("agent.common.profiler._post_profiler_spans") as post:
                     await _run_all(facts)
                 spans[mode] = next(s for s in _spans(post) if s["name"] == "stage:follow_ups")["metadata"]
         finally:
@@ -428,7 +428,7 @@ class TestFrameDelivery:
             sent.append(value)
             return True
 
-        from aiq_agent.stages import delivery
+        from agent.stages import delivery
 
         delivery.register_stage_frame_sink(_sink)
         try:
@@ -490,16 +490,16 @@ class TestStageSpendNamesTheAnswer:
     """A post-answer stage's spend is billed to the answer it follows."""
 
     def test_the_answer_id_is_derived_from_the_turn(self):
-        from aiq_agent.stages.runner import _answer_message_id
-        from aiq_agent.stages.spec import TurnFacts
-        from aiq_agent.turn.response import answer_message_id
+        from agent.stages.runner import _answer_message_id
+        from agent.stages.spec import TurnFacts
+        from agent.turn.response import answer_message_id
 
         facts = TurnFacts(conversation_id="conv_1", ws_parent_id="question_1")
 
         assert _answer_message_id(facts) == answer_message_id("conv_1", "question_1")
 
     def test_off_the_websocket_path_there_is_no_answer_to_name(self):
-        from aiq_agent.stages.runner import _answer_message_id
-        from aiq_agent.stages.spec import TurnFacts
+        from agent.stages.runner import _answer_message_id
+        from agent.stages.spec import TurnFacts
 
         assert _answer_message_id(TurnFacts(conversation_id="conv_1")) is None

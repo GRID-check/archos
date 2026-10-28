@@ -3,12 +3,12 @@
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.tools.bim.measure_vocab import _ALL_KINDS
-from aiq_agent.tools.bim.measure_vocab import DISTANCE_MODES
-from aiq_agent.tools.bim.measure_vocab import MEASURES
-from aiq_agent.tools.bim.measure_vocab import RELATIONS
-from aiq_agent.tools.bim.measure_vocab import ROOM_KINDS
-from aiq_agent.tools.bim.measure_vocab import VIEW_MODES
+from agent.tools.bim.measure_vocab import _ALL_KINDS
+from agent.tools.bim.measure_vocab import DISTANCE_MODES
+from agent.tools.bim.measure_vocab import MEASURES
+from agent.tools.bim.measure_vocab import RELATIONS
+from agent.tools.bim.measure_vocab import ROOM_KINDS
+from agent.tools.bim.measure_vocab import VIEW_MODES
 
 # ── the engine call ──────────────────────────────────────────────────────────
 #

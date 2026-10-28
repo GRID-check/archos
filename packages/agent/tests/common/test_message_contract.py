@@ -14,10 +14,10 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 
-from aiq_agent.common.llm_factory import enforce_chat_request_contract
-from aiq_agent.common.message_contract import CONTINUATION_TURN
-from aiq_agent.common.message_contract import ends_on_model_turn
-from aiq_agent.common.message_contract import normalize_chat_request
+from agent.common.llm_factory import enforce_chat_request_contract
+from agent.common.message_contract import CONTINUATION_TURN
+from agent.common.message_contract import ends_on_model_turn
+from agent.common.message_contract import normalize_chat_request
 from tests.provider_doubles import ProviderContractError
 
 

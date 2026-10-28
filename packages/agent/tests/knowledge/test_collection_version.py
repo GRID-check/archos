@@ -19,7 +19,7 @@ import threading
 
 import pytest
 
-from aiq_agent.knowledge import collection_version
+from agent.knowledge import collection_version
 
 
 class FakeSharedStore:
@@ -29,7 +29,7 @@ class FakeSharedStore:
     caller's floor) under one lock, so a concurrency test measures the module's
     own behaviour rather than a mock's call log. ``answering = False`` is a store
     outage: ``eval_script`` returns ``None``, which is exactly what
-    ``aiq_agent.common.cache.eval_script`` does when it cannot reach the store.
+    ``agent.common.cache.eval_script`` does when it cannot reach the store.
     """
 
     def __init__(self) -> None:

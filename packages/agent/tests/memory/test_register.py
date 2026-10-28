@@ -15,12 +15,12 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
-import aiq_agent.knowledge.project_memory as pm
-import aiq_agent.project_context as pc
-from aiq_agent.common import bff_http
-from aiq_agent.memory import register
-from aiq_agent.memory.register import ProjectMemoryRememberConfig
-from aiq_agent.memory.register import project_memory_remember
+import agent.knowledge.project_memory as pm
+import agent.project_context as pc
+from agent.common import bff_http
+from agent.memory import register
+from agent.memory.register import ProjectMemoryRememberConfig
+from agent.memory.register import project_memory_remember
 
 
 class _RefusingAdapter:
@@ -91,9 +91,9 @@ async def test_org_deny_with_card_registry_emits_confirmation(monkeypatch):
     # With a card channel bound, an org-write denial must surface a confirmation
     # card (so the user can complete the write from their own session) instead of
     # the dead-end error string.
-    from aiq_agent.cards.registry import CardRegistry
-    from aiq_agent.cards.registry import reset_card_registry
-    from aiq_agent.cards.registry import set_card_registry
+    from agent.cards.registry import CardRegistry
+    from agent.cards.registry import reset_card_registry
+    from agent.cards.registry import set_card_registry
 
     _patch_context(monkeypatch)
     insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
@@ -133,9 +133,9 @@ async def test_an_org_write_that_failed_otherwise_offers_no_card(monkeypatch, fa
     # Only the refusal offers the card. The BFF audits the memory judge's
     # verdict before it refuses; a 500 or a timeout reached no audit, and a card
     # accepted then would write open memory whose verdict the trail never saw.
-    from aiq_agent.cards.registry import CardRegistry
-    from aiq_agent.cards.registry import reset_card_registry
-    from aiq_agent.cards.registry import set_card_registry
+    from agent.cards.registry import CardRegistry
+    from agent.cards.registry import reset_card_registry
+    from agent.cards.registry import set_card_registry
 
     _patch_context(monkeypatch)
     insert = MagicMock(side_effect=failure)
@@ -156,9 +156,9 @@ async def test_an_org_write_that_failed_otherwise_offers_no_card(monkeypatch, fa
 async def test_generic_project_failure_keeps_error_even_with_registry(monkeypatch):
     # A PROJECT-scoped generic failure keeps the existing honest error string —
     # the confirmation card is only for org writes the agent token can't make.
-    from aiq_agent.cards.registry import CardRegistry
-    from aiq_agent.cards.registry import reset_card_registry
-    from aiq_agent.cards.registry import set_card_registry
+    from agent.cards.registry import CardRegistry
+    from agent.cards.registry import reset_card_registry
+    from agent.cards.registry import set_card_registry
 
     _patch_context(monkeypatch)
     insert = MagicMock(side_effect=RuntimeError("boom"))
@@ -249,9 +249,9 @@ async def test_a_vocabulary_disagreement_with_the_client_is_not_dressed_up_as_an
 
 @pytest.mark.asyncio
 async def test_an_unbuildable_card_falls_back_to_the_error_string(monkeypatch):
-    from aiq_agent.cards.registry import CardRegistry
-    from aiq_agent.cards.registry import reset_card_registry
-    from aiq_agent.cards.registry import set_card_registry
+    from agent.cards.registry import CardRegistry
+    from agent.cards.registry import reset_card_registry
+    from agent.cards.registry import set_card_registry
 
     _patch_context(monkeypatch)
     insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
@@ -322,16 +322,16 @@ _CONTRACT_ROW = {"collection": _RESTRICTED, "file_name": "Honorarvertrag.pdf", "
 
 
 def _patch_scope(monkeypatch, scope):
-    from aiq_agent.knowledge import scoping
+    from agent.knowledge import scoping
 
     monkeypatch.setattr(scoping, "get_collection_scope_from_context", lambda: scope)
 
 
 def _patch_turn(monkeypatch, *, read=(), rows=(_CONTRACT_ROW,), judge=None):
     """Bind what the turn read and could list, and the judge model it resolves."""
-    from aiq_agent.citations import session
-    from aiq_agent.citations.entries import SourceEntry
-    from aiq_agent.knowledge import inventory
+    from agent.citations import session
+    from agent.citations.entries import SourceEntry
+    from agent.knowledge import inventory
 
     monkeypatch.setattr(session, "get_turn_captures", lambda: [SourceEntry(collection=name) for name in read])
     monkeypatch.setattr(session, "get_session_registry", lambda: None)
@@ -439,9 +439,9 @@ async def test_a_restricted_organization_finding_without_a_project_is_not_saved(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("scope", ["project", "organization"])
 async def test_a_failed_restricted_write_never_becomes_a_card(monkeypatch, scope):
-    from aiq_agent.cards.registry import CardRegistry
-    from aiq_agent.cards.registry import reset_card_registry
-    from aiq_agent.cards.registry import set_card_registry
+    from agent.cards.registry import CardRegistry
+    from agent.cards.registry import reset_card_registry
+    from agent.cards.registry import set_card_registry
 
     _patch_context(monkeypatch)
     _patch_scope(monkeypatch, _RESTRICTED_SCOPE)
@@ -472,10 +472,10 @@ async def test_a_restricted_note_an_earlier_turn_was_shown_still_restricts(monke
     """ADR-0087: the note is gone from this turn's digest and no restricted row is
     listable; what earlier turns were shown (bound by `turn_registries`) is still
     evidence, and a copy of it is restricted to the note's own collection."""
-    from aiq_agent.memory.restriction import RestrictedNote
-    from aiq_agent.memory.shown_notes import ShownNotes
-    from aiq_agent.memory.shown_notes import bind_shown_notes
-    from aiq_agent.memory.shown_notes import unbind_shown_notes
+    from agent.memory.restriction import RestrictedNote
+    from agent.memory.shown_notes import ShownNotes
+    from agent.memory.shown_notes import bind_shown_notes
+    from agent.memory.shown_notes import unbind_shown_notes
 
     _patch_context(monkeypatch)
     _patch_scope(monkeypatch, _RESTRICTED_SCOPE)
@@ -523,9 +523,9 @@ class _Transport:
 @pytest.fixture
 def proposals(monkeypatch):
     """A turn with a signed envelope, a service token and a card registry; the installed transport."""
-    from aiq_agent.cards.registry import CardRegistry
-    from aiq_agent.cards.registry import reset_card_registry
-    from aiq_agent.cards.registry import set_card_registry
+    from agent.cards.registry import CardRegistry
+    from agent.cards.registry import reset_card_registry
+    from agent.cards.registry import set_card_registry
 
     _patch_context(monkeypatch)
     monkeypatch.setattr(pc, "get_request_envelope_from_context", lambda: (_HEADER, _SIGNATURE))

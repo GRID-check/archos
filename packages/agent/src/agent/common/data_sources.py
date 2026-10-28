@@ -65,7 +65,7 @@ def source_id_for_call(tool_name: str, args: Any = None) -> str | None:
     reads as the estate; a draft result then carries no ``Citation:`` line and
     registers nothing.
     """
-    from aiq_agent.common.estate_paths import reaches_drafts_only
+    from agent.common.estate_paths import reaches_drafts_only
 
     base = _basename(tool_name)
     if base in FILESYSTEM_READ_TOOLS:
@@ -101,8 +101,8 @@ def get_disabled_sources_from_context() -> set[str]:
     beside it: a client that could set the header could switch the org's
     web-search toggle back on for itself. The header is read only off the BFF.
     """
-    from aiq_agent.project_context import _read_header
-    from aiq_agent.project_context import get_signed_request_context
+    from agent.project_context import _read_header
+    from agent.project_context import get_signed_request_context
 
     envelope = get_signed_request_context()
     if envelope is not None:

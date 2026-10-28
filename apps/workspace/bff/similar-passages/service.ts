@@ -121,7 +121,7 @@ export function otherProjectsToSearch(reach: readonly Project[], current: Pick<P
   return rankBySimilarity(current?.profile ?? null, others).slice(0, SIMILAR_MAX_PROJECTS - (current ? 1 : 0))
 }
 
-/** One document of the backend's answer (`SimilarDocument` in `aiq_api/models/similar.py`). */
+/** One document of the backend's answer (`SimilarDocument` in `backend/models/similar.py`). */
 interface BackendSimilarDocument {
   collection: string
   file_name: string

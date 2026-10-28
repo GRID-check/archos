@@ -193,7 +193,7 @@ export interface DocumentHit {
    * The folder's path from the shelf root, its names joined by "/"
    * ("03 Einreichung/Grundrisse"); '' at the shelf root. With `shelf` and
    * `filename` it is where Piloti's filesystem reads the document
-   * (`packages/agent/src/aiq_agent/common/estate_paths.py`).
+   * (`packages/agent/src/agent/common/estate_paths.py`).
    */
   folderPath: string
   status: string

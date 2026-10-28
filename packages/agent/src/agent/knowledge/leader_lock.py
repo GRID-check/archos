@@ -140,7 +140,7 @@ def _lock_engine(url: str):
             from sqlalchemy import create_engine
             from sqlalchemy.pool import NullPool
 
-            from aiq_agent.common.db_utils import normalize_db_url
+            from agent.common.db_utils import normalize_db_url
 
             engine = create_engine(
                 normalize_db_url(url, async_mode=False),

@@ -14,7 +14,7 @@ renews may be late. So the answer comes from a local clock alone.
   the round trip, never the other way round.
 * **The margin covers one write in flight.** A write that began just before the
   deadline cannot be called back, so each guarded write must end within
-  ``GUARDED_WRITE_TIMEOUT_SECONDS`` (``aiq_agent.common.write_fence``) of the
+  ``GUARDED_WRITE_TIMEOUT_SECONDS`` (``agent.common.write_fence``) of the
   deadline (not of its own start: a slow write with runway left is not cut off)
   and the margin is that bound plus ``FENCE_SLACK_SECONDS`` for cancellation latency
   and clock skew. It must stay below the TTL, or the turn would be fenced from
@@ -68,7 +68,7 @@ def validate_running_ttl(ttl: float) -> float:
 class TurnFence:
     """One turn's answer to "may I still write my conversation?", from the clock alone.
 
-    Implements :class:`aiq_agent.common.write_fence.WriteFence`.
+    Implements :class:`agent.common.write_fence.WriteFence`.
     """
 
     def __init__(

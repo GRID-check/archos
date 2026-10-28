@@ -105,7 +105,7 @@ def preferred_cards_block(skill: Skill) -> str | None:
         return None
     types = ", ".join(f"`{card}`" for card in cards)
     block = f"{_CARDS_HEADING}\n{_CARDS_DOCTRINE.format(types=types)}"
-    from aiq_agent.cards.catalog import render_card_details
+    from agent.cards.catalog import render_card_details
 
     details = render_card_details(cards)
     return f"{block}\n\n{details}" if details else block

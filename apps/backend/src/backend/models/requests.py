@@ -16,13 +16,13 @@ from pydantic import ValidatorFunctionWrapHandler
 from pydantic import field_validator
 from pydantic import model_validator
 
-from aiq_agent.knowledge.dossier import DocumentType
-from aiq_agent.profile_names import normalize_profile_token
+from agent.knowledge.dossier import DocumentType
+from agent.profile_names import normalize_profile_token
 
 logger = logging.getLogger(__name__)
 
 #: Bounds of an office's screening terms. The ingest job applies the same ones
-#: (``aiq_agent.common.content_screen``) to whatever reaches it.
+#: (``agent.common.content_screen``) to whatever reaches it.
 SCREENING_MAX_TERMS = 200
 SCREENING_MIN_TERM_CHARS = 2
 SCREENING_MAX_TERM_CHARS = 80
@@ -291,7 +291,7 @@ class IngestRequest(BaseModel):
         description=(
             "Who wrote the document: 'agent' for one Piloti wrote, absent for every human "
             "document. The first of four provenance keys stamped onto every chunk and onto the "
-            "document metadata row; see aiq_agent.common.provenance."
+            "document metadata row; see agent.common.provenance."
         ),
     )
     approved_by: str | None = Field(

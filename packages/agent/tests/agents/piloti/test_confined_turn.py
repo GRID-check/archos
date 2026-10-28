@@ -11,19 +11,19 @@ from __future__ import annotations
 
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_turn_context
-from aiq_agent.agents.piloti.prompt import system_prompt_template
-from aiq_agent.cards import envelope
-from aiq_agent.cards.catalog import CARD_EXAMPLES
-from aiq_agent.cards.catalog import CHAT_ONLY_CARD_TYPES
-from aiq_agent.cards.catalog import SYSTEM_CARD_TYPES
-from aiq_agent.cards.envelope import REFUSED_CONFINED
-from aiq_agent.cards.envelope import validate_model_card
-from aiq_agent.knowledge import scoping
-from aiq_agent.knowledge.restricted_use import RestrictedUse
-from aiq_agent.knowledge.restricted_use import bind_restricted_use
-from aiq_agent.knowledge.restricted_use import reset_restricted_use
+from agent.agents.piloti.models import ResearchAgentState
+from agent.agents.piloti.prompt import render_turn_context
+from agent.agents.piloti.prompt import system_prompt_template
+from agent.cards import envelope
+from agent.cards.catalog import CARD_EXAMPLES
+from agent.cards.catalog import CHAT_ONLY_CARD_TYPES
+from agent.cards.catalog import SYSTEM_CARD_TYPES
+from agent.cards.envelope import REFUSED_CONFINED
+from agent.cards.envelope import validate_model_card
+from agent.knowledge import scoping
+from agent.knowledge.restricted_use import RestrictedUse
+from agent.knowledge.restricted_use import bind_restricted_use
+from agent.knowledge.restricted_use import reset_restricted_use
 
 TOOLS = [{"name": "knowledge_search", "description": "Search the knowledge base."}]
 CONFINED_TAG = "<restricted_conversation>"
@@ -131,13 +131,13 @@ class TestTheReflectionStageSeesWhatEarlierTurnsWereShown:
     def test_finished_passes_the_shown_notes_on(self, monkeypatch):
         import types
 
-        from aiq_agent.agents.piloti import conversation_register as cr
-        from aiq_agent.cards.registry import CardRegistry
-        from aiq_agent.memory.restriction import RestrictedNote
-        from aiq_agent.memory.shown_notes import ShownNotes
-        from aiq_agent.turn.admission import TurnOutcome
-        from aiq_agent.turn.payload import TurnInputs
-        from aiq_agent.turn.registries import TurnRegistries
+        from agent.agents.piloti import conversation_register as cr
+        from agent.cards.registry import CardRegistry
+        from agent.memory.restriction import RestrictedNote
+        from agent.memory.shown_notes import ShownNotes
+        from agent.turn.admission import TurnOutcome
+        from agent.turn.payload import TurnInputs
+        from agent.turn.registries import TurnRegistries
 
         seen: dict = {}
 
@@ -166,8 +166,8 @@ class TestTheReflectionStageSeesWhatEarlierTurnsWereShown:
     async def test_setup_loads_the_record_for_the_thread(self, monkeypatch):
         import types
 
-        from aiq_agent.agents.piloti import conversation_register as cr
-        from aiq_agent.memory.shown_notes import ShownNotes
+        from agent.agents.piloti import conversation_register as cr
+        from agent.memory.shown_notes import ShownNotes
 
         shown = ShownNotes(overflowed=("proj_1_r0123456789ab",))
         asked: list = []

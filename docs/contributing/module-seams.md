@@ -52,15 +52,15 @@ dependency-cruiser accepts it.
 
 A run takes about thirty seconds, most of it parsing 2,900 modules.
 
-## Python: `aiq_agent`, `aiq_api`, `knowledge_layer`
+## Python: `agent`, `backend`, `knowledge_layer`
 
 The contracts are `[tool.importlinter]` in the root `pyproject.toml`. import-linter
 builds the graph with grimp, which sees imports inside functions too.
 
 | Contract | What it forbids | Allowed |
 |---|---|---|
-| `agent-api-seam` | `aiq_agent` importing `aiq_api`, directly or through a chain. What the agent needs from a request is owned in `aiq_agent` and written by `aiq_api` (`auth/request_identity.py`, `auth/errors.py`), or handed in by the API-tier caller (`oib_sync`'s `enqueue`) | nothing |
-| `agent-knowledge-port` | `aiq_agent` importing `knowledge_layer` directly | `knowledge/factory.py`, the BaseRetriever/BaseIngestor port (ADR-0072); sixteen known bypasses, each listed |
+| `agent-api-seam` | `agent` importing `backend`, directly or through a chain. What the agent needs from a request is owned in `agent` and written by `backend` (`auth/request_identity.py`, `auth/errors.py`), or handed in by the API-tier caller (`oib_sync`'s `enqueue`) | nothing |
+| `agent-knowledge-port` | `agent` importing `knowledge_layer` directly | `knowledge/factory.py`, the BaseRetriever/BaseIngestor port (ADR-0072); sixteen known bypasses, each listed |
 | `qdrant-client-confined` | Any of the three packages importing `qdrant_client` directly | `knowledge_layer.qdrant` |
 
 An `ignore_imports` entry whose import no longer exists fails the run

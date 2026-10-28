@@ -3,7 +3,7 @@ NAT trace → list[RequestProfile]
 =================================
 
 Converts a NAT profiler trace JSON file (produced by ``nat eval``) into
-structured :class:`~aiq_agent.tokenomics.profile.RequestProfile` objects
+structured :class:`~agent.tokenomics.profile.RequestProfile` objects
 ready for the tokenomics HTML report.
 
 Architecture note
@@ -278,7 +278,7 @@ def _parse_request(request_index: int, steps: list[dict], pricing: PricingRegist
 def parse_trace(path: str, pricing: PricingRegistry) -> list[RequestProfile]:
     """
     Parse a NAT profiler trace JSON file and return one
-    :class:`~aiq_agent.tokenomics.profile.RequestProfile` per request.
+    :class:`~agent.tokenomics.profile.RequestProfile` per request.
 
     Parameters
     ----------
@@ -286,7 +286,7 @@ def parse_trace(path: str, pricing: PricingRegistry) -> list[RequestProfile]:
         Path to the ``all_requests_profiler_traces.json`` file produced by
         ``nat eval``.
     pricing:
-        A :class:`~aiq_agent.tokenomics.pricing.PricingRegistry` built from
+        A :class:`~agent.tokenomics.pricing.PricingRegistry` built from
         the ``tokenomics.pricing`` section of the eval config YAML.
     """
     with open(path) as f:

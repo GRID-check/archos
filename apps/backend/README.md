@@ -41,7 +41,7 @@ PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib
 ┌─────────────────────────────────────────────────────────────────┐
 │                    AI-Q API (extension layer)                   │
 │                                                                 │
-│   apps/backend/src/aiq_api/                                │
+│   apps/backend/src/backend/                                │
 │   ├── jobs/                                                     │
 │   │   ├── agent_job.py        # run_agent_job, in phases        │
 │   │   ├── submit.py           # submit_agent_job                │
@@ -54,7 +54,7 @@ PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib
 │   │   └── documents.py       # /v1/documents (upload, ingest)   │
 │   ├── models/requests.py     # Pydantic request/response models │
 │   ├── registry.py            # Agent type registry              │
-│   ├── plugin.py              # NAT FastAPI plugin (AIQAPIWorker)│
+│   ├── plugin.py              # NAT FastAPI plugin (BackendWorker)│
 │   ├── chat_socket.py         # /websocket: the chat wire v2     │
 │   ├── conversation_bus.py    # frames between replicas, attach  │
 │   └── internal_api.py        # writes into the BFF internal API │
@@ -170,8 +170,8 @@ Events streamed during job execution:
 # configs/config_oib_openrouter.yml (abridged)
 general:
   front_end:
-    _type: aiq_api
-    runner_class: aiq_api.plugin.AIQAPIWorker
+    _type: backend
+    runner_class: backend.plugin.BackendWorker
     db_url: sqlite+aiosqlite:///./jobs.db   # Job store + event store
     expiry_seconds: 86400
 
@@ -256,8 +256,8 @@ controls which ingress headers are consulted first.
 Call `register_validator()` in any code that runs before `nat serve`:
 
 ```python
-from aiq_api.plugin import register_validator
-from aiq_api.auth.jwt_validator import JWTValidator
+from backend.plugin import register_validator
+from backend.auth.jwt_validator import JWTValidator
 
 register_validator(JWTValidator(issuer_url="https://your-identity-provider.com"))
 ```
@@ -265,19 +265,19 @@ register_validator(JWTValidator(issuer_url="https://your-identity-provider.com")
 #### 2. Entry points (recommended for packages / submodule deployments)
 
 Any installed Python package can contribute validators by declaring an
-`aiq_api.validators` entry point.  The function must return a list of validator
+`backend.validators` entry point.  The function must return a list of validator
 instances.
 
 ```toml
 # pyproject.toml of your deployment package
-[project.entry-points."aiq_api.validators"]
+[project.entry-points."backend.validators"]
 my_provider = "mypackage.auth:get_validators"
 ```
 
 ```python
 # mypackage/auth.py
 def get_validators() -> list:
-    from aiq_api.auth.jwt_validator import JWTValidator
+    from backend.auth.jwt_validator import JWTValidator
 
     return [JWTValidator(issuer_url="https://your-identity-provider.com")]
 ```
@@ -316,7 +316,7 @@ beside `X-Access-Channel`): the BFF and the backend deploy separately.
 Agents are registered by type so the job runner can load them from NAT config. Register at import time (e.g. in your NAT plugin or app startup):
 
 ```python
-from aiq_api.registry import register_agent
+from backend.registry import register_agent
 
 register_agent(
     agent_type="my_agent",
@@ -342,7 +342,7 @@ They serve the llamaindex backend that the `knowledge_retrieval` function sets u
 ## Comparison with NAT's Built-in Async
 
 NAT's `/generate/async` is not mounted: none of NAT's HTTP turn routes is, since a
-chat turn runs on the chat socket alone (`AIQAPIConfig`, ADR-0068). The table is
+chat turn runs on the chat socket alone (`BackendConfig`, ADR-0068). The table is
 why research jobs never needed it.
 
 | Feature | NAT `/generate/async` | `/v1/jobs/async` |

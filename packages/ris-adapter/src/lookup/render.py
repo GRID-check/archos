@@ -1,6 +1,6 @@
 """[6] The grounding block.
 
-RIS states its passages as :class:`~aiq_agent.common.grounding_block.GroundingHit`
+RIS states its passages as :class:`~agent.common.grounding_block.GroundingHit`
 records and hands them to the one renderer every evidence tool shares
 (ADR-0061). There is no RIS layout: the ``--- Result N ---`` blocks, the header
 lines and the ``## Trace-Lanes`` object are the knowledge layer's, which is the
@@ -16,12 +16,12 @@ from ris_adapter.lookup.address import federal_state_sentence
 from ris_adapter.lookup.passages import DOC_CLASS
 from ris_adapter.lookup.passages import Passage
 
-from aiq_agent.common.grounding_block import TRUNCATION_MARKER
-from aiq_agent.common.grounding_block import GroundingBlock
-from aiq_agent.common.grounding_block import GroundingHit
-from aiq_agent.common.grounding_block import render_grounding_block
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.wire_v2 import TraceLane
+from agent.common.grounding_block import TRUNCATION_MARKER
+from agent.common.grounding_block import GroundingBlock
+from agent.common.grounding_block import GroundingHit
+from agent.common.grounding_block import render_grounding_block
+from agent.common.source_kinds import Shelf
+from agent.common.wire_v2 import TraceLane
 
 #: The tool's basename, as the ``sources`` step names it.
 RIS_LOOKUP_TOOL = "ris_lookup"

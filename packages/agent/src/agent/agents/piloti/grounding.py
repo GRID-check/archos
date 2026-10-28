@@ -22,8 +22,8 @@ route by which a measurement's evidence attaches itself to a judgment.
 
 from __future__ import annotations
 
-from aiq_agent.common.tool_calls import tool_basename
-from aiq_agent.tools.bim.measurement_evidence import result_carries_measurement
+from agent.common.tool_calls import tool_basename
+from agent.tools.bim.measurement_evidence import result_carries_measurement
 
 #: Tools whose results constitute a MEASUREMENT of the building.
 #:
@@ -80,7 +80,7 @@ def tool_result_is_measurement(tool_name: str, content: str) -> bool:
 
     True only for a result from a tool in :data:`MEASUREMENT_TOOL_NAMES` whose
     own evidence trailer reports at least one ``declared``/``computed`` value
-    (:mod:`aiq_agent.tools.bim.measurement_evidence`). A refusal, an outage, an
+    (:mod:`agent.tools.bim.measurement_evidence`). A refusal, an outage, an
     ``inferred`` guess, and a ``decidable: false`` finding about the export are
     all False — none of them is a number anyone can stand behind, and treating
     them as evidence is the failure this whole gate exists to prevent.

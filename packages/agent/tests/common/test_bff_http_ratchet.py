@@ -16,23 +16,23 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[4]
-SEAM = Path("packages/agent/src/aiq_agent/common/bff_http.py")
+SEAM = Path("packages/agent/src/agent/common/bff_http.py")
 
 #: Where the agent tier calls the BFF from. ``knowledge_layer`` is its own
-#: package, imported by the ingest worker, and must not depend on ``aiq_agent``;
-#: ``aiq_api`` is the API host, whose ``internal_api.py`` persists messages.
-TREES = ("packages/agent/src/aiq_agent", "packages/knowledge-layer/src", "apps/backend/src")
+#: package, imported by the ingest worker, and must not depend on ``agent``;
+#: ``backend`` is the API host, whose ``internal_api.py`` persists messages.
+TREES = ("packages/agent/src/agent", "packages/knowledge-layer/src", "apps/backend/src")
 
 PATTERNS = {
     # A private redirect guard: the seam's opener is the one that refuses redirects.
     "redirect_guard": re.compile(r"class \w+\([^)]*HTTPRedirectHandler"),
     # The base-URL read, whatever fallback chain it spells.
     "base_url": re.compile(r"FRONTEND_INTERNAL_URL"),
-    # The service-token header, in any case. Inbound checks live in aiq_api, so
+    # The service-token header, in any case. Inbound checks live in backend, so
     # this one is held only in the agent package.
     "token_header": re.compile(r"x-grid-internal-token", re.IGNORECASE),
 }
-TOKEN_HEADER_TREES = ("packages/agent/src/aiq_agent",)
+TOKEN_HEADER_TREES = ("packages/agent/src/agent",)
 
 #: Each remaining copy, by pattern, with its count today. Why each is not ported:
 #: - httpx callers (skills resolver, model overrides, LLM credentials, platform
@@ -41,34 +41,34 @@ TOKEN_HEADER_TREES = ("packages/agent/src/aiq_agent",)
 #:   form or moving them to urllib. The last two fail closed on an empty
 #:   ``FRONTEND_INTERNAL_URL`` on purpose (no default host for a write of the
 #:   corpus or a permit record), which the seam's fallback chain would change.
-#: - knowledge_layer must not import aiq_agent (see TREES).
-#: - aiq_api's internal_api.py returns None without either URL (it skips
+#: - knowledge_layer must not import agent (see TREES).
+#: - backend's internal_api.py returns None without either URL (it skips
 #:   persisting rather than guessing a host).
 ALLOWED: dict[str, dict[str, int]] = {
     "base_url": {
-        "packages/agent/src/aiq_agent/skills/resolver.py": 1,
-        "packages/agent/src/aiq_agent/common/model_overrides.py": 1,
-        "packages/agent/src/aiq_agent/common/llm_credentials.py": 2,
-        "packages/agent/src/aiq_agent/common/platform_lessons.py": 1,
-        "packages/agent/src/aiq_agent/common/retrieval_settings.py": 1,
-        "packages/agent/src/aiq_agent/common/reasoning_settings.py": 1,
-        "packages/agent/src/aiq_agent/corpus_store.py": 4,
-        "packages/agent/src/aiq_agent/knowledge/permit_records_client.py": 3,
+        "packages/agent/src/agent/skills/resolver.py": 1,
+        "packages/agent/src/agent/common/model_overrides.py": 1,
+        "packages/agent/src/agent/common/llm_credentials.py": 2,
+        "packages/agent/src/agent/common/platform_lessons.py": 1,
+        "packages/agent/src/agent/common/retrieval_settings.py": 1,
+        "packages/agent/src/agent/common/reasoning_settings.py": 1,
+        "packages/agent/src/agent/corpus_store.py": 4,
+        "packages/agent/src/agent/knowledge/permit_records_client.py": 3,
         "packages/knowledge-layer/src/llamaindex/image_store.py": 3,
         "packages/knowledge-layer/src/llamaindex/document_presence.py": 3,
         "packages/knowledge-layer/src/llamaindex/page_text_store.py": 3,
         "packages/knowledge-layer/src/view_image.py": 4,
-        "apps/backend/src/aiq_api/internal_api.py": 2,
+        "apps/backend/src/backend/internal_api.py": 2,
     },
     "token_header": {
-        "packages/agent/src/aiq_agent/skills/resolver.py": 1,
-        "packages/agent/src/aiq_agent/common/model_overrides.py": 1,
-        "packages/agent/src/aiq_agent/common/llm_credentials.py": 2,
-        "packages/agent/src/aiq_agent/common/platform_lessons.py": 1,
-        "packages/agent/src/aiq_agent/common/retrieval_settings.py": 1,
-        "packages/agent/src/aiq_agent/common/reasoning_settings.py": 1,
-        "packages/agent/src/aiq_agent/corpus_store.py": 1,
-        "packages/agent/src/aiq_agent/knowledge/permit_records_client.py": 1,
+        "packages/agent/src/agent/skills/resolver.py": 1,
+        "packages/agent/src/agent/common/model_overrides.py": 1,
+        "packages/agent/src/agent/common/llm_credentials.py": 2,
+        "packages/agent/src/agent/common/platform_lessons.py": 1,
+        "packages/agent/src/agent/common/retrieval_settings.py": 1,
+        "packages/agent/src/agent/common/reasoning_settings.py": 1,
+        "packages/agent/src/agent/corpus_store.py": 1,
+        "packages/agent/src/agent/knowledge/permit_records_client.py": 1,
     },
     "redirect_guard": {},
 }
@@ -95,7 +95,7 @@ def test_no_new_copy_of_the_bff_client(pattern_name: str) -> None:
     allowed = ALLOWED[pattern_name]
     grown = {path: hits for path, hits in found.items() if hits > allowed.get(path, 0)}
     assert not grown, (
-        f"{pattern_name}: go through aiq_agent.common.bff_http instead of a copy of your own "
+        f"{pattern_name}: go through agent.common.bff_http instead of a copy of your own "
         f"(internal_base_url, send/get_json/post_json, BffError). New or grown: {grown}"
     )
 

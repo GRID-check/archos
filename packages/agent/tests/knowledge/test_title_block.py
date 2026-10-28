@@ -14,22 +14,22 @@ from unittest.mock import MagicMock
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.knowledge.document_revisions import TITLE_BLOCK_CONFIDENCE
-from aiq_agent.knowledge.document_revisions import RevisionDocument
-from aiq_agent.knowledge.document_revisions import build_judge_prompt
-from aiq_agent.knowledge.document_revisions import judge_revision
-from aiq_agent.knowledge.document_revisions import parse_revision_verdict
-from aiq_agent.knowledge.document_revisions import rank_candidates
-from aiq_agent.knowledge.document_revisions import settle_by_title_block
-from aiq_agent.knowledge.title_block import compare_revisions
-from aiq_agent.knowledge.title_block import document_key
-from aiq_agent.knowledge.title_block import identifies_document
-from aiq_agent.knowledge.title_block import newest_first
-from aiq_agent.knowledge.title_block import normalise_date
-from aiq_agent.knowledge.title_block import normalise_revision
-from aiq_agent.knowledge.title_block import normalise_revision_facts
-from aiq_agent.knowledge.title_block import same_document
-from aiq_agent.knowledge.title_block import title_block_label
+from agent.knowledge.document_revisions import TITLE_BLOCK_CONFIDENCE
+from agent.knowledge.document_revisions import RevisionDocument
+from agent.knowledge.document_revisions import build_judge_prompt
+from agent.knowledge.document_revisions import judge_revision
+from agent.knowledge.document_revisions import parse_revision_verdict
+from agent.knowledge.document_revisions import rank_candidates
+from agent.knowledge.document_revisions import settle_by_title_block
+from agent.knowledge.title_block import compare_revisions
+from agent.knowledge.title_block import document_key
+from agent.knowledge.title_block import identifies_document
+from agent.knowledge.title_block import newest_first
+from agent.knowledge.title_block import normalise_date
+from agent.knowledge.title_block import normalise_revision
+from agent.knowledge.title_block import normalise_revision_facts
+from agent.knowledge.title_block import same_document
+from agent.knowledge.title_block import title_block_label
 
 
 def _doc(name: str, *, facts: dict | None = None, **kwargs) -> RevisionDocument:

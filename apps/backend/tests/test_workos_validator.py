@@ -1,6 +1,6 @@
 """Tests for WorkOS JWT validator configuration.
 
-Module under test: apps/backend/src/aiq_api/auth/workos_validator.py
+Module under test: apps/backend/src/backend/auth/workos_validator.py
 """
 
 import os
@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from aiq_api.auth.workos_validator import create_workos_validator
+from backend.auth.workos_validator import create_workos_validator
 
 
 @patch.dict(os.environ, {"WORKOS_CLIENT_ID": "client_123"}, clear=True)

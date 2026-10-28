@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.knowledge import factory
+from agent.knowledge import factory
 
 
 @pytest.fixture(autouse=True)

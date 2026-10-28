@@ -3593,7 +3593,7 @@
     },
     "TurnResult": {
       "additionalProperties": false,
-      "description": "Everything the finished turn delivers; authoritative, and what the server persists.\n\nIt replaces the text once more and takes back what it omits (a card\nsuppressed, a masthead gated out). The persisted row is built from this\nmodel and nothing else (``aiq_api`` ``persist_turn_result``).",
+      "description": "Everything the finished turn delivers; authoritative, and what the server persists.\n\nIt replaces the text once more and takes back what it omits (a card\nsuppressed, a masthead gated out). The persisted row is built from this\nmodel and nothing else (``backend`` ``persist_turn_result``).",
       "properties": {
         "answer_confidence": {
           "anyOf": [
@@ -4598,6 +4598,6 @@
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Generated from packages/agent/src/aiq_agent/common/wire_v2.py by scripts/generate_wire_schema.py. Do not edit by hand; packages/agent/tests/common/test_wire_v2.py fails when it is stale.",
+  "description": "Generated from packages/agent/src/agent/common/wire_v2.py by scripts/generate_wire_schema.py. Do not edit by hand; packages/agent/tests/common/test_wire_v2.py fails when it is stale.",
   "title": "Piloti chat wire v2"
 }

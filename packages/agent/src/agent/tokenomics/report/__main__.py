@@ -1,4 +1,4 @@
-"""CLI entry point: python -m aiq_agent.tokenomics.report"""
+"""CLI entry point: python -m agent.tokenomics.report"""
 
 from __future__ import annotations
 

@@ -11,11 +11,11 @@ import asyncio
 import logging
 import os
 
-from aiq_agent.auth import Principal
-from aiq_agent.auth import get_current_principal
-from aiq_agent.common import claim_queue
-from aiq_agent.common.job_admission import JobAdmissionError
-from aiq_api.auth import get_current_trace_tags
+from agent.auth import Principal
+from agent.auth import get_current_principal
+from agent.common import claim_queue
+from agent.common.job_admission import JobAdmissionError
+from backend.auth import get_current_trace_tags
 
 from ..registry import get_agent_config
 from . import queue
@@ -118,7 +118,7 @@ logger = logging.getLogger(__name__)
 # Admission control for BACKGROUND work — the other half of ADR-0040 layer L3.
 #
 # This pool is deliberately SEPARATE from the interactive-turn pool
-# (`aiq_agent.common.turn_admission`, `MAX_ACTIVE_TURNS*`) rather than a
+# (`agent.common.turn_admission`, `MAX_ACTIVE_TURNS*`) rather than a
 # share of one total. That separation is the partition: a queue full of deep
 # research cannot consume the capacity interactive chat needs, and a busy chat
 # hour cannot block scheduled research. Sizing the two is therefore an explicit
@@ -162,7 +162,7 @@ async def _enforce_queue_bound(db_url: str, organization_id: str | None) -> None
 def _get_disabled_sources() -> set[str]:
     """Org-disabled source ids from the submitting request (fail-open)."""
     try:
-        from aiq_agent.common import get_disabled_sources_from_context
+        from agent.common import get_disabled_sources_from_context
 
         return get_disabled_sources_from_context()
     except Exception:
@@ -295,7 +295,7 @@ def _captured_request_context(
     """Fill each value the caller did not pass from the request the job is submitted in."""
     # Auto-capture auth token if not explicitly provided
     if auth_token is None:
-        from aiq_agent.auth import get_auth_token
+        from agent.auth import get_auth_token
 
         auth_token = get_auth_token()
 
@@ -303,19 +303,19 @@ def _captured_request_context(
     # When the request arrives via HTTP/WS the NAT middleware populates
     # Context.metadata.headers with the BFF-supplied X-Grid-Collection-Scope.
     if collection_scope is None:
-        from aiq_agent.knowledge.scoping import get_collection_scope_from_context
+        from agent.knowledge.scoping import get_collection_scope_from_context
 
         collection_scope = get_collection_scope_from_context()
 
     # Auto-detect project context from NAT context if not explicitly provided.
     if project_context is None:
-        from aiq_agent.project_context import get_project_context_from_context
+        from agent.project_context import get_project_context_from_context
 
         project_context = get_project_context_from_context()
 
     # Auto-detect per-org runtime model overrides if not explicitly provided.
     if model_overrides is None:
-        from aiq_agent.common import get_model_overrides_from_context
+        from agent.common import get_model_overrides_from_context
 
         model_overrides = get_model_overrides_from_context() or None
     return auth_token, collection_scope, project_context, model_overrides
@@ -331,7 +331,7 @@ def _effective_data_sources(data_sources: list[str] | None) -> list[str] | None:
     disabled_sources = _get_disabled_sources()
     if disabled_sources:
         if data_sources is None:
-            from aiq_agent.common.data_source_registry import get_all_sources
+            from agent.common.data_source_registry import get_all_sources
 
             data_sources = [source.id for source in get_all_sources()]
         data_sources = [source for source in data_sources if source.strip().lower() not in disabled_sources]
@@ -526,7 +526,7 @@ async def submit_agent_job(
 
     # Capture caller identity + remaining budget for cost tracking in the worker.
     if usage_context is None:
-        from aiq_agent.common.cost_tracking import capture_usage_context
+        from agent.common.cost_tracking import capture_usage_context
 
         usage_context = capture_usage_context()
 

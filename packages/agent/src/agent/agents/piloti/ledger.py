@@ -15,17 +15,17 @@ import logging
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.citations.binding import document_key
-from aiq_agent.citations.binding import source_label
-from aiq_agent.citations.binding import source_origin_token
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import lost_citations
-from aiq_agent.citations.wire import read_source_to_wire
-from aiq_agent.citations.wire import source_entry_to_wire
-from aiq_agent.common import citation_events
-from aiq_agent.common.retrieval_ledger import build_retrieval_ledger
-from aiq_agent.tools.bim.measurement_sources import MeasurementSource
-from aiq_agent.tools.bim.measurement_sources import measurement_sources_to_wire
+from agent.citations.binding import document_key
+from agent.citations.binding import source_label
+from agent.citations.binding import source_origin_token
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import lost_citations
+from agent.citations.wire import read_source_to_wire
+from agent.citations.wire import source_entry_to_wire
+from agent.common import citation_events
+from agent.common.retrieval_ledger import build_retrieval_ledger
+from agent.tools.bim.measurement_sources import MeasurementSource
+from agent.tools.bim.measurement_sources import measurement_sources_to_wire
 
 from .answer_pipeline import CitedSource
 from .answer_pipeline import FinalAnswer

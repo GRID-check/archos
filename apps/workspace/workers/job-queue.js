@@ -17,7 +17,7 @@
  * checks again under a per-lane advisory lock and the later check gives its job
  * back.
  *
- * The Python queues (`aiq_agent.common.claim_queue`) run the same algorithm over
+ * The Python queues (`agent.common.claim_queue`) run the same algorithm over
  * their own tables, in their own database. Two implementations of one algorithm,
  * each held to the same scenarios by its own tests; a shared SQL function was
  * rejected because the Python side also runs on SQLite in tests.

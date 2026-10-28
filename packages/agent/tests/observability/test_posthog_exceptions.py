@@ -13,17 +13,17 @@ import uuid
 
 import pytest
 
-from aiq_agent.common.budget_guard import RunBudgetExceededError
-from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.observability import otlp_logging_method as otlp
-from aiq_agent.observability import posthog_client
-from aiq_agent.observability import posthog_exceptions
-from aiq_agent.observability.otlp_logging_method import OtlpLoggingMethodConfig
-from aiq_agent.observability.posthog_exceptions import FINGERPRINT_BURST
-from aiq_agent.observability.posthog_exceptions import FINGERPRINT_REFILL_SECONDS
-from aiq_agent.observability.posthog_exceptions import GLOBAL_BURST
-from aiq_agent.observability.posthog_exceptions import PosthogExceptionHandler
-from aiq_agent.observability.turn_trace import pinned_trace
+from agent.common.budget_guard import RunBudgetExceededError
+from agent.common.cost_tracking import BudgetExceededError
+from agent.observability import otlp_logging_method as otlp
+from agent.observability import posthog_client
+from agent.observability import posthog_exceptions
+from agent.observability.otlp_logging_method import OtlpLoggingMethodConfig
+from agent.observability.posthog_exceptions import FINGERPRINT_BURST
+from agent.observability.posthog_exceptions import FINGERPRINT_REFILL_SECONDS
+from agent.observability.posthog_exceptions import GLOBAL_BURST
+from agent.observability.posthog_exceptions import PosthogExceptionHandler
+from agent.observability.turn_trace import pinned_trace
 
 
 class _Clock:
@@ -174,7 +174,7 @@ def test_a_capture_that_logs_an_error_does_not_recurse(log, monkeypatch):
         try:
             raise RuntimeError("boom")
         except RuntimeError:
-            logging.getLogger("aiq_agent.test").exception("failed")
+            logging.getLogger("agent.test").exception("failed")
     finally:
         root.removeHandler(handler)
 

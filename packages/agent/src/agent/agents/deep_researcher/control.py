@@ -19,7 +19,7 @@ import asyncio
 from contextvars import ContextVar
 from contextvars import Token
 
-from aiq_agent.common.plan_documents import PlanDocument
+from agent.common.plan_documents import PlanDocument
 
 
 class _AddedDocuments:

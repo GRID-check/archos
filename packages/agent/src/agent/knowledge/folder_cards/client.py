@@ -19,7 +19,7 @@ import logging
 from collections.abc import Iterable
 from typing import Any
 
-from aiq_agent.common import bff_http
+from agent.common import bff_http
 
 logger = logging.getLogger(__name__)
 

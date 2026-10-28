@@ -20,7 +20,7 @@ def resolve_doc_classes(chunks) -> dict[tuple[str, str], str]:
     """
     resolved: dict[tuple[str, str], str] = {}
     try:
-        from aiq_agent.knowledge.factory import get_document_doc_classes
+        from agent.knowledge.factory import get_document_doc_classes
     except Exception:
         # Fail-open, but never silent: with the store unreachable every hit
         # falls back to its chunk metadata, and that fallback looks exactly
@@ -88,11 +88,11 @@ def resolve_display_titles(chunks) -> dict[tuple[str, str], str]:
     source of truth for the user-facing name. Builds a ``(collection, file_name)
     -> stored display_title`` map with one batched query per in-scope collection.
     Fail-open: any store error yields an empty/partial map and callers fall back
-    to the derived default (:func:`~aiq_agent.common.norm_registry.guess_display_title`).
+    to the derived default (:func:`~agent.common.norm_registry.guess_display_title`).
     """
     resolved: dict[tuple[str, str], str] = {}
     try:
-        from aiq_agent.knowledge.factory import get_document_display_titles
+        from agent.knowledge.factory import get_document_display_titles
     except Exception:
         # Fail-open, but never silent: with the store unreachable every hit
         # falls back to its chunk metadata, and that fallback looks exactly
@@ -137,7 +137,7 @@ def hit_display_title(chunk, resolved: dict[tuple[str, str], str]) -> str | None
 
     Precedence: the admin-editable stored ``display_title`` (source of truth) →
     the deterministic default derived from the OIB filename convention
-    (:func:`~aiq_agent.common.norm_registry.guess_display_title`) → ``None`` for a
+    (:func:`~agent.common.norm_registry.guess_display_title`) → ``None`` for a
     document with neither (e.g. a project upload), where the caller keeps the raw
     filename because that IS the user-meaningful name for their own files.
     """
@@ -149,7 +149,7 @@ def hit_display_title(chunk, resolved: dict[tuple[str, str], str]) -> str | None
             return stored
     if chunk.file_name:
         try:
-            from aiq_agent.common.norm_registry import guess_display_title
+            from agent.common.norm_registry import guess_display_title
 
             return guess_display_title(chunk.file_name)
         except Exception:
@@ -171,7 +171,7 @@ def resolve_folder_paths(chunks) -> dict[tuple[str, str], str]:
     """
     resolved: dict[tuple[str, str], str] = {}
     try:
-        from aiq_agent.knowledge.factory import get_document_folder_paths
+        from agent.knowledge.factory import get_document_folder_paths
     except Exception:
         # Fail-open, but never silent: with the store unreachable every hit
         # falls back to its chunk metadata, and that fallback looks exactly

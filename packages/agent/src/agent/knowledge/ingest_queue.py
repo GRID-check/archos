@@ -5,17 +5,17 @@ it: a restart lost every queued job (settled ``failed: interrupted``), a second
 replica could not take work from the first, and nothing could scale ingestion
 apart from the chat tier. A job the durable queue carries is a row here instead,
 claimed by whichever worker is free, on any replica or in the dedicated
-ingest-worker tier (``aiq_api.jobs.ingest_worker``).
+ingest-worker tier (``backend.jobs.ingest_worker``).
 
 The claim itself, its fairness across organisations (fewest running first, then
 the lane served longest ago, then priority, then oldest), the heartbeat, the
 reclaim of a dead worker's job, the release of a drained worker's jobs and the
-dead rows are ``aiq_agent.common.claim_queue`` (ADR-0079), shared with the
+dead rows are ``agent.common.claim_queue`` (ADR-0079), shared with the
 research queue. This module is the ingestion queue on it: its table, its lane
 (an organisation, or ``PLATFORM_LANE``) and the database it lives in, which is
 the status store's.
 
-The payload is opaque here: ``aiq_api.jobs.ingest_dispatch`` writes it
+The payload is opaque here: ``backend.jobs.ingest_dispatch`` writes it
 (encrypted, since it carries presigned URLs) and reads it back. The status store
 (``ingest_status_store``) reads this table to know that a PENDING job whose
 accepting replica is gone is still waiting here, not lost; a retired row (dead,
@@ -26,13 +26,13 @@ from __future__ import annotations
 
 import os
 
-from aiq_agent.common import claim_queue
-from aiq_agent.common.claim_queue import CANCELLED
-from aiq_agent.common.claim_queue import CLAIMED
-from aiq_agent.common.claim_queue import DEAD
-from aiq_agent.common.claim_queue import QUEUED
-from aiq_agent.common.claim_queue import RETIRED
-from aiq_agent.common.claim_queue import Claim
+from agent.common import claim_queue
+from agent.common.claim_queue import CANCELLED
+from agent.common.claim_queue import CLAIMED
+from agent.common.claim_queue import DEAD
+from agent.common.claim_queue import QUEUED
+from agent.common.claim_queue import RETIRED
+from agent.common.claim_queue import Claim
 
 from .document_metadata_store import DocumentMetadataStore
 from .ingest_scheduler import lane_of

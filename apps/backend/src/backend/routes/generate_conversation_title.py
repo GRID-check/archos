@@ -24,9 +24,9 @@ import httpx
 from fastapi import APIRouter
 from fastapi import Header
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.observability.direct_trace import observed_generation
+from agent.common import provider_limiter
+from agent.common.openrouter import limited_async_http_client
+from agent.observability.direct_trace import observed_generation
 
 from ..models.requests import GenerateConversationTitleRequest
 from ..models.requests import GenerateConversationTitleResponse

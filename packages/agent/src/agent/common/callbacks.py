@@ -5,7 +5,7 @@ from typing import Any
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
-from aiq_agent.common.tool_errors import is_argument_rejection
+from agent.common.tool_errors import is_argument_rejection
 
 logger = logging.getLogger(__name__)
 

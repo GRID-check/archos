@@ -105,7 +105,7 @@ async def reap_stale_jobs_once(job_store, db_url: str) -> list[str]:
     Returns the list of reaped job IDs. Factored out of _reap_ghost_jobs for
     testability.
     """
-    from aiq_agent.knowledge.leader_lock import leader_lock_async
+    from agent.knowledge.leader_lock import leader_lock_async
 
     # Only one replica runs the cycle (advisory lock), so N web replicas don't
     # redundantly re-detect and re-mark the same ghosts. A session lock, so it is

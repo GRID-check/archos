@@ -11,10 +11,10 @@ from fastapi.testclient import TestClient
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
-from aiq_api import inflight
-from aiq_api.inflight import IN_FLIGHT
-from aiq_api.inflight import REQUEST_SECONDS
-from aiq_api.inflight import InFlightMiddleware
+from backend import inflight
+from backend.inflight import IN_FLIGHT
+from backend.inflight import REQUEST_SECONDS
+from backend.inflight import InFlightMiddleware
 
 
 @pytest.fixture

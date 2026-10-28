@@ -6,9 +6,9 @@ import re
 from collections.abc import Sequence
 from dataclasses import replace
 
-from aiq_agent.knowledge.title_block import document_key
-from aiq_agent.knowledge.title_block import newest_first
-from aiq_agent.knowledge.title_block import title_block_label
+from agent.knowledge.title_block import document_key
+from agent.knowledge.title_block import newest_first
+from agent.knowledge.title_block import title_block_label
 
 from .browse_render import MAX_CHAIN_CHANGE_CHARS
 from .browse_render import _change_text

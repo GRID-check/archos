@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
-from aiq_api.routes.consistency_check import add_consistency_check_routes
+from backend.routes.consistency_check import add_consistency_check_routes
 
 
 @pytest.fixture
@@ -263,7 +263,7 @@ async def test_consistency_check_upstream_error_returns_error(app):
 async def test_consistency_check_uses_byok_credential_when_org_header_present(app, monkeypatch):
     """When the BFF forwards an org id and BYOK resolves, the route calls the
     tenant's endpoint/key rather than the env credential."""
-    from aiq_agent.common.llm_credentials import OrgLLMCredential
+    from agent.common.llm_credentials import OrgLLMCredential
 
     monkeypatch.delenv("CONSISTENCY_LLM_API_KEY", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", "platform-key")
@@ -286,7 +286,7 @@ async def test_consistency_check_uses_byok_credential_when_org_header_present(ap
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=byok):
+        with patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=byok):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/consistency-check", json=_body(), headers={"x-grid-organization-id": "org-1"}
@@ -312,7 +312,7 @@ async def test_consistency_check_env_fallback_when_byok_absent(app, monkeypatch)
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
+        with patch("agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/consistency-check", json=_body(), headers={"x-grid-organization-id": "org-1"}
@@ -405,7 +405,7 @@ def test_placeholder_openrouter_key_does_not_select_the_openrouter_endpoint(monk
     back to LLM_API_KEY. The route then sent an unrelated provider's key in the
     Authorization header to OpenRouter.
     """
-    from aiq_api.routes.consistency_check import _llm_settings
+    from backend.routes.consistency_check import _llm_settings
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "${OPENROUTER_API_KEY}")
     monkeypatch.setenv("LLM_API_KEY", "sk-some-other-provider")

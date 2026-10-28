@@ -1,4 +1,4 @@
-# Workspace tools: `packages/agent/src/aiq_agent/tools`
+# Workspace tools: `packages/agent/src/agent/tools`
 
 Tools that act on the user's workspace rather than retrieve from a corpus.
 Evidence sources are packages under `sources/`; what lives here is the BIM
@@ -71,7 +71,7 @@ requester, inside the encrypted job payload; the worker injects those two
 strings at claim under the names a chat turn uses, and asks the BFF
 (`POST /api/internal/runs/{runId}/envelope`) for a fresh one when the carried one
 is over an hour old. Every refusal or failure leaves the run without an
-envelope. The whole path is `apps/backend/src/aiq_api/jobs/run_envelope.py`;
+envelope. The whole path is `apps/backend/src/backend/jobs/run_envelope.py`;
 nothing on it builds or signs an envelope.
 
 The BFF decides identity and permission. This tier decides only *which bytes* and
@@ -236,7 +236,7 @@ as `project_lookup` does.
 | Add a verb to the working directory | Add its action key to `common/status_keys.py` (with both dictionary strings) and map the tool to it in `common/tool_calls.py`. Nothing to add to a budget any more: the research budget counts ROUNDS, so a round of file verbs costs one like a round of searches and there is no interaction allowance to keep in step | The reader's live line goes silent mid-turn |
 | Change what is stored per draft | Remember DeepAgents rebuilds the stored value from `content`/`encoding` on every edit: a key not re-stamped after the operation is gone | Nothing local. The version counter silently resets to 1 |
 | Take text from the model and compare it to stored text | NFC-normalise both, at the backend seam | An `edit_file` that fails with a string identical to the one in the file. [`gotchas.md`](../../../../../docs/contributing/gotchas.md) |
-| Add a tool under here | `@register_function` plus its own `nat.plugins` entry point, like every other tool ([`packages/agent/src/aiq_agent/AGENTS.md`](../AGENTS.md)) | NAT never discovers it |
+| Add a tool under here | `@register_function` plus its own `nat.plugins` entry point, like every other tool ([`packages/agent/src/agent/AGENTS.md`](../AGENTS.md)) | NAT never discovers it |
 | Add a file operation that WRITES | Make it propose: its branch in `propose_file_change` (`files/register.py`) and its line in `_DESCRIPTION`, emitting a `file_operation_proposal` card and a result saying nothing changed. Then its kind in `FileOperationKind` (`cards/models.py`) and in `FILE_OPERATIONS` (`apps/workspace/bff/proposals/types.ts`), and the server's applier for it (`lib/proposals/executors.ts`). The action key and the `TOOL_CONTEXT_REQUIREMENTS` row belong to the tool and are already there; a new write-side TOOL needs both | Nothing local — which is the point. A tool that wrote directly would pass every test and bypass `requireProjectAccess`, the audit trail and the reader's consent in one call |
 | Add a write that is not a file operation (a fourth proposal kind) | Add the kind to `PROPOSED_CHANGE_KINDS`, its payload to `internalProposalRequestSchema` and its applier on the BFF side first; then create it from ONE place with `proposals_client.add_card` (a tool that pushes its own card, or `register_envelope_card` for a card the model composes), carrying `proposal_id` on the card and falling back to the old card on every failure. Give the card `proposal_id` in `cards/models.py` (and add the field to `SERVER_FILLED_CARD_FIELDS` if the model can compose the card) | `packages/agent/tests/tools/files/test_proposals.py`, which fails when the contract has a kind this client cannot ask for. Nothing else: a write that skipped the proposal would apply in the agent's name, not the person's |
 | Write a rule about how one of these tools is used | Put it in that tool's DESCRIPTION. The prompt blocks that used to hold these rules (`<drafts>`, `<aufraeumen>`, `<delegieren>`) are gone: every one of them restated a bound tool's contract in prose charged on every call of every turn (ADR-0060 (d) and its amendment). The prompt keeps only what no description can carry: an antecedent that lives in the transcript | Review, and 1,500 tokens per turn. The rule also half-applies: a description reaches the model with the call, a prompt paragraph competes with everything else on the page |

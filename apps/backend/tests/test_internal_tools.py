@@ -21,12 +21,12 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.common.backend_tools import BACKEND_READ_TOOLS
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.project_context import get_organization_id_from_context
-from aiq_agent.project_context import get_project_id_from_context
-from aiq_api.routes import internal_tools
-from aiq_api.routes.internal_tools import add_internal_tool_routes
+from agent.common.backend_tools import BACKEND_READ_TOOLS
+from agent.project_context import GridRequestContext
+from agent.project_context import get_organization_id_from_context
+from agent.project_context import get_project_id_from_context
+from backend.routes import internal_tools
+from backend.routes.internal_tools import add_internal_tool_routes
 
 TOKEN = "real-secret"  # pragma: allowlist secret
 PATH = "/v1/internal/tools/{name}"
@@ -285,8 +285,8 @@ def test_a_door_call_is_booked_to_the_envelopes_person_and_may_render_one_look(
     client: TestClient, fake_function: _FakeFunction, monkeypatch: pytest.MonkeyPatch
 ):
     """A ``document-look`` with a question makes a vision call: it lands on the ledger, and it is one look."""
-    from aiq_agent.common import cost_tracking
-    from aiq_agent.common.image_view_budget import try_consume_image_view
+    from agent.common import cost_tracking
+    from agent.common.image_view_budget import try_consume_image_view
 
     posted: list[dict[str, Any]] = []
     monkeypatch.setattr(cost_tracking, "_post_usage_events", posted.append)

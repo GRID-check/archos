@@ -70,9 +70,9 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.estate_paths import MOUNT_ROOTS
-from aiq_agent.common.estate_paths import SHELF_MOUNTS
-from aiq_agent.common.estate_paths import estate_path
+from agent.common.estate_paths import MOUNT_ROOTS
+from agent.common.estate_paths import SHELF_MOUNTS
+from agent.common.estate_paths import estate_path
 
 logger = logging.getLogger(__name__)
 
@@ -306,8 +306,8 @@ def corpus_options(facts: TurnFacts) -> dict[str, str]:
 
 def questions_for(facts: TurnFacts) -> dict[str, dict[str, Any]]:
     """Every question of the turn decision, keyed the way the answers are read back."""
-    from aiq_agent.common.decisions import choice
-    from aiq_agent.common.decisions import noul
+    from agent.common.decisions import choice
+    from agent.common.decisions import noul
 
     questions: dict[str, dict[str, Any]] = {
         "needs_evidence": noul(
@@ -375,7 +375,7 @@ def questions_for(facts: TurnFacts) -> dict[str, dict[str, Any]]:
 
 async def decide_turn(facts: TurnFacts, *, organization_id: str | None = None) -> TurnDecisions:
     """One decision request for the turn; :meth:`TurnDecisions.none` when none ran."""
-    from aiq_agent.common.decisions import decide
+    from agent.common.decisions import decide
 
     questions = questions_for(facts)
     decision = await decide(facts.state(), questions, slot=SLOT, organization_id=organization_id)
@@ -540,7 +540,7 @@ def _corpus_prefetch(
     """
     if decisions.corpus not in {"baurecht", "projekt", "buero"} or decisions.corpus_p < CORPUS_THRESHOLD:
         return []
-    from aiq_agent.common.norm_registry import family_query_number
+    from agent.common.norm_registry import family_query_number
 
     shelf = _LITERAL_SHELF.get(decisions.corpus)
     focus = focus_file_name if shelf else None
@@ -570,7 +570,7 @@ def _corpus_prefetch(
 
 def _undecided_prefetch(question: str) -> list[dict[str, Any]]:
     """The prefetch a question earns without a decision: its own search, when it names a family."""
-    from aiq_agent.common.norm_registry import family_query_number
+    from agent.common.norm_registry import family_query_number
 
     query = prefetch_query(question)
     if not query or family_query_number(query) is None:

@@ -1,7 +1,7 @@
 """The dedicated ingestion worker tier (ADR-0076).
 
 Run as its own container: ``PROCESS_ROLE=ingest-worker`` makes the entrypoint start
-``python -m aiq_api.jobs.ingest_worker``. It builds the NAT workflow once, which
+``python -m backend.jobs.ingest_worker``. It builds the NAT workflow once, which
 activates the ingestor exactly as the web roles do (same summary model, same
 shared Qdrant, same object store), attaches the durable queue to it, and then
 does nothing but claim: its ``INGEST_MAX_WORKERS`` threads take the next job
@@ -34,8 +34,8 @@ import os
 import signal
 import time
 
-from aiq_agent.common.logging_utils import suppress_noisy_dependency_logs
-from aiq_agent.knowledge.leader_lock import require_direct_dsns
+from agent.common.logging_utils import suppress_noisy_dependency_logs
+from agent.knowledge.leader_lock import require_direct_dsns
 
 from . import ingest_dispatch
 from . import lease_policy
@@ -53,10 +53,10 @@ def _drain_seconds() -> int:
 
 async def run(stop: asyncio.Event) -> None:
     """Build the ingestor, claim until ``stop``, then drain."""
-    from aiq_agent.knowledge.factory import get_active_ingestor
-    from aiq_agent.observability import boot_timing
-    from aiq_agent.observability import ensure_registered as register_grid_telemetry
-    from aiq_agent.observability.boot_timing import BootClock
+    from agent.knowledge.factory import get_active_ingestor
+    from agent.observability import boot_timing
+    from agent.observability import ensure_registered as register_grid_telemetry
+    from agent.observability.boot_timing import BootClock
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.runtime.loader import load_config
 
@@ -97,7 +97,7 @@ def _start_folder_cards(stop: asyncio.Event) -> asyncio.Task | None:
     flag, which the builder asks the BFF per claimed folder (ADR-0127), so a
     deployment where no organization has the flag finds an empty queue.
     """
-    from aiq_agent.knowledge.folder_cards import worker
+    from agent.knowledge.folder_cards import worker
 
     logger.info("Ingest worker builds folder cards")
     return asyncio.create_task(worker.loop(stop), name="folder-cards")

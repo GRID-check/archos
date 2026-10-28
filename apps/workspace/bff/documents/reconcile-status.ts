@@ -82,7 +82,7 @@ const LOCALLY_OWNED_STATUS = 'processing'
 
 /**
  * The reason prefix the backend gives a job whose owner stopped heartbeating
- * (`INTERRUPTED` in `aiq_agent/knowledge/ingest_status_store.py`). Such a
+ * (`INTERRUPTED` in `agent/knowledge/ingest_status_store.py`). Such a
  * failure is a verdict another replica reached about someone else's job, and
  * the owner may still be alive: when it writes again its write wins, and the
  * job can end `completed` with its chunks indexed. A row the BFF already moved
@@ -363,7 +363,7 @@ const resolveFromJobStatus = (job: BackendJobStatus | null | undefined): JobReso
   if (job === undefined || job === null) return { kind: 'unknown' }
 
   if (job.status === 'cancelled') {
-    // A person stopped it (`aiq_agent.knowledge.schema.JobState.CANCELLED`).
+    // A person stopped it (`agent.knowledge.schema.JobState.CANCELLED`).
     return { kind: 'terminal', resolution: cancelledResolution() }
   }
   if (job.status === 'completed') {
@@ -442,7 +442,7 @@ interface CollectionFiles {
   ambiguousNames: Set<string>
   /**
    * The backend listed the files but could not merge what it read of them
-   * (`X-Grid-Reading-Unavailable`, `aiq_api/routes/documents.py`): summaries,
+   * (`X-Grid-Reading-Unavailable`, `backend/routes/documents.py`): summaries,
    * dossiers, references and coverage are missing for this read, not absent.
    */
   readingUnavailable: boolean

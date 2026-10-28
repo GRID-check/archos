@@ -131,8 +131,8 @@ def _reconcile_one_collection(
     Raises on anything that would make the verdict unsafe. The caller records
     the raise as a per-collection failure and moves on.
     """
-    from aiq_agent.knowledge import factory as knowledge_factory
-    from aiq_agent.knowledge.ingest_status_store import in_flight_files
+    from agent.knowledge import factory as knowledge_factory
+    from agent.knowledge.ingest_status_store import in_flight_files
 
     summaries = knowledge_factory.get_available_documents(collection)
     if not summaries:
@@ -175,7 +175,7 @@ async def reconcile_orphaned_summaries(collections: list[str] | None, *, dry_run
     whole (503) when the store cannot be listed, or holds no point at all,
     because then nothing can be judged.
     """
-    from aiq_agent.knowledge import factory as knowledge_factory
+    from agent.knowledge import factory as knowledge_factory
 
     ingestor = knowledge_factory.get_active_ingestor()
     if ingestor is None:
@@ -334,8 +334,8 @@ def add_maintenance_routes(router: APIRouter) -> None:
         jobs_deleted = 0
 
         if body.collection_name:
-            from aiq_agent.knowledge.factory import clear_collection_summaries
-            from aiq_agent.knowledge.factory import get_active_ingestor
+            from agent.knowledge.factory import clear_collection_summaries
+            from agent.knowledge.factory import get_active_ingestor
 
             ingestor = get_active_ingestor()
             try:

@@ -2,7 +2,7 @@
 
 The structural half of the SKILL.md contract — name charset/length, description
 length, metadata keys — is already enforced deterministically by
-``aiq_agent.skills.models`` and rejects a bad skill outright. This endpoint is
+``agent.skills.models`` and rejects a bad skill outright. This endpoint is
 the other half, the one no regex can answer: is this skill *any good* as a skill?
 Under progressive disclosure an agent only ever sees ``name`` + ``description``
 before it decides whether to load the body, so a description that omits WHEN to
@@ -10,7 +10,7 @@ use the skill produces a skill that is never activated — structurally valid an
 practically dead. That is what the reviewer is here to catch.
 
 The rules it applies are NOT written here. They come from one vendored file,
-``aiq_agent/skills/review/skill-check/SKILL.md`` — SkillCheck (Free) by
+``agent/skills/review/skill-check/SKILL.md`` — SkillCheck (Free) by
 olgasafonova, MIT, copied verbatim (see the README beside it). A hand-written
 prompt encodes one author's opinion of what makes a good skill and drifts every
 time somebody edits it; a published rulebook is a fixed, named, versioned
@@ -34,12 +34,12 @@ import httpx
 from fastapi import APIRouter
 from fastapi import Header
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.credential_resolution import ResolvedCredential
-from aiq_agent.common.openrouter import limited_async_http_client
-from aiq_agent.observability.direct_trace import observed_generation
-from aiq_agent.skills import BUILTIN_SKILLS_DIR
-from aiq_agent.skills import parse_skill_md
+from agent.common import provider_limiter
+from agent.common.credential_resolution import ResolvedCredential
+from agent.common.openrouter import limited_async_http_client
+from agent.observability.direct_trace import observed_generation
+from agent.skills import BUILTIN_SKILLS_DIR
+from agent.skills import parse_skill_md
 
 from ..models.requests import SkillReviewFinding
 from ..models.requests import SkillReviewRequest
@@ -191,8 +191,8 @@ def _llm_settings(organization_id: str | None = None) -> ResolvedCredential:
     base, model unchanged) and provider inference on top. Fail-open: a BYOK miss
     falls back to the env chain.
     """
-    from aiq_agent.common.credential_resolution import read_api_key_env
-    from aiq_agent.common.credential_resolution import resolve_llm_credential
+    from agent.common.credential_resolution import read_api_key_env
+    from agent.common.credential_resolution import resolve_llm_credential
 
     # `read_api_key_env`, not `os.getenv`: docker compose `env_file` does not
     # interpolate `${VAR}` references, so `OPENROUTER_API_KEY=${OPENROUTER_API_KEY}`

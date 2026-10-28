@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_api.jobs.access import derive_project_collection
+from backend.jobs.access import derive_project_collection
 
 
 @pytest.fixture(autouse=True)

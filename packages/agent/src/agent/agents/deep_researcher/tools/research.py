@@ -21,15 +21,15 @@ from langchain_core.tools import BaseTool
 from langchain_core.tools import tool
 from langgraph.errors import GraphRecursionError
 
-from aiq_agent.common import RunBudgetExceededError
-from aiq_agent.common import extract_json
-from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.retrieval_rounds import repeat_fetches
-from aiq_agent.common.retrieval_status import record_round_announcement
-from aiq_agent.common.tool_calls import fetch_signature
-from aiq_agent.common.turn_notices import emit_repeat_fetch
-from aiq_agent.common.turn_status import retrieval_round_scope
-from aiq_agent.common.turn_status import subagent_run
+from agent.common import RunBudgetExceededError
+from agent.common import extract_json
+from agent.common.cost_tracking import BudgetExceededError
+from agent.common.retrieval_rounds import repeat_fetches
+from agent.common.retrieval_status import record_round_announcement
+from agent.common.tool_calls import fetch_signature
+from agent.common.turn_notices import emit_repeat_fetch
+from agent.common.turn_status import retrieval_round_scope
+from agent.common.turn_status import subagent_run
 
 from ..control import note_write_now_honoured
 from ..control import take_added_documents

@@ -31,9 +31,9 @@ from pydantic import Field
 from pydantic import ValidationError
 from pydantic import field_validator
 
-from aiq_agent.common.json_utils import extract_json
-from aiq_agent.common.llm_factory import strict_json_response_format
-from aiq_agent.common.message_utils import content_to_text
+from agent.common.json_utils import extract_json
+from agent.common.llm_factory import strict_json_response_format
+from agent.common.message_utils import content_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ def typed_as_something_else(tags: Iterable[str] | None) -> bool:
     ``Sonstiges`` is the type picked when unsure. A record is dropped on nothing less than a
     positive other type, so a real Bescheid's record survives every re-ingest a move makes.
     """
-    from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+    from agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
 
     given = set(tags or ())
     return not is_permit_decision(given) and any(tag in given for tag in DOCUMENT_TYPE_TAGS if tag != _UNDECIDED_TYPE)
@@ -370,7 +370,7 @@ def extract_and_store_permit_record(
     document that is no notice from a model call that failed, and a provider outage
     must not erase a record an earlier ingest wrote.
     """
-    from aiq_agent.knowledge.permit_records_client import store_permit_record
+    from agent.knowledge.permit_records_client import store_permit_record
 
     record = extract_permit_record(pages_with_markers(pages), llm, file_name=file_name)
     if record is None:

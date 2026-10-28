@@ -3,7 +3,7 @@
 The answering agent calls this mid-turn whenever a structured element (a
 dimension/stair diagram, a calculation, …) communicates better than prose.
 The card is validated against the shared card schema and pushed into the
-conversation-scoped :class:`~aiq_agent.cards.registry.CardRegistry`; the
+conversation-scoped :class:`~agent.cards.registry.CardRegistry`; the
 chat entrypoint reads that registry after the turn and attaches the cards to
 the response.
 
@@ -11,9 +11,9 @@ This is the SYNCHRONOUS card channel: the answering agent emits cards from full
 context, as a visible tool step, on the chat path. The async
 deep-research job runner has no card registry bound in its research worker, so it
 still derives cards post-hoc from the finished report via
-:func:`aiq_agent.cards.generate.generate_cards`. Both surfaces describe the same
+:func:`agent.cards.generate.generate_cards`. Both surfaces describe the same
 schema AND the same trigger doctrine to the model through the shared
-:mod:`aiq_agent.cards.catalog`; each adds only what is true of itself.
+:mod:`agent.cards.catalog`; each adds only what is true of itself.
 """
 
 import json
@@ -22,20 +22,20 @@ import logging
 # Importing this module runs its ``@register_function`` so NAT discovers the
 # ``surface_documents`` tool through the same ``aiq_cards`` entry point that
 # imports this file — no extra plugin entry needed.
-from aiq_agent.cards import surface_documents as _surface_documents  # noqa: F401
+from agent.cards import surface_documents as _surface_documents  # noqa: F401
 
 # Re-exported so the shape-hint retry loop and tests keep importing them from
 # here; the definitions live in the framing-free catalog module.
-from aiq_agent.cards.catalog import CARD_EXAMPLES as _CARD_EXAMPLES  # noqa: F401
-from aiq_agent.cards.catalog import CHAT_ONLY_CARD_TYPES
-from aiq_agent.cards.catalog import model_facing_card_types
-from aiq_agent.cards.catalog import render_card_details
-from aiq_agent.cards.catalog import render_card_doctrine
-from aiq_agent.cards.catalog import render_card_index
-from aiq_agent.cards.catalog import shape_hint_for as _shape_hint_for  # noqa: F401 — re-exported
-from aiq_agent.cards.envelope import REFUSED_SHAPE
-from aiq_agent.cards.envelope import REFUSED_SYSTEM_TYPE
-from aiq_agent.cards.envelope import validate_model_card
+from agent.cards.catalog import CARD_EXAMPLES as _CARD_EXAMPLES  # noqa: F401
+from agent.cards.catalog import CHAT_ONLY_CARD_TYPES
+from agent.cards.catalog import model_facing_card_types
+from agent.cards.catalog import render_card_details
+from agent.cards.catalog import render_card_doctrine
+from agent.cards.catalog import render_card_index
+from agent.cards.catalog import shape_hint_for as _shape_hint_for  # noqa: F401 — re-exported
+from agent.cards.envelope import REFUSED_SHAPE
+from agent.cards.envelope import REFUSED_SYSTEM_TYPE
+from agent.cards.envelope import validate_model_card
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -131,7 +131,7 @@ class EmitCardConfig(FunctionBaseConfig, name="emit_card"):
 
 @register_function(config_type=EmitCardConfig)
 async def emit_card(tool_config: EmitCardConfig, builder: Builder):
-    from aiq_agent.cards.registry import get_card_registry
+    from agent.cards.registry import get_card_registry
 
     def _validated_or_refusal(payload: object) -> tuple[dict | None, str | None]:
         """One card object through the shape check and the two closed channels.

@@ -38,9 +38,9 @@ from fastapi import APIRouter
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from aiq_agent.common.job_admission import JobAdmissionError
-from aiq_api.jobs.submit import DuplicateJobIdError
-from aiq_api.routes.internal_auth import _DEV_DEFAULT_TOKEN
+from agent.common.job_admission import JobAdmissionError
+from backend.jobs.submit import DuplicateJobIdError
+from backend.routes.internal_auth import _DEV_DEFAULT_TOKEN
 
 _TOKEN = "real-internal-secret"
 
@@ -65,7 +65,7 @@ def _valid_body(**overrides) -> dict:
 @pytest.fixture
 def submit_mock(monkeypatch):
     """Patch the submit function the route imports lazily; default returns an id."""
-    from aiq_api.jobs import submit as submit_module
+    from backend.jobs import submit as submit_module
 
     mock = AsyncMock(return_value="job-xyz")
     monkeypatch.setattr(submit_module, "submit_agent_job", mock)
@@ -74,7 +74,7 @@ def submit_mock(monkeypatch):
 
 @pytest.fixture
 def client(submit_mock):
-    from aiq_api.routes.skills import add_skill_routes
+    from backend.routes.skills import add_skill_routes
 
     router = APIRouter()
     add_skill_routes(router)
@@ -143,7 +143,7 @@ def test_the_bff_budgets_prompts_against_this_ceiling():
     document between the two failed at submission. Equal, or the BFF composes
     prompts this route refuses (or refuses prompts it would accept).
     """
-    from aiq_api.routes.skills import SUBMIT_INPUT_MAX_CHARS
+    from backend.routes.skills import SUBMIT_INPUT_MAX_CHARS
 
     types_ts = Path(__file__).resolve().parents[3] / "apps" / "workspace" / "bff" / "jobs" / "types.ts"
     match = re.search(r"export const AGENT_RUN_INPUT_MAX_CHARS = ([\d_]+)", types_ts.read_text(encoding="utf-8"))
@@ -382,7 +382,7 @@ def test_unknown_data_source_ids_422_via_registry_fallback(client, prod_token, s
     # Ensure the registry fallback path is taken: other suites register a real
     # builder via register_job_routes, and a stale global builder would divert
     # this request into the builder-based validator (and fail on a mock await).
-    from aiq_api.routes import builder_state
+    from backend.routes import builder_state
 
     monkeypatch.setattr(builder_state, "get_active_builder", lambda: None)
     resp = _post(client, _valid_body(data_sources=["no_such_source"]))
@@ -412,7 +412,7 @@ def test_duplicate_job_id_maps_to_409(client, prod_token, submit_mock):
 
 def test_route_not_on_external_allowlist():
     """The internal path must never be reachable from outside the compose net."""
-    from aiq_api.auth.middleware import EXTERNAL_ALLOWED_PATHS
+    from backend.auth.middleware import EXTERNAL_ALLOWED_PATHS
 
     path = "/v1/internal/skills/submit"
     assert path not in EXTERNAL_ALLOWED_PATHS

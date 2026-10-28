@@ -9,16 +9,16 @@ import logging
 import re
 from collections.abc import Iterator
 
-from aiq_agent.citations.citation_keys import PAGE_RE
-from aiq_agent.citations.citation_keys import SCOPE_QUALIFIER_TOKEN_RE
-from aiq_agent.citations.citation_keys import TITLE_PAGE_RE
-from aiq_agent.citations.citation_keys import parse_citation_key
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.markdown_code import code_spans
-from aiq_agent.citations.markdown_code import inside
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common.source_kinds import shelf_for_qualifier
-from aiq_agent.common.source_kinds import shelf_qualifier
+from agent.citations.citation_keys import PAGE_RE
+from agent.citations.citation_keys import SCOPE_QUALIFIER_TOKEN_RE
+from agent.citations.citation_keys import TITLE_PAGE_RE
+from agent.citations.citation_keys import parse_citation_key
+from agent.citations.entries import SourceEntry
+from agent.citations.markdown_code import code_spans
+from agent.citations.markdown_code import inside
+from agent.citations.registry import SourceRegistry
+from agent.common.source_kinds import shelf_for_qualifier
+from agent.common.source_kinds import shelf_qualifier
 
 logger = logging.getLogger(__name__)
 

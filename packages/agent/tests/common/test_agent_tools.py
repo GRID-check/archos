@@ -13,8 +13,8 @@ import pytest
 from pydantic import BaseModel
 
 import nat.plugins.langchain.tool_wrapper  # noqa: F401  registers the LangChain wrapper
-from aiq_agent.common.agent_tools import blank_is_omitted
-from aiq_agent.common.agent_tools import load_agent_tools
+from agent.common.agent_tools import blank_is_omitted
+from agent.common.agent_tools import load_agent_tools
 from nat.builder.workflow_builder import WorkflowBuilder
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
@@ -22,7 +22,7 @@ from nat.plugin_api import FunctionInfo
 from nat.plugin_api import LLMFrameworkEnum
 from nat.plugin_api import register_function
 
-_SRC = Path(__file__).resolve().parents[4] / "packages" / "agent" / "src" / "aiq_agent"
+_SRC = Path(__file__).resolve().parents[4] / "packages" / "agent" / "src" / "agent"
 
 
 class _PagedSearchConfig(FunctionBaseConfig, name="grid_test_paged_search"):
@@ -89,4 +89,4 @@ def test_every_agent_loads_its_tools_through_the_one_seam():
         for path in _SRC.rglob("*.py")
         if path.name != "agent_tools.py" and re.search(r"\bbuilder\.get_tools\(", path.read_text(encoding="utf-8"))
     ]
-    assert offenders == [], f"load tools with aiq_agent.common.agent_tools.load_agent_tools: {offenders}"
+    assert offenders == [], f"load tools with agent.common.agent_tools.load_agent_tools: {offenders}"

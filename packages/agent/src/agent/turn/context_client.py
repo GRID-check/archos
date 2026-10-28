@@ -12,11 +12,11 @@ from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
 
-from aiq_agent.common import bff_http
-from aiq_agent.project_context import MEMORY_HEADER_MAX_CHARS
-from aiq_agent.project_context import GridRequestContext
-from aiq_agent.project_context import normalize_org_instructions
-from aiq_agent.project_context import normalize_project_context
+from agent.common import bff_http
+from agent.project_context import MEMORY_HEADER_MAX_CHARS
+from agent.project_context import GridRequestContext
+from agent.project_context import normalize_org_instructions
+from agent.project_context import normalize_project_context
 
 INTERNAL_TURN_CONTEXT_PATH = "/api/internal/turn-context"
 REQUEST_TIMEOUT_SECONDS = 5

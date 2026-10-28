@@ -11,8 +11,8 @@ single-writer).
 
 **Scheduling does not live here.** Reflection is a *post-answer stage*, and how a
 stage is gated, bounded, made concurrent and recorded is the primitive's job, not
-this module's — see ``aiq_agent/stages/memory_reflection.py`` for the
-declaration and ``aiq_agent/stages/runner.py`` for the timeout, the shared
+this module's — see ``agent/stages/memory_reflection.py`` for the
+declaration and ``agent/stages/runner.py`` for the timeout, the shared
 semaphore, the pending cap and the outcome span. This module is the body of the
 handler and nothing else.
 
@@ -45,15 +45,15 @@ from pydantic import Field
 from pydantic import ValidationError
 from pydantic import model_validator
 
-from aiq_agent.common.json_utils import extract_json
-from aiq_agent.common.llm_factory import strict_json_response_format
-from aiq_agent.common.message_utils import content_to_text
-from aiq_agent.knowledge.project_memory import VALID_CONFIDENCES
-from aiq_agent.knowledge.project_memory import insert_memory_item
-from aiq_agent.knowledge.project_memory import looks_like_personal_data
-from aiq_agent.memory.restriction import RestrictionDecision
-from aiq_agent.memory.restriction import RestrictionEvidence
-from aiq_agent.memory.restriction import restriction_decisions
+from agent.common.json_utils import extract_json
+from agent.common.llm_factory import strict_json_response_format
+from agent.common.message_utils import content_to_text
+from agent.knowledge.project_memory import VALID_CONFIDENCES
+from agent.knowledge.project_memory import insert_memory_item
+from agent.knowledge.project_memory import looks_like_personal_data
+from agent.memory.restriction import RestrictionDecision
+from agent.memory.restriction import RestrictionEvidence
+from agent.memory.restriction import restriction_decisions
 
 logger = logging.getLogger(__name__)
 

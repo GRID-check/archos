@@ -53,7 +53,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.knowledge.document_classification import qdrant_doc_class
+from agent.knowledge.document_classification import qdrant_doc_class
 
 #: Payload field the folder filter matches (see :func:`folder_ancestors`).
 FOLDER_FIELD = "folder_ancestors"

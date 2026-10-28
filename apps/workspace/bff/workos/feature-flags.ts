@@ -76,7 +76,7 @@ export async function isOrgFeatureEnabled(
 /**
  * One post-answer stage's runtime switch (see
  * `docs/architecture/post-answer-stages.md` §7.8). The `id` mirrors the
- * `StageSpec.id` declared in `packages/agent/src/aiq_agent/stages/`; `flag` mirrors its
+ * `StageSpec.id` declared in `packages/agent/src/agent/stages/`; `flag` mirrors its
  * `flag_slug` (`packages/agent/tests/stages/test_stage_flag_parity.py`). Keep the
  * two sides in step — a stage the backend declares but this registry omits can
  * never be switched on.

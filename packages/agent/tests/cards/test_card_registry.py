@@ -5,12 +5,12 @@ import logging
 
 import pytest
 
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import CardRegistry
-from aiq_agent.cards.registry import get_card_registry
-from aiq_agent.cards.registry import get_or_create_card_registry
-from aiq_agent.cards.registry import reset_card_registry
-from aiq_agent.cards.registry import set_card_registry
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import CardRegistry
+from agent.cards.registry import get_card_registry
+from agent.cards.registry import get_or_create_card_registry
+from agent.cards.registry import reset_card_registry
+from agent.cards.registry import set_card_registry
 
 
 def _emit(card_json: str) -> str:
@@ -137,8 +137,8 @@ class TestEmitCardRejectsSystemCards:
     async def test_memory_proposal_is_rejected(self):
         from unittest.mock import MagicMock
 
-        from aiq_agent.cards.register import EmitCardConfig
-        from aiq_agent.cards.register import emit_card
+        from agent.cards.register import EmitCardConfig
+        from agent.cards.register import emit_card
 
         reg = get_or_create_card_registry("conv-emit-system")
         reg.clear()
@@ -182,8 +182,8 @@ class TestARefusedCardIsVisibleAfterTheTurn:
     async def _emit_real(registry, payload) -> str:
         from unittest.mock import MagicMock
 
-        from aiq_agent.cards.register import EmitCardConfig
-        from aiq_agent.cards.register import emit_card
+        from agent.cards.register import EmitCardConfig
+        from agent.cards.register import emit_card
 
         token = set_card_registry(registry)
         try:
@@ -196,7 +196,7 @@ class TestARefusedCardIsVisibleAfterTheTurn:
     async def test_a_validation_failure_logs_the_type_the_model_reached_for(self, caplog):
         reg = get_or_create_card_registry("conv-refusal-1")
         reg.clear()
-        with caplog.at_level(logging.WARNING, logger="aiq_agent.cards"):
+        with caplog.at_level(logging.WARNING, logger="agent.cards"):
             msg = await self._emit_real(reg, {"type": "stair_diagram", "title": "Treppe"})
 
         assert msg.startswith("Error")
@@ -229,7 +229,7 @@ class TestARefusedCardIsVisibleAfterTheTurn:
     async def test_unparseable_json_logs_too(self, caplog):
         reg = get_or_create_card_registry("conv-refusal-2")
         reg.clear()
-        with caplog.at_level(logging.WARNING, logger="aiq_agent.cards"):
+        with caplog.at_level(logging.WARNING, logger="agent.cards"):
             msg = await self._emit_real(reg, "{not json")
 
         assert msg.startswith("Error")
@@ -239,7 +239,7 @@ class TestARefusedCardIsVisibleAfterTheTurn:
     async def test_a_system_card_refusal_logs_too(self, caplog):
         reg = get_or_create_card_registry("conv-refusal-3")
         reg.clear()
-        with caplog.at_level(logging.WARNING, logger="aiq_agent.cards"):
+        with caplog.at_level(logging.WARNING, logger="agent.cards"):
             msg = await self._emit_real(
                 reg, {"type": "memory_proposal", "title": "X", "content": "Y", "scope": "project"}
             )
@@ -253,7 +253,7 @@ class TestARefusedCardIsVisibleAfterTheTurn:
         # abnormal outcome and has to be greppable apart from the normal one.
         reg = get_or_create_card_registry("conv-refusal-4")
         reg.clear()
-        with caplog.at_level(logging.INFO, logger="aiq_agent.cards.register"):
+        with caplog.at_level(logging.INFO, logger="agent.cards.register"):
             msg = await self._emit_real(reg, {"type": "ifc_model_picker", "title": "Treppe"})
 
         assert not msg.startswith("Error")
@@ -273,8 +273,8 @@ class TestEmitCardPlacementMarker:
     async def _emit_real(registry, payload: dict) -> str:
         from unittest.mock import MagicMock
 
-        from aiq_agent.cards.register import EmitCardConfig
-        from aiq_agent.cards.register import emit_card
+        from agent.cards.register import EmitCardConfig
+        from agent.cards.register import emit_card
 
         token = set_card_registry(registry)
         try:
@@ -342,7 +342,7 @@ class TestEmitCardPlacementMarker:
         What the tool must still do is hand back a marker the agent knows what to
         do with, which the three tests above assert on live returns.
         """
-        from aiq_agent.cards.register import _CARD_DOCTRINE
+        from agent.cards.register import _CARD_DOCTRINE
 
         assert "[[card:" not in _CARD_DOCTRINE
         assert "WHERE IT GOES" not in _CARD_DOCTRINE

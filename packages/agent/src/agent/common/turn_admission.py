@@ -3,7 +3,7 @@
 ## The gap this closes
 
 Async research jobs have had admission control since the scaling review
-(``MAX_ACTIVE_JOBS_PER_ORG`` in ``aiq_api.jobs.queue``): a deliberate ceiling
+(``MAX_ACTIVE_JOBS_PER_ORG`` in ``backend.jobs.queue``): a deliberate ceiling
 on how many long runs one organization may run at once. Interactive chat turns
 had none. A single shared conversation with ten members answering at once starts
 ten multi-agent runs, and the only thing that
@@ -64,10 +64,10 @@ from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from contextlib import contextmanager
 
-from aiq_agent.common import cache
-from aiq_agent.common.lease_slots import ACQUIRE_LUA
-from aiq_agent.common.lease_slots import RELEASE_LUA
-from aiq_agent.common.lease_slots import RENEW_LUA
+from agent.common import cache
+from agent.common.lease_slots import ACQUIRE_LUA
+from agent.common.lease_slots import RELEASE_LUA
+from agent.common.lease_slots import RENEW_LUA
 
 logger = logging.getLogger(__name__)
 

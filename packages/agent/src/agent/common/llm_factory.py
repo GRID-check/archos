@@ -9,14 +9,14 @@ automatically:
   JSON provider-side before it reaches us (activates only on json_schema /
   json_object requests; a no-op on plain calls).
 - the provider-portable chat-request contract (see
-  :mod:`aiq_agent.common.message_contract`): a request must never end on an
+  :mod:`agent.common.message_contract`): a request must never end on an
   assistant turn, because Google rejects that shape while OpenAI-compatible
   providers accept it, and OpenRouter picks the provider per request.
-- prompt-cache affinity (see :mod:`aiq_agent.common.prompt_caching`): a
+- prompt-cache affinity (see :mod:`agent.common.prompt_caching`): a
   ``session_id`` + ``prompt_cache_key`` derived from the request's own stable
   prefix, so the 3-6 calls of one turn land on the endpoint that cached it
   instead of being spread across a model's providers.
-- the fleet's provider limiter (see :mod:`aiq_agent.common.provider_limiter`):
+- the fleet's provider limiter (see :mod:`agent.common.provider_limiter`):
   every call to an OpenRouter-bound model holds one fleet-wide slot, in the
   priority class of the task that makes it, for as long as the call or its
   stream lasts. A 429 gives the slot back and waits its Retry-After outside it.
@@ -51,9 +51,9 @@ from collections import OrderedDict
 from contextlib import nullcontext
 from typing import Any
 
-from aiq_agent.common import provider_limiter
-from aiq_agent.common.message_contract import normalize_chat_request
-from aiq_agent.common.openrouter import targets_openrouter
+from agent.common import provider_limiter
+from agent.common.message_contract import normalize_chat_request
+from agent.common.openrouter import targets_openrouter
 from nat.plugin_api import LLMFrameworkEnum
 from nat.utils.exception_handlers.automatic_retries import patch_with_retry
 
@@ -199,7 +199,7 @@ def disable_previous_response_id(llm: Any) -> Any:
 def _request_organization_id() -> str | None:
     """The caller's org id, or None outside a request (a CLI run, an ingest thread)."""
     try:
-        from aiq_agent.project_context import get_organization_id_from_context
+        from agent.project_context import get_organization_id_from_context
 
         return get_organization_id_from_context()
     except Exception:  # noqa: BLE001 - identity is a cache-key ingredient, never a precondition
@@ -223,7 +223,7 @@ def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any]) -> Any:
     normalized = normalize_chat_request(messages)
     if not llm_targets_openrouter(llm):
         return normalized
-    from aiq_agent.common.prompt_caching import prompt_cache_extra_body
+    from agent.common.prompt_caching import prompt_cache_extra_body
 
     base = getattr(llm, "extra_body", None)
     merged_base = {**(dict(base) if isinstance(base, dict) else {}), **(kwargs.get("extra_body") or {})}
@@ -275,7 +275,7 @@ def _needs_reasoning_floor(llm: Any, target: Any, error: BaseException) -> bool:
     Only for a call that went out with reasoning off (``target is llm``): a copy
     already at the floor that fails again fails for another reason.
     """
-    from aiq_agent.common.model_overrides import is_reasoning_incompatible_error
+    from agent.common.model_overrides import is_reasoning_incompatible_error
 
     if target is not llm or not _reasoning_off(llm) or not is_reasoning_incompatible_error(error):
         return False
@@ -392,7 +392,7 @@ def enforce_chat_request_contract(llm: Any) -> Any:
 
     Re-points the instance at a contract subclass of its own class, so every
     call it serves — directly, tool-bound, or wrapped in structured output —
-    passes through :func:`~aiq_agent.common.message_contract.normalize_chat_request`
+    passes through :func:`~agent.common.message_contract.normalize_chat_request`
     first. ``isinstance`` checks against ``BaseChatModel`` and friends keep
     working, and ``model_copy`` (how the per-request override seam produces
     per-org instances) carries the contract along with the copy.

@@ -16,15 +16,15 @@ from datetime import datetime
 
 from sqlalchemy import text
 
-from aiq_agent.knowledge import ingest_queue
-from aiq_agent.knowledge import ingest_status_store
-from aiq_agent.knowledge.base import PreparedIngestJob
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
-from aiq_agent.knowledge.schema import FileProgress
-from aiq_agent.knowledge.schema import FileStatus
-from aiq_agent.knowledge.schema import IngestionJobStatus
-from aiq_agent.knowledge.schema import JobState
-from aiq_api.jobs import ingest_dispatch
+from agent.knowledge import ingest_queue
+from agent.knowledge import ingest_status_store
+from agent.knowledge.base import PreparedIngestJob
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.knowledge.schema import FileProgress
+from agent.knowledge.schema import FileStatus
+from agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.schema import JobState
+from backend.jobs import ingest_dispatch
 
 
 @dataclass

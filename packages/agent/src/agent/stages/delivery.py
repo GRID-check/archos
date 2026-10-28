@@ -1,6 +1,6 @@
 """The channel a ``delivery="frame"`` stage pushes its outcome down.
 
-``aiq_api`` owns the socket and ``aiq_agent`` owns the graph, so the channel is
+``backend`` owns the socket and ``agent`` owns the graph, so the channel is
 **published, not imported** — the same inversion
 ``conversation_context.register_context_appender`` already uses in the opposite
 direction. The front end registers a sink at start-up; this package calls it and
@@ -18,7 +18,7 @@ import logging
 from collections.abc import Awaitable
 from collections.abc import Callable
 
-from aiq_agent.common.wire_v2 import StageValue
+from agent.common.wire_v2 import StageValue
 
 logger = logging.getLogger(__name__)
 

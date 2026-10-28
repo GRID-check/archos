@@ -19,7 +19,7 @@ A file needs ingestion when its ``ingested_sha256`` differs from its
 one (:meth:`FileRow.needs_ingestion`). That one rule is the whole change
 detector: a changed PDF, a new PDF, a chunking change and a wiped vector store
 all reach ingestion through it, and nothing else keeps a registry. The ingestion
-itself is a job on the ingest queue (``aiq_agent.oib_sync``); ``failed_job_id``
+itself is a job on the ingest queue (``agent.oib_sync``); ``failed_job_id``
 is the one thing remembered about a job that ran and failed, so the file is not
 tried again until its bytes change or an admin asks.
 
@@ -30,7 +30,7 @@ PDF route, the export, the page renderer), and may disappear at any restart.
 Nothing pulls the corpus speculatively.
 
 WHO WRITES WHAT. The backend holds a read-only object credential
-(``aiq_agent.common.seaweed_s3``), so it reads objects itself and asks the BFF to
+(``agent.common.seaweed_s3``), so it reads objects itself and asks the BFF to
 write them: ``POST /api/internal/base-corpus/upload-url`` returns a presigned PUT,
 ``DELETE /api/internal/base-corpus/<name>`` removes the object. Same internal
 channel and token header as ``knowledge_layer.llamaindex.image_store``. A
@@ -73,9 +73,9 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.schema import CreateTable
 
-from aiq_agent.common import seaweed_s3
-from aiq_agent.common.db_utils import ensure_schema
-from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+from agent.common import seaweed_s3
+from agent.common.db_utils import ensure_schema
+from agent.knowledge.document_metadata_store import DocumentMetadataStore
 
 logger = logging.getLogger(__name__)
 
@@ -475,7 +475,7 @@ class CorpusObjectDownload:
     The ingest queue carries a job as data, and a job that waits for a worker for
     a long time cannot carry a presigned URL that expires in an hour. This
     carries the object's key and hash instead, and the worker, which holds the same
-    read credential as every backend process (``aiq_agent.common.seaweed_s3``),
+    read credential as every backend process (``agent.common.seaweed_s3``),
     downloads it when it reaches the file, to a temp file the job then owns and
     deletes (``knowledge_layer.deferred_files``: any zero-argument callable that
     returns a path). The bytes are checked against the hash the job was made for, so a

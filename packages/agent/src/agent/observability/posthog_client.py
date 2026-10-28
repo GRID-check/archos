@@ -25,7 +25,7 @@ here. What is ours:
   exception message can embed one, and a PostHog event is retained off-cluster.
 * Every event carries the deployment's ``environment`` and the emitting
   ``service`` as super properties, the same values the Langfuse traces carry.
-* Frames under ``aiq_agent`` and ``aiq_api`` are in-app, so error tracking
+* Frames under ``agent`` and ``backend`` are in-app, so error tracking
   groups an issue by our frame rather than by the library frame that raised.
 
 The exit flush is the SDK's: a bounded best-effort attempt of about a second,
@@ -42,8 +42,8 @@ from threading import Lock
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.common.log_redaction import scrub_presigned_urls
-from aiq_agent.observability import trace_context
+from agent.common.log_redaction import scrub_presigned_urls
+from agent.observability import trace_context
 
 if TYPE_CHECKING:
     from posthog import Posthog
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 HOST_ENV = "POSTHOG_HOST"
 PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN"  # pragma: allowlist secret
 #: Packages whose frames error tracking treats as ours.
-IN_APP_MODULES = ["aiq_agent", "aiq_api"]
+IN_APP_MODULES = ["agent", "backend"]
 
 _client: Posthog | None = None
 _client_lock = Lock()

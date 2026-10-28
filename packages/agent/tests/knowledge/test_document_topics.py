@@ -14,15 +14,15 @@ from unittest.mock import MagicMock
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.knowledge.document_classification import ALLOWED_TAGS
-from aiq_agent.knowledge.document_classification import CLASSIFY_MAX_INPUT_CHARS
-from aiq_agent.knowledge.document_classification import MAX_TOPIC_CHARS
-from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
-from aiq_agent.knowledge.document_classification import MAX_TOPIC_WORDS
-from aiq_agent.knowledge.document_classification import MAX_TOPICS
-from aiq_agent.knowledge.document_classification import normalize_topic
-from aiq_agent.knowledge.document_classification import parse_topics
-from aiq_agent.knowledge.document_classification import suggest_topics
+from agent.knowledge.document_classification import ALLOWED_TAGS
+from agent.knowledge.document_classification import CLASSIFY_MAX_INPUT_CHARS
+from agent.knowledge.document_classification import MAX_TOPIC_CHARS
+from agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
+from agent.knowledge.document_classification import MAX_TOPIC_WORDS
+from agent.knowledge.document_classification import MAX_TOPICS
+from agent.knowledge.document_classification import normalize_topic
+from agent.knowledge.document_classification import parse_topics
+from agent.knowledge.document_classification import suggest_topics
 
 
 def _topics_json(*items: tuple[str, float]) -> str:

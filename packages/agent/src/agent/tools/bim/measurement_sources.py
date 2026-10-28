@@ -3,7 +3,7 @@
 The agent measures a basement correctly and the Herleitungspfad shows nothing.
 That is the defect this module closes, and the reason it was open is worth
 stating: ``ifc_measure`` is deliberately not a data source
-(:mod:`aiq_agent.agents.piloti.grounding`), so nothing it produced
+(:mod:`agent.agents.piloti.grounding`), so nothing it produced
 ever reached the citation registry, and the Herleitung is fed from the
 registry.
 
@@ -75,8 +75,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from aiq_agent.common.source_kinds import MEASUREMENT_SOURCE_KIND
-from aiq_agent.common.turn_status import record_lane_hit
+from agent.common.source_kinds import MEASUREMENT_SOURCE_KIND
+from agent.common.turn_status import record_lane_hit
 
 #: The fine lane a measurement is filed under, and its German sub-label. A lane
 #: is the Herleitung card's folder tab; measurements have exactly one, because

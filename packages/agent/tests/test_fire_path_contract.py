@@ -25,15 +25,15 @@ from pathlib import Path
 import pytest
 from fastapi import HTTPException
 
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
-from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
-from aiq_api.context_envelope import _INTERNAL_TOKEN_HEADER_NAMES
-from aiq_api.context_envelope import ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES
-from aiq_api.context_envelope import _path_matches
-from aiq_api.jobs.runner import WORKER_ENVELOPE_HEADERS
-from aiq_api.jobs.runner import WORKER_IDENTITY_HEADERS
-from aiq_api.routes.internal_auth import _TOKEN_HEADERS
-from aiq_api.routes.internal_auth import _require_internal_token
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
+from backend.context_envelope import _INTERNAL_TOKEN_HEADER_NAMES
+from backend.context_envelope import ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES
+from backend.context_envelope import _path_matches
+from backend.jobs.runner import WORKER_ENVELOPE_HEADERS
+from backend.jobs.runner import WORKER_IDENTITY_HEADERS
+from backend.routes.internal_auth import _TOKEN_HEADERS
+from backend.routes.internal_auth import _require_internal_token
 
 REPO = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = REPO / "apps" / "workspace" / "tests" / "fixtures" / "job_fire_headers.json"

@@ -14,11 +14,11 @@ from collections import OrderedDict
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.citations.binding import LEGACY_BINDING_STATUS
-from aiq_agent.citations.entries import SourceEntry
-from aiq_agent.citations.entries import normalize_url
-from aiq_agent.citations.registry import SourceRegistry
-from aiq_agent.common.grounding_block import SourceRegion
+from agent.citations.binding import LEGACY_BINDING_STATUS
+from agent.citations.entries import SourceEntry
+from agent.citations.entries import normalize_url
+from agent.citations.registry import SourceRegistry
+from agent.common.grounding_block import SourceRegion
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def _registry_from_cached_entries(entries: Any) -> SourceRegistry:
     match strength that the same conversation had shown a minute earlier, on a
     replica move nobody could see.
     """
-    from aiq_agent.common.norm_registry import LEGACY_NORM_RANK
+    from agent.common.norm_registry import LEGACY_NORM_RANK
 
     registry = SourceRegistry()
     if isinstance(entries, list):
@@ -109,7 +109,7 @@ def persist_session_registry(session_id: str | None) -> None:
         registry = _session_registries.get(session_id)
     if registry is None or not registry._all:
         return
-    from aiq_agent.common import cache
+    from agent.common import cache
 
     cache.set_json(
         f"{_REGISTRY_CACHE_PREFIX}{session_id}",
@@ -130,7 +130,7 @@ def get_or_create_session_registry(session_id: str | None) -> SourceRegistry:
     """
     if session_id is None:
         return SourceRegistry()
-    from aiq_agent.common.profiler import annotate_current_span
+    from agent.common.profiler import annotate_current_span
 
     with _session_registries_lock:
         if session_id in _session_registries:
@@ -140,7 +140,7 @@ def get_or_create_session_registry(session_id: str | None) -> SourceRegistry:
 
     # Shared-cache hydration outside the lock (network I/O must not serialize
     # unrelated sessions); the double-checked insert below resolves races.
-    from aiq_agent.common import cache
+    from agent.common import cache
 
     hydrated: SourceRegistry | None = None
     try:

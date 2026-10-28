@@ -1,7 +1,7 @@
 # Audit — async memory-reflection stage & the memory write path
 
 > Multi-persona audit of the post-answer memory-reflection stage
-> (`packages/agent/src/aiq_agent/memory/reflection.py`) and the surrounding
+> (`packages/agent/src/agent/memory/reflection.py`) and the surrounding
 > project-memory system. Records the findings, what was hardened in code, and
 > what remains a deliberate follow-up. See also
 > [project-memory-design.md](./project-memory-design.md) §3.5.

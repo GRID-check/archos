@@ -77,8 +77,8 @@ def emit_decision_span(slot: str, body_in: dict[str, Any], body_out: dict[str, A
     call itself, ending now, so the generation's latency in Langfuse is the
     call's and not the 1 ms a point reads as (``emit_step_span``).
     """
-    from aiq_agent.observability.retrieval_trace import emit_step_span
-    from aiq_agent.observability.turn_phases import now
+    from agent.observability.retrieval_trace import emit_step_span
+    from agent.observability.turn_phases import now
 
     latency_ms = body_out.get("latency_ms")
     ended = now()

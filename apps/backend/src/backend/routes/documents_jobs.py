@@ -14,14 +14,14 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.knowledge.base import BaseIngestor
-from aiq_agent.knowledge.schema import IngestionJobStatus
+from agent.knowledge.base import BaseIngestor
+from agent.knowledge.schema import IngestionJobStatus
 
 from ..jobs import ingest_dispatch
 from .collections import _require_ingestor
 
 # The name these routes logged under before the split, so log filters keep matching.
-logger = logging.getLogger("aiq_api.routes.documents")
+logger = logging.getLogger("backend.routes.documents")
 
 # Upper bound on job ids per batch-status request (request validation).
 BATCH_STATUS_MAX_IDS = 200

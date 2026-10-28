@@ -24,53 +24,53 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
-from aiq_agent.common.db_utils import redact_db_url
-from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
+from agent.common.db_utils import normalize_db_url as _normalize_db_url
+from agent.common.db_utils import redact_db_url
+from agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
 
 if TYPE_CHECKING:
     from .schema import AvailableDocument
 
-from aiq_agent.knowledge import document_metadata_decode as decode_impl
-from aiq_agent.knowledge import document_metadata_engines as engines_impl
-from aiq_agent.knowledge import document_metadata_fields as fields_impl
-from aiq_agent.knowledge import document_metadata_folders as folders_impl
-from aiq_agent.knowledge import document_metadata_reads as reads_impl
-from aiq_agent.knowledge import document_metadata_records as records_impl
-from aiq_agent.knowledge import document_metadata_revisions as revisions_impl
-from aiq_agent.knowledge import document_metadata_schema as schema_impl
-from aiq_agent.knowledge import document_metadata_tags as tags_impl
-from aiq_agent.knowledge.document_metadata_constants import _DOCUMENT_COLUMNS
-from aiq_agent.knowledge.document_metadata_constants import _INDEX_NAME
-from aiq_agent.knowledge.document_metadata_constants import _LEGACY_INDEX_NAME
-from aiq_agent.knowledge.document_metadata_constants import _OFFICE_TIMEZONE
-from aiq_agent.knowledge.document_metadata_constants import _OPTIONAL_COLUMN_TYPES
-from aiq_agent.knowledge.document_metadata_constants import _OPTIONAL_COLUMNS
-from aiq_agent.knowledge.document_metadata_constants import _RETAINED_COLUMNS
-from aiq_agent.knowledge.document_metadata_constants import ENGINE_CACHE_MAX_SIZE
-from aiq_agent.knowledge.document_metadata_constants import ENGINE_CACHE_TTL_SECONDS
-from aiq_agent.knowledge.document_metadata_constants import LEGACY_RETAINED_TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import LEGACY_TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import REFUSAL_REASON
-from aiq_agent.knowledge.document_metadata_constants import RETAINED_TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import SUGGESTION_BASES
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import TAGS_SET_BY_PERSON
-from aiq_agent.knowledge.document_metadata_constants import logger
-from aiq_agent.knowledge.document_metadata_helpers import LinkOutcome
-from aiq_agent.knowledge.document_metadata_helpers import _current_doc_class
-from aiq_agent.knowledge.document_metadata_helpers import _decode_page_count
-from aiq_agent.knowledge.document_metadata_helpers import _encode_page_count
-from aiq_agent.knowledge.document_metadata_helpers import _escape_like
-from aiq_agent.knowledge.document_metadata_helpers import _kept_reason
-from aiq_agent.knowledge.document_metadata_helpers import _link_lock_key
-from aiq_agent.knowledge.document_metadata_helpers import _LinkRow
-from aiq_agent.knowledge.document_metadata_helpers import _merged_suggestion
-from aiq_agent.knowledge.document_metadata_helpers import _person_made_facts
-from aiq_agent.knowledge.document_metadata_helpers import _refusal_record
-from aiq_agent.knowledge.document_metadata_helpers import _set_columns
-from aiq_agent.knowledge.document_metadata_helpers import _with_refusal
-from aiq_agent.knowledge.document_metadata_helpers import dismissed_revisions
+from agent.knowledge import document_metadata_decode as decode_impl
+from agent.knowledge import document_metadata_engines as engines_impl
+from agent.knowledge import document_metadata_fields as fields_impl
+from agent.knowledge import document_metadata_folders as folders_impl
+from agent.knowledge import document_metadata_reads as reads_impl
+from agent.knowledge import document_metadata_records as records_impl
+from agent.knowledge import document_metadata_revisions as revisions_impl
+from agent.knowledge import document_metadata_schema as schema_impl
+from agent.knowledge import document_metadata_tags as tags_impl
+from agent.knowledge.document_metadata_constants import _DOCUMENT_COLUMNS
+from agent.knowledge.document_metadata_constants import _INDEX_NAME
+from agent.knowledge.document_metadata_constants import _LEGACY_INDEX_NAME
+from agent.knowledge.document_metadata_constants import _OFFICE_TIMEZONE
+from agent.knowledge.document_metadata_constants import _OPTIONAL_COLUMN_TYPES
+from agent.knowledge.document_metadata_constants import _OPTIONAL_COLUMNS
+from agent.knowledge.document_metadata_constants import _RETAINED_COLUMNS
+from agent.knowledge.document_metadata_constants import ENGINE_CACHE_MAX_SIZE
+from agent.knowledge.document_metadata_constants import ENGINE_CACHE_TTL_SECONDS
+from agent.knowledge.document_metadata_constants import LEGACY_RETAINED_TABLE_NAME
+from agent.knowledge.document_metadata_constants import LEGACY_TABLE_NAME
+from agent.knowledge.document_metadata_constants import REFUSAL_REASON
+from agent.knowledge.document_metadata_constants import RETAINED_TABLE_NAME
+from agent.knowledge.document_metadata_constants import SUGGESTION_BASES
+from agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge.document_metadata_constants import TAGS_SET_BY_PERSON
+from agent.knowledge.document_metadata_constants import logger
+from agent.knowledge.document_metadata_helpers import LinkOutcome
+from agent.knowledge.document_metadata_helpers import _current_doc_class
+from agent.knowledge.document_metadata_helpers import _decode_page_count
+from agent.knowledge.document_metadata_helpers import _encode_page_count
+from agent.knowledge.document_metadata_helpers import _escape_like
+from agent.knowledge.document_metadata_helpers import _kept_reason
+from agent.knowledge.document_metadata_helpers import _link_lock_key
+from agent.knowledge.document_metadata_helpers import _LinkRow
+from agent.knowledge.document_metadata_helpers import _merged_suggestion
+from agent.knowledge.document_metadata_helpers import _person_made_facts
+from agent.knowledge.document_metadata_helpers import _refusal_record
+from agent.knowledge.document_metadata_helpers import _set_columns
+from agent.knowledge.document_metadata_helpers import _with_refusal
+from agent.knowledge.document_metadata_helpers import dismissed_revisions
 
 __all__ = [
     "DocumentMetadataStore",

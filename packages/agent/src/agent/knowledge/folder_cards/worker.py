@@ -1,6 +1,6 @@
 """The folder card builder's loop: claim, hash, skip or build, write, climb (ADR-0127).
 
-Runs in the ingest-worker role (``aiq_api.jobs.ingest_worker``) beside the ingest
+Runs in the ingest-worker role (``backend.jobs.ingest_worker``) beside the ingest
 queue's claim loop, for the organizations with the ``folder-cards`` WorkOS flag. Each pass:
 
 1. claims up to :data:`CLAIM_LIMIT` folders that went quiet (``queue.claim``:
@@ -44,15 +44,15 @@ from dataclasses import field
 from typing import Any
 from typing import Literal
 
-from aiq_agent.knowledge.folder_cards import build
-from aiq_agent.knowledge.folder_cards import client
-from aiq_agent.knowledge.folder_cards import gate
-from aiq_agent.knowledge.folder_cards import incremental
-from aiq_agent.knowledge.folder_cards import queue
-from aiq_agent.knowledge.folder_cards.inputs import PROMPT_VERSION
-from aiq_agent.knowledge.folder_cards.inputs import FolderInputs
-from aiq_agent.knowledge.folder_cards.inputs import folder_inputs
-from aiq_agent.knowledge.folder_cards.inputs import input_hash
+from agent.knowledge.folder_cards import build
+from agent.knowledge.folder_cards import client
+from agent.knowledge.folder_cards import gate
+from agent.knowledge.folder_cards import incremental
+from agent.knowledge.folder_cards import queue
+from agent.knowledge.folder_cards.inputs import PROMPT_VERSION
+from agent.knowledge.folder_cards.inputs import FolderInputs
+from agent.knowledge.folder_cards.inputs import folder_inputs
+from agent.knowledge.folder_cards.inputs import input_hash
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def monthly_token_cap() -> int:
 
 def summary_llm() -> Any | None:
     """The summary model the active ingestor resolved at registration (pinned to zero data retention)."""
-    from aiq_agent.knowledge.factory import get_active_ingestor
+    from agent.knowledge.factory import get_active_ingestor
 
     return getattr(get_active_ingestor(), "summary_llm", None)
 
@@ -113,13 +113,13 @@ def collection_rows(collection: str) -> list[Any]:
     """The collection's documents as ``browse.FileRow``: the rows ``list_files`` counts."""
     from knowledge_layer.browse import file_rows
 
-    from aiq_agent.knowledge import get_available_documents
+    from agent.knowledge import get_available_documents
 
     return file_rows([{**doc.model_dump(), "collection": collection} for doc in get_available_documents(collection)])
 
 
 def _load(claim: queue.Claim) -> _Collection | None:
-    from aiq_agent.knowledge.folder_cards import organization_hint
+    from agent.knowledge.folder_cards import organization_hint
 
     organization_id = (
         claim.organization_id or queue.organization_of(claim.collection) or organization_hint(claim.collection)
@@ -143,7 +143,7 @@ def _publish_point(collection: str, card: dict[str, Any]) -> None:
         from knowledge_layer.qdrant import folders
         from knowledge_layer.qdrant.store import get_store
 
-        from aiq_agent.knowledge.factory import get_active_retriever
+        from agent.knowledge.factory import get_active_retriever
 
         retriever = get_active_retriever()
         text = folders.embedding_text(card["folder_path"], card.get("abstract"), card.get("key_facts"))
@@ -256,9 +256,9 @@ def _store(
 
 def _ledger(organization_id: str):
     """The usage ledger the call is booked to: the organization's, as ingest activity."""
-    from aiq_agent.common.cost_tracking import USAGE_ACTIVITY_INGEST
-    from aiq_agent.common.cost_tracking import BudgetSnapshot
-    from aiq_agent.common.cost_tracking import track_llm_costs
+    from agent.common.cost_tracking import USAGE_ACTIVITY_INGEST
+    from agent.common.cost_tracking import BudgetSnapshot
+    from agent.common.cost_tracking import track_llm_costs
 
     identity = {"organization_id": organization_id, "user_id": None, "project_id": None, "conversation_id": None}
     return track_llm_costs(identity=identity, budget=BudgetSnapshot(), activity=USAGE_ACTIVITY_INGEST)
@@ -376,8 +376,8 @@ def _flag_off(claim: queue.Claim) -> bool:
 
     An organization nobody can name yet is not off: ``_load`` keeps the claim for a retry.
     """
-    from aiq_agent.knowledge.folder_cards import gate
-    from aiq_agent.knowledge.folder_cards import organization_hint
+    from agent.knowledge.folder_cards import gate
+    from agent.knowledge.folder_cards import organization_hint
 
     organization_id = (
         claim.organization_id or queue.organization_of(claim.collection) or organization_hint(claim.collection)
@@ -417,8 +417,8 @@ def _emit_freshness(report: RunReport) -> None:
     share = report.fresh_share()
     if share is None or not report.trace_id:
         return
-    from aiq_agent.observability.langfuse_scores import RuntimeScore
-    from aiq_agent.observability.langfuse_scores import emit_scores
+    from agent.observability.langfuse_scores import RuntimeScore
+    from agent.observability.langfuse_scores import emit_scores
 
     comment = ", ".join(f"{name} {count}" for name, count in sorted(report.outcomes.items()))
     emit_scores(

@@ -27,10 +27,10 @@ import asyncio
 import unicodedata
 from dataclasses import dataclass
 
-from aiq_agent import project_context
-from aiq_agent.common.bff_http import SignedEnvelope
-from aiq_agent.common.focus_file import get_focused_document_id
-from aiq_agent.common.focus_file import get_focused_file_name
+from agent import project_context
+from agent.common.bff_http import SignedEnvelope
+from agent.common.focus_file import get_focused_document_id
+from agent.common.focus_file import get_focused_file_name
 
 from ..canvas import target as canvas_target
 from ..canvas.calls import call

@@ -24,8 +24,8 @@ from knowledge_layer_testing import estate_grep as grep_suite
 from knowledge_layer_testing import estate_listing as listing_suite
 from knowledge_layer_testing import estate_read as read_suite
 
-from aiq_agent.common import grounding_block
-from aiq_agent.common import turn_status
+from agent.common import grounding_block
+from agent.common import turn_status
 
 # The three suites' own autouse fixtures: the grep's retriever seam, no files in flight, the grounding capture.
 _setup = grep_suite._setup

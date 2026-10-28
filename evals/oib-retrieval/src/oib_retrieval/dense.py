@@ -87,7 +87,7 @@ class HashedEmbedder:
         self.dimension = dimension
 
     def _encode(self, texts: list[str]) -> np.ndarray:
-        from aiq_agent.common.german_text import analyze
+        from agent.common.german_text import analyze
 
         matrix = np.zeros((len(texts), self.dimension), dtype=np.float32)
         for row, text in enumerate(texts):

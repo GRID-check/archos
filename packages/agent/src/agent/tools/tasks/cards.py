@@ -17,8 +17,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from aiq_agent.cards.models import grid_card_adapter
-from aiq_agent.cards.registry import get_card_registry
+from agent.cards.models import grid_card_adapter
+from agent.cards.registry import get_card_registry
 
 logger = logging.getLogger(__name__)
 

@@ -15,9 +15,9 @@ import threading
 import pytest
 from langchain_core.messages import AIMessage
 
-from aiq_agent.agents.piloti import conversation_register as register_mod
-from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.common.wire_v2 import UserMessage
+from agent.agents.piloti import conversation_register as register_mod
+from agent.agents.piloti.models import ResearchAgentState
+from agent.common.wire_v2 import UserMessage
 
 
 async def _shallow(state):

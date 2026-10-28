@@ -5,7 +5,7 @@ a single async job may consume across *every* LLM call it makes --
 orchestrator, planner, writer, source-router, and every concurrent researcher
 worker alike. It is a coarse run-away-job safety valve, independent of (and
 complementary to) the USD-denominated org/user/project budgets enforced by
-``aiq_agent.common.cost_tracking.GridCostTracker``.
+``agent.common.cost_tracking.GridCostTracker``.
 
 Mechanism: a ``BaseCallbackHandler`` with ``raise_error = True`` so an
 exception raised from one of its methods propagates out of LangChain's
@@ -21,13 +21,13 @@ budgets.
 
 Named ``RunBudgetExceededError`` (not ``BudgetExceededError``) to avoid
 colliding with the unrelated, pre-existing
-``aiq_agent.common.cost_tracking.BudgetExceededError`` (a USD-denominated
+``agent.common.cost_tracking.BudgetExceededError`` (a USD-denominated
 org/user/project budget check) -- the two are independent mechanisms that can
 both apply to the same job.
 
 Thread/concurrency safety: up to ``max_research_concurrency`` (default 6)
 researcher workers can be in flight at once within a single job (see
-``aiq_agent.agents.deep_researcher.agent.DEFAULT_MAX_RESEARCH_CONCURRENCY``
+``agent.agents.deep_researcher.agent.DEFAULT_MAX_RESEARCH_CONCURRENCY``
 and ``tools/research.py._run_research_queries``). Every worker's callback
 list is forwarded straight through to this handler (no ``for_new_run`` is
 implemented here -- there is no per-run mutable state on the handler itself,
@@ -66,7 +66,7 @@ class RunBudgetExceededError(RuntimeError):
     ``str(exc)`` is a curated, user-safe message -- safe to persist directly
     as the job's error field and to stream in a ``job.error`` event without
     going through the generic exception-message sanitization used for
-    unclassified errors (see ``aiq_api.jobs.runner.sanitize_job_error``).
+    unclassified errors (see ``backend.jobs.runner.sanitize_job_error``).
     """
 
     #: A limit doing its job, not a fault: PostHog error tracking skips it
@@ -107,7 +107,7 @@ def _extract_completion_tokens(response: Any) -> int:
     """Extract the completion/output token count from an ``LLMResult``.
 
     Mirrors the extraction order ``AgentEventCallback._extract_llm_response``
-    uses in ``aiq_api.jobs.callbacks`` (LangChain's standardized
+    uses in ``backend.jobs.callbacks`` (LangChain's standardized
     ``usage_metadata.output_tokens`` first, then the OpenAI-style
     ``response_metadata.token_usage.completion_tokens`` fallback). Returns 0
     -- never raises -- when no usage information is present (e.g. a cached or
@@ -180,7 +180,7 @@ class BudgetGuardCallback(BaseCallbackHandler):
     """LangChain callback enforcing a per-job completion-token ceiling.
 
     Add one instance to a job's callback list (see
-    ``aiq_api.jobs.agent_job.run_agent_job``); it reaches every LLM call in the
+    ``backend.jobs.agent_job.run_agent_job``); it reaches every LLM call in the
     job the same way the existing ``AgentEventCallback``/
     ``VerboseTraceCallback`` do -- LangGraph/DeepAgents' ``task`` tool merges
     the ambient parent config (including ``callbacks``) into every subagent

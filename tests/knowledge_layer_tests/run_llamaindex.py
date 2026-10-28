@@ -113,8 +113,8 @@ async def main():
     from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor  # noqa: F401
     from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever  # noqa: F401
 
-    from aiq_agent.knowledge import get_ingestor
-    from aiq_agent.knowledge import get_retriever
+    from agent.knowledge import get_ingestor
+    from agent.knowledge import get_retriever
 
     # Configuration
     collection_name = args.collection

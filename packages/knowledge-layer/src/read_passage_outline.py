@@ -172,14 +172,14 @@ def _document_order(chunk: Any) -> tuple[int, int]:
     came back in alphabetical order of their headings. ``(0, 0)`` for an OIB chunk,
     which carries neither, so their order is unchanged.
     """
-    from aiq_agent.knowledge.base import section_position
+    from agent.knowledge.base import section_position
 
     return section_position(getattr(chunk, "metadata", None))[:2]
 
 
 def _table_part(chunk: Any) -> int:
     """A row group's or section chunk's 1-based position, ``0`` for anything that is not one."""
-    from aiq_agent.knowledge.base import section_position
+    from agent.knowledge.base import section_position
 
     return section_position(getattr(chunk, "metadata", None))[2]
 

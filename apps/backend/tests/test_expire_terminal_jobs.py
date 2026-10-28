@@ -13,8 +13,8 @@ from datetime import timedelta
 
 from sqlalchemy import text
 
-from aiq_api.jobs.access import expire_terminal_jobs
-from aiq_api.jobs.event_store import EventStore
+from backend.jobs.access import expire_terminal_jobs
+from backend.jobs.event_store import EventStore
 
 
 def _iso(days_ago: float) -> str:

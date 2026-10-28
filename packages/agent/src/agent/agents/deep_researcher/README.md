@@ -146,7 +146,7 @@ replaces the final message content. A run that captured no sources raises
 
 The core deep research agent using the DeepAgents library.
 
-**Location**: `packages/agent/src/aiq_agent/agents/deep_researcher/`
+**Location**: `packages/agent/src/agent/agents/deep_researcher/`
 
 Optional DeepAgents sandbox behavior is configured via the
 `deep_research_sandbox` config (see `deepagents_runtime.py`).
@@ -259,7 +259,7 @@ workflow:
 
 ## Prompts
 
-The agent loads prompts from `packages/agent/src/aiq_agent/agents/deep_researcher/prompts/`:
+The agent loads prompts from `packages/agent/src/agent/agents/deep_researcher/prompts/`:
 
 | Prompt | Purpose |
 |--------|---------|
@@ -291,10 +291,10 @@ general research requests.
   builds `DeepResearchAgentState` directly and awaits the agent.
 - **Asynchronous (submitted job)**: with `use_async_deep_research: true`, the chat
   workflow submits the job via
-  `aiq_api.jobs.submit.submit_agent_job` and immediately returns the job
+  `backend.jobs.submit.submit_agent_job` and immediately returns the job
   id, on the research queue (ADR-0021). The worker
-  (`aiq_api.jobs.runner`, replayed identically by the research worker and by
-  `aiq_api.jobs.worker`) rebuilds the agent from the NAT config and forwards
+  (`backend.jobs.runner`, replayed identically by the research worker and by
+  `backend.jobs.worker`) rebuilds the agent from the NAT config and forwards
   `user_info`, `clarifier_result`, `project_context`, `available_documents`,
   and `data_sources` onto the state so both paths render identical prompts.
   Response cards are generated post-hoc from the final report in the job

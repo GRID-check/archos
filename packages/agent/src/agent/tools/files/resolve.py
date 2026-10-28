@@ -10,7 +10,7 @@ otherwise, with a message written for the model to act on rather than an
 exception:
 
 * documents come from the turn's inventory rows
-  (:func:`aiq_agent.knowledge.inventory.get_turn_documents`) — the same rows
+  (:func:`agent.knowledge.inventory.get_turn_documents`) — the same rows
   the prompt's inventory block is rendered from, so the model can only name
   what it was shown;
 * folders come from the ``folder_path`` those rows carry (ADR-0049 puts the
@@ -37,9 +37,9 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
-from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.source_kinds import parse_shelf
-from aiq_agent.knowledge.inventory import get_turn_documents
+from agent.common.source_kinds import Shelf
+from agent.common.source_kinds import parse_shelf
+from agent.knowledge.inventory import get_turn_documents
 
 #: The two shelves a workspace operation can touch. `base` is the platform
 #: corpus (nobody's to organise) and `session` is this chat's own attachments,

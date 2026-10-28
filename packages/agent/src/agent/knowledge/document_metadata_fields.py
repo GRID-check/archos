@@ -3,17 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from typing import Any
 
-from aiq_agent.knowledge.title_block import normalise_revision_facts
+from agent.knowledge.title_block import normalise_revision_facts
 
 if TYPE_CHECKING:
     pass
 
-from aiq_agent.knowledge.document_metadata_constants import TABLE_NAME
-from aiq_agent.knowledge.document_metadata_constants import logger
-from aiq_agent.knowledge.document_metadata_helpers import _current_doc_class
-from aiq_agent.knowledge.document_metadata_helpers import _decode_page_count
-from aiq_agent.knowledge.document_metadata_helpers import _encode_page_count
-from aiq_agent.knowledge.document_metadata_helpers import _escape_like
+from agent.knowledge.document_metadata_constants import TABLE_NAME
+from agent.knowledge.document_metadata_constants import logger
+from agent.knowledge.document_metadata_helpers import _current_doc_class
+from agent.knowledge.document_metadata_helpers import _decode_page_count
+from agent.knowledge.document_metadata_helpers import _encode_page_count
+from agent.knowledge.document_metadata_helpers import _escape_like
 
 
 def set_doc_class(store, collection: str, filename: str, doc_class: str | None) -> bool:
@@ -121,7 +121,7 @@ def set_provenance(store, collection: str, filename: str, provenance: dict[str, 
     column rather than four because nothing queries the parts, every reader
     wants the whole record, and a column per key would make the fifth key
     this record ever grows a migration instead of an edit to
-    ``aiq_agent.common.provenance``.
+    ``agent.common.provenance``.
 
     Same UPDATE-only contract as :meth:`set_folder_path`: returns ``False``
     when no metadata row exists, so an ingest that produced no summary never
@@ -175,7 +175,7 @@ def set_revision_facts(store, collection: str, filename: str, facts: dict[str, A
 
     ``document_number``, ``revision`` (the Index as printed), ``revision_date``
     (ISO), ``scale``, ``title`` and the ``page`` they were read on, present
-    keys only (:func:`~aiq_agent.knowledge.title_block.normalise_revision_facts`).
+    keys only (:func:`~agent.knowledge.title_block.normalise_revision_facts`).
     A mapping with nothing printed in it clears the column, which is what a
     re-upload without a title block means: the old sheet's number must not
     outlive the sheet. Same UPDATE-only contract as :meth:`set_capture`.

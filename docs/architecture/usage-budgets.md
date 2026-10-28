@@ -129,7 +129,7 @@ fixtures**, not against the live API:
 
 ## Capture: one handler, zero per-agent code
 
-`packages/agent/src/aiq_agent/common/cost_tracking.py`:
+`packages/agent/src/agent/common/cost_tracking.py`:
 
 ```
 track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
@@ -141,7 +141,7 @@ track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
 
 - **Activation points (the only wiring, 4 total)**:
   - sync chat turn — `piloti/conversation_register.py` around `agent.run(...)`
-  - async research job — `aiq_api/jobs/runner.py` around `_run_agent(...)`
+  - async research job — `backend/jobs/runner.py` around `_run_agent(...)`
     (identity + budget captured at submit time via `capture_usage_context()`)
   - background memory reflection — `project_memory/reflection.py` (own
     activation; the turn's tracker is already flushed when it fires)
@@ -161,14 +161,14 @@ track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
   Query-time embeddings in a chat turn are metered by the same wrapper.
 - **Direct vision calls over `httpx`**: `look`'s second reader
   (`tools/look/reading.py`, role `look_reading`) and the Fassung comparison
-  (`aiq_api/routes/revision_compare.py`, role `revision_compare`) post to
+  (`backend/routes/revision_compare.py`, role `revision_compare`) post to
   `/chat/completions` themselves and book the reply's `usage` with
   `record_completion_usage(body, role=…)`. A look reads the turn's tracker; the
   comparison opens its own for the organization and person the BFF names in
   `x-grid-organization-id` / `x-grid-user-id`. A tool call through the agent
   door (`routes/internal_tools.py`) opens a tracker for the person the envelope
   verified, so a door `document-look` or search is booked like a turn's.
-- **Voice dictation** (`aiq_api/routes/dictation.py`) is a single
+- **Voice dictation** (`backend/routes/dictation.py`) is a single
   transcription call per recording, outside any turn. It opens its own
   tracker, books one event with `activity = 'dictation'`, the provider's cost
   and `audio_seconds`, and flushes it in the background. The BFF prices it at

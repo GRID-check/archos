@@ -3,14 +3,14 @@ Generate a self-contained tokenomics HTML report from a NAT profiler trace.
 
 Single-run
 ----------
-python -m aiq_agent.tokenomics.report \\
+python -m agent.tokenomics.report \\
     --trace  results/all_requests_profiler_traces.json \\
     --config configs/config_tokenomics_pricing.yml \\
     [--output results/tokenomics_report.html]
 
 Comparison (two or more runs)
 ------------------------------
-python -m aiq_agent.tokenomics.report \\
+python -m agent.tokenomics.report \\
     --trace results/run_a/all_requests_profiler_traces.json \\
     --trace results/run_b/all_requests_profiler_traces.json \\
     --config configs/config_tokenomics_pricing.yml

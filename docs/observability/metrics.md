@@ -36,7 +36,7 @@ collector, so nothing is exported there and every meter is a no-op.
 
 | Metric | Attributes | From |
 |---|---|---|
-| `grid.queue.depth` | `queue`, `status` | Every claim queue: `ingest` (`common/claim_queue.py`), `research` (`aiq_api/jobs/queue.py`) and `bff` (`workers/jobs/queue-metrics.js`). Read from the table by every replica, so chart it with `max` |
+| `grid.queue.depth` | `queue`, `status` | Every claim queue: `ingest` (`common/claim_queue.py`), `research` (`backend/jobs/queue.py`) and `bff` (`workers/jobs/queue-metrics.js`). Read from the table by every replica, so chart it with `max` |
 | `grid.queue.oldest_age_seconds` | `queue` | The same queues; `max` as well. Absent while nothing is queued |
 | `grid.queue.claim_latency_ms` | `queue` | One claim round trip |
 | `grid.queue.job_duration_seconds` | `queue`, `kind` | One claimed job, to its end or its give-back |
@@ -47,7 +47,7 @@ collector, so nothing is exported there and every meter is a no-op.
 | `grid.provider.throttled_total` | `scope`, `model` | Calls the provider answered 429 |
 | `grid.boot.phase_seconds` | `role`, `phase` | How long a backend role took to become useful, by phase (`observability/boot_timing.py`, ADR-0082) |
 | `http.server.request.duration` | `http.request.method`, `http.response.status_code`, `grid.route.class` (`api`, `page`, `static`, `health`) | Every request the BFF gateway answers (`observability/http-metrics.js`) |
-| `grid.http.requests_in_flight`, `grid.http.request_seconds` | `role` (`chat`, `api`), `kind` (`request`, `stream`) | Every HTTP request the Python web roles hold (`aiq_api/inflight.py`): what the api tier would scale on |
+| `grid.http.requests_in_flight`, `grid.http.request_seconds` | `role` (`chat`, `api`), `kind` (`request`, `stream`) | Every HTTP request the Python web roles hold (`backend/inflight.py`): what the api tier would scale on |
 | `nodejs.eventloop.delay.p99` | | Every Node process: the BFF, bff-jobs, the scheduler, the purger |
 | `process.memory.usage` | `process.memory.type` (`rss`, `heap_used`) | The same |
 
@@ -95,7 +95,7 @@ both spellings, as the alerts do.
 **In application code**, measure through the OpenTelemetry API. The process
 already has a meter provider wherever a collector exists; nothing to install.
 
-- Python: `metrics.get_meter("aiq_agent.<module>")`, then
+- Python: `metrics.get_meter("agent.<module>")`, then
   `create_counter`/`create_histogram`/`create_observable_gauge`. The provider
   is installed when the first workflow is built; an instrument made before that
   forwards once it exists.

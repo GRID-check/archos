@@ -16,7 +16,7 @@ organization, no project and no person. The route reads all three off the
 write into another one.
 
 **The payload is built by the contract's own models.** ``RunLedgerAppendRequest``
-and ``RunLedgerFinishRequest`` (``aiq_agent.common.run_ledger``) are validated
+and ``RunLedgerFinishRequest`` (``agent.common.run_ledger``) are validated
 against the JSON Schema the BFF exports from its zod, so a body that would come
 back as a 400 fails here, in this process, where the failure is a log line
 instead of a run whose account silently stopped updating.
@@ -35,9 +35,9 @@ from urllib.parse import quote
 
 import httpx
 
-from aiq_agent.common.run_ledger import RunLedgerAppendRequest
-from aiq_agent.common.run_ledger import RunLedgerFinishRequest
-from aiq_agent.common.run_ledger import to_wire
+from agent.common.run_ledger import RunLedgerAppendRequest
+from agent.common.run_ledger import RunLedgerFinishRequest
+from agent.common.run_ledger import to_wire
 
 # The two preconditions of any internal backend→BFF POST: where the BFF is, and
 # the service token that authenticates the call. Imported rather than re-derived

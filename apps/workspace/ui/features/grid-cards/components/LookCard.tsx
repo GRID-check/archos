@@ -3,7 +3,7 @@
 /**
  * LookCard — where Piloti looked on one document in this turn (ADR-0128).
  *
- * System-emitted once the answer is final (`aiq_agent/tools/look/cards.py`):
+ * System-emitted once the answer is final (`agent/tools/look/cards.py`):
  * one card per document, an item per look the answer relies on and a
  * `reference` item per box or pointer Piloti showed the room. An item is an
  * ADDRESS (page, region, Fassung), never pixels.

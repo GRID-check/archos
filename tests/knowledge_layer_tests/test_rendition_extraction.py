@@ -28,7 +28,7 @@ from knowledge_layer.renditions import requires_rendition
 from knowledge_layer_testing.qdrant import FakeEmbedder
 from knowledge_layer_testing.qdrant import capture_indexed_documents
 
-from aiq_agent.common.credential_resolution import ResolvedCredential
+from agent.common.credential_resolution import ResolvedCredential
 
 pptx = pytest.importorskip("pptx")
 
@@ -156,8 +156,8 @@ class TestAlignExtractionPaths:
 
 @pytest.fixture
 def summary_db(tmp_path):
-    from aiq_agent.knowledge import configure_summary_db
-    from aiq_agent.knowledge import factory
+    from agent.knowledge import configure_summary_db
+    from agent.knowledge import factory
 
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
@@ -365,7 +365,7 @@ class TestRunIngestionFromRendition:
 
 
 def _deferred(path):
-    """A stand-in for aiq_api's DeferredObjectDownload: writes a PDF and returns its path."""
+    """A stand-in for backend's DeferredObjectDownload: writes a PDF and returns its path."""
 
     def _download():
         path.write_bytes(b"%PDF-1.4\n% downloaded rendition\n")
@@ -457,7 +457,7 @@ class TestDeferredOriginal:
     def test_the_job_downloads_the_original_ingests_it_and_deletes_it(
         self, tmp_path, monkeypatch, ingestor, summary_db, pdf_pipeline, caplog
     ):
-        from aiq_api.routes.ingest import DeferredObjectDownload
+        from backend.routes.ingest import DeferredObjectDownload
 
         get, calls = _object_store_get(b"%PDF-1.4\n% original\n", "application/pdf")
         monkeypatch.setattr("httpx.Client.get", get)
@@ -519,7 +519,7 @@ class TestDeferredOriginal:
     def test_the_job_is_live_while_it_downloads(self, tmp_path, monkeypatch, ingestor, summary_db, pdf_pipeline):
         """A retried dispatch that lands while the job is still downloading
         (on this replica or another) finds the job and joins it."""
-        from aiq_api.routes.ingest import DeferredObjectDownload
+        from backend.routes.ingest import DeferredObjectDownload
 
         gate = threading.Event()
         get, calls = _object_store_get(b"%PDF-1.4\n", "application/pdf", gate=gate)
