@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'vitest'
 import { translatorFor } from '@/i18n/namespace'
 import { chatCopy } from '@/i18n/namespaces/chat'
-import { roundKind } from './ReasoningFlow'
+import { roundKind } from './flow/round-kind'
 
 const t = translatorFor(chatCopy, 'de')
 
@@ -26,7 +26,11 @@ describe('roundKind', () => {
     expect(roundKind(false, 0, ['ls'], t, true)).toBe('Ordner öffnen')
     expect(roundKind(false, 0, ['ls', 'glob'], t, true)).toBe('Ordner öffnen')
     expect(roundKind(false, 0, ['grep'], t, true)).toBe('Kein Treffer')
-    expect(roundKind(false, 2, ['read_file', 'read_file'], t, true)).toBe(roundKind(false, 2, ['read_passage'], t, true))
-    expect(roundKind(false, 2, ['read_file'], t, true)).not.toBe(roundKind(false, 2, ['grep'], t, true))
+    expect(roundKind(false, 2, ['read_file', 'read_file'], t, true)).toBe(
+      roundKind(false, 2, ['read_passage'], t, true)
+    )
+    expect(roundKind(false, 2, ['read_file'], t, true)).not.toBe(
+      roundKind(false, 2, ['grep'], t, true)
+    )
   })
 })

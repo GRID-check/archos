@@ -32,7 +32,9 @@ describe('subagentGroups', () => {
   })
 
   test('a turn without a subagent has no groups', () => {
-    const steps = recorded().filter((step) => !step.id.startsWith('subagent:') && !step.subagentRunId)
+    const steps = recorded().filter(
+      (step) => !step.id.startsWith('subagent:') && !step.subagentRunId
+    )
     expect(subagentGroups(steps)).toEqual([])
   })
 })

@@ -24,7 +24,9 @@ import { storedSteps } from '@/test-utils/wire-v2-steps'
 import { translatorFor } from '@/i18n/namespace'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { placedLookIds, workRounds } from '../../lib/work-list'
-import { planFan, ReasoningFlow, buildGraph } from './ReasoningFlow'
+import { ReasoningFlow } from './ReasoningFlow'
+import { planFan } from './flow/flow-layout'
+import { buildGraph } from './flow/build-graph'
 import { RoundCalls, placeOfAction } from './WorkList'
 
 const state = vi.hoisted((): FakePdfState => ({
@@ -212,7 +214,9 @@ describe('RoundCalls', () => {
     expect(within(incomplete[0]).getByTestId('work-row-note')).toHaveTextContent(
       'nicht alles durchsucht – es kann weitere Treffer geben'
     )
-    expect(within(incomplete[1]).getByTestId('work-row-note')).toHaveTextContent('das ist kein Nein')
+    expect(within(incomplete[1]).getByTestId('work-row-note')).toHaveTextContent(
+      'das ist kein Nein'
+    )
     // Never the failure note: most of it WAS searched.
     expect(screen.queryByTestId('work-row-failed-note')).toBeNull()
   })
@@ -276,7 +280,9 @@ describe('RoundCalls', () => {
     render(<RoundCalls round={rounds(old)[1]} />)
     // Its name is the row's own sentence, then what a tap does.
     await userEvent.click(
-      screen.getAllByRole('button', { name: /^Liest Einreichplan EG\.pdf, S\.\u00A02–3.* – öffnen$/ })[0]
+      screen.getAllByRole('button', {
+        name: /^Liest Einreichplan EG\.pdf, S\.\u00A02–3.* – öffnen$/,
+      })[0]
     )
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     restoreSecond()

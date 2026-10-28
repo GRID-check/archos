@@ -38,7 +38,9 @@ describe('SourceCard — provenance tab', () => {
     renderCard('session')
 
     expect(screen.getByText(chatCopy.messages.en.sourceTabs.shelves.session)).toBeInTheDocument()
-    expect(screen.queryByText(chatCopy.messages.en.sourceTabs.shelves.project)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(chatCopy.messages.en.sourceTabs.shelves.project)
+    ).not.toBeInTheDocument()
   })
 
   test('a project document is labelled Projektwissen', () => {
@@ -50,7 +52,9 @@ describe('SourceCard — provenance tab', () => {
   test('an org office shelf document is labelled office shelf', () => {
     renderCard('office_shelf')
 
-    expect(screen.getByText(chatCopy.messages.en.sourceTabs.shelves.office_shelf)).toBeInTheDocument()
+    expect(
+      screen.getByText(chatCopy.messages.en.sourceTabs.shelves.office_shelf)
+    ).toBeInTheDocument()
   })
 
   test('a document with no shelf claims none — it falls back to its display kind', () => {
@@ -61,6 +65,8 @@ describe('SourceCard — provenance tab', () => {
     renderCard(undefined)
 
     expect(screen.getByText(chatCopy.messages.en.sourceTabs.shelves.project)).toBeInTheDocument()
-    expect(screen.queryByText(chatCopy.messages.en.sourceTabs.shelves.session)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(chatCopy.messages.en.sourceTabs.shelves.session)
+    ).not.toBeInTheDocument()
   })
 })
