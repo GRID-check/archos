@@ -578,7 +578,7 @@ def test_the_artifact_is_serialised_deterministically():
 
 def test_the_committed_artifact_is_well_formed():
     """The file the website imports — every note bilingual, every section known."""
-    data = json.loads((REPO_ROOT / "frontends" / "web" / "src" / "data" / "changelog.json").read_text("utf-8"))
+    data = json.loads((REPO_ROOT / "apps" / "site" / "src" / "data" / "changelog.json").read_text("utf-8"))
     public = {key for key, _ in rn.public_sections(SECTIONS)}
     assert set(data["sectionTitles"]) == public
     for release in data["releases"]:
@@ -590,7 +590,7 @@ def test_the_committed_artifact_is_well_formed():
                 assert not rn.looks_german(entry["en"]), entry["en"]
 
 
-CHANGELOG_JSON = REPO_ROOT / "frontends" / "web" / "src" / "data" / "changelog.json"
+CHANGELOG_JSON = REPO_ROOT / "apps" / "site" / "src" / "data" / "changelog.json"
 TRANSLATIONS_JSON = REPO_ROOT / "releasenotes" / "translations" / "de.json"
 
 
@@ -640,7 +640,7 @@ def test_tests_and_docs_do_not_need_a_note():
             "frontends/ui/src/app/page.spec.tsx",
             "docs/architecture/overview.md",
             "deploy/pulumi/src/index.ts",
-            "frontends/web/src/pages/changelog.astro",
+            "apps/site/src/pages/changelog.astro",
         ]
     )
 

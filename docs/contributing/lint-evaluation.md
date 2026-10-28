@@ -11,7 +11,7 @@ plugin, so there is no second linter. The linter step went from 35.8 s to 2.0 s
 on four cores and from 40.1 s to 3.0 s on two. `bun run lint` end to end
 (including the 1.1 s utility-modifier script) went from about 37 s to 3.8 s.
 
-`frontends/web` and `packages/ifc-spatial` do not use ESLint (`astro check` and
+`apps/site` and `packages/ifc-spatial` do not use ESLint (`astro check` and
 their own `scripts/lint-*.mjs`; `tsc` and tests respectively), so the change is
 `frontends/ui` only.
 

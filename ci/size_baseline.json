@@ -1,5 +1,6 @@
 {
   "files": {
+    "apps/site/src/scripts/landing.ts": 919,
     "deploy/pulumi/src/app/config.ts": 791,
     "deploy/pulumi/src/config.ts": 3505,
     "deploy/pulumi/src/constants.ts": 862,
@@ -161,7 +162,6 @@
     "frontends/ui/src/shared/components/MarkdownRenderer/MarkdownRenderer.tsx": 1093,
     "frontends/ui/src/shared/components/MarkdownRenderer/answer-atoms.tsx": 913,
     "frontends/ui/src/shared/components/MarkdownRenderer/directive-shape.ts": 734,
-    "frontends/web/src/scripts/landing.ts": 919,
     "packages/ifc-spatial-py/src/ifc_spatial/circulation.py": 930,
     "packages/ifc-spatial-py/src/ifc_spatial/clearance.py": 990,
     "packages/ifc-spatial-py/src/ifc_spatial/daylight.py": 1256,
