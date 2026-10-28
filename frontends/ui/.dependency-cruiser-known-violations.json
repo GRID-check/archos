@@ -702,7 +702,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/chat/components/AgentResponse.tsx",
+    "from": "src/features/chat/components/agent-response/use-agent-response-controller.tsx",
     "to": "src/features/grid-cards/components/GridCards.tsx",
     "unresolvedTo": "@/features/grid-cards/components/GridCards",
     "dependencyTypes": [
@@ -719,7 +719,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/chat/components/AgentResponse.tsx",
+    "from": "src/features/chat/components/agent-response/use-agent-response-controller.tsx",
     "to": "src/features/layout/lib/citation-markers.ts",
     "unresolvedTo": "@/features/layout/lib/citation-markers",
     "dependencyTypes": [
@@ -736,7 +736,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/chat/components/AgentResponse.tsx",
+    "from": "src/features/chat/components/agent-response/use-agent-response-controller.tsx",
     "to": "src/features/layout/lib/file-reference-markers.ts",
     "unresolvedTo": "@/features/layout/lib/file-reference-markers",
     "dependencyTypes": [
