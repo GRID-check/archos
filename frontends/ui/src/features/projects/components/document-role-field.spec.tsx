@@ -8,7 +8,7 @@ import { fireEvent, render, screen, waitFor } from '@/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import {
   loadUploadScreeningPolicy,
   UploadScreeningPolicyUnavailableError,

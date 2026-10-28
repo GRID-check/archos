@@ -1,7 +1,7 @@
 /** `roundKind` (ADR-0132): a round that only listed folders is no „Kein Treffer“. */
 import { describe, expect, test } from 'vitest'
 import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries/de'
+import { de } from '@/i18n/dictionaries'
 import { roundKind } from './ReasoningFlow'
 
 const t = createTranslator(de, 'chat')

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { de, en } from '@/i18n/dictionaries'
 import { createTranslator } from '@/i18n/translate'
 import { inboxItemCopy } from './item-copy'
 import type { InboxItemView } from './types'

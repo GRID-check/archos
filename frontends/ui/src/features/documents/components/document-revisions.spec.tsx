@@ -28,7 +28,7 @@ import userEvent from '@testing-library/user-event'
 import { act, render, screen, waitFor, within } from '@/test-utils'
 import { toast } from 'sonner'
 import { I18nProvider } from '@/i18n'
-import { de } from '@/i18n/dictionaries/de'
+import { de } from '@/i18n/dictionaries'
 import { EMPTY_REVISION_LINKS, type RevisionLinks, type RevisionRef } from '@/lib/documents/revision-links'
 import { DocumentLifecycleError, type DocumentLifecycleClient } from '@/lib/documents/lifecycle-client'
 import type {

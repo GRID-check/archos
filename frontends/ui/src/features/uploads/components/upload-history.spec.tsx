@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FIXTURE_PROJECT_ID, FIXTURE_USER_ID, HISTORY } from '@/app/dev/_fixtures/upload-batches'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import { UploadHistory, UploadHistoryList } from './upload-history'
 
 function pillCount(row: HTMLElement, key: string): string | null | undefined {

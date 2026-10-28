@@ -26,7 +26,7 @@ export const collaboration: typeof en.collaboration = {
       copied: 'Link kopiert',
       failed: 'Der Link konnte nicht kopiert werden.',
       hint: 'Der Link öffnet den Chat nur für Personen, die Zugriff haben. Wer noch keinen hat, wird oben eingeladen.',
-      shareTitle: 'Chat in Piloti',
+      shareTitle: 'Chat in {productName}',
     },
     visibilityHeading: 'Wer diesen Chat sehen kann',
     loading: 'Einstellungen zum Teilen werden geladen…',
@@ -154,7 +154,7 @@ export const collaboration: typeof en.collaboration = {
       loading: 'Personen werden geladen…',
       participantsHeading: 'In diesem Chat',
       othersHeading: 'Weitere im Projekt',
-      agentName: 'Piloti',
+      agentName: '{productName}',
       agentHint: 'Den Assistenten fragen',
       needsInvite: 'Wird eingeladen',
       needsInviteHint: '{name} ist noch nicht in diesem Chat und wird eingeladen.',
@@ -165,13 +165,13 @@ export const collaboration: typeof en.collaboration = {
       badgeAgent: 'Assistent',
       chipRemove: 'Erwähnung von {name} entfernen',
     },
-    composerHint: 'Piloti hält sich zurück – {name} wird gefragt.',
-    composerHintMany: 'Piloti hält sich zurück – {names} werden gefragt.',
+    composerHint: '{productName} hält sich zurück – {name} wird gefragt.',
+    composerHintMany: '{productName} hält sich zurück – {names} werden gefragt.',
     addressee: {
       toPerson: 'Geht an {name}',
       toPeople: 'Geht an {names}',
       toThread: 'Geht an alle im Chat',
-      agentHint: '@Piloti eingeben, um Piloti zu fragen',
+      agentHint: '@{productName} eingeben, um {productName} zu fragen',
       mentionSomeone: 'Kollegin oder Kollegen erwähnen',
       ariaLabel: 'Empfänger dieser Nachricht: {label}',
     },
@@ -182,18 +182,18 @@ export const collaboration: typeof en.collaboration = {
     },
     notePlaceholder: 'Worum soll sich die Person kümmern? (optional)',
     engagement: {
-      mentionLabel: 'Piloti antwortet nur bei Erwähnung',
+      mentionLabel: '{productName} antwortet nur bei Erwähnung',
       mentionHint:
         'Hier unterhalten sich mehrere Personen – eine Nachricht ohne Erwähnung geht an alle im Chat.',
-      switchToAsk: 'Piloti immer antworten lassen',
-      offerHint: 'Hier schreiben mehrere Personen. Soll Piloti auf eine Erwähnung warten?',
+      switchToAsk: '{productName} immer antworten lassen',
+      offerHint: 'Hier schreiben mehrere Personen. Soll {productName} auf eine Erwähnung warten?',
       switchToMention: 'Nur bei Erwähnung antworten',
       failed: 'Die Änderung konnte nicht gespeichert werden.',
     },
     awaiting: {
       one: 'Warten auf {name}',
       many: 'Warten auf {names}',
-      hint: 'Piloti hält sich zurück, bis eine Antwort kommt.',
+      hint: '{productName} hält sich zurück, bis eine Antwort kommt.',
       askedBy: 'Gefragt von {name}',
       since: 'seit {time}',
       awaitingYou: 'Ihre Einschätzung wurde angefragt',
@@ -202,13 +202,13 @@ export const collaboration: typeof en.collaboration = {
       releaseOne: 'Ohne {name} weitermachen',
       releaseOneSince: 'Ohne {name} weitermachen – Warten seit {time}',
       released: 'Das Warten wurde aufgehoben.',
-      askAgent: 'Stattdessen Piloti fragen',
+      askAgent: 'Stattdessen {productName} fragen',
       askBack: 'Rückfrage an {name}',
     },
     handback: {
-      offer: '{name} hat geantwortet – Piloti weiterarbeiten lassen?',
-      offerMany: '{names} haben geantwortet – Piloti weiterarbeiten lassen?',
-      action: 'Piloti weiterarbeiten lassen',
+      offer: '{name} hat geantwortet – {productName} weiterarbeiten lassen?',
+      offerMany: '{names} haben geantwortet – {productName} weiterarbeiten lassen?',
+      action: '{productName} weiterarbeiten lassen',
       dismiss: 'Nicht jetzt',
       prefill: '– bitte auf dieser Grundlage weiterarbeiten.',
     },
@@ -265,7 +265,7 @@ export const collaboration: typeof en.collaboration = {
       send: 'Senden',
       cancel: 'Abbrechen',
       sent: 'Antwort gesendet.',
-      sentPilotiNotAsked: 'Antwort gesendet. Piloti liest sie erst, wenn Sie es in der Prüfansicht mit @Piloti fragen.',
+      sentPilotiNotAsked: 'Antwort gesendet. {productName} liest sie erst, wenn Sie es in der Prüfansicht mit @{productName} fragen.',
       resolve: 'Erledigen',
       resolved: 'Als erledigt markiert.',
       conflict: 'Jemand hat die Anmerkung zuerst geändert. Öffnen Sie sie, um den aktuellen Stand zu sehen.',
@@ -282,11 +282,11 @@ export const collaboration: typeof en.collaboration = {
     empty: {
       needsMeTitle: 'Nichts zu tun',
       needsMeDescription:
-        'Wenn jemand Sie erwähnt, Ihnen eine Anmerkung zuweist oder Piloti Sie etwas fragt, erscheint es hier.',
+        'Wenn jemand Sie erwähnt, Ihnen eine Anmerkung zuweist oder {productName} Sie etwas fragt, erscheint es hier.',
       unreadTitle: 'Alles gelesen',
       unreadDescription: 'Was neu ist, steht hier, bis Sie es öffnen.',
       allTitle: 'Ihr Postfach ist leer',
-      allDescription: 'Neuigkeiten aus Ihrem Team und von Piloti erscheinen hier.',
+      allDescription: 'Neuigkeiten aus Ihrem Team und von {productName} erscheinen hier.',
       archivedTitle: 'Nichts archiviert',
       archivedDescription: 'Was Sie archivieren, finden Sie hier wieder.',
     },
@@ -333,16 +333,16 @@ export const collaboration: typeof en.collaboration = {
       // Das Team hat in PostHog auf eine eigene Meldung geantwortet. {subject} ist
       // der Anfang der Meldung, {related} wer zuletzt geantwortet hat.
       feedbackReplied: {
-        title: 'Das Piloti-Team hat auf Ihr Feedback geantwortet',
+        title: 'Das {productName}-Team hat auf Ihr Feedback geantwortet',
         titleMany: '{count} neue Antworten auf Ihr Feedback',
-        titleRelated: '{related} vom Piloti-Team hat auf Ihr Feedback geantwortet',
+        titleRelated: '{related} vom {productName}-Team hat auf Ihr Feedback geantwortet',
         titleRelatedMany: '{count} neue Antworten auf Ihr Feedback, zuletzt von {related}',
         body: 'Zu „{subject}“ – in „Mein Feedback“ lesen und antworten.',
         bodyNoSubject: 'In „Mein Feedback“ lesen und antworten.',
       },
       storageQuotaWarning: {
         title: 'Der Speicherplatz Ihrer Organisation wird knapp',
-        body: '{subject} des Speicherkontingents sind belegt. Sobald es voll ist, schlagen Uploads fehl – löschen Sie nicht mehr benötigte Dokumente oder bitten Sie den Betreiber Ihrer Piloti-Installation, das Kontingent zu erhöhen.',
+        body: '{subject} des Speicherkontingents sind belegt. Sobald es voll ist, schlagen Uploads fehl – löschen Sie nicht mehr benötigte Dokumente oder bitten Sie den Betreiber Ihrer {productName}-Installation, das Kontingent zu erhöhen.',
       },
       documentAssigned: {
         title: '{actor} hat Ihnen {subject} zugewiesen',
@@ -410,25 +410,25 @@ export const collaboration: typeof en.collaboration = {
       // Die Zeile führt zum Lauf selbst (seinem Block im Verlauf, sonst der
       // Aufgabe): dort stehen Ergebnis und Grund, nicht in einer „Laufhistorie“.
       taskRunCompleted: {
-        title: 'Piloti hat „{subject}“ erledigt',
+        title: '{productName} hat „{subject}“ erledigt',
         body: 'Öffnen Sie den Eintrag, um das Ergebnis zu sehen.',
       },
       // Ein Outlook-Archiv ist importiert. {subject} ist der Dateiname des Archivs.
       mailImportCompleted: {
         title: '„{subject}“ ist importiert',
-        body: 'Piloti hat die E-Mails und ihre Anhänge im Projekt unter E-Mail-Import abgelegt.',
+        body: '{productName} hat die E-Mails und ihre Anhänge im Projekt unter E-Mail-Import abgelegt.',
       },
       mailImportFailed: {
         title: 'Der Import von „{subject}“ wurde abgebrochen',
         body: 'Was bis dahin importiert war, bleibt im Projekt. Die Importliste unter Dateien nennt den Grund.',
       },
       taskRunFailed: {
-        title: 'Piloti konnte „{subject}“ nicht abschließen',
+        title: '{productName} konnte „{subject}“ nicht abschließen',
         body: 'Öffnen Sie den Eintrag: Dort steht, woran es lag.',
       },
       taskRunWaiting: {
-        title: 'Piloti hat eine Rückfrage zu „{subject}“',
-        body: 'Antworten Sie im Verlauf, dann arbeitet Piloti weiter.',
+        title: '{productName} hat eine Rückfrage zu „{subject}“',
+        body: 'Antworten Sie im Verlauf, dann arbeitet {productName} weiter.',
       },
       // Eine Fassung eines Dokuments wartet auf eine Entscheidung (ADR-0054).
       // {subject} ist das Dokument, {actor} wer sie eingereicht hat.
@@ -467,27 +467,27 @@ export const collaboration: typeof en.collaboration = {
       // {related} die verglichene, {marks} wie viele Vorschläge. Kein {actor}:
       // das war Piloti. Der Auszug ist die erste Stelle.
       pilotiRevisionChecked: {
-        title: 'Piloti hat die neue Fassung „{subject}“ verglichen',
-        titleRelated: 'Piloti hat „{subject}“ mit „{related}“ verglichen',
+        title: '{productName} hat die neue Fassung „{subject}“ verglichen',
+        titleRelated: '{productName} hat „{subject}“ mit „{related}“ verglichen',
         body: 'Vorschläge am Dokument, noch nicht übernommen.',
         variants: {
           one: { body: '1 Stelle als Vorschlag markiert, noch nicht übernommen.' },
           many: { body: '{marks} Stellen als Vorschlag markiert, noch nicht übernommen.' },
           // Der Abgleich eines neuen Dokuments mit den übrigen Unterlagen, kein Vergleich mit einer früheren Fassung.
           check_one: {
-            title: 'Piloti hat das neue Dokument „{subject}“ mit Ihren übrigen Unterlagen abgeglichen',
+            title: '{productName} hat das neue Dokument „{subject}“ mit Ihren übrigen Unterlagen abgeglichen',
             body: '1 Stelle als Vorschlag markiert, noch nicht übernommen.',
           },
           check_many: {
-            title: 'Piloti hat das neue Dokument „{subject}“ mit Ihren übrigen Unterlagen abgeglichen',
+            title: '{productName} hat das neue Dokument „{subject}“ mit Ihren übrigen Unterlagen abgeglichen',
             body: '{marks} Stellen als Vorschlag markiert, noch nicht übernommen.',
           },
         },
       },
       pilotiWorkDone: {
-        title: 'Piloti hat eine Anmerkung für Sie bearbeitet',
-        titleRelated: 'Piloti hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',
-        titleRelatedNoSubject: 'Piloti hat Anmerkung {related} für Sie bearbeitet',
+        title: '{productName} hat eine Anmerkung für Sie bearbeitet',
+        titleRelated: '{productName} hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',
+        titleRelatedNoSubject: '{productName} hat Anmerkung {related} für Sie bearbeitet',
         body: 'Lesen Sie die Antwort im Verlauf der Anmerkung.',
         // Die Delegation ist zu Ende: Piloti hat die Anmerkung zurückgegeben.
         variants: {
@@ -498,22 +498,22 @@ export const collaboration: typeof en.collaboration = {
       // gespeicherten Grundes (`lib/annotations/wake-end-reason.ts`), und was
       // die Person tun kann; `body` gilt für einen Eintrag von davor.
       pilotiWorkFailed: {
-        title: 'Piloti konnte eine Anmerkung nicht bearbeiten',
-        titleRelated: 'Piloti konnte Anmerkung {related} in „{subject}“ nicht bearbeiten',
-        titleRelatedNoSubject: 'Piloti konnte Anmerkung {related} nicht bearbeiten',
-        body: 'Öffnen Sie die Anmerkung: Bitten Sie Piloti noch einmal darum oder bearbeiten Sie sie selbst.',
+        title: '{productName} konnte eine Anmerkung nicht bearbeiten',
+        titleRelated: '{productName} konnte Anmerkung {related} in „{subject}“ nicht bearbeiten',
+        titleRelatedNoSubject: '{productName} konnte Anmerkung {related} nicht bearbeiten',
+        body: 'Öffnen Sie die Anmerkung: Bitten Sie {productName} noch einmal darum oder bearbeiten Sie sie selbst.',
         variants: {
           budget: {
-            body: 'Das Nutzungsbudget ist aufgebraucht. Wer Ihre Organisation verwaltet, kann es unter Organisation → Nutzung & Budgets erhöhen; danach können Sie Piloti noch einmal darum bitten.',
+            body: 'Das Nutzungsbudget ist aufgebraucht. Wer Ihre Organisation verwaltet, kann es unter Organisation → Nutzung & Budgets erhöhen; danach können Sie {productName} noch einmal darum bitten.',
           },
           busy: {
-            body: 'Piloti kam nicht rechtzeitig dazu, weil gerade zu viel zu tun war. Bitten Sie Piloti später noch einmal darum.',
+            body: '{productName} kam nicht rechtzeitig dazu, weil gerade zu viel zu tun war. Bitten Sie {productName} später noch einmal darum.',
           },
           access: {
-            body: 'Piloti konnte sich nicht in Ihrem Namen anmelden. Bitten Sie Piloti noch einmal darum oder bearbeiten Sie die Anmerkung selbst.',
+            body: '{productName} konnte sich nicht in Ihrem Namen anmelden. Bitten Sie {productName} noch einmal darum oder bearbeiten Sie die Anmerkung selbst.',
           },
           error: {
-            body: 'Die Bearbeitung brach ab, bevor eine Antwort da war. Bitten Sie Piloti noch einmal darum oder bearbeiten Sie die Anmerkung selbst.',
+            body: 'Die Bearbeitung brach ab, bevor eine Antwort da war. Bitten Sie {productName} noch einmal darum oder bearbeiten Sie die Anmerkung selbst.',
           },
         },
       },
@@ -521,13 +521,13 @@ export const collaboration: typeof en.collaboration = {
       // Zuständige der Anmerkung, sonst die, für die es gearbeitet hat. Die
       // Frage steht als Auszug darunter.
       pilotiAsksYou: {
-        title: 'Piloti hat eine Rückfrage an Sie',
-        titleRelated: 'Piloti hat eine Rückfrage an Sie zu Anmerkung {related} in „{subject}“',
-        titleRelatedNoSubject: 'Piloti hat eine Rückfrage an Sie zu Anmerkung {related}',
-        body: 'Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.',
+        title: '{productName} hat eine Rückfrage an Sie',
+        titleRelated: '{productName} hat eine Rückfrage an Sie zu Anmerkung {related} in „{subject}“',
+        titleRelatedNoSubject: '{productName} hat eine Rückfrage an Sie zu Anmerkung {related}',
+        body: '{productName} wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.',
         // `answerIn: 'review'`: Piloti wird nicht von selbst geweckt, erst die
         // Prüfansicht fragt es mit der Antwort. Also wartet hier niemand.
-        bodyInReview: 'Antworten Sie in der Prüfansicht. Von dort erreicht Ihre Antwort Piloti.',
+        bodyInReview: 'Antworten Sie in der Prüfansicht. Von dort erreicht Ihre Antwort {productName}.',
       },
       // Ein Vorschlag, den der Server hält (ADR-0105), für die Person, für die
       // Piloti ihn gemacht hat. `variants` nennen, was er ändert (eine
@@ -535,7 +535,7 @@ export const collaboration: typeof en.collaboration = {
       // `PROPOSAL_NOTICE_VARIANTS`); der Auszug darunter nennt die Dateien, die
       // Notiz oder die Änderung. Wörter wie auf der Karte.
       pilotiProposalWaiting: {
-        title: 'Piloti hat einen Vorschlag für Sie',
+        title: '{productName} hat einen Vorschlag für Sie',
         // Wo der Vorschlag steht, nach dem, worauf die Zeile zeigt: der Chat,
         // in dem er entstand, sonst die Datei unter Dateien (`bodyProject`)
         // oder in der Büroablage (`bodyOrganization`).
@@ -543,13 +543,13 @@ export const collaboration: typeof en.collaboration = {
         bodyProject: 'Der Vorschlag steht bei der Datei unter Dateien. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.',
         bodyOrganization: 'Der Vorschlag steht bei der Datei in der Büroablage. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.',
         variants: {
-          move: { title: 'Piloti schlägt einen neuen Ablageort vor' },
-          rename: { title: 'Piloti schlägt eine Umbenennung vor' },
-          create_folder: { title: 'Piloti schlägt einen neuen Ordner vor' },
-          assign: { title: 'Piloti schlägt eine Zuweisung vor' },
-          memory: { title: 'Piloti möchte sich eine Notiz merken' },
-          project_profile: { title: 'Piloti schlägt eine Änderung am Projektkontext vor' },
-          operation: { title: 'Piloti schlägt eine Aktion vor' },
+          move: { title: '{productName} schlägt einen neuen Ablageort vor' },
+          rename: { title: '{productName} schlägt eine Umbenennung vor' },
+          create_folder: { title: '{productName} schlägt einen neuen Ordner vor' },
+          assign: { title: '{productName} schlägt eine Zuweisung vor' },
+          memory: { title: '{productName} möchte sich eine Notiz merken' },
+          project_profile: { title: '{productName} schlägt eine Änderung am Projektkontext vor' },
+          operation: { title: '{productName} schlägt eine Aktion vor' },
         },
       },
       // Piloti hat die Dokumente eines Projekts gelesen und Werte für das
@@ -558,15 +558,15 @@ export const collaboration: typeof en.collaboration = {
       // ohne Rückfragen fehlt sie, dann gilt `title`. Was Piloti zusammengefasst
       // hat, steht als Auszug darunter.
       pilotiIntakeReady: {
-        title: 'Piloti hat die Dokumente von „{subject}“ gelesen',
-        titleRelated: 'Piloti hat die Dokumente von „{subject}“ gelesen – Rückfragen: {related}',
+        title: '{productName} hat die Dokumente von „{subject}“ gelesen',
+        titleRelated: '{productName} hat die Dokumente von „{subject}“ gelesen – Rückfragen: {related}',
         body: 'Prüfen Sie die Vorschläge und bestätigen Sie, was stimmt.',
         // Das Lesen ist nicht fertig geworden (abgebrochen, nicht gestartet,
         // zu lange ohne Antwort). Wer gegangen ist, erfährt es hier.
         variants: {
           failed: {
-            title: 'Piloti konnte die Dokumente von „{subject}“ nicht fertig lesen',
-            body: 'Was Piloti bis dahin gefunden hat, bleibt. Öffnen Sie die Erfassung und starten Sie das Lesen erneut.',
+            title: '{productName} konnte die Dokumente von „{subject}“ nicht fertig lesen',
+            body: 'Was {productName} bis dahin gefunden hat, bleibt. Öffnen Sie die Erfassung und starten Sie das Lesen erneut.',
           },
         },
       },
@@ -599,9 +599,9 @@ export const collaboration: typeof en.collaboration = {
         // Erinnerung, ohne {actor}, in derselben Zeile der Anmerkung.
         variants: {
           piloti: {
-            title: 'Piloti hat Ihnen für {actor} eine Anmerkung zugewiesen',
-            titleRelated: 'Piloti hat Ihnen für {actor} Anmerkung {related} in „{subject}“ zugewiesen',
-            titleRelatedNoSubject: 'Piloti hat Ihnen für {actor} Anmerkung {related} zugewiesen',
+            title: '{productName} hat Ihnen für {actor} eine Anmerkung zugewiesen',
+            titleRelated: '{productName} hat Ihnen für {actor} Anmerkung {related} in „{subject}“ zugewiesen',
+            titleRelatedNoSubject: '{productName} hat Ihnen für {actor} Anmerkung {related} zugewiesen',
           },
           due: {
             title: '{actor} hat die Frist einer Anmerkung auf {due} gesetzt',
@@ -614,14 +614,14 @@ export const collaboration: typeof en.collaboration = {
             titleRelatedNoSubject: '{actor} hat die Frist von Anmerkung {related} entfernt',
           },
           due_piloti: {
-            title: 'Piloti hat für {actor} die Frist einer Anmerkung auf {due} gesetzt',
-            titleRelated: 'Piloti hat für {actor} die Frist von Anmerkung {related} in „{subject}“ auf {due} gesetzt',
-            titleRelatedNoSubject: 'Piloti hat für {actor} die Frist von Anmerkung {related} auf {due} gesetzt',
+            title: '{productName} hat für {actor} die Frist einer Anmerkung auf {due} gesetzt',
+            titleRelated: '{productName} hat für {actor} die Frist von Anmerkung {related} in „{subject}“ auf {due} gesetzt',
+            titleRelatedNoSubject: '{productName} hat für {actor} die Frist von Anmerkung {related} auf {due} gesetzt',
           },
           due_cleared_piloti: {
-            title: 'Piloti hat für {actor} die Frist einer Anmerkung entfernt',
-            titleRelated: 'Piloti hat für {actor} die Frist von Anmerkung {related} in „{subject}“ entfernt',
-            titleRelatedNoSubject: 'Piloti hat für {actor} die Frist von Anmerkung {related} entfernt',
+            title: '{productName} hat für {actor} die Frist einer Anmerkung entfernt',
+            titleRelated: '{productName} hat für {actor} die Frist von Anmerkung {related} in „{subject}“ entfernt',
+            titleRelatedNoSubject: '{productName} hat für {actor} die Frist von Anmerkung {related} entfernt',
           },
           due_soon: {
             title: 'Eine Anmerkung ist am {due} fällig',
@@ -718,26 +718,26 @@ export const collaboration: typeof en.collaboration = {
           // oder hat Pilotis Vorschlag übernommen. Ein Vorschlag, den niemand
           // übernommen hat, meldet sich nicht.
           created_piloti: {
-            title: 'Piloti hat für {actor} eine Anmerkung gesetzt',
-            titleNoActor: 'Piloti hat eine Anmerkung gesetzt',
-            titleOne: 'Piloti hat für {actor} eine Anmerkung in „{subject}“ gesetzt',
-            titleOneNoActor: 'Piloti hat eine Anmerkung in „{subject}“ gesetzt',
-            titleMany: 'Piloti hat für {actor} {count} Anmerkungen in „{subject}“ gesetzt',
-            titleManyNoActor: 'Piloti hat {count} Anmerkungen in „{subject}“ gesetzt',
-            titleNone: 'Piloti hat für {actor} Anmerkungen in „{subject}“ gesetzt',
-            titleNoneNoActor: 'Piloti hat Anmerkungen in „{subject}“ gesetzt',
-            titleRelated: 'Piloti hat für {actor} Anmerkung {related} in „{subject}“ gesetzt',
-            titleRelatedNoActor: 'Piloti hat Anmerkung {related} in „{subject}“ gesetzt',
-            titleRelatedMany: 'Piloti hat für {actor} {count} Anmerkungen in „{subject}“ gesetzt',
-            titleRelatedManyNoActor: 'Piloti hat {count} Anmerkungen in „{subject}“ gesetzt',
-            titleRelatedNone: 'Piloti hat für {actor} Anmerkungen in „{subject}“ gesetzt',
-            titleRelatedNoneNoActor: 'Piloti hat Anmerkungen in „{subject}“ gesetzt',
-            titleRelatedNoSubject: 'Piloti hat für {actor} Anmerkung {related} gesetzt',
-            titleRelatedNoSubjectNoActor: 'Piloti hat Anmerkung {related} gesetzt',
-            titleRelatedNoSubjectMany: 'Piloti hat für {actor} {count} Anmerkungen gesetzt',
-            titleRelatedNoSubjectManyNoActor: 'Piloti hat {count} Anmerkungen gesetzt',
-            titleRelatedNoSubjectNone: 'Piloti hat für {actor} Anmerkungen gesetzt',
-            titleRelatedNoSubjectNoneNoActor: 'Piloti hat Anmerkungen gesetzt',
+            title: '{productName} hat für {actor} eine Anmerkung gesetzt',
+            titleNoActor: '{productName} hat eine Anmerkung gesetzt',
+            titleOne: '{productName} hat für {actor} eine Anmerkung in „{subject}“ gesetzt',
+            titleOneNoActor: '{productName} hat eine Anmerkung in „{subject}“ gesetzt',
+            titleMany: '{productName} hat für {actor} {count} Anmerkungen in „{subject}“ gesetzt',
+            titleManyNoActor: '{productName} hat {count} Anmerkungen in „{subject}“ gesetzt',
+            titleNone: '{productName} hat für {actor} Anmerkungen in „{subject}“ gesetzt',
+            titleNoneNoActor: '{productName} hat Anmerkungen in „{subject}“ gesetzt',
+            titleRelated: '{productName} hat für {actor} Anmerkung {related} in „{subject}“ gesetzt',
+            titleRelatedNoActor: '{productName} hat Anmerkung {related} in „{subject}“ gesetzt',
+            titleRelatedMany: '{productName} hat für {actor} {count} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedManyNoActor: '{productName} hat {count} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNone: '{productName} hat für {actor} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNoneNoActor: '{productName} hat Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNoSubject: '{productName} hat für {actor} Anmerkung {related} gesetzt',
+            titleRelatedNoSubjectNoActor: '{productName} hat Anmerkung {related} gesetzt',
+            titleRelatedNoSubjectMany: '{productName} hat für {actor} {count} Anmerkungen gesetzt',
+            titleRelatedNoSubjectManyNoActor: '{productName} hat {count} Anmerkungen gesetzt',
+            titleRelatedNoSubjectNone: '{productName} hat für {actor} Anmerkungen gesetzt',
+            titleRelatedNoSubjectNoneNoActor: '{productName} hat Anmerkungen gesetzt',
             bodyMany: 'Die neueste ist Anmerkung {related}.',
             bodyNoExcerpt: 'Eine der Anmerkungen wurde inzwischen gelöscht.',
           },
@@ -823,18 +823,18 @@ export const collaboration: typeof en.collaboration = {
     mentionAria: 'Erwähnung von {name}',
     mentionedYouAria: 'Sie wurden erwähnt',
     groupedAria: 'Fortsetzung von {name}',
-    turnInFlight: 'Piloti beantwortet die Frage von {name}…',
-    turnInFlightYou: 'Piloti antwortet…',
+    turnInFlight: '{productName} beantwortet die Frage von {name}…',
+    turnInFlightYou: '{productName} antwortet…',
     typing: '{names} schreibt…',
     typingPair: '{names} schreiben…',
     typingMany: '{names} und {count} weitere Personen schreiben…',
     typingManyOne: '{names} und eine weitere Person schreiben…',
     typingNameSeparator: ', ',
     typingNamePair: '{first} und {second}',
-    spectatorPrompt: 'Piloti hat eine Rückfrage gestellt und wartet auf eine Antwort: „{question}“',
+    spectatorPrompt: '{productName} hat eine Rückfrage gestellt und wartet auf eine Antwort: „{question}“',
     spectatorFailed: 'Diese Antwort endete mit einem Fehler.',
     composerBusy:
-      'Piloti beantwortet gerade die Frage von {name} – Sie können senden, sobald das erledigt ist.',
+      '{productName} beantwortet gerade die Frage von {name} – Sie können senden, sobald das erledigt ist.',
     accessLost:
       'Dieser Chat ist für Sie nicht mehr verfügbar. Was Sie hier sehen, ist eine lokale Kopie und wird nicht mehr aktualisiert.',
     viewerNotice:

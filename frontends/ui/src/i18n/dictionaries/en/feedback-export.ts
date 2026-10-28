@@ -94,9 +94,9 @@ export const feedbackExport = {
     answer_chars: { label: 'Answer length', description: 'Characters in the stored answer.' },
     answer_mode: {
       label: 'Answer mode',
-      description: '"shallow" (quick answer), "deep" (researched), "meta" (about Piloti itself), "error", or "report" for a deep-research run.',
+      description: '"shallow" (quick answer), "deep" (researched), "meta" (about {productName} itself), "error", or "report" for a deep-research run.',
     },
-    answer_confidence: { label: 'Confidence', description: 'The confidence Piloti showed with the answer: low, medium or high.' },
+    answer_confidence: { label: 'Confidence', description: 'The confidence {productName} showed with the answer: low, medium or high.' },
     confidence_capped_reason: {
       label: 'Confidence capped because',
       description: 'Why the shown confidence was lowered, when it was (e.g. no binding source).',
@@ -130,7 +130,7 @@ export const feedbackExport = {
       description: 'Lessons experiment arm: 1 = answered without platform lessons, 0 = with them, empty = no experiment running.',
     },
     app_url: {
-      label: 'Open in Piloti',
+      label: 'Open in {productName}',
       description: 'Link to the answer in its conversation. Opens for members of that organization only.',
     },
     langfuse_trace_url: { label: 'Open in Langfuse', description: 'The answer’s trace in Langfuse, when it has one.' },

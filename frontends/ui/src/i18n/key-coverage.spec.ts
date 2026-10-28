@@ -26,7 +26,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { en } from './dictionaries/en'
+import { en } from './dictionaries'
 import { getByPath } from './translate'
 
 const SRC_DIR = join(process.cwd(), 'src')

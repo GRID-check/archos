@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { render, screen, within } from '@/test-utils'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import { EMPTY_SIMILAR_PAGE, SIMILAR_PAGE, SIMILAR_PROJECTS } from '@/app/dev/_fixtures/similar-projects'
 import type { SimilarProjectsPage } from '@/lib/references/types'
 import { SimilarProjectsTile } from './similar-projects-tile'

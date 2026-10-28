@@ -6,8 +6,7 @@ import {
   OFFICE_RENDITION_CONTENT_TYPES,
   OFFICE_RENDITION_EXTENSIONS,
 } from '@/lib/documents/preview-types'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { de, en } from '@/i18n/dictionaries'
 import { createTranslator } from '@/i18n/translate'
 import {
   extChipTint,

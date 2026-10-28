@@ -2,8 +2,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { en } from '@/i18n/dictionaries/en'
-import { de } from '@/i18n/dictionaries/de'
+import { en, de } from '@/i18n/dictionaries'
 import { createTranslator } from '@/i18n/translate'
 import {
   BFF_FAILURE_PHRASES,

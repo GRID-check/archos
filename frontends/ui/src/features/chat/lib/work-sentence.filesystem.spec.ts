@@ -9,8 +9,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { de, en } from '@/i18n/dictionaries'
 import {
   legacyPlace,
   sanitizeThinkingSteps,

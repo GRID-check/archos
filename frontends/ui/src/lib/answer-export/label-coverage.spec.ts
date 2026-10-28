@@ -54,7 +54,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 // The canonical card JSON Schema, generated from `models.py`. Loaded at
 // runtime (it lives above the app root, outside the Docker build context) —
 // see the helper for why a static import breaks the production image build.

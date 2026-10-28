@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { createTranslator } from '@/i18n/translate'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import {
   failedCallScene,
   foldScene,

@@ -22,7 +22,7 @@ import {
 } from '@/test-utils/work-list-scenes'
 import { storedSteps } from '@/test-utils/wire-v2-steps'
 import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries/de'
+import { de } from '@/i18n/dictionaries'
 import { placedLookIds, workRounds } from '../../lib/work-list'
 import { planFan, ReasoningFlow, buildGraph } from './ReasoningFlow'
 import { RoundCalls, placeOfAction } from './WorkList'

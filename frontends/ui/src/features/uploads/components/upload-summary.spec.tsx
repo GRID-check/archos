@@ -2,7 +2,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@/t
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FIXTURE_PROJECT_ID, MIXED_SUMMARY, SETTLED_SUMMARY } from '@/app/dev/_fixtures/upload-batches'
 import { classifyIngestFailure, ingestFailureSentence } from '@/features/documents/lib/ingest-failure'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import { createTranslator } from '@/i18n/translate'
 import { describeQuarantineReason, type QuarantineReason } from '@/lib/upload-screening/quarantine'
 import { UPLOAD_SUMMARY_POLL_MS, useUploadSummary } from '../hooks/use-upload-summary'

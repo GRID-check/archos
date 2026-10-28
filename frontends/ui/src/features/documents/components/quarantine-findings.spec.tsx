@@ -1,6 +1,6 @@
 import { render, screen } from '@/test-utils'
 import { describe, expect, it } from 'vitest'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import type { QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import { QuarantineFindings } from './quarantine-findings'
 

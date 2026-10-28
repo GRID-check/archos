@@ -57,7 +57,7 @@ export const search: typeof en.search = {
     allKinds: 'Alles zeigen',
     readingTitle: 'Noch nichts gefunden',
     reading:
-      '{count, plural, one {Piloti liest noch eine Ablage, dort können noch Treffer dazukommen.} other {Piloti liest noch # Ablagen, dort können noch Treffer dazukommen.}}',
+      '{count, plural, one {{productName} liest noch eine Ablage, dort können noch Treffer dazukommen.} other {{productName} liest noch # Ablagen, dort können noch Treffer dazukommen.}}',
     includeArchived: 'Archivierte einschließen',
     wholeOffice: 'Im ganzen Büro suchen',
     withFilters: 'Die Filter schließen alles aus, was gepasst hat. Einen entfernen oder alle.',
@@ -211,7 +211,7 @@ export const search: typeof en.search = {
     },
   },
   register: {
-    caption: 'Eine Zeile je Dokument, so wie Piloti es gelesen hat.',
+    caption: 'Eine Zeile je Dokument, so wie {productName} es gelesen hat.',
     sortBy: 'Nach {column} sortieren',
     currentOnly: 'Nur aktuelle Fassung',
     columnsMenu: 'Spalten',
@@ -297,7 +297,7 @@ export const search: typeof en.search = {
     column: 'Aktionen',
     // Dieselben Wörter wie das ⋯ einer Datei in Dateien.
     open: 'Öffnen',
-    ask: 'Piloti fragen',
+    ask: '{productName} fragen',
     // Vorbelegt im Eingabefeld, wenn der Treffer eine Fundstelle mit Seite hat; die Person kann ihn ändern.
     askAtPage: 'Was steht auf S. {page} in „{name}“?',
     openCurrent: 'Aktuelle Fassung öffnen',

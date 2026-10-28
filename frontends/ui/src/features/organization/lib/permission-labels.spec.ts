@@ -5,8 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ORG_PERMISSION_SPECS } from '@/lib/authz/catalog'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { de, en } from '@/i18n/dictionaries'
 import { createTranslator } from '@/i18n/translate'
 import { PERMISSION_LABEL_KEYS, permissionLabel } from './permission-labels'
 

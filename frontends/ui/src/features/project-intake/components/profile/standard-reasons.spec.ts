@@ -4,8 +4,7 @@
  * before it reaches a German reader as English.
  */
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { de, en } from '@/i18n/dictionaries'
 import { getApplicableStandards } from '@/lib/oib/applicable-standards'
 import { OIB_STANDARDS } from '@/lib/oib/standards-catalog'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'

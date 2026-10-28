@@ -3,8 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { de, en } from '@/i18n/dictionaries'
 import { describeRejections, isZdrListUnavailableResponse, MODEL_REJECTION_CODES, readRejectionDetails } from './rejections'
 
 const tEn = createTranslator(en, 'organization')

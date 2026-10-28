@@ -12,8 +12,7 @@
  * as `undefined`.
  */
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { de, en } from '@/i18n/dictionaries'
 import { GENERATED_DOCUMENT_PRODUCERS } from '@/lib/documents/generated'
 import {
   DIAGRAM_SOURCE_FACTS,

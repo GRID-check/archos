@@ -77,7 +77,7 @@ export const runs: typeof en.runs = {
     addAction: 'Unterlage hinzufügen',
     addTitle: 'Unterlage hinzufügen',
     addDescription:
-      'Piloti liest sie in der nächsten Recherche-Runde vollständig und führt sie bei den übrigen benannten Unterlagen.',
+      '{productName} liest sie in der nächsten Recherche-Runde vollständig und führt sie bei den übrigen benannten Unterlagen.',
     pickTitle: 'Unterlagen wählen',
     pickDescription:
       '„Lesen" heißt vollständig lesen, was immer die Recherche sonst findet. „Ausschließen" heißt nie verwenden, auch nicht, wenn eine Suche sie liefert.',
@@ -103,7 +103,7 @@ export const runs: typeof en.runs = {
   cancel: {
     confirmTitle: 'Lauf abbrechen?',
     confirmBody:
-      'Piloti hört dort auf, wo es gerade ist. Was bis dahin recherchiert wurde, bleibt im Block stehen; der Bericht wird nicht mehr geschrieben.',
+      '{productName} hört dort auf, wo es gerade ist. Was bis dahin recherchiert wurde, bleibt im Block stehen; der Bericht wird nicht mehr geschrieben.',
     confirm: 'Lauf abbrechen',
     keep: 'Weiterlaufen lassen',
   },

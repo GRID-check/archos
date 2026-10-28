@@ -36,7 +36,7 @@ export const collaboration = {
       copied: 'Link copied',
       failed: 'The link could not be copied.',
       hint: 'The link opens the chat only for people who have access. Anyone who does not yet is invited above.',
-      shareTitle: 'Chat in Piloti',
+      shareTitle: 'Chat in {productName}',
     },
     visibilityHeading: 'Who can see this',
     /** Screen-reader text while the sharing state is being fetched. */
@@ -184,7 +184,7 @@ export const collaboration = {
       participantsHeading: 'In this conversation',
       othersHeading: 'Elsewhere in this project',
       /** The agent as a mention target — how you bring it back into a waiting thread. */
-      agentName: 'Piloti',
+      agentName: '{productName}',
       agentHint: 'Ask the assistant',
       needsInvite: 'Will be invited',
       needsInviteHint: '{name} is not in this conversation yet and will be invited.',
@@ -210,8 +210,8 @@ export const collaboration = {
      * string produced "Anna Berger, Tobias Kern wird gefragt" — wrong grammar in
      * the primary product language.
      */
-    composerHint: 'Piloti will stay quiet — {name} is being asked.',
-    composerHintMany: 'Piloti will stay quiet — {names} are being asked.',
+    composerHint: '{productName} will stay quiet — {name} is being asked.',
+    composerHintMany: '{productName} will stay quiet — {names} are being asked.',
     /**
      * The composer's always-visible statement of WHO receives this message.
      *
@@ -231,7 +231,7 @@ export const collaboration = {
        */
       toThread: 'Goes to everyone in the chat',
       /** How to get back to the agent from the waiting state. */
-      agentHint: 'Type @Piloti to ask Piloti',
+      agentHint: 'Type @{productName} to ask {productName}',
       /**
        * The only thing that teaches `@` exists. Sits on the line that already
        * states the routing, because "this goes to Piloti" is exactly when somebody
@@ -261,17 +261,17 @@ export const collaboration = {
      * surprised by, and the surprise arrives long after any banner was dismissed.
      */
     engagement: {
-      mentionLabel: 'Piloti answers when mentioned',
+      mentionLabel: '{productName} answers when mentioned',
       mentionHint:
         'Several of you are talking here, so a plain message goes to everyone in the chat.',
-      switchToAsk: 'Let Piloti answer everything',
+      switchToAsk: 'Let {productName} answer everything',
       /**
        * The OFFER, shown while the thread is still in `ask`. Phrased as a
        * question about the future, never as a report of a change — because no
        * change happened, and `ask` remains the default however many people are
        * here.
        */
-      offerHint: 'Several of you are talking here. Should Piloti wait to be mentioned?',
+      offerHint: 'Several of you are talking here. Should {productName} wait to be mentioned?',
       switchToMention: 'Answer only when mentioned',
       failed: 'That could not be changed.',
     },
@@ -280,7 +280,7 @@ export const collaboration = {
       one: 'Waiting for {name}',
       many: 'Waiting for {names}',
       /** Explains the silence, so it never reads as a bug. */
-      hint: 'Piloti is holding off until someone answers.',
+      hint: '{productName} is holding off until someone answers.',
       askedBy: 'Asked by {name}',
       since: 'since {time}',
       awaitingYou: 'Your input was requested',
@@ -294,7 +294,7 @@ export const collaboration = {
        */
       releaseOneSince: 'Continue without {name} — waiting since {time}',
       released: 'The wait was released.',
-      askAgent: 'Ask Piloti instead',
+      askAgent: 'Ask {productName} instead',
       /**
        * Shown only to the person who was asked. Being asked something you cannot
        * answer without more information is the most common outcome, and typing a
@@ -316,9 +316,9 @@ export const collaboration = {
      * honestly authored, and a turn with no question of its own produces mush.
      */
     handback: {
-      offer: '{name} replied — let Piloti carry on?',
-      offerMany: '{names} replied — let Piloti carry on?',
-      action: 'Let Piloti carry on',
+      offer: '{name} replied — let {productName} carry on?',
+      offerMany: '{names} replied — let {productName} carry on?',
+      action: 'Let {productName} carry on',
       dismiss: 'Not now',
       /** Inserted after `@Piloti ` into the composer, for the user to edit or send. */
       prefill: '— please carry on from here.',
@@ -374,7 +374,7 @@ export const collaboration = {
       send: 'Send',
       cancel: 'Cancel',
       sent: 'Reply sent.',
-      sentPilotiNotAsked: 'Reply sent. Piloti reads it only once you ask it with @Piloti in the review.',
+      sentPilotiNotAsked: 'Reply sent. {productName} reads it only once you ask it with @{productName} in the review.',
       resolve: 'Resolve',
       resolved: 'Marked as resolved.',
       conflict: 'Someone changed the annotation first. Open it to see where it stands.',
@@ -400,11 +400,11 @@ export const collaboration = {
     empty: {
       needsMeTitle: 'Nothing needs you',
       needsMeDescription:
-        'When someone mentions you, assigns you an annotation or Piloti asks you something, it appears here.',
+        'When someone mentions you, assigns you an annotation or {productName} asks you something, it appears here.',
       unreadTitle: 'All caught up',
       unreadDescription: 'What is new stays here until you open it.',
       allTitle: 'Your inbox is empty',
-      allDescription: 'News from your team and from Piloti appears here.',
+      allDescription: 'News from your team and from {productName} appears here.',
       archivedTitle: 'Nothing archived',
       archivedDescription: 'What you archive, you find here again.',
     },
@@ -489,16 +489,16 @@ export const collaboration = {
       // The team answered the reader's own report in PostHog. {subject} is the
       // start of the report, {related} whoever answered last.
       feedbackReplied: {
-        title: 'The Piloti team answered your feedback',
+        title: 'The {productName} team answered your feedback',
         titleMany: '{count} new replies to your feedback',
-        titleRelated: '{related} from the Piloti team answered your feedback',
+        titleRelated: '{related} from the {productName} team answered your feedback',
         titleRelatedMany: '{count} new replies to your feedback, latest from {related}',
         body: 'On “{subject}” — read and reply in My feedback.',
         bodyNoSubject: 'Read and reply in My feedback.',
       },
       storageQuotaWarning: {
         title: 'Your organization is running out of storage',
-        body: '{subject} of the storage quota is in use. Once it is full, uploads will start failing — delete documents you no longer need, or ask whoever runs Piloti for you to raise the quota.',
+        body: '{subject} of the storage quota is in use. Once it is full, uploads will start failing — delete documents you no longer need, or ask whoever runs {productName} for you to raise the quota.',
       },
       /**
        * A row whose type this build does not know — written by a newer deploy, or
@@ -565,27 +565,27 @@ export const collaboration = {
       // The row lands on the run itself (its block in the thread, else the
       // task), where the result and the reason are.
       taskRunCompleted: {
-        title: 'Piloti finished “{subject}”',
+        title: '{productName} finished “{subject}”',
         body: 'Open it to see the result.',
       },
       // An Outlook archive was imported. {subject} is the archive's file name.
       mailImportCompleted: {
         title: '“{subject}” has been imported',
-        body: 'Piloti filed the emails and their attachments in the project under E-Mail-Import.',
+        body: '{productName} filed the emails and their attachments in the project under E-Mail-Import.',
       },
       mailImportFailed: {
         title: 'The import of “{subject}” stopped',
         body: 'What was imported until then stays in the project. The import list under Files gives the reason.',
       },
       taskRunFailed: {
-        title: 'Piloti could not finish “{subject}”',
+        title: '{productName} could not finish “{subject}”',
         body: 'Open it to see what went wrong.',
       },
       // A run stopped to ask its requester something (ADR-0062, `wartet`). The
       // body says where the answer goes, because the run resumes nowhere else.
       taskRunWaiting: {
-        title: 'Piloti has a question about “{subject}”',
-        body: 'Answer it in the thread and Piloti carries on.',
+        title: '{productName} has a question about “{subject}”',
+        body: 'Answer it in the thread and {productName} carries on.',
       },
       // A revision of a document is waiting for a decision (ADR-0054).
       // {subject} is the document, {actor} whoever submitted it.
@@ -623,27 +623,27 @@ export const collaboration = {
       // (ADR-0130) and proposed marks. {subject} the new revision, {related}
       // the one compared, {marks} how many proposals. No {actor}: Piloti did it.
       pilotiRevisionChecked: {
-        title: 'Piloti compared the new revision “{subject}”',
-        titleRelated: 'Piloti compared “{subject}” with “{related}”',
+        title: '{productName} compared the new revision “{subject}”',
+        titleRelated: '{productName} compared “{subject}” with “{related}”',
         body: 'Proposals on the document, not yet accepted.',
         variants: {
           one: { body: '1 place marked as a proposal, not yet accepted.' },
           many: { body: '{marks} places marked as proposals, not yet accepted.' },
           // The check of a new document against the project's others, not a comparison with a previous revision.
           check_one: {
-            title: 'Piloti checked the new document “{subject}” against your other documents',
+            title: '{productName} checked the new document “{subject}” against your other documents',
             body: '1 place marked as a proposal, not yet accepted.',
           },
           check_many: {
-            title: 'Piloti checked the new document “{subject}” against your other documents',
+            title: '{productName} checked the new document “{subject}” against your other documents',
             body: '{marks} places marked as proposals, not yet accepted.',
           },
         },
       },
       pilotiWorkDone: {
-        title: 'Piloti worked on an annotation for you',
-        titleRelated: 'Piloti worked on annotation {related} in “{subject}” for you',
-        titleRelatedNoSubject: 'Piloti worked on annotation {related} for you',
+        title: '{productName} worked on an annotation for you',
+        titleRelated: '{productName} worked on annotation {related} in “{subject}” for you',
+        titleRelatedNoSubject: '{productName} worked on annotation {related} for you',
         body: 'Read the answer in the annotation’s thread.',
         // The delegation ended: Piloti handed the annotation back.
         variants: {
@@ -655,42 +655,42 @@ export const collaboration = {
       // person can do about it; `body` is for a row stored before the reason
       // was kept.
       pilotiWorkFailed: {
-        title: 'Piloti could not work on an annotation',
-        titleRelated: 'Piloti could not work on annotation {related} in “{subject}”',
-        titleRelatedNoSubject: 'Piloti could not work on annotation {related}',
-        body: 'Open the annotation: ask Piloti again or work on it yourself.',
+        title: '{productName} could not work on an annotation',
+        titleRelated: '{productName} could not work on annotation {related} in “{subject}”',
+        titleRelatedNoSubject: '{productName} could not work on annotation {related}',
+        body: 'Open the annotation: ask {productName} again or work on it yourself.',
         variants: {
           budget: {
-            body: 'The usage budget is used up. Whoever manages your organization can raise it under Organization → Usage & budgets; then ask Piloti again.',
+            body: 'The usage budget is used up. Whoever manages your organization can raise it under Organization → Usage & budgets; then ask {productName} again.',
           },
           busy: {
-            body: 'Piloti did not get to it in time because too much was going on. Ask Piloti again later.',
+            body: '{productName} did not get to it in time because too much was going on. Ask {productName} again later.',
           },
           access: {
-            body: 'Piloti could not sign in on your behalf. Ask Piloti again, or work on the annotation yourself.',
+            body: '{productName} could not sign in on your behalf. Ask {productName} again, or work on the annotation yourself.',
           },
           error: {
-            body: 'The work broke off before there was an answer. Ask Piloti again, or work on the annotation yourself.',
+            body: 'The work broke off before there was an answer. Ask {productName} again, or work on the annotation yourself.',
           },
         },
       },
       // Piloti asked a question and waits for a person: the mark's assignee,
       // or the person it worked for. The question is the excerpt below.
       pilotiAsksYou: {
-        title: 'Piloti has a question for you on an annotation',
-        titleRelated: 'Piloti has a question for you on annotation {related} in “{subject}”',
-        titleRelatedNoSubject: 'Piloti has a question for you on annotation {related}',
-        body: 'Piloti is waiting for your answer. Reply in the annotation’s thread.',
+        title: '{productName} has a question for you on an annotation',
+        titleRelated: '{productName} has a question for you on annotation {related} in “{subject}”',
+        titleRelatedNoSubject: '{productName} has a question for you on annotation {related}',
+        body: '{productName} is waiting for your answer. Reply in the annotation’s thread.',
         // `answerIn: 'review'`: nothing wakes Piloti on its own; the review
         // asks it with the answer, so nobody is waiting here.
-        bodyInReview: 'Answer in the review. From there your answer reaches Piloti.',
+        bodyInReview: 'Answer in the review. From there your answer reaches {productName}.',
       },
       // A proposal the server holds (ADR-0105), for the person Piloti made it
       // for. `variants` name what it changes (a file operation by its verb,
       // the rest by kind: `PROPOSAL_NOTICE_VARIANTS`); the excerpt below names
       // the files, the note or the change. Words as on the card.
       pilotiProposalWaiting: {
-        title: 'Piloti has a proposal for you',
+        title: '{productName} has a proposal for you',
         // Where the proposal waits, by what the row points at: the chat it came
         // from, else the file under Files (`bodyProject`) or in the office
         // filing (`bodyOrganization`).
@@ -698,13 +698,13 @@ export const collaboration = {
         bodyProject: 'The proposal waits on the file under Files. Apply or dismiss it there; nothing changes until then.',
         bodyOrganization: 'The proposal waits on the file in the office filing. Apply or dismiss it there; nothing changes until then.',
         variants: {
-          move: { title: 'Piloti suggests a new place for files' },
-          rename: { title: 'Piloti suggests a rename' },
-          create_folder: { title: 'Piloti suggests a new folder' },
-          assign: { title: 'Piloti suggests an assignment' },
-          memory: { title: 'Piloti would like to remember a note' },
-          project_profile: { title: 'Piloti suggests a change to the project context' },
-          operation: { title: 'Piloti suggests an action' },
+          move: { title: '{productName} suggests a new place for files' },
+          rename: { title: '{productName} suggests a rename' },
+          create_folder: { title: '{productName} suggests a new folder' },
+          assign: { title: '{productName} suggests an assignment' },
+          memory: { title: '{productName} would like to remember a note' },
+          project_profile: { title: '{productName} suggests a change to the project context' },
+          operation: { title: '{productName} suggests an action' },
         },
       },
       // Piloti read a project's documents and suggested values for its profile
@@ -712,15 +712,15 @@ export const collaboration = {
       // questions that decide the building class; absent when there are none,
       // and `title` is read. Piloti's summary is the excerpt below.
       pilotiIntakeReady: {
-        title: 'Piloti has read the documents of “{subject}”',
-        titleRelated: 'Piloti has read the documents of “{subject}” – questions: {related}',
+        title: '{productName} has read the documents of “{subject}”',
+        titleRelated: '{productName} has read the documents of “{subject}” – questions: {related}',
         body: 'Review the suggestions and confirm what is right.',
         // The reading did not finish (stopped, never started, no answer for
         // too long). Whoever left the page learns it here.
         variants: {
           failed: {
-            title: 'Piloti could not finish reading the documents of “{subject}”',
-            body: 'What Piloti found until then stays. Open the setup and start the reading again.',
+            title: '{productName} could not finish reading the documents of “{subject}”',
+            body: 'What {productName} found until then stays. Open the setup and start the reading again.',
           },
         },
       },
@@ -753,9 +753,9 @@ export const collaboration = {
         // in the annotation's same row.
         variants: {
           piloti: {
-            title: 'Piloti assigned you an annotation for {actor}',
-            titleRelated: 'Piloti assigned you annotation {related} in “{subject}” for {actor}',
-            titleRelatedNoSubject: 'Piloti assigned you annotation {related} for {actor}',
+            title: '{productName} assigned you an annotation for {actor}',
+            titleRelated: '{productName} assigned you annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoSubject: '{productName} assigned you annotation {related} for {actor}',
           },
           due: {
             title: '{actor} set the date of an annotation to {due}',
@@ -768,14 +768,14 @@ export const collaboration = {
             titleRelatedNoSubject: '{actor} removed the date of annotation {related}',
           },
           due_piloti: {
-            title: 'Piloti set the date of an annotation to {due} for {actor}',
-            titleRelated: 'Piloti set the date of annotation {related} in “{subject}” to {due} for {actor}',
-            titleRelatedNoSubject: 'Piloti set the date of annotation {related} to {due} for {actor}',
+            title: '{productName} set the date of an annotation to {due} for {actor}',
+            titleRelated: '{productName} set the date of annotation {related} in “{subject}” to {due} for {actor}',
+            titleRelatedNoSubject: '{productName} set the date of annotation {related} to {due} for {actor}',
           },
           due_cleared_piloti: {
-            title: 'Piloti removed the date of an annotation for {actor}',
-            titleRelated: 'Piloti removed the date of annotation {related} in “{subject}” for {actor}',
-            titleRelatedNoSubject: 'Piloti removed the date of annotation {related} for {actor}',
+            title: '{productName} removed the date of an annotation for {actor}',
+            titleRelated: '{productName} removed the date of annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoSubject: '{productName} removed the date of annotation {related} for {actor}',
           },
           due_soon: {
             title: 'An annotation is due on {due}',
@@ -869,26 +869,26 @@ export const collaboration = {
           // Piloti added them for {actor}: {actor} asked, or took over
           // Piloti's proposal. A proposal nobody took over tells nobody.
           created_piloti: {
-            title: 'Piloti added an annotation for {actor}',
-            titleNoActor: 'Piloti added an annotation',
-            titleOne: 'Piloti added an annotation in “{subject}” for {actor}',
-            titleOneNoActor: 'Piloti added an annotation in “{subject}”',
-            titleMany: 'Piloti added {count} annotations in “{subject}” for {actor}',
-            titleManyNoActor: 'Piloti added {count} annotations in “{subject}”',
-            titleNone: 'Piloti added annotations in “{subject}” for {actor}',
-            titleNoneNoActor: 'Piloti added annotations in “{subject}”',
-            titleRelated: 'Piloti added annotation {related} in “{subject}” for {actor}',
-            titleRelatedNoActor: 'Piloti added annotation {related} in “{subject}”',
-            titleRelatedMany: 'Piloti added {count} annotations in “{subject}” for {actor}',
-            titleRelatedManyNoActor: 'Piloti added {count} annotations in “{subject}”',
-            titleRelatedNone: 'Piloti added annotations in “{subject}” for {actor}',
-            titleRelatedNoneNoActor: 'Piloti added annotations in “{subject}”',
-            titleRelatedNoSubject: 'Piloti added annotation {related} for {actor}',
-            titleRelatedNoSubjectNoActor: 'Piloti added annotation {related}',
-            titleRelatedNoSubjectMany: 'Piloti added {count} annotations for {actor}',
-            titleRelatedNoSubjectManyNoActor: 'Piloti added {count} annotations',
-            titleRelatedNoSubjectNone: 'Piloti added annotations for {actor}',
-            titleRelatedNoSubjectNoneNoActor: 'Piloti added annotations',
+            title: '{productName} added an annotation for {actor}',
+            titleNoActor: '{productName} added an annotation',
+            titleOne: '{productName} added an annotation in “{subject}” for {actor}',
+            titleOneNoActor: '{productName} added an annotation in “{subject}”',
+            titleMany: '{productName} added {count} annotations in “{subject}” for {actor}',
+            titleManyNoActor: '{productName} added {count} annotations in “{subject}”',
+            titleNone: '{productName} added annotations in “{subject}” for {actor}',
+            titleNoneNoActor: '{productName} added annotations in “{subject}”',
+            titleRelated: '{productName} added annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoActor: '{productName} added annotation {related} in “{subject}”',
+            titleRelatedMany: '{productName} added {count} annotations in “{subject}” for {actor}',
+            titleRelatedManyNoActor: '{productName} added {count} annotations in “{subject}”',
+            titleRelatedNone: '{productName} added annotations in “{subject}” for {actor}',
+            titleRelatedNoneNoActor: '{productName} added annotations in “{subject}”',
+            titleRelatedNoSubject: '{productName} added annotation {related} for {actor}',
+            titleRelatedNoSubjectNoActor: '{productName} added annotation {related}',
+            titleRelatedNoSubjectMany: '{productName} added {count} annotations for {actor}',
+            titleRelatedNoSubjectManyNoActor: '{productName} added {count} annotations',
+            titleRelatedNoSubjectNone: '{productName} added annotations for {actor}',
+            titleRelatedNoSubjectNoneNoActor: '{productName} added annotations',
             bodyMany: 'The newest is annotation {related}.',
             bodyNoExcerpt: 'One of these annotations has since been deleted.',
           },
@@ -977,8 +977,8 @@ export const collaboration = {
     /** Consecutive messages from one author collapse under a single header. */
     groupedAria: 'Continued from {name}',
     /** Observers see who the agent is working for (spec CC-13). */
-    turnInFlight: 'Piloti is answering {name}’s question…',
-    turnInFlightYou: 'Piloti is answering…',
+    turnInFlight: '{productName} is answering {name}’s question…',
+    turnInFlightYou: '{productName} is answering…',
     /** A colleague is composing. Human vocabulary, not the agent's (TypingPresence). */
     typing: '{names} is writing…',
     /**
@@ -1002,9 +1002,9 @@ export const collaboration = {
      */
     typingNamePair: '{first} and {second}',
     /** The agent put a question to the asker; an observer is told, not offered it. */
-    spectatorPrompt: 'Piloti asked a question and is waiting for an answer: “{question}”',
+    spectatorPrompt: '{productName} asked a question and is waiting for an answer: “{question}”',
     spectatorFailed: 'This turn ended with an error.',
-    composerBusy: 'Piloti is answering {name}’s question — you can send once it finishes.',
+    composerBusy: '{productName} is answering {name}’s question — you can send once it finishes.',
     /** Access was revoked while the reader had the thread open. */
     /**
      * Deliberately says "no longer available" rather than "you no longer have

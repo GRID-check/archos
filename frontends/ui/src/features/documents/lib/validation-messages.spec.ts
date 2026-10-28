@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { createTranslator } from '@/i18n/translate'
-import { de } from '@/i18n/dictionaries/de'
+import { de } from '@/i18n/dictionaries'
 import type { FileUploadConfig } from '@/shared/context'
 import { validateFileUpload, type ValidationContext } from '../validation'
 import { summarizeValidation } from './validation-messages'

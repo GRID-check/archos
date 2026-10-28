@@ -25,9 +25,9 @@ export const uploadBatches: typeof en.uploadBatches = {
     },
     state: {
       sending: 'Der Upload läuft noch.',
-      reading: 'Piloti liest noch. Diese Übersicht aktualisiert sich von selbst.',
+      reading: '{productName} liest noch. Diese Übersicht aktualisiert sich von selbst.',
       done: 'Alles ist gelesen.',
-      doneHeld: 'Alles bis auf die zurückgehaltenen Dateien ist gelesen. Piloti zeigt sie keinem Modell.',
+      doneHeld: 'Alles bis auf die zurückgehaltenen Dateien ist gelesen. {productName} zeigt sie keinem Modell.',
     },
     counts: {
       label: 'Auf einen Blick',
@@ -56,7 +56,7 @@ export const uploadBatches: typeof en.uploadBatches = {
         office_shelf: 'Büroablage',
         session: 'Chat',
       },
-      empty: 'Keine Datei dieses Uploads ist bei Piloti angekommen.',
+      empty: 'Keine Datei dieses Uploads ist bei {productName} angekommen.',
       pages: '{count, plural, one {# Seite} other {# Seiten}}',
       openInFiles: 'In Dateien öffnen',
       openInOfficeShelf: 'In der Büroablage öffnen',

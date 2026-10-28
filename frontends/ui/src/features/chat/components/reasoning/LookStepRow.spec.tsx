@@ -8,7 +8,7 @@
 import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
+import { de } from '@/i18n/dictionaries'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { fakePdfjsRuntime, type FakePdfState } from '@/test-utils/pdfjs-fake'
 import { storedSteps } from '@/test-utils/wire-v2-steps'

@@ -50,7 +50,7 @@ vi.mock('@/lib/sharing/access', () => ({
 import { createInProcessStore, setLimitStore } from '@/lib/limits'
 import { MAX_DIAGRAM_SVG_BYTES } from '@/lib/diagrams/diagram-sources'
 import { DiagramSvgError } from '@/lib/diagrams/svg'
-import { de } from '@/i18n/dictionaries/de'
+import { de } from '@/i18n/dictionaries'
 import { POST } from './route'
 
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'

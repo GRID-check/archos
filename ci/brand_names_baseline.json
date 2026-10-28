@@ -1894,7 +1894,7 @@
   "tests/aiq_agent/test_agent_text_english.py": 3,
   "tests/aiq_agent/test_deepagents_contract.py": 2,
   "tests/aiq_agent/test_fire_path_contract.py": 3,
-  "tests/aiq_agent/test_product_framing.py": 6,
+  "tests/aiq_agent/test_product_framing.py": 5,
   "tests/aiq_agent/test_project_context.py": 72,
   "tests/aiq_agent/testing/agent_testing/conversation.py": 1,
   "tests/aiq_agent/testing/agent_testing/exposure.py": 3,

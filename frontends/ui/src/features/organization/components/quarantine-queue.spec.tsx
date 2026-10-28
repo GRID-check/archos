@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import { createTranslator } from '@/i18n/translate'
 import { describeQuarantineReason, type QuarantineReason } from '@/lib/upload-screening/quarantine'
 import { QuarantineQueue } from './quarantine-queue'

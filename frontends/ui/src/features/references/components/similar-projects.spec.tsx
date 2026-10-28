@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { render, screen, within } from '@/test-utils'
-import { en } from '@/i18n/dictionaries/en'
+import { en } from '@/i18n/dictionaries'
 import { fingerprintOf } from '@/lib/cross-project/fingerprint'
 import type { SimilarProject, SimilarProjectsPage } from '@/lib/references/types'
 

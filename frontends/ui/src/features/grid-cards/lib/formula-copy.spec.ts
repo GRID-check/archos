@@ -9,8 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
+import { de, en } from '@/i18n/dictionaries'
 import { getByPath } from '@/i18n/translate'
 import { FORMULA_KEY_MAPS } from './formula-copy'
 
